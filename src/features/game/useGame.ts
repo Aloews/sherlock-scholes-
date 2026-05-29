@@ -6,6 +6,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
 import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
+import { playSound } from '@/shared/lib/sounds';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
 
@@ -106,6 +107,7 @@ export function useGame() {
     const card = currentCards[activeCardIndex];
     if (!card || card.status !== 'pending') return;
     hapticSuccess();
+    playSound('correct');
     await roomService.markCard(card.id, 'correct');
   }, [currentCards, activeCardIndex]);
 
@@ -113,6 +115,7 @@ export function useGame() {
     const card = currentCards[activeCardIndex];
     if (!card || card.status !== 'pending') return;
     hapticImpact('light');
+    playSound('skip');
     await roomService.markCard(card.id, 'skipped');
   }, [currentCards, activeCardIndex]);
 

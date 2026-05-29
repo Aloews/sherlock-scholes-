@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { HomeScreen }     from '@/screens/HomeScreen';
 import { LobbyScreen }    from '@/screens/LobbyScreen';
@@ -12,15 +13,27 @@ function RequireRoom({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PageTransition({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export function Router() {
   return (
     <Routes>
-      <Route path="/" element={<HomeScreen />} />
+      <Route path="/" element={<PageTransition><HomeScreen /></PageTransition>} />
       <Route
         path="/lobby"
         element={
           <RequireRoom>
-            <LobbyScreen />
+            <PageTransition><LobbyScreen /></PageTransition>
           </RequireRoom>
         }
       />
@@ -28,7 +41,7 @@ export function Router() {
         path="/game"
         element={
           <RequireRoom>
-            <GameScreen />
+            <PageTransition><GameScreen /></PageTransition>
           </RequireRoom>
         }
       />
@@ -36,11 +49,11 @@ export function Router() {
         path="/end"
         element={
           <RequireRoom>
-            <EndScreen />
+            <PageTransition><EndScreen /></PageTransition>
           </RequireRoom>
         }
       />
-      <Route path="/training" element={<TrainingScreen />} />
+      <Route path="/training" element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -1,6 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AnimatePresence, motion } from 'framer-motion';
+import { IconVolume, IconVolumeOff } from '@tabler/icons-react';
 import { useGame } from '@/features/game/useGame';
 import { useTimer } from '@/features/game/useTimer';
 import { useGameStore } from '@/shared/store/gameStore';
@@ -9,16 +11,48 @@ import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { Button } from '@/shared/ui/Button';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { playSound, isMuted, toggleMute } from '@/shared/lib/sounds';
+
+function MuteButton() {
+  const [muted, setMuted] = useState(isMuted);
+  const { t } = useTranslation();
+
+  const toggle = () => {
+    toggleMute();
+    setMuted((m) => !m);
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label={muted ? t('sound.unmute') : t('sound.mute')}
+      className="p-1.5 rounded-lg text-brand-muted hover:text-white transition-colors"
+    >
+      {muted
+        ? <IconVolumeOff size={18} stroke={1.5} />
+        : <IconVolume    size={18} stroke={1.5} />}
+    </button>
+  );
+}
 
 function CountdownOverlay({ n }: { n: number }) {
   const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-brand-bg/90 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="text-center space-y-4 animate-fade-in">
+      <div className="text-center space-y-4">
         <p className="text-brand-muted text-lg">{t('game.round_starting')}</p>
-        <p className="text-9xl font-black text-brand-accent animate-pulse-fast">
-          {n > 0 ? n : t('game.go')}
-        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={n}
+            initial={{ scale: 1.5, opacity: 0 }}
+            animate={{ scale: 1,   opacity: 1 }}
+            exit={{ scale: 0.5,    opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="text-9xl font-black text-brand-accent"
+          >
+            {n > 0 ? n : t('game.go')}
+          </motion.p>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -74,6 +108,10 @@ export function GameScreen() {
     onExpire: useCallback(() => {
       if (isExplainer) handleRoundEnd();
     }, [isExplainer, handleRoundEnd]),
+    onTick: useCallback((rem: number) => {
+      if (rem > 0 && rem <= 10) playSound('tick');
+      if (rem === 0) playSound('gong');
+    }, []),
   });
 
   useEffect(() => {
@@ -118,7 +156,10 @@ export function GameScreen() {
       {/* Score bar */}
       <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-brand-border">
         <Scoreboard scores={teamScores} compact />
-        <div className="text-xs text-brand-muted font-medium">{roundLabel}</div>
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-brand-muted font-medium">{roundLabel}</div>
+          <MuteButton />
+        </div>
       </div>
 
       {/* Timer */}
@@ -137,15 +178,34 @@ export function GameScreen() {
       <div className="flex-1 px-4 overflow-y-auto">
         {isExplainer ? (
           <div className="space-y-3">
-            {activeCard?.card ? (
-              <PlayerCard card={activeCard.card} mode="explainer" />
-            ) : (
-              <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
-                <div className="text-5xl">✅</div>
-                <p className="text-brand-accent font-semibold text-lg">{t('game.all_cards_done')}</p>
-                <p className="text-brand-muted text-sm">{t('game.waiting_timer')}</p>
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {activeCard?.card ? (
+                <motion.div
+                  key={activeCard.id}
+                  initial={{ x: 64, opacity: 0 }}
+                  animate={{ x: 0,  opacity: 1 }}
+                  exit={{ x: -64,   opacity: 0 }}
+                  transition={{ duration: 0.18, ease: 'easeInOut' }}
+                >
+                  <PlayerCard card={activeCard.card} mode="explainer" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="all-done"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
+                    <div className="text-5xl">✅</div>
+                    <p className="text-brand-accent font-semibold text-lg">{t('game.all_cards_done')}</p>
+                    <p className="text-brand-muted text-sm">{t('game.waiting_timer')}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {totalCards > 0 && (
               <div className="flex justify-center gap-2 py-1">
                 {Array.from({ length: totalCards }).map((_, i) => (

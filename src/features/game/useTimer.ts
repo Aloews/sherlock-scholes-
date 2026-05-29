@@ -6,11 +6,12 @@ import type { Round } from '@/shared/types/database';
 
 interface UseTimerOptions {
   onExpire?: () => void;
+  onTick?: (remaining: number) => void;
 }
 
 export function useTimer(round: Round | null, options: UseTimerOptions = {}) {
   const [remaining, setRemaining] = useState(round?.time_seconds ?? 0);
-  const { onExpire } = options;
+  const { onExpire, onTick } = options;
   const expiredRef = useRef(false);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function useTimer(round: Round | null, options: UseTimerOptions = {}) {
     }
 
     expiredRef.current = false;
+    let prevLeft = -1;
 
     const tick = () => {
       const elapsed = Math.floor(
@@ -28,6 +30,11 @@ export function useTimer(round: Round | null, options: UseTimerOptions = {}) {
       );
       const left = Math.max(0, round.time_seconds - elapsed);
       setRemaining(left);
+
+      if (left !== prevLeft) {
+        prevLeft = left;
+        onTick?.(left);
+      }
 
       if (left === 0 && !expiredRef.current) {
         expiredRef.current = true;
@@ -38,7 +45,7 @@ export function useTimer(round: Round | null, options: UseTimerOptions = {}) {
     tick(); // immediate first tick
     const id = setInterval(tick, 500); // 500ms for smoother updates
     return () => clearInterval(id);
-  }, [round?.id, round?.status, round?.started_at, round?.time_seconds, onExpire]);
+  }, [round?.id, round?.status, round?.started_at, round?.time_seconds, onExpire, onTick]);
 
   const pct = round ? remaining / round.time_seconds : 0;
   const isWarning = remaining <= 10 && remaining > 0;

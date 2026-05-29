@@ -92,6 +92,10 @@ export function hapticError(): void {
   tg?.HapticFeedback?.notificationOccurred('error');
 }
 
+export function hapticWarning(): void {
+  tg?.HapticFeedback?.notificationOccurred('warning');
+}
+
 export function hapticSelection(): void {
   tg?.HapticFeedback?.selectionChanged();
 }
