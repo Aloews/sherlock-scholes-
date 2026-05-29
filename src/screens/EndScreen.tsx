@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { IconShare } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useAuthStore } from '@/shared/store/authStore';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { Button } from '@/shared/ui/Button';
-import { hapticSuccess } from '@/shared/lib/telegram';
+import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
 
 export function EndScreen() {
   const navigate = useNavigate();
   const { room, teams, teamScores, scores, roomPlayers, reset } = useGameStore();
+  const { player } = useAuthStore();
   const { t } = useTranslation();
 
   const [visible, setVisible] = useState(false);
@@ -34,6 +37,42 @@ export function EndScreen() {
   const handlePlayAgain = () => {
     reset();
     navigate('/');
+  };
+
+  const handleShare = () => {
+    hapticImpact('medium');
+
+    const myRoomPlayer = roomPlayers.find((rp) => rp.player_id === player?.id);
+    const myTeamScore  = teamScores.find((ts) => ts.team_id === myRoomPlayer?.team_id);
+    const otherScores  = teamScores.filter((ts) => ts.team_id !== myRoomPlayer?.team_id);
+
+    const myScore       = myTeamScore?.total_points ?? 0;
+    const opponentScore = otherScores.length > 0
+      ? Math.max(...otherScores.map((s) => s.total_points))
+      : 0;
+    const diff = myScore - opponentScore;
+
+    let key: string;
+    if      (diff >= 5)  key = 'share.win_blowout';
+    else if (diff >= 2)  key = 'share.win_normal';
+    else if (diff === 1) key = 'share.win_close';
+    else if (diff === 0) key = 'share.draw';
+    else if (diff === -1) key = 'share.lose_close';
+    else if (diff <= -5) key = 'share.lose_blowout';
+    else                 key = 'share.lose_normal';
+
+    const win  = Math.max(myScore, opponentScore);
+    const lose = Math.min(myScore, opponentScore);
+    const text = t(key, { win, lose, score: myScore });
+
+    const botLink = 'https://t.me/sherlock_scholes_bot';
+    const url = `https://t.me/share/url?url=${encodeURIComponent(botLink)}&text=${encodeURIComponent(text)}`;
+
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.openTelegramLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   return (
@@ -122,10 +161,16 @@ export function EndScreen() {
       )}
 
       {/* Actions */}
-      <div className={`px-4 py-8 mt-auto transition-all duration-700 delay-500 ${
+      <div className={`px-4 py-8 mt-auto space-y-3 transition-all duration-700 delay-500 ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}>
-        <Button fullWidth size="lg" onClick={handlePlayAgain}>
+        <Button fullWidth size="lg" onClick={handleShare}>
+          <span className="flex items-center justify-center gap-2">
+            <IconShare size={20} stroke={1.5} />
+            {t('share.button')}
+          </span>
+        </Button>
+        <Button fullWidth size="lg" variant="secondary" onClick={handlePlayAgain}>
           {t('end.play_again')}
         </Button>
       </div>
