@@ -1,12 +1,47 @@
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
-import type { Card } from '@/shared/types/database';
-import { CATEGORY_EMOJI, CATEGORY_LABEL_RU } from '@/shared/types/database';
+import {
+  IconUser,
+  IconShield,
+  IconBuildingStadium,
+  IconTag,
+  IconTarget,
+  IconFlag,
+  IconClipboard,
+  IconMicrophone,
+} from '@tabler/icons-react';
+import type { Card, CardCategory } from '@/shared/types/database';
+import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 
 interface PlayerCardProps {
   card: Card;
   mode: 'explainer' | 'hidden';
   className?: string;
+}
+
+const CATEGORY_COLOR: Record<CardCategory, string> = {
+  player:        '#FF6300',
+  club:          '#4A9EFF',
+  club_nickname: '#4A9EFF',
+  stadium:       '#00C97D',
+  term:          '#B47AFF',
+  position:      '#B47AFF',
+  referee:       '#FFD24A',
+  coach:         '#FFD24A',
+  commentator:   '#7A8499',
+  woman:         '#FF6BA8',
+};
+
+function CategoryIcon({ category, color }: { category: CardCategory; color: string }) {
+  const props = { size: 13, color, stroke: 1.75 };
+  if (category === 'club' || category === 'club_nickname') return <IconShield      {...props} />;
+  if (category === 'stadium')                              return <IconBuildingStadium {...props} />;
+  if (category === 'term')                                 return <IconTag          {...props} />;
+  if (category === 'position')                             return <IconTarget       {...props} />;
+  if (category === 'referee')                              return <IconFlag         {...props} />;
+  if (category === 'coach')                                return <IconClipboard    {...props} />;
+  if (category === 'commentator')                          return <IconMicrophone   {...props} />;
+  return <IconUser {...props} />;  // player, woman, default
 }
 
 export function PlayerCard({ card, mode, className }: PlayerCardProps) {
@@ -16,56 +51,65 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
     return (
       <div
         className={clsx(
-          'rounded-3xl bg-zinc-900 border border-zinc-800 p-8',
+          'rounded-2xl bg-brand-surface border border-brand-border p-8',
           'flex flex-col items-center justify-center gap-4 min-h-[260px]',
           className,
         )}
       >
-        <div className="text-6xl">⚽</div>
-        <p className="text-zinc-500 text-lg font-medium">{t('card.guessing')}</p>
-        <p className="text-zinc-600 text-sm">{t('card.shout_answer')}</p>
+        <div className="w-16 h-16 rounded-full bg-brand-border flex items-center justify-center">
+          <span className="text-3xl">⚽</span>
+        </div>
+        <div className="text-center">
+          <p className="text-brand-muted text-lg font-medium">{t('card.guessing')}</p>
+          <p className="text-brand-muted/50 text-sm mt-1">{t('card.shout_answer')}</p>
+        </div>
       </div>
     );
   }
 
-  const emoji = CATEGORY_EMOJI[card.category] ?? '⚽';
-  const label = card.category_ru ?? CATEGORY_LABEL_RU[card.category] ?? card.category;
+  const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
+  const label    = card.category_ru ?? CATEGORY_LABEL_RU[card.category] ?? card.category;
 
   return (
     <div
       className={clsx(
-        'rounded-3xl bg-zinc-900 border border-zinc-800 overflow-hidden animate-slide-up',
+        'rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
         className,
       )}
     >
-      {/* Category header */}
-      <div className="bg-emerald-500/10 border-b border-zinc-800 px-6 py-3 flex items-center gap-2">
-        <span className="text-lg">{emoji}</span>
-        <span className="text-sm text-emerald-400 font-semibold uppercase tracking-wider">
+      {/* Thin category colour strip */}
+      <div className="h-1" style={{ backgroundColor: catColor }} />
+
+      {/* Category label */}
+      <div className="px-5 pt-3 pb-1 flex items-center gap-1.5">
+        <CategoryIcon category={card.category} color={catColor} />
+        <span className="text-[11px] text-brand-muted uppercase tracking-widest font-medium">
           {label}
         </span>
       </div>
 
-      {/* Card name */}
-      <div className="px-6 py-6">
-        <p className="text-3xl font-black text-white leading-tight">{card.name}</p>
+      {/* Card name — centred, medium weight */}
+      <div className="px-5 py-6 text-center">
+        <p className="text-3xl font-medium text-white leading-snug">{card.name}</p>
       </div>
 
       {/* Forbidden words */}
       {card.forbidden_words.length > 0 && (
-        <div className="px-6 pb-6">
-          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">
-            {t('card.forbidden_words')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {card.forbidden_words.map((word) => (
-              <span
-                key={word}
-                className="text-sm bg-red-500/15 text-red-400 border border-red-500/30 rounded-xl px-3 py-1 font-semibold line-through"
-              >
-                {word}
-              </span>
-            ))}
+        <div className="px-5 pb-5">
+          <div className="border-t border-brand-border pt-3">
+            <p className="text-[11px] text-brand-muted uppercase tracking-wider mb-2">
+              {t('card.forbidden_words')}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {card.forbidden_words.map((word) => (
+                <span
+                  key={word}
+                  className="text-sm bg-red-500/10 text-red-400/80 border border-red-500/20 rounded-lg px-2.5 py-0.5 line-through"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}

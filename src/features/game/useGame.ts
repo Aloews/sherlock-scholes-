@@ -13,7 +13,7 @@ export function useGame() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const {
-    room, teams, currentRound, currentCards, activeCardIndex,
+    room, teams, currentRound, currentCards, activeCardIndex, teamScores,
     setCurrentRound, setCurrentCards, updateCard, setActiveCardIndex,
     setRoom, setTeamScores, phase,
   } = useGameStore();
@@ -51,13 +51,13 @@ export function useGame() {
           } else if (round.status === 'completed') {
             setCurrentRound(round);
             const rawScores = await roomService.fetchRoundScores(room.id);
-            const teamScores: TeamScore[] = rawScores.map((s) => ({
-              team_id: s.teamId,
-              team_name: s.teamName,
+            const scores: TeamScore[] = rawScores.map((s) => ({
+              team_id:      s.teamId,
+              team_name:    s.teamName,
               total_points: s.total,
-              color: teams.find((t) => t.id === s.teamId)?.color ?? '#22c55e',
+              color:        teams.find((t) => t.id === s.teamId)?.color ?? '#22c55e',
             }));
-            setTeamScores(teamScores);
+            setTeamScores(scores);
             transition('round_summary');
           }
         },
@@ -128,14 +128,21 @@ export function useGame() {
 
   // ─── Derived state ─────────────────────────────────────────
 
+  const is1v1       = room?.mode === '1v1';
   const isExplainer = currentRound?.explainer_id === player?.id;
-  const activeCard = currentCards[activeCardIndex] ?? null;
+  const activeCard  = currentCards[activeCardIndex] ?? null;
+
   const myRoomPlayer = useGameStore.getState().roomPlayers.find((rp) => rp.player_id === player?.id);
-  const myTeam = teams.find((t) => t.id === myRoomPlayer?.team_id);
+  const myTeam       = teams.find((t) => t.id === myRoomPlayer?.team_id);
   const isMyTeamsTurn = myTeam?.id === currentRound?.team_id;
   const explainerTeam = teams.find((t) => t.id === currentRound?.team_id);
-  const pendingCards = currentCards.filter((c) => c.status === 'pending');
-  const correctCount = currentCards.filter((c) => c.status === 'correct').length;
+  const pendingCards  = currentCards.filter((c) => c.status === 'pending');
+  const correctCount  = currentCards.filter((c) => c.status === 'correct').length;
+
+  // 1v1 personal cumulative scores
+  const myTeamId         = myRoomPlayer?.team_id ?? null;
+  const myPersonalScore  = myTeamId ? (teamScores.find((ts) => ts.team_id === myTeamId)?.total_points ?? 0) : 0;
+  const opponentScore    = myTeamId ? (teamScores.find((ts) => ts.team_id !== myTeamId)?.total_points ?? 0) : 0;
 
   return {
     phase,
@@ -148,6 +155,9 @@ export function useGame() {
     explainerTeam,
     pendingCards,
     correctCount,
+    is1v1,
+    myPersonalScore,
+    opponentScore,
     markCorrect,
     markSkipped,
     handleRoundEnd,

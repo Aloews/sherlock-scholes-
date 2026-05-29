@@ -13,10 +13,10 @@ import { hapticImpact } from '@/shared/lib/telegram';
 function CountdownOverlay({ n }: { n: number }) {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 bg-zinc-950/90 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-brand-bg/90 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="text-center space-y-4 animate-fade-in">
-        <p className="text-zinc-400 text-lg">{t('game.round_starting')}</p>
-        <p className="text-9xl font-black text-emerald-400 animate-pulse-fast">
+        <p className="text-brand-muted text-lg">{t('game.round_starting')}</p>
+        <p className="text-9xl font-black text-brand-accent animate-pulse-fast">
           {n > 0 ? n : t('game.go')}
         </p>
       </div>
@@ -28,9 +28,9 @@ function RoundSummaryOverlay() {
   const { teamScores, currentRound } = useGameStore();
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 bg-zinc-950/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 gap-6">
+    <div className="fixed inset-0 bg-brand-bg/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 gap-6">
       <div className="text-center">
-        <p className="text-zinc-400 text-sm uppercase tracking-wider">
+        <p className="text-brand-muted text-sm uppercase tracking-wider">
           {t('game.round_finished', { n: currentRound?.round_number })}
         </p>
       </div>
@@ -41,12 +41,12 @@ function RoundSummaryOverlay() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-2 h-2 rounded-full bg-zinc-600 animate-pulse"
+            className="w-2 h-2 rounded-full bg-brand-border animate-pulse"
             style={{ animationDelay: `${i * 200}ms` }}
           />
         ))}
       </div>
-      <p className="text-zinc-500 text-sm">{t('game.next_round_soon')}</p>
+      <p className="text-brand-muted text-sm">{t('game.next_round_soon')}</p>
     </div>
   );
 }
@@ -62,6 +62,9 @@ export function GameScreen() {
     isMyTeamsTurn,
     explainerTeam,
     pendingCards,
+    is1v1,
+    myPersonalScore,
+    opponentScore,
     markCorrect,
     markSkipped,
     handleRoundEnd,
@@ -73,12 +76,10 @@ export function GameScreen() {
     }, [isExplainer, handleRoundEnd]),
   });
 
-  // Navigate to end screen when game finishes
   useEffect(() => {
     if (phase === 'game_end') navigate('/end');
   }, [phase, navigate]);
 
-  // Countdown animation — runs when phase transitions to 'countdown'
   useEffect(() => {
     if (phase !== 'countdown') return;
     let n = 3;
@@ -97,8 +98,8 @@ export function GameScreen() {
 
   if (!currentRound) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-zinc-500 text-center">
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="text-brand-muted text-center">
           <div className="text-4xl mb-3">⚽</div>
           <p>{t('game.loading')}</p>
         </div>
@@ -110,15 +111,14 @@ export function GameScreen() {
   const roundLabel = t('game.round_label', { n: currentRound.round_number });
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
-      {/* Phase overlays */}
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {phase === 'countdown' && countdown > 0 && <CountdownOverlay n={countdown} />}
       {phase === 'round_summary' && <RoundSummaryOverlay />}
 
       {/* Score bar */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-zinc-900">
+      <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-brand-border">
         <Scoreboard scores={teamScores} compact />
-        <div className="text-xs text-zinc-600 font-medium">{roundLabel}</div>
+        <div className="text-xs text-brand-muted font-medium">{roundLabel}</div>
       </div>
 
       {/* Timer */}
@@ -126,9 +126,9 @@ export function GameScreen() {
         {currentRound.status === 'active' ? (
           <Timer remaining={remaining} total={currentRound.time_seconds} size="lg" />
         ) : (
-          <div className="text-4xl font-black text-zinc-600">{currentRound.time_seconds}</div>
+          <div className="text-4xl font-black text-brand-muted">{currentRound.time_seconds}</div>
         )}
-        <p className="text-zinc-600 text-xs mt-1">
+        <p className="text-brand-muted text-xs mt-1">
           {t('game.guessed_progress', { correct: correctCount, total: totalCards })}
         </p>
       </div>
@@ -136,26 +136,23 @@ export function GameScreen() {
       {/* Main content */}
       <div className="flex-1 px-4 overflow-y-auto">
         {isExplainer ? (
-          /* Explainer sees the full card */
           <div className="space-y-3">
             {activeCard?.card ? (
               <PlayerCard card={activeCard.card} mode="explainer" />
             ) : (
-              <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
+              <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
                 <div className="text-5xl">✅</div>
-                <p className="text-emerald-400 font-semibold text-lg">{t('game.all_cards_done')}</p>
-                <p className="text-zinc-500 text-sm">{t('game.waiting_timer')}</p>
+                <p className="text-brand-accent font-semibold text-lg">{t('game.all_cards_done')}</p>
+                <p className="text-brand-muted text-sm">{t('game.waiting_timer')}</p>
               </div>
             )}
-
-            {/* Progress dots */}
             {totalCards > 0 && (
               <div className="flex justify-center gap-2 py-1">
                 {Array.from({ length: totalCards }).map((_, i) => (
                   <div
                     key={i}
                     className={`w-2 h-2 rounded-full transition-colors ${
-                      i < correctCount ? 'bg-emerald-500' : 'bg-zinc-700'
+                      i < correctCount ? 'bg-brand-accent' : 'bg-brand-border'
                     }`}
                   />
                 ))}
@@ -163,31 +160,61 @@ export function GameScreen() {
             )}
           </div>
         ) : (
-          /* Guesser / spectator */
           <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center">
-            {isMyTeamsTurn ? (
+
+            {/* ── 1v1 guesser view ── */}
+            {is1v1 ? (
               <>
                 <div className="text-6xl">👂</div>
-                <p className="text-white text-xl font-bold">{t('game.your_team_explaining')}</p>
-                <p className="text-zinc-400">{t('game.listen_and_guess')}</p>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-3">
-                  <p className="text-emerald-400 font-black text-4xl">{correctCount}</p>
-                  <p className="text-zinc-500 text-xs">{t('game.guessed_count')}</p>
+                <p className="text-white text-3xl font-bold">{t('game.listening')}</p>
+
+                <div className="bg-brand-surface border border-brand-border rounded-2xl px-8 py-4">
+                  <p className="text-brand-accent font-black text-5xl">{correctCount}</p>
+                  <p className="text-brand-muted text-xs mt-1">
+                    {t('game.opponent_progress', { n: correctCount })}
+                  </p>
                 </div>
+
+                {teamScores.length > 0 && (
+                  <div className="flex items-center gap-3 text-sm mt-1">
+                    <span className="text-white font-semibold">
+                      {t('game.score_you')}: {myPersonalScore}
+                    </span>
+                    <span className="text-brand-border">|</span>
+                    <span className="text-brand-muted">
+                      {t('game.score_opponent')}: {opponentScore}
+                    </span>
+                  </div>
+                )}
               </>
             ) : (
+              /* ── Team mode guesser view ── */
               <>
-                <div className="text-6xl">👀</div>
-                <div>
-                  <p className="text-white text-xl font-bold">
-                    {t('game.team_playing', { name: explainerTeam?.name ?? t('game.other_team') })}
-                  </p>
-                  <p className="text-zinc-400 text-sm mt-1">{t('game.wait_your_turn')}</p>
-                </div>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-3">
-                  <p className="text-blue-400 font-black text-4xl">{correctCount}</p>
-                  <p className="text-zinc-500 text-xs">{t('game.their_round_points')}</p>
-                </div>
+                {isMyTeamsTurn ? (
+                  <>
+                    <div className="text-6xl">👂</div>
+                    <p className="text-white text-xl font-bold">{t('game.your_team_explaining')}</p>
+                    <p className="text-brand-muted">{t('game.listen_and_guess')}</p>
+                    <div className="bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
+                      <p className="text-brand-accent font-black text-4xl">{correctCount}</p>
+                      <p className="text-brand-muted text-xs">{t('game.guessed_count')}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-6xl">👀</div>
+                    <div>
+                      <p className="text-white text-xl font-bold">
+                        {t('game.team_playing', { name: explainerTeam?.name ?? t('game.other_team') })}
+                      </p>
+                      <p className="text-brand-muted text-sm mt-1">{t('game.wait_your_turn')}</p>
+                    </div>
+                    <div className="bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
+                      <p className="text-blue-400 font-black text-4xl">{correctCount}</p>
+                      <p className="text-brand-muted text-xs">{t('game.their_round_points')}</p>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -196,7 +223,7 @@ export function GameScreen() {
 
       {/* Action buttons — explainer only */}
       {isExplainer && activeCard && activeCard.status === 'pending' && (
-        <div className="px-4 pb-6 pt-3 grid grid-cols-2 gap-3 border-t border-zinc-900">
+        <div className="px-4 pb-6 pt-3 grid grid-cols-2 gap-3 border-t border-brand-border">
           <Button size="lg" variant="secondary" onClick={markSkipped}>
             {t('game.skip')}
           </Button>
@@ -207,7 +234,7 @@ export function GameScreen() {
       )}
 
       {isExplainer && (!activeCard || activeCard.status !== 'pending') && (
-        <div className="px-4 pb-6 pt-3 border-t border-zinc-900">
+        <div className="px-4 pb-6 pt-3 border-t border-brand-border">
           <Button fullWidth size="lg" variant="secondary" disabled>
             {t('game.waiting_timer')}
           </Button>

@@ -9,7 +9,7 @@
   }
 
   body {
-    @apply bg-zinc-950 text-white font-sans;
+    @apply bg-brand-bg text-white font-sans;
     overscroll-behavior: none;
     /* Telegram safe area */
     padding-top: env(safe-area-inset-top);

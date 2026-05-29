@@ -13,16 +13,16 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
   return (
     <button
       className={clsx(
-        'flex items-center gap-1 bg-zinc-800 rounded-xl px-3 py-1.5',
-        'border border-zinc-700 text-xs font-bold select-none',
-        'hover:border-zinc-500 transition-colors',
+        'flex items-center gap-1 bg-brand-surface rounded-xl px-3 py-1.5',
+        'border border-brand-border text-xs font-bold select-none',
+        'hover:border-brand-muted/50 transition-colors',
         className,
       )}
       onClick={() => setLanguage(isEn ? 'ru' : 'en')}
     >
-      <span className={isEn ? 'text-zinc-500' : 'text-white'}>RU</span>
-      <span className="text-zinc-600">|</span>
-      <span className={isEn ? 'text-white' : 'text-zinc-500'}>EN</span>
+      <span className={isEn ? 'text-brand-muted' : 'text-white'}>RU</span>
+      <span className="text-brand-border">|</span>
+      <span className={isEn ? 'text-white' : 'text-brand-muted'}>EN</span>
     </button>
   );
 }

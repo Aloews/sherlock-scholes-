@@ -62,11 +62,14 @@ export interface RoomSettings {
   categories: CardCategory[] | null; // null = all categories
 }
 
+export type GameMode = 'team' | '1v1';
+
 export interface Room {
   id: string;
   code: string;
   host_id: number;
   status: 'waiting' | 'playing' | 'finished';
+  mode: GameMode;
   settings: RoomSettings;
   current_round_id: string | null;
   created_at: string;

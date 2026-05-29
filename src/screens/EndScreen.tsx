@@ -8,7 +8,7 @@ import { hapticSuccess } from '@/shared/lib/telegram';
 
 export function EndScreen() {
   const navigate = useNavigate();
-  const { teams, teamScores, scores, roomPlayers, reset } = useGameStore();
+  const { room, teams, teamScores, scores, roomPlayers, reset } = useGameStore();
   const { t } = useTranslation();
 
   const [visible, setVisible] = useState(false);
@@ -21,11 +21,11 @@ export function EndScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  const sorted = [...teamScores].sort((a, b) => b.total_points - a.total_points);
-  const winner = sorted[0];
-  const isDraw = sorted.length >= 2 && sorted[0].total_points === sorted[1].total_points;
+  const sorted  = [...teamScores].sort((a, b) => b.total_points - a.total_points);
+  const winner  = sorted[0];
+  const isDraw  = sorted.length >= 2 && sorted[0].total_points === sorted[1].total_points;
+  const is1v1   = room?.mode === '1v1';
 
-  // Per-round breakdown
   const allRoundsData = teams.map((team) => {
     const teamRoundScores = scores.filter((s) => s.team_id === team.id);
     return { team, rounds: teamRoundScores };
@@ -37,27 +37,25 @@ export function EndScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col overflow-y-auto">
+    <div className="min-h-screen bg-brand-bg flex flex-col overflow-y-auto">
       {/* Trophy hero */}
       <div
         className={`flex flex-col items-center pt-12 pb-8 px-6 transition-all duration-700 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
-        <div className="text-8xl mb-4">
-          {isDraw ? '🤝' : '🏆'}
-        </div>
+        <div className="text-8xl mb-4">{isDraw ? '🤝' : '🏆'}</div>
         <h1 className="text-3xl font-black text-white text-center">
           {isDraw ? t('end.draw') : t('end.wins', { name: winner?.team_name })}
         </h1>
         {!isDraw && winner && (
-          <p className="text-emerald-400 font-semibold mt-2">
+          <p className="text-brand-accent font-semibold mt-2">
             {t('end.points', { count: winner.total_points })}
           </p>
         )}
       </div>
 
-      {/* Scoreboard */}
+      {/* Scoreboard — works for both modes (1v1 teams are named after players) */}
       <div className={`px-4 transition-all duration-700 delay-200 ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}>
@@ -69,21 +67,21 @@ export function EndScreen() {
         <div className={`px-4 mt-6 transition-all duration-700 delay-300 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}>
-          <p className="text-zinc-500 text-sm uppercase tracking-wider mb-3">
+          <p className="text-brand-muted text-sm uppercase tracking-wider mb-3">
             {t('end.round_breakdown')}
           </p>
           <div className="space-y-2">
             {allRoundsData.map(({ team, rounds }) => (
-              <div key={team.id} className="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+              <div key={team.id} className="bg-brand-surface rounded-2xl border border-brand-border p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
                   <span className="font-semibold text-white">{team.name}</span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {rounds.map((r, i) => (
-                    <div key={r.id} className="bg-zinc-800 rounded-xl px-3 py-1 text-center">
+                    <div key={r.id} className="bg-brand-border rounded-xl px-3 py-1 text-center">
                       <p className="text-white font-bold text-sm">{r.points}</p>
-                      <p className="text-zinc-500 text-xs">{t('end.round_short', { n: i + 1 })}</p>
+                      <p className="text-brand-muted text-xs">{t('end.round_short', { n: i + 1 })}</p>
                     </div>
                   ))}
                 </div>
@@ -93,33 +91,35 @@ export function EndScreen() {
         </div>
       )}
 
-      {/* Player list */}
-      <div className={`px-4 mt-4 transition-all duration-700 delay-400 ${
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-      }`}>
-        <p className="text-zinc-500 text-sm uppercase tracking-wider mb-3">{t('end.players')}</p>
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
-          <div className="flex flex-wrap gap-2">
-            {roomPlayers.map((rp) => {
-              const team = teams.find((tm) => tm.id === rp.team_id);
-              return (
-                <div
-                  key={rp.id}
-                  className="flex items-center gap-2 bg-zinc-800 rounded-xl px-3 py-1"
-                >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: team?.color ?? '#52525b' }}
-                  />
-                  <span className="text-sm text-zinc-300">
-                    {rp.player?.first_name ?? t('end.player_default')}
-                  </span>
-                </div>
-              );
-            })}
+      {/* Players — hidden in 1v1 (scoreboard already shows players by name) */}
+      {!is1v1 && (
+        <div className={`px-4 mt-4 transition-all duration-700 delay-400 ${
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        }`}>
+          <p className="text-brand-muted text-sm uppercase tracking-wider mb-3">{t('end.players')}</p>
+          <div className="bg-brand-surface rounded-2xl border border-brand-border p-4">
+            <div className="flex flex-wrap gap-2">
+              {roomPlayers.map((rp) => {
+                const team = teams.find((tm) => tm.id === rp.team_id);
+                return (
+                  <div
+                    key={rp.id}
+                    className="flex items-center gap-2 bg-brand-border rounded-xl px-3 py-1"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: team?.color ?? '#1F2740' }}
+                    />
+                    <span className="text-sm text-white">
+                      {rp.player?.first_name ?? t('end.player_default')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Actions */}
       <div className={`px-4 py-8 mt-auto transition-all duration-700 delay-500 ${

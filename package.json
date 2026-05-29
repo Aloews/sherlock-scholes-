@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "@tabler/icons-react": "^3.44.0",
     "clsx": "^2.1.1",
     "i18next": "^26.3.0",
     "immer": "^10.1.1",

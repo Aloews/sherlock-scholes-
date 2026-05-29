@@ -1,8 +1,9 @@
 // Pure Supabase service — no hooks, no store mutations.
-// All table references updated: football_players → cards, football_player_id → card_id.
 
 import { supabase } from '@/shared/lib/supabase';
-import type { Room, RoomSettings, Team, RoomPlayer, Round, RoundCard } from '@/shared/types/database';
+import type {
+  Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
+} from '@/shared/types/database';
 import { pickRandomCards } from '@/features/game/cardRandomizer';
 
 // ─── Room ───────────────────────────────────────────────────
@@ -10,12 +11,30 @@ import { pickRandomCards } from '@/features/game/cardRandomizer';
 export async function createRoom(
   hostId: number,
   settings: Partial<RoomSettings> = {},
+  mode: GameMode = 'team',
 ): Promise<Room> {
+  if (mode === '1v1') {
+    const s = {
+      round_seconds:   60,
+      total_rounds:    3,
+      categories:      null,
+      ...settings,
+      cards_per_round: 100, // always 100 for 1v1 — override any user setting
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await supabase.rpc('create_1v1_room' as any, {
+      p_host_id:  hostId,
+      p_settings: s,
+    });
+    if (error || !data) throw new Error(error?.message ?? 'Failed to create room');
+    return data as Room;
+  }
+
   const finalSettings: RoomSettings = {
-    round_seconds:  60,
+    round_seconds:   60,
     cards_per_round: 5,
-    total_rounds:   3,
-    categories:     null, // all categories by default
+    total_rounds:    3,
+    categories:      null,
     ...settings,
   };
 
@@ -47,6 +66,52 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
 
   if (error || !room) throw new Error('Room not found or game already started');
 
+  if ((room as Room).mode === '1v1') {
+    // Check if player is already in room
+    const { data: existing } = await supabase
+      .from('room_players')
+      .select('id')
+      .eq('room_id', room.id)
+      .eq('player_id', playerId)
+      .maybeSingle();
+
+    if (existing) return room as Room;
+
+    // Capacity check
+    const { count } = await supabase
+      .from('room_players')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', room.id);
+
+    if ((count ?? 0) >= 2) throw new Error('ROOM_FULL_1V1');
+
+    // Create team for joining player
+    const { data: joiner } = await supabase
+      .from('players')
+      .select('first_name')
+      .eq('id', playerId)
+      .maybeSingle();
+
+    const { data: team2, error: teamErr } = await supabase
+      .from('teams')
+      .insert({
+        room_id: room.id,
+        name:    (joiner as { first_name: string } | null)?.first_name ?? 'Player 2',
+        color:   '#3b82f6',
+      })
+      .select()
+      .single();
+
+    if (teamErr || !team2) throw new Error('Failed to join room');
+
+    await supabase
+      .from('room_players')
+      .insert({ room_id: room.id, player_id: playerId, team_id: (team2 as Team).id });
+
+    return room as Room;
+  }
+
+  // Team mode: standard upsert without team assignment
   await supabase
     .from('room_players')
     .upsert({ room_id: room.id, player_id: playerId }, { onConflict: 'room_id,player_id' });
@@ -55,6 +120,49 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
 }
 
 export async function leaveRoom(roomId: string, playerId: number): Promise<void> {
+  const { data: roomData } = await supabase
+    .from('rooms')
+    .select('mode')
+    .eq('id', roomId)
+    .maybeSingle();
+
+  if ((roomData as { mode: string } | null)?.mode === '1v1') {
+    // Find player's team before deleting
+    const { data: rp } = await supabase
+      .from('room_players')
+      .select('team_id')
+      .eq('room_id', roomId)
+      .eq('player_id', playerId)
+      .maybeSingle();
+
+    await supabase
+      .from('room_players')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('player_id', playerId);
+
+    if ((rp as { team_id: string | null } | null)?.team_id) {
+      await supabase
+        .from('teams')
+        .delete()
+        .eq('id', (rp as { team_id: string }).team_id);
+    }
+
+    // If room is empty → mark finished
+    const { count } = await supabase
+      .from('room_players')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', roomId);
+
+    if ((count ?? 0) === 0) {
+      await supabase
+        .from('rooms')
+        .update({ status: 'finished', ended_at: new Date().toISOString() })
+        .eq('id', roomId);
+    }
+    return;
+  }
+
   await supabase
     .from('room_players')
     .delete()
@@ -94,6 +202,38 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
   const { round_seconds, total_rounds } = room.settings;
   const totalTurns = teams.length * total_rounds;
 
+  if (room.mode === '1v1') {
+    // Resolve which player belongs to which team (for explainer_id)
+    const { data: roomPlayers } = await supabase
+      .from('room_players')
+      .select('player_id, team_id')
+      .eq('room_id', room.id);
+
+    const playerByTeam: Record<string, number> = {};
+    for (const rp of (roomPlayers ?? []) as { player_id: number; team_id: string | null }[]) {
+      if (rp.team_id) playerByTeam[rp.team_id] = rp.player_id;
+    }
+
+    const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => ({
+      room_id:      room.id,
+      team_id:      teams[i % teams.length].id,
+      explainer_id: playerByTeam[teams[i % teams.length].id] ?? null,
+      round_number: i + 1,
+      status:       'pending' as const,
+      time_seconds: round_seconds,
+    }));
+
+    const { data: rounds, error } = await supabase
+      .from('rounds')
+      .insert(roundsToInsert)
+      .select();
+
+    if (error || !rounds?.length) throw new Error('Failed to create rounds');
+    await activateRound(rounds[0] as Round, room);
+    return;
+  }
+
+  // Team mode: existing logic
   const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => ({
     room_id:      room.id,
     team_id:      teams[i % teams.length].id,
@@ -108,21 +248,22 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
     .select();
 
   if (roundError || !rounds?.length) throw new Error('Failed to create rounds');
-
   await activateRound(rounds[0] as Round, room);
 }
 
 export async function activateRound(round: Round, room: Room): Promise<void> {
-  const { cards_per_round, categories } = room.settings;
+  // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
+  const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
+  const { categories } = room.settings;
 
-  const cards = await pickRandomCards(cards_per_round, categories);
+  const cards = await pickRandomCards(cardsCount, categories);
 
   await supabase.from('round_cards').insert(
     cards.map((card, i) => ({
-      round_id:  round.id,
-      card_id:   card.id,       // ← was football_player_id
+      round_id:   round.id,
+      card_id:    card.id,
       card_order: i + 1,
-      status:    'pending',
+      status:     'pending',
     })),
   );
 
@@ -145,7 +286,7 @@ export async function activateRound(round: Round, room: Room): Promise<void> {
 export async function fetchRoundCards(roundId: string): Promise<RoundCard[]> {
   const { data } = await supabase
     .from('round_cards')
-    .select('*, card:cards(*)')   // ← was football_player:football_players(*)
+    .select('*, card:cards(*)')
     .eq('round_id', roundId)
     .order('card_order');
   return (data ?? []) as RoundCard[];
@@ -194,7 +335,6 @@ export async function endRound(
       .from('rooms')
       .update({ status: 'finished', ended_at: new Date().toISOString() })
       .eq('id', room.id);
-    // Non-blocking — stats failure must not break game_end flow
     updatePlayerStats(room.id).catch(() => undefined);
     return 'game_end';
   }
@@ -218,13 +358,11 @@ async function updatePlayerStats(roomId: string): Promise<void> {
 
   if (!roomPlayers?.length) return;
 
-  // round_id → explainer_id for fast lookup
   const roundExplainer: Record<string, number | null> = {};
   for (const r of rounds ?? []) {
     roundExplainer[r.id] = r.explainer_id;
   }
 
-  // Count correct cards individually: only rounds where THIS player was the explainer
   const cardsPerExplainer: Record<number, number> = {};
   const roundIds = Object.keys(roundExplainer);
   if (roundIds.length > 0) {
@@ -241,20 +379,18 @@ async function updatePlayerStats(roomId: string): Promise<void> {
     }
   }
 
-  // Sum points per team
   const teamPoints: Record<string, number> = {};
   for (const s of scores ?? []) {
     teamPoints[s.team_id] = (teamPoints[s.team_id] ?? 0) + s.points;
   }
 
   const maxPoints = Math.max(0, ...Object.values(teamPoints));
-  // All teams sharing the max are "winners" (draw = both win)
   const winnerTeamIds = maxPoints > 0
     ? Object.entries(teamPoints).filter(([, pts]) => pts === maxPoints).map(([id]) => id)
     : [];
 
   await Promise.all(
-    roomPlayers.map((rp) => {
+    (roomPlayers as { player_id: number; team_id: string | null }[]).map((rp) => {
       const teamScore    = rp.team_id ? (teamPoints[rp.team_id] ?? 0) : 0;
       const won          = rp.team_id ? winnerTeamIds.includes(rp.team_id) : false;
       const cardsGuessed = cardsPerExplainer[rp.player_id] ?? 0;
@@ -262,8 +398,8 @@ async function updatePlayerStats(roomId: string): Promise<void> {
         p_player_id:     rp.player_id,
         p_games_played:  1,
         p_games_won:     won ? 1 : 0,
-        p_cards_guessed: cardsGuessed,   // personal: rounds explained × correct cards
-        p_total_score:   teamScore,      // team score credited to the player
+        p_cards_guessed: cardsGuessed,
+        p_total_score:   teamScore,
       });
     }),
   );

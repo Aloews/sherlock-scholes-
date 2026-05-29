@@ -1,19 +1,21 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
 import { hapticImpact, hapticError } from '@/shared/lib/telegram';
-import type { RoomSettings } from '@/shared/types/database';
+import type { RoomSettings, GameMode } from '@/shared/types/database';
 
 export function useRoom() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const { player } = useAuthStore();
   const { setRoom, setTeams, setRoomPlayers, setLoading, setError } = useGameStore();
+  const { t } = useTranslation();
 
   const createRoom = useCallback(
-    async (settings?: Partial<RoomSettings>) => {
+    async (settings?: Partial<RoomSettings>, mode: GameMode = 'team') => {
       if (!player) {
         setError('Ошибка авторизации. Обновите страницу.');
         return;
@@ -21,7 +23,7 @@ export function useRoom() {
       setLoading(true);
       setError(null);
       try {
-        const room = await roomService.createRoom(player.id, settings);
+        const room = await roomService.createRoom(player.id, settings, mode);
         const [teams, roomPlayers] = await Promise.all([
           roomService.fetchTeams(room.id),
           roomService.fetchRoomPlayers(room.id),
@@ -64,12 +66,13 @@ export function useRoom() {
         navigate('/lobby');
       } catch (err) {
         hapticError();
-        setError(err instanceof Error ? err.message : 'Room not found');
+        const msg = err instanceof Error ? err.message : '';
+        setError(msg === 'ROOM_FULL_1V1' ? t('lobby.room_full_1v1') : (msg || 'Room not found'));
       } finally {
         setLoading(false);
       }
     },
-    [player, navigate, setRoom, setTeams, setRoomPlayers, setLoading, setError],
+    [player, navigate, setRoom, setTeams, setRoomPlayers, setLoading, setError, t],
   );
 
   const leaveRoom = useCallback(async () => {

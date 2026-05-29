@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { IconUsersGroup, IconUser } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
@@ -9,7 +10,7 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 
-type View = 'home' | 'create' | 'join';
+type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'join';
 
 export function HomeScreen() {
   const { player } = useAuthStore();
@@ -18,8 +19,9 @@ export function HomeScreen() {
   const { t } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
-  const [view, setView] = useState<View>('home');
-  const [code, setCode] = useState('');
+  const [view, setView]           = useState<View>('home');
+  const [code, setCode]           = useState('');
+  const [rounds1v1, setRounds1v1] = useState(3);
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
@@ -27,7 +29,7 @@ export function HomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-8">
         <LanguageToggle />
@@ -44,20 +46,20 @@ export function HomeScreen() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
         <div className="text-center space-y-3">
           <div className="text-7xl mb-2">⚽</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">
-            Sherlock Scholes
+          <h1 className="text-4xl font-black text-white tracking-wider">
+            {t('home.title')}
           </h1>
-          <p className="text-zinc-400 text-lg">{t('home.subtitle')}</p>
+          <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>
         </div>
 
         {/* Player stats — only on main view */}
         {view === 'home' && !statsLoading && (
           <div className="w-full max-w-sm">
-            <p className="text-zinc-500 text-xs text-center mb-2 uppercase tracking-wider">
+            <p className="text-brand-muted text-xs text-center mb-2 uppercase tracking-wider">
               {t('stats.title')}
             </p>
             {stats ? (
-              <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-3">
+              <div className="bg-brand-surface rounded-2xl border border-brand-border p-3">
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
                     { label: t('stats.games'), value: stats.games_played },
@@ -67,25 +69,26 @@ export function HomeScreen() {
                   ].map((item) => (
                     <div key={item.label}>
                       <p className="text-white font-bold text-lg leading-none">{item.value}</p>
-                      <p className="text-zinc-500 text-xs mt-1">{item.label}</p>
+                      <p className="text-brand-muted text-xs mt-1">{item.label}</p>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800/50 p-3 text-center">
-                <p className="text-zinc-600 text-sm">{t('stats.first_game')}</p>
+              <div className="bg-brand-surface/50 rounded-2xl border border-brand-border/50 p-3 text-center">
+                <p className="text-brand-muted/70 text-sm">{t('stats.first_game')}</p>
               </div>
             )}
           </div>
         )}
 
+        {/* ── Main CTA buttons ── */}
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
             <Button
               fullWidth
               size="lg"
-              onClick={() => { hapticImpact('medium'); setView('create'); }}
+              onClick={() => { hapticImpact('medium'); setView('mode_select'); }}
             >
               {t('home.create_game')}
             </Button>
@@ -100,19 +103,63 @@ export function HomeScreen() {
           </div>
         )}
 
-        {view === 'create' && (
+        {/* ── Mode selection ── */}
+        {view === 'mode_select' && (
+          <div className="w-full max-w-sm space-y-3 animate-slide-up">
+            <p className="text-brand-muted text-xs text-center uppercase tracking-wider mb-1">
+              {t('home.mode_select_title')}
+            </p>
+
+            <button
+              className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
+              onClick={() => { hapticImpact('light'); setView('create_team'); }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 text-brand-accent flex-shrink-0">
+                  <IconUsersGroup size={28} stroke={1.5} />
+                </div>
+                <div>
+                  <p className="text-white font-bold">{t('home.mode_team_title')}</p>
+                  <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_team_desc')}</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
+              onClick={() => { hapticImpact('light'); setView('create_1v1'); }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 text-brand-accent flex-shrink-0">
+                  <IconUser size={28} stroke={1.5} />
+                </div>
+                <div>
+                  <p className="text-white font-bold">{t('home.mode_1v1_title')}</p>
+                  <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_1v1_desc')}</p>
+                </div>
+              </div>
+            </button>
+
+            <Button fullWidth variant="ghost" onClick={() => setView('home')}>
+              {t('home.back')}
+            </Button>
+          </div>
+        )}
+
+        {/* ── Team game settings ── */}
+        {view === 'create_team' && (
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
-            <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800 space-y-2">
-              <p className="text-zinc-400 text-sm">{t('home.game_settings')}</p>
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-2">
+              <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[
                   { label: t('home.setting_rounds'), value: '3' },
-                  { label: t('home.setting_cards'), value: '5' },
-                  { label: t('home.setting_time'), value: '60s' },
+                  { label: t('home.setting_cards'),  value: '5' },
+                  { label: t('home.setting_time'),   value: '60s' },
                 ].map((s) => (
-                  <div key={s.label} className="bg-zinc-800 rounded-xl p-2">
+                  <div key={s.label} className="bg-brand-border rounded-xl p-2">
                     <p className="text-white font-bold">{s.value}</p>
-                    <p className="text-zinc-500 text-xs">{s.label}</p>
+                    <p className="text-brand-muted text-xs">{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -120,16 +167,63 @@ export function HomeScreen() {
             <Button fullWidth size="lg" loading={loading} onClick={() => createRoom()}>
               {t('home.create_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => setView('home')}>
+            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
               {t('home.back')}
             </Button>
           </div>
         )}
 
+        {/* ── 1v1 settings ── */}
+        {view === 'create_1v1' && (
+          <div className="w-full max-w-sm space-y-4 animate-slide-up">
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-4">
+              <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
+
+              {/* Rounds selector */}
+              <div>
+                <p className="text-white text-sm font-medium mb-2">{t('home.setting_rounds')}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[3, 5, 7].map((n) => (
+                    <button
+                      key={n}
+                      className={`rounded-xl py-2 text-center font-bold transition-colors ${
+                        rounds1v1 === n
+                          ? 'bg-brand-accent text-brand-bg'
+                          : 'bg-brand-border text-white hover:bg-brand-border/70'
+                      }`}
+                      onClick={() => setRounds1v1(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-brand-muted">{t('home.setting_time')}</span>
+                <span className="text-white">60s</span>
+              </div>
+            </div>
+
+            <Button
+              fullWidth
+              size="lg"
+              loading={loading}
+              onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}
+            >
+              {t('home.create_room')}
+            </Button>
+            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
+              {t('home.back')}
+            </Button>
+          </div>
+        )}
+
+        {/* ── Join ── */}
         {view === 'join' && (
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
             <div className="space-y-2">
-              <label className="text-zinc-400 text-sm font-medium">
+              <label className="text-brand-muted text-sm font-medium">
                 {t('home.room_code_label')}
               </label>
               <input
@@ -138,7 +232,7 @@ export function HomeScreen() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder={t('home.room_code_placeholder')}
-                className="w-full h-14 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 text-white text-2xl font-black tracking-[0.5em] text-center uppercase placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full h-14 bg-brand-surface border border-brand-border rounded-2xl px-4 text-white text-2xl font-black tracking-[0.5em] text-center uppercase placeholder-brand-muted/50 focus:outline-none focus:border-brand-accent transition-colors"
                 autoFocus
               />
             </div>
@@ -166,7 +260,7 @@ export function HomeScreen() {
 
       {/* Footer */}
       <div className="p-6 text-center">
-        <p className="text-zinc-700 text-xs">{t('home.footer')}</p>
+        <p className="text-brand-muted/40 text-xs">{t('home.footer')}</p>
       </div>
     </div>
   );

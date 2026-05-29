@@ -1,5 +1,3 @@
-import { clsx } from 'clsx';
-
 interface TimerProps {
   remaining: number;
   total: number;
@@ -7,12 +5,11 @@ interface TimerProps {
 }
 
 export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
-  const pct = remaining / total;
-  const isDanger  = remaining <= 5;
-  const isWarning = remaining <= 10 && !isDanger;
+  const pct       = remaining / total;
+  const isPulsing = remaining <= 10;
 
   const radius = size === 'lg' ? 44 : 28;
-  const stroke = size === 'lg' ? 6 : 4;
+  const stroke = size === 'lg' ? 6  : 4;
   const dim    = (radius + stroke) * 2;
   const circ   = 2 * Math.PI * radius;
   const offset = circ * (1 - pct);
@@ -31,16 +28,16 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke="#27272a"
+          stroke="#1F2740"
           strokeWidth={stroke}
         />
-        {/* Progress */}
+        {/* Progress — always brand accent */}
         <circle
           cx={dim / 2}
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke={isDanger ? '#ef4444' : isWarning ? '#f59e0b' : '#22c55e'}
+          stroke="#FF6300"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circ}
@@ -49,13 +46,9 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
         />
       </svg>
       <span
-        className={clsx(
-          'absolute font-black tabular-nums',
-          size === 'lg' ? 'text-4xl' : 'text-xl',
-          isDanger  && 'text-red-400 animate-pulse-fast',
-          isWarning && 'text-amber-400',
-          !isDanger && !isWarning && 'text-white',
-        )}
+        className={`absolute font-black tabular-nums text-white ${
+          size === 'lg' ? 'text-4xl' : 'text-xl'
+        } ${isPulsing ? 'animate-pulse-fast' : ''}`}
       >
         {remaining}
       </span>

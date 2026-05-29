@@ -27,8 +27,7 @@ export function useLobby() {
       .on<RoomPlayer>(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'room_players', filter: `room_id=eq.${room.id}` },
-        async (payload: RealtimePostgresChangesPayload<RoomPlayer>) => {
-          if (!payload.new) return;
+        async () => {
           const players = await roomService.fetchRoomPlayers(room.id);
           setRoomPlayers(players);
         },
@@ -98,18 +97,25 @@ export function useLobby() {
 
   // ─── Derived state ─────────────────────────────────────────
 
-  const isHost = player ? room?.host_id === player.id : false;
-  const myTeamId = roomPlayers.find((rp) => rp.player_id === player?.id)?.team_id ?? null;
+  const isHost     = player ? room?.host_id === player.id : false;
+  const isTeamMode = room?.mode !== '1v1';
+  const myTeamId   = roomPlayers.find((rp) => rp.player_id === player?.id)?.team_id ?? null;
 
   const canStart = (() => {
     if (!isHost) return false;
+    if (room?.mode === '1v1') {
+      return roomPlayers.length === 2 && roomPlayers.every((rp) => rp.team_id !== null);
+    }
+    // Team mode: every team needs ≥ 2 players and all must be assigned
     const teamCounts = teams.reduce<Record<string, number>>((acc, t) => {
       acc[t.id] = roomPlayers.filter((rp) => rp.team_id === t.id).length;
       return acc;
     }, {});
-    return Object.values(teamCounts).every((count) => count >= 1) &&
+    return Object.values(teamCounts).every((count) => count >= 2) &&
            roomPlayers.every((rp) => rp.team_id !== null);
   })();
 
-  return { room, teams, roomPlayers, isHost, myTeamId, canStart, assignTeam, startGame };
+  return {
+    room, teams, roomPlayers, isHost, isTeamMode, myTeamId, canStart, assignTeam, startGame,
+  };
 }

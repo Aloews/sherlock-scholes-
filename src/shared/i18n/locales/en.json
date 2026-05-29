@@ -3,7 +3,8 @@
     "loading": "Loading..."
   },
   "home": {
-    "subtitle": "Football Alias — describe the legend",
+    "title": "SHERLOCK SCHOLES",
+    "subtitle": "Guess the legend",
     "create_game": "🎮 Create Game",
     "join_game": "🔗 Join Game",
     "game_settings": "Game settings",
@@ -15,7 +16,12 @@
     "room_code_label": "Room code",
     "room_code_placeholder": "ABC123",
     "join_room": "Join Room",
-    "footer": "Sherlock Scholes • Football Edition"
+    "footer": "Sherlock Scholes • Football Edition",
+    "mode_select_title": "Choose mode",
+    "mode_team_title": "Team game",
+    "mode_team_desc": "4+ players, two teams take turns explaining",
+    "mode_1v1_title": "One on one",
+    "mode_1v1_desc": "2 players, personal score, turns every 60 sec"
   },
   "stats": {
     "title": "My Stats",
@@ -38,7 +44,11 @@
     "invite_friends": "Share the code to invite friends",
     "start_game": "🚀 Start Game",
     "waiting_for_teams": "Waiting for teams...",
-    "waiting_for_host": "Waiting for host to start..."
+    "waiting_for_host": "Waiting for host to start...",
+    "waiting_opponent": "Waiting for opponent",
+    "share_code": "Share the code with a friend",
+    "min_players": "Minimum 2 players in each team required",
+    "room_full_1v1": "Room is full (1v1, max 2 players)"
   },
   "game": {
     "round_starting": "Round starting",
@@ -58,7 +68,11 @@
     "skip": "⏭ Skip",
     "correct": "✓ Correct",
     "round_label": "Round {{n}}",
-    "other_team": "Other team"
+    "other_team": "Other team",
+    "listening": "Listen",
+    "opponent_progress": "Explained: {{n}}",
+    "score_you": "You",
+    "score_opponent": "Opponent"
   },
   "end": {
     "draw": "It's a Draw!",

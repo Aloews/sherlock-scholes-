@@ -274,3 +274,40 @@ ALTER PUBLICATION supabase_realtime ADD TABLE room_players;
 ALTER PUBLICATION supabase_realtime ADD TABLE rounds;
 ALTER PUBLICATION supabase_realtime ADD TABLE round_cards;
 ALTER PUBLICATION supabase_realtime ADD TABLE scores;
+
+-- ============================================================
+-- GAME MODE
+-- ============================================================
+ALTER TABLE rooms
+  ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'team'
+  CHECK (mode IN ('team', '1v1'));
+
+-- Atomic 1v1 room bootstrap: room + host team + room_players in one txn
+CREATE OR REPLACE FUNCTION create_1v1_room(
+  p_host_id  BIGINT,
+  p_settings JSONB DEFAULT '{"round_seconds":60,"cards_per_round":100,"total_rounds":3,"categories":null}'
+) RETURNS rooms AS $$
+DECLARE
+  v_room  rooms;
+  v_team  teams;
+  v_name  TEXT;
+BEGIN
+  SELECT first_name INTO v_name FROM players WHERE id = p_host_id;
+
+  INSERT INTO rooms (host_id, settings, code, mode)
+  VALUES (p_host_id, p_settings, '', '1v1')
+  RETURNING * INTO v_room;
+
+  INSERT INTO teams (room_id, name, color)
+  VALUES (v_room.id, COALESCE(v_name, 'Player 1'), '#22c55e')
+  RETURNING * INTO v_team;
+
+  INSERT INTO room_players (room_id, player_id, team_id)
+  VALUES (v_room.id, p_host_id, v_team.id);
+
+  RETURN v_room;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION create_1v1_room(BIGINT, JSONB) TO anon;
+GRANT EXECUTE ON FUNCTION create_1v1_room(BIGINT, JSONB) TO authenticated;

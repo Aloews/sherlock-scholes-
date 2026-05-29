@@ -3,7 +3,8 @@
     "loading": "Загрузка..."
   },
   "home": {
-    "subtitle": "Football Alias — угадай легенду",
+    "title": "ШЕРЛОК СКОУЛС",
+    "subtitle": "Угадай легенду",
     "create_game": "🎮 Создать игру",
     "join_game": "🔗 Присоединиться",
     "game_settings": "Настройки игры",
@@ -15,7 +16,12 @@
     "room_code_label": "Код комнаты",
     "room_code_placeholder": "ABC123",
     "join_room": "Войти в комнату",
-    "footer": "Sherlock Scholes • Football Edition"
+    "footer": "Sherlock Scholes • Football Edition",
+    "mode_select_title": "Выбери режим",
+    "mode_team_title": "Командная игра",
+    "mode_team_desc": "4+ игроков, две команды объясняют по очереди",
+    "mode_1v1_title": "Один на один",
+    "mode_1v1_desc": "2 игрока, личный счёт, смена ходов каждые 60 сек"
   },
   "stats": {
     "title": "Моя статистика",
@@ -40,7 +46,11 @@
     "invite_friends": "Поделись кодом, чтобы пригласить друзей",
     "start_game": "🚀 Начать игру",
     "waiting_for_teams": "Ждём команды...",
-    "waiting_for_host": "Ждём хоста..."
+    "waiting_for_host": "Ждём хоста...",
+    "waiting_opponent": "Жди соперника",
+    "share_code": "Покажи другу код",
+    "min_players": "Нужно минимум 2 игрока в каждой команде",
+    "room_full_1v1": "Комната заполнена (1v1, максимум 2 игрока)"
   },
   "game": {
     "round_starting": "Раунд начинается",
@@ -60,7 +70,11 @@
     "skip": "⏭ Пропустить",
     "correct": "✓ Угадали",
     "round_label": "Раунд {{n}}",
-    "other_team": "Другая команда"
+    "other_team": "Другая команда",
+    "listening": "Слушай",
+    "opponent_progress": "Объяснено: {{n}}",
+    "score_you": "Ты",
+    "score_opponent": "Соперник"
   },
   "end": {
     "draw": "Ничья!",
