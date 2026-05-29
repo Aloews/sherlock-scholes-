@@ -17,6 +17,19 @@ export const ALL_CATEGORIES: CardCategory[] = [
   'stadium', 'club_nickname', 'commentator', 'position', 'woman',
 ];
 
+export const CATEGORY_LABEL_EN: Record<CardCategory, string> = {
+  player:        'Players',
+  club:          'Clubs',
+  term:          'Terms',
+  referee:       'Referees',
+  coach:         'Coaches',
+  stadium:       'Stadiums',
+  club_nickname: 'Club Nicknames',
+  commentator:   'Commentators',
+  position:      'Positions',
+  woman:         'Women in Football',
+};
+
 export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   player:        'Игроки',
   club:          'Клубы',

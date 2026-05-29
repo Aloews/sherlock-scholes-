@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconUsersGroup, IconUser } from '@tabler/icons-react';
+import { IconUsersGroup, IconUser, IconCards } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
@@ -9,23 +10,48 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
+import {
+  ALL_CATEGORIES,
+  CATEGORY_LABEL_RU,
+  CATEGORY_LABEL_EN,
+  type CardCategory,
+} from '@/shared/types/database';
 
-type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'join';
+type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
 
 export function HomeScreen() {
+  const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading, error } = useGameStore();
   const { createRoom, joinRoom } = useRoom();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
-  const [view, setView]           = useState<View>('home');
-  const [code, setCode]           = useState('');
-  const [rounds1v1, setRounds1v1] = useState(3);
+  const [view,            setView]            = useState<View>('home');
+  const [code,            setCode]            = useState('');
+  const [rounds1v1,       setRounds1v1]       = useState(3);
+  const [trainingCats,    setTrainingCats]    = useState<Set<CardCategory>>(new Set(ALL_CATEGORIES));
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
     await joinRoom(code.trim());
+  };
+
+  const toggleCat = (cat: CardCategory) => {
+    setTrainingCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
+  const getCatLabel = (cat: CardCategory) =>
+    i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
+
+  const startTraining = () => {
+    const cats = trainingCats.size === ALL_CATEGORIES.length ? null : [...trainingCats];
+    navigate('/training', { state: { categories: cats } });
   };
 
   return (
@@ -52,7 +78,7 @@ export function HomeScreen() {
           <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>
         </div>
 
-        {/* Player stats — only on main view */}
+        {/* Player stats — main view only */}
         {view === 'home' && !statsLoading && (
           <div className="w-full max-w-sm">
             <p className="text-brand-muted text-xs text-center mb-2 uppercase tracking-wider">
@@ -82,22 +108,13 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Main CTA buttons ── */}
+        {/* ── Main CTA ── */}
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
-            <Button
-              fullWidth
-              size="lg"
-              onClick={() => { hapticImpact('medium'); setView('mode_select'); }}
-            >
+            <Button fullWidth size="lg" onClick={() => { hapticImpact('medium'); setView('mode_select'); }}>
               {t('home.create_game')}
             </Button>
-            <Button
-              fullWidth
-              size="lg"
-              variant="secondary"
-              onClick={() => { hapticImpact('light'); setView('join'); }}
-            >
+            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('join'); }}>
               {t('home.join_game')}
             </Button>
           </div>
@@ -110,6 +127,7 @@ export function HomeScreen() {
               {t('home.mode_select_title')}
             </p>
 
+            {/* Team game */}
             <button
               className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
               onClick={() => { hapticImpact('light'); setView('create_team'); }}
@@ -125,6 +143,7 @@ export function HomeScreen() {
               </div>
             </button>
 
+            {/* 1v1 */}
             <button
               className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
               onClick={() => { hapticImpact('light'); setView('create_1v1'); }}
@@ -136,6 +155,22 @@ export function HomeScreen() {
                 <div>
                   <p className="text-white font-bold">{t('home.mode_1v1_title')}</p>
                   <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_1v1_desc')}</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Training */}
+            <button
+              className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
+              onClick={() => { hapticImpact('light'); setView('create_training'); }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 text-brand-accent flex-shrink-0">
+                  <IconCards size={28} stroke={1.5} />
+                </div>
+                <div>
+                  <p className="text-white font-bold">{t('home.mode_training_title')}</p>
+                  <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_training_desc')}</p>
                 </div>
               </div>
             </button>
@@ -178,8 +213,6 @@ export function HomeScreen() {
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
             <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-4">
               <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
-
-              {/* Rounds selector */}
               <div>
                 <p className="text-white text-sm font-medium mb-2">{t('home.setting_rounds')}</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -198,18 +231,56 @@ export function HomeScreen() {
                   ))}
                 </div>
               </div>
-
               <div className="flex justify-between text-sm">
                 <span className="text-brand-muted">{t('home.setting_time')}</span>
                 <span className="text-white">60s</span>
               </div>
             </div>
+            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}>
+              {t('home.create_room')}
+            </Button>
+            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
+              {t('home.back')}
+            </Button>
+          </div>
+        )}
 
+        {/* ── Training settings ── */}
+        {view === 'create_training' && (
+          <div className="w-full max-w-sm space-y-4 animate-slide-up">
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-3">
+              <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_CATEGORIES.map((cat) => {
+                  const active = trainingCats.has(cat);
+                  return (
+                    <button
+                      key={cat}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors text-left ${
+                        active
+                          ? 'bg-brand-accent/15 text-white'
+                          : 'bg-brand-border text-brand-muted'
+                      }`}
+                      onClick={() => toggleCat(cat)}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                          active ? 'bg-brand-accent text-brand-bg' : 'bg-brand-muted/30'
+                        }`}
+                      >
+                        {active ? '✓' : ''}
+                      </span>
+                      <span className="truncate">{getCatLabel(cat)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Button
               fullWidth
               size="lg"
-              loading={loading}
-              onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}
+              disabled={trainingCats.size === 0}
+              onClick={startTraining}
             >
               {t('home.create_room')}
             </Button>
@@ -236,13 +307,7 @@ export function HomeScreen() {
                 autoFocus
               />
             </div>
-            <Button
-              fullWidth
-              size="lg"
-              loading={loading}
-              disabled={code.length !== 6}
-              onClick={handleJoin}
-            >
+            <Button fullWidth size="lg" loading={loading} disabled={code.length !== 6} onClick={handleJoin}>
               {t('home.join_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => { setCode(''); setView('home'); }}>
@@ -258,7 +323,6 @@ export function HomeScreen() {
         )}
       </div>
 
-      {/* Footer */}
       <div className="p-6 text-center">
         <p className="text-brand-muted/40 text-xs">{t('home.footer')}</p>
       </div>

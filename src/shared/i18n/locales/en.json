@@ -21,7 +21,14 @@
     "mode_team_title": "Team game",
     "mode_team_desc": "4+ players, two teams take turns explaining",
     "mode_1v1_title": "One on one",
-    "mode_1v1_desc": "2 players, personal score, turns every 60 sec"
+    "mode_1v1_desc": "2 players, personal score, turns every 60 sec",
+    "mode_training_title": "Practice",
+    "mode_training_desc": "Random cards, no score, play solo or with friends offline"
+  },
+  "training": {
+    "next": "Next",
+    "finish": "Finish",
+    "no_cards": "No more cards"
   },
   "stats": {
     "title": "My Stats",
