@@ -1,6 +1,6 @@
 // HTML5 Audio utility — lazy-init, mute-flag in localStorage, error-safe.
 
-export type SoundName = 'tick' | 'correct' | 'skip' | 'gong';
+export type SoundName = 'tick' | 'correct' | 'skip' | 'gong' | 'swipe';
 
 const MUTE_KEY = 'sherlock_muted';
 const VOLUME   = 0.5;

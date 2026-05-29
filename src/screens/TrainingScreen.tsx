@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTraining } from '@/features/game/useTraining';
+import { playSound } from '@/shared/lib/sounds';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { Button } from '@/shared/ui/Button';
 import type { CardCategory } from '@/shared/types/database';
@@ -66,7 +67,7 @@ export function TrainingScreen() {
           fullWidth
           size="lg"
           disabled={!currentCard}
-          onClick={next}
+          onClick={() => { playSound('swipe'); next(); }}
         >
           {t('training.next')}
         </Button>
