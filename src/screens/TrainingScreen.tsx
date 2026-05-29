@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useTraining } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -51,14 +52,32 @@ export function TrainingScreen() {
 
       {/* Card area */}
       <div className="flex-1 flex flex-col justify-center px-4 py-6">
-        {currentCard ? (
-          <PlayerCard card={currentCard} mode="explainer" />
-        ) : (
-          <div className="rounded-2xl bg-brand-surface border border-brand-border p-10 text-center">
-            <div className="text-5xl mb-4">🃏</div>
-            <p className="text-brand-muted">{t('training.no_cards')}</p>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {currentCard ? (
+            <motion.div
+              key={currentCard.id}
+              initial={{ x: 64, opacity: 0 }}
+              animate={{ x: 0,  opacity: 1 }}
+              exit={{ x: -64,   opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeInOut' }}
+            >
+              <PlayerCard card={currentCard} mode="explainer" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="rounded-2xl bg-brand-surface border border-brand-border p-10 text-center">
+                <div className="text-5xl mb-4">🃏</div>
+                <p className="text-brand-muted">{t('training.no_cards')}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Actions */}

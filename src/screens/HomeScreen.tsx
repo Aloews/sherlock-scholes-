@@ -230,6 +230,7 @@ export function HomeScreen() {
                     </button>
                   ))}
                 </div>
+                <p className="text-brand-muted/60 text-xs mt-2">{t('home.setting_rounds_1v1_hint')}</p>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-brand-muted">{t('home.setting_time')}</span>

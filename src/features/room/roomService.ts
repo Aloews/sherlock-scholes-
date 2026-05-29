@@ -214,10 +214,16 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
       if (rp.team_id) playerByTeam[rp.team_id] = rp.player_id;
     }
 
+    // Host's team always goes first so the host explains in round 1
+    const hostTeamId = Object.entries(playerByTeam).find(([, pid]) => pid === room.host_id)?.[0];
+    const sortedTeams = hostTeamId
+      ? [...teams.filter((t) => t.id === hostTeamId), ...teams.filter((t) => t.id !== hostTeamId)]
+      : teams;
+
     const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => ({
       room_id:      room.id,
-      team_id:      teams[i % teams.length].id,
-      explainer_id: playerByTeam[teams[i % teams.length].id] ?? null,
+      team_id:      sortedTeams[i % sortedTeams.length].id,
+      explainer_id: playerByTeam[sortedTeams[i % sortedTeams.length].id] ?? null,
       round_number: i + 1,
       status:       'pending' as const,
       time_seconds: round_seconds,

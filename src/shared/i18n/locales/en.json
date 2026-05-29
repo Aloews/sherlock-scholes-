@@ -9,6 +9,7 @@
     "join_game": "🔗 Join Game",
     "game_settings": "Game settings",
     "setting_rounds": "Rounds",
+    "setting_rounds_1v1_hint": "Each player explains this many times",
     "setting_cards": "Cards",
     "setting_time": "Time",
     "create_room": "Create Room",

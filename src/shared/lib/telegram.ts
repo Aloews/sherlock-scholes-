@@ -68,8 +68,8 @@ export function initTelegram(): void {
   if (!tg) return;
   tg.ready();
   tg.expand();
-  tg.setBackgroundColor('#09090b');
-  tg.setHeaderColor('#09090b');
+  tg.setBackgroundColor('#0A0E1A');
+  tg.setHeaderColor('#0A0E1A');
 }
 
 export function getTelegramUser(): TelegramUser | null {
