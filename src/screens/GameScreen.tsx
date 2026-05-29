@@ -170,7 +170,7 @@ export function GameScreen() {
           <div className="text-4xl font-black text-brand-muted">{currentRound.time_seconds}</div>
         )}
         <p className="text-brand-muted text-xs mt-1">
-          {t('game.guessed_progress', { correct: correctCount, total: totalCards })}
+          {t('game.guessed_progress', { correct: correctCount })}
         </p>
       </div>
 

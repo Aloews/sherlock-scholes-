@@ -67,7 +67,7 @@
     "round_finished": "Раунд {{n}} завершён",
     "next_round_soon": "Следующий раунд скоро...",
     "loading": "Загрузка...",
-    "guessed_progress": "{{correct}}/{{total}} угадано",
+    "guessed_progress": "{{correct}} угадано",
     "all_cards_done": "Все карточки пройдены!",
     "waiting_timer": "Ждём таймер...",
     "your_team_explaining": "Ваша команда объясняет!",

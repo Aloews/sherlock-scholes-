@@ -65,7 +65,7 @@
     "round_finished": "Round {{n}} finished",
     "next_round_soon": "Next round soon...",
     "loading": "Loading...",
-    "guessed_progress": "{{correct}}/{{total}} guessed",
+    "guessed_progress": "{{correct}} guessed",
     "all_cards_done": "All cards done!",
     "waiting_timer": "Waiting for timer...",
     "your_team_explaining": "Your team is explaining!",
