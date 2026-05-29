@@ -1,0 +1,71 @@
+{
+  "app": {
+    "loading": "Loading..."
+  },
+  "home": {
+    "subtitle": "Football Alias — describe the legend",
+    "create_game": "🎮 Create Game",
+    "join_game": "🔗 Join Game",
+    "game_settings": "Game settings",
+    "setting_rounds": "Rounds",
+    "setting_cards": "Cards",
+    "setting_time": "Time",
+    "create_room": "Create Room",
+    "back": "Back",
+    "room_code_label": "Room code",
+    "room_code_placeholder": "ABC123",
+    "join_room": "Join Room",
+    "footer": "Sherlock Scholes • Football Edition"
+  },
+  "lobby": {
+    "leave": "← Leave",
+    "room_code": "Room Code",
+    "tap_to_copy": "tap to copy",
+    "empty": "Empty",
+    "join_team": "Join",
+    "your_team": "✓ Your team",
+    "not_assigned": "Not yet assigned",
+    "players_in_lobby_one": "{{count}} player in lobby",
+    "players_in_lobby_other": "{{count}} players in lobby",
+    "invite_friends": "Share the code to invite friends",
+    "start_game": "🚀 Start Game",
+    "waiting_for_teams": "Waiting for teams...",
+    "waiting_for_host": "Waiting for host to start..."
+  },
+  "game": {
+    "round_starting": "Round starting",
+    "go": "GO!",
+    "round_finished": "Round {{n}} finished",
+    "next_round_soon": "Next round soon...",
+    "loading": "Loading...",
+    "guessed_progress": "{{correct}}/{{total}} guessed",
+    "all_cards_done": "All cards done!",
+    "waiting_timer": "Waiting for timer...",
+    "your_team_explaining": "Your team is explaining!",
+    "listen_and_guess": "Listen and guess",
+    "guessed_count": "guessed",
+    "team_playing": "{{name}} is playing",
+    "wait_your_turn": "Wait for your turn",
+    "their_round_points": "their round points",
+    "skip": "⏭ Skip",
+    "correct": "✓ Correct",
+    "round_label": "Round {{n}}",
+    "other_team": "Other team"
+  },
+  "end": {
+    "draw": "It's a Draw!",
+    "wins": "{{name}} Wins!",
+    "points_one": "{{count}} point",
+    "points_other": "{{count}} points",
+    "round_breakdown": "Round breakdown",
+    "players": "Players",
+    "player_default": "Player",
+    "play_again": "🔄 Play Again",
+    "round_short": "R{{n}}"
+  },
+  "card": {
+    "guessing": "Guessing...",
+    "shout_answer": "Shout the answer!",
+    "forbidden_words": "Forbidden words"
+  }
+}

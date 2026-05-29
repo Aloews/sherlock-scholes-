@@ -1,0 +1,75 @@
+{
+  "app": {
+    "loading": "Загрузка..."
+  },
+  "home": {
+    "subtitle": "Football Alias — угадай легенду",
+    "create_game": "🎮 Создать игру",
+    "join_game": "🔗 Присоединиться",
+    "game_settings": "Настройки игры",
+    "setting_rounds": "Раунды",
+    "setting_cards": "Карточки",
+    "setting_time": "Время",
+    "create_room": "Создать комнату",
+    "back": "Назад",
+    "room_code_label": "Код комнаты",
+    "room_code_placeholder": "ABC123",
+    "join_room": "Войти в комнату",
+    "footer": "Sherlock Scholes • Football Edition"
+  },
+  "lobby": {
+    "leave": "← Выйти",
+    "room_code": "Код комнаты",
+    "tap_to_copy": "нажми, чтобы скопировать",
+    "empty": "Пусто",
+    "join_team": "Вступить",
+    "your_team": "✓ Моя команда",
+    "not_assigned": "Не распределены",
+    "players_in_lobby_one": "{{count}} игрок в лобби",
+    "players_in_lobby_few": "{{count}} игрока в лобби",
+    "players_in_lobby_many": "{{count}} игроков в лобби",
+    "players_in_lobby_other": "{{count}} игроков в лобби",
+    "invite_friends": "Поделись кодом, чтобы пригласить друзей",
+    "start_game": "🚀 Начать игру",
+    "waiting_for_teams": "Ждём команды...",
+    "waiting_for_host": "Ждём хоста..."
+  },
+  "game": {
+    "round_starting": "Раунд начинается",
+    "go": "GO!",
+    "round_finished": "Раунд {{n}} завершён",
+    "next_round_soon": "Следующий раунд скоро...",
+    "loading": "Загрузка...",
+    "guessed_progress": "{{correct}}/{{total}} угадано",
+    "all_cards_done": "Все карточки пройдены!",
+    "waiting_timer": "Ждём таймер...",
+    "your_team_explaining": "Ваша команда объясняет!",
+    "listen_and_guess": "Слушайте и угадывайте",
+    "guessed_count": "угадано",
+    "team_playing": "{{name}} играет",
+    "wait_your_turn": "Ждите своей очереди",
+    "their_round_points": "их очки в раунде",
+    "skip": "⏭ Пропустить",
+    "correct": "✓ Угадали",
+    "round_label": "Раунд {{n}}",
+    "other_team": "Другая команда"
+  },
+  "end": {
+    "draw": "Ничья!",
+    "wins": "{{name}} побеждает!",
+    "points_one": "{{count}} очко",
+    "points_few": "{{count}} очка",
+    "points_many": "{{count}} очков",
+    "points_other": "{{count}} очков",
+    "round_breakdown": "По раундам",
+    "players": "Игроки",
+    "player_default": "Игрок",
+    "play_again": "🔄 Играть снова",
+    "round_short": "Р{{n}}"
+  },
+  "card": {
+    "guessing": "Угадывают...",
+    "shout_answer": "Кричи ответ!",
+    "forbidden_words": "Нельзя говорить"
+  }
+}
