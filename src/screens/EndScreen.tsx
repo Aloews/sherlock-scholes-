@@ -116,11 +116,21 @@ export function EndScreen() {
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
                   <span className="font-semibold text-white">{team.name}</span>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-3 flex-wrap">
                   {rounds.map((r, i) => (
-                    <div key={r.id} className="bg-brand-border rounded-xl px-3 py-1 text-center">
-                      <p className="text-white font-bold text-sm">{r.points}</p>
-                      <p className="text-brand-muted text-xs">{t('end.round_short', { n: i + 1 })}</p>
+                    <div key={r.id} className="flex flex-col items-center gap-1">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-base ${
+                        r.points >= 1
+                          ? 'bg-brand-accent text-brand-bg'
+                          : 'bg-transparent border-2 border-brand-border text-brand-muted'
+                      }`}>
+                        {i + 1}
+                      </div>
+                      <span className={`text-xs font-bold ${
+                        r.points >= 1 ? 'text-brand-accent' : 'text-brand-muted'
+                      }`}>
+                        {r.points >= 1 ? `+${r.points}` : '0'}
+                      </span>
                     </div>
                   ))}
                 </div>
