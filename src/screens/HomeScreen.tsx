@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconUsersGroup, IconUser, IconCards } from '@tabler/icons-react';
+import { IconUsersGroup, IconUser, IconCards, IconQuestionMark } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
@@ -26,6 +26,12 @@ export function HomeScreen() {
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
+
+  useEffect(() => {
+    if (localStorage.getItem('sherlock_tutorial_seen') !== 'true') {
+      navigate('/tutorial', { replace: true });
+    }
+  }, []);
 
   const [view,            setView]            = useState<View>('home');
   const [code,            setCode]            = useState('');
@@ -58,7 +64,16 @@ export function HomeScreen() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-8">
-        <LanguageToggle />
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <button
+            onClick={() => navigate('/tutorial')}
+            aria-label={t('home.tutorial_button_aria')}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
+          >
+            <IconQuestionMark size={18} stroke={1.5} />
+          </button>
+        </div>
         {player && (
           <Avatar
             name={`${player.first_name} ${player.last_name ?? ''}`.trim()}
@@ -257,7 +272,7 @@ export function HomeScreen() {
                   return (
                     <button
                       key={cat}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors text-left ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-left ${
                         active
                           ? 'bg-brand-accent/15 text-white'
                           : 'bg-brand-border text-brand-muted'

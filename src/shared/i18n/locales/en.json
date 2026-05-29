@@ -24,7 +24,25 @@
     "mode_1v1_title": "One on one",
     "mode_1v1_desc": "2 players, personal score, turns every 60 sec",
     "mode_training_title": "Practice",
-    "mode_training_desc": "Random cards, no score, play solo or with friends offline"
+    "mode_training_desc": "Random cards, no score, play solo or with friends offline",
+    "tutorial_button_aria": "How to play"
+  },
+  "tutorial": {
+    "title_1": "Create a Room",
+    "text_1": "Tap 'Create Game' on the home screen, choose a mode and invite your friends.",
+    "title_2": "Or Join One",
+    "text_2": "Got a code from a friend? Enter it on the home screen to join their room.",
+    "title_3": "Form Your Teams",
+    "text_3": "In team mode — 2+ players per team. In 1v1 — just you and your opponent.",
+    "title_4": "Round Starts",
+    "text_4": "One player sees a card — a footballer, club or term. Their goal: describe it without saying the word directly.",
+    "title_5": "Guess Out Loud",
+    "text_5": "The team (or opponent) shouts guesses. The explainer taps 'Correct' for each right answer.",
+    "title_6": "Most Points Wins",
+    "text_6": "Rounds alternate. The player or team with the highest score at the end wins!",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Got it, let's play!"
   },
   "training": {
     "next": "Next",

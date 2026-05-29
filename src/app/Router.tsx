@@ -5,7 +5,8 @@ import { HomeScreen }     from '@/screens/HomeScreen';
 import { LobbyScreen }    from '@/screens/LobbyScreen';
 import { GameScreen }     from '@/screens/GameScreen';
 import { EndScreen }      from '@/screens/EndScreen';
-import { TrainingScreen } from '@/screens/TrainingScreen';
+import { TrainingScreen }  from '@/screens/TrainingScreen';
+import { TutorialScreen }  from '@/screens/TutorialScreen';
 
 function RequireRoom({ children }: { children: React.ReactNode }) {
   const room = useGameStore((s) => s.room);
@@ -53,7 +54,8 @@ export function Router() {
           </RequireRoom>
         }
       />
-      <Route path="/training" element={<PageTransition><TrainingScreen /></PageTransition>} />
+      <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
+      <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

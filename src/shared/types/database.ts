@@ -37,7 +37,7 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   referee:       'Судьи',
   coach:         'Тренеры',
   stadium:       'Стадионы',
-  club_nickname: 'Прозвища клубов',
+  club_nickname: 'Прозвища',
   commentator:   'Комментаторы',
   position:      'Позиции',
   woman:         'Женщины',
