@@ -51,6 +51,7 @@ export function useGame() {
             transition('round_active');
           } else if (round.status === 'completed') {
             setCurrentRound(round);
+            playSound('whistle_end');
             const rawScores = await roomService.fetchRoundScores(room.id);
             const scores: TeamScore[] = rawScores.map((s) => ({
               team_id:      s.teamId,
@@ -107,7 +108,8 @@ export function useGame() {
     const card = currentCards[activeCardIndex];
     if (!card || card.status !== 'pending') return;
     hapticSuccess();
-    playSound('correct');
+    playSound('kick');
+    playSound('applause');
     await roomService.markCard(card.id, 'correct');
   }, [currentCards, activeCardIndex]);
 

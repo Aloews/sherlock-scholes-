@@ -98,7 +98,7 @@ export function EndScreen() {
       <div className={`px-4 transition-all duration-700 delay-200 ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}>
-        <Scoreboard scores={teamScores} showWinner={!isDraw} />
+        <Scoreboard scores={teamScores} showWinner={!isDraw} animated />
       </div>
 
       {/* Per-round breakdown */}

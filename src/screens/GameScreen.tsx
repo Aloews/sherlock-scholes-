@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -114,9 +114,25 @@ export function GameScreen() {
     }, []),
   });
 
+  const [scorePops, setScorePops] = useState<number[]>([]);
+  const prevCorrectRef = useRef(correctCount);
+
   useEffect(() => {
     if (phase === 'game_end') navigate('/end');
   }, [phase, navigate]);
+
+  useEffect(() => {
+    if (phase === 'round_active') playSound('whistle_start');
+  }, [phase]);
+
+  useEffect(() => {
+    if (correctCount > prevCorrectRef.current) {
+      const id = Date.now();
+      setScorePops((prev) => [...prev, id]);
+      setTimeout(() => setScorePops((prev) => prev.filter((p) => p !== id)), 700);
+    }
+    prevCorrectRef.current = correctCount;
+  }, [correctCount]);
 
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -170,7 +186,23 @@ export function GameScreen() {
           <div className="text-4xl font-black text-brand-muted">{currentRound.time_seconds}</div>
         )}
         <p className="text-brand-muted text-xs mt-1">
-          {t('game.guessed_progress', { correct: correctCount })}
+          <span className="relative inline-block">
+            {t('game.guessed_progress', { correct: correctCount })}
+            <AnimatePresence>
+              {scorePops.map((id) => (
+                <motion.span
+                  key={id}
+                  initial={{ opacity: 0, y: 0 }}
+                  animate={{ opacity: 1, y: -30 }}
+                  exit={{ opacity: 0, y: -50 }}
+                  transition={{ duration: 0.7, ease: 'easeOut' }}
+                  className="absolute left-full ml-2 text-brand-accent font-black text-lg pointer-events-none whitespace-nowrap"
+                >
+                  +1
+                </motion.span>
+              ))}
+            </AnimatePresence>
+          </span>
         </p>
       </div>
 

@@ -1,13 +1,31 @@
+import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import type { TeamScore } from '@/shared/types/database';
+
+function AnimatedCounter({ value, duration = 1.2 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const tick = () => {
+      const elapsed  = (Date.now() - start) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased    = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(value * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, duration]);
+  return <>{display}</>;
+}
 
 interface ScoreboardProps {
   scores: TeamScore[];
   compact?: boolean;
   showWinner?: boolean;
+  animated?: boolean;
 }
 
-export function Scoreboard({ scores, compact = false, showWinner = false }: ScoreboardProps) {
+export function Scoreboard({ scores, compact = false, showWinner = false, animated = false }: ScoreboardProps) {
   const sorted    = [...scores].sort((a, b) => b.total_points - a.total_points);
   const maxPoints = sorted[0]?.total_points ?? 0;
 
@@ -50,7 +68,7 @@ export function Scoreboard({ scores, compact = false, showWinner = false }: Scor
                 </span>
               </div>
               <span className={clsx('text-2xl font-black', isWinner ? 'text-brand-accent' : 'text-white')}>
-                {s.total_points}
+                {animated ? <AnimatedCounter value={s.total_points} /> : s.total_points}
               </span>
             </div>
             <div className="h-1.5 rounded-full bg-brand-border overflow-hidden">
