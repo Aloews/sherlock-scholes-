@@ -17,6 +17,14 @@
     "join_room": "Войти в комнату",
     "footer": "Sherlock Scholes • Football Edition"
   },
+  "stats": {
+    "title": "Моя статистика",
+    "games": "Игр",
+    "wins": "Побед",
+    "cards": "Карточек",
+    "score": "Очков",
+    "first_game": "Сыграйте первую игру!"
+  },
   "lobby": {
     "leave": "← Выйти",
     "room_code": "Код комнаты",
@@ -64,7 +72,7 @@
     "round_breakdown": "По раундам",
     "players": "Игроки",
     "player_default": "Игрок",
-    "play_again": "🔄 Играть снова",
+    "play_again": "🔄 Сыграть ещё",
     "round_short": "Р{{n}}"
   },
   "card": {

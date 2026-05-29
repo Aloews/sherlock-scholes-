@@ -229,6 +229,44 @@ CREATE POLICY "allow_all_round_cards" ON round_cards FOR ALL USING (true) WITH C
 CREATE POLICY "allow_all_scores"      ON scores      FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
+-- PLAYER STATS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS player_stats (
+  player_id     BIGINT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  games_played  INT NOT NULL DEFAULT 0,
+  games_won     INT NOT NULL DEFAULT 0,
+  cards_guessed INT NOT NULL DEFAULT 0,
+  total_score   INT NOT NULL DEFAULT 0,
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_player_stats" ON player_stats FOR ALL USING (true) WITH CHECK (true);
+
+GRANT ALL ON player_stats TO anon;
+GRANT ALL ON player_stats TO authenticated;
+
+-- Atomic increment — safe for concurrent game endings
+CREATE OR REPLACE FUNCTION increment_player_stats(
+  p_player_id     BIGINT,
+  p_games_played  INT DEFAULT 1,
+  p_games_won     INT DEFAULT 0,
+  p_cards_guessed INT DEFAULT 0,
+  p_total_score   INT DEFAULT 0
+) RETURNS VOID AS $$
+BEGIN
+  INSERT INTO player_stats (player_id, games_played, games_won, cards_guessed, total_score)
+  VALUES (p_player_id, p_games_played, p_games_won, p_cards_guessed, p_total_score)
+  ON CONFLICT (player_id) DO UPDATE SET
+    games_played  = player_stats.games_played  + EXCLUDED.games_played,
+    games_won     = player_stats.games_won     + EXCLUDED.games_won,
+    cards_guessed = player_stats.cards_guessed + EXCLUDED.cards_guessed,
+    total_score   = player_stats.total_score   + EXCLUDED.total_score,
+    updated_at    = NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
 -- REALTIME
 -- ============================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE rooms;

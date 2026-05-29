@@ -194,11 +194,79 @@ export async function endRound(
       .from('rooms')
       .update({ status: 'finished', ended_at: new Date().toISOString() })
       .eq('id', room.id);
+    // Non-blocking — stats failure must not break game_end flow
+    updatePlayerStats(room.id).catch(() => undefined);
     return 'game_end';
   }
 
   await activateRound(nextRound, room);
   return 'next_round';
+}
+
+// ─── Player Stats ─────────────────────────────────────────────
+
+async function updatePlayerStats(roomId: string): Promise<void> {
+  const [
+    { data: roomPlayers },
+    { data: scores },
+    { data: rounds },
+  ] = await Promise.all([
+    supabase.from('room_players').select('player_id, team_id').eq('room_id', roomId),
+    supabase.from('scores').select('team_id, points').eq('room_id', roomId),
+    supabase.from('rounds').select('id, explainer_id').eq('room_id', roomId),
+  ]);
+
+  if (!roomPlayers?.length) return;
+
+  // round_id → explainer_id for fast lookup
+  const roundExplainer: Record<string, number | null> = {};
+  for (const r of rounds ?? []) {
+    roundExplainer[r.id] = r.explainer_id;
+  }
+
+  // Count correct cards individually: only rounds where THIS player was the explainer
+  const cardsPerExplainer: Record<number, number> = {};
+  const roundIds = Object.keys(roundExplainer);
+  if (roundIds.length > 0) {
+    const { data: correctCards } = await supabase
+      .from('round_cards')
+      .select('round_id')
+      .in('round_id', roundIds)
+      .eq('status', 'correct');
+    for (const rc of correctCards ?? []) {
+      const explainerId = roundExplainer[rc.round_id];
+      if (explainerId != null) {
+        cardsPerExplainer[explainerId] = (cardsPerExplainer[explainerId] ?? 0) + 1;
+      }
+    }
+  }
+
+  // Sum points per team
+  const teamPoints: Record<string, number> = {};
+  for (const s of scores ?? []) {
+    teamPoints[s.team_id] = (teamPoints[s.team_id] ?? 0) + s.points;
+  }
+
+  const maxPoints = Math.max(0, ...Object.values(teamPoints));
+  // All teams sharing the max are "winners" (draw = both win)
+  const winnerTeamIds = maxPoints > 0
+    ? Object.entries(teamPoints).filter(([, pts]) => pts === maxPoints).map(([id]) => id)
+    : [];
+
+  await Promise.all(
+    roomPlayers.map((rp) => {
+      const teamScore    = rp.team_id ? (teamPoints[rp.team_id] ?? 0) : 0;
+      const won          = rp.team_id ? winnerTeamIds.includes(rp.team_id) : false;
+      const cardsGuessed = cardsPerExplainer[rp.player_id] ?? 0;
+      return supabase.rpc('increment_player_stats', {
+        p_player_id:     rp.player_id,
+        p_games_played:  1,
+        p_games_won:     won ? 1 : 0,
+        p_cards_guessed: cardsGuessed,   // personal: rounds explained × correct cards
+        p_total_score:   teamScore,      // team score credited to the player
+      });
+    }),
+  );
 }
 
 export async function fetchRoundScores(

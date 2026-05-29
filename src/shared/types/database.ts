@@ -141,3 +141,12 @@ export interface TeamScore {
   total_points: number;
   color: string;
 }
+
+export interface PlayerStats {
+  player_id: number;
+  games_played: number;
+  games_won: number;
+  cards_guessed: number;
+  total_score: number;
+  updated_at: string;
+}

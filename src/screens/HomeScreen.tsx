@@ -6,6 +6,7 @@ import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
+import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 type View = 'home' | 'create' | 'join';
@@ -15,6 +16,7 @@ export function HomeScreen() {
   const { loading, error } = useGameStore();
   const { createRoom, joinRoom } = useRoom();
   const { t } = useTranslation();
+  const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
   const [view, setView] = useState<View>('home');
   const [code, setCode] = useState('');
@@ -47,6 +49,36 @@ export function HomeScreen() {
           </h1>
           <p className="text-zinc-400 text-lg">{t('home.subtitle')}</p>
         </div>
+
+        {/* Player stats — only on main view */}
+        {view === 'home' && !statsLoading && (
+          <div className="w-full max-w-sm">
+            <p className="text-zinc-500 text-xs text-center mb-2 uppercase tracking-wider">
+              {t('stats.title')}
+            </p>
+            {stats ? (
+              <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-3">
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: t('stats.games'), value: stats.games_played },
+                    { label: t('stats.wins'),  value: stats.games_won },
+                    { label: t('stats.cards'), value: stats.cards_guessed },
+                    { label: t('stats.score'), value: stats.total_score },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <p className="text-white font-bold text-lg leading-none">{item.value}</p>
+                      <p className="text-zinc-500 text-xs mt-1">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800/50 p-3 text-center">
+                <p className="text-zinc-600 text-sm">{t('stats.first_game')}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">

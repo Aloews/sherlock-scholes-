@@ -17,6 +17,14 @@
     "join_room": "Join Room",
     "footer": "Sherlock Scholes • Football Edition"
   },
+  "stats": {
+    "title": "My Stats",
+    "games": "Games",
+    "wins": "Wins",
+    "cards": "Cards",
+    "score": "Score",
+    "first_game": "Play your first game!"
+  },
   "lobby": {
     "leave": "← Leave",
     "room_code": "Room Code",
