@@ -39,6 +39,7 @@ export function useTraining(categories: CardCategory[] | null) {
 
   return {
     currentCard: cards[index] ?? null,
+    index,
     loading,
     next,
   };

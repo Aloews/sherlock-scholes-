@@ -17,7 +17,7 @@ export function TrainingScreen() {
   const state      = location.state as TrainingState | null;
   const categories = state?.categories ?? null;
 
-  const { currentCard, loading, next } = useTraining(categories);
+  const { currentCard, index, loading, next } = useTraining(categories);
 
   if (loading) {
     return (
@@ -43,7 +43,9 @@ export function TrainingScreen() {
         <p className="text-brand-muted text-xs uppercase tracking-wider">
           {t('home.mode_training_title')}
         </p>
-        <div className="w-16" />
+        <p className="text-brand-muted text-xs font-medium w-16 text-right">
+          {t('training.card_n', { n: index + 1 })}
+        </p>
       </div>
 
       {/* Card area */}

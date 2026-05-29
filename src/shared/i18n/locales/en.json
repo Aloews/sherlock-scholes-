@@ -28,7 +28,8 @@
   "training": {
     "next": "Next",
     "finish": "Finish",
-    "no_cards": "No more cards"
+    "no_cards": "No more cards",
+    "card_n": "Card {{n}}"
   },
   "stats": {
     "title": "My Stats",
@@ -96,5 +97,9 @@
     "guessing": "Guessing...",
     "shout_answer": "Shout the answer!",
     "forbidden_words": "Forbidden words"
+  },
+  "sound": {
+    "mute": "Mute sounds",
+    "unmute": "Unmute sounds"
   }
 }
