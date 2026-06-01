@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Router } from '@/app/Router';
 import { useAuth } from '@/features/auth/useAuth';
 import { useGameStore } from '@/shared/store/gameStore';
+import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { initialized } = useAuth();
@@ -12,9 +13,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (!initialized) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 max-w-sm px-6">
           <div className="text-5xl animate-pulse">⚽</div>
           <p className="text-zinc-500 text-sm">{t('app.loading')}</p>
+          <QuoteRotator className="pt-4" />
         </div>
       </div>
     );

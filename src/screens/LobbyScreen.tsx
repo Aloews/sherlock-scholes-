@@ -7,6 +7,7 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
+import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 export function LobbyScreen() {
@@ -222,6 +223,8 @@ export function LobbyScreen() {
             <p className="text-red-400 text-sm">{error}</p>
           </div>
         )}
+
+        <QuoteRotator className="pt-2" />
       </div>
 
       {/* Start button */}

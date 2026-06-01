@@ -5,6 +5,7 @@ import { IconUsersGroup, IconUser, IconCards, IconQuestionMark } from '@tabler/i
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
+import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
@@ -345,8 +346,9 @@ export function HomeScreen() {
         )}
       </div>
 
-      <div className="p-6 text-center">
-        <p className="text-brand-muted/40 text-xs">{t('home.footer')}</p>
+      <div className="px-6 pt-2 pb-6 space-y-4">
+        <QuoteRotator />
+        <p className="text-brand-muted/40 text-xs text-center">{t('home.footer')}</p>
       </div>
     </div>
   );
