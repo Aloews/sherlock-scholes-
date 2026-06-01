@@ -65,6 +65,11 @@ export function HomeScreen() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-8">
         <div className="flex items-center gap-2">
+          <img
+            src="/logo-white-clean.png"
+            alt="Шерлок Скоулс"
+            className="h-8 w-auto"
+          />
           <LanguageToggle />
           <button
             onClick={() => navigate('/tutorial')}
@@ -85,11 +90,12 @@ export function HomeScreen() {
 
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-        <div className="text-center space-y-3">
-          <div className="text-7xl mb-2">⚽</div>
-          <h1 className="text-4xl font-black text-white tracking-wider">
-            {t('home.title')}
-          </h1>
+        <div className="text-center space-y-3 flex flex-col items-center">
+          <img
+            src="/logo-white-clean.png"
+            alt="Шерлок Скоулс"
+            className="w-[220px] max-w-full h-auto"
+          />
           <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>
         </div>
 

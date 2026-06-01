@@ -89,30 +89,9 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
       </div>
 
       {/* Card name — centred, medium weight */}
-      <div className="px-5 py-6 text-center">
+      <div className="px-5 pt-4 pb-8 text-center">
         <p className="text-3xl font-medium text-white leading-snug">{card.name}</p>
       </div>
-
-      {/* Forbidden words */}
-      {card.forbidden_words.length > 0 && (
-        <div className="px-5 pb-5">
-          <div className="border-t border-brand-border pt-3">
-            <p className="text-[11px] text-brand-muted uppercase tracking-wider mb-2">
-              {t('card.forbidden_words')}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {card.forbidden_words.map((word) => (
-                <span
-                  key={word}
-                  className="text-sm bg-red-500/10 text-red-400/80 border border-red-500/20 rounded-lg px-2.5 py-0.5 line-through"
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
