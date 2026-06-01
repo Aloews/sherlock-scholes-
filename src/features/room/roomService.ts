@@ -46,12 +46,19 @@ export async function createRoom(
 
   if (error || !room) throw new Error(error?.message ?? 'Failed to create room');
 
-  await supabase.from('teams').insert([
-    { room_id: room.id, name: 'Team A', color: '#22c55e' },
-    { room_id: room.id, name: 'Team B', color: '#3b82f6' },
+  // Teams and host room_player both depend only on room.id, not on each other →
+  // insert them concurrently instead of sequentially.
+  const [teamsRes, playerRes] = await Promise.all([
+    supabase.from('teams').insert([
+      { room_id: room.id, name: 'Team A', color: '#22c55e' },
+      { room_id: room.id, name: 'Team B', color: '#3b82f6' },
+    ]),
+    supabase.from('room_players').insert({ room_id: room.id, player_id: hostId }),
   ]);
 
-  await supabase.from('room_players').insert({ room_id: room.id, player_id: hostId });
+  if (teamsRes.error || playerRes.error) {
+    throw new Error(teamsRes.error?.message ?? playerRes.error?.message ?? 'Failed to create room');
+  }
 
   return room as Room;
 }
