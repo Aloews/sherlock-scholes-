@@ -1,6 +1,8 @@
 {
   "app": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "load_failed": "Couldn't load. Check your connection.",
+    "reload": "Reload"
   },
   "home": {
     "title": "SHERLOCK SCHOLES",
