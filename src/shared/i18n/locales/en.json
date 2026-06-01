@@ -23,8 +23,8 @@
     "mode_team_desc": "4+ players, two teams take turns explaining",
     "mode_1v1_title": "One on one",
     "mode_1v1_desc": "2 players, personal score, turns every 60 sec",
-    "mode_training_title": "Practice",
-    "mode_training_desc": "Random cards, no score, play solo or with friends offline",
+    "mode_training_title": "Quick Game",
+    "mode_training_desc": "One phone, two teams, no internet",
     "tutorial_button_aria": "How to play"
   },
   "tutorial": {
@@ -49,6 +49,15 @@
     "finish": "Finish",
     "no_cards": "No more cards",
     "card_n": "Card {{n}}"
+  },
+  "quick": {
+    "title": "Quick Game",
+    "team_orange": "Orange",
+    "team_blue": "Blue",
+    "pass_turn": "Pass turn",
+    "guessed": "Correct",
+    "skip": "Skip",
+    "finish": "Finish"
   },
   "stats": {
     "title": "My Stats",

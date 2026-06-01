@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useTraining } from '@/features/game/useTraining';
+import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { Button } from '@/shared/ui/Button';
@@ -11,6 +11,11 @@ interface TrainingState {
   categories: CardCategory[] | null;
 }
 
+const TEAM_COLOR: Record<Team, string> = {
+  orange: '#FF6300',
+  blue:   '#4A9EFF',
+};
+
 export function TrainingScreen() {
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -19,7 +24,8 @@ export function TrainingScreen() {
   const state      = location.state as TrainingState | null;
   const categories = state?.categories ?? null;
 
-  const { currentCard, index, loading, next } = useTraining(categories);
+  const { currentCard, loading, scores, activeTeam, guess, skip, passTurn } =
+    useTraining(categories);
 
   if (loading) {
     return (
@@ -32,26 +38,70 @@ export function TrainingScreen() {
     );
   }
 
+  const renderTeam = (team: Team) => {
+    const active = activeTeam === team;
+    const color  = TEAM_COLOR[team];
+    return (
+      <div
+        className="flex-1 rounded-2xl px-3 py-2.5 border transition-all text-center"
+        style={
+          active
+            ? { borderColor: color, backgroundColor: `${color}1f` }
+            : { borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.04)' }
+        }
+      >
+        <p
+          className="text-xs font-semibold uppercase tracking-wide truncate"
+          style={{ color: active ? color : undefined }}
+        >
+          {t(`quick.team_${team}`)}
+        </p>
+        <p
+          className="text-3xl font-black leading-tight"
+          style={{ color: active ? color : '#6b7280' }}
+        >
+          {scores[team]}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
-      {/* Minimal header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
           className="text-brand-muted hover:text-white transition-colors text-sm p-1 -ml-1"
           onClick={() => navigate('/')}
         >
-          ← {t('training.finish')}
+          ✕ {t('quick.finish')}
         </button>
         <p className="text-brand-muted text-xs uppercase tracking-wider">
           {t('home.mode_training_title')}
         </p>
-        <p className="text-brand-muted text-xs font-medium w-16 text-right">
-          {t('training.card_n', { n: index + 1 })}
-        </p>
+        <span className="w-16" />
+      </div>
+
+      {/* Scoreboard */}
+      <div className="flex items-stretch gap-2 px-4 pt-4">
+        {renderTeam('orange')}
+        {renderTeam('blue')}
+      </div>
+
+      {/* Pass turn */}
+      <div className="px-4 pt-3">
+        <Button
+          fullWidth
+          variant="secondary"
+          onClick={() => { playSound('whistle_start'); passTurn(); }}
+          disabled={!currentCard}
+        >
+          🔄 {t('quick.pass_turn')}
+        </Button>
       </div>
 
       {/* Card area */}
-      <div className="flex-1 flex flex-col justify-center px-4 py-6">
+      <div className="flex-1 flex flex-col justify-center px-4 py-4">
         <AnimatePresence mode="wait">
           {currentCard ? (
             <motion.div
@@ -86,16 +136,19 @@ export function TrainingScreen() {
           fullWidth
           size="lg"
           disabled={!currentCard}
-          onClick={() => { playSound('swipe'); next(); }}
+          className="text-white"
+          style={{ backgroundColor: TEAM_COLOR[activeTeam] }}
+          onClick={() => { playSound('correct'); guess(); }}
         >
-          {t('training.next')}
+          ✓ {t('quick.guessed')}
         </Button>
         <Button
           fullWidth
-          variant="ghost"
-          onClick={() => navigate('/')}
+          variant="secondary"
+          disabled={!currentCard}
+          onClick={() => { playSound('skip'); skip(); }}
         >
-          {t('training.finish')}
+          ⏭ {t('quick.skip')}
         </Button>
       </div>
     </div>
