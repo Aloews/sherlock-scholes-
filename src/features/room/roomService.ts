@@ -38,28 +38,13 @@ export async function createRoom(
     ...settings,
   };
 
-  const { data: room, error } = await supabase
-    .from('rooms')
-    .insert({ host_id: hostId, settings: finalSettings, code: '' })
-    .select()
-    .single();
-
+  // Atomic bootstrap: room + Team A/Team B + host room_player in one txn (one round-trip).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: room, error } = await supabase.rpc('create_team_room' as any, {
+    p_host_id:  hostId,
+    p_settings: finalSettings,
+  });
   if (error || !room) throw new Error(error?.message ?? 'Failed to create room');
-
-  // Teams and host room_player both depend only on room.id, not on each other →
-  // insert them concurrently instead of sequentially.
-  const [teamsRes, playerRes] = await Promise.all([
-    supabase.from('teams').insert([
-      { room_id: room.id, name: 'Team A', color: '#22c55e' },
-      { room_id: room.id, name: 'Team B', color: '#3b82f6' },
-    ]),
-    supabase.from('room_players').insert({ room_id: room.id, player_id: hostId }),
-  ]);
-
-  if (teamsRes.error || playerRes.error) {
-    throw new Error(teamsRes.error?.message ?? playerRes.error?.message ?? 'Failed to create room');
-  }
-
   return room as Room;
 }
 
