@@ -94,6 +94,22 @@ export function EndScreen() {
         )}
       </div>
 
+      {/* 1v1 — competitive verdict (text only; numbers shown in Scoreboard below) */}
+      {is1v1 && (
+        <div className={`px-6 pb-4 text-center transition-all duration-700 delay-100 ${
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        }`}>
+          <p className="text-brand-muted text-xs uppercase tracking-wider mb-2">
+            {t('end.duel_caption')}
+          </p>
+          <p className="text-white text-lg font-bold">
+            {isDraw
+              ? t('end.duel_verdict_draw')
+              : t('end.duel_verdict_win', { name: winner?.team_name })}
+          </p>
+        </div>
+      )}
+
       {/* Scoreboard — works for both modes (1v1 teams are named after players) */}
       <div className={`px-4 transition-all duration-700 delay-200 ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'

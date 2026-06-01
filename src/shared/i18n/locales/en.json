@@ -22,7 +22,7 @@
     "mode_team_title": "Team game",
     "mode_team_desc": "4+ players, two teams take turns explaining",
     "mode_1v1_title": "One on one",
-    "mode_1v1_desc": "2 players, personal score, turns every 60 sec",
+    "mode_1v1_desc": "Two players, each on their own phone. Whoever explains more wins!",
     "mode_training_title": "Quick Game",
     "mode_training_desc": "One phone, two teams, no internet",
     "tutorial_button_aria": "How to play"
@@ -119,7 +119,10 @@
     "players": "Players",
     "player_default": "Player",
     "play_again": "🔄 Play Again",
-    "round_short": "R{{n}}"
+    "round_short": "R{{n}}",
+    "duel_caption": "Score = cards successfully explained",
+    "duel_verdict_win": "{{name}} knows football better!",
+    "duel_verdict_draw": "A draw — you both know football equally!"
   },
   "card": {
     "guessing": "Guessing...",
