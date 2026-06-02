@@ -3,15 +3,104 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconShare } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
-import { useAuthStore } from '@/shared/store/authStore';
-import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { Button } from '@/shared/ui/Button';
 import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
+import type { TeamScore } from '@/shared/types/database';
+
+const INVITES = [
+  'Сыграй со мной в Шерлок Скоулс — угадай легенду футбола! ⚽',
+  'Думаешь, знаешь футбол? Проверь в Шерлок Скоулс ⚽',
+  'Объясни футболиста, не называя имени. Слабо? Шерлок Скоулс ⚽',
+  'Лучшая игра для футбольной компании — Шерлок Скоулс ⚽',
+  'Кто из нас знает футбол лучше? Зацени Шерлок Скоулс ⚽',
+  'Угадай легенду по подсказкам — Шерлок Скоулс ⚽',
+  'Собери друзей и проверьте, кто настоящий знаток футбола ⚽',
+  'Один объясняет — другой угадывает. Футбольный Alias: Шерлок Скоулс ⚽',
+];
+
+const BOT_LINK = 'https://t.me/sherlock_scholes_bot';
+
+/** Animated running score (rises from 0 with ease-out). */
+function AnimatedCounter({ value, duration = 1.2 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const tick = () => {
+      const elapsed  = (Date.now() - start) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased    = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(value * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, duration]);
+  return <>{display}</>;
+}
+
+/** Invented club crest — shape chosen deterministically from the team name. */
+function TeamCrest({ name, color, size = 56 }: { name: string; color: string; size?: number }) {
+  const shapes = ['shield', 'circle', 'diamond', 'hexagon'] as const;
+  const sum   = [...name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const shape = shapes[sum % shapes.length];
+
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    (words.length >= 2 ? words[0][0] + words[1][0] : (words[0] ?? '').slice(0, 2)).toUpperCase() || '?';
+
+  const shapeEl =
+    shape === 'circle' ? (
+      <circle cx={25} cy={29} r={22} fill="#13182A" stroke={color} strokeWidth={2.5} />
+    ) : (
+      <path
+        d={
+          shape === 'shield'
+            ? 'M5 5 H45 V32 Q45 50 25 56 Q5 50 5 32 Z'
+            : shape === 'diamond'
+              ? 'M25 4 L46 29 L25 54 L4 29 Z'
+              : 'M25 4 L44 15 L44 43 L25 54 L6 43 L6 15 Z'
+        }
+        fill="#13182A"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+      />
+    );
+
+  return (
+    <svg width={size} height={(size * 60) / 50} viewBox="0 0 50 60" aria-hidden="true">
+      {shapeEl}
+      <text
+        x="25"
+        y="29"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="17"
+        fontWeight="800"
+        fill={color}
+      >
+        {initials}
+      </text>
+    </svg>
+  );
+}
+
+/** Outline trophy hero icon. */
+function TrophyOutline() {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M19 13 Q9 13 9 22 Q9 30 19 30" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M45 13 Q55 13 55 22 Q55 30 45 30" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M19 12 H45 V20 Q45 36 32 39 Q19 36 19 20 Z" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinejoin="round" />
+      <path d="M32 39 V47" stroke="#FF6300" strokeWidth="2.6" />
+      <path d="M23 53 Q23 47 32 47 Q41 47 41 53 Z" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinejoin="round" />
+      <path d="M21 55 H43" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function EndScreen() {
   const navigate = useNavigate();
   const { room, teams, teamScores, scores, roomPlayers, reset } = useGameStore();
-  const { player } = useAuthStore();
   const { t } = useTranslation();
 
   const [visible, setVisible] = useState(false);
@@ -34,6 +123,8 @@ export function EndScreen() {
     return { team, rounds: teamRoundScores };
   });
 
+  const isWinnerTeam = (ts: TeamScore) => !isDraw && ts.team_id === winner?.team_id;
+
   const handlePlayAgain = () => {
     reset();
     navigate('/');
@@ -41,32 +132,8 @@ export function EndScreen() {
 
   const handleShare = () => {
     hapticImpact('medium');
-
-    const myRoomPlayer = roomPlayers.find((rp) => rp.player_id === player?.id);
-    const myTeamScore  = teamScores.find((ts) => ts.team_id === myRoomPlayer?.team_id);
-    const otherScores  = teamScores.filter((ts) => ts.team_id !== myRoomPlayer?.team_id);
-
-    const myScore       = myTeamScore?.total_points ?? 0;
-    const opponentScore = otherScores.length > 0
-      ? Math.max(...otherScores.map((s) => s.total_points))
-      : 0;
-    const diff = myScore - opponentScore;
-
-    let key: string;
-    if      (diff >= 5)  key = 'share.win_blowout';
-    else if (diff >= 2)  key = 'share.win_normal';
-    else if (diff === 1) key = 'share.win_close';
-    else if (diff === 0) key = 'share.draw';
-    else if (diff === -1) key = 'share.lose_close';
-    else if (diff <= -5) key = 'share.lose_blowout';
-    else                 key = 'share.lose_normal';
-
-    const win  = Math.max(myScore, opponentScore);
-    const lose = Math.min(myScore, opponentScore);
-    const text = t(key, { win, lose, score: myScore });
-
-    const botLink = 'https://t.me/sherlock_scholes_bot';
-    const url = `https://t.me/share/url?url=${encodeURIComponent(botLink)}&text=${encodeURIComponent(text)}`;
+    const text = INVITES[Math.floor(Math.random() * INVITES.length)];
+    const url  = `https://t.me/share/url?url=${encodeURIComponent(BOT_LINK)}&text=${encodeURIComponent(text)}`;
 
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.openTelegramLink(url);
@@ -79,29 +146,65 @@ export function EndScreen() {
     <div className="min-h-screen bg-brand-bg flex flex-col overflow-y-auto">
       {/* Trophy hero */}
       <div
-        className={`flex flex-col items-center pt-12 pb-8 px-6 transition-all duration-700 ${
+        className={`flex flex-col items-center pt-12 pb-6 px-6 transition-all duration-700 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
-        <div className="text-8xl mb-4">{isDraw ? '🤝' : '🏆'}</div>
-        <h1 className="text-3xl font-black text-white text-center">
+        <TrophyOutline />
+        <p className="text-brand-accent text-xs font-bold uppercase tracking-[0.25em] mt-4">
+          {isDraw ? t('end.draw_eyebrow') : t('end.win_eyebrow')}
+        </p>
+        <h1 className="text-3xl font-black text-white text-center mt-2">
           {isDraw ? t('end.draw') : t('end.wins', { name: winner?.team_name })}
         </h1>
-        {!isDraw && winner && (
-          <p className="text-brand-accent font-semibold mt-2">
-            {t('end.points', { count: winner.total_points })}
-          </p>
+      </div>
+
+      {/* Team crests + scores */}
+      <div className={`px-4 transition-all duration-700 delay-200 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      }`}>
+        {sorted.length === 2 ? (
+          <div className="flex items-center justify-center gap-5">
+            {sorted.map((ts, i) => (
+              <div key={ts.team_id} className="flex items-center gap-5">
+                {i === 1 && <span className="text-3xl font-black text-brand-muted">:</span>}
+                <div className={`flex flex-col items-center gap-2 ${isWinnerTeam(ts) ? '' : 'opacity-[0.66]'}`}>
+                  <TeamCrest name={ts.team_name} color={ts.color} />
+                  <span className="text-4xl font-black text-white leading-none">
+                    <AnimatedCounter value={ts.total_points} />
+                  </span>
+                  <span className="text-sm font-semibold text-white text-center max-w-[6rem] truncate">
+                    {ts.team_name}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2 max-w-md mx-auto">
+            {sorted.map((ts) => (
+              <div
+                key={ts.team_id}
+                className={`flex items-center gap-3 bg-brand-surface border border-brand-border rounded-2xl p-3 ${
+                  isWinnerTeam(ts) ? '' : 'opacity-[0.66]'
+                }`}
+              >
+                <TeamCrest name={ts.team_name} color={ts.color} size={44} />
+                <span className="flex-1 text-base font-semibold text-white truncate">{ts.team_name}</span>
+                <span className="text-3xl font-black text-white leading-none">
+                  <AnimatedCounter value={ts.total_points} />
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* 1v1 — competitive verdict (text only; numbers shown in Scoreboard below) */}
+      {/* 1v1 — competitive verdict */}
       {is1v1 && (
-        <div className={`px-6 pb-4 text-center transition-all duration-700 delay-100 ${
+        <div className={`px-6 pt-5 text-center transition-all duration-700 delay-100 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}>
-          <p className="text-brand-muted text-xs uppercase tracking-wider mb-2">
-            {t('end.duel_caption')}
-          </p>
           <p className="text-white text-lg font-bold">
             {isDraw
               ? t('end.duel_verdict_draw')
@@ -109,13 +212,6 @@ export function EndScreen() {
           </p>
         </div>
       )}
-
-      {/* Scoreboard — works for both modes (1v1 teams are named after players) */}
-      <div className={`px-4 transition-all duration-700 delay-200 ${
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-      }`}>
-        <Scoreboard scores={teamScores} showWinner={!isDraw} animated />
-      </div>
 
       {/* Per-round breakdown */}
       {allRoundsData.some((d) => d.rounds.length > 0) && (
@@ -156,7 +252,7 @@ export function EndScreen() {
         </div>
       )}
 
-      {/* Players — hidden in 1v1 (scoreboard already shows players by name) */}
+      {/* Players — hidden in 1v1 (crests already show players by name) */}
       {!is1v1 && (
         <div className={`px-4 mt-4 transition-all duration-700 delay-400 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'

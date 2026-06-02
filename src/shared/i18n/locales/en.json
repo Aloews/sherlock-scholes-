@@ -122,7 +122,8 @@
     "player_default": "Player",
     "play_again": "🔄 Play Again",
     "round_short": "R{{n}}",
-    "duel_caption": "Score = cards successfully explained",
+    "win_eyebrow": "Champion",
+    "draw_eyebrow": "Draw",
     "duel_verdict_win": "{{name}} knows football better!",
     "duel_verdict_draw": "A draw — you both know football equally!"
   },
@@ -132,14 +133,7 @@
     "forbidden_words": "Forbidden words"
   },
   "share": {
-    "button": "Share",
-    "win_blowout": "⚽ Crushed my opponent {{win}}-{{lose}} in Sherlock Scholes. Beat that → @sherlock_scholes_bot",
-    "win_normal": "⚽ Won {{win}}-{{lose}} in Sherlock Scholes. Who's next? → @sherlock_scholes_bot",
-    "win_close": "⚽ Squeaked a win {{win}}-{{lose}} in Sherlock Scholes. Try to repeat → @sherlock_scholes_bot",
-    "draw": "⚽ Tied {{score}}-{{score}} in Sherlock Scholes. Who'll break it? → @sherlock_scholes_bot",
-    "lose_close": "⚽ Lost a tight one {{lose}}-{{win}} in Sherlock Scholes. Avenge me → @sherlock_scholes_bot",
-    "lose_normal": "⚽ Lost {{lose}}-{{win}} in Sherlock Scholes. Reclaim the crown → @sherlock_scholes_bot",
-    "lose_blowout": "⚽ Got destroyed {{lose}}-{{win}} in Sherlock Scholes. Can you do better? → @sherlock_scholes_bot"
+    "button": "Share"
   },
   "sound": {
     "mute": "Mute sounds",

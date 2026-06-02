@@ -126,7 +126,8 @@
     "player_default": "Игрок",
     "play_again": "🔄 Сыграть ещё",
     "round_short": "Р{{n}}",
-    "duel_caption": "Счёт — успешно объяснённые карточки",
+    "win_eyebrow": "Чемпион",
+    "draw_eyebrow": "Ничья",
     "duel_verdict_win": "{{name}} знает футбол лучше!",
     "duel_verdict_draw": "Ничья — оба знают футбол одинаково!"
   },
@@ -136,14 +137,7 @@
     "forbidden_words": "Нельзя говорить"
   },
   "share": {
-    "button": "Поделиться",
-    "win_blowout": "⚽ Разнёс соперника {{win}}-{{lose}} в Шерлок Скоулс. Попробуй обыграть → @sherlock_scholes_bot",
-    "win_normal": "⚽ Победил со счётом {{win}}-{{lose}} в Шерлок Скоулс. Кто следующий? → @sherlock_scholes_bot",
-    "win_close": "⚽ Вырвал победу {{win}}-{{lose}} в Шерлок Скоулс. Попробуй повторить → @sherlock_scholes_bot",
-    "draw": "⚽ Сыграл {{score}}-{{score}} вничью в Шерлок Скоулс. Кто разрулит? → @sherlock_scholes_bot",
-    "lose_close": "⚽ Упустил победу {{lose}}-{{win}} в Шерлок Скоулс. Отомсти за меня → @sherlock_scholes_bot",
-    "lose_normal": "⚽ Проиграл {{lose}}-{{win}} в Шерлок Скоулс. Заберёшь корону? → @sherlock_scholes_bot",
-    "lose_blowout": "⚽ Меня разнесли {{lose}}-{{win}} в Шерлок Скоулс. Сможешь лучше? → @sherlock_scholes_bot"
+    "button": "Поделиться"
   },
   "sound": {
     "mute": "Выключить звук",
