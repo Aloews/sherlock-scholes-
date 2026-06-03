@@ -87,13 +87,18 @@ function TeamCrest({ name, color, size = 56 }: { name: string; color: string; si
 /** Outline trophy hero icon. */
 function TrophyOutline() {
   return (
-    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-      <path d="M19 13 Q9 13 9 22 Q9 30 19 30" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M45 13 Q55 13 55 22 Q55 30 45 30" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M19 12 H45 V20 Q45 36 32 39 Q19 36 19 20 Z" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinejoin="round" />
-      <path d="M32 39 V47" stroke="#FF6300" strokeWidth="2.6" />
-      <path d="M23 53 Q23 47 32 47 Q41 47 41 53 Z" fill="none" stroke="#FF6300" strokeWidth="2.6" strokeLinejoin="round" />
-      <path d="M21 55 H43" stroke="#FF6300" strokeWidth="2.6" strokeLinecap="round" />
+    <svg
+      width="60"
+      height="60"
+      viewBox="0 0 40 40"
+      fill="none"
+      stroke="#FF6300"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 8h16v6a8 8 0 0 1-16 0zM20 22v6M14 31h12M16 31l1.5-3M24 31l-1.5-3" />
     </svg>
   );
 }
