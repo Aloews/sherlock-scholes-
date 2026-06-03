@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconShare } from '@tabler/icons-react';
+import { IconSend } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Button } from '@/shared/ui/Button';
 import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
@@ -288,7 +288,7 @@ export function EndScreen() {
       }`}>
         <Button fullWidth size="lg" onClick={handleShare}>
           <span className="flex items-center justify-center gap-2">
-            <IconShare size={20} stroke={1.5} />
+            <IconSend size={18} stroke={2} />
             {t('share.button')}
           </span>
         </Button>

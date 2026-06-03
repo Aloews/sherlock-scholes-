@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconVolume, IconVolumeOff } from '@tabler/icons-react';
+import { IconVolume, IconVolumeOff, IconChevronsRight } from '@tabler/icons-react';
 import { useGame } from '@/features/game/useGame';
 import { useTimer } from '@/features/game/useTimer';
 import { useGameStore } from '@/shared/store/gameStore';
@@ -317,6 +317,7 @@ export function GameScreen() {
       {isExplainer && activeCard && activeCard.status === 'pending' && (
         <div className="px-4 pb-6 pt-3 grid grid-cols-2 gap-3 border-t border-brand-border">
           <Button size="lg" variant="secondary" onClick={markSkipped}>
+            <IconChevronsRight size={18} stroke={2} />
             {t('game.skip')}
           </Button>
           <Button size="lg" onClick={markCorrect}>

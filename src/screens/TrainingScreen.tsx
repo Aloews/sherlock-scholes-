@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
+import { IconArrowsExchange, IconChevronsRight } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -96,7 +97,8 @@ export function TrainingScreen() {
           onClick={() => { playSound('whistle_start'); passTurn(); }}
           disabled={!currentCard}
         >
-          {t('quick.pass_turn')} →
+          <IconArrowsExchange size={18} stroke={2} />
+          {t('quick.pass_turn')}
         </Button>
       </div>
 
@@ -148,6 +150,7 @@ export function TrainingScreen() {
           disabled={!currentCard}
           onClick={() => { playSound('skip'); skip(); }}
         >
+          <IconChevronsRight size={18} stroke={2} />
           {t('quick.skip')}
         </Button>
       </div>
