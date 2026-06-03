@@ -7,6 +7,12 @@ const PRELOAD_AT  = 10; // fetch next batch when this many cards remain
 
 export type Team = 'orange' | 'blue';
 
+export interface HistoryEntry {
+  name: string;
+  category: CardCategory;
+  status: 'guessed' | 'skipped';
+}
+
 /**
  * Quick Game — one phone, two teams, running score, no timer, no end.
  * Cards are loaded in batches (no DB persistence, no repeats within a session),
@@ -18,6 +24,7 @@ export function useTraining(categories: CardCategory[] | null) {
   const [loading, setLoading] = useState(true);
   const [scores,  setScores]  = useState<Record<Team, number>>({ orange: 0, blue: 0 });
   const [activeTeam, setActiveTeam] = useState<Team>('orange');
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const isPreloadingRef = useRef(false);
 
   // Initial load
@@ -46,28 +53,39 @@ export function useTraining(categories: CardCategory[] | null) {
     });
   }, [cards.length, preloadMore]);
 
+  // Append the current card to the in-memory history
+  const recordCurrent = useCallback((status: HistoryEntry['status']) => {
+    const card = cards[index];
+    if (!card) return;
+    setHistory((prev) => [...prev, { name: card.name, category: card.category, status }]);
+  }, [cards, index]);
+
   // +1 to active team, show next card
   const guess = useCallback(() => {
+    recordCurrent('guessed');
     setScores((prev) => ({ ...prev, [activeTeam]: prev[activeTeam] + 1 }));
     advance();
-  }, [activeTeam, advance]);
+  }, [activeTeam, advance, recordCurrent]);
 
   // Next card, no point
   const skip = useCallback(() => {
+    recordCurrent('skipped');
     advance();
-  }, [advance]);
+  }, [advance, recordCurrent]);
 
-  // Switch active team and move to the next card
+  // Switch active team and move to the next card (current card goes unsolved)
   const passTurn = useCallback(() => {
+    recordCurrent('skipped');
     setActiveTeam((prev) => (prev === 'orange' ? 'blue' : 'orange'));
     advance();
-  }, [advance]);
+  }, [advance, recordCurrent]);
 
   return {
     currentCard: cards[index] ?? null,
     loading,
     scores,
     activeTeam,
+    history,
     guess,
     skip,
     passTurn,

@@ -59,7 +59,14 @@
     "pass_turn": "Передать ход",
     "guessed": "Угадали",
     "skip": "Пропустить",
-    "finish": "Завершить"
+    "finish": "Завершить",
+    "summary_title": "Итог игры",
+    "history_title": "История карточек",
+    "history_empty": "Карточек не было",
+    "guessed_label": "Угадали",
+    "skipped_label": "Пропущено",
+    "google": "Загуглить",
+    "home": "На главную"
   },
   "stats": {
     "title": "Моя статистика",

@@ -59,7 +59,14 @@
     "pass_turn": "Pass turn",
     "guessed": "Correct",
     "skip": "Skip",
-    "finish": "Finish"
+    "finish": "Finish",
+    "summary_title": "Game summary",
+    "history_title": "Cards history",
+    "history_empty": "No cards yet",
+    "guessed_label": "Guessed",
+    "skipped_label": "Skipped",
+    "google": "Google it",
+    "home": "Home"
   },
   "stats": {
     "title": "My Stats",
