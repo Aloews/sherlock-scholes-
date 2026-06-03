@@ -7,8 +7,8 @@
   "home": {
     "title": "SHERLOCK SCHOLES",
     "subtitle": "Describe a football legend",
-    "create_game": "🎮 Create Game",
-    "join_game": "🔗 Join Game",
+    "create_game": "Create Game",
+    "join_game": "Join Game",
     "game_settings": "Game settings",
     "setting_rounds": "Rounds",
     "setting_rounds_1v1_hint": "Each player explains this many times",

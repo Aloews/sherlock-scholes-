@@ -74,7 +74,7 @@ export function TrainingScreen() {
           className="text-brand-muted hover:text-white transition-colors text-sm p-1 -ml-1"
           onClick={() => navigate('/')}
         >
-          ✕ {t('quick.finish')}
+          {t('quick.finish')}
         </button>
         <p className="text-brand-muted text-xs uppercase tracking-wider">
           {t('home.mode_training_title')}
@@ -96,7 +96,7 @@ export function TrainingScreen() {
           onClick={() => { playSound('whistle_start'); passTurn(); }}
           disabled={!currentCard}
         >
-          🔄 {t('quick.pass_turn')}
+          {t('quick.pass_turn')} →
         </Button>
       </div>
 
@@ -131,24 +131,24 @@ export function TrainingScreen() {
       </div>
 
       {/* Actions */}
-      <div className="px-4 pb-8 space-y-3">
+      <div className="px-4 pb-8 flex gap-3">
         <Button
-          fullWidth
           size="lg"
           disabled={!currentCard}
-          className="text-white"
+          className="flex-1 text-white"
           style={{ backgroundColor: TEAM_COLOR[activeTeam] }}
           onClick={() => { playSound('correct'); guess(); }}
         >
-          ✓ {t('quick.guessed')}
+          {t('quick.guessed')}
         </Button>
         <Button
-          fullWidth
+          size="lg"
           variant="secondary"
+          className="flex-1"
           disabled={!currentCard}
           onClick={() => { playSound('skip'); skip(); }}
         >
-          ⏭ {t('quick.skip')}
+          {t('quick.skip')}
         </Button>
       </div>
     </div>

@@ -7,8 +7,8 @@
   "home": {
     "title": "ШЕРЛОК СКОУЛС",
     "subtitle": "Опиши легенду футбола",
-    "create_game": "🎮 Создать игру",
-    "join_game": "🔗 Присоединиться",
+    "create_game": "Создать игру",
+    "join_game": "Присоединиться",
     "game_settings": "Настройки игры",
     "setting_rounds": "Раунды",
     "setting_rounds_1v1_hint": "Объяснений каждому",
