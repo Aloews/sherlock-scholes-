@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconArrowsExchange, IconChevronsRight, IconBrandGoogle } from '@tabler/icons-react';
+import { IconArrowsExchange, IconBrandGoogle } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
-import { PlayerCard } from '@/shared/ui/PlayerCard';
-import { Button } from '@/shared/ui/Button';
 import type { CardCategory } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 
@@ -18,6 +16,9 @@ const TEAM_COLOR: Record<Team, string> = {
   orange: '#FF6300',
   blue:   '#4A9EFF',
 };
+
+// Score separator — muted slate, NOT a pure grey (Variant 5 palette).
+const SCORE_DIVIDER = '#4A5270';
 
 const CATEGORY_COLOR: Record<CardCategory, string> = {
   player:        '#FF6300',
@@ -39,6 +40,25 @@ const googleSearch = (name: string) => {
   if (tg?.openLink) tg.openLink(url);
   else window.open(url, '_blank');
 };
+
+/** Big centred score line "orange : blue" in team colours (Variant 5). */
+function ScoreLine({ orange, blue, activeTeam }: {
+  orange: number;
+  blue: number;
+  activeTeam?: Team;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3 text-[30px] font-medium leading-none">
+      <span style={{ color: TEAM_COLOR.orange, opacity: activeTeam && activeTeam !== 'orange' ? 0.4 : 1 }}>
+        {orange}
+      </span>
+      <span style={{ color: SCORE_DIVIDER }}>:</span>
+      <span style={{ color: TEAM_COLOR.blue, opacity: activeTeam && activeTeam !== 'blue' ? 0.4 : 1 }}>
+        {blue}
+      </span>
+    </div>
+  );
+}
 
 /** Outer wrapper — holds the remount key so "Play again" starts a fresh game. */
 export function TrainingScreen() {
@@ -88,24 +108,18 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
       <div className="min-h-screen bg-brand-bg flex flex-col">
         {/* Header */}
         <div className="px-4 pt-8 pb-4 border-b border-brand-border">
-          <h1 className="text-2xl font-black text-white text-center">
+          <h1 className="text-2xl font-medium text-white text-center">
             {t('quick.summary_title')}
           </h1>
         </div>
 
         {/* Final score */}
-        <div className="flex items-center justify-center gap-3 px-4 pt-6">
-          <span className="text-4xl font-black" style={{ color: TEAM_COLOR.orange }}>
-            {scores.orange}
-          </span>
-          <span className="text-3xl font-black text-brand-muted">:</span>
-          <span className="text-4xl font-black" style={{ color: TEAM_COLOR.blue }}>
-            {scores.blue}
-          </span>
+        <div className="px-4 pt-6">
+          <ScoreLine orange={scores.orange} blue={scores.blue} />
         </div>
-        <div className="flex items-center justify-center gap-3 px-4 pt-1 text-xs uppercase tracking-wide">
+        <div className="flex items-center justify-center gap-3 px-4 pt-2 text-xs uppercase tracking-wide">
           <span style={{ color: TEAM_COLOR.orange }}>{t('quick.team_orange')}</span>
-          <span className="text-brand-muted">:</span>
+          <span style={{ color: SCORE_DIVIDER }}>:</span>
           <span style={{ color: TEAM_COLOR.blue }}>{t('quick.team_blue')}</span>
         </div>
 
@@ -116,7 +130,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           </p>
 
           {history.length === 0 ? (
-            <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center">
+            <div className="rounded-md bg-brand-surface border border-brand-border p-8 text-center">
               <p className="text-brand-muted">{t('quick.history_empty')}</p>
             </div>
           ) : (
@@ -127,7 +141,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                 return (
                   <div
                     key={i}
-                    className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded-2xl px-3 py-2.5"
+                    className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded-md px-3 py-2.5"
                   >
                     <div className="flex-1 min-w-0">
                       <span
@@ -136,19 +150,18 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                       >
                         {CATEGORY_LABEL_RU[entry.category] ?? entry.category}
                       </span>
-                      <p className="text-lg font-semibold text-white leading-snug truncate">
+                      <p className="text-xl font-medium text-white leading-snug truncate">
                         {entry.name}
                       </p>
                       <span
-                        className={`text-xs font-bold ${
-                          guessed ? 'text-brand-accent' : 'text-brand-muted'
-                        }`}
+                        className="text-xs font-medium"
+                        style={{ color: guessed ? TEAM_COLOR.orange : '#7A8499' }}
                       >
                         {guessed ? t('quick.guessed_label') : t('quick.skipped_label')}
                       </span>
                     </div>
                     <button
-                      className="flex items-center gap-1.5 shrink-0 text-brand-muted hover:text-white transition-colors text-xs font-semibold rounded-xl border border-brand-border px-2.5 py-2"
+                      className="flex items-center gap-1.5 shrink-0 text-brand-muted hover:text-white transition-colors text-xs font-medium rounded-md border border-brand-border px-2.5 py-2"
                       onClick={() => googleSearch(entry.name)}
                     >
                       <IconBrandGoogle size={15} stroke={2} />
@@ -163,45 +176,29 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
-          <Button fullWidth size="lg" onClick={onPlayAgain}>
+          <button
+            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90"
+            style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
+            onClick={onPlayAgain}
+          >
             {t('end.play_again')}
-          </Button>
-          <Button fullWidth size="lg" variant="secondary" onClick={() => navigate('/')}>
+          </button>
+          <button
+            className="w-full h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
+            onClick={() => navigate('/')}
+          >
             {t('quick.home')}
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   // ── Game screen ─────────────────────────────────────────────────
-  const renderTeam = (team: Team) => {
-    const active = activeTeam === team;
-    const color  = TEAM_COLOR[team];
-    return (
-      <div
-        className="flex-1 rounded-2xl px-3 py-2.5 border transition-all text-center"
-        style={
-          active
-            ? { borderColor: color, backgroundColor: `${color}1f` }
-            : { borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.04)' }
-        }
-      >
-        <p
-          className="text-xs font-semibold uppercase tracking-wide truncate"
-          style={{ color: active ? color : undefined }}
-        >
-          {t(`quick.team_${team}`)}
-        </p>
-        <p
-          className="text-3xl font-black leading-tight"
-          style={{ color: active ? color : '#6b7280' }}
-        >
-          {scores[team]}
-        </p>
-      </div>
-    );
-  };
+  const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? '#7A8499') : '#7A8499';
+  const catLabel = currentCard
+    ? (currentCard.category_ru ?? CATEGORY_LABEL_RU[currentCard.category] ?? currentCard.category)
+    : '';
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -219,23 +216,21 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
         <span className="w-16" />
       </div>
 
-      {/* Scoreboard */}
-      <div className="flex items-stretch gap-2 px-4 pt-4">
-        {renderTeam('orange')}
-        {renderTeam('blue')}
+      {/* Score line */}
+      <div className="px-4 pt-6">
+        <ScoreLine orange={scores.orange} blue={scores.blue} activeTeam={activeTeam} />
       </div>
 
-      {/* Pass turn */}
-      <div className="px-4 pt-3">
-        <Button
-          fullWidth
-          variant="secondary"
+      {/* Pass turn — compact text row, no heavy button */}
+      <div className="px-4 pt-3 flex justify-center">
+        <button
+          className="inline-flex items-center gap-1.5 text-brand-muted hover:text-white transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={() => { playSound('whistle_start'); passTurn(); }}
           disabled={!currentCard}
         >
-          <IconArrowsExchange size={18} stroke={2} />
+          <IconArrowsExchange size={16} stroke={2} />
           {t('quick.pass_turn')}
-        </Button>
+        </button>
       </div>
 
       {/* Card area */}
@@ -249,7 +244,18 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
               exit={{ x: -64,   opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeInOut' }}
             >
-              <PlayerCard card={currentCard} mode="explainer" />
+              {/* Word card — large, centred, surface, 6px radius, no accent strip */}
+              <div className="rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]">
+                <span
+                  className="text-[11px] uppercase tracking-widest font-medium"
+                  style={{ color: catColor }}
+                >
+                  {catLabel}
+                </span>
+                <p className="text-[30px] font-medium text-white leading-snug mt-2">
+                  {currentCard.name}
+                </p>
+              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -259,7 +265,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <div className="rounded-2xl bg-brand-surface border border-brand-border p-10 text-center">
+              <div className="rounded-md bg-brand-surface border border-brand-border p-10 text-center">
                 <div className="text-5xl mb-4">🃏</div>
                 <p className="text-brand-muted">{t('training.no_cards')}</p>
               </div>
@@ -270,25 +276,21 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
 
       {/* Actions */}
       <div className="px-4 pb-8 flex gap-3">
-        <Button
-          size="lg"
+        <button
+          className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
           disabled={!currentCard}
-          className="flex-1 text-white"
-          style={{ backgroundColor: TEAM_COLOR[activeTeam] }}
           onClick={() => { playSound('correct'); guess(); }}
         >
           {t('quick.guessed')}
-        </Button>
-        <Button
-          size="lg"
-          variant="secondary"
-          className="flex-1"
+        </button>
+        <button
+          className="flex-1 h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           disabled={!currentCard}
           onClick={() => { playSound('skip'); skip(); }}
         >
-          <IconChevronsRight size={18} stroke={2} />
           {t('quick.skip')}
-        </Button>
+        </button>
       </div>
     </div>
   );
