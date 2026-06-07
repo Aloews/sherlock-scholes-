@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconArrowsExchange, IconBrandGoogle } from '@tabler/icons-react';
+import { IconArrowsExchange, IconRefresh } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import type { CardCategory } from '@/shared/types/database';
@@ -150,9 +150,13 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                       >
                         {CATEGORY_LABEL_RU[entry.category] ?? entry.category}
                       </span>
-                      <p className="text-xl font-medium text-white leading-snug truncate">
+                      <button
+                        type="button"
+                        onClick={() => googleSearch(entry.name)}
+                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
+                      >
                         {entry.name}
-                      </p>
+                      </button>
                       <span
                         className="text-xs font-medium"
                         style={{ color: guessed ? TEAM_COLOR.orange : '#7A8499' }}
@@ -160,13 +164,6 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                         {guessed ? t('quick.guessed_label') : t('quick.skipped_label')}
                       </span>
                     </div>
-                    <button
-                      className="flex items-center gap-1.5 shrink-0 text-brand-muted hover:text-white transition-colors text-xs font-medium rounded-md border border-brand-border px-2.5 py-2"
-                      onClick={() => googleSearch(entry.name)}
-                    >
-                      <IconBrandGoogle size={15} stroke={2} />
-                      {t('quick.google')}
-                    </button>
                   </div>
                 );
               })}
@@ -177,10 +174,11 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
           <button
-            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90"
+            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
             style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
             onClick={onPlayAgain}
           >
+            <IconRefresh size={20} stroke={2} />
             {t('end.play_again')}
           </button>
           <button
