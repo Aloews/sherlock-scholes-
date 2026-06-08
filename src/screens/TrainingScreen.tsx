@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconArrowsExchange, IconRefresh } from '@tabler/icons-react';
+import { IconArrowsExchange, IconReload } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import type { CardCategory } from '@/shared/types/database';
@@ -178,7 +178,8 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
             style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
             onClick={onPlayAgain}
           >
-            <IconRefresh size={20} stroke={2} />
+            {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
+            <IconReload size={16} stroke={2} />
             {t('end.play_again')}
           </button>
           <button
