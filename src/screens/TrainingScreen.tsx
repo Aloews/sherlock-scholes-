@@ -84,7 +84,7 @@ interface TrainingGameProps {
 
 function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
-  const { t }    = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
     useTraining(categories);
@@ -104,6 +104,9 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
+    // EN interface → show the card's English name when available; otherwise
+    // fall back to the Russian name (never blank).
+    const isEn = i18n.language.startsWith('en');
     return (
       <div className="min-h-screen bg-brand-bg flex flex-col">
         {/* Header */}
@@ -113,14 +116,9 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           </h1>
         </div>
 
-        {/* Final score */}
+        {/* Final score — numbers only, no team labels underneath */}
         <div className="px-4 pt-6">
           <ScoreLine orange={scores.orange} blue={scores.blue} />
-        </div>
-        <div className="flex items-center justify-center gap-3 px-4 pt-2 text-xs uppercase tracking-wide">
-          <span style={{ color: TEAM_COLOR.orange }}>{t('quick.team_orange')}</span>
-          <span style={{ color: SCORE_DIVIDER }}>:</span>
-          <span style={{ color: TEAM_COLOR.blue }}>{t('quick.team_blue')}</span>
         </div>
 
         {/* Card history */}
@@ -138,6 +136,8 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
               {history.map((entry, i) => {
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 const guessed  = entry.status === 'guessed';
+                // On EN use name_en when present; else Russian name (fallback).
+                const displayName = isEn && entry.name_en ? entry.name_en : entry.name;
                 return (
                   <div
                     key={i}
@@ -152,10 +152,10 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                       </span>
                       <button
                         type="button"
-                        onClick={() => googleSearch(entry.name)}
+                        onClick={() => googleSearch(displayName)}
                         className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
                       >
-                        {entry.name}
+                        {displayName}
                       </button>
                       <span
                         className="text-xs font-medium"
