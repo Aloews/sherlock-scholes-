@@ -3,8 +3,8 @@ import { persist } from 'zustand/middleware';
 import type { Difficulty } from '@/shared/types/database';
 
 // Device-wide game preferences that survive reloads (localStorage).
-// `difficulty` is the global Easy/Hard toggle on the home screen — it gates
-// how famous the footballers in the deck are (see PAGEVIEWS_THRESHOLD).
+// `difficulty` is the global three-level switch on the home screen —
+// novice/fan/expert, gating the deck by pageviews (see PAGEVIEWS_THRESHOLD).
 // `soundEnabled` is the global sound switch — playSound() (and the in-game
 // mute button) read it, so muting on the home screen silences everything.
 
@@ -15,14 +15,27 @@ interface SettingsState {
   setSoundEnabled(on: boolean): void;
 }
 
+const DIFFICULTIES: readonly Difficulty[] = ['novice', 'fan', 'expert'];
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      difficulty: 'easy',
+      difficulty: 'fan',
       soundEnabled: true,
       setDifficulty: (difficulty) => set({ difficulty }),
       setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
     }),
-    { name: 'sherlock_settings' },
+    {
+      name: 'sherlock_settings',
+      version: 1,
+      // v0 stored 'easy' / 'hard' — coerce anything unknown to the default.
+      migrate: (persisted) => {
+        const s = (persisted ?? {}) as Partial<SettingsState>;
+        if (!DIFFICULTIES.includes(s.difficulty as Difficulty)) {
+          s.difficulty = 'fan';
+        }
+        return s as SettingsState;
+      },
+    },
   ),
 );

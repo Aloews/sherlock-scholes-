@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pickRandomCards } from './cardRandomizer';
-import type { Card, CardCategory } from '@/shared/types/database';
+import { useSettingsStore } from '@/shared/store/settingsStore';
+import { PAGEVIEWS_THRESHOLD, type Card, type CardCategory } from '@/shared/types/database';
 
 const BATCH       = 50;
 const PRELOAD_AT  = 10; // fetch next batch when this many cards remain
@@ -28,26 +29,28 @@ export function useTraining(categories: CardCategory[] | null) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const isPreloadingRef = useRef(false);
 
-  // Difficulty toggle removed from the UI for now: pageviews coverage of the
-  // deck is too partial for a fair Easy/Hard split, so the deck is unfiltered.
+  // Global novice/fan/expert switch → minimum pageviews floor for the deck
+  // (null in expert = no filter, the whole deck including NULL-pageviews cards).
+  const difficulty   = useSettingsStore((s) => s.difficulty);
+  const minPageviews = PAGEVIEWS_THRESHOLD[difficulty];
 
   // Initial load
   useEffect(() => {
-    pickRandomCards(BATCH, categories)
+    pickRandomCards(BATCH, categories, minPageviews)
       .then((batch) => setCards(batch))
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [categories]);
+  }, [categories, minPageviews]);
 
   // Preload next batch silently
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current) return;
     isPreloadingRef.current = true;
-    pickRandomCards(BATCH, categories)
+    pickRandomCards(BATCH, categories, minPageviews)
       .then((batch) => setCards((prev) => [...prev, ...batch]))
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
-  }, [categories]);
+  }, [categories, minPageviews]);
 
   const advance = useCallback(() => {
     setIndex((prev) => {

@@ -44,17 +44,21 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
 };
 
 // ─── Difficulty (global setting) ─────────────────────────────
-// A device-wide toggle on the home screen. Maps to a minimum
-// Wikipedia pageviews threshold for the `player` cards in the deck:
-//   easy → only the most famous players (pageviews > 19000)
-//   hard → a wider, less mainstream pool (pageviews > 3000)
-// Cards without a pageviews score (clubs, terms, …) always pass.
+// A device-wide three-level switch on the home screen. Maps to a minimum
+// Wikipedia pageviews threshold for the whole deck:
+//   novice → only world-famous cards   (pageviews > 19000)
+//   fan    → well-known, top-level pool (pageviews > 3000)
+//   expert → the entire deck, no threshold (null)
+// With a threshold set, cards with NULL pageviews are EXCLUDED by
+// pick_random_cards (see supabase/migrations/difficulty_levels.sql) —
+// they only appear in expert mode.
 
-export type Difficulty = 'easy' | 'hard';
+export type Difficulty = 'novice' | 'fan' | 'expert';
 
-export const PAGEVIEWS_THRESHOLD: Record<Difficulty, number> = {
-  easy: 19000,
-  hard: 3000,
+export const PAGEVIEWS_THRESHOLD: Record<Difficulty, number | null> = {
+  novice: 19000,
+  fan:    3000,
+  expert: null,
 };
 
 export const CATEGORY_EMOJI: Record<CardCategory, string> = {
