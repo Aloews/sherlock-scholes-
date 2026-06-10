@@ -30,7 +30,8 @@
     "mode_1v1_desc": "Two players, each on their own phone. Whoever explains more wins!",
     "mode_training_title": "Quick Game",
     "mode_training_desc": "One phone, two teams, no internet",
-    "tutorial_button_aria": "How to play"
+    "tutorial_button_aria": "How to play",
+    "sound_toggle_aria": "Sound on/off"
   },
   "tutorial": {
     "title_1": "Create a Room",

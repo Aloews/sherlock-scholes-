@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconUsersGroup, IconUser, IconCards, IconQuestionMark } from '@tabler/icons-react';
+import {
+  IconUsersGroup, IconUser, IconCards, IconQuestionMark, IconVolume, IconVolumeOff,
+} from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
@@ -25,7 +27,7 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading, error } = useGameStore();
-  const { difficulty, setDifficulty } = useSettingsStore();
+  const { difficulty, setDifficulty, soundEnabled, setSoundEnabled } = useSettingsStore();
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
@@ -80,6 +82,14 @@ export function HomeScreen() {
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
           >
             <IconQuestionMark size={18} stroke={1.5} />
+          </button>
+          <button
+            onClick={() => { hapticImpact('light'); setSoundEnabled(!soundEnabled); }}
+            aria-label={t('home.sound_toggle_aria')}
+            aria-pressed={soundEnabled}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
+          >
+            {soundEnabled ? <IconVolume size={16} stroke={2} /> : <IconVolumeOff size={16} stroke={2} />}
           </button>
         </div>
         {player && (

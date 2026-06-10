@@ -30,7 +30,8 @@
     "mode_1v1_desc": "Вдвоём, каждый со своего телефона. Кто больше объяснит, тот лучший!",
     "mode_training_title": "Быстрая игра",
     "mode_training_desc": "Один телефон, две команды, без интернета",
-    "tutorial_button_aria": "Как играть"
+    "tutorial_button_aria": "Как играть",
+    "sound_toggle_aria": "Звук вкл/выкл"
   },
   "tutorial": {
     "title_1": "Создай комнату",
