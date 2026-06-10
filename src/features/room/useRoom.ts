@@ -32,7 +32,7 @@ export function useRoom() {
         setTeams(teams);
         setRoomPlayers(roomPlayers);
         transition('lobby');
-        hapticImpact('medium');
+        hapticImpact('light');
         navigate('/lobby');
       } catch (err) {
         hapticError();
@@ -62,7 +62,7 @@ export function useRoom() {
         setTeams(teams);
         setRoomPlayers(roomPlayers);
         transition('lobby');
-        hapticImpact('medium');
+        hapticImpact('light');
         navigate('/lobby');
       } catch (err) {
         hapticError();

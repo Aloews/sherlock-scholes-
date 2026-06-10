@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { IconArrowsExchange, IconReload } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
+import { hapticImpact } from '@/shared/lib/telegram';
 import type { CardCategory } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 
@@ -152,7 +153,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                       </span>
                       <button
                         type="button"
-                        onClick={() => googleSearch(displayName)}
+                        onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
                         className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
                       >
                         {displayName}
@@ -176,7 +177,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           <button
             className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
             style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
-            onClick={onPlayAgain}
+            onClick={() => { hapticImpact('light'); onPlayAgain(); }}
           >
             {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
             <IconReload size={16} stroke={2} />
@@ -184,7 +185,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           </button>
           <button
             className="w-full h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
-            onClick={() => navigate('/')}
+            onClick={() => { hapticImpact('light'); navigate('/'); }}
           >
             {t('quick.home')}
           </button>
@@ -209,7 +210,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
           className="text-brand-muted hover:text-white transition-colors text-sm p-1 -ml-1"
-          onClick={() => { playSound('fanfare'); setFinished(true); }}
+          onClick={() => { hapticImpact('heavy'); playSound('fanfare'); setFinished(true); }}
         >
           {t('quick.finish')}
         </button>
@@ -228,7 +229,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
       <div className="px-4 pt-3 flex justify-center">
         <button
           className="inline-flex items-center gap-1.5 text-brand-muted hover:text-white transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => { playSound('swipe'); passTurn(); }}
+          onClick={() => { hapticImpact('light'); playSound('swipe'); passTurn(); }}
           disabled={!currentCard}
         >
           <IconArrowsExchange size={16} stroke={2} />
@@ -283,14 +284,14 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
           disabled={!currentCard}
-          onClick={() => { playSound('correct'); guess(); }}
+          onClick={() => { hapticImpact('medium'); playSound('correct'); guess(); }}
         >
           {t('quick.guessed')}
         </button>
         <button
           className="flex-1 h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           disabled={!currentCard}
-          onClick={() => { playSound('skip'); skip(); }}
+          onClick={() => { hapticImpact('light'); playSound('skip'); skip(); }}
         >
           {t('quick.skip')}
         </button>

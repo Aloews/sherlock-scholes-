@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 import { setLanguage } from '@/shared/i18n';
+import { hapticImpact } from '@/shared/lib/telegram';
 
 interface LanguageToggleProps {
   className?: string;
@@ -18,7 +19,7 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
         'hover:border-brand-muted/50 transition-colors',
         className,
       )}
-      onClick={() => setLanguage(isEn ? 'ru' : 'en')}
+      onClick={() => { hapticImpact('light'); setLanguage(isEn ? 'ru' : 'en'); }}
     >
       <span className={isEn ? 'text-brand-muted' : 'text-white'}>RU</span>
       <span className="text-brand-border">|</span>

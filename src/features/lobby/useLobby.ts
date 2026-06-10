@@ -5,7 +5,7 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
-import { hapticImpact, hapticSelection } from '@/shared/lib/telegram';
+import { hapticImpact } from '@/shared/lib/telegram';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { RoomPlayer, Room } from '@/shared/types/database';
 
@@ -72,7 +72,7 @@ export function useLobby() {
       if (!player || !room) return;
       const myRoomPlayer = roomPlayers.find((rp) => rp.player_id === player.id);
       if (!myRoomPlayer) return;
-      hapticSelection();
+      hapticImpact('light');
       await roomService.assignTeam(myRoomPlayer.id, teamId);
     },
     [player, room, roomPlayers],

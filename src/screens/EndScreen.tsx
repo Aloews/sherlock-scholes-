@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconSend } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Button } from '@/shared/ui/Button';
-import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
+import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound } from '@/shared/lib/sounds';
 import type { TeamScore } from '@/shared/types/database';
 
@@ -114,7 +114,7 @@ export function EndScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(true);
-      hapticSuccess();
+      hapticImpact('heavy');
       playSound('fanfare');
     }, 100);
     return () => clearTimeout(timer);
@@ -133,6 +133,7 @@ export function EndScreen() {
   const isWinnerTeam = (ts: TeamScore) => !isDraw && ts.team_id === winner?.team_id;
 
   const handlePlayAgain = () => {
+    hapticImpact('light');
     reset();
     navigate('/');
   };

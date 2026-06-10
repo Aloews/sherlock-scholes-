@@ -46,7 +46,7 @@ export function LobbyScreen() {
       <div className="flex items-center justify-between p-4 pt-8 border-b border-brand-border">
         <button
           className="text-brand-muted hover:text-white transition-colors p-2 -ml-2"
-          onClick={() => leaveRoom()}
+          onClick={() => { hapticImpact('light'); leaveRoom(); }}
         >
           {t('lobby.leave')}
         </button>

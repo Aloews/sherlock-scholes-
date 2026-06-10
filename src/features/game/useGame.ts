@@ -5,7 +5,7 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
-import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
+import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound } from '@/shared/lib/sounds';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
@@ -51,6 +51,7 @@ export function useGame() {
             transition('round_active');
           } else if (round.status === 'completed') {
             setCurrentRound(round);
+            hapticImpact('heavy');
             playSound('whistle_end');
             const rawScores = await roomService.fetchRoundScores(room.id);
             const scores: TeamScore[] = rawScores.map((s) => ({
@@ -107,7 +108,7 @@ export function useGame() {
   const markCorrect = useCallback(async () => {
     const card = currentCards[activeCardIndex];
     if (!card || card.status !== 'pending') return;
-    hapticSuccess();
+    hapticImpact('medium');
     playSound('correct');
     await roomService.markCard(card.id, 'correct');
   }, [currentCards, activeCardIndex]);

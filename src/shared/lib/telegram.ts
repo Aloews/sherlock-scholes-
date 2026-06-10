@@ -81,24 +81,47 @@ export function getTelegramUser(): TelegramUser | null {
   return null;
 }
 
+// Telegram's HapticFeedback only works inside the Telegram mobile app. In a
+// plain mobile browser (and in dev) we fall back to the Vibration API, so
+// buttons still buzz. iOS Safari has no vibration API at all — silently a
+// no-op there, nothing we can do.
+function fallbackVibrate(pattern: number | number[]): void {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // unsupported / blocked — stay silent
+  }
+}
+
+const IMPACT_MS: Record<'light' | 'medium' | 'heavy', number> = {
+  light: 10,
+  medium: 25,
+  heavy: 45,
+};
+
 export function hapticImpact(style: 'light' | 'medium' | 'heavy' = 'medium'): void {
-  tg?.HapticFeedback?.impactOccurred(style);
+  if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred(style);
+  else fallbackVibrate(IMPACT_MS[style]);
 }
 
 export function hapticSuccess(): void {
-  tg?.HapticFeedback?.notificationOccurred('success');
+  if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  else fallbackVibrate([15, 60, 25]);
 }
 
 export function hapticError(): void {
-  tg?.HapticFeedback?.notificationOccurred('error');
+  if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+  else fallbackVibrate([45, 60, 45]);
 }
 
 export function hapticWarning(): void {
-  tg?.HapticFeedback?.notificationOccurred('warning');
+  if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+  else fallbackVibrate([30, 50, 30]);
 }
 
 export function hapticSelection(): void {
-  tg?.HapticFeedback?.selectionChanged();
+  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  else fallbackVibrate(5);
 }
 
 export function isInsideTelegram(): boolean {

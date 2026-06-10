@@ -18,6 +18,7 @@ function MuteButton() {
   const { t } = useTranslation();
 
   const toggle = () => {
+    hapticImpact('light');
     toggleMute();
     setMuted((m) => !m);
   };

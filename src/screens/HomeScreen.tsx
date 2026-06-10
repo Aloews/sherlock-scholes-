@@ -27,7 +27,7 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading, error } = useGameStore();
-  const { difficulty, setDifficulty, soundEnabled, setSoundEnabled } = useSettingsStore();
+  const { soundEnabled, setSoundEnabled } = useSettingsStore();
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
@@ -61,6 +61,7 @@ export function HomeScreen() {
     i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
 
   const startTraining = () => {
+    hapticImpact('light');
     const cats = trainingCats.size === ALL_CATEGORIES.length ? null : [...trainingCats];
     navigate('/training', { state: { categories: cats } });
   };
@@ -77,7 +78,7 @@ export function HomeScreen() {
           />
           <LanguageToggle />
           <button
-            onClick={() => navigate('/tutorial')}
+            onClick={() => { hapticImpact('light'); navigate('/tutorial'); }}
             aria-label={t('home.tutorial_button_aria')}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
           >
@@ -139,31 +140,6 @@ export function HomeScreen() {
                 <p className="text-brand-muted/70 text-sm">{t('stats.first_game')}</p>
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── Difficulty toggle (global, all modes) ── */}
-        {view === 'home' && (
-          <div className="w-full max-w-sm animate-fade-in">
-            <p className="text-brand-muted text-xs text-center mb-2 uppercase tracking-wider">
-              {t('home.difficulty_title')}
-            </p>
-            <div className="grid grid-cols-2 gap-2 bg-brand-surface border border-brand-border rounded-2xl p-1">
-              {(['easy', 'hard'] as const).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => { hapticImpact('light'); setDifficulty(d); }}
-                  aria-pressed={difficulty === d}
-                  className={`rounded-xl py-2.5 text-center font-bold transition-colors ${
-                    difficulty === d
-                      ? 'bg-brand-accent text-brand-bg'
-                      : 'text-brand-muted hover:text-white'
-                  }`}
-                >
-                  {t(`home.difficulty_${d}`)}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -234,7 +210,7 @@ export function HomeScreen() {
               </div>
             </button>
 
-            <Button fullWidth variant="ghost" onClick={() => setView('home')}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('home'); }}>
               {t('home.back')}
             </Button>
           </div>
@@ -258,10 +234,10 @@ export function HomeScreen() {
                 ))}
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ difficulty })}>
+            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({})}>
               {t('home.create_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
               {t('home.back')}
             </Button>
           </div>
@@ -283,7 +259,7 @@ export function HomeScreen() {
                           ? 'bg-brand-accent text-brand-bg'
                           : 'bg-brand-border text-white hover:bg-brand-border/70'
                       }`}
-                      onClick={() => setRounds1v1(n)}
+                      onClick={() => { hapticImpact('light'); setRounds1v1(n); }}
                     >
                       {n}
                     </button>
@@ -296,10 +272,10 @@ export function HomeScreen() {
                 <span className="text-white">60s</span>
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1, difficulty }, '1v1')}>
+            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}>
               {t('home.create_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
               {t('home.back')}
             </Button>
           </div>
@@ -321,7 +297,7 @@ export function HomeScreen() {
                           ? 'bg-brand-accent/15 text-white'
                           : 'bg-brand-border text-brand-muted'
                       }`}
-                      onClick={() => toggleCat(cat)}
+                      onClick={() => { hapticImpact('light'); toggleCat(cat); }}
                     >
                       <span
                         className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
@@ -344,7 +320,7 @@ export function HomeScreen() {
             >
               {t('home.create_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
               {t('home.back')}
             </Button>
           </div>
@@ -370,7 +346,7 @@ export function HomeScreen() {
             <Button fullWidth size="lg" loading={loading} disabled={code.length !== 6} onClick={handleJoin}>
               {t('home.join_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => { setCode(''); setView('home'); }}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setCode(''); setView('home'); }}>
               {t('home.back')}
             </Button>
           </div>
