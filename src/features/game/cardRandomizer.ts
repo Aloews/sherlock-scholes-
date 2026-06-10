@@ -5,6 +5,14 @@
 import { supabase } from '@/shared/lib/supabase';
 import type { Card, CardCategory } from '@/shared/types/database';
 
+// A cold-started Supabase instance can fail or return an empty set on the very
+// first RPC of a session. Retry a couple of times before surfacing the error,
+// so callers keep their loading state instead of flashing "no cards".
+const RETRIES        = 2;
+const RETRY_DELAY_MS = 800;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /**
  * Fetch `count` random active cards from the DB.
  * @param count        Number of cards to return.
@@ -18,14 +26,27 @@ export async function pickRandomCards(
   categories?: CardCategory[] | null,
   minPageviews?: number | null,
 ): Promise<Card[]> {
-  const { data, error } = await supabase.rpc('pick_random_cards', {
-    p_count:         count,
-    p_categories:    categories?.length ? categories : null,
-    p_min_pageviews: minPageviews ?? null,
-  });
+  let lastError = new Error('pick_random_cards failed');
 
-  if (error) throw new Error(`pick_random_cards failed: ${error.message}`);
-  if (!data?.length) throw new Error('No active cards found for the selected categories');
+  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+    if (attempt > 0) await sleep(RETRY_DELAY_MS);
 
-  return data as Card[];
+    const { data, error } = await supabase.rpc('pick_random_cards', {
+      p_count:         count,
+      p_categories:    categories?.length ? categories : null,
+      p_min_pageviews: minPageviews ?? null,
+    });
+
+    if (error) {
+      lastError = new Error(`pick_random_cards failed: ${error.message}`);
+      continue;
+    }
+    if (!data?.length) {
+      lastError = new Error('No active cards found for the selected categories');
+      continue;
+    }
+    return data as Card[];
+  }
+
+  throw lastError;
 }
