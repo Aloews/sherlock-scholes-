@@ -198,6 +198,10 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
   const catLabel = currentCard
     ? (currentCard.category_ru ?? CATEGORY_LABEL_RU[currentCard.category] ?? currentCard.category)
     : '';
+  // EN interface → English card name when available, Russian fallback (same rule as the summary)
+  const cardName = currentCard
+    ? (i18n.language.startsWith('en') && currentCard.name_en ? currentCard.name_en : currentCard.name)
+    : '';
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -252,7 +256,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                   {catLabel}
                 </span>
                 <p className="text-[30px] font-medium text-white leading-snug mt-2">
-                  {currentCard.name}
+                  {cardName}
                 </p>
               </div>
             </motion.div>

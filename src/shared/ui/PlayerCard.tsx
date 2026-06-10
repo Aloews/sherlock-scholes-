@@ -45,7 +45,7 @@ function CategoryIcon({ category, color }: { category: CardCategory; color: stri
 }
 
 export function PlayerCard({ card, mode, className }: PlayerCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (mode === 'hidden') {
     return (
@@ -69,6 +69,8 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
 
   const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
   const label    = card.category_ru ?? CATEGORY_LABEL_RU[card.category] ?? card.category;
+  // EN interface → English card name when available, Russian fallback (same rule as the summary)
+  const name     = i18n.language.startsWith('en') && card.name_en ? card.name_en : card.name;
 
   return (
     <div
@@ -90,7 +92,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
 
       {/* Card name — centred, medium weight */}
       <div className="px-5 pt-4 pb-8 text-center">
-        <p className="text-3xl font-medium text-white leading-snug">{card.name}</p>
+        <p className="text-3xl font-medium text-white leading-snug">{name}</p>
       </div>
     </div>
   );

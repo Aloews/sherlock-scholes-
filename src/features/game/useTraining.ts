@@ -63,10 +63,7 @@ export function useTraining(categories: CardCategory[] | null) {
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    // Capture an optional English name if the card carries one (cards.name_en).
-    // It's absent today, so the summary falls back to the Russian `name` on EN.
-    const nameEn = (card as { name_en?: string | null }).name_en ?? null;
-    setHistory((prev) => [...prev, { name: card.name, name_en: nameEn, category: card.category, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, category: card.category, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card

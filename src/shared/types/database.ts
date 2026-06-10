@@ -127,6 +127,7 @@ export interface RoomPlayer {
 export interface Card {
   id: string;
   name: string;
+  name_en: string | null; // English display name; null for old cards — fall back to `name`
   category: CardCategory;
   category_ru: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
