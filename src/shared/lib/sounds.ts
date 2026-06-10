@@ -9,7 +9,7 @@ export type SoundName =
   | 'whistle_start' | 'whistle_end' | 'kick' | 'applause' | 'fanfare';
 
 // Deliberately quiet master level: button feedback, not jingles.
-const MASTER = 0.16;
+const MASTER = 0.15;
 
 let ctx: AudioContext | null = null;
 let noiseBuffer: AudioBuffer | null = null;
@@ -40,11 +40,13 @@ interface ToneOpts {
   type?: OscillatorType;
   gain?: number;          // 0..1, scaled by MASTER
   glideTo?: number;       // optional pitch-glide target (Hz)
+  trillHz?: number;       // vibrato rate — the "pea" of a referee whistle
+  trillDepth?: number;    // vibrato depth (Hz)
 }
 
 function tone(
   ac: AudioContext,
-  { freq, at = 0, dur = 0.1, type = 'sine', gain = 1, glideTo }: ToneOpts,
+  { freq, at = 0, dur = 0.1, type = 'sine', gain = 1, glideTo, trillHz, trillDepth }: ToneOpts,
 ): void {
   const t0  = ac.currentTime + at;
   const osc = ac.createOscillator();
@@ -54,12 +56,38 @@ function tone(
   if (glideTo !== undefined) {
     osc.frequency.exponentialRampToValueAtTime(Math.max(glideTo, 1), t0 + dur);
   }
+  if (trillHz && trillDepth) {
+    // LFO -> osc.frequency: fast shallow FM reads as a whistle trill.
+    const lfo = ac.createOscillator();
+    const lfoAmp = ac.createGain();
+    lfo.frequency.setValueAtTime(trillHz, t0);
+    lfoAmp.gain.setValueAtTime(trillDepth, t0);
+    lfo.connect(lfoAmp).connect(osc.frequency);
+    lfo.start(t0);
+    lfo.stop(t0 + dur + 0.02);
+  }
   amp.gain.setValueAtTime(0, t0);
   amp.gain.linearRampToValueAtTime(gain * MASTER, t0 + 0.005);
   amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   osc.connect(amp).connect(ac.destination);
   osc.start(t0);
   osc.stop(t0 + dur + 0.02);
+}
+
+// Referee whistle: ~2 kHz tone with a fast shallow trill.
+function whistle(
+  ac: AudioContext,
+  opts: { at?: number; dur?: number; freq?: number; gain?: number; glideTo?: number },
+): void {
+  tone(ac, {
+    freq: opts.freq ?? 2000,
+    at: opts.at,
+    dur: opts.dur ?? 0.12,
+    gain: opts.gain ?? 0.5,
+    glideTo: opts.glideTo,
+    trillHz: 38,
+    trillDepth: 70,
+  });
 }
 
 interface NoiseOpts {
@@ -103,17 +131,19 @@ const SOUNDS: Record<SoundName, (ac: AudioContext) => void> = {
   // Countdown blip for the last seconds of a round.
   tick: (ac) => tone(ac, { freq: 1500, dur: 0.04, type: 'square', gain: 0.35 }),
 
-  // "Guessed" — bright two-note ascending chime.
+  // "Guessed" — stadium "goal!": ascending major two-tone plus a wide
+  // white-noise swell underneath, the crowd roar. ~250ms total.
   correct: (ac) => {
-    tone(ac, { freq: 659.25, dur: 0.12, type: 'triangle', gain: 0.9 });           // E5
-    tone(ac, { freq: 987.77, at: 0.09, dur: 0.22, type: 'triangle', gain: 0.9 }); // B5
+    tone(ac, { freq: 523.25, dur: 0.12, type: 'triangle', gain: 0.9 });            // C5
+    tone(ac, { freq: 659.25, at: 0.08, dur: 0.17, type: 'triangle', gain: 0.9 });  // E5
+    noise(ac, { dur: 0.25, freq: 900, q: 0.4, gain: 0.5 });                        // трибуна
   },
 
-  // "Skip" — soft low click, falls away quickly.
-  skip: (ac) => tone(ac, { freq: 260, glideTo: 170, dur: 0.07, gain: 0.7 }),
+  // "Skip" — single short referee peep, ~2 kHz with a light trill.
+  skip: (ac) => whistle(ac, { freq: 2000, dur: 0.12, gain: 0.45 }),
 
-  // "Pass turn" — neutral whoosh: filtered-noise sweep, no pitch identity.
-  swipe: (ac) => noise(ac, { dur: 0.18, freq: 500, glideTo: 1400, q: 2, gain: 0.6 }),
+  // "Pass turn" — ball kick: dull low thump, fast decay.
+  swipe: (ac) => tone(ac, { freq: 150, dur: 0.08, gain: 1 }),
 
   // Time's up — low decaying strike with a quiet fifth on top.
   gong: (ac) => {
@@ -121,14 +151,14 @@ const SOUNDS: Record<SoundName, (ac: AudioContext) => void> = {
     tone(ac, { freq: 294, dur: 0.5, gain: 0.35 });
   },
 
-  // Round start — two short referee peeps.
+  // Round start — referee double whistle: two short trilled peeps.
   whistle_start: (ac) => {
-    tone(ac, { freq: 2200, dur: 0.08, gain: 0.5 });
-    tone(ac, { freq: 2200, at: 0.12, dur: 0.1, gain: 0.5 });
+    whistle(ac, { freq: 2100, dur: 0.09, gain: 0.5 });
+    whistle(ac, { freq: 2100, at: 0.15, dur: 0.11, gain: 0.5 });
   },
 
-  // Round over — one longer falling peep.
-  whistle_end: (ac) => tone(ac, { freq: 2400, glideTo: 1700, dur: 0.3, gain: 0.5 }),
+  // Round over — one longer falling trilled peep.
+  whistle_end: (ac) => whistle(ac, { freq: 2300, glideTo: 1800, dur: 0.3, gain: 0.5 }),
 
   // Ball thump.
   kick: (ac) => tone(ac, { freq: 150, glideTo: 50, dur: 0.12, gain: 1 }),
@@ -140,13 +170,12 @@ const SOUNDS: Record<SoundName, (ac: AudioContext) => void> = {
     noise(ac, { at: 0.16, dur: 0.14, freq: 1600, q: 0.8, gain: 0.3 });
   },
 
-  // Game over — short rising arpeggio with a held top note.
+  // Game over — final long referee whistle, then a three-note mini fanfare.
   fanfare: (ac) => {
-    tone(ac, { freq: 523.25, dur: 0.14, type: 'triangle', gain: 0.85 });            // C5
-    tone(ac, { freq: 659.25, at: 0.12, dur: 0.14, type: 'triangle', gain: 0.85 });  // E5
-    tone(ac, { freq: 783.99, at: 0.24, dur: 0.14, type: 'triangle', gain: 0.85 });  // G5
-    tone(ac, { freq: 1046.5, at: 0.36, dur: 0.4, type: 'triangle', gain: 0.95 });   // C6
-    tone(ac, { freq: 523.25, at: 0.36, dur: 0.4, gain: 0.4 });                      // C5 base
+    whistle(ac, { freq: 2100, dur: 0.45, gain: 0.45 });                             // финальный свисток
+    tone(ac, { freq: 523.25, at: 0.5,  dur: 0.14, type: 'triangle', gain: 0.85 });  // C5
+    tone(ac, { freq: 659.25, at: 0.64, dur: 0.14, type: 'triangle', gain: 0.85 });  // E5
+    tone(ac, { freq: 783.99, at: 0.78, dur: 0.35, type: 'triangle', gain: 0.95 });  // G5
   },
 };
 
