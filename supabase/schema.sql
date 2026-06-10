@@ -64,11 +64,13 @@ CREATE TABLE IF NOT EXISTS room_players (
 CREATE TABLE IF NOT EXISTS cards (
   id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   name            TEXT    NOT NULL,
+  name_en         TEXT,                       -- English name (player cards from players_meta); NULL elsewhere
   category        TEXT    NOT NULL,           -- player | club | term | referee | coach | stadium | club_nickname | commentator | position | woman
   category_ru     TEXT,                       -- localised label stored alongside for display
   difficulty      TEXT    DEFAULT 'medium'
                     CHECK (difficulty IN ('easy', 'medium', 'hard')),
   forbidden_words TEXT[]  DEFAULT '{}',
+  pageviews       BIGINT,                     -- Wikipedia pageviews (player cards); NULL elsewhere
   active          BOOLEAN DEFAULT TRUE,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
@@ -132,6 +134,7 @@ CREATE INDEX IF NOT EXISTS idx_rounds_status     ON rounds(room_id, status);
 CREATE INDEX IF NOT EXISTS idx_round_cards_round ON round_cards(round_id);
 CREATE INDEX IF NOT EXISTS idx_scores_room       ON scores(room_id);
 CREATE INDEX IF NOT EXISTS idx_cards_active      ON cards(active, category);
+CREATE INDEX IF NOT EXISTS idx_cards_pageviews   ON cards(pageviews) WHERE pageviews IS NOT NULL;
 
 -- ============================================================
 -- FUNCTIONS
@@ -187,9 +190,13 @@ $$ LANGUAGE plpgsql;
 
 -- Random card picker — ORDER BY random() runs before LIMIT so every
 -- category has a fair chance regardless of disk storage order.
+-- p_min_pageviews backs the global Easy/Hard toggle: player cards below
+-- the threshold are dropped, while cards with no pageviews score (clubs,
+-- terms, …) always pass.
 CREATE OR REPLACE FUNCTION pick_random_cards(
-  p_count      INT,
-  p_categories TEXT[] DEFAULT NULL
+  p_count         INT,
+  p_categories    TEXT[]  DEFAULT NULL,
+  p_min_pageviews BIGINT  DEFAULT NULL
 )
 RETURNS SETOF cards AS $$
 BEGIN
@@ -201,6 +208,11 @@ BEGIN
         p_categories IS NULL
         OR cardinality(p_categories) = 0
         OR category = ANY(p_categories)
+      )
+      AND (
+        p_min_pageviews IS NULL
+        OR pageviews IS NULL
+        OR pageviews > p_min_pageviews
       )
     ORDER BY random()
     LIMIT p_count;

@@ -9,6 +9,7 @@ import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useSettingsStore } from '@/shared/store/settingsStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
@@ -24,6 +25,7 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading, error } = useGameStore();
+  const { difficulty, setDifficulty } = useSettingsStore();
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
@@ -130,6 +132,31 @@ export function HomeScreen() {
           </div>
         )}
 
+        {/* ── Difficulty toggle (global, all modes) ── */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm animate-fade-in">
+            <p className="text-brand-muted text-xs text-center mb-2 uppercase tracking-wider">
+              {t('home.difficulty_title')}
+            </p>
+            <div className="grid grid-cols-2 gap-2 bg-brand-surface border border-brand-border rounded-2xl p-1">
+              {(['easy', 'hard'] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { hapticImpact('light'); setDifficulty(d); }}
+                  aria-pressed={difficulty === d}
+                  className={`rounded-xl py-2.5 text-center font-bold transition-colors ${
+                    difficulty === d
+                      ? 'bg-brand-accent text-brand-bg'
+                      : 'text-brand-muted hover:text-white'
+                  }`}
+                >
+                  {t(`home.difficulty_${d}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Main CTA ── */}
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
@@ -221,7 +248,7 @@ export function HomeScreen() {
                 ))}
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom()}>
+            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ difficulty })}>
               {t('home.create_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>
@@ -259,7 +286,7 @@ export function HomeScreen() {
                 <span className="text-white">60s</span>
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}>
+            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1, difficulty }, '1v1')}>
               {t('home.create_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => setView('mode_select')}>

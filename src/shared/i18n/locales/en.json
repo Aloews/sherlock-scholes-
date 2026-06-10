@@ -7,6 +7,9 @@
   "home": {
     "title": "SHERLOCK SCHOLES",
     "subtitle": "Describe a football legend",
+    "difficulty_title": "Difficulty",
+    "difficulty_easy": "Easy",
+    "difficulty_hard": "Hard",
     "create_game": "Create Game",
     "join_game": "Join Game",
     "game_settings": "Game settings",

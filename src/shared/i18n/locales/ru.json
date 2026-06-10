@@ -7,6 +7,9 @@
   "home": {
     "title": "ШЕРЛОК СКОУЛС",
     "subtitle": "Опиши легенду футбола",
+    "difficulty_title": "Сложность",
+    "difficulty_easy": "Лёгкая",
+    "difficulty_hard": "Сложная",
     "create_game": "Создать игру",
     "join_game": "Присоединиться",
     "game_settings": "Настройки игры",

@@ -43,6 +43,20 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   woman:         'Женщины',
 };
 
+// ─── Difficulty (global setting) ─────────────────────────────
+// A device-wide toggle on the home screen. Maps to a minimum
+// Wikipedia pageviews threshold for the `player` cards in the deck:
+//   easy → only the most famous players (pageviews > 19000)
+//   hard → a wider, less mainstream pool (pageviews > 3000)
+// Cards without a pageviews score (clubs, terms, …) always pass.
+
+export type Difficulty = 'easy' | 'hard';
+
+export const PAGEVIEWS_THRESHOLD: Record<Difficulty, number> = {
+  easy: 19000,
+  hard: 3000,
+};
+
 export const CATEGORY_EMOJI: Record<CardCategory, string> = {
   player:        '⚽',
   club:          '🏟️',
@@ -73,6 +87,7 @@ export interface RoomSettings {
   cards_per_round: number;
   total_rounds: number;
   categories: CardCategory[] | null; // null = all categories
+  difficulty?: Difficulty;           // undefined = no pageviews filter
 }
 
 export type GameMode = 'team' | '1v1';
@@ -116,6 +131,7 @@ export interface Card {
   category_ru: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
   forbidden_words: string[];
+  pageviews: number | null; // Wikipedia pageviews; null for non-player cards
   active: boolean;
   created_at: string;
 }
