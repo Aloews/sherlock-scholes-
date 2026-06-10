@@ -108,8 +108,7 @@ export function useGame() {
     const card = currentCards[activeCardIndex];
     if (!card || card.status !== 'pending') return;
     hapticSuccess();
-    playSound('kick');
-    playSound('applause');
+    playSound('correct');
     await roomService.markCard(card.id, 'correct');
   }, [currentCards, activeCardIndex]);
 

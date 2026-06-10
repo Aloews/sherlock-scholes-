@@ -205,7 +205,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
           className="text-brand-muted hover:text-white transition-colors text-sm p-1 -ml-1"
-          onClick={() => setFinished(true)}
+          onClick={() => { playSound('fanfare'); setFinished(true); }}
         >
           {t('quick.finish')}
         </button>
@@ -224,7 +224,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
       <div className="px-4 pt-3 flex justify-center">
         <button
           className="inline-flex items-center gap-1.5 text-brand-muted hover:text-white transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => { playSound('whistle_start'); passTurn(); }}
+          onClick={() => { playSound('swipe'); passTurn(); }}
           disabled={!currentCard}
         >
           <IconArrowsExchange size={16} stroke={2} />

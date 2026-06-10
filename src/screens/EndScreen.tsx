@@ -5,6 +5,7 @@ import { IconSend } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Button } from '@/shared/ui/Button';
 import { hapticSuccess, hapticImpact } from '@/shared/lib/telegram';
+import { playSound } from '@/shared/lib/sounds';
 import type { TeamScore } from '@/shared/types/database';
 
 const INVITES = [
@@ -114,6 +115,7 @@ export function EndScreen() {
     const timer = setTimeout(() => {
       setVisible(true);
       hapticSuccess();
+      playSound('fanfare');
     }, 100);
     return () => clearTimeout(timer);
   }, []);
