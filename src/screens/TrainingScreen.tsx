@@ -159,8 +159,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
           ) : (
             <div className="space-y-2">
               {history.map((entry, i) => {
-                const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
-                const guessed  = entry.status === 'guessed';
+                const guessed = entry.status === 'guessed';
                 // On EN use name_en when present; else Russian name (fallback).
                 const displayName = isEn && entry.name_en ? entry.name_en : entry.name;
                 return (
@@ -169,12 +168,6 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                     className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded-md px-3 py-2.5"
                   >
                     <div className="flex-1 min-w-0">
-                      <span
-                        className="text-[11px] uppercase tracking-widest font-medium"
-                        style={{ color: catColor }}
-                      >
-                        {CATEGORY_LABEL_RU[entry.category] ?? entry.category}
-                      </span>
                       <div className="flex items-center gap-2">
                         <HistoryAvatar photoUrl={entry.photo_url} alt={displayName} />
                         <button
