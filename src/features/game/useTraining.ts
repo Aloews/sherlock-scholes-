@@ -11,6 +11,7 @@ export type Team = 'orange' | 'blue';
 export interface HistoryEntry {
   name: string;
   name_en?: string | null; // English name when the card has one; summary uses it on EN
+  photo_url?: string | null; // Commons photo; summary shows it as an avatar
   category: CardCategory;
   status: 'guessed' | 'skipped';
 }
@@ -64,7 +65,7 @@ export function useTraining(categories: CardCategory[] | null) {
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, category: card.category, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card

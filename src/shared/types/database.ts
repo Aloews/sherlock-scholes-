@@ -137,6 +137,7 @@ export interface Card {
   difficulty: 'easy' | 'medium' | 'hard';
   forbidden_words: string[];
   pageviews: number | null; // Wikipedia pageviews; null for non-player cards
+  photo_url: string | null; // Commons photo (players); null = no photo
   active: boolean;
   created_at: string;
 }

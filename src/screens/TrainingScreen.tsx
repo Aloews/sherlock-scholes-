@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconArrowsExchange, IconReload } from '@tabler/icons-react';
+import { IconArrowsExchange, IconReload, IconUser } from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -41,6 +41,30 @@ const googleSearch = (name: string) => {
   if (tg?.openLink) tg.openLink(url);
   else window.open(url, '_blank');
 };
+
+/** 32x32 round avatar for the summary history. Falls back to a silhouette
+ * circle when the card has no photo_url or the image fails to load. */
+function HistoryAvatar({ photoUrl, alt }: { photoUrl?: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
+  const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
+  if (!src || failed) {
+    return (
+      <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
+        <IconUser size={16} className="text-brand-muted" />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-8 h-8 shrink-0 rounded-full object-cover"
+    />
+  );
+}
 
 /** Big centred score line "orange : blue" in team colours (Variant 5). */
 function ScoreLine({ orange, blue, activeTeam }: {
@@ -151,13 +175,16 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                       >
                         {CATEGORY_LABEL_RU[entry.category] ?? entry.category}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
-                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
-                      >
-                        {displayName}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <HistoryAvatar photoUrl={entry.photo_url} alt={displayName} />
+                        <button
+                          type="button"
+                          onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
+                          className="flex-1 min-w-0 text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
+                        >
+                          {displayName}
+                        </button>
+                      </div>
                       <span
                         className="text-xs font-medium"
                         style={{ color: guessed ? TEAM_COLOR.orange : '#7A8499' }}
