@@ -12,6 +12,7 @@ export interface HistoryEntry {
   name_en?: string | null; // English name when the card has one; summary uses it on EN
   photo_url?: string | null; // Commons photo; summary shows it as an avatar
   category: CardCategory;
+  category_ru?: string | null; // summary shows it as a label on non-player cards
   status: 'guessed' | 'skipped';
 }
 
@@ -59,7 +60,7 @@ export function useTraining(categories: CardCategory[] | null) {
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card
