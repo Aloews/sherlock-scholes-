@@ -7,13 +7,6 @@
   "home": {
     "title": "ШЕРЛОК СКОУЛС",
     "subtitle": "Опиши легенду футбола",
-    "difficulty_title": "Сложность",
-    "difficulty_novice": "Новичок",
-    "difficulty_fan": "Болельщик",
-    "difficulty_expert": "Эксперт",
-    "difficulty_desc_novice": "Только мировые звёзды — узнает каждый",
-    "difficulty_desc_fan": "Известные игроки и команды топ-уровня",
-    "difficulty_desc_expert": "Вся база — включая редкое и сложное",
     "create_game": "Создать игру",
     "join_game": "Присоединиться",
     "game_settings": "Настройки игры",

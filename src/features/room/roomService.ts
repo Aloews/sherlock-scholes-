@@ -5,7 +5,6 @@ import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
 import { pickRandomCards } from '@/features/game/cardRandomizer';
-import { PAGEVIEWS_THRESHOLD } from '@/shared/types/database';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -253,10 +252,10 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
 export async function activateRound(round: Round, room: Room): Promise<void> {
   // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
   const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
-  const { categories, difficulty } = room.settings;
-  const minPageviews = difficulty ? PAGEVIEWS_THRESHOLD[difficulty] : null;
+  const { categories } = room.settings;
 
-  const cards = await pickRandomCards(cardsCount, categories, minPageviews);
+  // null min_pageviews — no difficulty filter, the whole deck.
+  const cards = await pickRandomCards(cardsCount, categories, null);
 
   await supabase.from('round_cards').insert(
     cards.map((card, i) => ({

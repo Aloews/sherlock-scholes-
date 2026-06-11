@@ -43,15 +43,15 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   woman:         'Женщины',
 };
 
-// ─── Difficulty (global setting) ─────────────────────────────
-// A device-wide three-level switch on the home screen. Maps to a minimum
-// Wikipedia pageviews threshold for the whole deck:
+// ─── Difficulty (dormant) ────────────────────────────────────
+// The UI switch was removed — the game always plays the whole deck
+// (p_min_pageviews = null). Thresholds and the cards.pageviews column are
+// kept as data for possible future use:
 //   novice → only world-famous cards   (pageviews > 19000)
 //   fan    → well-known, top-level pool (pageviews > 3000)
 //   expert → the entire deck, no threshold (null)
 // With a threshold set, cards with NULL pageviews are EXCLUDED by
-// pick_random_cards (see supabase/migrations/difficulty_levels.sql) —
-// they only appear in expert mode.
+// pick_random_cards (see supabase/migrations/difficulty_levels.sql).
 
 export type Difficulty = 'novice' | 'fan' | 'expert';
 
@@ -91,7 +91,6 @@ export interface RoomSettings {
   cards_per_round: number;
   total_rounds: number;
   categories: CardCategory[] | null; // null = all categories
-  difficulty?: Difficulty;           // undefined = no pageviews filter
 }
 
 export type GameMode = 'team' | '1v1';
