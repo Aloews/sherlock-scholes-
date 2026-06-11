@@ -7,7 +7,7 @@
   "home": {
     "title": "SHERLOCK SCHOLES",
     "subtitle": "Describe a football legend",
-    "create_game": "Create Game",
+    "competitive_mode": "Competitive mode",
     "join_game": "Join Game",
     "game_settings": "Game settings",
     "setting_rounds": "Rounds",
@@ -20,13 +20,11 @@
     "room_code_placeholder": "ABC123",
     "join_room": "Join Room",
     "footer": "Sherlock Scholes • Football Edition",
-    "mode_select_title": "Choose mode",
     "mode_team_title": "Team game",
     "mode_team_desc": "4+ players, two teams take turns explaining",
     "mode_1v1_title": "One on one",
     "mode_1v1_desc": "Two players, each on their own phone. Whoever explains more wins!",
     "mode_training_title": "Quick Game",
-    "mode_training_desc": "One phone, two teams, no internet",
     "tutorial_button_aria": "How to play",
     "sound_toggle_aria": "Sound on/off"
   },

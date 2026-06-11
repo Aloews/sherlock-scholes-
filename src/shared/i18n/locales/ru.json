@@ -7,7 +7,7 @@
   "home": {
     "title": "ШЕРЛОК СКОУЛС",
     "subtitle": "Опиши легенду футбола",
-    "create_game": "Создать игру",
+    "competitive_mode": "Соревновательный режим",
     "join_game": "Присоединиться",
     "game_settings": "Настройки игры",
     "setting_rounds": "Раунды",
@@ -20,13 +20,11 @@
     "room_code_placeholder": "ABC123",
     "join_room": "Войти в комнату",
     "footer": "Sherlock Scholes • Football Edition",
-    "mode_select_title": "Выбери режим",
     "mode_team_title": "Командная игра",
     "mode_team_desc": "4+ игроков, две команды объясняют по очереди",
     "mode_1v1_title": "Один на один",
     "mode_1v1_desc": "Вдвоём, каждый со своего телефона. Кто больше объяснит, тот лучший!",
     "mode_training_title": "Быстрая игра",
-    "mode_training_desc": "Один телефон, две команды, без интернета",
     "tutorial_button_aria": "Как играть",
     "sound_toggle_aria": "Звук вкл/выкл"
   },

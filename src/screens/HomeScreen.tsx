@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  IconUsersGroup, IconUser, IconCards, IconQuestionMark, IconVolume, IconVolumeOff,
+  IconUsersGroup, IconUser, IconQuestionMark, IconVolume, IconVolumeOff,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -143,11 +143,14 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Main CTA ── */}
+        {/* ── Main CTA: Quick game first, then competitive, then join ── */}
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
-            <Button fullWidth size="lg" onClick={() => { hapticImpact('medium'); setView('mode_select'); }}>
-              {t('home.create_game')}
+            <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); setView('create_training'); }}>
+              {t('home.mode_training_title')}
+            </Button>
+            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
+              {t('home.competitive_mode')}
             </Button>
             <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('join'); }}>
               {t('home.join_game')}
@@ -155,11 +158,11 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Mode selection ── */}
+        {/* ── Competitive mode: team game or 1v1 ── */}
         {view === 'mode_select' && (
           <div className="w-full max-w-sm space-y-3 animate-slide-up">
             <p className="text-brand-muted text-xs text-center uppercase tracking-wider mb-1">
-              {t('home.mode_select_title')}
+              {t('home.competitive_mode')}
             </p>
 
             {/* Team game */}
@@ -190,22 +193,6 @@ export function HomeScreen() {
                 <div>
                   <p className="text-white font-bold">{t('home.mode_1v1_title')}</p>
                   <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_1v1_desc')}</p>
-                </div>
-              </div>
-            </button>
-
-            {/* Training */}
-            <button
-              className="w-full bg-brand-surface border border-brand-border rounded-2xl p-5 text-left hover:border-brand-accent transition-colors"
-              onClick={() => { hapticImpact('light'); setView('create_training'); }}
-            >
-              <div className="flex items-start gap-4">
-                <div className="mt-0.5 text-brand-accent flex-shrink-0">
-                  <IconCards size={28} stroke={1.5} />
-                </div>
-                <div>
-                  <p className="text-white font-bold">{t('home.mode_training_title')}</p>
-                  <p className="text-brand-muted text-sm mt-0.5">{t('home.mode_training_desc')}</p>
                 </div>
               </div>
             </button>
@@ -320,7 +307,7 @@ export function HomeScreen() {
             >
               {t('home.create_room')}
             </Button>
-            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
+            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('home'); }}>
               {t('home.back')}
             </Button>
           </div>
