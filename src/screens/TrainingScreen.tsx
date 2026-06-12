@@ -87,7 +87,9 @@ function HistoryAvatar({ photoUrl, category, alt }: {
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="w-8 h-8 shrink-0 rounded-full object-cover"
+      // object-top: football photos have the face in the upper third, so the
+      // circle crops from the top — centre-cropping cuts the head off.
+      className="w-8 h-8 shrink-0 rounded-full object-cover object-top"
     />
   );
 }
