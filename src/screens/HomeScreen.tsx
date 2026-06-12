@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconQuestionMark, IconVolume, IconVolumeOff,
+  IconChevronDown,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -16,12 +17,45 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
   ALL_CATEGORIES,
+  ALL_CONTINENT_FILTERS,
   CATEGORY_LABEL_RU,
   CATEGORY_LABEL_EN,
   type CardCategory,
+  type ContinentFilter,
 } from '@/shared/types/database';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
+
+// Quick game category picker: "Players" expands into continents, every other
+// category lives under the "Other" accordion group.
+const OTHER_CATEGORIES: CardCategory[] = ALL_CATEGORIES.filter((c) => c !== 'player');
+
+type AccordionGroup = 'players' | 'other';
+
+/** Checkbox row shared by the quick-game accordion items. */
+function CheckRow({ active, label, onToggle }: {
+  active: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-left ${
+        active ? 'bg-brand-accent/15 text-white' : 'bg-brand-border text-brand-muted'
+      }`}
+      onClick={() => { hapticImpact('light'); onToggle(); }}
+    >
+      <span
+        className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
+          active ? 'bg-brand-accent text-brand-bg' : 'bg-brand-muted/30'
+        }`}
+      >
+        {active ? '✓' : ''}
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -41,7 +75,14 @@ export function HomeScreen() {
   const [view,            setView]            = useState<View>('home');
   const [code,            setCode]            = useState('');
   const [rounds1v1,       setRounds1v1]       = useState(3);
-  const [trainingCats,    setTrainingCats]    = useState<Set<CardCategory>>(new Set(ALL_CATEGORIES));
+  // Quick game picker: player deck is selected per continent ('other' =
+  // players without a continent), the rest of the deck per category.
+  // Everything starts selected = the old "whole deck" default.
+  const [trainingContinents, setTrainingContinents] =
+    useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
+  const [trainingCats, setTrainingCats] =
+    useState<Set<CardCategory>>(new Set(OTHER_CATEGORIES));
+  const [openGroup, setOpenGroup] = useState<AccordionGroup | null>(null);
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
@@ -57,13 +98,43 @@ export function HomeScreen() {
     });
   };
 
+  const toggleContinent = (continent: ContinentFilter) => {
+    setTrainingContinents((prev) => {
+      const next = new Set(prev);
+      if (next.has(continent)) next.delete(continent);
+      else next.add(continent);
+      return next;
+    });
+  };
+
+  // Parent "Players" checkbox: all continents at once / none.
+  const allContinentsOn = trainingContinents.size === ALL_CONTINENT_FILTERS.length;
+  const togglePlayers = () => {
+    setTrainingContinents(allContinentsOn ? new Set() : new Set(ALL_CONTINENT_FILTERS));
+  };
+
+  const toggleGroup = (group: AccordionGroup) => {
+    hapticImpact('light');
+    setOpenGroup((prev) => (prev === group ? null : group));
+  };
+
   const getCatLabel = (cat: CardCategory) =>
     i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
 
+  const playersOn = trainingContinents.size > 0;
+  const nothingSelected = !playersOn && trainingCats.size === 0;
+
   const startTraining = () => {
     hapticImpact('light');
-    const cats = trainingCats.size === ALL_CATEGORIES.length ? null : [...trainingCats];
-    navigate('/training', { state: { categories: cats } });
+    const everything = allContinentsOn && trainingCats.size === OTHER_CATEGORIES.length;
+    const cats: CardCategory[] = [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
+    navigate('/training', {
+      state: {
+        categories: everything ? null : cats,
+        // All continents = no filter (also covers the pre-migration DB).
+        continents: playersOn && !allContinentsOn ? [...trainingContinents] : null,
+      },
+    });
   };
 
   return (
@@ -273,36 +344,83 @@ export function HomeScreen() {
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
             <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-3">
               <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
-              <div className="grid grid-cols-2 gap-2">
-                {ALL_CATEGORIES.map((cat) => {
-                  const active = trainingCats.has(cat);
-                  return (
-                    <button
-                      key={cat}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-left ${
-                        active
-                          ? 'bg-brand-accent/15 text-white'
-                          : 'bg-brand-border text-brand-muted'
+
+              {/* Players group — expands into continents */}
+              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
+                <div className="flex items-stretch">
+                  <CheckRow
+                    active={playersOn}
+                    label={getCatLabel('player')}
+                    onToggle={togglePlayers}
+                  />
+                  <button
+                    className="flex-1 flex items-center justify-end px-3 text-brand-muted hover:text-white transition-colors"
+                    aria-expanded={openGroup === 'players'}
+                    aria-label={getCatLabel('player')}
+                    onClick={() => toggleGroup('players')}
+                  >
+                    <IconChevronDown
+                      size={18}
+                      stroke={2}
+                      className={`transition-transform duration-200 ${
+                        openGroup === 'players' ? 'rotate-180' : ''
                       }`}
-                      onClick={() => { hapticImpact('light'); toggleCat(cat); }}
-                    >
-                      <span
-                        className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
-                          active ? 'bg-brand-accent text-brand-bg' : 'bg-brand-muted/30'
-                        }`}
-                      >
-                        {active ? '✓' : ''}
-                      </span>
-                      <span className="truncate">{getCatLabel(cat)}</span>
-                    </button>
-                  );
-                })}
+                    />
+                  </button>
+                </div>
+                {openGroup === 'players' && (
+                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
+                    {ALL_CONTINENT_FILTERS.map((continent) => (
+                      <CheckRow
+                        key={continent}
+                        active={trainingContinents.has(continent)}
+                        label={t(`home.continent_${continent}`)}
+                        onToggle={() => toggleContinent(continent)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Other categories group */}
+              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
+                  aria-expanded={openGroup === 'other'}
+                  onClick={() => toggleGroup('other')}
+                >
+                  <span>
+                    {t('home.group_other')}
+                    <span className="text-brand-muted ml-1.5">
+                      {trainingCats.size}/{OTHER_CATEGORIES.length}
+                    </span>
+                  </span>
+                  <IconChevronDown
+                    size={18}
+                    stroke={2}
+                    className={`text-brand-muted transition-transform duration-200 ${
+                      openGroup === 'other' ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {openGroup === 'other' && (
+                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
+                    {OTHER_CATEGORIES.map((cat) => (
+                      <CheckRow
+                        key={cat}
+                        active={trainingCats.has(cat)}
+                        label={getCatLabel(cat)}
+                        onToggle={() => toggleCat(cat)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <Button
               fullWidth
               size="lg"
-              disabled={trainingCats.size === 0}
+              disabled={nothingSelected}
               onClick={startTraining}
             >
               {t('home.create_room')}

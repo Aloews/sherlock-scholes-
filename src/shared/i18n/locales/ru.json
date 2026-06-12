@@ -25,6 +25,13 @@
     "mode_1v1_title": "Один на один",
     "mode_1v1_desc": "Вдвоём, каждый со своего телефона. Кто больше объяснит, тот лучший!",
     "mode_training_title": "Быстрая игра",
+    "group_other": "Другое",
+    "continent_europe": "Европа",
+    "continent_south_america": "Южная Америка",
+    "continent_africa": "Африка",
+    "continent_asia": "Азия",
+    "continent_north_america": "Сев. Америка",
+    "continent_other": "Прочие",
     "tutorial_button_aria": "Как играть",
     "sound_toggle_aria": "Звук вкл/выкл"
   },

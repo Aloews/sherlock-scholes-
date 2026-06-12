@@ -14,11 +14,12 @@ import {
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
-import type { CardCategory } from '@/shared/types/database';
+import type { CardCategory, ContinentFilter } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 
 interface TrainingState {
   categories: CardCategory[] | null;
+  continents?: ContinentFilter[] | null; // player cards only; null = all
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -115,6 +116,7 @@ export function TrainingScreen() {
   const location = useLocation();
   const state    = location.state as TrainingState | null;
   const categories = state?.categories ?? null;
+  const continents = state?.continents ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -122,6 +124,7 @@ export function TrainingScreen() {
     <TrainingGame
       key={gameKey}
       categories={categories}
+      continents={continents}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -129,15 +132,16 @@ export function TrainingScreen() {
 
 interface TrainingGameProps {
   categories: CardCategory[] | null;
+  continents: ContinentFilter[] | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories);
+    useTraining(categories, continents);
 
   const [finished, setFinished] = useState(false);
 

@@ -43,6 +43,24 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   woman:         'Женщины',
 };
 
+// ─── Player continents ───────────────────────────────────────
+// cards.continent values (players only; other categories keep NULL).
+// 'other' is NOT a column value — it's the UI/RPC sentinel for
+// continent IS NULL ("Прочие"). See supabase/migrations/continents_filter.sql.
+
+export type Continent =
+  | 'europe'
+  | 'south_america'
+  | 'africa'
+  | 'asia'
+  | 'north_america';
+
+export type ContinentFilter = Continent | 'other';
+
+export const ALL_CONTINENT_FILTERS: ContinentFilter[] = [
+  'europe', 'south_america', 'africa', 'asia', 'north_america', 'other',
+];
+
 // ─── Difficulty (dormant) ────────────────────────────────────
 // The UI switch was removed — the game always plays the whole deck
 // (p_min_pageviews = null). Thresholds and the cards.pageviews column are
@@ -137,6 +155,7 @@ export interface Card {
   forbidden_words: string[];
   pageviews: number | null; // Wikipedia pageviews; null for non-player cards
   photo_url: string | null; // Commons photo (players); null = no photo
+  continent?: Continent | null; // players only; absent until continents_filter.sql runs
   active: boolean;
   created_at: string;
 }
