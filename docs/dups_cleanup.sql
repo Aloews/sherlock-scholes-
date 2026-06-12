@@ -1,0 +1,242 @@
+-- Duplicate cards cleanup (114 pairs from --find-dups, ratio >= 0.85).
+-- Deactivation instead of DELETE: round_cards.card_id references cards(id),
+-- so deleting a card that was ever played would break the FK. active=false
+-- removes it from the game and is reversible.
+-- Keep-rule: photo > higher pageviews > name_en > older card.
+
+-- ============ 1. SAFE: identical canonical key (same name modulo spelling) ============
+-- score 1.00: keep «Пьер-Эмиль Хёйбьерг» [player | pv=15236 | photo=y] — drop «Пьер-Эмиль Хейбьерг» [pv=1 | photo=y]
+UPDATE cards SET active = false WHERE id = '796999cd-beab-4cc2-a5f9-1b97dac8c669';  -- «Пьер-Эмиль Хейбьерг»
+-- score 1.00: keep «Хын Мин Сон» [player | pv=138221 | photo=y] — drop «Сон Хын Мин» [pv=138221 | photo=y]
+UPDATE cards SET active = false WHERE id = '3ebb07bf-a570-4ebc-86a3-05cbdc84dae9';  -- «Сон Хын Мин»
+-- score 1.00: keep «Марио Гётце» [player | pv=76547 | photo=y] — drop «Марио Гетце» [pv=169 | photo=y]
+UPDATE cards SET active = false WHERE id = '8a869f21-e421-435a-b3e3-7e619f155b73';  -- «Марио Гетце»
+-- score 1.00: keep «Кёртис Джонс» [player | pv=13745 | photo=y] — drop «Кертис Джонс» [pv=13745 | photo=y]
+UPDATE cards SET active = false WHERE id = 'b1149c23-781d-48e3-9a21-9e457b03f754';  -- «Кертис Джонс»
+-- score 1.00: keep «Фёдор Чалов» [player | pv=594 | photo=y] — drop «Федор Чалов» [pv=29 | photo=y]
+UPDATE cards SET active = false WHERE id = 'aaa8c9f3-6811-430b-af78-4c065761d572';  -- «Федор Чалов»
+
+-- ============ 2. REVIEW: close but NOT identical — uncomment only confirmed dups ============
+-- (the list mixes real dups like «Рэмзи»/«Рэмси» with different people like «Кака»/«Какау»)
+-- score 0.97: keep «Роберт Левандовский» [player | pv=367583 | photo=y] — drop «Роберт Левандовски» [pv=506 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'de9739b3-463b-491c-b659-9c1c080e1288';  -- «Роберт Левандовски»
+-- score 0.97: keep «Габриэль Мартинелли» [player | pv=27732 | photo=y] — drop «Габриэл Мартинелли» [pv=27732 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '6c2c216b-b57f-460a-b7bc-c4874c6b7d8e';  -- «Габриэл Мартинелли»
+-- score 0.97: keep «Страхинья Эракович» [player | pv=21909 | photo=y] — drop «Страхиня Эракович» [pv=17136 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'a87c79db-83bd-417c-b1bd-1f79751dd9e6';  -- «Страхиня Эракович»
+-- score 0.97: keep «Джереми Фримпонг» [player | pv=58775 | photo=y] — drop «Жереми Фримпонг» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '181e9550-6ded-4b81-be51-bbc5b589ce39';  -- «Жереми Фримпонг»
+-- score 0.97: keep «Никола Залевски» [player | pv=9339 | photo=y] — drop «Никола Залевский» [pv=9339 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '1a160f91-eb83-4edb-bd7b-d9100e5937ce';  -- «Никола Залевский»
+-- score 0.97: keep «Висса Бен Йеддер» [player | pv=34888 | photo=y] — drop «Виссам Бен Йеддер» [pv=34888 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '2a7962d7-9e04-4d17-af10-e6bdb0832e06';  -- «Виссам Бен Йеддер»
+-- score 0.97: keep «Леандро Троссар» [player | pv=35836 | photo=y] — drop «Леандро Троссард» [pv=35836 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '9eef0c3f-d5ad-456f-bfea-f91d1084cf6a';  -- «Леандро Троссард»
+-- score 0.97: keep «Орельен Тчуамени» [player | pv=54653 | photo=y] — drop «Орельен Чуамени» [pv=54653 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '4bf9d0f4-fd47-49f3-a6db-e9152168a70d';  -- «Орельен Чуамени»
+-- score 0.97: keep «Филипе Коутиньо» [player | pv=107368 | photo=y] — drop «Филиппе Коутиньо» [pv=419 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'dd209fe0-5fcb-40dd-9c72-01dd3b7cf9b5';  -- «Филиппе Коутиньо»
+-- score 0.97: keep «Винисиус Жуниор» [player | pv=244637 | photo=y] — drop «Винисиус Джуниор» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '8eba0b0b-9e5b-47cd-a5c0-5b6465401c78';  -- «Винисиус Джуниор»
+-- score 0.96: keep «Уэстон Маккени» [player | pv=17883 | photo=y] — drop «Уэстон Маккенни» [pv=17883 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '6645ff8c-8cc9-4cad-b1ac-561c927d1d5d';  -- «Уэстон Маккенни»
+-- score 0.96: keep «Лукаш Градецки» [player | pv=43512 | photo=y] — drop «Лукаш Градецкий» [pv=43512 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '93bbd750-87a9-4a8d-9953-737ab19dfadd';  -- «Лукаш Градецкий»
+-- score 0.96: keep «Оливер Бауман» [player | pv=8821 | photo=y] — drop «Оливер Бауманн» [pv=8 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'd26d9838-1285-42bc-a1c8-d7bb1e7834e4';  -- «Оливер Бауманн»
+-- score 0.96: keep «Мохаммед Салах» [player | pv=218564 | photo=y] — drop «Мохамед Салах» [pv=672 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '118ac6e7-070f-497f-9dbf-e0fc7c9e8691';  -- «Мохамед Салах»
+-- score 0.96: keep «Петр Зелиньски» [player | pv=19627 | photo=y] — drop «Петр Зелински» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f9fb62b7-d42e-49ea-a7c3-dc23f14fd10d';  -- «Петр Зелински»
+-- score 0.96: keep «Рожер Ибаньес» [player | pv=10066 | photo=y] — drop «Роджер Ибаньес» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '63047fe3-9f7e-428d-9a75-dbc386640a01';  -- «Роджер Ибаньес»
+-- score 0.96: keep «Эдмон Тапсоба» [player | pv=8048 | photo=y] — drop «Эдмонд Тапсоба» [pv=19 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '5eee8dc2-a3df-4f42-a107-2aee98b2a63c';  -- «Эдмонд Тапсоба»
+-- score 0.96: keep «Войцех Щенсны» [player | pv=52945 | photo=y] — drop «Войцех Щенсный» [pv=52945 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '77ac6508-88b5-4332-9238-612d16e13542';  -- «Войцех Щенсный»
+-- score 0.96: keep «Нельсон Семеду» [player | pv=13442 | photo=y] — drop «Нелсон Семеду» [pv=13442 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '5bd8b39c-3c33-4b21-92e8-7f5ad8c75d42';  -- «Нелсон Семеду»
+-- score 0.96: keep «Джошуа Зиркзее» [player | pv=21196 | photo=y] — drop «Джошуа Зиркзе» [pv=21196 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'aa939222-2a01-44ed-b73e-6088387dc6b5';  -- «Джошуа Зиркзе»
+-- score 0.96: keep «Микел Мерино» [player | pv=11896 | photo=y] — drop «Микель Мерино» [pv=11896 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '0865dc53-f1a0-433e-808f-b86edca61b6d';  -- «Микель Мерино»
+-- score 0.96: keep «Мусса Дембеле» [player | pv=7999 | photo=y] — drop «Муса Дембеле» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'b1cd6428-2b99-41ae-b045-a4f76fab1ac6';  -- «Муса Дембеле»
+-- score 0.96: keep «Фредди Гуарин» [player | pv=51 | photo=y] — drop «Фреди Гуарин» [pv=28 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'b127818d-5d43-41be-8503-3c4ba6de3047';  -- «Фреди Гуарин»
+-- score 0.96: keep «Димитри Пайет» [player | pv=37681 | photo=y] — drop «Димитри Пайе» [pv=51 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'dedc959a-91fa-44e8-a681-f033a042cd22';  -- «Димитри Пайе»
+-- score 0.95: keep «Лукас Фассон» [player | pv=7638 | photo=y] — drop «Лукас Фасон» [pv=5938 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'e12d422c-0711-48be-98da-85a8d126157a';  -- «Лукас Фасон»
+-- score 0.95: keep «Гари Кэхилл» [player | pv=11762 | photo=y] — drop «Гарри Кэхилл» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'b245a6b8-6a8d-47f0-a3e5-40bf3216f9de';  -- «Гарри Кэхилл»
+-- score 0.95: keep «Рияд Махрез» [player | pv=63345 | photo=y] — drop «Рияд Марез» [pv=103 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '16be5543-2340-4ad0-b70a-20f88b2b3f3d';  -- «Рияд Марез»
+-- score 0.95: keep «Джорджиньо Вейналдум» [player | pv=98 | photo=y] — drop «Джорджиньо Вийналдум» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '6df6e862-cfc8-432a-90a4-5bc06b3f2fa9';  -- «Джорджиньо Вийналдум»
+-- score 0.95: keep «Диогу Дало» [player | pv=17211 | photo=y] — drop «Диогу Далот» [pv=5 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'e50e00df-3208-4995-a156-6e86642c7c7b';  -- «Диогу Далот»
+-- score 0.95: keep «Сами Хююпия» [player | pv=190 | photo=y] — drop «Сами Хююпя» [pv=36 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'c5da3913-1205-4915-a96f-f65f65b76bbd';  -- «Сами Хююпя»
+-- score 0.94: keep «Давид Рая» [player | pv=102313 | photo=y] — drop «Давид Райя» [pv=40466 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '9cfb642a-187c-491e-8c78-424c51d7163e';  -- «Давид Райя»
+-- score 0.94: keep «Ян Зоммер» [player | pv=76398 | photo=y] — drop «Янн Зоммер» [pv=76398 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '6845b48c-9b74-4852-abd4-565a90d3b00a';  -- «Янн Зоммер»
+-- score 0.94: keep «Кристиян Бистрович» [player | pv=21559 | photo=y] — drop «Кристиан Бистрович» [pv=8 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '82ffe678-7c63-4160-aa68-3d15d84f63cb';  -- «Кристиан Бистрович»
+-- score 0.94: keep «Ежи Дудек» [player | pv=355 | photo=y] — drop «Йежи Дудек» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f7b6c725-419c-4bd8-b56f-a9f72181293f';  -- «Йежи Дудек»
+-- score 0.94: keep «Франсишку Тринкау» [player | pv=8138 | photo=y] — drop «Франсишку Тринкан» [pv=8138 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '883455fe-146b-4847-9c4c-36e4aea68c68';  -- «Франсишку Тринкан»
+-- score 0.93: keep «Корантен Толиссо» [player | pv=11810 | photo=y] — drop «Корентен Толиссо» [pv=16 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '0804f7eb-9adb-4d59-bdee-bbc42da7d523';  -- «Корентен Толиссо»
+-- score 0.93: keep «Марсело Брозович» [player | pv=43175 | photo=y] — drop «Марцело Брозович» [pv=43175 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '576b4bf4-8411-4e86-bd73-2af4b18c4554';  -- «Марцело Брозович»
+-- score 0.93: keep «Кристиан Рамирес» [player | pv=115 | photo=y] — drop «Кристиан Рамирез» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'eb2ec674-6d2b-4420-b590-dce1b967c639';  -- «Кристиан Рамирез»
+-- score 0.93: keep «Бенжамен Лекомт» [player | pv=1616 | photo=y] — drop «Бенжамен Леконт» [pv=5 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '010a8580-ad8a-4c65-b665-a8caf6ab75b5';  -- «Бенжамен Леконт»
+-- score 0.93: keep «Бруно Фернандеш» [player | pv=72662 | photo=y] — drop «Бруну Фернандеш» [pv=72662 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '445378a8-8beb-4e84-8c05-ba0de7559d29';  -- «Бруну Фернандеш»
+-- score 0.93: keep «Давиде Калабриа» [player | pv=19752 | photo=y] — drop «Давиде Калабрия» [pv=19752 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '518a379f-0b0a-4997-980c-2f63225d6beb';  -- «Давиде Калабрия»
+-- score 0.93: keep «Деян Кулусевски» [player | pv=21909 | photo=y] — drop «Деян Кулушевски» [pv=21909 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '958c766f-d242-43a3-bb7d-c10ed2ffb56c';  -- «Деян Кулушевски»
+-- score 0.92: keep «Аксель Витсель» [player | pv=171 | photo=y] — drop «Аксель Витцель» [pv=7 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'c93d59e6-a563-40c3-952c-e18a613ecb6b';  -- «Аксель Витцель»
+-- score 0.92: keep «Кевин Де Брёйне» [player | pv=180915 | photo=y] — drop «Кевин Де Брюйне» [pv=47 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '1cce0c66-5d50-47f6-9bb4-e93679a56cbf';  -- «Кевин Де Брюйне»
+-- score 0.92: keep «Маркус Рашфорд» [player | pv=72026 | photo=y] — drop «Маркус Рэшфорд» [pv=57 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '35c0c189-17a5-4b28-a2a8-3b340a55b668';  -- «Маркус Рэшфорд»
+-- score 0.92: keep «Мойсес Кайседо» [player | pv=55303 | photo=y] — drop «Мойзес Кайседо» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '3e8b3ae6-bcae-4fc7-ae13-cdf36c95176a';  -- «Мойзес Кайседо»
+-- score 0.92: keep «Адриан» [player | pv=11031 | photo=y] — drop «Адриано» [pv=1065 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'dcd801ca-7125-478b-9c5a-2ab91d60727d';  -- «Адриано»
+-- score 0.92: keep «Эсекьель Барко» [player | pv=74372 | photo=y] — drop «Эзекьель Барко» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'e1dfcfa6-7d0e-4bf4-afb8-a082b6af2cf6';  -- «Эзекьель Барко»
+-- score 0.92: keep «Дензел Дюмфрис» [player | pv=25 | photo=y] — drop «Дензел Думфрис» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '76e06e3e-2822-43aa-bf54-552156f6c612';  -- «Дензел Думфрис»
+-- score 0.92: keep «Эктор Бельерин» [player | pv=20291 | photo=y] — drop «Эктор Беллерин» [pv=18 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'd995e840-595a-4ba4-81a7-0649c15b8c3e';  -- «Эктор Беллерин»
+-- score 0.92: keep «Кайо Панталеао» [player | pv=8380 | photo=y] — drop «Кайо Панталеан» [pv=11936 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'cf4f41ab-be13-4fd7-8782-de9396df928c';  -- «Кайо Панталеан»
+-- score 0.92: keep «Маттиа Де Шильо» [player | pv=7729 | photo=y] — drop «Маттия Де Шильо» [pv=7729 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'bc93c9e4-ccab-44d7-8783-4e3b57514585';  -- «Маттия Де Шильо»
+-- score 0.92: keep «Расмус Хёйлунн» [player | pv=101299 | photo=y] — drop «Расмус Хёйлунд» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f85bd6e8-43e0-4ab6-bef6-7f1bcacefa04';  -- «Расмус Хёйлунд»
+-- score 0.92: keep «Гиорги Мамардашвили» [player | pv=76187 | photo=y] — drop «Георгий Мамардашвили» [pv=76187 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '80edb1f8-2adf-4beb-9598-28d977951c67';  -- «Георгий Мамардашвили»
+-- score 0.92: keep «Алиссон Беккер» [player | pv=57832 | photo=y] — drop «Алисон Бекер» [pv=57832 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '0219aeea-fa06-470f-b5b2-ac1c3aa07360';  -- «Алисон Бекер»
+-- score 0.92: keep «Нико Гонсалес» [player | pv=21 | photo=y] — drop «Нико Гонсалез» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '15e0701d-097b-48db-9867-2e8c67d8cf83';  -- «Нико Гонсалез»
+-- score 0.92: keep «Эрлинг Холанн» [player | pv=529693 | photo=y] — drop «Эрлинг Холанд» [pv=896 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'ce4e0d29-2190-4212-b0b7-a8f1f1e1fa89';  -- «Эрлинг Холанд»
+-- score 0.92: keep «Марко Пашалич» [player | pv=4582 | photo=y] — drop «Марио Пашалич» [pv=135 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '8aefbc01-4df7-4dba-9084-d7c5f672dd26';  -- «Марио Пашалич»
+-- score 0.92: keep «Жоау Моутиньо» [player | pv=25980 | photo=y] — drop «Жоау Моутинью» [pv=25980 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'a3fc5ead-c5a9-446b-9412-ff809d947ba4';  -- «Жоау Моутинью»
+-- score 0.91: keep «Свен Ульрайх» [player | pv=18194 | photo=y] — drop «Свен Ульряйх» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '20388eed-6e02-4c1a-896a-a3d33024cb70';  -- «Свен Ульряйх»
+-- score 0.91: keep «Александр Коларов» [player | pv=73 | photo=y] — drop «Александр Кокшаров» [pv=17981 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'd635b624-8d6e-43e8-867d-ee3b1412e3d6';  -- «Александр Кокшаров»
+-- score 0.91: keep «Маркюс Тюрам» [player | pv=76171 | photo=y] — drop «Маркус Тюрам» [pv=131 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '2d5c5393-5247-4200-880c-5c7c5ecd3a3d';  -- «Маркус Тюрам»
+-- score 0.91: keep «Самюэль Жиго» [player | pv=21043 | photo=y] — drop «Самуэль Жиго» [pv=17 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '632c2a0b-e53a-41de-8623-e6387cf8964a';  -- «Самуэль Жиго»
+-- score 0.91: keep «Леви Колуилл» [player | pv=14799 | photo=y] — drop «Леви Колвилл» [pv=34 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'afb75544-0ded-4f44-8286-b7777a111215';  -- «Леви Колвилл»
+-- score 0.91: keep «Мейсон Маунт» [player | pv=50685 | photo=y] — drop «Мэйсон Маунт» [pv=23 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '5be01ec4-b611-4121-88c2-4486fe46c6a6';  -- «Мэйсон Маунт»
+-- score 0.91: keep «Угловой удар» [term | pv=235 | photo=n] — drop «Удар головой» [pv=123 | photo=n]
+-- UPDATE cards SET active = false WHERE id = '5d111da3-580a-4bd4-9745-76c6abd263eb';  -- «Удар головой»
+-- score 0.91: keep «Нико Уильямс» [player | pv=143 | photo=y] — drop «Неко Уильямс» [pv=24 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '891d040f-9b15-4958-8b88-677587c2a6a6';  -- «Неко Уильямс»
+-- score 0.91: keep «Данни Уэлбек» [player | pv=25868 | photo=y] — drop «Дэнни Уэлбек» [pv=25868 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'c3a3477d-d2e8-4167-9c33-e1302864cc04';  -- «Дэнни Уэлбек»
+-- score 0.90: keep «Даниэль Карвахаль» [player | pv=531 | photo=y] — drop «Даниэль Карвальо» [pv=383 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '69f45742-79d8-46a3-9fb1-93e7d037b9fa';  -- «Даниэль Карвальо»
+-- score 0.90: keep «Майк Меньян» [player | pv=59 | photo=y] — drop «Майк Маньян» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '2c82a97c-370e-4620-af25-1f327a69dfa7';  -- «Майк Маньян»
+-- score 0.90: keep «Никлас Зюле» [player | pv=41447 | photo=y] — drop «Никлас Зуле» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '3d64919e-bb25-4eea-8f0d-ad13d867e44d';  -- «Никлас Зуле»
+-- score 0.90: keep «Рафаэл Леан» [player | pv=62604 | photo=y] — drop «Рафаэл Леау» [pv=37 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'ed49b07b-075b-4521-b0a8-a56d3242afc5';  -- «Рафаэл Леау»
+-- score 0.90: keep «Аарон Рэмзи» [player | pv=39252 | photo=y] — drop «Аарон Рэмси» [pv=15 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '97f04f25-14e4-46b1-87df-626d35a1d8a1';  -- «Аарон Рэмси»
+-- score 0.90: keep «Диого Далот» [player | pv=36430 | photo=y] — drop «Диогу Далот» [pv=5 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'e50e00df-3208-4995-a156-6e86642c7c7b';  -- «Диогу Далот»
+-- score 0.90: keep «Александр Анюков» [player | pv=247 | photo=y] — drop «Александр Панов» [pv=118 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '88267aa2-d0a7-4832-b0d0-ec9d8fb0aada';  -- «Александр Панов»
+-- score 0.90: keep «Дани Карвахаль» [player | pv=130764 | photo=y] — drop «Даниэль Карвахаль» [pv=531 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'cf58ba39-3231-4935-b416-c534d1cbd0bb';  -- «Даниэль Карвахаль»
+-- score 0.89: keep «Фабиан Шер» [player | pv=42 | photo=y] — drop «Фабиан Шэр» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '163362ff-acab-48e9-865b-c6f7662c8c86';  -- «Фабиан Шэр»
+-- score 0.89: keep «Папу Гомес» [player | pv=114 | photo=y] — drop «Папу Гомез» [pv=86 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '31b08391-f16a-410d-a3b7-bcfd58c93e06';  -- «Папу Гомез»
+-- score 0.89: keep «Диогу Жота» [player | pv=44038 | photo=y] — drop «Диого Жота» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '34aaea30-3b9d-423d-ae37-354ebb6f9e35';  -- «Диого Жота»
+-- score 0.89: keep «Кака» [player | pv=188098 | photo=y] — drop «Какау» [pv=5316 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '5b7e8326-e3e7-4fe0-900e-6080e349bbac';  -- «Какау»
+-- score 0.89: keep «Джон Дуран» [player | pv=8177 | photo=y] — drop «Джон Дюран» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '60b68049-16f5-4436-a9b8-885d766745fe';  -- «Джон Дюран»
+-- score 0.89: keep «Хулио Крус» [player | pv=492 | photo=y] — drop «Хулио Круз» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f6932dd7-5b57-46da-a735-9623db17e2ff';  -- «Хулио Круз»
+-- score 0.89: keep «Садьо Мане» [player | pv=223547 | photo=y] — drop «Садио Мане» [pv=223547 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'e4a4e4b8-5118-4e63-b6aa-6dea9f62b065';  -- «Садио Мане»
+-- score 0.88: keep «Дмитрий Торбинский» [player | pv=161 | photo=y] — drop «Дмитрий Рыбчинский» [pv=17 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'f4a465fb-1cc5-4497-bcbd-122a92c65758';  -- «Дмитрий Рыбчинский»
+-- score 0.88: keep «Люка Эрнандес» [player | pv=61831 | photo=y] — drop «Лукас Эрнандес» [pv=61831 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'fcec3bee-3a5b-4094-9e7d-caa88770a735';  -- «Лукас Эрнандес»
+-- score 0.88: keep «Динамо (Бухарест)» [club | pv=21 | photo=y] — drop «Динамо (Брест)» [pv=2 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f01946c1-38d4-422b-a1f6-871547b6c0d2';  -- «Динамо (Брест)»
+-- score 0.88: keep «Максимилиан Байер» [player | pv=10353 | photo=y] — drop «Максимилиан Вёбер» [pv=5186 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '008c05fa-ff7e-46d6-bc42-b31f35f0278f';  -- «Максимилиан Вёбер»
+-- score 0.88: keep «Станислав Агкацев» [player | pv=29 | photo=y] — drop «Станислав Магкеев» [pv=0 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '24df2d63-e3be-408f-99b4-147cfc851659';  -- «Станислав Магкеев»
+-- score 0.88: keep «Джо Гомес» [player | pv=56 | photo=y] — drop «Джо Гомез» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '856abc8f-e912-452b-8998-ceb6cb5d1bad';  -- «Джо Гомез»
+-- score 0.88: keep «Марк Гехи» [player | pv=13185 | photo=y] — drop «Марк Гейи» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '44c9660a-63e4-4c22-b6db-4cff3f797cd9';  -- «Марк Гейи»
+-- score 0.88: keep «Мойзе Кен» [player | pv=24075 | photo=y] — drop «Мойзе Кин» [pv=39 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'e9384bfe-848f-4164-b086-245249a0f4ce';  -- «Мойзе Кин»
+-- score 0.88: keep «Александр Филимонов» [player | pv=113 | photo=y] — drop «Александр Филин» [pv=33 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'f82e88a7-3f01-44cd-8a65-533c36145566';  -- «Александр Филин»
+-- score 0.87: keep «Усман Дембеле» [player | pv=389 | photo=y] — drop «Муса Дембеле» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'b1cd6428-2b99-41ae-b045-a4f76fab1ac6';  -- «Муса Дембеле»
+-- score 0.87: keep «Даниэль Вивиан» [player | pv=3039 | photo=n] — drop «Дани Вивиан» [pv=1 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'b143a7ae-f206-4299-a92b-1fb3c9d15f46';  -- «Дани Вивиан»
+-- score 0.87: keep «Александр Точилин» [player | pv=104 | photo=y] — drop «Александр Филин» [pv=33 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'f82e88a7-3f01-44cd-8a65-533c36145566';  -- «Александр Филин»
+-- score 0.87: keep «Владимир Габулов» [player | pv=225 | photo=y] — drop «Владимир Хубулов» [pv=10 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '98b48d41-c4c6-45d8-8c17-a458444f100c';  -- «Владимир Хубулов»
+-- score 0.87: keep «Хосе Саломон Рондон» [player | pv=24751 | photo=y] — drop «Саломон Рондон» [pv=47 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'ae012c74-c06c-4bb9-8b8f-271c1e61e522';  -- «Саломон Рондон»
+-- score 0.86: keep «Луис Фабиано» [player | pv=10790 | photo=y] — drop «Фабиан Руис» [pv=97 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '131ea6aa-7870-4bae-b236-aa02dabe2c45';  -- «Фабиан Руис»
+-- score 0.86: keep «Александр Эктов» [player | pv=9797 | photo=y] — drop «Александр Зотов» [pv=9369 | photo=y]
+-- UPDATE cards SET active = false WHERE id = '197358fc-7042-4a6c-aef6-3cbdd2457d36';  -- «Александр Зотов»
+-- score 0.86: keep «Эмерсон» [player | pv=1008 | photo=n] — drop «Эдерсон» [pv=537 | photo=n]
+-- UPDATE cards SET active = false WHERE id = '43f9674e-0ca7-4279-9a58-71e561e4d6c5';  -- «Эдерсон»
+-- score 0.86: keep «Алемания» [club | pv=3224 | photo=y] — drop «Алания» [pv=76786 | photo=n]
+-- UPDATE cards SET active = false WHERE id = 'f184d994-e2ab-4dd7-a6ad-242ba68f658c';  -- «Алания»
+-- score 0.86: keep «Александр Жиров» [player | pv=7911 | photo=y] — drop «Александр Ширко» [pv=854 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'cdb55200-4946-419f-b41c-1ec94d0c87f1';  -- «Александр Ширко»
+-- score 0.86: keep «Матеуш Фернандеш» [player | pv=477 | photo=y] — drop «Ману Фернандеш» [pv=None | photo=n]
+-- UPDATE cards SET active = false WHERE id = '8d687f2d-ef98-4777-88bb-a2bf937374bc';  -- «Ману Фернандеш»
+-- score 0.86: keep «Илья Агапов» [player | pv=8268 | photo=y] — drop «Илья Гапонов» [pv=5237 | photo=y]
+-- UPDATE cards SET active = false WHERE id = 'ba6ece86-3716-4e1c-a655-0d2269e68ced';  -- «Илья Гапонов»
+
+-- ============ 3. CROSS-CATEGORY pairs — almost certainly different entities ============
+--   score 0.90: «Александр Егоров» [referee] 80ab2d09-9c52-417c-9e8e-eda3e92044ab  <->  «Александр Горшков» [player] b7d6dfd1-48fb-41f8-b1e2-22831185df3e
+--   score 0.89: «Нани» [player] 0dc6057c-7b91-4bb2-befe-a80810c9e77b  <->  «Нанси» [club] 1ad8eb54-353d-43f3-9381-5fdd3ee66a06
+--   score 0.88: «Пьерлуиджи Голлини» [player] 11263ba2-86a6-4b3c-ac93-d6a1b7023ac7  <->  «Пьерлуиджи Коллина» [referee] 26801756-ca62-4692-ae7f-20eef22bdbf7
+--   score 0.86: «Ари» [player] 431dda92-1bf7-4cbb-b4a0-aedb74d7b25d  <->  «Бари» [club] 495c1805-7a3c-42c6-8696-d1032bd9443d
+--   score 0.86: «Марсело» [player] 717567ec-30de-4832-8078-b56bc4958e9d  <->  «Марсель» [club] f5e20436-ebac-48a4-821e-86f4d53d95b0
+
+-- ============ 4. MANUAL FIX: «Роналдо» ============
+-- The RPL Brazilian Ronaldo (meta name_en "Ronaldo Cesar Soares dos Santos")
+-- inherited the pageviews of the LEGEND's ruwiki article «Роналдо» (436488).
+-- The deck had no Ronaldo card, so the card itself is a fine addition — but
+-- as the legend, not the RPL player. Fix the English name accordingly:
+UPDATE cards SET name_en = 'Ronaldo' WHERE id = '1670defe-f8ff-4b96-8fa9-8064ca2c4c79';  -- «Роналдо»
