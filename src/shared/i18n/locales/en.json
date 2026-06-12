@@ -71,6 +71,10 @@
     "history_empty": "No cards yet",
     "guessed_label": "Guessed",
     "skipped_label": "Skipped",
+    "min_short": "min",
+    "on_pitch_hours": "≈{{count}} h on the pitch",
+    "on_pitch_days_one": "≈{{count}} day on the pitch",
+    "on_pitch_days_other": "≈{{count}} days on the pitch",
     "google": "Google it",
     "home": "Home"
   },

@@ -11,7 +11,7 @@ import {
   IconShield,
   IconUser,
 } from '@tabler/icons-react';
-import { useTraining, type Team } from '@/features/game/useTraining';
+import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
@@ -158,6 +158,20 @@ function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps
     );
   }
 
+  // "Зенит · 2840 мин (≈47 ч на поле)" — club + minutes of the player's
+  // best season; the bracket converts to hours, or to days from 48h up.
+  const clubLine = (entry: HistoryEntry): string | null => {
+    if (!entry.top_club) return null;
+    if (entry.top_minutes == null) return entry.top_club;
+    const base = `${entry.top_club} · ${entry.top_minutes} ${t('quick.min_short')}`;
+    const hours = Math.round(entry.top_minutes / 60);
+    if (hours < 1) return base;
+    const approx = hours < 48
+      ? t('quick.on_pitch_hours', { count: hours })
+      : t('quick.on_pitch_days', { count: Math.round(entry.top_minutes / 1440) });
+    return `${base} (${approx})`;
+  };
+
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     // EN interface → show the card's English name when available; otherwise
@@ -221,6 +235,11 @@ function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps
                           {displayName}
                         </button>
                       </div>
+                      {clubLine(entry) && (
+                        <p className="text-brand-muted text-xs leading-snug truncate mt-0.5">
+                          {clubLine(entry)}
+                        </p>
+                      )}
                       <span
                         className="text-xs font-medium"
                         style={{ color: guessed ? TEAM_COLOR.orange : '#7A8499' }}

@@ -20,6 +20,8 @@ export interface HistoryEntry {
   photo_url?: string | null; // Commons photo; summary shows it as an avatar
   category: CardCategory;
   category_ru?: string | null; // summary shows it as a label on non-player cards
+  top_club?: string | null; // club + minutes of the player's best season —
+  top_minutes?: number | null; // the summary line under the name; null = hide
   status: 'guessed' | 'skipped';
 }
 
@@ -93,7 +95,7 @@ export function useTraining(
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, top_club: card.top_club, top_minutes: card.top_minutes, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card

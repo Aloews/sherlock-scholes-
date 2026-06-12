@@ -71,6 +71,12 @@
     "history_empty": "Карточек не было",
     "guessed_label": "Угадали",
     "skipped_label": "Пропущено",
+    "min_short": "мин",
+    "on_pitch_hours": "≈{{count}} ч на поле",
+    "on_pitch_days_one": "≈{{count}} день на поле",
+    "on_pitch_days_few": "≈{{count}} дня на поле",
+    "on_pitch_days_many": "≈{{count}} дней на поле",
+    "on_pitch_days_other": "≈{{count}} дней на поле",
     "google": "Загуглить",
     "home": "На главную"
   },

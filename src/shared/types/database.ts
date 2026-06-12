@@ -156,6 +156,8 @@ export interface Card {
   pageviews: number | null; // Wikipedia pageviews; null for non-player cards
   photo_url: string | null; // Commons photo (players); null = no photo
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
+  top_club?: string | null;     // club of the max-minutes season (players); absent until cards_fill_top_club.sql runs
+  top_minutes?: number | null;  // minutes of that season
   active: boolean;
   created_at: string;
 }
