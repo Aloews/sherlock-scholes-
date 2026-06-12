@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconArrowsExchange, IconReload, IconUser } from '@tabler/icons-react';
+import {
+  IconArrowsExchange,
+  IconBallFootball,
+  IconBuildingStadium,
+  IconFlag,
+  IconReload,
+  IconShield,
+  IconUser,
+} from '@tabler/icons-react';
 import { useTraining, type Team } from '@/features/game/useTraining';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -42,16 +50,33 @@ const googleSearch = (name: string) => {
   else window.open(url, '_blank');
 };
 
-/** 32x32 round avatar for the summary history. Falls back to a silhouette
- * circle when the card has no photo_url or the image fails to load. */
-function HistoryAvatar({ photoUrl, alt }: { photoUrl?: string | null; alt: string }) {
+// Placeholder icon per category when a history entry has no photo: a user
+// silhouette makes no sense for a term or a stadium. People keep IconUser.
+const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
+  term:          IconBallFootball,
+  position:      IconBallFootball,
+  club:          IconShield,
+  club_nickname: IconShield,
+  stadium:       IconBuildingStadium,
+  // No IconWhistle in tabler — IconFlag is the referee icon used in-game too.
+  referee:       IconFlag,
+};
+
+/** 32x32 round avatar for the summary history. Falls back to a category
+ * placeholder circle when the card has no photo_url or the image fails. */
+function HistoryAvatar({ photoUrl, category, alt }: {
+  photoUrl?: string | null;
+  category: CardCategory;
+  alt: string;
+}) {
   const [failed, setFailed] = useState(false);
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
+    const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
     return (
       <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
-        <IconUser size={16} className="text-brand-muted" />
+        <Placeholder size={16} className="text-brand-muted" />
       </span>
     );
   }
@@ -181,7 +206,7 @@ function TrainingGame({ categories, onPlayAgain }: TrainingGameProps) {
                         </span>
                       )}
                       <div className="flex items-center gap-2">
-                        <HistoryAvatar photoUrl={entry.photo_url} alt={displayName} />
+                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
                         <button
                           type="button"
                           onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
