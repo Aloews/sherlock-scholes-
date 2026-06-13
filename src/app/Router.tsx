@@ -11,6 +11,8 @@ const GameScreen     = lazy(() => import('@/screens/GameScreen').then((m) => ({ 
 const EndScreen      = lazy(() => import('@/screens/EndScreen').then((m) => ({ default: m.EndScreen })));
 const TrainingScreen = lazy(() => import('@/screens/TrainingScreen').then((m) => ({ default: m.TrainingScreen })));
 const TutorialScreen = lazy(() => import('@/screens/TutorialScreen').then((m) => ({ default: m.TutorialScreen })));
+// Admin card editor — separate route, NOT linked from the game menu.
+const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
 // Full-screen fallback in the app style: brand bg + a small bouncing ball
 // (matching the splash), no text, so there's no white flash while chunks load.
@@ -78,6 +80,7 @@ export function Router() {
       />
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
+      <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
