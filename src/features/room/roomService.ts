@@ -282,7 +282,21 @@ export async function activateRound(round: Round, room: Room): Promise<void> {
 
 // ─── Cards ───────────────────────────────────────────────────
 
+// card_translations exists only after docs/card_translations.sql ran; until
+// then PostgREST rejects the embedded relation, so after the first such
+// rejection the plain select is used for the rest of the session.
+let cardsEmbedTranslations = true;
+
 export async function fetchRoundCards(roundId: string): Promise<RoundCard[]> {
+  if (cardsEmbedTranslations) {
+    const { data, error } = await supabase
+      .from('round_cards')
+      .select('*, card:cards(*, card_translations(*))')
+      .eq('round_id', roundId)
+      .order('card_order');
+    if (!error) return (data ?? []) as RoundCard[];
+    cardsEmbedTranslations = false; // pre-migration DB — retry without
+  }
   const { data } = await supabase
     .from('round_cards')
     .select('*, card:cards(*)')

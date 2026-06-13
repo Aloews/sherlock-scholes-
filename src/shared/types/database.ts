@@ -144,6 +144,15 @@ export interface RoomPlayer {
   player?: Player;
 }
 
+// Card-name translation (card_translations table, docs/card_translations.sql).
+// Fallback chain when displaying: translation -> name_en -> name.
+export interface CardTranslation {
+  card_id: string;
+  lang: string;           // 'es' | 'pt' | 'fr' | 'zh' | 'ja' | 'ko' | 'ar'
+  name: string;
+  source?: string | null; // 'sitelink' | 'label' | 'name_en'
+}
+
 // Generic card — covers all 10 categories from sherlock_cards.csv
 export interface Card {
   id: string;
@@ -158,6 +167,7 @@ export interface Card {
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
   top_club?: string | null;     // club of the max-minutes season (players); absent until cards_fill_top_club.sql runs
   top_minutes?: number | null;  // minutes of that season
+  card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;
 }

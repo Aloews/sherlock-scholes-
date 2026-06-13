@@ -1,29 +1,51 @@
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
-import { setLanguage } from '@/shared/i18n';
+import { setLanguage, APP_LANGS, type AppLang } from '@/shared/i18n';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 interface LanguageToggleProps {
   className?: string;
 }
 
+// Native names keep the selector self-explanatory in any interface language.
+const LANG_LABEL: Record<AppLang, string> = {
+  ru: 'RU',
+  en: 'EN',
+  es: 'ES',
+  pt: 'PT',
+  fr: 'FR',
+  zh: '中文',
+  ja: '日本語',
+  ko: '한국어',
+  ar: 'العربية',
+};
+
+/** Language selector: interface stays ru/en (en serves the rest), card
+ * names follow the chosen language via card_translations. */
 export function LanguageToggle({ className }: LanguageToggleProps) {
   const { i18n } = useTranslation();
-  const isEn = i18n.language === 'en';
+  const current = (APP_LANGS as readonly string[]).includes(i18n.language)
+    ? (i18n.language as AppLang)
+    : 'ru';
 
   return (
-    <button
+    <select
+      value={current}
+      aria-label="Language"
+      onChange={(e) => { hapticImpact('light'); setLanguage(e.target.value as AppLang); }}
       className={clsx(
-        'flex items-center gap-1 bg-brand-surface rounded-xl px-3 py-1.5',
-        'border border-brand-border text-xs font-bold select-none',
-        'hover:border-brand-muted/50 transition-colors',
+        'bg-brand-surface rounded-xl px-2.5 py-1.5 appearance-none',
+        'border border-brand-border text-xs font-bold select-none text-white',
+        'hover:border-brand-muted/50 transition-colors focus:outline-none',
+        'focus:border-brand-accent cursor-pointer',
         className,
       )}
-      onClick={() => { hapticImpact('light'); setLanguage(isEn ? 'ru' : 'en'); }}
     >
-      <span className={isEn ? 'text-brand-muted' : 'text-white'}>RU</span>
-      <span className="text-brand-border">|</span>
-      <span className={isEn ? 'text-white' : 'text-brand-muted'}>EN</span>
-    </button>
+      {APP_LANGS.map((lang) => (
+        <option key={lang} value={lang} className="bg-brand-surface text-white">
+          {LANG_LABEL[lang]}
+        </option>
+      ))}
+    </select>
   );
 }

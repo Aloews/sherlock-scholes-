@@ -5,11 +5,22 @@ import en from './locales/en.json';
 
 const LANG_KEY = 'ss_lang';
 
+// Languages offered in the selector. The INTERFACE has resources only for
+// ru/en (139 keys — not worth translating); the other languages fall back to
+// English interface texts while CARD NAMES come translated from
+// card_translations (see shared/lib/cardName.ts).
+export const APP_LANGS = ['ru', 'en', 'es', 'pt', 'fr', 'zh', 'ja', 'ko', 'ar'] as const;
+export type AppLang = (typeof APP_LANGS)[number];
+
+function isAppLang(lang: string | null | undefined): lang is AppLang {
+  return !!lang && (APP_LANGS as readonly string[]).includes(lang);
+}
+
 function detectLang(): string {
   const saved = localStorage.getItem(LANG_KEY);
-  if (saved === 'ru' || saved === 'en') return saved;
+  if (isAppLang(saved)) return saved;
   const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
-  if (tgLang === 'en') return 'en';
+  if (isAppLang(tgLang)) return tgLang;
   return 'ru';
 }
 
@@ -19,11 +30,13 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
   },
   lng: detectLang(),
-  fallbackLng: 'ru',
+  // Russian stays the default; every non-ru language without its own
+  // interface resources (es/pt/fr/zh/ja/ko/ar) reads the English texts.
+  fallbackLng: (code?: string) => (!code || code.startsWith('ru') ? ['ru'] : ['en', 'ru']),
   interpolation: { escapeValue: false },
 });
 
-export function setLanguage(lang: 'ru' | 'en'): void {
+export function setLanguage(lang: AppLang): void {
   localStorage.setItem(LANG_KEY, lang);
   void i18n.changeLanguage(lang);
 }

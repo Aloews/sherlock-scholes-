@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import type { Card, CardCategory } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
+import { cardDisplayName } from '@/shared/lib/cardName';
 
 interface PlayerCardProps {
   card: Card;
@@ -69,8 +70,9 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
 
   const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
   const label    = card.category_ru ?? CATEGORY_LABEL_RU[card.category] ?? card.category;
-  // EN interface → English card name when available, Russian fallback (same rule as the summary)
-  const name     = i18n.language.startsWith('en') && card.name_en ? card.name_en : card.name;
+  // Translation -> name_en -> name, per the interface language (same rule
+  // as the quick-game summary).
+  const name     = cardDisplayName(card, i18n.language);
 
   return (
     <div

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pickRandomCards } from './cardRandomizer';
-import type { Card, CardCategory, ContinentFilter } from '@/shared/types/database';
+import { supabase } from '@/shared/lib/supabase';
+import { isCardTranslationLang } from '@/shared/lib/cardName';
+import i18n from '@/shared/i18n';
+import type { Card, CardCategory, CardTranslation, ContinentFilter } from '@/shared/types/database';
 
 // No card cap: the game runs until the deck of the selected categories is
 // exhausted. PostgREST returns at most 1000 rows per request, so the deck is
@@ -12,6 +15,11 @@ const PRELOAD_AT  = 25;   // fetch next batch when this many cards remain
 // Otherwise the deck is exhausted when batches stop bringing new cards.
 const MAX_ZERO_NEW_BATCHES = 2;
 
+// Cards come from the pick_random_cards RPC (no embedded relations), so for
+// es/pt/fr/zh/ja/ko/ar the translations arrive as a separate light query by
+// the ids of the drawn cards — chunked so the IN() URL stays short.
+const TRANSLATION_CHUNK = 150;
+
 export type Team = 'orange' | 'blue';
 
 export interface HistoryEntry {
@@ -22,6 +30,7 @@ export interface HistoryEntry {
   category_ru?: string | null; // summary shows it as a label on non-player cards
   top_club?: string | null; // club + minutes of the player's best season —
   top_minutes?: number | null; // the summary line under the name; null = hide
+  card_translations?: CardTranslation[] | null; // es/pt/fr/... names (cardDisplayName)
   status: 'guessed' | 'skipped';
 }
 
@@ -46,6 +55,27 @@ export function useTraining(
   const zeroNewRef      = useRef(0);     // consecutive batches with no new cards
   const exhaustedRef    = useRef(false); // deck fully drawn — stop fetching
 
+  // Merge the chosen language's card names into the loaded cards. Failures
+  // (pre-migration DB, network) are silent — the game plays on name_en/name.
+  const fetchTranslations = useCallback(async (ids: string[]) => {
+    const lang = i18n.language.slice(0, 2);
+    if (!isCardTranslationLang(lang) || ids.length === 0) return;
+    const byId: Record<string, CardTranslation[]> = {};
+    for (let i = 0; i < ids.length; i += TRANSLATION_CHUNK) {
+      const { data } = await supabase
+        .from('card_translations')
+        .select('card_id,lang,name')
+        .eq('lang', lang)
+        .in('card_id', ids.slice(i, i + TRANSLATION_CHUNK));
+      for (const t of data ?? []) {
+        (byId[t.card_id] ??= []).push(t as CardTranslation);
+      }
+    }
+    if (Object.keys(byId).length === 0) return;
+    setCards((prev) => prev.map(
+      (c) => (byId[c.id] ? { ...c, card_translations: byId[c.id] } : c)));
+  }, []);
+
   // Append a batch, keeping only cards we haven't seen this session, and
   // detect deck exhaustion (see BATCH/MAX_ZERO_NEW_BATCHES above).
   const absorbBatch = useCallback((batch: Card[]) => {
@@ -59,8 +89,11 @@ export function useTraining(
     } else {
       zeroNewRef.current = 0;
     }
-    if (fresh.length) setCards((prev) => [...prev, ...fresh]);
-  }, []);
+    if (fresh.length) {
+      setCards((prev) => [...prev, ...fresh]);
+      void fetchTranslations(fresh.map((card) => card.id));
+    }
+  }, [fetchTranslations]);
 
   // Initial load — null min_pageviews: the whole deck, no difficulty filter.
   useEffect(() => {
@@ -95,7 +128,7 @@ export function useTraining(
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, top_club: card.top_club, top_minutes: card.top_minutes, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, top_club: card.top_club, top_minutes: card.top_minutes, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card

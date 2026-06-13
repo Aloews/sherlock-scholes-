@@ -12,6 +12,7 @@ import {
   IconUser,
 } from '@tabler/icons-react';
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
+import { cardDisplayName } from '@/shared/lib/cardName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
@@ -174,9 +175,6 @@ function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps
 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
-    // EN interface → show the card's English name when available; otherwise
-    // fall back to the Russian name (never blank).
-    const isEn = i18n.language.startsWith('en');
     return (
       <div className="min-h-screen bg-brand-bg flex flex-col">
         {/* Header */}
@@ -209,8 +207,8 @@ function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps
                 // already identify a player, the rest need the context.
                 const showCategory = entry.category !== 'player';
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
-                // On EN use name_en when present; else Russian name (fallback).
-                const displayName = isEn && entry.name_en ? entry.name_en : entry.name;
+                // Translation -> name_en -> name, per the interface language.
+                const displayName = cardDisplayName(entry, i18n.language);
                 return (
                   <div
                     key={i}
@@ -281,10 +279,9 @@ function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps
   const catLabel = currentCard
     ? (currentCard.category_ru ?? CATEGORY_LABEL_RU[currentCard.category] ?? currentCard.category)
     : '';
-  // EN interface → English card name when available, Russian fallback (same rule as the summary)
-  const cardName = currentCard
-    ? (i18n.language.startsWith('en') && currentCard.name_en ? currentCard.name_en : currentCard.name)
-    : '';
+  // Translation -> name_en -> name, per the interface language (same rule
+  // as the summary history).
+  const cardName = currentCard ? cardDisplayName(currentCard, i18n.language) : '';
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
