@@ -47,6 +47,23 @@ const CATEGORY_COLOR: Record<CardCategory, string> = {
   woman:         '#FF6BA8',
 };
 
+// Club first words that are ambiguous on their own (several clubs share them),
+// so the short form would mislead — keep the full name and let it ellipsis.
+const AMBIGUOUS_CLUB_FIRST = new Set([
+  'манчестер', 'manchester', 'реал', 'real',
+]);
+
+/** Compact club name for the history table: the part before a '(' qualifier
+ * ("Боруссия (Дортмунд)" -> "Боруссия") or the first word
+ * ("Тоттенхэм Хотспур" -> "Тоттенхэм"). Ambiguous first words (Манчестер
+ * Сити/Юнайтед, Реал Мадрид/Сосьедад) keep the full name -> truncates. */
+function clubShort(name: string): string {
+  const beforeParen = name.split('(')[0].trim();
+  const words = beforeParen.split(/\s+/);
+  if (AMBIGUOUS_CLUB_FIRST.has(words[0].toLowerCase())) return name;
+  return words.length > 1 ? words[0] : beforeParen;
+}
+
 const googleSearch = (name: string) => {
   const q   = encodeURIComponent(`${name} football wiki`);
   const url = `https://www.google.com/search?q=${q}`;
@@ -224,7 +241,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                     key={i}
                     className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded-md px-3 py-2.5"
                   >
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       {showCategory && (
                         <span
                           className="text-[11px] uppercase tracking-widest font-medium"
@@ -256,11 +273,11 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                       </span>
                     </div>
                     {clubs && (
-                      <div className="shrink-0 text-right space-y-0.5">
+                      <div className="shrink-0 w-[124px] space-y-0.5">
                         {clubs.map((c) => (
-                          <div key={c.club} className="flex items-center justify-end gap-2 text-[11px] leading-tight">
-                            <span className="text-brand-muted truncate max-w-[92px]">{c.club}</span>
-                            <span className="text-white tabular-nums w-10 text-right">
+                          <div key={c.club} className="flex items-baseline justify-between gap-2 text-[11px] leading-tight">
+                            <span className="text-brand-muted truncate" title={c.club}>{clubShort(c.club)}</span>
+                            <span className="text-white tabular-nums shrink-0">
                               {c.minutes}
                             </span>
                           </div>
