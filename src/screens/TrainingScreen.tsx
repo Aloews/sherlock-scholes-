@@ -14,6 +14,7 @@ import {
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
+import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
@@ -66,46 +67,35 @@ const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
   referee:       IconFlag,
 };
 
-/** 32x32 round avatar for the summary history, with an optional country
- * flag badge in the corner. Falls back to a category placeholder circle when
- * the card has no photo_url or the image fails; no country -> no flag. */
-function HistoryAvatar({ photoUrl, category, alt, country }: {
+/** 32x32 round avatar for the summary history. Falls back to a category
+ * placeholder circle when the card has no photo_url or the image fails.
+ * (The country flag lives in the meta line under the name, not here.) */
+function HistoryAvatar({ photoUrl, category, alt }: {
   photoUrl?: string | null;
   category: CardCategory;
   alt: string;
-  country?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
-  const flag = isoToFlag(country);
-  const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
+  if (!src || failed) {
+    const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
+    return (
+      <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
+        <Placeholder size={16} className="text-brand-muted" />
+      </span>
+    );
+  }
   return (
-    <span className="relative inline-block w-8 h-8 shrink-0">
-      {!src || failed ? (
-        <span className="w-8 h-8 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
-          <Placeholder size={16} className="text-brand-muted" />
-        </span>
-      ) : (
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          onError={() => setFailed(true)}
-          // object-top: football photos have the face in the upper third, so
-          // the circle crops from the top — centre-cropping cuts the head off.
-          className="w-8 h-8 rounded-full object-cover object-top"
-        />
-      )}
-      {flag && (
-        <span
-          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-surface border border-brand-bg flex items-center justify-center text-[10px] leading-none overflow-hidden"
-          aria-hidden="true"
-        >
-          {flag}
-        </span>
-      )}
-    </span>
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      // object-top: football photos have the face in the upper third, so the
+      // circle crops from the top — centre-cropping cuts the head off.
+      className="w-8 h-8 shrink-0 rounded-full object-cover object-top"
+    />
   );
 }
 
@@ -176,18 +166,16 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
     );
   }
 
-  // "Зенит · 2840 мин (≈47 ч на поле)" — club + minutes of the player's
-  // best season; the bracket converts to hours, or to days from 48h up.
-  const clubLine = (entry: HistoryEntry): string | null => {
-    if (!entry.top_club) return null;
-    if (entry.top_minutes == null) return entry.top_club;
-    const base = `${entry.top_club} · ${entry.top_minutes} ${t('quick.min_short')}`;
-    const hours = Math.round(entry.top_minutes / 60);
-    if (hours < 1) return base;
-    const approx = hours < 48
-      ? t('quick.on_pitch_hours', { count: hours })
-      : t('quick.on_pitch_days', { count: Math.round(entry.top_minutes / 1440) });
-    return `${base} (${approx})`;
+  // Bottom line under the name: "🇩🇪 Германия · Защитник" (country name and
+  // position follow the interface language). Country (flag + name) and/or
+  // position; whichever is missing is dropped. No flag when there's no
+  // country. Empty when neither is known.
+  const metaLine = (entry: HistoryEntry): string | null => {
+    const flag = isoToFlag(entry.country);
+    const country = countryName(entry.country, i18n.language);
+    const left = country ? `${flag ? flag + ' ' : ''}${country}` : null;
+    const parts = [left, positionName(entry.position_ru, i18n.language)].filter(Boolean);
+    return parts.length ? parts.join(' · ') : null;
   };
 
   // ── Summary screen ──────────────────────────────────────────────
@@ -226,9 +214,9 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
-                // 2+ clubs -> a compact career table on the right; 1 club (or
-                // none) keeps the single line under the name.
-                const clubs = (entry.clubs_minutes && entry.clubs_minutes.length >= 2)
+                // clubs_minutes (any size) -> the compact club|minutes table
+                // on the right, always; legends without it leave the right empty.
+                const clubs = entry.clubs_minutes?.length
                   ? entry.clubs_minutes.slice(0, 4)
                   : null;
                 return (
@@ -246,7 +234,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                         </span>
                       )}
                       <div className="flex items-center gap-2">
-                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} country={entry.country} />
+                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
                         <button
                           type="button"
                           onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
@@ -255,9 +243,9 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                           {displayName}
                         </button>
                       </div>
-                      {!clubs && clubLine(entry) && (
+                      {metaLine(entry) && (
                         <p className="text-brand-muted text-xs leading-snug truncate mt-0.5">
-                          {clubLine(entry)}
+                          {metaLine(entry)}
                         </p>
                       )}
                       <span

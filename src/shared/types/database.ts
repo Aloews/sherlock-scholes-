@@ -173,6 +173,7 @@ export interface Card {
   photo_url: string | null; // Commons photo (players); null = no photo
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
   country?: string | null;      // ISO code for the flag (GB-ENG etc.); absent until cards_country_column.sql runs
+  position_ru?: string | null;  // Вратарь/Защитник/Полузащитник/Нападающий; absent until cards_position_column.sql runs
   top_club?: string | null;     // club of the max-minutes season (players); absent until cards_fill_top_club.sql runs
   top_minutes?: number | null;  // minutes of that season
   clubs_minutes?: ClubMinutes[] | null; // top clubs by summed minutes; absent until cards_fill_clubs_minutes.sql runs
