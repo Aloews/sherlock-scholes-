@@ -3,6 +3,7 @@
 // regardless of how records are stored on disk.
 
 import { supabase } from '@/shared/lib/supabase';
+import { ALL_CATEGORIES } from '@/shared/types/database';
 import type { Card, CardCategory, ContinentFilter } from '@/shared/types/database';
 
 // A cold-started Supabase instance can fail or return an empty set on the very
@@ -73,4 +74,59 @@ export async function pickRandomCards(
   }
 
   throw lastError;
+}
+
+/**
+ * Count active cards matching a deck filter — the live "Выбрано: N" counter
+ * on the quick-game picker. Mirrors pick_random_cards' WHERE: the continent
+ * filter touches only player cards, 'other' means continent IS NULL, and
+ * min_pageviews keeps cards with no score (NULL) like the RPC does.
+ * Players and non-players are counted with separate head requests and summed
+ * (the cross-category OR is awkward for PostgREST). Debounce at the call site.
+ */
+export async function countDeck(
+  categories: CardCategory[] | null,
+  continents: ContinentFilter[] | null,
+  minPageviews: number | null,
+): Promise<number> {
+  const cats = categories?.length ? categories : ALL_CATEGORIES;
+  const playerIncluded = cats.includes('player');
+  const nonPlayer = cats.filter((c) => c !== 'player');
+  let total = 0;
+
+  if (nonPlayer.length) {
+    const { count } = await supabase
+      .from('cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('active', true)
+      .in('category', nonPlayer);
+    total += count ?? 0;
+  }
+
+  if (playerIncluded) {
+    let q = supabase
+      .from('cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('active', true)
+      .eq('category', 'player');
+    if (minPageviews != null) {
+      // RPC keeps NULL-pageviews cards too.
+      q = q.or(`pageviews.gt.${minPageviews},pageviews.is.null`);
+    }
+    if (continents?.length) {
+      const real = continents.filter((c) => c !== 'other');
+      const hasOther = continents.includes('other');
+      if (hasOther && real.length) {
+        q = q.or(`continent.in.(${real.join(',')}),continent.is.null`);
+      } else if (hasOther) {
+        q = q.is('continent', null);
+      } else {
+        q = q.in('continent', real);
+      }
+    }
+    const { count } = await q;
+    total += count ?? 0;
+  }
+
+  return total;
 }

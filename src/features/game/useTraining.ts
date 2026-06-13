@@ -43,6 +43,7 @@ export interface HistoryEntry {
 export function useTraining(
   categories: CardCategory[] | null,
   continents: ContinentFilter[] | null = null,
+  minPageviews: number | null = null,
 ) {
   const [cards,   setCards]   = useState<Card[]>([]);
   const [index,   setIndex]   = useState(0);
@@ -95,26 +96,26 @@ export function useTraining(
     }
   }, [fetchTranslations]);
 
-  // Initial load — null min_pageviews: the whole deck, no difficulty filter.
+  // Initial load. minPageviews is the "Только звёзды" floor (null = whole deck).
   useEffect(() => {
     seenIdsRef.current = new Set();
     zeroNewRef.current = 0;
     exhaustedRef.current = false;
-    pickRandomCards(BATCH, categories, null, continents)
+    pickRandomCards(BATCH, categories, minPageviews, continents)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [categories, continents, absorbBatch]);
+  }, [categories, continents, minPageviews, absorbBatch]);
 
   // Preload next batch silently
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current || exhaustedRef.current) return;
     isPreloadingRef.current = true;
-    pickRandomCards(BATCH, categories, null, continents)
+    pickRandomCards(BATCH, categories, minPageviews, continents)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
-  }, [categories, continents, absorbBatch]);
+  }, [categories, continents, minPageviews, absorbBatch]);
 
   const advance = useCallback(() => {
     setIndex((prev) => {

@@ -21,6 +21,7 @@ import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 interface TrainingState {
   categories: CardCategory[] | null;
   continents?: ContinentFilter[] | null; // player cards only; null = all
+  minPageviews?: number | null;          // "Только звёзды" floor; null = whole deck
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -120,6 +121,7 @@ export function TrainingScreen() {
   const state    = location.state as TrainingState | null;
   const categories = state?.categories ?? null;
   const continents = state?.continents ?? null;
+  const minPageviews = state?.minPageviews ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -128,6 +130,7 @@ export function TrainingScreen() {
       key={gameKey}
       categories={categories}
       continents={continents}
+      minPageviews={minPageviews}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -136,15 +139,16 @@ export function TrainingScreen() {
 interface TrainingGameProps {
   categories: CardCategory[] | null;
   continents: ContinentFilter[] | null;
+  minPageviews: number | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents);
+    useTraining(categories, continents, minPageviews);
 
   const [finished, setFinished] = useState(false);
 

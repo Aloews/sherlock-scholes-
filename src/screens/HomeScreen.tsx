@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,23 +14,40 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
+import { countDeck } from '@/features/game/cardRandomizer';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
-  ALL_CATEGORIES,
   ALL_CONTINENT_FILTERS,
   CATEGORY_LABEL_RU,
   CATEGORY_LABEL_EN,
+  PAGEVIEWS_THRESHOLD,
   type CardCategory,
   type ContinentFilter,
 } from '@/shared/types/database';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
 
-// Quick game category picker: "Players" expands into continents, every other
-// category lives under the "Other" accordion group.
-const OTHER_CATEGORIES: CardCategory[] = ALL_CATEGORIES.filter((c) => c !== 'player');
+// "Только звёзды" floor — the famous-players pageviews threshold.
+const STAR_MIN_PAGEVIEWS = PAGEVIEWS_THRESHOLD.novice ?? 19000;
 
-type AccordionGroup = 'players' | 'other';
+// Accordion groups of the quick-game picker. "players" is special (it expands
+// into continents); the rest list plain categories. A category that does not
+// exist in the DB yet simply contributes an empty slice — nothing crashes,
+// the live counter just shows fewer cards.
+type GroupId = 'players' | 'clubs' | 'people' | 'knowledge';
+const CAT_GROUPS: { id: Exclude<GroupId, 'players'>; cats: CardCategory[] }[] = [
+  { id: 'clubs',     cats: ['club', 'club_nickname', 'stadium'] },
+  { id: 'people',    cats: ['coach', 'referee', 'commentator'] },
+  { id: 'knowledge', cats: ['term', 'position', 'woman'] },
+];
+const NON_PLAYER_CATEGORIES: CardCategory[] = CAT_GROUPS.flatMap((g) => g.cats);
+const CLUBS_ONLY_CATS: CardCategory[] = ['club', 'club_nickname', 'stadium'];
+
+type PresetId = 'all' | 'stars' | 'clubs_only' | 'world';
+const PRESETS: PresetId[] = ['all', 'stars', 'clubs_only', 'world'];
+
+const sameMembers = (set: Set<string>, arr: readonly string[]) =>
+  set.size === arr.length && arr.every((x) => set.has(x));
 
 /** Checkbox row shared by the quick-game accordion items. */
 function CheckRow({ active, label, onToggle }: {
@@ -75,21 +92,24 @@ export function HomeScreen() {
   const [view,            setView]            = useState<View>('home');
   const [code,            setCode]            = useState('');
   const [rounds1v1,       setRounds1v1]       = useState(3);
-  // Quick game picker: player deck is selected per continent ('other' =
-  // players without a continent), the rest of the deck per category.
-  // Everything starts selected = the old "whole deck" default.
+  // Quick game picker. Default = preset "Всё": every continent + every
+  // non-player category, no star floor.
   const [trainingContinents, setTrainingContinents] =
     useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
   const [trainingCats, setTrainingCats] =
-    useState<Set<CardCategory>>(new Set(OTHER_CATEGORIES));
-  const [openGroup, setOpenGroup] = useState<AccordionGroup | null>(null);
+    useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
+  const [starMode, setStarMode] = useState(false);
+  const [openGroup, setOpenGroup] = useState<GroupId | null>(null);
+  const [deckCount, setDeckCount] = useState<number | null>(null);
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
     await joinRoom(code.trim());
   };
 
+  // Any manual edit leaves "stars" mode (it's a preset, not a toggle).
   const toggleCat = (cat: CardCategory) => {
+    setStarMode(false);
     setTrainingCats((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
@@ -99,6 +119,7 @@ export function HomeScreen() {
   };
 
   const toggleContinent = (continent: ContinentFilter) => {
+    setStarMode(false);
     setTrainingContinents((prev) => {
       const next = new Set(prev);
       if (next.has(continent)) next.delete(continent);
@@ -107,13 +128,31 @@ export function HomeScreen() {
     });
   };
 
-  // Parent "Players" checkbox: all continents at once / none.
+  // Parent "all players" checkbox: every continent at once / none.
   const allContinentsOn = trainingContinents.size === ALL_CONTINENT_FILTERS.length;
+  const playersOn = trainingContinents.size > 0;
   const togglePlayers = () => {
+    setStarMode(false);
     setTrainingContinents(allContinentsOn ? new Set() : new Set(ALL_CONTINENT_FILTERS));
   };
 
-  const toggleGroup = (group: AccordionGroup) => {
+  const applyPreset = (id: PresetId) => {
+    hapticImpact('light');
+    setStarMode(id === 'stars');
+    if (id === 'clubs_only') {
+      setTrainingContinents(new Set());
+      setTrainingCats(new Set(CLUBS_ONLY_CATS));
+    } else if (id === 'all') {
+      setTrainingContinents(new Set(ALL_CONTINENT_FILTERS));
+      setTrainingCats(new Set(NON_PLAYER_CATEGORIES));
+    } else {
+      // stars / world: players only, all continents, no other categories.
+      setTrainingContinents(new Set(ALL_CONTINENT_FILTERS));
+      setTrainingCats(new Set());
+    }
+  };
+
+  const toggleGroup = (group: GroupId) => {
     hapticImpact('light');
     setOpenGroup((prev) => (prev === group ? null : group));
   };
@@ -121,18 +160,54 @@ export function HomeScreen() {
   const getCatLabel = (cat: CardCategory) =>
     i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
 
-  const playersOn = trainingContinents.size > 0;
+  // Deck filter derived from the current selection (mirrors the RPC inputs).
+  const everything = allContinentsOn
+    && trainingCats.size === NON_PLAYER_CATEGORIES.length && !starMode;
+  const selCategories: CardCategory[] | null = everything
+    ? null
+    : [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
+  const selContinents: ContinentFilter[] | null =
+    playersOn && !allContinentsOn ? [...trainingContinents] : null;
+  const selMinPageviews = starMode ? STAR_MIN_PAGEVIEWS : null;
   const nothingSelected = !playersOn && trainingCats.size === 0;
+
+  const activePreset: PresetId | null = useMemo(() => {
+    const allCont = sameMembers(trainingContinents, ALL_CONTINENT_FILTERS);
+    const noCont = trainingContinents.size === 0;
+    const allCats = sameMembers(trainingCats, NON_PLAYER_CATEGORIES);
+    const noCats = trainingCats.size === 0;
+    const clubsOnly = sameMembers(trainingCats, CLUBS_ONLY_CATS);
+    if (!starMode && allCont && allCats) return 'all';
+    if (starMode && allCont && noCats) return 'stars';
+    if (!starMode && noCont && clubsOnly) return 'clubs_only';
+    if (!starMode && allCont && noCats) return 'world';
+    return null;
+  }, [trainingContinents, trainingCats, starMode]);
+
+  // Live "Выбрано: N карточек" — debounced count of the current filter.
+  const filterKey = JSON.stringify(
+    { c: selCategories, k: selContinents, p: selMinPageviews });
+  useEffect(() => {
+    if (view !== 'create_training') return;
+    let cancelled = false;
+    setDeckCount(null);
+    const handle = setTimeout(() => {
+      countDeck(selCategories, selContinents, selMinPageviews)
+        .then((n) => { if (!cancelled) setDeckCount(n); })
+        .catch(() => { if (!cancelled) setDeckCount(null); });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(handle); };
+    // selCategories/selContinents are captured via filterKey (stable string).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey, view]);
 
   const startTraining = () => {
     hapticImpact('light');
-    const everything = allContinentsOn && trainingCats.size === OTHER_CATEGORIES.length;
-    const cats: CardCategory[] = [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
     navigate('/training', {
       state: {
-        categories: everything ? null : cats,
-        // All continents = no filter (also covers the pre-migration DB).
-        continents: playersOn && !allContinentsOn ? [...trainingContinents] : null,
+        categories: selCategories,
+        continents: selContinents,
+        minPageviews: selMinPageviews,
       },
     });
   };
@@ -342,21 +417,46 @@ export function HomeScreen() {
         {/* ── Training settings ── */}
         {view === 'create_training' && (
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
-            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-3">
-              <p className="text-brand-muted text-sm">{t('home.game_settings')}</p>
+            {/* Live deck size for the current selection */}
+            <p className="text-center text-sm text-brand-muted">
+              {deckCount === null
+                ? t('home.counting')
+                : t('home.selected_count', { count: deckCount })}
+            </p>
 
+            {/* One-tap presets */}
+            <div className="grid grid-cols-2 gap-2">
+              {PRESETS.map((preset) => {
+                const on = activePreset === preset;
+                return (
+                  <button
+                    key={preset}
+                    className={`rounded-xl py-2.5 px-2 text-xs font-bold transition-colors ${
+                      on ? 'text-brand-bg' : 'bg-brand-border text-white hover:bg-brand-border/70'
+                    }`}
+                    style={on ? { backgroundColor: '#FF6300' } : undefined}
+                    onClick={() => applyPreset(preset)}
+                  >
+                    {t(`home.preset_${preset}`)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Fine-grained accordion groups */}
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-3">
               {/* Players group — expands into continents */}
               <div className="rounded-xl bg-brand-border/40 overflow-hidden">
                 <div className="flex items-stretch">
                   <CheckRow
                     active={playersOn}
-                    label={getCatLabel('player')}
+                    label={t('home.group_players')}
                     onToggle={togglePlayers}
                   />
                   <button
                     className="flex-1 flex items-center justify-end px-3 text-brand-muted hover:text-white transition-colors"
                     aria-expanded={openGroup === 'players'}
-                    aria-label={getCatLabel('player')}
+                    aria-label={t('home.group_players')}
                     onClick={() => toggleGroup('players')}
                   >
                     <IconChevronDown
@@ -382,45 +482,50 @@ export function HomeScreen() {
                 )}
               </div>
 
-              {/* Other categories group */}
-              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
-                <button
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
-                  aria-expanded={openGroup === 'other'}
-                  onClick={() => toggleGroup('other')}
-                >
-                  <span>
-                    {t('home.group_other')}
-                    <span className="text-brand-muted ml-1.5">
-                      {trainingCats.size}/{OTHER_CATEGORIES.length}
-                    </span>
-                  </span>
-                  <IconChevronDown
-                    size={18}
-                    stroke={2}
-                    className={`text-brand-muted transition-transform duration-200 ${
-                      openGroup === 'other' ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {openGroup === 'other' && (
-                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
-                    {OTHER_CATEGORIES.map((cat) => (
-                      <CheckRow
-                        key={cat}
-                        active={trainingCats.has(cat)}
-                        label={getCatLabel(cat)}
-                        onToggle={() => toggleCat(cat)}
+              {/* Category groups */}
+              {CAT_GROUPS.map((group) => {
+                const selected = group.cats.filter((c) => trainingCats.has(c)).length;
+                return (
+                  <div key={group.id} className="rounded-xl bg-brand-border/40 overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
+                      aria-expanded={openGroup === group.id}
+                      onClick={() => toggleGroup(group.id)}
+                    >
+                      <span>
+                        {t(`home.group_${group.id}`)}
+                        <span className="text-brand-muted ml-1.5">
+                          {selected}/{group.cats.length}
+                        </span>
+                      </span>
+                      <IconChevronDown
+                        size={18}
+                        stroke={2}
+                        className={`text-brand-muted transition-transform duration-200 ${
+                          openGroup === group.id ? 'rotate-180' : ''
+                        }`}
                       />
-                    ))}
+                    </button>
+                    {openGroup === group.id && (
+                      <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
+                        {group.cats.map((cat) => (
+                          <CheckRow
+                            key={cat}
+                            active={trainingCats.has(cat)}
+                            label={getCatLabel(cat)}
+                            onToggle={() => toggleCat(cat)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
             <Button
               fullWidth
               size="lg"
-              disabled={nothingSelected}
+              disabled={nothingSelected || deckCount === 0}
               onClick={startTraining}
             >
               {t('home.create_room')}
