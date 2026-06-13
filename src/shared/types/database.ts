@@ -153,6 +153,13 @@ export interface CardTranslation {
   source?: string | null; // 'sitelink' | 'label' | 'name_en'
 }
 
+// One club + summed minutes from the collected seasons (cards.clubs_minutes,
+// docs/cards_fill_clubs_minutes.sql). NOT a full career — only our seasons.
+export interface ClubMinutes {
+  club: string;
+  minutes: number;
+}
+
 // Generic card — covers all 10 categories from sherlock_cards.csv
 export interface Card {
   id: string;
@@ -165,8 +172,10 @@ export interface Card {
   pageviews: number | null; // Wikipedia pageviews; null for non-player cards
   photo_url: string | null; // Commons photo (players); null = no photo
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
+  country?: string | null;      // ISO code for the flag (GB-ENG etc.); absent until cards_country_column.sql runs
   top_club?: string | null;     // club of the max-minutes season (players); absent until cards_fill_top_club.sql runs
   top_minutes?: number | null;  // minutes of that season
+  clubs_minutes?: ClubMinutes[] | null; // top clubs by summed minutes; absent until cards_fill_clubs_minutes.sql runs
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;

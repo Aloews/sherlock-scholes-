@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
 import { cardDisplayName } from '@/shared/lib/cardName';
+import { isoToFlag } from '@/shared/lib/flag';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
@@ -65,34 +66,46 @@ const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
   referee:       IconFlag,
 };
 
-/** 32x32 round avatar for the summary history. Falls back to a category
- * placeholder circle when the card has no photo_url or the image fails. */
-function HistoryAvatar({ photoUrl, category, alt }: {
+/** 32x32 round avatar for the summary history, with an optional country
+ * flag badge in the corner. Falls back to a category placeholder circle when
+ * the card has no photo_url or the image fails; no country -> no flag. */
+function HistoryAvatar({ photoUrl, category, alt, country }: {
   photoUrl?: string | null;
   category: CardCategory;
   alt: string;
+  country?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
-  if (!src || failed) {
-    const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
-    return (
-      <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
-        <Placeholder size={16} className="text-brand-muted" />
-      </span>
-    );
-  }
+  const flag = isoToFlag(country);
+  const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
   return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      // object-top: football photos have the face in the upper third, so the
-      // circle crops from the top — centre-cropping cuts the head off.
-      className="w-8 h-8 shrink-0 rounded-full object-cover object-top"
-    />
+    <span className="relative inline-block w-8 h-8 shrink-0">
+      {!src || failed ? (
+        <span className="w-8 h-8 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
+          <Placeholder size={16} className="text-brand-muted" />
+        </span>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          // object-top: football photos have the face in the upper third, so
+          // the circle crops from the top — centre-cropping cuts the head off.
+          className="w-8 h-8 rounded-full object-cover object-top"
+        />
+      )}
+      {flag && (
+        <span
+          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-surface border border-brand-bg flex items-center justify-center text-[10px] leading-none overflow-hidden"
+          aria-hidden="true"
+        >
+          {flag}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -213,6 +226,11 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
+                // 2+ clubs -> a compact career table on the right; 1 club (or
+                // none) keeps the single line under the name.
+                const clubs = (entry.clubs_minutes && entry.clubs_minutes.length >= 2)
+                  ? entry.clubs_minutes.slice(0, 4)
+                  : null;
                 return (
                   <div
                     key={i}
@@ -228,7 +246,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                         </span>
                       )}
                       <div className="flex items-center gap-2">
-                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
+                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} country={entry.country} />
                         <button
                           type="button"
                           onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
@@ -237,7 +255,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                           {displayName}
                         </button>
                       </div>
-                      {clubLine(entry) && (
+                      {!clubs && clubLine(entry) && (
                         <p className="text-brand-muted text-xs leading-snug truncate mt-0.5">
                           {clubLine(entry)}
                         </p>
@@ -249,6 +267,18 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                         {guessed ? t('quick.guessed_label') : t('quick.skipped_label')}
                       </span>
                     </div>
+                    {clubs && (
+                      <div className="shrink-0 text-right space-y-0.5">
+                        {clubs.map((c) => (
+                          <div key={c.club} className="flex items-center justify-end gap-2 text-[11px] leading-tight">
+                            <span className="text-brand-muted truncate max-w-[92px]">{c.club}</span>
+                            <span className="text-white tabular-nums w-10 text-right">
+                              {c.minutes}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
