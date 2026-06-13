@@ -160,6 +160,18 @@ export interface ClubMinutes {
   minutes: number;
 }
 
+// Career snapshot for legends from Wikidata (cards.legend_career,
+// docs/cards_legend_career_column.sql). clubs carry years, not minutes.
+export interface LegendClub {
+  club: string;
+  years: string; // "1984–1991" | "1984–"
+}
+export interface LegendCareer {
+  clubs: LegendClub[];
+  position?: string | null;
+  titles?: string[] | null; // short prestige titles, e.g. ["Золотой мяч ×3", "ЧМ 1998"]
+}
+
 // Generic card — covers all 10 categories from sherlock_cards.csv
 export interface Card {
   id: string;
@@ -177,6 +189,7 @@ export interface Card {
   top_club?: string | null;     // club of the max-minutes season (players); absent until cards_fill_top_club.sql runs
   top_minutes?: number | null;  // minutes of that season
   clubs_minutes?: ClubMinutes[] | null; // top clubs by summed minutes; absent until cards_fill_clubs_minutes.sql runs
+  legend_career?: LegendCareer | null;  // legends (no API minutes): clubs with years; absent until cards_legend_career_column.sql runs
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;

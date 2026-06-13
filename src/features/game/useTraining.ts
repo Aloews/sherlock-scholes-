@@ -3,7 +3,7 @@ import { pickRandomCards } from './cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import i18n from '@/shared/i18n';
-import type { Card, CardCategory, CardTranslation, ClubMinutes, ContinentFilter } from '@/shared/types/database';
+import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, ContinentFilter } from '@/shared/types/database';
 
 // No card cap: the game runs until the deck of the selected categories is
 // exhausted. PostgREST returns at most 1000 rows per request, so the deck is
@@ -32,7 +32,8 @@ export interface HistoryEntry {
   position_ru?: string | null; // -> the "флаг страна · позиция" line
   top_club?: string | null; // club + minutes of the player's best season —
   top_minutes?: number | null; // the summary line under the name; null = hide
-  clubs_minutes?: ClubMinutes[] | null; // 2+ clubs -> a small table in the summary
+  clubs_minutes?: ClubMinutes[] | null; // active players: clubs with minutes
+  legend_career?: LegendCareer | null;  // legends: clubs with years (no minutes)
   card_translations?: CardTranslation[] | null; // es/pt/fr/... names (cardDisplayName)
   status: 'guessed' | 'skipped';
 }
@@ -132,7 +133,7 @@ export function useTraining(
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, card_translations: card.card_translations, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // +1 to active team, show next card

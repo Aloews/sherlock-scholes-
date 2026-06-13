@@ -32,6 +32,11 @@ const TEAM_COLOR: Record<Team, string> = {
   blue:   '#4A9EFF',
 };
 
+// History row status bar (Variant 4): guessed = success green, skipped =
+// warning orange.
+const STATUS_GUESSED = '#00C97D';
+const STATUS_SKIPPED = '#FF6300';
+
 // Score separator — muted slate, NOT a pure grey (Variant 5 palette).
 const SCORE_DIVIDER = '#4A5270';
 
@@ -196,6 +201,35 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
     return parts.length ? parts.join(' · ') : null;
   };
 
+  // Minutes -> readable time: <90 min stays minutes; up to 50h shows hours;
+  // beyond that shows days (1 decimal under 10 days, else whole).
+  const fmtTime = (minutes: number): string => {
+    if (minutes < 90) return t('quick.t_min', { n: minutes });
+    const hours = minutes / 60;
+    if (hours < 50) return t('quick.t_hours', { n: Math.round(hours) });
+    const days = minutes / 1440;
+    return t('quick.t_days', { n: days < 10 ? Number(days.toFixed(1)) : Math.round(days) });
+  };
+
+  // "1984–1991" -> "1984–91"; "1984–" stays open-ended.
+  const shortYears = (years: string): string =>
+    years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
+
+  // Bottom clubs line, unified for active and legend cards:
+  //   active : "Тоттенхэм ≈110 ч · Боруссия ≈58 ч"  (club short + time)
+  //   legend : "Реал 2002–07 · Интер 1997–02"        (club short + years)
+  const clubsLine = (entry: HistoryEntry): string | null => {
+    if (entry.clubs_minutes?.length) {
+      return entry.clubs_minutes.slice(0, 4)
+        .map((c) => `${clubShort(c.club)} ${fmtTime(c.minutes)}`).join(' · ');
+    }
+    if (entry.legend_career?.clubs?.length) {
+      return entry.legend_career.clubs.slice(0, 4)
+        .map((c) => `${clubShort(c.club)} ${shortYears(c.years)}`.trim()).join(' · ');
+    }
+    return null;
+  };
+
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     return (
@@ -232,59 +266,50 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
-                // clubs_minutes (any size) -> the compact club|minutes table
-                // on the right, always; legends without it leave the right empty.
-                const clubs = entry.clubs_minutes?.length
-                  ? entry.clubs_minutes.slice(0, 4)
-                  : null;
+                const meta = metaLine(entry);
+                const clubs = clubsLine(entry);
+                // Status colour bar on the left (Variant 4): green guessed,
+                // orange skipped. Replaces the textual status label.
+                const barColor = guessed ? STATUS_GUESSED : STATUS_SKIPPED;
                 return (
                   <div
                     key={i}
-                    className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded-md px-3 py-2.5"
+                    className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-md rounded-l-none border-l-[3px] pl-3 pr-3 py-2.5"
+                    style={{ borderLeftColor: barColor }}
                   >
-                    <div className="flex-1 min-w-0 overflow-hidden">
+                    <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
+                    <div className="flex-1 min-w-0">
                       {showCategory && (
                         <span
-                          className="text-[11px] uppercase tracking-widest font-medium"
+                          className="block text-[11px] uppercase tracking-widest font-medium"
                           style={{ color: catColor }}
                         >
                           {entry.category_ru ?? CATEGORY_LABEL_RU[entry.category] ?? entry.category}
                         </span>
                       )}
-                      <div className="flex items-center gap-2">
-                        <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
-                        <button
-                          type="button"
-                          onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
-                          className="flex-1 min-w-0 text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
-                        >
-                          {displayName}
-                        </button>
-                      </div>
-                      {metaLine(entry) && (
+                      <button
+                        type="button"
+                        onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
+                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
+                      >
+                        {displayName}
+                      </button>
+                      {meta && (
                         <p className="text-brand-muted text-xs leading-snug truncate mt-0.5">
-                          {metaLine(entry)}
+                          {meta}
                         </p>
                       )}
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: guessed ? TEAM_COLOR.orange : '#7A8499' }}
-                      >
-                        {guessed ? t('quick.guessed_label') : t('quick.skipped_label')}
-                      </span>
+                      {clubs && (
+                        <p className="text-brand-muted/80 text-xs leading-snug truncate mt-0.5 tabular-nums">
+                          {clubs}
+                        </p>
+                      )}
+                      {entry.legend_career?.titles?.length ? (
+                        <p className="text-[#FFD24A] text-xs leading-snug truncate mt-0.5">
+                          {entry.legend_career.titles.join(' · ')}
+                        </p>
+                      ) : null}
                     </div>
-                    {clubs && (
-                      <div className="shrink-0 w-[124px] space-y-0.5">
-                        {clubs.map((c) => (
-                          <div key={c.club} className="flex items-baseline justify-between gap-2 text-[11px] leading-tight">
-                            <span className="text-brand-muted truncate" title={c.club}>{clubShort(c.club)}</span>
-                            <span className="text-white tabular-nums shrink-0">
-                              {c.minutes}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}
