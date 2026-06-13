@@ -53,23 +53,6 @@ const CATEGORY_COLOR: Record<CardCategory, string> = {
   woman:         '#FF6BA8',
 };
 
-// Club first words that are ambiguous on their own (several clubs share them),
-// so the short form would mislead — keep the full name and let it ellipsis.
-const AMBIGUOUS_CLUB_FIRST = new Set([
-  'манчестер', 'manchester', 'реал', 'real',
-]);
-
-/** Compact club name for the history table: the part before a '(' qualifier
- * ("Боруссия (Дортмунд)" -> "Боруссия") or the first word
- * ("Тоттенхэм Хотспур" -> "Тоттенхэм"). Ambiguous first words (Манчестер
- * Сити/Юнайтед, Реал Мадрид/Сосьедад) keep the full name -> truncates. */
-function clubShort(name: string): string {
-  const beforeParen = name.split('(')[0].trim();
-  const words = beforeParen.split(/\s+/);
-  if (AMBIGUOUS_CLUB_FIRST.has(words[0].toLowerCase())) return name;
-  return words.length > 1 ? words[0] : beforeParen;
-}
-
 const googleSearch = (name: string) => {
   const q   = encodeURIComponent(`${name} football wiki`);
   const url = `https://www.google.com/search?q=${q}`;
@@ -215,19 +198,21 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
   const shortYears = (years: string): string =>
     years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
 
-  // Bottom clubs line, unified for active and legend cards:
-  //   active : "Тоттенхэм ≈110 ч · Боруссия ≈58 ч"  (club short + time)
-  //   legend : "Реал 2002–07 · Интер 1997–02"        (club short + years)
-  const clubsLine = (entry: HistoryEntry): string | null => {
+  // Bottom clubs as chips, unified for active and legend cards. FULL Russian
+  // club names (no shortening, no ellipsis); the chips wrap to a second line
+  // when they don't fit instead of being clipped.
+  //   active : "Борнмут ≈110 ч", "Тоттенхэм Хотспур ≈57 ч"  (full name + time)
+  //   legend : "Реал Мадрид 2002–07", "Интер 1997–02"        (full name + years)
+  const clubChips = (entry: HistoryEntry): string[] => {
     if (entry.clubs_minutes?.length) {
       return entry.clubs_minutes.slice(0, 4)
-        .map((c) => `${clubShort(c.club)} ${fmtTime(c.minutes)}`).join(' · ');
+        .map((c) => `${c.club} ${fmtTime(c.minutes)}`);
     }
     if (entry.legend_career?.clubs?.length) {
       return entry.legend_career.clubs.slice(0, 4)
-        .map((c) => `${clubShort(c.club)} ${shortYears(c.years)}`.trim()).join(' · ');
+        .map((c) => `${c.club} ${shortYears(c.years)}`.trim());
     }
-    return null;
+    return [];
   };
 
   // ── Summary screen ──────────────────────────────────────────────
@@ -267,7 +252,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
                 const meta = metaLine(entry);
-                const clubs = clubsLine(entry);
+                const chips = clubChips(entry);
                 // Status colour bar on the left (Variant 4): green guessed,
                 // orange skipped. Replaces the textual status label.
                 const barColor = guessed ? STATUS_GUESSED : STATUS_SKIPPED;
@@ -299,10 +284,12 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                           {meta}
                         </p>
                       )}
-                      {clubs && (
-                        <p className="text-brand-muted/80 text-xs leading-snug truncate mt-0.5 tabular-nums">
-                          {clubs}
-                        </p>
+                      {chips.length > 0 && (
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
+                          {chips.map((c, j) => (
+                            <span key={j} className="whitespace-nowrap">{c}</span>
+                          ))}
+                        </div>
                       )}
                       {entry.legend_career?.titles?.length ? (
                         <p className="text-[#FFD24A] text-xs leading-snug truncate mt-0.5">
