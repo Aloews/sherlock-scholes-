@@ -14,6 +14,7 @@ import {
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
+import { trackEvent } from '@/shared/lib/analytics';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -328,7 +329,16 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
           className="text-brand-muted hover:text-white transition-colors text-sm p-1 -ml-1"
-          onClick={() => { hapticImpact('heavy'); playSound('fanfare'); setFinished(true); }}
+          onClick={() => {
+            hapticImpact('heavy');
+            playSound('fanfare');
+            trackEvent('quick_game_end', {
+              orange: scores.orange,
+              blue: scores.blue,
+              cards: history.length,
+            });
+            setFinished(true);
+          }}
         >
           {t('quick.finish')}
         </button>

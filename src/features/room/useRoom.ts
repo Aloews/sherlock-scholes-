@@ -6,6 +6,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
 import { hapticImpact, hapticError } from '@/shared/lib/telegram';
+import { trackEvent } from '@/shared/lib/analytics';
 import type { RoomSettings, GameMode } from '@/shared/types/database';
 
 export function useRoom() {
@@ -24,6 +25,7 @@ export function useRoom() {
       setError(null);
       try {
         const room = await roomService.createRoom(player.id, settings, mode);
+        trackEvent('room_create', { mode });
         const [teams, roomPlayers] = await Promise.all([
           roomService.fetchTeams(room.id),
           roomService.fetchRoomPlayers(room.id),

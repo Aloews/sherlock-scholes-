@@ -15,6 +15,7 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck } from '@/features/game/cardRandomizer';
+import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
   ALL_CONTINENT_FILTERS,
@@ -203,6 +204,11 @@ export function HomeScreen() {
 
   const startTraining = () => {
     hapticImpact('light');
+    trackEvent('quick_game_start', {
+      preset: activePreset ?? 'custom',
+      players: playersOn,
+      categories: trainingCats.size,
+    });
     navigate('/training', {
       state: {
         categories: selCategories,
