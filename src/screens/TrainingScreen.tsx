@@ -10,6 +10,7 @@ import {
   IconReload,
   IconShield,
   IconUser,
+  IconX,
 } from '@tabler/icons-react';
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
 import { cardDisplayName } from '@/shared/lib/cardName';
@@ -77,15 +78,17 @@ const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
-function HistoryAvatar({ photoUrl, category, alt }: {
+function HistoryAvatar({ photoUrl, category, alt, onOpen }: {
   photoUrl?: string | null;
   category: CardCategory;
   alt: string;
+  onOpen?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
+    // No photo (or it failed to load) — a silhouette, not tappable.
     const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
     return (
       <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
@@ -93,7 +96,7 @@ function HistoryAvatar({ photoUrl, category, alt }: {
       </span>
     );
   }
-  return (
+  const img = (
     <img
       src={src}
       alt={alt}
@@ -104,6 +107,13 @@ function HistoryAvatar({ photoUrl, category, alt }: {
       className="w-8 h-8 shrink-0 rounded-full object-cover object-top"
     />
   );
+  // With a real photo, tap opens the full-size lightbox.
+  return onOpen ? (
+    <button type="button" onClick={onOpen} aria-label={alt}
+      className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-accent">
+      {img}
+    </button>
+  ) : img;
 }
 
 /** Big centred score line "orange : blue" in team colours (Variant 5). */
@@ -164,6 +174,8 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
     useTraining(categories, continents, minPageviews, tags);
 
   const [finished, setFinished] = useState(false);
+  // Full-size photo lightbox (history avatars). null = closed.
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -292,7 +304,12 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                     className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-md rounded-l-none border-l-[3px] pl-3 pr-3 py-2.5"
                     style={{ borderLeftColor: barColor }}
                   >
-                    <HistoryAvatar photoUrl={entry.photo_url} category={entry.category} alt={displayName} />
+                    <HistoryAvatar
+                      photoUrl={entry.photo_url} category={entry.category} alt={displayName}
+                      onOpen={entry.photo_url
+                        ? () => { hapticImpact('light'); setLightbox(entry.photo_url!); }
+                        : undefined}
+                    />
                     <div className="flex-1 min-w-0">
                       {showCategory && (
                         <span
@@ -340,6 +357,35 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
             </div>
           )}
         </div>
+
+        {/* Full-size photo lightbox — tap backdrop or ✕ to close. */}
+        <AnimatePresence>
+          {lightbox && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setLightbox(null)}
+            >
+              <motion.img
+                // The avatar stores ?width=256; ask Commons for a larger render.
+                src={lightbox.replace('width=256', 'width=512')}
+                alt=""
+                className="max-h-[80vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+                initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }}
+                transition={{ duration: 0.18 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20"
+                aria-label="Закрыть"
+                onClick={() => setLightbox(null)}
+              >
+                <IconX size={22} stroke={2} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
