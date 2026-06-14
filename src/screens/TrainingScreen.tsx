@@ -226,13 +226,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
   const brightFacts = (entry: HistoryEntry): string[] => {
     const f = entry.facts;
     if (!f) return [];
+    // Women's cards take the feminine verb form ("играла на ЧМ"); i18next picks
+    // the *_female_* key via context, falling back to the neutral key otherwise.
+    const female = entry.category === 'woman';
     const out: string[] = [];
     if (!entry.legend_career?.titles?.length && f.titles?.length) out.push(f.titles[0]);
     if (f.national_caps) {
       out.push(t('facts.caps', { count: f.national_caps, team: f.national_team ?? '' }));
     }
     const wc = (f.tournaments ?? []).filter((tm) => tm.startsWith('ЧМ')).length;
-    if (wc) out.push(t('facts.world_cup', { count: wc }));
+    if (wc) out.push(t('facts.world_cup', { count: wc, ...(female ? { context: 'female' } : {}) }));
     if (f.height_cm) out.push(t('facts.height', { cm: f.height_cm }));
     if (f.clubs_count) out.push(t('facts.clubs', { count: f.clubs_count }));
     return out.slice(0, 2);
@@ -271,6 +274,9 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                 // Category label for everything but players: photo + name
                 // already identify a player, the rest need the context.
                 const showCategory = entry.category !== 'player';
+                // Women ARE players (their own category) — show a soft, muted
+                // tag, not the loud coloured caps band the other categories use.
+                const softCategory = entry.category === 'woman';
                 const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
@@ -290,8 +296,10 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                     <div className="flex-1 min-w-0">
                       {showCategory && (
                         <span
-                          className="block text-[11px] uppercase tracking-widest font-medium"
-                          style={{ color: catColor }}
+                          className={softCategory
+                            ? 'block text-[10px] tracking-wide text-brand-muted/70'
+                            : 'block text-[11px] uppercase tracking-widest font-medium'}
+                          style={softCategory ? undefined : { color: catColor }}
                         >
                           {entry.category_ru ?? CATEGORY_LABEL_RU[entry.category] ?? entry.category}
                         </span>

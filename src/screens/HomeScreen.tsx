@@ -38,9 +38,13 @@ type GroupId = 'players' | 'clubs' | 'people' | 'knowledge' | 'special';
 const CAT_GROUPS: { id: Exclude<GroupId, 'players'>; cats: CardCategory[] }[] = [
   { id: 'clubs',     cats: ['club', 'club_nickname', 'stadium'] },
   { id: 'people',    cats: ['coach', 'referee', 'commentator'] },
-  { id: 'knowledge', cats: ['term', 'position', 'woman'] },
+  { id: 'knowledge', cats: ['term', 'position'] },
 ];
-const NON_PLAYER_CATEGORIES: CardCategory[] = CAT_GROUPS.flatMap((g) => g.cats);
+// 'woman' is its own category but lives UNDER the Players accordion (women are
+// players, not "knowledge") — not in CAT_GROUPS, yet still a selectable
+// non-player category for the "Всё" preset / deck logic.
+const NON_PLAYER_CATEGORIES: CardCategory[] =
+  [...CAT_GROUPS.flatMap((g) => g.cats), 'woman'];
 const CLUBS_ONLY_CATS: CardCategory[] = ['club', 'club_nickname', 'stadium'];
 
 type PresetId = 'all' | 'stars' | 'clubs_only' | 'world';
@@ -529,15 +533,25 @@ export function HomeScreen() {
                   </button>
                 </div>
                 {openGroup === 'players' && (
-                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
-                    {ALL_CONTINENT_FILTERS.map((continent) => (
+                  <div className="p-2 pt-0 animate-fade-in space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {ALL_CONTINENT_FILTERS.map((continent) => (
+                        <CheckRow
+                          key={continent}
+                          active={trainingContinents.has(continent)}
+                          label={t(`home.continent_${continent}`)}
+                          onToggle={() => toggleContinent(continent)}
+                        />
+                      ))}
+                    </div>
+                    {/* Women — a player category, kept here next to continents. */}
+                    <div className="grid grid-cols-2 gap-2 border-t border-brand-border/40 pt-2">
                       <CheckRow
-                        key={continent}
-                        active={trainingContinents.has(continent)}
-                        label={t(`home.continent_${continent}`)}
-                        onToggle={() => toggleContinent(continent)}
+                        active={trainingCats.has('woman')}
+                        label={getCatLabel('woman')}
+                        onToggle={() => toggleCat('woman')}
                       />
-                    ))}
+                    </div>
                   </div>
                 )}
               </div>

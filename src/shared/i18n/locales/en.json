@@ -181,6 +181,8 @@
     "caps_other": "{{count}} caps",
     "world_cup_one": "played at the World Cup",
     "world_cup_other": "World Cup ×{{count}}",
+    "world_cup_female_one": "played at the World Cup",
+    "world_cup_female_other": "World Cup ×{{count}}",
     "height": "height {{cm}} cm",
     "clubs_one": "{{count}} club",
     "clubs_other": "{{count}} clubs"
