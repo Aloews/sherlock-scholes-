@@ -4,15 +4,31 @@
 
 import { supabase } from '@/shared/lib/supabase';
 import { ALL_CATEGORIES } from '@/shared/types/database';
+import { trackEvent } from '@/shared/lib/analytics';
 import type { Card, CardCategory, ContinentFilter } from '@/shared/types/database';
 
-// A cold-started Supabase instance can fail or return an empty set on the very
-// first RPC of a session. Retry a couple of times before surfacing the error,
-// so callers keep their loading state instead of flashing "no cards".
-const RETRIES        = 2;
-const RETRY_DELAY_MS = 800;
+// Free-tier Supabase pauses when idle and can take 5-30s to wake; the first
+// RPC of a cold session may error, time out, or return an empty set. Retry
+// with growing backoff (≈10s total across 5 attempts) so callers keep their
+// loading indicator instead of flashing "no cards". "No cards" is surfaced
+// only after every attempt fails. The home screen also pings the DB on mount
+// (wakeSupabase) so it is usually warm by the time the player taps Play.
+const RETRY_BACKOFFS_MS = [800, 1500, 3000, 5000]; // 5 attempts (1 + 4 retries)
+// A card load slower than this is reported to analytics as a slow load.
+const SLOW_LOAD_MS = 2500;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Wake a sleeping free-tier DB with a tiny HEAD count — fire-and-forget,
+ * never throws. Called when the home screen mounts so the deck RPC is warm by
+ * game start. */
+export async function wakeSupabase(): Promise<void> {
+  try {
+    await supabase.from('cards').select('id', { count: 'exact', head: true }).limit(1);
+  } catch {
+    /* warm-up is best-effort */
+  }
+}
 
 // The p_continents parameter exists only after continents_filter.sql ran.
 // Until then PostgREST rejects the 4-arg call (PGRST202: no matching function),
@@ -44,9 +60,11 @@ export async function pickRandomCards(
   continents?: ContinentFilter[] | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
+  const started = Date.now();
 
-  for (let attempt = 0; attempt <= RETRIES; attempt++) {
-    if (attempt > 0) await sleep(RETRY_DELAY_MS);
+  // attempt 0 is immediate; each later attempt waits RETRY_BACKOFFS_MS[i-1].
+  for (let attempt = 0; attempt <= RETRY_BACKOFFS_MS.length; attempt++) {
+    if (attempt > 0) await sleep(RETRY_BACKOFFS_MS[attempt - 1]);
 
     const withContinents = rpcSupportsContinents && !!continents?.length;
     const { data, error } = await supabase.rpc('pick_random_cards', {
@@ -69,6 +87,11 @@ export async function pickRandomCards(
     if (!data?.length) {
       lastError = new Error('No active cards found for the selected categories');
       continue;
+    }
+    const elapsed = Date.now() - started;
+    if (elapsed > SLOW_LOAD_MS) {
+      // Anonymous timing only — how slow and how many retries it took.
+      trackEvent('cards_slow_load', { ms: elapsed, attempts: attempt + 1 });
     }
     return data as Card[];
   }

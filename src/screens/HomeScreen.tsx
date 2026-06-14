@@ -14,7 +14,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
-import { countDeck } from '@/features/game/cardRandomizer';
+import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
@@ -89,6 +89,10 @@ export function HomeScreen() {
       navigate('/tutorial', { replace: true });
     }
   }, []);
+
+  // Warm up a possibly-sleeping free-tier DB the moment the home screen opens,
+  // so the deck RPC is already hot by the time the player taps Play. Best-effort.
+  useEffect(() => { void wakeSupabase(); }, []);
 
   const [view,            setView]            = useState<View>('home');
   const [code,            setCode]            = useState('');
