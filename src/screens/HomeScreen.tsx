@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -113,6 +113,23 @@ export function HomeScreen() {
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
     await joinRoom(code.trim());
+  };
+
+  // Hidden admin entrance: 5 quick taps on the hero logo (each ≤600ms after the
+  // previous, so the whole run is ~2s) open the password-gated /admin route. No
+  // visible hint or button — players don't know it exists, and the Vault
+  // password is still required there; the taps only reveal the form.
+  const adminTapRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+  const handleLogoTap = () => {
+    const now = Date.now();
+    const { count, last } = adminTapRef.current;
+    const next = now - last <= 600 ? count + 1 : 1; // gap >600ms restarts the run
+    adminTapRef.current = { count: next, last: now };
+    if (next >= 5) {
+      adminTapRef.current = { count: 0, last: 0 };
+      hapticImpact('medium'); // confirm the 5th tap
+      navigate('/admin');
+    }
   };
 
   // Any manual edit of categories/continents leaves "stars" mode AND the
@@ -296,6 +313,8 @@ export function HomeScreen() {
             src="/logo-white-clean.png"
             alt="Шерлок Скоулс"
             className="w-[220px] max-w-full h-auto"
+            onClick={handleLogoTap}
+            draggable={false}
           />
           <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>
         </div>
