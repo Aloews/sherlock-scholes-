@@ -1,10 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   adminVerify, adminSearchCards, adminSaveCard, adminDeleteCard,
   buildForbiddenWords, type CardInput,
 } from '@/features/admin/adminApi';
+import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
+
+// Min characters before the search auto-fires, and the debounce pause after the
+// last keystroke — keeps us off "a query per letter" on a 3000+ row ilike.
+const SEARCH_MIN_CHARS = 2;
+const SEARCH_DEBOUNCE_MS = 400;
+
+// Small inline spinner (Tailwind animate-spin) for buttons that are working.
+function Spinner({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin align-[-2px] ${className}`}
+      aria-hidden
+    />
+  );
+}
 
 // Password kept in sessionStorage (session memory, cleared on tab close) —
 // NOT localStorage, so it never persists across sessions.
@@ -41,6 +57,11 @@ export function AdminScreen() {
   const [authError, setAuthError] = useState('');
   const [checking, setChecking] = useState(false);
 
+  // Wake the (free-tier, possibly sleeping) DB the moment /admin opens, so it is
+  // warm by the time admin_verify runs — otherwise the first request pays the
+  // cold-start wake (seconds) and the login feels frozen. Best-effort.
+  useEffect(() => { void wakeSupabase(); }, []);
+
   // Verify a restored session password once on mount.
   useEffect(() => {
     if (!pw) return;
@@ -71,11 +92,11 @@ export function AdminScreen() {
           />
           {authError && <p className="text-red-400 text-sm text-center">{authError}</p>}
           <button
-            className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
+            className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
             disabled={checking || !pwInput}
             onClick={login}
           >
-            {checking ? '...' : 'Войти'}
+            {checking ? <><Spinner /> Проверяю…</> : 'Войти'}
           </button>
           <button className="w-full text-brand-muted text-sm" onClick={() => navigate('/')}>
             На главную
@@ -96,12 +117,33 @@ function AdminEditor({ password, onLogout }: { password: string; onLogout: () =>
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const search = async () => {
+  // Each search bumps this; a slower earlier response is ignored once a newer
+  // one has been issued, so fast typing never shows stale results.
+  const searchSeq = useRef(0);
+
+  const runSearch = async (raw: string) => {
+    const q = raw.trim();
+    if (q.length < SEARCH_MIN_CHARS) { setResults([]); setSearching(false); return; }
+    const seq = ++searchSeq.current;
     setSearching(true);
-    try { setResults(await adminSearchCards(query)); }
-    catch (e) { setMsg(String(e)); }
-    finally { setSearching(false); }
+    try {
+      const rows = await adminSearchCards(q);
+      if (seq === searchSeq.current) setResults(rows);
+    } catch (e) {
+      if (seq === searchSeq.current) setMsg(String(e));
+    } finally {
+      if (seq === searchSeq.current) setSearching(false);
+    }
   };
+
+  // Auto-search after a typing pause (debounce), only past the min length —
+  // avoids one ilike per keystroke. The "Найти" button still fires immediately.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < SEARCH_MIN_CHARS) { setResults([]); setSearching(false); return; }
+    const t = setTimeout(() => { void runSearch(q); }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = <K extends keyof CardInput>(k: K, v: CardInput[K]) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
@@ -121,7 +163,7 @@ function AdminEditor({ password, onLogout }: { password: string; onLogout: () =>
       const saved = await adminSaveCard(password, payload);
       setMsg(`Сохранено: ${saved.name}`);
       setForm(toInput(saved));
-      if (query) await search();
+      if (query) await runSearch(query);
     } catch (e) { setMsg(String(e)); }
     finally { setSaving(false); }
   };
@@ -134,7 +176,7 @@ function AdminEditor({ password, onLogout }: { password: string; onLogout: () =>
       await adminDeleteCard(password, form.id, false);
       setMsg('Карточка деактивирована');
       setForm((f) => (f ? { ...f, active: false } : f));
-      if (query) await search();
+      if (query) await runSearch(query);
     } catch (e) { setMsg(String(e)); }
     finally { setSaving(false); }
   };
@@ -150,14 +192,19 @@ function AdminEditor({ password, onLogout }: { password: string; onLogout: () =>
 
       {/* Search */}
       <div className="flex gap-2">
-        <input
-          className={inputCls} value={query} placeholder="Поиск по имени / name_en"
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && search()}
-        />
-        <button className="px-4 rounded-lg bg-brand-surface border border-brand-border text-sm"
-          onClick={search} disabled={searching}>
-          {searching ? '...' : 'Найти'}
+        <div className="relative flex-1">
+          <input
+            className={inputCls} value={query} placeholder="Поиск по имени / name_en (от 2 букв)"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && runSearch(query)}
+          />
+          {searching && (
+            <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+          )}
+        </div>
+        <button className="px-4 rounded-lg bg-brand-surface border border-brand-border text-sm flex items-center gap-2"
+          onClick={() => runSearch(query)} disabled={searching}>
+          {searching ? <Spinner /> : 'Найти'}
         </button>
         <button className="px-4 rounded-lg bg-brand-accent text-brand-bg text-sm"
           onClick={() => setForm({ ...EMPTY })}>
