@@ -35,6 +35,7 @@ export interface HistoryEntry {
   clubs_minutes?: ClubMinutes[] | null; // active players: clubs with minutes
   legend_career?: LegendCareer | null;  // legends: clubs with years (no minutes)
   facts?: CardFacts | null;             // structural facts -> bright-fact line
+  tier?: string | null;                 // rarity tier -> coloured avatar ring
   card_translations?: CardTranslation[] | null; // es/pt/fr/... names (cardDisplayName)
   status: 'guessed' | 'skipped';
 }
@@ -142,7 +143,7 @@ export function useTraining(
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, card_translations: card.card_translations, status }]);
+    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // One card transition at a time. While the 0.18s card animation runs we

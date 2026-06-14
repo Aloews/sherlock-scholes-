@@ -197,6 +197,24 @@ export const SPECIAL_TAGS: SpecialTag[] = [
 ];
 export const STAR_TAG = 'star';
 
+// ─── Rarity tiers (cards.tier) ───────────────────────────────────
+// Foundation for the collectible mechanic. Derived from existing data
+// (pageviews + facts.titles/tournaments) by docs/cards_tier_build.py.
+export type Tier = 'legendary' | 'epic' | 'rare' | 'common';
+export const TIERS: Tier[] = ['legendary', 'epic', 'rare', 'common'];
+export const TIER_COLOR: Record<Tier, string> = {
+  legendary: '#FFD24A', // gold
+  epic:      '#B47AFF', // purple
+  rare:      '#4A9EFF', // blue
+  common:    '#7A8499', // muted grey
+};
+export const TIER_LABEL_RU: Record<Tier, string> = {
+  legendary: 'Легендарная',
+  epic:      'Эпическая',
+  rare:      'Редкая',
+  common:    'Обычная',
+};
+
 // Generic card — covers all 10 categories from sherlock_cards.csv
 export interface Card {
   id: string;
@@ -217,6 +235,7 @@ export interface Card {
   legend_career?: LegendCareer | null;  // legends (no API minutes): clubs with years; absent until cards_legend_career_column.sql runs
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
   tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
+  tier?: Tier | null;                   // rarity tier; absent until cards_tier.sql runs + cards_tier_build.py APPLY
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;

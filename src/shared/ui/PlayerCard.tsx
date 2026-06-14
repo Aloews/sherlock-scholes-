@@ -13,6 +13,7 @@ import {
 import type { Card, CardCategory } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
+import { tierCardStyle } from '@/shared/lib/tier';
 
 interface PlayerCardProps {
   card: Card;
@@ -80,6 +81,8 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
         'rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
         className,
       )}
+      // Rarity tier: subtle coloured frame + glow (common/unknown → none).
+      style={tierCardStyle(card.tier)}
     >
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />

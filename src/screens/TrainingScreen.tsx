@@ -19,6 +19,7 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
 import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 
@@ -78,20 +79,26 @@ const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
-function HistoryAvatar({ photoUrl, category, alt, onOpen }: {
+function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   photoUrl?: string | null;
   category: CardCategory;
   alt: string;
+  tier?: string | null;
   onOpen?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  // Rarity ring (subtle; common/unknown → none).
+  const ring = tierRingStyle(tier);
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
     // No photo (or it failed to load) — a silhouette, not tappable.
     const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
     return (
-      <span className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center">
+      <span
+        className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center"
+        style={ring}
+      >
         <Placeholder size={16} className="text-brand-muted" />
       </span>
     );
@@ -109,11 +116,13 @@ function HistoryAvatar({ photoUrl, category, alt, onOpen }: {
   );
   // With a real photo, tap opens the full-size lightbox.
   return onOpen ? (
-    <button type="button" onClick={onOpen} aria-label={alt}
+    <button type="button" onClick={onOpen} aria-label={alt} style={ring}
       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-accent">
       {img}
     </button>
-  ) : img;
+  ) : (
+    <span className="shrink-0 rounded-full" style={ring}>{img}</span>
+  );
 }
 
 /** Big centred score line "orange : blue" in team colours (Variant 5). */
@@ -306,6 +315,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                   >
                     <HistoryAvatar
                       photoUrl={entry.photo_url} category={entry.category} alt={displayName}
+                      tier={entry.tier}
                       onOpen={entry.photo_url
                         ? () => { hapticImpact('light'); setLightbox(entry.photo_url!); }
                         : undefined}
@@ -471,8 +481,12 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
               exit={{ x: -64,   opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeInOut' }}
             >
-              {/* Word card — large, centred, surface, 6px radius, no accent strip */}
-              <div className="rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]">
+              {/* Word card — large, centred, surface, 6px radius, no accent strip.
+                  Rarity tier adds a subtle coloured frame + glow (common → none). */}
+              <div
+                className="rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
+                style={tierCardStyle(currentCard.tier)}
+              >
                 <span
                   className="text-[11px] uppercase tracking-widest font-medium"
                   style={{ color: catColor }}
