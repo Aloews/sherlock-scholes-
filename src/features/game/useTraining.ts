@@ -121,13 +121,20 @@ export function useTraining(
       .finally(() => { isPreloadingRef.current = false; });
   }, [categories, continents, minPageviews, absorbBatch]);
 
+  // Top up the deck as the player nears the end. Decoupled from the tap
+  // handler (was inside the setIndex updater) so a batch arriving mid-transition
+  // can never disturb the index (#3); if index briefly outruns the loaded
+  // cards, currentCard falls back to null and this effect refills the deck.
+  useEffect(() => {
+    if (index >= cards.length - PRELOAD_AT) preloadMore();
+  }, [index, cards.length, preloadMore]);
+
+  // Advance to the next card. Functional update only — never
+  // setIndex(index + 1) with a captured index, so rapid taps can't reuse a
+  // stale value (#1).
   const advance = useCallback(() => {
-    setIndex((prev) => {
-      const next = prev + 1;
-      if (next >= cards.length - PRELOAD_AT) preloadMore();
-      return next;
-    });
-  }, [cards.length, preloadMore]);
+    setIndex((prev) => prev + 1);
+  }, []);
 
   // Append the current card to the in-memory history
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
@@ -136,25 +143,40 @@ export function useTraining(
     setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
+  // One card transition at a time. While the 0.18s card animation runs we
+  // ignore further guess/skip/pass taps (#2) — this kills the race where fast
+  // taps stack: double-recording a card while the index jumps, OR handing
+  // AnimatePresence (mode="wait") a new key mid-exit so the card visually
+  // "sticks" while the history keeps growing underneath. The lock releases
+  // just after the animation, so each registered tap flips exactly one card
+  // and the history always matches the score.
+  const processingRef = useRef(false);
+  const runStep = useCallback((apply: () => void) => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    apply();
+    setTimeout(() => { processingRef.current = false; }, 250);
+  }, []);
+
   // +1 to active team, show next card
-  const guess = useCallback(() => {
+  const guess = useCallback(() => runStep(() => {
     recordCurrent('guessed');
     setScores((prev) => ({ ...prev, [activeTeam]: prev[activeTeam] + 1 }));
     advance();
-  }, [activeTeam, advance, recordCurrent]);
+  }), [runStep, recordCurrent, advance, activeTeam]);
 
   // Next card, no point
-  const skip = useCallback(() => {
+  const skip = useCallback(() => runStep(() => {
     recordCurrent('skipped');
     advance();
-  }, [advance, recordCurrent]);
+  }), [runStep, recordCurrent, advance]);
 
   // Switch active team and move to the next card (current card goes unsolved)
-  const passTurn = useCallback(() => {
+  const passTurn = useCallback(() => runStep(() => {
     recordCurrent('skipped');
     setActiveTeam((prev) => (prev === 'orange' ? 'blue' : 'orange'));
     advance();
-  }, [advance, recordCurrent]);
+  }), [runStep, recordCurrent, advance]);
 
   return {
     currentCard: cards[index] ?? null,
