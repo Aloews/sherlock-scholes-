@@ -172,6 +172,31 @@ export interface LegendCareer {
   titles?: string[] | null; // short prestige titles, e.g. ["Золотой мяч ×3", "ЧМ 1998"]
 }
 
+// Structural Wikidata facts (cards.facts JSONB). Shown as a bright-fact line in
+// the summary history and used to derive the special-category tags. Every key
+// is optional — absent when Wikidata doesn't know it.
+export interface CardFacts {
+  position?: string | null;
+  height_cm?: number | null;
+  birth_year?: number | null;
+  clubs_count?: number | null;
+  years_active?: string | null;   // "2003–2019" | "2003–"
+  national_team?: string | null;  // short genitive ("Аргентины") -> "за сборную X"
+  national_caps?: number | null;
+  tournaments?: string[] | null;  // ["ЧМ-2018", "Евро-2016", …]
+  titles?: string[] | null;       // ["Золотой мяч 2009", …]
+}
+
+// Special-category tags (cards.tags TEXT[]). The first five are quick-game
+// filters in the "Особые" accordion; 'star' backs the "Только звёзды" preset
+// (composite fame, set by the scraper). Absent until the facts/tags migration.
+export type SpecialTag =
+  | 'goalkeeper' | 'ballon_dor' | 'world_cup' | 'giant' | 'dwarf';
+export const SPECIAL_TAGS: SpecialTag[] = [
+  'goalkeeper', 'ballon_dor', 'world_cup', 'giant', 'dwarf',
+];
+export const STAR_TAG = 'star';
+
 // Generic card — covers all 10 categories from sherlock_cards.csv
 export interface Card {
   id: string;
@@ -190,6 +215,8 @@ export interface Card {
   top_minutes?: number | null;  // minutes of that season
   clubs_minutes?: ClubMinutes[] | null; // top clubs by summed minutes; absent until cards_fill_clubs_minutes.sql runs
   legend_career?: LegendCareer | null;  // legends (no API minutes): clubs with years; absent until cards_legend_career_column.sql runs
+  facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
+  tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;

@@ -35,9 +35,14 @@ export async function wakeSupabase(): Promise<void> {
 // so after the first such rejection we stop sending the parameter for the rest
 // of the session — the game keeps working, just without the continent filter.
 let rpcSupportsContinents = true;
+// p_tags exists only after pick_random_cards_tags.sql ran — same graceful
+// degrade: drop it after the first PGRST202 and play without the tag filter.
+let rpcSupportsTags = true;
 
 const isMissingContinentsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_continents');
+const isMissingTagsParam = (error: { code?: string; message: string }) =>
+  error.code === 'PGRST202' || error.message.includes('p_tags');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -52,12 +57,16 @@ const isMissingContinentsParam = (error: { code?: string; message: string }) =>
  * @param continents   Optional player-continent filter ('other' = continent
  *                     IS NULL). Only player cards are filtered; the rest pass.
  *                     Silently ignored while the DB lacks continents_filter.sql.
+ * @param tags         Optional special-category filter (cards.tags overlap),
+ *                     e.g. ['goalkeeper'] or ['star']. Players only (non-player
+ *                     tags are NULL). Ignored while the DB lacks p_tags.
  */
 export async function pickRandomCards(
   count: number,
   categories?: CardCategory[] | null,
   minPageviews?: number | null,
   continents?: ContinentFilter[] | null,
+  tags?: string[] | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
@@ -67,14 +76,22 @@ export async function pickRandomCards(
     if (attempt > 0) await sleep(RETRY_BACKOFFS_MS[attempt - 1]);
 
     const withContinents = rpcSupportsContinents && !!continents?.length;
+    const withTags = rpcSupportsTags && !!tags?.length;
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
       p_min_pageviews: minPageviews ?? null,
       ...(withContinents ? { p_continents: continents } : {}),
+      ...(withTags ? { p_tags: tags } : {}),
     });
 
     if (error) {
+      if (withTags && isMissingTagsParam(error)) {
+        // Pre-migration DB (no p_tags) — drop it and redo this attempt.
+        rpcSupportsTags = false;
+        attempt--;
+        continue;
+      }
       if (withContinents && isMissingContinentsParam(error)) {
         // Pre-migration DB — drop the parameter and redo this attempt.
         rpcSupportsContinents = false;
@@ -111,13 +128,17 @@ export async function countDeck(
   categories: CardCategory[] | null,
   continents: ContinentFilter[] | null,
   minPageviews: number | null,
+  tags: string[] | null = null,
 ): Promise<number> {
   const cats = categories?.length ? categories : ALL_CATEGORIES;
   const playerIncluded = cats.includes('player');
   const nonPlayer = cats.filter((c) => c !== 'player');
+  const hasTags = !!tags?.length;
   let total = 0;
 
-  if (nonPlayer.length) {
+  // A tag filter excludes every non-player card (their tags are NULL), so skip
+  // the non-player count entirely when tags are selected.
+  if (nonPlayer.length && !hasTags) {
     const { count } = await supabase
       .from('cards')
       .select('id', { count: 'exact', head: true })
@@ -132,6 +153,9 @@ export async function countDeck(
       .select('id', { count: 'exact', head: true })
       .eq('active', true)
       .eq('category', 'player');
+    if (hasTags) {
+      q = q.overlaps('tags', tags as string[]);  // mirrors RPC tags && p_tags
+    }
     if (minPageviews != null) {
       // RPC keeps NULL-pageviews cards too.
       q = q.or(`pageviews.gt.${minPageviews},pageviews.is.null`);

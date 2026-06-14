@@ -46,7 +46,13 @@
     "continent_north_america": "Сев. Америка",
     "continent_other": "Прочие",
     "tutorial_button_aria": "Как играть",
-    "sound_toggle_aria": "Звук вкл/выкл"
+    "sound_toggle_aria": "Звук вкл/выкл",
+    "group_special": "Особые",
+    "tag_goalkeeper": "Вратари",
+    "tag_ballon_dor": "Золотой мяч",
+    "tag_world_cup": "Играли на ЧМ/Евро",
+    "tag_giant": "Великаны ≥190",
+    "tag_dwarf": "Малыши ≤170"
   },
   "tutorial": {
     "title_1": "Создай комнату",
@@ -177,5 +183,18 @@
   "sound": {
     "mute": "Выключить звук",
     "unmute": "Включить звук"
+  },
+  "facts": {
+    "caps_one": "{{count}} матч за сборную {{team}}",
+    "caps_few": "{{count}} матча за сборную {{team}}",
+    "caps_many": "{{count}} матчей за сборную {{team}}",
+    "caps_other": "{{count}} матчей за сборную {{team}}",
+    "world_cup_one": "играл на ЧМ",
+    "world_cup_other": "{{count}}× ЧМ",
+    "height": "рост {{cm}} см",
+    "clubs_one": "{{count}} клуб за карьеру",
+    "clubs_few": "{{count}} клуба за карьеру",
+    "clubs_many": "{{count}} клубов за карьеру",
+    "clubs_other": "{{count}} клубов за карьеру"
   }
 }

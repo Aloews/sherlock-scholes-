@@ -21,21 +21,20 @@ import {
   ALL_CONTINENT_FILTERS,
   CATEGORY_LABEL_RU,
   CATEGORY_LABEL_EN,
-  PAGEVIEWS_THRESHOLD,
+  SPECIAL_TAGS,
+  STAR_TAG,
   type CardCategory,
   type ContinentFilter,
+  type SpecialTag,
 } from '@/shared/types/database';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
 
-// "Только звёзды" floor — the famous-players pageviews threshold.
-const STAR_MIN_PAGEVIEWS = PAGEVIEWS_THRESHOLD.novice ?? 19000;
-
-// Accordion groups of the quick-game picker. "players" is special (it expands
-// into continents); the rest list plain categories. A category that does not
-// exist in the DB yet simply contributes an empty slice — nothing crashes,
-// the live counter just shows fewer cards.
-type GroupId = 'players' | 'clubs' | 'people' | 'knowledge';
+// Accordion groups of the quick-game picker. "players" expands into continents,
+// "special" into tag filters; the rest list plain categories. A category/tag
+// that does not exist in the DB yet just contributes an empty slice — nothing
+// crashes, the live counter shows fewer cards.
+type GroupId = 'players' | 'clubs' | 'people' | 'knowledge' | 'special';
 const CAT_GROUPS: { id: Exclude<GroupId, 'players'>; cats: CardCategory[] }[] = [
   { id: 'clubs',     cats: ['club', 'club_nickname', 'stadium'] },
   { id: 'people',    cats: ['coach', 'referee', 'commentator'] },
@@ -103,6 +102,10 @@ export function HomeScreen() {
     useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
   const [trainingCats, setTrainingCats] =
     useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
+  // "Особые" tag filters (вратари / Золотой мяч / ЧМ / великаны / малыши). When
+  // any is on, the deck is tag-driven (those player cards only); 'star' is set
+  // by the "Только звёзды" preset, not shown here as a checkbox.
+  const [trainingTags, setTrainingTags] = useState<Set<SpecialTag>>(new Set());
   const [starMode, setStarMode] = useState(false);
   const [openGroup, setOpenGroup] = useState<GroupId | null>(null);
   const [deckCount, setDeckCount] = useState<number | null>(null);
@@ -112,9 +115,11 @@ export function HomeScreen() {
     await joinRoom(code.trim());
   };
 
-  // Any manual edit leaves "stars" mode (it's a preset, not a toggle).
+  // Any manual edit of categories/continents leaves "stars" mode AND the
+  // tag-driven "Особые" mode (they're mutually exclusive with normal filters).
   const toggleCat = (cat: CardCategory) => {
     setStarMode(false);
+    setTrainingTags(new Set());
     setTrainingCats((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
@@ -125,10 +130,23 @@ export function HomeScreen() {
 
   const toggleContinent = (continent: ContinentFilter) => {
     setStarMode(false);
+    setTrainingTags(new Set());
     setTrainingContinents((prev) => {
       const next = new Set(prev);
       if (next.has(continent)) next.delete(continent);
       else next.add(continent);
+      return next;
+    });
+  };
+
+  // "Особые" tag toggle. Selecting a tag switches to tag-driven mode (the deck
+  // becomes those player cards); leaves stars mode. Multiple tags = OR.
+  const toggleTag = (tag: SpecialTag) => {
+    setStarMode(false);
+    setTrainingTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
       return next;
     });
   };
@@ -138,12 +156,14 @@ export function HomeScreen() {
   const playersOn = trainingContinents.size > 0;
   const togglePlayers = () => {
     setStarMode(false);
+    setTrainingTags(new Set());
     setTrainingContinents(allContinentsOn ? new Set() : new Set(ALL_CONTINENT_FILTERS));
   };
 
   const applyPreset = (id: PresetId) => {
     hapticImpact('light');
     setStarMode(id === 'stars');
+    setTrainingTags(new Set()); // presets are not tag-driven (stars uses STAR_TAG)
     if (id === 'clubs_only') {
       setTrainingContinents(new Set());
       setTrainingCats(new Set(CLUBS_ONLY_CATS));
@@ -166,58 +186,69 @@ export function HomeScreen() {
     i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
 
   // Deck filter derived from the current selection (mirrors the RPC inputs).
-  const everything = allContinentsOn
-    && trainingCats.size === NON_PLAYER_CATEGORIES.length && !starMode;
-  const selCategories: CardCategory[] | null = everything
-    ? null
-    : [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
+  // Tag-driven mode (the "stars" preset or any "Особые" tag) overrides the
+  // category/continent filters: the deck is the player cards carrying the tags.
+  const selTags: string[] | null = starMode
+    ? [STAR_TAG]
+    : (trainingTags.size ? [...trainingTags] : null);
+  const tagMode = selTags !== null;
+  const everything = !tagMode && allContinentsOn
+    && trainingCats.size === NON_PLAYER_CATEGORIES.length;
+  const selCategories: CardCategory[] | null = tagMode
+    ? (['player'] as CardCategory[])
+    : everything
+      ? null
+      : [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
   const selContinents: ContinentFilter[] | null =
-    playersOn && !allContinentsOn ? [...trainingContinents] : null;
-  const selMinPageviews = starMode ? STAR_MIN_PAGEVIEWS : null;
-  const nothingSelected = !playersOn && trainingCats.size === 0;
+    !tagMode && playersOn && !allContinentsOn ? [...trainingContinents] : null;
+  const selMinPageviews = null; // "stars" is now the STAR_TAG, not a pageviews floor
+  const nothingSelected = !tagMode && !playersOn && trainingCats.size === 0;
 
   const activePreset: PresetId | null = useMemo(() => {
+    if (trainingTags.size) return null; // "Особые" custom tag selection
     const allCont = sameMembers(trainingContinents, ALL_CONTINENT_FILTERS);
     const noCont = trainingContinents.size === 0;
     const allCats = sameMembers(trainingCats, NON_PLAYER_CATEGORIES);
     const noCats = trainingCats.size === 0;
     const clubsOnly = sameMembers(trainingCats, CLUBS_ONLY_CATS);
-    if (!starMode && allCont && allCats) return 'all';
     if (starMode && allCont && noCats) return 'stars';
+    if (!starMode && allCont && allCats) return 'all';
     if (!starMode && noCont && clubsOnly) return 'clubs_only';
     if (!starMode && allCont && noCats) return 'world';
     return null;
-  }, [trainingContinents, trainingCats, starMode]);
+  }, [trainingContinents, trainingCats, starMode, trainingTags]);
 
   // Live "Выбрано: N карточек" — debounced count of the current filter.
   const filterKey = JSON.stringify(
-    { c: selCategories, k: selContinents, p: selMinPageviews });
+    { c: selCategories, k: selContinents, p: selMinPageviews, g: selTags });
   useEffect(() => {
     if (view !== 'create_training') return;
     let cancelled = false;
     setDeckCount(null);
     const handle = setTimeout(() => {
-      countDeck(selCategories, selContinents, selMinPageviews)
+      countDeck(selCategories, selContinents, selMinPageviews, selTags)
         .then((n) => { if (!cancelled) setDeckCount(n); })
         .catch(() => { if (!cancelled) setDeckCount(null); });
     }, 350);
     return () => { cancelled = true; clearTimeout(handle); };
-    // selCategories/selContinents are captured via filterKey (stable string).
+    // selCategories/selContinents/selTags are captured via filterKey (stable).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, view]);
 
   const startTraining = () => {
     hapticImpact('light');
     trackEvent('quick_game_start', {
-      preset: activePreset ?? 'custom',
+      preset: activePreset ?? (selTags ? 'special' : 'custom'),
       players: playersOn,
       categories: trainingCats.size,
+      tags: selTags?.join(',') ?? '',
     });
     navigate('/training', {
       state: {
         categories: selCategories,
         continents: selContinents,
         minPageviews: selMinPageviews,
+        tags: selTags,
       },
     });
   };
@@ -531,6 +562,42 @@ export function HomeScreen() {
                   </div>
                 );
               })}
+
+              {/* Особые — tag filters (вратари / Золотой мяч / ЧМ / великаны /
+                  малыши). Selecting any makes the deck those player cards. */}
+              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
+                  aria-expanded={openGroup === 'special'}
+                  onClick={() => toggleGroup('special')}
+                >
+                  <span>
+                    {t('home.group_special')}
+                    <span className="text-brand-muted ml-1.5">
+                      {trainingTags.size}/{SPECIAL_TAGS.length}
+                    </span>
+                  </span>
+                  <IconChevronDown
+                    size={18}
+                    stroke={2}
+                    className={`text-brand-muted transition-transform duration-200 ${
+                      openGroup === 'special' ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {openGroup === 'special' && (
+                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
+                    {SPECIAL_TAGS.map((tag) => (
+                      <CheckRow
+                        key={tag}
+                        active={trainingTags.has(tag)}
+                        label={t(`home.tag_${tag}`)}
+                        onToggle={() => toggleTag(tag)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <Button
               fullWidth

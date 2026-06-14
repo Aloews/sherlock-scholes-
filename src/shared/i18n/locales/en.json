@@ -44,7 +44,13 @@
     "continent_north_america": "North America",
     "continent_other": "Other regions",
     "tutorial_button_aria": "How to play",
-    "sound_toggle_aria": "Sound on/off"
+    "sound_toggle_aria": "Sound on/off",
+    "group_special": "Special",
+    "tag_goalkeeper": "Goalkeepers",
+    "tag_ballon_dor": "Ballon d'Or",
+    "tag_world_cup": "Played at WC/Euro",
+    "tag_giant": "Giants ≥190",
+    "tag_dwarf": "Pocket-size ≤170"
   },
   "tutorial": {
     "title_1": "Create a Room",
@@ -169,5 +175,14 @@
   "sound": {
     "mute": "Mute sounds",
     "unmute": "Unmute sounds"
+  },
+  "facts": {
+    "caps_one": "{{count}} cap",
+    "caps_other": "{{count}} caps",
+    "world_cup_one": "played at the World Cup",
+    "world_cup_other": "World Cup ×{{count}}",
+    "height": "height {{cm}} cm",
+    "clubs_one": "{{count}} club",
+    "clubs_other": "{{count}} clubs"
   }
 }

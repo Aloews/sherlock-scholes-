@@ -24,7 +24,8 @@ import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 interface TrainingState {
   categories: CardCategory[] | null;
   continents?: ContinentFilter[] | null; // player cards only; null = all
-  minPageviews?: number | null;          // "Только звёзды" floor; null = whole deck
+  minPageviews?: number | null;          // legacy difficulty floor; null = whole deck
+  tags?: string[] | null;                // special-category filter (вратари / star / …)
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -131,6 +132,7 @@ export function TrainingScreen() {
   const categories = state?.categories ?? null;
   const continents = state?.continents ?? null;
   const minPageviews = state?.minPageviews ?? null;
+  const tags = state?.tags ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -140,6 +142,7 @@ export function TrainingScreen() {
       categories={categories}
       continents={continents}
       minPageviews={minPageviews}
+      tags={tags}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -149,15 +152,16 @@ interface TrainingGameProps {
   categories: CardCategory[] | null;
   continents: ContinentFilter[] | null;
   minPageviews: number | null;
+  tags: string[] | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews);
+    useTraining(categories, continents, minPageviews, tags);
 
   const [finished, setFinished] = useState(false);
 
@@ -215,6 +219,25 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
     return [];
   };
 
+  // 1–2 brightest structural facts (cards.facts) for the line under the chips.
+  // Priority: title > caps-for-national > World Cup > height > clubs. A title is
+  // already shown as the golden line for legends, so include one here only when
+  // there's no legend golden line for this card. No facts → empty → no line.
+  const brightFacts = (entry: HistoryEntry): string[] => {
+    const f = entry.facts;
+    if (!f) return [];
+    const out: string[] = [];
+    if (!entry.legend_career?.titles?.length && f.titles?.length) out.push(f.titles[0]);
+    if (f.national_caps) {
+      out.push(t('facts.caps', { count: f.national_caps, team: f.national_team ?? '' }));
+    }
+    const wc = (f.tournaments ?? []).filter((tm) => tm.startsWith('ЧМ')).length;
+    if (wc) out.push(t('facts.world_cup', { count: wc }));
+    if (f.height_cm) out.push(t('facts.height', { cm: f.height_cm }));
+    if (f.clubs_count) out.push(t('facts.clubs', { count: f.clubs_count }));
+    return out.slice(0, 2);
+  };
+
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     return (
@@ -253,6 +276,7 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                 const displayName = cardDisplayName(entry, i18n.language);
                 const meta = metaLine(entry);
                 const chips = clubChips(entry);
+                const facts = brightFacts(entry);
                 // Status colour bar on the left (Variant 4): green guessed,
                 // orange skipped. Replaces the textual status label.
                 const barColor = guessed ? STATUS_GUESSED : STATUS_SKIPPED;
@@ -296,6 +320,11 @@ function TrainingGame({ categories, continents, minPageviews, onPlayAgain }: Tra
                           {entry.legend_career.titles.join(' · ')}
                         </p>
                       ) : null}
+                      {facts.length > 0 && (
+                        <p className="text-brand-muted/60 text-[11px] leading-snug truncate mt-0.5">
+                          {facts.join(' · ')}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
