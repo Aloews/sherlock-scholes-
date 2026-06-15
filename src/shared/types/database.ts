@@ -236,6 +236,7 @@ export interface Card {
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
   tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
   tier?: Tier | null;                   // rarity tier; absent until cards_tier.sql runs + cards_tier_build.py APPLY
+  delete_candidate?: boolean | null;    // moderator flag (skip-heavy / problematic); absent until card_reports.sql runs
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;
   created_at: string;

@@ -169,6 +169,19 @@
     "shout_answer": "Shout the answer!",
     "forbidden_words": "Forbidden words"
   },
+  "report": {
+    "button": "Report an error",
+    "title": "What's wrong with this card?",
+    "close": "Close",
+    "reason_photo": "Wrong photo",
+    "reason_name": "Wrong name",
+    "reason_club": "Wrong club",
+    "reason_other": "Other",
+    "comment_placeholder": "Comment (optional)",
+    "submit": "Send",
+    "thanks": "Thanks! Report sent.",
+    "error": "Too many reports. Try again later."
+  },
   "share": {
     "button": "Share"
   },

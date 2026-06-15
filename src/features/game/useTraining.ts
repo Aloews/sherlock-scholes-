@@ -24,6 +24,7 @@ const TRANSLATION_CHUNK = 150;
 export type Team = 'orange' | 'blue';
 
 export interface HistoryEntry {
+  id: string; // card id — lets the summary "report an error" button reference it
   name: string;
   name_en?: string | null; // English name when the card has one; summary uses it on EN
   photo_url?: string | null; // Commons photo; summary shows it as an avatar
@@ -149,7 +150,7 @@ export function useTraining(
     trackEvent(status === 'guessed' ? 'card_guessed' : 'card_skipped', {
       category: card.category, tier: card.tier ?? 'none',
     });
-    setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
+    setHistory((prev) => [...prev, { id: card.id, name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // One card transition at a time. While the 0.18s card animation runs we

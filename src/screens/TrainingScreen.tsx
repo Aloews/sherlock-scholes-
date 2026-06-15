@@ -7,6 +7,7 @@ import {
   IconBallFootball,
   IconBuildingStadium,
   IconFlag,
+  IconFlag3,
   IconReload,
   IconShield,
   IconUser,
@@ -16,6 +17,10 @@ import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTr
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
 import { trackEvent } from '@/shared/lib/analytics';
+import {
+  reportCard, alreadyReported, reportThrottled,
+  REPORT_REASONS, type ReportReason,
+} from '@/features/reports/reportsApi';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -144,6 +149,89 @@ function ScoreLine({ orange, blue, activeTeam }: {
   );
 }
 
+/** "Report an error" bottom sheet: pick a reason (+ optional comment) and send
+ * one anonymous report via the report_card RPC. Reasons are aggregate-only; the
+ * device id (throttle) is added inside reportsApi, never shown here. */
+function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const [reason, setReason] = useState<ReportReason | null>(null);
+  const [comment, setComment] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const name = cardDisplayName(entry, i18n.language);
+  const done = status === 'done' || alreadyReported(entry.id);
+
+  const submit = async () => {
+    if (!reason) return;
+    if (reportThrottled()) { setStatus('error'); return; }
+    setStatus('sending');
+    try {
+      await reportCard(entry.id, reason, comment);
+      hapticImpact('light');
+      setStatus('done');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="w-full max-w-md bg-brand-surface rounded-t-2xl border-t border-brand-border p-5 pb-8 space-y-4"
+        initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-white font-medium truncate">{t('report.title')}</p>
+          <button aria-label={t('report.close')} className="text-brand-muted p-1 shrink-0" onClick={onClose}>
+            <IconX size={20} stroke={2} />
+          </button>
+        </div>
+        <p className="text-brand-muted text-xs truncate">{name}</p>
+
+        {done ? (
+          <p className="text-[#00C97D] text-sm py-4 text-center">{t('report.thanks')}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {REPORT_REASONS.map((r) => (
+                <button key={r}
+                  className={`rounded-lg px-3 py-2.5 text-sm text-left transition-colors border ${
+                    reason === r
+                      ? 'bg-brand-accent/20 text-white border-brand-accent'
+                      : 'bg-brand-border text-brand-muted border-transparent'}`}
+                  onClick={() => setReason(r as ReportReason)}>
+                  {t(`report.reason_${r}`)}
+                </button>
+              ))}
+            </div>
+            <textarea
+              className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-brand-accent"
+              rows={2} maxLength={280} value={comment}
+              placeholder={t('report.comment_placeholder')}
+              onChange={(e) => setComment(e.target.value)}
+            />
+            {status === 'error' && (
+              <p className="text-red-400 text-xs text-center">{t('report.error')}</p>
+            )}
+            <button
+              className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
+              disabled={!reason || status === 'sending'}
+              onClick={submit}>
+              {status === 'sending' ? '…' : t('report.submit')}
+            </button>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /** Outer wrapper — holds the remount key so "Play again" starts a fresh game. */
 export function TrainingScreen() {
   const location = useLocation();
@@ -185,6 +273,8 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // "Report an error" sheet — the history entry being reported, or null.
+  const [reporting, setReporting] = useState<HistoryEntry | null>(null);
 
   if (loading) {
     return (
@@ -368,6 +458,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                         </p>
                       )}
                     </div>
+                    {/* Unobtrusive "report an error" flag (top-right of the row). */}
+                    <button
+                      type="button"
+                      aria-label={t('report.button')}
+                      title={t('report.button')}
+                      className="shrink-0 self-start -mr-1 -mt-0.5 p-1 text-brand-muted/35 hover:text-brand-accent transition-colors"
+                      onClick={() => { hapticImpact('light'); setReporting(entry); }}
+                    >
+                      <IconFlag3 size={15} stroke={1.8} />
+                    </button>
                   </div>
                 );
               })}
@@ -401,6 +501,13 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                 <IconX size={22} stroke={2} />
               </button>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* "Report an error" bottom sheet. */}
+        <AnimatePresence>
+          {reporting && (
+            <ReportSheet entry={reporting} onClose={() => setReporting(null)} />
           )}
         </AnimatePresence>
 
