@@ -313,16 +313,30 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
   const shortYears = (years: string): string =>
     years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
 
+  // Minutes are only trustworthy from the 2022-24 API cache. For a veteran
+  // (>=33) whose cached minutes are clearly a tail (< ~1.5 full seasons), the
+  // number is misleading (we only have the end of a long career), so we DON'T
+  // show minutes — the facts line (titles, clubs, caps) carries instead.
+  const minutesReliable = (entry: HistoryEntry): boolean => {
+    if (!entry.clubs_minutes?.length) return false;
+    const by = entry.facts?.birth_year;
+    const age = by ? new Date().getFullYear() - by : null;
+    const total = entry.clubs_minutes.reduce((s, c) => s + (c.minutes || 0), 0);
+    return !(age !== null && age >= 33 && total < 4500);
+  };
+
   // Bottom clubs as chips, unified for active and legend cards. FULL Russian
   // club names (no shortening, no ellipsis); the chips wrap to a second line
   // when they don't fit instead of being clipped.
   //   active : "Борнмут ≈110 ч", "Тоттенхэм Хотспур ≈57 ч"  (full name + time)
   //   legend : "Реал Мадрид 2002–07", "Интер 1997–02"        (full name + years)
   const clubChips = (entry: HistoryEntry): string[] => {
-    if (entry.clubs_minutes?.length) {
+    // Only render minute chips when the minutes are trustworthy (see above).
+    if (entry.clubs_minutes?.length && minutesReliable(entry)) {
       return entry.clubs_minutes.slice(0, 4)
         .map((c) => `${c.club} ${fmtTime(c.minutes)}`);
     }
+    // Veterans (clubs years, no/unreliable minutes) -> club + years, no minutes.
     if (entry.legend_career?.clubs?.length) {
       return entry.legend_career.clubs.slice(0, 4)
         .map((c) => `${c.club} ${shortYears(c.years)}`.trim());
@@ -330,10 +344,10 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
     return [];
   };
 
-  // 1–2 brightest structural facts (cards.facts) for the line under the chips.
-  // Priority: title > caps-for-national > World Cup > height > clubs. A title is
-  // already shown as the golden line for legends, so include one here only when
-  // there's no legend golden line for this card. No facts → empty → no line.
+  // Structural facts (cards.facts) for the muted line under the gold titles.
+  // NEW priority — what matters is career breadth, not minutes:
+  //   clubs_count > caps-for-national > World Cup > height.
+  // Titles are NOT here — they lead in the golden titlesLine() below.
   const brightFacts = (entry: HistoryEntry): string[] => {
     const f = entry.facts;
     if (!f) return [];
@@ -341,16 +355,22 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
     // the *_female_* key via context, falling back to the neutral key otherwise.
     const female = entry.category === 'woman';
     const out: string[] = [];
-    if (!entry.legend_career?.titles?.length && f.titles?.length) out.push(f.titles[0]);
+    if (f.clubs_count) out.push(t('facts.clubs', { count: f.clubs_count }));
     if (f.national_caps) {
       out.push(t('facts.caps', { count: f.national_caps, team: f.national_team ?? '' }));
     }
     const wc = (f.tournaments ?? []).filter((tm) => tm.startsWith('ЧМ')).length;
     if (wc) out.push(t('facts.world_cup', { count: wc, ...(female ? { context: 'female' } : {}) }));
     if (f.height_cm) out.push(t('facts.height', { cm: f.height_cm }));
-    if (f.clubs_count) out.push(t('facts.clubs', { count: f.clubs_count }));
-    return out.slice(0, 2);
+    return out.slice(0, 3);
   };
+
+  // Prestige titles in gold — now for EVERY card (legends use legend_career,
+  // others fall back to facts.titles). Titles are the headline fact.
+  const titlesLine = (entry: HistoryEntry): string[] =>
+    (entry.legend_career?.titles?.length
+      ? entry.legend_career.titles
+      : entry.facts?.titles ?? []).slice(0, 3);
 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
@@ -394,6 +414,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                 const meta = metaLine(entry);
                 const chips = clubChips(entry);
                 const facts = brightFacts(entry);
+                const titles = titlesLine(entry);
                 // Status colour bar on the left (Variant 4): green guessed,
                 // orange skipped. Replaces the textual status label.
                 const barColor = guessed ? STATUS_GUESSED : STATUS_SKIPPED;
@@ -440,6 +461,12 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                           {meta}
                         </p>
                       )}
+                      {/* Titles first, in gold — the headline fact. */}
+                      {titles.length > 0 && (
+                        <p className="text-[#FFD24A] text-xs font-medium leading-snug truncate mt-0.5">
+                          🏆 {titles.join(' · ')}
+                        </p>
+                      )}
                       {chips.length > 0 && (
                         <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
                           {chips.map((c, j) => (
@@ -447,11 +474,6 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                           ))}
                         </div>
                       )}
-                      {entry.legend_career?.titles?.length ? (
-                        <p className="text-[#FFD24A] text-xs leading-snug truncate mt-0.5">
-                          {entry.legend_career.titles.join(' · ')}
-                        </p>
-                      ) : null}
                       {facts.length > 0 && (
                         <p className="text-brand-muted/60 text-[11px] leading-snug truncate mt-0.5">
                           {facts.join(' · ')}
