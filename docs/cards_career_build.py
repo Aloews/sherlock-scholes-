@@ -117,6 +117,15 @@ def first_int(v):
     return int(m.group()) if m else None
 
 
+def parse_birth_year(ib):
+    """Birth year from the infobox (birth_date / dateofbirth) — used to verify
+    name-resolved articles are the SAME person (not a namesake)."""
+    p = split_params(ib)
+    bd = p.get("birth_date") or p.get("dateofbirth") or ""
+    m = re.search(r"\b(1[89]\d\d|20\d\d)\b", bd)
+    return int(m.group(1)) if m else None
+
+
 def parse_senior(ib):
     p = split_params(ib)
     rows = []
@@ -253,11 +262,11 @@ def main():
                 continue
             rows = parse_senior(ib)
             if rows:
-                return rows, lang, via
-        return [], None, via
+                return rows, lang, via, parse_birth_year(ib)
+        return [], None, via, None
 
     filled = via_qid = via_name = patched = skipped_existing = 0
-    thin = 0
+    thin = name_rejected = 0
     examples = {}
     WANT = {"Оливье Жиру", "Тео Уолкотт"}
     for idx, c in enumerate(pool, 1):
@@ -265,7 +274,7 @@ def main():
             skipped_existing += 1
             continue
         try:
-            rows, lang, via = career_for(c)
+            rows, lang, via, wiki_birth = career_for(c)
         except RuntimeError:
             print("BUDGET EXHAUSTED at %d/%d — stopping, progress cached." % (idx, len(pool)), flush=True)
             break
@@ -273,8 +282,17 @@ def main():
         if not rows or total_apps < MIN_APPS:
             thin += 1
             if idx % 100 == 0:
-                print("  ...%d/%d filled=%d" % (idx, len(pool), filled), flush=True)
+                print("  ...%d/%d filled=%d rejected=%d" % (idx, len(pool), filled, name_rejected), flush=True)
             continue
+        # Name-resolved (no QID): verify SAME person via birth year — the Wiki
+        # infobox birth must match facts.birth_year, else it's likely a namesake.
+        if via == "name":
+            card_birth = (c.get("facts") or {}).get("birth_year")
+            if not (wiki_birth and card_birth and wiki_birth == card_birth):
+                name_rejected += 1
+                if idx % 100 == 0:
+                    print("  ...%d/%d filled=%d rejected=%d" % (idx, len(pool), filled, name_rejected), flush=True)
+                continue
         rows = sorted(rows, key=lambda r: -(r["apps"] or 0))[:TOP_CLUBS]
         career = [{"club": r["club"], "years": r["years"], "apps": r["apps"], "goals": r["goals"]} for r in rows]
         filled += 1
@@ -293,13 +311,15 @@ def main():
 
     print("=" * 60)
     print("CAREER_STATS %s" % ("APPLY" if APPLY else "DRY-RUN"))
-    print("  pool                 : %d" % len(pool))
-    print("  already had stats    : %d" % skipped_existing)
-    print("  WOULD fill (>=%d apps): %d  (qid %d, name-resolved %d)"
-          % (MIN_APPS, filled, via_qid, via_name))
-    print("  thin/no infobox      : %d" % thin)
+    print("  pool                    : %d" % len(pool))
+    print("  already had stats       : %d" % skipped_existing)
+    print("  WOULD fill (>=%d apps)   : %d" % (MIN_APPS, filled))
+    print("    via QID (trusted)     : %d" % via_qid)
+    print("    via name + birth-check: %d" % via_name)
+    print("  name-resolved REJECTED  : %d  (birth mismatch / no year — namesake)" % name_rejected)
+    print("  thin/no infobox         : %d" % thin)
     if APPLY:
-        print("  PATCHed              : %d" % patched)
+        print("  PATCHed                 : %d" % patched)
     print("  budget used          : %d/%d" % (budget.used, budget.limit))
     for nm in ("Тео Уолкотт", "Оливье Жиру"):
         if nm in examples:
