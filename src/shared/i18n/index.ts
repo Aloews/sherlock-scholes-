@@ -40,7 +40,8 @@ i18n.use(initReactI18next).init({
 export function setLanguage(lang: AppLang): void {
   localStorage.setItem(LANG_KEY, lang);
   void i18n.changeLanguage(lang);
-  trackEvent('language_select', { lang });
+  // Which card/UI language players switch to (anonymous).
+  trackEvent('language_switched', { lang });
 }
 
 export default i18n;

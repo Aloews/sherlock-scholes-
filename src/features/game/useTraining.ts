@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { pickRandomCards } from './cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
+import { trackEvent } from '@/shared/lib/analytics';
 import i18n from '@/shared/i18n';
 import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CardFacts, ContinentFilter } from '@/shared/types/database';
 
@@ -143,6 +144,11 @@ export function useTraining(
   const recordCurrent = useCallback((status: HistoryEntry['status']) => {
     const card = cards[index];
     if (!card) return;
+    // Anonymous: which cards teams solve vs get stuck on, by category + rarity
+    // tier. No card id / name / user data — only the two aggregate dimensions.
+    trackEvent(status === 'guessed' ? 'card_guessed' : 'card_skipped', {
+      category: card.category, tier: card.tier ?? 'none',
+    });
     setHistory((prev) => [...prev, { name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 

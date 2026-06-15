@@ -144,7 +144,7 @@ export function HomeScreen() {
     setTrainingCats((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
+      else { next.add(cat); trackEvent('category_selected', { kind: 'category', value: cat }); }
       return next;
     });
   };
@@ -155,7 +155,7 @@ export function HomeScreen() {
     setTrainingContinents((prev) => {
       const next = new Set(prev);
       if (next.has(continent)) next.delete(continent);
-      else next.add(continent);
+      else { next.add(continent); trackEvent('category_selected', { kind: 'continent', value: continent }); }
       return next;
     });
   };
@@ -167,7 +167,7 @@ export function HomeScreen() {
     setTrainingTags((prev) => {
       const next = new Set(prev);
       if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
+      else { next.add(tag); trackEvent('category_selected', { kind: 'tag', value: tag }); }
       return next;
     });
   };
@@ -183,6 +183,8 @@ export function HomeScreen() {
 
   const applyPreset = (id: PresetId) => {
     hapticImpact('light');
+    // Which presets players reach for (anonymous, aggregate).
+    trackEvent('category_selected', { kind: 'preset', value: id });
     setStarMode(id === 'stars');
     setTrainingTags(new Set()); // presets are not tag-driven (stars uses STAR_TAG)
     if (id === 'clubs_only') {

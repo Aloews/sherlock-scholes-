@@ -317,7 +317,14 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                       photoUrl={entry.photo_url} category={entry.category} alt={displayName}
                       tier={entry.tier}
                       onOpen={entry.photo_url
-                        ? () => { hapticImpact('light'); setLightbox(entry.photo_url!); }
+                        ? () => {
+                            hapticImpact('light');
+                            // Interest signal: which cards players zoom into.
+                            trackEvent('card_photo_opened', {
+                              category: entry.category, tier: entry.tier ?? 'none',
+                            });
+                            setLightbox(entry.photo_url!);
+                          }
                         : undefined}
                     />
                     <div className="flex-1 min-w-0">
@@ -442,6 +449,8 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
               blue: scores.blue,
               cards: history.length,
             });
+            // Engagement: how many cards a session actually runs through.
+            trackEvent('game_length', { cards: history.length });
             setFinished(true);
           }}
         >
