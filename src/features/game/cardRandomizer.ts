@@ -5,6 +5,8 @@
 import { supabase } from '@/shared/lib/supabase';
 import { ALL_CATEGORIES } from '@/shared/types/database';
 import { trackEvent } from '@/shared/lib/analytics';
+import { getRawInitData } from '@/shared/lib/telegram';
+import { isProTag } from '@/shared/lib/pro';
 import type { Card, CardCategory, ContinentFilter } from '@/shared/types/database';
 
 // Free-tier Supabase pauses when idle and can take 5-30s to wake; the first
@@ -38,11 +40,17 @@ let rpcSupportsContinents = true;
 // p_tags exists only after pick_random_cards_tags.sql ran — same graceful
 // degrade: drop it after the first PGRST202 and play without the tag filter.
 let rpcSupportsTags = true;
+// p_init_data exists only after pro_deck.sql ran. We send it only when a
+// pro-only tag is requested (so the server can enforce is_pro). Before that
+// migration the UI lock is the only guard — drop the param and keep playing.
+let rpcSupportsInitData = true;
 
 const isMissingContinentsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_continents');
 const isMissingTagsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_tags');
+const isMissingInitDataParam = (error: { code?: string; message: string }) =>
+  error.code === 'PGRST202' || error.message.includes('p_init_data');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -77,15 +85,26 @@ export async function pickRandomCards(
 
     const withContinents = rpcSupportsContinents && !!continents?.length;
     const withTags = rpcSupportsTags && !!tags?.length;
+    // Server-side Pro enforcement only matters when a pro-only tag is asked
+    // for; sending the signed initData lets the RPC verify is_pro.
+    const needsInitData = !!tags?.some(isProTag);
+    const withInitData = rpcSupportsInitData && needsInitData;
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
       p_min_pageviews: minPageviews ?? null,
       ...(withContinents ? { p_continents: continents } : {}),
       ...(withTags ? { p_tags: tags } : {}),
+      ...(withInitData ? { p_init_data: getRawInitData() } : {}),
     });
 
     if (error) {
+      if (withInitData && isMissingInitDataParam(error)) {
+        // Pre-migration DB (no p_init_data) — drop it and redo this attempt.
+        rpcSupportsInitData = false;
+        attempt--;
+        continue;
+      }
       if (withTags && isMissingTagsParam(error)) {
         // Pre-migration DB (no p_tags) — drop it and redo this attempt.
         rpcSupportsTags = false;

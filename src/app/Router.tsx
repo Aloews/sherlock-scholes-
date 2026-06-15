@@ -11,6 +11,7 @@ const GameScreen     = lazy(() => import('@/screens/GameScreen').then((m) => ({ 
 const EndScreen      = lazy(() => import('@/screens/EndScreen').then((m) => ({ default: m.EndScreen })));
 const TrainingScreen = lazy(() => import('@/screens/TrainingScreen').then((m) => ({ default: m.TrainingScreen })));
 const TutorialScreen = lazy(() => import('@/screens/TutorialScreen').then((m) => ({ default: m.TutorialScreen })));
+const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
@@ -80,6 +81,7 @@ export function Router() {
       />
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
+      <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

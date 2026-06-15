@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Router } from '@/app/Router';
 import { useAuth } from '@/features/auth/useAuth';
+import { useProStatus } from '@/features/pro/useProStatus';
 import { useGameStore } from '@/shared/store/gameStore';
 
 const SPLASH_TIMEOUT_MS = 9_000;
@@ -12,6 +13,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { initialized } = useAuth();
   const { error } = useGameStore();
   const { t } = useTranslation();
+
+  // Fetch server-validated Pro status (no-op outside Telegram).
+  useProStatus();
 
   // Failsafe: if auth never settles, surface a reload option instead of a hung splash.
   const [timedOut, setTimedOut] = useState(false);

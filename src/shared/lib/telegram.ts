@@ -81,6 +81,13 @@ export function getTelegramUser(): TelegramUser | null {
   return null;
 }
 
+// Raw, signed initData string for SERVER-SIDE validation (get_user_status).
+// Empty outside Telegram (dev / plain browser) — the server then can't verify
+// a user, so Pro stays off, which is the safe default.
+export function getRawInitData(): string {
+  return tg?.initData ?? '';
+}
+
 // Telegram's HapticFeedback only works inside the Telegram mobile app. In a
 // plain mobile browser (and in dev) we fall back to the Vibration API, so
 // buttons still buzz. iOS Safari has no vibration API at all — silently a

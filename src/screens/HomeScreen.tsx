@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconQuestionMark, IconVolume, IconVolumeOff,
-  IconChevronDown,
+  IconCrown, IconLock,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -13,76 +13,66 @@ import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
+import { useProStore } from '@/shared/store/proStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { FRAME_COLOR } from '@/shared/lib/pro';
 import {
   ALL_CONTINENT_FILTERS,
   CATEGORY_LABEL_RU,
   CATEGORY_LABEL_EN,
-  SPECIAL_TAGS,
   STAR_TAG,
   type CardCategory,
   type ContinentFilter,
-  type SpecialTag,
 } from '@/shared/types/database';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
 
-// Accordion groups of the quick-game picker. "players" expands into continents,
-// "special" into tag filters; the rest list plain categories. A category/tag
-// that does not exist in the DB yet just contributes an empty slice — nothing
-// crashes, the live counter shows fewer cards.
-type GroupId = 'players' | 'clubs' | 'people' | 'knowledge' | 'special';
-const CAT_GROUPS: { id: Exclude<GroupId, 'players'>; cats: CardCategory[] }[] = [
-  { id: 'clubs',     cats: ['club', 'club_nickname', 'stadium'] },
-  { id: 'people',    cats: ['coach', 'referee', 'commentator'] },
-  { id: 'knowledge', cats: ['term', 'position'] },
+// Variant 2 — a single flat chip picker. Every filter (special tags,
+// continents, non-player categories) is a chip; tap to multi-select. Tags are
+// player-only and override the category/continent group (selecting a tag clears
+// them, mirroring the deck RPC where a tag restricts to those player cards).
+// Pro-only tags (legend, ballon_dor) are locked for free users.
+const NON_PLAYER_CATEGORIES: CardCategory[] = [
+  'club', 'club_nickname', 'stadium', 'coach', 'referee', 'commentator',
+  'term', 'position', 'woman',
 ];
-// 'woman' is its own category but lives UNDER the Players accordion (women are
-// players, not "knowledge") — not in CAT_GROUPS, yet still a selectable
-// non-player category for the "Всё" preset / deck logic.
-const NON_PLAYER_CATEGORIES: CardCategory[] =
-  [...CAT_GROUPS.flatMap((g) => g.cats), 'woman'];
-const CLUBS_ONLY_CATS: CardCategory[] = ['club', 'club_nickname', 'stadium'];
 
-type PresetId = 'all' | 'stars' | 'clubs_only' | 'world';
-const PRESETS: PresetId[] = ['all', 'stars', 'clubs_only', 'world'];
-
-const sameMembers = (set: Set<string>, arr: readonly string[]) =>
-  set.size === arr.length && arr.every((x) => set.has(x));
-
-/** Checkbox row shared by the quick-game accordion items. */
-function CheckRow({ active, label, onToggle }: {
-  active: boolean;
-  label: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-left ${
-        active ? 'bg-brand-accent/15 text-white' : 'bg-brand-border text-brand-muted'
-      }`}
-      onClick={() => { hapticImpact('light'); onToggle(); }}
-    >
-      <span
-        className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
-          active ? 'bg-brand-accent text-brand-bg' : 'bg-brand-muted/30'
-        }`}
-      >
-        {active ? '✓' : ''}
-      </span>
-      <span className="truncate">{label}</span>
-    </button>
-  );
+type ChipKind = 'tag' | 'continent' | 'category';
+interface Chip {
+  id: string;
+  kind: ChipKind;
+  value: string;            // tag value | continent value | category value
+  pro: boolean;             // pro-only (locked for free users)
+  labelKey?: string;        // i18n key for tag/continent chips
+  cat?: CardCategory;       // set for category chips (label via CATEGORY_LABEL_*)
 }
+
+const TAG_CHIPS: Chip[] = [
+  { id: 'star',       kind: 'tag', value: STAR_TAG,     pro: false, labelKey: 'home.chip_stars' },
+  { id: 'legend',     kind: 'tag', value: 'legend',     pro: true,  labelKey: 'home.pro_filter_legends' },
+  { id: 'ballon_dor', kind: 'tag', value: 'ballon_dor', pro: true,  labelKey: 'home.tag_ballon_dor' },
+  { id: 'goalkeeper', kind: 'tag', value: 'goalkeeper', pro: false, labelKey: 'home.tag_goalkeeper' },
+  { id: 'world_cup',  kind: 'tag', value: 'world_cup',  pro: false, labelKey: 'home.tag_world_cup' },
+  { id: 'giant',      kind: 'tag', value: 'giant',      pro: false, labelKey: 'home.tag_giant' },
+  { id: 'dwarf',      kind: 'tag', value: 'dwarf',      pro: false, labelKey: 'home.tag_dwarf' },
+];
+const CONTINENT_CHIPS: Chip[] = ALL_CONTINENT_FILTERS.map((c) => ({
+  id: `cont_${c}`, kind: 'continent', value: c, pro: false, labelKey: `home.continent_${c}`,
+}));
+const CATEGORY_CHIPS: Chip[] = NON_PLAYER_CATEGORIES.map((c) => ({
+  id: `cat_${c}`, kind: 'category', value: c, pro: false, cat: c,
+}));
+const CHIPS: Chip[] = [...TAG_CHIPS, ...CONTINENT_CHIPS, ...CATEGORY_CHIPS];
 
 export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading, error } = useGameStore();
-  const { soundEnabled, setSoundEnabled } = useSettingsStore();
+  const { soundEnabled, setSoundEnabled, proFrame } = useSettingsStore();
+  const isPro = useProStore((s) => s.isPro);
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
@@ -97,22 +87,20 @@ export function HomeScreen() {
   // so the deck RPC is already hot by the time the player taps Play. Best-effort.
   useEffect(() => { void wakeSupabase(); }, []);
 
-  const [view,            setView]            = useState<View>('home');
-  const [code,            setCode]            = useState('');
-  const [rounds1v1,       setRounds1v1]       = useState(3);
-  // Quick game picker. Default = preset "Всё": every continent + every
-  // non-player category, no star floor.
-  const [trainingContinents, setTrainingContinents] =
-    useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
-  const [trainingCats, setTrainingCats] =
-    useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
-  // "Особые" tag filters (вратари / Золотой мяч / ЧМ / великаны / малыши). When
-  // any is on, the deck is tag-driven (those player cards only); 'star' is set
-  // by the "Только звёзды" preset, not shown here as a checkbox.
-  const [trainingTags, setTrainingTags] = useState<Set<SpecialTag>>(new Set());
-  const [starMode, setStarMode] = useState(false);
-  const [openGroup, setOpenGroup] = useState<GroupId | null>(null);
-  const [deckCount, setDeckCount] = useState<number | null>(null);
+  const [view,      setView]      = useState<View>('home');
+  const [code,      setCode]      = useState('');
+  const [rounds1v1, setRounds1v1] = useState(3);
+
+  // Chip selection. Default = everything (all continents + all non-player
+  // categories, no tags) so Play works immediately; the user narrows from there.
+  const [selConts, setSelConts] = useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
+  const [selCats,  setSelCats]  = useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
+  const [selTags,  setSelTags]  = useState<Set<string>>(new Set());
+
+  const [deckCount,  setDeckCount]  = useState<number | null>(null);
+  // Per-chip standalone counts → grey out empty chips (e.g. "Звёзды" before the
+  // star tag is backfilled). null until the one-time load finishes.
+  const [chipCounts, setChipCounts] = useState<Record<string, number> | null>(null);
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
@@ -120,28 +108,54 @@ export function HomeScreen() {
   };
 
   // Hidden admin entrance: 5 quick taps on the hero logo (each ≤600ms after the
-  // previous, so the whole run is ~2s) open the password-gated /admin route. No
-  // visible hint or button — players don't know it exists, and the Vault
-  // password is still required there; the taps only reveal the form.
+  // previous) open the password-gated /admin route. No visible hint.
   const adminTapRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
   const handleLogoTap = () => {
     const now = Date.now();
     const { count, last } = adminTapRef.current;
-    const next = now - last <= 600 ? count + 1 : 1; // gap >600ms restarts the run
+    const next = now - last <= 600 ? count + 1 : 1;
     adminTapRef.current = { count: next, last: now };
     if (next >= 5) {
       adminTapRef.current = { count: 0, last: 0 };
-      hapticImpact('medium'); // confirm the 5th tap
+      hapticImpact('medium');
       navigate('/admin');
     }
   };
 
-  // Any manual edit of categories/continents leaves "stars" mode AND the
-  // tag-driven "Особые" mode (they're mutually exclusive with normal filters).
-  const toggleCat = (cat: CardCategory) => {
-    setStarMode(false);
-    setTrainingTags(new Set());
-    setTrainingCats((prev) => {
+  const getCatLabel = (cat: CardCategory) =>
+    i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
+
+  // Tag chips are player-only and exclusive with the category/continent group:
+  // selecting one clears those (mirrors the deck RPC). Pro-only tags bounce free
+  // users to the Pro screen instead of selecting (and never start a game).
+  const toggleTagChip = (chip: Chip) => {
+    if (chip.pro && !isPro) { hapticImpact('light'); navigate('/pro'); return; }
+    hapticImpact('light');
+    setSelConts(new Set());
+    setSelCats(new Set());
+    setSelTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(chip.value)) next.delete(chip.value);
+      else { next.add(chip.value); trackEvent('category_selected', { kind: chip.pro ? 'pro_tag' : 'tag', value: chip.value }); }
+      return next;
+    });
+  };
+
+  const toggleContinentChip = (value: ContinentFilter) => {
+    hapticImpact('light');
+    setSelTags(new Set());
+    setSelConts((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else { next.add(value); trackEvent('category_selected', { kind: 'continent', value }); }
+      return next;
+    });
+  };
+
+  const toggleCategoryChip = (cat: CardCategory) => {
+    hapticImpact('light');
+    setSelTags(new Set());
+    setSelCats((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
       else { next.add(cat); trackEvent('category_selected', { kind: 'category', value: cat }); }
@@ -149,129 +163,74 @@ export function HomeScreen() {
     });
   };
 
-  const toggleContinent = (continent: ContinentFilter) => {
-    setStarMode(false);
-    setTrainingTags(new Set());
-    setTrainingContinents((prev) => {
-      const next = new Set(prev);
-      if (next.has(continent)) next.delete(continent);
-      else { next.add(continent); trackEvent('category_selected', { kind: 'continent', value: continent }); }
-      return next;
-    });
-  };
-
-  // "Особые" tag toggle. Selecting a tag switches to tag-driven mode (the deck
-  // becomes those player cards); leaves stars mode. Multiple tags = OR.
-  const toggleTag = (tag: SpecialTag) => {
-    setStarMode(false);
-    setTrainingTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag);
-      else { next.add(tag); trackEvent('category_selected', { kind: 'tag', value: tag }); }
-      return next;
-    });
-  };
-
-  // Parent "all players" checkbox: every continent at once / none.
-  const allContinentsOn = trainingContinents.size === ALL_CONTINENT_FILTERS.length;
-  const playersOn = trainingContinents.size > 0;
-  const togglePlayers = () => {
-    setStarMode(false);
-    setTrainingTags(new Set());
-    setTrainingContinents(allContinentsOn ? new Set() : new Set(ALL_CONTINENT_FILTERS));
-  };
-
-  const applyPreset = (id: PresetId) => {
-    hapticImpact('light');
-    // Which presets players reach for (anonymous, aggregate).
-    trackEvent('category_selected', { kind: 'preset', value: id });
-    setStarMode(id === 'stars');
-    setTrainingTags(new Set()); // presets are not tag-driven (stars uses STAR_TAG)
-    if (id === 'clubs_only') {
-      setTrainingContinents(new Set());
-      setTrainingCats(new Set(CLUBS_ONLY_CATS));
-    } else if (id === 'all') {
-      setTrainingContinents(new Set(ALL_CONTINENT_FILTERS));
-      setTrainingCats(new Set(NON_PLAYER_CATEGORIES));
-    } else {
-      // stars / world: players only, all continents, no other categories.
-      setTrainingContinents(new Set(ALL_CONTINENT_FILTERS));
-      setTrainingCats(new Set());
-    }
-  };
-
-  const toggleGroup = (group: GroupId) => {
-    hapticImpact('light');
-    setOpenGroup((prev) => (prev === group ? null : group));
-  };
-
-  const getCatLabel = (cat: CardCategory) =>
-    i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
-
-  // Deck filter derived from the current selection (mirrors the RPC inputs).
-  // Tag-driven mode (the "stars" preset or any "Особые" tag) overrides the
-  // category/continent filters: the deck is the player cards carrying the tags.
-  const selTags: string[] | null = starMode
-    ? [STAR_TAG]
-    : (trainingTags.size ? [...trainingTags] : null);
-  const tagMode = selTags !== null;
-  const everything = !tagMode && allContinentsOn
-    && trainingCats.size === NON_PLAYER_CATEGORIES.length;
+  // Deck filter derived from the chip selection (mirrors the RPC inputs).
+  const tagList = [...selTags];
+  const tagMode = tagList.length > 0;
+  const allContinentsOn = selConts.size === ALL_CONTINENT_FILTERS.length;
+  const playersOn = selConts.size > 0;
+  const everything = !tagMode && allContinentsOn && selCats.size === NON_PLAYER_CATEGORIES.length;
   const selCategories: CardCategory[] | null = tagMode
     ? (['player'] as CardCategory[])
     : everything
       ? null
-      : [...(playersOn ? (['player'] as CardCategory[]) : []), ...trainingCats];
+      : [...(playersOn ? (['player'] as CardCategory[]) : []), ...selCats];
   const selContinents: ContinentFilter[] | null =
-    !tagMode && playersOn && !allContinentsOn ? [...trainingContinents] : null;
-  const selMinPageviews = null; // "stars" is now the STAR_TAG, not a pageviews floor
-  const nothingSelected = !tagMode && !playersOn && trainingCats.size === 0;
+    !tagMode && playersOn && !allContinentsOn ? [...selConts] : null;
+  const selMinPageviews = null;
+  const deckTags: string[] | null = tagMode ? tagList : null;
+  const nothingSelected = !tagMode && !playersOn && selCats.size === 0;
+  const selectedCount = selTags.size + selConts.size + selCats.size;
 
-  const activePreset: PresetId | null = useMemo(() => {
-    if (trainingTags.size) return null; // "Особые" custom tag selection
-    const allCont = sameMembers(trainingContinents, ALL_CONTINENT_FILTERS);
-    const noCont = trainingContinents.size === 0;
-    const allCats = sameMembers(trainingCats, NON_PLAYER_CATEGORIES);
-    const noCats = trainingCats.size === 0;
-    const clubsOnly = sameMembers(trainingCats, CLUBS_ONLY_CATS);
-    if (starMode && allCont && noCats) return 'stars';
-    if (!starMode && allCont && allCats) return 'all';
-    if (!starMode && noCont && clubsOnly) return 'clubs_only';
-    if (!starMode && allCont && noCats) return 'world';
-    return null;
-  }, [trainingContinents, trainingCats, starMode, trainingTags]);
+  // One-time per-chip count to grey out empty chips. Each chip is counted in
+  // isolation (its own filter). Errors leave a chip enabled (count -1).
+  useEffect(() => {
+    if (view !== 'create_training' || chipCounts) return;
+    let cancelled = false;
+    Promise.all(CHIPS.map(async (chip) => {
+      let n = -1;
+      try {
+        if (chip.kind === 'tag') n = await countDeck(['player'], null, null, [chip.value]);
+        else if (chip.kind === 'continent') n = await countDeck(['player'], [chip.value as ContinentFilter], null, null);
+        else n = await countDeck([chip.cat as CardCategory], null, null, null);
+      } catch { n = -1; }
+      return [chip.id, n] as const;
+    })).then((entries) => {
+      if (!cancelled) setChipCounts(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [view, chipCounts]);
 
-  // Live "Выбрано: N карточек" — debounced count of the current filter.
+  // Live "Выбрано: N · M карточек" — debounced count of the current selection.
   const filterKey = JSON.stringify(
-    { c: selCategories, k: selContinents, p: selMinPageviews, g: selTags });
+    { c: selCategories, k: selContinents, p: selMinPageviews, g: deckTags });
   useEffect(() => {
     if (view !== 'create_training') return;
     let cancelled = false;
     setDeckCount(null);
     const handle = setTimeout(() => {
-      countDeck(selCategories, selContinents, selMinPageviews, selTags)
+      countDeck(selCategories, selContinents, selMinPageviews, deckTags)
         .then((n) => { if (!cancelled) setDeckCount(n); })
         .catch(() => { if (!cancelled) setDeckCount(null); });
     }, 350);
     return () => { cancelled = true; clearTimeout(handle); };
-    // selCategories/selContinents/selTags are captured via filterKey (stable).
+    // selection captured via filterKey (stable).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, view]);
 
   const startTraining = () => {
     hapticImpact('light');
     trackEvent('quick_game_start', {
-      preset: activePreset ?? (selTags ? 'special' : 'custom'),
+      preset: deckTags ? 'tags' : (everything ? 'all' : 'custom'),
       players: playersOn,
-      categories: trainingCats.size,
-      tags: selTags?.join(',') ?? '',
+      categories: selCats.size,
+      tags: deckTags?.join(',') ?? '',
     });
     navigate('/training', {
       state: {
         categories: selCategories,
         continents: selContinents,
         minPageviews: selMinPageviews,
-        tags: selTags,
+        tags: deckTags,
       },
     });
   };
@@ -302,13 +261,28 @@ export function HomeScreen() {
           >
             {soundEnabled ? <IconVolume size={16} stroke={2} /> : <IconVolumeOff size={16} stroke={2} />}
           </button>
+          <button
+            onClick={() => { hapticImpact('light'); navigate('/pro'); }}
+            aria-label={t('pro.title')}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border transition-colors hover:text-white"
+            style={isPro ? { borderColor: '#FFD24A', color: '#FFD24A' } : undefined}
+          >
+            <IconCrown size={16} stroke={2} className={isPro ? '' : 'text-brand-muted'} />
+          </button>
         </div>
         {player && (
-          <Avatar
-            name={`${player.first_name} ${player.last_name ?? ''}`.trim()}
-            src={player.avatar_url}
-            size="md"
-          />
+          <span
+            className="rounded-full inline-block"
+            style={isPro && FRAME_COLOR[proFrame]
+              ? { boxShadow: `0 0 0 2px ${FRAME_COLOR[proFrame]}` }
+              : undefined}
+          >
+            <Avatar
+              name={`${player.first_name} ${player.last_name ?? ''}`.trim()}
+              src={player.avatar_url}
+              size="md"
+            />
+          </span>
         )}
       </div>
 
@@ -480,160 +454,54 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Training settings ── */}
+        {/* ── Quick game: chip picker (Variant 2) ── */}
         {view === 'create_training' && (
           <div className="w-full max-w-sm space-y-4 animate-slide-up">
-            {/* Live deck size for the current selection */}
+            <div className="flex flex-wrap gap-2">
+              {CHIPS.map((chip) => {
+                const empty = !!chipCounts && (chipCounts[chip.id] ?? 0) === 0;
+                const locked = chip.pro && !isPro;
+                const active =
+                  chip.kind === 'tag'       ? selTags.has(chip.value)
+                  : chip.kind === 'continent' ? selConts.has(chip.value as ContinentFilter)
+                  : selCats.has(chip.cat as CardCategory);
+                const label = chip.cat ? getCatLabel(chip.cat) : t(chip.labelKey as string);
+                // Empty chips grey out (no "звёзды 0"); a pro-locked chip stays
+                // tappable so free users can reach the Pro screen.
+                const disabled = empty && !locked;
+                const handleClick = () => {
+                  if (disabled) return;
+                  if (chip.kind === 'tag') toggleTagChip(chip);
+                  else if (chip.kind === 'continent') toggleContinentChip(chip.value as ContinentFilter);
+                  else toggleCategoryChip(chip.cat as CardCategory);
+                };
+                return (
+                  <button
+                    key={chip.id}
+                    disabled={disabled}
+                    onClick={handleClick}
+                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium border transition-colors ${
+                      active
+                        ? 'border-transparent text-white'
+                        : 'border-brand-border bg-brand-border/40 text-brand-muted hover:text-white'
+                    } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    style={active ? { backgroundColor: '#FF6300' } : undefined}
+                  >
+                    {locked && <IconLock size={11} stroke={2.5} style={{ color: '#FFD24A' }} />}
+                    <span className="truncate">{label}</span>
+                    {chip.pro && !locked && <span style={{ color: '#FFD24A' }}>★</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Live counter: selected chips · matching cards */}
             <p className="text-center text-sm text-brand-muted">
               {deckCount === null
                 ? t('home.counting')
-                : t('home.selected_count', { count: deckCount })}
+                : t('home.selected_chips', { n: selectedCount, m: deckCount })}
             </p>
 
-            {/* One-tap presets */}
-            <div className="grid grid-cols-2 gap-2">
-              {PRESETS.map((preset) => {
-                const on = activePreset === preset;
-                return (
-                  <button
-                    key={preset}
-                    className={`rounded-xl py-2.5 px-2 text-xs font-bold transition-colors ${
-                      on ? 'text-brand-bg' : 'bg-brand-border text-white hover:bg-brand-border/70'
-                    }`}
-                    style={on ? { backgroundColor: '#FF6300' } : undefined}
-                    onClick={() => applyPreset(preset)}
-                  >
-                    {t(`home.preset_${preset}`)}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Fine-grained accordion groups */}
-            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border space-y-3">
-              {/* Players group — expands into continents */}
-              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
-                <div className="flex items-stretch">
-                  <CheckRow
-                    active={playersOn}
-                    label={t('home.group_players')}
-                    onToggle={togglePlayers}
-                  />
-                  <button
-                    className="flex-1 flex items-center justify-end px-3 text-brand-muted hover:text-white transition-colors"
-                    aria-expanded={openGroup === 'players'}
-                    aria-label={t('home.group_players')}
-                    onClick={() => toggleGroup('players')}
-                  >
-                    <IconChevronDown
-                      size={18}
-                      stroke={2}
-                      className={`transition-transform duration-200 ${
-                        openGroup === 'players' ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                </div>
-                {openGroup === 'players' && (
-                  <div className="p-2 pt-0 animate-fade-in space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {ALL_CONTINENT_FILTERS.map((continent) => (
-                        <CheckRow
-                          key={continent}
-                          active={trainingContinents.has(continent)}
-                          label={t(`home.continent_${continent}`)}
-                          onToggle={() => toggleContinent(continent)}
-                        />
-                      ))}
-                    </div>
-                    {/* Women — a player category, kept here next to continents. */}
-                    <div className="grid grid-cols-2 gap-2 border-t border-brand-border/40 pt-2">
-                      <CheckRow
-                        active={trainingCats.has('woman')}
-                        label={getCatLabel('woman')}
-                        onToggle={() => toggleCat('woman')}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Category groups */}
-              {CAT_GROUPS.map((group) => {
-                const selected = group.cats.filter((c) => trainingCats.has(c)).length;
-                return (
-                  <div key={group.id} className="rounded-xl bg-brand-border/40 overflow-hidden">
-                    <button
-                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
-                      aria-expanded={openGroup === group.id}
-                      onClick={() => toggleGroup(group.id)}
-                    >
-                      <span>
-                        {t(`home.group_${group.id}`)}
-                        <span className="text-brand-muted ml-1.5">
-                          {selected}/{group.cats.length}
-                        </span>
-                      </span>
-                      <IconChevronDown
-                        size={18}
-                        stroke={2}
-                        className={`text-brand-muted transition-transform duration-200 ${
-                          openGroup === group.id ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-                    {openGroup === group.id && (
-                      <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
-                        {group.cats.map((cat) => (
-                          <CheckRow
-                            key={cat}
-                            active={trainingCats.has(cat)}
-                            label={getCatLabel(cat)}
-                            onToggle={() => toggleCat(cat)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Особые — tag filters (вратари / Золотой мяч / ЧМ / великаны /
-                  малыши). Selecting any makes the deck those player cards. */}
-              <div className="rounded-xl bg-brand-border/40 overflow-hidden">
-                <button
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs text-white text-left"
-                  aria-expanded={openGroup === 'special'}
-                  onClick={() => toggleGroup('special')}
-                >
-                  <span>
-                    {t('home.group_special')}
-                    <span className="text-brand-muted ml-1.5">
-                      {trainingTags.size}/{SPECIAL_TAGS.length}
-                    </span>
-                  </span>
-                  <IconChevronDown
-                    size={18}
-                    stroke={2}
-                    className={`text-brand-muted transition-transform duration-200 ${
-                      openGroup === 'special' ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {openGroup === 'special' && (
-                  <div className="grid grid-cols-2 gap-2 p-2 pt-0 animate-fade-in">
-                    {SPECIAL_TAGS.map((tag) => (
-                      <CheckRow
-                        key={tag}
-                        active={trainingTags.has(tag)}
-                        label={t(`home.tag_${tag}`)}
-                        onToggle={() => toggleTag(tag)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
             <Button
               fullWidth
               size="lg"
