@@ -197,11 +197,21 @@
     "mute": "Выключить звук",
     "unmute": "Включить звук"
   },
+  "career": {
+    "matches_one": "{{count}} матч",
+    "matches_few": "{{count}} матча",
+    "matches_many": "{{count}} матчей",
+    "matches_other": "{{count}} матчей",
+    "goals_one": "{{count}} гол",
+    "goals_few": "{{count}} гола",
+    "goals_many": "{{count}} голов",
+    "goals_other": "{{count}} голов"
+  },
   "facts": {
-    "caps_one": "{{count}} матч за сборную {{team}}",
-    "caps_few": "{{count}} матча за сборную {{team}}",
-    "caps_many": "{{count}} матчей за сборную {{team}}",
-    "caps_other": "{{count}} матчей за сборную {{team}}",
+    "caps_one": "{{count}} матч {{team}}",
+    "caps_few": "{{count}} матча {{team}}",
+    "caps_many": "{{count}} матчей {{team}}",
+    "caps_other": "{{count}} матчей {{team}}",
     "world_cup_one": "играл на ЧМ",
     "world_cup_few": "{{count}}× ЧМ",
     "world_cup_many": "{{count}}× ЧМ",

@@ -172,6 +172,16 @@ export interface LegendCareer {
   titles?: string[] | null; // short prestige titles, e.g. ["Золотой мяч ×3", "ЧМ 1998"]
 }
 
+// Wikipedia-infobox career for known veterans whose minutes are unreliable
+// (cards.career_stats, docs/cards_career_build.py). Clubs carry apps+goals
+// (Wiki has no minutes) — shown INSTEAD of misleading partial minutes.
+export interface CareerStat {
+  club: string;
+  years: string;
+  apps: number | null;
+  goals: number | null;
+}
+
 // Structural Wikidata facts (cards.facts JSONB). Shown as a bright-fact line in
 // the summary history and used to derive the special-category tags. Every key
 // is optional — absent when Wikidata doesn't know it.
@@ -233,6 +243,7 @@ export interface Card {
   top_minutes?: number | null;  // minutes of that season
   clubs_minutes?: ClubMinutes[] | null; // top clubs by summed minutes; absent until cards_fill_clubs_minutes.sql runs
   legend_career?: LegendCareer | null;  // legends (no API minutes): clubs with years; absent until cards_legend_career_column.sql runs
+  career_stats?: CareerStat[] | null;   // veterans: clubs with apps+goals from Wikipedia; absent until cards_career_build.py runs
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
   tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
   tier?: Tier | null;                   // rarity tier; absent until cards_tier.sql runs + cards_tier_build.py APPLY

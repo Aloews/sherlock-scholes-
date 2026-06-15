@@ -4,7 +4,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
 import i18n from '@/shared/i18n';
-import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CardFacts, ContinentFilter } from '@/shared/types/database';
+import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CareerStat, CardFacts, ContinentFilter } from '@/shared/types/database';
 
 // No card cap: the game runs until the deck of the selected categories is
 // exhausted. PostgREST returns at most 1000 rows per request, so the deck is
@@ -36,6 +36,7 @@ export interface HistoryEntry {
   top_minutes?: number | null; // the summary line under the name; null = hide
   clubs_minutes?: ClubMinutes[] | null; // active players: clubs with minutes
   legend_career?: LegendCareer | null;  // legends: clubs with years (no minutes)
+  career_stats?: CareerStat[] | null;   // veterans: clubs with apps+goals (Wikipedia)
   facts?: CardFacts | null;             // structural facts -> bright-fact line
   tier?: string | null;                 // rarity tier -> coloured avatar ring
   card_translations?: CardTranslation[] | null; // es/pt/fr/... names (cardDisplayName)
@@ -150,7 +151,7 @@ export function useTraining(
     trackEvent(status === 'guessed' ? 'card_guessed' : 'card_skipped', {
       category: card.category, tier: card.tier ?? 'none',
     });
-    setHistory((prev) => [...prev, { id: card.id, name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
+    setHistory((prev) => [...prev, { id: card.id, name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, career_stats: card.career_stats, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // One card transition at a time. While the 0.18s card animation runs we

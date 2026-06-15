@@ -189,6 +189,12 @@
     "mute": "Mute sounds",
     "unmute": "Unmute sounds"
   },
+  "career": {
+    "matches_one": "{{count}} app",
+    "matches_other": "{{count}} apps",
+    "goals_one": "{{count}} goal",
+    "goals_other": "{{count}} goals"
+  },
   "facts": {
     "caps_one": "{{count}} cap",
     "caps_other": "{{count}} caps",

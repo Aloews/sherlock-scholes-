@@ -331,6 +331,18 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
   //   active : "Борнмут ≈110 ч", "Тоттенхэм Хотспур ≈57 ч"  (full name + time)
   //   legend : "Реал Мадрид 2002–07", "Интер 1997–02"        (full name + years)
   const clubChips = (entry: HistoryEntry): string[] => {
+    // Veterans with a Wikipedia career: club + years · apps, goals — the richest
+    // and most honest line (replaces unreliable minutes). Top clubs by apps.
+    if (entry.career_stats?.length) {
+      return [...entry.career_stats]
+        .sort((a, b) => (b.apps ?? 0) - (a.apps ?? 0))
+        .slice(0, 4)
+        .map((c) => {
+          const m = t('career.matches', { count: c.apps ?? 0 });
+          const g = c.goals != null ? `, ${t('career.goals', { count: c.goals })}` : '';
+          return `${c.club} ${shortYears(c.years)} · ${m}${g}`.trim();
+        });
+    }
     // Only render minute chips when the minutes are trustworthy (see above).
     if (entry.clubs_minutes?.length && minutesReliable(entry)) {
       return entry.clubs_minutes.slice(0, 4)
@@ -348,6 +360,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
   // NEW priority — what matters is career breadth, not minutes:
   //   clubs_count > caps-for-national > World Cup > height.
   // Titles are NOT here — they lead in the golden titlesLine() below.
+  // National team genitive ("Португалии") -> short accusative phrase
+  // ("за Португалию"), so the caps fact stays compact. Falls back to the long
+  // "за сборную X" form for names that don't fit the common -ия/-а pattern.
+  const shortNat = (team: string | null | undefined): string => {
+    if (!team) return '';
+    if (team.endsWith('ии')) return `за ${team.slice(0, -2)}ию`;
+    if (team.endsWith('ы')) return `за ${team.slice(0, -1)}у`;
+    return `за сборную ${team}`;
+  };
+
   const brightFacts = (entry: HistoryEntry): string[] => {
     const f = entry.facts;
     if (!f) return [];
@@ -355,14 +377,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
     // the *_female_* key via context, falling back to the neutral key otherwise.
     const female = entry.category === 'woman';
     const out: string[] = [];
+    // Priority: clubs_count > caps-for-national > World Cup > height. Show at
+    // most TWO so the line never overflows (titles are a separate gold line).
     if (f.clubs_count) out.push(t('facts.clubs', { count: f.clubs_count }));
     if (f.national_caps) {
-      out.push(t('facts.caps', { count: f.national_caps, team: f.national_team ?? '' }));
+      out.push(t('facts.caps', { count: f.national_caps, team: shortNat(f.national_team) }));
     }
     const wc = (f.tournaments ?? []).filter((tm) => tm.startsWith('ЧМ')).length;
     if (wc) out.push(t('facts.world_cup', { count: wc, ...(female ? { context: 'female' } : {}) }));
     if (f.height_cm) out.push(t('facts.height', { cm: f.height_cm }));
-    return out.slice(0, 3);
+    return out.slice(0, 2);
   };
 
   // Prestige titles in gold — now for EVERY card (legends use legend_career,
@@ -421,7 +445,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                 return (
                   <div
                     key={i}
-                    className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-md rounded-l-none border-l-[3px] pl-3 pr-3 py-2.5"
+                    className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-md rounded-l-none border-l-[3px] pl-3 pr-3 py-3"
                     style={{ borderLeftColor: barColor }}
                   >
                     <HistoryAvatar
@@ -461,21 +485,31 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
                           {meta}
                         </p>
                       )}
-                      {/* Titles first, in gold — the headline fact. */}
+                      {/* Titles first, in gold — the headline fact. Wraps (no clip). */}
                       {titles.length > 0 && (
-                        <p className="text-[#FFD24A] text-xs font-medium leading-snug truncate mt-0.5">
+                        <p className="text-[#FFD24A] text-xs font-medium leading-snug mt-0.5">
                           🏆 {titles.join(' · ')}
                         </p>
                       )}
+                      {/* Career_stats lines are long ("Клуб годы · N матчей, M голов")
+                          so they STACK and wrap; short minute/legend chips stay inline. */}
                       {chips.length > 0 && (
-                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
-                          {chips.map((c, j) => (
-                            <span key={j} className="whitespace-nowrap">{c}</span>
-                          ))}
-                        </div>
+                        entry.career_stats?.length ? (
+                          <div className="mt-0.5 space-y-0.5 text-brand-muted/80 text-xs leading-snug">
+                            {chips.map((c, j) => (
+                              <p key={j} className="break-words">{c}</p>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
+                            {chips.map((c, j) => (
+                              <span key={j} className="whitespace-nowrap">{c}</span>
+                            ))}
+                          </div>
+                        )
                       )}
                       {facts.length > 0 && (
-                        <p className="text-brand-muted/60 text-[11px] leading-snug truncate mt-0.5">
+                        <p className="text-brand-muted/60 text-[11px] leading-snug mt-0.5">
                           {facts.join(' · ')}
                         </p>
                       )}
