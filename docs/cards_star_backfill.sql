@@ -5,10 +5,12 @@
 -- 'star' tag was never populated (the composite-fame threshold was deferred),
 -- so the preset returned 0 cards. This loads it.
 --
--- star := high pageviews OR played at WC/Euro OR has a title OR tier leg/epic.
--- (No sitelinks signal — not collected; the rest is enough.)
--- Idempotent: re-running adds 'star' only where missing. Projected: ~1307
--- of 2600 active player cards.
+-- star := high pageviews OR has a title OR tier legendary/epic.
+-- "Played at WC/Euro" is deliberately EXCLUDED: it matched ~1156 players and
+-- bloated stars to ~50% — playing at a World Cup ≠ a star. Without it the set
+-- is the genuinely well-known players. (No sitelinks signal — not collected.)
+-- Idempotent: re-running adds 'star' only where missing. Projected: ~345 of
+-- 2600 active player cards.
 -- Run in the Supabase SQL Editor.
 -- ============================================================
 
@@ -24,7 +26,6 @@ where c.category = 'player'
   and not ('star' = any(coalesce(c.tags, '{}'::text[])))
   and (
         coalesce(c.pageviews, 0) >= 19000
-        or 'world_cup' = any(coalesce(c.tags, '{}'::text[]))
         or (jsonb_typeof(c.facts->'titles') = 'array'
             and jsonb_array_length(c.facts->'titles') > 0)
         or (jsonb_typeof(c.legend_career->'titles') = 'array'
