@@ -1,0 +1,1385 @@
+-- PREVIEW ONLY — do not run until approved.
+-- Backfill cards.photo_url from players_meta for player cards where photo_url IS NULL.
+-- 105 UPDATE; 0 ambiguous skipped; 1270 without a match.
+
+BEGIN;
+
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/FC_Lorient_-_May_24th_2013_training_-_Benjamin_Lecomte_1.JPG?width=256' WHERE id = '010a8580-ad8a-4c65-b665-a8caf6ab75b5' AND photo_url IS NULL;  -- Бенжамен Леконт [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Brice_Samba_asse_rcl_23_24.jpg?width=256' WHERE id = '022aa9b0-3d27-48ca-836e-f5e6486a3b08' AND photo_url IS NULL;  -- Брис Самба [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Lens_-_Nice_%2823-01-2021%29_36_%28cropped%29.jpg?width=256' WHERE id = '06037510-1c86-4811-8e9e-1128fb72aaa8' AND photo_url IS NULL;  -- Хефрен Тюрам [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Salvatore_Sirigu_1_%28cropped%29.jpg?width=256' WHERE id = '06e06976-d29f-4a5d-a737-42781dd2e9e4' AND photo_url IS NULL;  -- Сальваторе Сиригу [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Lens_-_Orl%C3%A9ans_%2809-03-2020%29_49_%28cropped%29.jpg?width=256' WHERE id = '06e56904-c343-47bf-9206-14de15127b20' AND photo_url IS NULL;  -- Александр Летелье [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Mama_Bald%C3%A9.png?width=256' WHERE id = '09247339-a3dd-485e-b95b-279354fcf22f' AND photo_url IS NULL;  -- Мама Бальде [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Lionel_Messi_White_House_2026_%283x4_cropped%29.jpg?width=256' WHERE id = '0a6ecfd6-a4eb-4494-8787-c1ff1acac7c3' AND photo_url IS NULL;  -- Лионель Месси [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Majecki_asse_asm_2425.png?width=256' WHERE id = '0d1095ca-7a6e-46ca-847b-c63af366b6a3' AND photo_url IS NULL;  -- Радослав Маецкий [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Remy_Cabella_2019.jpg?width=256' WHERE id = '0eb0f5ae-5caa-4d48-b0e9-83b3b2e3fa8e' AND photo_url IS NULL;  -- Реми Кабелла [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Samu_Castillejo_in_Milanello_2020_%28cropped%29.jpg?width=256' WHERE id = '100e71db-eaf1-4ba1-a5e9-3245cbd9ee79' AND photo_url IS NULL;  -- Саму Кастильехо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Caio_asse_asm_2425.png?width=256' WHERE id = '103b5831-3a15-4897-98bf-6c52068b2507' AND photo_url IS NULL;  -- Кайо Энрике Оливейра Силва [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Seko_Fofana.jpg?width=256' WHERE id = '12558355-9dc2-429c-9404-188003e9ae33' AND photo_url IS NULL;  -- Секо Фофана [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_EURO_qualifiers_Sweden_vs_Spain_20191015_Fabian_Ruiz_6_%28cropped%29.jpg?width=256' WHERE id = '131ea6aa-7870-4bae-b236-aa02dabe2c45' AND photo_url IS NULL;  -- Фабиан Руис [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Konrad_de_la_Fuente_March_2019.jpg?width=256' WHERE id = '1596b72e-d0cb-4ad9-9d89-d8e6b8bcff6d' AND photo_url IS NULL;  -- Конрад Де ла Фуэнте [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Lovren_in_Zenit_%28cropped%29.jpg?width=256' WHERE id = '16a49c29-288f-4ef7-81e0-2bc930158484' AND photo_url IS NULL;  -- Деян Ловрен [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Rennes_-_Orl%C3%A9ans_20140706_-_Benjamin_Andr%C3%A9_bis.JPG?width=256' WHERE id = '1763f993-4591-404a-9280-c2fb4f35dc23' AND photo_url IS NULL;  -- Бенжамен Андре [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Vanderson_asse_asm_2425.png?width=256' WHERE id = '191986bd-2245-46a4-8415-341f6c346c6a' AND photo_url IS NULL;  -- Вандерсон Де Оливейра Кампос [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Clauss_asse_ogcn_2425.png?width=256' WHERE id = '1b0888c4-ec73-40d0-9e24-a86e780d115e' AND photo_url IS NULL;  -- Жонатан Клосс [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/20191002_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League%2C_RB_Leipzig_-_Olympique_Lyonnais_by_Stepro_StP_0103.jpg?width=256' WHERE id = '1e1e3da0-db90-4d92-811a-4026e470d151' AND photo_url IS NULL;  -- Антони Лопеш [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Denis_Su%C3%A1rez.jpg?width=256' WHERE id = '1f93b9eb-e1a1-42b1-85e5-4467ebf03311' AND photo_url IS NULL;  -- Денис Суарес [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Cherki_asse_ol_2425.png?width=256' WHERE id = '20083cc1-6c0d-4005-9cc0-5a12320afbc2' AND photo_url IS NULL;  -- Райан Шерки [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Bradley_Barcola_vs_MHSC_7_May_2023.png?width=256' WHERE id = '29dcdebb-4d40-482d-be31-9f3939b6b195' AND photo_url IS NULL;  -- Брадли Баркола [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Maxi_mittelstaedt.jpg?width=256' WHERE id = '29dec6df-9485-480f-9c66-fa762ca12d36' AND photo_url IS NULL;  -- Максимилиан Миттельштедт [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Jonathan_Bamba_Philadelphia_Chicago_10.26.25-002_%28cropped%29.jpg?width=256' WHERE id = '2a42a26a-3578-4fa2-a07a-91dd97646b0e' AND photo_url IS NULL;  -- Жонатан Бамба [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Rus-Turkey_%286%29.jpg?width=256' WHERE id = '2a63222b-983e-4203-99cf-74371f236b3d' AND photo_url IS NULL;  -- Юсуф Языджи [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Wissam_Ben_Yedder_Monaco_2019_%28cropped%29.jpg?width=256' WHERE id = '2a7962d7-9e04-4d17-af10-e6bdb0832e06' AND photo_url IS NULL;  -- Виссам Бен Йеддер [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Pau_Lopez_2019.jpg?width=256' WHERE id = '2aec8a29-f9ba-4b73-a464-2a748727b11b' AND photo_url IS NULL;  -- Пау Лопес [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3670_by_Stepro.jpg?width=256' WHERE id = '2c2ef9fb-9f5d-4fbe-9369-45cbb2c3aebc' AND photo_url IS NULL;  -- Норди Мукиеле [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Francis_Coquelin_2019.jpg?width=256' WHERE id = '2fb334d8-5a13-4d42-a428-ef865d169f29' AND photo_url IS NULL;  -- Франсис Коклен [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Serhou_guirassy.jpg?width=256' WHERE id = '308dfdec-5abd-4e96-a66d-0f63741f5c5c' AND photo_url IS NULL;  -- Серу Гирасси [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Cengiz_%C3%9Cnder_2018.jpg?width=256' WHERE id = '318ddab0-11fc-4b3d-a0b8-2134fe0c9126' AND photo_url IS NULL;  -- Дженгиз Ундер [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Mauro_Icardi_en_2025.jpg?width=256' WHERE id = '31b06756-2ff1-4883-b968-6d9f2b418cea' AND photo_url IS NULL;  -- Мауро Икарди [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Mitchell-Weiser-2018-08-19.jpg?width=256' WHERE id = '3250d414-bed9-436f-af86-b8d9592dec39' AND photo_url IS NULL;  -- Митчелл-Эли Вайзер [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/RC_Lens_-_OGC_Nice_%2810-04-2022%29_51.jpg?width=256' WHERE id = '326259f7-38ff-474b-83d2-bcc21a739acf' AND photo_url IS NULL;  -- Кэлвин Стенгс [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Presnel_Kimpembe_2022.jpg?width=256' WHERE id = '35eb3bc0-ac75-4f08-a812-f85d24686190' AND photo_url IS NULL;  -- Преснель Кимпембе [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Samuel_Gigot_2022.jpg?width=256' WHERE id = '3604b26d-2683-45da-a317-6eaa34c52706' AND photo_url IS NULL;  -- Самюэль Жиго [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Edinson_Cavani_2018_%28cropped%29.jpg?width=256' WHERE id = '36f7e0b3-b286-433a-9451-ca4d3b789c1b' AND photo_url IS NULL;  -- Эдинсон Кавани [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Roman_Yaremchuk_2021.jpg?width=256' WHERE id = '376de4d8-b2f7-4053-b1bc-d8b763dd51e9' AND photo_url IS NULL;  -- Роман Олегович Яремчук [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/MoralesLevante.JPG?width=256' WHERE id = '3786c699-c801-47f2-bb24-1bdda603b3f0' AND photo_url IS NULL;  -- Хосе Луис Моралес [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Youssouf_Fofana_%28footballer%2C_born_1999%29_%28cropped%29.jpg?width=256' WHERE id = '3806c93a-270c-4d0b-b697-d328526f8829' AND photo_url IS NULL;  -- Юссуф Фофана [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_EURO_qualifiers_Sweden_vs_Spain_20191015_138_%28cropped%29.jpg?width=256' WHERE id = '3c4b3d43-063a-4218-91b7-1e3ba6bf65c0' AND photo_url IS NULL;  -- Жерар Морено [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Argentina_team_in_St._Petersburg_%28cropped%29.jpg?width=256' WHERE id = '3c5def7c-7e55-4f40-b849-79e039e7d36b' AND photo_url IS NULL;  -- Николас Тальяфико [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Karl_Brillant_Toko_Ekambi.jpg?width=256' WHERE id = '3e473965-bcc4-44f0-ab31-b49b6a2a1bbc' AND photo_url IS NULL;  -- Карл Токо-Экамби [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/%C3%81lex_Baena_2019.jpg?width=256' WHERE id = '3fc2671f-0491-4693-8b28-d1b5b4c4a92e' AND photo_url IS NULL;  -- Алекс Баэна [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/RC_Lens_-_Lille_OSC_%2817-09-2021%29_40_%28cropped%29.jpg?width=256' WHERE id = '42552e75-66d9-4a39-ab8f-db02ed5faa9c' AND photo_url IS NULL;  -- Эйнджел Гомес [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93107.jpg?width=256' WHERE id = '42cf100a-c39e-40a9-909b-d432f0aaeb82' AND photo_url IS NULL;  -- Юлиан Дракслер [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Achraf_Hakimi_%28cropped2%29.jpg?width=256' WHERE id = '49a4a884-11b6-4e20-b18f-bdea3c78b0d4' AND photo_url IS NULL;  -- Ашраф Хакими [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Silas_Katompa_Mvumpa.jpg?width=256' WHERE id = '4a254cd5-7fbb-46f7-b2ea-5e9ee71e03de' AND photo_url IS NULL;  -- Силас Катомпа Мвумпа [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Neymar_850_1705.jpg?width=256' WHERE id = '4b207141-a3c8-46c1-a75b-82d0b9ab6fff' AND photo_url IS NULL;  -- Неймар [exact]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Lee_Kang-in_-_2022_%2852551771501%29_%28cropped%29.jpg?width=256' WHERE id = '4f592b35-a9da-4c9e-a20f-ba967a42724e' AND photo_url IS NULL;  -- Ли Кан Ин [exact]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/BuksaMidnightRidersScarf.jpg?width=256' WHERE id = '545fea5a-98e8-4fa9-8e52-1e4af9a95c6c' AND photo_url IS NULL;  -- Адам Букса [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Ismaily_Gon%C3%A7alves_dos_Santos.jpg?width=256' WHERE id = '562d450a-2f2d-4599-8f13-e26408cef9cc' AND photo_url IS NULL;  -- Исмаили Гонсалвес дос Сантос [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/%D0%9C%D0%B0%D1%82%D1%87_%C2%AB%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%BE%C2%BB_-_%D0%90%D0%97_2-0._15_%D1%81%D0%B5%D0%BD%D1%82%D1%8F%D0%B1%D1%80%D1%8F_2020_%D0%B3%D0%BE%D0%B4%D0%B0_%E2%80%94_1137461_%28Myron_Boadu%29.jpg?width=256' WHERE id = '565a4ae9-fdb3-448f-90d6-4ff328664b94' AND photo_url IS NULL;  -- Майрон Боаду [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Veretout_asse_ol_2425.png?width=256' WHERE id = '5b471903-c602-4c52-8826-484e3cd504fc' AND photo_url IS NULL;  -- Жордан Верету [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Rulli_asse_om_2425.png?width=256' WHERE id = '5f0f8ec7-71b7-467d-8817-24a7b33bd950' AND photo_url IS NULL;  -- Херонимо Рульи [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Nabil_Bentaleb.jpg?width=256' WHERE id = '627a996b-e188-414a-9d2d-fb138f97cd5d' AND photo_url IS NULL;  -- Набиль Бенталеб [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Manchester_United_v_Villarreal_CF%2C_29_September_2021_%2807%29_%28cropped%29.jpg?width=256' WHERE id = '6609adb0-ee94-4a8f-b871-dad15b4d9af6' AND photo_url IS NULL;  -- Ереми Пино [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Minnesota_United_-_MNUFC_v_Seattle_Sounders_-_MLS_Soccer_-_Allianz_Field%2C_St._Paul_Minnesota_%2846874572365%29.jpg?width=256' WHERE id = '6792ae41-eb65-4988-bff8-efca33dec697' AND photo_url IS NULL;  -- Вито Манноне [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93129_%28cropped%29.jpg?width=256' WHERE id = '68621cc4-7bf0-4f80-8098-e2fafee7c607' AND photo_url IS NULL;  -- Килиан Мбаппе [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Vitinha_USMNT_v_Portugal_Mar_31_2026-50_%28cropped%29.jpg?width=256' WHERE id = '69589606-8c6b-46a5-bc83-592f4210abf8' AND photo_url IS NULL;  -- Витор Феррейра [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/20160604_AUT_NED_8839.jpg?width=256' WHERE id = '6cff3ac2-c6a4-4e97-8726-edf8b7b06bdf' AND photo_url IS NULL;  -- Джорджиньо Вейналдум [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Cho_asse_ogcn_2425.png?width=256' WHERE id = '70601366-812a-4fba-8660-cf5fef485c99' AND photo_url IS NULL;  -- Моамед-Али Шо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Real_Valladolid-Valencia_CF%2C_2019-05-18_%2819%29_%28cropped%29.jpg?width=256' WHERE id = '71975c8c-9c80-456b-b44e-3f46a02d50d8' AND photo_url IS NULL;  -- Даниэль Парехо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Diego_Moreira.jpg?width=256' WHERE id = '73150656-7cba-4d42-9453-c03792832e68' AND photo_url IS NULL;  -- Диегу Морейра [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Alexandre_Lacazette_at_Baku_before_2019_UEFA_Europe_League_Final.jpg?width=256' WHERE id = '73a4504c-30fa-42d4-88d0-8e1301a61340' AND photo_url IS NULL;  -- Александр Ляказетт [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Alexis_Beka_Beka_2022.jpg?width=256' WHERE id = '74f0431c-24b7-4dd4-9c77-789b17098635' AND photo_url IS NULL;  -- Алексис Бека Бека [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Juan_Foyth_2017.jpg?width=256' WHERE id = '755bc61b-f84e-4bab-a8f5-73ab01df11cd' AND photo_url IS NULL;  -- Хуан Фойт [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Onze_du_Senegal_%28cropped%29.jpg?width=256' WHERE id = '75f829e3-81e9-4bed-885a-9c6a7df6704e' AND photo_url IS NULL;  -- Абду Диалло [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Nick_Woltemade_24052026_%285%29.jpg?width=256' WHERE id = '761fb3c7-d492-44f3-819f-766772ab7fa8' AND photo_url IS NULL;  -- Ник Вольтемаде [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Danilo_Pereira_PSG.jpg?width=256' WHERE id = '7ec78262-a225-499b-8896-1223b1d9a5d8' AND photo_url IS NULL;  -- Данилу Перейра [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Zaire_asse_psg_2425.png?width=256' WHERE id = '8474f71a-8db9-4ef4-8e74-320709b1da21' AND photo_url IS NULL;  -- Варрен Заир-Эмри [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Dan_zagadou1.jpg?width=256' WHERE id = '9527ca8b-a36d-4381-b703-21966bad97c6' AND photo_url IS NULL;  -- Дан-Аксель Загаду [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Ounahi.jpg?width=256' WHERE id = '9579050d-5221-4812-b500-31472e3187ca' AND photo_url IS NULL;  -- Аззедин Унаи [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/2022128160447_2022-05-08_Fussball_Eintracht_Frankfurt_vs_Borussia_M%C3%B6nchengladbach_-_Sven_-_1D_X_MK_II_-_1422_-_B70I7533_%28cropped%29.jpg?width=256' WHERE id = '9613319f-5bde-40bb-bc44-8caddd3f699b' AND photo_url IS NULL;  -- Брель Эмболо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Gon%C3%A7alo_Ramos_USMNT_v_Portugal_Mar_31_2026-32.jpg?width=256' WHERE id = '99bfdd83-cc97-4b6a-960c-723f1f90787f' AND photo_url IS NULL;  -- Гонсалу Рамуш [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/PreMatchWolf.jpg?width=256' WHERE id = '9ce80ec1-75ed-4e00-bd77-1f8b16a088d4' AND photo_url IS NULL;  -- Мариус Вольф [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Zhegrova_asselosc_2425_%28cropped%29.jpg?width=256' WHERE id = '9e4b040d-89b4-4852-863f-02df45a13289' AND photo_url IS NULL;  -- Эдон Жегрова [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Youcef_Atal.jpg?width=256' WHERE id = '9ef0afdb-6656-4362-a5fb-fbb12311540b' AND photo_url IS NULL;  -- Юсеф Аталь [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Tolisso_asse_ol_2425.png?width=256' WHERE id = 'a6f72a26-8f97-4131-ae24-ac41928178ca' AND photo_url IS NULL;  -- Корантен Толиссо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Arsenal_players_training_before_2019_UEFA_Europa_League_final_08_%28cropped%29.jpg?width=256' WHERE id = 'ab6f434f-d72a-4491-bf99-001a3bff43c0' AND photo_url IS NULL;  -- Маттео Гендузи [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/ZSPB-Bordo_%283%29.jpg?width=256' WHERE id = 'adab24d7-20c6-4631-81ed-efec7bd2af14' AND photo_url IS NULL;  -- Бенуа Костиль [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Mouctar_Diakhaby_2019.jpg?width=256' WHERE id = 'aea5b1db-997b-484d-8479-cbed928d878b' AND photo_url IS NULL;  -- Муктар Диакаби [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Pepe_Reina_2017.jpg?width=256' WHERE id = 'b4f4aa61-4664-4ded-84e5-88b5363e2f06' AND photo_url IS NULL;  -- Пепе Рейна [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Bulka_asse_ogcn_2425.png?width=256' WHERE id = 'b79f2da8-068b-4484-a0fb-31bba9c4a259' AND photo_url IS NULL;  -- Марцин Булка [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Elye_Wahi_2022.jpg?width=256' WHERE id = 'b927ea35-61ae-4125-aceb-927f6a8a6865' AND photo_url IS NULL;  -- Элье Ваи [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Harit.jpg?width=256' WHERE id = 'bbfd67b9-6c2a-4abd-ad86-cf59914926d2' AND photo_url IS NULL;  -- Амин Арит [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93505_%28cropped%29.jpg?width=256' WHERE id = 'c3ef4764-eb45-4bd0-b845-c58b7cb65549' AND photo_url IS NULL;  -- Марко Верратти [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_EURO_qualifiers_Sweden_vs_Spain_20191015_136_%28cropped%29.jpg?width=256' WHERE id = 'c548fdc3-4baf-49a4-9819-8e03fe3116c6' AND photo_url IS NULL;  -- Рауль Альбиоль [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Real_Valladolid_-_Rayo_Vallecano_2019-01-05_51_%28cropped%29.jpg?width=256' WHERE id = 'c76648dc-c078-4b54-bbe8-41c904bcc4c9' AND photo_url IS NULL;  -- Столе Димитриевский [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Samu_Chukwueze.jpg?width=256' WHERE id = 'c9bdd214-9b5e-45bb-887a-3564a93db68d' AND photo_url IS NULL;  -- Самуэль Чуквуезе [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Ivan_martin_nunez.jpg?width=256' WHERE id = 'd1dfe65d-b4a3-44c9-a7f8-b9fcb9482274' AND photo_url IS NULL;  -- Иван Мартин [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Cher_Ndour_20240818.jpg?width=256' WHERE id = 'd2602e18-c484-4850-96e5-d8e3b498e215' AND photo_url IS NULL;  -- Шер Ндур [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Akliouche2_asse_asm_2425.png?width=256' WHERE id = 'd26be515-6c04-45c0-b6d9-538d5c837307' AND photo_url IS NULL;  -- Манес Аклиуш [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Kevin-Volland-August2018.jpg?width=256' WHERE id = 'd3af346c-fea8-4a31-9117-649ae1092a77' AND photo_url IS NULL;  -- Кевин Фолланд [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Etienne_Capoue.jpg?width=256' WHERE id = 'd6665572-84f0-43c3-8977-60a50b4293a0' AND photo_url IS NULL;  -- Этьен Капу [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Russia-Portugal_CC2017_%2814%29_%28cropped%29.jpg?width=256' WHERE id = 'e152546a-4631-445c-8125-cf4bcac47890' AND photo_url IS NULL;  -- Желсон Мартинш [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Payet_April_2016.jpeg?width=256' WHERE id = 'e766aaf6-1f7a-4d95-965b-5f94aa045889' AND photo_url IS NULL;  -- Димитри Пайет [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Dante_asse_ogcn_2425.png?width=256' WHERE id = 'ea03a9ed-a54d-49d5-a136-a14bf280336b' AND photo_url IS NULL;  -- Данте Бонфин Коста Сантос [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Beraldo_asse_psg_2425.png?width=256' WHERE id = 'ed2e53ae-59a4-424c-a753-a6877f2211f7' AND photo_url IS NULL;  -- Лукас Бералдо [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Samuel_Umtiti_2018.jpg?width=256' WHERE id = 'fa02342e-8c52-4cb6-91d1-08fecf7e523f' AND photo_url IS NULL;  -- Самюэль Умтити [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Southampton_FC_versus_Sevilla_%2836254441351%29_%28cropped%29.jpg?width=256' WHERE id = 'facf794e-c35c-41f2-b9fb-9b6724cf213e' AND photo_url IS NULL;  -- Серхио Рико [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Jose_Gaya_2015_%28cropped%29.jpg?width=256' WHERE id = 'fb36321b-5ff0-46b6-9370-2430ab63c7c2' AND photo_url IS NULL;  -- Хосе Луис Гайя [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Bernat-VCF_vs_ESP-2012.jpg?width=256' WHERE id = 'fd6ec462-a7a3-4aca-b886-40460b1eeb2d' AND photo_url IS NULL;  -- Хуан Бернат [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Leonardo_Balerdi_OM_%28cropped%29.jpg?width=256' WHERE id = 'fec49a66-5df4-493a-94f1-e9a82e3a9a21' AND photo_url IS NULL;  -- Леонардо Балерди [canonical]
+UPDATE cards SET photo_url = 'https://commons.wikimedia.org/wiki/Special:FilePath/Norway_Italy_-_June_2025_B_33_-_Gianluigi_Donnarumma_%28close-up%29.jpg?width=256' WHERE id = 'ff434e65-4c2f-448e-be74-644085fa1956' AND photo_url IS NULL;  -- Джанлуиджи Доннарумма [canonical]
+
+-- NO MATCH in players_meta (stay NULL):
+-- id 0017899b-ad2b-4696-b392-9c1637b8aa2c  name Сергей Рыжиков
+-- id 00345ff6-4e30-4068-843d-922798a00239  name Давид Юрасек
+-- id 003aec99-7d1f-4cc2-8238-f5572ef9d38a  name Тимур Сулейманов
+-- id 0051f0da-7aab-44e0-a837-bef7696b22b8  name Анжело Перуцци
+-- id 008f6bad-545f-4f47-8086-dfe6b9fb736b  name Войцех Ковалевски
+-- id 00b8bacf-50e3-4192-a470-14f73b8d1981  name Марк Вильмотс
+-- id 00c3ff3b-9ac3-4b04-b08f-d116420d511a  name Филиппо Индзаги
+-- id 00d9450b-915f-4958-8a62-8fe6c751611a  name Филипп Мексес
+-- id 0104403b-b056-48ed-9e3a-ecf1a9f7ea76  name Гаэтано Ширеа
+-- id 013fae7d-0568-4a6d-a8b4-a4a979e491d0  name Алексей Ионов
+-- id 0176b983-d80b-4dd1-a738-c8d2d01bb91a  name Олег Рябчук
+-- id 017f41f3-4819-440c-ae08-965b541bc734  name Ривалдо
+-- id 01a674b2-834c-4ca6-950a-4c7677f3a9a9  name Лилиан Тюрам
+-- id 01a67917-e07d-45e5-a2c9-19b2a3638906  name Рауль
+-- id 01c9d78c-fab7-4be7-ad25-79ae5a6d321d  name Таффарел
+-- id 022bf996-3b4a-43d5-b360-cca02f3d7e1e  name Георги Миланов
+-- id 023c6230-df69-4c4e-aeed-18d928467ecb  name Маурисио Перейра
+-- id 023ec79f-ddbf-45b8-8678-c4c65d12b97a  name Юрий Лодыгин
+-- id 02941060-bf13-40d4-a18e-a1bc835a467b  name Резиуан Мирзов
+-- id 032cd763-38c2-4abc-bc35-8b6d5f4bda33  name Кайо
+-- id 032d4aff-4c56-44dc-beeb-918f0c11eea3  name Йосип Иличич
+-- id 033b7dcc-288e-4393-a08d-f77e7ebe95bd  name Сердар Таски
+-- id 03654f07-00dc-4a04-9eea-aafb5198e494  name Владимир Быстров
+-- id 03689949-46e3-4eba-9a66-174fc0cb33ec  name Артем Ребров
+-- id 0383b2f7-eb1a-4e47-86ce-35515178fd07  name Исмаэль Дукуре
+-- id 0385b967-2cac-4e62-adb6-f00408b6a57c  name Харри Кейн
+-- id 03d1689a-8fb2-4376-828f-fcdbffaa1960  name Симао
+-- id 03e0be4c-2043-47e4-8bf0-be48ff1beb4e  name Дмитрий Булыкин
+-- id 03e1479a-785d-4907-9bcf-6c7e0195ebca  name Александар Павлович
+-- id 040360fb-8801-42b4-b83e-2764663116ff  name Роман Шишкин
+-- id 04085921-8355-4d46-9557-170964563c07  name Виктор Васин
+-- id 0419f3bf-8086-48d8-b072-af006486e77d  name Адам Марушич
+-- id 043b796a-9b1f-4f20-98ab-361a11d99b55  name Миралем Пьянич
+-- id 047675cb-ac3e-42a6-bde4-31dc8917b7ec  name Солтмурад Бакаев
+-- id 04a21074-3cb5-4ca1-9e7e-b598dae533de  name Майкл Эссьен
+-- id 04d5504f-180d-48dc-ba9d-827dd2dec567  name Дженк Озкаджар
+-- id 04f4d5a5-f62f-4ebb-82dd-48b70b3d125c  name Давид Оспина
+-- id 04fe3b97-a260-4376-a255-b58d73208abd  name Скотт МакТоминэй
+-- id 050577e9-592a-48d6-a4b2-ec723d72ae9e  name Джованни Ди Лоренцо
+-- id 0549fa30-b4d7-4c89-9f9a-35cc70138af8  name Бенуа Ассу-Экото
+-- id 0565be23-f7a2-450c-8590-4ce9f69a2687  name Алексей Игонин
+-- id 05695ac6-58bf-493d-bacb-34a3ca342443  name Сергей Еременко
+-- id 05b71aef-d001-4881-a53c-21708463ea91  name Юрий Дюпин
+-- id 05cea5d3-1562-4152-936b-69375ae173f8  name Владимир Кулик
+-- id 062dde6b-854b-44b1-9a59-db36ce28a256  name Джо Харт
+-- id 0634f1f9-3f85-4569-aecb-705726768ca2  name Алессио Романьоли
+-- id 06383f44-d940-45bd-a9d9-1c35dbf94a3d  name Жоазиньо
+-- id 0656bc75-80c4-40f4-b4b2-2055dad65f09  name Мартин Палермо
+-- id 065bed31-ea11-4383-9a28-4000c125de0d  name Виктор Дьёкереш
+-- id 06859d69-cfed-444f-8b61-997282698919  name Александар Митрович
+-- id 06866283-05f6-4d44-a9ed-29fdf29c65e8  name Александр Самедов
+-- id 06d4d83a-764e-4c2c-8cf7-0adaadaeff32  name Жулио Сезар
+-- id 06f7f15c-2ef9-47a2-892f-4d704f092e38  name Бруно Гимараэш
+-- id 0742cafd-fb45-4d9f-a5e1-2877099e676c  name Жерзино Ньямси
+-- id 0752e9fd-5604-4515-9f4f-f4e63235c7fc  name Арийон Ибрагимович
+-- id 077a869e-447b-4408-a00b-15985944dee5  name Карлос Тевес
+-- id 07b3038a-69f0-4952-9c62-3972c8c3f64c  name Джермейн Дефо
+-- id 07fecde2-d902-4b7f-bf1c-4f92020cffe0  name Станислав Агкацев
+-- id 0804f7eb-9adb-4d59-bdee-bbc42da7d523  name Корентен Толиссо
+-- id 080fd251-78a7-43b6-afba-bd22e72957fb  name Мохамед Эльнени
+-- id 0823a2cc-73f4-46eb-9092-0ed21c74ce64  name Александр Беленов
+-- id 088a303f-a284-4904-a5d6-b1a19597f903  name Оливье Жиру
+-- id 08a26ad0-139d-4d8f-9032-e3024c5d154b  name Марио Фернандес
+-- id 08b4b567-cbde-4954-8312-d73fd1a46f78  name Александр Головин
+-- id 08c402ec-4196-45b1-a67b-db9c3ca5fcd2  name Йонас Хофманн
+-- id 08ccfacf-4412-4ce8-bbb9-ff27fb1b6464  name Пол Робинсон
+-- id 09137768-b664-4bbf-9cf2-da6f4dd9bbba  name Нкванкво Кану
+-- id 09697278-5f37-477f-9557-bac4a05b304d  name Карлес Пуйоль
+-- id 09941e7a-cbcd-459c-84ec-995ff32a8e30  name Сауль Гуарирапа
+-- id 09bab305-1768-4eb6-bec1-fbab8e467f99  name Стив Манданда
+-- id 09c15cf5-48b4-4b29-9b3a-7b7ae06bdc56  name Одил Ахмедов
+-- id 09d2eee4-7f9f-4903-a41a-3b920cdf39b7  name Марсело Брозович
+-- id 0a0d5ffb-b0e5-4af7-8410-85f3f49189a3  name Никола Легротталье
+-- id 0a48341b-1490-4d62-8916-366e8dc6ea08  name Виктор Александров
+-- id 0a86fd62-29e5-4ab0-a37e-68cdf789d646  name Петр Чех
+-- id 0b02b168-eaea-4692-a55d-23bc4be0a77c  name Данила Козлов
+-- id 0b131030-d643-497a-b065-205a335a5459  name Лечи Садулаев
+-- id 0b222bc8-c6e8-482e-baa9-460621a69c31  name Алессандро Дель Пьеро
+-- id 0b6c8f57-ef80-407f-8257-07ff0d35b6b4  name Жеронимо Рулли
+-- id 0b850d7b-25e4-4652-9c66-8a09877f4d40  name Александр Мартынович
+-- id 0bcfc303-4f9c-4668-a56d-77a8bd1cab7f  name Дмитрий Воробьёв
+-- id 0c03f18c-4af1-491d-b32b-66c548165efd  name Андре
+-- id 0c20db9a-e647-433e-8528-1ec3f9c500b6  name Грегори Купе
+-- id 0c26e8fd-2b91-47df-b907-6a21dbda8c47  name Александр Ломовицкий
+-- id 0cdd97ae-020f-4ca6-a8a5-c4db09ef508f  name Дэвид Симэн
+-- id 0cf3c879-d53c-44ab-9652-c94ea21cfa97  name Радамель Фалькао
+-- id 0d23b902-8d69-4c3a-9d82-8d482ec0a7b9  name Доди Лукебакио
+-- id 0d523da6-1cfb-40ef-acc7-6372c6382e5f  name Георге Попеску
+-- id 0d543a87-7246-412b-823a-2abea0f64986  name Манфред Угальде
+-- id 0d6daedf-0f34-41ec-84ba-2e0c3b742137  name Константин Зырянов
+-- id 0dc6057c-7b91-4bb2-befe-a80810c9e77b  name Нани
+-- id 0e078cbf-a617-4b81-89ba-c5703c74277a  name Ришарлисон
+-- id 0e07f0d5-2e3f-4dd3-9eef-8009f9d66120  name Жан-Пьер Папен
+-- id 0e1badab-cfd6-4c2b-b5c4-8225c25b51a1  name Хуан Мануэль Инссауральде
+-- id 0ead0f77-ae3d-4bfa-a96c-2cc0c87779dc  name Артур Юсупов
+-- id 1004a76d-c904-42fc-8eb9-dcd97e3432fe  name Горан Пандев
+-- id 100f4985-e0ac-44e4-b594-ed80e1f80ed2  name Кристиан Эриксен
+-- id 101b086d-4ff6-4106-b7ea-2c848d76ad08  name Абдукодир Хусанов
+-- id 104c00ee-92d1-488d-bc69-c6142f941d5a  name Арно Калимуэндо
+-- id 10961e1b-d451-4b99-af68-1d2d2b0b50ec  name Патрик Херрман
+-- id 10a81b28-285e-4afb-99bd-8fe82b0e11df  name Марк Рока
+-- id 10f642a7-c682-4815-9fee-4737c9219d21  name Егор Титов
+-- id 1102cd05-99d4-4abd-be2a-84dc8e962250  name Фёдор Черенков
+-- id 1114e27d-180a-4028-bc90-695dd2ce2ff4  name Юрий Никифоров
+-- id 1128931c-1fa3-4713-9356-06e30f9ccdf6  name Эммануэль Адебайор
+-- id 1167ad11-5155-47f1-bd29-2b19432d4ee9  name Диего Кавальери
+-- id 1171fcc3-41d8-4e8a-81bd-8a146e70e2dd  name Никита Кривцов
+-- id 1177f8f0-65ef-44cf-bcd3-036e8a2f087c  name Алиссон
+-- id 118ac6e7-070f-497f-9dbf-e0fc7c9e8691  name Мохамед Салах
+-- id 11fe5a76-5d64-41e4-839d-a2b27864c7fe  name Илья Помазун
+-- id 1205dbcd-c817-4b8a-b9a2-d52d3a912472  name Адиль Рами
+-- id 1293e114-2162-4848-b3ef-7a0f304b34f2  name Владимир Вайсс
+-- id 12b92492-3462-4de2-aa9a-69396472ca78  name Данило Катальди
+-- id 1331aa11-f491-4648-9115-9d1b5d9b2973  name Эмиль Хески
+-- id 1346b220-c8f8-4b88-bbc8-3ecafd1fa5e0  name Дони
+-- id 134eb308-2ef6-445b-80d4-584b6ccaed9a  name Хуанми Латаса
+-- id 1353e8d0-5535-4505-9057-4cd9675d6e61  name Тоби Алдервейрельд
+-- id 137e661e-ed02-41a7-9cf7-07eb3cd9a27e  name Тэмми Абрахам
+-- id 13a8cd0a-d452-46bd-b11e-87c995f87d5c  name Антон Заболотный
+-- id 14632b38-30c7-45c5-98ae-632377a4e8bb  name Евгений Латышонок
+-- id 14635125-a4b3-486e-86b8-e4ad3284fce8  name Ларс Бендер
+-- id 14b44d73-bf22-4cd9-853a-26105f58ec27  name Брэдли Барколя
+-- id 15257d35-aec2-4806-b207-63974849825b  name Андреа Пирло
+-- id 154e9ea9-c80e-4825-824f-f559140342fa  name Даниил Фомин
+-- id 15579e47-4057-4a6e-b17a-a8ee8972ebac  name Джанлука Дзамбротта
+-- id 15e0701d-097b-48db-9867-2e8c67d8cf83  name Нико Гонсалез
+-- id 16050cfa-bb60-4bf7-a7aa-a2fa16f26a4c  name Станислав Лоботка
+-- id 162b53ea-e2c4-4964-a619-8c5bfbf4efb9  name Иван Сергеев
+-- id 163362ff-acab-48e9-865b-c6f7662c8c86  name Фабиан Шэр
+-- id 167c4653-dc0e-4470-9fd0-b4560fe0fb64  name Иньяки Уильямс
+-- id 168713eb-7435-4d78-a950-d62706432613  name Харри Магуайр
+-- id 16b46967-f805-4328-8bc2-327329acc7eb  name Хавьер Пасторе
+-- id 16be5543-2340-4ad0-b70a-20f88b2b3f3d  name Рияд Марез
+-- id 16e88535-565a-449e-88dc-1142a846192c  name Андреас Бек
+-- id 170e1aec-f62f-4b0e-8466-31404f7178d6  name Тьяго Силва
+-- id 17369aff-ba7c-4904-aa8c-246ceee2f4ab  name Маркос Алонсо
+-- id 173fd965-dfbb-4151-8ef8-ec9d0fae3f94  name Фрэнк Лэмпард
+-- id 1749f3de-5993-4593-bd48-841f6edc6cbb  name Дмитрий Хлестов
+-- id 174d14a4-ded4-4848-811f-5d0aa4d23fb1  name Жером Боатенг
+-- id 179cd305-1fd6-452c-b308-624ade48b213  name Владимир Маминов
+-- id 17f452b4-e6df-4d0b-abd3-4a527af8115d  name Иван Кордоба
+-- id 17fdc5d0-c2bf-4701-a595-da766ee67372  name Сослан Джанаев
+-- id 181e9550-6ded-4b81-be51-bbc5b589ce39  name Жереми Фримпонг
+-- id 182ecd7a-7a2b-47b5-a076-901a49e1d4fb  name Николас Ломбертс
+-- id 1837311c-9597-45f2-88ef-4a5d9f6edf1c  name Норберту Берсике Гомеш Бетункал
+-- id 183b9891-9f50-4ba5-bde1-bf26fd4aca71  name Сергей Семак
+-- id 18492e51-a2d3-4229-b243-4dea853d892b  name Мартин Йоргенсен
+-- id 18514431-ba6f-4b58-a4e9-9a30a6cb7ab3  name Антонио Валенсия
+-- id 1858d8fd-7079-4c7e-9b75-05a531ea99a5  name Клаудио Писарро
+-- id 186e8032-ea8e-49ab-be68-c8e9f20976c0  name Антони Паненка
+-- id 1893f251-0cdd-4345-b985-48dbcbfcaf60  name Джейми Каррагер
+-- id 18b020d7-77b1-40f4-9e9e-dbe7802d5335  name Микаэль Сильвестр
+-- id 18cce5b1-bef7-40ed-ae9d-6f57cc0e0d4c  name Угочукву Иву
+-- id 192528df-9cc7-406c-a878-c3b014518731  name Кристиан Аббьяти
+-- id 19871dfb-ae1e-4cae-bd6f-a00e1e316771  name Томаш Ржепка
+-- id 19f200d0-a23f-4b32-86ab-56bc8a4e8a6f  name Александр Тарханов
+-- id 1a31b9ea-a6b0-4dff-85cb-14c5494c16d2  name Джо Коул
+-- id 1a3dfefa-3512-405e-a0ec-d9e5fdab5735  name Костас Манолас
+-- id 1a61bb0c-e1da-45b9-b1ba-809cd94abdc0  name Александр Черников
+-- id 1a63ce34-2321-40f2-8325-c03df01a23a0  name Вячеслав Караваев
+-- id 1ab04154-01b4-43a2-b6f0-37da10458f5e  name Уэйн Руни
+-- id 1afb9fd3-bcfe-4bcb-88d0-d9fe7a732c3f  name Кирилл Щетинин
+-- id 1b14d921-d790-4a19-97ce-839ceec9febf  name Давид Силва
+-- id 1b15c97b-ac5f-4f3e-9be6-f6c9d9480c42  name Павел Недвед
+-- id 1bb6002b-ed34-40ef-bcf4-c2d9d5c49af9  name Балаш Джуджак
+-- id 1be02134-976a-4ba7-b7d0-88b690e49980  name Нголо Канте
+-- id 1bf96ea4-114e-4d17-8a73-ba26659e15d3  name Андрей Шевченко
+-- id 1c26d2b4-8cea-4267-a3bf-b7444382f2a7  name Франк Лебёф
+-- id 1c3c0c3d-ac35-469c-b3b7-a63d9ac393c6  name Эдер
+-- id 1c82c9b1-4c5d-4ba2-b4de-0ce673702f0b  name Денис Макаров
+-- id 1cce0c66-5d50-47f6-9bb4-e93679a56cbf  name Кевин Де Брюйне
+-- id 1cf9b84f-82ec-4bc0-8526-fab1dad40d20  name Джоване Элбер
+-- id 1d8bba6f-c1e1-49c7-abc7-50bbc3aa414c  name Шон Райт-Филлипс
+-- id 1da38e29-a0ef-4933-85d7-f5c28746f4eb  name Шейк Дукуре
+-- id 1dc7b854-95e1-43d5-b219-2fcb3baaa863  name Секу Койта
+-- id 1dcd9d6d-3302-49cb-9a14-0ef189477a9d  name Энди Кэрролл
+-- id 1e2520f3-f761-4949-ad1a-aa36aee7e50c  name Жоржиньо
+-- id 1e46b8c5-847e-4845-8174-9eda386953d9  name Тино Ливраменто
+-- id 1e59fd65-f5fa-44bc-b0ba-db5df76135eb  name Карлос Камени
+-- id 1e5c96d6-9d81-47c8-9c15-e80a1cbe78a6  name Бобби Мур
+-- id 1e6ebf4c-1054-4634-b11a-00cb49486f3a  name Рэй Уилкинс
+-- id 1e7c3387-0ae2-440e-8e0d-a5be637b58a5  name Робиньо
+-- id 1e90337c-d3cd-4d1f-9e00-32388f96f771  name Макси Моралез
+-- id 1e940397-e21b-40b1-961c-82a69d6f5353  name Мануэль Альмуния
+-- id 1e97cc72-420a-40d0-80ac-ff17b24f3819  name Максвелл
+-- id 1eeb13fc-9f4f-4113-a325-2259b4e8761b  name Ален Халилович
+-- id 1efe7e91-bfbe-47ec-8c2b-7f6857e661ff  name Кристиан Гентнер
+-- id 1f234c27-c0e6-4fd8-857e-0ffbd473183e  name Джо Гомес
+-- id 1f9d480d-c60d-4b7b-ab97-f988af942035  name Алешандре Пато
+-- id 1fe18eaa-5f30-4c26-a533-78cd589fe076  name Доменико Кришито
+-- id 1feaa483-d770-48fb-8212-37550655cfcc  name Штефан Кислинг
+-- id 2008c103-ffc5-44f6-a3d5-cd319bbde85b  name Оскар
+-- id 20388eed-6e02-4c1a-896a-a3d33024cb70  name Свен Ульряйх
+-- id 2045484f-5c1c-431e-9a2c-6b5e9e0ab86d  name Каха Каладзе
+-- id 20ad6bd9-bdaa-42cc-b742-bcde028cd17b  name Магомед-Шапи Сулейманов
+-- id 21475952-8526-4907-a8b1-fc4390f838bf  name Владимир Шмицер
+-- id 21a99aee-6560-4ccc-b3fb-aaa8c9e47042  name Райан Бабель
+-- id 21cd4d4b-d98b-492f-92d2-360dd8e29755  name Николя Анелька
+-- id 21e18f62-512c-43fc-8a34-203864965036  name Андреа Камбьязо
+-- id 21ecf926-b0ec-4873-8c06-8f04f2edfd26  name Марк Овермарс
+-- id 2205f55d-7d82-4e9f-8524-6820d55ec08d  name Леандро Фернандес
+-- id 22617193-3cf8-4e3a-af6a-fb63b7811cea  name Исмаэль Беннасер
+-- id 22706dd9-41bd-4581-baf6-d498c091b6d6  name Стефан Савич
+-- id 22b28547-d47e-4e0d-9c84-98b855abc5bb  name Тамерлан Мусаев
+-- id 23045a01-00f5-4d9d-bcbb-38d7ed3b4fc2  name Сержиньо
+-- id 230578f9-06b5-4990-b66d-cafb7a0443c3  name Александр Кокорин
+-- id 231d1db7-6532-4694-a70b-709563ca4a35  name Жереми Менез
+-- id 23d67671-9c9c-4e41-a7be-6d75331ac8f9  name Дрис Мертенс
+-- id 23de5cfe-cc49-4ecd-9902-1252bb0b79e1  name Грэм Сунесс
+-- id 23ea0796-c5d6-4deb-b2b6-a4f4da4e9be2  name Дейвидас Шемберас
+-- id 24075348-9ad6-4f85-8a75-2d234718cfaf  name Кевин Гамейро
+-- id 240c8c14-122b-419c-9734-1e29f83dc513  name Александр Коларов
+-- id 24108d2f-9925-4cfc-9aeb-ac1d0a426164  name Крис Смоллинг
+-- id 246f2637-2edc-403f-b1f7-59261480bec3  name Морган Де Санктис
+-- id 248de211-30bc-4c9b-8950-fa341c7d508c  name Хесус Медина
+-- id 24df2d63-e3be-408f-99b4-147cfc851659  name Станислав Магкеев
+-- id 251b3ae9-724e-4574-9638-c8f446fa8a35  name Гульельмо Викарио
+-- id 25438776-9043-4e07-a772-18d18b7dedc6  name Гейбриел Слонина
+-- id 256cb8f8-2caf-4580-aabd-c5bdd171636c  name Генрих Мхитарян
+-- id 2586f02a-f1f0-4729-9952-a066a7f70687  name Жо
+-- id 258e4862-c3d6-4f85-964d-f99521e689e5  name Понтус Вернблум
+-- id 25946f8a-c82b-4177-96a6-81b386a9ce57  name Виктор Понедельник
+-- id 25b56715-76d2-4e1b-882d-2555cdd29a93  name Ули Хёнесс
+-- id 25b8cb25-81d3-433f-84ca-7776a06ac308  name Малком
+-- id 26120fdd-645d-41e8-8a1d-3a75f14b0b4d  name Тиагу Силва
+-- id 264352b7-0f55-4cef-ad68-f735ed3df810  name Жуан Педро
+-- id 26a7bfbc-78fb-457a-8066-d92110139b34  name Евгений Макеев
+-- id 26ab1953-51b6-44c5-8ab0-2431a29923fc  name Франко Барези
+-- id 27049d18-23d9-46d2-ab31-22fb1ed864fe  name Факундо Буонанотте
+-- id 276316b2-dbe5-41bb-b2d5-d13185a53224  name Филиппо Терраччано
+-- id 27a8d65a-bf93-4455-b4ef-8c01e710f5bd  name Антон Фердинанд
+-- id 27bd14c9-ec33-4e4b-9334-461a550e9849  name Хавьер Дзанетти
+-- id 27d742f5-acf9-4ac4-bc8f-f44f0d8ca9bd  name Маттиа Дзакканьи
+-- id 281baa0b-46f6-4457-a816-253b109730ae  name Вадим Раков
+-- id 28484aab-ad49-4489-a97a-80d13ea509ce  name Себастьян Дриусси
+-- id 2872d4c5-77a7-4572-b730-c904315c9ffa  name Тайе Тайво
+-- id 28e9d109-5944-4954-bb9f-03b3ed385d40  name Холанд
+-- id 294886b4-aec4-483a-8890-b1c231c3e420  name Александр Точилин
+-- id 2948da4a-12a4-432a-8f84-37d205e1490a  name Фернандо Торрес
+-- id 2984b7b4-0d6c-4cd1-bd2b-1add25ce78e5  name Родриго Паласио
+-- id 29ca5aad-7525-4eea-b7e4-32663be21977  name Давид Альбельда
+-- id 29dd4e9e-70ba-4d1c-9314-edb3d7d5c61b  name Дерлей
+-- id 29e6b773-a944-47c1-83d8-9fa39326b09c  name Давид Рая
+-- id 2a3bc0e7-57e6-48e8-a96f-c748ec45fe82  name Роман Бюрки
+-- id 2a56cae6-f51d-42ff-9973-e544bb06745a  name Диего Форлан
+-- id 2a85dfd3-5770-49c2-bf06-b9b19d420466  name Дмитрий Комбаров
+-- id 2c21c491-c914-45ea-8e51-5c9ac86471c3  name Уэс Браун
+-- id 2c448b96-f8ea-4ccb-8ab1-3a7ee992bdac  name Роман Березовский
+-- id 2c824f3e-644b-4fd2-9d42-2f4b81002da7  name Рафаэль Кариока
+-- id 2c82a97c-370e-4620-af25-1f327a69dfa7  name Майк Маньян
+-- id 2cd52949-1eef-410b-b4ab-3da0ec190311  name Джон Оби Микел
+-- id 2d2cfb12-b011-4ad7-ad1c-0d51f6d5c18f  name Эшли Коул
+-- id 2d5c5393-5247-4200-880c-5c7c5ecd3a3d  name Маркус Тюрам
+-- id 2da3fc54-2ace-4dc7-ba08-8c7c5ad97277  name Рууд Ван Нистелрой
+-- id 2da62dda-7b02-4ba3-91a2-a9b497e12d6c  name Филипп Лам
+-- id 2dc9d37c-ef31-440b-9442-1565680268b1  name Эдуард Стрельцов
+-- id 2dd0d75f-1a85-4166-90fc-d433575e0750  name Никита Ермаков
+-- id 2e0e3889-ab92-4e76-953b-a2973b8192da  name Абде Эззалзули
+-- id 2e400f6f-715a-4442-addd-1d725c87065f  name Алан Ширер
+-- id 2e5f738d-e20c-4e51-94ce-0460033baa5c  name Дани Алвес
+-- id 2ea42e31-e836-4551-b43b-16e91a8cec00  name Кафу
+-- id 2eb44e7a-e468-4fe3-9fa4-87cdce512208  name Карлос Марчена
+-- id 2f2f02b5-7fa6-4b8c-8d8a-24510c9d5245  name Хесус Навас
+-- id 2fcadb77-5cc9-4ac8-9d9c-1ac27bd3dac2  name Василий Березуцкий
+-- id 2fec3f9d-fffd-4fef-bbda-c1e28202ac31  name Олег Блохин
+-- id 30184291-696a-43c3-8024-6363d012c298  name Ханс Николусси-Кавилья
+-- id 305c37a5-8f34-4184-a6d4-64c52b7bcd8f  name Александр Соболев
+-- id 30616425-5167-4342-bd05-b08674836d0c  name Михаил Кержаков
+-- id 306263e7-99d8-4a87-9af8-1f308856189b  name Фелипе Андерсон
+-- id 30749839-60e8-4d50-8427-d49520a10efc  name Коло Туре
+-- id 3108d4d6-7973-46c9-ba51-85b640c37705  name Уго Экитике
+-- id 314d90d5-f390-4ab8-88d6-2c2a88363b83  name Лоренцо Инсинье
+-- id 317c1be2-dc56-4367-bc4d-32ec1d2dfb64  name Свен Бендер
+-- id 31b08391-f16a-410d-a3b7-bcfd58c93e06  name Папу Гомез
+-- id 31ce5e3b-a820-4840-8c71-98d6025468c5  name Юрий Газинский
+-- id 326c2576-6913-4297-8347-1cc3a98c8b21  name Вилли Саньоль
+-- id 3287b7ea-4ceb-4a97-8690-17ecc544fc3d  name Томас Гальдамес
+-- id 329c0a0a-00a6-41d0-94df-7b830b62e5c6  name Диего Марадона
+-- id 33218ec5-87d6-4c4f-ae38-db90aa3c4adb  name Маркиньос
+-- id 334f94e6-122e-4481-9d0b-3abab27c337a  name Давид Трезеге
+-- id 335a1fb1-1b29-446a-8236-3f717fc9bb65  name Дмитрий Кириченко
+-- id 337eed20-6ba8-4422-ae8f-de4676dcd1ba  name Ярослав Гладышев
+-- id 33b5bb91-0ecf-4042-ba7c-affd210a0b1c  name Леандро Троссар
+-- id 33df7d56-fca2-4801-8059-58e991d61893  name Ярослав Михайлов
+-- id 34aaea30-3b9d-423d-ae37-354ebb6f9e35  name Диого Жота
+-- id 34f6b590-3ea8-4cfc-bfc3-b4bf31979ad2  name Вагнер Лав
+-- id 34ffdde8-aaa8-417e-8c0c-7102822be5b0  name Джон Терри
+-- id 355805d2-62db-46f9-89db-e9063948f8a6  name Пьетро Террачиано
+-- id 35985866-6a97-4bbb-86b0-b87cdfefb4f8  name Маурисио Почеттино
+-- id 35ba644a-2c8a-4924-b24d-6c5136c26805  name Бастиан Швайнштайгер
+-- id 35c0c189-17a5-4b28-a2a8-3b340a55b668  name Маркус Рэшфорд
+-- id 35c4bad7-d065-47dd-9297-a4291569b989  name Рицу Доан
+-- id 35fbea02-786c-40c4-a6b0-113fa2a9bb97  name Илья Рожков
+-- id 361ba467-f188-4f1b-913f-c121cb39dcce  name Том Хаддлстоун
+-- id 365b781a-3539-4bfa-933f-0adf23b72e6b  name Петр Зелиньски
+-- id 366f93d0-ce96-4fbc-b106-71797fdbe2b6  name Виктор Са
+-- id 36bb6014-831a-40b1-841b-e538fdde01b8  name Джакомо Бонавентура
+-- id 37196f5e-9542-4883-8a97-1bc3a752ae31  name Керем Актюркоглу
+-- id 3750f378-acb1-4080-b40e-b71e0e6fb5b1  name Мерт Гюнок
+-- id 37523450-92cd-4ca5-ba44-b25f172efe53  name Робби Фаулер
+-- id 376ca5c9-7265-41fc-9b8c-1592c3f93c6b  name Яя Туре
+-- id 37aa9b89-413e-4a8d-9e47-95abc19d0ef9  name Уэстон Маккени
+-- id 37b0f400-9bb6-4c1b-9f80-6d0423b0eeba  name Кристиан Киву
+-- id 385467fa-3610-4887-a05a-f37473213b6b  name Виктор Онопко
+-- id 3887007d-8e88-405f-b595-b1a0612ed2ea  name Феликс Магат
+-- id 38b21a0d-9d13-4940-8ed0-a23ec8c0ab46  name Эрик Ламела
+-- id 38b4b337-ca19-4c67-8968-720a9b7118e2  name Рафинья
+-- id 38eb2b9e-63cd-464f-9ee4-7452345b1fd5  name Андерсон
+-- id 38f00c8a-546c-49f4-ad05-bd28356675b2  name Уэйн Бридж
+-- id 38f1facf-c2ac-4b2b-9b4c-0da22d217c8c  name Владислав Радимов
+-- id 39908dfc-b477-4e77-a4ee-32991dd49f3a  name Серхио Агуэро
+-- id 39bbcaf3-ed30-49b9-b490-f267db3b27fa  name Алехо Велис
+-- id 39f61e6b-0f91-4828-adc7-dd57c96424cf  name Крейг Беллами
+-- id 3a1900ff-1aa0-4c03-8186-2f0e4c845905  name Фабьен Бартез
+-- id 3a203134-6387-40cb-909b-33483be685b0  name Луис Альберто
+-- id 3a226e97-7610-4a83-a1b6-02aae3b0be16  name Юрген Клинсманн
+-- id 3a43a9da-1c95-4c53-b4ac-c714d1cad668  name Ханс Хатебур
+-- id 3a4d91f3-40e7-4d19-ab20-a0ca55986628  name Камило
+-- id 3a641835-bd5c-4573-b987-e15b2e3b715f  name Беллингем
+-- id 3a8d9ac6-b69e-4d0d-b240-6a345ef2aefa  name Рубен Варгас
+-- id 3a97ccb3-5cf2-4dfb-8372-f4c71ecb180f  name Дуайт Йорк
+-- id 3aa8ce64-1968-4144-a993-993b3bf440b0  name Эгаш Касинтура
+-- id 3b0008f5-a1c3-4e0f-b38d-b6461651dc01  name Данил Пруцев
+-- id 3b2b5363-0728-4cfd-9867-8a39554077ef  name Поль Погба
+-- id 3b39e70d-81eb-429d-9d69-7c2775030855  name Макси Перейра
+-- id 3b60bb14-6db9-4be9-89ca-267d012a5eea  name Гарет Бэйл
+-- id 3b80771e-8755-45ff-9de9-0e0665af025e  name Питер Крауч
+-- id 3c1b2377-c1b5-4546-a15c-9879f26005a6  name Вендел
+-- id 3ca82e70-c6be-4cfc-b87a-bf498361bdc1  name Джанни Ривера
+-- id 3ccc4475-82ad-4fa1-9264-dd1cd85be967  name Тони Адамс
+-- id 3ce0e957-8f83-4028-813b-b8000696b8c3  name Венсан Кандела
+-- id 3cfc4b45-010e-4d7b-8ce8-cf546563a4af  name Рафаэль Маркес
+-- id 3d082e9c-29ea-42d2-b8c8-5279881d822a  name Чиро Феррара
+-- id 3d64919e-bb25-4eea-8f0d-ad13d867e44d  name Никлас Зуле
+-- id 3d69ab73-cf80-4f7d-8e86-b0c9b2020516  name Игорь Дивеев
+-- id 3e056bb1-60a2-4478-82fe-f576d77d0dae  name Кристиан Нобоа
+-- id 3e8b3ae6-bcae-4fc7-ae13-cdf36c95176a  name Мойзес Кайседо
+-- id 3ecd8bf0-d41e-428b-891b-7503e24acb28  name Патрик Виммер
+-- id 3f31c641-907e-49bf-b046-3b2643e36c4f  name Матьё Вальбуэна
+-- id 3f719780-9988-4d52-8165-b3ea3e6763c9  name Алан Смит
+-- id 3f89ccb4-04ff-4fc7-9a02-d5a0bb28cf91  name Клод Макелеле
+-- id 3f8e2d90-8371-411d-ac04-29636f51cc61  name Кристиан Сапата
+-- id 3fac668a-5bc5-45d8-ab82-7afec23d877e  name Даниэль Вивиан
+-- id 3fe7724b-b350-4bd5-809d-91100a9fa715  name Тьерри Анри
+-- id 3fec63c9-19f8-4d77-89ed-fce7be3a218c  name Томаш Уйфалуши
+-- id 4023498e-2f31-4a1a-86d4-a24aa22285d9  name Алиссон Беккер
+-- id 402a71b1-951f-4523-b1f1-a8efd22695fc  name Венсан Компани
+-- id 4037a2c8-d10e-40cd-ab17-3a2c66198cda  name Мирлинд Даку
+-- id 4049fb23-937f-420a-8f6a-151e6762712f  name Кирилл Набабкин
+-- id 405bc00c-11b1-4213-908c-b8a4e9db565f  name Эрмедин Демирович
+-- id 40b36223-67c7-4bdb-91af-5f407f66a892  name Бен Дэвис
+-- id 411b17c6-16d1-4fda-8ba8-225ff6780e72  name Александр Трошечкин
+-- id 418cf25a-ecf6-4355-a54a-0429ab7e0857  name Ян Зоммер
+-- id 41be8a4e-d952-42a2-8372-28fa6848ba4b  name Егор Тесленко
+-- id 42169854-8f41-423e-8784-10f959e78ebd  name Сантьяго Канисарес
+-- id 42a7699d-65b5-417b-a366-b388e261eb9b  name Александр Кержаков
+-- id 431d02b2-750d-4e3e-9814-d50c160996ae  name Гильермо Марипан
+-- id 431dda92-1bf7-4cbb-b4a0-aedb74d7b25d  name Ари
+-- id 43487d08-0a2d-48e2-bdf3-06b97b26dd42  name Соломон Квирквелия
+-- id 434ab7b2-d798-4469-952d-72fcf8610cac  name Харальд Шумахер
+-- id 434cae06-04fc-41db-af1d-2d14b30c10e7  name Ким Чельстрём
+-- id 4352c49b-2fd9-4343-9a69-eecc60d7d30f  name Роберто Ди Маттео
+-- id 43859dfd-19f0-4317-9661-ddc3692d8495  name Алессандро Неста
+-- id 4387503c-0eeb-4a79-9e1c-cb3b7ab0252c  name Наир Тикнизян
+-- id 43d6f8d9-22fd-45f0-a7c7-5f39fe6b4f60  name Ромарио
+-- id 43f9674e-0ca7-4279-9a58-71e561e4d6c5  name Эдерсон
+-- id 440f32b6-b368-4627-ad6d-8a255238a044  name Али Соу
+-- id 4412ee00-b164-4829-ac74-462d65114d26  name Игорь Шалимов
+-- id 441ce586-1dda-4bb4-b665-1c75bcede544  name Варди
+-- id 44c9660a-63e4-4c22-b6db-4cff3f797cd9  name Марк Гейи
+-- id 44d240a9-6310-4e33-b447-e9c4d14c42fb  name Эдуард Сперцян
+-- id 453bc06c-4067-4244-901c-8564cc8761ee  name Жозе Фонте
+-- id 45849360-35e1-4a7e-92c0-314c6c1a143a  name Максим Бузникин
+-- id 4596697d-94ff-4cee-bba5-aad7580479e3  name Диогу Коста
+-- id 4648bbf7-4f23-49f5-a054-7f6d9855e546  name Маруан Феллайни
+-- id 465ce5b3-64bf-4af5-9247-bca373593473  name Юрий Горшков
+-- id 46a27393-d4b3-437a-84d3-7dc9c5320304  name Арсен Адамов
+-- id 46d2aa35-bb5e-44e3-b446-4d7a7f3d0cbe  name Даниел Субашич
+-- id 46d953fa-7770-4d3e-88e3-06087d3fde59  name Андрей Канчельскис
+-- id 46dbe23f-c898-4d57-9d32-a489832f4dd0  name Владимир Габулов
+-- id 47289ea5-a410-48d8-8992-da75693c012c  name Давиде Калабриа
+-- id 4799ef14-4769-4b1b-994d-4325aae3efb6  name Леонардо Бонуччи
+-- id 47d44b2f-43cf-4b2d-9cd9-378d9be4e414  name Лукас Фассон
+-- id 480461da-be44-4c6d-86bd-4a450a83faf7  name Родриго Рикельме
+-- id 484ed7b0-fb5b-4e21-991c-108e1b3486b5  name Виталий Гудиев
+-- id 48a09b0c-d42f-4104-b521-62523a3db684  name Данте
+-- id 48f6ed51-1d32-4699-863e-930c0de972b5  name Жерар Пике
+-- id 495b67a5-5f71-4694-b81d-7ca689d4f952  name Роберто Айяла
+-- id 49884c2e-b410-496c-8a2c-1d109170dd97  name Руй Кошта
+-- id 49962a32-758c-48fe-9e5e-a854ef9006bf  name Дмитрий Кабутов
+-- id 49af79b8-4428-4419-bb3a-8919de2915f2  name Владислав Сарвели
+-- id 49b9b49c-9e17-407b-973a-3728b8bb14c1  name Хави Мартинес
+-- id 49d9b83e-1f2b-4cd6-933c-a6a47dfe41b1  name Мартин Демичелис
+-- id 4a00722e-0269-4f5f-9554-18ee462641b4  name Луиш Нету
+-- id 4a25a3ce-ba32-4a79-a16a-dbb20453f511  name Никлас Бендтнер
+-- id 4ad5800f-9d88-4298-afef-8e82c2701690  name Игорь Денисов
+-- id 4af031c6-d57f-4388-915b-7b816a69b3a8  name Олег Иванов
+-- id 4afe8ede-61f1-41f4-849a-47a50d0b3994  name Аарон Уан-Биссака
+-- id 4b52ce77-7e83-432b-9836-d31cbcde0d17  name Ренат Янбаев
+-- id 4b89125a-dd2e-4f2b-82a4-dbe2d3a39bc0  name Фернанрдо Мейра
+-- id 4ba1750c-321c-42e3-b433-64d024975dac  name Гамид Агаларов
+-- id 4c022d02-f1bd-408c-9505-220db0357f2f  name Рональд Куман
+-- id 4c82680a-f177-4d05-8e4b-0565a458fd2b  name Саша Зделар
+-- id 4c88d966-3228-40e7-b90c-19e4f1fae80b  name Лукаш Градецки
+-- id 4c9a5a0a-9c79-4064-99e6-44d64de1d38e  name Рустам Ятимов
+-- id 4cfe1855-80f9-4e91-96c5-a32745a2312e  name Майкон
+-- id 4d74867a-3e6e-44d0-a11d-226547150d39  name Элдер Поштига
+-- id 4d7c553d-5cd2-41c9-991e-0a9597adcc77  name Давид Писарро
+-- id 4d99b1fa-bd48-46b4-8d11-40e22d2774b1  name Ноа Мбамба
+-- id 4dc9d579-28fb-4652-9467-4d3ed9919531  name Мауро Каморанези
+-- id 4dd16a26-ee6a-4a30-9059-e04b78442a28  name Марсель Десайи
+-- id 4e0bca10-b24c-400b-85db-e84fe8e0a9d1  name Джей Идзес
+-- id 4e7324fd-3f94-4044-9795-a6ff1172191a  name Константин Тюкавин
+-- id 4e87b390-b677-44cc-9b5c-29e3dca360c4  name Налдо
+-- id 4e9110bf-6c04-4886-a2f1-2aea5a1cd33f  name Аарон Леннон
+-- id 4ef70bd2-ba82-486b-a1f3-f3f800610a2d  name Мариано Андухар
+-- id 4f499843-479c-40ac-8b9a-0929a80506cf  name Микель Артета
+-- id 4f87aabf-b604-4ed2-bd06-76dac48c4a1c  name Тайлер Диблинг
+-- id 4fdd6f61-98f5-43c3-8535-3db9c5589114  name Нильс Нкунку
+-- id 5011c5be-db70-4fb7-b124-6912def91e5c  name Робер Пирес
+-- id 515108fb-2f71-47a4-9d58-cd3c9a23465a  name Пабло Аймар
+-- id 515a03bd-8396-42c6-9ce4-18dcd15e2438  name Милан Гайич
+-- id 51d11ad2-c364-4a90-9ccb-76e6c551d2cf  name Маркус Берг
+-- id 51d63dce-d5c7-4d32-922c-2d8a57070c2e  name Евгений Савин
+-- id 51f7846c-b444-4b85-bc24-9d67cc4e2a7d  name Вячеслав Грулев
+-- id 52773eeb-2d89-4323-a225-487aaaff4627  name Кирилл Комбаров
+-- id 52a73cdb-ddb8-4967-b712-fed3d5536ae1  name Юто Нагатомо
+-- id 530a2639-a451-47e4-b83c-351bac0da141  name Виктор Шустиков
+-- id 531935d6-ea82-4392-b3f8-51c20a9c9e4b  name Юра Мовсисян
+-- id 5323d27f-fa5c-487d-8e5e-7816dcd87600  name Людовик Обраньяк
+-- id 53af6f58-fdfd-448c-a555-f73abc94da7c  name Паоло Каннаваро
+-- id 53d1921a-5249-4ac0-8c21-859fd41b054e  name Александр Руденко
+-- id 53e870b2-a9f6-4fc0-85f3-64d635977ae1  name Данни
+-- id 5424ec60-c6d3-4dc6-8e50-e34e82e9f874  name Гаэтано Кастровилли
+-- id 5433f201-4285-432e-afbe-aed7c718bffa  name Нолито
+-- id 54a3bc52-8f54-4595-b4f0-17ea26cec642  name Джексон Мартинес
+-- id 54a7a3e1-e828-4105-98b7-f4edfa6960a6  name Ведран Чорлука
+-- id 552a9cb3-a506-4d2a-9349-a4b89fc71293  name Лоран Блан
+-- id 55d01c74-f102-42ec-801a-a56b849b3fac  name Сидней Гову
+-- id 560bf45a-8caf-48e1-9e10-e5dffe78a82a  name Винсент Эньеама
+-- id 562a8e35-7c2e-4867-8615-5740af2a14dc  name Юрий Ковтун
+-- id 563f561f-920a-4deb-9e6e-3f00d46e0e08  name Энцо Барренечеа
+-- id 5644b586-7e69-4ff2-8566-d1a3c835aad5  name Рио Фердинанд
+-- id 56a48573-120a-4cf2-8178-6fa5afaf7b2c  name Адриан
+-- id 56b6f7b0-af8c-4060-b58a-ab84b7867b90  name Сергей Милинкович-Савич
+-- id 56dc07bb-bd26-435c-85dd-1e8247e4e06a  name Лес Фердинанд
+-- id 56f6a55b-d205-4f67-bda6-5230692a2664  name Максим Ненахов
+-- id 5715d6f7-8337-4548-9978-e6f3b34d3b7d  name Гави
+-- id 572c2713-d3b4-45d8-a7ce-aaef666cf81d  name Сергей Бабкин
+-- id 5821683a-a2e8-4ca6-b59b-6ed920dab5b7  name Папу Гомес
+-- id 582a7131-657c-4291-91cd-b0cc7d1670a0  name Джонатан Дос Сантос
+-- id 5833a367-c114-4272-8a32-ddc338ca8b4c  name Люка Эрнандес
+-- id 58455a2d-785c-4290-9a89-b721d4b1e001  name Бафетимби Гомис
+-- id 5883952d-d2d0-4007-9ad9-d44615ac762c  name Егор Голенков
+-- id 588978ef-ceec-4469-85cf-13a8c128c2a3  name Массимо Каррера
+-- id 58fd2c9e-4d8c-4db2-9f5e-7148e53b835c  name Бенжамен Стамбули
+-- id 59854e79-f784-4593-9bb9-e40084b7f248  name Войцех Щенсны
+-- id 5991df05-42da-470f-82c4-dc507b2f56ad  name Роман Павлюченко
+-- id 59998a17-1740-403b-ad9b-60bf8e0bb249  name Абу Диаби
+-- id 5a1d424c-aa75-4fe4-a479-b74132e23f39  name Матео Мусаккио
+-- id 5af219e4-81de-4679-89ad-c62902e7fee3  name Альваро Мората
+-- id 5b42ee92-4837-419b-8ebc-c83f5389e5e1  name Мартин Субименди
+-- id 5b7e8326-e3e7-4fe0-900e-6080e349bbac  name Какау
+-- id 5b853ae3-45ae-4acf-aa6e-e4e9460773dd  name Кевин Киган
+-- id 5b95c23a-6731-4b73-bae8-4e7eb02fbc87  name Раффаэле Ди Дженнаро
+-- id 5bd554fb-b47a-4d61-9912-e1260abac8a2  name Гиорги Шелия
+-- id 5be01ec4-b611-4121-88c2-4486fe46c6a6  name Мэйсон Маунт
+-- id 5c1c65e9-5182-4a7a-bc4d-92ad285ad7f4  name Алессандро Костакурта
+-- id 5c3ec23a-c443-4d85-b67e-15ba1213d3a6  name Александр Бубнов
+-- id 5c5bcd5f-a77e-453e-a576-05ad97d8d63f  name Деннис Лоу
+-- id 5cb493c0-c7e1-43c8-bd77-dc13a79ecd71  name Йон Арне Риисе
+-- id 5cbbd136-d7ab-400d-981c-bc25983cea5d  name Мирослав Богосавац
+-- id 5cdc7534-6915-44dd-9844-3e0544fe1d2a  name Алдаир
+-- id 5ce9c77c-e26d-4e15-be18-aa18b5f9cc69  name Владислав Игнатьев
+-- id 5d1f5ed6-1f8f-4dbd-8b82-efe07b21affc  name Витинья
+-- id 5d6246fd-ed3c-4d1e-9d54-11b97bf64c58  name Пабло Барриос
+-- id 5d867f24-33d6-4646-b65d-58d375bd16f8  name Бруно Фернандеш
+-- id 5da728de-9bcf-475f-b6a5-ceeb6e960d3d  name Ивица Крижанац
+-- id 5da81343-dc68-4cc8-909f-715249ffa28f  name Эндрю Робертсон
+-- id 5e0f83fe-52de-442b-aad0-cd7d1b11614e  name Жоао Педро
+-- id 5e11254a-cd28-470b-bc86-7bae8d6a0a66  name Димитар Бербатов
+-- id 5e6bc2a2-a304-45b1-aa3e-07f207e74ee7  name Филипе Луис
+-- id 5e8f7a9e-7c16-4c85-a57b-d6de48e00c99  name Сергей Петров
+-- id 5ed1452c-02e1-421e-8660-735b1e918cee  name Джек Уилшир
+-- id 5ed48eb9-e88d-4fcd-957d-0923ea95c16c  name Себастьян Кель
+-- id 5eee8dc2-a3df-4f42-a107-2aee98b2a63c  name Эдмонд Тапсоба
+-- id 5ef9729b-93bb-4ca8-981a-87732bbc88ea  name Элтон
+-- id 5f33bdb6-5fb6-4146-bc2d-e2ed091cb7ff  name Антон Шунин
+-- id 5f5e8281-cf6f-4f61-b6df-91c8e8f55665  name Мартин Йиранек
+-- id 5f60e240-3a86-480f-9f9b-0477787aabd5  name Гарри Невилл
+-- id 5fc44377-16d6-4d9a-8521-0a095cc680c6  name Дино Дзофф
+-- id 5fd24274-2499-4179-9afc-1e1d52ad4562  name Рифат Жемалетдинов
+-- id 60753eb5-b46a-481e-a961-8857949e6dc1  name Франк Райкаард
+-- id 60a22778-8707-4598-abbd-f374278eb610  name Иан Коуту
+-- id 60b68049-16f5-4436-a9b8-885d766745fe  name Джон Дюран
+-- id 60ce1153-ee78-4c26-adfd-378fa666395f  name Владимир Ильин
+-- id 60ecf852-55c4-4e9b-ba02-fb217495dbb5  name Харри Кьюэлл
+-- id 60f491ee-9b70-4a4b-95a1-5ce040ecb371  name Дмитрий Лоськов
+-- id 610c3e30-16e7-4c25-9f2a-fa041fc8d63e  name Кристиано Бираги
+-- id 615d08e2-2e22-4046-8b72-ef4277131b1d  name Евгений Марков
+-- id 6194670c-bb43-43eb-a515-ef0d84404c08  name Лев Яшин
+-- id 61bd9ed6-fe6c-48f3-8c29-3f2ee526165d  name Хуан Рикельме
+-- id 61d888bf-23ce-4a32-974c-40bb3fd7ac51  name Миранда
+-- id 62378700-d20c-4fc3-b37c-c6315a4c097e  name Эктор Форт
+-- id 62527bdd-2e26-4510-8040-2471c9884107  name Хавьер Маскерано
+-- id 628bf932-8689-41e1-b0a6-028fe4f84f39  name Ивелин Попов
+-- id 629e4d5b-ca36-4504-b5b8-df04f83a0cd4  name Хоакин
+-- id 63047fe3-9f7e-428d-9a75-dbc386640a01  name Роджер Ибаньес
+-- id 631fecb9-64a0-4c23-9ecf-4971bda166b0  name Винченцо Монтелла
+-- id 632c2a0b-e53a-41de-8623-e6387cf8964a  name Самуэль Жиго
+-- id 634af90f-cdb9-4281-99d3-2a1a1cb8ff6d  name Матвей Кисляк
+-- id 63b1ca06-7ccb-4412-a2bc-2de6bad01ebb  name Кристиан Пануччи
+-- id 63fa0c16-497b-4f7a-b3e5-c4bfabb24202  name Келлвен
+-- id 6428ccfa-2348-42ad-9ba9-d2ea31759ea7  name Лукаш Пишчек
+-- id 64298cea-acf6-4737-8c82-de992fd60514  name Олег Шатов
+-- id 64a6d061-eba2-432a-b9d9-bc34f59802b1  name Расмус Эльм
+-- id 64a7d43b-41e2-4e4d-8ee6-0cbbaac911c4  name Калиду Кулибали
+-- id 64a84588-47cc-4521-ac0b-e3ccf435990d  name Мартен Де Роон
+-- id 64bdbc16-b591-4184-a0a7-1d01eecf7ae6  name Артем Карпукас
+-- id 64ea4a97-e425-4c86-8136-5b8708ec2921  name Массимо Амброзини
+-- id 64f548ad-d75c-43e8-98d5-cec125649770  name Оле Гуннар Сульшер
+-- id 65384ba6-ad35-44cb-9643-8ccf2472b630  name Фабрицио Колоччини
+-- id 654813cb-d6c0-409b-b378-034a18d70f96  name Франсишку Тринкау
+-- id 654cc049-2051-4b49-a921-231d41c62c4c  name Алан Дзагоев
+-- id 65702a3d-bd96-427f-9387-f7378bd2608a  name Марио Гаспар
+-- id 65b22034-6705-4edd-bf27-526e086e934d  name Кенни Далглиш
+-- id 66864412-2a8c-4714-988b-b11c58bb2210  name Ведад Ибишевич
+-- id 668fd128-d0e1-4c4a-8452-145c3e8288f7  name Янн Мвила
+-- id 66d481f8-a168-4122-aefd-03d1098d6acd  name Бобби Робсон
+-- id 66fd4241-80c1-4990-832a-6c47eeeb0a00  name Люк Уилкшир
+-- id 671aa740-b423-4794-b15f-3d9c796207fe  name Квинси Промес
+-- id 67cdb7ea-4139-4ffb-99ba-d675c317b264  name Зоран Тошич
+-- id 68167013-38ce-441f-8830-ccd57cef2a29  name Ваня Дркушич
+-- id 681f0f69-644b-408e-91b9-8f8c352068f3  name Сенад Лулич
+-- id 686feec4-37a7-4f10-8839-a8b2fa09f006  name Карл Хейн
+-- id 68874855-2d93-4cab-89e3-de5093fe782e  name Такефуса Кубо
+-- id 68a6081b-219b-4206-92f7-86f4602f2278  name Мирко Вучинич
+-- id 68bc6aa9-779f-47d8-acc1-1d9910fa856b  name Симоне Индзаги
+-- id 68c0d10b-9af6-424a-985f-f18375ad360c  name Дирк Кюйт
+-- id 68d27d74-e7e9-4d04-880d-c0a6f586a563  name Игорь Дмитриев
+-- id 68ecc96c-bfd9-4c03-a784-48e924386c74  name Матвей Лукин
+-- id 68f4e42b-bab9-4eab-ac13-0a8a22c80335  name Яго Аспас
+-- id 68fd3101-4bc7-4f6e-896d-2f2778c47450  name Александр Бородюк
+-- id 69110022-1294-4924-836d-58ece733d376  name Питер Шилтон
+-- id 694fee50-d909-43c5-b98a-0d8f61f3d219  name Томас Гравесен
+-- id 69ca52ba-a7d2-4a62-b5cd-fdc73a27edb2  name Руй Патрисиу
+-- id 69f45742-79d8-46a3-9fb1-93e7d037b9fa  name Даниэль Карвальо
+-- id 6a5666d4-2e42-4cfa-8278-9eb4ca670133  name Арсен Захарян
+-- id 6a574fcc-f29f-4af3-8b10-80f3742d6d61  name Нуралы Алип
+-- id 6a655129-b7a8-4f57-999b-fa1dff19a8ac  name Джордж Веа
+-- id 6a6a3f54-b8d5-48fe-98c0-8ed2d7589a83  name Луиш Фигу
+-- id 6abb1589-6a37-4208-90b0-69e90be13645  name Йосси Бенаюн
+-- id 6aea5383-21e2-4166-8502-5789a571c6f8  name Йохан Кройф
+-- id 6b5d0d5c-e6dc-4981-a5d9-dc5b60e5e158  name Бора Костич
+-- id 6b913028-fe84-4c63-91e2-9da767c00b0f  name Шамар Николсон
+-- id 6b9fba7c-77dc-4cf3-8998-9733e585aaab  name Александр Глеб
+-- id 6c6ed7fd-f98f-4b08-af26-b82fe54dd2cf  name Стэнли Мэтьюз
+-- id 6d2ee37f-817e-4ec0-83ba-a4b4bb4dcfb6  name Даниил Денисов
+-- id 6d3176d7-a794-48b4-8241-4c1e9ab50009  name Дмитрий Аленичев
+-- id 6d530540-a9f8-4562-93c4-f20f49ade0ce  name Даррен Флетчер
+-- id 6d979be0-29df-4bf1-b814-5553f2c3e2ae  name Джанлука Пальюка
+-- id 6daf1f4b-3888-4a02-9c03-20ba9bcd11b4  name Федерико Фасио
+-- id 6dc992d4-2d9d-4c67-a429-ef3df02a4cb5  name Пепе
+-- id 6de95bd8-159d-43ce-8fc7-dad31ee4bd01  name Людовик Жюли
+-- id 6ded83de-9079-468c-a3ce-bddb2e86bef3  name Мансини
+-- id 6df6e862-cfc8-432a-90a4-5bc06b3f2fa9  name Джорджиньо Вийналдум
+-- id 6dfe4760-d845-4d07-be5f-76ff011bc0b0  name Борха Валеро
+-- id 6e3e240a-9a86-4e77-89ea-08dff7bd8a52  name Ираклий Квеквескири
+-- id 6e4aa58b-e55b-4942-8ce6-bd06d7f30f54  name Маттео Габбия
+-- id 6e5691fc-9bed-483d-9d0c-996dfead1a02  name Пауло Феррейра
+-- id 6e7918aa-4659-4362-bff8-0d218a93f3bb  name Жуниньо
+-- id 6e82ede7-e848-4794-b426-730f4ab5dc3a  name Кристофер Ольссон
+-- id 6eff032c-b28d-4efc-a753-4e6ad35aa33b  name Кевин Ленини
+-- id 6f074774-3beb-4528-91bc-9c2075dc8440  name Аббосбек Файзуллаев
+-- id 6f2c76e7-3ff4-452e-a398-10f910f52355  name Хуан Мануэль Варгас
+-- id 6f4579fb-4448-4b70-a193-52fc695b6c1f  name Руди Феллер
+-- id 6f766038-32c9-464f-9133-af501b41f5e4  name Малхаз Асатиани
+-- id 6fe18b1b-bd15-466a-9e9a-3e24a0ae278a  name Кобби Мейну
+-- id 7031a87d-3522-49b8-924c-93530d85b440  name Рене Игита
+-- id 70b23125-c680-4784-ab5f-ea932f1637c0  name Арон Винтер
+-- id 70c164b5-ede8-4d3e-9430-a2d7e6ce8eda  name Габи Милито
+-- id 711da888-2c99-46ab-b5c2-3ab30ffd2120  name Глейсон Бремер
+-- id 712681a6-a197-45cd-b0df-d7c61f16bcb8  name Андрей Тихонов
+-- id 713b9463-daed-4191-8005-a86eed133b05  name Страхинья Эракович
+-- id 717567ec-30de-4832-8078-b56bc4958e9d  name Марсело
+-- id 71862679-0fc1-45be-af77-cbf9b89c1121  name Николас Отаменди
+-- id 7187ce4a-7dd7-46ee-9b65-0cb67020cf00  name Висенте Дель Боске
+-- id 71ad3062-736a-4b1f-aea7-a6794246090d  name Антонио Кассано
+-- id 71df46c4-51af-4a00-a194-f24a1ef20910  name Рамирес
+-- id 724cfb3b-3a5b-4f8b-af74-9fc0f080ddb6  name Стивен Джеррард
+-- id 7263d762-5444-46d4-9b21-e00c45a2631a  name Василий Баранов
+-- id 7273eeda-7488-4a02-ab68-fe4b7478910f  name Иван Эльгера
+-- id 72796774-9e38-440b-89e1-640dc07629a9  name Пицци
+-- id 738beee4-a123-4f3a-9523-2e2341948968  name Евгений Луценко
+-- id 739954d2-caa6-4edb-9dd9-4dac68c21aad  name Саломон Калу
+-- id 73ae2e49-c5a8-4c81-9ea3-c641ff83f29d  name Чарли Крессуэлл
+-- id 74161f9f-1ae5-4e42-a07c-bdeb635d4333  name Денис Глушаков
+-- id 74311193-f071-4edc-be36-dc05c33f14f0  name Энтони Эланга
+-- id 746f4352-fb7d-41d2-9ca1-e7195fe0f797  name Хави Галан
+-- id 74a30fbb-da44-4e04-8e31-ad6a7c543822  name Никита Медведев
+-- id 74df072e-ddc8-4fe6-afb0-ec0ca87c83b2  name Игорь Беланов
+-- id 74e3bc43-2723-42b8-a4b1-e3ab12d71922  name Андреас Гранквист
+-- id 74ede627-ac86-45fc-9a66-02615ddc92a3  name Антони
+-- id 7513fa0e-d793-4cc5-9e78-60d04e340a95  name Зеки Амдуни
+-- id 753ba88a-8c60-4c7c-9ae3-fc1c1cf9bc0c  name Эйдур Гудьонсен
+-- id 75d5ddc3-fc8e-4673-af71-15e6a81bdcb3  name Герд Мюллер
+-- id 760b37ed-b8a8-47c9-b95f-91f5f1d9c088  name Стефан Раду
+-- id 7633f610-27cc-476c-97c2-fec6b5876d16  name Константин Бесков
+-- id 7663de1f-01e7-43e4-8185-1f372383caab  name Элдер Кошта
+-- id 76712add-30c5-4c14-a3b7-f6230b951027  name Бернд Шустер
+-- id 76abbecd-a6fa-4c01-addf-03735266005d  name Пол Гаскойн
+-- id 76d1518a-c9ea-4020-9782-cfb50b4f5910  name Вадим Евсеев
+-- id 76e06e3e-2822-43aa-bf54-552156f6c612  name Дензел Думфрис
+-- id 76ece9cd-624b-4b49-bd05-23f991f54dc8  name Михаил Игнатов
+-- id 76eff730-3877-4977-953f-61e0d5ae0f4c  name Эрнан Креспо
+-- id 77c39faa-2b5c-4518-9373-01dc8f65813b  name Икер Муниаин
+-- id 780b3aa7-aa7b-448d-a1b3-a73fe8fe7f9e  name Андре-Пьер Жиньяк
+-- id 78a71c83-d1de-499c-81f5-802dba483309  name Даниил Хлусевич
+-- id 78d46024-2b18-4fb6-8635-1440d091efac  name Сергей Песьяков
+-- id 78fe04a3-61c2-4c9b-8703-2c9a2084cfbe  name Маркос Сенна
+-- id 796999cd-beab-4cc2-a5f9-1b97dac8c669  name Пьер-Эмиль Хейбьерг
+-- id 79d279ab-6efd-4661-9214-fc871f12a835  name Игнацио Абате
+-- id 79f65a1f-825a-4266-ba8e-9668f459f426  name Лоренцо Мельгарехо
+-- id 7a0ccb38-c0e2-4282-be5a-39fa3af87fb4  name Марко Баша
+-- id 7a111aa6-b2d9-404e-a2dd-0687d5ea400f  name Альваро Рекоба
+-- id 7a62371a-6322-4b50-b9cb-446925690b55  name Чиди Одиа
+-- id 7a8e3985-1964-4dd0-afe9-0d03a4f0cfcd  name Хаби Алонсо
+-- id 7ad19796-b972-46e6-8df6-1335a814d61f  name Жюльен Дюранвиль
+-- id 7af5aa52-d209-480f-ae49-913a36a65fe1  name Гиа Григалава
+-- id 7b661a11-4e48-4ffb-b7f8-b4884c39f3f2  name Сергей Гуренко
+-- id 7b69b945-a107-45e0-b70f-bbb042898214  name Питер Бонетти
+-- id 7bae3a05-3ac9-41c6-8df4-89cb8809d04e  name Варела
+-- id 7bb64f7a-d1f1-436f-af8e-a1f5753f1859  name Артем Дзюба
+-- id 7be153fd-a264-4e88-a990-3e90099f27e2  name Симон Миньоле
+-- id 7c6ed6d0-0d74-4ee1-8e77-f0ff5aaa0207  name Роберто Карлос
+-- id 7cb3e683-7693-4e3d-9523-de7dcfb5667f  name Артуро Видаль
+-- id 7d207fb0-2b4a-4d9a-b1d7-f1764af0dee7  name Джо Скалли
+-- id 7d50f614-593f-442c-b360-16db845c4a14  name Маттео Политано
+-- id 7d67182d-38ad-47eb-9fb6-b0a2104dccf7  name Давид Вилья
+-- id 7db5d0a8-f672-4ec6-bf7a-c0787530b72b  name Динияр Билялетдинов
+-- id 7db9d848-ec37-4649-b811-18c11c3dda9c  name Ролан Гусев
+-- id 7e22296d-961d-46bc-b4aa-4d35135aa944  name Антонио Конте
+-- id 7e6a0be9-2b13-4231-af9d-744edde31af1  name Павел Мамаев
+-- id 7e871125-75da-4238-9303-feee32f7ce09  name Жоао Батчи
+-- id 7e94f0a0-67ec-4821-80d3-8c68b449cba8  name Виллиан
+-- id 7f29ea54-5afa-4381-a2fc-23b532851c88  name Давор Шукер
+-- id 7f337f9b-e759-404f-8488-61dbcc9f3910  name Марек Гамшик
+-- id 7f91aca1-e46b-4fea-82ba-3192fa91f147  name Ледли Кинг
+-- id 7ffe39ba-4abc-4111-b20b-2bf4c0069fcd  name Флавио Рома
+-- id 804a086a-9906-4920-a7bc-150effb678e2  name Алексис Мак Аллистер
+-- id 8089f5b7-9ac5-45db-a459-bd7ee25dbe7b  name Фернандо Коуту
+-- id 8180c92b-d84f-44c1-b0ef-25e324030c41  name Кирон Дайер
+-- id 81860e75-4010-465c-9be5-82e2fccb9b87  name Иван Олейников
+-- id 8199f6aa-5398-43a8-a6f5-cb6314f76fb2  name Мусса Сиссоко
+-- id 81d1e61c-0ce4-4ca2-912a-0646de37c900  name Джон Кордоба
+-- id 827019f0-fac6-4e50-81b8-e0a54f8d3e32  name Эсекиэль Лавесси
+-- id 82ba6f13-fd2c-44b6-bc3b-afe0a76145fc  name Эдин Джеко
+-- id 82ffe678-7c63-4160-aa68-3d15d84f63cb  name Кристиан Бистрович
+-- id 8319def0-bfdb-4ad6-8987-b279161aaf96  name Илья Самошников
+-- id 831b11fb-20d2-4e10-b9a6-5621a69ce8e3  name Франц Беккенбауэр
+-- id 832a409a-b8e2-4d89-aa0f-da633fcae7f7  name Франческо Тотти
+-- id 833f55ca-6b73-41ab-83b7-7e3095fa6655  name Александр Павленко
+-- id 8342bdee-17bd-42f8-a75e-287b28316e50  name Йоан Кабай
+-- id 837cf592-a455-4f58-81b0-f54fda69aff4  name Данил Круговой
+-- id 83f02191-871c-46d0-9197-aef2615b46c6  name Андреа Бардзальи
+-- id 8483443f-f741-4ae3-98f0-382e74a7806f  name Златан Ибрагимович
+-- id 854584b1-dc9b-450c-a3f4-4bf618ac000d  name Ману Коне
+-- id 856abc8f-e912-452b-8998-ceb6cb5d1bad  name Джо Гомез
+-- id 856cce2f-eca0-43b5-99f4-c498228cf2e6  name Кларенс Зеедорф
+-- id 85e244b4-cd7f-420b-bf1d-090ab01cf939  name Гансо
+-- id 8641bd71-3b4b-4e23-8794-ae40f6d89ab9  name Хёрдур Магнуссон
+-- id 86508c41-47c9-4ba2-9a67-63a321e068a4  name Максим Калиниченко
+-- id 86600031-ab22-484f-8438-b073501e5e4a  name Висса Бен Йеддер
+-- id 86829d34-39b8-4ceb-9a6f-2eacbdeed908  name Андрей Мостовой
+-- id 868e80b3-232e-47ae-b7ff-70450e2012b8  name Найджел Де Йонг
+-- id 86bd8bf4-ce89-4c9a-bfdf-73904da9c215  name Валерий Карпин
+-- id 872772f2-c0a2-4153-a868-50c7003c083c  name Валерий Газзаев
+-- id 877aa099-8164-4a03-8005-1de6ed80ec02  name Гордон Бэнкс
+-- id 8800de0e-8b9f-404d-82bb-610bd5005262  name Гильерме
+-- id 880a1204-5c62-49b5-95bb-f9ffad1ccae6  name Паписс Сиссе
+-- id 88267aa2-d0a7-4832-b0d0-ec9d8fb0aada  name Александр Панов
+-- id 88acd059-a1e4-44aa-b6f0-4ab0916af812  name Робсон
+-- id 88c04d92-13e1-4924-82eb-6deba5a7a786  name Габриэль Батистута
+-- id 88dc7664-04d4-443b-8ecf-d5dbc4ee19cf  name Лукас Вера
+-- id 898250d7-c3de-432d-b621-408fb7880c67  name Хорен Байрамян
+-- id 89bef299-394d-47d2-83c1-c17ca717fb0d  name Клаудио Маркизио
+-- id 8a019c8d-ca75-483a-84f8-8d1aeb509292  name Роберто Баджо
+-- id 8a19417f-81d8-450a-bf63-a7bfb1bca89e  name Джованни Трапаттони
+-- id 8a441200-600c-4a6c-8633-e005b50c0fe4  name Куим
+-- id 8a45641e-c133-448f-b409-068e3c164a8a  name Фредди Юнгберг
+-- id 8a463ccd-d41f-474e-a529-7c13f4bf4fae  name Мусса Дембеле
+-- id 8a57825b-cdd1-494b-8754-c8cee55743d9  name Стив Макманаман
+-- id 8a6200d3-9e7a-45e1-93c2-d794f640bc82  name Даниэль Аггер
+-- id 8a869f21-e421-435a-b3e3-7e619f155b73  name Марио Гетце
+-- id 8a898474-a805-4afc-b6d0-f0d14cd4bd99  name Шкодран Мустафи
+-- id 8a914933-f2b5-4d36-a625-c4987016e1f0  name Федерико Инсуа
+-- id 8aacf42d-9d5f-4a75-beb0-8f0dff0c14f2  name Андреа Раноккиа
+-- id 8acb69f0-4e17-44d5-9525-9483a52f7a66  name Майкл Оуэн
+-- id 8afdde6e-b8e6-4825-b15d-5532d28b01d3  name Тедди Шерингем
+-- id 8b264ccc-99f4-4261-940a-a427c39470bd  name Федор Смолов
+-- id 8b877277-50ab-40dc-a881-3ef435896aea  name Пеле
+-- id 8ba5f805-b529-40e9-8d91-c2a5b025ec86  name Родриго Таддеи
+-- id 8be5b502-179d-4da9-8964-a909bad81f7e  name Максимилиан Арнольд
+-- id 8beee74e-74a8-407b-9dcf-4d0a8d9fda13  name Виллиан Роша
+-- id 8c3ee942-701c-4dd9-92cb-23046b0feed7  name Данило
+-- id 8c412a83-7669-4f9a-9215-4091a86538e6  name Витор Тормена
+-- id 8c8bfc59-56a7-4430-87c8-fa56ff7e32fe  name Александр Анюков
+-- id 8cf56d75-688c-4b11-a560-5334b61ce1e6  name Роже Милла
+-- id 8d3137e3-88c9-4dec-a244-c45f182ec19f  name Кирилл Глебов
+-- id 8d45629c-f53e-42c8-b79a-0f30e849b200  name Чиро Иммобиле
+-- id 8d687f2d-ef98-4777-88bb-a2bf937374bc  name Ману Фернандеш
+-- id 8de1ef91-d7ce-4835-a26c-7f3b3b606275  name Филлип Коку
+-- id 8de2653e-ce78-4a3b-9d8a-da91dbf28622  name Кёртис Джонс
+-- id 8ded91ee-ed8c-416b-a6cd-4630f4c88e4a  name Александр Сильянов
+-- id 8e712952-f037-4f9f-ac8f-eaa4e3a17c5e  name Ференц Пушкаш
+-- id 8eba0b0b-9e5b-47cd-a5c0-5b6465401c78  name Винисиус Джуниор
+-- id 8eea928b-9b62-443f-8e24-bfe0ba3fb4cb  name Бенжамен Лекомт
+-- id 8f3cd753-9db2-45d9-9295-2ff1facd3ed9  name Марсель Шмельцер
+-- id 8f79850e-4e4f-4a28-9a01-8857d9b2e72b  name Давид Волк
+-- id 8f910f00-86d3-4818-942f-145e14963260  name Виталий Денисов
+-- id 8f99925d-5c37-47c3-b245-26e828944d04  name Игорь Смольников
+-- id 901a735e-83c8-4ddc-82a0-3248a92dea5f  name Раджа Наингголан
+-- id 9038f5b7-a276-490d-a587-10eb81b35ee5  name Оливер Кан
+-- id 9051a53d-1fc8-4bba-8753-75a8feb17c9c  name Ильзат Ахметов
+-- id 9082691c-a9fa-482f-9e44-e1ab6444f74e  name Дмитрий Хохлов
+-- id 90adfe15-a764-484f-9d3f-8dc4de4f3bd4  name Анатолий Бышовец
+-- id 90c56b55-d2e2-4b8c-b902-a665b6cb0221  name Алексей Сутормин
+-- id 90d45708-bbae-4999-bfdc-143e7d88859e  name Сумаила Кулибали
+-- id 90d59978-50ed-4e61-a7c1-c5808c5393df  name Жереми Жано
+-- id 90f10f94-8516-41cb-b013-1619add14746  name Пер Кролдруп
+-- id 91204aec-d38e-489e-8c65-a8c33bdbbd32  name Николай Рассказов
+-- id 9122016e-dc62-4f03-84c1-be558947d740  name Михаэль Баллак
+-- id 918153e9-ce37-4553-b71a-2cf899915929  name Жоау Моутиньо
+-- id 9194e405-6be0-4568-808b-a8d30e5f6857  name Станислав Черчесов
+-- id 91e4c760-0665-48d7-8d4c-453d12b50ab9  name Джон О'Ши
+-- id 91fbc672-39a1-4291-bfdc-1b9eb47e235d  name Дидье Дрогба
+-- id 91fffe82-4858-46d6-b7c8-5894398865cc  name Ян Вертонген
+-- id 921b1fac-06bc-43e0-a04e-172b3c0d5ea8  name Рагнар Сигурдссон
+-- id 929181ef-9403-4f7e-9ad9-4f95c85f02d3  name Хосе Кальехон
+-- id 92b788fd-bbea-489b-9f82-03835c9fc40c  name Санти Касорла
+-- id 92f15963-9a40-4bf5-9ec2-8274d652b1c1  name Нури Шахин
+-- id 9307736f-2070-4051-8031-428f4dafdfc0  name Кайо Панталеао
+-- id 934fb158-7811-4a75-9e67-6e860269fcb2  name Жереми Тулалан
+-- id 93a069c6-336a-4572-a3b3-78a96130ecf1  name Роман Еременко
+-- id 93f11f34-8415-418a-86bc-81f69053e4a2  name Дида
+-- id 93f820de-1d33-404e-ae53-782999603986  name Блез Матюиди
+-- id 9423b254-18d2-440f-973e-dde890754a1a  name Александр Филимонов
+-- id 942a91c4-9f98-41d1-bfbd-b56724121e62  name Бернард Бериша
+-- id 94d77446-137e-47f7-be9b-2f52fd01ecb3  name Рой Кин
+-- id 94fc0b10-f21d-4f1d-969a-ed08c889672f  name Бранислав Иванович
+-- id 9519850c-c4d5-48df-a2ce-215854122ce7  name Фернандо Йерро
+-- id 957f1c72-e420-4e5f-94bb-a63320a91671  name Джорджо Кьеллини
+-- id 95b3d9f3-c32f-41b5-a8fc-373eaeb98786  name Марио Руи
+-- id 96710c97-606e-43de-b2da-8cffe3b2bd29  name Ринат Дасаев
+-- id 968f6699-09fd-4c97-a717-bef1e2a9dbc2  name Крис Вуд
+-- id 973132b8-383e-4283-895c-f8529e57a9af  name Жуан
+-- id 975a1c54-2e4b-4a04-95c7-7e9f22dfe6c0  name Данни Уэлбек
+-- id 97649e02-e700-4cd9-8560-5de1b08088c2  name Эстебан Камбьяссо
+-- id 976c72ee-86c8-42cd-9415-3fbdad0756fe  name Фредди Гуарин
+-- id 979d3184-4278-4fcc-812c-7643fc8e1e98  name Кристиан Ледесма
+-- id 97d09a54-5150-4649-a5fb-3f43abb6f74f  name Игорь Калинин
+-- id 97f04f25-14e4-46b1-87df-626d35a1d8a1  name Аарон Рэмси
+-- id 98b32c8f-89eb-4c03-a579-16c6f98212a2  name Сильвен Вильтор
+-- id 98b48d41-c4c6-45d8-8c17-a458444f100c  name Владимир Хубулов
+-- id 98c3e793-6f88-4554-859b-1c14dfd7d8ab  name Айман Аурир
+-- id 98d175e6-1aba-4c7f-aa85-08bd73488807  name Зико
+-- id 99217eb0-66f6-4ffd-aa67-36378f62c616  name Диего Гомес
+-- id 993abbca-fb84-435c-96c1-0d54c33513ed  name Фил Невилл
+-- id 993e2d82-ce11-4294-8f8b-04d4b6dff8c4  name Сергей Игнашевич
+-- id 99e9ec02-f756-47bd-ad96-c4d9520ca838  name Алекс
+-- id 99ed0a2c-7ac5-4289-ba2b-4563ec9f6301  name Евгений Алдонин
+-- id 9a1ade67-e019-4b90-84c4-8dfb2ff60383  name Демба Ба
+-- id 9a638f1d-28e8-4e86-9e46-6db2aed52da4  name Давид Датро Фофана
+-- id 9a744cc2-7add-4985-9f28-70b07b19dedc  name Энтони Робинсон
+-- id 9ae7bf47-b613-440c-a6b4-3d1b0645aa95  name Парис Бруннер
+-- id 9af96400-4c55-4b96-a214-6fca3564974a  name Армин Гигович
+-- id 9b260106-251a-44dc-bf2b-cf9a479fc395  name Карл-Хайнц Румменигге
+-- id 9b35d2dd-c7b8-4f64-944a-4cbe31999666  name Уго Дуро
+-- id 9b411da2-3ea0-4826-8a2e-ec841d22c021  name Зинедин Зидан
+-- id 9b6eb241-4d42-420a-9890-de128f6442db  name Николай Писарев
+-- id 9c073133-b007-41ff-8637-d5f0db99342d  name Уэсли Снейдер
+-- id 9c0ff42f-e74e-4843-b544-83fb39a7580e  name Максим Осипенко
+-- id 9c428dc6-8d88-49ea-b4ff-360ac88808ba  name Максим Глушенков
+-- id 9c802a3d-1b84-4684-8d2b-29190242b711  name Диого Далот
+-- id 9c932e2e-45f6-4bd7-92fd-f2f0d82af090  name Веллитон
+-- id 9ca3a0a8-cfd5-475a-90c2-9cd8125a419c  name Габриэл Барбоза
+-- id 9ca624c4-b3c1-41e7-af83-f178273cdc17  name Хосе Гайя
+-- id 9ca73a5e-14f6-42ce-9cab-f4134bcf1bb8  name Руслан Безруков
+-- id 9d9d712b-55f9-4d6e-b122-d28a01c1ec4d  name Николас Маричаль
+-- id 9ddd0f1b-b657-47e7-ae8d-e7c65eb3677b  name Виктор Давила
+-- id 9de916a5-d3c3-403a-af6a-8c5cb4cbe64d  name Гонсало Игуаин
+-- id 9dea7c1f-9875-4cb9-8854-f763a410c6f5  name Карло Анчелотти
+-- id 9e43eb5c-d05e-44d5-ae5f-6d9404b9f3c0  name Стефан Рюффье
+-- id 9eb32c2d-5ff3-4a37-9d17-44c1ecf17bfb  name Антон Зиньковский
+-- id 9ec15412-86a6-49a7-b69f-081c436c032d  name Клаудиньо
+-- id 9f3b7e0b-5db9-4237-aa54-f164221d6ac1  name Сусо
+-- id 9f5e2e5e-7ea6-401c-ad44-477ceb909d4c  name Сергей Горлукович
+-- id 9f64f547-5bd2-4763-b174-12193bf432b8  name Матей Коварж
+-- id a0187c87-b741-4830-a987-1a67c4f0b93d  name Срджан Бабич
+-- id a09c68b6-288b-4baf-a837-1d21bc4ccd81  name Дмитрий Сенников
+-- id a0e5725d-7f6e-432f-9b7a-ac66874c0aaf  name Эдгар Давидс
+-- id a0f32be4-5d7d-41a0-8938-282df74b19b7  name Марко Ван Бастен
+-- id a1a200e2-2d4a-4aad-b45c-dbe39f02a5ce  name Марио Балотелли
+-- id a1f10206-07d1-47ef-9440-47b701b849e5  name Бителло
+-- id a20c061e-0df5-4174-8689-9df1383b7690  name Николас Бурдиссо
+-- id a286de98-258f-47b2-b9aa-2d78f3c060a1  name Игорь Нетто
+-- id a28a3aa7-562e-4585-939a-d7b5a888b266  name Вангелис Павлидис
+-- id a2a8a496-5238-4c23-9636-b2bf4975b77f  name Фернандо Льоренте
+-- id a2b555eb-c41b-4d67-a636-8374a1f4e62b  name Савин
+-- id a2e9edbf-b1d1-408a-97ec-58bb325b15c6  name Квадво Асамоа
+-- id a2fb38be-49fc-4c16-83a8-48341a273df5  name Роман Евгеньев
+-- id a3272f92-e7b8-4f77-8982-062a7ce7f1c8  name Маттиа Де Шильо
+-- id a3424a47-11fe-4564-803c-7c1adefac0d9  name Данни Симпсон
+-- id a34ba3c6-6174-4210-863f-514ade592f13  name Паулиньо
+-- id a352aa42-6f3b-4df5-989c-12d071ea2d51  name Никита Кокарев
+-- id a3549d5f-2b03-4c76-9e19-8ab838455998  name Андрей Панюков
+-- id a3832781-d18a-46ae-b0cf-80cfdbaad50f  name Фредерик Кануте
+-- id a3b9409b-3cdc-4e85-aaca-21bfc45071da  name Кун Кастелс
+-- id a4070dfa-fe19-4ec9-84a8-e2453cbc4b7f  name Сол Кэмпбелл
+-- id a467742c-8918-4755-82fe-b6809ded1bf7  name Габи
+-- id a474cb3f-98d1-453f-b36a-14e38c263671  name Хулио Сесар Энсисо
+-- id a48bd09a-41e2-4e60-86f5-0002bbd6d06f  name Симоне Перротта
+-- id a4b824dd-a601-497e-8a7e-d2f30d580b86  name Матьё Дебюши
+-- id a4d9c6d4-6b7a-4df4-9a94-651a4f01f502  name Коди Гакпо
+-- id a508da29-b5bc-490e-bf6f-944df8ec25f1  name Кристиан Дзанетти
+-- id a5b58af6-7ba0-47c3-be3d-eeecc7384a95  name Эмилиано Инсуа
+-- id a5e97b63-8e3b-496d-886f-7e629b12edf9  name Хуанфран
+-- id a5f3b5b2-f95c-4185-a0aa-cac8b03ab901  name Глен Джонсон
+-- id a638c8df-5ee8-47e3-af02-7de2684419f6  name Эммануэль Пети
+-- id a6b1c60c-948b-4dee-b60a-721a7ca2530f  name Фабио Каннаваро
+-- id a6b474dd-e399-45d4-a127-2ff28519aba3  name Эванилсон
+-- id a6d35aad-7a1e-4fa7-916b-18275d1533d2  name Танги Ндомбеле
+-- id a749f284-e6ca-48a6-b268-53f4c784fc16  name Альфредо Ди Стефано
+-- id a74ff610-cca0-42b0-8c27-8c2479c20d52  name Адриен Трюффер
+-- id a771e421-137e-4931-b233-ab138f12aeb3  name Владимир Федотов
+-- id a81f5acd-42fa-4cd9-b672-2da0db0c401a  name Джеймс Гарнер
+-- id a826f9ae-a0a1-4f11-afae-887f9df1a920  name Ежи Дудек
+-- id a85e63b4-aa05-4a2c-b73c-aadff38160a3  name Стефан Лихтштайнер
+-- id a8cc820d-d8dd-4028-b057-ee4a6558d2d2  name Фёдор Чалов
+-- id a8ef10cd-1326-4cea-8ec4-16a0bd3cbf24  name Карлос Бакка
+-- id a940a8ec-454e-44a1-9d18-9d00fcc92a04  name Джузеппе Росси
+-- id a967349c-b374-494e-86d4-cef7804321b8  name Орельен Тчуамени
+-- id a9c633d8-d741-4e65-bf16-d2df9c654726  name Брайан Мбеумо
+-- id a9d145fd-b3d2-4a43-8168-07dbcfaa0e73  name Брайан Сарагоса
+-- id a9efebb6-1d74-4a52-9286-aad69c58ee56  name Карни Чуквуэмека
+-- id a9f2011b-c193-45c1-a59d-96a60f2a4251  name Джонатан Иконе
+-- id a9f5fd3e-3415-400f-8aea-7993236f43c9  name Кристиан Рамирес
+-- id aa056052-bb02-4941-829e-d110b4d0f0db  name Фикайо Томори
+-- id aa629ed0-4fb0-4dc2-a4a4-37d38b1d7e13  name Кирилл Гоцук
+-- id aaa8c9f3-6811-430b-af78-4c065761d572  name Федор Чалов
+-- id aaada999-4eaa-4d54-8094-a48088662073  name Джордан Ларссон
+-- id ab13bcf7-e058-409f-b5fa-1c865323704c  name Марио Гомес
+-- id ab1f0505-fd1f-4102-86a2-8b7b98147704  name Йоррел Хато
+-- id ab83d7c5-15b6-4266-87b9-363721564a2d  name Дмитрий Полоз
+-- id ac16c80d-70e7-4e1a-b61e-c375ec276140  name Фабиньо
+-- id ac90021b-d7dd-40b5-9d3a-a6a64ec4e7d4  name Мартин Штранцль
+-- id aca49125-2a63-4fea-9321-79fdfb303862  name Франческо Камарда
+-- id acc3dfa9-13e6-496c-823a-6a2241f81aee  name Патрик Виейра
+-- id ad192b60-a886-465b-905e-ff1c2f05370a  name Икер Касильяс
+-- id ad40ce52-ae6f-4a10-82ed-40c710e154f8  name Томаш Нецид
+-- id ad42ccb5-e1f1-4261-949b-c0e92144113a  name Эден Азар
+-- id ad7338e5-691c-4406-9ba7-b40227cbe585  name Деян Станкович
+-- id ae012c74-c06c-4bb9-8b8f-271c1e61e522  name Саломон Рондон
+-- id ae0d4fa3-0a4d-4db4-8b4b-90c8dd8be074  name Мирослав Клозе
+-- id ae1941d9-c2f2-4cdd-948f-4ac6b85844fd  name Уго Санчес
+-- id ae7cb51b-1879-41de-840d-558be2ecbca0  name Лука Гагнидзе
+-- id aefe55f5-6065-408e-890c-cd6590937ce1  name Георгий Щенников
+-- id af23e341-634c-473f-8899-16a9439203d2  name Сидни Ван Хойдонк
+-- id af3f7aba-0c8c-43e2-ba80-030129209ddf  name Виктор Файзулин
+-- id af9f910b-8980-499d-8116-1deb968dfadf  name Денис Бояринцев
+-- id afb71cb2-2d5d-42cc-bc75-435818a10c69  name Кефрен Тюрам
+-- id afb75544-0ded-4f44-8286-b7777a111215  name Леви Колвилл
+-- id afbbacea-1885-4621-b4a2-a866a919d9aa  name Дмитрий Скопинцев
+-- id afd71c0f-16b2-4e71-a8a8-1e0a45fe18c4  name Родриго
+-- id aff6dcd8-f5bc-48ff-a304-f89254927002  name Анатолий Тимощук
+-- id b00a0f07-3798-48c1-a4f8-06afd57f8d7a  name Стив Финнан
+-- id b086f580-f8c0-4b38-acf1-c11e30149461  name Дидье Зокора
+-- id b09a1750-aa63-419b-b462-577700fa5d58  name Давид Луиз
+-- id b0a4f6fa-1c5a-434e-be54-e01b8938392a  name Луис Густаво
+-- id b0b69103-69ab-4a90-b6a3-7e92b7c6294a  name Кевин Кураньи
+-- id b0c0b2a6-d1a3-4780-9311-25c15ac311bc  name Деннис Бергкамп
+-- id b0f131d6-2caa-495c-a5a9-96309a80ca95  name Муми Нгамалё
+-- id b1149c23-781d-48e3-9a21-9e457b03f754  name Кертис Джонс
+-- id b11f680f-dcb7-4c85-aec2-d70258e79ec9  name Альберто Аквилани
+-- id b127818d-5d43-41be-8503-3c4ba6de3047  name Фреди Гуарин
+-- id b143a7ae-f206-4299-a92b-1fb3c9d15f46  name Дани Вивиан
+-- id b17e4849-8f66-4afa-958f-559e931a52c8  name Мишель Платини
+-- id b1af18cb-adb9-4fdb-b216-9b04ad59a741  name Артур Бока
+-- id b1cd6428-2b99-41ae-b045-a4f76fab1ac6  name Муса Дембеле
+-- id b1eacd97-3cb4-4945-86b5-3220fb5d5450  name Арис Адурис
+-- id b1edd331-da32-4737-8747-33b5d378b565  name Вальтер Самуэль
+-- id b245a6b8-6a8d-47f0-a3e5-40bf3216f9de  name Гарри Кэхилл
+-- id b246802a-ab1c-40c7-8633-08e8dbebe79b  name Кацпер Козловский
+-- id b2893aeb-210a-430c-9bbe-24a8edbc040c  name Георгий Мелкадзе
+-- id b2e3312b-21fb-47bb-bcee-87c7a01cf2ff  name Клеман Шантом
+-- id b31c84f8-7a40-45e1-a3db-3e17eda9c770  name Родриго Санчес Родригес
+-- id b32f00d5-f41b-45b6-9fee-277509ba2045  name Кшиштоф Пёнтек
+-- id b3795374-010b-42f5-9bc7-4663e3063f1c  name Лусио
+-- id b37efc34-41e5-4d47-b9cf-9d60a1e49789  name Денис Колодин
+-- id b3b3dbc1-387c-4c9c-b788-fbcfd43a1038  name Милан Вьештица
+-- id b3b4a351-67e6-48e6-abb3-8ff7b6a58d66  name Алессандро Гамберини
+-- id b410bde1-874d-4e82-b1ad-a44bf1f1b7a2  name Невен Суботич
+-- id b41f2aeb-7459-45fb-87ad-2873f6164b2e  name Марат Измайлов
+-- id b45f2556-e0d6-4169-8e2f-e40292ed1167  name Юпп Хайнкес
+-- id b4755be0-ec38-4cb1-8d70-4c17982e0f4f  name Гути
+-- id b49e606a-6312-4d8b-9254-ae9c9644ca8f  name Майкл Каррик
+-- id b4e312ed-a26d-446e-b131-cf59eea264ff  name Клаудио Каниджа
+-- id b4e93545-8055-46fa-92c1-309291cd252e  name Данни Мёрфи
+-- id b55959a9-5d80-4324-9026-8be3141da28d  name Халк
+-- id b559cbad-5e96-4418-b512-a1cd6d0d1761  name Лазар Самарджич
+-- id b5a06f62-5db1-4a4e-985c-e4eafa2cec56  name Даниэль Старридж
+-- id b6337943-1f19-474a-89d9-2eed0837d581  name Тиаго Мотта
+-- id b6628bed-b49f-4942-8151-3c1838e9f193  name Евгений Ставер
+-- id b66853b4-6a48-4ef3-a7aa-f87bf13c807c  name Торстен Фрингс
+-- id b6acee85-7acc-4ea6-b789-1accea99dfda  name Джанлука Виалли
+-- id b6df9db4-f0c5-44b4-8799-00fc2c81b8dd  name Игорь Семшов
+-- id b70b2b8c-09bd-4ed6-ad21-44e7079240c1  name Лукас Бельтран
+-- id b735b833-52ec-4d09-acec-3b2981a5b9b3  name Андреа Раджи
+-- id b741a07d-0249-4b11-a14d-321a0e4296c2  name Ахмед Мидо
+-- id b75c19f8-deea-4c9b-a978-41f54039151b  name Адам Армстронг
+-- id b7d6dfd1-48fb-41f8-b1e2-22831185df3e  name Александр Горшков
+-- id b7e0cf37-d82a-4d99-9fa5-b862ec5b9b4a  name Рикардо Родригес
+-- id b852264e-581c-42fa-9e3c-791172bc0863  name Томаш Губочан
+-- id b852dff1-2e4b-4b7c-8fbc-dfd1e7845453  name Рикарду Куарежма
+-- id b86be3e2-b1aa-422c-8bcb-b7a6b691c593  name Адриен Рабьо
+-- id b8a9a7c8-d5d9-44a9-9950-d4e92efdf203  name Джонатан Дэвид
+-- id b8ac2c21-b703-44de-9058-fae2e2086d16  name Алексей Батраков
+-- id b8ad2b50-cb55-4e5e-83ac-49e152ff3ac4  name Тео Бонгонда
+-- id b8bf1cb2-9007-4f04-b66e-686157a3ac23  name Асьер Ильярраменди
+-- id b8d6ac88-632f-4966-bf02-e2f9f3adb68f  name Риккардо Соттиль
+-- id b8d6b610-d1f4-4b1c-b7ca-f4baf71318d8  name Нельсон Семеду
+-- id b92bb4c9-79fc-4e7a-b72e-9ad084c38579  name Пер Мертезакер
+-- id b934f3a9-54ad-4a87-a597-2b48a13d4f50  name Омер Топрак
+-- id b9379bc6-4743-42d8-867c-e4b265e110a9  name Мишель Эбишер
+-- id b947aae8-8cb8-4ebf-9e82-670f5da890e3  name Владимир Рыков
+-- id b9b76649-ff94-44cc-9a7d-438b3097b292  name Альберто Джилардино
+-- id b9ce4e44-d5c6-40a5-957c-91ad14d74893  name Андрес Д'Алессандро
+-- id ba247a83-fca2-43bc-b523-1d51f4a848cc  name Габриэль Мартинелли
+-- id ba5a4416-2aaf-467f-bf7c-edd5e648f111  name Андрес Иньеста
+-- id ba659b28-c88b-4daf-94fa-9f453d74c5ae  name Флоран Малуда
+-- id babd5ec0-4db5-4d0d-9ddb-2778460cc969  name Луис Муриэль
+-- id bad1eb0a-d8c8-4c82-bd0f-671dcd193681  name Эмерсон
+-- id baf60c58-a93d-40e5-a938-94c6dd654d7c  name Бибрас Натхо
+-- id bb2b8a50-d596-4993-85e6-b0264b13ef51  name Магомед Оздоев
+-- id bb5369f2-19cf-4a2b-8b5c-38eca9c4e957  name Марио Манджукич
+-- id bb836908-4a34-453d-b5b9-2b000fd09fa3  name Франсиско Хосе Гарсия Торрес
+-- id bba4bb22-04a3-4903-8ce0-fdab65b8f8bd  name Майкл Доусон
+-- id bc922b91-95ad-4167-97c2-df6b6b484a0f  name Массимо Оддо
+-- id bc9c1558-31a2-4731-9bad-8bb47706b907  name Нуну Мендеш
+-- id bca15887-6746-480d-bc22-d9f601b50905  name Брайан Робсон
+-- id bcbbaeb1-6778-4461-9d2f-5ac546e94092  name Ники Батт
+-- id bcdb72ca-eebb-48b1-bde1-3a70c192f389  name Робин Кох
+-- id bd246ebe-73f2-4c7f-8227-586e0be28e35  name Гиорги Мамардашвили
+-- id bd424972-30c0-4ab4-8f57-50a23c1123f4  name Джонатан Зебина
+-- id bd59c330-71fe-451b-8c5c-7978ac490a1b  name Дезире Дуэ
+-- id bd68b40f-dbff-42ee-ba93-ef6baca3d698  name Марко Пеллегрино
+-- id bd702460-4d40-4509-9048-df317f8dd95e  name Матиас Норманн
+-- id bd76a961-e8bf-404c-a538-606a75d3cf8c  name Себастьян Коатес
+-- id bdaae697-04c7-4ff6-8a97-5082e08bf7dc  name Даниэль Мальдини
+-- id bdbe1c7e-b80e-4a49-9023-6b5ca6624b53  name Франческо Тольдо
+-- id bde20e95-2eac-4266-a303-464c3d7f8eb5  name Алекс Крал
+-- id be1f6386-68ad-4a51-af89-9717992973ab  name Элдор Шомуродов
+-- id be4c2141-6a55-4bd7-bda4-5edf0485b381  name Марек Янкуловски
+-- id be8ddd1a-e12b-4a7d-9855-9d05a7844149  name Руслан Литвинов
+-- id becd16b8-501c-43d0-a282-7a49f1077a2f  name Андрес Палоп
+-- id bed43db1-40f5-4b1c-882b-3f59388303b6  name Сами Хююпия
+-- id beeb76bc-950d-44c8-9007-a25277b7ae04  name Сергей Паршивлюк
+-- id bf0f6c1b-8e4f-4be3-8534-2928b591b33f  name Питер Осгуд
+-- id bf467905-3a49-4745-82b2-4549e095f29a  name Лэндон Донован
+-- id bf842376-f68d-4d4c-a429-850a7ef545fd  name Максим Самородов
+-- id bfa6df26-af9b-492b-8a3b-99249fad7b17  name Хуан Мануэль Боселли
+-- id bfb729bd-75ae-4156-badf-f89e4a14d2fd  name Карлос Вела
+-- id bfc56a61-6c6a-4946-a6c8-97cc11c5f930  name Адама Траоре
+-- id bfcee9ff-671a-4e0b-a772-b74f40c1fc84  name Хасан Салихамиджич
+-- id bffab041-573e-40ae-93ab-54da95e0cf85  name Хуан Капдевила
+-- id c0003d49-9997-4b35-aaec-9567f7c3eb45  name Хироки Сакаи
+-- id c002c739-f6bf-4e52-bf77-fca401971188  name Элвер Рахимич
+-- id c02c507e-527a-43f4-b460-a6db3d84fd6b  name Себастьян Руди
+-- id c0969c52-d8ac-4b55-9077-27c8d3013f0e  name Себастьен Фрей
+-- id c1501590-9159-4e6d-a8eb-a7960346b2e0  name Жорж Микаутадзе
+-- id c1fdda41-17f2-41a5-bc00-5d8a51188fd6  name Никита Симонян
+-- id c235a5dd-3c29-41fc-be9c-035c5338b992  name Транквилло Барнетта
+-- id c2442749-74fa-464d-beea-c78c856e6abb  name Валентин Пальцев
+-- id c2853024-f447-45da-859a-7cede8f3173e  name Рожерио Сени
+-- id c36f983b-3a31-48a9-9467-3e67593a18e5  name Милош Красич
+-- id c381a506-b885-4816-b6c6-f2a369e9a9f6  name Фабио Капелло
+-- id c4a07949-9daf-4b18-9e27-ccf7aa127cc9  name Дэвид Бэкхэм
+-- id c4dc89ac-5a47-4cf8-8290-8a83af6a2f0a  name Александр Солдатенков
+-- id c5344eef-9e34-45d1-9c0c-955a8eb82dc1  name Диего Карлос
+-- id c579f8c4-74ea-4d4f-9e34-82b773166bcb  name Даниэле Де Росси
+-- id c5b4edb1-633c-4c29-92b1-0b50889de453  name Марко Матерацци
+-- id c5da3913-1205-4915-a96f-f65f65b76bbd  name Сами Хююпя
+-- id c63486cc-d6e0-43ca-87ef-58dcd918ed89  name Крис
+-- id c6ea4071-7af5-49f0-8752-4b2cbbcb2777  name Гифт Орбан
+-- id c6ee8f04-0391-4399-8a9a-a6c5c26fcef0  name Тете
+-- id c71b5ff0-fc24-4a2a-b5f8-c1bb916ec286  name Анте Будимир
+-- id c72942c7-de00-4d60-bcea-b240f16a86d6  name Мануэль Угарте
+-- id c7674201-7346-482d-b47e-e96a5a89337a  name Иван Ломаев
+-- id c77102be-a888-4846-a226-3e9593742bc8  name Арьен Роббен
+-- id c7c556b5-c530-44ea-812a-7b6bf688508b  name Жано Ананидзе
+-- id c7eabef7-d77f-4eb3-8dc4-be9c2f091203  name Даниил Уткин
+-- id c804bbc1-dd64-4fc4-babb-593ad64d2287  name Патрик Габбарон
+-- id c809e397-0332-47a8-98c1-5e4c29383cfc  name Стеван Йоветич
+-- id c80b02e1-6d1a-4469-bc88-b7bb31f699b4  name Раймон Копа
+-- id c8116b9f-d6b7-4709-accd-0e68b940350c  name Микаэль Лаудруп
+-- id c831f307-362f-4ec2-b825-bb447e66c45e  name Ненад Томович
+-- id c86b5c2c-1118-4976-88c1-1ac21d5b8854  name Мануэль Паскуаль
+-- id c8abcbbd-4c78-4708-a5c2-ded2818f0f01  name Радослав Ковач
+-- id c93d59e6-a563-40c3-952c-e18a613ecb6b  name Аксель Витцель
+-- id c9451609-e303-48fb-bed5-2f8fb035acb4  name Максим Гоналон
+-- id c99908af-1479-4fc3-a610-62f855e41103  name Кристоф Жалле
+-- id c9c984f9-6683-4437-9240-82af45ac6d2f  name Фред
+-- id ca19c170-27e8-44ec-84b3-5b62965d8d8b  name Бенуа Шейру
+-- id ca95659c-4468-4970-a349-37a4f166215b  name Родолфо
+-- id cacf7eac-d9c4-4e91-8611-5ac03be49e17  name Радек Ширл
+-- id cad012c1-94b1-476a-a65b-94072c5aff76  name Джи Сун Пак
+-- id cb06452a-b955-42b5-978f-215798c5ad80  name Робби Кин
+-- id cb308799-de77-4ad0-b5b0-b111b604c101  name Роберто Манчини
+-- id cb3c2bc7-1d6d-4175-8d1e-acb24918caa3  name Роман Зобнин
+-- id cb464e19-3de4-412f-be79-f8afea3cd0bc  name Санти Мина
+-- id cb8424e7-2469-4795-b9a7-35395aa594ee  name Александр Ерохин
+-- id cba1307a-ab66-48fc-a3f3-b7d4ca0d4612  name Бобби Чарльтон
+-- id cbb33123-ec65-474e-aa01-19641f832151  name Дмитрий Торбинский
+-- id cbb7d9cc-953c-4ace-916e-79d4fe03b878  name Рио Мавуба
+-- id cbc673cd-4476-4840-a6c7-89bc7ed1ae88  name Хави
+-- id cc2274aa-6abd-479d-b080-f8d1e76b5309  name Жан Макун
+-- id cc3b5e29-09b6-4f0e-a14f-9d97ac6f4d64  name Армель Белла-Кочап
+-- id cc657831-44b3-4aef-9d13-abadd3473804  name Гари Линекер
+-- id ccd2ac7f-7082-437b-ac37-fffd79a94f78  name Лоран Косьельни
+-- id cd5a157b-4af8-4546-87ab-f1f883300fbc  name Хосе Хименес
+-- id cd6e0b88-ef37-4533-8ca3-a16ee0fd2f8f  name Диего Бенальо
+-- id cd91be61-b0c4-4a99-b9b8-8aaceb2dd99b  name Сергей Пиняев
+-- id cda14ee8-1f4d-4f41-889b-aaa6316cda71  name Марко Донадель
+-- id cdb55200-4946-419f-b41c-1ec94d0c87f1  name Александр Ширко
+-- id ce4e0d29-2190-4212-b0b7-a8f1f1e1fa89  name Эрлинг Холанд
+-- id ce569ac6-e9ec-416e-abf4-9d9193e0a5a4  name Титус Брамбл
+-- id ce6903f3-e1de-4778-8b76-de51196b8bce  name Месут Озил
+-- id ceb10895-7fa0-4d0d-9a84-c2f7fa6fbe8a  name Франсиско Хенто
+-- id cf160dc1-0a28-42fa-82b3-43cb08891684  name Ян Пол Ван Хекке
+-- id cf182c8e-c6a2-4056-a839-a904505fc55c  name Эдвин Ван Дер Сар
+-- id cf361965-3936-4250-8024-1b32745d8aba  name Этан Мбаппе
+-- id cf46662c-2e0f-4c90-b6db-b08f85fabc3c  name Гленн Ходдл
+-- id cf58ba39-3231-4935-b416-c534d1cbd0bb  name Даниэль Карвахаль
+-- id cf5fcfbc-2d68-41e5-914e-200fce082cd5  name Николя Н’Кулу
+-- id cf601f82-632f-4e46-98d6-e01babc82487  name Збигнев Бонек
+-- id cf7a55c9-2ee4-4026-88cb-11d265f075a6  name Янник Карраско
+-- id cf96334e-06d1-4b36-b969-69f2f6e18729  name Зелимхан Бакаев
+-- id cf9dd98d-5ef4-4bd6-b281-3ffcd72476d2  name Луис Фергюсон
+-- id cfa5dc15-a94c-452c-be75-baf6030ab1f0  name Олег Романцев
+-- id cfcb4217-6541-4e86-ba88-17571f633f78  name Шарль Каборе
+-- id cfeb84fb-8a16-420d-9c62-38271a7d82d9  name Висенте
+-- id d00fe68b-301d-4b41-8c69-3791e69cee22  name Эдгар Севикян
+-- id d0cbc882-f6cf-4a3b-8c28-013d0b2f636a  name Ким Мин Джэ
+-- id d0e63416-f42c-46c9-aa0a-e8cdeba154e2  name Флоран Бальмон
+-- id d137feef-c19b-45d4-b2d3-5c82aaac5647  name Данил Глебов
+-- id d161e979-6aed-432b-acee-adff00755c74  name Хорхе Карраскаль
+-- id d176e0ac-964f-440d-a129-9290e85f5483  name Ахрик Цвейба
+-- id d26511dd-571b-4485-947f-d2e27b3e1df0  name Неманья Видич
+-- id d26d9838-1285-42bc-a1c8-d7bb1e7834e4  name Оливер Бауманн
+-- id d27cd094-95ae-4707-a304-48968c12fb1f  name Кевин Гросскройц
+-- id d2c38ea6-4c5a-482c-aa30-4b55c9389483  name Джулиано Симеоне
+-- id d3399916-6f98-443d-8def-36bd87139a5c  name Кристиан Нёргор
+-- id d34568da-2512-486b-9e52-a9b3b927f7c3  name Александр Максименко
+-- id d35ccbe2-cb80-4092-ba17-a1b7393d4f2f  name Энди Коул
+-- id d360a101-f121-4dec-b354-9510fdb9074a  name Криштиану Роналду
+-- id d39d6e60-f84f-420f-8340-b8504cebdae8  name Евгений Ловчев
+-- id d3c5c79a-4368-4288-9cea-a44ee2cffae1  name Рууд Гуллит
+-- id d41c5aec-155b-42c4-bab2-4fbc53e1e948  name Давиде Дзаппакоста
+-- id d4633c34-5d51-4ba5-9ed7-7a0a89ba820a  name Эльсеид Хюсай
+-- id d47f6c31-30bb-4453-b506-0ff1f9112300  name Федерико Бернардески
+-- id d490479d-4c8c-4ab0-b6af-cc03def5e154  name Иван Игнатьев
+-- id d49a7bab-6a82-446a-b125-6a5d0f942541  name Дунга
+-- id d4a69f5e-91c4-4528-adac-2545e7aa7899  name Луис Фабиано
+-- id d5004560-f0d5-4e4e-a893-76f1e4e148fd  name Франк Рибери
+-- id d50b7de3-f98f-49e8-aa4e-15ad4577b4b3  name Джимми Бриан
+-- id d5b64ca7-9541-4669-8ccc-34dd3546a090  name Юрий Джоркаефф
+-- id d5bb0cd3-1203-4761-b761-85694cac95eb  name Егор Сорокин
+-- id d5d1ef88-32f3-4ee3-9f45-fc81937057fb  name Осман Дабо
+-- id d66614f0-766e-499e-b394-ffcc2f36daca  name Себастиан Шиманьский
+-- id d67fb57a-ab76-480e-b739-86cd3d6c5e77  name Мамаду Сако
+-- id d6f52352-3631-47c1-9184-f277e0f9f687  name Дмитрий Парфенов
+-- id d6f775a9-7ec2-47f3-bbc0-8166c03296ba  name Мирча Луческу
+-- id d759eb5e-6b02-4d85-98ef-d57ef1e821c1  name Кристиан Куаме
+-- id d75e2422-b695-46e3-815d-977618d86332  name Зион Судзуки
+-- id d7b172cc-bb90-4c47-b476-a4d2a6654440  name Эрик Бикфалви
+-- id d7da0a58-636e-4919-a179-8cbd65f8a46b  name Томаш Росицки
+-- id d802508f-be52-4572-9bc5-ee48e0e65cf1  name Джанфранко Дзола
+-- id d81d1ccd-af53-473e-8f89-57b47856cb15  name Луизао
+-- id d860d7d9-d275-4a34-a7ba-cc1e373fcb07  name Матвей Сафонов
+-- id d89c00b3-c762-4ac1-a7f5-3d6a79a2d8a5  name Рикардо Монтоливо
+-- id d8b51a62-805d-44dc-ad3f-d0630eac905a  name Илья Лантратов
+-- id d932c5ec-cb45-4418-8231-948c839e1f0f  name Франк Веркаутерен
+-- id d9581133-c558-4d2c-b722-70e39bb37b26  name Вильмар Барриос
+-- id d995e840-595a-4ba4-81a7-0649c15b8c3e  name Эктор Беллерин
+-- id d9cd30d5-1570-4258-914f-7eff40991513  name Роман Вайденфеллер
+-- id da4c511b-67f7-41fc-a3bc-08b9e9b0b674  name Аллан
+-- id da836db3-219e-4985-9b3b-d8ceeed7a25c  name Джоуи Бартон
+-- id db2906bb-fdc8-4ca5-b5fc-cff5a6915c2d  name Матеу Морей
+-- id db301b6c-eba4-4863-a0a2-a5c059c14e49  name Нино
+-- id db3d11ff-1948-4909-af54-fe874720ea33  name Адриан Муту
+-- id db3d2b13-46c3-4489-beae-2c7a1d485f94  name Джошуа Зиркзее
+-- id dbc3eed1-c02e-417e-9cb8-03ba827c1bd4  name Шей Гивен
+-- id dbcd8a3c-105e-42f1-9a8a-cfd633c8bf38  name Хулио Крус
+-- id dc209b67-a3ca-4e79-a318-66d9ec6bf90b  name Томмазо Рокки
+-- id dc82121c-fc5d-4f7f-84b1-9f1f86bef855  name Илья Вахания
+-- id dcd801ca-7125-478b-9c5a-2ab91d60727d  name Адриано
+-- id dd0452f4-0038-4a9f-ad64-630e75f3a901  name Андрей Кобелев
+-- id dd209fe0-5fcb-40dd-9c72-01dd3b7cf9b5  name Филиппе Коутиньо
+-- id dd35fa2c-24f3-46b0-9ead-e5837c30f00f  name Марио Кемпес
+-- id ddb184ef-346e-4ce1-9313-472758180431  name Бас Дост
+-- id dddee0e7-c673-4536-a4ee-e71ef933bb73  name Эван Ндика
+-- id de0a4634-02cd-4163-b292-b945c105b17f  name Данни Блинд
+-- id de4d7d91-7ae6-49cb-8bf4-2889ee185576  name Кристиан Вьери
+-- id de9739b3-463b-491c-b659-9c1c080e1288  name Роберт Левандовски
+-- id de9e4c5b-b501-4baf-a05f-b9d04814c15e  name Жоао Гомес
+-- id deac51d0-0995-4959-9533-150ade540b0d  name Шака Траоре
+-- id dedc959a-91fa-44e8-a681-f033a042cd22  name Димитри Пайе
+-- id dee13fb1-5100-40ec-99f6-c38593653366  name Серхио Асенхо
+-- id df611173-5ff2-41fe-806b-c977572a22e7  name Руслан Пименов
+-- id df6ab9e2-b9b6-481e-b153-41c0bb919a57  name Андрей Аршавин
+-- id dfdbbd3b-e882-44a6-a87c-0ad472948667  name Джек Робинсон
+-- id dff33f6d-ced6-4222-bf7b-d4f142e92eff  name Антони Ревейер
+-- id dff9c997-b805-4944-bc2e-3fb8821b16f2  name Зурико Давиташвили
+-- id e04c3b57-a696-4033-be73-2250e665fc49  name Джордж Бест
+-- id e04fc92c-830d-4427-a080-93ce705f42b7  name Руслан Нигматуллин
+-- id e0574964-6d02-4cc7-9439-ddc127936534  name Дмитрий Сычев
+-- id e07bc2c3-e23b-4307-8db4-1b2383d6914c  name Кейто Накамура
+-- id e0c4d71f-9d81-49e6-8e0c-2ed7833c514c  name Альваро Негредо
+-- id e12e5651-1792-41d4-a8fd-73de23f09aa3  name Микель Оярсабаль
+-- id e149ab89-682c-4dc6-9ccf-f58a77406241  name Валер Жермен
+-- id e184fb80-d3fd-49e1-9b4b-c278b92df308  name Юрий Жирков
+-- id e1dfcfa6-7d0e-4bf4-afb8-a082b6af2cf6  name Эзекьель Барко
+-- id e201faf3-97d7-476e-a1d4-297f2088450d  name Кака
+-- id e249f5e4-0c80-4207-9f29-2fdbeb06be71  name Сергей Овчинников
+-- id e24e14ee-0339-4c75-89b3-5f56ec05d267  name Антон Миранчук
+-- id e270dacf-a2fc-42b5-9be5-f7a382fb6f60  name Обафеми Мартинс
+-- id e2a275af-4d51-4b91-8b35-2e38950bbf5d  name Матео Кассьерра
+-- id e2b74972-9b75-4ee2-a387-b6c6acabb901  name Ноа Садики
+-- id e3208c73-d727-45ff-b414-c4e4c71e2e93  name Джорджо Скальвини
+-- id e323e047-e04b-4e4d-b5d9-78ced685b069  name Николо Фаджоли
+-- id e3a11a82-f358-406d-ac4c-675feea027aa  name Рауль Хименес
+-- id e42a079f-bc48-47dd-8966-e047eca05af9  name Луис Диаз
+-- id e42a1e77-ae27-415b-b3d4-dee743d96fae  name Чичарито
+-- id e4a25141-d508-4355-93da-b4f0fdd45360  name Оливье Дакур
+-- id e4b3e7b1-79b4-49d6-af56-759a7b1ddcf1  name Симон Рольфес
+-- id e4bc3ae3-d9e8-41b0-8987-3f4d1e6b3d3b  name Джанлуиджи Буффон
+-- id e4c3c9e4-8c9d-4e9a-8c16-749aa7fcee8c  name Диего Милито
+-- id e4c808c8-98cb-4fb0-b14c-747fe5efb251  name Иан Раш
+-- id e4f61f08-1ec8-42e8-b667-dfb475d74007  name Кирилл Панченко
+-- id e50e00df-3208-4995-a156-6e86642c7c7b  name Диогу Далот
+-- id e5c507c9-7486-4e14-b9a6-1aedc344d516  name Мацей Рыбус
+-- id e5d78e77-c7fe-4093-9bfb-ea2d2c461dde  name Далер Кузяев
+-- id e5f7fd3f-518e-44b6-ae9f-2587a5078756  name Франк Ангисса
+-- id e6b283d8-e24e-49ec-992d-46d714e128fc  name Дуглас Сантос
+-- id e6e615cc-b662-4608-88c5-7f73531a43b7  name Хетаг Хосонов
+-- id e6f3cefa-3171-4962-89f1-d72f36e6372b  name Дмитрий Баринов
+-- id e742d7e9-0b04-4bd6-b804-fb1193da20e0  name Шарль Де Кетеларе
+-- id e74e685f-1895-4566-8d14-a8c6b0ed4a12  name Сейду Думбия
+-- id e7b24583-36ec-4409-9d93-7a7f3d960015  name Иван Обляков
+-- id e7d48fa3-4aa4-405a-9c3f-9c1b8a2b669b  name Якуб Блащиковски
+-- id e7fa6ef2-83e6-45f0-b2c3-f45c1ff27c61  name Гёкхан Инлер
+-- id e815bcb4-e6b0-4b12-aa86-09b6c95be9cf  name Лукас Лейва
+-- id e83475da-70ec-490d-971c-fe8d87588190  name Педро
+-- id e8653a2e-17a4-4f0d-8109-9c54bf6c1afb  name Пеп Гвардиола
+-- id e871155e-5531-4044-bb56-55b272cf0a8c  name Паулета
+-- id e896277e-0780-4dbd-b89f-f881cb09da7a  name Алексей Миранчук
+-- id e9384bfe-848f-4164-b086-245249a0f4ce  name Мойзе Кин
+-- id e9443c75-3729-4c87-aa5d-f66e72ab4dab  name Марко Пароло
+-- id e964ccef-51e2-49bb-a2c3-08670e603f6f  name Эмре Белезоглу
+-- id e9a1b41c-4792-4738-806a-355307551384  name Диего Годин
+-- id e9f3dea3-16c3-405a-930b-a11c5170e164  name Вальтер Гаргано
+-- id e9fee0c6-3222-431e-aeff-df8cbc9502a0  name Бакари Санья
+-- id ea0cfcc8-29f2-4d76-a5ab-eb62959112bf  name Ханс-Йорг Бутт
+-- id ea1da5be-7365-4452-8d58-c2225ddf67b6  name Чезаре Мальдини
+-- id ea45d822-73fb-416d-bcf6-929ba93bce74  name Урош Спайич
+-- id eaf9ca1b-6f4a-44d3-85c3-f03febb373b5  name Луис Суарес
+-- id eb28517b-d214-43e1-af9b-fbedc76fbb00  name Дуду
+-- id eb2ec674-6d2b-4420-b590-dce1b967c639  name Кристиан Рамирез
+-- id eb8eb329-80bf-499d-81dd-d8df7f815f38  name Гёкдениз Карадениз
+-- id ebe12d0b-bcd8-4ca4-b504-2ddd891e6aa5  name Лусиано Гонду
+-- id ec0a5438-cbb1-450e-b005-9891db4617eb  name Виктор Классон
+-- id ec310851-e7f5-4851-a828-50300322a40e  name Райан Гиггз
+-- id ec5ed27f-fbb4-4dc4-8bd0-c9dd991d5361  name Нуну Гомеш
+-- id ec762158-1051-4b45-bfb7-cb4a6570da00  name Никола Залевски
+-- id ec8efc43-956b-4298-8bf2-2ea2c08de51e  name Олакунле Олусегун
+-- id ecc85d27-72e2-4eee-901c-0195df480dc9  name Стивен Цубер
+-- id ecda8563-9468-4b24-8f3e-8abf0c6fceda  name Рикардо Карвалью
+-- id ed49b07b-075b-4521-b0a8-a56d3242afc5  name Рафаэл Леау
+-- id ed62a2b6-fa0b-493a-8ea8-b214e9a01e61  name Никита Баженов
+-- id ee0ff146-b331-42b8-85e4-9a819b309543  name Гарринча
+-- id ee8bbb52-05ef-4e13-9bde-561f665ddd56  name Мартин Шкртел
+-- id ee9d0c79-3ada-4c9e-b71b-85e48f9789df  name Адель Таарабт
+-- id eef9dd1a-b372-4f24-a781-d12b578068b3  name Мануэль Ладзари
+-- id ef173da8-b75c-487a-a599-6860923e2243  name Роландо
+-- id ef2b6ba2-a701-474f-9734-4b83e9799d60  name Нето
+-- id ef62c67d-cb81-412a-bef5-c3e9068fe48a  name Дитмар Хаманн
+-- id ef72f0c6-fd49-459e-9025-75d4b1c4bea5  name Тони Вильена
+-- id ef85ba36-9582-4dec-b356-95590e4e5282  name Марк-Андре Тер Штеген
+-- id ef8d78ac-26c4-4bbd-8d1d-4f08cfafbd9b  name Роман Широков
+-- id efd2b5d5-f857-4376-a64b-e4bc05f309cd  name Рис Джеймс
+-- id efede1b1-de9f-4d0d-b771-b1f2485439d5  name Деян Кулусевски
+-- id f01a0089-42f1-4581-9c2f-d264ff273a29  name Франсуа Камано
+-- id f03d297a-ce1b-44ba-907b-466923592cf4  name Джермейн Дженас
+-- id f06160ad-6f51-47fd-8565-8a7741e51e3d  name Ахмед Муса
+-- id f0fcce4b-b5fd-487f-b2e6-18aac7c6b611  name Зе Роберто
+-- id f0fe8a9a-9d72-4118-b29e-26fb9910fc0b  name Стид Мальбранк
+-- id f0fe9016-9a5d-4cc5-be68-7a736ef585a0  name Гонсало Родригес
+-- id f173a2c1-a34f-4126-a14a-9d92318c2b24  name Константин Кучаев
+-- id f19f9376-133b-419f-9d2a-4bc955e33d24  name Виктор Вальдес
+-- id f208e6bf-2f5c-4779-91ae-3df54cae5268  name Адессойе Ойеволе
+-- id f28ef5bf-54c2-47a4-90b3-eb1a54c86861  name Владимир Гранат
+-- id f2b46655-8e0f-473c-990e-5063861ceee9  name Эрик Кантона
+-- id f2ba6039-c30e-48be-9f09-a19a96e2f098  name Гжегож Крыховяк
+-- id f2cd130b-adbc-4af1-ad3c-14889000f0ad  name Валентин Иванов
+-- id f2eb2b46-2013-4a03-a960-5526dfd0ff91  name Кристиан Маджо
+-- id f2f673f9-efe2-48e8-96bc-1c6d822e07b3  name Николай Комличенко
+-- id f2fe1cbe-32d8-4fdb-bda3-7a9d4e461dcf  name Карим Бельараби
+-- id f35115fc-ed4d-4a48-b58d-0d5d9336b491  name Александр Сергеевич Головин
+-- id f3596bda-eed4-4b6d-81cf-7b6c69d807f4  name Вячеслав Малафеев
+-- id f35f0b3d-f159-4116-a3ee-56a631e1e71e  name Эурелио Гомес
+-- id f3c6afb4-0157-480e-a081-8dfb64f913d3  name Лукас Мартинес Куатра
+-- id f40ccedd-a708-4a15-b69c-c2cb4615b845  name Пол Скоулз
+-- id f41056c3-86fb-402d-a1e2-f9696be96e01  name Начо Фернандес
+-- id f427e696-3f7b-4c5b-ae28-8cc649a47455  name Кейсуке Хонда
+-- id f4a465fb-1cc5-4497-bcbd-122a92c65758  name Дмитрий Рыбчинский
+-- id f50533ec-54c8-4719-9622-6b518b18ebd3  name Алекс Мерет
+-- id f587c657-608c-4ed1-8ede-b62c0fb13ed7  name Тим Визе
+-- id f681446a-01a6-4144-ad9e-44acf712a162  name Тимо Хильдебрандт
+-- id f6932dd7-5b57-46da-a735-9623db17e2ff  name Хулио Круз
+-- id f6b804aa-f9a4-4b73-8af3-be27d460f30b  name Сесар Монтес
+-- id f6be988e-5b95-4a64-b81c-07178f9b6706  name Густаво Мантуан
+-- id f6d8f7db-a21f-4a6c-9510-b74b93343615  name Эйсебио
+-- id f6dfc3e7-a15a-4dce-9c89-eb1509407b55  name Петер Шмейхель
+-- id f7157194-558e-47a7-8a4c-2c54593c0571  name Ивица Олич
+-- id f7429ee8-4b64-4628-9d56-46e353281646  name Георгий Джикия
+-- id f770a41b-e23a-443f-b479-251235700ce5  name Самир Насри
+-- id f7b6c725-419c-4bd8-b56f-a9f72181293f  name Йежи Дудек
+-- id f7ea12f1-7f4e-4829-acd3-0d10c262d8a2  name Дэвид Джеймс
+-- id f805cea6-730e-48fe-b224-c57a3a594881  name Никита Каккоев
+-- id f82e88a7-3f01-44cd-8a65-533c36145566  name Александр Филин
+-- id f85bd6e8-43e0-4ab6-bef6-7f1bcacefa04  name Расмус Хёйлунд
+-- id f85e4106-1587-46f3-a943-e83012812579  name Мапу Янга-Мбива
+-- id f8da20f6-1d4c-4431-9ac6-3c613cd487a4  name Фабио Ливерани
+-- id f8da8b19-01fc-40b7-9bbc-784154daa25f  name Игорь Акинфеев
+-- id f95d6ded-1947-4975-94e3-1f6d4927dd28  name Садьо Мане
+-- id f9c1780b-da09-4f49-9211-ae37913321e5  name Паоло Росси
+-- id f9fb62b7-d42e-49ea-a7c3-dc23f14fd10d  name Петр Зелински
+-- id fa394073-3ce2-471c-9a05-946330475d6e  name Наиль Умяров
+-- id fa687d29-7c23-4ddd-a94f-3012a5b34665  name Микел Мерино
+-- id fa7fcb88-9c50-4f71-bdf7-aaa40485cc8f  name Лукас Оласа
+-- id faaa6f96-74a8-4058-8aa0-9e36eae78ffb  name Дженнаро Гаттузо
+-- id fb9cea01-af8c-4be3-8107-f48ec4722581  name Антонио Кандрева
+-- id fbdc1000-85ed-4ec1-9191-9c1bf7cda1c1  name Павел Яковлев
+-- id fbf0057e-327f-401c-b575-0f71403ecd76  name Георге Хаджи
+-- id fc0feebd-2bed-4127-9700-330e8e369b32  name Кристофер Мартинс
+-- id fc2c3ed4-38c5-4050-8c01-db339f4b59cd  name Лотар Маттеус
+-- id fc414ae6-f71b-44fd-9a73-146fdb9acdde  name Виталий Дьяков
+-- id fc79c5fc-acd9-4260-86e7-583c0faa54d1  name Роландо Мандрагора
+-- id fca59954-84b3-44aa-8b49-5af95e5d53ae  name Владимир Бесчастных
+-- id fcb103df-7312-4532-9b81-051a58ad9112  name Паоло Мальдини
+-- id fdbe790a-146b-4b1c-884f-549e500cc3ef  name Шарль Н'Зогбиа
+-- id fdc3e34d-0909-47c0-b2a6-bba3dd8dfb6d  name Хосе Рейес
+-- id fddcecff-163d-4ed7-9368-6e5743b7a8b3  name Антон Митрюшкин
+-- id fe0ddd40-b0e1-4c4a-9b3a-1489330aaf87  name Андрей Лунев
+-- id fe6eba9c-0abf-44b3-a212-1dfdb813d241  name Алессио Таккинарди
+-- id ff04b4d3-676e-46e6-ac64-2860527c624f  name Александр Мостовой
+-- id ff1586f8-8ff8-42ee-a173-3c149466d5f9  name Вальтер Бенитес
+-- id ff2291be-0ca6-416a-b8b5-f725f66b3ba4  name Алексей Березуцкий
+-- id ff6cac4b-f68a-4a98-9cc4-3d51bf286ac9  name Сеск Фабрегас
+-- id ffc60b09-cfc3-4bee-8588-0ccad3b064f5  name Сальваторе Боккетти
+
+ROLLBACK;  -- change to COMMIT only after manual review

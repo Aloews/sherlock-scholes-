@@ -544,4 +544,4 @@ DELETE FROM cards WHERE id = 'eeadc18b-1d01-4895-abc5-13088a99cec4';  -- Янг,
 
 -- 3) DELETE scraped cards that duplicate ANOTHER scraped card after normalize
 
-ROLLBACK;  -- change to COMMIT only after manual review
+COMMIT;  -- применится сразу; проверьте примеры ПЕРЕД запуском

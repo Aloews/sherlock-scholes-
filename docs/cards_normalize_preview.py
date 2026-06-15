@@ -18,33 +18,19 @@ Run from football_scraper/ so scraper.dedup is importable:
     python ../docs/cards_normalize_preview.py
 """
 import os
-import re
 import sys
 
 import requests
 from dotenv import load_dotenv
 
 # Reuse the deck's own notion of "same card" (word-order- and translit-
-# invariant) so duplicate detection matches how --to-cards already dedups.
+# invariant) so duplicate detection matches how --to-cards already dedups,
+# and the SAME display normalizer that --to-cards now applies at insert time.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "football_scraper"))
-from scraper.dedup import canonical_key  # noqa: E402
+from scraper.dedup import canonical_key, normalize_display_name  # noqa: E402
 from scraper.supabase_writer import build_forbidden_words  # noqa: E402
 
-_PAREN_RE = re.compile(r"\s*[\(\[][^)\]]*[\)\]]")
-
-
-def normalize_card_name(name):
-    """Scraped name -> manual-card format. Idempotent on already-clean names."""
-    if not name:
-        return name
-    s = _PAREN_RE.sub("", name)                 # 1. drop "(...)" / "[...]"
-    if "," in s:                                 # 2. flip "Surname, Given" -> "Given Surname"
-        surname, _, given = s.partition(",")
-        surname, given = surname.strip(), given.strip()
-        if surname and given:
-            s = given + " " + surname
-    s = re.sub(r"[\s,]+", " ", s).strip()        # 3. collapse spaces + stray commas
-    return s
+normalize_card_name = normalize_display_name
 
 
 def is_new_card(card):
@@ -168,7 +154,7 @@ def main():
         for c, norm, kept in intra:
             fh.write("DELETE FROM cards WHERE id = '{}';  -- {} -> {} (kept {})\n"
                      .format(c["id"], c["name"], norm, kept))
-        fh.write("\nROLLBACK;  -- change to COMMIT only after manual review\n")
+        fh.write("\nCOMMIT;  -- применится сразу; проверьте примеры ПЕРЕД запуском\n")
     print("\nSQL preview written to: {}".format(out))
 
 
