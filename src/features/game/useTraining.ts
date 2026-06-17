@@ -54,6 +54,7 @@ export function useTraining(
   continents: ContinentFilter[] | null = null,
   minPageviews: number | null = null,
   tags: string[] | null = null,
+  difficulty: number | null = null,
 ) {
   const [cards,   setCards]   = useState<Card[]>([]);
   const [index,   setIndex]   = useState(0);
@@ -111,21 +112,21 @@ export function useTraining(
     seenIdsRef.current = new Set();
     zeroNewRef.current = 0;
     exhaustedRef.current = false;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags)
+    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [categories, continents, minPageviews, tags, absorbBatch]);
+  }, [categories, continents, minPageviews, tags, difficulty, absorbBatch]);
 
   // Preload next batch silently
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current || exhaustedRef.current) return;
     isPreloadingRef.current = true;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags)
+    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
-  }, [categories, continents, minPageviews, tags, absorbBatch]);
+  }, [categories, continents, minPageviews, tags, difficulty, absorbBatch]);
 
   // Top up the deck as the player nears the end. Decoupled from the tap
   // handler (was inside the setIndex updater) so a batch arriving mid-transition

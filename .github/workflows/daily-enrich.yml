@@ -1,0 +1,66 @@
+name: daily-enrich
+
+# Daily deck enrichment + health audit. Runs the orchestrator (docs/daily_enrich.py)
+# then the read-only audit (docs/cards_audit.py, which fails the job on
+# career_stats corruption). The Wikimedia budget + scrape caches live in
+# football_scraper/cache and are carried between runs via actions/cache so the
+# daily budget and resume progress survive.
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # 05:00 UTC daily
+  workflow_dispatch: {}    # allow manual runs
+
+# Don't pile up overlapping daily runs (they share the budget/cache).
+concurrency:
+  group: daily-enrich
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}   # service_role — repo secret, NEVER committed
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install deps
+        run: pip install -r football_scraper/requirements.txt
+
+      # Restore the scrape cache + budget files. The unique key makes each run
+      # save a fresh cache; restore-keys pulls the most recent prior one, so
+      # budget counters and resume progress carry forward day to day.
+      - name: Restore scraper cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: football_scraper/cache
+          key: scraper-cache-${{ github.run_id }}
+          restore-keys: |
+            scraper-cache-
+
+      - name: Run daily enrichment
+        run: python docs/daily_enrich.py
+
+      # Read-only health report; FAILS the job if any career_stats row still
+      # carries wiki markup. Runs even if a prior step failed, and the report is
+      # always uploaded.
+      - name: Audit deck health
+        if: always()
+        run: python docs/cards_audit.py
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cards-audit-report
+          path: cards_audit_report.md
+          if-no-files-found: warn

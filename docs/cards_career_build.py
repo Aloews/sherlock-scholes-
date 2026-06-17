@@ -102,7 +102,33 @@ def extract_infobox(wt):
     return wt[i:j]
 
 
+def strip_markup(v):
+    """Remove wiki footnote/template markup BEFORE we read a field's content:
+      * <ref ...>...</ref> and self-closing <ref .../>  (re.S — refs span lines)
+      * {{...}} templates, NESTED, by brace balance (regex can't match nesting)
+      * any remaining <tags>
+    This stops junk like 'Sacrofano<ref>{{Cite web…}}</ref>' leaking into
+    career_stats."""
+    v = re.sub(r"<ref[^>]*?/>", "", v, flags=re.S)        # self-closing <ref .../>
+    v = re.sub(r"<ref.*?</ref>", "", v, flags=re.S)       # paired <ref>...</ref>
+    # nested {{...}} — scan and drop balanced template spans
+    out, depth, i = [], 0, 0
+    while i < len(v):
+        two = v[i:i + 2]
+        if two == "{{":
+            depth += 1; i += 2; continue
+        if two == "}}" and depth > 0:
+            depth -= 1; i += 2; continue
+        if depth == 0:
+            out.append(v[i])
+        i += 1
+    v = "".join(out)
+    v = re.sub(r"<[^>]*>", "", v)                          # any leftover <tags>
+    return v
+
+
 def clean_club(v):
+    v = strip_markup(v)
     v = re.sub(r"→|\(loan\)|''", "", v).strip()
     m = re.search(r"\[\[([^\]]+)\]\]", v)
     if m:
@@ -111,8 +137,7 @@ def clean_club(v):
 
 
 def first_int(v):
-    v = re.sub(r"\{\{[^}]*\}\}", "", v)
-    v = re.sub(r"<ref.*?(/>|</ref>)", "", v, flags=re.S)
+    v = strip_markup(v)
     m = re.search(r"-?\d+", v.replace(" ", "").replace(",", ""))
     return int(m.group()) if m else None
 

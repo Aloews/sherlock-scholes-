@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/shared/store/settingsStore';
 import { useProStore } from '@/shared/store/proStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
+import { difficultyFloor, recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
@@ -73,6 +74,7 @@ export function HomeScreen() {
   const { loading, error } = useGameStore();
   const { soundEnabled, setSoundEnabled, proFrame } = useSettingsStore();
   const isPro = useProStore((s) => s.isPro);
+  const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
@@ -219,18 +221,27 @@ export function HomeScreen() {
 
   const startTraining = () => {
     hapticImpact('light');
+    // Onboarding difficulty applies ONLY to the broad default quick game (no
+    // chip narrowing). If the player picked a specific category/continent/tag,
+    // they chose it — give the full pool, no easing.
+    const isDefaultGame = everything && !tagMode;
+    const difficulty = isDefaultGame ? difficultyFloor(gamesPlayed) : null;
     trackEvent('quick_game_start', {
       preset: deckTags ? 'tags' : (everything ? 'all' : 'custom'),
       players: playersOn,
       categories: selCats.size,
       tags: deckTags?.join(',') ?? '',
+      difficulty: difficulty ?? 0,
+      games: gamesPlayed,
     });
+    void recordQuickGameStart(); // increment AFTER reading the floor for this game
     navigate('/training', {
       state: {
         categories: selCategories,
         continents: selContinents,
         minPageviews: selMinPageviews,
         tags: deckTags,
+        difficulty,
       },
     });
   };

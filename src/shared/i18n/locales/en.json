@@ -66,7 +66,8 @@
     "benefit_forever": "Buy once — keep it forever",
     "price_note": "Price is provisional, we'll tune it later",
     "buy": "Unlock for {{stars}} ⭐",
-    "soon": "Payment coming soon — wiring up Telegram Stars",
+    "buying": "Opening payment…",
+    "buy_error": "Couldn't open payment. Please try again.",
     "owned_title": "Pro is active",
     "owned_desc": "Thanks! All Pro features are unlocked.",
     "cosmetics_title": "Avatar frame",
@@ -91,6 +92,7 @@
     "text_6": "Rounds alternate. The player or team with the highest score at the end wins!",
     "back": "Back",
     "next": "Next",
+    "skip": "Skip",
     "finish": "Got it, let's play!"
   },
   "training": {

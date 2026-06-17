@@ -7,18 +7,23 @@ import {
 import { Button } from '@/shared/ui/Button';
 import { useProStore } from '@/shared/store/proStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
-import { hapticImpact } from '@/shared/lib/telegram';
+import {
+  hapticImpact, hapticSuccess, hapticError, getRawInitData, openInvoice,
+} from '@/shared/lib/telegram';
+import { createProInvoice, getUserStatus } from '@/features/pro/proApi';
 import { PRO_PRICE_STARS, PRO_FRAMES, FRAME_COLOR } from '@/shared/lib/pro';
 
-// Pro upsell + (for owners) cosmetics. The "buy" button is a STUB — real
-// Telegram Stars payment is a separate step. is_pro here comes from the
-// server-validated proStore, never the client.
+// Pro upsell + (for owners) cosmetics. "Buy" opens a Telegram Stars invoice via
+// the tg-pay Edge Function; is_pro is flipped SERVER-SIDE by the payment webhook
+// and read back from the server-validated proStore — never trusted from here.
 export function ProScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isPro = useProStore((s) => s.isPro);
+  const setStatus = useProStore((s) => s.setStatus);
   const { proFrame, setProFrame } = useSettingsStore();
-  const [showSoon, setShowSoon] = useState(false);
+  const [buying, setBuying] = useState(false);
+  const [error, setError] = useState(false);
 
   const benefits = [
     t('pro.benefit_legends'),
@@ -27,9 +32,34 @@ export function ProScreen() {
     t('pro.benefit_forever'),
   ];
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
+    if (buying) return;
     hapticImpact('medium');
-    setShowSoon(true); // payment not wired yet
+    setError(false);
+    const initData = getRawInitData();
+    if (!initData) { setError(true); return; } // not inside Telegram
+
+    setBuying(true);
+    const link = await createProInvoice(initData);
+    if (!link) { setBuying(false); setError(true); return; }
+
+    const opened = openInvoice(link, async (status) => {
+      setBuying(false);
+      if (status !== 'paid') {
+        if (status === 'failed') { hapticError(); setError(true); }
+        return;
+      }
+      // Paid — re-read the server-validated status so the UI unlocks.
+      hapticSuccess();
+      const s = await getUserStatus(initData);
+      if (s) {
+        setStatus({
+          telegramId: s.telegram_id, isPro: s.is_pro,
+          proSince: s.pro_since, gamesPlayed: s.games_played,
+        });
+      }
+    });
+    if (!opened) { setBuying(false); setError(true); } // openInvoice unavailable
   };
 
   return (
@@ -88,12 +118,12 @@ export function ProScreen() {
               <span className="text-brand-muted text-sm">Telegram Stars</span>
             </div>
             <p className="text-brand-muted/60 text-xs text-center">{t('pro.price_note')}</p>
-            <Button fullWidth size="lg" onClick={handleBuy}>
-              {t('pro.buy', { stars: PRO_PRICE_STARS })}
+            <Button fullWidth size="lg" onClick={handleBuy} disabled={buying}>
+              {buying ? t('pro.buying') : t('pro.buy', { stars: PRO_PRICE_STARS })}
             </Button>
-            {showSoon && (
+            {error && (
               <div className="bg-brand-surface border border-brand-border rounded-2xl p-3 text-center animate-fade-in">
-                <p className="text-brand-muted text-sm">{t('pro.soon')}</p>
+                <p className="text-brand-muted text-sm">{t('pro.buy_error')}</p>
               </div>
             )}
           </div>

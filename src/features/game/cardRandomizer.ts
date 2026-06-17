@@ -44,6 +44,10 @@ let rpcSupportsTags = true;
 // pro-only tag is requested (so the server can enforce is_pro). Before that
 // migration the UI lock is the only guard — drop the param and keep playing.
 let rpcSupportsInitData = true;
+// p_difficulty exists only after pro_onboarding.sql ran. Sent only for the
+// default quick game (onboarding floor). Drop it on the first PGRST202 and
+// play without the difficulty cap.
+let rpcSupportsDifficulty = true;
 
 const isMissingContinentsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_continents');
@@ -51,6 +55,8 @@ const isMissingTagsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_tags');
 const isMissingInitDataParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_init_data');
+const isMissingDifficultyParam = (error: { code?: string; message: string }) =>
+  error.code === 'PGRST202' || error.message.includes('p_difficulty');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -68,6 +74,10 @@ const isMissingInitDataParam = (error: { code?: string; message: string }) =>
  * @param tags         Optional special-category filter (cards.tags overlap),
  *                     e.g. ['goalkeeper'] or ['star']. Players only (non-player
  *                     tags are NULL). Ignored while the DB lacks p_tags.
+ * @param difficulty   Onboarding pageviews floor for the DEFAULT quick game
+ *                     (new players get only recognizable cards, easing up over
+ *                     ~30 games). tier legendary/epic + wc2026 always pass.
+ *                     null = no cap. Ignored while the DB lacks p_difficulty.
  */
 export async function pickRandomCards(
   count: number,
@@ -75,6 +85,7 @@ export async function pickRandomCards(
   minPageviews?: number | null,
   continents?: ContinentFilter[] | null,
   tags?: string[] | null,
+  difficulty?: number | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
@@ -89,6 +100,7 @@ export async function pickRandomCards(
     // for; sending the signed initData lets the RPC verify is_pro.
     const needsInitData = !!tags?.some(isProTag);
     const withInitData = rpcSupportsInitData && needsInitData;
+    const withDifficulty = rpcSupportsDifficulty && difficulty != null && difficulty > 0;
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
@@ -96,9 +108,16 @@ export async function pickRandomCards(
       ...(withContinents ? { p_continents: continents } : {}),
       ...(withTags ? { p_tags: tags } : {}),
       ...(withInitData ? { p_init_data: getRawInitData() } : {}),
+      ...(withDifficulty ? { p_difficulty: difficulty } : {}),
     });
 
     if (error) {
+      if (withDifficulty && isMissingDifficultyParam(error)) {
+        // Pre-migration DB (no p_difficulty) — drop it and redo this attempt.
+        rpcSupportsDifficulty = false;
+        attempt--;
+        continue;
+      }
       if (withInitData && isMissingInitDataParam(error)) {
         // Pre-migration DB (no p_init_data) — drop it and redo this attempt.
         rpcSupportsInitData = false;

@@ -10,6 +10,9 @@ export interface TelegramUser {
   photo_url?: string;
 }
 
+// Result of Telegram.WebApp.openInvoice — 'paid' is the success case.
+export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
+
 interface TelegramHaptic {
   impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
   notificationOccurred(type: 'error' | 'success' | 'warning'): void;
@@ -50,6 +53,11 @@ declare global {
         setHeaderColor(color: string): void;
         setBackgroundColor(color: string): void;
         openTelegramLink(url: string): void;
+        openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
+        CloudStorage?: {
+          getItem(key: string, cb: (err: string | null, value?: string) => void): void;
+          setItem(key: string, value: string, cb?: (err: string | null, ok?: boolean) => void): void;
+        };
       };
     };
   }
@@ -133,4 +141,42 @@ export function hapticSelection(): void {
 
 export function isInsideTelegram(): boolean {
   return !!tg;
+}
+
+// Open the Telegram Stars payment sheet for an invoice link (from tg-pay).
+// The callback fires with the final status ('paid' on success). Returns false
+// when openInvoice is unavailable (outside Telegram / old client) so the caller
+// can surface a fallback instead of silently doing nothing.
+export function openInvoice(link: string, cb: (status: InvoiceStatus) => void): boolean {
+  if (!tg?.openInvoice) return false;
+  tg.openInvoice(link, cb);
+  return true;
+}
+
+// Telegram CloudStorage — per-user key/value synced by Telegram. Used for the
+// anonymous onboarding games counter (localStorage is banned in the Mini App
+// artifact). Promisified; resolves to a fallback when CloudStorage is absent
+// (outside Telegram / old client). Best-effort, never throws.
+export function cloudGet(key: string): Promise<string | null> {
+  const cs = tg?.CloudStorage;
+  if (!cs) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      cs.getItem(key, (err, value) => resolve(err ? null : value ?? null));
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export function cloudSet(key: string, value: string): Promise<void> {
+  const cs = tg?.CloudStorage;
+  if (!cs) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      cs.setItem(key, value, () => resolve());
+    } catch {
+      resolve();
+    }
+  });
 }

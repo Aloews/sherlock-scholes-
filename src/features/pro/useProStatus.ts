@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { useProStore } from '@/shared/store/proStore';
+import { loadAnonGames } from '@/features/game/onboarding';
 import { getUserStatus } from './proApi';
 
 // Fetch the server-validated Pro status once per session. Runs after Telegram
@@ -15,15 +16,23 @@ export function useProStatus(): void {
   useEffect(() => {
     if (loaded) return;
     const initData = getRawInitData();
-    if (!initData) { markLoaded(); return; }
+    if (!initData) { void loadAnonGames(); markLoaded(); return; }
 
     let cancelled = false;
     setLoading(true);
     getUserStatus(initData)
       .then((s) => {
         if (cancelled) return;
-        if (s) setStatus({ telegramId: s.telegram_id, isPro: s.is_pro, proSince: s.pro_since });
-        else markLoaded();
+        if (s) {
+          setStatus({
+            telegramId: s.telegram_id, isPro: s.is_pro,
+            proSince: s.pro_since, gamesPlayed: s.games_played,
+          });
+        } else {
+          // No server identity — count games anonymously via CloudStorage.
+          void loadAnonGames();
+          markLoaded();
+        }
       })
       .catch(() => { if (!cancelled) markLoaded(); });
 

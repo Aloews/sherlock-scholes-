@@ -12,6 +12,16 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+my_secrets.txt
+*secrets*.txt
+
+# Local Supabase CLI binary (120 MB — exceeds GitHub's 100 MB limit) and temp
+supabase.exe
+supabase/.temp/
+
+# Python build artifacts
+__pycache__/
+*.pyc
 
 # Football scraper — kept local only (runs offline, holds API keys); not pushed
 football_scraper/

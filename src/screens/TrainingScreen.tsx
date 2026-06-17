@@ -33,6 +33,7 @@ interface TrainingState {
   continents?: ContinentFilter[] | null; // player cards only; null = all
   minPageviews?: number | null;          // legacy difficulty floor; null = whole deck
   tags?: string[] | null;                // special-category filter (вратари / star / …)
+  difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -47,6 +48,12 @@ const STATUS_SKIPPED = '#FF6300';
 
 // Score separator — muted slate, NOT a pure grey (Variant 5 palette).
 const SCORE_DIVIDER = '#4A5270';
+
+// cards.clubs_minutes is summed ONLY from the 2022–2024 API-Football cache, so
+// every minute total it carries is a partial, often misleading tail (Nathan
+// Redmond "Саутгемптон 1 мин", Walcott 490'). We therefore NEVER render minutes
+// or hours from it — clubChips() shows clubs+years (legend_career),
+// matches/goals (career_stats), or the bare club NAMES only.
 
 const CATEGORY_COLOR: Record<CardCategory, string> = {
   player:        '#FF6300',
@@ -240,6 +247,7 @@ export function TrainingScreen() {
   const continents = state?.continents ?? null;
   const minPageviews = state?.minPageviews ?? null;
   const tags = state?.tags ?? null;
+  const difficulty = state?.difficulty ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -250,6 +258,7 @@ export function TrainingScreen() {
       continents={continents}
       minPageviews={minPageviews}
       tags={tags}
+      difficulty={difficulty}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -260,15 +269,16 @@ interface TrainingGameProps {
   continents: ContinentFilter[] | null;
   minPageviews: number | null;
   tags: string[] | null;
+  difficulty: number | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, tags, difficulty, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags);
+    useTraining(categories, continents, minPageviews, tags, difficulty);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
@@ -299,59 +309,59 @@ function TrainingGame({ categories, continents, minPageviews, tags, onPlayAgain 
     return parts.length ? parts.join(' · ') : null;
   };
 
-  // Minutes -> readable time: <90 min stays minutes; up to 50h shows hours;
-  // beyond that shows days (1 decimal under 10 days, else whole).
-  const fmtTime = (minutes: number): string => {
-    if (minutes < 90) return t('quick.t_min', { n: minutes });
-    const hours = minutes / 60;
-    if (hours < 50) return t('quick.t_hours', { n: Math.round(hours) });
-    const days = minutes / 1440;
-    return t('quick.t_days', { n: days < 10 ? Number(days.toFixed(1)) : Math.round(days) });
-  };
-
   // "1984–1991" -> "1984–91"; "1984–" stays open-ended.
   const shortYears = (years: string): string =>
     years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
 
-  // Minutes are only trustworthy from the 2022-24 API cache. For a veteran
-  // (>=33) whose cached minutes are clearly a tail (< ~1.5 full seasons), the
-  // number is misleading (we only have the end of a long career), so we DON'T
-  // show minutes — the facts line (titles, clubs, caps) carries instead.
-  const minutesReliable = (entry: HistoryEntry): boolean => {
-    if (!entry.clubs_minutes?.length) return false;
-    const by = entry.facts?.birth_year;
-    const age = by ? new Date().getFullYear() - by : null;
-    const total = entry.clubs_minutes.reduce((s, c) => s + (c.minutes || 0), 0);
-    return !(age !== null && age >= 33 && total < 4500);
+  // Frontend safeguard against leftover wiki markup in a club name. Old
+  // career_build runs let footnotes leak through (e.g. "Sacrofano<ref>{{Cite
+  // web…}}</ref>" on Garrincha). The backend is fixed + the data reset, but
+  // this keeps ANY future junk from rendering raw: cut the name at the first
+  // markup marker ('<', '{{', 'http') and trim. Returns null if nothing usable
+  // is left, so the caller drops that chip entirely.
+  const cleanClub = (name: string): string | null => {
+    const cut = name.split(/<|\{\{|https?:\/\//)[0].trim();
+    return cut || null;
   };
 
-  // Bottom clubs as chips, unified for active and legend cards. FULL Russian
-  // club names (no shortening, no ellipsis); the chips wrap to a second line
-  // when they don't fit instead of being clipped.
-  //   active : "Борнмут ≈110 ч", "Тоттенхэм Хотспур ≈57 ч"  (full name + time)
-  //   legend : "Реал Мадрид 2002–07", "Интер 1997–02"        (full name + years)
+  // Bottom clubs as chips. We NEVER show minute/hour figures (clubs_minutes
+  // totals are an unreliable 2022-24 tail), only honest sources:
+  //   career_stats : "Арсенал 2006–18 · 270 матчей, 65 голов"  (matches/goals)
+  //   legend_career: "Реал Мадрид 2002–07", "Интер 1997–02"     (clubs + years)
+  //   fallback     : bare club NAMES from clubs_minutes (no numbers).
+  // FULL Russian club names (no shortening); chips wrap instead of clipping.
   const clubChips = (entry: HistoryEntry): string[] => {
     // Veterans with a Wikipedia career: club + years · apps, goals — the richest
-    // and most honest line (replaces unreliable minutes). Top clubs by apps.
+    // and most honest line. Top clubs by apps.
     if (entry.career_stats?.length) {
       return [...entry.career_stats]
         .sort((a, b) => (b.apps ?? 0) - (a.apps ?? 0))
         .slice(0, 4)
         .map((c) => {
+          const club = cleanClub(c.club);
+          if (!club) return null;
           const m = t('career.matches', { count: c.apps ?? 0 });
           const g = c.goals != null ? `, ${t('career.goals', { count: c.goals })}` : '';
-          return `${c.club} ${shortYears(c.years)} · ${m}${g}`.trim();
-        });
+          return `${club} ${shortYears(c.years)} · ${m}${g}`.trim();
+        })
+        .filter((s): s is string => s !== null);
     }
-    // Only render minute chips when the minutes are trustworthy (see above).
-    if (entry.clubs_minutes?.length && minutesReliable(entry)) {
-      return entry.clubs_minutes.slice(0, 4)
-        .map((c) => `${c.club} ${fmtTime(c.minutes)}`);
-    }
-    // Veterans (clubs years, no/unreliable minutes) -> club + years, no minutes.
+    // Legends / veterans -> club + years, never minutes.
     if (entry.legend_career?.clubs?.length) {
       return entry.legend_career.clubs.slice(0, 4)
-        .map((c) => `${c.club} ${shortYears(c.years)}`.trim());
+        .map((c) => {
+          const club = cleanClub(c.club);
+          return club ? `${club} ${shortYears(c.years)}`.trim() : null;
+        })
+        .filter((s): s is string => s !== null);
+    }
+    // Fallback: no richer source yet. The club NAMES in clubs_minutes are real
+    // (he did play there in 2022-24) — only the minute totals lie. Show the bare
+    // club list, NO numbers, rather than nothing.
+    if (entry.clubs_minutes?.length) {
+      return entry.clubs_minutes.slice(0, 4)
+        .map((c) => cleanClub(c.club))
+        .filter((s): s is string => s !== null);
     }
     return [];
   };

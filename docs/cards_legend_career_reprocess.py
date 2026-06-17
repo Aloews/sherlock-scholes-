@@ -1,8 +1,11 @@
-"""Cache-only, PATCH-in-place reprocessor for cards.legend_career + titles.
+"""Cache-only reprocessor for cards.legend_career + titles.
 
 Spends ZERO Wikidata budget — it only READS the on-disk caches that earlier
 --cards-legend-career runs already populated (wikidata_entity, wikidata_labels,
 ruwiki_pageprops) and PATCHes corrected rows. Existing rows are never nulled.
+
+DRY-RUN by default (computes + reports the counts, writes NOTHING); set APPLY=1
+to PATCH — same convention as cards_facts_build.py / cards_career_build.py.
 
 Fixes applied (logic lives in run.py, imported here):
   1. Position bug — Полузащитник checked before Защитник (legend_career AND,
@@ -35,6 +38,7 @@ spec.loader.exec_module(run)
 from scraper.cache import FileCache  # noqa: E402
 
 ck = run.canonical_key
+APPLY = os.environ.get("APPLY") == "1"
 
 
 def fetch_all(url, key, table, select, extra=None, page_size=1000):
@@ -93,6 +97,8 @@ def main():
         return cache.get("wikidata_entity", "ru,en|" + qid)
 
     def patch(card_id, body):
+        if not APPLY:
+            return  # DRY-RUN: count it as a (would-be) change, write nothing
         r = requests.patch(url.rstrip("/") + "/rest/v1/cards",
                            headers=patch_h, params={"id": "eq." + str(card_id)},
                            json=body, timeout=30)
@@ -160,12 +166,14 @@ def main():
             else:
                 act_same += 1
 
+    verb = "PATCHed" if APPLY else "WOULD fix (dry-run)"
     print("=" * 60)
-    print("LEGEND_CAREER REPROCESS (cache-only, 0 budget)")
+    print("LEGEND_CAREER REPROCESS (cache-only, 0 budget) — {}".format(
+        "APPLY" if APPLY else "DRY-RUN, nothing written"))
     print("=" * 60)
     print("LEGENDS (clubs_minutes IS NULL):")
     print("  total            : {}".format(leg_total))
-    print("  PATCHed (fixed)  : {}".format(leg_changed))
+    print("  {:<16} : {}".format(verb, leg_changed))
     print("    incl. position_ru fixed : {}".format(pos_fixed))
     print("  already correct  : {}".format(leg_same))
     print("  no QID           : {}".format(leg_no_qid))
@@ -174,11 +182,18 @@ def main():
     print("-" * 60)
     print("ACTIVE players (clubs_minutes set) — titles (P166):")
     print("  total            : {}".format(act_total))
-    print("  titles ADDED     : {}".format(act_titled))
+    print("  titles {:<9} : {}".format("ADDED" if APPLY else "to add", act_titled))
     print("  already had same : {}".format(act_same))
     print("  no qualifying title: {}".format(act_no_title))
     print("  no QID           : {}".format(act_no_qid))
     print("  entity NOT cached (budgeted top-up could fetch): {}".format(act_potential))
+    print("-" * 60)
+    # The whole point: how many cards gain an HONEST fallback line (legend
+    # clubs+years, or a golden titles line) — what the frontend shows instead of
+    # the bogus tail minutes.
+    print("=> cards gaining an honest line this run: {} "
+          "(legends {} + active-titles {})".format(
+              leg_changed + act_titled, leg_changed, act_titled))
     print("=" * 60)
 
 

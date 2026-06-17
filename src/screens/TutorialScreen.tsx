@@ -34,14 +34,20 @@ export function TutorialScreen() {
     setCurrent(next);
   };
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x < -SWIPE_THRESHOLD) go(current + 1);
-    else if (info.offset.x > SWIPE_THRESHOLD) go(current - 1);
-  };
-
   const finish = () => {
     localStorage.setItem('sherlock_tutorial_seen', 'true');
     navigate('/');
+  };
+
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    // Swiping left past the last slide finishes the tutorial (same as the
+    // Finish button) instead of dead-ending, since go() ignores next >= TOTAL.
+    if (info.offset.x < -SWIPE_THRESHOLD) {
+      if (current === TOTAL - 1) finish();
+      else go(current + 1);
+    } else if (info.offset.x > SWIPE_THRESHOLD) {
+      go(current - 1);
+    }
   };
 
   const Icon = ICONS[current];
@@ -49,6 +55,19 @@ export function TutorialScreen() {
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
+      {/* Skip — finishes the tutorial from any slide (same finish() as the
+          last-slide button / left-swipe). Hidden on the last slide where the
+          primary action is already "Finish". */}
+      {!isLast && (
+        <div className="flex justify-end px-6 pt-6">
+          <button
+            onClick={finish}
+            className="text-sm font-medium text-brand-muted hover:text-white transition-colors"
+          >
+            {t('tutorial.skip')}
+          </button>
+        </div>
+      )}
       <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
