@@ -313,6 +313,15 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   const shortYears = (years: string): string =>
     years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
 
+  // Parses "1984–1991" | "1984–" -> a number for recency sorting (by END year).
+  // An open range ("1984–", still playing) must sort first, so it maps to
+  // Infinity. A bare/unparseable value maps to -1 so it sinks to the bottom.
+  const yearKey = (years: string): number => {
+    const m = years.match(/(\d{4})\s*[–-]\s*(\d{4})?/);
+    if (!m) return -1;
+    return m[2] ? Number(m[2]) : Infinity;
+  };
+
   // Frontend safeguard against leftover wiki markup in a club name. Old
   // career_build runs let footnotes leak through (e.g. "Sacrofano<ref>{{Cite
   // web…}}</ref>" on Garrincha). The backend is fixed + the data reset, but
@@ -332,10 +341,10 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   // FULL Russian club names (no shortening); chips wrap instead of clipping.
   const clubChips = (entry: HistoryEntry): string[] => {
     // Veterans with a Wikipedia career: club + years · apps, goals — the richest
-    // and most honest line. Top clubs by apps.
+    // and most honest line. Most recent clubs first (by END year).
     if (entry.career_stats?.length) {
       return [...entry.career_stats]
-        .sort((a, b) => (b.apps ?? 0) - (a.apps ?? 0))
+        .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
         .map((c) => {
           const club = cleanClub(c.club);
@@ -348,7 +357,9 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
     }
     // Legends / veterans -> club + years, never minutes.
     if (entry.legend_career?.clubs?.length) {
-      return entry.legend_career.clubs.slice(0, 4)
+      return [...entry.legend_career.clubs]
+        .sort((a, b) => yearKey(b.years) - yearKey(a.years))
+        .slice(0, 4)
         .map((c) => {
           const club = cleanClub(c.club);
           return club ? `${club} ${shortYears(c.years)}`.trim() : null;
