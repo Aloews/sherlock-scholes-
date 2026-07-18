@@ -11,8 +11,8 @@
 --   2026-06-16  [CRITICAL] Восстановить pick_random_cards (без зависимостей)
 --   2026-06-16  Добавить 22 известных игрока, которых не было в колоде
 --   2026-06-16  Добавить 13 молодых звёзд сборных (ЧМ-2026), которых не было
---   2026-07-18  join_1v1_room — атомарный join для 1v1 (гонка вместимости)
---   2026-07-18  Оплата: валидация initData (users/get_user_status/Vault-токен)
+--   2026-07-18  join_1v1_room — атомарный join для 1v1 [ПРИМЕНЕНО на проде]
+--   2026-07-18  Оплата: initData-валидация + grant service_role [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -630,6 +630,11 @@ end $$;
 revoke all on function _tg_url_decode(text)        from public;
 revoke all on function tg_validate_init_data(text) from public;
 grant execute on function get_user_status(text)    to anon, authenticated;
+-- НАЙДЕННАЯ НА ПРОДЕ ПРИЧИНА 401 (2026-07-18): именно этого гранта не было.
+-- service_role обходит RLS, но НЕ acl функций; pro_users.sql делал revoke from
+-- public и грантовал только anon/authenticated — поэтому фронт работал, а
+-- tg-pay (service key) получал "permission denied for function get_user_status".
+grant execute on function get_user_status(text)    to service_role;
 
 notify pgrst, 'reload schema';
 

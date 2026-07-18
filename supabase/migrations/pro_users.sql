@@ -239,6 +239,12 @@ revoke all on function tg_validate_init_data(text)               from public;
 revoke all on function get_user_status(text)                     from public;
 revoke all on function admin_set_pro(text, bigint, boolean)      from public;
 grant execute on function get_user_status(text)                  to anon, authenticated;
+-- service_role is NOT implied: it bypasses RLS but not function EXECUTE acl,
+-- and the revoke-from-public above stripped its default access. The tg-pay
+-- Edge Function validates initData through this RPC with the service key —
+-- without this grant every invoice request dies with "permission denied"
+-- (frontend keeps working via anon, which masks the breakage).
+grant execute on function get_user_status(text)                  to service_role;
 grant execute on function admin_set_pro(text, bigint, boolean)   to anon, authenticated;
 
 notify pgrst, 'reload schema';
