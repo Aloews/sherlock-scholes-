@@ -87,6 +87,41 @@ export async function pickRandomCards(
   tags?: string[] | null,
   difficulty?: number | null,
 ): Promise<Card[]> {
+  // Tags live only on player cards, and the RPC ANDs all its filters — a tag
+  // request would silently drop every selected non-player category. To let the
+  // groups combine (e.g. "звёзды + клубы"), draw the tagged players and the
+  // non-player categories as two separate pools and merge them.
+  const nonPlayerCats = (categories ?? []).filter((c) => c !== 'player');
+  if (tags?.length && nonPlayerCats.length) {
+    const wantsPlayers = !categories?.length || categories.includes('player');
+    const [players, rest] = await Promise.all([
+      wantsPlayers
+        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty)
+        : Promise.resolve<Card[]>([]),
+      // Continents/tags only ever filter players — irrelevant for this pool.
+      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty),
+    ]);
+    const merged = [...players, ...rest];
+    for (let i = merged.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [merged[i], merged[j]] = [merged[j], merged[i]];
+    }
+    // Cap at `count` so the reply behaves like a single RPC draw (callers use
+    // "shorter than requested" as the deck-exhausted signal).
+    return merged.slice(0, count);
+  }
+
+  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty);
+}
+
+async function rpcPickRandomCards(
+  count: number,
+  categories?: CardCategory[] | null,
+  minPageviews?: number | null,
+  continents?: ContinentFilter[] | null,
+  tags?: string[] | null,
+  difficulty?: number | null,
+): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
 
@@ -174,9 +209,10 @@ export async function countDeck(
   const hasTags = !!tags?.length;
   let total = 0;
 
-  // A tag filter excludes every non-player card (their tags are NULL), so skip
-  // the non-player count entirely when tags are selected.
-  if (nonPlayer.length && !hasTags) {
+  // Tags only ever filter the player pool (non-player tags are NULL), so the
+  // non-player categories are counted as-is — mirrors the union draw in
+  // pickRandomCards.
+  if (nonPlayer.length) {
     const { count } = await supabase
       .from('cards')
       .select('id', { count: 'exact', head: true })

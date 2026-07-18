@@ -17,6 +17,9 @@ interface GameState {
   countdown: number;
   error: string | null;
   loading: boolean;
+  // true until useSessionRestore has checked for an unfinished room after a
+  // page reload; RequireRoom shows a spinner instead of bouncing to home.
+  restoring: boolean;
 }
 
 interface GameActions {
@@ -36,6 +39,7 @@ interface GameActions {
   setCountdown(n: number): void;
   setError(msg: string | null): void;
   setLoading(v: boolean): void;
+  setRestoring(v: boolean): void;
   reset(): void;
 }
 
@@ -53,6 +57,7 @@ const initialState: GameState = {
   countdown: 3,
   error: null,
   loading: false,
+  restoring: true,
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -110,6 +115,10 @@ export const useGameStore = create<GameState & GameActions>()(
 
     setLoading: (v) => set((s) => { s.loading = v; }),
 
-    reset: () => set(() => ({ ...initialState })),
+    setRestoring: (v) => set((s) => { s.restoring = v; }),
+
+    // restoring stays false after reset: the restore check runs once per page
+    // load, and re-arming it here would leave RequireRoom on the spinner forever.
+    reset: () => set(() => ({ ...initialState, restoring: false })),
   })),
 );

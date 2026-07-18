@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useSessionRestore } from '@/features/room/useSessionRestore';
 import { HomeScreen }     from '@/screens/HomeScreen';
 
 // HomeScreen stays static so the first screen never flashes. The rest are
@@ -33,7 +34,11 @@ function LazyFallback() {
 }
 
 function RequireRoom({ children }: { children: React.ReactNode }) {
-  const room = useGameStore((s) => s.room);
+  const room      = useGameStore((s) => s.room);
+  const restoring = useGameStore((s) => s.restoring);
+  // A reload lands here with an empty store; hold the route while
+  // useSessionRestore checks for an unfinished room instead of bouncing home.
+  if (!room && restoring) return <LazyFallback />;
   if (!room) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -51,6 +56,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 export function Router() {
+  useSessionRestore();
   return (
     <Suspense fallback={<LazyFallback />}>
     <Routes>

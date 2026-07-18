@@ -11,6 +11,8 @@
 --   2026-06-16  [CRITICAL] Восстановить pick_random_cards (без зависимостей)
 --   2026-06-16  Добавить 22 известных игрока, которых не было в колоде
 --   2026-06-16  Добавить 13 молодых звёзд сборных (ЧМ-2026), которых не было
+--   2026-07-18  join_1v1_room — атомарный join для 1v1 (гонка вместимости)
+--   2026-07-18  Оплата: валидация initData (users/get_user_status/Vault-токен)
 -- ============================================================================
 
 
@@ -364,4 +366,281 @@ WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Дениз Ун
 --   where name in ('Жоан Манзамби','Аюб Буадди','Ян Дьоманде','Ману Коне',
 --                  'Возинья','Педро Вите','Хулиан Киньонес','Дениз Ундав')
 --   order by name;
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-18 — join_1v1_room: атомарный join для 1v1 (гонка вместимости)
+--
+-- ПРОБЛЕМА: клиент делал check-then-insert (посчитать игроков → вставить).
+-- Два одновременных join'а оба видят count = 1 < 2 → в комнате 3 игрока и
+-- 3 команды. Плюс join мог проскочить одновременно со стартом игры хостом —
+-- игрок «в комнате», но раунды уже созданы без него.
+--
+-- РЕШЕНИЕ: одна транзакция с блокировкой строки комнаты (FOR UPDATE):
+-- статус, вместимость, создание команды и membership выполняются атомарно.
+-- Клиент (roomService.joinRoom) сначала зовёт RPC и падает на старый
+-- клиентский путь, только пока функции нет на проде.
+-- Идемпотентно: CREATE OR REPLACE; повторный join того же игрока просто
+-- возвращает комнату.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION join_1v1_room(p_room_id UUID, p_player_id BIGINT)
+RETURNS rooms AS $$
+DECLARE
+  v_room    rooms;
+  v_count   INT;
+  v_team_id UUID;
+  v_name    TEXT;
+BEGIN
+  SELECT * INTO v_room FROM rooms WHERE id = p_room_id FOR UPDATE;
+  IF NOT FOUND OR v_room.status <> 'waiting' OR v_room.mode <> '1v1' THEN
+    RAISE EXCEPTION 'ROOM_NOT_WAITING';
+  END IF;
+
+  -- Повторный join того же игрока — уже внутри, ничего не меняем.
+  IF EXISTS (
+    SELECT 1 FROM room_players
+    WHERE room_id = p_room_id AND player_id = p_player_id
+  ) THEN
+    RETURN v_room;
+  END IF;
+
+  SELECT count(*) INTO v_count FROM room_players WHERE room_id = p_room_id;
+  IF v_count >= 2 THEN
+    RAISE EXCEPTION 'ROOM_FULL_1V1';
+  END IF;
+
+  SELECT first_name INTO v_name FROM players WHERE id = p_player_id;
+
+  INSERT INTO teams (room_id, name, color)
+  VALUES (p_room_id, coalesce(v_name, 'Player 2'), '#3b82f6')
+  RETURNING id INTO v_team_id;
+
+  INSERT INTO room_players (room_id, player_id, team_id)
+  VALUES (p_room_id, p_player_id, v_team_id);
+
+  RETURN v_room;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION join_1v1_room(UUID, BIGINT) TO anon;
+GRANT EXECUTE ON FUNCTION join_1v1_room(UUID, BIGINT) TO authenticated;
+
+-- VERIFY:
+--   SELECT proname, prosecdef FROM pg_proc WHERE proname = 'join_1v1_room';
+
+
+-- ============================================================================
+-- 2026-07-18 — оплата: установить/проверить серверную валидацию initData
+--
+-- СИМПТОМ: кнопка «Купить Pro» сразу пишет «Не удалось открыть оплату».
+-- Цепочка: фронт → edge-функция tg-pay (create_invoice) → RPC get_user_status
+-- → tg_validate_init_data → HMAC-проверка initData по БОТ-ТОКЕНУ ИЗ VAULT.
+-- Если на проде нет get_user_status / tg_validate_init_data / users, ИЛИ в
+-- Vault нет секрета 'telegram_bot_token' (или там placeholder) — tg-pay
+-- отвечает 401 invalid_init_data и фронт показывает эту ошибку. Настройка
+-- setup_payment.py это НЕ покрывала: она ставила env-переменные функции и
+-- вебхук, но не Vault-копию бот-токена, которой подписи проверяет БД.
+--
+-- ЧТО ДЕЛАЕТ БЛОК (идемпотентно, ничего не ломает):
+--   1) ставит pgcrypto, создаёт таблицу users (если нет) с RLS без политик;
+--   2) создаёт Vault-секрет 'telegram_bot_token' С PLACEHOLDER'ом, ТОЛЬКО
+--      если секрета нет вовсе (существующий НЕ трогает);
+--   3) пересоздаёт внутренние функции _tg_url_decode / tg_validate_init_data
+--      (они стабильны, replace безопасен);
+--   4) создаёт get_user_status ТОЛЬКО если её нет — существующую (возможно,
+--      расширенную games_played) НЕ перезаписывает;
+--   5) выдаёт гранты и перечитывает схему PostgREST.
+--
+-- ПОСЛЕ ПРОГОНА: выполни VERIFY внизу. Если bot_token_vault = 'PLACEHOLDER',
+-- ОБЯЗАТЕЛЬНО поставь настоящий токен (тот же, что в TELEGRAM_BOT_TOKEN у
+-- tg-pay):
+--   select vault.update_secret(
+--     (select id from vault.secrets where name = 'telegram_bot_token'),
+--     '123456:НАСТОЯЩИЙ_ТОКЕН_БОТА');
+-- ============================================================================
+
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists users (
+  telegram_id bigint primary key,
+  is_pro      boolean     not null default false,
+  pro_since   timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table users enable row level security;
+revoke all on table users from anon, authenticated;
+
+-- Vault: создать секрет только при полном отсутствии (не плодить дубликаты
+-- и не затирать боевой токен).
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'telegram_bot_token') then
+    perform vault.create_secret('CHANGE_ME_BOT_TOKEN', 'telegram_bot_token');
+  end if;
+end $$;
+
+-- Внутренние функции (полные копии из supabase/migrations/pro_users.sql).
+create or replace function _tg_url_decode(p text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  result bytea := '\x';
+  s text := replace(p, '+', ' ');
+  n int := length(s);
+  i int := 1;
+  c text;
+begin
+  while i <= n loop
+    c := substr(s, i, 1);
+    if c = '%' and i + 2 <= n then
+      result := result || decode(substr(s, i + 1, 2), 'hex');
+      i := i + 3;
+    else
+      result := result || convert_to(c, 'utf8');
+      i := i + 1;
+    end if;
+  end loop;
+  return convert_from(result, 'utf8');
+end;
+$$;
+
+create or replace function tg_validate_init_data(p_init_data text)
+returns bigint
+language plpgsql
+security definer
+set search_path = public, vault, extensions
+as $$
+declare
+  v_token   text;
+  v_pair    text;
+  v_eq      int;
+  v_key     text;
+  v_val     text;
+  v_hash    text := null;
+  v_auth    bigint := null;
+  v_user    text := null;
+  v_keys    text[] := '{}';
+  v_vals    text[] := '{}';
+  v_dcs     text;
+  v_secret  bytea;
+  v_calc    text;
+  v_id      bigint;
+begin
+  if p_init_data is null or length(p_init_data) = 0 then
+    return null;
+  end if;
+
+  select decrypted_secret into v_token
+  from vault.decrypted_secrets
+  where name = 'telegram_bot_token'
+  limit 1;
+  if v_token is null or v_token like 'CHANGE_ME%' then
+    return null;  -- bot token not configured yet
+  end if;
+
+  foreach v_pair in array string_to_array(p_init_data, '&') loop
+    v_eq := position('=' in v_pair);
+    if v_eq = 0 then continue; end if;
+    v_key := substr(v_pair, 1, v_eq - 1);
+    v_val := substr(v_pair, v_eq + 1);
+    if v_key = 'hash' then
+      v_hash := lower(v_val);
+    else
+      v_keys := array_append(v_keys, v_key);
+      v_vals := array_append(v_vals, _tg_url_decode(v_val));
+      if v_key = 'auth_date' then
+        v_auth := _tg_url_decode(v_val)::bigint;
+      elsif v_key = 'user' then
+        v_user := _tg_url_decode(v_val);
+      end if;
+    end if;
+  end loop;
+
+  if v_hash is null then return null; end if;
+
+  select string_agg(line, e'\n' order by k)
+  into v_dcs
+  from (
+    select v_keys[i] as k, v_keys[i] || '=' || v_vals[i] as line
+    from generate_subscripts(v_keys, 1) as i
+  ) t;
+
+  v_secret := hmac(v_token, 'WebAppData', 'sha256');
+  v_calc   := encode(hmac(convert_to(v_dcs, 'utf8'), v_secret, 'sha256'), 'hex');
+
+  if v_calc <> v_hash then
+    return null;
+  end if;
+
+  if v_auth is null or v_auth < extract(epoch from now())::bigint - 86400 then
+    return null;
+  end if;
+
+  begin
+    v_id := (v_user::jsonb ->> 'id')::bigint;
+  exception when others then
+    v_id := null;
+  end;
+
+  return v_id;
+end;
+$$;
+
+-- get_user_status: создать только при отсутствии — расширенную прод-версию
+-- (например, с games_played из pro_onboarding.sql) НЕ затирать.
+do $$
+begin
+  if not exists (select 1 from pg_proc where proname = 'get_user_status') then
+    execute $fn$
+      create function get_user_status(p_init_data text)
+      returns json
+      language plpgsql
+      security definer
+      set search_path = public, vault, extensions
+      as $body$
+      declare
+        v_id  bigint;
+        v_row users;
+      begin
+        v_id := tg_validate_init_data(p_init_data);
+        if v_id is null then
+          raise exception 'invalid init data' using errcode = '28000';
+        end if;
+
+        insert into users (telegram_id) values (v_id)
+        on conflict (telegram_id) do update set updated_at = now()
+        returning * into v_row;
+
+        return json_build_object(
+          'telegram_id', v_row.telegram_id,
+          'is_pro',      v_row.is_pro,
+          'pro_since',   v_row.pro_since
+        );
+      end;
+      $body$;
+    $fn$;
+  end if;
+end $$;
+
+revoke all on function _tg_url_decode(text)        from public;
+revoke all on function tg_validate_init_data(text) from public;
+grant execute on function get_user_status(text)    to anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+-- VERIFY — все три должны быть > 0, а bot_token_vault = 'SET' (иначе см. шапку):
+--   select
+--     (select count(*) from pg_proc where proname = 'get_user_status')       as rpc_exists,
+--     (select count(*) from pg_proc where proname = 'tg_validate_init_data') as validator_exists,
+--     (select count(*) from pg_tables where tablename = 'users')             as users_table,
+--     (select case
+--        when decrypted_secret is null           then 'MISSING'
+--        when decrypted_secret like 'CHANGE_ME%' then 'PLACEHOLDER'
+--        else 'SET' end
+--      from vault.decrypted_secrets where name = 'telegram_bot_token')       as bot_token_vault;
 -- ============================================================================

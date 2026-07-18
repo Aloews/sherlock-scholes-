@@ -98,6 +98,10 @@ export function HomeScreen() {
   const [selConts, setSelConts] = useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
   const [selCats,  setSelCats]  = useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
   const [selTags,  setSelTags]  = useState<Set<string>>(new Set());
+  // false until the player touches any chip. The first TAG tap on the pristine
+  // default focuses the deck to just that tag (the old one-tap preset); after
+  // that every group combines freely.
+  const [touched, setTouched] = useState(false);
 
   const [deckCount,  setDeckCount]  = useState<number | null>(null);
   // Per-chip standalone counts → grey out empty chips (e.g. "Звёзды" before the
@@ -127,14 +131,20 @@ export function HomeScreen() {
   const getCatLabel = (cat: CardCategory) =>
     i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
 
-  // Tag chips are player-only and exclusive with the category/continent group:
-  // selecting one clears those (mirrors the deck RPC). Pro-only tags bounce free
+  // Every chip group combines freely: tags narrow the PLAYER pool, continents
+  // filter players too, non-player categories add their own cards on top (the
+  // deck is the union — see pickRandomCards). One ergonomic exception: the
+  // first tag tap on the untouched default clears the all-on selection so
+  // "Звёзды" still means just stars in one tap. Pro-only tags bounce free
   // users to the Pro screen instead of selecting (and never start a game).
   const toggleTagChip = (chip: Chip) => {
     if (chip.pro && !isPro) { hapticImpact('light'); navigate('/pro'); return; }
     hapticImpact('light');
-    setSelConts(new Set());
-    setSelCats(new Set());
+    if (!touched) {
+      setSelConts(new Set());
+      setSelCats(new Set());
+    }
+    setTouched(true);
     setSelTags((prev) => {
       const next = new Set(prev);
       if (next.has(chip.value)) next.delete(chip.value);
@@ -145,7 +155,7 @@ export function HomeScreen() {
 
   const toggleContinentChip = (value: ContinentFilter) => {
     hapticImpact('light');
-    setSelTags(new Set());
+    setTouched(true);
     setSelConts((prev) => {
       const next = new Set(prev);
       if (next.has(value)) next.delete(value);
@@ -156,7 +166,7 @@ export function HomeScreen() {
 
   const toggleCategoryChip = (cat: CardCategory) => {
     hapticImpact('light');
-    setSelTags(new Set());
+    setTouched(true);
     setSelCats((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
@@ -165,22 +175,22 @@ export function HomeScreen() {
     });
   };
 
-  // Deck filter derived from the chip selection (mirrors the RPC inputs).
+  // Deck filter derived from the chip selection. The deck is a UNION of two
+  // pools (see pickRandomCards): players — included when any continent OR tag
+  // chip is on, filtered by both — plus every selected non-player category.
   const tagList = [...selTags];
   const tagMode = tagList.length > 0;
   const allContinentsOn = selConts.size === ALL_CONTINENT_FILTERS.length;
-  const playersOn = selConts.size > 0;
+  const playersOn = selConts.size > 0 || tagMode;
   const everything = !tagMode && allContinentsOn && selCats.size === NON_PLAYER_CATEGORIES.length;
-  const selCategories: CardCategory[] | null = tagMode
-    ? (['player'] as CardCategory[])
-    : everything
-      ? null
-      : [...(playersOn ? (['player'] as CardCategory[]) : []), ...selCats];
+  const selCategories: CardCategory[] | null = everything
+    ? null
+    : [...(playersOn ? (['player'] as CardCategory[]) : []), ...selCats];
   const selContinents: ContinentFilter[] | null =
-    !tagMode && playersOn && !allContinentsOn ? [...selConts] : null;
+    playersOn && selConts.size > 0 && !allContinentsOn ? [...selConts] : null;
   const selMinPageviews = null;
   const deckTags: string[] | null = tagMode ? tagList : null;
-  const nothingSelected = !tagMode && !playersOn && selCats.size === 0;
+  const nothingSelected = !tagMode && selConts.size === 0 && selCats.size === 0;
   const selectedCount = selTags.size + selConts.size + selCats.size;
 
   // One-time per-chip count to grey out empty chips. Each chip is counted in

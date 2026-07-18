@@ -115,6 +115,89 @@ export function useGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.current_round_id, currentRound?.id]);
 
+  // ─── Realtime backstop: poll the room row + resync on resume ──
+  // Telegram's WebView suspends the websocket when the app is backgrounded or
+  // the screen locks, and missed postgres_changes events are NEVER replayed.
+  // A client that slept through a round change stays on its old round — e.g.
+  // the previous explainer keeps seeing cards while the other player is
+  // already explaining round N+1. rooms.current_round_id is the source of
+  // truth, so refetch it cheaply every few seconds and on visibility resume;
+  // the effect above then reconciles the round, cards and phase.
+  useEffect(() => {
+    if (!room?.id) return;
+    const roomId = room.id;
+    let stopped = false;
+
+    const resync = async () => {
+      const { data } = await supabase.from('rooms').select().eq('id', roomId).single();
+      if (stopped || !data) return;
+      const fresh = data as Room;
+      const stale = useGameStore.getState().room;
+      if (
+        stale?.current_round_id !== fresh.current_round_id ||
+        stale?.status !== fresh.status
+      ) {
+        setRoom(fresh);
+        if (fresh.status === 'finished') {
+          transition('game_end');
+          navigate('/end');
+        }
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void resync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(resync, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.id]);
+
+  // ─── Fallback: end the round if the explainer vanished ─────
+  // Only the explainer ends the round on timer expiry. If they closed the
+  // app or dropped offline, the round would stay 'active' forever and the
+  // game would hang for everyone. Every other client schedules an end
+  // attempt a few seconds past the deadline (staggered per player so they
+  // don't all fire at once); the atomic claim inside endRound makes
+  // concurrent attempts safe.
+  useEffect(() => {
+    if (!room || !currentRound || currentRound.status !== 'active' || !currentRound.started_at) return;
+    if (currentRound.explainer_id === player?.id) return; // normal path handles it
+
+    const { roomPlayers } = useGameStore.getState();
+    const idx = roomPlayers.findIndex((rp) => rp.player_id === player?.id);
+    const graceMs  = 4000 + Math.max(0, idx) * 1500;
+    const deadline = new Date(currentRound.started_at).getTime()
+      + currentRound.time_seconds * 1000 + graceMs;
+
+    const roundId = currentRound.id;
+    const roomId  = room.id;
+    const timer = setTimeout(async () => {
+      // Re-check against the DB, not the store — the 'completed' event may
+      // simply not have reached this client yet.
+      const { data: fresh } = await supabase
+        .from('rounds')
+        .select()
+        .eq('id', roundId)
+        .single();
+      if (!fresh || (fresh as Round).status !== 'active') return;
+      const { data: allRounds } = await supabase
+        .from('rounds')
+        .select()
+        .eq('room_id', roomId)
+        .order('round_number');
+      await roomService.endRound(fresh as Round, room, (allRounds ?? []) as Round[]);
+    }, Math.max(0, deadline - Date.now()));
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRound?.id, currentRound?.status, currentRound?.started_at, room?.id, player?.id]);
+
   // ─── Card actions (explainer only) ────────────────────────
 
   const markCorrect = useCallback(async () => {
