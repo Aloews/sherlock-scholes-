@@ -198,6 +198,56 @@ export function useGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRound?.id, currentRound?.status, currentRound?.started_at, room?.id, player?.id]);
 
+  // ─── Watchdog: the round runner died between rounds ────────
+  // endRound holds the summary for SUMMARY_PAUSE_MS before activating the
+  // next round. If the client running it closed mid-pause, the game would
+  // sit on the summary forever. Every client re-checks a few seconds past
+  // the pause (staggered) and moves the game forward itself; the
+  // current_round_id claim inside activateRound keeps this single-shot.
+  useEffect(() => {
+    if (!room || room.status !== 'playing') return;
+    if (!currentRound || currentRound.status !== 'completed' || !currentRound.ended_at) return;
+
+    const { roomPlayers } = useGameStore.getState();
+    const idx = roomPlayers.findIndex((rp) => rp.player_id === player?.id);
+    const dueAt = new Date(currentRound.ended_at).getTime()
+      + roomService.SUMMARY_PAUSE_MS + 4000 + Math.max(0, idx) * 1500;
+
+    const roundId = currentRound.id;
+    const roomId  = room.id;
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.from('rooms').select().eq('id', roomId).single();
+      const freshRoom = data as Room | null;
+      // Someone already moved the game forward (or finished it) — nothing to do.
+      if (!freshRoom || freshRoom.status !== 'playing' || freshRoom.current_round_id !== roundId) return;
+
+      const { data: allRounds } = await supabase
+        .from('rounds')
+        .select()
+        .eq('room_id', roomId)
+        .order('round_number');
+      const rounds    = (allRounds ?? []) as Round[];
+      const completed = rounds.find((r) => r.id === roundId);
+      const next = completed
+        ? rounds.find((r) => r.round_number === completed.round_number + 1 && r.status === 'pending')
+        : undefined;
+
+      if (next) {
+        await roomService.activateRound(next, freshRoom);
+      } else {
+        // Final round done but the runner died before closing the room.
+        await supabase
+          .from('rooms')
+          .update({ status: 'finished', ended_at: new Date().toISOString() })
+          .eq('id', roomId)
+          .eq('status', 'playing');
+      }
+    }, Math.max(0, dueAt - Date.now()));
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRound?.id, currentRound?.status, room?.id, room?.status, player?.id]);
+
   // ─── Card actions (explainer only) ────────────────────────
 
   const markCorrect = useCallback(async () => {

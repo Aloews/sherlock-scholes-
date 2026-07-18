@@ -316,7 +316,28 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
   await activateRound(rounds[0] as Round, room);
 }
 
-export async function activateRound(round: Round, room: Room): Promise<void> {
+// How long the round-summary overlay stays up between rounds. The runner
+// sleeps this long before activating the next round; the watchdog in useGame
+// uses it to know when a stalled activation is overdue.
+export const SUMMARY_PAUSE_MS = 4000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// Claim-then-activate: rooms.current_round_id flips to this round exactly once
+// (the .or matches only while it still points elsewhere), so the round runner
+// and the useGame watchdog can never deal two hands or start the timer twice.
+// Cards are inserted BEFORE the round goes 'active' — clients fetch the hand
+// the moment they see the active event.
+export async function activateRound(round: Round, room: Room): Promise<boolean> {
+  const { data: claimed } = await supabase
+    .from('rooms')
+    .update({ status: 'playing', current_round_id: round.id, started_at: new Date().toISOString() })
+    .eq('id', room.id)
+    .or(`current_round_id.is.null,current_round_id.neq.${round.id}`)
+    .select('id');
+
+  if (!claimed?.length) return false;
+
   // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
   const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
   const { categories } = room.settings;
@@ -333,18 +354,11 @@ export async function activateRound(round: Round, room: Room): Promise<void> {
     })),
   );
 
-  const startedAt = new Date().toISOString();
-
-  await Promise.all([
-    supabase
-      .from('rounds')
-      .update({ status: 'active', started_at: startedAt })
-      .eq('id', round.id),
-    supabase
-      .from('rooms')
-      .update({ status: 'playing', current_round_id: round.id, started_at: startedAt })
-      .eq('id', room.id),
-  ]);
+  await supabase
+    .from('rounds')
+    .update({ status: 'active', started_at: new Date().toISOString() })
+    .eq('id', round.id);
+  return true;
 }
 
 // ─── Cards ───────────────────────────────────────────────────
@@ -406,12 +420,13 @@ export async function endRound(
 
   const points = (cards ?? []).filter((c) => c.status === 'correct').length;
 
-  await supabase.from('scores').upsert({
+  const { error: scoreErr } = await supabase.from('scores').upsert({
     room_id:  room.id,
     team_id:  round.team_id,
     round_id: round.id,
     points,
   });
+  if (scoreErr) console.error('[game] scores upsert failed:', scoreErr.code, scoreErr.message);
 
   const nextRound = allRounds.find(
     (r) => r.round_number === round.round_number + 1 && r.status === 'pending',
@@ -422,10 +437,15 @@ export async function endRound(
       .from('rooms')
       .update({ status: 'finished', ended_at: new Date().toISOString() })
       .eq('id', room.id);
-    updatePlayerStats(room.id).catch(() => undefined);
+    updatePlayerStats(room.id).catch((e) =>
+      console.error('[stats] update after game end failed:', e));
     return 'game_end';
   }
 
+  // Hold the summary on screen before the next round starts — without this
+  // the next 'active' event lands within a second and nobody reads the score.
+  // If this client dies mid-pause, the useGame watchdog activates the round.
+  await sleep(SUMMARY_PAUSE_MS);
   await activateRound(nextRound, room);
   return 'next_round';
 }
@@ -476,7 +496,7 @@ async function updatePlayerStats(roomId: string): Promise<void> {
     ? Object.entries(teamPoints).filter(([, pts]) => pts === maxPoints).map(([id]) => id)
     : [];
 
-  await Promise.all(
+  const results = await Promise.all(
     (roomPlayers as { player_id: number; team_id: string | null }[]).map((rp) => {
       const teamScore    = rp.team_id ? (teamPoints[rp.team_id] ?? 0) : 0;
       const won          = rp.team_id ? winnerTeamIds.includes(rp.team_id) : false;
@@ -490,6 +510,9 @@ async function updatePlayerStats(roomId: string): Promise<void> {
       });
     }),
   );
+  for (const r of results) {
+    if (r.error) console.error('[stats] increment_player_stats failed:', r.error.code, r.error.message);
+  }
 }
 
 export async function fetchRoundScores(

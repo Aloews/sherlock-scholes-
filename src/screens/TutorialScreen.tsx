@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
+import { cloudSet } from '@/shared/lib/telegram';
 import {
   IconUsers,
   IconUserPlus,
@@ -35,7 +36,10 @@ export function TutorialScreen() {
   };
 
   const finish = () => {
-    localStorage.setItem('sherlock_tutorial_seen', 'true');
+    // CloudStorage survives Telegram relaunches; localStorage is the fast
+    // same-launch cache (see the check in HomeScreen).
+    void cloudSet('sherlock_tutorial_seen', 'true');
+    try { localStorage.setItem('sherlock_tutorial_seen', 'true'); } catch { /* private mode */ }
     navigate('/');
   };
 

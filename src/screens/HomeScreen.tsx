@@ -18,7 +18,7 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
 import { difficultyFloor, recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import {
   ALL_CONTINENT_FILTERS,
@@ -80,9 +80,22 @@ export function HomeScreen() {
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
   useEffect(() => {
-    if (localStorage.getItem('sherlock_tutorial_seen') !== 'true') {
-      navigate('/tutorial', { replace: true });
-    }
+    // Telegram WebViews wipe localStorage between launches on some platforms,
+    // which re-showed the tutorial every open. CloudStorage is the durable
+    // source of truth; localStorage stays as a fast same-launch cache.
+    if (localStorage.getItem('sherlock_tutorial_seen') === 'true') return;
+    let cancelled = false;
+    (async () => {
+      const seen = await cloudGet('sherlock_tutorial_seen');
+      if (cancelled) return;
+      if (seen === 'true') {
+        try { localStorage.setItem('sherlock_tutorial_seen', 'true'); } catch { /* private mode */ }
+      } else {
+        navigate('/tutorial', { replace: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Warm up a possibly-sleeping free-tier DB the moment the home screen opens,
