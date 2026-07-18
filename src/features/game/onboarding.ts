@@ -16,13 +16,17 @@ import { bumpGames } from '@/features/pro/proApi';
 const CLOUD_KEY = 'ss_games_played';
 
 // Pageviews floor by games played; null = no cap (full deck).
-//   games <10  -> 25000  (easy plateau, ~475 cards + tier leg/epic + wc2026)
-//   games 10-29 -> floor decays 25000 -> ~0 (pool grows smoothly)
-//   games >=30 -> null   (full deck)
+//   games <10   -> 60000 (strict plateau: ~255 household-name players +
+//                         tier legendary/epic — no obscure cards at all)
+//   games 10-29 -> floor decays 60000 -> ~0 (pool grows smoothly)
+//   games >=30  -> null  (full deck)
+// Server side (pick_random_cards) only tier legendary/epic bypasses the
+// floor — the old wc2026 bypass let obscure tournament newcomers flood the
+// easy pool and made first games feel hard.
 export function difficultyFloor(games: number): number | null {
   if (games >= 30) return null;
-  if (games < 10) return 25000;
-  return Math.round((25000 * (30 - games)) / 20);
+  if (games < 10) return 60000;
+  return Math.round((60000 * (30 - games)) / 20);
 }
 
 // Read the anonymous counter from CloudStorage into proStore (called when there

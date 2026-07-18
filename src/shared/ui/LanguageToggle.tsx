@@ -20,7 +20,7 @@ const LANG_LABEL: Record<AppLang, string> = {
   ar: 'العربية',
 };
 
-/** Language selector: interface stays ru/en (en serves the rest), card
+/** Language selector: every language has full interface resources, and card
  * names follow the chosen language via card_translations. */
 export function LanguageToggle({ className }: LanguageToggleProps) {
   const { i18n } = useTranslation();
