@@ -231,14 +231,44 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
     return;
   }
 
-  // Team mode: existing logic
-  const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => ({
-    room_id:      room.id,
-    team_id:      teams[i % teams.length].id,
-    round_number: i + 1,
-    status:       'pending' as const,
-    time_seconds: round_seconds,
-  }));
+  // Team mode: rotate the explainer through each team's roster so every player
+  // explains in turn (round N of a team -> Nth player of that team, wrapping).
+  // Deterministic order: joined_at, then player_id as tiebreaker — never the
+  // DB's unspecified return order.
+  const { data: teamRoomPlayers } = await supabase
+    .from('room_players')
+    .select('player_id, team_id, joined_at')
+    .eq('room_id', room.id);
+
+  const rosterByTeam: Record<string, number[]> = {};
+  const sortedPlayers = ((teamRoomPlayers ?? []) as {
+    player_id: number; team_id: string | null; joined_at: string;
+  }[])
+    .filter((rp) => rp.team_id !== null)
+    .sort((a, b) => (
+      a.joined_at !== b.joined_at
+        ? (a.joined_at < b.joined_at ? -1 : 1)
+        : a.player_id - b.player_id
+    ));
+  for (const rp of sortedPlayers) {
+    const teamId = rp.team_id as string;
+    if (!rosterByTeam[teamId]) rosterByTeam[teamId] = [];
+    rosterByTeam[teamId].push(rp.player_id);
+  }
+
+  const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => {
+    const team   = teams[i % teams.length];
+    const roster = rosterByTeam[team.id] ?? [];
+    const turn   = Math.floor(i / teams.length); // this team's Nth turn
+    return {
+      room_id:      room.id,
+      team_id:      team.id,
+      explainer_id: roster.length ? roster[turn % roster.length] : null,
+      round_number: i + 1,
+      status:       'pending' as const,
+      time_seconds: round_seconds,
+    };
+  });
 
   const { data: rounds, error: roundError } = await supabase
     .from('rounds')

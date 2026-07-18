@@ -7,12 +7,16 @@ import type { GamePhase } from '@/shared/types/game';
 type Transition = Record<GamePhase, GamePhase[]>;
 
 // Valid transitions: current phase → allowed next phases
+// The round loop is round_active → round_summary → round_active (next round
+// activates straight from the summary — there is no per-round countdown).
+// round_active → game_end covers a missed 'completed' event on the final
+// round: the room's 'finished' update must still reach the end screen.
 const TRANSITIONS: Transition = {
   idle:          ['lobby'],
   lobby:         ['idle', 'countdown'],
   countdown:     ['round_active', 'idle'],
-  round_active:  ['round_summary'],
-  round_summary: ['countdown', 'game_end'],
+  round_active:  ['round_summary', 'game_end'],
+  round_summary: ['countdown', 'round_active', 'game_end'],
   game_end:      ['idle'],
 };
 

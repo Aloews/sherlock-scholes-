@@ -53,6 +53,11 @@ export function useGame() {
             setCurrentRound(round);
             hapticImpact('heavy');
             playSound('whistle_end');
+            // Transition BEFORE any await: the next round's 'active' event is
+            // processed while this handler is suspended, and its own transition
+            // must come strictly after this one (message order), or the phase
+            // flips back to round_summary and sticks there for a whole round.
+            transition('round_summary');
             const rawScores = await roomService.fetchRoundScores(room.id);
             const scores: TeamScore[] = rawScores.map((s) => ({
               team_id:      s.teamId,
@@ -61,7 +66,6 @@ export function useGame() {
               color:        teams.find((t) => t.id === s.teamId)?.color ?? '#22c55e',
             }));
             setTeamScores(scores);
-            transition('round_summary');
           }
         },
       )
@@ -85,23 +89,31 @@ export function useGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, currentRound?.id]);
 
-  // ─── Load initial round on mount ──────────────────────────
+  // ─── Load current round when realtime missed its activation ──
+  // Covers two cases: (a) mount — round 1 went 'active' before this hook
+  // subscribed, so its UPDATE event was never received; (b) mid-game — the
+  // rooms UPDATE (current_round_id) arrived but the rounds UPDATE didn't.
+  // Either way rooms.current_round_id is the source of truth: fetch the round,
+  // and if it's active, move the phase forward so the game doesn't sit in
+  // countdown / round_summary forever.
   useEffect(() => {
-    if (!room?.current_round_id || currentRound) return;
+    const roundId = room?.current_round_id;
+    if (!roundId || currentRound?.id === roundId) return;
     (async () => {
       const { data } = await supabase
         .from('rounds')
         .select()
-        .eq('id', room.current_round_id)
+        .eq('id', roundId)
         .single();
       if (data) {
         setCurrentRound(data as Round);
         const cards = await roomService.fetchRoundCards(data.id);
         setCurrentCards(cards);
+        if ((data as Round).status === 'active') transition('round_active');
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.current_round_id]);
+  }, [room?.current_round_id, currentRound?.id]);
 
   // ─── Card actions (explainer only) ────────────────────────
 
