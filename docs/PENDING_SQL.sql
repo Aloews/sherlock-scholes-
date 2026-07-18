@@ -14,6 +14,7 @@
 --   2026-07-18  join_1v1_room — атомарный join для 1v1 [ПРИМЕНЕНО на проде]
 --   2026-07-18  Оплата: initData-валидация + grant service_role [ПРИМЕНЕНО]
 --   2026-07-18  REVOKE TRUNCATE у anon + онбординг (games_played, p_difficulty) [ПРИМЕНЕНО]
+--   2026-07-18  Переводы (RLS-политика card_translations) + search_path + индексы [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -766,4 +767,47 @@ notify pgrst, 'reload schema';
 --        and privilege_type in ('TRUNCATE','TRIGGER','REFERENCES')) as dangerous_left, -- 0
 --     (select count(*) from pick_random_cards(1000))                as full_deck,      -- сотни+
 --     (select count(*) from pick_random_cards(1000,null,null,null,null,null,25000)) as easy_pool;
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-18 — переводы + hardening по advisors [ПРИМЕНЕНО на проде через MCP]
+--
+-- 1) [БАГ] card_translations: на проде RLS был включён БЕЗ политики SELECT —
+--    докатили таблицу/данные из docs/card_translations.sql, но не секцию RLS.
+--    Приложение видело 0 строк: переводы имён на всех 7 языках (19751 строка)
+--    молча не работали. Политика восстановлена ровно как в исходном файле.
+-- 2) Фиксированный search_path у pick_random_cards / get_room_scores /
+--    _tg_url_decode / set_room_code / generate_room_code (advisors WARN
+--    "role mutable search_path").
+-- 3) Индексы под FK на горячих путях: room_players(player_id) — его теперь
+--    использует восстановление сессии после reload, scores(round_id),
+--    rounds(team_id), teams(room_id), rooms(current_round_id).
+--
+-- ПРОВЕРЕНО: под ролью anon видно 19751 переводов (es 3031), join с cards
+-- работает. Идемпотентно.
+-- ============================================================================
+
+drop policy if exists card_translations_public_select on card_translations;
+create policy card_translations_public_select on card_translations
+  for select to anon, authenticated using (true);
+
+alter function pick_random_cards(integer, text[], bigint, text[], text[], text, integer) set search_path = public;
+alter function get_room_scores(uuid) set search_path = public;
+alter function _tg_url_decode(text) set search_path = public;
+alter function set_room_code() set search_path = public;
+alter function generate_room_code() set search_path = public;
+
+create index if not exists idx_room_players_player  on room_players(player_id);
+create index if not exists idx_scores_round         on scores(round_id);
+create index if not exists idx_rounds_team          on rounds(team_id);
+create index if not exists idx_teams_room           on teams(room_id);
+create index if not exists idx_rooms_current_round  on rooms(current_round_id);
+
+notify pgrst, 'reload schema';
+
+-- VERIFY:
+--   begin; set local role anon;
+--   select count(*) from card_translations;  -- ~19751, НЕ 0
+--   rollback;
 -- ============================================================================
