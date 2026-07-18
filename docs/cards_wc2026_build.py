@@ -20,6 +20,10 @@ import time
 import requests
 from dotenv import load_dotenv
 
+# Windows-консоль по умолчанию cp1251 — падает на латинице с диакритикой
+# ("Julián") при печати сэмплов. Тот же guard, что в остальных docs/cards_*.py.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 HERE = os.path.dirname(__file__)
 SCRAPER = os.path.join(HERE, "..", "football_scraper")
 sys.path.insert(0, SCRAPER)
