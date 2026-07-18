@@ -1,0 +1,90 @@
+{
+  "provider": "api-football",
+  "base_url": "https://v3.football.api-sports.io",
+
+  "pilot": true,
+  "league_id": 39,
+  "season": 2023,
+  "pilot_limit_teams": 0,
+  "max_page": 3,
+
+  "_teams_filter_help": "Per-league explicit club list, keyed by league code (PL/PD/SA/BL1/FL1/RPL). A non-empty list means collect ONLY those clubs (matched case-insensitively against the API-Football team name, tolerant of 'Real Betis'/'Betis'-style variants). An empty/absent list means the whole league, as before. Names are written as in API-Football.",
+  "teams_filter": {
+    "PL": [],
+    "RPL": [],
+    "PD": [
+      "Real Madrid", "Barcelona", "Atletico Madrid", "Athletic Club",
+      "Real Betis", "Sevilla", "Villarreal", "Valencia"
+    ],
+    "SA": [
+      "Inter", "AC Milan", "Juventus", "Atalanta", "Genoa", "Udinese",
+      "Bologna", "Lecce", "AS Roma"
+    ],
+    "BL1": [
+      "Bayer Leverkusen", "Bayern Munich", "Borussia Dortmund", "RB Leipzig",
+      "VfB Stuttgart", "Hoffenheim", "Eintracht Frankfurt", "Augsburg",
+      "Werder Bremen"
+    ],
+    "FL1": [
+      "Paris Saint Germain", "Monaco", "Lille", "Lyon", "Marseille",
+      "Lens", "Nice", "Rennes"
+    ],
+    "ERE": [],
+    "PRI": []
+  },
+
+  "rate_limit": {
+    "requests_per_minute": 10,
+    "min_pause_seconds": 6.5,
+    "daily_request_budget": 100
+  },
+
+  "retry": {
+    "max_attempts": 4,
+    "backoff_base_seconds": 2.0,
+    "backoff_max_seconds": 60
+  },
+
+  "cache": {
+    "enabled": true,
+    "dir": "cache"
+  },
+
+  "wikidata": {
+    "base_url": "https://www.wikidata.org/w/api.php",
+    "min_pause_seconds": 1.0,
+    "user_agent": "SherlockScholesBot/0.1 (pilot players DB; contact: giafreec@gmail.com)",
+    "footballer_qid": "Q937857",
+    "search_limit": 5
+  },
+
+  "photos": {
+    "filepath_base": "https://commons.wikimedia.org/wiki/Special:FilePath",
+    "width": 256,
+    "daily_request_budget": 5000
+  },
+
+  "pageviews": {
+    "base_url": "https://wikimedia.org/api/rest_v1",
+    "user_agent": "SherlockScholesBot/0.1 (pilot players DB; contact: giafreec@gmail.com)",
+    "min_pause_seconds": 1.0,
+    "access": "all-access",
+    "agent": "user",
+    "granularity": "monthly",
+    "daily_request_budget": 5000,
+    "league": "PL",
+    "seasons": [2023],
+    "window": {
+      "start_month": 8,
+      "start_day": 1,
+      "end_month": 6,
+      "end_day": 30,
+      "end_year_offset": 1
+    },
+    "retry": {
+      "max_attempts": 4,
+      "backoff_base_seconds": 2.0,
+      "backoff_max_seconds": 60
+    }
+  }
+}

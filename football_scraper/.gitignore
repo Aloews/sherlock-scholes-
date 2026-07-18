@@ -1,0 +1,11 @@
+# Local HTTP cache (regenerated on every run)
+cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Never commit credentials
+.env
+.env.local

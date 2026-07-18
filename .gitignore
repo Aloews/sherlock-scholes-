@@ -23,8 +23,11 @@ supabase/.temp/
 __pycache__/
 *.pyc
 
-# Football scraper — kept local only (runs offline, holds API keys); not pushed
-football_scraper/
+# Football scraper: code IS committed (needed by CI daily-enrich.yml).
+# Secrets/cache are excluded by football_scraper/.gitignore itself.
+football_scraper/legend_career_backup_*.json
+football_scraper/name_en_backup_*.json
+football_scraper/*.log
 
 # Vercel
 .vercel/
