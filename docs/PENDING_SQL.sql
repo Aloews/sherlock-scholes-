@@ -313,3 +313,55 @@ where career_stats::text like '%<ref%'
 --   select count(*) from cards
 --   where career_stats::text like '%<ref%' or career_stats::text like '%{{%';
 -- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-18 — новые звёзды/прорывы ЧМ-2026 (8 карточек, bare newcomers)
+--
+-- ПОЧЕМУ: cards_wc2026_build.py только проставляет тег существующим карточкам,
+-- новых игроков не создаёт. Это прорывные игроки турнира, которых ещё нет в
+-- колоде. Вставляем минимально (name/name_en/forbidden_words/active) — дальше
+-- ночной daily_enrich подхватит их шагом newcomers (resolve -> facts -> tier).
+--
+-- ИМЕНА СВЕРЕНЫ С ru.wikipedia (резолвер бьёт по каноническому ключу русского
+-- name с порогом сходства 0.85; опечатка = карточка молча не обогатится).
+-- Исправлено против исходного списка:
+--   «Йохан Манзамби» -> «Жоан Манзамби»   (ru: Манзамби, Жоан)
+--   «Ян Диоманде»    -> «Ян Дьоманде»     (ru: Дьоманде, Ян; есть др. Диоманде)
+--   «Хулиан Кинонес» -> «Хулиан Киньонес» (ru: Киньонес, Хулиан)
+-- Совпали как есть: Аюб Буадди, Ману Коне, Возинья, Педро Вите, Дениз Ундав.
+-- (Педро Вите: в ru.wiki сейчас «Ванкувер Уайткэпс», не «Пумас» — на карточку
+--  это не влияет, клуб не хранится, обогащение тянет актуальные данные.)
+-- ============================================================================
+
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Жоан Манзамби', 'Johan Manzambi', 'player', 'игроки', ARRAY['Жоан Манзамби','Жоан','Манзамби']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Жоан Манзамби'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Аюб Буадди', 'Ayyoub Bouaddi', 'player', 'игроки', ARRAY['Аюб Буадди','Аюб','Буадди']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Аюб Буадди'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Ян Дьоманде', 'Yan Diomandé', 'player', 'игроки', ARRAY['Ян Дьоманде','Ян','Дьоманде']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Ян Дьоманде'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Ману Коне', 'Manu Koné', 'player', 'игроки', ARRAY['Ману Коне','Ману','Коне']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Ману Коне'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Возинья', 'Vozinha', 'player', 'игроки', ARRAY['Возинья']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Возинья'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Педро Вите', 'Pedro Vite', 'player', 'игроки', ARRAY['Педро Вите','Педро','Вите']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Педро Вите'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Хулиан Киньонес', 'Julián Quiñones', 'player', 'игроки', ARRAY['Хулиан Киньонес','Хулиан','Киньонес']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Хулиан Киньонес'));
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT 'Дениз Ундав', 'Deniz Undav', 'player', 'игроки', ARRAY['Дениз Ундав','Дениз','Ундав']::text[], true
+WHERE NOT EXISTS (SELECT 1 FROM cards WHERE lower(name) = lower('Дениз Ундав'));
+
+-- VERIFY — 8 карточек существуют (после ручного прогона PENDING_SQL или ночного CI):
+--   select name, name_en, facts is not null as enriched from cards
+--   where name in ('Жоан Манзамби','Аюб Буадди','Ян Дьоманде','Ману Коне',
+--                  'Возинья','Педро Вите','Хулиан Киньонес','Дениз Ундав')
+--   order by name;
+-- ============================================================================
