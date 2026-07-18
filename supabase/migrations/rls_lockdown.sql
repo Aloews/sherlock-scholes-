@@ -219,6 +219,16 @@ ALTER FUNCTION create_1v1_room(BIGINT, JSONB)
   SET search_path = public;
 
 -- ============================================================
+-- 6b. NON-DML PRIVILEGES — TRUNCATE is NOT governed by RLS, and the
+--     default grants hand it (plus TRIGGER/REFERENCES) to the public
+--     roles: anyone with the anon key from the frontend bundle could
+--     wipe cards/rooms/scores in one statement. The app never uses
+--     these — revoke everywhere. (Found on prod 2026-07-18.)
+-- ============================================================
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA public
+  FROM anon, authenticated;
+
+-- ============================================================
 -- 7. VERIFY (run after; both should look right before testing the app)
 -- ============================================================
 -- RLS enabled everywhere:

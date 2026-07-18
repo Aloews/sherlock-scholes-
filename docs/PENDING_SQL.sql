@@ -13,6 +13,7 @@
 --   2026-06-16  Добавить 13 молодых звёзд сборных (ЧМ-2026), которых не было
 --   2026-07-18  join_1v1_room — атомарный join для 1v1 [ПРИМЕНЕНО на проде]
 --   2026-07-18  Оплата: initData-валидация + grant service_role [ПРИМЕНЕНО]
+--   2026-07-18  REVOKE TRUNCATE у anon + онбординг (games_played, p_difficulty) [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -648,4 +649,121 @@ notify pgrst, 'reload schema';
 --        when decrypted_secret like 'CHANGE_ME%' then 'PLACEHOLDER'
 --        else 'SET' end
 --      from vault.decrypted_secrets where name = 'telegram_bot_token')       as bot_token_vault;
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-18 — защита данных + онбординг [ПРИМЕНЕНО на проде через MCP]
+--
+-- 1) REVOKE TRUNCATE/TRIGGER/REFERENCES у anon/authenticated на всех таблицах.
+--    TRUNCATE не подчиняется RLS, и дефолтные гранты позволяли ЛЮБОМУ с
+--    публичным anon-ключом (он в бандле фронта) очистить cards/rooms/scores
+--    одним запросом. rls_lockdown.sql отзывал только INSERT/UPDATE/DELETE.
+--    Приложение эти привилегии не использует — отзыв ничего не ломает.
+--
+-- 2) get_user_status теперь возвращает games_played (версия pro_onboarding) —
+--    фронт читает стартовый счётчик онбординга без лишнего round-trip.
+--    Гранты: anon, authenticated, service_role (tg-pay!).
+--
+-- 3) pick_random_cards: p_difficulty теперь РЕАЛЬНО фильтрует (пол по
+--    pageviews; tier legendary/epic и wc2026 проходят всегда). Раньше параметр
+--    принимался и игнорировался — онбординг-сложность не работала. Версия БЕЗ
+--    зависимостей pro_deck (tg_is_pro/pro_only_tags на проде нет; их вызов из
+--    этой функции однажды уже ронял колоду). Сигнатура 7-арг сохранена.
+--
+-- ПРОВЕРЕНО после наката: полная колода 1000/1000, лёгкий пул (floor 25000)
+-- 806 карточек, теги/континенты работают, service_role сохранил EXECUTE.
+-- Идемпотентно — повторный прогон безопасен.
+-- ============================================================================
+
+revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
+
+create or replace function get_user_status(p_init_data text)
+returns json
+language plpgsql
+security definer
+set search_path = public, vault, extensions
+as $$
+declare
+  v_id  bigint;
+  v_row users;
+begin
+  v_id := tg_validate_init_data(p_init_data);
+  if v_id is null then
+    raise exception 'invalid init data' using errcode = '28000';
+  end if;
+
+  insert into users (telegram_id) values (v_id)
+  on conflict (telegram_id) do update set updated_at = now()
+  returning * into v_row;
+
+  return json_build_object(
+    'telegram_id',  v_row.telegram_id,
+    'is_pro',       v_row.is_pro,
+    'pro_since',    v_row.pro_since,
+    'games_played', v_row.games_played
+  );
+end;
+$$;
+
+grant execute on function get_user_status(text) to anon, authenticated, service_role;
+
+create or replace function pick_random_cards(
+  p_count         int,
+  p_categories    text[]  default null,
+  p_min_pageviews bigint  default null,
+  p_continents    text[]  default null,
+  p_tags          text[]  default null,
+  p_init_data     text    default null,  -- принят для совместимости; не используется
+  p_difficulty    int     default null
+)
+returns setof cards
+language sql
+stable
+as $$
+  select *
+  from cards
+  where active = true
+    and (
+      p_categories is null
+      or cardinality(p_categories) = 0
+      or category = any(p_categories)
+    )
+    and (
+      p_min_pageviews is null
+      or pageviews is null
+      or pageviews > p_min_pageviews
+    )
+    and (
+      p_continents is null
+      or cardinality(p_continents) = 0
+      or category <> 'player'
+      or continent = any(p_continents)
+      or (continent is null and 'other' = any(p_continents))
+    )
+    and (
+      p_tags is null
+      or cardinality(p_tags) = 0
+      or tags && p_tags
+    )
+    and (
+      p_difficulty is null
+      or p_difficulty <= 0
+      or pageviews >= p_difficulty
+      or tier in ('legendary', 'epic')
+      or tags && array['wc2026']
+    )
+  order by random()
+  limit p_count;
+$$;
+
+notify pgrst, 'reload schema';
+
+-- VERIFY:
+--   select
+--     (select count(*) from information_schema.role_table_grants
+--        where grantee in ('anon','authenticated') and table_schema='public'
+--        and privilege_type in ('TRUNCATE','TRIGGER','REFERENCES')) as dangerous_left, -- 0
+--     (select count(*) from pick_random_cards(1000))                as full_deck,      -- сотни+
+--     (select count(*) from pick_random_cards(1000,null,null,null,null,null,25000)) as easy_pool;
 -- ============================================================================
