@@ -267,5 +267,24 @@
     "clubs_many": "{{count}} ناديًا",
     "clubs_other": "{{count}} نادٍ",
     "clubs_zero": "بلا أندية"
+  },
+  "category": {
+    "player": "اللاعبون",
+    "club": "الأندية",
+    "term": "المصطلحات",
+    "referee": "الحكام",
+    "coach": "المدربون",
+    "stadium": "الملاعب",
+    "club_nickname": "الألقاب",
+    "commentator": "المعلقون",
+    "position": "المراكز",
+    "woman": "نساء كرة القدم"
+  },
+  "errors": {
+    "auth": "خطأ في التفويض. أعد تحميل الصفحة.",
+    "room_not_found": "الغرفة غير موجودة أو أن اللعبة بدأت بالفعل",
+    "join_failed": "تعذّر الانضمام إلى الغرفة",
+    "create_failed": "تعذّر إنشاء الغرفة",
+    "start_failed": "تعذّر بدء اللعبة"
   }
 }

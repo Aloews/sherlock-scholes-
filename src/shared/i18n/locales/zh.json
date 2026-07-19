@@ -223,5 +223,24 @@
     "world_cup_female_other": "世界杯 ×{{count}}",
     "height": "身高 {{cm}} 厘米",
     "clubs_other": "效力过 {{count}} 家俱乐部"
+  },
+  "category": {
+    "player": "球员",
+    "club": "俱乐部",
+    "term": "术语",
+    "referee": "裁判",
+    "coach": "教练",
+    "stadium": "球场",
+    "club_nickname": "绰号",
+    "commentator": "解说员",
+    "position": "位置",
+    "woman": "女足"
+  },
+  "errors": {
+    "auth": "授权错误，请刷新页面。",
+    "room_not_found": "找不到房间，或游戏已开始",
+    "join_failed": "无法加入房间",
+    "create_failed": "无法创建房间",
+    "start_failed": "无法开始游戏"
   }
 }

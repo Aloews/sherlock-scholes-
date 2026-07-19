@@ -231,5 +231,24 @@
     "height": "taille {{cm}} cm",
     "clubs_one": "{{count}} club",
     "clubs_other": "{{count}} clubs"
+  },
+  "category": {
+    "player": "Joueurs",
+    "club": "Clubs",
+    "term": "Termes",
+    "referee": "Arbitres",
+    "coach": "Entraîneurs",
+    "stadium": "Stades",
+    "club_nickname": "Surnoms",
+    "commentator": "Commentateurs",
+    "position": "Postes",
+    "woman": "Femmes du football"
+  },
+  "errors": {
+    "auth": "Erreur d'autorisation. Rechargez la page.",
+    "room_not_found": "Salon introuvable ou la partie a déjà commencé",
+    "join_failed": "Impossible de rejoindre le salon",
+    "create_failed": "Impossible de créer le salon",
+    "start_failed": "Impossible de lancer la partie"
   }
 }

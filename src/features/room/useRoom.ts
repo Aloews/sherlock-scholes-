@@ -18,7 +18,7 @@ export function useRoom() {
   const createRoom = useCallback(
     async (settings?: Partial<RoomSettings>, mode: GameMode = 'team') => {
       if (!player) {
-        setError('Ошибка авторизации. Обновите страницу.');
+        setError(t('errors.auth'));
         return;
       }
       setLoading(true);
@@ -38,18 +38,19 @@ export function useRoom() {
         navigate('/lobby');
       } catch (err) {
         hapticError();
-        setError(err instanceof Error ? err.message : 'Failed to create room');
+        console.error('[room] create failed:', err);
+        setError(t('errors.create_failed'));
       } finally {
         setLoading(false);
       }
     },
-    [player, navigate, setRoom, setTeams, setRoomPlayers, setLoading, setError],
+    [player, navigate, setRoom, setTeams, setRoomPlayers, setLoading, setError, t],
   );
 
   const joinRoom = useCallback(
     async (code: string) => {
       if (!player) {
-        setError('Ошибка авторизации. Обновите страницу.');
+        setError(t('errors.auth'));
         return;
       }
       setLoading(true);
@@ -68,8 +69,13 @@ export function useRoom() {
         navigate('/lobby');
       } catch (err) {
         hapticError();
+        console.error('[room] join failed:', err);
         const msg = err instanceof Error ? err.message : '';
-        setError(msg === 'ROOM_FULL_1V1' ? t('lobby.room_full_1v1') : (msg || 'Room not found'));
+        setError(
+          msg === 'ROOM_FULL_1V1' ? t('lobby.room_full_1v1')
+          : msg === 'Room not found or game already started' ? t('errors.room_not_found')
+          : t('errors.join_failed'),
+        );
       } finally {
         setLoading(false);
       }

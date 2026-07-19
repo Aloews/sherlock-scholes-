@@ -231,5 +231,24 @@
     "height": "height {{cm}} cm",
     "clubs_one": "{{count}} club",
     "clubs_other": "{{count}} clubs"
+  },
+  "category": {
+    "player": "Players",
+    "club": "Clubs",
+    "term": "Terms",
+    "referee": "Referees",
+    "coach": "Coaches",
+    "stadium": "Stadiums",
+    "club_nickname": "Club Nicknames",
+    "commentator": "Commentators",
+    "position": "Positions",
+    "woman": "Women in Football"
+  },
+  "errors": {
+    "auth": "Authorization error. Reload the page.",
+    "room_not_found": "Room not found or the game already started",
+    "join_failed": "Couldn't join the room",
+    "create_failed": "Couldn't create the room",
+    "start_failed": "Couldn't start the game"
   }
 }

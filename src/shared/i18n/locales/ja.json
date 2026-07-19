@@ -223,5 +223,24 @@
     "world_cup_female_other": "W杯 ×{{count}}",
     "height": "身長 {{cm}} cm",
     "clubs_other": "{{count}} クラブ"
+  },
+  "category": {
+    "player": "選手",
+    "club": "クラブ",
+    "term": "用語",
+    "referee": "審判",
+    "coach": "監督",
+    "stadium": "スタジアム",
+    "club_nickname": "愛称",
+    "commentator": "実況者",
+    "position": "ポジション",
+    "woman": "女子サッカー"
+  },
+  "errors": {
+    "auth": "認証エラー。ページを再読み込みしてください。",
+    "room_not_found": "ルームが見つからないか、ゲームは既に始まっています",
+    "join_failed": "ルームに参加できませんでした",
+    "create_failed": "ルームを作成できませんでした",
+    "start_failed": "ゲームを開始できませんでした"
   }
 }

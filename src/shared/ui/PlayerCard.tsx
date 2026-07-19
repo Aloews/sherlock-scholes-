@@ -11,7 +11,6 @@ import {
   IconMicrophone,
 } from '@tabler/icons-react';
 import type { Card, CardCategory } from '@/shared/types/database';
-import { CATEGORY_LABEL_RU } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
 
@@ -70,7 +69,11 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   }
 
   const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
-  const label    = card.category_ru ?? CATEGORY_LABEL_RU[card.category] ?? card.category;
+  // Localized category label; the DB's Russian category_ru wins only on ru
+  // (it can carry admin-customised labels).
+  const label    = i18n.language.startsWith('ru') && card.category_ru
+    ? card.category_ru
+    : t(`category.${card.category}`);
   // Translation -> name_en -> name, per the interface language (same rule
   // as the quick-game summary).
   const name     = cardDisplayName(card, i18n.language);

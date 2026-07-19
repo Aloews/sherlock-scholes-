@@ -22,7 +22,7 @@ import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
-import { CATEGORY_LABEL_RU, CATEGORY_EMOJI } from '@/shared/types/database';
+import { CATEGORY_EMOJI } from '@/shared/types/database';
 
 interface TrainingState {
   categories: CardCategory[] | null;
@@ -63,6 +63,16 @@ const CATEGORY_COLOR: Record<CardCategory, string> = {
   commentator:   '#7A8499',
   woman:         '#FF6BA8',
 };
+
+// Category label in the interface language. The DB's Russian category_ru is
+// preferred only on ru (it can carry admin-customised labels); every other
+// language reads the translated label from the locale files.
+const localizedCategory = (
+  t: (key: string) => string,
+  lang: string,
+  category: CardCategory,
+  categoryRu?: string | null,
+): string => (lang.startsWith('ru') && categoryRu ? categoryRu : t(`category.${category}`));
 
 const googleSearch = (name: string) => {
   const q   = encodeURIComponent(`${name} football wiki`);
@@ -479,7 +489,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                             : 'block text-[11px] uppercase tracking-widest font-medium'}
                           style={softCategory ? undefined : { color: catColor }}
                         >
-                          {entry.category_ru ?? CATEGORY_LABEL_RU[entry.category] ?? entry.category}
+                          {localizedCategory(t, i18n.language, entry.category, entry.category_ru)}
                         </span>
                       )}
                       <button
@@ -494,6 +504,19 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                           {meta}
                         </p>
                       )}
+                      {/* Short blurb for non-player cards (terms, positions,
+                          referees…): the interface language, then en, then ru. */}
+                      {(() => {
+                        const d = entry.descriptions;
+                        const blurb = d
+                          ? (d[i18n.language.slice(0, 2)] ?? d.en ?? d.ru)
+                          : null;
+                        return blurb ? (
+                          <p className="text-brand-muted text-xs leading-snug mt-0.5">
+                            {blurb}
+                          </p>
+                        ) : null;
+                      })()}
                       {/* Titles first, in gold — the headline fact. Wraps (no clip). */}
                       {titles.length > 0 && (
                         <p className="text-[#FFD24A] text-xs font-medium leading-snug mt-0.5">
@@ -601,7 +624,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   // ── Game screen ─────────────────────────────────────────────────
   const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? '#7A8499') : '#7A8499';
   const catLabel = currentCard
-    ? (currentCard.category_ru ?? CATEGORY_LABEL_RU[currentCard.category] ?? currentCard.category)
+    ? localizedCategory(t, i18n.language, currentCard.category, currentCard.category_ru)
     : '';
   // Translation -> name_en -> name, per the interface language (same rule
   // as the summary history).

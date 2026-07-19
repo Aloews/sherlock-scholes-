@@ -231,5 +231,24 @@
     "height": "estatura {{cm}} cm",
     "clubs_one": "{{count}} club",
     "clubs_other": "{{count}} clubes"
+  },
+  "category": {
+    "player": "Jugadores",
+    "club": "Clubes",
+    "term": "Términos",
+    "referee": "Árbitros",
+    "coach": "Entrenadores",
+    "stadium": "Estadios",
+    "club_nickname": "Apodos",
+    "commentator": "Comentaristas",
+    "position": "Posiciones",
+    "woman": "Mujeres en el fútbol"
+  },
+  "errors": {
+    "auth": "Error de autorización. Recarga la página.",
+    "room_not_found": "Sala no encontrada o la partida ya empezó",
+    "join_failed": "No se pudo entrar en la sala",
+    "create_failed": "No se pudo crear la sala",
+    "start_failed": "No se pudo iniciar la partida"
   }
 }

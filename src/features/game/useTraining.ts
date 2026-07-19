@@ -38,6 +38,7 @@ export interface HistoryEntry {
   legend_career?: LegendCareer | null;  // legends: clubs with years (no minutes)
   career_stats?: CareerStat[] | null;   // veterans: clubs with apps+goals (Wikipedia)
   facts?: CardFacts | null;             // structural facts -> bright-fact line
+  descriptions?: Record<string, string> | null; // non-player blurb under the name
   tier?: string | null;                 // rarity tier -> coloured avatar ring
   card_translations?: CardTranslation[] | null; // es/pt/fr/... names (cardDisplayName)
   status: 'guessed' | 'skipped';
@@ -152,7 +153,7 @@ export function useTraining(
     trackEvent(status === 'guessed' ? 'card_guessed' : 'card_skipped', {
       category: card.category, tier: card.tier ?? 'none',
     });
-    setHistory((prev) => [...prev, { id: card.id, name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, career_stats: card.career_stats, facts: card.facts, tier: card.tier, card_translations: card.card_translations, status }]);
+    setHistory((prev) => [...prev, { id: card.id, name: card.name, name_en: card.name_en, photo_url: card.photo_url, category: card.category, category_ru: card.category_ru, country: card.country, position_ru: card.position_ru, top_club: card.top_club, top_minutes: card.top_minutes, clubs_minutes: card.clubs_minutes, legend_career: card.legend_career, career_stats: card.career_stats, facts: card.facts, descriptions: card.descriptions, tier: card.tier, card_translations: card.card_translations, status }]);
   }, [cards, index]);
 
   // One card transition at a time. While the 0.18s card animation runs we

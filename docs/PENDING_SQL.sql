@@ -16,6 +16,7 @@
 --   2026-07-18  REVOKE TRUNCATE у anon + онбординг (games_played, p_difficulty) [ПРИМЕНЕНО]
 --   2026-07-18  Переводы (RLS-политика card_translations) + search_path + индексы [ПРИМЕНЕНО]
 --   2026-07-18  Онбординг строже: wc2026 убран из исключений сложности [ПРИМЕНЕНО]
+--   2026-07-19  Легенды/ballon_dor бэкфилл + колонка descriptions [ОЖИДАЕТ]
 -- ============================================================================
 
 
@@ -826,4 +827,69 @@ notify pgrst, 'reload schema';
 -- самых узнаваемых игроков + легенды/эпики.
 -- Полный текст функции см. в предыдущем блоке — здесь меняется только
 -- difficulty-условие: строка "or tags && array['wc2026']" УДАЛЕНА.
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-19 — Pro-чип «Легенды» пуст + колонка описаний  [ОЖИДАЕТ ПРОД]
+--
+-- 1) [БАГ] Чип «Легенды» у Pro-игрока серый и некликабельный: тег 'legend'
+--    ни разу не бэкфиллился (0 карточек) — чип с нулём карт гасится в UI.
+--    Бэкфилл из docs/cards_legend_backfill.sql, рекомендованная ветка
+--    tier IN ('legendary','epic') (~197 элитных игроков). Идемпотентно.
+-- 2) Тот же бэкфилл для 'ballon_dor' из титулов (facts/legend_career) —
+--    чтобы и этот Pro-чип не оказался пустым.
+-- 3) Колонка cards.descriptions (jsonb) — короткие описания-определения для
+--    неигровых карточек ({"ru": "...", "en": "...", ...}); фронт уже умеет
+--    их показывать в истории быстрой игры. Контент зальётся отдельным
+--    UPDATE-блоком после наката колонки.
+-- ============================================================================
+
+update cards c
+set tags = (
+  select array(
+    select distinct e
+    from unnest(coalesce(c.tags, '{}'::text[]) || array['legend']) e
+  )
+)
+where c.category = 'player'
+  and c.active = true
+  and not ('legend' = any(coalesce(c.tags, '{}'::text[])))
+  and c.tier in ('legendary', 'epic');
+
+update cards c
+set tags = (
+  select array(
+    select distinct e
+    from unnest(coalesce(c.tags, '{}'::text[]) || array['ballon_dor']) e
+  )
+)
+where c.category = 'player'
+  and c.active = true
+  and not ('ballon_dor' = any(coalesce(c.tags, '{}'::text[])))
+  and (
+    exists (
+      select 1 from jsonb_array_elements_text(
+        case when jsonb_typeof(c.facts->'titles') = 'array'
+             then c.facts->'titles' else '[]'::jsonb end) t
+      where t ilike '%золотой мяч%' or t ilike '%ballon%'
+    )
+    or exists (
+      select 1 from jsonb_array_elements_text(
+        case when jsonb_typeof(c.legend_career->'titles') = 'array'
+             then c.legend_career->'titles' else '[]'::jsonb end) t
+      where t ilike '%золотой мяч%' or t ilike '%ballon%'
+    )
+  );
+
+alter table cards add column if not exists descriptions jsonb;
+
+notify pgrst, 'reload schema';
+
+-- VERIFY:
+--   select
+--     (select count(*) from cards where active and 'legend'     = any(tags)) as legends,     -- ~197
+--     (select count(*) from cards where active and 'ballon_dor' = any(tags)) as ballon_dor,  -- >0
+--     (select count(*) from information_schema.columns
+--        where table_name='cards' and column_name='descriptions')            as descr_col;   -- 1
 -- ============================================================================

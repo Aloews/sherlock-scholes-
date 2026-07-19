@@ -22,8 +22,6 @@ import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import {
   ALL_CONTINENT_FILTERS,
-  CATEGORY_LABEL_RU,
-  CATEGORY_LABEL_EN,
   STAR_TAG,
   type CardCategory,
   type ContinentFilter,
@@ -76,7 +74,7 @@ export function HomeScreen() {
   const isPro = useProStore((s) => s.isPro);
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom, joinRoom } = useRoom();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
   useEffect(() => {
@@ -141,8 +139,7 @@ export function HomeScreen() {
     }
   };
 
-  const getCatLabel = (cat: CardCategory) =>
-    i18n.language === 'en' ? CATEGORY_LABEL_EN[cat] : CATEGORY_LABEL_RU[cat];
+  const getCatLabel = (cat: CardCategory) => t(`category.${cat}`);
 
   // Every chip group combines freely: tags narrow the PLAYER pool, continents
   // filter players too, non-player categories add their own cards on top (the

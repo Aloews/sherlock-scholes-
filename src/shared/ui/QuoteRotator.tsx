@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { QUOTES } from '@/shared/data/quotes';
@@ -19,6 +20,7 @@ interface QuoteRotatorProps {
 }
 
 export function QuoteRotator({ className }: QuoteRotatorProps) {
+  const { i18n } = useTranslation();
   const [index, setIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
 
   useEffect(() => {
@@ -27,6 +29,10 @@ export function QuoteRotator({ className }: QuoteRotatorProps) {
     }, ROTATE_MS);
     return () => clearInterval(id);
   }, []);
+
+  // The quotes are Russian commentator catchphrases — untranslatable cultural
+  // content. Other interface languages simply don't show the rotator.
+  if (!i18n.language.startsWith('ru')) return null;
 
   const current = QUOTES[index];
 

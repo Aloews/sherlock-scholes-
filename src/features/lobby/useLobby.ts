@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/shared/lib/supabase';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -11,6 +12,7 @@ import type { RoomPlayer, Room } from '@/shared/types/database';
 
 export function useLobby() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { player } = useAuthStore();
   const {
     room, teams, roomPlayers,
@@ -89,11 +91,12 @@ export function useLobby() {
       await roomService.startGame(room, freshTeams);
       // Room status update triggers realtime → navigate to /game
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start game');
+      console.error('[lobby] start failed:', err);
+      setError(t('errors.start_failed'));
     } finally {
       setLoading(false);
     }
-  }, [room, player, setLoading, setError, setTeams]);
+  }, [room, player, setLoading, setError, setTeams, t]);
 
   // ─── Derived state ─────────────────────────────────────────
 
