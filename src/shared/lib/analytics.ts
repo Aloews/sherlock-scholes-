@@ -1,16 +1,18 @@
-// Telegram Mini App analytics (tganalytics.xyz / @telegram-apps/analytics).
+// Analytics — Vercel Web Analytics (primary) + optional Telegram Mini App
+// analytics (tganalytics.xyz).
 //
-// Anonymous, GDPR-friendly, built for Mini Apps (plain GA behaves poorly in
-// the Telegram WebView). Launch/visibility events are captured automatically
-// by the SDK after init(); we add a few custom events for key flows.
+// Vercel: the script loads from OUR domain (/_vercel/insights), so it works
+// inside the Telegram WebView and needs no tokens — just enable Web Analytics
+// once in the Vercel dashboard (Project → Analytics → Enable). Page views are
+// automatic; trackEvent() forwards the custom game events.
 //
-// Graceful by design: with no VITE_TGA_TOKEN / VITE_TGA_APP_NAME the SDK is
-// never loaded and every call is a silent no-op, so the build runs fine
-// without a token. Get the token from @DataChief_bot in Telegram and put it
-// in .env (VITE_TGA_TOKEN, VITE_TGA_APP_NAME).
+// Telegram analytics stays as an optional secondary: with no VITE_TGA_TOKEN /
+// VITE_TGA_APP_NAME its SDK is never loaded and every call is a silent no-op.
 //
 // Privacy: we pass ONLY anonymous, aggregate parameters (scores, mode, lang).
 // Never pass Telegram user id / name / username.
+
+import { inject, track } from '@vercel/analytics';
 
 interface TelegramAnalytics {
   init(opts: { token: string; appName: string }): void | Promise<void>;
@@ -29,13 +31,19 @@ declare global {
 
 const SDK_URL = 'https://tganalytics.xyz/index.js';
 
-/** Load and init the SDK before the app renders. No token -> disabled. */
+/** Init analytics before the app renders. Vercel always; Telegram only with a token. */
 export function initAnalytics(): void {
+  try {
+    inject();
+  } catch {
+    /* analytics must never break the boot */
+  }
+
   const token = import.meta.env.VITE_TGA_TOKEN as string | undefined;
   const appName = import.meta.env.VITE_TGA_APP_NAME as string | undefined;
   if (!token || !appName) {
     if (import.meta.env.DEV) {
-      console.info('[analytics] disabled — set VITE_TGA_TOKEN and VITE_TGA_APP_NAME');
+      console.info('[analytics] telegram analytics off — set VITE_TGA_TOKEN and VITE_TGA_APP_NAME');
     }
     return;
   }
@@ -54,6 +62,11 @@ export function initAnalytics(): void {
 
 /** Fire a custom analytics event. Anonymous params only; never throws. */
 export function trackEvent(event: string, params?: Record<string, unknown>): void {
+  try {
+    track(event, params as Record<string, string | number | boolean | null> | undefined);
+  } catch {
+    /* analytics must never break the UX */
+  }
   try {
     window.telegramAnalytics?.track?.(event, params);
   } catch {
