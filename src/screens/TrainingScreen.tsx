@@ -4,12 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   IconArrowsExchange,
-  IconBallFootball,
-  IconBuildingStadium,
-  IconFlag,
   IconFlag3,
   IconReload,
-  IconShield,
   IconUser,
   IconX,
 } from '@tabler/icons-react';
@@ -26,7 +22,7 @@ import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
-import { CATEGORY_LABEL_RU } from '@/shared/types/database';
+import { CATEGORY_LABEL_RU, CATEGORY_EMOJI } from '@/shared/types/database';
 
 interface TrainingState {
   categories: CardCategory[] | null;
@@ -76,18 +72,6 @@ const googleSearch = (name: string) => {
   else window.open(url, '_blank');
 };
 
-// Placeholder icon per category when a history entry has no photo: a user
-// silhouette makes no sense for a term or a stadium. People keep IconUser.
-const PLACEHOLDER_ICON: Partial<Record<CardCategory, typeof IconUser>> = {
-  term:          IconBallFootball,
-  position:      IconBallFootball,
-  club:          IconShield,
-  club_nickname: IconShield,
-  stadium:       IconBuildingStadium,
-  // No IconWhistle in tabler — IconFlag is the referee icon used in-game too.
-  referee:       IconFlag,
-};
-
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
@@ -104,14 +88,18 @@ function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
-    // No photo (or it failed to load) — a silhouette, not tappable.
-    const Placeholder = PLACEHOLDER_ICON[category] ?? IconUser;
+    // No photo (or it failed to load). People keep the neutral silhouette;
+    // everything else shows the category emoji — a grey generic icon made
+    // terms/positions/referees look broken next to real player photos.
+    const isPerson = category === 'player' || category === 'woman';
     return (
       <span
         className="w-8 h-8 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center"
         style={ring}
       >
-        <Placeholder size={16} className="text-brand-muted" />
+        {isPerson
+          ? <IconUser size={16} className="text-brand-muted" />
+          : <span className="text-base leading-none" aria-hidden>{CATEGORY_EMOJI[category]}</span>}
       </span>
     );
   }
