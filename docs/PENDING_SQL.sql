@@ -19,6 +19,7 @@
 --   2026-07-19  Легенды/ballon_dor бэкфилл + колонка descriptions [ОЖИДАЕТ]
 --   2026-07-19  Культурная локализация: буст стран, langs, 21 комментатор [ОЖИДАЕТ]
 --   2026-07-19  Новые категории: дерби (17) / трофеи (15) / эпохи (13) [ОЖИДАЕТ]
+--   2026-07-19  pageviews_i18n + точный буст + 30 локальных клубов MX/BR/JP [ОЖИДАЕТ]
 -- ============================================================================
 
 
@@ -1138,4 +1139,174 @@ NOTIFY pgrst, 'reload schema';
 --   select category, count(*) from cards
 --   where category in ('derby','trophy','era') group by category;
 --   -- derby 17, trophy 15, era 13
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-19 — «слава по языкам» + локальные клубы MX/BR/JP   [ОЖИДАЕТ ПРОД]
+--
+-- 1) Колонка cards.pageviews_i18n (jsonb: {"es": 41200, "pt": 380, ...}) —
+--    просмотры статьи игрока в КАЖДОЙ языковой вики за последние 12 месяцев.
+--    Заполняется скриптом docs/cards_pageviews_i18n.py (см. его шапку).
+-- 2) pick_random_cards: онбординг-порог теперь проходится и по славе на
+--    ЯЗЫКЕ ИГРОКА ИНТЕРФЕЙСА (точный сигнал), буст по стране остаётся
+--    фоллбеком, пока pageviews_i18n не собраны.
+-- 3) Фильтр langs распространён с комментаторов на ВЕСЬ контент: карточка с
+--    непустым langs видна только этим языкам (langs IS NULL = глобальная).
+-- 4) КОНТЕНТ: 30 локальных клубов лиг Мексики (es), Бразилии (pt), Японии
+--    (ja) с langs-метками + родные написания японских клубов. Существующие
+--    глобально известные клубы не трогаются (WHERE NOT EXISTS).
+-- ============================================================================
+
+alter table cards add column if not exists pageviews_i18n jsonb;
+
+create or replace function pick_random_cards(
+  p_count           int,
+  p_categories      text[]  default null,
+  p_min_pageviews   bigint  default null,
+  p_continents      text[]  default null,
+  p_tags            text[]  default null,
+  p_init_data       text    default null,  -- принят для совместимости; не используется
+  p_difficulty      int     default null,
+  p_boost_countries text[]  default null,
+  p_lang            text    default null
+)
+returns setof cards
+language sql
+stable
+set search_path = public
+as $$
+  select *
+  from cards
+  where active = true
+    and (
+      p_categories is null
+      or cardinality(p_categories) = 0
+      or category = any(p_categories)
+    )
+    and (
+      p_min_pageviews is null
+      or pageviews is null
+      or pageviews > p_min_pageviews
+    )
+    and (
+      p_continents is null
+      or cardinality(p_continents) = 0
+      or category <> 'player'
+      or continent = any(p_continents)
+      or (continent is null and 'other' = any(p_continents))
+    )
+    and (
+      p_tags is null
+      or cardinality(p_tags) = 0
+      or tags && p_tags
+    )
+    -- Локальный контент: langs задан -> карточка видна только этим языкам.
+    -- Без p_lang (мультиплеер, старые клиенты) поведение прежнее.
+    and (
+      langs is null
+      or p_lang is null
+      or p_lang = any(langs)
+    )
+    -- Онбординг-порог. Порядок сигналов:
+    --   1. легенды/эпики — всегда;
+    --   2. ТОЧНО: слава на языке интерфейса (pageviews_i18n);
+    --   3. фоллбек: русская вики (pageviews);
+    --   4. фоллбек: «местный герой» по стране со скидкой 4x.
+    and (
+      p_difficulty is null
+      or p_difficulty <= 0
+      or tier in ('legendary', 'epic')
+      or (
+        p_lang is not null
+        and (pageviews_i18n ->> p_lang) is not null
+        and (pageviews_i18n ->> p_lang)::bigint >= p_difficulty
+      )
+      or pageviews >= p_difficulty
+      or (
+        p_boost_countries is not null
+        and category = 'player'
+        and country = any(p_boost_countries)
+        and coalesce(pageviews, 0) >= greatest(p_difficulty / 4, 1)
+      )
+    )
+  order by random()
+  limit p_count;
+$$;
+
+-- ── Клубы Лиги MX (10, langs {es}) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active, country, langs)
+SELECT v.name, v.name_en, 'club', 'клубы', v.fw, true, 'MX', ARRAY['es']
+FROM (VALUES
+  ('Клуб Америка',    'Club América',   ARRAY['Клуб Америка','Америка']),
+  ('Гвадалахара',     'Chivas Guadalajara', ARRAY['Гвадалахара','Чивас']),
+  ('Крус Асуль',      'Cruz Azul',      ARRAY['Крус Асуль']),
+  ('Пумас УНАМ',      'Pumas UNAM',     ARRAY['Пумас УНАМ','Пумас']),
+  ('Монтеррей',       'CF Monterrey',   ARRAY['Монтеррей']),
+  ('Тигрес УАНЛ',     'Tigres UANL',    ARRAY['Тигрес УАНЛ','Тигрес']),
+  ('Толука',          'Deportivo Toluca', ARRAY['Толука']),
+  ('Сантос Лагуна',   'Santos Laguna',  ARRAY['Сантос Лагуна']),
+  ('Леон',            'Club León',      ARRAY['Леон']),
+  ('Пачука',          'CF Pachuca',     ARRAY['Пачука'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- ── Клубы Бразилии (12, langs {pt}) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active, country, langs)
+SELECT v.name, v.name_en, 'club', 'клубы', v.fw, true, 'BR', ARRAY['pt']
+FROM (VALUES
+  ('Фламенго',          'Flamengo',        ARRAY['Фламенго']),
+  ('Палмейрас',         'Palmeiras',       ARRAY['Палмейрас']),
+  ('Коринтианс',        'Corinthians',     ARRAY['Коринтианс']),
+  ('Сан-Паулу',         'São Paulo FC',    ARRAY['Сан-Паулу']),
+  ('Сантос',            'Santos FC',       ARRAY['Сантос']),
+  ('Гремио',            'Grêmio',          ARRAY['Гремио']),
+  ('Интернасьонал',     'Internacional',   ARRAY['Интернасьонал']),
+  ('Флуминенсе',        'Fluminense',      ARRAY['Флуминенсе']),
+  ('Ботафого',          'Botafogo',        ARRAY['Ботафого']),
+  ('Васко да Гама',     'Vasco da Gama',   ARRAY['Васко да Гама','Васко']),
+  ('Атлетико Минейро',  'Atlético Mineiro',ARRAY['Атлетико Минейро','Минейро']),
+  ('Крузейро',          'Cruzeiro',        ARRAY['Крузейро'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- ── Клубы Джей-лиги (8, langs {ja}) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active, country, langs)
+SELECT v.name, v.name_en, 'club', 'клубы', v.fw, true, 'JP', ARRAY['ja']
+FROM (VALUES
+  ('Кавасаки Фронтале',     'Kawasaki Frontale',    ARRAY['Кавасаки Фронтале','Кавасаки']),
+  ('Урава Ред Даймондс',    'Urawa Red Diamonds',   ARRAY['Урава Ред Даймондс','Урава']),
+  ('Иокогама Ф. Маринос',   'Yokohama F. Marinos',  ARRAY['Иокогама Ф. Маринос','Иокогама']),
+  ('Виссел Кобе',           'Vissel Kobe',          ARRAY['Виссел Кобе','Кобе']),
+  ('Гамба Осака',           'Gamba Osaka',          ARRAY['Гамба Осака','Гамба']),
+  ('Сересо Осака',          'Cerezo Osaka',         ARRAY['Сересо Осака','Сересо']),
+  ('Касима Антлерс',        'Kashima Antlers',      ARRAY['Касима Антлерс','Касима']),
+  ('ФК Токио',              'FC Tokyo',             ARRAY['ФК Токио','Токио'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- Родные написания японских клубов
+INSERT INTO card_translations (card_id, lang, name, source)
+SELECT c.id, 'ja', v.native, 'label'
+FROM (VALUES
+  ('Кавасаки Фронтале',   '川崎フロンターレ'),
+  ('Урава Ред Даймондс',  '浦和レッズ'),
+  ('Иокогама Ф. Маринос', '横浜F・マリノス'),
+  ('Виссел Кобе',         'ヴィッセル神戸'),
+  ('Гамба Осака',         'ガンバ大阪'),
+  ('Сересо Осака',        'セレッソ大阪'),
+  ('Касима Антлерс',      '鹿島アントラーズ'),
+  ('ФК Токио',            'FC東京')
+) AS v(card_name, native)
+JOIN cards c ON lower(c.name) = lower(v.card_name)
+ON CONFLICT (card_id, lang) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY:
+--   select
+--     (select count(*) from information_schema.columns
+--        where table_name='cards' and column_name='pageviews_i18n')          as i18n_col,   -- 1
+--     (select count(*) from cards where langs && array['es','pt','ja']
+--        and category='club')                                                as local_clubs; -- ~30
 -- ============================================================================
