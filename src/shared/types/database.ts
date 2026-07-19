@@ -10,11 +10,15 @@ export type CardCategory =
   | 'club_nickname'
   | 'commentator'
   | 'position'
-  | 'woman';
+  | 'woman'
+  | 'derby'
+  | 'trophy'
+  | 'era';
 
 export const ALL_CATEGORIES: CardCategory[] = [
   'player', 'club', 'term', 'referee', 'coach',
   'stadium', 'club_nickname', 'commentator', 'position', 'woman',
+  'derby', 'trophy', 'era',
 ];
 
 export const CATEGORY_LABEL_EN: Record<CardCategory, string> = {
@@ -28,6 +32,9 @@ export const CATEGORY_LABEL_EN: Record<CardCategory, string> = {
   commentator:   'Commentators',
   position:      'Positions',
   woman:         'Women in Football',
+  derby:         'Derbies',
+  trophy:        'Trophies',
+  era:           'Eras',
 };
 
 export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
@@ -41,6 +48,9 @@ export const CATEGORY_LABEL_RU: Record<CardCategory, string> = {
   commentator:   'Комментаторы',
   position:      'Позиции',
   woman:         'Женщины',
+  derby:         'Дерби',
+  trophy:        'Трофеи',
+  era:           'Эпохи',
 };
 
 // ─── Player continents ───────────────────────────────────────
@@ -90,6 +100,9 @@ export const CATEGORY_EMOJI: Record<CardCategory, string> = {
   commentator:   '🎙️',
   position:      '📍',
   woman:         '⚽',
+  derby:         '⚔️',
+  trophy:        '🏆',
+  era:           '🕰️',
 };
 
 // ─── Entities ────────────────────────────────────────────────

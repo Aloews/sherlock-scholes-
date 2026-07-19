@@ -9,6 +9,9 @@ import {
   IconFlag,
   IconClipboard,
   IconMicrophone,
+  IconSwords,
+  IconTrophy,
+  IconHourglass,
 } from '@tabler/icons-react';
 import type { Card, CardCategory } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
@@ -31,6 +34,9 @@ const CATEGORY_COLOR: Record<CardCategory, string> = {
   coach:         '#FFD24A',
   commentator:   '#7A8499',
   woman:         '#FF6BA8',
+  derby:         '#F43F5E',
+  trophy:        '#FFD24A',
+  era:           '#22D3EE',
 };
 
 function CategoryIcon({ category, color }: { category: CardCategory; color: string }) {
@@ -42,6 +48,9 @@ function CategoryIcon({ category, color }: { category: CardCategory; color: stri
   if (category === 'referee')                              return <IconFlag         {...props} />;
   if (category === 'coach')                                return <IconClipboard    {...props} />;
   if (category === 'commentator')                          return <IconMicrophone   {...props} />;
+  if (category === 'derby')                                return <IconSwords       {...props} />;
+  if (category === 'trophy')                               return <IconTrophy       {...props} />;
+  if (category === 'era')                                  return <IconHourglass    {...props} />;
   return <IconUser {...props} />;  // player, woman, default
 }
 

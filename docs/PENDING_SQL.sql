@@ -18,6 +18,7 @@
 --   2026-07-18  Онбординг строже: wc2026 убран из исключений сложности [ПРИМЕНЕНО]
 --   2026-07-19  Легенды/ballon_dor бэкфилл + колонка descriptions [ОЖИДАЕТ]
 --   2026-07-19  Культурная локализация: буст стран, langs, 21 комментатор [ОЖИДАЕТ]
+--   2026-07-19  Новые категории: дерби (17) / трофеи (15) / эпохи (13) [ОЖИДАЕТ]
 -- ============================================================================
 
 
@@ -1053,4 +1054,88 @@ NOTIFY pgrst, 'reload schema';
 --        null, null, null, null, null, null, 'es'))                                   as es_comms,     -- ~5
 --     (select count(*) from pick_random_cards(1000, null, null, null, null,
 --        null, 25000, array['MX'], null))                                             as boosted_draw; -- > обычного
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-19 — новые категории: дерби / трофеи / эпохи      [ОЖИДАЕТ ПРОД]
+--
+-- Модернизация категорий (роадмап): 45 новых карточек трёх типов. Ограничения
+-- CHECK на cards.category нет — новые значения не требуют ALTER. Фронт уже
+-- знает категории (чипсы, цвета, иконки, эмодзи, локали на 9 языках).
+-- category_ru идёт в подпись на карточке. Идемпотентно (WHERE NOT EXISTS).
+-- ============================================================================
+
+-- ── Дерби (17) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT v.name, v.name_en, 'derby', 'дерби', v.fw, true
+FROM (VALUES
+  ('Эль Класико',             'El Clásico',                ARRAY['Эль Класико','Класико']),
+  ('Суперкласико',            'Superclásico',              ARRAY['Суперкласико','Класико']),
+  ('Мадридское дерби',        'Madrid Derby',              ARRAY['Мадридское дерби','Мадрид','дерби']),
+  ('Дерби делла Мадоннина',   'Derby della Madonnina',     ARRAY['Дерби делла Мадоннина','Мадоннина','дерби']),
+  ('Дерби д''Италия',         'Derby d''Italia',           ARRAY['Дерби д''Италия','Италия','дерби']),
+  ('Римское дерби',           'Derby della Capitale',      ARRAY['Римское дерби','Рим','дерби']),
+  ('Северолондонское дерби',  'North London Derby',        ARRAY['Северолондонское дерби','Лондон','дерби']),
+  ('Мерсисайдское дерби',     'Merseyside Derby',          ARRAY['Мерсисайдское дерби','Мерсисайд','дерби']),
+  ('Манчестерское дерби',     'Manchester Derby',          ARRAY['Манчестерское дерби','Манчестер','дерби']),
+  ('Северо-западное дерби',   'North West Derby',          ARRAY['Северо-западное дерби','дерби']),
+  ('Старая фирма',            'Old Firm',                  ARRAY['Старая фирма','фирма']),
+  ('Рурское дерби',           'Revierderby',               ARRAY['Рурское дерби','Рур','дерби']),
+  ('Дер Классикер',           'Der Klassiker',             ARRAY['Дер Классикер','Классикер']),
+  ('Московское дерби',        'Moscow Derby',              ARRAY['Московское дерби','Москва','дерби']),
+  ('Стамбульское дерби',      'Intercontinental Derby',    ARRAY['Стамбульское дерби','Стамбул','дерби']),
+  ('Фла-Флу',                 'Fla-Flu',                   ARRAY['Фла-Флу']),
+  ('Дерби вечных врагов',     'Derby of the Eternal Enemies', ARRAY['Дерби вечных врагов','дерби'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- ── Трофеи (15) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT v.name, v.name_en, 'trophy', 'трофеи', v.fw, true
+FROM (VALUES
+  ('Лига чемпионов УЕФА',       'UEFA Champions League',   ARRAY['Лига чемпионов УЕФА','Лига чемпионов','ЛЧ']),
+  ('Лига Европы УЕФА',          'UEFA Europa League',      ARRAY['Лига Европы УЕФА','Лига Европы','ЛЕ']),
+  ('Кубок мира ФИФА',           'FIFA World Cup Trophy',   ARRAY['Кубок мира ФИФА','Кубок мира','ЧМ']),
+  ('Золотой мяч',               'Ballon d''Or',            ARRAY['Золотой мяч','мяч']),
+  ('Золотая бутса',             'European Golden Shoe',    ARRAY['Золотая бутса','бутса']),
+  ('Золотая перчатка',          'Golden Glove',            ARRAY['Золотая перчатка','перчатка']),
+  ('Кубок Англии',              'FA Cup',                  ARRAY['Кубок Англии','кубок']),
+  ('Копа Америка',              'Copa América',            ARRAY['Копа Америка','Америка']),
+  ('Кубок африканских наций',   'Africa Cup of Nations',   ARRAY['Кубок африканских наций','КАН']),
+  ('Клубный чемпионат мира',    'FIFA Club World Cup',     ARRAY['Клубный чемпионат мира','КЧМ']),
+  ('Суперкубок УЕФА',           'UEFA Super Cup',          ARRAY['Суперкубок УЕФА','Суперкубок']),
+  ('Кубок Либертадорес',        'Copa Libertadores',       ARRAY['Кубок Либертадорес','Либертадорес']),
+  ('Трофей Пичичи',             'Pichichi Trophy',         ARRAY['Трофей Пичичи','Пичичи']),
+  ('Скудетто',                  'Scudetto',                ARRAY['Скудетто']),
+  ('Требл',                     'Treble',                  ARRAY['Требл'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- ── Эпохи (13) ──
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active)
+SELECT v.name, v.name_en, 'era', 'эпохи', v.fw, true
+FROM (VALUES
+  ('Галактикос',                'Galácticos',              ARRAY['Галактикос']),
+  ('Барселона Гвардиолы',       'Guardiola''s Barcelona',  ARRAY['Барселона Гвардиолы','Барселона','Гвардиола']),
+  ('МЮ Фергюсона',              'Ferguson''s Man United',  ARRAY['МЮ Фергюсона','Фергюсон','МЮ']),
+  ('Непобедимые',               'The Invincibles',         ARRAY['Непобедимые']),
+  ('Милан Сакки',               'Sacchi''s Milan',         ARRAY['Милан Сакки','Милан','Сакки']),
+  ('Великий Аякс',              'Total Football Ajax',     ARRAY['Великий Аякс','Аякс']),
+  ('Золотая команда Венгрии',   'Mighty Magyars',          ARRAY['Золотая команда Венгрии','Венгрия']),
+  ('Бразилия-1970',             'Brazil 1970',             ARRAY['Бразилия-1970','Бразилия']),
+  ('Испания 2008–2012',         'Spain 2008–2012',         ARRAY['Испания 2008–2012','Испания']),
+  ('Челси Моуринью',            'Mourinho''s Chelsea',     ARRAY['Челси Моуринью','Челси','Моуринью']),
+  ('Ливерпуль Клоппа',          'Klopp''s Liverpool',      ARRAY['Ливерпуль Клоппа','Ливерпуль','Клопп']),
+  ('Чудо Лестера',              'Leicester Miracle',       ARRAY['Чудо Лестера','Лестер']),
+  ('Золотая сборная Франции',   'France 1998–2000',        ARRAY['Золотая сборная Франции','Франция'])
+) AS v(name, name_en, fw)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY:
+--   select category, count(*) from cards
+--   where category in ('derby','trophy','era') group by category;
+--   -- derby 17, trophy 15, era 13
 -- ============================================================================

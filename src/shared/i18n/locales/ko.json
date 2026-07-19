@@ -234,7 +234,10 @@
     "club_nickname": "별명",
     "commentator": "해설자",
     "position": "포지션",
-    "woman": "여자 축구"
+    "woman": "여자 축구",
+    "derby": "더비",
+    "trophy": "트로피",
+    "era": "시대"
   },
   "errors": {
     "auth": "인증 오류입니다. 페이지를 새로고침하세요.",

@@ -64,6 +64,9 @@ const CATEGORY_COLOR: Record<CardCategory, string> = {
   coach:         '#FFD24A',
   commentator:   '#7A8499',
   woman:         '#FF6BA8',
+  derby:         '#F43F5E',
+  trophy:        '#FFD24A',
+  era:           '#22D3EE',
 };
 
 // Category label in the interface language. The DB's Russian category_ru is

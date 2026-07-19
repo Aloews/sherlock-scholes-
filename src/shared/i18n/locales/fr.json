@@ -242,7 +242,10 @@
     "club_nickname": "Surnoms",
     "commentator": "Commentateurs",
     "position": "Postes",
-    "woman": "Femmes du football"
+    "woman": "Femmes du football",
+    "derby": "Derbys",
+    "trophy": "Trophées",
+    "era": "Époques"
   },
   "errors": {
     "auth": "Erreur d'autorisation. Rechargez la page.",

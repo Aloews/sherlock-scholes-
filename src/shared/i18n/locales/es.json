@@ -242,7 +242,10 @@
     "club_nickname": "Apodos",
     "commentator": "Comentaristas",
     "position": "Posiciones",
-    "woman": "Mujeres en el fútbol"
+    "woman": "Mujeres en el fútbol",
+    "derby": "Derbis",
+    "trophy": "Trofeos",
+    "era": "Épocas"
   },
   "errors": {
     "auth": "Error de autorización. Recarga la página.",

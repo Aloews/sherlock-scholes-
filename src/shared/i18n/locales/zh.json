@@ -234,7 +234,10 @@
     "club_nickname": "绰号",
     "commentator": "解说员",
     "position": "位置",
-    "woman": "女足"
+    "woman": "女足",
+    "derby": "德比",
+    "trophy": "奖杯",
+    "era": "时代"
   },
   "errors": {
     "auth": "授权错误，请刷新页面。",

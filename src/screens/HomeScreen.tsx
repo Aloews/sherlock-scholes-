@@ -36,7 +36,7 @@ type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_trai
 // Pro-only tags (legend, ballon_dor) are locked for free users.
 const NON_PLAYER_CATEGORIES: CardCategory[] = [
   'club', 'club_nickname', 'stadium', 'coach', 'referee', 'commentator',
-  'term', 'position', 'woman',
+  'term', 'position', 'woman', 'derby', 'trophy', 'era',
 ];
 
 type ChipKind = 'tag' | 'continent' | 'category';

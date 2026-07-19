@@ -234,7 +234,10 @@
     "club_nickname": "愛称",
     "commentator": "実況者",
     "position": "ポジション",
-    "woman": "女子サッカー"
+    "woman": "女子サッカー",
+    "derby": "ダービー",
+    "trophy": "トロフィー",
+    "era": "時代"
   },
   "errors": {
     "auth": "認証エラー。ページを再読み込みしてください。",

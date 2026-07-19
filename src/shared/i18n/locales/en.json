@@ -242,7 +242,10 @@
     "club_nickname": "Club Nicknames",
     "commentator": "Commentators",
     "position": "Positions",
-    "woman": "Women in Football"
+    "woman": "Women in Football",
+    "derby": "Derbies",
+    "trophy": "Trophies",
+    "era": "Eras"
   },
   "errors": {
     "auth": "Authorization error. Reload the page.",
