@@ -6,6 +6,7 @@ import { Router } from '@/app/Router';
 import { useAuth } from '@/features/auth/useAuth';
 import { useProStatus } from '@/features/pro/useProStatus';
 import { useGameStore } from '@/shared/store/gameStore';
+import { wakeSupabase } from '@/features/game/cardRandomizer';
 
 const SPLASH_TIMEOUT_MS = 9_000;
 
@@ -71,6 +72,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // Free-tier Supabase sleeps when idle and the FIRST query of a cold session
+  // can take 5–30s — players saw the first round load with no cards. Ping the
+  // DB the moment the app boots (before auth even settles), so it is warming
+  // up while the player is still on the splash/home/lobby.
+  useEffect(() => { void wakeSupabase(); }, []);
+
   return (
     <BrowserRouter>
       <AuthGate>

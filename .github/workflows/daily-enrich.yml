@@ -50,6 +50,13 @@ jobs:
       - name: Run daily enrichment
         run: python docs/daily_enrich.py
 
+      # «Слава по языкам» (cards.pageviews_i18n): до 400 карточек за ночь —
+      # щадящий бюджет Wikimedia; уже заполненные пропускаются, так что вся
+      # колода игроков покрывается примерно за неделю и далее только новички.
+      - name: Collect per-language pageviews
+        if: always()
+        run: APPLY=1 python docs/cards_pageviews_i18n.py --limit 400
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.

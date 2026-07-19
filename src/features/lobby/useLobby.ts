@@ -5,6 +5,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
+import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { transition } from '@/features/game/stateMachine';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -19,6 +20,10 @@ export function useLobby() {
     setRoom, setTeams, setRoomPlayers, upsertRoomPlayer, removeRoomPlayer,
     setLoading, setError,
   } = useGameStore();
+
+  // The DB may fall asleep while the party assembles in the lobby; re-warm it
+  // here so "Start game" deals round 1 without the cold-start stall.
+  useEffect(() => { void wakeSupabase(); }, []);
 
   // ─── Realtime Subscriptions ────────────────────────────────
   useEffect(() => {

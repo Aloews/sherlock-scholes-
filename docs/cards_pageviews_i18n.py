@@ -49,10 +49,30 @@ LANGS = ["en", "es", "pt", "fr", "zh", "ja", "ko", "ar"]
 WD_API = "https://www.wikidata.org/w/api.php"
 PV_API = ("https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
           "{proj}/all-access/user/{title}/monthly/{start}/{end}")
-UA = {"User-Agent": "sherlock-scholes-i18n-pageviews/1.0 (game deck fame signal)"}
+# Контракт вежливости Wikimedia — как в football_scraper: контактный UA,
+# паузы между запросами, уважение Retry-After на 429/503.
+UA = {"User-Agent": ("sherlock-scholes-i18n-pageviews/1.1 "
+                     "(https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")}
+WD_BATCH_PAUSE = 1.2   # сек между wbgetentities-батчами (>=1s по политике)
+PV_PAUSE = 0.15        # сек между pageviews-запросами
 
 session = requests.Session()
 session.headers.update(UA)
+
+
+def get_with_retry(url, params=None, tries=5):
+    """GET с обработкой 429/503: спим Retry-After (или растущий бэкофф) и
+    повторяем. Прочие ошибки поднимаются как есть."""
+    for attempt in range(tries):
+        r = session.get(url, params=params, timeout=30)
+        if r.status_code not in (429, 503):
+            return r
+        wait = r.headers.get("Retry-After")
+        delay = min(float(wait), 120) if wait and wait.isdigit() else 5 * (attempt + 1)
+        print(f"  {r.status_code} от {url.split('/')[2]}, жду {delay:.0f}с…", flush=True)
+        time.sleep(delay)
+    r.raise_for_status()
+    return r
 
 
 def sb(path, method="GET", **kw):
@@ -78,12 +98,12 @@ def month_window():
 def sitelinks_batch(ru_titles):
     """ru-названия -> {ru_title: {lang: foreign_title}} через wbgetentities."""
     out = {}
-    r = session.get(WD_API, params={
+    r = get_with_retry(WD_API, params={
         "action": "wbgetentities", "format": "json",
         "sites": "ruwiki", "titles": "|".join(ru_titles),
         "props": "sitelinks", "sitefilter": "|".join(f"{l}wiki" for l in LANGS),
-        "redirects": "yes",
-    }, timeout=30)
+        "redirects": "yes", "maxlag": "5",
+    })
     r.raise_for_status()
     for ent in (r.json().get("entities") or {}).values():
         links = ent.get("sitelinks") or {}
@@ -104,7 +124,7 @@ def views_12m(lang, title, start, end):
     url = PV_API.format(proj=f"{lang}.wikipedia.org",
                         title=quote(title.replace(" ", "_"), safe=""),
                         start=start, end=end)
-    r = session.get(url, timeout=30)
+    r = get_with_retry(url)
     if r.status_code == 404:      # статьи нет / нет трафика — не ошибка
         return None
     r.raise_for_status()
@@ -146,7 +166,9 @@ def main():
             links = sitelinks_batch([c["name"] for c in chunk])
         except requests.RequestException as e:
             print(f"  wikidata батч упал ({e}), пропуск 50 карточек")
+            time.sleep(WD_BATCH_PAUSE)
             continue
+        time.sleep(WD_BATCH_PAUSE)
         for c in chunk:
             titles = links.get(c["name"])
             if not titles:
@@ -160,7 +182,7 @@ def main():
                     v = None
                 if v is not None:
                     payload[lang] = v
-                time.sleep(0.05)
+                time.sleep(PV_PAUSE)
             if payload:
                 if apply:
                     sb(f"cards?id=eq.{c['id']}", method="PATCH",
