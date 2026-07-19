@@ -14,6 +14,7 @@ import {
   IconHourglass,
 } from '@tabler/icons-react';
 import type { Card, CardCategory } from '@/shared/types/database';
+import { CATEGORY_EMOJI } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
 
@@ -90,7 +91,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   return (
     <div
       className={clsx(
-        'rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
+        'relative rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
         className,
       )}
       // Rarity tier: subtle coloured frame + glow (common/unknown → none).
@@ -99,8 +100,27 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />
 
+      {/* Watermark (variant 5 of the design review): the card's own wiki
+          photo ghosted in the corner behind the name — a visual hint for the
+          explainer that costs zero space. Cards without a photo (terms,
+          positions…) ghost their category emoji instead. */}
+      <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
+        {card.photo_url ? (
+          <img
+            src={card.photo_url}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+          />
+        ) : (
+          <span className="block text-[110px] leading-none opacity-10">
+            {CATEGORY_EMOJI[card.category]}
+          </span>
+        )}
+      </div>
+
       {/* Category label */}
-      <div className="px-5 pt-3 pb-1 flex items-center gap-1.5">
+      <div className="relative px-5 pt-3 pb-1 flex items-center gap-1.5">
         <CategoryIcon category={card.category} color={catColor} />
         <span className="text-[11px] text-brand-muted uppercase tracking-widest font-medium">
           {label}
@@ -108,7 +128,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
       </div>
 
       {/* Card name — centred, medium weight */}
-      <div className="px-5 pt-4 pb-8 text-center">
+      <div className="relative px-5 pt-4 pb-8 text-center">
         <p className="text-3xl font-medium text-white leading-snug">{name}</p>
       </div>
     </div>
