@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/shared/store/settingsStore';
 import { useProStore } from '@/shared/store/proStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
-import { difficultyFloor, recordQuickGameStart } from '@/features/game/onboarding';
+import { difficultyFloor, recordQuickGameStart, boostCountriesFor } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
@@ -74,7 +74,7 @@ export function HomeScreen() {
   const isPro = useProStore((s) => s.isPro);
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom, joinRoom } = useRoom();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
 
   useEffect(() => {
@@ -262,6 +262,10 @@ export function HomeScreen() {
         minPageviews: selMinPageviews,
         tags: deckTags,
         difficulty,
+        // Local heroes pass a reduced onboarding floor; commentators follow
+        // the interface language (see pick_random_cards locale params).
+        boostCountries: difficulty != null ? boostCountriesFor(i18n.language) : null,
+        lang: i18n.language.slice(0, 2),
       },
     });
   };

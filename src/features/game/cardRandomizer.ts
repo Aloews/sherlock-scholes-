@@ -48,6 +48,10 @@ let rpcSupportsInitData = true;
 // default quick game (onboarding floor). Drop it on the first PGRST202 and
 // play without the difficulty cap.
 let rpcSupportsDifficulty = true;
+// p_boost_countries / p_lang exist only after the locale-boost migration
+// (PENDING_SQL 2026-07-19): local heroes pass a reduced onboarding floor and
+// commentators are filtered by interface language. Same graceful degrade.
+let rpcSupportsLocale = true;
 
 const isMissingContinentsParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_continents');
@@ -57,6 +61,8 @@ const isMissingInitDataParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_init_data');
 const isMissingDifficultyParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_difficulty');
+const isMissingLocaleParams = (error: { code?: string; message: string }) =>
+  error.code === 'PGRST202' || error.message.includes('p_boost_countries') || error.message.includes('p_lang');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -76,8 +82,16 @@ const isMissingDifficultyParam = (error: { code?: string; message: string }) =>
  *                     tags are NULL). Ignored while the DB lacks p_tags.
  * @param difficulty   Onboarding pageviews floor for the DEFAULT quick game
  *                     (new players get only recognizable cards, easing up over
- *                     ~30 games). tier legendary/epic + wc2026 always pass.
+ *                     ~30 games). tier legendary/epic always passes.
  *                     null = no cap. Ignored while the DB lacks p_difficulty.
+ * @param boostCountries ISO country codes whose players pass a REDUCED
+ *                     difficulty floor — pageviews come from ru-wiki, so
+ *                     without the boost "fame" is Russian-culture-weighted
+ *                     and local heroes never reach foreign newcomers.
+ *                     Ignored while the DB lacks the locale migration.
+ * @param lang         Interface language (2 letters). Filters commentator
+ *                     cards to ones famous in that language's culture
+ *                     (cards.langs). Ignored while the DB lacks it.
  */
 export async function pickRandomCards(
   count: number,
@@ -86,6 +100,8 @@ export async function pickRandomCards(
   continents?: ContinentFilter[] | null,
   tags?: string[] | null,
   difficulty?: number | null,
+  boostCountries?: string[] | null,
+  lang?: string | null,
 ): Promise<Card[]> {
   // Tags live only on player cards, and the RPC ANDs all its filters — a tag
   // request would silently drop every selected non-player category. To let the
@@ -96,10 +112,10 @@ export async function pickRandomCards(
     const wantsPlayers = !categories?.length || categories.includes('player');
     const [players, rest] = await Promise.all([
       wantsPlayers
-        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty)
+        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty, boostCountries, lang)
         : Promise.resolve<Card[]>([]),
       // Continents/tags only ever filter players — irrelevant for this pool.
-      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty),
+      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty, null, lang),
     ]);
     const merged = [...players, ...rest];
     for (let i = merged.length - 1; i > 0; i--) {
@@ -111,7 +127,7 @@ export async function pickRandomCards(
     return merged.slice(0, count);
   }
 
-  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty);
+  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty, boostCountries, lang);
 }
 
 async function rpcPickRandomCards(
@@ -121,6 +137,8 @@ async function rpcPickRandomCards(
   continents?: ContinentFilter[] | null,
   tags?: string[] | null,
   difficulty?: number | null,
+  boostCountries?: string[] | null,
+  lang?: string | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
@@ -136,6 +154,7 @@ async function rpcPickRandomCards(
     const needsInitData = !!tags?.some(isProTag);
     const withInitData = rpcSupportsInitData && needsInitData;
     const withDifficulty = rpcSupportsDifficulty && difficulty != null && difficulty > 0;
+    const withLocale = rpcSupportsLocale && (!!boostCountries?.length || !!lang);
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
@@ -144,9 +163,16 @@ async function rpcPickRandomCards(
       ...(withTags ? { p_tags: tags } : {}),
       ...(withInitData ? { p_init_data: getRawInitData() } : {}),
       ...(withDifficulty ? { p_difficulty: difficulty } : {}),
+      ...(withLocale ? { p_boost_countries: boostCountries?.length ? boostCountries : null, p_lang: lang ?? null } : {}),
     });
 
     if (error) {
+      if (withLocale && isMissingLocaleParams(error)) {
+        // Pre-migration DB (no locale params) — drop them and redo this attempt.
+        rpcSupportsLocale = false;
+        attempt--;
+        continue;
+      }
       if (withDifficulty && isMissingDifficultyParam(error)) {
         // Pre-migration DB (no p_difficulty) — drop it and redo this attempt.
         rpcSupportsDifficulty = false;

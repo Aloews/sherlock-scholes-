@@ -29,6 +29,30 @@ export function difficultyFloor(games: number): number | null {
   return Math.round((60000 * (30 - games)) / 20);
 }
 
+// Countries whose players count as "local heroes" for an interface language.
+// The fame signal (pageviews) comes from ru-wiki, so it is Russian-culture-
+// weighted: a superstar of Mexican TV may rank as a nobody. During onboarding
+// the server lets players from these countries through at a QUARTER of the
+// floor (see p_boost_countries in pick_random_cards), so foreign newcomers
+// meet the stars of their own culture first. ISO codes match cards.country
+// (England is GB-ENG etc.).
+export const LANG_BOOST_COUNTRIES: Record<string, string[]> = {
+  ru: ['RU', 'UA', 'BY', 'KZ', 'GE', 'AM', 'AZ', 'UZ'],
+  en: ['GB-ENG', 'GB-SCT', 'GB-WLS', 'GB-NIR', 'IE', 'US', 'CA', 'AU', 'NZ', 'JM'],
+  es: ['ES', 'AR', 'MX', 'CO', 'UY', 'CL', 'PE', 'EC', 'VE', 'PY', 'BO', 'CR'],
+  pt: ['BR', 'PT', 'AO', 'MZ', 'CV'],
+  fr: ['FR', 'BE', 'CH', 'SN', 'CI', 'CM', 'DZ', 'MA', 'ML', 'GN', 'CD'],
+  zh: ['CN'],
+  ja: ['JP'],
+  ko: ['KR'],
+  ar: ['EG', 'MA', 'DZ', 'TN', 'SA', 'QA', 'AE', 'JO', 'LB', 'IQ', 'PS', 'SY', 'LY', 'SD', 'KW', 'OM', 'BH'],
+};
+
+/** Boost list for the current interface language (2-letter code). */
+export function boostCountriesFor(lang: string): string[] | null {
+  return LANG_BOOST_COUNTRIES[lang.slice(0, 2)] ?? null;
+}
+
 // Read the anonymous counter from CloudStorage into proStore (called when there
 // is no validated Telegram identity). Best-effort.
 export async function loadAnonGames(): Promise<void> {

@@ -17,6 +17,7 @@
 --   2026-07-18  Переводы (RLS-политика card_translations) + search_path + индексы [ПРИМЕНЕНО]
 --   2026-07-18  Онбординг строже: wc2026 убран из исключений сложности [ПРИМЕНЕНО]
 --   2026-07-19  Легенды/ballon_dor бэкфилл + колонка descriptions [ОЖИДАЕТ]
+--   2026-07-19  Культурная локализация: буст стран, langs, 21 комментатор [ОЖИДАЕТ]
 -- ============================================================================
 
 
@@ -892,4 +893,164 @@ notify pgrst, 'reload schema';
 --     (select count(*) from cards where active and 'ballon_dor' = any(tags)) as ballon_dor,  -- >0
 --     (select count(*) from information_schema.columns
 --        where table_name='cards' and column_name='descriptions')            as descr_col;   -- 1
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-19 — культурная локализация колоды            [ОЖИДАЕТ ПРОД]
+--
+-- ИДЕЯ (см. коммит фронта): pageviews собраны с РУССКОЙ Википедии, поэтому
+-- «известность» в онбординге меряется по русской культуре — звезда мексикан-
+-- ского ТВ для испаноязычного новичка не пройдёт порог никогда. Решение:
+--   1) pick_random_cards получает p_boost_countries (text[]) — игроки из
+--      стран «своей» культуры проходят онбординг-порог в 4 раза ниже;
+--      p_lang (text) — комментаторы фильтруются по языку (cards.langs).
+--      Фронт уже шлёт оба параметра (с graceful degrade до наката).
+--   2) Колонка cards.langs text[] — языки, в чьей культуре карточка «на
+--      слуху». Существующие 16 комментаторов помечаются {ru}.
+--   3) КОНТЕНТ: 21 легендарный комментатор для en/es/pt/fr/ar/zh/ja/ko +
+--      родные написания имён в card_translations. Идемпотентно.
+-- ============================================================================
+
+alter table cards add column if not exists langs text[];
+
+-- Существующие комментаторы — русскоязычные (до вставки новых!)
+update cards set langs = array['ru']
+where category = 'commentator' and langs is null;
+
+-- Перевыпуск pick_random_cards с локальными параметрами (сносим 7-арг
+-- overload, иначе PGRST203; старые клиенты зовут по именам — 9-арг версия
+-- с default'ами их обслуживает).
+drop function if exists pick_random_cards(int, text[], bigint, text[], text[], text, int);
+
+create function pick_random_cards(
+  p_count           int,
+  p_categories      text[]  default null,
+  p_min_pageviews   bigint  default null,
+  p_continents      text[]  default null,
+  p_tags            text[]  default null,
+  p_init_data       text    default null,  -- принят для совместимости; не используется
+  p_difficulty      int     default null,
+  p_boost_countries text[]  default null,
+  p_lang            text    default null
+)
+returns setof cards
+language sql
+stable
+set search_path = public
+as $$
+  select *
+  from cards
+  where active = true
+    and (
+      p_categories is null
+      or cardinality(p_categories) = 0
+      or category = any(p_categories)
+    )
+    and (
+      p_min_pageviews is null
+      or pageviews is null
+      or pageviews > p_min_pageviews
+    )
+    and (
+      p_continents is null
+      or cardinality(p_continents) = 0
+      or category <> 'player'
+      or continent = any(p_continents)
+      or (continent is null and 'other' = any(p_continents))
+    )
+    and (
+      p_tags is null
+      or cardinality(p_tags) = 0
+      or tags && p_tags
+    )
+    -- Комментаторы — только «свои» для языка интерфейса; без p_lang (мульти-
+    -- плеер, старые клиенты) поведение прежнее.
+    and (
+      category <> 'commentator'
+      or p_lang is null
+      or langs is null
+      or p_lang = any(langs)
+    )
+    -- Онбординг-порог: легенды/эпики проходят всегда; «местные герои»
+    -- (p_boost_countries) — со скидкой 4x, т.к. их слава недооценена
+    -- русскоязычными pageviews.
+    and (
+      p_difficulty is null
+      or p_difficulty <= 0
+      or pageviews >= p_difficulty
+      or tier in ('legendary', 'epic')
+      or (
+        p_boost_countries is not null
+        and category = 'player'
+        and country = any(p_boost_countries)
+        and coalesce(pageviews, 0) >= greatest(p_difficulty / 4, 1)
+      )
+    )
+  order by random()
+  limit p_count;
+$$;
+
+-- ── Комментаторы по языкам (21) ──
+-- name — русская транслитерация (главная колонка), родное написание уходит
+-- в card_translations ниже. category_ru как у существующих комментаторов.
+
+INSERT INTO cards (name, name_en, category, category_ru, forbidden_words, active, country, langs)
+SELECT v.name, v.name_en, 'commentator', 'комментаторы', v.fw, true, v.country, v.langs
+FROM (VALUES
+  -- Английский
+  ('Мартин Тайлер',      'Martin Tyler',       ARRAY['Мартин Тайлер','Мартин','Тайлер'],          'GB-ENG', ARRAY['en']),
+  ('Питер Друри',        'Peter Drury',        ARRAY['Питер Друри','Питер','Друри'],              'GB-ENG', ARRAY['en']),
+  ('Джон Мотсон',        'John Motson',        ARRAY['Джон Мотсон','Джон','Мотсон'],              'GB-ENG', ARRAY['en']),
+  ('Клайв Тилдсли',      'Clive Tyldesley',    ARRAY['Клайв Тилдсли','Клайв','Тилдсли'],          'GB-ENG', ARRAY['en']),
+  ('Иан Дарк',           'Ian Darke',          ARRAY['Иан Дарк','Иан','Дарк'],                    'GB-ENG', ARRAY['en']),
+  -- Испанский
+  ('Андрес Кантор',      'Andrés Cantor',      ARRAY['Андрес Кантор','Андрес','Кантор'],          'AR', ARRAY['es']),
+  ('Кристиан Мартиноли', 'Christian Martinoli',ARRAY['Кристиан Мартиноли','Кристиан','Мартиноли'],'MX', ARRAY['es']),
+  ('Андрес Монтес',      'Andrés Montes',      ARRAY['Андрес Монтес','Андрес','Монтес'],          'ES', ARRAY['es']),
+  ('Маноло Лама',        'Manolo Lama',        ARRAY['Маноло Лама','Маноло','Лама'],              'ES', ARRAY['es']),
+  -- Португальский
+  ('Галван Буэну',       'Galvão Bueno',       ARRAY['Галван Буэну','Галван','Буэну'],            'BR', ARRAY['pt']),
+  ('Клебер Машаду',      'Cléber Machado',     ARRAY['Клебер Машаду','Клебер','Машаду'],          'BR', ARRAY['pt']),
+  ('Милтон Лейте',       'Milton Leite',       ARRAY['Милтон Лейте','Милтон','Лейте'],            'BR', ARRAY['pt']),
+  -- Французский
+  ('Тьерри Ролан',       'Thierry Roland',     ARRAY['Тьерри Ролан','Тьерри','Ролан'],            'FR', ARRAY['fr']),
+  ('Грегуар Марготтон',  'Grégoire Margotton', ARRAY['Грегуар Марготтон','Грегуар','Марготтон'],  'FR', ARRAY['fr']),
+  ('Омар да Фонсека',    'Omar da Fonseca',    ARRAY['Омар да Фонсека','Омар','Фонсека'],         'AR', ARRAY['fr','es']),
+  -- Арабский
+  ('Иссам аш-Шавали',    'Issam Chawali',      ARRAY['Иссам аш-Шавали','Иссам','Шавали'],         'TN', ARRAY['ar']),
+  ('Хафид Дерраджи',     'Hafid Derradji',     ARRAY['Хафид Дерраджи','Хафид','Дерраджи'],        'DZ', ARRAY['ar']),
+  ('Рауф Хлиф',          'Raouf Khlif',        ARRAY['Рауф Хлиф','Рауф','Хлиф'],                  'TN', ARRAY['ar']),
+  -- Китайский
+  ('Хуан Цзяньсян',      'Huang Jianxiang',    ARRAY['Хуан Цзяньсян','Хуан','Цзяньсян'],          'CN', ARRAY['zh']),
+  ('Хэ Вэй',             'He Wei',             ARRAY['Хэ Вэй','Хэ','Вэй'],                        'CN', ARRAY['zh']),
+  -- Японский
+  ('Ясутаро Мацуки',     'Yasutaro Matsuki',   ARRAY['Ясутаро Мацуки','Ясутаро','Мацуки'],        'JP', ARRAY['ja'])
+) AS v(name, name_en, fw, country, langs)
+WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE lower(c.name) = lower(v.name));
+
+-- Родные написания имён для «своих» языков
+INSERT INTO card_translations (card_id, lang, name, source)
+SELECT c.id, v.lang, v.native, 'label'
+FROM (VALUES
+  ('Иссам аш-Шавали', 'ar', 'عصام الشوالي'),
+  ('Хафид Дерраджи',  'ar', 'حفيظ دراجي'),
+  ('Рауф Хлиф',       'ar', 'رؤوف خليف'),
+  ('Хуан Цзяньсян',   'zh', '黄健翔'),
+  ('Хэ Вэй',          'zh', '贺炜'),
+  ('Ясутаро Мацуки',  'ja', '松木安太郎')
+) AS v(card_name, lang, native)
+JOIN cards c ON lower(c.name) = lower(v.card_name)
+ON CONFLICT (card_id, lang) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY:
+--   select
+--     (select count(*) from cards where category='commentator')                       as commentators, -- 37
+--     (select count(*) from cards where category='commentator' and langs is null)     as no_langs,     -- 0
+--     (select count(*) from pick_random_cards(50, array['commentator'],
+--        null, null, null, null, null, null, 'es'))                                   as es_comms,     -- ~5
+--     (select count(*) from pick_random_cards(1000, null, null, null, null,
+--        null, 25000, array['MX'], null))                                             as boosted_draw; -- > обычного
 -- ============================================================================

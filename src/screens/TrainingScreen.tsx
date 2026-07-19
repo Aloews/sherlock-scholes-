@@ -30,6 +30,8 @@ interface TrainingState {
   minPageviews?: number | null;          // legacy difficulty floor; null = whole deck
   tags?: string[] | null;                // special-category filter (вратари / star / …)
   difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
+  boostCountries?: string[] | null;      // local heroes pass floor/4 during onboarding
+  lang?: string | null;                  // interface language -> commentator locale filter
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -246,6 +248,8 @@ export function TrainingScreen() {
   const minPageviews = state?.minPageviews ?? null;
   const tags = state?.tags ?? null;
   const difficulty = state?.difficulty ?? null;
+  const boostCountries = state?.boostCountries ?? null;
+  const lang = state?.lang ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -257,6 +261,8 @@ export function TrainingScreen() {
       minPageviews={minPageviews}
       tags={tags}
       difficulty={difficulty}
+      boostCountries={boostCountries}
+      lang={lang}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -268,15 +274,17 @@ interface TrainingGameProps {
   minPageviews: number | null;
   tags: string[] | null;
   difficulty: number | null;
+  boostCountries: string[] | null;
+  lang: string | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, difficulty, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags, difficulty);
+    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
