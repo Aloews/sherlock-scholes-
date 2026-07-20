@@ -253,5 +253,15 @@
     "join_failed": "Não foi possível entrar na sala",
     "create_failed": "Não foi possível criar a sala",
     "start_failed": "Não foi possível iniciar o jogo"
+  },
+  "titles": {
+    "ballon": "Bola de Ouro",
+    "fifa_ballon": "Bola de Ouro FIFA",
+    "fifa_poty": "Melhor Jogador FIFA",
+    "wc": "Copa do Mundo",
+    "euro": "Eurocopa",
+    "ucl": "Champions League",
+    "golden_boot": "Chuteira de Ouro",
+    "puskas": "Prêmio Puskás"
   }
 }

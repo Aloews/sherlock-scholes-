@@ -245,5 +245,15 @@
     "join_failed": "无法加入房间",
     "create_failed": "无法创建房间",
     "start_failed": "无法开始游戏"
+  },
+  "titles": {
+    "ballon": "金球奖",
+    "fifa_ballon": "FIFA金球奖",
+    "fifa_poty": "世界足球先生",
+    "wc": "世界杯",
+    "euro": "欧洲杯",
+    "ucl": "欧冠",
+    "golden_boot": "金靴奖",
+    "puskas": "普斯卡什奖"
   }
 }

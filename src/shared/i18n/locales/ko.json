@@ -245,5 +245,15 @@
     "join_failed": "방에 참가할 수 없습니다",
     "create_failed": "방을 만들 수 없습니다",
     "start_failed": "게임을 시작할 수 없습니다"
+  },
+  "titles": {
+    "ballon": "발롱도르",
+    "fifa_ballon": "FIFA 발롱도르",
+    "fifa_poty": "FIFA 올해의 선수",
+    "wc": "월드컵",
+    "euro": "유로",
+    "ucl": "챔피언스리그",
+    "golden_boot": "골든부트",
+    "puskas": "푸스카스상"
   }
 }

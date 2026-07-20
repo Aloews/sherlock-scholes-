@@ -253,5 +253,15 @@
     "join_failed": "Impossible de rejoindre le salon",
     "create_failed": "Impossible de créer le salon",
     "start_failed": "Impossible de lancer la partie"
+  },
+  "titles": {
+    "ballon": "Ballon d'Or",
+    "fifa_ballon": "Ballon d'Or FIFA",
+    "fifa_poty": "Joueur FIFA de l'année",
+    "wc": "Coupe du monde",
+    "euro": "Euro",
+    "ucl": "Ligue des champions",
+    "golden_boot": "Soulier d'or",
+    "puskas": "Prix Puskás"
   }
 }

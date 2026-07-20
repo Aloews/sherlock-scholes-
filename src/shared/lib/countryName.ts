@@ -108,16 +108,39 @@ const POSITION_EN: Record<string, string> = {
   'Нападающий': 'Forward',
 };
 
-/** Country name in the interface language (ru/en); other languages use EN. */
+// Feminine ru forms for women's cards («Полузащитник» reads wrong on a
+// woman's card). Вратарь has no separate feminine form.
+const POSITION_RU_FEMALE: Record<string, string> = {
+  'Защитник': 'Защитница',
+  'Полузащитник': 'Полузащитница',
+  'Нападающий': 'Нападающая',
+};
+
+/** Country name in the interface language. ru/en come from the hand-made
+ * maps (they also carry sub-codes like GB-ENG); every other language asks
+ * Intl.DisplayNames for its native name and falls back to EN. */
 export function countryName(code: string | null | undefined, lang: string): string | null {
   if (!code) return null;
-  const map = lang.startsWith('ru') ? COUNTRY_NAME_RU : COUNTRY_NAME_EN;
-  return map[code] ?? code;
+  if (lang.startsWith('ru')) return COUNTRY_NAME_RU[code] ?? code;
+  if (!lang.startsWith('en') && !code.includes('-')) {
+    try {
+      const name = new Intl.DisplayNames([lang.slice(0, 2)], { type: 'region' }).of(code);
+      if (name && name !== code) return name;
+    } catch { /* very old WebView — fall back to EN */ }
+  }
+  return COUNTRY_NAME_EN[code] ?? code;
 }
 
-/** Position in the interface language; ru keeps the stored value. */
-export function positionName(positionRu: string | null | undefined, lang: string): string | null {
+/** Position in the interface language; ru keeps the stored value (feminine
+ * form on women's cards). */
+export function positionName(
+  positionRu: string | null | undefined,
+  lang: string,
+  female = false,
+): string | null {
   if (!positionRu) return null;
-  if (lang.startsWith('ru')) return positionRu;
+  if (lang.startsWith('ru')) {
+    return female ? (POSITION_RU_FEMALE[positionRu] ?? positionRu) : positionRu;
+  }
   return POSITION_EN[positionRu] ?? positionRu;
 }

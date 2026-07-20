@@ -245,5 +245,15 @@
     "join_failed": "ルームに参加できませんでした",
     "create_failed": "ルームを作成できませんでした",
     "start_failed": "ゲームを開始できませんでした"
+  },
+  "titles": {
+    "ballon": "バロンドール",
+    "fifa_ballon": "FIFAバロンドール",
+    "fifa_poty": "FIFA最優秀選手",
+    "wc": "ワールドカップ",
+    "euro": "EURO",
+    "ucl": "チャンピオンズリーグ",
+    "golden_boot": "ゴールデンブーツ",
+    "puskas": "プスカシュ賞"
   }
 }

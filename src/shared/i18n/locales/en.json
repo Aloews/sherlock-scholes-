@@ -253,5 +253,15 @@
     "join_failed": "Couldn't join the room",
     "create_failed": "Couldn't create the room",
     "start_failed": "Couldn't start the game"
+  },
+  "titles": {
+    "ballon": "Ballon d'Or",
+    "fifa_ballon": "FIFA Ballon d'Or",
+    "fifa_poty": "FIFA World Player",
+    "wc": "World Cup",
+    "euro": "Euro",
+    "ucl": "Champions League",
+    "golden_boot": "Golden Boot",
+    "puskas": "Puskás Award"
   }
 }

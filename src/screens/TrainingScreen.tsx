@@ -314,7 +314,9 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
     const flag = isoToFlag(entry.country);
     const country = countryName(entry.country, i18n.language);
     const left = country ? `${flag ? flag + ' ' : ''}${country}` : null;
-    const parts = [left, positionName(entry.position_ru, i18n.language)].filter(Boolean);
+    const parts = [left,
+      positionName(entry.position_ru, i18n.language, entry.category === 'woman'),
+    ].filter(Boolean);
     return parts.length ? parts.join(' · ') : null;
   };
 
@@ -361,6 +363,10 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
         : '';
       return `${club}${y}${stats}`.trim();
     };
+    // Club names follow the interface language where a translation exists:
+    // career_stats come from the ENGLISH wiki (club_ru is the nightly-collected
+    // Russian name), legend_career from the RUSSIAN side (club_en likewise).
+    const ru = i18n.language.startsWith('ru');
     // Veterans with a Wikipedia career: the richest source. Most recent
     // clubs first (by END year).
     let lines: Array<string | null> = [];
@@ -368,12 +374,12 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
       lines = [...entry.career_stats]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(c.club, c.years, c.apps, c.goals));
+        .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.years, c.apps, c.goals));
     } else if (entry.legend_career?.clubs?.length) {
       lines = [...entry.legend_career.clubs]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(c.club, c.years));
+        .map((c) => line(ru ? c.club : (c.club_en ?? c.club), c.years));
     } else if (entry.clubs_minutes?.length) {
       // The club NAMES in clubs_minutes are real (he did play there in
       // 2022-24) — only the minute totals lie, so names without numbers.
@@ -391,6 +397,12 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   // "за сборную X" form for names that don't fit the common -ия/-а pattern.
   const shortNat = (team: string | null | undefined): string => {
     if (!team) return '';
+    // Multi-word names that already contain «сборная» («вторая сборная
+    // России») must decline the phrase itself — the plain country rules below
+    // used to produce «за вторая сборная Россию».
+    if (/сборн/i.test(team)) {
+      return `за ${team.replace(/([а-яё]+)ая(\s+)сборная/i, '$1ую$2сборную')}`;
+    }
     if (team.endsWith('ии')) return `за ${team.slice(0, -2)}ию`;
     if (team.endsWith('ы')) return `за ${team.slice(0, -1)}у`;
     return `за сборную ${team}`;
@@ -415,12 +427,36 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
     return out.slice(0, 2);
   };
 
+  // The gold titles come from the scraper as short RUSSIAN labels with an
+  // optional year / ×N suffix ("Золотой мяч 2024", "ЧМ ×2") — a fixed
+  // vocabulary (LEGEND_TITLE_ORDER in run.py). Non-ru interfaces translate
+  // the prefix via locale keys and keep the suffix.
+  const TITLE_KEYS: Array<[string, string]> = [
+    ['Золотой мяч ФИФА', 'fifa_ballon'],
+    ['Золотой мяч', 'ballon'],
+    ['Игрок года ФИФА', 'fifa_poty'],
+    ['Лига чемпионов', 'ucl'],
+    ['Золотая бутса', 'golden_boot'],
+    ['Пушкаш', 'puskas'],
+    ['ЧМ', 'wc'],
+    ['ЧЕ', 'euro'],
+  ];
+  const localizedTitle = (title: string): string => {
+    if (i18n.language.startsWith('ru')) return title;
+    for (const [prefix, key] of TITLE_KEYS) {
+      if (title.startsWith(prefix)) {
+        return `${t(`titles.${key}`)}${title.slice(prefix.length)}`;
+      }
+    }
+    return title;
+  };
+
   // Prestige titles in gold — now for EVERY card (legends use legend_career,
   // others fall back to facts.titles). Titles are the headline fact.
   const titlesLine = (entry: HistoryEntry): string[] =>
     (entry.legend_career?.titles?.length
       ? entry.legend_career.titles
-      : entry.facts?.titles ?? []).slice(0, 3);
+      : entry.facts?.titles ?? []).slice(0, 3).map(localizedTitle);
 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {

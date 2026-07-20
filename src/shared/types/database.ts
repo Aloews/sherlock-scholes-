@@ -176,8 +176,9 @@ export interface ClubMinutes {
 // Career snapshot for legends from Wikidata (cards.legend_career,
 // docs/cards_legend_career_column.sql). clubs carry years, not minutes.
 export interface LegendClub {
-  club: string;
-  years: string; // "1984–1991" | "1984–"
+  club: string;           // Russian club name (Wikidata ru label)
+  years: string;          // "1984–1991" | "1984–"
+  club_en?: string | null; // Latin name for non-ru interfaces (cards_career_localize.py)
 }
 export interface LegendCareer {
   clubs: LegendClub[];
@@ -189,10 +190,11 @@ export interface LegendCareer {
 // (cards.career_stats, docs/cards_career_build.py). Clubs carry apps+goals
 // (Wiki has no minutes) — shown INSTEAD of misleading partial minutes.
 export interface CareerStat {
-  club: string;
+  club: string;            // as written in the enwiki infobox (Latin)
   years: string;
   apps: number | null;
   goals: number | null;
+  club_ru?: string | null; // Russian name for the ru interface (cards_career_localize.py)
 }
 
 // Structural Wikidata facts (cards.facts JSONB). Shown as a bright-fact line in

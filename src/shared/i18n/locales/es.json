@@ -253,5 +253,15 @@
     "join_failed": "No se pudo entrar en la sala",
     "create_failed": "No se pudo crear la sala",
     "start_failed": "No se pudo iniciar la partida"
+  },
+  "titles": {
+    "ballon": "Balón de Oro",
+    "fifa_ballon": "Balón de Oro FIFA",
+    "fifa_poty": "Jugador del Año FIFA",
+    "wc": "Mundial",
+    "euro": "Eurocopa",
+    "ucl": "Champions League",
+    "golden_boot": "Bota de Oro",
+    "puskas": "Premio Puskás"
   }
 }
