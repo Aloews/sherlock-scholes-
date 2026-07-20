@@ -6,6 +6,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
 import { transition } from '@/features/game/stateMachine';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import { playSound } from '@/shared/lib/sounds';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
@@ -247,6 +248,13 @@ export function useGame() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRound?.id, currentRound?.status, room?.id, room?.status, player?.id]);
+
+  // Warm the round's watermark photos as soon as the deal lands, so each
+  // photo shows the moment its card appears (a round is only a handful of
+  // cards — preloading them all is cheap).
+  useEffect(() => {
+    preloadPhotos(currentCards.map((rc) => rc.card?.photo_url));
+  }, [currentCards]);
 
   // ─── Card actions (explainer only) ────────────────────────
 

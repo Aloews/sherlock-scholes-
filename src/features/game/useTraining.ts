@@ -3,6 +3,7 @@ import { pickRandomCards } from './cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
+import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import i18n from '@/shared/i18n';
 import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CareerStat, CardFacts, ContinentFilter } from '@/shared/types/database';
 
@@ -130,6 +131,12 @@ export function useTraining(
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
   }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, absorbBatch]);
+
+  // Keep the next few watermark photos warm in the browser cache so each
+  // photo shows the moment its card slides in, not a beat later.
+  useEffect(() => {
+    preloadPhotos(cards.slice(index, index + 5).map((c) => c.photo_url));
+  }, [index, cards]);
 
   // Top up the deck as the player nears the end. Decoupled from the tap
   // handler (was inside the setIndex updater) so a batch arriving mid-transition

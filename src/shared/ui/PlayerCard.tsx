@@ -14,7 +14,6 @@ import {
   IconHourglass,
 } from '@tabler/icons-react';
 import type { Card, CardCategory } from '@/shared/types/database';
-import { CATEGORY_EMOJI } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
 
@@ -102,22 +101,18 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
 
       {/* Watermark (variant 5 of the design review): the card's own wiki
           photo ghosted in the corner behind the name — a visual hint for the
-          explainer that costs zero space. Cards without a photo (terms,
-          positions…) ghost their category emoji instead. */}
-      <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
-        {card.photo_url ? (
+          explainer that costs zero space. Photo only, preloaded a card ahead
+          (useGame/useTraining) so it appears together with the card; cards
+          without a photo show nothing. */}
+      {card.photo_url && (
+        <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
           <img
             src={card.photo_url}
             alt=""
-            loading="lazy"
             className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
           />
-        ) : (
-          <span className="block text-[110px] leading-none opacity-10">
-            {CATEGORY_EMOJI[card.category]}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Category label */}
       <div className="relative px-5 pt-3 pb-1 flex items-center gap-1.5">

@@ -703,23 +703,19 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                 style={tierCardStyle(currentCard.tier)}
               >
                 {/* Watermark (variant 5 of the design review): the card's own
-                    wiki photo ghosted in the corner behind the name. Cards
-                    without a photo ghost their category emoji instead. Same
-                    markup as the multiplayer PlayerCard. */}
-                <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
-                  {currentCard.photo_url ? (
+                    wiki photo ghosted behind the name. Photo only, preloaded
+                    a few cards ahead (useTraining) so it appears together
+                    with the card; no photo — no watermark. Same markup as
+                    the multiplayer PlayerCard. */}
+                {currentCard.photo_url && (
+                  <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
                     <img
                       src={currentCard.photo_url}
                       alt=""
-                      loading="lazy"
                       className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
                     />
-                  ) : (
-                    <span className="block text-[110px] leading-none opacity-10">
-                      {CATEGORY_EMOJI[currentCard.category]}
-                    </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <span
                   className="relative text-[11px] uppercase tracking-widest font-medium"
                   style={{ color: catColor }}
