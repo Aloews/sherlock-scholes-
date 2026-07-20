@@ -19,7 +19,7 @@ concurrency:
 jobs:
   enrich:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 100
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}   # service_role — repo secret, NEVER committed
@@ -55,7 +55,7 @@ jobs:
       # колода игроков покрывается примерно за неделю и далее только новички.
       - name: Collect per-language pageviews
         if: always()
-        run: APPLY=1 python docs/cards_pageviews_i18n.py --limit 400
+        run: APPLY=1 python docs/cards_pageviews_i18n.py --limit 600
 
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
