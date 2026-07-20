@@ -342,48 +342,44 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
     return cut || null;
   };
 
-  // Bottom clubs as chips. We NEVER show minute/hour figures (clubs_minutes
-  // totals are an unreliable 2022-24 tail), only honest sources:
-  //   career_stats : "Арсенал 2006–18 · 270 матчей, 65 голов"  (matches/goals)
-  //   legend_career: "Реал Мадрид 2002–07", "Интер 1997–02"     (clubs + years)
-  //   fallback     : bare club NAMES from clubs_minutes (no numbers).
-  // FULL Russian club names (no shortening); chips wrap instead of clipping.
+  // Bottom club lines. We NEVER show minute/hour figures (clubs_minutes
+  // totals are an unreliable 2022-24 tail), only honest sources. Every source
+  // renders the SAME line shape — "Клуб годы · N матчей, M голов" — with the
+  // missing pieces simply omitted, so all history cards read alike:
+  //   career_stats : "Арсенал 2006–18 · 270 матчей, 65 голов"
+  //   legend_career: "Реал Мадрид 2002–07"                    (no apps known)
+  //   clubs_minutes: "Спартак"                                (name only)
   const clubChips = (entry: HistoryEntry): string[] => {
-    // Veterans with a Wikipedia career: club + years · apps, goals — the richest
-    // and most honest line. Most recent clubs first (by END year).
+    const line = (rawClub: string, years?: string | null,
+                  apps?: number | null, goals?: number | null): string | null => {
+      const club = cleanClub(rawClub);
+      if (!club) return null;
+      const y = years ? ` ${shortYears(years)}` : '';
+      const stats = apps != null
+        ? ` · ${t('career.matches', { count: apps })}` +
+          (goals != null ? `, ${t('career.goals', { count: goals })}` : '')
+        : '';
+      return `${club}${y}${stats}`.trim();
+    };
+    // Veterans with a Wikipedia career: the richest source. Most recent
+    // clubs first (by END year).
+    let lines: Array<string | null> = [];
     if (entry.career_stats?.length) {
-      return [...entry.career_stats]
+      lines = [...entry.career_stats]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => {
-          const club = cleanClub(c.club);
-          if (!club) return null;
-          const m = t('career.matches', { count: c.apps ?? 0 });
-          const g = c.goals != null ? `, ${t('career.goals', { count: c.goals })}` : '';
-          return `${club} ${shortYears(c.years)} · ${m}${g}`.trim();
-        })
-        .filter((s): s is string => s !== null);
-    }
-    // Legends / veterans -> club + years, never minutes.
-    if (entry.legend_career?.clubs?.length) {
-      return [...entry.legend_career.clubs]
+        .map((c) => line(c.club, c.years, c.apps, c.goals));
+    } else if (entry.legend_career?.clubs?.length) {
+      lines = [...entry.legend_career.clubs]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => {
-          const club = cleanClub(c.club);
-          return club ? `${club} ${shortYears(c.years)}`.trim() : null;
-        })
-        .filter((s): s is string => s !== null);
+        .map((c) => line(c.club, c.years));
+    } else if (entry.clubs_minutes?.length) {
+      // The club NAMES in clubs_minutes are real (he did play there in
+      // 2022-24) — only the minute totals lie, so names without numbers.
+      lines = entry.clubs_minutes.slice(0, 4).map((c) => line(c.club));
     }
-    // Fallback: no richer source yet. The club NAMES in clubs_minutes are real
-    // (he did play there in 2022-24) — only the minute totals lie. Show the bare
-    // club list, NO numbers, rather than nothing.
-    if (entry.clubs_minutes?.length) {
-      return entry.clubs_minutes.slice(0, 4)
-        .map((c) => cleanClub(c.club))
-        .filter((s): s is string => s !== null);
-    }
-    return [];
+    return lines.filter((s): s is string => s !== null);
   };
 
   // Structural facts (cards.facts) for the muted line under the gold titles.
@@ -534,22 +530,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                           🏆 {titles.join(' · ')}
                         </p>
                       )}
-                      {/* Career_stats lines are long ("Клуб годы · N матчей, M голов")
-                          so they STACK and wrap; short minute/legend chips stay inline. */}
+                      {/* Career lines — one shape for every data source
+                          ("Клуб годы · N матчей, M голов", missing pieces
+                          omitted), always a stacked column so all history
+                          cards read alike. */}
                       {chips.length > 0 && (
-                        entry.career_stats?.length ? (
-                          <div className="mt-0.5 space-y-0.5 text-brand-muted/80 text-xs leading-snug">
-                            {chips.map((c, j) => (
-                              <p key={j} className="break-words">{c}</p>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
-                            {chips.map((c, j) => (
-                              <span key={j} className="whitespace-nowrap">{c}</span>
-                            ))}
-                          </div>
-                        )
+                        <div className="mt-0.5 space-y-0.5 text-brand-muted/80 text-xs leading-snug tabular-nums">
+                          {chips.map((c, j) => (
+                            <p key={j} className="break-words">{c}</p>
+                          ))}
+                        </div>
                       )}
                       {facts.length > 0 && (
                         <p className="text-brand-muted/60 text-[11px] leading-snug mt-0.5">
