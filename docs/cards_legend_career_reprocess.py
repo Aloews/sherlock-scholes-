@@ -21,7 +21,9 @@ Fixes applied (logic lives in run.py, imported here):
 
 Run from football_scraper/:  python ../docs/cards_legend_career_reprocess.py
 """
+import json
 import os
+import re
 import sys
 
 import requests
@@ -103,6 +105,30 @@ def main():
                            headers=patch_h, params={"id": "eq." + str(card_id)},
                            json=body, timeout=30)
         r.raise_for_status()
+
+    # Самопочинка career_stats: старый парсер не чистил поле years, и в базу
+    # утекали хвосты вида «2015–2026<ref>https://…» — аудит помечает это как
+    # FATAL и валит весь ночной workflow. Мусор всегда ДОПИСАН к значению,
+    # поэтому лечится обрезкой по первому маркеру разметки.
+    def _strip_junk(s):
+        s = re.split(r"<|\{\{|http", str(s or ""))[0]
+        return re.sub(r"\s+", " ", s).strip()
+
+    cs_repaired = 0
+    for c in fetch_all(url, key, "cards", "id,career_stats",
+                       {"career_stats": "not.is.null"}):
+        cs = c.get("career_stats") or []
+        blob = json.dumps(cs, ensure_ascii=False)
+        if "<ref" not in blob and "{{" not in blob and "http" not in blob:
+            continue
+        for row in cs:
+            row["club"] = _strip_junk(row.get("club"))
+            row["years"] = _strip_junk(row.get("years"))
+        patch(c["id"], {"career_stats": cs})
+        cs_repaired += 1
+    if cs_repaired:
+        print("career_stats sanitized on {} card(s){}".format(
+            cs_repaired, "" if APPLY else " (dry-run)"), flush=True)
 
     # counters
     leg_total = leg_changed = leg_same = leg_no_qid = leg_no_cache = leg_empty = 0

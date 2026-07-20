@@ -136,6 +136,16 @@ def clean_club(v):
     return re.sub(r"\s+", " ", v).strip()
 
 
+def clean_years(v):
+    """Годы карьеры: после strip_markup оставляем только начальный
+    «годоподобный» фрагмент (цифры, тире, слэш). Инфобоксы иногда несут
+    непарный <ref> с голым URL — strip_markup такое не выпиливает, и
+    '2015–2026<ref>https://…' утекал в career_stats (аудит FATAL)."""
+    v = strip_markup(v).strip()
+    m = re.match(r"[0-9][0-9–—\-/ ]*", v)
+    return m.group().strip() if m else ""
+
+
 def first_int(v):
     v = strip_markup(v)
     m = re.search(r"-?\d+", v.replace(" ", "").replace(",", ""))
@@ -161,7 +171,7 @@ def parse_senior(ib):
         c = clean_club(club)
         if not c or c.lower() in ("loan", "→"):
             continue
-        rows.append({"club": c, "years": (p.get("years%d" % n) or "").strip(),
+        rows.append({"club": c, "years": clean_years(p.get("years%d" % n) or ""),
                      "apps": first_int(p.get("caps%d" % n, "")),
                      "goals": first_int(p.get("goals%d" % n, ""))})
     return [r for r in rows if r["apps"]]
@@ -224,6 +234,27 @@ def main():
 
     cards = fetch_all(url, key, "cards",
                       "id,name,name_en,category,clubs_minutes,legend_career,facts,career_stats")
+
+    # Самопочинка: у уже записанных career_stats вычищаем вики-разметку,
+    # утёкшую до появления clean_years (аудит валит весь workflow как FATAL).
+    repaired = 0
+    for c in cards:
+        cs = c.get("career_stats")
+        if not cs:
+            continue
+        blob = json.dumps(cs, ensure_ascii=False)
+        if "<ref" not in blob and "{{" not in blob and "http" not in blob:
+            continue
+        for row in cs:
+            row["club"] = clean_club(str(row.get("club") or ""))
+            row["years"] = clean_years(str(row.get("years") or ""))
+        requests.patch(url.rstrip("/") + "/rest/v1/cards",
+                       headers=patch_h, params={"id": "eq." + c["id"]},
+                       data=json.dumps({"career_stats": cs}), timeout=30)
+        repaired += 1
+    if repaired:
+        print("career_stats sanitized on %d card(s)" % repaired, flush=True)
+
     meta = fetch_all(url, key, "players_meta", "name_ru,name_en,wikidata_qid")
     qmap = {}
     for m in meta:

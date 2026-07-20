@@ -95,29 +95,62 @@ def month_window():
     return start.strftime("%Y%m01"), end.strftime("%Y%m%d")
 
 
+RU_API = "https://ru.wikipedia.org/w/api.php"
+
+
 def sitelinks_batch(ru_titles):
-    """ru-названия -> {ru_title: {lang: foreign_title}} через wbgetentities."""
-    out = {}
-    r = get_with_retry(WD_API, params={
-        "action": "wbgetentities", "format": "json",
-        "sites": "ruwiki", "titles": "|".join(ru_titles),
-        "props": "sitelinks", "sitefilter": "|".join(f"{l}wiki" for l in LANGS),
-        "redirects": "yes", "maxlag": "5",
+    """ru-названия -> {запрошенное название: {lang: foreign_title}}.
+
+    Двухшагово. wbgetentities по sites=ruwiki отвечает КАНОНИЧЕСКИМ титулом
+    статьи (у людей это «Фамилия, Имя»), а карточки названы «Имя Фамилия» —
+    прямое сопоставление теряло почти все карточки (они молча пропускались,
+    и pageviews_i18n оставался пустым). action=query на ру-вики отдаёт цепочку
+    normalized/redirects, по которой запрошенное имя приводится к финальному
+    титулу и его QID; сайтлинки добираем вторым запросом уже по QID.
+    """
+    r = get_with_retry(RU_API, params={
+        "action": "query", "format": "json", "redirects": 1,
+        "titles": "|".join(ru_titles),
+        "prop": "pageprops", "ppprop": "wikibase_item", "maxlag": "5",
     })
     r.raise_for_status()
-    for ent in (r.json().get("entities") or {}).values():
-        links = ent.get("sitelinks") or {}
-        # обратное сопоставление ru_title -> entity нам не приходит напрямую;
-        # wbgetentities отвечает по порядку titles только через normalized —
-        # надёжнее спросить и ruwiki-сайтлинк:
-        ru = (links.get("ruwiki") or {}).get("title")
-        if not ru:
-            continue
-        out[ru] = {
-            lang: links[f"{lang}wiki"]["title"]
-            for lang in LANGS if f"{lang}wiki" in links
-        }
-    return out
+    q = r.json().get("query") or {}
+    step = {}  # запрошенное -> следующее звено (нормализация, затем редирект)
+    for m in (q.get("normalized") or []) + (q.get("redirects") or []):
+        step[m["from"]] = m["to"]
+
+    def final_title(t, hops=5):
+        while t in step and hops > 0:
+            t, hops = step[t], hops - 1
+        return t
+
+    title_qid = {}
+    for p in (q.get("pages") or {}).values():
+        qid = (p.get("pageprops") or {}).get("wikibase_item")
+        if qid and p.get("title"):
+            title_qid[p["title"]] = qid
+
+    req_qid = {t: title_qid.get(final_title(t)) for t in ru_titles}
+    qids = sorted({v for v in req_qid.values() if v})
+
+    qid_links = {}
+    for j in range(0, len(qids), 50):
+        time.sleep(WD_BATCH_PAUSE)
+        r2 = get_with_retry(WD_API, params={
+            "action": "wbgetentities", "format": "json",
+            "ids": "|".join(qids[j:j + 50]), "props": "sitelinks",
+            "sitefilter": "|".join(f"{l}wiki" for l in LANGS),
+            "maxlag": "5",
+        })
+        r2.raise_for_status()
+        for qid, ent in (r2.json().get("entities") or {}).items():
+            links = ent.get("sitelinks") or {}
+            qid_links[qid] = {
+                lang: links[f"{lang}wiki"]["title"]
+                for lang in LANGS if f"{lang}wiki" in links
+            }
+    return {t: qid_links[v] for t, v in req_qid.items()
+            if v and qid_links.get(v)}
 
 
 def views_12m(lang, title, start, end):
@@ -159,7 +192,7 @@ def main():
     print(f"Карточек к обработке: {len(cards)}  (APPLY={'да' if apply else 'нет — dry-run'})")
 
     start, end = month_window()
-    done = 0
+    done = written = 0
     for i in range(0, len(cards), 50):
         chunk = cards[i:i + 50]
         try:
@@ -187,13 +220,14 @@ def main():
                 if apply:
                     sb(f"cards?id=eq.{c['id']}", method="PATCH",
                        data=json.dumps({"pageviews_i18n": payload}))
+                    written += 1
                 else:
                     top = sorted(payload.items(), key=lambda kv: -kv[1])[:3]
                     print(f"  {c['name']}: " + ", ".join(f"{l}={v}" for l, v in top))
             done += 1
             if done % 25 == 0:
                 print(f"  … {done}/{len(cards)}")
-    print(f"Готово: {done}/{len(cards)}")
+    print(f"Готово: {done}/{len(cards)}, записано pageviews_i18n: {written}")
 
 
 if __name__ == "__main__":
