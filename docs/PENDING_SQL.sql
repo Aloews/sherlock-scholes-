@@ -20,6 +20,8 @@
 --   2026-07-19  Культурная локализация: буст стран, langs, 21 комментатор [ПРИМЕНЕНО]
 --   2026-07-19  Новые категории: дерби (17) / трофеи (15) / эпохи (13) [ПРИМЕНЕНО]
 --   2026-07-19  pageviews_i18n + буст + локальные клубы + описания терминов [ПРИМЕНЕНО]
+--   2026-07-25  Статистика карточек: «Олимпик»→Лион/Марсель + чистка юношеских
+--               сборных из facts (аудит колоды) [НЕ ПРИМЕНЕНО — на ревью]
 -- ============================================================================
 
 
@@ -1313,4 +1315,125 @@ NOTIFY pgrst, 'reload schema';
 --        where table_name='cards' and column_name='pageviews_i18n')          as i18n_col,   -- 1
 --     (select count(*) from cards where langs && array['es','pt','ja']
 --        and category='club')                                                as local_clubs; -- ~30
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — Аудит и починка статистики в карточках игроков
+--
+-- ⚠️  НЕ ПРИМЕНЕНО НА ПРОДЕ. Блок подготовлен для ревью: сначала прогони
+--     раздел «АУДИТ» (только SELECT), убедись в цифрах, потом раскомментируй/
+--     выполняй «ПОЧИНКА». Все UPDATE идемпотентны — повторный прогон безопасен.
+--
+-- ПОВОД: в карточках итогового экрана (TrainingScreen → clubChips/brightFacts)
+-- у части игроков видна неверная статистика. Данные приходят из cards
+-- (career_stats / legend_career / facts), их собирает скрапер — правим данные,
+-- рендер трогать не нужно. Аудит по всей колоде (2676 карточек игроков/женщин):
+--
+--   • club_ru = "Олимпик" схлопывает ДВА разных клуба — Lyon и Marseille —
+--     и ни один из них по-русски не «Олимпик» (Lyon → «Лион»,
+--     Marseille → «Марсель»).  career_stats: 74 карт,  legend_career: 55 карт.
+--   • national_team в facts у 337 карточек — это ЮНОШЕСКАЯ/молодёжная сборная
+--     («…(до 17 лет)», «Юношеская сборная …», «…(до 21 года)»), а рендерится
+--     как главный сборный факт «N матчей за X». Это вводит в заблуждение
+--     (напр. Хадсон-Одои: «23 матча за Юношескую сборную Англии»). Настоящих
+--     цифр по ВЗРОСЛОЙ сборной в БД нет — поэтому честнее убрать ложный факт.
+--
+-- ЧЕГО ЭТОТ БЛОК НАМЕРЕННО НЕ ДЕЛАЕТ (нужен ре-скрап, не угадать из БД):
+--   • facts.clubs_count ≠ числу клубов в career_stats у 968 карт — это в
+--     основном НОРМА: career_stats хранит только топ-клубы, а clubs_count —
+--     всю карьеру (Лансини: count=4, в career_stats 3 уникальных). Не трогаем.
+--   • Недосбор клубов у «свежих» карточек (только clubs_minutes 2022-24):
+--     Джибриль Соу → clubs_count=1 и один клуб, хотя клубов было 4. Чинится
+--     только повторным сбором карьеры, не SQL-ом.
+--   • Пустые карточки (career_stats+legend_career+clubs_minutes = NULL): 209
+--     (полностью пустых, даже без facts: 172). Напр. «Маркос Алонсо» — вдобавок
+--     тёзка-омоним (дед/отец/внук), точные цифры без источника не подставить.
+-- ============================================================================
+
+-- ── АУДИТ (только SELECT, ничего не меняет) ─────────────────────────────────
+-- select
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"')            as olimpik_career,   -- 74
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and legend_career::text ~* '"club"\s*:\s*"Олимпик"')              as olimpik_legend,   -- 55
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and facts ? 'national_team'
+--        and ((facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+--             or (facts->>'national_team') like '%(%'))                    as youth_natteam;    -- 337
+
+-- ── ПОЧИНКА 1a: career_stats — «Олимпик» → «Лион» / «Марсель» по club_en ─────
+UPDATE cards c
+SET career_stats = sub.new_arr
+FROM (
+  SELECT cc.id,
+         jsonb_agg(
+           CASE
+             WHEN e->>'club_ru' = 'Олимпик' AND e->>'club' ILIKE 'Lyon%'
+               THEN jsonb_set(e, '{club_ru}', to_jsonb(replace(e->>'club', 'Lyon', 'Лион')))
+             WHEN e->>'club_ru' = 'Олимпик' AND e->>'club' ILIKE '%Marseille%'
+               THEN jsonb_set(e, '{club_ru}', '"Марсель"'::jsonb)
+             ELSE e
+           END
+           ORDER BY ord
+         ) AS new_arr
+  FROM cards cc,
+       jsonb_array_elements(cc.career_stats) WITH ORDINALITY AS t(e, ord)
+  WHERE cc.category IN ('player','woman') AND coalesce(cc.active, true)
+    AND cc.career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"'
+  GROUP BY cc.id
+) sub
+WHERE c.id = sub.id;
+
+-- ── ПОЧИНКА 1b: legend_career — «Олимпик» → «Марсель» (там это всегда Marseille) ─
+UPDATE cards c
+SET legend_career = jsonb_set(c.legend_career, '{clubs}', sub.new_clubs)
+FROM (
+  SELECT cc.id,
+         jsonb_agg(
+           CASE
+             WHEN e->>'club' = 'Олимпик' AND e->>'club_en' ILIKE '%Marseille%'
+               THEN jsonb_set(e, '{club}', '"Марсель"'::jsonb)
+             ELSE e
+           END
+           ORDER BY ord
+         ) AS new_clubs
+  FROM cards cc,
+       jsonb_array_elements(cc.legend_career->'clubs') WITH ORDINALITY AS t(e, ord)
+  WHERE cc.category IN ('player','woman') AND coalesce(cc.active, true)
+    AND cc.legend_career::text ~* '"club"\s*:\s*"Олимпик"'
+  GROUP BY cc.id
+) sub
+WHERE c.id = sub.id;
+
+-- ── ПОЧИНКА 2: убрать юношескую/молодёжную сборную из facts ──────────────────
+-- Оставляем остальные факты (clubs_count / ЧМ / рост). Ключи national_team и
+-- national_caps удаляются, поэтому brightFacts() перестаёт рисовать ложную
+-- строку «N матчей за <юношескую сборную>». Идемпотентно: после удаления
+-- national_team уже нет — повтор ничего не трогает.
+UPDATE cards
+SET facts = facts - 'national_team' - 'national_caps'
+WHERE category IN ('player','woman') AND coalesce(active, true)
+  AND facts ? 'national_team'
+  AND ( (facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+        OR (facts->>'national_team') LIKE '%(%' );
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY (после ПОЧИНКИ все три должны быть 0):
+--   select
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"')          as olimpik_career, -- 0
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and legend_career::text ~* '"club"\s*:\s*"Олимпик"')            as olimpik_legend, -- 0
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and facts ? 'national_team'
+--          and ((facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+--               or (facts->>'national_team') like '%(%'))                  as youth_natteam;  -- 0
 -- ============================================================================
