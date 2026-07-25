@@ -21,7 +21,9 @@
 --   2026-07-19  Новые категории: дерби (17) / трофеи (15) / эпохи (13) [ПРИМЕНЕНО]
 --   2026-07-19  pageviews_i18n + буст + локальные клубы + описания терминов [ПРИМЕНЕНО]
 --   2026-07-25  Статистика карточек: «Олимпик»→Лион/Марсель + чистка юношеских
---               сборных из facts (аудит колоды) [НЕ ПРИМЕНЕНО — на ревью]
+--               сборных из facts (аудит колоды) [ПРИМЕНЕНО]
+--   2026-07-25  clubs_count: поднять недосчёты до доказуемого числа клубов
+--               (89 карт, только career_stats+legend_career) [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -1321,7 +1323,8 @@ NOTIFY pgrst, 'reload schema';
 -- ============================================================================
 -- 2026-07-25 — Аудит и починка статистики в карточках игроков
 --
--- ⚠️  НЕ ПРИМЕНЕНО НА ПРОДЕ. Блок подготовлен для ревью: сначала прогони
+-- ✅  ПРИМЕНЕНО НА ПРОДЕ 2026-07-25. Блок оставлен как есть (идемпотентный),
+--     повторный прогон безопасен. Изначально готовился для ревью:
 --     раздел «АУДИТ» (только SELECT), убедись в цифрах, потом раскомментируй/
 --     выполняй «ПОЧИНКА». Все UPDATE идемпотентны — повторный прогон безопасен.
 --
@@ -1436,4 +1439,67 @@ NOTIFY pgrst, 'reload schema';
 --          and facts ? 'national_team'
 --          and ((facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
 --               or (facts->>'national_team') like '%(%'))                  as youth_natteam;  -- 0
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — facts.clubs_count: поднять ЯВНЫЕ недосчёты  [ПРИМЕНЕНО]
+--
+-- Аудит: у 968 карт clubs_count ≠ числу клубов в career_stats. В 1617 случаях
+-- clubs_count БОЛЬШЕ (норма: career_stats хранит только топ-клубы, а
+-- clubs_count — всю карьеру) — НЕ трогаем. Но у 113 карт clubs_count МЕНЬШЕ,
+-- чем клубов, которые мы можем ДОКАЗАТЬ по данным — это явная ошибка.
+--
+-- Чиним только доказуемые недосчёты и ТОЛЬКО ВВЕРХ, по двум курируемым
+-- источникам (career_stats + legend_career; шумный clubs_minutes-хвост 2022-24
+-- НЕ учитываем). Резервные команды (II/B/D/-2) схлопываем, чтобы не завысить.
+-- Итог: обновлено 89 карт (напр. Диогу Далот 3→4, Рафаэл Леау 3→4). Ещё 24
+-- недосчёта (только против clubs_minutes) намеренно пропущены как ненадёжные.
+-- Идемпотентно: greatest() никогда не опускает уже верное значение.
+UPDATE cards
+SET facts = jsonb_set(facts, '{clubs_count}', to_jsonb(prov.proven))
+FROM (
+  SELECT id,
+    greatest(
+      coalesce((select count(distinct regexp_replace(lower(coalesce(c->>'club_ru',c->>'club')),'\s*(ii|b|d|-2|-д)$',''))
+                from jsonb_array_elements(career_stats) c),0),
+      coalesce((select count(distinct regexp_replace(lower(c->>'club'),'\s*(ii|b|d|-2|-д)$',''))
+                from jsonb_array_elements(legend_career->'clubs') c),0)
+    ) as proven
+  FROM cards
+  WHERE category IN ('player','woman') AND coalesce(active,true) AND facts ? 'clubs_count'
+) prov
+WHERE cards.id = prov.id
+  AND (cards.facts->>'clubs_count')::int < prov.proven;
+
+-- VERIFY (после починки — 0):
+--   select count(*) from cards
+--   where category in ('player','woman') and coalesce(active,true) and facts ? 'clubs_count'
+--     and (facts->>'clubs_count')::int < greatest(
+--       coalesce((select count(distinct regexp_replace(lower(coalesce(c->>'club_ru',c->>'club')),'\s*(ii|b|d|-2|-д)$',''))
+--                 from jsonb_array_elements(career_stats) c),0),
+--       coalesce((select count(distinct regexp_replace(lower(c->>'club'),'\s*(ii|b|d|-2|-д)$',''))
+--                 from jsonb_array_elements(legend_career->'clubs') c),0));
+
+
+-- ============================================================================
+-- 2026-07-25 — ОСТАЛОСЬ: недосбор карьеры и пустые карточки (НЕ SQL)
+--
+-- Эти два класса НЕЛЬЗЯ починить SQL-ом из текущей БД — нужен сбор данных из
+-- Википедии/API-Football (внешний источник). В окружении Claude сеть к
+-- wikipedia.org/wikidata заблокирована политикой (403), поэтому сбор идёт
+-- через GitHub Actions workflow «daily-enrich» (у него есть секреты
+-- SUPABASE service_role + FOOTBALL_API_KEY + открытая сеть).
+--
+--   • Пустые карточки (facts IS NULL, ~172-209): чинит ШАГ 1 оркестратора —
+--     docs/cards_enrich_newcomers.py --apply (resolve из ruwiki/Wikidata →
+--     facts/legend_career/country/photo/tier). Запуск: workflow_dispatch
+--     «daily-enrich» или локально с .env (SUPABASE_URL/KEY).
+--   • Недосбор у УЖЕ заполненных карточек (Джибриль Соу: clubs_count и клубы
+--     занижены, есть только clubs_minutes-хвост): текущий пайплайн их НЕ
+--     покрывает — cards_enrich_newcomers берёт только facts IS NULL, а
+--     cards_career_build — только ветеранов (age>=33). Нужна доработка
+--     скрапера (расширить career_build на established-игроков с бедным
+--     career_stats), затем прогон в CI. Кодовой правкой в этом окружении
+--     подготовить можно; собрать/проверить данные — только там, где есть сеть.
 -- ============================================================================
