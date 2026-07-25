@@ -3,6 +3,11 @@
 
 Telegram Mini App football Alias game.
 
+> **Building on this project?** Read the [Engineering Constitution](./docs/ENGINEERING_CONSTITUTION.md)
+> first — it's the single, enforced standard for humans and AI agents (see
+> [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md)). Docs index:
+> [`docs/`](./docs/README.md). How to test: [`TESTING.md`](./TESTING.md).
+
 Core idea:
 Players explain football players instead of regular Alias words.
 
