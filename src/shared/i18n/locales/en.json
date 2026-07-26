@@ -51,6 +51,7 @@
     "tag_goalkeeper": "Goalkeepers",
     "tag_ballon_dor": "Ballon d'Or",
     "tag_world_cup": "Played at WC/Euro",
+    "tag_wc2026": "World Cup 2026",
     "tag_giant": "Giants ≥190",
     "tag_dwarf": "Pocket-size ≤170",
     "pro_badge": "Pro",
@@ -110,6 +111,14 @@
     "error_title": "Couldn't load cards",
     "retry": "Retry",
     "close": "Close"
+  },
+  "summary_sort": {
+    "order": "By order",
+    "category": "By category",
+    "name": "By name",
+    "rarity": "By rarity",
+    "clubs_years": "Clubs: by year",
+    "clubs_apps": "Clubs: by apps"
   },
   "quick": {
     "title": "Quick Game",

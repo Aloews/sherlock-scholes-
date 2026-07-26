@@ -53,6 +53,7 @@
     "tag_goalkeeper": "Вратари",
     "tag_ballon_dor": "Золотой мяч",
     "tag_world_cup": "Играли на ЧМ/Евро",
+    "tag_wc2026": "ЧМ-2026",
     "tag_giant": "Великаны ≥190",
     "tag_dwarf": "Малыши ≤170",
     "pro_badge": "Pro",
@@ -112,6 +113,14 @@
     "error_title": "Не удалось загрузить карты",
     "retry": "Повторить",
     "close": "Закрыть"
+  },
+  "summary_sort": {
+    "order": "По порядку",
+    "category": "По категории",
+    "name": "По имени",
+    "rarity": "По редкости",
+    "clubs_years": "Клубы: по годам",
+    "clubs_apps": "Клубы: по матчам"
   },
   "quick": {
     "title": "Быстрая игра",

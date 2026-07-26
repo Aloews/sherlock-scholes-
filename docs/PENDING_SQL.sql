@@ -20,6 +20,12 @@
 --   2026-07-19  Культурная локализация: буст стран, langs, 21 комментатор [ПРИМЕНЕНО]
 --   2026-07-19  Новые категории: дерби (17) / трофеи (15) / эпохи (13) [ПРИМЕНЕНО]
 --   2026-07-19  pageviews_i18n + буст + локальные клубы + описания терминов [ПРИМЕНЕНО]
+--   2026-07-25  Статистика карточек: «Олимпик»→Лион/Марсель + чистка юношеских
+--               сборных из facts (аудит колоды) [ПРИМЕНЕНО]
+--   2026-07-25  clubs_count: поднять недосчёты до доказуемого числа клубов
+--               (89 карт, только career_stats+legend_career) [ПРИМЕНЕНО]
+--   2026-07-25  name_en пустых карточек: чинка битой транслитерации
+--               (85 карт: Vinícius Júnior, Haaland, McTominay…) [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -1313,4 +1319,259 @@ NOTIFY pgrst, 'reload schema';
 --        where table_name='cards' and column_name='pageviews_i18n')          as i18n_col,   -- 1
 --     (select count(*) from cards where langs && array['es','pt','ja']
 --        and category='club')                                                as local_clubs; -- ~30
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — Аудит и починка статистики в карточках игроков
+--
+-- ✅  ПРИМЕНЕНО НА ПРОДЕ 2026-07-25. Блок оставлен как есть (идемпотентный),
+--     повторный прогон безопасен. Изначально готовился для ревью:
+--     раздел «АУДИТ» (только SELECT), убедись в цифрах, потом раскомментируй/
+--     выполняй «ПОЧИНКА». Все UPDATE идемпотентны — повторный прогон безопасен.
+--
+-- ПОВОД: в карточках итогового экрана (TrainingScreen → clubChips/brightFacts)
+-- у части игроков видна неверная статистика. Данные приходят из cards
+-- (career_stats / legend_career / facts), их собирает скрапер — правим данные,
+-- рендер трогать не нужно. Аудит по всей колоде (2676 карточек игроков/женщин):
+--
+--   • club_ru = "Олимпик" схлопывает ДВА разных клуба — Lyon и Marseille —
+--     и ни один из них по-русски не «Олимпик» (Lyon → «Лион»,
+--     Marseille → «Марсель»).  career_stats: 74 карт,  legend_career: 55 карт.
+--   • national_team в facts у 337 карточек — это ЮНОШЕСКАЯ/молодёжная сборная
+--     («…(до 17 лет)», «Юношеская сборная …», «…(до 21 года)»), а рендерится
+--     как главный сборный факт «N матчей за X». Это вводит в заблуждение
+--     (напр. Хадсон-Одои: «23 матча за Юношескую сборную Англии»). Настоящих
+--     цифр по ВЗРОСЛОЙ сборной в БД нет — поэтому честнее убрать ложный факт.
+--
+-- ЧЕГО ЭТОТ БЛОК НАМЕРЕННО НЕ ДЕЛАЕТ (нужен ре-скрап, не угадать из БД):
+--   • facts.clubs_count ≠ числу клубов в career_stats у 968 карт — это в
+--     основном НОРМА: career_stats хранит только топ-клубы, а clubs_count —
+--     всю карьеру (Лансини: count=4, в career_stats 3 уникальных). Не трогаем.
+--   • Недосбор клубов у «свежих» карточек (только clubs_minutes 2022-24):
+--     Джибриль Соу → clubs_count=1 и один клуб, хотя клубов было 4. Чинится
+--     только повторным сбором карьеры, не SQL-ом.
+--   • Пустые карточки (career_stats+legend_career+clubs_minutes = NULL): 209
+--     (полностью пустых, даже без facts: 172). Напр. «Маркос Алонсо» — вдобавок
+--     тёзка-омоним (дед/отец/внук), точные цифры без источника не подставить.
+-- ============================================================================
+
+-- ── АУДИТ (только SELECT, ничего не меняет) ─────────────────────────────────
+-- select
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"')            as olimpik_career,   -- 74
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and legend_career::text ~* '"club"\s*:\s*"Олимпик"')              as olimpik_legend,   -- 55
+--   (select count(*) from cards
+--      where category in ('player','woman') and coalesce(active,true)
+--        and facts ? 'national_team'
+--        and ((facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+--             or (facts->>'national_team') like '%(%'))                    as youth_natteam;    -- 337
+
+-- ── ПОЧИНКА 1a: career_stats — «Олимпик» → «Лион» / «Марсель» по club_en ─────
+UPDATE cards c
+SET career_stats = sub.new_arr
+FROM (
+  SELECT cc.id,
+         jsonb_agg(
+           CASE
+             WHEN e->>'club_ru' = 'Олимпик' AND e->>'club' ILIKE 'Lyon%'
+               THEN jsonb_set(e, '{club_ru}', to_jsonb(replace(e->>'club', 'Lyon', 'Лион')))
+             WHEN e->>'club_ru' = 'Олимпик' AND e->>'club' ILIKE '%Marseille%'
+               THEN jsonb_set(e, '{club_ru}', '"Марсель"'::jsonb)
+             ELSE e
+           END
+           ORDER BY ord
+         ) AS new_arr
+  FROM cards cc,
+       jsonb_array_elements(cc.career_stats) WITH ORDINALITY AS t(e, ord)
+  WHERE cc.category IN ('player','woman') AND coalesce(cc.active, true)
+    AND cc.career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"'
+  GROUP BY cc.id
+) sub
+WHERE c.id = sub.id;
+
+-- ── ПОЧИНКА 1b: legend_career — «Олимпик» → «Марсель» (там это всегда Marseille) ─
+UPDATE cards c
+SET legend_career = jsonb_set(c.legend_career, '{clubs}', sub.new_clubs)
+FROM (
+  SELECT cc.id,
+         jsonb_agg(
+           CASE
+             WHEN e->>'club' = 'Олимпик' AND e->>'club_en' ILIKE '%Marseille%'
+               THEN jsonb_set(e, '{club}', '"Марсель"'::jsonb)
+             ELSE e
+           END
+           ORDER BY ord
+         ) AS new_clubs
+  FROM cards cc,
+       jsonb_array_elements(cc.legend_career->'clubs') WITH ORDINALITY AS t(e, ord)
+  WHERE cc.category IN ('player','woman') AND coalesce(cc.active, true)
+    AND cc.legend_career::text ~* '"club"\s*:\s*"Олимпик"'
+  GROUP BY cc.id
+) sub
+WHERE c.id = sub.id;
+
+-- ── ПОЧИНКА 2: убрать юношескую/молодёжную сборную из facts ──────────────────
+-- Оставляем остальные факты (clubs_count / ЧМ / рост). Ключи national_team и
+-- national_caps удаляются, поэтому brightFacts() перестаёт рисовать ложную
+-- строку «N матчей за <юношескую сборную>». Идемпотентно: после удаления
+-- national_team уже нет — повтор ничего не трогает.
+UPDATE cards
+SET facts = facts - 'national_team' - 'national_caps'
+WHERE category IN ('player','woman') AND coalesce(active, true)
+  AND facts ? 'national_team'
+  AND ( (facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+        OR (facts->>'national_team') LIKE '%(%' );
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY (после ПОЧИНКИ все три должны быть 0):
+--   select
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and career_stats::text ~* '"club_ru"\s*:\s*"Олимпик"')          as olimpik_career, -- 0
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and legend_career::text ~* '"club"\s*:\s*"Олимпик"')            as olimpik_legend, -- 0
+--     (select count(*) from cards
+--        where category in ('player','woman') and coalesce(active,true)
+--          and facts ? 'national_team'
+--          and ((facts->>'national_team') ~* '(юнош|молод[её]ж|olympic|олимп|до 1[0-9]|до 2[0-9]|U-?1[0-9]|U-?2[0-9])'
+--               or (facts->>'national_team') like '%(%'))                  as youth_natteam;  -- 0
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — facts.clubs_count: поднять ЯВНЫЕ недосчёты  [ПРИМЕНЕНО]
+--
+-- Аудит: у 968 карт clubs_count ≠ числу клубов в career_stats. В 1617 случаях
+-- clubs_count БОЛЬШЕ (норма: career_stats хранит только топ-клубы, а
+-- clubs_count — всю карьеру) — НЕ трогаем. Но у 113 карт clubs_count МЕНЬШЕ,
+-- чем клубов, которые мы можем ДОКАЗАТЬ по данным — это явная ошибка.
+--
+-- Чиним только доказуемые недосчёты и ТОЛЬКО ВВЕРХ, по двум курируемым
+-- источникам (career_stats + legend_career; шумный clubs_minutes-хвост 2022-24
+-- НЕ учитываем). Резервные команды (II/B/D/-2) схлопываем, чтобы не завысить.
+-- Итог: обновлено 89 карт (напр. Диогу Далот 3→4, Рафаэл Леау 3→4). Ещё 24
+-- недосчёта (только против clubs_minutes) намеренно пропущены как ненадёжные.
+-- Идемпотентно: greatest() никогда не опускает уже верное значение.
+UPDATE cards
+SET facts = jsonb_set(facts, '{clubs_count}', to_jsonb(prov.proven))
+FROM (
+  SELECT id,
+    greatest(
+      coalesce((select count(distinct regexp_replace(lower(coalesce(c->>'club_ru',c->>'club')),'\s*(ii|b|d|-2|-д)$',''))
+                from jsonb_array_elements(career_stats) c),0),
+      coalesce((select count(distinct regexp_replace(lower(c->>'club'),'\s*(ii|b|d|-2|-д)$',''))
+                from jsonb_array_elements(legend_career->'clubs') c),0)
+    ) as proven
+  FROM cards
+  WHERE category IN ('player','woman') AND coalesce(active,true) AND facts ? 'clubs_count'
+) prov
+WHERE cards.id = prov.id
+  AND (cards.facts->>'clubs_count')::int < prov.proven;
+
+-- VERIFY (после починки — 0):
+--   select count(*) from cards
+--   where category in ('player','woman') and coalesce(active,true) and facts ? 'clubs_count'
+--     and (facts->>'clubs_count')::int < greatest(
+--       coalesce((select count(distinct regexp_replace(lower(coalesce(c->>'club_ru',c->>'club')),'\s*(ii|b|d|-2|-д)$',''))
+--                 from jsonb_array_elements(career_stats) c),0),
+--       coalesce((select count(distinct regexp_replace(lower(c->>'club'),'\s*(ii|b|d|-2|-д)$',''))
+--                 from jsonb_array_elements(legend_career->'clubs') c),0));
+
+
+-- ============================================================================
+-- 2026-07-25 — ОСТАЛОСЬ: недосбор карьеры и пустые карточки (НЕ SQL)
+--
+-- Эти два класса НЕЛЬЗЯ починить SQL-ом из текущей БД — нужен сбор данных из
+-- Википедии/API-Football (внешний источник). В окружении Claude сеть к
+-- wikipedia.org/wikidata заблокирована политикой (403), поэтому сбор идёт
+-- через GitHub Actions workflow «daily-enrich» (у него есть секреты
+-- SUPABASE service_role + FOOTBALL_API_KEY + открытая сеть).
+--
+--   • Пустые карточки (facts IS NULL, ~172-209): чинит ШАГ 1 оркестратора —
+--     docs/cards_enrich_newcomers.py --apply (resolve из ruwiki/Wikidata →
+--     facts/legend_career/country/photo/tier). Запуск: workflow_dispatch
+--     «daily-enrich» или локально с .env (SUPABASE_URL/KEY).
+--   • Недосбор у УЖЕ заполненных карточек (Джибриль Соу: clubs_count и клубы
+--     занижены, есть только clubs_minutes-хвост): текущий пайплайн их НЕ
+--     покрывает — cards_enrich_newcomers берёт только facts IS NULL, а
+--     cards_career_build — только ветеранов (age>=33). Нужна доработка
+--     скрапера (расширить career_build на established-игроков с бедным
+--     career_stats), затем прогон в CI. Кодовой правкой в этом окружении
+--     подготовить можно; собрать/проверить данные — только там, где есть сеть.
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — name_en пустых карточек: чинка битой транслитерации  [ПРИМЕНЕНО]
+--
+-- У ~172 пустых карточек игроков (facts/career_stats/legend_career/clubs_minutes
+-- = NULL) name_en был не настоящим латинским именем, а МАШИННОЙ транслитерацией
+-- с русского: «Aaron Uan-Bissaka» (→Wan-Bissaka), «Vinisius Dzhunior»
+-- (→Vinícius Júnior), «Diogo Zhota» (→Diogo Jota), «Kholand» (→Haaland),
+-- «Skott Maktominey» (→McTominay), «Academy Awards» (→Оскар-футболист). Из-за
+-- этого ВСЕ enwiki-сборщики (фото, pageviews, career_build group B) не находили
+-- статью. Здесь — курируемая замена name_en на реальные (при нужде —
+-- disambig-уточнённые) заголовки enwiki. Только карточки, которые опознаны
+-- ОДНОЗНАЧНО; голые неоднозначные мононимы («Педро», «Родриго», «Крис», «Дуду»…)
+-- и малоизвестные РПЛ-игроки НЕ трогаем — там легко ошибиться с тёзкой.
+-- Гард: обновляем только пустые player/woman-карточки, поэтому реальные данные
+-- не затронуты. Стата подтянется в CI (career_build via=name_title), не тут
+-- (сеть к Википедии закрыта политикой).
+UPDATE cards c
+SET name_en = m.correct
+FROM (VALUES
+  ('Аарон Уан-Биссака','Aaron Wan-Bissaka'), ('Брайан Мбеумо','Bryan Mbeumo'),
+  ('Бруно Гимараэш','Bruno Guimarães'), ('Брэдли Барколя','Bradley Barcola'),
+  ('Винисиус Джуниор','Vinícius Júnior'), ('Дензел Думфрис','Denzel Dumfries'),
+  ('Джи Сун Пак','Park Ji-sung'), ('Джо Гомез','Joe Gomez'),
+  ('Джон Дюран','Jhon Durán'), ('Джорджиньо Вийналдум','Georginio Wijnaldum'),
+  ('Диого Жота','Diogo Jota'), ('Диогу Коста','Diogo Costa'),
+  ('Жереми Фримпонг','Jeremie Frimpong'), ('Жеронимо Рулли','Jerónimo Rulli'),
+  ('Жоао Гомес','João Gomes'), ('Жоао Педро','João Pedro'),
+  ('Зион Судзуки','Zion Suzuki'), ('Йежи Дудек','Jerzy Dudek'),
+  ('Карим Бельараби','Karim Bellarabi'), ('Кефрен Тюрам','Khéphren Thuram'),
+  ('Луис Диаз','Luis Díaz'), ('Луис Суарес','Luis Suárez'),
+  ('Майк Маньян','Mike Maignan'), ('Мартен Де Роон','Marten de Roon'),
+  ('Мерт Гюнок','Mert Günok'), ('Мойзес Кайседо','Moisés Caicedo'),
+  ('Мохамед Эльнени','Mohamed Elneny'), ('Начо Фернандес','Nacho Fernández'),
+  ('Никлас Зуле','Niklas Süle'), ('Нико Гонсалез','Nico González'),
+  ('Оле Гуннар Сульшер','Ole Gunnar Solskjær'), ('Расмус Хёйлунд','Rasmus Højlund'),
+  ('Роджер Ибаньес','Roger Ibañez'), ('Скотт МакТоминэй','Scott McTominay'),
+  ('Свен Ульряйх','Sven Ulreich'), ('Тоби Алдервейрельд','Toby Alderweireld'),
+  ('Тьяго Силва','Thiago Silva'), ('Энтони Эланга','Anthony Elanga'),
+  ('Эсекиэль Лавесси','Ezequiel Lavezzi'), ('Янник Карраско','Yannick Carrasco'),
+  ('Гарри Кэхилл','Gary Cahill'), ('Гарри Невилл','Gary Neville'),
+  ('Даниэль Старридж','Daniel Sturridge'), ('Данни Мёрфи','Danny Murphy'),
+  ('Данни Симпсон','Danny Simpson'), ('Титус Брамбл','Titus Bramble'),
+  ('Шарль Н''Зогбиа','Charles N''Zogbia'), ('Осман Дабо','Ousmane Dabo'),
+  ('Бенуа Ассу-Экото','Benoît Assou-Ekotto'), ('Фернанрдо Мейра','Fernando Meira'),
+  ('Пьетро Террачиано','Pietro Terracciano'), ('Стефан Рюффье','Stéphane Ruffier'),
+  ('Тимо Хильдебрандт','Timo Hildebrand'), ('Карл Хейн','Karl Hein'),
+  ('Кейто Накамура','Keito Nakamura'), ('Хосе Гайя','José Gayà'),
+  ('Хуан Капдевила','Joan Capdevila'), ('Омер Топрак','Ömer Toprak'),
+  ('Марк Гейи','Marc Guéhi'), ('Франк Ангисса','André-Frank Zambo Anguissa'),
+  ('Кристофер Ольссон','Kristoffer Olsson'), ('Петр Зелински','Piotr Zieliński'),
+  ('Эстеван','Estêvão'), ('Эзекьель Барко','Ezequiel Barco'),
+  ('Хулио Круз','Julio Cruz'), ('Хуан Мануэль Инссауральде','Juan Manuel Insaurralde'),
+  ('Нкванкво Кану','Nwankwo Kanu'), ('Макси Моралез','Maxi Moralez'),
+  ('Лукас Мартинес Куатра','Lucas Martínez Quarta'), ('Виктор Са','Victor Sá'),
+  ('Вальтер Бенитес','Walter Benítez'), ('Габи Милито','Gabriel Milito'),
+  ('Кристиан Рамирез','Christian Ramírez'), ('Папу Гомез','Papu Gómez'),
+  ('Холанд','Erling Haaland'), ('Варди','Jamie Vardy'),
+  ('Халк','Hulk (footballer)'), ('Оскар','Oscar (footballer, born 1991)'),
+  ('Марсело','Marcelo (footballer, born 1988)'), ('Рауль','Raúl (footballer)'),
+  ('Талиска','Anderson Talisca'), ('Хоакин','Joaquín (footballer)'),
+  ('Луизао','Luisão'), ('Симао','Simão Sabrosa'),
+  ('Роландо','Rolando (footballer)'), ('Хуанфран','Juanfran')
+) AS m(ru, correct)
+WHERE c.name = m.ru
+  AND c.category IN ('player','woman') AND coalesce(c.active,true)
+  AND c.facts IS NULL AND c.career_stats IS NULL
+  AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
 -- ============================================================================
