@@ -225,19 +225,29 @@ export const STAR_TAG = 'star';
 // ─── Rarity tiers (cards.tier) ───────────────────────────────────
 // Foundation for the collectible mechanic. Derived from existing data
 // (pageviews + facts.titles/tournaments) by docs/cards_tier_build.py.
-export type Tier = 'legendary' | 'epic' | 'rare' | 'common';
-export const TIERS: Tier[] = ['legendary', 'epic', 'rare', 'common'];
+// 'icon' sits ABOVE legendary — the handful of cards everyone knows.
+export type Tier = 'icon' | 'legendary' | 'epic' | 'rare' | 'common';
+export const TIERS: Tier[] = ['icon', 'legendary', 'epic', 'rare', 'common'];
 export const TIER_COLOR: Record<Tier, string> = {
+  icon:      '#F4EEE6', // near-white
   legendary: '#FFD24A', // gold
   epic:      '#B47AFF', // purple
   rare:      '#4A9EFF', // blue
   common:    '#7A8499', // muted grey
 };
 export const TIER_LABEL_RU: Record<Tier, string> = {
+  icon:      'Икона',
   legendary: 'Легендарная',
   epic:      'Эпическая',
   rare:      'Редкая',
   common:    'Обычная',
+};
+export const TIER_LABEL_EN: Record<Tier, string> = {
+  icon:      'Icon',
+  legendary: 'Legendary',
+  epic:      'Epic',
+  rare:      'Rare',
+  common:    'Common',
 };
 
 // Generic card — covers all 10 categories from sherlock_cards.csv

@@ -14,6 +14,11 @@ export function tierCardStyle(tier?: string | null): CSSProperties | undefined {
   const t = asTier(tier);
   if (!t || t === 'common') return undefined;
   const c = TIER_COLOR[t];
+  // 'icon' is the loudest frame in the deck: a 2px inset instead of 1px and
+  // the widest, whitest halo — it must read as a step above legendary.
+  if (t === 'icon') {
+    return { borderColor: c, boxShadow: `inset 0 0 0 2px ${c}, 0 0 24px ${c}59` };
+  }
   const glow = t === 'legendary' ? `0 0 18px ${c}66`
     : t === 'epic' ? `0 0 14px ${c}55`
     : `0 0 10px ${c}40`;
@@ -25,5 +30,6 @@ export function tierRingStyle(tier?: string | null): CSSProperties | undefined {
   const t = asTier(tier);
   if (!t || t === 'common') return undefined;
   const c = TIER_COLOR[t];
+  if (t === 'icon') return { boxShadow: `0 0 0 2px ${c}, 0 0 10px ${c}99` };
   return { boxShadow: `0 0 0 2px ${c}, 0 0 6px ${c}66` };
 }

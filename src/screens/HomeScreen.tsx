@@ -376,6 +376,9 @@ export function HomeScreen() {
             <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('join'); }}>
               {t('home.join_game')}
             </Button>
+            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); navigate('/collection'); }}>
+              {t('collection.title')}
+            </Button>
           </div>
         )}
 
