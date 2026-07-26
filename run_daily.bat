@@ -15,6 +15,16 @@ echo. >> daily_enrich.log
 echo [%date% %time%] ===== START ===== >> daily_enrich.log
 
 python docs\daily_enrich.py >> daily_enrich.log 2>&1
+
+REM --- Описания неигровых карточек (клубы, стадионы, тренеры, судьи,
+REM     комментаторы, дерби, трофеи): короткий блёрб из преамбулы статьи
+REM     в Википедии. Игроков не трогает - у них facts/career_stats.
+REM     Пишет только там, где descriptions пуст, поэтому повтор безопасен.
+REM     --limit 120 - как в ночном CI; поставь 0, чтобы добрать всё за раз.
+set APPLY=1
+python docs\cards_descriptions_build.py --limit 120 >> daily_enrich.log 2>&1
+set APPLY=
+
 python docs\cards_audit.py  >> daily_enrich.log 2>&1
 
 echo [%date% %time%] ===== DONE ===== >> daily_enrich.log
