@@ -1575,3 +1575,29 @@ WHERE c.name = m.ru
   AND c.facts IS NULL AND c.career_stats IS NULL
   AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
 -- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-26 — name_en пустых карточек, добор  [ПРИМЕНЕНО]
+--
+-- После первого daily-enrich на main (via=name_title) пустых карточек стало
+-- 172→67. Ещё 4 битые транслитерации опознаны однозначно и поправлены, чтобы
+-- их подхватил следующий прогон:
+--   «Арис Адурис»→Aritz Aduriz (Атлетик), «Антони Паненка»→Antonín Panenka,
+--   «Жулио Сезар»→Júlio César (вратарь, 1979), «Беллингем»→Jude Bellingham.
+-- Остальные пустые — либо уже с верным name_en (подтянутся бюджетом enrichment),
+-- либо неоднозначные мононимы (Педро/Нино/Крис/Эмерсон/Дуду…), которые без
+-- источника трогать нельзя.
+UPDATE cards c
+SET name_en = m.correct
+FROM (VALUES
+  ('Арис Адурис','Aritz Aduriz'),
+  ('Антони Паненка','Antonín Panenka'),
+  ('Жулио Сезар','Júlio César (footballer, born 1979)'),
+  ('Беллингем','Jude Bellingham')
+) AS m(ru, correct)
+WHERE c.name = m.ru
+  AND c.category IN ('player','woman') AND coalesce(c.active,true)
+  AND c.facts IS NULL AND c.career_stats IS NULL
+  AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
+-- ============================================================================
