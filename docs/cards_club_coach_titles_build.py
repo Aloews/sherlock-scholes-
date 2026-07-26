@@ -70,6 +70,9 @@ from scraper.cache import FileCache  # noqa: E402
 
 APPLY = os.environ.get("APPLY") == "1"
 SQL_OUT = os.environ.get("SQL_OUT")
+# LIMIT=10 runs the whole pipeline over the first N clubs only — use it for a
+# smoke test before committing to the full 432-card pass.
+LIMIT = int(os.environ.get("LIMIT") or 0)
 
 SPARQL_URL = "https://query.wikidata.org/sparql"
 WD_API = "https://www.wikidata.org/w/api.php"
@@ -314,10 +317,21 @@ def main():
         sys.exit("SUPABASE_URL / SUPABASE_KEY missing — see the docstring.")
     cache = FileCache(os.path.join(SCRAPER, "cache"), True)
 
+    # Fail loudly and early if Wikidata is unreachable — otherwise every QID
+    # lookup silently returns None and the run "succeeds" with zero titles.
+    probe = http_json(WD_API, {"action": "wbgetentities", "ids": "Q8682",
+                               "props": "labels", "languages": "en", "format": "json"},
+                      headers={"Accept": "application/json"})
+    if not probe.get("entities"):
+        sys.exit("Cannot reach wikidata.org — check the network/proxy before running.")
+
     cards = fetch_all(url, key, "cards", "id,name,name_en,category,facts",
                       {"category": "in.(club,coach)", "active": "eq.true"})
     clubs = [c for c in cards if c["category"] == "club"]
     coaches = [c for c in cards if c["category"] == "coach"]
+    if LIMIT:
+        clubs = clubs[:LIMIT]
+        print(f"LIMIT={LIMIT} — smoke test over the first {len(clubs)} clubs only")
     print(f"cards: {len(clubs)} clubs, {len(coaches)} coaches")
 
     # ---- clubs: resolve QIDs, then one SPARQL round per batch -------------

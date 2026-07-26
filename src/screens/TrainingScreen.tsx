@@ -212,7 +212,7 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
             <div className="grid grid-cols-2 gap-2">
               {REPORT_REASONS.map((r) => (
                 <button key={r}
-                  className={`rounded-lg px-3 py-2.5 text-sm text-left transition-colors border ${
+                  className={`rounded-xl px-3 py-2.5 text-sm text-left transition-colors border ${
                     reason === r
                       ? 'bg-brand-accent/20 text-white border-brand-accent'
                       : 'bg-brand-border text-brand-muted border-transparent'}`}
@@ -222,7 +222,7 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
               ))}
             </div>
             <textarea
-              className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-brand-accent"
+              className="w-full bg-brand-bg border border-brand-border rounded-xl px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-brand-accent"
               rows={2} maxLength={280} value={comment}
               placeholder={t('report.comment_placeholder')}
               onChange={(e) => setComment(e.target.value)}
@@ -230,12 +230,14 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
             {status === 'error' && (
               <p className="text-red-400 text-xs text-center">{t('report.error')}</p>
             )}
-            <button
-              className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
+            <motion.button
+              whileTap={!reason || status === 'sending' ? undefined : { scale: 0.94 }}
+              transition={{ duration: 0.1 }}
+              className="w-full h-11 rounded-2xl bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
               disabled={!reason || status === 'sending'}
               onClick={submit}>
               {status === 'sending' ? '…' : t('report.submit')}
-            </button>
+            </motion.button>
           </>
         )}
       </motion.div>
@@ -539,7 +541,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
           )}
 
           {history.length === 0 ? (
-            <div className="rounded-md bg-brand-surface border border-brand-border p-8 text-center">
+            <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center">
               <p className="text-brand-muted">{t('quick.history_empty')}</p>
             </div>
           ) : (
@@ -565,7 +567,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-md rounded-l-none border-l-[3px] pl-3 pr-3 py-3"
+                    className="flex items-start gap-2.5 bg-brand-surface border border-brand-border rounded-2xl rounded-l-none border-l-[3px] pl-3 pr-3 py-3"
                     style={{ borderLeftColor: barColor }}
                   >
                     <HistoryAvatar
@@ -696,21 +698,25 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            transition={{ duration: 0.1 }}
+            className="w-full h-14 rounded-2xl text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
             style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
             onClick={() => { hapticImpact('light'); onPlayAgain(); }}
           >
             {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
             <IconReload size={16} stroke={2} />
             {t('end.play_again')}
-          </button>
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            transition={{ duration: 0.1 }}
+            className="w-full h-14 rounded-2xl text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
             onClick={() => { hapticImpact('light'); navigate('/'); }}
           >
             {t('quick.home')}
-          </button>
+          </motion.button>
         </div>
       </div>
     );
@@ -759,14 +765,16 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
       {/* Pass turn — compact text row, no heavy button */}
       <div className="px-4 pt-3 flex justify-center">
-        <button
+        <motion.button
+          whileTap={currentCard ? { scale: 0.94 } : undefined}
+          transition={{ duration: 0.1 }}
           className="inline-flex items-center gap-1.5 text-brand-muted hover:text-white transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={() => { hapticImpact('light'); playSound('swipe'); passTurn(); }}
           disabled={!currentCard}
         >
           <IconArrowsExchange size={16} stroke={2} />
           {t('quick.pass_turn')}
-        </button>
+        </motion.button>
       </div>
 
       {/* Card area */}
@@ -783,7 +791,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
               {/* Word card — large, centred, surface, 6px radius, no accent strip.
                   Rarity tier adds a subtle coloured frame + glow (common → none). */}
               <div
-                className="relative overflow-hidden rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
+                className="relative overflow-hidden rounded-2xl bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
                 style={tierCardStyle(currentCard.tier)}
               >
                 {/* Watermark (variant 5 of the design review): the card's own
@@ -819,7 +827,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <div className="rounded-md bg-brand-surface border border-brand-border p-10 text-center">
+              <div className="rounded-2xl bg-brand-surface border border-brand-border p-10 text-center">
                 <div className="text-5xl mb-4">🃏</div>
                 <p className="text-brand-muted">{t('training.no_cards')}</p>
               </div>
@@ -830,21 +838,25 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
       {/* Actions */}
       <div className="px-4 pb-8 flex gap-3">
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+        <motion.button
+          whileTap={currentCard ? { scale: 0.94 } : undefined}
+          transition={{ duration: 0.1 }}
+          className="flex-1 h-14 rounded-2xl text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
           disabled={!currentCard}
           onClick={() => { hapticImpact('medium'); playSound('correct'); guess(); }}
         >
           {t('quick.guessed')}
-        </button>
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+        </motion.button>
+        <motion.button
+          whileTap={currentCard ? { scale: 0.94 } : undefined}
+          transition={{ duration: 0.1 }}
+          className="flex-1 h-14 rounded-2xl text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           disabled={!currentCard}
           onClick={() => { hapticImpact('light'); playSound('skip'); skip(); }}
         >
           {t('quick.skip')}
-        </button>
+        </motion.button>
       </div>
     </div>
   );
