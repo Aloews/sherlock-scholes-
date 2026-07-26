@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -11,7 +11,7 @@ import {
 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { cardDisplayName } from '@/shared/lib/cardName';
-import { tierCardStyle } from '@/shared/lib/tier';
+import { asTier, tierCardStyle } from '@/shared/lib/tier';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Button } from '@/shared/ui/Button';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -21,10 +21,8 @@ import {
   TIER_COLOR,
   TIER_LABEL_EN,
   TIER_LABEL_RU,
-  TIERS,
   type Card,
   type CardCategory,
-  type Tier,
 } from '@/shared/types/database';
 
 // Danger colour for the error state — same red the report sheet uses.
@@ -33,10 +31,109 @@ const DANGER = '#EF4444';
 // Skeleton cells shown while the first fetch is in flight (two grid columns → 5 rows).
 const SKELETON_COUNT = 10;
 
+// PostgREST caps every response at its max-rows setting (1000 here), so the
+// ~2.1k-card catalog has to be pulled page by page — a single select() would
+// silently drop half the deck and make search miss it. Same cap useTraining
+// batches around.
+const PAGE = 1000;
+// Stops a misbehaving backend from looping forever; 50 pages is ~25x the
+// current catalog, so it can only ever fire on a bug, never in normal use.
+const MAX_PAGES = 50;
+
+// Keyboard-focusable descendants of the dialog, for the Tab trap.
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 type CatFilter = CardCategory | 'all';
 
-function asTier(t?: string | null): Tier | null {
-  return t && (TIERS as string[]).includes(t) ? (t as Tier) : null;
+/** The whole active catalog, most-known first. Throws on the first failed page. */
+async function fetchCatalog(): Promise<Card[]> {
+  const all: Card[] = [];
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('active', true)
+      // Most-known cards first; cards without pageviews sink to the bottom.
+      // id breaks ties so paging stays deterministic — without it the rows
+      // that share a pageviews value (every NULL one) can repeat or vanish
+      // between pages.
+      .order('pageviews', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
+      // Offset by what actually arrived rather than by i * PAGE: a project
+      // whose db.max_rows is below PAGE returns a short page that is NOT the
+      // end of the catalog, and stepping by PAGE would skip the remainder.
+      .range(all.length, all.length + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as Card[];
+    all.push(...page);
+    if (page.length === 0) break;
+  }
+  return all;
+}
+
+/** Card dossier over a dimmed backdrop: focus moves in, Tab stays in, Esc closes. */
+function CardDialog({ card, onClose }: { card: Card; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const items = ref.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
+      if (!items?.length) { e.preventDefault(); return; }
+      const first = items[0];
+      const last  = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    // Hold the grid still behind the overlay.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      opener?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <motion.div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label={cardDisplayName(card, i18n.language)}
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6 focus:outline-none"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="w-full max-w-sm"
+        initial={{ scale: 0.92, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 12 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <PlayerCard card={card} mode="explainer" />
+      </motion.div>
+      <button
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+        aria-label={t('collection.close')}
+        onClick={onClose}
+      >
+        <IconX size={22} stroke={2} />
+      </button>
+    </motion.div>
+  );
 }
 
 /** Centred icon + heading + one muted line — shared by the empty and error states. */
@@ -78,24 +175,22 @@ export function CollectionScreen() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    (async () => {
-      const { data, error: err } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('active', true)
-        // Most-known cards first; cards without pageviews sink to the bottom.
-        .order('pageviews', { ascending: false, nullsFirst: false });
-      if (cancelled) return;
-      if (err) {
-        setError(err.message);
+    fetchCatalog()
+      .then((all) => {
+        if (cancelled) return;
+        setCards(all);
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : String(e));
         setCards([]);
-      } else {
-        setCards((data ?? []) as Card[]);
-      }
-      setLoading(false);
-    })();
+        setLoading(false);
+      });
     return () => { cancelled = true; };
   }, [reloadKey]);
+
+  const closeDialog = useCallback(() => setOpened(null), []);
 
   const tierLabel = i18n.language.startsWith('ru') ? TIER_LABEL_RU : TIER_LABEL_EN;
 
@@ -120,16 +215,19 @@ export function CollectionScreen() {
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
-      {/* Header */}
-      <div className="w-full max-w-sm mx-auto flex items-center gap-2 px-4 pt-8 pb-3 border-b border-brand-border">
-        <button
-          aria-label={t('home.back')}
-          className="text-brand-muted hover:text-white transition-colors p-1 -ml-1"
-          onClick={() => { hapticImpact('light'); navigate('/'); }}
-        >
-          <IconArrowLeft size={20} stroke={2} />
-        </button>
-        <h1 className="text-xl font-medium text-white">{t('collection.title')}</h1>
+      {/* Header — the rule spans the viewport (as on every other screen); only
+          its content is capped to the phone-width column. */}
+      <div className="border-b border-brand-border">
+        <div className="w-full max-w-sm mx-auto flex items-center gap-2 px-4 pt-8 pb-3">
+          <button
+            aria-label={t('home.back')}
+            className="text-brand-muted hover:text-white transition-colors p-1 -ml-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+            onClick={() => { hapticImpact('light'); navigate('/'); }}
+          >
+            <IconArrowLeft size={20} stroke={2} />
+          </button>
+          <h1 className="text-xl font-medium text-white">{t('collection.title')}</h1>
+        </div>
       </div>
 
       {/* Body */}
@@ -142,10 +240,11 @@ export function CollectionScreen() {
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted pointer-events-none"
           />
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('collection.search_placeholder')}
+            aria-label={t('collection.search_placeholder')}
             className="w-full h-11 bg-brand-surface border border-brand-border rounded-2xl pl-10 pr-4 text-white text-sm placeholder-brand-muted/70 focus:outline-none focus:border-brand-accent transition-colors"
           />
         </div>
@@ -159,8 +258,9 @@ export function CollectionScreen() {
                 key={pill.key}
                 whileTap={{ scale: 0.94 }}
                 transition={{ duration: 0.1 }}
+                aria-pressed={active}
                 onClick={() => { hapticImpact('light'); setCatFilter(pill.key); }}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-[11.5px] font-semibold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-[11.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent ${
                   active
                     ? 'bg-brand-accent/10 border-brand-accent/50 text-brand-accent'
                     : 'bg-transparent border-brand-border text-brand-muted hover:text-white'
@@ -217,7 +317,7 @@ export function CollectionScreen() {
                   whileTap={{ scale: 0.94 }}
                   transition={{ duration: 0.1 }}
                   onClick={() => { hapticImpact('light'); setOpened(card); }}
-                  className="min-h-[150px] rounded-2xl bg-brand-surface border border-brand-border px-2.5 py-3.5 flex flex-col items-center justify-center gap-2 text-center"
+                  className="min-h-[150px] rounded-2xl bg-brand-surface border border-brand-border px-2.5 py-3.5 flex flex-col items-center justify-center gap-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
                   // Rarity tier: coloured frame + glow (common/unknown → none).
                   style={tierCardStyle(card.tier)}
                 >
@@ -247,30 +347,7 @@ export function CollectionScreen() {
 
       {/* Card dossier — the same PlayerCard the explainer sees, on a dimmed backdrop. */}
       <AnimatePresence>
-        {opened && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            onClick={() => setOpened(null)}
-          >
-            <motion.div
-              className="w-full max-w-sm"
-              initial={{ scale: 0.92, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 12 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <PlayerCard card={opened} mode="explainer" />
-            </motion.div>
-            <button
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20"
-              aria-label={t('report.close')}
-              onClick={() => setOpened(null)}
-            >
-              <IconX size={22} stroke={2} />
-            </button>
-          </motion.div>
-        )}
+        {opened && <CardDialog card={opened} onClose={closeDialog} />}
       </AnimatePresence>
     </div>
   );

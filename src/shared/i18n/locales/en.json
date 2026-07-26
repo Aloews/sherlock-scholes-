@@ -108,7 +108,8 @@
     "empty_title": "No clues found",
     "empty_desc": "Try a different query or pick another category",
     "error_title": "Couldn't load cards",
-    "retry": "Retry"
+    "retry": "Retry",
+    "close": "Close"
   },
   "quick": {
     "title": "Quick Game",

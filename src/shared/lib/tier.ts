@@ -5,7 +5,8 @@
 import type { CSSProperties } from 'react';
 import { TIER_COLOR, TIERS, type Tier } from '@/shared/types/database';
 
-function asTier(t?: string | null): Tier | null {
+/** Narrow a raw `cards.tier` string to a known Tier (unknown/absent → null). */
+export function asTier(t?: string | null): Tier | null {
   return t && (TIERS as string[]).includes(t) ? (t as Tier) : null;
 }
 
