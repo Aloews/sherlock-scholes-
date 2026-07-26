@@ -24,6 +24,8 @@
 --               сборных из facts (аудит колоды) [ПРИМЕНЕНО]
 --   2026-07-25  clubs_count: поднять недосчёты до доказуемого числа клубов
 --               (89 карт, только career_stats+legend_career) [ПРИМЕНЕНО]
+--   2026-07-25  name_en пустых карточек: чинка битой транслитерации
+--               (85 карт: Vinícius Júnior, Haaland, McTominay…) [ПРИМЕНЕНО]
 -- ============================================================================
 
 
@@ -1502,4 +1504,74 @@ WHERE cards.id = prov.id
 --     скрапера (расширить career_build на established-игроков с бедным
 --     career_stats), затем прогон в CI. Кодовой правкой в этом окружении
 --     подготовить можно; собрать/проверить данные — только там, где есть сеть.
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-25 — name_en пустых карточек: чинка битой транслитерации  [ПРИМЕНЕНО]
+--
+-- У ~172 пустых карточек игроков (facts/career_stats/legend_career/clubs_minutes
+-- = NULL) name_en был не настоящим латинским именем, а МАШИННОЙ транслитерацией
+-- с русского: «Aaron Uan-Bissaka» (→Wan-Bissaka), «Vinisius Dzhunior»
+-- (→Vinícius Júnior), «Diogo Zhota» (→Diogo Jota), «Kholand» (→Haaland),
+-- «Skott Maktominey» (→McTominay), «Academy Awards» (→Оскар-футболист). Из-за
+-- этого ВСЕ enwiki-сборщики (фото, pageviews, career_build group B) не находили
+-- статью. Здесь — курируемая замена name_en на реальные (при нужде —
+-- disambig-уточнённые) заголовки enwiki. Только карточки, которые опознаны
+-- ОДНОЗНАЧНО; голые неоднозначные мононимы («Педро», «Родриго», «Крис», «Дуду»…)
+-- и малоизвестные РПЛ-игроки НЕ трогаем — там легко ошибиться с тёзкой.
+-- Гард: обновляем только пустые player/woman-карточки, поэтому реальные данные
+-- не затронуты. Стата подтянется в CI (career_build via=name_title), не тут
+-- (сеть к Википедии закрыта политикой).
+UPDATE cards c
+SET name_en = m.correct
+FROM (VALUES
+  ('Аарон Уан-Биссака','Aaron Wan-Bissaka'), ('Брайан Мбеумо','Bryan Mbeumo'),
+  ('Бруно Гимараэш','Bruno Guimarães'), ('Брэдли Барколя','Bradley Barcola'),
+  ('Винисиус Джуниор','Vinícius Júnior'), ('Дензел Думфрис','Denzel Dumfries'),
+  ('Джи Сун Пак','Park Ji-sung'), ('Джо Гомез','Joe Gomez'),
+  ('Джон Дюран','Jhon Durán'), ('Джорджиньо Вийналдум','Georginio Wijnaldum'),
+  ('Диого Жота','Diogo Jota'), ('Диогу Коста','Diogo Costa'),
+  ('Жереми Фримпонг','Jeremie Frimpong'), ('Жеронимо Рулли','Jerónimo Rulli'),
+  ('Жоао Гомес','João Gomes'), ('Жоао Педро','João Pedro'),
+  ('Зион Судзуки','Zion Suzuki'), ('Йежи Дудек','Jerzy Dudek'),
+  ('Карим Бельараби','Karim Bellarabi'), ('Кефрен Тюрам','Khéphren Thuram'),
+  ('Луис Диаз','Luis Díaz'), ('Луис Суарес','Luis Suárez'),
+  ('Майк Маньян','Mike Maignan'), ('Мартен Де Роон','Marten de Roon'),
+  ('Мерт Гюнок','Mert Günok'), ('Мойзес Кайседо','Moisés Caicedo'),
+  ('Мохамед Эльнени','Mohamed Elneny'), ('Начо Фернандес','Nacho Fernández'),
+  ('Никлас Зуле','Niklas Süle'), ('Нико Гонсалез','Nico González'),
+  ('Оле Гуннар Сульшер','Ole Gunnar Solskjær'), ('Расмус Хёйлунд','Rasmus Højlund'),
+  ('Роджер Ибаньес','Roger Ibañez'), ('Скотт МакТоминэй','Scott McTominay'),
+  ('Свен Ульряйх','Sven Ulreich'), ('Тоби Алдервейрельд','Toby Alderweireld'),
+  ('Тьяго Силва','Thiago Silva'), ('Энтони Эланга','Anthony Elanga'),
+  ('Эсекиэль Лавесси','Ezequiel Lavezzi'), ('Янник Карраско','Yannick Carrasco'),
+  ('Гарри Кэхилл','Gary Cahill'), ('Гарри Невилл','Gary Neville'),
+  ('Даниэль Старридж','Daniel Sturridge'), ('Данни Мёрфи','Danny Murphy'),
+  ('Данни Симпсон','Danny Simpson'), ('Титус Брамбл','Titus Bramble'),
+  ('Шарль Н''Зогбиа','Charles N''Zogbia'), ('Осман Дабо','Ousmane Dabo'),
+  ('Бенуа Ассу-Экото','Benoît Assou-Ekotto'), ('Фернанрдо Мейра','Fernando Meira'),
+  ('Пьетро Террачиано','Pietro Terracciano'), ('Стефан Рюффье','Stéphane Ruffier'),
+  ('Тимо Хильдебрандт','Timo Hildebrand'), ('Карл Хейн','Karl Hein'),
+  ('Кейто Накамура','Keito Nakamura'), ('Хосе Гайя','José Gayà'),
+  ('Хуан Капдевила','Joan Capdevila'), ('Омер Топрак','Ömer Toprak'),
+  ('Марк Гейи','Marc Guéhi'), ('Франк Ангисса','André-Frank Zambo Anguissa'),
+  ('Кристофер Ольссон','Kristoffer Olsson'), ('Петр Зелински','Piotr Zieliński'),
+  ('Эстеван','Estêvão'), ('Эзекьель Барко','Ezequiel Barco'),
+  ('Хулио Круз','Julio Cruz'), ('Хуан Мануэль Инссауральде','Juan Manuel Insaurralde'),
+  ('Нкванкво Кану','Nwankwo Kanu'), ('Макси Моралез','Maxi Moralez'),
+  ('Лукас Мартинес Куатра','Lucas Martínez Quarta'), ('Виктор Са','Victor Sá'),
+  ('Вальтер Бенитес','Walter Benítez'), ('Габи Милито','Gabriel Milito'),
+  ('Кристиан Рамирез','Christian Ramírez'), ('Папу Гомез','Papu Gómez'),
+  ('Холанд','Erling Haaland'), ('Варди','Jamie Vardy'),
+  ('Халк','Hulk (footballer)'), ('Оскар','Oscar (footballer, born 1991)'),
+  ('Марсело','Marcelo (footballer, born 1988)'), ('Рауль','Raúl (footballer)'),
+  ('Талиска','Anderson Talisca'), ('Хоакин','Joaquín (footballer)'),
+  ('Луизао','Luisão'), ('Симао','Simão Sabrosa'),
+  ('Роландо','Rolando (footballer)'), ('Хуанфран','Juanfran')
+) AS m(ru, correct)
+WHERE c.name = m.ru
+  AND c.category IN ('player','woman') AND coalesce(c.active,true)
+  AND c.facts IS NULL AND c.career_stats IS NULL
+  AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
 -- ============================================================================
