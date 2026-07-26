@@ -55,6 +55,7 @@ const TAG_CHIPS: Chip[] = [
   { id: 'ballon_dor', kind: 'tag', value: 'ballon_dor', pro: true,  labelKey: 'home.tag_ballon_dor' },
   { id: 'goalkeeper', kind: 'tag', value: 'goalkeeper', pro: false, labelKey: 'home.tag_goalkeeper' },
   { id: 'world_cup',  kind: 'tag', value: 'world_cup',  pro: false, labelKey: 'home.tag_world_cup' },
+  { id: 'wc2026',     kind: 'tag', value: 'wc2026',     pro: false, labelKey: 'home.tag_wc2026' },
   { id: 'giant',      kind: 'tag', value: 'giant',      pro: false, labelKey: 'home.tag_giant' },
   { id: 'dwarf',      kind: 'tag', value: 'dwarf',      pro: false, labelKey: 'home.tag_dwarf' },
 ];
