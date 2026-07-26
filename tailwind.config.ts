@@ -15,6 +15,10 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Display face for card names, screen headings and score numbers.
+        // Unbounded is wide and geometric — it reads as a deliberate
+        // headline voice next to Inter instead of a second body font.
+        display: ['Unbounded', 'Inter', 'system-ui', 'sans-serif'],
       },
       animation: {
         'pulse-fast': 'pulse 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',

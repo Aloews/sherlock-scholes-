@@ -226,7 +226,7 @@ export function CollectionScreen() {
           >
             <IconArrowLeft size={20} stroke={2} />
           </button>
-          <h1 className="text-xl font-medium text-white">{t('collection.title')}</h1>
+          <h1 className="font-display text-xl font-bold text-white">{t('collection.title')}</h1>
         </div>
       </div>
 
@@ -327,7 +327,7 @@ export function CollectionScreen() {
                   >
                     <CategoryIcon category={card.category} color={catColor} size={16} />
                   </span>
-                  <span className="text-[13px] font-bold text-white leading-tight line-clamp-2">
+                  <span className="font-display text-[13px] font-bold text-white leading-tight line-clamp-2">
                     {cardDisplayName(card, i18n.language)}
                   </span>
                   {tier && (

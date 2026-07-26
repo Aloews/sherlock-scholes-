@@ -81,7 +81,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
 
       {/* Card name — centred, medium weight */}
       <div className="relative px-5 pt-4 pb-8 text-center">
-        <p className="text-3xl font-medium text-white leading-snug">{name}</p>
+        <p className="font-display text-3xl font-bold text-white leading-snug">{name}</p>
       </div>
     </div>
   );

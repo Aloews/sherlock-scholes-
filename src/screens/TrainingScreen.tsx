@@ -148,7 +148,7 @@ function ScoreLine({ orange, blue, activeTeam }: {
   activeTeam?: Team;
 }) {
   return (
-    <div className="flex items-center justify-center gap-3 text-[30px] font-medium leading-none">
+    <div className="flex items-center justify-center gap-3 font-display text-[30px] font-bold leading-none">
       <span style={{ color: TEAM_COLOR.orange, opacity: activeTeam && activeTeam !== 'orange' ? 0.4 : 1 }}>
         {orange}
       </span>
@@ -491,7 +491,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
       <div className="min-h-screen bg-brand-bg flex flex-col">
         {/* Header */}
         <div className="px-4 pt-8 pb-4 border-b border-brand-border">
-          <h1 className="text-2xl font-medium text-white text-center">
+          <h1 className="font-display text-2xl font-bold text-white text-center">
             {t('quick.summary_title')}
           </h1>
         </div>
@@ -806,7 +806,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                 >
                   {catLabel}
                 </span>
-                <p className="relative text-[30px] font-medium text-white leading-snug mt-2">
+                <p className="relative font-display text-[30px] font-bold text-white leading-snug mt-2">
                   {cardName}
                 </p>
               </div>
