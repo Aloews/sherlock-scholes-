@@ -240,3 +240,44 @@ UPDATE cards SET active = false WHERE id = 'aaa8c9f3-6811-430b-af78-4c065761d572
 -- The deck had no Ronaldo card, so the card itself is a fine addition — but
 -- as the legend, not the RPL player. Fix the English name accordingly:
 UPDATE cards SET name_en = 'Ronaldo' WHERE id = '1670defe-f8ff-4b96-8fa9-8064ca2c4c79';  -- «Роналдо»
+
+
+-- ============================================================================
+-- 2026-07-25 — Empty duplicates exposed by the name_en fix  [ПРИМЕНЕНО]
+--
+-- After correcting name_en on the "empty" player cards (see PENDING_SQL.sql
+-- 2026-07-25), 45 of them turned out to be spelling-variant DUPLICATES of an
+-- already-filled card (same name_en modulo the "(footballer…)" qualifier):
+--   «Винисиус Джуниор»→«Винисиус Жуниор», «Диого Далот»→«Диогу Далот»,
+--   «Холанд»→«Эрлинг Холанн», «Джо Гомез»→«Джо Гомес», … .
+-- The empty twin carries NO data, so it is the drop side (keep-rule: data wins).
+-- active=false, not DELETE (round_cards FK). Idempotent + reversible.
+--
+-- 3 namesake risks were EXCLUDED for manual review (bare mononym that may be a
+-- DIFFERENT person than its filled near-twin):
+--   Родриго          afd71c0f-16b2-4e71-a8a8-1e0a45fe18c4  (Rodrygo vs Rodrigo Moreno)
+--   Нико Гонсалез    15e0701d-097b-48db-9867-2e8c67d8cf83  (two real Nico González)
+--   Луис Суарес      eaf9ca1b-6f4a-44d3-85c3-f03febb373b5  (Uruguay striker vs 1960s legend)
+-- Deactivated 42 cards. Re-running is safe (already-inactive twins drop out of
+-- the CTE, which only sees active cards).
+WITH norm AS (
+  SELECT id, name_en,
+    lower(regexp_replace(coalesce(name_en,''), '\s*\(.*$', '')) AS key,
+    (career_stats IS NOT NULL OR legend_career IS NOT NULL
+       OR clubs_minutes IS NOT NULL OR facts IS NOT NULL) AS has_data
+  FROM cards
+  WHERE category IN ('player','woman') AND coalesce(active,true)
+    AND name_en IS NOT NULL AND name_en <> ''
+)
+UPDATE cards SET active = false
+WHERE id IN (
+  SELECT DISTINCT e.id
+  FROM norm e JOIN norm f ON f.key = e.key AND f.id <> e.id AND f.has_data
+  WHERE NOT e.has_data
+)
+AND id NOT IN (
+  'afd71c0f-16b2-4e71-a8a8-1e0a45fe18c4',
+  '15e0701d-097b-48db-9867-2e8c67d8cf83',
+  'eaf9ca1b-6f4a-44d3-85c3-f03febb373b5'
+);
+-- ============================================================================
