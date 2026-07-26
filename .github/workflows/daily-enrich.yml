@@ -64,6 +64,17 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_career_localize.py
 
+      # Описания неигровых карточек (cards.descriptions): клубы, стадионы,
+      # тренеры, судьи, комментаторы, дерби, трофеи получают короткий блёрб из
+      # преамбулы своей статьи в Википедии. Игроков шаг не трогает — у них
+      # facts/career_stats. Запись только там, где descriptions IS NULL, так
+      # что ручной текст не перетирается, а повтор — no-op. ~120 карточек за
+      # ночь: остаток колоды (~630) закрывается примерно за неделю, дальше
+      # шаг подхватывает только новые карточки.
+      - name: Build non-player card descriptions
+        if: always()
+        run: APPLY=1 python docs/cards_descriptions_build.py --limit 120
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
