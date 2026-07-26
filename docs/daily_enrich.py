@@ -11,13 +11,17 @@ ORDER (why):
   1. newcomers      bare cards (facts IS NULL) need RESOLVE first to warm the
                     caches the later DB-only scripts read; also fills facts/tier/
                     wc2026 for just those cards.            (cards_enrich_newcomers --apply)
-  2. photos         cards without photo_url -> ruwiki/Wikidata image.  (run.py --cards-photos)
-  3. translations   untranslated card names -> card_translations.      (run.py --cards-translations)
-  4. legend/career  FREE cache-only reprocess of legend_career+titles. (reprocess, APPLY=1)
-  5. tier           recompute tier LAST so new stars/facts/titles count. (tier_build, APPLY=1)
+  2. career_stats   full Wikipedia career (clubs+apps+goals) for legends and any
+                    clubs_minutes-tail player missing it — fixes cards showing 1
+                    club instead of the real set. Runs AFTER newcomers so
+                    facts.birth_year (its namesake check) is warm. (career_build APPLY=1)
+  3. photos         cards without photo_url -> ruwiki/Wikidata image.  (run.py --cards-photos)
+  4. translations   untranslated card names -> card_translations.      (run.py --cards-translations)
+  5. legend/career  FREE cache-only reprocess of legend_career+titles. (reprocess, APPLY=1)
+  6. tier           recompute tier LAST so new stars/facts/titles count. (tier_build, APPLY=1)
 
-Budget: steps 1-3 spend the shared Wikimedia budget; 4-5 spend ZERO (pure DB).
-Putting the free steps last means a budget wall in steps 1-3 still lets tier +
+Budget: steps 1-4 spend the shared Wikimedia budget; 5-6 spend ZERO (pure DB).
+Putting the free steps last means a budget wall in steps 1-4 still lets tier +
 legend reprocess run to completion every day.
 
 Run from anywhere:  python docs/daily_enrich.py
@@ -43,15 +47,17 @@ def _env(**extra):
 # (label, argv, env) — all run with cwd=SCRAPER (run.py modes need it; the
 # docs/ scripts compute their own paths, so cwd is harmless for them).
 STEPS = [
-    ("1/5 newcomers (resolve + facts/tier/wc2026)",
+    ("1/6 newcomers (resolve + facts/tier/wc2026)",
      [PY, os.path.join(HERE, "cards_enrich_newcomers.py"), "--apply"], _env()),
-    ("2/5 photos (cards without photo_url)",
+    ("2/6 career_stats (legends + clubs_minutes-tail players)",
+     [PY, os.path.join(HERE, "cards_career_build.py")], _env(APPLY="1")),
+    ("3/6 photos (cards without photo_url)",
      [PY, "run.py", "--cards-photos"], _env()),
-    ("3/5 translations (card_translations)",
+    ("4/6 translations (card_translations)",
      [PY, "run.py", "--cards-translations"], _env()),
-    ("4/5 legend/career reprocess (free, cache-only)",
+    ("5/6 legend/career reprocess (free, cache-only)",
      [PY, os.path.join(HERE, "cards_legend_career_reprocess.py")], _env(APPLY="1")),
-    ("5/5 tier recompute (after new stars/facts)",
+    ("6/6 tier recompute (after new stars/facts)",
      [PY, os.path.join(HERE, "cards_tier_build.py")], _env(APPLY="1")),
 ]
 

@@ -8,8 +8,11 @@ misleading tail (Walcott 490') or nothing. Wikipedia has NO minutes, but its
 show "Арсенал 2006–18 · 270 матчей, 65 голов" instead of fake minutes.
 
 SELECTION (per the agreed plan):
-  * pool = players with legend_career OR a veteran-tail clubs_minutes
-    (age>=33 & total<4500) — i.e. "known", no nonames;
+  * pool = players with legend_career OR ANY clubs_minutes tail — i.e. "known",
+    no nonames. (Was gated on age>=33 & total<4500 min, but that skipped
+    established non-veterans whose 2022-24 tail is equally partial — Sow showed
+    1 club instead of 4 — so the age/minute gate was dropped; the richness gate
+    below is what protects quality.)
   * gate = Wikipedia career richness: keep only if total senior apps >= 150
     (NOT tier/pageviews — those are unreliable for veterans, e.g. Walcott
      pv=289 from a name mismatch);
@@ -268,24 +271,32 @@ def main():
     def qid_for(c):
         return qmap.get(ck(c.get("name"))) or qmap.get(ck(c.get("name_en")))
 
-    def tmin(c):
-        return sum((cm.get("minutes") or 0) for cm in (c.get("clubs_minutes") or []))
+    def needs_career(c):
+        """Player cards that should get a Wikipedia career_stats build.
 
-    def age(c):
-        by = (c.get("facts") or {}).get("birth_year"); return (NOW - by) if by else None
+        'Known' players only (never nonames — the apps>=150 richness gate and
+        the birth-year check downstream reject anyone without a rich, verified
+        senior career), in two groups:
+          * legends (legend_career present); and
+          * anyone we ALREADY track via a clubs_minutes tail but whose FULL
+            career we don't have yet (career_stats filled later, in the loop's
+            IS NULL guard).
 
-    def known_veteran(c):
+        The old heuristic gated the second group on age>=33 & total<4500 min to
+        target "veterans with an unreliable tail". That wrongly skipped
+        established NON-veterans whose 2022-24 tail is just as partial — e.g.
+        Djibril Sow (age 29 → 1 club shown instead of 4), Hudson-Odoi
+        (tail>4500 min), Foyth. clubs_minutes is only the 2022-24 API window for
+        EVERYONE, so any player with it can have a fuller Wikipedia career; the
+        richness gate, not age, is what keeps quality."""
         if c.get("category") != "player":
             return False
         if c.get("legend_career"):
             return True
-        if c.get("clubs_minutes"):
-            a = age(c)
-            return a is not None and a >= 33 and tmin(c) < 4500
-        return False
+        return bool(c.get("clubs_minutes"))
 
-    pool = [c for c in cards if known_veteran(c)]
-    print("POOL (known veterans): %d  | APPLY=%s | gate>=%d apps"
+    pool = [c for c in cards if needs_career(c)]
+    print("POOL (legends + clubs_minutes-tail players): %d  | APPLY=%s | gate>=%d apps"
           % (len(pool), APPLY, MIN_APPS), flush=True)
 
     def career_for(c):
