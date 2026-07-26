@@ -8,8 +8,11 @@ misleading tail (Walcott 490') or nothing. Wikipedia has NO minutes, but its
 show "Арсенал 2006–18 · 270 матчей, 65 голов" instead of fake minutes.
 
 SELECTION (per the agreed plan):
-  * pool = players with legend_career OR a veteran-tail clubs_minutes
-    (age>=33 & total<4500) — i.e. "known", no nonames;
+  * pool = players with legend_career OR ANY clubs_minutes tail — i.e. "known",
+    no nonames. (Was gated on age>=33 & total<4500 min, but that skipped
+    established non-veterans whose 2022-24 tail is equally partial — Sow showed
+    1 club instead of 4 — so the age/minute gate was dropped; the richness gate
+    below is what protects quality.)
   * gate = Wikipedia career richness: keep only if total senior apps >= 150
     (NOT tier/pageviews — those are unreliable for veterans, e.g. Walcott
      pv=289 from a name mismatch);
@@ -268,46 +271,71 @@ def main():
     def qid_for(c):
         return qmap.get(ck(c.get("name"))) or qmap.get(ck(c.get("name_en")))
 
-    def tmin(c):
-        return sum((cm.get("minutes") or 0) for cm in (c.get("clubs_minutes") or []))
+    def needs_career(c):
+        """Player cards that should get a Wikipedia career_stats build.
 
-    def age(c):
-        by = (c.get("facts") or {}).get("birth_year"); return (NOW - by) if by else None
+        'Known' players only (never nonames — the apps>=150 richness gate and
+        the birth-year check downstream reject anyone without a rich, verified
+        senior career), in two groups:
+          * legends (legend_career present); and
+          * anyone we ALREADY track via a clubs_minutes tail but whose FULL
+            career we don't have yet (career_stats filled later, in the loop's
+            IS NULL guard).
 
-    def known_veteran(c):
+        The old heuristic gated the second group on age>=33 & total<4500 min to
+        target "veterans with an unreliable tail". That wrongly skipped
+        established NON-veterans whose 2022-24 tail is just as partial — e.g.
+        Djibril Sow (age 29 → 1 club shown instead of 4), Hudson-Odoi
+        (tail>4500 min), Foyth. clubs_minutes is only the 2022-24 API window for
+        EVERYONE, so any player with it can have a fuller Wikipedia career; the
+        richness gate, not age, is what keeps quality.
+
+        A third group: bare "empty" cards (no clubs_minutes/legend_career) that
+        at least carry a Latin name_en — the mononyms whose stats never got
+        collected because their name_en was a broken transliteration. With a
+        corrected name_en the exact-title path (via=name_title) can now reach
+        them; a still-broken or ambiguous name simply yields nothing (thin)."""
         if c.get("category") != "player":
             return False
         if c.get("legend_career"):
             return True
-        if c.get("clubs_minutes"):
-            a = age(c)
-            return a is not None and a >= 33 and tmin(c) < 4500
-        return False
+        return bool(c.get("clubs_minutes") or c.get("name_en"))
 
-    pool = [c for c in cards if known_veteran(c)]
-    print("POOL (known veterans): %d  | APPLY=%s | gate>=%d apps"
+    pool = [c for c in cards if needs_career(c)]
+    print("POOL (legends + clubs_minutes-tail players): %d  | APPLY=%s | gate>=%d apps"
           % (len(pool), APPLY, MIN_APPS), flush=True)
 
     def career_for(c):
-        """Return (rows, lang, via) or ([], None, reason)."""
-        titles = []
+        """Return (rows, lang, via, wiki_birth) or ([], None, via, None).
+
+        via ∈ {qid, name_title, name}:
+          * qid        — trusted Wikidata QID → sitelinks.
+          * name_title — name_en used as an EXACT enwiki article title. High
+            trust: a correct title lands on the person, while an ambiguous bare
+            name ('Pedro') lands on a disambiguation page that has no football
+            infobox and yields nothing — so it self-guards. Accepted without a
+            birth-year match, which is what lets the "empty" cards (facts IS
+            NULL, no birth_year) get a career once their name_en is corrected.
+          * name       — fuzzy full-text search hit. Low trust: the caller
+            verifies the infobox birth year against facts.birth_year."""
         q = qid_for(c)
         if q:
             sl = wd.titles_for_qid(q) or {}
-            titles = [("en", sl.get("enwiki")), ("ru", sl.get("ruwiki"))]
-            via = "qid"
+            attempts = [("en", sl.get("enwiki"), "qid"), ("ru", sl.get("ruwiki"), "qid")]
         else:
-            # Group B — no QID: resolve the name to an enwiki article.
-            t = c.get("name_en") or c.get("name")
-            cand = []
-            if t:
-                cand.append(t)
-            srch = enwiki_search(c.get("name_en") or c.get("name") or "")
+            # Group B — no QID. Exact name_en title first (trusted), then a
+            # fuzzy search, then the raw ru name as a last-resort direct title.
+            name_en = (c.get("name_en") or "").strip()
+            name = (c.get("name") or "").strip()
+            attempts = []
+            if name_en:
+                attempts.append(("en", name_en, "name_title"))
+            srch = enwiki_search(name_en or name)
             if srch:
-                cand.append(srch)
-            titles = [("en", x) for x in cand]
-            via = "name"
-        for lang, title in titles:
+                attempts.append(("en", srch, "name"))
+            if name and name != name_en:
+                attempts.append(("en", name, "name"))
+        for lang, title, via in attempts:
             if not title:
                 continue
             wt = wikitext(title, lang)
@@ -319,9 +347,9 @@ def main():
             rows = parse_senior(ib)
             if rows:
                 return rows, lang, via, parse_birth_year(ib)
-        return [], None, via, None
+        return [], None, "name", None
 
-    filled = via_qid = via_name = patched = skipped_existing = 0
+    filled = via_qid = via_name = via_title = patched = skipped_existing = 0
     thin = name_rejected = 0
     examples = {}
     WANT = {"Оливье Жиру", "Тео Уолкотт"}
@@ -340,11 +368,21 @@ def main():
             if idx % 100 == 0:
                 print("  ...%d/%d filled=%d rejected=%d" % (idx, len(pool), filled, name_rejected), flush=True)
             continue
-        # Name-resolved (no QID): verify SAME person via birth year — the Wiki
-        # infobox birth must match facts.birth_year, else it's likely a namesake.
-        if via == "name":
+        # Name-resolved (no QID): verify it's the SAME person.
+        #   * name       — fuzzy search hit: infobox birth MUST equal
+        #                  facts.birth_year (rejects namesakes).
+        #   * name_title — exact enwiki title: trusted, so accepted even when
+        #                  the card has no birth_year; only rejected if BOTH
+        #                  birth years are known and DISAGREE (wrong curated
+        #                  title). Ambiguous bare names never reach here — they
+        #                  hit an infobox-less disambiguation page upstream.
+        if via in ("name", "name_title"):
             card_birth = (c.get("facts") or {}).get("birth_year")
-            if not (wiki_birth and card_birth and wiki_birth == card_birth):
+            if via == "name":
+                ok = bool(wiki_birth and card_birth and wiki_birth == card_birth)
+            else:
+                ok = not (wiki_birth and card_birth and wiki_birth != card_birth)
+            if not ok:
                 name_rejected += 1
                 if idx % 100 == 0:
                     print("  ...%d/%d filled=%d rejected=%d" % (idx, len(pool), filled, name_rejected), flush=True)
@@ -354,6 +392,7 @@ def main():
         filled += 1
         via_qid += via == "qid"
         via_name += via == "name"
+        via_title += via == "name_title"
         if c.get("name") in WANT:
             examples[c["name"]] = (career, lang)
         if APPLY:
@@ -371,6 +410,7 @@ def main():
     print("  already had stats       : %d" % skipped_existing)
     print("  WOULD fill (>=%d apps)   : %d" % (MIN_APPS, filled))
     print("    via QID (trusted)     : %d" % via_qid)
+    print("    via name_en title     : %d" % via_title)
     print("    via name + birth-check: %d" % via_name)
     print("  name-resolved REJECTED  : %d  (birth mismatch / no year — namesake)" % name_rejected)
     print("  thin/no infobox         : %d" % thin)
