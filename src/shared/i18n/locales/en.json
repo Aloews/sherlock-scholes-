@@ -106,6 +106,7 @@
     "order": "By order",
     "category": "By category",
     "name": "By name",
+    "country": "By country",
     "rarity": "By rarity",
     "clubs_years": "Clubs: by year",
     "clubs_apps": "Clubs: by apps"

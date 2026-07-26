@@ -478,12 +478,18 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
         .localeCompare(cardDisplayName(b, i18n.language), i18n.language) || tie(a, b);
     }
     if (summarySort === 'category') return a.category.localeCompare(b.category) || tie(a, b);
+    if (summarySort === 'country') {
+      // Localized country name, A–Z; cards without a country (clubs, terms…)
+      // sink to the bottom, play order within a country.
+      const c = (e: HistoryEntry) => countryName(e.country, i18n.language) || '￿';
+      return c(a).localeCompare(c(b), i18n.language) || tie(a, b);
+    }
     // 'rarity': legendary → epic → rare → common → unknown, play order within.
     const r = (e: HistoryEntry) => TIER_RANK[e.tier ?? ''] ?? 4;
     return r(a) - r(b) || tie(a, b);
   });
 
-  const SORT_OPTS: SummarySort[] = ['order', 'category', 'name', 'rarity'];
+  const SORT_OPTS: SummarySort[] = ['order', 'category', 'name', 'country', 'rarity'];
 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {

@@ -9,7 +9,7 @@ import type { ProFrame } from '@/shared/lib/pro';
 // is actually Pro (server-checked) — storing it for a free user is harmless.
 
 // Summary (end-of-game) card-list ordering. 'order' keeps play order.
-export type SummarySort = 'order' | 'category' | 'name' | 'rarity';
+export type SummarySort = 'order' | 'category' | 'name' | 'rarity' | 'country';
 // Club-line ordering inside a card: by career recency (end year) or by weight
 // (appearances — biggest clubs first). 'apps' only reorders career_stats rows
 // that carry an apps count; other sources keep their year order.
