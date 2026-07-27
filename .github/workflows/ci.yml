@@ -8,6 +8,10 @@ on:
   push:
     branches: [main]
   pull_request: {}
+  # Manual re-run. GitHub occasionally drops a `synchronize` event and the
+  # push simply never gets a check suite — without this there is no way to
+  # ask for one short of pushing an empty commit.
+  workflow_dispatch: {}
 
 jobs:
   build:
