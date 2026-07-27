@@ -89,6 +89,20 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_descriptions_build.py --missing-en
 
+      # Ревизия name_en у карточек-людей: чинит те, где мононим утащил статью
+      # однофамильца («Данте» → Dante Alighieri, «Адриан» → Hadrian), и
+      # обнуляет доказанно чужие значения. Только мононимы — там весь риск.
+      - name: Audit name_en on mononym cards
+        if: always()
+        run: APPLY=1 python docs/cards_name_en_audit.py --mononyms-only
+
+      # Пересчёт pageviews там, где счёт был снят с чужой статьи (клуб
+      # «Краснодар» мерился статьёй о городе). Резолвы уже в кеше, поэтому
+      # шаг тратит бюджет почти только на сами просмотры.
+      - name: Re-measure pageviews scored from the wrong article
+        if: always()
+        run: APPLY=1 python docs/cards_pageviews_refix.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
