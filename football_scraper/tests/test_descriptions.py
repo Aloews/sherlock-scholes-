@@ -126,6 +126,37 @@ check_true("комментатор проходит гард", cdb.lead_is_footb
     "Василий Уткин — российский спортивный журналист и комментатор, "
     "комментировал матчи чемпионата России по футболу."))
 
+# Английские преамбулы проверяются английским словарём. Один общий русский
+# паттерн молча заваливал их все — «football club» не совпадает ни с одной
+# кириллической альтернативой, и enwiki-описание не писалось никогда.
+EN_CLUB_LEAD = (
+    "Futbol Club Barcelona is a professional football club based in "
+    "Barcelona, Catalonia, Spain, that competes in La Liga."
+)
+EN_STADIUM_LEAD = (
+    "Old Trafford is a football stadium in Old Trafford, Greater Manchester, "
+    "England, and the home of Manchester United."
+)
+EN_COACH_LEAD = (
+    "Jurgen Klopp is a German professional football manager and former "
+    "player who was most recently the manager of Liverpool."
+)
+check_true("английский клуб проходит EN-гард",
+           cdb.lead_is_football(EN_CLUB_LEAD, "en"))
+check_true("английский стадион проходит EN-гард",
+           cdb.lead_is_football(EN_STADIUM_LEAD, "en"))
+check_true("английский тренер проходит EN-гард",
+           cdb.lead_is_football(EN_COACH_LEAD, "en"))
+check_false("английская преамбула НЕ проверяется русским словарём",
+            cdb.lead_is_football(EN_CLUB_LEAD, "ru"))
+check_false("английский город не проходит EN-гард", cdb.lead_is_football(
+    "Krasnodar is a city and the administrative centre of Krasnodar Krai, "
+    "Russia, located on the Kuban River.", "en"))
+check_false("английский поэт не проходит EN-гард", cdb.lead_is_football(
+    "Dante Alighieri was an Italian poet, writer, and philosopher.", "en"))
+check_true("EN-блёрб сворачивается так же, как русский",
+           cdb.blurb_from_lead(EN_CLUB_LEAD).startswith("Futbol Club"))
+
 # --------------------------------------------------------------------------
 # scope + P31 guard wiring
 # --------------------------------------------------------------------------

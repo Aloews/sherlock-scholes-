@@ -107,11 +107,22 @@ DESC_P31_ALLOW = {
 
 # The lead must be about FOOTBALL. This is the guard that survives everything
 # else: a city, a poet or a film that slipped through P31 does not describe
-# itself with these words. Applied to every category, no exceptions.
-FOOTBALL_RE = re.compile(
-    r"футбол|soccer|мяч|дерби|чемпионат|лига|сборн|клуб|стадион|арена|турнир",
+# itself with these words. Applied to every lead, no exceptions.
+#
+# PER LANGUAGE — a single Russian-only pattern silently rejected almost every
+# English lead ("football club" matches none of the Cyrillic alternatives), so
+# the enwiki blurb was never written and non-Russian players fell back to the
+# Russian text. Each wiki is checked against its own vocabulary.
+FOOTBALL_RE_RU = re.compile(
+    r"футбол|мяч|дерби|чемпионат|лига|кубок|сборн|клуб|стадион|арена|турнир",
     re.I,
 )
+FOOTBALL_RE_EN = re.compile(
+    r"football|soccer|futsal|derby|league|cup|championship|stadium|arena|"
+    r"tournament|F\.?C\.?\b|A\.?F\.?C\.?\b|national team",
+    re.I,
+)
+FOOTBALL_RE = {"ru": FOOTBALL_RE_RU, "en": FOOTBALL_RE_EN}
 # ruwiki disambiguation/list pages that are not flagged as such.
 NOT_AN_ARTICLE_RE = re.compile(
     r"^(список|перечень)\b|может (означать|относиться)|"
@@ -217,10 +228,12 @@ def blurb_from_lead(lead, max_chars=MAX_CHARS):
     return blurb if len(blurb) >= MIN_CHARS else ""
 
 
-def lead_is_football(lead):
+def lead_is_football(lead, lang="ru"):
     """The hard guard: a lead that never mentions football is the wrong
-    article, whatever the title matching said."""
-    return bool(FOOTBALL_RE.search(lead or ""))
+    article, whatever the title matching said. Checked against the wiki's own
+    language — see FOOTBALL_RE."""
+    pattern = FOOTBALL_RE.get(lang, FOOTBALL_RE_RU)
+    return bool(pattern.search(lead or ""))
 
 
 # ---------------------------------------------------------------------------
@@ -229,10 +242,13 @@ def lead_is_football(lead):
 SELECT_COLS = "id,name,name_en,category,category_ru,descriptions,pageviews"
 
 
-def fetch_cards(url, key, categories, names, ids):
+def fetch_cards(url, key, categories, names, ids, missing_en=False):
     """Active cards of the wanted categories that have NO descriptions yet,
     most popular first. --names / --ids override the emptiness filter so a
     specific card can be re-examined (the write guard still protects it).
+    With missing_en, the scope flips to cards that HAVE a blurb but no English
+    one — the backfill the normal scope can never reach, since a filled card
+    is by definition out of it.
     Paged like every other docs/cards_*.py reader, so a growing deck can
     never silently return only the first page."""
     base = {"select": SELECT_COLS, "active": "eq.true",
@@ -244,7 +260,11 @@ def fetch_cards(url, key, categories, names, ids):
         base["id"] = "in.({})".format(",".join(ids))
     else:
         base["category"] = "in.({})".format(",".join(categories))
-        base["descriptions"] = "is.null"
+        if missing_en:
+            base["descriptions"] = "not.is.null"
+            base["descriptions->>en"] = "is.null"
+        else:
+            base["descriptions"] = "is.null"
 
     rows, offset = [], 0
     while True:
@@ -263,15 +283,23 @@ def fetch_cards(url, key, categories, names, ids):
     return [r for r in rows if r.get("category") not in EXCLUDED_CATEGORIES]
 
 
-def patch_descriptions(url, key, card_id, descriptions):
-    """PATCH one card. Guarded on `descriptions IS NULL` IN THE REQUEST, so a
-    blurb written by a human (or a parallel run) between our SELECT and this
-    write is never clobbered — the filter makes it a no-op."""
+def patch_descriptions(url, key, card_id, descriptions, missing_en=False):
+    """PATCH one card, guarded IN THE REQUEST so a blurb written by a human
+    (or a parallel run) between our SELECT and this write is never clobbered —
+    the filter simply makes the write a no-op.
+
+      normal      : `descriptions IS NULL`      — only ever fills a blank card
+      missing_en  : `descriptions->>en IS NULL` — only ever adds the missing
+                    English key; an existing ru/en text is left alone (the
+                    caller merges without overwriting).
+    """
+    guard = ({"descriptions->>en": "is.null"} if missing_en
+             else {"descriptions": "is.null"})
     resp = requests.patch(
         url.rstrip("/") + "/rest/v1/cards",
         headers={"apikey": key, "Authorization": "Bearer " + key,
                  "Content-Type": "application/json", "Prefer": "return=minimal"},
-        params={"id": "eq." + str(card_id), "descriptions": "is.null"},
+        params=dict({"id": "eq." + str(card_id)}, **guard),
         json={"descriptions": descriptions}, timeout=30)
     resp.raise_for_status()
 
@@ -306,25 +334,33 @@ def build_for_card(card, resolver, en_resolver, wikidata, cache, budget):
     if not qid:
         return None, "статья ruwiki не найдена (или отбракована P31-гардом)"
 
-    lead = resolver.extract_for_title(title)
-    if not lead:
-        return None, "пустая преамбула ruwiki: " + title
-    if not lead_is_football(lead):
-        return None, "преамбула не про футбол — чужая статья: " + title
+    existing = card.get("descriptions") or {}
 
-    ru = blurb_from_lead(lead)
-    if not ru:
-        return None, "преамбула не сворачивается в описание: " + title
+    descriptions = dict(existing)
+    if not existing.get("ru"):
+        lead = resolver.extract_for_title(title)
+        if not lead:
+            return None, "пустая преамбула ruwiki: " + title
+        if not lead_is_football(lead, "ru"):
+            return None, "преамбула не про футбол — чужая статья: " + title
+        ru = blurb_from_lead(lead)
+        if not ru:
+            return None, "преамбула не сворачивается в описание: " + title
+        descriptions["ru"] = ru
 
-    descriptions = {"ru": ru}
-    # English blurb — best effort, never a reason to skip the card.
-    en_title = (wikidata.titles_for_qid(qid) or {}).get("enwiki")
-    if en_title:
-        en_lead = en_resolver.extract_for_title(en_title)
-        if en_lead and lead_is_football(en_lead):
-            en = blurb_from_lead(en_lead)
-            if en:
-                descriptions["en"] = en
+    # English blurb — best effort, never a reason to skip a card that already
+    # has a Russian one.
+    if not existing.get("en"):
+        en_title = (wikidata.titles_for_qid(qid) or {}).get("enwiki")
+        if en_title:
+            en_lead = en_resolver.extract_for_title(en_title)
+            if en_lead and lead_is_football(en_lead, "en"):
+                en = blurb_from_lead(en_lead)
+                if en:
+                    descriptions["en"] = en
+
+    if descriptions == existing:
+        return None, "нечего добавить (enwiki нет или не прошла гард)"
 
     note = "ruwiki: {}{}".format(title, " (через поиск)" if via_search else "")
     return descriptions, note
@@ -343,6 +379,10 @@ def main():
                         help="конкретные карточки по имени, через запятую")
     parser.add_argument("--ids", default="",
                         help="конкретные карточки по id, через запятую")
+    parser.add_argument("--missing-en", action="store_true",
+                        help="добрать ТОЛЬКО английские описания там, где есть "
+                             "русское, но нет английского (обычный прогон их "
+                             "не видит: карточка уже не пустая)")
     args = parser.parse_args()
 
     load_dotenv(os.path.join(SCRAPER, ".env"))
@@ -370,7 +410,7 @@ def main():
     names = [n.strip() for n in args.names.split(",") if n.strip()]
     ids = [i.strip() for i in args.ids.split(",") if i.strip()]
 
-    cards = fetch_cards(url, key, categories, names, ids)
+    cards = fetch_cards(url, key, categories, names, ids, args.missing_en)
     if args.limit > 0:
         cards = cards[:args.limit]
 
@@ -379,7 +419,8 @@ def main():
         by_category[c.get("category")] = by_category.get(c.get("category"), 0) + 1
 
     print("=" * 72)
-    print("CARDS DESCRIPTIONS — {}".format(
+    print("CARDS DESCRIPTIONS{} — {}".format(
+        " (добор EN)" if args.missing_en else "",
         "LIVE, запись cards.descriptions" if APPLY else "DRY RUN, без записи"))
     print("=" * 72)
     print("Источник        : ruwiki преамбула (prop=extracts) + enwiki по QID")
@@ -416,11 +457,14 @@ def main():
         resolved += 1
         print("[{}/{}] ✓ {:<28} {}".format(i, len(cards), name, note))
         print("      БЫЛО : {}".format(card.get("descriptions") or "—"))
-        print("      СТАЛО: ru: {}".format(descriptions["ru"]))
-        if "en" in descriptions:
-            print("             en: {}".format(descriptions["en"]))
+        for lang in ("ru", "en"):
+            if lang in descriptions:
+                print("      {}{}: {}".format(
+                    "СТАЛО: " if lang == "ru" else "       ",
+                    lang, descriptions[lang]))
         if APPLY:
-            patch_descriptions(url, key, card["id"], descriptions)
+            patch_descriptions(url, key, card["id"], descriptions,
+                               args.missing_en)
             written += 1
         print(flush=True)
 

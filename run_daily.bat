@@ -23,6 +23,10 @@ REM     Пишет только там, где descriptions пуст, поэто
 REM     --limit 120 - как в ночном CI; поставь 0, чтобы добрать всё за раз.
 set APPLY=1
 python docs\cards_descriptions_build.py --limit 120 >> daily_enrich.log 2>&1
+REM     Добор английских описаний там, где русское уже есть (строка выше их
+REM     не видит: карточка уже не пустая). Без en интерфейс на остальных
+REM     8 языках показывает русский текст.
+python docs\cards_descriptions_build.py --missing-en --limit 120 >> daily_enrich.log 2>&1
 set APPLY=
 
 python docs\cards_audit.py  >> daily_enrich.log 2>&1

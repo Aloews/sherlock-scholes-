@@ -75,6 +75,13 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_descriptions_build.py --limit 120
 
+      # Добор английских описаний там, где русское уже есть. Обычный прогон
+      # выше их не видит (карточка уже не пустая), а без en интерфейс на
+      # остальных 8 языках показывает русский текст.
+      - name: Backfill English card descriptions
+        if: always()
+        run: APPLY=1 python docs/cards_descriptions_build.py --missing-en --limit 120
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
