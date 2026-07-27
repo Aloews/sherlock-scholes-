@@ -7,6 +7,8 @@ import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound } from '@/shared/lib/sounds';
 import type { TeamScore } from '@/shared/types/database';
+import { GradientText } from '@/shared/ui/GradientText';
+import { useDesign } from '@/shared/design/useDesign';
 
 const INVITES = [
   'Сыграй со мной в Шерлок Скоулс — угадай легенду футбола! ⚽',
@@ -106,6 +108,7 @@ function TrophyOutline() {
 
 export function EndScreen() {
   const navigate = useNavigate();
+  const master = useDesign() === 'master';
   const { room, teams, teamScores, scores, roomPlayers, reset } = useGameStore();
   const { t } = useTranslation();
 
@@ -162,8 +165,18 @@ export function EndScreen() {
         <p className="text-brand-accent text-xs font-bold uppercase tracking-[0.25em] mt-4">
           {isDraw ? t('end.draw_eyebrow') : t('end.win_eyebrow')}
         </p>
-        <h1 className="ds-display text-3xl font-black text-white text-center mt-2">
-          {isDraw ? t('end.draw') : t('end.wins', { name: winner?.team_name })}
+        {/* Winner line. The master design fills it with the brand gradient
+            (the prototype's results header); classic keeps it white. */}
+        <h1 className="ds-display text-3xl font-black text-center mt-2">
+          {master ? (
+            <GradientText>
+              {isDraw ? t('end.draw') : t('end.wins', { name: winner?.team_name })}
+            </GradientText>
+          ) : (
+            <span className="text-white">
+              {isDraw ? t('end.draw') : t('end.wins', { name: winner?.team_name })}
+            </span>
+          )}
         </h1>
       </div>
 

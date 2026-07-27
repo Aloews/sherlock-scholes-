@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import type { Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
-import { tierCardStyle } from '@/shared/lib/tier';
+import { tierCardStyle, tierFrameStyle } from '@/shared/lib/tier';
 import { useDesign } from '@/shared/design/useDesign';
 import {
   CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR,
@@ -55,6 +55,48 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   // Translation -> name_en -> name, per the interface language (same rule
   // as the quick-game summary).
   const name     = cardDisplayName(card, i18n.language);
+  const master   = design === 'master';
+
+  // Master: the prototype's composition — gradient rarity frame around a
+  // gradient-filled card, centred category badge, big Playfair name, category
+  // in caps beneath. Classic keeps the original left-aligned header + name.
+  if (master) {
+    const frame = tierFrameStyle(card.tier, design);
+    return (
+      <div className={clsx('rounded-[20px]', className)} style={frame}>
+        <div
+          className="relative rounded-[18.5px] overflow-hidden"
+          style={{ background: 'linear-gradient(180deg, #161d30, #0c0f1c)' }}
+        >
+          <div className="h-1" style={{ background: 'var(--accent-gradient)' }} />
+          {card.photo_url && (
+            <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
+              <img
+                src={card.photo_url}
+                alt=""
+                className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+              />
+            </div>
+          )}
+          <div className="relative px-5 pt-6 pb-7 flex flex-col items-center text-center">
+            <span
+              className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+              style={{ backgroundColor: 'rgb(var(--brand-accent) / 0.08)', border: `1px solid ${catColor}66` }}
+            >
+              <CategoryIcon category={card.category} color={catColor} size={20} />
+            </span>
+            <p className="ds-display text-[26px] font-bold text-white leading-[1.15]">{name}</p>
+            <span
+              className="text-[10.5px] font-bold uppercase tracking-[0.14em] mt-2"
+              style={{ color: catColor }}
+            >
+              {label}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

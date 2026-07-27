@@ -38,6 +38,24 @@ export function tierCardStyle(tier?: string | null, design: DesignId = getDesign
   };
 }
 
+/** Gradient rarity frame for the master design: a thin padded wrapper whose
+ * background is the gradient, with the card drawn inside it. Classic keeps the
+ * inset ring from tierCardStyle instead, so this returns undefined there —
+ * callers render the plain card when it does. */
+export function tierFrameStyle(tier?: string | null, design: DesignId = getDesign()): CSSProperties | undefined {
+  if (design !== 'master') return undefined;
+  const t = asTier(tier);
+  if (!t || t === 'common') return undefined;
+  const c = TIER_COLOR[t];
+  const pad = t === 'icon' ? '2px' : '1.5px';
+  const blur = t === 'icon' ? 40 : t === 'legendary' ? 34 : t === 'epic' ? 26 : 22;
+  return {
+    padding: pad,
+    background: `linear-gradient(155deg, ${c}bf, ${c}1f 45%, ${c}8c)`,
+    boxShadow: `0 0 ${blur}px ${c}47`,
+  };
+}
+
 /** Subtle ring around a small history avatar. Common/unknown → none. */
 export function tierRingStyle(tier?: string | null, design: DesignId = getDesign()): CSSProperties | undefined {
   const t = asTier(tier);
