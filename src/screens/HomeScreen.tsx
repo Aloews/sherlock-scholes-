@@ -400,8 +400,7 @@ export function HomeScreen() {
         {view === 'home' && master && (
           <HomeLandingMaster
             playerName={player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : null}
-            stats={stats}
-            statsLoading={statsLoading}
+            isPro={isPro}
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
@@ -721,8 +720,9 @@ export function HomeScreen() {
         )}
       </div>
 
+      {/* The master landing is a clean action stack — no commentator quotes. */}
       <div className="px-6 pt-2 pb-6 space-y-4">
-        <QuoteRotator />
+        {!master && <QuoteRotator />}
         <p className="text-brand-muted/40 text-xs text-center">{t('home.footer')}</p>
       </div>
     </div>

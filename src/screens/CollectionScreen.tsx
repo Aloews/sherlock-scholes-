@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { IconSearch, IconSearchOff, IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
@@ -11,6 +11,7 @@ import { tierCardStyle } from '@/shared/lib/tier';
 import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { useProStore } from '@/shared/store/proStore';
 import { fetchCollection, type CollectionCard } from '@/features/collection/collectionApi';
 import {
   ALL_CATEGORIES, TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN,
@@ -92,6 +93,9 @@ function StateBlock({ icon, title, body, children }: {
 export function CollectionScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  // The catalog is a Pro feature: ~2.1k cards is a heavy read for the free
+  // tier, and browsing the whole deck is exactly the kind of depth Pro is for.
+  const isPro = useProStore((s) => s.isPro);
 
   const [cards,   setCards]   = useState<CollectionCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +118,7 @@ export function CollectionScreen() {
   // First page — re-runs whenever the filter, the debounced term or the retry
   // key changes. Later pages are appended by loadMore().
   useEffect(() => {
+    if (!isPro) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -131,7 +136,7 @@ export function CollectionScreen() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catFilter, term, reloadKey, i18n.language]);
+  }, [catFilter, term, reloadKey, i18n.language, isPro]);
 
   const loadMore = useCallback(() => {
     if (paging) return;
@@ -171,6 +176,25 @@ export function CollectionScreen() {
         </div>
       </div>
 
+      {/* Free users get the upsell instead of the catalog — and no query is
+          issued at all, so the deck read stays a Pro-only cost. */}
+      {!isPro ? (
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="max-w-sm w-full flex flex-col items-center gap-4 text-center">
+            <span
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgb(var(--brand-accent) / 0.1)' }}
+            >
+              <IconCrown size={30} stroke={1.75} className="text-brand-accent" />
+            </span>
+            <p className="ds-display text-lg font-bold text-white">{t('collection.pro_title')}</p>
+            <p className="text-sm text-brand-muted leading-relaxed">{t('collection.pro_body')}</p>
+            <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); navigate('/pro'); }}>
+              {t('collection.pro_cta')}
+            </Button>
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-sm mx-auto px-4 py-4 space-y-3">
           {/* Search */}
@@ -280,6 +304,7 @@ export function CollectionScreen() {
               is identical either way; only the source of truth changes. */}
         </div>
       </div>
+      )}
 
       {/* Card detail — centred sheet over the repo's usual backdrop. */}
       <AnimatePresence>

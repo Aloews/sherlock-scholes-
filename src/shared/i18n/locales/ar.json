@@ -82,7 +82,10 @@
     "error_title": "تعذّر تحميل البطاقات",
     "retry": "إعادة المحاولة",
     "count": "{{n}} بطاقة",
-    "load_more": "عرض المزيد"
+    "load_more": "عرض المزيد",
+    "pro_title": "المجموعة ميزة Pro",
+    "pro_body": "الفهرس الكامل لأكثر من 2000 بطاقة مع درجات الندرة والبحث جزء من Sherlock Pro.",
+    "pro_cta": "احصل على Pro"
   },
   "pro": {
     "title": "Sherlock Pro",
