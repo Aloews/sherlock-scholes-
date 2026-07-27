@@ -64,6 +64,11 @@
     "master": "新设计",
     "classic": "经典设计"
   },
+  "tabs": {
+    "home": "主页",
+    "collection": "卡片",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "收藏",
     "search_placeholder": "在传奇中寻找线索…",
@@ -73,7 +78,20 @@
     "error_title": "无法加载卡片",
     "retry": "重试",
     "count": "{{n}} 张卡片",
-    "load_more": "加载更多"
+    "load_more": "加载更多",
+    "pro_title": "收藏为 Pro 功能",
+    "pro_body": "包含稀有度与搜索的 2000+ 张完整卡牌目录属于 Sherlock Pro。",
+    "pro_cta": "获取 Pro",
+    "dossier": "档案",
+    "trophies": "奖杯",
+    "career": "生涯",
+    "about": "关于",
+    "f_country": "国家",
+    "f_position": "位置",
+    "f_height": "身高",
+    "f_years": "年份",
+    "f_caps": "国家队",
+    "f_clubs": "俱乐部"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -206,10 +206,19 @@ export function EndScreen() {
             {sorted.map((ts) => (
               <div
                 key={ts.team_id}
-                className={`flex items-center gap-3 bg-brand-surface border border-brand-border rounded-2xl p-3 ${
+                className={`ds-panel relative overflow-hidden flex items-center gap-3 bg-brand-surface border border-brand-border rounded-2xl p-3 ${
                   isWinnerTeam(ts) ? '' : 'opacity-[0.66]'
                 }`}
               >
+                {/* Winner gets a gradient rule down its left edge — the
+                    prototype's results treatment. Master only. */}
+                {master && isWinnerTeam(ts) && (
+                  <span
+                    className="absolute left-0 top-0 bottom-0 w-[3px]"
+                    style={{ background: 'var(--accent-gradient)' }}
+                    aria-hidden
+                  />
+                )}
                 <TeamCrest name={ts.team_name} color={ts.color} size={44} />
                 <span className="flex-1 text-base font-semibold text-white truncate">{ts.team_name}</span>
                 <span className="text-3xl font-black text-white leading-none">

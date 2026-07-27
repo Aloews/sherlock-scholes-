@@ -113,6 +113,19 @@
 }
 
 @layer components {
+  /* Master app shell: when the bottom tab bar is up, every full-height screen
+     inside it must stop short of the bar instead of running under it. The rule
+     reaches for `min-h-screen` deliberately — that one utility is how all ten
+     screens declare full height, so this keeps the shell in one place rather
+     than threading a prop through every screen. See app/Router.tsx. */
+  .with-tabbar {
+    --tabbar-h: calc(59px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .with-tabbar .min-h-screen {
+    min-height: calc(100vh - var(--tabbar-h));
+  }
+
   /* Page backdrop. Screen roots paint their own `bg-brand-bg` over the body,
      so the design's lit background has to live on them — pair the two:
      `min-h-screen bg-brand-bg ds-screen`. Classic sets --app-bg to none and

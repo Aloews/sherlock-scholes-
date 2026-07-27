@@ -64,6 +64,11 @@
     "master": "새 디자인",
     "classic": "클래식 디자인"
   },
+  "tabs": {
+    "home": "홈",
+    "collection": "카드",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "컬렉션",
     "search_placeholder": "전설 속에서 단서를 찾아보세요…",
@@ -73,7 +78,20 @@
     "error_title": "카드를 불러오지 못했습니다",
     "retry": "다시 시도",
     "count": "카드 {{n}}장",
-    "load_more": "더 보기"
+    "load_more": "더 보기",
+    "pro_title": "컬렉션은 Pro 기능입니다",
+    "pro_body": "희귀도와 검색이 포함된 2000장 이상의 전체 카탈로그는 Sherlock Pro에 포함됩니다.",
+    "pro_cta": "Pro 받기",
+    "dossier": "도시에",
+    "trophies": "트로피",
+    "career": "커리어",
+    "about": "소개",
+    "f_country": "국가",
+    "f_position": "포지션",
+    "f_height": "키",
+    "f_years": "연도",
+    "f_caps": "A매치",
+    "f_clubs": "클럽"
   },
   "pro": {
     "title": "Sherlock Pro",

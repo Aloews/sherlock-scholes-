@@ -65,6 +65,11 @@
     "master": "Nouveau design",
     "classic": "Design classique"
   },
+  "tabs": {
+    "home": "Accueil",
+    "collection": "Cartes",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Collection",
     "search_placeholder": "Cherche des indices parmi les légendes…",
@@ -74,7 +79,20 @@
     "error_title": "Impossible de charger les cartes",
     "retry": "Réessayer",
     "count": "{{n}} cartes",
-    "load_more": "Voir plus"
+    "load_more": "Voir plus",
+    "pro_title": "La collection est réservée au Pro",
+    "pro_body": "Le catalogue complet de plus de 2000 cartes avec raretés et recherche fait partie de Sherlock Pro.",
+    "pro_cta": "Obtenir Pro",
+    "dossier": "Dossier",
+    "trophies": "Trophées",
+    "career": "Carrière",
+    "about": "À propos",
+    "f_country": "Pays",
+    "f_position": "Poste",
+    "f_height": "Taille",
+    "f_years": "Années",
+    "f_caps": "Sélections",
+    "f_clubs": "Clubs"
   },
   "pro": {
     "title": "Sherlock Pro",

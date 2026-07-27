@@ -75,3 +75,22 @@ export async function fetchCollection(opts: {
   const cards = (data ?? []) as unknown as CollectionCard[];
   return { cards, hasMore: cards.length === COLLECTION_PAGE_SIZE };
 }
+
+/** Full row for the dossier sheet. The grid deliberately fetches only display
+ * columns, so opening a card pulls the rest on demand — career, facts and
+ * trophies are big JSONB and have no business in 48 grid cells. */
+export async function fetchCard(id: string): Promise<Card> {
+  const run = async (withTranslations: boolean) => supabase
+    .from('cards')
+    .select(withTranslations ? '*, card_translations(*)' : '*')
+    .eq('id', id)
+    .single();
+
+  let { data, error } = await run(embedTranslations);
+  if (error && embedTranslations) {
+    embedTranslations = false;
+    ({ data, error } = await run(false));
+  }
+  if (error) throw error;
+  return data as unknown as Card;
+}

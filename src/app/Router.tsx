@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
+import { useDesign } from '@/shared/design/useDesign';
+import { TabBar, TAB_ROUTES } from '@/app/TabBar';
 import { HomeScreen }     from '@/screens/HomeScreen';
 
 // HomeScreen stays static so the first screen never flashes. The rest are
@@ -58,7 +60,16 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 export function Router() {
   useSessionRestore();
+  const { pathname } = useLocation();
+  // The tab bar belongs to the master app shell, and only to its root routes —
+  // never over a live game, lobby or results, where leaving mid-round by a
+  // stray tap would be destructive. `with-tabbar` shortens the screens'
+  // min-h-screen by the bar's height (see index.css).
+  const showTabs = useDesign() === 'master'
+    && (TAB_ROUTES as readonly string[]).includes(pathname);
+
   return (
+    <div className={showTabs ? 'with-tabbar' : undefined}>
     <Suspense fallback={<LazyFallback />}>
     <Routes>
       <Route path="/" element={<PageTransition><HomeScreen /></PageTransition>} />
@@ -94,5 +105,7 @@ export function Router() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
+    {showTabs && <TabBar />}
+    </div>
   );
 }

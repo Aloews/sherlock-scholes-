@@ -73,6 +73,11 @@
     "master": "Новый дизайн",
     "classic": "Классический дизайн"
   },
+  "tabs": {
+    "home": "Главная",
+    "collection": "Карты",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Коллекция",
     "search_placeholder": "Ищи улики среди легенд…",
@@ -82,7 +87,20 @@
     "error_title": "Не удалось загрузить карты",
     "retry": "Повторить",
     "count": "{{n}} карточек",
-    "load_more": "Показать ещё"
+    "load_more": "Показать ещё",
+    "pro_title": "Коллекция — для Pro",
+    "pro_body": "Полный каталог из более чем 2000 карточек с редкостями и поиском доступен в Sherlock Pro.",
+    "pro_cta": "Открыть Pro",
+    "dossier": "Досье",
+    "trophies": "Трофеи",
+    "career": "Карьера",
+    "about": "О карточке",
+    "f_country": "Страна",
+    "f_position": "Позиция",
+    "f_height": "Рост",
+    "f_years": "Годы",
+    "f_caps": "За сборную",
+    "f_clubs": "Клубов"
   },
   "pro": {
     "title": "Sherlock Pro",
