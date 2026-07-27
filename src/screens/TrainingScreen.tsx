@@ -19,7 +19,6 @@ import {
 } from '@/features/reports/reportsApi';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
-import { useSettingsStore, type SummarySort } from '@/shared/store/settingsStore';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import { useDesign } from '@/shared/design/useDesign';
@@ -34,6 +33,9 @@ interface TrainingState {
   difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
   boostCountries?: string[] | null;      // local heroes pass floor/4 during onboarding
   lang?: string | null;                  // interface language -> commentator locale filter
+  countries?: string[] | null;           // deck filter: exact player countries (ISO); null = all
+  leagues?: string[] | null;             // deck filter: player top_league values; null = all
+  tiers?: string[] | null;               // deck filter: recognizability tiers (legendary/epic/rare/common)
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -256,6 +258,9 @@ export function TrainingScreen() {
   const difficulty = state?.difficulty ?? null;
   const boostCountries = state?.boostCountries ?? null;
   const lang = state?.lang ?? null;
+  const countries = state?.countries ?? null;
+  const leagues = state?.leagues ?? null;
+  const tiers = state?.tiers ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -269,6 +274,9 @@ export function TrainingScreen() {
       difficulty={difficulty}
       boostCountries={boostCountries}
       lang={lang}
+      countries={countries}
+      leagues={leagues}
+      tiers={tiers}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -282,25 +290,25 @@ interface TrainingGameProps {
   difficulty: number | null;
   boostCountries: string[] | null;
   lang: string | null;
+  countries: string[] | null;
+  leagues: string[] | null;
+  tiers: string[] | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const design = useDesign();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang);
+    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
   const [lightbox, setLightbox] = useState<string | null>(null);
   // "Report an error" sheet — the history entry being reported, or null.
   const [reporting, setReporting] = useState<HistoryEntry | null>(null);
-  // Summary ordering prefs (persisted): how the end-of-game card list is
-  // sorted, and how club lines inside a card are ordered.
-  const { summarySort, setSummarySort, clubSort, setClubSort } = useSettingsStore();
 
   if (loading) {
     return (
@@ -378,13 +386,8 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
     // clubs first (by END year).
     let lines: Array<string | null> = [];
     if (entry.career_stats?.length) {
-      // 'apps' → biggest clubs first (by appearances); 'years' → recency by end
-      // year. career_stats is the only source with an apps count, so the 'apps'
-      // mode only changes the order here — the others keep their year order.
       lines = [...entry.career_stats]
-        .sort((a, b) => clubSort === 'apps'
-          ? (b.apps ?? 0) - (a.apps ?? 0)
-          : yearKey(b.years) - yearKey(a.years))
+        .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
         .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.years, c.apps, c.goals));
     } else if (entry.legend_career?.clubs?.length) {
@@ -470,24 +473,6 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
       ? entry.legend_career.titles
       : entry.facts?.titles ?? []).slice(0, 3).map(localizedTitle);
 
-  // History ordering for the summary. 'order' keeps play order; the others sort
-  // a copy, falling back to play order for ties so the result is stable.
-  const TIER_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
-  const orderIdx = new Map(history.map((e, i) => [e, i] as const));
-  const tie = (a: HistoryEntry, b: HistoryEntry) => (orderIdx.get(a)! - orderIdx.get(b)!);
-  const sortedHistory = summarySort === 'order' ? history : [...history].sort((a, b) => {
-    if (summarySort === 'name') {
-      return cardDisplayName(a, i18n.language)
-        .localeCompare(cardDisplayName(b, i18n.language), i18n.language) || tie(a, b);
-    }
-    if (summarySort === 'category') return a.category.localeCompare(b.category) || tie(a, b);
-    // 'rarity': legendary → epic → rare → common → unknown, play order within.
-    const r = (e: HistoryEntry) => TIER_RANK[e.tier ?? ''] ?? 4;
-    return r(a) - r(b) || tie(a, b);
-  });
-
-  const SORT_OPTS: SummarySort[] = ['order', 'category', 'name', 'rarity'];
-
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     return (
@@ -510,44 +495,13 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
             {t('quick.history_title')}
           </p>
 
-          {/* Sort controls: card-list order + club-line order inside a card.
-              Both persist in settings. Hidden when there's nothing to sort. */}
-          {history.length > 1 && (
-            <div className="mb-3 flex flex-wrap items-center gap-1.5">
-              {SORT_OPTS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => { hapticImpact('light'); setSummarySort(opt); }}
-                  className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
-                    summarySort === opt
-                      ? 'bg-brand-accent/20 text-white border-brand-accent'
-                      : 'bg-brand-surface text-brand-muted border-brand-border'}`}
-                >
-                  {t(`summary_sort.${opt}`)}
-                </button>
-              ))}
-              <span className="mx-1 h-4 w-px bg-brand-border" aria-hidden />
-              <button
-                type="button"
-                onClick={() => {
-                  hapticImpact('light');
-                  setClubSort(clubSort === 'apps' ? 'years' : 'apps');
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] border bg-brand-surface text-brand-muted border-brand-border"
-              >
-                {t(clubSort === 'apps' ? 'summary_sort.clubs_apps' : 'summary_sort.clubs_years')}
-              </button>
-            </div>
-          )}
-
           {history.length === 0 ? (
             <div className="rounded-md bg-brand-surface border border-brand-border p-8 text-center">
               <p className="text-brand-muted">{t('quick.history_empty')}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedHistory.map((entry) => {
+              {history.map((entry) => {
                 const guessed = entry.status === 'guessed';
                 // Category label for everything but players: photo + name
                 // already identify a player, the rest need the context.

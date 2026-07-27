@@ -26,6 +26,11 @@
     "mode_1v1_desc": "Two players, each on their own phone. Whoever explains more wins!",
     "mode_training_title": "Quick Game",
     "counting": "Counting cards…",
+    "filter_all_countries": "All countries",
+    "filter_all_leagues": "All leagues",
+    "diff_easy": "Well-known",
+    "diff_medium": "Medium",
+    "diff_hard": "Obscure",
     "chip_stars": "Stars",
     "selected_chips": "Selected: {{n}} · {{m}} cards",
     "selected_count_one": "{{count}} card selected",
@@ -118,14 +123,6 @@
     "finish": "Finish",
     "no_cards": "No more cards",
     "card_n": "Card {{n}}"
-  },
-  "summary_sort": {
-    "order": "By order",
-    "category": "By category",
-    "name": "By name",
-    "rarity": "By rarity",
-    "clubs_years": "Clubs: by year",
-    "clubs_apps": "Clubs: by apps"
   },
   "quick": {
     "title": "Quick Game",

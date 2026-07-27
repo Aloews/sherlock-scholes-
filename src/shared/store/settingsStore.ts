@@ -13,22 +13,11 @@ import { DEFAULT_DESIGN, isDesignId, type DesignId } from '@/shared/design/desig
 // index.html can read it from this one localStorage key and set
 // <html data-design> before React mounts (no flash of the other design).
 
-// Summary (end-of-game) card-list ordering. 'order' keeps play order.
-export type SummarySort = 'order' | 'category' | 'name' | 'rarity';
-// Club-line ordering inside a card: by career recency (end year) or by weight
-// (appearances — biggest clubs first). 'apps' only reorders career_stats rows
-// that carry an apps count; other sources keep their year order.
-export type ClubSort = 'years' | 'apps';
-
 interface SettingsState {
   soundEnabled: boolean;
   setSoundEnabled(on: boolean): void;
   proFrame: ProFrame;
   setProFrame(frame: ProFrame): void;
-  summarySort: SummarySort;
-  setSummarySort(sort: SummarySort): void;
-  clubSort: ClubSort;
-  setClubSort(sort: ClubSort): void;
   design: DesignId;
   setDesign(design: DesignId): void;
 }
@@ -40,29 +29,25 @@ export const useSettingsStore = create<SettingsState>()(
       setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
       proFrame: 'default',
       setProFrame: (proFrame) => set({ proFrame }),
-      summarySort: 'order',
-      setSummarySort: (summarySort) => set({ summarySort }),
-      clubSort: 'years',
-      setClubSort: (clubSort) => set({ clubSort }),
       design: DEFAULT_DESIGN,
       setDesign: (design) => set({ design }),
     }),
     {
       name: 'sherlock_settings',
-      version: 5,
+      version: 6,
       // v0/v1 stored a `difficulty` switch — dropped. v2 had only soundEnabled;
-      // v3 adds proFrame; v4 adds summarySort + clubSort (end-of-game ordering);
-      // v5 adds design (players upgrading from v4 land on the new default).
+      // v3 adds proFrame; v4 added summarySort + clubSort (end-of-game ordering)
+      // — dropped in v5 (the summary sort control was removed). v6 adds
+      // `design`. Two different v5 shapes shipped on separate branches, so v6
+      // normalises both: anything that isn't a known design id becomes the
+      // default.
       migrate: (persisted) => {
         const s = (persisted ?? {}) as {
-          soundEnabled?: boolean; proFrame?: ProFrame;
-          summarySort?: SummarySort; clubSort?: ClubSort; design?: unknown;
+          soundEnabled?: boolean; proFrame?: ProFrame; design?: unknown;
         };
         return {
           soundEnabled: s.soundEnabled !== false,
           proFrame: s.proFrame ?? 'default',
-          summarySort: s.summarySort ?? 'order',
-          clubSort: s.clubSort ?? 'years',
           design: isDesignId(s.design) ? s.design : DEFAULT_DESIGN,
         } as SettingsState;
       },

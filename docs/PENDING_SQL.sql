@@ -1575,3 +1575,116 @@ WHERE c.name = m.ru
   AND c.facts IS NULL AND c.career_stats IS NULL
   AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
 -- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-26 — name_en пустых карточек, добор  [ПРИМЕНЕНО]
+--
+-- После первого daily-enrich на main (via=name_title) пустых карточек стало
+-- 172→67. Ещё 4 битые транслитерации опознаны однозначно и поправлены, чтобы
+-- их подхватил следующий прогон:
+--   «Арис Адурис»→Aritz Aduriz (Атлетик), «Антони Паненка»→Antonín Panenka,
+--   «Жулио Сезар»→Júlio César (вратарь, 1979), «Беллингем»→Jude Bellingham.
+-- Остальные пустые — либо уже с верным name_en (подтянутся бюджетом enrichment),
+-- либо неоднозначные мононимы (Педро/Нино/Крис/Эмерсон/Дуду…), которые без
+-- источника трогать нельзя.
+UPDATE cards c
+SET name_en = m.correct
+FROM (VALUES
+  ('Арис Адурис','Aritz Aduriz'),
+  ('Антони Паненка','Antonín Panenka'),
+  ('Жулио Сезар','Júlio César (footballer, born 1979)'),
+  ('Беллингем','Jude Bellingham')
+) AS m(ru, correct)
+WHERE c.name = m.ru
+  AND c.category IN ('player','woman') AND coalesce(c.active,true)
+  AND c.facts IS NULL AND c.career_stats IS NULL
+  AND c.legend_career IS NULL AND c.clubs_minutes IS NULL;
+-- ============================================================================
+
+
+-- ============================================================================
+-- 2026-07-27 — Категория «Звёзды» (tag 'star'): переопределить  [ПРИМЕНЕНО]
+--
+-- Баг: тег 'star' помечал ТЕ ЖЕ 24 карточки, что и 'legend' (полное совпадение),
+-- поэтому чип «Звёзды» на главной дублировал «Легенды». Переопределяем «Звёзды»
+-- как ЛУЧШИХ ДЕЙСТВУЮЩИХ игроков на данный момент (не легенды прошлого).
+--
+-- Шаг 1: снять 'star' со всех текущих носителей (те самые 24 = legend).
+-- Шаг 2: проставить 'star' курируемому списку топ-игроков (по точному name
+--        самой полной карточки, чтобы не задеть пустые дубли). Итог: 55 звёзд,
+--        пересечение с 'legend' = 0. Идемпотентно (add гуардится 'star' NOT ANY).
+UPDATE cards SET tags = array_remove(tags, 'star') WHERE 'star' = any(tags);
+
+UPDATE cards
+SET tags = array_append(coalesce(tags,'{}'), 'star')
+WHERE category = 'player' AND coalesce(active,true)
+  AND NOT ('star' = any(coalesce(tags,'{}')))
+  AND name = any(array[
+    'Эрлинг Холанн','Килиан Мбаппе','Винисиус Жуниор','Джуд Беллингем','Ламин Ямаль',
+    'Гарри Кейн','Роберт Левандовский','Мохаммед Салах','Кевин Де Брёйне','Родриго Эрнандес',
+    'Джамал Мусиала','Хын Мин Сон','Фил Фоден','Мартин Эдегор','Родриго Силва де Гоис',
+    'Педри','Ашраф Хакими','Маркюс Тюрам','Бруну Фернандеш','Маркус Рашфорд',
+    'Букайо Сака','Флориан Вирц','Федерико Вальверде','Гави','Нико Уильямс',
+    'Коул Палмер','Алексис Макаллистер','Дарвин Нуньес','Александер Исак','Рафинья',
+    'Дани Ольмо','Рафаэл Леан','Вирджил Ван Дейк','Рубен Диаш','Вильям Салиба',
+    'Деклан Райс','Николо Барелла','Федерико Кьеза','Каору Митома','Бернарду Силва',
+    'Витор Феррейра','Антуан Гризманн','Криштиану Роналду','Лионель Месси','Неймар',
+    'Эдуарду Камавинга','Хави Симонс','Жереми Доку','Жуан Феликс','Расмус Хёйлунн',
+    'Эндрик Фелипе','Душан Влахович','Хвича Кварацхелия','Лаутаро Мартинес','Лука Модрич'
+  ]::text[]);
+
+-- VERIFY:  star=55, legend=24, overlap=0
+--   select
+--     (select count(*) from cards where 'star'=any(tags) and coalesce(active,true)),
+--     (select count(*) from cards where 'legend'=any(tags) and coalesce(active,true)),
+--     (select count(*) from cards where 'star'=any(tags) and 'legend'=any(tags) and coalesce(active,true));
+
+-- 2026-07-26 — описания неигровых карточек (cards.descriptions)
+--
+-- НАКАТЫВАТЬ НЕЧЕГО: колонка descriptions уже есть (2026-07-19), данные
+-- заливает скрипт docs/cards_descriptions_build.py из преамбул Википедии.
+-- Блок оставлен как ЖУРНАЛ + VERIFY + ROLLBACK — исполняемых операторов нет,
+-- прогон всего файла его не затрагивает.
+--
+-- ЗАЧЕМ: у игроков карьера лежит в facts/career_stats/legend_career, поэтому
+-- в истории быстрой игры они выглядят полноценно (заполнены на 97%). А 631
+-- активная НЕигровая карточка не показывала ничего, кроме имени:
+--     club 432, commentator 37, referee 36, coach 33, stadium 28,
+--     club_nickname 23, derby 17, era 13, trophy 12
+-- (term 87 и position 15 были заполнены руками — их формат и взят за образец).
+--
+-- КАК: name -> варианты заголовка ruwiki (клубы сначала пробуют
+-- «<имя> (футбольный клуб)») -> QID через prop=pageprops -> ГАРД P31
+-- (клуб/стадион/человек: «Краснодар»-город и «Сантьяго Бернабеу»-человек
+-- отсекаются) -> преамбула (prop=extracts) -> ГАРД «текст про футбол» ->
+-- первое предложение без подлежащего, <=180 знаков. Не срезолвилось —
+-- карточка ПРОПУСКАЕТСЯ, ничего не выдумывается.
+--
+-- ЗАПИСЬ: только там, где descriptions IS NULL (фильтр стоит и в самом PATCH),
+-- поэтому ручной текст не перетирается, а повторный прогон — no-op.
+-- Ночью: daily-enrich, шаг «Build non-player card descriptions», --limit 120.
+-- Разово/по категории: workflow cards-descriptions (dry-run по умолчанию).
+--
+-- VERIFY (сколько заполнено по категориям):
+--   select category,
+--          count(*) filter (where active)                            as act,
+--          count(*) filter (where active and descriptions is not null) as with_descr
+--   from cards
+--   where category not in ('player','woman')
+--   group by category order by act desc;
+--
+-- ВЫБОРОЧНАЯ ПРОВЕРКА (глазами, топ-20 самых популярных):
+--   select category, name, descriptions->>'ru' as ru, descriptions->>'en' as en
+--   from cards
+--   where active and descriptions is not null
+--     and category not in ('player','woman','term','position')
+--   order by coalesce(pageviews,0) desc limit 20;
+--
+-- ROLLBACK (снести ТОЛЬКО залитое скриптом, не трогая term/position,
+-- заполненные руками):
+--   update cards set descriptions = null
+--   where active
+--     and category not in ('player','woman','term','position')
+--     and descriptions is not null;
+-- ============================================================================

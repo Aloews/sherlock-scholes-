@@ -26,6 +26,11 @@
     "mode_1v1_desc": "Вдвоём, каждый со своего телефона. Кто больше объяснит, тот лучший!",
     "mode_training_title": "Быстрая игра",
     "counting": "Считаю карточки…",
+    "filter_all_countries": "Все страны",
+    "filter_all_leagues": "Все лиги",
+    "diff_easy": "Известные",
+    "diff_medium": "Средние",
+    "diff_hard": "Малоизвестные",
     "chip_stars": "Звёзды",
     "selected_chips": "Выбрано: {{n}} · {{m}} карточек",
     "selected_count_one": "Выбрано: {{count}} карточка",
@@ -120,14 +125,6 @@
     "finish": "Завершить",
     "no_cards": "Карточек больше нет",
     "card_n": "Карточка {{n}}"
-  },
-  "summary_sort": {
-    "order": "По порядку",
-    "category": "По категории",
-    "name": "По имени",
-    "rarity": "По редкости",
-    "clubs_years": "Клубы: по годам",
-    "clubs_apps": "Клубы: по матчам"
   },
   "quick": {
     "title": "Быстрая игра",
