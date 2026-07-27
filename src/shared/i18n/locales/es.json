@@ -47,6 +47,11 @@
     "continent_other": "Otras regiones",
     "tutorial_button_aria": "Cómo jugar",
     "sound_toggle_aria": "Sonido sí/no",
+    "design_toggle_aria": "Cambiar a {{design}}",
+    "collection": "Colección",
+    "welcome_back": "Bienvenido de nuevo,",
+    "welcome_stranger": "Detective",
+    "collection_hint": "Explora toda la baraja y sus rarezas",
     "group_special": "Especial",
     "tag_goalkeeper": "Porteros",
     "tag_ballon_dor": "Balón de Oro",
@@ -55,6 +60,21 @@
     "tag_dwarf": "Bajitos ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "Leyendas"
+  },
+  "design": {
+    "master": "Diseño nuevo",
+    "classic": "Diseño clásico"
+  },
+  "collection": {
+    "title": "Colección",
+    "search_placeholder": "Busca pistas entre leyendas…",
+    "filter_all": "Todas",
+    "empty_title": "No se encontraron pistas",
+    "empty_body": "Prueba otra búsqueda o elige otra categoría",
+    "error_title": "No se pudieron cargar las cartas",
+    "retry": "Reintentar",
+    "count": "{{n}} cartas",
+    "load_more": "Cargar más"
   },
   "pro": {
     "title": "Sherlock Pro",

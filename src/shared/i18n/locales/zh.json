@@ -46,6 +46,11 @@
     "continent_other": "其他地区",
     "tutorial_button_aria": "怎么玩",
     "sound_toggle_aria": "声音开/关",
+    "design_toggle_aria": "切换到{{design}}",
+    "collection": "收藏",
+    "welcome_back": "欢迎回来,",
+    "welcome_stranger": "侦探",
+    "collection_hint": "浏览整副牌与稀有度",
     "group_special": "特色",
     "tag_goalkeeper": "门将",
     "tag_ballon_dor": "金球奖",
@@ -54,6 +59,21 @@
     "tag_dwarf": "小个子 ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "传奇"
+  },
+  "design": {
+    "master": "新设计",
+    "classic": "经典设计"
+  },
+  "collection": {
+    "title": "收藏",
+    "search_placeholder": "在传奇中寻找线索…",
+    "filter_all": "全部",
+    "empty_title": "未找到线索",
+    "empty_body": "换个关键词或选择其他分类试试",
+    "error_title": "无法加载卡片",
+    "retry": "重试",
+    "count": "{{n}} 张卡片",
+    "load_more": "加载更多"
   },
   "pro": {
     "title": "Sherlock Pro",

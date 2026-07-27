@@ -46,6 +46,11 @@
     "continent_other": "その他の地域",
     "tutorial_button_aria": "遊び方",
     "sound_toggle_aria": "サウンドのオン/オフ",
+    "design_toggle_aria": "{{design}}に切り替える",
+    "collection": "コレクション",
+    "welcome_back": "おかえりなさい、",
+    "welcome_stranger": "探偵",
+    "collection_hint": "デッキ全体とレアリティを見る",
     "group_special": "スペシャル",
     "tag_goalkeeper": "ゴールキーパー",
     "tag_ballon_dor": "バロンドール",
@@ -54,6 +59,21 @@
     "tag_dwarf": "小柄 ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "レジェンド"
+  },
+  "design": {
+    "master": "新デザイン",
+    "classic": "クラシックデザイン"
+  },
+  "collection": {
+    "title": "コレクション",
+    "search_placeholder": "伝説の中から手がかりを探そう…",
+    "filter_all": "すべて",
+    "empty_title": "手がかりが見つかりません",
+    "empty_body": "別のキーワードやカテゴリーを試してみよう",
+    "error_title": "カードを読み込めませんでした",
+    "retry": "再試行",
+    "count": "{{n}}枚のカード",
+    "load_more": "もっと見る"
   },
   "pro": {
     "title": "Sherlock Pro",

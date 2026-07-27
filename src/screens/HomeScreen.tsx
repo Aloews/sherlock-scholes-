@@ -8,6 +8,9 @@ import {
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
+import { DesignToggle } from '@/shared/ui/DesignToggle';
+import { HomeLandingMaster } from '@/screens/home/HomeLandingMaster';
+import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -88,6 +91,9 @@ export function HomeScreen() {
   const { createRoom, joinRoom } = useRoom();
   const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
+  // The landing block has a different layout per design; everything below it
+  // (mode select, room settings, chip picker, join) is shared.
+  const master = useDesign() === 'master';
 
   useEffect(() => {
     // Telegram WebViews wipe localStorage between launches on some platforms,
@@ -318,16 +324,19 @@ export function HomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-8">
-        <div className="flex items-center gap-2">
+        {/* Wraps rather than overflowing — five controls plus the logo don't
+            fit on one line on the narrowest phones. */}
+        <div className="flex items-center flex-wrap gap-1.5">
           <img
             src="/logo-white-clean.png"
             alt="Шерлок Скоулс"
             className="h-8 w-auto"
           />
           <LanguageToggle />
+          <DesignToggle />
           <button
             onClick={() => { hapticImpact('light'); navigate('/tutorial'); }}
             aria-label={t('home.tutorial_button_aria')}
@@ -368,27 +377,46 @@ export function HomeScreen() {
         )}
       </div>
 
-      {/* Hero */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+      {/* Hero. The master design leads with the greeting + action stack
+          instead of a centred logo lockup, so the hero shrinks to a compact
+          wordmark there; classic keeps the full-size logo it always had. */}
+      <div className={`flex-1 flex flex-col items-center px-6 ${
+        // The master landing stacks from the top like the prototype; classic
+        // keeps its vertically centred lockup.
+        master ? 'justify-start gap-4 pt-2' : 'justify-center gap-8'
+      }`}>
         <div className="text-center space-y-3 flex flex-col items-center">
           <img
             src="/logo-white-clean.png"
             alt="Шерлок Скоулс"
-            className="w-[220px] max-w-full h-auto"
+            className={master ? 'w-[132px] max-w-full h-auto' : 'w-[220px] max-w-full h-auto'}
             onClick={handleLogoTap}
             draggable={false}
           />
-          <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>
+          {!master && <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>}
         </div>
 
-        {/* Player stats — main view only */}
-        {view === 'home' && !statsLoading && (
+        {/* ── Landing, master design ── */}
+        {view === 'home' && master && (
+          <HomeLandingMaster
+            playerName={player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : null}
+            stats={stats}
+            statsLoading={statsLoading}
+            onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
+            onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
+            onJoin={() => { hapticImpact('light'); setView('join'); }}
+            onCollection={() => { hapticImpact('light'); navigate('/collection'); }}
+          />
+        )}
+
+        {/* Player stats — classic landing only */}
+        {view === 'home' && !master && !statsLoading && (
           <div className="w-full max-w-sm">
             <p className="text-brand-muted text-xs text-center mb-2 uppercase tracking-wider">
               {t('stats.title')}
             </p>
             {stats ? (
-              <div className="bg-brand-surface rounded-2xl border border-brand-border p-3">
+              <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-3">
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
                     { label: t('stats.games'), value: stats.games_played },
@@ -397,7 +425,7 @@ export function HomeScreen() {
                     { label: t('stats.score'), value: stats.total_score },
                   ].map((item) => (
                     <div key={item.label}>
-                      <p className="text-white font-bold text-lg leading-none">{item.value}</p>
+                      <p className="ds-display text-white font-bold text-lg leading-none">{item.value}</p>
                       <p className="text-brand-muted text-xs mt-1">{item.label}</p>
                     </div>
                   ))}
@@ -411,8 +439,8 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Main CTA: Quick game first, then competitive, then join ── */}
-        {view === 'home' && (
+        {/* ── Main CTA, classic design: quick game, competitive, join ── */}
+        {view === 'home' && !master && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
             <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); setView('create_training'); }}>
               {t('home.mode_training_title')}
@@ -422,6 +450,9 @@ export function HomeScreen() {
             </Button>
             <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('join'); }}>
               {t('home.join_game')}
+            </Button>
+            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); navigate('/collection'); }}>
+              {t('home.collection')}
             </Button>
           </div>
         )}
@@ -567,7 +598,7 @@ export function HomeScreen() {
                         ? 'border-transparent text-white'
                         : 'border-brand-border bg-brand-border/40 text-brand-muted hover:text-white'
                     } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    style={active ? { backgroundColor: '#FF6300' } : undefined}
+                    style={active ? { backgroundColor: 'rgb(var(--brand-accent))' } : undefined}
                   >
                     {locked && <IconLock size={11} stroke={2.5} style={{ color: '#FFD24A' }} />}
                     <span className="truncate">{label}</span>

@@ -153,7 +153,7 @@ export function GameScreen() {
 
   if (!currentRound) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
         <div className="text-brand-muted text-center">
           <div className="text-4xl mb-3">⚽</div>
           <p>{t('game.loading')}</p>
@@ -166,7 +166,7 @@ export function GameScreen() {
   const roundLabel = t('game.round_label', { n: currentRound.round_number });
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {phase === 'countdown' && countdown > 0 && <CountdownOverlay n={countdown} />}
       {phase === 'round_summary' && <RoundSummaryOverlay />}
 

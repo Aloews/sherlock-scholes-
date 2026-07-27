@@ -21,6 +21,7 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
+import { useDesign } from '@/shared/design/useDesign';
 import type { CardCategory, ContinentFilter } from '@/shared/types/database';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
 
@@ -101,8 +102,9 @@ function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   onOpen?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
-  // Rarity ring (subtle; common/unknown → none).
-  const ring = tierRingStyle(tier);
+  // Rarity ring (subtle; common/unknown → none). Design passed explicitly so
+  // the ring restyles when the player flips design systems.
+  const ring = tierRingStyle(tier, useDesign());
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
@@ -297,6 +299,7 @@ interface TrainingGameProps {
 function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const design = useDesign();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
     useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers);
@@ -309,7 +312,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
         <div className="text-brand-muted text-center">
           <div className="text-4xl mb-3 animate-pulse">⚽</div>
           <p>{t('app.loading')}</p>
@@ -473,7 +476,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     return (
-      <div className="min-h-screen bg-brand-bg flex flex-col">
+      <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
         {/* Header */}
         <div className="px-4 pt-8 pb-4 border-b border-brand-border">
           <h1 className="text-2xl font-medium text-white text-center">
@@ -550,7 +553,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                       <button
                         type="button"
                         onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
-                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
+                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-brand-accent hover:underline"
                       >
                         {displayName}
                       </button>
@@ -680,7 +683,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
   const cardName = currentCard ? cardDisplayName(currentCard, i18n.language) : '';
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
@@ -737,8 +740,8 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
               {/* Word card — large, centred, surface, 6px radius, no accent strip.
                   Rarity tier adds a subtle coloured frame + glow (common → none). */}
               <div
-                className="relative overflow-hidden rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
-                style={tierCardStyle(currentCard.tier)}
+                className="ds-panel relative overflow-hidden rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
+                style={tierCardStyle(currentCard.tier, design)}
               >
                 {/* Watermark (variant 5 of the design review): the card's own
                     wiki photo ghosted behind the name. Photo only, preloaded
@@ -760,7 +763,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                 >
                   {catLabel}
                 </span>
-                <p className="relative text-[30px] font-medium text-white leading-snug mt-2">
+                <p className="ds-display relative text-[30px] font-medium text-white leading-snug mt-2">
                   {cardName}
                 </p>
               </div>

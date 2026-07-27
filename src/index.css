@@ -2,7 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design-system tokens ────────────────────────────────────────
+   Two complete visual languages, selected by <html data-design="…">
+   (see shared/design/designs.ts). Every brand colour the app uses is a
+   variable here, so the switch retints all ~200 brand-* class usages at
+   once, with no component knowing a design system exists.
+
+   Colours are raw "R G B" channels, NOT hex — that is what lets Tailwind's
+   opacity modifiers (bg-brand-surface/50, text-brand-muted/70) keep working
+   through the variables; see tailwind.config.ts.
+
+   'master'  — the Sherlock Scholes master design system: gradient accent,
+               Playfair Display headings, lit page background, heavier glows.
+   'classic' — the original shipped look: flat #FF6300, Inter everywhere.
+   :root carries the classic values so anything rendered before the
+   data-design attribute lands still has a full, valid token set. */
 @layer base {
+  :root,
+  [data-design='classic'] {
+    --brand-bg:           10 14 26;    /* #0A0E1A */
+    --brand-surface:      19 24 42;    /* #13182A */
+    --brand-border:       31 39 64;    /* #1F2740 */
+    --brand-muted:       122 132 153;  /* #7A8499 */
+    --brand-accent:      255 99 0;     /* #FF6300 */
+    --brand-accent-soft: 255 99 0;
+    --brand-accent-deep: 255 99 0;
+    --brand-highlight:   255 255 255;
+
+    --app-bg: none;
+    --font-display: 'Inter', system-ui, sans-serif;
+    --display-tracking: 0em;
+
+    --accent-gradient: rgb(255 99 0);
+
+    --btn-primary-bg: rgb(255 99 0);
+    --btn-primary-fg: 10 14 26;
+    --btn-primary-shadow: none;
+    --btn-tracking: 0em;
+    --btn-transform: none;
+    --btn-weight: 500;
+
+    --panel-bg: rgb(19 24 42);
+    --panel-shadow: none;
+    --focus-glow: none;
+
+    /* Rarity frame intensity — the colours stay TIER_COLOR either way, only
+       the weight of the treatment is a design decision (see lib/tier.ts). */
+    --tier-ring: 1px;
+    --tier-glow-scale: 1;
+  }
+
+  [data-design='master'] {
+    --brand-bg:           10 14 26;    /* #0A0E1A */
+    --brand-surface:      19 24 42;    /* #13182A */
+    --brand-border:       31 39 64;    /* #1F2740 */
+    --brand-muted:       154 163 181;  /* #9AA3B5 — a touch brighter */
+    --brand-accent:      255 138 61;   /* #FF8A3D */
+    --brand-accent-soft: 255 224 194;  /* #FFE0C2 */
+    --brand-accent-deep: 194 74 0;     /* #C24A00 */
+    --brand-highlight:   255 224 194;
+
+    --app-bg: radial-gradient(120% 90% at 50% -10%, #1c1206 0%, #0a0e1a 55%);
+    --font-display: 'Playfair Display', Georgia, serif;
+    --display-tracking: 0.01em;
+
+    --accent-gradient: linear-gradient(
+      180deg, #ffe0c2 0%, #ff8a3d 46%, #ff6300 72%, #c24a00 100%);
+
+    --btn-primary-bg: var(--accent-gradient);
+    --btn-primary-fg: 10 14 26;
+    --btn-primary-shadow: 0 12px 30px rgb(255 99 0 / 0.22);
+    --btn-tracking: 0.14em;
+    --btn-transform: uppercase;
+    --btn-weight: 800;
+
+    --panel-bg:
+      linear-gradient(155deg, rgb(255 138 61 / 0.06), rgb(255 138 61 / 0) 46%),
+      rgb(19 24 42);
+    --panel-shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+    --focus-glow: 0 0 0 3px rgb(255 138 61 / 0.16);
+
+    --tier-ring: 1.5px;
+    --tier-glow-scale: 1.6;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -21,6 +104,56 @@
   select {
     @apply text-white;
     -webkit-appearance: none;
+  }
+
+  input:focus,
+  textarea:focus {
+    box-shadow: var(--focus-glow);
+  }
+}
+
+@layer components {
+  /* Page backdrop. Screen roots paint their own `bg-brand-bg` over the body,
+     so the design's lit background has to live on them — pair the two:
+     `min-h-screen bg-brand-bg ds-screen`. Classic sets --app-bg to none and
+     the flat colour shows through unchanged. */
+  .ds-screen {
+    background-image: var(--app-bg);
+    background-attachment: fixed;
+  }
+
+  /* Display type — Playfair in master, Inter in classic. Use on names,
+     headings and big numbers; body copy stays font-sans in both. */
+  .ds-display {
+    font-family: var(--font-display);
+    letter-spacing: var(--display-tracking);
+  }
+
+  /* Raised surface: flat in classic, warm-lit with depth in master. Pair with
+     the usual `rounded-2xl border border-brand-border` classes. */
+  .ds-panel {
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  /* Primary action fill — solid accent in classic, the brand gradient with
+     uppercase tracking in master. Drives Button's `primary` variant. */
+  .ds-btn-primary {
+    background: var(--btn-primary-bg);
+    color: rgb(var(--btn-primary-fg));
+    box-shadow: var(--btn-primary-shadow);
+    letter-spacing: var(--btn-tracking);
+    text-transform: var(--btn-transform);
+    font-weight: var(--btn-weight);
+  }
+
+  /* Accent-filled text. In classic the "gradient" is a flat colour, so the
+     same clip trick renders plain orange. */
+  .ds-accent-text {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
 

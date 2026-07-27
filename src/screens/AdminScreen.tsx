@@ -85,7 +85,7 @@ export function AdminScreen() {
 
   if (!pw || !role) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center p-6">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center p-6">
         <div className="w-full max-w-xs space-y-3">
           <h1 className="text-white text-lg font-medium text-center">Кабинет</h1>
           <input
@@ -139,7 +139,7 @@ function StaffCabinet({ password, role, onLogout }: {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg text-white p-4 max-w-2xl mx-auto space-y-4">
+    <div className="min-h-screen bg-brand-bg ds-screen text-white p-4 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">
           Кабинет

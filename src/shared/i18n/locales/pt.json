@@ -47,6 +47,11 @@
     "continent_other": "Outras regiões",
     "tutorial_button_aria": "Como jogar",
     "sound_toggle_aria": "Som liga/desliga",
+    "design_toggle_aria": "Mudar para {{design}}",
+    "collection": "Coleção",
+    "welcome_back": "Bem-vindo de volta,",
+    "welcome_stranger": "Detetive",
+    "collection_hint": "Veja todo o baralho e suas raridades",
     "group_special": "Especial",
     "tag_goalkeeper": "Goleiros",
     "tag_ballon_dor": "Bola de Ouro",
@@ -55,6 +60,21 @@
     "tag_dwarf": "Baixinhos ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "Lendas"
+  },
+  "design": {
+    "master": "Novo design",
+    "classic": "Design clássico"
+  },
+  "collection": {
+    "title": "Coleção",
+    "search_placeholder": "Procure pistas entre lendas…",
+    "filter_all": "Todas",
+    "empty_title": "Nenhuma pista encontrada",
+    "empty_body": "Tente outra busca ou escolha outra categoria",
+    "error_title": "Não foi possível carregar as cartas",
+    "retry": "Tentar de novo",
+    "count": "{{n}} cartas",
+    "load_more": "Carregar mais"
   },
   "pro": {
     "title": "Sherlock Pro",
