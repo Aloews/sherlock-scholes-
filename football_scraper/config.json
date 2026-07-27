@@ -58,10 +58,11 @@
     "search_limit": 5
   },
 
+  "_photos_budget_help": "daily_request_budget — НЕ лимит Wikimedia, а наш собственный предохранитель от бесконечного цикла. Настоящая вежливость — обязательная пауза min_pause_seconds=1 между запросами (её НЕ трогать): последовательный 1 запрос/с с контактным User-Agent Wikimedia считает нормой. Бюджет 5000 делили между собой фото, career_stats и описания, и его не хватало на полный обход колоды; 20000 при паузе в 1 с — это ~5.5 часов ровной работы, всё ещё в пределах нормы.",
   "photos": {
     "filepath_base": "https://commons.wikimedia.org/wiki/Special:FilePath",
     "width": 256,
-    "daily_request_budget": 5000
+    "daily_request_budget": 20000
   },
 
   "pageviews": {

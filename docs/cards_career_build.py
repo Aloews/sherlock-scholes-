@@ -46,7 +46,17 @@ from scraper.wikidata import WikidataEnricher  # noqa: E402
 ck = run.canonical_key
 APPLY = os.environ.get("APPLY") == "1"
 NOW = 2026
-MIN_APPS = 150          # Wikipedia career-richness gate
+# Wikipedia career-richness gate: the minimum TOTAL senior appearances a
+# player must have before we store his career. It was 150, which left 288
+# cards showing a single bare club name from the unreliable 2022-24 minutes
+# tail (Кёртис Джонс: «Ливерпуль 2018–» and nothing else) even though their
+# Wikipedia infobox had the full thing.
+#
+# 150 was protecting against RICHNESS, not correctness — the numbers come
+# straight from the infobox, so a smaller career is just a smaller career,
+# not a wronger one. 50 senior apps is still a real professional career and
+# keeps trialists/youth-only entries out. Override per run with MIN_APPS=N.
+MIN_APPS = int(os.environ.get("MIN_APPS", "50"))
 TOP_CLUBS = 4
 UA = "SherlockScholesBot/0.1 (career_stats; giafreec@gmail.com)"
 
