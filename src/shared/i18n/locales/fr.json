@@ -48,6 +48,7 @@
     "tutorial_button_aria": "Comment jouer",
     "sound_toggle_aria": "Son activé/coupé",
     "design_toggle_aria": "Passer au {{design}}",
+    "collection": "Collection",
     "group_special": "Spécial",
     "tag_goalkeeper": "Gardiens",
     "tag_ballon_dor": "Ballon d'Or",
@@ -60,6 +61,17 @@
   "design": {
     "master": "Nouveau design",
     "classic": "Design classique"
+  },
+  "collection": {
+    "title": "Collection",
+    "search_placeholder": "Cherche des indices parmi les légendes…",
+    "filter_all": "Toutes",
+    "empty_title": "Aucun indice trouvé",
+    "empty_body": "Essaie une autre recherche ou une autre catégorie",
+    "error_title": "Impossible de charger les cartes",
+    "retry": "Réessayer",
+    "count": "{{n}} cartes",
+    "load_more": "Voir plus"
   },
   "pro": {
     "title": "Sherlock Pro",

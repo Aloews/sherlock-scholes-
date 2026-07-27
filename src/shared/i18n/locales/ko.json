@@ -47,6 +47,7 @@
     "tutorial_button_aria": "게임 방법",
     "sound_toggle_aria": "소리 켜기/끄기",
     "design_toggle_aria": "{{design}}(으)로 전환",
+    "collection": "컬렉션",
     "group_special": "스페셜",
     "tag_goalkeeper": "골키퍼",
     "tag_ballon_dor": "발롱도르",
@@ -59,6 +60,17 @@
   "design": {
     "master": "새 디자인",
     "classic": "클래식 디자인"
+  },
+  "collection": {
+    "title": "컬렉션",
+    "search_placeholder": "전설 속에서 단서를 찾아보세요…",
+    "filter_all": "전체",
+    "empty_title": "단서를 찾지 못했습니다",
+    "empty_body": "다른 검색어나 카테고리를 시도해 보세요",
+    "error_title": "카드를 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "count": "카드 {{n}}장",
+    "load_more": "더 보기"
   },
   "pro": {
     "title": "Sherlock Pro",

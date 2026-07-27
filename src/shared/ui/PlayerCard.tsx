@@ -1,58 +1,25 @@
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
-import {
-  IconUser,
-  IconShield,
-  IconBuildingStadium,
-  IconTag,
-  IconTarget,
-  IconFlag,
-  IconClipboard,
-  IconMicrophone,
-  IconSwords,
-  IconTrophy,
-  IconHourglass,
-} from '@tabler/icons-react';
-import type { Card, CardCategory } from '@/shared/types/database';
+import type { Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
 import { useDesign } from '@/shared/design/useDesign';
+import {
+  CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR,
+} from '@/shared/ui/CategoryIcon';
+
+/** Everything the card actually renders. Declared as a Pick rather than the
+ * full `Card` so callers that fetched only the display columns — the
+ * Collection screen — can reuse this component without inventing the rest. */
+export type PlayerCardData = Pick<
+  Card,
+  'name' | 'name_en' | 'category' | 'category_ru' | 'photo_url' | 'tier' | 'card_translations'
+>;
 
 interface PlayerCardProps {
-  card: Card;
+  card: PlayerCardData;
   mode: 'explainer' | 'hidden';
   className?: string;
-}
-
-const CATEGORY_COLOR: Record<CardCategory, string> = {
-  player:        '#FF6300',
-  club:          '#4A9EFF',
-  club_nickname: '#4A9EFF',
-  stadium:       '#00C97D',
-  term:          '#B47AFF',
-  position:      '#B47AFF',
-  referee:       '#FFD24A',
-  coach:         '#FFD24A',
-  commentator:   '#7A8499',
-  woman:         '#FF6BA8',
-  derby:         '#F43F5E',
-  trophy:        '#FFD24A',
-  era:           '#22D3EE',
-};
-
-function CategoryIcon({ category, color }: { category: CardCategory; color: string }) {
-  const props = { size: 13, color, stroke: 1.75 };
-  if (category === 'club' || category === 'club_nickname') return <IconShield      {...props} />;
-  if (category === 'stadium')                              return <IconBuildingStadium {...props} />;
-  if (category === 'term')                                 return <IconTag          {...props} />;
-  if (category === 'position')                             return <IconTarget       {...props} />;
-  if (category === 'referee')                              return <IconFlag         {...props} />;
-  if (category === 'coach')                                return <IconClipboard    {...props} />;
-  if (category === 'commentator')                          return <IconMicrophone   {...props} />;
-  if (category === 'derby')                                return <IconSwords       {...props} />;
-  if (category === 'trophy')                               return <IconTrophy       {...props} />;
-  if (category === 'era')                                  return <IconHourglass    {...props} />;
-  return <IconUser {...props} />;  // player, woman, default
 }
 
 export function PlayerCard({ card, mode, className }: PlayerCardProps) {
@@ -79,7 +46,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   }
 
   const design   = useDesign();
-  const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
+  const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
   // Localized category label; the DB's Russian category_ru wins only on ru
   // (it can carry admin-customised labels).
   const label    = i18n.language.startsWith('ru') && card.category_ru

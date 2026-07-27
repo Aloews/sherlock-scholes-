@@ -48,6 +48,7 @@
     "tutorial_button_aria": "How to play",
     "sound_toggle_aria": "Sound on/off",
     "design_toggle_aria": "Switch to {{design}}",
+    "collection": "Collection",
     "group_special": "Special",
     "tag_goalkeeper": "Goalkeepers",
     "tag_ballon_dor": "Ballon d'Or",
@@ -61,6 +62,17 @@
   "design": {
     "master": "New design",
     "classic": "Classic design"
+  },
+  "collection": {
+    "title": "Collection",
+    "search_placeholder": "Search for clues among legends…",
+    "filter_all": "All",
+    "empty_title": "No clues found",
+    "empty_body": "Try a different query or pick another category",
+    "error_title": "Couldn't load cards",
+    "retry": "Retry",
+    "count": "{{n}} cards",
+    "load_more": "Load more"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -50,6 +50,7 @@
     "tutorial_button_aria": "Как играть",
     "sound_toggle_aria": "Звук вкл/выкл",
     "design_toggle_aria": "Переключить на: {{design}}",
+    "collection": "Коллекция",
     "group_special": "Особые",
     "tag_goalkeeper": "Вратари",
     "tag_ballon_dor": "Золотой мяч",
@@ -63,6 +64,17 @@
   "design": {
     "master": "Новый дизайн",
     "classic": "Классический дизайн"
+  },
+  "collection": {
+    "title": "Коллекция",
+    "search_placeholder": "Ищи улики среди легенд…",
+    "filter_all": "Все",
+    "empty_title": "Улики не найдены",
+    "empty_body": "Попробуй другой запрос или выбери другую категорию",
+    "error_title": "Не удалось загрузить карты",
+    "retry": "Повторить",
+    "count": "{{n}} карточек",
+    "load_more": "Показать ещё"
   },
   "pro": {
     "title": "Sherlock Pro",

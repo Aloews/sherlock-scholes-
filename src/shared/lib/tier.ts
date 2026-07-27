@@ -23,11 +23,13 @@ export function tierCardStyle(tier?: string | null, design: DesignId = getDesign
   if (!t || t === 'common') return undefined;
   const c = TIER_COLOR[t];
   const master = design === 'master';
-  const ring = master ? '1.5px' : '1px';
+  // 'icon' is the top tier: the thickest frame and the widest, whitest glow.
+  const ring = t === 'icon' ? '2px' : master ? '1.5px' : '1px';
   // px radius, then alpha — master roughly doubles the spread and lifts the
   // opacity so a legendary reads as lit rather than outlined.
   const [blur, alpha] =
-    t === 'legendary' ? (master ? [34, '80'] : [18, '66'])
+    t === 'icon'      ? (master ? [40, '59'] : [24, '59'])
+    : t === 'legendary' ? (master ? [34, '80'] : [18, '66'])
     : t === 'epic'    ? (master ? [26, '70'] : [14, '55'])
     :                   (master ? [22, '55'] : [10, '40']);
   return {
@@ -41,6 +43,7 @@ export function tierRingStyle(tier?: string | null, design: DesignId = getDesign
   const t = asTier(tier);
   if (!t || t === 'common') return undefined;
   const c = TIER_COLOR[t];
+  if (t === 'icon') return { boxShadow: `0 0 0 2px ${c}, 0 0 ${design === 'master' ? 16 : 10}px ${c}99` };
   return design === 'master'
     ? { boxShadow: `0 0 0 2px ${c}, 0 0 12px ${c}88` }
     : { boxShadow: `0 0 0 2px ${c}, 0 0 6px ${c}66` };

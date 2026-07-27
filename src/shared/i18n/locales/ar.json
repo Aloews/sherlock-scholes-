@@ -51,6 +51,7 @@
     "tutorial_button_aria": "طريقة اللعب",
     "sound_toggle_aria": "تشغيل/إيقاف الصوت",
     "design_toggle_aria": "التبديل إلى {{design}}",
+    "collection": "المجموعة",
     "group_special": "مميز",
     "tag_goalkeeper": "حراس المرمى",
     "tag_ballon_dor": "الكرة الذهبية",
@@ -63,6 +64,17 @@
   "design": {
     "master": "التصميم الجديد",
     "classic": "التصميم الكلاسيكي"
+  },
+  "collection": {
+    "title": "المجموعة",
+    "search_placeholder": "ابحث عن الأدلة بين الأساطير…",
+    "filter_all": "الكل",
+    "empty_title": "لم يتم العثور على أدلة",
+    "empty_body": "جرّب بحثًا آخر أو اختر فئة أخرى",
+    "error_title": "تعذّر تحميل البطاقات",
+    "retry": "إعادة المحاولة",
+    "count": "{{n}} بطاقة",
+    "load_more": "عرض المزيد"
   },
   "pro": {
     "title": "Sherlock Pro",
