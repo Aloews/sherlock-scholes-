@@ -64,6 +64,11 @@
     "master": "새 디자인",
     "classic": "클래식 디자인"
   },
+  "tabs": {
+    "home": "홈",
+    "collection": "카드",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "컬렉션",
     "search_placeholder": "전설 속에서 단서를 찾아보세요…",

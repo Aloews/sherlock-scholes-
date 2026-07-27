@@ -65,6 +65,11 @@
     "master": "Nouveau design",
     "classic": "Design classique"
   },
+  "tabs": {
+    "home": "Accueil",
+    "collection": "Cartes",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Collection",
     "search_placeholder": "Cherche des indices parmi les légendes…",

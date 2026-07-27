@@ -71,6 +71,11 @@
     "master": "New design",
     "classic": "Classic design"
   },
+  "tabs": {
+    "home": "Home",
+    "collection": "Cards",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Collection",
     "search_placeholder": "Search for clues among legends…",
