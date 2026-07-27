@@ -1639,4 +1639,52 @@ WHERE category = 'player' AND coalesce(active,true)
 --     (select count(*) from cards where 'star'=any(tags) and coalesce(active,true)),
 --     (select count(*) from cards where 'legend'=any(tags) and coalesce(active,true)),
 --     (select count(*) from cards where 'star'=any(tags) and 'legend'=any(tags) and coalesce(active,true));
+
+-- 2026-07-26 — описания неигровых карточек (cards.descriptions)
+--
+-- НАКАТЫВАТЬ НЕЧЕГО: колонка descriptions уже есть (2026-07-19), данные
+-- заливает скрипт docs/cards_descriptions_build.py из преамбул Википедии.
+-- Блок оставлен как ЖУРНАЛ + VERIFY + ROLLBACK — исполняемых операторов нет,
+-- прогон всего файла его не затрагивает.
+--
+-- ЗАЧЕМ: у игроков карьера лежит в facts/career_stats/legend_career, поэтому
+-- в истории быстрой игры они выглядят полноценно (заполнены на 97%). А 631
+-- активная НЕигровая карточка не показывала ничего, кроме имени:
+--     club 432, commentator 37, referee 36, coach 33, stadium 28,
+--     club_nickname 23, derby 17, era 13, trophy 12
+-- (term 87 и position 15 были заполнены руками — их формат и взят за образец).
+--
+-- КАК: name -> варианты заголовка ruwiki (клубы сначала пробуют
+-- «<имя> (футбольный клуб)») -> QID через prop=pageprops -> ГАРД P31
+-- (клуб/стадион/человек: «Краснодар»-город и «Сантьяго Бернабеу»-человек
+-- отсекаются) -> преамбула (prop=extracts) -> ГАРД «текст про футбол» ->
+-- первое предложение без подлежащего, <=180 знаков. Не срезолвилось —
+-- карточка ПРОПУСКАЕТСЯ, ничего не выдумывается.
+--
+-- ЗАПИСЬ: только там, где descriptions IS NULL (фильтр стоит и в самом PATCH),
+-- поэтому ручной текст не перетирается, а повторный прогон — no-op.
+-- Ночью: daily-enrich, шаг «Build non-player card descriptions», --limit 120.
+-- Разово/по категории: workflow cards-descriptions (dry-run по умолчанию).
+--
+-- VERIFY (сколько заполнено по категориям):
+--   select category,
+--          count(*) filter (where active)                            as act,
+--          count(*) filter (where active and descriptions is not null) as with_descr
+--   from cards
+--   where category not in ('player','woman')
+--   group by category order by act desc;
+--
+-- ВЫБОРОЧНАЯ ПРОВЕРКА (глазами, топ-20 самых популярных):
+--   select category, name, descriptions->>'ru' as ru, descriptions->>'en' as en
+--   from cards
+--   where active and descriptions is not null
+--     and category not in ('player','woman','term','position')
+--   order by coalesce(pageviews,0) desc limit 20;
+--
+-- ROLLBACK (снести ТОЛЬКО залитое скриптом, не трогая term/position,
+-- заполненные руками):
+--   update cards set descriptions = null
+--   where active
+--     and category not in ('player','woman','term','position')
+--     and descriptions is not null;
 -- ============================================================================

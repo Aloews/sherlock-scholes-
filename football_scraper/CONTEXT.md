@@ -37,6 +37,16 @@ Supabase проект konoavrduynecxblqfvq. API-Football free (100 req/день,
       "Фамилия,Имя"). НЕ трогать пары <1.00 (разные люди).
 ФАЗА 5 — фронтенд (потом):
   [ ] метка лиги в cards + выбор лиги в игре; редактор карт/паков.
+ФАЗА 6 — описания неигровых карточек (cards.descriptions):
+  Игроки заполнены на 97% (facts/career_stats), а 631 активная неигровая
+  карточка показывала только имя: club 432, commentator 37, referee 36,
+  coach 33, stadium 28, club_nickname 23, derby 17, era 13, trophy 12.
+  [x] docs/cards_descriptions_build.py — блёрб из преамбулы ruwiki/enwiki,
+      гарды P31 + «текст про футбол», запись только где descriptions IS NULL.
+  [x] ночной шаг в daily-enrich (--limit 120) + ручной workflow
+      cards-descriptions (dry-run по умолчанию) для батчей и категорий.
+  [ ] прозвища клубов и эпохи («Канониры», «МЮ Фергюсона») своих статей не
+      имеют — Википедия их не закроет, нужен отдельный ручной источник.
 
 ## ПРАВИЛА РАБОТЫ (экономия контекста)
 - Claude Code: после крупной задачи чистить свой контекст (/clear или
