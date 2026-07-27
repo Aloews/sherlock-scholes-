@@ -68,7 +68,8 @@ const isMissingLocaleParams = (error: { code?: string; message: string }) =>
 // without the country/league filter.
 let rpcSupportsGeo = true;
 const isMissingGeoParams = (error: { code?: string; message: string }) =>
-  error.code === 'PGRST202' || error.message.includes('p_countries') || error.message.includes('p_leagues');
+  error.code === 'PGRST202' || error.message.includes('p_countries')
+  || error.message.includes('p_leagues') || error.message.includes('p_tiers');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -110,6 +111,7 @@ export async function pickRandomCards(
   lang?: string | null,
   countries?: string[] | null,
   leagues?: string[] | null,
+  tiers?: string[] | null,
 ): Promise<Card[]> {
   // Tags live only on player cards, and the RPC ANDs all its filters — a tag
   // request would silently drop every selected non-player category. To let the
@@ -120,10 +122,10 @@ export async function pickRandomCards(
     const wantsPlayers = !categories?.length || categories.includes('player');
     const [players, rest] = await Promise.all([
       wantsPlayers
-        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues)
+        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues, tiers)
         : Promise.resolve<Card[]>([]),
-      // Continents/tags/country/league only ever filter players — irrelevant here.
-      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty, null, lang, null, null),
+      // Continents/tags/country/league/tier only ever filter players — irrelevant here.
+      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty, null, lang, null, null, null),
     ]);
     const merged = [...players, ...rest];
     for (let i = merged.length - 1; i > 0; i--) {
@@ -135,7 +137,7 @@ export async function pickRandomCards(
     return merged.slice(0, count);
   }
 
-  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues);
+  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues, tiers);
 }
 
 async function rpcPickRandomCards(
@@ -149,6 +151,7 @@ async function rpcPickRandomCards(
   lang?: string | null,
   countries?: string[] | null,
   leagues?: string[] | null,
+  tiers?: string[] | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
@@ -165,7 +168,7 @@ async function rpcPickRandomCards(
     const withInitData = rpcSupportsInitData && needsInitData;
     const withDifficulty = rpcSupportsDifficulty && difficulty != null && difficulty > 0;
     const withLocale = rpcSupportsLocale && (!!boostCountries?.length || !!lang);
-    const withGeo = rpcSupportsGeo && (!!countries?.length || !!leagues?.length);
+    const withGeo = rpcSupportsGeo && (!!countries?.length || !!leagues?.length || !!tiers?.length);
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
@@ -175,7 +178,11 @@ async function rpcPickRandomCards(
       ...(withInitData ? { p_init_data: getRawInitData() } : {}),
       ...(withDifficulty ? { p_difficulty: difficulty } : {}),
       ...(withLocale ? { p_boost_countries: boostCountries?.length ? boostCountries : null, p_lang: lang ?? null } : {}),
-      ...(withGeo ? { p_countries: countries?.length ? countries : null, p_leagues: leagues?.length ? leagues : null } : {}),
+      ...(withGeo ? {
+        p_countries: countries?.length ? countries : null,
+        p_leagues: leagues?.length ? leagues : null,
+        p_tiers: tiers?.length ? tiers : null,
+      } : {}),
     });
 
     if (error) {
@@ -248,6 +255,7 @@ export async function countDeck(
   tags: string[] | null = null,
   countries: string[] | null = null,
   leagues: string[] | null = null,
+  tiers: string[] | null = null,
 ): Promise<number> {
   const cats = categories?.length ? categories : ALL_CATEGORIES;
   const playerIncluded = cats.includes('player');
@@ -291,10 +299,11 @@ export async function countDeck(
         q = q.in('continent', real);
       }
     }
-    // Country / league filters (player pool only) — mirror the RPC's
-    // country = any(...) / top_league = any(...).
+    // Country / league / tier filters (player pool only) — mirror the RPC's
+    // country = any(...) / top_league = any(...) / tier = any(...).
     if (countries?.length) q = q.in('country', countries);
     if (leagues?.length) q = q.in('top_league', leagues);
+    if (tiers?.length) q = q.in('tier', tiers);
     const { count } = await q;
     total += count ?? 0;
   }

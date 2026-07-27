@@ -69,6 +69,15 @@ const CATEGORY_CHIPS: Chip[] = NON_PLAYER_CATEGORIES.map((c) => ({
 }));
 const CHIPS: Chip[] = [...TAG_CHIPS, ...CONTINENT_CHIPS, ...CATEGORY_CHIPS];
 
+// Recognizability / difficulty of PLAYER cards, by rarity tier (how easy the
+// player is to explain). Each level maps to a set of cards.tier values; the
+// deck filter unions the selected levels. Player-only (mirrors continents).
+const TIER_LEVELS: { id: string; tiers: string[]; labelKey: string }[] = [
+  { id: 'easy',   tiers: ['legendary', 'epic'], labelKey: 'home.diff_easy' },
+  { id: 'medium', tiers: ['rare'],              labelKey: 'home.diff_medium' },
+  { id: 'hard',   tiers: ['common'],            labelKey: 'home.diff_hard' },
+];
+
 export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
@@ -128,6 +137,8 @@ export function HomeScreen() {
   const [selCountry, setSelCountry] = useState('');
   const [selLeague,  setSelLeague]  = useState('');
   const [geoOpts, setGeoOpts] = useState<{ countries: string[]; leagues: string[] } | null>(null);
+  // Recognizability levels (tier buckets) chosen for the player pool. Empty = all.
+  const [selDiff, setSelDiff] = useState<Set<string>>(new Set());
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
@@ -212,6 +223,10 @@ export function HomeScreen() {
   const deckTags: string[] | null = tagMode ? tagList : null;
   const deckCountries: string[] | null = selCountry ? [selCountry] : null;
   const deckLeagues: string[] | null = selLeague ? [selLeague] : null;
+  // Union of tier codes for the selected recognizability levels; null = all.
+  const deckTiers: string[] | null = selDiff.size
+    ? TIER_LEVELS.filter((l) => selDiff.has(l.id)).flatMap((l) => l.tiers)
+    : null;
   const nothingSelected = !tagMode && selConts.size === 0 && selCats.size === 0;
   const selectedCount = selTags.size + selConts.size + selCats.size;
 
@@ -253,13 +268,13 @@ export function HomeScreen() {
   // Live "Выбрано: N · M карточек" — debounced count of the current selection.
   const filterKey = JSON.stringify(
     { c: selCategories, k: selContinents, p: selMinPageviews, g: deckTags,
-      co: deckCountries, l: deckLeagues });
+      co: deckCountries, l: deckLeagues, ti: deckTiers });
   useEffect(() => {
     if (view !== 'create_training') return;
     let cancelled = false;
     setDeckCount(null);
     const handle = setTimeout(() => {
-      countDeck(selCategories, selContinents, selMinPageviews, deckTags, deckCountries, deckLeagues)
+      countDeck(selCategories, selContinents, selMinPageviews, deckTags, deckCountries, deckLeagues, deckTiers)
         .then((n) => { if (!cancelled) setDeckCount(n); })
         .catch(() => { if (!cancelled) setDeckCount(null); });
     }, 350);
@@ -297,6 +312,7 @@ export function HomeScreen() {
         lang: i18n.language.slice(0, 2),
         countries: deckCountries,
         leagues: deckLeagues,
+        tiers: deckTiers,
       },
     });
   };
@@ -556,6 +572,35 @@ export function HomeScreen() {
                     {locked && <IconLock size={11} stroke={2.5} style={{ color: '#FFD24A' }} />}
                     <span className="truncate">{label}</span>
                     {chip.pro && !locked && <span style={{ color: '#FFD24A' }}>★</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Recognizability / difficulty of players (rarity-tier buckets):
+                Известные / Средние / Малоизвестные. Multi-select; empty = all. */}
+            <div className="flex flex-wrap gap-1.5">
+              {TIER_LEVELS.map((lvl) => {
+                const on = selDiff.has(lvl.id);
+                return (
+                  <button
+                    key={lvl.id}
+                    type="button"
+                    onClick={() => {
+                      hapticImpact('light');
+                      setTouched(true);
+                      setSelDiff((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(lvl.id)) next.delete(lvl.id); else next.add(lvl.id);
+                        return next;
+                      });
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                      on
+                        ? 'bg-brand-accent/20 text-white border-brand-accent'
+                        : 'bg-brand-surface text-brand-muted border-brand-border'}`}
+                  >
+                    {t(lvl.labelKey)}
                   </button>
                 );
               })}

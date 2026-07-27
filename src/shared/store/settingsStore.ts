@@ -8,22 +8,11 @@ import type { ProFrame } from '@/shared/lib/pro';
 // `proFrame` is a Pro cosmetic (avatar ring); it only renders when the user
 // is actually Pro (server-checked) — storing it for a free user is harmless.
 
-// Summary (end-of-game) card-list ordering. 'order' keeps play order.
-export type SummarySort = 'order' | 'category' | 'name' | 'rarity' | 'country';
-// Club-line ordering inside a card: by career recency (end year) or by weight
-// (appearances — biggest clubs first). 'apps' only reorders career_stats rows
-// that carry an apps count; other sources keep their year order.
-export type ClubSort = 'years' | 'apps';
-
 interface SettingsState {
   soundEnabled: boolean;
   setSoundEnabled(on: boolean): void;
   proFrame: ProFrame;
   setProFrame(frame: ProFrame): void;
-  summarySort: SummarySort;
-  setSummarySort(sort: SummarySort): void;
-  clubSort: ClubSort;
-  setClubSort(sort: ClubSort): void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -33,26 +22,18 @@ export const useSettingsStore = create<SettingsState>()(
       setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
       proFrame: 'default',
       setProFrame: (proFrame) => set({ proFrame }),
-      summarySort: 'order',
-      setSummarySort: (summarySort) => set({ summarySort }),
-      clubSort: 'years',
-      setClubSort: (clubSort) => set({ clubSort }),
     }),
     {
       name: 'sherlock_settings',
-      version: 4,
+      version: 5,
       // v0/v1 stored a `difficulty` switch — dropped. v2 had only soundEnabled;
-      // v3 adds proFrame; v4 adds summarySort + clubSort (end-of-game ordering).
+      // v3 adds proFrame; v4 added summarySort + clubSort (end-of-game ordering)
+      // — dropped in v5 (the summary sort control was removed).
       migrate: (persisted) => {
-        const s = (persisted ?? {}) as {
-          soundEnabled?: boolean; proFrame?: ProFrame;
-          summarySort?: SummarySort; clubSort?: ClubSort;
-        };
+        const s = (persisted ?? {}) as { soundEnabled?: boolean; proFrame?: ProFrame };
         return {
           soundEnabled: s.soundEnabled !== false,
           proFrame: s.proFrame ?? 'default',
-          summarySort: s.summarySort ?? 'order',
-          clubSort: s.clubSort ?? 'years',
         } as SettingsState;
       },
     },
