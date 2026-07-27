@@ -13,9 +13,10 @@ SELECTION (per the agreed plan):
     established non-veterans whose 2022-24 tail is equally partial — Sow showed
     1 club instead of 4 — so the age/minute gate was dropped; the richness gate
     below is what protects quality.)
-  * gate = Wikipedia career richness: keep only if total senior apps >= 150
-    (NOT tier/pageviews — those are unreliable for veterans, e.g. Walcott
-     pv=289 from a name mismatch);
+  * gate = Wikipedia career richness: keep only if total senior apps >= 30
+    (lowered from 150 so young stars with a short real career qualify; NOT
+     tier/pageviews — those are unreliable for veterans, e.g. Walcott pv=289
+     from a name mismatch);
   * QID present  -> Wikidata sitelinks -> enwiki/ruwiki article;
   * QID MISSING  -> resolve name_en/name -> enwiki article directly (returns
      Giroud and other known players with no players_meta QID).
@@ -46,7 +47,12 @@ from scraper.wikidata import WikidataEnricher  # noqa: E402
 ck = run.canonical_key
 APPLY = os.environ.get("APPLY") == "1"
 NOW = 2026
-MIN_APPS = 150          # Wikipedia career-richness gate
+# Wikipedia career-richness gate. Was 150 (veterans-only); lowered to 30 so
+# young stars with a short-but-real senior career (Endrick, Gavi, Yamal, ~40-100
+# apps) also get career_stats (matches/goals) instead of just legend_career
+# years. Namesake safety doesn't rely on this — the via=name path still verifies
+# the infobox birth year, via=name_title is an exact title, via=qid is trusted.
+MIN_APPS = 30
 TOP_CLUBS = 4
 UA = "SherlockScholesBot/0.1 (career_stats; giafreec@gmail.com)"
 
