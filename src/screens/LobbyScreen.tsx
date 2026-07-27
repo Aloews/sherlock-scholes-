@@ -41,7 +41,7 @@ export function LobbyScreen() {
   const isMe1v1Host = room.host_id === (hostPlayer?.player_id ?? -1);
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between p-4 pt-8 border-b border-brand-border">
         <button

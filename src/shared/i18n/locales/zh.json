@@ -46,6 +46,7 @@
     "continent_other": "其他地区",
     "tutorial_button_aria": "怎么玩",
     "sound_toggle_aria": "声音开/关",
+    "design_toggle_aria": "切换到{{design}}",
     "group_special": "特色",
     "tag_goalkeeper": "门将",
     "tag_ballon_dor": "金球奖",
@@ -54,6 +55,10 @@
     "tag_dwarf": "小个子 ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "传奇"
+  },
+  "design": {
+    "master": "新设计",
+    "classic": "经典设计"
   },
   "pro": {
     "title": "Sherlock Pro",

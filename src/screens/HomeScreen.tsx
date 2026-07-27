@@ -8,6 +8,7 @@ import {
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
+import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -272,16 +273,19 @@ export function HomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-8">
-        <div className="flex items-center gap-2">
+        {/* Wraps rather than overflowing — five controls plus the logo don't
+            fit on one line on the narrowest phones. */}
+        <div className="flex items-center flex-wrap gap-1.5">
           <img
             src="/logo-white-clean.png"
             alt="Шерлок Скоулс"
             className="h-8 w-auto"
           />
           <LanguageToggle />
+          <DesignToggle />
           <button
             onClick={() => { hapticImpact('light'); navigate('/tutorial'); }}
             aria-label={t('home.tutorial_button_aria')}
@@ -342,7 +346,7 @@ export function HomeScreen() {
               {t('stats.title')}
             </p>
             {stats ? (
-              <div className="bg-brand-surface rounded-2xl border border-brand-border p-3">
+              <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-3">
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
                     { label: t('stats.games'), value: stats.games_played },
@@ -351,7 +355,7 @@ export function HomeScreen() {
                     { label: t('stats.score'), value: stats.total_score },
                   ].map((item) => (
                     <div key={item.label}>
-                      <p className="text-white font-bold text-lg leading-none">{item.value}</p>
+                      <p className="ds-display text-white font-bold text-lg leading-none">{item.value}</p>
                       <p className="text-brand-muted text-xs mt-1">{item.label}</p>
                     </div>
                   ))}
@@ -521,7 +525,7 @@ export function HomeScreen() {
                         ? 'border-transparent text-white'
                         : 'border-brand-border bg-brand-border/40 text-brand-muted hover:text-white'
                     } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    style={active ? { backgroundColor: '#FF6300' } : undefined}
+                    style={active ? { backgroundColor: 'rgb(var(--brand-accent))' } : undefined}
                   >
                     {locked && <IconLock size={11} stroke={2.5} style={{ color: '#FFD24A' }} />}
                     <span className="truncate">{label}</span>

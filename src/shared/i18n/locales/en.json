@@ -47,6 +47,7 @@
     "continent_other": "Other regions",
     "tutorial_button_aria": "How to play",
     "sound_toggle_aria": "Sound on/off",
+    "design_toggle_aria": "Switch to {{design}}",
     "group_special": "Special",
     "tag_goalkeeper": "Goalkeepers",
     "tag_ballon_dor": "Ballon d'Or",
@@ -56,6 +57,10 @@
     "tag_dwarf": "Pocket-size ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "Legends"
+  },
+  "design": {
+    "master": "New design",
+    "classic": "Classic design"
   },
   "pro": {
     "title": "Sherlock Pro",

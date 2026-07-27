@@ -20,7 +20,7 @@ const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ de
 // (matching the splash), no text, so there's no white flash while chunks load.
 function LazyFallback() {
   return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+    <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
       <motion.svg
         viewBox="0 0 24 24"
         className="w-12 h-12"

@@ -58,7 +58,7 @@ export function TutorialScreen() {
   const isLast = current === TOTAL - 1;
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Skip — finishes the tutorial from any slide (same finish() as the
           last-slide button / left-swipe). Hidden on the last slide where the
           primary action is already "Finish". */}
@@ -89,7 +89,7 @@ export function TutorialScreen() {
             className="flex flex-col items-center text-center max-w-xs w-full select-none cursor-grab active:cursor-grabbing"
           >
             <Icon size={64} stroke={1.5} className="text-brand-accent" />
-            <h2 className="text-3xl font-black text-white mt-6">
+            <h2 className="ds-display text-3xl font-black text-white mt-6">
               {t(`tutorial.title_${current + 1}`)}
             </h2>
             <p className="text-base text-brand-muted mt-4 max-w-xs leading-relaxed">

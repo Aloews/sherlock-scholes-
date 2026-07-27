@@ -50,6 +50,7 @@
     "continent_other": "مناطق أخرى",
     "tutorial_button_aria": "طريقة اللعب",
     "sound_toggle_aria": "تشغيل/إيقاف الصوت",
+    "design_toggle_aria": "التبديل إلى {{design}}",
     "group_special": "مميز",
     "tag_goalkeeper": "حراس المرمى",
     "tag_ballon_dor": "الكرة الذهبية",
@@ -58,6 +59,10 @@
     "tag_dwarf": "قصار القامة ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "الأساطير"
+  },
+  "design": {
+    "master": "التصميم الجديد",
+    "classic": "التصميم الكلاسيكي"
   },
   "pro": {
     "title": "Sherlock Pro",

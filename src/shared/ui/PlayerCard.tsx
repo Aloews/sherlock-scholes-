@@ -16,6 +16,7 @@ import {
 import type { Card, CardCategory } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
+import { useDesign } from '@/shared/design/useDesign';
 
 interface PlayerCardProps {
   card: Card;
@@ -77,6 +78,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
     );
   }
 
+  const design   = useDesign();
   const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
   // Localized category label; the DB's Russian category_ru wins only on ru
   // (it can carry admin-customised labels).
@@ -90,11 +92,13 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   return (
     <div
       className={clsx(
-        'relative rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
+        'ds-panel relative rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
         className,
       )}
       // Rarity tier: subtle coloured frame + glow (common/unknown → none).
-      style={tierCardStyle(card.tier)}
+      // The design id is passed explicitly so the frame restyles the moment
+      // the player switches design systems.
+      style={tierCardStyle(card.tier, design)}
     >
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />
@@ -122,9 +126,10 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
         </span>
       </div>
 
-      {/* Card name — centred, medium weight */}
+      {/* Card name — centred, medium weight, display face (Playfair in the
+          master design, Inter in classic). */}
       <div className="relative px-5 pt-4 pb-8 text-center">
-        <p className="text-3xl font-medium text-white leading-snug">{name}</p>
+        <p className="ds-display text-3xl font-medium text-white leading-snug">{name}</p>
       </div>
     </div>
   );

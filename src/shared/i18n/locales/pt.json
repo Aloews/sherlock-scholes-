@@ -47,6 +47,7 @@
     "continent_other": "Outras regiões",
     "tutorial_button_aria": "Como jogar",
     "sound_toggle_aria": "Som liga/desliga",
+    "design_toggle_aria": "Mudar para {{design}}",
     "group_special": "Especial",
     "tag_goalkeeper": "Goleiros",
     "tag_ballon_dor": "Bola de Ouro",
@@ -55,6 +56,10 @@
     "tag_dwarf": "Baixinhos ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "Lendas"
+  },
+  "design": {
+    "master": "Novo design",
+    "classic": "Design clássico"
   },
   "pro": {
     "title": "Sherlock Pro",

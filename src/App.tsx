@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/useAuth';
 import { useProStatus } from '@/features/pro/useProStatus';
 import { useGameStore } from '@/shared/store/gameStore';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
+import { useDesignSync } from '@/shared/design/useDesign';
 
 const SPLASH_TIMEOUT_MS = 9_000;
 
@@ -28,7 +29,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!initialized) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
         <div className="text-center space-y-4 max-w-sm px-6">
           {timedOut ? (
             <>
@@ -77,6 +78,10 @@ export default function App() {
   // DB the moment the app boots (before auth even settles), so it is warming
   // up while the player is still on the splash/home/lobby.
   useEffect(() => { void wakeSupabase(); }, []);
+
+  // Keep <html data-design> on the persisted design system. index.html already
+  // set it before first paint; this owns it from here on (switcher, rehydrate).
+  useDesignSync();
 
   return (
     <BrowserRouter>

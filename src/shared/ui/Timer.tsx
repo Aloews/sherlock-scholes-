@@ -28,16 +28,16 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke="#1F2740"
+          stroke="rgb(var(--brand-border))"
           strokeWidth={stroke}
         />
-        {/* Progress — always brand accent */}
+        {/* Progress — always brand accent (design-system token) */}
         <circle
           cx={dim / 2}
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke="#FF6300"
+          stroke="rgb(var(--brand-accent))"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circ}

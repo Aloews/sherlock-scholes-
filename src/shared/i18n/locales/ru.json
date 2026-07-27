@@ -49,6 +49,7 @@
     "continent_other": "Прочие",
     "tutorial_button_aria": "Как играть",
     "sound_toggle_aria": "Звук вкл/выкл",
+    "design_toggle_aria": "Переключить на: {{design}}",
     "group_special": "Особые",
     "tag_goalkeeper": "Вратари",
     "tag_ballon_dor": "Золотой мяч",
@@ -58,6 +59,10 @@
     "tag_dwarf": "Малыши ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "Легенды"
+  },
+  "design": {
+    "master": "Новый дизайн",
+    "classic": "Классический дизайн"
   },
   "pro": {
     "title": "Sherlock Pro",

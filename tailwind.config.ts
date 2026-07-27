@@ -1,20 +1,31 @@
 import type { Config } from 'tailwindcss';
 
+// Brand colours resolve through CSS variables so the whole palette can be
+// swapped at runtime by the design switcher (see src/index.css and
+// shared/design/designs.ts). The `<alpha-value>` placeholder is what keeps
+// opacity modifiers — bg-brand-surface/50, text-brand-muted/70 — working.
+const brand = (name: string) => `rgb(var(--brand-${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
         brand: {
-          accent:  '#FF6300',
-          bg:      '#0A0E1A',
-          surface: '#13182A',
-          border:  '#1F2740',
-          muted:   '#7A8499',
+          accent:     brand('accent'),
+          accentSoft: brand('accent-soft'),
+          accentDeep: brand('accent-deep'),
+          highlight:  brand('highlight'),
+          bg:         brand('bg'),
+          surface:    brand('surface'),
+          border:     brand('border'),
+          muted:      brand('muted'),
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Design-dependent: Playfair Display in master, Inter in classic.
+        display: ['var(--font-display)'],
       },
       animation: {
         'pulse-fast': 'pulse 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',

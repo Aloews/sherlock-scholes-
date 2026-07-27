@@ -46,6 +46,7 @@
     "continent_other": "その他の地域",
     "tutorial_button_aria": "遊び方",
     "sound_toggle_aria": "サウンドのオン/オフ",
+    "design_toggle_aria": "{{design}}に切り替える",
     "group_special": "スペシャル",
     "tag_goalkeeper": "ゴールキーパー",
     "tag_ballon_dor": "バロンドール",
@@ -54,6 +55,10 @@
     "tag_dwarf": "小柄 ≤170",
     "pro_badge": "Pro",
     "pro_filter_legends": "レジェンド"
+  },
+  "design": {
+    "master": "新デザイン",
+    "classic": "クラシックデザイン"
   },
   "pro": {
     "title": "Sherlock Pro",
