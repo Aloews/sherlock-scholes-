@@ -18,7 +18,7 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countCards, wakeSupabase } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
-import { fameFloor, recordQuickGameStart } from '@/features/game/onboarding';
+import { fameFloor, fameStartLevel, recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
@@ -95,10 +95,10 @@ export function HomeScreen() {
   // Deck composition. Default = the whole deck, so Play works immediately.
   const [withPlayers, setWithPlayers] = useState(true);
   const [selCats, setSelCats] = useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
-  // The one fame axis. `fameTouched` keeps the onboarding floor honest: it
-  // applies only while the player hasn't stated a preference of their own.
+  // The one fame axis. Onboarding PRE-SELECTS a step here (see openPicker)
+  // instead of applying an invisible floor on top of it, so the highlighted
+  // label, the counter and the dealt deck always describe the same deck.
   const [fameLevel, setFameLevel] = useState<FameLevel>('any');
-  const [fameTouched, setFameTouched] = useState(false);
   // Player-only narrowing (step 3).
   const [selConts, setSelConts] = useState<Set<ContinentFilter>>(new Set());
   const [selTraits, setSelTraits] = useState<Set<string>>(new Set());
@@ -156,19 +156,16 @@ export function HomeScreen() {
     lang,
   });
 
-  // The onboarding floor and the player's own choice are the SAME axis
-  // now, so they collapse: whoever asks for more fame wins. The floor
-  // applies only while the player hasn't spoken for themselves —
-  // otherwise picking "любые" would quietly deal famous cards and the
-  // counter under the button would be describing a different deck.
-  const onboardingFloor = fameTouched ? 0 : fameFloor(gamesPlayed);
+  // Onboarding easing for the one-tap PRESETS, which have no fame step to
+  // show it in: whoever asks for more fame wins. The wizard does NOT use
+  // this — there the chosen step is the whole truth (see openPicker).
+  const onboardingFloor = fameFloor(gamesPlayed);
   const withFloor = (f: DeckFilter): DeckFilter => normalizeFilter({
     ...f, lang, fame_min: Math.max(f.fame_min ?? 0, onboardingFloor),
   });
-  const effectiveFilter = withFloor(filter);
 
   const nothingSelected = selectedCats.length === 0;
-  const filterKey = JSON.stringify(effectiveFilter);
+  const filterKey = JSON.stringify(filter);
 
   // ── Counts ─────────────────────────────────────────────────────────
   // Live count of the deck as configured — the same RPC the game deals
@@ -283,16 +280,23 @@ export function HomeScreen() {
   const pickFame = (level: FameLevel) => {
     hapticImpact('light');
     setFameLevel(level);
-    setFameTouched(true);
     trackEvent('category_selected', { kind: 'fame', value: level });
+  };
+
+  // Opening the picker starts the wizard from the recognizability step the
+  // player's experience suggests — visible and overridable in one tap.
+  const openPicker = () => {
+    hapticImpact('light');
+    setFameLevel(fameStartLevel(gamesPlayed));
+    setStep('presets');
+    setView('create_training');
   };
 
   const resetPicker = () => {
     hapticImpact('light');
     setWithPlayers(true);
     setSelCats(new Set(NON_PLAYER_CATEGORIES));
-    setFameLevel('any');
-    setFameTouched(false);
+    setFameLevel(fameStartLevel(gamesPlayed));
     setSelConts(new Set());
     setSelTraits(new Set());
     setSelCountry('');
@@ -438,7 +442,7 @@ export function HomeScreen() {
         {/* ── Main CTA: Quick game first, then competitive, then join ── */}
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-3 animate-fade-in">
-            <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); setView('create_training'); }}>
+            <Button fullWidth size="lg" onClick={openPicker}>
               {t('home.mode_training_title')}
             </Button>
             <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>

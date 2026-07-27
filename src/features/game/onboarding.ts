@@ -21,6 +21,7 @@
 // Both are mirrored into proStore.gamesPlayed.
 
 import { getRawInitData, cloudGet, cloudSet } from '@/shared/lib/telegram';
+import { FAME_MIN, type FameLevel } from '@/shared/types/deck';
 import { useProStore } from '@/shared/store/proStore';
 import { bumpGames } from '@/features/pro/proApi';
 
@@ -30,10 +31,24 @@ const CLOUD_KEY = 'ss_games_played';
 //   games <10   -> 85 (the top ~15% of every category: household names only)
 //   games 10-29 -> decays 85 -> 0 (the pool grows smoothly)
 //   games >=30  -> 0  (full deck)
+//
+// This applies to the one-tap PRESETS, which have no recognizability step
+// to show it in.
 export function fameFloor(games: number): number {
   if (games >= 30) return 0;
   if (games < 10) return 85;
   return Math.round((85 * (30 - games)) / 20);
+}
+
+// The same easing, expressed as a step of the picker's fame control — used
+// to PRE-SELECT that step when a player opens the wizard. In the wizard the
+// floor is never applied on top: whatever step is highlighted is exactly
+// what gets dealt, so the label, the count and the deck always agree.
+export function fameStartLevel(games: number): FameLevel {
+  const floor = fameFloor(games);
+  if (floor >= FAME_MIN.famous) return 'famous';
+  if (floor >= FAME_MIN.known) return 'known';
+  return 'any';
 }
 
 // Read the anonymous counter from CloudStorage into proStore (called when there

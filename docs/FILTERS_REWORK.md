@@ -146,6 +146,18 @@ Pro-only tags are stripped server-side in `deck_sanitize_filter()`; the
 missing `pro_only_tags()` / `tg_is_pro()` functions ship with this
 migration, so the guard is real now.
 
+**Deployment order matters, and I got it wrong once.** The migration
+originally dropped the 12-parameter signature outright. The database ships
+ahead of the frontend, so the build that was live in production kept
+calling it positionally, got `PGRST202`, and dealt no cards at all until
+the old signature was restored. It is back in `deck_rpc.sql` as a
+temporary shim over the raw columns, and the two signatures coexist safely
+because PostgREST resolves an overload by the parameter *names* in the
+request body: the old client always sends `p_categories`, the new one
+sends `p_filter`, and neither name exists in the other function. Drop the
+shim once the new frontend is live everywhere — the `DROP` statement is
+written out in the migration.
+
 On the client the whole contract is `DeckFilter` in
 `src/shared/types/deck.ts`. `cardRandomizer.ts` is down to `pickCards()`
 and `countCards()` with no capability flags; `useTraining()` takes one
@@ -166,6 +178,14 @@ presets  ready decks in one tap — Всё подряд · Только знам
 Every option counts itself through `count_deck`, so a preset that would
 deal nothing is disabled instead of starting an empty game, and the
 number under the button is the deck.
+
+Onboarding easing meets the wizard as a **pre-selected step**, not as a
+floor applied on top of one: opening the picker highlights the
+recognizability level the player's experience suggests, and that level is
+exactly what gets dealt. The smooth `fameFloor()` decay survives only
+where it stays invisible — the one-tap presets, which have no fame step to
+show it in. Otherwise a newcomer would see "Любые" highlighted while the
+deck was quietly capped, and the counter would describe a third thing.
 
 ## Follow-ups not in this change
 
