@@ -1,11 +1,16 @@
 # Design systems (switchable)
 
-> **Scope note.** What ships today is a *token-level* switch: palette, type,
-> button fill, backdrop and rarity glows. Screen **layouts** are shared by both
-> designs and still follow the original structure — the reference prototype's
-> app shell (bottom tab bar, its Home/Game/Results/dossier layouts) is not
-> ported. See `docs/DESIGN_V2_HANDOFF.md` for the inventory of what's missing
-> and the plan to finish it.
+> **Scope note.** The switch now covers **layout as well as tokens**. Flipping
+> to `master` restructures the app: its own Home landing, bottom tab bar,
+> splash, onboarding, card composition, timer and results treatment — not just
+> a repaint. `classic` renders exactly as it always did.
+>
+> Still unported from the prototype, because the schema has no data behind
+> them: the Rating and Profile tabs, the streak chip, daily tasks, levels,
+> achievements, card OVR and the dossier's attribute bars. Those are features
+> rather than styling — see `docs/PROGRESSION_FEATURES_HANDOFF.md`.
+> `docs/DESIGN_V2_HANDOFF.md` holds the original inventory and the
+> per-design-variant architecture the layout work follows.
 
 The app ships **two complete visual languages**, switched at runtime by the
 palette button in the Home header. The choice is stored per device and
