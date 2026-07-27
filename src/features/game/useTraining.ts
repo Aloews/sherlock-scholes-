@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { pickRandomCards } from './cardRandomizer';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { pickCards } from './cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
 import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import i18n from '@/shared/i18n';
-import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CareerStat, CardFacts, ContinentFilter } from '@/shared/types/database';
+import type { Card, CardCategory, CardTranslation, ClubMinutes, LegendCareer, CareerStat, CardFacts } from '@/shared/types/database';
+import { normalizeFilter, type DeckFilter } from '@/shared/types/deck';
 
 // No card cap: the game runs until the deck of the selected categories is
 // exhausted. PostgREST returns at most 1000 rows per request, so the deck is
@@ -51,18 +52,12 @@ export interface HistoryEntry {
  * Cards are loaded in batches and deduped by id (no DB persistence, no repeats
  * within a session).
  */
-export function useTraining(
-  categories: CardCategory[] | null,
-  continents: ContinentFilter[] | null = null,
-  minPageviews: number | null = null,
-  tags: string[] | null = null,
-  difficulty: number | null = null,
-  boostCountries: string[] | null = null,
-  lang: string | null = null,
-  countries: string[] | null = null,
-  leagues: string[] | null = null,
-  tiers: string[] | null = null,
-) {
+export function useTraining(filter: DeckFilter) {
+  // The filter arrives as a fresh object on every render (route state), so
+  // the effects below key off its serialised form instead of its identity.
+  const filterKey = JSON.stringify(normalizeFilter(filter));
+  const deckFilter = useMemo(() => JSON.parse(filterKey) as DeckFilter, [filterKey]);
+
   const [cards,   setCards]   = useState<Card[]>([]);
   const [index,   setIndex]   = useState(0);
   const [loading, setLoading] = useState(true);
@@ -114,26 +109,26 @@ export function useTraining(
     }
   }, [fetchTranslations]);
 
-  // Initial load. minPageviews is the "Только звёзды" floor (null = whole deck).
+  // Initial load — one RPC per batch, one filter, no client-side merging.
   useEffect(() => {
     seenIdsRef.current = new Set();
     zeroNewRef.current = 0;
     exhaustedRef.current = false;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues, tiers)
+    pickCards(deckFilter, BATCH)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, absorbBatch]);
+  }, [deckFilter, absorbBatch]);
 
   // Preload next batch silently
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current || exhaustedRef.current) return;
     isPreloadingRef.current = true;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues, tiers)
+    pickCards(deckFilter, BATCH)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
-  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, absorbBatch]);
+  }, [deckFilter, absorbBatch]);
 
   // Keep the next few watermark photos warm in the browser cache so each
   // photo shows the moment its card slides in, not a beat later.

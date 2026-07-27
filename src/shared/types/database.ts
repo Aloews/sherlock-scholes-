@@ -212,19 +212,22 @@ export interface CardFacts {
   titles?: string[] | null;       // ["Золотой мяч 2009", …]
 }
 
-// Special-category tags (cards.tags TEXT[]). The first five are quick-game
-// filters in the "Особые" accordion; 'star' backs the "Только звёзды" preset
-// (composite fame, set by the scraper). Absent until the facts/tags migration.
+// Player TRAIT tags (cards.tags TEXT[]) — what a player IS, never how
+// well-known they are. The fame tags that used to live here are gone:
+// 'star' is now `fame >= 90` and 'legend' is derived from fame by
+// refresh_card_fame(). The picker's trait chips are DECK_TRAITS in
+// src/shared/types/deck.ts.
 export type SpecialTag =
-  | 'goalkeeper' | 'ballon_dor' | 'world_cup' | 'giant' | 'dwarf';
+  | 'goalkeeper' | 'ballon_dor' | 'world_cup' | 'wc2026' | 'giant' | 'dwarf';
 export const SPECIAL_TAGS: SpecialTag[] = [
-  'goalkeeper', 'ballon_dor', 'world_cup', 'giant', 'dwarf',
+  'goalkeeper', 'ballon_dor', 'world_cup', 'wc2026', 'giant', 'dwarf',
 ];
-export const STAR_TAG = 'star';
 
 // ─── Rarity tiers (cards.tier) ───────────────────────────────────
-// Foundation for the collectible mechanic. Derived from existing data
-// (pageviews + facts.titles/tournaments) by docs/cards_tier_build.py.
+// PURELY COSMETIC now: the coloured card frame. Derived from cards.fame by
+// fame_tier() (supabase/migrations/deck_fame.sql), so a card can no longer
+// be "легендарная" on the frame and "малоизвестная" in the filter — which
+// is exactly what the old tier-based recognizability chips produced.
 export type Tier = 'legendary' | 'epic' | 'rare' | 'common';
 export const TIERS: Tier[] = ['legendary', 'epic', 'rare', 'common'];
 export const TIER_COLOR: Record<Tier, string> = {
@@ -260,8 +263,9 @@ export interface Card {
   legend_career?: LegendCareer | null;  // legends (no API minutes): clubs with years; absent until cards_legend_career_column.sql runs
   career_stats?: CareerStat[] | null;   // veterans: clubs with apps+goals from Wikipedia; absent until cards_career_build.py runs
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
-  tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
-  tier?: Tier | null;                   // rarity tier; absent until cards_tier.sql runs + cards_tier_build.py APPLY
+  tags?: string[] | null;               // player traits (SpecialTag) + the Pro 'legend' marker
+  fame?: number | null;                 // 0..100 recognizability percentile; null = no pageviews data
+  tier?: Tier | null;                   // cosmetic frame, derived from fame
   descriptions?: Record<string, string> | null; // short per-language blurbs for non-player cards (terms, positions…); absent until the descriptions column ships
   delete_candidate?: boolean | null;    // moderator flag (skip-heavy / problematic); absent until card_reports.sql runs
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code

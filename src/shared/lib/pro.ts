@@ -9,11 +9,11 @@ import type { Tier } from '@/shared/types/database';
 // One-time price, placeholder. Tune later, then wire the real Stars invoice.
 export const PRO_PRICE_STARS = 199;
 
-// Pro-only deck filters in the quick-game picker. Each is a cards.tags value
-// passed to pick_random_cards (players only). 'ballon_dor' already has data;
-// 'legend' is populated by the data pipeline (tier=legendary -> tag), and the
-// deck gracefully returns what matches until then — same pattern as the other
-// tag/continent filters that degrade before their migration runs.
+// Pro-only deck filters. Each is a cards.tags value that reaches the deck
+// through DeckFilter.tags; the server strips them for non-Pro callers in
+// deck_sanitize_filter (supabase/migrations/deck_rpc.sql), so the UI lock is
+// a courtesy, not the guard. 'legend' is maintained by refresh_card_fame()
+// as the top of the fame axis.
 export interface ProFilter {
   id: string;
   tag: string;
@@ -27,6 +27,8 @@ export const PRO_FILTERS: ProFilter[] = [
 // Tiers reserved for Pro (conceptual — legends). Kept so a future Pro-aware
 // deck RPC can enforce it server-side too.
 export const PRO_TIERS: Tier[] = ['legendary'];
+
+// Kept in sync with pro_only_tags() in the database.
 
 const PRO_TAG_SET = new Set(PRO_FILTERS.map((f) => f.tag));
 export const isProTag = (tag: string): boolean => PRO_TAG_SET.has(tag);

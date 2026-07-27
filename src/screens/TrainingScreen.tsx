@@ -21,20 +21,15 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
-import type { CardCategory, ContinentFilter } from '@/shared/types/database';
+import type { CardCategory } from '@/shared/types/database';
+import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
 
+// The picker hands over ONE deck filter (see src/shared/types/deck.ts) —
+// the same object the counter counted and the RPC deals from. Ten separate
+// route-state fields used to travel here and be re-assembled by hand.
 interface TrainingState {
-  categories: CardCategory[] | null;
-  continents?: ContinentFilter[] | null; // player cards only; null = all
-  minPageviews?: number | null;          // legacy difficulty floor; null = whole deck
-  tags?: string[] | null;                // special-category filter (вратари / star / …)
-  difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
-  boostCountries?: string[] | null;      // local heroes pass floor/4 during onboarding
-  lang?: string | null;                  // interface language -> commentator locale filter
-  countries?: string[] | null;           // deck filter: exact player countries (ISO); null = all
-  leagues?: string[] | null;             // deck filter: player top_league values; null = all
-  tiers?: string[] | null;               // deck filter: recognizability tiers (legendary/epic/rare/common)
+  filter?: DeckFilter | null;
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -249,57 +244,31 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
 export function TrainingScreen() {
   const location = useLocation();
   const state    = location.state as TrainingState | null;
-  const categories = state?.categories ?? null;
-  const continents = state?.continents ?? null;
-  const minPageviews = state?.minPageviews ?? null;
-  const tags = state?.tags ?? null;
-  const difficulty = state?.difficulty ?? null;
-  const boostCountries = state?.boostCountries ?? null;
-  const lang = state?.lang ?? null;
-  const countries = state?.countries ?? null;
-  const leagues = state?.leagues ?? null;
-  const tiers = state?.tiers ?? null;
+  // Entering /training directly (refresh, deep link) plays the whole deck.
+  const filter = state?.filter ?? {};
 
   const [gameKey, setGameKey] = useState(0);
 
   return (
     <TrainingGame
       key={gameKey}
-      categories={categories}
-      continents={continents}
-      minPageviews={minPageviews}
-      tags={tags}
-      difficulty={difficulty}
-      boostCountries={boostCountries}
-      lang={lang}
-      countries={countries}
-      leagues={leagues}
-      tiers={tiers}
+      filter={filter}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
 }
 
 interface TrainingGameProps {
-  categories: CardCategory[] | null;
-  continents: ContinentFilter[] | null;
-  minPageviews: number | null;
-  tags: string[] | null;
-  difficulty: number | null;
-  boostCountries: string[] | null;
-  lang: string | null;
-  countries: string[] | null;
-  leagues: string[] | null;
-  tiers: string[] | null;
+  filter: DeckFilter;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers);
+    useTraining(filter);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
