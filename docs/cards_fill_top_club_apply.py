@@ -23,8 +23,9 @@ from dotenv import load_dotenv
 SQL_PATH = os.path.join(os.path.dirname(__file__), "cards_fill_top_club.sql")
 UPDATE_RE = re.compile(
     r"^UPDATE cards SET top_club = '(?P<club>(?:[^']|'')*)', "
-    r"top_minutes = (?P<min>\d+) "
-    r"WHERE id = '(?P<id>[^']+)' AND top_club IS NULL;"
+    r"top_minutes = (?P<min>\d+), "
+    r"top_league = (?P<league>NULL|'(?:[^']|'')*') "
+    r"WHERE id = '(?P<id>[^']+)' AND top_league IS NULL;"
 )
 
 
@@ -40,10 +41,14 @@ def main():
         for line in fh:
             m = UPDATE_RE.match(line.strip())
             if m:
+                raw_league = m.group("league")
+                league = (None if raw_league == "NULL"
+                          else raw_league[1:-1].replace("''", "'"))
                 updates.append((
                     m.group("id"),
                     m.group("club").replace("''", "'"),
                     int(m.group("min")),
+                    league,
                 ))
     if not updates:
         raise SystemExit("No UPDATE statements found in " + SQL_PATH)
@@ -57,19 +62,19 @@ def main():
     }
 
     applied, skipped, errors = 0, 0, 0
-    for i, (card_id, club, minutes) in enumerate(updates, 1):
+    for i, (card_id, club, minutes, league) in enumerate(updates, 1):
         try:
             resp = requests.patch(
                 endpoint,
                 headers=headers,
-                params={"id": "eq." + card_id, "top_club": "is.null"},
-                json={"top_club": club, "top_minutes": minutes},
+                params={"id": "eq." + card_id, "top_league": "is.null"},
+                json={"top_club": club, "top_minutes": minutes, "top_league": league},
                 timeout=30,
             )
             if resp.status_code == 400 and "does not exist" in resp.text:
                 raise SystemExit(
-                    "cards.top_club/top_minutes не существуют — выполните "
-                    "две строки ALTER TABLE из docs/cards_fill_top_club.sql "
+                    "cards.top_club/top_minutes/top_league не существуют — "
+                    "выполните строки ALTER TABLE из docs/cards_fill_top_club.sql "
                     "в Supabase SQL Editor, затем перезапустите.")
             resp.raise_for_status()
             rows = resp.json()
