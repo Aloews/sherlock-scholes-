@@ -1,5 +1,12 @@
 # Design systems (switchable)
 
+> **Scope note.** What ships today is a *token-level* switch: palette, type,
+> button fill, backdrop and rarity glows. Screen **layouts** are shared by both
+> designs and still follow the original structure — the reference prototype's
+> app shell (bottom tab bar, its Home/Game/Results/dossier layouts) is not
+> ported. See `docs/DESIGN_V2_HANDOFF.md` for the inventory of what's missing
+> and the plan to finish it.
+
 The app ships **two complete visual languages**, switched at runtime by the
 palette button in the Home header. The choice is stored per device and
 survives a reload.
