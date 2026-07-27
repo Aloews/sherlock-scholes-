@@ -59,6 +59,8 @@ export function useTraining(
   difficulty: number | null = null,
   boostCountries: string[] | null = null,
   lang: string | null = null,
+  countries: string[] | null = null,
+  leagues: string[] | null = null,
 ) {
   const [cards,   setCards]   = useState<Card[]>([]);
   const [index,   setIndex]   = useState(0);
@@ -116,21 +118,21 @@ export function useTraining(
     seenIdsRef.current = new Set();
     zeroNewRef.current = 0;
     exhaustedRef.current = false;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang)
+    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, absorbBatch]);
+  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, absorbBatch]);
 
   // Preload next batch silently
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current || exhaustedRef.current) return;
     isPreloadingRef.current = true;
-    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang)
+    pickRandomCards(BATCH, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
-  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, absorbBatch]);
+  }, [categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, absorbBatch]);
 
   // Keep the next few watermark photos warm in the browser cache so each
   // photo shows the moment its card slides in, not a beat later.

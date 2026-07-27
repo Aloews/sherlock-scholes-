@@ -33,6 +33,8 @@ interface TrainingState {
   difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
   boostCountries?: string[] | null;      // local heroes pass floor/4 during onboarding
   lang?: string | null;                  // interface language -> commentator locale filter
+  countries?: string[] | null;           // deck filter: exact player countries (ISO); null = all
+  leagues?: string[] | null;             // deck filter: player top_league values; null = all
 }
 
 const TEAM_COLOR: Record<Team, string> = {
@@ -254,6 +256,8 @@ export function TrainingScreen() {
   const difficulty = state?.difficulty ?? null;
   const boostCountries = state?.boostCountries ?? null;
   const lang = state?.lang ?? null;
+  const countries = state?.countries ?? null;
+  const leagues = state?.leagues ?? null;
 
   const [gameKey, setGameKey] = useState(0);
 
@@ -267,6 +271,8 @@ export function TrainingScreen() {
       difficulty={difficulty}
       boostCountries={boostCountries}
       lang={lang}
+      countries={countries}
+      leagues={leagues}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
@@ -280,15 +286,17 @@ interface TrainingGameProps {
   difficulty: number | null;
   boostCountries: string[] | null;
   lang: string | null;
+  countries: string[] | null;
+  leagues: string[] | null;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang);
+    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.

@@ -16,6 +16,8 @@ import { useSettingsStore } from '@/shared/store/settingsStore';
 import { useProStore } from '@/shared/store/proStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
+import { supabase } from '@/shared/lib/supabase';
+import { countryName } from '@/shared/lib/countryName';
 import { difficultyFloor, recordQuickGameStart, boostCountriesFor } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
@@ -119,6 +121,13 @@ export function HomeScreen() {
   // Per-chip standalone counts → grey out empty chips (e.g. "Звёзды" before the
   // star tag is backfilled). null until the one-time load finishes.
   const [chipCounts, setChipCounts] = useState<Record<string, number> | null>(null);
+  // Extra deck filters: exact player country (ISO) and league (cards.top_league).
+  // '' = no filter. Options are loaded once from the deck; the league picker
+  // stays hidden until top_league is populated (collection script), so an empty
+  // dataset never shows a dead dropdown.
+  const [selCountry, setSelCountry] = useState('');
+  const [selLeague,  setSelLeague]  = useState('');
+  const [geoOpts, setGeoOpts] = useState<{ countries: string[]; leagues: string[] } | null>(null);
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
@@ -201,6 +210,8 @@ export function HomeScreen() {
     playersOn && selConts.size > 0 && !allContinentsOn ? [...selConts] : null;
   const selMinPageviews = null;
   const deckTags: string[] | null = tagMode ? tagList : null;
+  const deckCountries: string[] | null = selCountry ? [selCountry] : null;
+  const deckLeagues: string[] | null = selLeague ? [selLeague] : null;
   const nothingSelected = !tagMode && selConts.size === 0 && selCats.size === 0;
   const selectedCount = selTags.size + selConts.size + selCats.size;
 
@@ -223,15 +234,32 @@ export function HomeScreen() {
     return () => { cancelled = true; };
   }, [view, chipCounts]);
 
+  // Load the country / league option lists once (distinct values in the deck).
+  useEffect(() => {
+    if (view !== 'create_training' || geoOpts) return;
+    let cancelled = false;
+    (async () => {
+      const base = supabase.from('cards').select('country,top_league')
+        .eq('active', true).eq('category', 'player');
+      const { data } = await base;
+      if (cancelled || !data) return;
+      const countries = [...new Set(data.map((r) => r.country).filter(Boolean) as string[])];
+      const leagues = [...new Set(data.map((r) => r.top_league).filter(Boolean) as string[])].sort();
+      setGeoOpts({ countries, leagues });
+    })().catch(() => { if (!cancelled) setGeoOpts({ countries: [], leagues: [] }); });
+    return () => { cancelled = true; };
+  }, [view, geoOpts]);
+
   // Live "Выбрано: N · M карточек" — debounced count of the current selection.
   const filterKey = JSON.stringify(
-    { c: selCategories, k: selContinents, p: selMinPageviews, g: deckTags });
+    { c: selCategories, k: selContinents, p: selMinPageviews, g: deckTags,
+      co: deckCountries, l: deckLeagues });
   useEffect(() => {
     if (view !== 'create_training') return;
     let cancelled = false;
     setDeckCount(null);
     const handle = setTimeout(() => {
-      countDeck(selCategories, selContinents, selMinPageviews, deckTags)
+      countDeck(selCategories, selContinents, selMinPageviews, deckTags, deckCountries, deckLeagues)
         .then((n) => { if (!cancelled) setDeckCount(n); })
         .catch(() => { if (!cancelled) setDeckCount(null); });
     }, 350);
@@ -267,6 +295,8 @@ export function HomeScreen() {
         // the interface language (see pick_random_cards locale params).
         boostCountries: difficulty != null ? boostCountriesFor(i18n.language) : null,
         lang: i18n.language.slice(0, 2),
+        countries: deckCountries,
+        leagues: deckLeagues,
       },
     });
   };
@@ -530,6 +560,36 @@ export function HomeScreen() {
                 );
               })}
             </div>
+
+            {/* Extra deck filters: exact country / league (players only). The
+                league dropdown appears only once cards.top_league is populated. */}
+            {geoOpts && (geoOpts.countries.length > 0 || geoOpts.leagues.length > 0) && (
+              <div className="flex flex-col gap-2">
+                {geoOpts.countries.length > 0 && (
+                  <select
+                    value={selCountry}
+                    onChange={(e) => { hapticImpact('light'); setSelCountry(e.target.value); }}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-accent"
+                  >
+                    <option value="">{t('home.filter_all_countries')}</option>
+                    {geoOpts.countries
+                      .map((iso) => ({ iso, name: countryName(iso, i18n.language) || iso }))
+                      .sort((a, b) => a.name.localeCompare(b.name, i18n.language))
+                      .map(({ iso, name }) => <option key={iso} value={iso}>{name}</option>)}
+                  </select>
+                )}
+                {geoOpts.leagues.length > 0 && (
+                  <select
+                    value={selLeague}
+                    onChange={(e) => { hapticImpact('light'); setSelLeague(e.target.value); }}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-accent"
+                  >
+                    <option value="">{t('home.filter_all_leagues')}</option>
+                    {geoOpts.leagues.map((lg) => <option key={lg} value={lg}>{lg}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
 
             {/* Live counter: selected chips · matching cards */}
             <p className="text-center text-sm text-brand-muted">

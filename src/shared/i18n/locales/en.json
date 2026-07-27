@@ -26,6 +26,8 @@
     "mode_1v1_desc": "Two players, each on their own phone. Whoever explains more wins!",
     "mode_training_title": "Quick Game",
     "counting": "Counting cards…",
+    "filter_all_countries": "All countries",
+    "filter_all_leagues": "All leagues",
     "chip_stars": "Stars",
     "selected_chips": "Selected: {{n}} · {{m}} cards",
     "selected_count_one": "{{count}} card selected",

@@ -63,6 +63,12 @@ const isMissingDifficultyParam = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_difficulty');
 const isMissingLocaleParams = (error: { code?: string; message: string }) =>
   error.code === 'PGRST202' || error.message.includes('p_boost_countries') || error.message.includes('p_lang');
+// p_countries / p_leagues exist only after the pick_random_cards_country_league
+// migration. Same graceful degrade: drop them after the first PGRST202 and play
+// without the country/league filter.
+let rpcSupportsGeo = true;
+const isMissingGeoParams = (error: { code?: string; message: string }) =>
+  error.code === 'PGRST202' || error.message.includes('p_countries') || error.message.includes('p_leagues');
 
 /**
  * Fetch `count` random active cards from the DB.
@@ -102,6 +108,8 @@ export async function pickRandomCards(
   difficulty?: number | null,
   boostCountries?: string[] | null,
   lang?: string | null,
+  countries?: string[] | null,
+  leagues?: string[] | null,
 ): Promise<Card[]> {
   // Tags live only on player cards, and the RPC ANDs all its filters — a tag
   // request would silently drop every selected non-player category. To let the
@@ -112,10 +120,10 @@ export async function pickRandomCards(
     const wantsPlayers = !categories?.length || categories.includes('player');
     const [players, rest] = await Promise.all([
       wantsPlayers
-        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty, boostCountries, lang)
+        ? rpcPickRandomCards(count, ['player'], minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues)
         : Promise.resolve<Card[]>([]),
-      // Continents/tags only ever filter players — irrelevant for this pool.
-      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty, null, lang),
+      // Continents/tags/country/league only ever filter players — irrelevant here.
+      rpcPickRandomCards(count, nonPlayerCats, minPageviews, null, null, difficulty, null, lang, null, null),
     ]);
     const merged = [...players, ...rest];
     for (let i = merged.length - 1; i > 0; i--) {
@@ -127,7 +135,7 @@ export async function pickRandomCards(
     return merged.slice(0, count);
   }
 
-  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty, boostCountries, lang);
+  return rpcPickRandomCards(count, categories, minPageviews, continents, tags, difficulty, boostCountries, lang, countries, leagues);
 }
 
 async function rpcPickRandomCards(
@@ -139,6 +147,8 @@ async function rpcPickRandomCards(
   difficulty?: number | null,
   boostCountries?: string[] | null,
   lang?: string | null,
+  countries?: string[] | null,
+  leagues?: string[] | null,
 ): Promise<Card[]> {
   let lastError = new Error('pick_random_cards failed');
   const started = Date.now();
@@ -155,6 +165,7 @@ async function rpcPickRandomCards(
     const withInitData = rpcSupportsInitData && needsInitData;
     const withDifficulty = rpcSupportsDifficulty && difficulty != null && difficulty > 0;
     const withLocale = rpcSupportsLocale && (!!boostCountries?.length || !!lang);
+    const withGeo = rpcSupportsGeo && (!!countries?.length || !!leagues?.length);
     const { data, error } = await supabase.rpc('pick_random_cards', {
       p_count:         count,
       p_categories:    categories?.length ? categories : null,
@@ -164,9 +175,16 @@ async function rpcPickRandomCards(
       ...(withInitData ? { p_init_data: getRawInitData() } : {}),
       ...(withDifficulty ? { p_difficulty: difficulty } : {}),
       ...(withLocale ? { p_boost_countries: boostCountries?.length ? boostCountries : null, p_lang: lang ?? null } : {}),
+      ...(withGeo ? { p_countries: countries?.length ? countries : null, p_leagues: leagues?.length ? leagues : null } : {}),
     });
 
     if (error) {
+      if (withGeo && isMissingGeoParams(error)) {
+        // Pre-migration DB (no country/league params) — drop and redo.
+        rpcSupportsGeo = false;
+        attempt--;
+        continue;
+      }
       if (withLocale && isMissingLocaleParams(error)) {
         // Pre-migration DB (no locale params) — drop them and redo this attempt.
         rpcSupportsLocale = false;
@@ -228,6 +246,8 @@ export async function countDeck(
   continents: ContinentFilter[] | null,
   minPageviews: number | null,
   tags: string[] | null = null,
+  countries: string[] | null = null,
+  leagues: string[] | null = null,
 ): Promise<number> {
   const cats = categories?.length ? categories : ALL_CATEGORIES;
   const playerIncluded = cats.includes('player');
@@ -271,6 +291,10 @@ export async function countDeck(
         q = q.in('continent', real);
       }
     }
+    // Country / league filters (player pool only) — mirror the RPC's
+    // country = any(...) / top_league = any(...).
+    if (countries?.length) q = q.in('country', countries);
+    if (leagues?.length) q = q.in('top_league', leagues);
     const { count } = await q;
     total += count ?? 0;
   }
