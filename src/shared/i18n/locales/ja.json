@@ -81,7 +81,17 @@
     "load_more": "もっと見る",
     "pro_title": "コレクションは Pro 機能です",
     "pro_body": "レアリティと検索を備えた2000枚以上の全カタログは Sherlock Pro に含まれます。",
-    "pro_cta": "Pro を入手"
+    "pro_cta": "Pro を入手",
+    "dossier": "ドシエ",
+    "trophies": "タイトル",
+    "career": "キャリア",
+    "about": "概要",
+    "f_country": "国",
+    "f_position": "ポジション",
+    "f_height": "身長",
+    "f_years": "年",
+    "f_caps": "代表",
+    "f_clubs": "クラブ"
   },
   "pro": {
     "title": "Sherlock Pro",

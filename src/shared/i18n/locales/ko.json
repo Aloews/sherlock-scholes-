@@ -81,7 +81,17 @@
     "load_more": "더 보기",
     "pro_title": "컬렉션은 Pro 기능입니다",
     "pro_body": "희귀도와 검색이 포함된 2000장 이상의 전체 카탈로그는 Sherlock Pro에 포함됩니다.",
-    "pro_cta": "Pro 받기"
+    "pro_cta": "Pro 받기",
+    "dossier": "도시에",
+    "trophies": "트로피",
+    "career": "커리어",
+    "about": "소개",
+    "f_country": "국가",
+    "f_position": "포지션",
+    "f_height": "키",
+    "f_years": "연도",
+    "f_caps": "A매치",
+    "f_clubs": "클럽"
   },
   "pro": {
     "title": "Sherlock Pro",
