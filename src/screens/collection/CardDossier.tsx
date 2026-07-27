@@ -118,9 +118,9 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
           />
         )}
 
+        {/* Two per row, not the prototype's four: its tiles held numbers, ours
+            hold words like "Нападающий", which truncate at 390px. */}
         {tiles.length > 0 && (
-          {/* Two per row, not the prototype's four: its tiles held numbers,
-              ours hold words like "Нападающий", which truncate at 390px. */}
           <div className="grid grid-cols-2 gap-2">
             {tiles.map((tile) => (
               <div
