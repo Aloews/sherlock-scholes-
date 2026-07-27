@@ -163,7 +163,24 @@ On the client the whole contract is `DeckFilter` in
 and `countCards()` with no capability flags; `useTraining()` takes one
 filter instead of eleven arguments; the route carries one state field.
 
-### The picker is a wizard
+### The picker is a screen of its own
+
+`src/screens/DeckPickerScreen.tsx`. It used to be a block wedged into the
+middle of `HomeScreen`, so it inherited the hero — logo, tagline and quote
+rotator ate the top half, the options scrolled under the fold and the Play
+button sat below them, off screen. The layout is now fixed: a header that
+never scrolls (back · title · step bar), the body as the only scrolling
+region, and a footer that always shows the deck size and the single
+primary action.
+
+The control vocabulary is one, too. A row that toggles something ends in a
+check circle; a row that acts — a preset starts the game — ends in a
+chevron; dense sets are chips with a tinted selected state; and the
+country/league selects wear the same clothes as the rows instead of
+looking like leftovers from a form. Before, four different treatments all
+meant "selected".
+
+### The flow
 
 ```
 presets  ready decks in one tap — Всё подряд · Только знаменитые ·
