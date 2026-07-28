@@ -129,11 +129,19 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         )}
 
         {card.photo_url && (
-          <div className="relative">
+          <div
+            className="relative w-full h-[180px] rounded-2xl border border-brand-border
+                       bg-brand-surface overflow-hidden flex items-center justify-center"
+          >
+            {/* object-contain, not object-cover: source photos range from tight
+                headshots to full-body shots, and a fixed-height crop was cutting
+                a lot of them off. Showing the whole photo (letterboxed if needed)
+                never loses the subject, at the cost of some empty space beside
+                narrow ones. */}
             <img
               src={card.photo_url}
               alt={name}
-              className="w-full h-[180px] object-cover object-top rounded-2xl border border-brand-border"
+              className="max-w-full max-h-full object-contain"
             />
             {card.ovr != null && (
               <div
