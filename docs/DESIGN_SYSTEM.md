@@ -85,9 +85,11 @@ Button.tsx        the primary action
 
 **The frame has three parts and only the middle one scrolls.** Header and
 footer stay put, so the title and the primary action are always where the
-player left them. The deck picker used to live inside HomeScreen's hero,
-which is how its options ended up under the fold with the Play button below
-them, off screen on a phone.
+player left them. It sizes itself with `--tabbar-h`, so a footer never ends
+up underneath the master design's fixed tab bar — where taps land on the tab
+instead of the button. The deck picker used to live inside HomeScreen's
+hero, which is how its options ended up under the fold with the Play button
+below them, off screen on a phone.
 
 **A row that toggles ends in a check circle. A row that acts ends in a
 chevron.** That check circle is the app's only "this is on" signal — a
