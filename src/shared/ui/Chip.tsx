@@ -1,5 +1,4 @@
 import { IconLock } from '@tabler/icons-react';
-import { PRO } from './palette';
 
 /**
  * One chip = one toggle, for dense sets where a full row each would be a
@@ -28,7 +27,8 @@ export function Chip({ label, selected, locked, onClick }: ChipProps) {
           : 'border-brand-border bg-brand-surface text-brand-muted active:text-white'
       }`}
     >
-      {locked && <IconLock size={11} stroke={2.5} style={{ color: PRO }} />}
+      {/* Pro gold is fixed across designs — it marks the paid tier, not a state. */}
+      {locked && <IconLock size={11} stroke={2.5} className="text-[#FFD24A]" />}
       {label}
     </button>
   );

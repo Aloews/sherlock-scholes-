@@ -48,6 +48,11 @@
     "continent_other": "مناطق أخرى",
     "tutorial_button_aria": "طريقة اللعب",
     "sound_toggle_aria": "تشغيل/إيقاف الصوت",
+    "design_toggle_aria": "التبديل إلى {{design}}",
+    "collection": "المجموعة",
+    "welcome_back": "أهلًا بعودتك،",
+    "welcome_stranger": "محقق",
+    "collection_hint": "تصفّح المجموعة كاملة ودرجات ندرتها",
     "group_special": "مميز",
     "tag_goalkeeper": "حراس المرمى",
     "tag_ballon_dor": "الكرة الذهبية",
@@ -92,6 +97,39 @@
     "preset_not_players_desc": "أندية وملاعب ومصطلحات وديربيات",
     "preset_legends": "الأساطير",
     "preset_legends_desc": "أعظم اللاعبين في التاريخ"
+  },
+  "design": {
+    "master": "التصميم الجديد",
+    "classic": "التصميم الكلاسيكي"
+  },
+  "tabs": {
+    "home": "الرئيسية",
+    "collection": "البطاقات",
+    "pro": "Pro"
+  },
+  "collection": {
+    "title": "المجموعة",
+    "search_placeholder": "ابحث عن الأدلة بين الأساطير…",
+    "filter_all": "الكل",
+    "empty_title": "لم يتم العثور على أدلة",
+    "empty_body": "جرّب بحثًا آخر أو اختر فئة أخرى",
+    "error_title": "تعذّر تحميل البطاقات",
+    "retry": "إعادة المحاولة",
+    "count": "{{n}} بطاقة",
+    "load_more": "عرض المزيد",
+    "pro_title": "المجموعة ميزة Pro",
+    "pro_body": "الفهرس الكامل لأكثر من 2000 بطاقة مع درجات الندرة والبحث جزء من Sherlock Pro.",
+    "pro_cta": "احصل على Pro",
+    "dossier": "ملف",
+    "trophies": "الألقاب",
+    "career": "المسيرة",
+    "about": "نبذة",
+    "f_country": "الدولة",
+    "f_position": "المركز",
+    "f_height": "الطول",
+    "f_years": "السنوات",
+    "f_caps": "المنتخب",
+    "f_clubs": "الأندية"
   },
   "pro": {
     "title": "Sherlock Pro",

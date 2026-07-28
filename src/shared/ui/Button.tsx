@@ -13,14 +13,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
+// `primary` gets its fill, weight and casing from the active design system
+// (.ds-btn-primary in index.css): flat accent in classic, brand gradient with
+// uppercase tracking in master. The other variants ride the brand-* tokens,
+// which are design-aware on their own.
 const variants: Record<Variant, string> = {
-  primary:   'bg-brand-accent hover:opacity-90 text-brand-bg font-medium',
-  secondary: 'bg-transparent border border-brand-border text-white hover:bg-brand-surface',
+  primary:   'ds-btn-primary hover:opacity-90',
+  secondary: 'bg-transparent border border-brand-border text-white hover:bg-brand-surface font-medium',
   // Filled, borderless — the second action on a play surface, where an
   // outlined button would read as a form control (Skip beside Guessed).
+  // Rides brand-surface, so it retints with the design like the rest.
   surface:   'bg-brand-surface hover:opacity-90 text-white font-medium',
-  ghost:     'bg-transparent text-brand-muted hover:text-white border border-transparent',
-  danger:    'bg-red-500 hover:bg-red-600 text-white',
+  ghost:     'bg-transparent text-brand-muted hover:text-white border border-transparent font-medium',
+  danger:    'bg-red-500 hover:bg-red-600 text-white font-medium',
 };
 
 const sizes: Record<Size, string> = {
@@ -46,7 +51,9 @@ export function Button({
       transition={{ duration: 0.1 }}
       disabled={isDisabled}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-2xl font-medium',
+        // No font-weight here: `primary` takes its weight from the design
+        // system, and a utility class would out-specify the component layer.
+        'inline-flex items-center justify-center gap-2 rounded-2xl',
         'transition-all duration-150',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         'select-none touch-manipulation',

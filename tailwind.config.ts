@@ -1,33 +1,31 @@
 import type { Config } from 'tailwindcss';
-import {
-  ACCENT, BG, BORDER, DANGER, INFO, MUTED, PRO, SLATE, SUCCESS, SURFACE, WARNING,
-} from './src/shared/ui/palette';
 
-// Colours come from src/shared/ui/palette.ts, so the utility classes and the
-// inline styles components need for SVG strokes and per-card accents are
-// generated from the same numbers — see the note at the top of that file.
+// Brand colours resolve through CSS variables so the whole palette can be
+// swapped at runtime by the design switcher (see src/index.css and
+// shared/design/designs.ts). The `<alpha-value>` placeholder is what keeps
+// opacity modifiers — bg-brand-surface/50, text-brand-muted/70 — working.
+const brand = (name: string) => `rgb(var(--brand-${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
         brand: {
-          accent:  ACCENT,
-          bg:      BG,
-          surface: SURFACE,
-          border:  BORDER,
-          muted:   MUTED,
-          slate:   SLATE,
-          // Semantic roles — ask for the meaning, not the hue.
-          success: SUCCESS,
-          warning: WARNING,
-          danger:  DANGER,
-          info:    INFO,
-          pro:     PRO,
+          accent:     brand('accent'),
+          accentSoft: brand('accent-soft'),
+          accentDeep: brand('accent-deep'),
+          highlight:  brand('highlight'),
+          bg:         brand('bg'),
+          surface:    brand('surface'),
+          border:     brand('border'),
+          muted:      brand('muted'),
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Design-dependent: Playfair Display in master, Inter in classic.
+        display: ['var(--font-display)'],
       },
       animation: {
         'pulse-fast': 'pulse 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',

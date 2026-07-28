@@ -10,7 +10,6 @@ import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import { playSound } from '@/shared/lib/sounds';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
-import { TEAM_COLOR } from '@/shared/ui/tokens';
 
 export function useGame() {
   const navigate = useNavigate();
@@ -65,7 +64,7 @@ export function useGame() {
               team_id:      s.teamId,
               team_name:    s.teamName,
               total_points: s.total,
-              color:        teams.find((t) => t.id === s.teamId)?.color ?? TEAM_COLOR.orange,
+              color:        teams.find((t) => t.id === s.teamId)?.color ?? '#22c55e',
             }));
             setTeamScores(scores);
           }

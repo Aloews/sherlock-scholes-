@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="./image-slot.js"></script>
+<style>
+@keyframes pulseFast{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes popUp{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-26px)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmerMove{0%{background-position:-160% 0}100%{background-position:260% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+body{margin:0;background:#05070d;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#FF8A3D;text-decoration:none}
+a:hover{color:#FFB27A}
+::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% -10%,#181008 0%,#05070d 55%);padding:36px 16px;box-sizing:border-box">
+<div style="position:relative;width:390px;height:844px;border-radius:56px;background:#000;padding:14px;box-shadow:0 50px 100px rgba(0,0,0,.65),0 0 0 1px rgba(255,138,61,.08)">
+<div style="position:absolute;left:50%;top:14px;transform:translateX(-50%);width:118px;height:26px;background:#000;border-radius:14px;z-index:30"></div>
+<div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#0A0E1A;position:relative;display:flex;flex-direction:column">
+
+<sc-if value="{{ isSplash }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(120% 90% at 50% -10%,#1c1206 0%,#0A0E1A 55%)">
+<img src="assets/logo-orange-square.jpg" alt="Шерлок Скоулс" style="width:96px;height:96px;border-radius:24px;box-shadow:0 20px 50px rgba(255,99,0,.25)"/>
+<div style="font-family:'Playfair Display',serif;font-weight:800;font-size:26px;letter-spacing:.06em;text-transform:uppercase;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center;line-height:1.2">Шерлок<br/>Скоулс</div>
+<div style="width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,138,61,.2);border-top-color:#FF8A3D;animation:spin 0.9s linear infinite"></div>
+<div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#7A8499">Открываем досье…</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOnboarding }}">
+<div style="flex:1;display:flex;flex-direction:column;padding:20px 22px 26px;box-sizing:border-box">
+<div style="display:flex;justify-content:flex-end"><button onClick="{{ skipOb }}" style="background:none;border:none;color:#7A8499;font-size:13px;font-family:inherit;cursor:pointer;padding:8px">Пропустить</button></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px">
+<sc-for list="{{ obSlides }}" as="sl" hint-placeholder-count="4">
+<sc-if value="{{ sl.active }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:22px;animation:fadeIn .3s ease">
+<div style="width:104px;height:104px;border-radius:28px;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg,rgba(255,138,61,.16),rgba(255,99,0,.03));border:1px solid rgba(255,138,61,.3)">
+<i class="ti ti-{{ sl.icon }}" style="font-size:46px;color:#FF8A3D"></i>
+</div>
+<div style="font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:#fff;padding:0 8px">{{ sl.title }}</div>
+<div style="font-size:14px;color:#7A8499;line-height:1.6;padding:0 10px">{{ sl.desc }}</div>
+</div>
+</sc-if>
+</sc-for>
+</div>
+<div style="display:flex;justify-content:center;gap:8px;margin:18px 0 22px">
+<sc-for list="{{ obDots }}" as="d" hint-placeholder-count="4">
+<div style="width: {{ d.w }}px;height:6px;border-radius:3px;background: {{ d.bg }};transition:all .25s"></div>
+</sc-for>
+</div>
+<button onClick="{{ obAdvance }}" style="height:54px;border-radius:16px;border:none;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#0A0E1A;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);cursor:pointer">{{ obBtnLabel }}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}">
+<div style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden">
+
+<div style="flex:1;overflow-y:auto;-ms-overflow-style:none;scrollbar-width:none">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div style="padding:18px 20px 100px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div><div style="font-size:12px;color:#7A8499">С возвращением,</div><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#fff">Sherlock H.</div></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div style="display:flex;align-items:center;gap:5px;background:rgba(255,99,0,.1);border:1px solid rgba(255,138,61,.3);border-radius:999px;padding:6px 11px"><i class="ti ti-flame" style="color:#FF8A3D;font-size:14px"></i><span style="font-size:12px;font-weight:700;color:#FF8A3D">6</span></div>
+<button onClick="{{ goProfile }}" style="width:38px;height:38px;border-radius:10px;background:#EF0107;border:none;color:#fff;font-family:'Playfair Display',serif;font-weight:800;font-size:13px;cursor:pointer">SH</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<button onClick="{{ openMode }}" style="height:58px;border-radius:16px;border:none;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#0A0E1A;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer">🎮 Создать игру</button>
+<button onClick="{{ openJoin }}" style="height:52px;border-radius:16px;background:transparent;border:1px solid rgba(255,138,61,.4);color:#F4EEE6;font-family:inherit;font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">🔗 Присоединиться</button>
+</div>
+
+<button onClick="{{ openDaily }}" style="text-align:left;background:#13182A;border:1px solid #1F2740;border-radius:16px;padding:16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit">
+<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,99,0,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-calendar-event" style="color:#FF8A3D;font-size:20px"></i></div>
+<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">Ежедневные задания</div><div style="font-size:11px;color:#7A8499;margin-top:2px">2 из 5 выполнено · забери награду</div></div>
+<i class="ti ti-chevron-right" style="color:#7A8499;font-size:18px"></i>
+</button>
+
+<div style="display:flex;background:#13182A;border:1px solid #1F2740;border-radius:16px;overflow:hidden">
+<sc-for list="{{ homeStats }}" as="st" hint-placeholder-count="3">
+<div style="flex:1;text-align:center;padding:14px 6px;border-left: {{ st.border }}">
+<div style="font-family:'Playfair Display',serif;font-weight:800;font-size:20px;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);-webkit-background-clip:text;background-clip:text;color:transparent">{{ st.v }}</div>
+<div style="font-size:10px;color:#7A8499;text-transform:uppercase;letter-spacing:.08em;margin-top:3px">{{ st.l }}</div>
+</div>
+</sc-for>
+</div>
+
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499">Новое досье</span><a href="#" onClick="{{ goCollections }}" style="font-size:11px">Все карты →</a></div>
+<button onClick="{{ openFeatured }}" style="width:100%;text-align:left;background:none;border:none;padding:0;cursor:pointer;font-family:inherit">
+<div style="position:relative;border-radius:18px;padding:1.5px;background:linear-gradient(155deg,rgba(255,138,61,.65),rgba(255,99,0,.1) 45%,rgba(255,138,61,.5))">
+<div style="border-radius:16.5px;background:linear-gradient(180deg,#161d30,#0c0f1c);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(155deg,#FFE0C2,#FF6300);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:800;font-size:20px;color:#0A0E1A;flex-shrink:0">96</div>
+<div style="flex:1"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff">Эрлинг Холанд</div><div style="font-size:11px;color:#FF8A3D;letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Легендарная · Нападающий</div></div>
+<i class="ti ti-chevron-right" style="color:#7A8499"></i>
+</div>
+</div>
+</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCollections }}">
+<div style="padding:18px 20px 100px;display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#fff">Коллекция</div>
+<div style="position:relative">
+<i class="ti ti-search" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#7A8499;font-size:16px"></i>
+<input value="{{ searchQuery }}" onChange="{{ setSearch }}" placeholder="Ищи улики среди легенд…" style="width:100%;box-sizing:border-box;height:44px;border-radius:12px;background:#13182A;border:1px solid #1F2740;color:#fff;font-family:inherit;font-size:13px;padding:0 14px 0 38px;outline:none"/>
+</div>
+<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+<sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+<button onClick="{{ c.onClick }}" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;background: {{ c.bg }};border: 1px solid {{ c.borderColor }};color: {{ c.textColor }}">
+<i class="ti ti-{{ c.icon }}" style="font-size:13px"></i>{{ c.label }}
+</button>
+</sc-for>
+</div>
+<sc-if value="{{ collectionEmpty }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:56px 20px;text-align:center">
+<i class="ti ti-search-off" style="font-size:34px;color:#7A8499"></i>
+<div style="font-family:'Playfair Display',serif;font-size:16px;color:#fff">Улик не найдено</div>
+<div style="font-size:12px;color:#7A8499;line-height:1.5">Попробуй другой запрос или выбери другую категорию</div>
+</div>
+</sc-if>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<sc-for list="{{ collectionItems }}" as="it" hint-placeholder-count="10">
+<button onClick="{{ it.onClick }}" style="text-align:left;background:none;border:none;padding:0;cursor: {{ it.cursor }};font-family:inherit;opacity: {{ it.opacity }}">
+<div style="position:relative;border-radius:16px;padding:1.5px;background: {{ it.rarBorder }};box-shadow: {{ it.rarGlow }}">
+<div style="border-radius:14.5px;background:linear-gradient(180deg,#161d30,#0c0f1c);padding:14px 10px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden">
+<sc-if value="{{ it.locked }}">
+<i class="ti ti-lock" style="font-size:22px;color:#7A8499"></i>
+<div style="font-size:10px;color:#7A8499;text-align:center;letter-spacing:.06em">Заблокировано</div>
+</sc-if>
+<sc-if value="{{ it.unlocked }}">
+<div style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;border:1px solid {{ it.catColor }}66"><i class="ti ti-{{ it.catIcon }}" style="font-size:16px;color:{{ it.catColor }}"></i></div>
+<div style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#fff;text-align:center;line-height:1.25">{{ it.name }}</div>
+<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ it.rarText }}">{{ it.rarLabel }}</div>
+</sc-if>
+</div>
+</div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRating }}">
+<div style="padding:18px 20px 100px;display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#fff">Рейтинг</div>
+<div style="display:flex;background:#13182A;border:1px solid #1F2740;border-radius:13px;padding:3px">
+<sc-for list="{{ lbFilters }}" as="f" hint-placeholder-count="3">
+<button onClick="{{ f.onClick }}" style="flex:1;padding:9px 0;border-radius:10px;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background: {{ f.bg }};color: {{ f.color }}">{{ f.label }}</button>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ leaderboard }}" as="row" hint-placeholder-count="8">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background: {{ row.bg }};border:1px solid {{ row.border }}">
+<div style="width:24px;text-align:center;font-family:'Playfair Display',serif;font-weight:800;font-size:14px;color: {{ row.rankColor }}">{{ row.rank }}</div>
+<div style="width:34px;height:34px;border-radius:9px;background: {{ row.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:12px;flex-shrink:0">{{ row.initials }}</div>
+<div style="flex:1;font-size:13px;font-weight:600;color:#fff">{{ row.name }}</div>
+<div style="font-family:'Playfair Display',serif;font-weight:800;font-size:14px;color:#fff">{{ row.points }}</div>
+<div style="font-size:11px;font-weight:700;width:28px;text-align:right;color: {{ row.deltaColor }}">{{ row.deltaLabel }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProfile }}">
+<div style="padding:18px 20px 100px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:center;gap:14px">
+<div style="width:64px;height:64px;border-radius:16px;background:#EF0107;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:800;font-size:20px">SH</div>
+<div style="flex:1"><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#fff">Sherlock H.</div><div style="font-size:12px;color:#7A8499;margin-top:2px">Уровень 12 · Детектив-инспектор</div>
+<div style="height:6px;border-radius:999px;background:#1F2740;margin-top:8px;overflow:hidden"><div style="height:100%;width:64%;border-radius:999px;background:linear-gradient(180deg,#FFE0C2,#FF6300)"></div></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+<sc-for list="{{ profileStats }}" as="ps" hint-placeholder-count="3">
+<div style="background:#13182A;border:1px solid #1F2740;border-radius:14px;padding:12px;text-align:center"><div style="font-family:'Playfair Display',serif;font-weight:800;font-size:17px;color:#fff">{{ ps.v }}</div><div style="font-size:9.5px;color:#7A8499;text-transform:uppercase;letter-spacing:.06em;margin-top:3px">{{ ps.l }}</div></div>
+</sc-for>
+</div>
+<div>
+<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-bottom:10px">Достижения</div>
+<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+<sc-for list="{{ achievements }}" as="a" hint-placeholder-count="6">
+<div style="flex-shrink:0;width:74px;display:flex;flex-direction:column;align-items:center;gap:6px;opacity: {{ a.opacity }}">
+<div style="width:52px;height:52px;border-radius:14px;background: {{ a.bg }};border:1px solid {{ a.border }};display:flex;align-items:center;justify-content:center"><i class="ti ti-{{ a.icon }}" style="font-size:22px;color: {{ a.iconColor }}"></i></div>
+<div style="font-size:9.5px;color:#9AA3B5;text-align:center;line-height:1.25">{{ a.name }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;border:1px solid #1F2740">
+<sc-for list="{{ settingsRows }}" as="sr" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px;padding:14px;background:#13182A"><i class="ti ti-{{ sr.icon }}" style="font-size:17px;color:#7A8499"></i><span style="flex:1;font-size:13px;color:#fff">{{ sr.label }}</span><span style="font-size:12px;color:#7A8499">{{ sr.value }}</span><i class="ti ti-chevron-right" style="font-size:16px;color:#7A8499"></i></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ showTabBar }}">
+<div style="display:flex;border-top:1px solid #1F2740;background:rgba(10,14,26,.92);backdrop-filter:blur(10px);padding:8px 6px calc(env(safe-area-inset-bottom,0px) + 6px)">
+<sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+<button onClick="{{ n.onClick }}" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;cursor:pointer;font-family:inherit">
+<i class="ti ti-{{ n.icon }}" style="font-size:21px;color: {{ n.color }}"></i>
+<span style="font-size:9.5px;font-weight:600;color: {{ n.color }}">{{ n.label }}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMode }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease">
+<div style="display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid #1F2740"><button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:6px"><i class="ti ti-x" style="font-size:20px"></i></button><div style="flex:1;text-align:center;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-right:32px">Выбери режим</div></div>
+<div style="flex:1;padding:22px 18px;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ modeOptions }}" as="m" hint-placeholder-count="3">
+<button onClick="{{ m.onClick }}" style="display:flex;align-items:center;gap:14px;background:#13182A;border:1px solid #1F2740;border-radius:16px;padding:16px;text-align:left;cursor:pointer;font-family:inherit">
+<i class="ti ti-{{ m.icon }}" style="font-size:24px;color:#FF8A3D"></i>
+<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#fff">{{ m.title }}</div><div style="font-size:11.5px;color:#7A8499;margin-top:2px">{{ m.desc }}</div></div>
+<i class="ti ti-chevron-right" style="font-size:17px;color:#7A8499"></i>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSettings }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease">
+<div style="display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid #1F2740"><button onClick="{{ backToMode }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:6px"><i class="ti ti-chevron-left" style="font-size:20px"></i></button><div style="flex:1;text-align:center;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-right:32px">Настройки игры</div></div>
+<div style="flex:1;padding:22px 18px;display:flex;flex-direction:column;gap:16px">
+<div style="background:#13182A;border:1px solid #1F2740;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px">
+<div><div style="font-size:12px;color:#7A8499;margin-bottom:8px">Раунды</div>
+<div style="display:flex;background:#0A0E1A;border-radius:11px;padding:3px;gap:3px">
+<sc-for list="{{ roundOpts }}" as="r" hint-placeholder-count="3">
+<button onClick="{{ r.onClick }}" style="flex:1;padding:9px 0;border-radius:9px;border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;background: {{ r.bg }};color: {{ r.color }}">{{ r.n }}</button>
+</sc-for>
+</div></div>
+<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:4px;border-top:1px solid #1F2740"><span style="color:#7A8499">Время на раунд</span><span style="color:#fff;font-weight:600">60 сек</span></div>
+</div>
+</div>
+<div style="padding:16px 18px"><button onClick="{{ createRoom }}" style="width:100%;height:54px;border-radius:16px;border:none;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#0A0E1A;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);cursor:pointer">Создать комнату</button></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isJoin }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease">
+<div style="display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid #1F2740"><button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:6px"><i class="ti ti-x" style="font-size:20px"></i></button><div style="flex:1;text-align:center;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-right:32px">Присоединиться</div></div>
+<div style="flex:1;padding:26px 18px;display:flex;flex-direction:column;justify-content:center;gap:18px">
+<div style="text-align:center;font-size:12px;color:#7A8499">Код комнаты</div>
+<input value="{{ joinCode }}" onChange="{{ setJoinCode }}" maxLength="6" placeholder="ABC123" style="width:100%;box-sizing:border-box;height:60px;border-radius:16px;background:#13182A;border:1px solid #1F2740;color:#fff;font-family:'Playfair Display',serif;font-weight:800;font-size:26px;letter-spacing:.28em;text-align:center;outline:none;text-transform:uppercase"/>
+</div>
+<div style="padding:16px 18px"><button onClick="{{ goLobbyFromJoin }}" disabled="{{ joinDisabled }}" style="width:100%;height:54px;border-radius:16px;border:none;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#0A0E1A;cursor:pointer;background: {{ joinBtnBg }};opacity: {{ joinBtnOpacity }}">Войти</button></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLobby }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #1F2740"><button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;font-family:inherit;font-size:13px;cursor:pointer">← Выйти</button><div style="text-align:center"><div style="font-size:10px;color:#7A8499;text-transform:uppercase;letter-spacing:.12em">Код комнаты</div><div style="font-family:'Playfair Display',serif;font-weight:800;font-size:20px;letter-spacing:.2em;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);-webkit-background-clip:text;background-clip:text;color:transparent">ABCD12</div></div><div style="width:44px"></div></div>
+<div style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ teams }}" as="t" hint-placeholder-count="2">
+<div style="background:#13182A;border:1px solid #1F2740;border-radius:16px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid #1F2740"><span style="width:26px;height:26px;border-radius:7px;background: {{ t.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:800;font-size:11px">{{ t.short }}</span><span style="font-size:13px;font-weight:700;color:#fff">{{ t.name }}</span></div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ t.players }}" as="p" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:26px;height:26px;border-radius:7px;background: {{ p.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:10px">{{ p.initials }}</div><span style="font-size:12.5px;color:#e6e9ef">{{ p.name }}</span><sc-if value="{{ p.host }}"><i class="ti ti-crown" style="font-size:12px;color:#FF8A3D"></i></sc-if></div>
+</sc-for>
+</div>
+<sc-if value="{{ t.mine }}"><div style="display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid #1F2740"><i class="ti ti-check" style="font-size:13px;color:#FF8A3D"></i><span style="font-size:11.5px;color:#FF8A3D;font-weight:700">Моя команда</span></div></sc-if>
+<sc-if value="{{ t.notMine }}"><div style="padding:0 14px 12px"><button onClick="{{ t.onClick }}" style="width:100%;padding:9px 0;border-radius:10px;background:transparent;border:1px solid rgba(255,138,61,.35);color:#F4EEE6;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Вступить</button></div></sc-if>
+</div>
+</sc-for>
+<div style="text-align:center;font-size:12px;color:#7A8499;margin-top:6px">Поделись кодом, чтобы пригласить друзей</div>
+</div>
+<div style="padding:16px 18px;border-top:1px solid #1F2740"><button onClick="{{ startGame }}" style="width:100%;height:54px;border-radius:16px;border:none;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#0A0E1A;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);cursor:pointer">Начать игру</button></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isGame }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:fadeIn .2s ease">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px">
+<sc-if value="{{ isTraining }}"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499">Тренировка</span></sc-if>
+<sc-if value="{{ isTeamMode }}"><div style="display:flex;gap:16px"><div style="display:flex;align-items:center;gap:6px"><span style="width:17px;height:17px;border-radius:5px;background:#EF0107;color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif">А</span><span style="font-family:'Playfair Display',serif;font-weight:800;font-size:16px;color:#fff">{{ scoreA }}</span></div><div style="display:flex;align-items:center;gap:6px"><span style="width:17px;height:17px;border-radius:5px;background:#034694;color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif">Б</span><span style="font-family:'Playfair Display',serif;font-weight:800;font-size:16px;color:#fff">{{ scoreB }}</span></div></div></sc-if>
+<button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:4px"><i class="ti ti-x" style="font-size:18px"></i></button>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;position:relative">
+<div style="position:relative;display:inline-flex;align-items:center;justify-content:center">
+<svg width="102" height="102" viewBox="0 0 102 102" style="transform:rotate(-90deg)">
+<circle cx="51" cy="51" r="44" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="5"/>
+<circle cx="51" cy="51" r="44" fill="none" stroke="#FF8A3D" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ timerCirc }}" stroke-dashoffset="{{ timerOffset }}" style="transition:stroke-dashoffset .5s linear"/>
+</svg>
+<span style="position:absolute;font-family:'Playfair Display',serif;font-weight:800;font-size:32px;color:#fff;font-variant-numeric:tabular-nums;animation: {{ timerPulseAnim }}">{{ remaining }}</span>
+</div>
+<div style="font-size:12px;color:#7A8499;margin-top:8px;position:relative">{{ correct }} угадано <sc-if value="{{ pop }}"><span style="position:absolute;left:100%;margin-left:8px;top:0;font-family:'Playfair Display',serif;font-weight:800;color:#FF8A3D;animation:popUp .7s ease">+1</span></sc-if></div>
+<sc-if value="{{ streakVisible }}"><div style="margin-top:4px;font-size:10.5px;font-weight:700;color:#FFD24A;letter-spacing:.06em">🔥 Серия {{ streak }}</div></sc-if>
+</div>
+
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px;gap:14px">
+<div style="width:100%;max-width:250px;position:relative;border-radius:20px;padding: {{ cardCurrent.rarPad }};background: {{ cardCurrent.rarBorder }};box-shadow: {{ cardCurrent.rarGlow }}">
+<div style="border-radius: 18.5px;background:linear-gradient(180deg,#161d30,#0c0f1c);overflow:hidden;position:relative">
+<div style="height:4px;background:linear-gradient(180deg,#FFE0C2,#FF6300)"></div>
+<div style="padding:22px 20px 24px;display:flex;flex-direction:column;align-items:center">
+<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,99,0,.08);display:flex;align-items:center;justify-content:center;border:1px solid {{ cardCurrent.catColor }}66;margin-bottom:12px"><i class="ti ti-{{ cardCurrent.catIcon }}" style="font-size:20px;color:{{ cardCurrent.catColor }}"></i></div>
+<div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;text-align:center;line-height:1.15">{{ cardCurrent.name }}</div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:{{ cardCurrent.catColor }};margin-top:8px">{{ cardCurrent.catLabel }}</div>
+<div style="width:100%;border-top:1px solid rgba(255,138,61,.12);margin-top:16px;padding-top:12px">
+<div style="font-size:8.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(154,142,125,.6);margin-bottom:7px;text-align:center">Нельзя говорить</div>
+<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px">
+<sc-for list="{{ cardCurrent.forbidden }}" as="w" hint-placeholder-count="3"><span style="font-size:11px;color:rgba(154,142,125,.6);border:1px solid rgba(154,142,125,.18);border-radius:7px;padding:2px 9px;text-decoration:line-through">{{ w }}</span></sc-for>
+</div>
+</div>
+</div>
+</div>
+</div>
+<sc-if value="{{ dotsVisible }}"><div style="display:flex;gap:5px">
+<sc-for list="{{ dots }}" as="dt" hint-placeholder-count="6"><span style="width:6px;height:6px;border-radius:50%;background: {{ dt.bg }}"></span></sc-for>
+</div></sc-if>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 18px calc(env(safe-area-inset-bottom,0px) + 16px)">
+<button onClick="{{ doSkip }}" style="height:52px;border-radius:16px;background:transparent;border:1px solid rgba(255,138,61,.4);color:#F4EEE6;font-family:inherit;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer"><i class="ti ti-player-skip-forward" style="font-size:15px"></i>Пропустить</button>
+<button onClick="{{ doCorrect }}" style="height:52px;border-radius:16px;border:none;color:#0A0E1A;font-family:inherit;font-weight:800;font-size:12.5px;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer"><i class="ti ti-check" style="font-size:16px"></i>Угадали</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isResults }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:fadeIn .2s ease;overflow-y:auto">
+<div style="display:flex;flex-direction:column;align-items:center;padding:36px 20px 22px"><i class="ti ti-trophy" style="font-size:48px;color:#FF8A3D"></i><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#7A8499;margin:16px 0 6px">{{ resultsLabel }}</div><div style="font-family:'Playfair Display',serif;font-weight:800;font-size:26px;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);-webkit-background-clip:text;background-clip:text;color:transparent">{{ resultsWinner }}</div><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#7A8499;margin-top:6px">{{ resultsScoreLine }}</div></div>
+<div style="padding:0 18px;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ resultRows }}" as="rr" hint-placeholder-count="2">
+<div style="position:relative;border-radius:16px;padding:15px 18px;border:1px solid {{ rr.border }};background: {{ rr.bg }};overflow:hidden">
+<sc-if value="{{ rr.win }}"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#FFE0C2,#FF6300)"></div></sc-if>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="display:flex;align-items:center;gap:9px"><sc-if value="{{ rr.win }}"><i class="ti ti-trophy" style="font-size:14px;color:#FF8A3D"></i></sc-if><span style="width:24px;height:24px;border-radius:7px;background: {{ rr.color }};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif">{{ rr.short }}</span><span style="font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:#fff">{{ rr.name }}</span></div><span style="font-family:'Playfair Display',serif;font-weight:800;font-size:24px;color:#fff">{{ rr.points }}</span></div>
+<div style="height:5px;border-radius:999px;background:rgba(255,255,255,.05);overflow:hidden"><div style="height:100%;border-radius:999px;width: {{ rr.pct }}%;background: {{ rr.barColor }};transition:width .7s ease"></div></div>
+</div>
+</sc-for>
+</div>
+<div style="padding:26px 18px;display:flex;flex-direction:column;gap:12px;margin-top:auto">
+<button style="height:54px;border-radius:16px;border:none;color:#0A0E1A;font-family:inherit;font-weight:800;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="ti ti-share" style="font-size:15px"></i>Поделиться</button>
+<button onClick="{{ playAgain }}" style="height:54px;border-radius:16px;background:transparent;border:1px solid rgba(255,138,61,.4);color:#F4EEE6;font-family:inherit;font-weight:700;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><i class="ti ti-refresh" style="font-size:15px"></i>Сыграть ещё</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPlayer }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease;overflow-y:auto">
+<div style="display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid #1F2740;position:sticky;top:0;background:#0A0E1A;z-index:2"><button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:6px"><i class="ti ti-chevron-left" style="font-size:20px"></i></button><div style="flex:1;text-align:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#7A8499;margin-right:32px">Досье {{ dossier.caseNo }}</div></div>
+
+<div style="padding:20px 20px 40px;display:flex;flex-direction:column;gap:20px">
+<div style="position:relative;border-radius:22px;padding: {{ dossier.rarPad }};background: {{ dossier.rarBorder }};box-shadow: {{ dossier.rarGlow }}">
+<div style="border-radius:20.5px;background:linear-gradient(180deg,#161d30,#0c0f1c);overflow:hidden;position:relative">
+<sc-if value="{{ dossier.isPlayer }}">
+<div style="position:absolute;top:14px;left:14px;z-index:2;width:42px;height:42px;border-radius:11px;background:linear-gradient(155deg,#FFE0C2,#FF6300);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:800;font-size:16px;color:#0A0E1A">{{ dossier.ovr }}</div>
+<div style="width:100%;height:180px"><image-slot id="dossier-photo-{{ dossier.id }}" shape="rect" placeholder="Фото игрока"></image-slot></div>
+</sc-if>
+<div style="padding:18px 20px 22px;text-align:center">
+<div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#fff">{{ dossier.name }}</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color: {{ dossier.rarText }};margin-top:6px">{{ dossier.rarLabel }} · {{ dossier.sub }}</div>
+</div>
+</div>
+</div>
+
+<sc-if value="{{ dossier.isPlayer }}">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<sc-for list="{{ dossier.quickFacts }}" as="qf" hint-placeholder-count="4"><div style="background:#13182A;border:1px solid #1F2740;border-radius:12px;padding:10px 6px;text-align:center"><div style="font-size:13px;font-weight:700;color:#fff">{{ qf.v }}</div><div style="font-size:8.5px;color:#7A8499;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">{{ qf.l }}</div></div></sc-for>
+</div>
+
+<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-bottom:10px">Характеристики</div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ dossier.stats }}" as="stat" hint-placeholder-count="6">
+<div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px"><span style="color:#9AA3B5">{{ stat.label }}</span><span style="color:#fff;font-weight:700">{{ stat.value }}</span></div><div style="height:5px;border-radius:999px;background:#1F2740;overflow:hidden"><div style="height:100%;border-radius:999px;width: {{ stat.value }}%;background:linear-gradient(90deg,#FF8A3D,#FF6300)"></div></div></div>
+</sc-for>
+</div></div>
+
+<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-bottom:10px">Трофеи</div>
+<div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ dossier.trophies }}" as="tr" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:9px;background:#13182A;border:1px solid #1F2740;border-radius:12px;padding:10px 12px"><i class="ti ti-trophy" style="font-size:15px;color:#FFD24A"></i><span style="font-size:12.5px;color:#e6e9ef">{{ tr }}</span></div></sc-for></div></div>
+
+<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-bottom:10px">Карьера</div>
+<div style="display:flex;flex-direction:column;gap:0">
+<sc-for list="{{ dossier.career }}" as="cr" hint-placeholder-count="4"><div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #1F2740"><i class="ti ti-shirt" style="font-size:14px;color:#7A8499;margin-top:1px"></i><span style="flex:1;font-size:12.5px;color:#e6e9ef">{{ cr.club }}</span><span style="font-size:11.5px;color:#7A8499">{{ cr.years }}</span></div></sc-for>
+</div></div>
+
+<div><div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-bottom:10px"><i class="ti ti-search" style="font-size:13px"></i>Улики следствия</div>
+<div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ dossier.facts }}" as="ft" hint-placeholder-count="2"><div style="font-size:12.5px;color:#9AA3B5;line-height:1.55;background:#13182A;border:1px solid #1F2740;border-radius:12px;padding:11px 13px">{{ ft }}</div></sc-for></div></div>
+</sc-if>
+
+<sc-if value="{{ dossier.isGeneric }}">
+<div style="text-align:center;padding:6px 0"><div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:16px"><sc-for list="{{ dossier.forbidden }}" as="w" hint-placeholder-count="3"><span style="font-size:11px;color:rgba(154,142,125,.6);border:1px solid rgba(154,142,125,.18);border-radius:7px;padding:2px 9px;text-decoration:line-through">{{ w }}</span></sc-for></div>
+<div style="font-size:12.5px;color:#9AA3B5;line-height:1.6">Досье пока формируется. Играй, чтобы узнать больше об этой карте.</div></div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDaily }}">
+<div style="position:absolute;inset:0;background:#0A0E1A;display:flex;flex-direction:column;animation:slideUp .25s ease">
+<div style="display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid #1F2740"><button onClick="{{ closeOverlay }}" style="background:none;border:none;color:#7A8499;cursor:pointer;padding:6px"><i class="ti ti-x" style="font-size:20px"></i></button><div style="flex:1;text-align:center;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7A8499;margin-right:32px">Задания дня</div></div>
+<div style="flex:1;overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;justify-content:space-between;gap:5px">
+<sc-for list="{{ streakDays }}" as="sd" hint-placeholder-count="7"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:100%;aspect-ratio:1;border-radius:9px;background: {{ sd.bg }};display:flex;align-items:center;justify-content:center"><i class="ti ti-{{ sd.icon }}" style="font-size:13px;color: {{ sd.iconColor }}"></i></div><span style="font-size:8.5px;color:#7A8499">{{ sd.label }}</span></div></sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ tasks }}" as="tk" hint-placeholder-count="5">
+<div style="background:#13182A;border:1px solid #1F2740;border-radius:16px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div><div style="font-size:13px;font-weight:700;color:#fff">{{ tk.title }}</div><div style="font-size:11px;color:#7A8499;margin-top:3px">{{ tk.reward }}</div></div><div style="font-size:11px;font-weight:700;color:{{ tk.progressColor }}">{{ tk.progress }}/{{ tk.total }}</div></div>
+<div style="height:6px;border-radius:999px;background:#1F2740;overflow:hidden;margin-bottom: {{ tk.claimMargin }}"><div style="height:100%;border-radius:999px;width: {{ tk.pct }}%;background: {{ tk.barColor }}"></div></div>
+<sc-if value="{{ tk.claimable }}"><button style="width:100%;height:38px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:12px;color:#0A0E1A;background:linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%);cursor:pointer;margin-top:10px">Забрать награду</button></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+</div>
+<div style="position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:130px;height:5px;background:rgba(255,255,255,.35);border-radius:3px;z-index:30"></div>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const RAR = {
+  common:    { label:'Обычная',     text:'#9AA3B5', border:'1px solid #1F2740', glow:'none', pad:'1px' },
+  rare:      { label:'Редкая',      text:'#4A9EFF', border:'linear-gradient(155deg,rgba(74,158,255,.7),rgba(74,158,255,.1) 45%,rgba(74,158,255,.5))', glow:'0 0 22px rgba(74,158,255,.14)', pad:'1.5px' },
+  epic:      { label:'Эпическая',   text:'#B47AFF', border:'linear-gradient(155deg,rgba(180,122,255,.75),rgba(180,122,255,.1) 45%,rgba(180,122,255,.55))', glow:'0 0 26px rgba(180,122,255,.18)', pad:'1.5px' },
+  legendary: { label:'Легендарная', text:'#FF8A3D', border:'linear-gradient(155deg,rgba(255,138,61,.75),rgba(255,99,0,.12) 42%,rgba(255,138,61,.55))', glow:'0 0 34px rgba(255,99,0,.22)', pad:'1.5px' },
+  icon:      { label:'Икона',       text:'#F4EEE6', border:'linear-gradient(155deg,rgba(255,255,255,.9),rgba(255,224,194,.15) 45%,rgba(255,255,255,.7))', glow:'0 0 40px rgba(255,224,194,.28)', pad:'2px' },
+};
+const CAT = {
+  player: { color:'#FF6300', icon:'user', ru:'Игрок' },
+  club: { color:'#4A9EFF', icon:'shield', ru:'Клуб' },
+  stadium: { color:'#00C97D', icon:'building-stadium', ru:'Стадион' },
+  term: { color:'#B47AFF', icon:'tag', ru:'Термин' },
+  position: { color:'#B47AFF', icon:'target', ru:'Позиция' },
+  referee: { color:'#FFD24A', icon:'flag', ru:'Судья' },
+  coach: { color:'#FFD24A', icon:'clipboard', ru:'Тренер' },
+  commentator: { color:'#7A8499', icon:'microphone', ru:'Комментатор' },
+};
+
+class Component extends DCLogic {
+  state = {
+    phase: 'splash', obStep: 0, tab: 'home', overlay: null, playerIdx: null,
+    joinCode: '', rounds: 5, gameMode: null, catFilter: 'all', searchQuery: '',
+    remaining: 60, idx: 0, correct: 0, streak: 0, pop: false, myTeam: 0,
+    scoreA: 0, scoreB: 0, lbFilter: 'global',
+  };
+
+  OB_SLIDES = [
+    { icon:'search', title:'Найди легенду', desc:'Смотри на карточку и угадывай футболиста, клуб или термин раньше соперника.' },
+    { icon:'cards', title:'Собирай коллекцию', desc:'От обычных карт до легендарных — открывай новых героев футбола каждый день.' },
+    { icon:'users-group', title:'Играй с друзьями', desc:'Команды, 1 на 1 или тренировка в одиночку — выбирай свой режим.' },
+    { icon:'flag-2', title:'Готов начать расследование?', desc:'Собери улики. Раскрой личность. Стань чемпионом Шерлок Скоулс.' },
+  ];
+
+  CATEGORIES = ['all','player','club','stadium','term','coach'];
+  CAT_LABELS = { all:'Все', player:'Игроки', club:'Клубы', stadium:'Стадионы', term:'Термины', coach:'Тренеры' };
+  CAT_ICONS = { all:'apps', player:'user', club:'shield', stadium:'building-stadium', term:'tag', coach:'clipboard' };
+
+  COLLECTION = [
+    { id:'p1', category:'player', rarity:'legendary', name:'Эрлинг Холанд', sub:'Нападающий · Норвегия', locked:false,
+      ovr:96, club:'Манчестер Сити', position:'ЦФ', age:25, height:'195 см', weight:'88 кг',
+      stats:{ Скорость:89, Удар:94, Пас:66, Дриблинг:80, Оборона:45, Физика:88 },
+      trophies:['АПЛ 2024','Лига чемпионов 2023','Золотая бутса 2023'],
+      career:[{club:'Мольде',years:'2016–2019'},{club:'Зальцбург',years:'2019–2020'},{club:'Боруссия Дортмунд',years:'2020–2022'},{club:'Манчестер Сити',years:'2022–н.в.'}],
+      facts:['Забил хет-трик в дебютном матче в АПЛ.','Отец — экс-игрок сборной Норвегии Альф-Инге Ошунн.'],
+      forbidden:['Холанд','Норвегия','Сити'] },
+    { id:'p2', category:'player', rarity:'icon', name:'Лионель Месси', sub:'Форвард · Аргентина', locked:false,
+      ovr:98, club:'Интер Майами', position:'ПН', age:37, height:'170 см', weight:'72 кг',
+      stats:{ Скорость:80, Удар:88, Пас:91, Дриблинг:96, Оборона:34, Физика:63 },
+      trophies:['Чемпионат мира 2022','8× Золотой мяч','4× Лига чемпионов'],
+      career:[{club:'Барселона',years:'2004–2021'},{club:'ПСЖ',years:'2021–2023'},{club:'Интер Майами',years:'2023–н.в.'}],
+      facts:['Почти всю карьеру провёл в системе Барселоны.','Капитан сборной Аргентины — чемпион мира 2022.'],
+      forbidden:['Месси','Аргентина','Барселона'] },
+    { id:'p3', category:'player', rarity:'epic', name:'Килиан Мбаппе', sub:'Левый форвард · Франция', locked:false,
+      ovr:91, club:'Реал Мадрид', position:'ЛФ', age:26, height:'178 см', weight:'73 кг',
+      stats:{ Скорость:97, Удар:89, Пас:80, Дриблинг:92, Оборона:36, Физика:76 },
+      trophies:['Чемпионат мира 2018','5× Лига 1'],
+      career:[{club:'Монако',years:'2015–2017'},{club:'ПСЖ',years:'2017–2024'},{club:'Реал Мадрид',years:'2024–н.в.'}],
+      facts:['Дебютировал в основе в 16 лет.','Оформил хет-трик в финале ЧМ-2022.'],
+      forbidden:['Мбаппе','Франция','ПСЖ'] },
+    { id:'p4', category:'player', rarity:'rare', name:'Матео Ретеги', sub:'Центрфорвард · Италия', locked:false,
+      ovr:82, club:'Аталанта', position:'ЦФ', age:25, height:'182 см', weight:'78 кг',
+      stats:{ Скорость:75, Удар:83, Пас:60, Дриблинг:70, Оборона:40, Физика:79 },
+      trophies:['Топ-скорер Серии А 2024'],
+      career:[{club:'Дженоа',years:'2021–2022'},{club:'Тигре',years:'2022–2023'},{club:'Аталанта',years:'2023–н.в.'}],
+      facts:['Играл за молодёжку Аргентины до дебюта за сборную Италии.'],
+      forbidden:['Ретеги','Италия'] },
+    { id:'c1', category:'club', rarity:'epic', name:'Реал Мадрид', sub:'Гранд · 15× ЛЧ', locked:false, forbidden:['Реал','Мадрид'] },
+    { id:'s1', category:'stadium', rarity:'rare', name:'Сантьяго Бернабеу', sub:'Мадрид · 81 000 мест', locked:false, forbidden:['Сантьяго','Бернабеу'] },
+    { id:'t1', category:'term', rarity:'common', name:'Катеначчо', sub:'Тактика · оборона', locked:false, forbidden:['Катеначчо'] },
+    { id:'co1', category:'coach', rarity:'rare', name:'Юрген Клопп', sub:'???', locked:true, forbidden:[] },
+    { id:'pos1', category:'term', rarity:'common', name:'Ложная девятка', sub:'???', locked:true, forbidden:[] },
+    { id:'p5', category:'player', rarity:'legendary', name:'Криштиану Роналду', sub:'???', locked:true, forbidden:[] },
+  ];
+
+  GAME_DECK = [
+    { name:'Эрлинг Холанд', category:'player', rarity:'legendary', forbidden:['Эрлинг','Холанд','Норвегия'] },
+    { name:'Реал Мадрид', category:'club', rarity:'epic', forbidden:['Реал','Мадрид'] },
+    { name:'Катеначчо', category:'term', rarity:'common', forbidden:['Катеначчо'] },
+    { name:'Сантьяго Бернабеу', category:'stadium', rarity:'rare', forbidden:['Сантьяго','Бернабеу'] },
+    { name:'Матео Ретеги', category:'player', rarity:'rare', forbidden:['Ретеги','Италия'] },
+    { name:'Килиан Мбаппе', category:'player', rarity:'epic', forbidden:['Мбаппе','Франция'] },
+  ];
+
+  TEAMS = [
+    { name:'Команда А', short:'А', color:'#EF0107', players:[{name:'Sherlock',host:true},{name:'Kate',host:false}] },
+    { name:'Команда Б', short:'Б', color:'#034694', players:[{name:'John',host:false},{name:'Mike',host:false}] },
+  ];
+
+  ACHIEVEMENTS = [
+    { icon:'trophy', name:'Первая победа', earned:true },
+    { icon:'flame', name:'Серия 5 побед', earned:true },
+    { icon:'cards', name:'10 карт собрано', earned:true },
+    { icon:'star', name:'Легендарная карта', earned:false },
+    { icon:'users-group', name:'10 игр с друзьями', earned:false },
+    { icon:'crown', name:'Топ-100 рейтинга', earned:false },
+  ];
+
+  LEADERBOARD = [
+    { rank:1, name:'ФК Дьявол', points:2540, delta:2, color:'#EF0107' },
+    { rank:2, name:'GoalHunter', points:2410, delta:0, color:'#034694' },
+    { rank:3, name:'Sherlock H.', points:2290, delta:5, color:'#FF6300', you:true },
+    { rank:4, name:'KloppFan99', points:2100, delta:-1, color:'#8B5CF6' },
+    { rank:5, name:'TikiTaka', points:1980, delta:1, color:'#22C55E' },
+    { rank:6, name:'PenaltyKing', points:1875, delta:-3, color:'#F59E0B' },
+    { rank:7, name:'VAR_Judge', points:1790, delta:0, color:'#06B6D4' },
+    { rank:8, name:'OffsideTrap', points:1650, delta:1, color:'#EC4899' },
+  ];
+
+  TASKS = [
+    { title:'Угадай 10 игроков', progress:7, total:10, reward:'+50 очков' },
+    { title:'Сыграй 3 игры', progress:3, total:3, reward:'Карта дня' },
+    { title:'Победи в 1 на 1', progress:0, total:1, reward:'+30 очков' },
+    { title:'Собери карту клуба', progress:1, total:1, reward:'Значок коллекционера' },
+    { title:'Пригласи друга', progress:0, total:1, reward:'Редкая карта' },
+  ];
+
+  componentDidMount() {
+    this._splashTimer = setTimeout(() => this.setState({ phase: 'onboarding' }), 1600);
+  }
+  componentWillUnmount() {
+    clearTimeout(this._splashTimer);
+    clearInterval(this._gameTimer);
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (this.state.overlay === 'game' && prevState.overlay !== 'game') this.startGameTimer();
+    if (this.state.overlay !== 'game' && prevState.overlay === 'game') clearInterval(this._gameTimer);
+  }
+
+  startGameTimer() {
+    clearInterval(this._gameTimer);
+    this.setState({ remaining: 60, idx: 0, correct: 0, streak: 0, scoreA: 0, scoreB: 0 });
+    this._gameTimer = setInterval(() => {
+      this.setState(s => {
+        if (s.remaining <= 1) { clearInterval(this._gameTimer); return { remaining: 0, overlay: 'results' }; }
+        return { remaining: s.remaining - 1 };
+      });
+    }, 1000);
+  }
+
+  advanceCard(got) {
+    const deck = this.GAME_DECK;
+    this.setState(s => {
+      const next = { idx: (s.idx + 1) % deck.length };
+      if (got) {
+        next.correct = s.correct + 1; next.streak = s.streak + 1; next.pop = true;
+        if (s.gameMode === 'team') { if (s.myTeam === 0) next.scoreA = s.scoreA + 1; else next.scoreB = s.scoreB + 1; }
+      } else next.streak = 0;
+      return next;
+    });
+    if (got) setTimeout(() => this.setState({ pop: false }), 700);
+  }
+
+  cardMeta(card) {
+    const rar = RAR[card.rarity] || RAR.common;
+    const cat = CAT[card.category] || CAT.player;
+    return { rarLabel: rar.label, rarText: rar.text, rarBorder: rar.border, rarGlow: rar.glow, rarPad: rar.pad, catColor: cat.color, catIcon: cat.icon, catLabel: cat.ru };
+  }
+
+  buildDossier(card) {
+    const meta = this.cardMeta(card);
+    const isPlayer = card.category === 'player' && !card.locked;
+    const base = {
+      id: card.id, name: card.locked ? '???' : card.name, sub: card.locked ? 'Засекречено' : card.sub,
+      caseNo: '№' + String(this.COLLECTION.indexOf(card) + 1).padStart(3, '0'),
+      isPlayer, isGeneric: !isPlayer, forbidden: card.forbidden || [], ...meta,
+    };
+    if (!isPlayer) return base;
+    return {
+      ...base,
+      ovr: card.ovr,
+      quickFacts: [{ l: 'Клуб', v: card.club }, { l: 'Позиция', v: card.position }, { l: 'Возраст', v: card.age }, { l: 'Рост', v: card.height }],
+      stats: Object.entries(card.stats).map(([label, value]) => ({ label, value })),
+      trophies: card.trophies, career: card.career, facts: card.facts,
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const active = { background: '#FF6300', color: '#0A0E1A' };
+    const inactive = { background: 'transparent', color: '#9AA3B5' };
+
+    const filtered = this.COLLECTION.filter(c =>
+      (s.catFilter === 'all' || c.category === s.catFilter) &&
+      (!s.searchQuery || c.name.toLowerCase().includes(s.searchQuery.toLowerCase()) || c.locked));
+
+    const timerR = 44, timerCirc = 2 * Math.PI * timerR;
+    const currentCard = this.GAME_DECK[s.idx];
+    const currentMeta = this.cardMeta(currentCard);
+    const resultsA = { name: 'Команда А', color: '#EF0107', short: 'А', points: s.scoreA };
+    const resultsB = { name: 'Команда Б', color: '#034694', short: 'Б', points: s.scoreB };
+    const maxScore = Math.max(s.scoreA, s.scoreB, 1);
+    const sortedResults = [resultsA, resultsB].sort((a, b) => b.points - a.points);
+
+    return {
+      isSplash: s.phase === 'splash', isOnboarding: s.phase === 'onboarding', isApp: s.phase === 'app',
+
+      obSlides: this.OB_SLIDES.map((sl, i) => ({ ...sl, active: i === s.obStep })),
+      obDots: this.OB_SLIDES.map((_, i) => ({ w: i === s.obStep ? 22 : 6, bg: i === s.obStep ? '#FF8A3D' : 'rgba(122,132,153,.3)' })),
+      obBtnLabel: s.obStep === this.OB_SLIDES.length - 1 ? 'Начать' : 'Далее',
+      obAdvance: () => this.setState(st => st.obStep >= this.OB_SLIDES.length - 1 ? { phase: 'app' } : { obStep: st.obStep + 1 }),
+      skipOb: () => this.setState({ phase: 'app' }),
+
+      navItems: [
+        { key: 'home', icon: 'home-2', label: 'Главная' },
+        { key: 'collections', icon: 'cards', label: 'Карты' },
+        { key: 'rating', icon: 'trophy', label: 'Рейтинг' },
+        { key: 'profile', icon: 'user', label: 'Профиль' },
+      ].map(n => ({ ...n, color: n.key === s.tab && !s.overlay ? '#FF8A3D' : '#7A8499', onClick: () => this.setState({ tab: n.key, overlay: null }) })),
+      showTabBar: !s.overlay,
+
+      isHome: s.tab === 'home', isCollections: s.tab === 'collections', isRating: s.tab === 'rating', isProfile: s.tab === 'profile',
+      goProfile: () => this.setState({ tab: 'profile' }),
+      goCollections: (e) => { e.preventDefault(); this.setState({ tab: 'collections' }); },
+      openFeatured: () => this.setState({ overlay: 'player', playerIdx: this.COLLECTION.findIndex(c => c.id === 'p1') }),
+      homeStats: [{ v: '12', l: 'Игр', border: 'none' }, { v: '07', l: 'Побед', border: '1px solid rgba(255,138,61,.16)' }, { v: '31', l: 'Очков', border: '1px solid rgba(255,138,61,.16)' }],
+
+      searchQuery: s.searchQuery, setSearch: (e) => this.setState({ searchQuery: e.target.value }),
+      categories: this.CATEGORIES.map(k => ({
+        key: k, label: this.CAT_LABELS[k], icon: this.CAT_ICONS[k],
+        onClick: () => this.setState({ catFilter: k }),
+        bg: s.catFilter === k ? 'rgba(255,99,0,.12)' : 'transparent',
+        borderColor: s.catFilter === k ? 'rgba(255,138,61,.5)' : '#1F2740',
+        textColor: s.catFilter === k ? '#FF8A3D' : '#9AA3B5',
+      })),
+      collectionEmpty: filtered.length === 0,
+      collectionItems: filtered.map((c, i) => {
+        const meta = this.cardMeta(c);
+        const idx = this.COLLECTION.indexOf(c);
+        return { ...c, ...meta, unlocked: !c.locked, cursor: c.locked ? 'default' : 'pointer', opacity: c.locked ? 0.65 : 1,
+          onClick: c.locked ? undefined : () => this.setState({ overlay: 'player', playerIdx: idx }) };
+      }),
+
+      lbFilters: [['friends', 'Друзья'], ['global', 'Глобально'], ['week', 'Неделя']].map(([k, label]) => ({
+        key: k, label, onClick: () => this.setState({ lbFilter: k }),
+        bg: s.lbFilter === k ? '#FF6300' : 'transparent', color: s.lbFilter === k ? '#0A0E1A' : '#9AA3B5',
+      })),
+      leaderboard: this.LEADERBOARD.map(r => ({
+        ...r, initials: r.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+        bg: r.you ? 'rgba(255,99,0,.1)' : '#13182A', border: r.you ? 'rgba(255,138,61,.5)' : '#1F2740',
+        rankColor: r.rank <= 3 ? '#FF8A3D' : '#7A8499',
+        deltaColor: r.delta > 0 ? '#22C55E' : r.delta < 0 ? '#EF4444' : '#7A8499',
+        deltaLabel: r.delta > 0 ? '▲' + r.delta : r.delta < 0 ? '▼' + Math.abs(r.delta) : '—',
+      })),
+
+      profileStats: [{ v: '12', l: 'Игр' }, { v: '58%', l: 'Побед' }, { v: '9', l: 'Серия' }],
+      achievements: this.ACHIEVEMENTS.map(a => ({ ...a, opacity: a.earned ? 1 : 0.35, bg: a.earned ? 'rgba(255,99,0,.1)' : '#13182A', border: a.earned ? 'rgba(255,138,61,.4)' : '#1F2740', iconColor: a.earned ? '#FF8A3D' : '#7A8499' })),
+      settingsRows: [{ icon: 'language', label: 'Язык', value: 'Русский' }, { icon: 'volume', label: 'Звук', value: 'Вкл' }, { icon: 'bell', label: 'Уведомления', value: 'Вкл' }],
+
+      overlay: s.overlay,
+      isMode: s.overlay === 'mode', isSettings: s.overlay === 'settings', isJoin: s.overlay === 'join',
+      isLobby: s.overlay === 'lobby', isGame: s.overlay === 'game', isResults: s.overlay === 'results',
+      isPlayer: s.overlay === 'player', isDaily: s.overlay === 'daily',
+      openMode: () => this.setState({ overlay: 'mode', gameMode: null }),
+      openJoin: () => this.setState({ overlay: 'join', joinCode: '' }),
+      openDaily: () => this.setState({ overlay: 'daily' }),
+      closeOverlay: () => this.setState({ overlay: null }),
+      backToMode: () => this.setState({ overlay: 'mode' }),
+
+      modeOptions: [
+        { key: 'team', icon: 'users-group', title: 'Командная игра', desc: 'Две команды объясняют по очереди', onClick: () => this.setState({ overlay: 'settings', gameMode: 'team' }) },
+        { key: '1v1', icon: 'user', title: 'Один на один', desc: 'Личный счёт, смена ходов каждые 60 сек', onClick: () => this.setState({ overlay: 'settings', gameMode: '1v1' }) },
+        { key: 'train', icon: 'cards', title: 'Тренировка', desc: 'Случайные карточки без счёта', onClick: () => this.setState({ overlay: 'game', gameMode: 'train' }) },
+      ],
+
+      roundOpts: [3, 5, 7].map(n => ({ n, onClick: () => this.setState({ rounds: n }), bg: s.rounds === n ? '#FF6300' : 'transparent', color: s.rounds === n ? '#0A0E1A' : '#9AA3B5' })),
+      createRoom: () => this.setState({ overlay: 'lobby' }),
+
+      joinCode: s.joinCode, setJoinCode: (e) => this.setState({ joinCode: e.target.value.toUpperCase().slice(0, 6) }),
+      joinDisabled: s.joinCode.length !== 6,
+      joinBtnBg: s.joinCode.length === 6 ? 'linear-gradient(180deg,#FFE0C2 0%,#FF8A3D 46%,#FF6300 72%,#C24A00 100%)' : '#1F2740',
+      joinBtnOpacity: s.joinCode.length === 6 ? 1 : 0.5,
+      goLobbyFromJoin: () => { if (s.joinCode.length === 6) this.setState({ overlay: 'lobby' }); },
+
+      teams: this.TEAMS.map((t, i) => ({
+        ...t, mine: s.myTeam === i, notMine: s.myTeam !== i,
+        players: t.players.map(p => ({ ...p, initials: p.name.slice(0, 2).toUpperCase(), color: t.color })),
+        onClick: () => this.setState({ myTeam: i }),
+      })),
+      startGame: () => this.setState({ overlay: 'game' }),
+
+      isTraining: s.gameMode === 'train', isTeamMode: s.gameMode === 'team',
+      scoreA: s.scoreA, scoreB: s.scoreB,
+      timerCirc, timerOffset: timerCirc * (1 - s.remaining / 60),
+      timerPulseAnim: s.remaining <= 10 ? 'pulseFast .8s infinite' : 'none',
+      remaining: s.remaining, correct: s.correct, streak: s.streak, pop: s.pop,
+      streakVisible: s.streak >= 3,
+      cardCurrent: { name: currentCard.name, forbidden: currentCard.forbidden, ...currentMeta },
+      dotsVisible: s.gameMode !== 'train',
+      dots: this.GAME_DECK.map((_, i) => ({ bg: i < s.correct ? '#FF8A3D' : 'rgba(255,255,255,.08)' })),
+      doSkip: () => this.advanceCard(false), doCorrect: () => this.advanceCard(true),
+
+      resultsLabel: s.scoreA === s.scoreB ? 'Ничья' : 'Победитель',
+      resultsWinner: s.scoreA === s.scoreB ? 'Ничья 🤝' : (s.scoreA > s.scoreB ? 'Команда А' : 'Команда Б'),
+      resultsScoreLine: s.scoreA + ' : ' + s.scoreB,
+      resultRows: sortedResults.map((r, i) => ({
+        ...r, win: i === 0 && r.points === maxScore && s.scoreA !== s.scoreB,
+        pct: Math.round((r.points / maxScore) * 100),
+        border: i === 0 && r.points === maxScore && s.scoreA !== s.scoreB ? 'rgba(255,138,61,.5)' : 'rgba(255,138,61,.16)',
+        bg: i === 0 && r.points === maxScore && s.scoreA !== s.scoreB ? 'linear-gradient(180deg,rgba(255,99,0,.1),rgba(255,99,0,.02))' : 'linear-gradient(180deg,#13182A,#0f1322)',
+        barColor: i === 0 && r.points === maxScore && s.scoreA !== s.scoreB ? 'linear-gradient(90deg,#FFE0C2,#FF6300)' : 'rgba(154,142,125,.5)',
+      })),
+      playAgain: () => this.setState({ overlay: null, tab: 'home' }),
+
+      dossier: s.playerIdx != null ? this.buildDossier(this.COLLECTION[s.playerIdx]) : { isPlayer: false, isGeneric: false, caseNo: '', name: '', rarBorder: RAR.common.border, rarGlow: 'none', rarPad: '1px' },
+
+      streakDays: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((label, i) => ({
+        label, icon: i < 6 ? 'check' : 'flame',
+        bg: i < 6 ? 'rgba(255,99,0,.12)' : 'rgba(255,255,255,.04)',
+        iconColor: i < 6 ? '#FF8A3D' : '#7A8499',
+      })),
+      tasks: this.TASKS.map(t => {
+        const claimable = t.progress >= t.total;
+        return { ...t, pct: Math.round((t.progress / t.total) * 100), claimable,
+          claimMargin: claimable ? '0' : '0', progressColor: claimable ? '#FF8A3D' : '#7A8499',
+          barColor: claimable ? 'linear-gradient(90deg,#FFE0C2,#FF6300)' : 'linear-gradient(90deg,#FF8A3D,#FF6300)' };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

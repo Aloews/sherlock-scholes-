@@ -1,7 +1,6 @@
 // Telegram WebApp adapter — wraps window.Telegram.WebApp
 // Gracefully degrades when running outside Telegram (dev mode)
 
-import { BG } from '@/shared/ui/palette';
 export interface TelegramUser {
   id: number;
   first_name: string;
@@ -78,8 +77,8 @@ export function initTelegram(): void {
   if (!tg) return;
   tg.ready();
   tg.expand();
-  tg.setBackgroundColor(BG);
-  tg.setHeaderColor(BG);
+  tg.setBackgroundColor('#0A0E1A');
+  tg.setHeaderColor('#0A0E1A');
 }
 
 export function getTelegramUser(): TelegramUser | null {

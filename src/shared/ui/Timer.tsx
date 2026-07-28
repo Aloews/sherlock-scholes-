@@ -1,4 +1,5 @@
-import { ACCENT, BORDER } from './palette';
+import { useDesign } from '@/shared/design/useDesign';
+
 interface TimerProps {
   remaining: number;
   total: number;
@@ -6,11 +7,14 @@ interface TimerProps {
 }
 
 export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
+  const master    = useDesign() === 'master';
   const pct       = remaining / total;
   const isPulsing = remaining <= 10;
 
+  // The master design's ring is thinner and its track is a faint white rather
+  // than the border token — the prototype's proportions.
   const radius = size === 'lg' ? 44 : 28;
-  const stroke = size === 'lg' ? 6  : 4;
+  const stroke = size === 'lg' ? (master ? 5 : 6) : 4;
   const dim    = (radius + stroke) * 2;
   const circ   = 2 * Math.PI * radius;
   const offset = circ * (1 - pct);
@@ -29,16 +33,16 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke={BORDER}
+          stroke={master ? 'rgba(255,255,255,.06)' : 'rgb(var(--brand-border))'}
           strokeWidth={stroke}
         />
-        {/* Progress — always brand accent */}
+        {/* Progress — always brand accent (design-system token) */}
         <circle
           cx={dim / 2}
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke={ACCENT}
+          stroke="rgb(var(--brand-accent))"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circ}
@@ -47,7 +51,7 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
         />
       </svg>
       <span
-        className={`absolute font-black tabular-nums text-white ${
+        className={`absolute tabular-nums text-white ${master ? 'ds-display font-extrabold' : 'font-black'} ${
           size === 'lg' ? 'text-4xl' : 'text-xl'
         } ${isPulsing ? 'animate-pulse-fast' : ''}`}
       >

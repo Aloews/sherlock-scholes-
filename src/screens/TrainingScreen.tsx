@@ -21,13 +21,12 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
+import { useDesign } from '@/shared/design/useDesign';
 import type { CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
-import { CATEGORY_COLOR, TEAM_COLOR } from '@/shared/ui/tokens';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
-import { ACCENT, MUTED, SLATE, SUCCESS } from '@/shared/ui/palette';
 
 // The picker hands over ONE deck filter (see src/shared/types/deck.ts) —
 // the same object the counter counted and the RPC deals from. Ten separate
@@ -37,15 +36,6 @@ interface TrainingState {
 }
 
 // History row status bar: guessed = success, skipped = the accent.
-const STATUS_GUESSED = SUCCESS;
-const STATUS_SKIPPED = ACCENT;
-
-// Score separator — muted slate, NOT a pure grey.
-const SCORE_DIVIDER = SLATE;
-
-// cards.clubs_minutes is summed ONLY from the 2022–2024 API-Football cache, so
-// every minute total it carries is a partial, often misleading tail (Nathan
-// Redmond "Саутгемптон 1 мин", Walcott 490'). We therefore NEVER render minutes
 // or hours from it — clubChips() shows clubs+years (legend_career),
 // matches/goals (career_stats), or the bare club NAMES only.
 
@@ -71,6 +61,34 @@ const googleSearch = (name: string) => {
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
+const TEAM_COLOR: Record<Team, string> = {
+  orange: '#FF6300',
+  blue:   '#4A9EFF',
+};
+
+// History row status bar: guessed = success green, skipped = warning orange.
+const STATUS_GUESSED = '#00C97D';
+const STATUS_SKIPPED = '#FF6300';
+
+// Score separator — muted slate, NOT a pure grey.
+const SCORE_DIVIDER = '#4A5270';
+
+const CATEGORY_COLOR: Record<CardCategory, string> = {
+  player:        '#FF6300',
+  club:          '#4A9EFF',
+  club_nickname: '#4A9EFF',
+  stadium:       '#00C97D',
+  term:          '#B47AFF',
+  position:      '#B47AFF',
+  referee:       '#FFD24A',
+  coach:         '#FFD24A',
+  commentator:   '#7A8499',
+  woman:         '#FF6BA8',
+  derby:         '#F43F5E',
+  trophy:        '#FFD24A',
+  era:           '#22D3EE',
+};
+
 function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   photoUrl?: string | null;
   category: CardCategory;
@@ -79,8 +97,9 @@ function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   onOpen?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
-  // Rarity ring (subtle; common/unknown → none).
-  const ring = tierRingStyle(tier);
+  // Rarity ring (subtle; common/unknown → none). Design passed explicitly so
+  // the ring restyles when the player flips design systems.
+  const ring = tierRingStyle(tier, useDesign());
   // Commons URLs are stored with ?width=256; the 32px avatar only needs 128.
   const src = photoUrl ? photoUrl.replace('width=256', 'width=128') : null;
   if (!src || failed) {
@@ -249,6 +268,7 @@ interface TrainingGameProps {
 function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const design = useDesign();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
     useTraining(filter);
@@ -261,7 +281,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
         <div className="text-brand-muted text-center">
           <div className="text-4xl mb-3 animate-pulse">⚽</div>
           <p>{t('app.loading')}</p>
@@ -425,7 +445,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   // ── Summary screen ──────────────────────────────────────────────
   if (finished) {
     return (
-      <div className="min-h-screen bg-brand-bg flex flex-col">
+      <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
         {/* Header */}
         <div className="px-4 pt-8 pb-4 border-b border-brand-border">
           <h1 className="text-2xl font-medium text-white text-center">
@@ -458,7 +478,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                 // Women ARE players (their own category) — show a soft, muted
                 // tag, not the loud coloured caps band the other categories use.
                 const softCategory = entry.category === 'woman';
-                const catColor = CATEGORY_COLOR[entry.category] ?? MUTED;
+                const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
                 const meta = metaLine(entry);
@@ -615,7 +635,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   }
 
   // ── Game screen ─────────────────────────────────────────────────
-  const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? MUTED) : MUTED;
+  const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? '#7A8499') : '#7A8499';
   const catLabel = currentCard
     ? localizedCategory(t, i18n.language, currentCard.category, currentCard.category_ru)
     : '';
@@ -624,7 +644,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   const cardName = currentCard ? cardDisplayName(currentCard, i18n.language) : '';
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-8 pb-3 border-b border-brand-border">
         <button
@@ -681,8 +701,8 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
               {/* Word card — large, centred, surface, 6px radius, no accent strip.
                   Rarity tier adds a subtle coloured frame + glow (common → none). */}
               <div
-                className="relative overflow-hidden rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
-                style={tierCardStyle(currentCard.tier)}
+                className="ds-panel relative overflow-hidden rounded-md bg-brand-surface border border-brand-border text-center px-[14px] py-[30px]"
+                style={tierCardStyle(currentCard.tier, design)}
               >
                 {/* Watermark (variant 5 of the design review): the card's own
                     wiki photo ghosted behind the name. Photo only, preloaded
@@ -704,7 +724,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                 >
                   {catLabel}
                 </span>
-                <p className="relative text-[30px] font-medium text-white leading-snug mt-2">
+                <p className="ds-display relative text-[30px] font-medium text-white leading-snug mt-2">
                   {cardName}
                 </p>
               </div>

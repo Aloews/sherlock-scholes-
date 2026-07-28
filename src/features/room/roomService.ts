@@ -5,7 +5,6 @@ import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
 import { pickCards } from '@/features/game/cardRandomizer';
-import { TEAM_COLOR } from '@/shared/ui/tokens';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -121,7 +120,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
       .insert({
         room_id: room.id,
         name:    (joiner as { first_name: string } | null)?.first_name ?? 'Player 2',
-        color:   TEAM_COLOR.blue,
+        color:   '#3b82f6',
       })
       .select()
       .single();

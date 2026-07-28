@@ -224,18 +224,35 @@ export const SPECIAL_TAGS: SpecialTag[] = [
 ];
 
 // ─── Rarity tiers (cards.tier) ───────────────────────────────────
-// PURELY COSMETIC now: the coloured card frame. Derived from cards.fame by
-// fame_tier() (supabase/migrations/deck_fame.sql), so a card can no longer
-// be "легендарная" on the frame and "малоизвестная" in the filter — which
-// is exactly what the old tier-based recognizability chips produced.
-export type Tier = 'legendary' | 'epic' | 'rare' | 'common';
-export const TIERS: Tier[] = ['legendary', 'epic', 'rare', 'common'];
-// Colours live in src/shared/ui/tokens.ts (TIER_COLOR) — types here, paint there.
+// PURELY COSMETIC: the coloured card frame. cards.tier is derived from
+// cards.fame by fame_tier() (supabase/migrations/deck_fame.sql), so a card
+// can no longer be "легендарная" on the frame and "малоизвестная" in the
+// picker — which is exactly what the old tier-based chips produced.
+// 'icon' sits above legendary — the game's most iconic cards. fame_tier()
+// does not produce it yet; until something does, no card carries it and the
+// tier is simply unused (every consumer keys off TIER_COLOR/TIERS).
+export type Tier = 'icon' | 'legendary' | 'epic' | 'rare' | 'common';
+export const TIERS: Tier[] = ['icon', 'legendary', 'epic', 'rare', 'common'];
+export const TIER_COLOR: Record<Tier, string> = {
+  icon:      '#F4EEE6', // near-white
+  legendary: '#FFD24A', // gold
+  epic:      '#B47AFF', // purple
+  rare:      '#4A9EFF', // blue
+  common:    '#7A8499', // muted grey
+};
 export const TIER_LABEL_RU: Record<Tier, string> = {
+  icon:      'Икона',
   legendary: 'Легендарная',
   epic:      'Эпическая',
   rare:      'Редкая',
   common:    'Обычная',
+};
+export const TIER_LABEL_EN: Record<Tier, string> = {
+  icon:      'Icon',
+  legendary: 'Legendary',
+  epic:      'Epic',
+  rare:      'Rare',
+  common:    'Common',
 };
 
 // Generic card — covers all 10 categories from sherlock_cards.csv

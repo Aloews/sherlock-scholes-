@@ -44,6 +44,11 @@
     "continent_other": "기타 지역",
     "tutorial_button_aria": "게임 방법",
     "sound_toggle_aria": "소리 켜기/끄기",
+    "design_toggle_aria": "{{design}}(으)로 전환",
+    "collection": "컬렉션",
+    "welcome_back": "다시 오신 걸 환영해요,",
+    "welcome_stranger": "탐정",
+    "collection_hint": "전체 덱과 희귀도를 둘러보기",
     "group_special": "스페셜",
     "tag_goalkeeper": "골키퍼",
     "tag_ballon_dor": "발롱도르",
@@ -87,6 +92,39 @@
     "preset_not_players_desc": "클럽, 경기장, 용어, 더비",
     "preset_legends": "레전드",
     "preset_legends_desc": "역사상 최고의 선수들"
+  },
+  "design": {
+    "master": "새 디자인",
+    "classic": "클래식 디자인"
+  },
+  "tabs": {
+    "home": "홈",
+    "collection": "카드",
+    "pro": "Pro"
+  },
+  "collection": {
+    "title": "컬렉션",
+    "search_placeholder": "전설 속에서 단서를 찾아보세요…",
+    "filter_all": "전체",
+    "empty_title": "단서를 찾지 못했습니다",
+    "empty_body": "다른 검색어나 카테고리를 시도해 보세요",
+    "error_title": "카드를 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "count": "카드 {{n}}장",
+    "load_more": "더 보기",
+    "pro_title": "컬렉션은 Pro 기능입니다",
+    "pro_body": "희귀도와 검색이 포함된 2000장 이상의 전체 카탈로그는 Sherlock Pro에 포함됩니다.",
+    "pro_cta": "Pro 받기",
+    "dossier": "도시에",
+    "trophies": "트로피",
+    "career": "커리어",
+    "about": "소개",
+    "f_country": "국가",
+    "f_position": "포지션",
+    "f_height": "키",
+    "f_years": "연도",
+    "f_caps": "A매치",
+    "f_clubs": "클럽"
   },
   "pro": {
     "title": "Sherlock Pro",

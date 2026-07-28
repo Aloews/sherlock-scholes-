@@ -9,9 +9,11 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { SUCCESS } from '@/shared/ui/palette';
+import { useDesign } from '@/shared/design/useDesign';
+import { IconCheck } from '@tabler/icons-react';
 
 export function LobbyScreen() {
+  const master = useDesign() === 'master';
   const navigate = useNavigate();
   const {
     room, teams, roomPlayers, isHost, isTeamMode, myTeamId, canStart, assignTeam, startGame,
@@ -42,7 +44,7 @@ export function LobbyScreen() {
   const isMe1v1Host = room.host_id === (hostPlayer?.player_id ?? -1);
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between p-4 pt-8 border-b border-brand-border">
         <button
@@ -54,7 +56,7 @@ export function LobbyScreen() {
         <div className="flex flex-col items-center">
           <p className="text-brand-muted text-xs">{t('lobby.room_code')}</p>
           <button
-            className="text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors"
+            className={`text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors ${master ? 'ds-display' : ''}`}
             onClick={copyCode}
           >
             {room.code}
@@ -115,7 +117,7 @@ export function LobbyScreen() {
                 <p className="text-brand-muted text-sm">{t('lobby.share_code')}</p>
                 <p
                   className="text-3xl font-black tracking-widest"
-                  style={{ color: SUCCESS }}
+                  style={{ color: '#22c55e' }}
                 >
                   {room.code}
                 </p>
@@ -135,7 +137,9 @@ export function LobbyScreen() {
                 return (
                   <div
                     key={team.id}
-                    className="bg-brand-surface rounded-2xl border border-brand-border overflow-hidden"
+                    className={`ds-panel bg-brand-surface rounded-2xl border overflow-hidden ${
+                      master && isMyTeam ? 'border-brand-accent/45' : 'border-brand-border'
+                    }`}
                   >
                     <div
                       className="px-4 py-3 flex items-center justify-between"
@@ -180,7 +184,8 @@ export function LobbyScreen() {
                     )}
                     {isMyTeam && (
                       <div className="px-3 pb-3">
-                        <div className="text-center text-xs text-brand-accent font-semibold py-1">
+                        <div className="flex items-center justify-center gap-1.5 text-xs text-brand-accent font-semibold py-1">
+                          {master && <IconCheck size={13} stroke={2.5} />}
                           {t('lobby.your_team')}
                         </div>
                       </div>

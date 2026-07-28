@@ -45,6 +45,11 @@
     "continent_other": "Otras regiones",
     "tutorial_button_aria": "Cómo jugar",
     "sound_toggle_aria": "Sonido sí/no",
+    "design_toggle_aria": "Cambiar a {{design}}",
+    "collection": "Colección",
+    "welcome_back": "Bienvenido de nuevo,",
+    "welcome_stranger": "Detective",
+    "collection_hint": "Explora toda la baraja y sus rarezas",
     "group_special": "Especial",
     "tag_goalkeeper": "Porteros",
     "tag_ballon_dor": "Balón de Oro",
@@ -89,6 +94,39 @@
     "preset_not_players_desc": "Clubes, estadios, términos, derbis",
     "preset_legends": "Leyendas",
     "preset_legends_desc": "Los mejores jugadores de la historia"
+  },
+  "design": {
+    "master": "Diseño nuevo",
+    "classic": "Diseño clásico"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "collection": "Cartas",
+    "pro": "Pro"
+  },
+  "collection": {
+    "title": "Colección",
+    "search_placeholder": "Busca pistas entre leyendas…",
+    "filter_all": "Todas",
+    "empty_title": "No se encontraron pistas",
+    "empty_body": "Prueba otra búsqueda o elige otra categoría",
+    "error_title": "No se pudieron cargar las cartas",
+    "retry": "Reintentar",
+    "count": "{{n}} cartas",
+    "load_more": "Cargar más",
+    "pro_title": "La colección es de Pro",
+    "pro_body": "El catálogo completo de más de 2000 cartas con rarezas y búsqueda es parte de Sherlock Pro.",
+    "pro_cta": "Obtener Pro",
+    "dossier": "Expediente",
+    "trophies": "Trofeos",
+    "career": "Carrera",
+    "about": "Acerca de",
+    "f_country": "País",
+    "f_position": "Posición",
+    "f_height": "Altura",
+    "f_years": "Años",
+    "f_caps": "Internac.",
+    "f_clubs": "Clubes"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -44,6 +44,11 @@
     "continent_other": "その他の地域",
     "tutorial_button_aria": "遊び方",
     "sound_toggle_aria": "サウンドのオン/オフ",
+    "design_toggle_aria": "{{design}}に切り替える",
+    "collection": "コレクション",
+    "welcome_back": "おかえりなさい、",
+    "welcome_stranger": "探偵",
+    "collection_hint": "デッキ全体とレアリティを見る",
     "group_special": "スペシャル",
     "tag_goalkeeper": "ゴールキーパー",
     "tag_ballon_dor": "バロンドール",
@@ -87,6 +92,39 @@
     "preset_not_players_desc": "クラブ、スタジアム、用語、ダービー",
     "preset_legends": "レジェンド",
     "preset_legends_desc": "歴史上最高の選手たち"
+  },
+  "design": {
+    "master": "新デザイン",
+    "classic": "クラシックデザイン"
+  },
+  "tabs": {
+    "home": "ホーム",
+    "collection": "カード",
+    "pro": "Pro"
+  },
+  "collection": {
+    "title": "コレクション",
+    "search_placeholder": "伝説の中から手がかりを探そう…",
+    "filter_all": "すべて",
+    "empty_title": "手がかりが見つかりません",
+    "empty_body": "別のキーワードやカテゴリーを試してみよう",
+    "error_title": "カードを読み込めませんでした",
+    "retry": "再試行",
+    "count": "{{n}}枚のカード",
+    "load_more": "もっと見る",
+    "pro_title": "コレクションは Pro 機能です",
+    "pro_body": "レアリティと検索を備えた2000枚以上の全カタログは Sherlock Pro に含まれます。",
+    "pro_cta": "Pro を入手",
+    "dossier": "ドシエ",
+    "trophies": "タイトル",
+    "career": "キャリア",
+    "about": "概要",
+    "f_country": "国",
+    "f_position": "ポジション",
+    "f_height": "身長",
+    "f_years": "年",
+    "f_caps": "代表",
+    "f_clubs": "クラブ"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -12,7 +12,6 @@ import {
 } from '@/shared/lib/telegram';
 import { createProInvoice, getUserStatus } from '@/features/pro/proApi';
 import { PRO_PRICE_STARS, PRO_FRAMES, FRAME_COLOR } from '@/shared/lib/pro';
-import { PRO } from '@/shared/ui/palette';
 
 // Pro upsell + (for owners) cosmetics. "Buy" opens a Telegram Stars invoice via
 // the tg-pay Edge Function; is_pro is flipped SERVER-SIDE by the payment webhook
@@ -64,7 +63,7 @@ export function ProScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 pt-8">
         <button
@@ -84,9 +83,9 @@ export function ProScreen() {
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{ backgroundColor: 'rgba(255,210,74,0.12)' }}
           >
-            <IconCrown size={36} stroke={1.5} color={PRO} />
+            <IconCrown size={36} stroke={1.5} color="#FFD24A" />
           </div>
-          <h1 className="text-white text-2xl font-black">{t('pro.title')}</h1>
+          <h1 className="ds-display text-white text-2xl font-black">{t('pro.title')}</h1>
           <p className="text-brand-muted text-sm">{t('pro.subtitle')}</p>
         </div>
 
@@ -114,7 +113,7 @@ export function ProScreen() {
         ) : (
           <div className="w-full max-w-sm mt-5 space-y-3">
             <div className="flex items-center justify-center gap-2 text-white">
-              <IconStar size={22} stroke={2} color={PRO} fill={PRO} />
+              <IconStar size={22} stroke={2} color="#FFD24A" fill="#FFD24A" />
               <span className="text-2xl font-black">{PRO_PRICE_STARS}</span>
               <span className="text-brand-muted text-sm">Telegram Stars</span>
             </div>

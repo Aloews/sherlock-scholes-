@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { IconCheck, IconChevronRight, IconLock } from '@tabler/icons-react';
-import { ACCENT, PRO } from './palette';
 
 /**
  * One row = one choice.
@@ -47,7 +46,8 @@ export function OptionRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="text-white font-semibold truncate">{title}</span>
-          {locked && <IconLock size={13} stroke={2.5} style={{ color: PRO }} />}
+          {/* Pro gold is fixed across designs — it marks the paid tier, not a state. */}
+          {locked && <IconLock size={13} stroke={2.5} className="text-[#FFD24A]" />}
         </span>
         {description && (
           <span className="block text-brand-muted text-xs mt-0.5 leading-snug">{description}</span>
@@ -61,9 +61,8 @@ export function OptionRow({
       ) : (
         <span
           className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
-            selected ? 'border-transparent' : 'border-brand-border'
+            selected ? 'border-transparent bg-brand-accent' : 'border-brand-border'
           }`}
-          style={selected ? { backgroundColor: ACCENT } : undefined}
         >
           {selected && <IconCheck size={13} stroke={3} className="text-brand-bg" />}
         </span>
