@@ -105,7 +105,8 @@
   "tabs": {
     "home": "Início",
     "collection": "Cartas",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Perfil"
   },
   "collection": {
     "title": "Coleção",
@@ -138,6 +139,18 @@
     "attr_defense": "Defesa",
     "attr_physical": "Físico",
     "ovr_aria": "Avaliação geral {{value}}"
+  },
+  "profile": {
+    "title": "Perfil",
+    "level": "Nível {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP para o próximo nível"
+  },
+  "level": {
+    "title_1": "Novato",
+    "title_5": "Detetive",
+    "title_10": "Inspetor detetive",
+    "title_15": "Inspetor-chefe",
+    "title_20": "Sabujo lendário"
   },
   "pro": {
     "title": "Sherlock Pro",

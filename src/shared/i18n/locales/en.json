@@ -105,7 +105,8 @@
   "tabs": {
     "home": "Home",
     "collection": "Cards",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Profile"
   },
   "collection": {
     "title": "Collection",
@@ -138,6 +139,18 @@
     "attr_defense": "Defending",
     "attr_physical": "Physical",
     "ovr_aria": "Overall rating {{value}}"
+  },
+  "profile": {
+    "title": "Profile",
+    "level": "Level {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP to next level"
+  },
+  "level": {
+    "title_1": "Rookie",
+    "title_5": "Detective",
+    "title_10": "Detective Inspector",
+    "title_15": "Senior Inspector",
+    "title_20": "Legendary Sleuth"
   },
   "pro": {
     "title": "Sherlock Pro",

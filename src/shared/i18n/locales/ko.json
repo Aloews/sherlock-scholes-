@@ -103,7 +103,8 @@
   "tabs": {
     "home": "홈",
     "collection": "카드",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "프로필"
   },
   "collection": {
     "title": "컬렉션",
@@ -136,6 +137,18 @@
     "attr_defense": "수비",
     "attr_physical": "피지컬",
     "ovr_aria": "종합 능력치 {{value}}"
+  },
+  "profile": {
+    "title": "프로필",
+    "level": "레벨 {{n}}",
+    "xp_progress": "다음 레벨까지 {{into}} / {{total}} XP"
+  },
+  "level": {
+    "title_1": "수습생",
+    "title_5": "탐정",
+    "title_10": "수사관",
+    "title_15": "수석 수사관",
+    "title_20": "전설의 명탐정"
   },
   "pro": {
     "title": "Sherlock Pro",
