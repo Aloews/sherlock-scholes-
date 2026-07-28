@@ -64,6 +64,11 @@
     "master": "新设计",
     "classic": "经典设计"
   },
+  "tabs": {
+    "home": "主页",
+    "collection": "卡片",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "收藏",
     "search_placeholder": "在传奇中寻找线索…",

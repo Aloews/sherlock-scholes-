@@ -64,6 +64,11 @@
     "master": "新デザイン",
     "classic": "クラシックデザイン"
   },
+  "tabs": {
+    "home": "ホーム",
+    "collection": "カード",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "コレクション",
     "search_placeholder": "伝説の中から手がかりを探そう…",

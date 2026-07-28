@@ -68,6 +68,11 @@
     "master": "التصميم الجديد",
     "classic": "التصميم الكلاسيكي"
   },
+  "tabs": {
+    "home": "الرئيسية",
+    "collection": "البطاقات",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "المجموعة",
     "search_placeholder": "ابحث عن الأدلة بين الأساطير…",

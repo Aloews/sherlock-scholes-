@@ -73,6 +73,11 @@
     "master": "Новый дизайн",
     "classic": "Классический дизайн"
   },
+  "tabs": {
+    "home": "Главная",
+    "collection": "Карты",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Коллекция",
     "search_placeholder": "Ищи улики среди легенд…",

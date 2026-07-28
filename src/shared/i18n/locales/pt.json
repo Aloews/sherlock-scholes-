@@ -65,6 +65,11 @@
     "master": "Novo design",
     "classic": "Design clássico"
   },
+  "tabs": {
+    "home": "Início",
+    "collection": "Cartas",
+    "pro": "Pro"
+  },
   "collection": {
     "title": "Coleção",
     "search_placeholder": "Procure pistas entre lendas…",
