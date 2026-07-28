@@ -25,7 +25,9 @@ import type { CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
 import { CATEGORY_COLOR, TEAM_COLOR } from '@/shared/ui/tokens';
-import { ACCENT, BG, MUTED, SLATE, SUCCESS } from '@/shared/ui/palette';
+import { Button } from '@/shared/ui/Button';
+import { Chip } from '@/shared/ui/Chip';
+import { ACCENT, MUTED, SLATE, SUCCESS } from '@/shared/ui/palette';
 
 // The picker hands over ONE deck filter (see src/shared/types/deck.ts) —
 // the same object the counter counted and the RPC deals from. Ten separate
@@ -187,16 +189,14 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
           <p className="text-brand-success text-sm py-4 text-center">{t('report.thanks')}</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {REPORT_REASONS.map((r) => (
-                <button key={r}
-                  className={`rounded-lg px-3 py-2.5 text-sm text-left transition-colors border ${
-                    reason === r
-                      ? 'bg-brand-accent/20 text-white border-brand-accent'
-                      : 'bg-brand-border text-brand-muted border-transparent'}`}
-                  onClick={() => setReason(r as ReportReason)}>
-                  {t(`report.reason_${r}`)}
-                </button>
+                <Chip
+                  key={r}
+                  label={t(`report.reason_${r}`)}
+                  selected={reason === r}
+                  onClick={() => setReason(r as ReportReason)}
+                />
               ))}
             </div>
             <textarea
@@ -206,14 +206,16 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
               onChange={(e) => setComment(e.target.value)}
             />
             {status === 'error' && (
-              <p className="text-red-400 text-xs text-center">{t('report.error')}</p>
+              <p className="text-brand-danger text-xs text-center">{t('report.error')}</p>
             )}
-            <button
-              className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
-              disabled={!reason || status === 'sending'}
-              onClick={submit}>
-              {status === 'sending' ? '…' : t('report.submit')}
-            </button>
+            <Button
+              fullWidth
+              loading={status === 'sending'}
+              disabled={!reason}
+              onClick={submit}
+            >
+              {t('report.submit')}
+            </Button>
           </>
         )}
       </motion.div>
@@ -600,21 +602,13 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
-            style={{ backgroundColor: TEAM_COLOR.orange, color: BG }}
-            onClick={() => { hapticImpact('light'); onPlayAgain(); }}
-          >
-            {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
+          <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); onPlayAgain(); }}>
             <IconReload size={16} stroke={2} />
             {t('end.play_again')}
-          </button>
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
-            onClick={() => { hapticImpact('light'); navigate('/'); }}
-          >
+          </Button>
+          <Button fullWidth size="lg" variant="surface" onClick={() => { hapticImpact('light'); navigate('/'); }}>
             {t('quick.home')}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -734,21 +728,23 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
 
       {/* Actions */}
       <div className="px-4 pb-8 flex gap-3">
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ backgroundColor: TEAM_COLOR.orange, color: BG }}
+        <Button
+          size="lg"
+          className="flex-1"
           disabled={!currentCard}
           onClick={() => { hapticImpact('medium'); playSound('correct'); guess(); }}
         >
           {t('quick.guessed')}
-        </button>
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+        </Button>
+        <Button
+          size="lg"
+          variant="surface"
+          className="flex-1"
           disabled={!currentCard}
           onClick={() => { hapticImpact('light'); playSound('skip'); skip(); }}
         >
           {t('quick.skip')}
-        </button>
+        </Button>
       </div>
     </div>
   );
