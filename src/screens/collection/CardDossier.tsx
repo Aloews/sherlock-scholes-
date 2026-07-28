@@ -6,16 +6,28 @@ import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card } from '@/shared/types/database';
+import {
+  TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
+} from '@/shared/types/database';
 
 // Full-screen card dossier, opened from the Collection grid. Follows the
-// prototype's `isPlayer` overlay: framed hero card, quick-fact tiles, trophies,
-// career, facts.
+// prototype's `isPlayer` overlay: framed hero card, quick-fact tiles, OVR
+// badge, attribute bars, trophies, career, facts.
 //
-// The prototype's OVR badge and its six 0–100 attribute bars are NOT here:
-// nothing in the schema rates a card or a player on a numeric scale, and
-// inventing numbers on a screen that reads as factual would be a lie. See
-// docs/PROGRESSION_FEATURES_HANDOFF.md if those are ever to exist.
+// The OVR badge and the six "Характеристики" bars only render when
+// card.ovr / card.attributes carry a value — nothing seeds them yet
+// (docs/cards_attributes_column.sql adds the columns; real per-player
+// ratings are a separate data project, see docs/PROGRESSION_FEATURES_HANDOFF.md).
+// Inventing numbers on a screen that reads as factual would be a lie, so
+// absent data means the badge/bars are simply omitted, not faked.
+const ATTRIBUTE_ROWS: { key: keyof CardAttributes; labelKey: string }[] = [
+  { key: 'pace',      labelKey: 'collection.attr_pace' },
+  { key: 'shooting',  labelKey: 'collection.attr_shooting' },
+  { key: 'passing',   labelKey: 'collection.attr_passing' },
+  { key: 'dribbling', labelKey: 'collection.attr_dribbling' },
+  { key: 'defense',   labelKey: 'collection.attr_defense' },
+  { key: 'physical',  labelKey: 'collection.attr_physical' },
+];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -80,6 +92,12 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
 
   const blurb = card.descriptions?.[lang.slice(0, 2)] ?? card.descriptions?.ru ?? null;
 
+  const attributeRows = card.attributes
+    ? ATTRIBUTE_ROWS
+        .map((row) => ({ label: t(row.labelKey), value: card.attributes![row.key] }))
+        .filter((row): row is { label: string; value: number } => row.value != null)
+    : [];
+
   return (
     <div className="fixed inset-0 z-50 bg-brand-bg ds-screen overflow-y-auto animate-slide-up">
       {/* Sticky header */}
@@ -111,11 +129,25 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         )}
 
         {card.photo_url && (
-          <img
-            src={card.photo_url}
-            alt={name}
-            className="w-full h-[180px] object-cover object-top rounded-2xl border border-brand-border"
-          />
+          <div className="relative">
+            <img
+              src={card.photo_url}
+              alt={name}
+              className="w-full h-[180px] object-cover object-top rounded-2xl border border-brand-border"
+            />
+            {card.ovr != null && (
+              <div
+                role="img"
+                aria-label={t('collection.ovr_aria', { value: card.ovr })}
+                className="absolute top-3 left-3 w-11 h-11 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(155deg, rgb(var(--brand-accent-soft)), rgb(var(--brand-accent)))',
+                }}
+              >
+                <span className="ds-display text-[16px] font-extrabold text-brand-bg">{card.ovr}</span>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Two per row, not the prototype's four: its tiles held numbers, ours
@@ -134,6 +166,27 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
               </div>
             ))}
           </div>
+        )}
+
+        {attributeRows.length > 0 && (
+          <Section title={t('collection.attributes')}>
+            <div className="flex flex-col gap-2.5">
+              {attributeRows.map((row) => (
+                <div key={row.label}>
+                  <div className="flex justify-between text-[11.5px] mb-1">
+                    <span className="text-brand-muted">{row.label}</span>
+                    <span className="font-bold text-white">{row.value}</span>
+                  </div>
+                  <div className="h-[5px] rounded-full bg-brand-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${row.value}%`, background: 'var(--accent-gradient)' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
         )}
 
         {trophies.length > 0 && (

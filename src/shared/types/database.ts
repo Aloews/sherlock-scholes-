@@ -212,6 +212,18 @@ export interface CardFacts {
   titles?: string[] | null;       // ["Золотой мяч 2009", …]
 }
 
+// Six FIFA-style 0–100 sub-ratings for the dossier's "Характеристики" bars
+// (cards.attributes JSONB, docs/cards_attributes_column.sql). Every key is
+// optional — no backfill script exists yet, so no card carries any of them.
+export interface CardAttributes {
+  pace?: number | null;
+  shooting?: number | null;
+  passing?: number | null;
+  dribbling?: number | null;
+  defense?: number | null;
+  physical?: number | null;
+}
+
 // Special-category tags (cards.tags TEXT[]). The first five are quick-game
 // filters in the "Особые" accordion; 'star' backs the "Только звёзды" preset
 // (composite fame, set by the scraper). Absent until the facts/tags migration.
@@ -275,6 +287,8 @@ export interface Card {
   tags?: string[] | null;               // special categories (SpecialTag | 'star'); absent until the facts/tags migration
   tier?: Tier | null;                   // rarity tier; absent until cards_tier.sql runs + cards_tier_build.py APPLY
   descriptions?: Record<string, string> | null; // short per-language blurbs for non-player cards (terms, positions…); absent until the descriptions column ships
+  ovr?: number | null;                  // overall rating 0–100 (FIFA-style); absent until cards_attributes_column.sql runs and is backfilled
+  attributes?: CardAttributes | null;   // six 0–100 sub-ratings; same as above
   delete_candidate?: boolean | null;    // moderator flag (skip-heavy / problematic); absent until card_reports.sql runs
   card_translations?: CardTranslation[] | null; // embedded via select('*, card_translations(*)') or merged in code
   active: boolean;

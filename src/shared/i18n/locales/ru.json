@@ -100,7 +100,15 @@
     "f_height": "Рост",
     "f_years": "Годы",
     "f_caps": "За сборную",
-    "f_clubs": "Клубов"
+    "f_clubs": "Клубов",
+    "attributes": "Характеристики",
+    "attr_pace": "Скорость",
+    "attr_shooting": "Удар",
+    "attr_passing": "Пас",
+    "attr_dribbling": "Дриблинг",
+    "attr_defense": "Оборона",
+    "attr_physical": "Физика",
+    "ovr_aria": "Общий рейтинг {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",

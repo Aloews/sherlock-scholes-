@@ -91,7 +91,15 @@
     "f_height": "身高",
     "f_years": "年份",
     "f_caps": "国家队",
-    "f_clubs": "俱乐部"
+    "f_clubs": "俱乐部",
+    "attributes": "属性",
+    "attr_pace": "速度",
+    "attr_shooting": "射门",
+    "attr_passing": "传球",
+    "attr_dribbling": "盘带",
+    "attr_defense": "防守",
+    "attr_physical": "身体",
+    "ovr_aria": "综合评分 {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",

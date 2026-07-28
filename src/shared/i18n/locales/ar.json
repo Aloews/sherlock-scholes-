@@ -95,7 +95,15 @@
     "f_height": "الطول",
     "f_years": "السنوات",
     "f_caps": "المنتخب",
-    "f_clubs": "الأندية"
+    "f_clubs": "الأندية",
+    "attributes": "الصفات",
+    "attr_pace": "السرعة",
+    "attr_shooting": "التسديد",
+    "attr_passing": "التمرير",
+    "attr_dribbling": "المراوغة",
+    "attr_defense": "الدفاع",
+    "attr_physical": "القوة البدنية",
+    "ovr_aria": "التقييم العام {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",

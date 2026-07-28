@@ -7,8 +7,15 @@
 >
 > Still unported from the prototype, because the schema has no data behind
 > them: the Rating and Profile tabs, the streak chip, daily tasks, levels,
-> achievements, card OVR and the dossier's attribute bars. Those are features
-> rather than styling — see `docs/PROGRESSION_FEATURES_HANDOFF.md`.
+> achievements. Those are features rather than styling — see
+> `docs/PROGRESSION_FEATURES_HANDOFF.md`.
+>
+> The dossier's OVR badge and its six "Характеристики" bars (`CardDossier.tsx`)
+> are wired and render whenever `cards.ovr` / `cards.attributes` carry a value
+> (`docs/cards_attributes_column.sql` adds the nullable columns). No card has
+> real ratings yet — populating ~1.5k player cards with genuine attributes is
+> a separate data-acquisition project, not this one — so today the badge/bars
+> are simply absent everywhere.
 > `docs/DESIGN_V2_HANDOFF.md` holds the original inventory and the
 > per-design-variant architecture the layout work follows.
 
