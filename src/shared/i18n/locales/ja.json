@@ -78,7 +78,10 @@
     "error_title": "カードを読み込めませんでした",
     "retry": "再試行",
     "count": "{{n}}枚のカード",
-    "load_more": "もっと見る"
+    "load_more": "もっと見る",
+    "pro_title": "コレクションは Pro 機能です",
+    "pro_body": "レアリティと検索を備えた2000枚以上の全カタログは Sherlock Pro に含まれます。",
+    "pro_cta": "Pro を入手"
   },
   "pro": {
     "title": "Sherlock Pro",

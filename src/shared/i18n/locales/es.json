@@ -79,7 +79,10 @@
     "error_title": "No se pudieron cargar las cartas",
     "retry": "Reintentar",
     "count": "{{n}} cartas",
-    "load_more": "Cargar más"
+    "load_more": "Cargar más",
+    "pro_title": "La colección es de Pro",
+    "pro_body": "El catálogo completo de más de 2000 cartas con rarezas y búsqueda es parte de Sherlock Pro.",
+    "pro_cta": "Obtener Pro"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -79,7 +79,10 @@
     "error_title": "Impossible de charger les cartes",
     "retry": "Réessayer",
     "count": "{{n}} cartes",
-    "load_more": "Voir plus"
+    "load_more": "Voir plus",
+    "pro_title": "La collection est réservée au Pro",
+    "pro_body": "Le catalogue complet de plus de 2000 cartes avec raretés et recherche fait partie de Sherlock Pro.",
+    "pro_cta": "Obtenir Pro"
   },
   "pro": {
     "title": "Sherlock Pro",

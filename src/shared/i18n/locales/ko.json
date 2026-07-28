@@ -78,7 +78,10 @@
     "error_title": "카드를 불러오지 못했습니다",
     "retry": "다시 시도",
     "count": "카드 {{n}}장",
-    "load_more": "더 보기"
+    "load_more": "더 보기",
+    "pro_title": "컬렉션은 Pro 기능입니다",
+    "pro_body": "희귀도와 검색이 포함된 2000장 이상의 전체 카탈로그는 Sherlock Pro에 포함됩니다.",
+    "pro_cta": "Pro 받기"
   },
   "pro": {
     "title": "Sherlock Pro",

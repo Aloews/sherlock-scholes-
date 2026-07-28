@@ -85,7 +85,10 @@
     "error_title": "Couldn't load cards",
     "retry": "Retry",
     "count": "{{n}} cards",
-    "load_more": "Load more"
+    "load_more": "Load more",
+    "pro_title": "Collection is a Pro feature",
+    "pro_body": "The full catalog of 2000+ cards with rarities and search is part of Sherlock Pro.",
+    "pro_cta": "Get Pro"
   },
   "pro": {
     "title": "Sherlock Pro",
