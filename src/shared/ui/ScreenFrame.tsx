@@ -17,7 +17,16 @@ import { IconArrowLeft } from '@tabler/icons-react';
  *   </ScreenFrame>
  */
 export function ScreenFrame({ children }: { children: ReactNode }) {
-  return <div className="min-h-screen h-screen bg-brand-bg flex flex-col">{children}</div>;
+  // The height is the viewport MINUS the master design's bottom tab bar, via
+  // its own --tabbar-h (0 outside a .with-tabbar page). A flat h-screen would
+  // put the footer — and its primary button — underneath the fixed tab bar,
+  // where taps land on the tab instead. `bg-brand-bg ds-screen` is the pairing
+  // every screen root uses so the design's lit backdrop shows.
+  return (
+    <div className="min-h-screen h-[calc(100vh-var(--tabbar-h,0px))] bg-brand-bg ds-screen flex flex-col">
+      {children}
+    </div>
+  );
 }
 
 export function ScreenHeader({
