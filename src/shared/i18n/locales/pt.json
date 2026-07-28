@@ -93,7 +93,10 @@
     "preset_not_players": "Sem jogadores",
     "preset_not_players_desc": "Clubes, estádios, termos, clássicos",
     "preset_legends": "Lendas",
-    "preset_legends_desc": "Os maiores jogadores da história"
+    "preset_legends_desc": "Os maiores jogadores da história",
+    "filter_all_countries": "Todos os países",
+    "filter_all_leagues": "Todas as ligas",
+    "tag_wc2026": "Copa 2026"
   },
   "design": {
     "master": "Novo design",
@@ -338,6 +341,11 @@
   },
   "league": {
     "Premier League": "Premier League (Inglaterra)",
-    "Russian Premier League": "Premier League Russa"
+    "Russian Premier League": "Premier League Russa",
+    "La Liga": "La Liga",
+    "Serie A": "Serie A",
+    "Bundesliga": "Bundesliga",
+    "Ligue 1": "Ligue 1",
+    "Eredivisie": "Eredivisie"
   }
 }

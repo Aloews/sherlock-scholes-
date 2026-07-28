@@ -91,7 +91,10 @@
     "preset_not_players": "선수 제외",
     "preset_not_players_desc": "클럽, 경기장, 용어, 더비",
     "preset_legends": "레전드",
-    "preset_legends_desc": "역사상 최고의 선수들"
+    "preset_legends_desc": "역사상 최고의 선수들",
+    "filter_all_countries": "모든 국가",
+    "filter_all_leagues": "모든 리그",
+    "tag_wc2026": "월드컵 2026"
   },
   "design": {
     "master": "새 디자인",
@@ -329,6 +332,11 @@
   },
   "league": {
     "Premier League": "프리미어리그(잉글랜드)",
-    "Russian Premier League": "러시아 프리미어리그"
+    "Russian Premier League": "러시아 프리미어리그",
+    "La Liga": "라리가",
+    "Serie A": "세리에 A",
+    "Bundesliga": "분데스리가",
+    "Ligue 1": "리그 1",
+    "Eredivisie": "에레디비시"
   }
 }

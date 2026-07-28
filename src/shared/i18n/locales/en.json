@@ -341,6 +341,11 @@
   },
   "league": {
     "Premier League": "Premier League (England)",
-    "Russian Premier League": "Russian Premier League"
+    "Russian Premier League": "Russian Premier League",
+    "La Liga": "La Liga",
+    "Serie A": "Serie A",
+    "Bundesliga": "Bundesliga",
+    "Ligue 1": "Ligue 1",
+    "Eredivisie": "Eredivisie"
   }
 }

@@ -91,7 +91,10 @@
     "preset_not_players": "不含球员",
     "preset_not_players_desc": "俱乐部、球场、术语、德比",
     "preset_legends": "传奇",
-    "preset_legends_desc": "历史上最伟大的球员"
+    "preset_legends_desc": "历史上最伟大的球员",
+    "filter_all_countries": "所有国家",
+    "filter_all_leagues": "所有联赛",
+    "tag_wc2026": "2026世界杯"
   },
   "design": {
     "master": "新设计",

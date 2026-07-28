@@ -91,7 +91,10 @@
     "preset_not_players": "選手なし",
     "preset_not_players_desc": "クラブ、スタジアム、用語、ダービー",
     "preset_legends": "レジェンド",
-    "preset_legends_desc": "歴史上最高の選手たち"
+    "preset_legends_desc": "歴史上最高の選手たち",
+    "filter_all_countries": "すべての国",
+    "filter_all_leagues": "すべてのリーグ",
+    "tag_wc2026": "W杯2026"
   },
   "design": {
     "master": "新デザイン",
@@ -329,6 +332,11 @@
   },
   "league": {
     "Premier League": "プレミアリーグ（イングランド）",
-    "Russian Premier League": "ロシア・プレミアリーグ"
+    "Russian Premier League": "ロシア・プレミアリーグ",
+    "La Liga": "ラ・リーガ",
+    "Serie A": "セリエA",
+    "Bundesliga": "ブンデスリーガ",
+    "Ligue 1": "リーグ・アン",
+    "Eredivisie": "エールディヴィジ"
   }
 }

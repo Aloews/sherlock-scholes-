@@ -93,7 +93,10 @@
     "preset_not_players": "Sin futbolistas",
     "preset_not_players_desc": "Clubes, estadios, términos, derbis",
     "preset_legends": "Leyendas",
-    "preset_legends_desc": "Los mejores jugadores de la historia"
+    "preset_legends_desc": "Los mejores jugadores de la historia",
+    "filter_all_countries": "Todos los países",
+    "filter_all_leagues": "Todas las ligas",
+    "tag_wc2026": "Mundial 2026"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -338,6 +341,11 @@
   },
   "league": {
     "Premier League": "Premier League (Inglaterra)",
-    "Russian Premier League": "Premier de Rusia"
+    "Russian Premier League": "Premier de Rusia",
+    "La Liga": "La Liga",
+    "Serie A": "Serie A",
+    "Bundesliga": "Bundesliga",
+    "Ligue 1": "Ligue 1",
+    "Eredivisie": "Eredivisie"
   }
 }
