@@ -66,3 +66,43 @@ used through Tailwind, store `R G B` channels and expose it in
 Card data colours stay fixed in both designs, because they encode meaning
 rather than style: `CATEGORY_COLOR` (player orange, club blue, …),
 `TIER_COLOR`, team colours (orange/blue), and status colours.
+
+## The control vocabulary
+
+Colours are only half a design system; the other half is having one way to
+draw a choice. These live in `src/shared/ui/` and are design-agnostic — they
+ride the `brand-*` tokens, so they retint with the switcher on their own:
+
+```
+ScreenFrame.tsx   ScreenFrame · ScreenHeader · ScreenBody
+                  StickyFooter · StepBar
+OptionRow.tsx     one row = one choice
+Chip.tsx          one chip = one toggle
+SelectRow.tsx     a native <select> in OptionRow's clothes
+Section.tsx       heading + hint + content
+Button.tsx        the primary action
+```
+
+**The frame has three parts and only the middle one scrolls.** Header and
+footer stay put, so the title and the primary action are always where the
+player left them. It sizes itself with `--tabbar-h`, so a footer never ends
+up underneath the master design's fixed tab bar — where taps land on the tab
+instead of the button.
+
+**A row that toggles ends in a check circle. A row that acts ends in a
+chevron.** That check circle is the app's only "this is on" signal — a
+screen that needs to show selection uses `OptionRow` or `Chip` rather than
+inventing a new treatment.
+
+**Chips tint, they don't fill.** A group with a dozen chips on by default
+would otherwise be a block of accent, and the accent belongs to the primary
+action alone.
+
+**When to use which.** One choice with an explanation → `OptionRow`. Many
+short choices → `Chip`. More options than fit on a screen → `SelectRow`. A
+whole flow → the frame.
+
+Nothing is built on this yet — the components land first, screens move onto
+them one at a time. The app still has ~49 raw `<button>` against 20
+`<Button>`, and the "surface card" pattern written out inline about 40
+times.
