@@ -34,11 +34,8 @@ const PRO_TAG_SET = new Set(PRO_FILTERS.map((f) => f.tag));
 export const isProTag = (tag: string): boolean => PRO_TAG_SET.has(tag);
 
 // Cosmetic avatar frames — a Pro perk. 'default' is everyone's; the rest need
-// Pro. settingsStore persists the choice; HomeScreen renders the ring.
-export type ProFrame = 'default' | 'gold' | 'purple';
-export const PRO_FRAMES: ProFrame[] = ['default', 'gold', 'purple'];
-export const FRAME_COLOR: Record<ProFrame, string | null> = {
-  default: null,
-  gold:    '#FFD24A',
-  purple:  '#B47AFF',
-};
+// Pro. settingsStore persists the choice; HomeScreen renders the ring. The
+// colours themselves are tokens (FRAME_COLOR in shared/ui/tokens).
+export type { ProFrame } from '@/shared/ui/tokens';
+export { FRAME_COLOR } from '@/shared/ui/tokens';
+export const PRO_FRAMES = ['default', 'gold', 'purple'] as const;

@@ -230,12 +230,7 @@ export const SPECIAL_TAGS: SpecialTag[] = [
 // is exactly what the old tier-based recognizability chips produced.
 export type Tier = 'legendary' | 'epic' | 'rare' | 'common';
 export const TIERS: Tier[] = ['legendary', 'epic', 'rare', 'common'];
-export const TIER_COLOR: Record<Tier, string> = {
-  legendary: '#FFD24A', // gold
-  epic:      '#B47AFF', // purple
-  rare:      '#4A9EFF', // blue
-  common:    '#7A8499', // muted grey
-};
+// Colours live in src/shared/ui/tokens.ts (TIER_COLOR) — types here, paint there.
 export const TIER_LABEL_RU: Record<Tier, string> = {
   legendary: 'Легендарная',
   epic:      'Эпическая',

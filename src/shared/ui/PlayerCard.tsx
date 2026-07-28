@@ -16,6 +16,8 @@ import {
 import type { Card, CardCategory } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
+import { CATEGORY_COLOR } from './tokens';
+import { MUTED } from './palette';
 
 interface PlayerCardProps {
   card: Card;
@@ -23,21 +25,6 @@ interface PlayerCardProps {
   className?: string;
 }
 
-const CATEGORY_COLOR: Record<CardCategory, string> = {
-  player:        '#FF6300',
-  club:          '#4A9EFF',
-  club_nickname: '#4A9EFF',
-  stadium:       '#00C97D',
-  term:          '#B47AFF',
-  position:      '#B47AFF',
-  referee:       '#FFD24A',
-  coach:         '#FFD24A',
-  commentator:   '#7A8499',
-  woman:         '#FF6BA8',
-  derby:         '#F43F5E',
-  trophy:        '#FFD24A',
-  era:           '#22D3EE',
-};
 
 function CategoryIcon({ category, color }: { category: CardCategory; color: string }) {
   const props = { size: 13, color, stroke: 1.75 };
@@ -77,7 +64,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
     );
   }
 
-  const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
+  const catColor = CATEGORY_COLOR[card.category] ?? MUTED;
   // Localized category label; the DB's Russian category_ru wins only on ru
   // (it can carry admin-customised labels).
   const label    = i18n.language.startsWith('ru') && card.category_ru

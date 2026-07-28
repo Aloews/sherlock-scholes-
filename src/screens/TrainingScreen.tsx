@@ -24,6 +24,8 @@ import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import type { CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
+import { CATEGORY_COLOR, TEAM_COLOR } from '@/shared/ui/tokens';
+import { ACCENT, BG, MUTED, SLATE, SUCCESS } from '@/shared/ui/palette';
 
 // The picker hands over ONE deck filter (see src/shared/types/deck.ts) —
 // the same object the counter counted and the RPC deals from. Ten separate
@@ -32,18 +34,12 @@ interface TrainingState {
   filter?: DeckFilter | null;
 }
 
-const TEAM_COLOR: Record<Team, string> = {
-  orange: '#FF6300',
-  blue:   '#4A9EFF',
-};
+// History row status bar: guessed = success, skipped = the accent.
+const STATUS_GUESSED = SUCCESS;
+const STATUS_SKIPPED = ACCENT;
 
-// History row status bar (Variant 4): guessed = success green, skipped =
-// warning orange.
-const STATUS_GUESSED = '#00C97D';
-const STATUS_SKIPPED = '#FF6300';
-
-// Score separator — muted slate, NOT a pure grey (Variant 5 palette).
-const SCORE_DIVIDER = '#4A5270';
+// Score separator — muted slate, NOT a pure grey.
+const SCORE_DIVIDER = SLATE;
 
 // cards.clubs_minutes is summed ONLY from the 2022–2024 API-Football cache, so
 // every minute total it carries is a partial, often misleading tail (Nathan
@@ -51,21 +47,6 @@ const SCORE_DIVIDER = '#4A5270';
 // or hours from it — clubChips() shows clubs+years (legend_career),
 // matches/goals (career_stats), or the bare club NAMES only.
 
-const CATEGORY_COLOR: Record<CardCategory, string> = {
-  player:        '#FF6300',
-  club:          '#4A9EFF',
-  club_nickname: '#4A9EFF',
-  stadium:       '#00C97D',
-  term:          '#B47AFF',
-  position:      '#B47AFF',
-  referee:       '#FFD24A',
-  coach:         '#FFD24A',
-  commentator:   '#7A8499',
-  woman:         '#FF6BA8',
-  derby:         '#F43F5E',
-  trophy:        '#FFD24A',
-  era:           '#22D3EE',
-};
 
 // Category label in the interface language. The DB's Russian category_ru is
 // preferred only on ru (it can carry admin-customised labels); every other
@@ -203,7 +184,7 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
         <p className="text-brand-muted text-xs truncate">{name}</p>
 
         {done ? (
-          <p className="text-[#00C97D] text-sm py-4 text-center">{t('report.thanks')}</p>
+          <p className="text-brand-success text-sm py-4 text-center">{t('report.thanks')}</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -475,7 +456,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                 // Women ARE players (their own category) — show a soft, muted
                 // tag, not the loud coloured caps band the other categories use.
                 const softCategory = entry.category === 'woman';
-                const catColor = CATEGORY_COLOR[entry.category] ?? '#7A8499';
+                const catColor = CATEGORY_COLOR[entry.category] ?? MUTED;
                 // Translation -> name_en -> name, per the interface language.
                 const displayName = cardDisplayName(entry, i18n.language);
                 const meta = metaLine(entry);
@@ -519,7 +500,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                       <button
                         type="button"
                         onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
-                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-[#FF6300] hover:underline"
+                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-brand-accent hover:underline"
                       >
                         {displayName}
                       </button>
@@ -543,7 +524,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                       })()}
                       {/* Titles first, in gold — the headline fact. Wraps (no clip). */}
                       {titles.length > 0 && (
-                        <p className="text-[#FFD24A] text-xs font-medium leading-snug mt-0.5">
+                        <p className="text-brand-pro text-xs font-medium leading-snug mt-0.5">
                           🏆 {titles.join(' · ')}
                         </p>
                       )}
@@ -621,7 +602,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
         <div className="px-4 pb-8 pt-2 space-y-3">
           <button
             className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
-            style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
+            style={{ backgroundColor: TEAM_COLOR.orange, color: BG }}
             onClick={() => { hapticImpact('light'); onPlayAgain(); }}
           >
             {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
@@ -640,7 +621,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   }
 
   // ── Game screen ─────────────────────────────────────────────────
-  const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? '#7A8499') : '#7A8499';
+  const catColor = currentCard ? (CATEGORY_COLOR[currentCard.category] ?? MUTED) : MUTED;
   const catLabel = currentCard
     ? localizedCategory(t, i18n.language, currentCard.category, currentCard.category_ru)
     : '';
@@ -755,7 +736,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
       <div className="px-4 pb-8 flex gap-3">
         <button
           className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
+          style={{ backgroundColor: TEAM_COLOR.orange, color: BG }}
           disabled={!currentCard}
           onClick={() => { hapticImpact('medium'); playSound('correct'); guess(); }}
         >

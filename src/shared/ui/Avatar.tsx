@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { AVATAR_COLORS } from './tokens';
 
 interface AvatarProps {
   name: string;
@@ -14,10 +15,10 @@ const sizeClasses = {
   lg: 'w-14 h-14 text-lg',
 };
 
-const COLORS = [
-  '#22c55e', '#3b82f6', '#f59e0b', '#ef4444',
-  '#8b5cf6', '#06b6d4', '#f97316', '#ec4899',
-];
+// Identity colours, from the brand palette. These used to be eight Tailwind
+// defaults that belonged to no palette at all — two of them were a second
+// green and a second blue competing with the brand's own.
+const COLORS = AVATAR_COLORS;
 
 function colorFromName(name: string): string {
   let hash = 0;

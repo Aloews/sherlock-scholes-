@@ -1,16 +1,29 @@
 import type { Config } from 'tailwindcss';
+import {
+  ACCENT, BG, BORDER, DANGER, INFO, MUTED, PRO, SLATE, SUCCESS, SURFACE, WARNING,
+} from './src/shared/ui/palette';
 
+// Colours come from src/shared/ui/palette.ts, so the utility classes and the
+// inline styles components need for SVG strokes and per-card accents are
+// generated from the same numbers — see the note at the top of that file.
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
         brand: {
-          accent:  '#FF6300',
-          bg:      '#0A0E1A',
-          surface: '#13182A',
-          border:  '#1F2740',
-          muted:   '#7A8499',
+          accent:  ACCENT,
+          bg:      BG,
+          surface: SURFACE,
+          border:  BORDER,
+          muted:   MUTED,
+          slate:   SLATE,
+          // Semantic roles — ask for the meaning, not the hue.
+          success: SUCCESS,
+          warning: WARNING,
+          danger:  DANGER,
+          info:    INFO,
+          pro:     PRO,
         },
       },
       fontFamily: {

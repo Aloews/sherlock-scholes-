@@ -9,6 +9,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { SUCCESS } from '@/shared/ui/palette';
 
 export function LobbyScreen() {
   const navigate = useNavigate();
@@ -114,7 +115,7 @@ export function LobbyScreen() {
                 <p className="text-brand-muted text-sm">{t('lobby.share_code')}</p>
                 <p
                   className="text-3xl font-black tracking-widest"
-                  style={{ color: '#22c55e' }}
+                  style={{ color: SUCCESS }}
                 >
                   {room.code}
                 </p>

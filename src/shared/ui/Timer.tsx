@@ -1,3 +1,4 @@
+import { ACCENT, BORDER } from './palette';
 interface TimerProps {
   remaining: number;
   total: number;
@@ -28,7 +29,7 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke="#1F2740"
+          stroke={BORDER}
           strokeWidth={stroke}
         />
         {/* Progress — always brand accent */}
@@ -37,7 +38,7 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           cy={dim / 2}
           r={radius}
           fill="none"
-          stroke="#FF6300"
+          stroke={ACCENT}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circ}

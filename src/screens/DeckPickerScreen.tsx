@@ -40,9 +40,7 @@ import {
   FAME_LEVELS, FAME_MIN, NON_PLAYER_CATEGORIES, normalizeFilter,
   type DeckFilter, type DeckPreset, type FameLevel,
 } from '@/shared/types/deck';
-
-const ACCENT = '#FF6300';
-const GOLD   = '#FFD24A';
+import { ACCENT, PRO } from '@/shared/ui/palette';
 
 type Step = 'presets' | 'who' | 'fame' | 'refine';
 const BUILD_STEPS: Step[] = ['who', 'fame', 'refine'];
@@ -91,7 +89,7 @@ function OptionRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="text-white font-semibold truncate">{title}</span>
-          {locked && <IconLock size={13} stroke={2.5} style={{ color: GOLD }} />}
+          {locked && <IconLock size={13} stroke={2.5} style={{ color: PRO }} />}
         </span>
         {description && (
           <span className="block text-brand-muted text-xs mt-0.5 leading-snug">{description}</span>
@@ -130,7 +128,7 @@ function PickChip({
           : 'border-brand-border bg-brand-surface text-brand-muted active:text-white'
       }`}
     >
-      {locked && <IconLock size={11} stroke={2.5} style={{ color: GOLD }} />}
+      {locked && <IconLock size={11} stroke={2.5} style={{ color: PRO }} />}
       {label}
     </button>
   );

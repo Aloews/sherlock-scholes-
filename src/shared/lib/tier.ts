@@ -3,7 +3,8 @@
 // doesn't look noisy; rarer tiers glow a touch more.
 
 import type { CSSProperties } from 'react';
-import { TIER_COLOR, TIERS, type Tier } from '@/shared/types/database';
+import { TIERS, type Tier } from '@/shared/types/database';
+import { TIER_COLOR } from '@/shared/ui/tokens';
 
 function asTier(t?: string | null): Tier | null {
   return t && (TIERS as string[]).includes(t) ? (t as Tier) : null;

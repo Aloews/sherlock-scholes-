@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound } from '@/shared/lib/sounds';
 import type { TeamScore } from '@/shared/types/database';
+import { ACCENT, BORDER, SURFACE } from '@/shared/ui/palette';
 
 const INVITES = [
   'Сыграй со мной в Шерлок Скоулс — угадай легенду футбола! ⚽',
@@ -50,7 +51,7 @@ function TeamCrest({ name, color, size = 56 }: { name: string; color: string; si
 
   const shapeEl =
     shape === 'circle' ? (
-      <circle cx={25} cy={29} r={22} fill="#13182A" stroke={color} strokeWidth={2.5} />
+      <circle cx={25} cy={29} r={22} fill={SURFACE} stroke={color} strokeWidth={2.5} />
     ) : (
       <path
         d={
@@ -60,7 +61,7 @@ function TeamCrest({ name, color, size = 56 }: { name: string; color: string; si
               ? 'M25 4 L46 29 L25 54 L4 29 Z'
               : 'M25 4 L44 15 L44 43 L25 54 L6 43 L6 15 Z'
         }
-        fill="#13182A"
+        fill={SURFACE}
         stroke={color}
         strokeWidth={2.5}
         strokeLinejoin="round"
@@ -93,7 +94,7 @@ function TrophyOutline() {
       height="60"
       viewBox="0 0 40 40"
       fill="none"
-      stroke="#FF6300"
+      stroke={ACCENT}
       strokeWidth="1.9"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -277,7 +278,7 @@ export function EndScreen() {
                   >
                     <span
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: team?.color ?? '#1F2740' }}
+                      style={{ backgroundColor: team?.color ?? BORDER }}
                     />
                     <span className="text-sm text-white">
                       {rp.player?.first_name ?? t('end.player_default')}

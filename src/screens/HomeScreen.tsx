@@ -22,6 +22,7 @@ import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
+import { PRO } from '@/shared/ui/palette';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
 
@@ -140,7 +141,7 @@ export function HomeScreen() {
             onClick={() => { hapticImpact('light'); navigate('/pro'); }}
             aria-label={t('pro.title')}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border transition-colors hover:text-white"
-            style={isPro ? { borderColor: '#FFD24A', color: '#FFD24A' } : undefined}
+            style={isPro ? { borderColor: PRO, color: PRO } : undefined}
           >
             <IconCrown size={16} stroke={2} className={isPro ? '' : 'text-brand-muted'} />
           </button>
