@@ -59,7 +59,13 @@
     "tag_giant": "Gigantes ≥190",
     "tag_dwarf": "Baixinhos ≤170",
     "pro_badge": "Pro",
-    "pro_filter_legends": "Lendas"
+    "pro_filter_legends": "Lendas",
+    "filter_all_countries": "Todos os países",
+    "filter_all_leagues": "Todas as ligas",
+    "tag_wc2026": "Copa 2026",
+    "diff_easy": "Conhecidos",
+    "diff_medium": "Médios",
+    "diff_hard": "Pouco conhecidos"
   },
   "design": {
     "master": "Novo design",

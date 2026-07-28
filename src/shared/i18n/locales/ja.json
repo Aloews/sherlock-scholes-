@@ -58,7 +58,13 @@
     "tag_giant": "長身 ≥190",
     "tag_dwarf": "小柄 ≤170",
     "pro_badge": "Pro",
-    "pro_filter_legends": "レジェンド"
+    "pro_filter_legends": "レジェンド",
+    "filter_all_countries": "すべての国",
+    "filter_all_leagues": "すべてのリーグ",
+    "tag_wc2026": "W杯2026",
+    "diff_easy": "有名",
+    "diff_medium": "ふつう",
+    "diff_hard": "無名に近い"
   },
   "design": {
     "master": "新デザイン",

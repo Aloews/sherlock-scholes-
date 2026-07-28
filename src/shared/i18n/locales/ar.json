@@ -62,7 +62,13 @@
     "tag_giant": "عمالقة ≥190",
     "tag_dwarf": "قصار القامة ≤170",
     "pro_badge": "Pro",
-    "pro_filter_legends": "الأساطير"
+    "pro_filter_legends": "الأساطير",
+    "filter_all_countries": "كل الدول",
+    "filter_all_leagues": "كل الدوريات",
+    "tag_wc2026": "كأس العالم 2026",
+    "diff_easy": "مشهورون",
+    "diff_medium": "متوسطون",
+    "diff_hard": "أقل شهرة"
   },
   "design": {
     "master": "التصميم الجديد",

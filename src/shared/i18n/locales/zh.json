@@ -58,7 +58,13 @@
     "tag_giant": "巨人 ≥190",
     "tag_dwarf": "小个子 ≤170",
     "pro_badge": "Pro",
-    "pro_filter_legends": "传奇"
+    "pro_filter_legends": "传奇",
+    "filter_all_countries": "所有国家",
+    "filter_all_leagues": "所有联赛",
+    "tag_wc2026": "2026世界杯",
+    "diff_easy": "知名",
+    "diff_medium": "一般",
+    "diff_hard": "冷门"
   },
   "design": {
     "master": "新设计",
