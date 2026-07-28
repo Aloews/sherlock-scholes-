@@ -33,6 +33,27 @@ means England here; Russia's top flight is its own entry).
 
 `ar` is right-to-left: check that any layout you touch survives it.
 
+## Design system
+
+Two switchable visual languages, `master` (default) and `classic`, selected
+at runtime — see `docs/DESIGN_SYSTEM.md`. Colours are CSS variables in
+`src/index.css`; never hardcode a hex in a component. Selection is expressed
+only by `OptionRow` and `Chip` in `src/shared/ui/`, never by a new
+treatment.
+
+## The deck
+
+One filter object (`DeckFilter`, `src/shared/types/deck.ts`) and one SQL
+predicate (`cards_matching`), with `pick_random_cards` and `count_deck` as
+its only wrappers — so the number under a button and the cards dealt can
+never disagree. Background in `docs/FILTERS_REWORK.md`.
+
+`supabase/migrations/deck_rpc.sql` also carries the **legacy 12-parameter
+`pick_random_cards`**. It is a temporary shim: production calls it
+positionally, and dropping it took the live app down once. Remove it only
+after the new frontend is deployed everywhere; the `DROP` is written out in
+that file.
+
 ## Checks
 
 ```bash
@@ -45,6 +66,3 @@ GitHub Actions in this repo **regularly loses the `pull_request` event**, so
 a push can end up with no check run at all — which reads as "still running",
 not as a failure. After pushing, look at the PR's checks; if only Vercel is
 there, trigger `ci.yml` by `workflow_dispatch`.
-
-Design-system and deck conventions live in `docs/DESIGN_SYSTEM.md` and
-`docs/FILTERS_REWORK.md`.

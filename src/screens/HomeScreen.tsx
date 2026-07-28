@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconQuestionMark, IconVolume, IconVolumeOff,
-  IconCrown, IconLock,
+  IconCrown,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -18,68 +18,15 @@ import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { useProStore } from '@/shared/store/proStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
-import { countDeck, wakeSupabase } from '@/features/game/cardRandomizer';
-import { supabase } from '@/shared/lib/supabase';
-import { countryName } from '@/shared/lib/countryName';
-import { difficultyFloor, recordQuickGameStart, boostCountriesFor } from '@/features/game/onboarding';
+import { wakeSupabase } from '@/features/game/cardRandomizer';
+import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { FRAME_COLOR } from '@/shared/lib/pro';
-import {
-  ALL_CONTINENT_FILTERS,
-  STAR_TAG,
-  type CardCategory,
-  type ContinentFilter,
-} from '@/shared/types/database';
+import { DeckPickerScreen } from './DeckPickerScreen';
+import type { DeckFilter } from '@/shared/types/deck';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
-
-// Variant 2 — a single flat chip picker. Every filter (special tags,
-// continents, non-player categories) is a chip; tap to multi-select. Tags are
-// player-only and override the category/continent group (selecting a tag clears
-// them, mirroring the deck RPC where a tag restricts to those player cards).
-// Pro-only tags (legend, ballon_dor) are locked for free users.
-const NON_PLAYER_CATEGORIES: CardCategory[] = [
-  'club', 'club_nickname', 'stadium', 'coach', 'referee', 'commentator',
-  'term', 'position', 'woman', 'derby', 'trophy', 'era',
-];
-
-type ChipKind = 'tag' | 'continent' | 'category';
-interface Chip {
-  id: string;
-  kind: ChipKind;
-  value: string;            // tag value | continent value | category value
-  pro: boolean;             // pro-only (locked for free users)
-  labelKey?: string;        // i18n key for tag/continent chips
-  cat?: CardCategory;       // set for category chips (label via CATEGORY_LABEL_*)
-}
-
-const TAG_CHIPS: Chip[] = [
-  { id: 'star',       kind: 'tag', value: STAR_TAG,     pro: false, labelKey: 'home.chip_stars' },
-  { id: 'legend',     kind: 'tag', value: 'legend',     pro: true,  labelKey: 'home.pro_filter_legends' },
-  { id: 'ballon_dor', kind: 'tag', value: 'ballon_dor', pro: true,  labelKey: 'home.tag_ballon_dor' },
-  { id: 'goalkeeper', kind: 'tag', value: 'goalkeeper', pro: false, labelKey: 'home.tag_goalkeeper' },
-  { id: 'world_cup',  kind: 'tag', value: 'world_cup',  pro: false, labelKey: 'home.tag_world_cup' },
-  { id: 'wc2026',     kind: 'tag', value: 'wc2026',     pro: false, labelKey: 'home.tag_wc2026' },
-  { id: 'giant',      kind: 'tag', value: 'giant',      pro: false, labelKey: 'home.tag_giant' },
-  { id: 'dwarf',      kind: 'tag', value: 'dwarf',      pro: false, labelKey: 'home.tag_dwarf' },
-];
-const CONTINENT_CHIPS: Chip[] = ALL_CONTINENT_FILTERS.map((c) => ({
-  id: `cont_${c}`, kind: 'continent', value: c, pro: false, labelKey: `home.continent_${c}`,
-}));
-const CATEGORY_CHIPS: Chip[] = NON_PLAYER_CATEGORIES.map((c) => ({
-  id: `cat_${c}`, kind: 'category', value: c, pro: false, cat: c,
-}));
-const CHIPS: Chip[] = [...TAG_CHIPS, ...CONTINENT_CHIPS, ...CATEGORY_CHIPS];
-
-// Recognizability / difficulty of PLAYER cards, by rarity tier (how easy the
-// player is to explain). Each level maps to a set of cards.tier values; the
-// deck filter unions the selected levels. Player-only (mirrors continents).
-const TIER_LEVELS: { id: string; tiers: string[]; labelKey: string }[] = [
-  { id: 'easy',   tiers: ['legendary', 'epic'], labelKey: 'home.diff_easy' },
-  { id: 'medium', tiers: ['rare'],              labelKey: 'home.diff_medium' },
-  { id: 'hard',   tiers: ['common'],            labelKey: 'home.diff_hard' },
-];
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -89,7 +36,7 @@ export function HomeScreen() {
   const isPro = useProStore((s) => s.isPro);
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom, joinRoom } = useRoom();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
   // The landing block has a different layout per design; everything below it
   // (mode select, room settings, chip picker, join) is shared.
@@ -122,30 +69,6 @@ export function HomeScreen() {
   const [code,      setCode]      = useState('');
   const [rounds1v1, setRounds1v1] = useState(3);
 
-  // Chip selection. Default = everything (all continents + all non-player
-  // categories, no tags) so Play works immediately; the user narrows from there.
-  const [selConts, setSelConts] = useState<Set<ContinentFilter>>(new Set(ALL_CONTINENT_FILTERS));
-  const [selCats,  setSelCats]  = useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
-  const [selTags,  setSelTags]  = useState<Set<string>>(new Set());
-  // false until the player touches any chip. The first TAG tap on the pristine
-  // default focuses the deck to just that tag (the old one-tap preset); after
-  // that every group combines freely.
-  const [touched, setTouched] = useState(false);
-
-  const [deckCount,  setDeckCount]  = useState<number | null>(null);
-  // Per-chip standalone counts → grey out empty chips (e.g. "Звёзды" before the
-  // star tag is backfilled). null until the one-time load finishes.
-  const [chipCounts, setChipCounts] = useState<Record<string, number> | null>(null);
-  // Extra deck filters: exact player country (ISO) and league (cards.top_league).
-  // '' = no filter. Options are loaded once from the deck; the league picker
-  // stays hidden until top_league is populated (collection script), so an empty
-  // dataset never shows a dead dropdown.
-  const [selCountry, setSelCountry] = useState('');
-  const [selLeague,  setSelLeague]  = useState('');
-  const [geoOpts, setGeoOpts] = useState<{ countries: string[]; leagues: string[] } | null>(null);
-  // Recognizability levels (tier buckets) chosen for the player pool. Empty = all.
-  const [selDiff, setSelDiff] = useState<Set<string>>(new Set());
-
   const handleJoin = async () => {
     if (code.trim().length !== 6) return;
     await joinRoom(code.trim());
@@ -166,162 +89,32 @@ export function HomeScreen() {
     }
   };
 
-  const getCatLabel = (cat: CardCategory) => t(`category.${cat}`);
-
-  // Every chip group combines freely: tags narrow the PLAYER pool, continents
-  // filter players too, non-player categories add their own cards on top (the
-  // deck is the union — see pickRandomCards). One ergonomic exception: the
-  // first tag tap on the untouched default clears the all-on selection so
-  // "Звёзды" still means just stars in one tap. Pro-only tags bounce free
-  // users to the Pro screen instead of selecting (and never start a game).
-  const toggleTagChip = (chip: Chip) => {
-    if (chip.pro && !isPro) { hapticImpact('light'); navigate('/pro'); return; }
-    hapticImpact('light');
-    if (!touched) {
-      setSelConts(new Set());
-      setSelCats(new Set());
-    }
-    setTouched(true);
-    setSelTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(chip.value)) next.delete(chip.value);
-      else { next.add(chip.value); trackEvent('category_selected', { kind: chip.pro ? 'pro_tag' : 'tag', value: chip.value }); }
-      return next;
-    });
-  };
-
-  const toggleContinentChip = (value: ContinentFilter) => {
-    hapticImpact('light');
-    setTouched(true);
-    setSelConts((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else { next.add(value); trackEvent('category_selected', { kind: 'continent', value }); }
-      return next;
-    });
-  };
-
-  const toggleCategoryChip = (cat: CardCategory) => {
-    hapticImpact('light');
-    setTouched(true);
-    setSelCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else { next.add(cat); trackEvent('category_selected', { kind: 'category', value: cat }); }
-      return next;
-    });
-  };
-
-  // Deck filter derived from the chip selection. The deck is a UNION of two
-  // pools (see pickRandomCards): players — included when any continent OR tag
-  // chip is on, filtered by both — plus every selected non-player category.
-  const tagList = [...selTags];
-  const tagMode = tagList.length > 0;
-  const allContinentsOn = selConts.size === ALL_CONTINENT_FILTERS.length;
-  const playersOn = selConts.size > 0 || tagMode;
-  const everything = !tagMode && allContinentsOn && selCats.size === NON_PLAYER_CATEGORIES.length;
-  const selCategories: CardCategory[] | null = everything
-    ? null
-    : [...(playersOn ? (['player'] as CardCategory[]) : []), ...selCats];
-  const selContinents: ContinentFilter[] | null =
-    playersOn && selConts.size > 0 && !allContinentsOn ? [...selConts] : null;
-  const selMinPageviews = null;
-  const deckTags: string[] | null = tagMode ? tagList : null;
-  const deckCountries: string[] | null = selCountry ? [selCountry] : null;
-  const deckLeagues: string[] | null = selLeague ? [selLeague] : null;
-  // Union of tier codes for the selected recognizability levels; null = all.
-  const deckTiers: string[] | null = selDiff.size
-    ? TIER_LEVELS.filter((l) => selDiff.has(l.id)).flatMap((l) => l.tiers)
-    : null;
-  const nothingSelected = !tagMode && selConts.size === 0 && selCats.size === 0;
-  const selectedCount = selTags.size + selConts.size + selCats.size;
-
-  // One-time per-chip count to grey out empty chips. Each chip is counted in
-  // isolation (its own filter). Errors leave a chip enabled (count -1).
-  useEffect(() => {
-    if (view !== 'create_training' || chipCounts) return;
-    let cancelled = false;
-    Promise.all(CHIPS.map(async (chip) => {
-      let n = -1;
-      try {
-        if (chip.kind === 'tag') n = await countDeck(['player'], null, null, [chip.value]);
-        else if (chip.kind === 'continent') n = await countDeck(['player'], [chip.value as ContinentFilter], null, null);
-        else n = await countDeck([chip.cat as CardCategory], null, null, null);
-      } catch { n = -1; }
-      return [chip.id, n] as const;
-    })).then((entries) => {
-      if (!cancelled) setChipCounts(Object.fromEntries(entries));
-    });
-    return () => { cancelled = true; };
-  }, [view, chipCounts]);
-
-  // Load the country / league option lists once (distinct values in the deck).
-  useEffect(() => {
-    if (view !== 'create_training' || geoOpts) return;
-    let cancelled = false;
-    (async () => {
-      const base = supabase.from('cards').select('country,top_league')
-        .eq('active', true).eq('category', 'player');
-      const { data } = await base;
-      if (cancelled || !data) return;
-      const countries = [...new Set(data.map((r) => r.country).filter(Boolean) as string[])];
-      const leagues = [...new Set(data.map((r) => r.top_league).filter(Boolean) as string[])].sort();
-      setGeoOpts({ countries, leagues });
-    })().catch(() => { if (!cancelled) setGeoOpts({ countries: [], leagues: [] }); });
-    return () => { cancelled = true; };
-  }, [view, geoOpts]);
-
-  // Live "Выбрано: N · M карточек" — debounced count of the current selection.
-  const filterKey = JSON.stringify(
-    { c: selCategories, k: selContinents, p: selMinPageviews, g: deckTags,
-      co: deckCountries, l: deckLeagues, ti: deckTiers });
-  useEffect(() => {
-    if (view !== 'create_training') return;
-    let cancelled = false;
-    setDeckCount(null);
-    const handle = setTimeout(() => {
-      countDeck(selCategories, selContinents, selMinPageviews, deckTags, deckCountries, deckLeagues, deckTiers)
-        .then((n) => { if (!cancelled) setDeckCount(n); })
-        .catch(() => { if (!cancelled) setDeckCount(null); });
-    }, 350);
-    return () => { cancelled = true; clearTimeout(handle); };
-    // selection captured via filterKey (stable).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey, view]);
-
-  const startTraining = () => {
-    hapticImpact('light');
-    // Onboarding difficulty applies ONLY to the broad default quick game (no
-    // chip narrowing). If the player picked a specific category/continent/tag,
-    // they chose it — give the full pool, no easing.
-    const isDefaultGame = everything && !tagMode;
-    const difficulty = isDefaultGame ? difficultyFloor(gamesPlayed) : null;
+  // Quick game: the deck picker is its own screen (DeckPickerScreen). It
+  // owns the filter it builds and hands the finished DeckFilter back here.
+  const startGame = (filter: DeckFilter, presetId: string) => {
     trackEvent('quick_game_start', {
-      preset: deckTags ? 'tags' : (everything ? 'all' : 'custom'),
-      players: playersOn,
-      categories: selCats.size,
-      tags: deckTags?.join(',') ?? '',
-      difficulty: difficulty ?? 0,
+      preset: presetId,
+      players: filter.categories == null || filter.categories.includes('player'),
+      categories: filter.categories?.length ?? 0,
+      tags: filter.tags?.join(',') ?? '',
+      fame_min: filter.fame_min ?? 0,
       games: gamesPlayed,
     });
     void recordQuickGameStart(); // increment AFTER reading the floor for this game
-    navigate('/training', {
-      state: {
-        categories: selCategories,
-        continents: selContinents,
-        minPageviews: selMinPageviews,
-        tags: deckTags,
-        difficulty,
-        // Local heroes pass a reduced onboarding floor; commentators follow
-        // the interface language (see pick_random_cards locale params).
-        boostCountries: difficulty != null ? boostCountriesFor(i18n.language) : null,
-        lang: i18n.language.slice(0, 2),
-        countries: deckCountries,
-        leagues: deckLeagues,
-        tiers: deckTiers,
-      },
-    });
+    navigate('/training', { state: { filter } });
   };
+
+  if (view === 'create_training') {
+    return (
+      <DeckPickerScreen
+        isPro={isPro}
+        gamesPlayed={gamesPlayed}
+        onClose={() => setView('home')}
+        onNeedPro={() => navigate('/pro')}
+        onStart={startGame}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -566,126 +359,7 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* ── Quick game: chip picker (Variant 2) ── */}
-        {view === 'create_training' && (
-          <div className="w-full max-w-sm space-y-4 animate-slide-up">
-            <div className="flex flex-wrap gap-2">
-              {CHIPS.map((chip) => {
-                const empty = !!chipCounts && (chipCounts[chip.id] ?? 0) === 0;
-                const locked = chip.pro && !isPro;
-                const active =
-                  chip.kind === 'tag'       ? selTags.has(chip.value)
-                  : chip.kind === 'continent' ? selConts.has(chip.value as ContinentFilter)
-                  : selCats.has(chip.cat as CardCategory);
-                const label = chip.cat ? getCatLabel(chip.cat) : t(chip.labelKey as string);
-                // Empty chips grey out (no "звёзды 0"); a pro-locked chip stays
-                // tappable so free users can reach the Pro screen.
-                const disabled = empty && !locked;
-                const handleClick = () => {
-                  if (disabled) return;
-                  if (chip.kind === 'tag') toggleTagChip(chip);
-                  else if (chip.kind === 'continent') toggleContinentChip(chip.value as ContinentFilter);
-                  else toggleCategoryChip(chip.cat as CardCategory);
-                };
-                return (
-                  <button
-                    key={chip.id}
-                    disabled={disabled}
-                    onClick={handleClick}
-                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium border transition-colors ${
-                      active
-                        ? 'border-transparent text-white'
-                        : 'border-brand-border bg-brand-border/40 text-brand-muted hover:text-white'
-                    } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    style={active ? { backgroundColor: 'rgb(var(--brand-accent))' } : undefined}
-                  >
-                    {locked && <IconLock size={11} stroke={2.5} style={{ color: '#FFD24A' }} />}
-                    <span className="truncate">{label}</span>
-                    {chip.pro && !locked && <span style={{ color: '#FFD24A' }}>★</span>}
-                  </button>
-                );
-              })}
-            </div>
 
-            {/* Recognizability / difficulty of players (rarity-tier buckets):
-                Известные / Средние / Малоизвестные. Multi-select; empty = all. */}
-            <div className="flex flex-wrap gap-1.5">
-              {TIER_LEVELS.map((lvl) => {
-                const on = selDiff.has(lvl.id);
-                return (
-                  <button
-                    key={lvl.id}
-                    type="button"
-                    onClick={() => {
-                      hapticImpact('light');
-                      setTouched(true);
-                      setSelDiff((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(lvl.id)) next.delete(lvl.id); else next.add(lvl.id);
-                        return next;
-                      });
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                      on
-                        ? 'bg-brand-accent/20 text-white border-brand-accent'
-                        : 'bg-brand-surface text-brand-muted border-brand-border'}`}
-                  >
-                    {t(lvl.labelKey)}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Extra deck filters: exact country / league (players only). The
-                league dropdown appears only once cards.top_league is populated. */}
-            {geoOpts && (geoOpts.countries.length > 0 || geoOpts.leagues.length > 0) && (
-              <div className="flex flex-col gap-2">
-                {geoOpts.countries.length > 0 && (
-                  <select
-                    value={selCountry}
-                    onChange={(e) => { hapticImpact('light'); setSelCountry(e.target.value); }}
-                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-accent"
-                  >
-                    <option value="">{t('home.filter_all_countries')}</option>
-                    {geoOpts.countries
-                      .map((iso) => ({ iso, name: countryName(iso, i18n.language) || iso }))
-                      .sort((a, b) => a.name.localeCompare(b.name, i18n.language))
-                      .map(({ iso, name }) => <option key={iso} value={iso}>{name}</option>)}
-                  </select>
-                )}
-                {geoOpts.leagues.length > 0 && (
-                  <select
-                    value={selLeague}
-                    onChange={(e) => { hapticImpact('light'); setSelLeague(e.target.value); }}
-                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-accent"
-                  >
-                    <option value="">{t('home.filter_all_leagues')}</option>
-                    {geoOpts.leagues.map((lg) => <option key={lg} value={lg}>{lg}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
-
-            {/* Live counter: selected chips · matching cards */}
-            <p className="text-center text-sm text-brand-muted">
-              {deckCount === null
-                ? t('home.counting')
-                : t('home.selected_chips', { n: selectedCount, m: deckCount })}
-            </p>
-
-            <Button
-              fullWidth
-              size="lg"
-              disabled={nothingSelected || deckCount === 0}
-              onClick={startTraining}
-            >
-              {t('home.create_room')}
-            </Button>
-            <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('home'); }}>
-              {t('home.back')}
-            </Button>
-          </div>
-        )}
 
         {/* ── Join ── */}
         {view === 'join' && (

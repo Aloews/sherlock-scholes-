@@ -87,12 +87,15 @@ Button.tsx        the primary action
 footer stay put, so the title and the primary action are always where the
 player left them. It sizes itself with `--tabbar-h`, so a footer never ends
 up underneath the master design's fixed tab bar — where taps land on the tab
-instead of the button.
+instead of the button. The deck picker used to live inside HomeScreen's
+hero, which is how its options ended up under the fold with the Play button
+below them, off screen on a phone.
 
 **A row that toggles ends in a check circle. A row that acts ends in a
 chevron.** That check circle is the app's only "this is on" signal — a
 screen that needs to show selection uses `OptionRow` or `Chip` rather than
-inventing a new treatment.
+inventing a fifth treatment. The picker had four before it was reworked:
+filled chips, outlined chips, bordered cards and bare selects.
 
 **Chips tint, they don't fill.** A group with a dozen chips on by default
 would otherwise be a block of accent, and the accent belongs to the primary
@@ -102,7 +105,7 @@ action alone.
 short choices → `Chip`. More options than fit on a screen → `SelectRow`. A
 whole flow → the frame.
 
-Nothing is built on this yet — the components land first, screens move onto
-them one at a time. The app still has ~49 raw `<button>` against 20
-`<Button>`, and the "surface card" pattern written out inline about 40
-times.
+So far only `DeckPickerScreen` and `TrainingScreen` are built on this.
+Bringing the rest over — `EndScreen`, `ProScreen`, lobby and game, tutorial,
+`AdminScreen` last — is open work: the app still has ~49 raw `<button>`
+against 20 `<Button>`.
