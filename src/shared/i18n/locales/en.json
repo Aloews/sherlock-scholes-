@@ -74,7 +74,8 @@
   "tabs": {
     "home": "Home",
     "collection": "Cards",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Profile"
   },
   "collection": {
     "title": "Collection",
@@ -89,6 +90,18 @@
     "pro_title": "Collection is a Pro feature",
     "pro_body": "The full catalog of 2000+ cards with rarities and search is part of Sherlock Pro.",
     "pro_cta": "Get Pro"
+  },
+  "profile": {
+    "title": "Profile",
+    "level": "Level {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP to next level"
+  },
+  "level": {
+    "title_1": "Rookie",
+    "title_5": "Detective",
+    "title_10": "Detective Inspector",
+    "title_15": "Senior Inspector",
+    "title_20": "Legendary Sleuth"
   },
   "pro": {
     "title": "Sherlock Pro",

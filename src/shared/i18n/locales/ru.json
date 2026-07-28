@@ -76,7 +76,8 @@
   "tabs": {
     "home": "Главная",
     "collection": "Карты",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Профиль"
   },
   "collection": {
     "title": "Коллекция",
@@ -91,6 +92,18 @@
     "pro_title": "Коллекция — для Pro",
     "pro_body": "Полный каталог из более чем 2000 карточек с редкостями и поиском доступен в Sherlock Pro.",
     "pro_cta": "Открыть Pro"
+  },
+  "profile": {
+    "title": "Профиль",
+    "level": "Уровень {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP до следующего уровня"
+  },
+  "level": {
+    "title_1": "Стажёр",
+    "title_5": "Детектив",
+    "title_10": "Детектив-инспектор",
+    "title_15": "Старший инспектор",
+    "title_20": "Легендарный сыщик"
   },
   "pro": {
     "title": "Sherlock Pro",

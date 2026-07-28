@@ -67,7 +67,8 @@
   "tabs": {
     "home": "홈",
     "collection": "카드",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "프로필"
   },
   "collection": {
     "title": "컬렉션",
@@ -82,6 +83,18 @@
     "pro_title": "컬렉션은 Pro 기능입니다",
     "pro_body": "희귀도와 검색이 포함된 2000장 이상의 전체 카탈로그는 Sherlock Pro에 포함됩니다.",
     "pro_cta": "Pro 받기"
+  },
+  "profile": {
+    "title": "프로필",
+    "level": "레벨 {{n}}",
+    "xp_progress": "다음 레벨까지 {{into}} / {{total}} XP"
+  },
+  "level": {
+    "title_1": "수습생",
+    "title_5": "탐정",
+    "title_10": "수사관",
+    "title_15": "수석 수사관",
+    "title_20": "전설의 명탐정"
   },
   "pro": {
     "title": "Sherlock Pro",

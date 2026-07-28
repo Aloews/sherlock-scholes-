@@ -71,7 +71,8 @@
   "tabs": {
     "home": "الرئيسية",
     "collection": "البطاقات",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "الملف الشخصي"
   },
   "collection": {
     "title": "المجموعة",
@@ -86,6 +87,18 @@
     "pro_title": "المجموعة ميزة Pro",
     "pro_body": "الفهرس الكامل لأكثر من 2000 بطاقة مع درجات الندرة والبحث جزء من Sherlock Pro.",
     "pro_cta": "احصل على Pro"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "level": "المستوى {{n}}",
+    "xp_progress": "{{into}} / {{total}} نقطة خبرة للمستوى التالي"
+  },
+  "level": {
+    "title_1": "مبتدئ",
+    "title_5": "محقق",
+    "title_10": "مفتش محقق",
+    "title_15": "مفتش أول",
+    "title_20": "محقق أسطوري"
   },
   "pro": {
     "title": "Sherlock Pro",

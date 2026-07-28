@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  IconUsersGroup, IconUser, IconQuestionMark, IconVolume, IconVolumeOff,
+  IconUsersGroup, IconUser, IconUserCircle, IconQuestionMark, IconVolume, IconVolumeOff,
   IconCrown, IconLock,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
@@ -360,6 +360,15 @@ export function HomeScreen() {
           >
             <IconCrown size={16} stroke={2} className={isPro ? '' : 'text-brand-muted'} />
           </button>
+          {player && (
+            <button
+              onClick={() => { hapticImpact('light'); navigate('/profile'); }}
+              aria-label={t('profile.title')}
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
+            >
+              <IconUserCircle size={18} stroke={1.5} />
+            </button>
+          )}
         </div>
         {player && (
           <span

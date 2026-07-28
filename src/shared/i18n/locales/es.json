@@ -68,7 +68,8 @@
   "tabs": {
     "home": "Inicio",
     "collection": "Cartas",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Perfil"
   },
   "collection": {
     "title": "Colección",
@@ -83,6 +84,18 @@
     "pro_title": "La colección es de Pro",
     "pro_body": "El catálogo completo de más de 2000 cartas con rarezas y búsqueda es parte de Sherlock Pro.",
     "pro_cta": "Obtener Pro"
+  },
+  "profile": {
+    "title": "Perfil",
+    "level": "Nivel {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP para el siguiente nivel"
+  },
+  "level": {
+    "title_1": "Novato",
+    "title_5": "Detective",
+    "title_10": "Inspector detective",
+    "title_15": "Inspector jefe",
+    "title_20": "Sabueso legendario"
   },
   "pro": {
     "title": "Sherlock Pro",

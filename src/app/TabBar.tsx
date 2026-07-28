@@ -1,21 +1,23 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IconHome2, IconCards, IconCrown } from '@tabler/icons-react';
+import { IconHome2, IconCards, IconUser, IconCrown } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 // Bottom tab navigation — part of the master design's app shell (the classic
 // design has no tab bar and navigates from Home). Translucent over the page
 // with a blur, matching the prototype.
 //
-// Only routes that actually exist are tabs. The prototype also has Рейтинг and
-// Профиль; those need tables the schema doesn't have — see
-// docs/PROGRESSION_FEATURES_HANDOFF.md. Add them here when they land.
+// Only routes that actually exist are tabs. The prototype also has Рейтинг
+// (leaderboard); it lands in a later phase of
+// docs/PROGRESSION_FEATURES_HANDOFF.md, ahead of Профиль to match the
+// prototype's nav order (Главная · Карты · Рейтинг · Профиль).
 
-export const TAB_ROUTES = ['/', '/collection', '/pro'] as const;
+export const TAB_ROUTES = ['/', '/collection', '/profile', '/pro'] as const;
 
 const TABS = [
   { to: '/',           icon: IconHome2, labelKey: 'tabs.home' },
   { to: '/collection', icon: IconCards, labelKey: 'tabs.collection' },
+  { to: '/profile',    icon: IconUser,  labelKey: 'tabs.profile' },
   { to: '/pro',        icon: IconCrown, labelKey: 'tabs.pro' },
 ] as const;
 
