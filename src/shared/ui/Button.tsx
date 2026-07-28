@@ -2,7 +2,7 @@ import { type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'surface' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,6 +20,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variants: Record<Variant, string> = {
   primary:   'ds-btn-primary hover:opacity-90',
   secondary: 'bg-transparent border border-brand-border text-white hover:bg-brand-surface font-medium',
+  // Filled, borderless — the second action on a play surface, where an
+  // outlined button would read as a form control (Skip beside Guessed).
+  // Rides brand-surface, so it retints with the design like the rest.
+  surface:   'bg-brand-surface hover:opacity-90 text-white font-medium',
   ghost:     'bg-transparent text-brand-muted hover:text-white border border-transparent font-medium',
   danger:    'bg-red-500 hover:bg-red-600 text-white font-medium',
 };
