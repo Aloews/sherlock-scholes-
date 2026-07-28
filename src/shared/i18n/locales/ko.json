@@ -58,7 +58,13 @@
     "tag_giant": "장신 ≥190",
     "tag_dwarf": "단신 ≤170",
     "pro_badge": "Pro",
-    "pro_filter_legends": "레전드"
+    "pro_filter_legends": "레전드",
+    "filter_all_countries": "모든 국가",
+    "filter_all_leagues": "모든 리그",
+    "tag_wc2026": "월드컵 2026",
+    "diff_easy": "유명",
+    "diff_medium": "보통",
+    "diff_hard": "덜 알려짐"
   },
   "design": {
     "master": "새 디자인",
