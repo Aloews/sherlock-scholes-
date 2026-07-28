@@ -7,27 +7,28 @@
 // time — filled chips, outlined chips, bordered cards and two native
 // selects, four ways of saying "this one is selected".
 //
-// So the layout is fixed and the vocabulary is one:
+// The layout and the control vocabulary now live in shared/ui — this
+// screen only arranges them:
 //
-//   header   back · title · step bar — never scrolls
-//   body     the only scrolling region
-//   footer   deck size + the single primary action — never scrolls
-//
-//   OptionRow  one row = one choice: icon, label, description, count,
-//              and the SAME check mark everywhere it is selected
-//   PickChip   one chip = one toggle, for dense multi-selects
-//   SelectRow  a native <select> wearing the OptionRow's clothes, so the
-//              country list doesn't look like a leftover from a form
+//   ScreenFrame/Header/Body/StickyFooter  three parts, one of them scrolls
+//   OptionRow  one row = one choice; a check circle when it toggles,
+//              a chevron when it acts
+//   Chip       one toggle, for dense sets
+//   SelectRow  a native <select> dressed as an OptionRow
 //
 // State lives here rather than in HomeScreen: the picker owns the filter
 // it builds and hands the finished DeckFilter back through onStart.
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  IconArrowLeft, IconCheck, IconLock, IconChevronDown, IconChevronRight,
-} from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
+import { OptionRow } from '@/shared/ui/OptionRow';
+import { Chip } from '@/shared/ui/Chip';
+import { SelectRow } from '@/shared/ui/SelectRow';
+import { Section } from '@/shared/ui/Section';
+import {
+  ScreenFrame, ScreenHeader, ScreenBody, StickyFooter, StepBar,
+} from '@/shared/ui/ScreenFrame';
 import { countCards } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
@@ -40,7 +41,6 @@ import {
   FAME_LEVELS, FAME_MIN, NON_PLAYER_CATEGORIES, normalizeFilter,
   type DeckFilter, type DeckPreset, type FameLevel,
 } from '@/shared/types/deck';
-import { ACCENT, PRO } from '@/shared/ui/palette';
 
 type Step = 'presets' | 'who' | 'fame' | 'refine';
 const BUILD_STEPS: Step[] = ['who', 'fame', 'refine'];
@@ -51,132 +51,6 @@ interface Props {
   onClose: () => void;
   onNeedPro: () => void;
   onStart: (filter: DeckFilter, presetId: string) => void;
-}
-
-// ─── Building blocks ─────────────────────────────────────────────────
-
-/** One row = one choice. A row that TOGGLES something ends in a check
- *  circle — the only "this is on" signal on the screen. A row that ACTS
- *  (a preset starts the game) ends in a chevron instead, so the presets
- *  don't read as a list of unticked checkboxes. */
-function OptionRow({
-  title, description, leading, count, selected, locked, disabled, action, onClick,
-}: {
-  title: ReactNode;
-  description?: string;
-  leading?: ReactNode;
-  count?: number | null;
-  selected?: boolean;
-  locked?: boolean;
-  disabled?: boolean;
-  action?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`w-full text-left rounded-2xl border p-3.5 flex items-center gap-3 transition-colors ${
-        selected ? 'border-brand-accent bg-brand-accent/10' : 'border-brand-border bg-brand-surface'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'active:bg-brand-border/40'}`}
-    >
-      {leading && (
-        <span className="w-10 h-10 rounded-xl bg-brand-border/60 flex items-center justify-center text-xl flex-shrink-0">
-          {leading}
-        </span>
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="text-white font-semibold truncate">{title}</span>
-          {locked && <IconLock size={13} stroke={2.5} style={{ color: PRO }} />}
-        </span>
-        {description && (
-          <span className="block text-brand-muted text-xs mt-0.5 leading-snug">{description}</span>
-        )}
-      </span>
-      {count != null && count >= 0 && (
-        <span className="text-brand-muted/70 text-xs tabular-nums flex-shrink-0">{count}</span>
-      )}
-      {action ? (
-        <IconChevronRight size={18} stroke={2} className="text-brand-muted flex-shrink-0" />
-      ) : (
-        <span
-          className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
-            selected ? 'border-transparent' : 'border-brand-border'
-          }`}
-          style={selected ? { backgroundColor: ACCENT } : undefined}
-        >
-          {selected && <IconCheck size={13} stroke={3} className="text-brand-bg" />}
-        </span>
-      )}
-    </button>
-  );
-}
-
-/** One toggle, for dense sets (categories, continents, traits). */
-function PickChip({
-  label, selected, locked, onClick,
-}: { label: string; selected: boolean; locked?: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
-        selected
-          ? 'border-brand-accent bg-brand-accent/15 text-white'
-          : 'border-brand-border bg-brand-surface text-brand-muted active:text-white'
-      }`}
-    >
-      {locked && <IconLock size={11} stroke={2.5} style={{ color: PRO }} />}
-      {label}
-    </button>
-  );
-}
-
-/** A native select dressed as an OptionRow — same height, same radius,
- *  same border, so the country list doesn't read as a stray form field. */
-function SelectRow({
-  label, value, onChange, options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  const active = value !== '';
-  return (
-    <div
-      className={`relative rounded-2xl border ${
-        active ? 'border-brand-accent bg-brand-accent/10' : 'border-brand-border bg-brand-surface'
-      }`}
-    >
-      <select
-        value={value}
-        onChange={(e) => { hapticImpact('light'); onChange(e.target.value); }}
-        className="w-full h-[52px] bg-transparent pl-3.5 pr-10 text-sm text-white appearance-none focus:outline-none"
-      >
-        <option value="">{label}</option>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <IconChevronDown
-        size={16} stroke={2}
-        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted pointer-events-none"
-      />
-    </div>
-  );
-}
-
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <section className="space-y-3">
-      <div className="space-y-1">
-        <h2 className="text-white text-lg font-bold leading-tight">{title}</h2>
-        {hint && <p className="text-brand-muted text-xs leading-snug">{hint}</p>}
-      </div>
-      {children}
-    </section>
-  );
 }
 
 // ─── The screen ──────────────────────────────────────────────────────
@@ -370,46 +244,27 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   const onPresets = step === 'presets';
 
   return (
-    <div className="min-h-screen h-screen bg-brand-bg flex flex-col">
-      {/* Header — fixed. A back arrow, the title, and the step bar. */}
-      <header className="flex-shrink-0 px-4 pt-8 pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goBack}
-            aria-label={t('home.back')}
-            className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl text-brand-muted active:text-white"
-          >
-            <IconArrowLeft size={20} stroke={2} />
+    <ScreenFrame>
+      <ScreenHeader
+        title={onPresets ? t('home.mode_training_title') : t('home.build_own')}
+        onBack={goBack}
+        backLabel={t('home.back')}
+        action={!onPresets && (
+          <button onClick={reset} className="text-brand-muted text-xs px-2 py-1 active:text-white">
+            {t('home.reset')}
           </button>
-          <h1 className="text-white font-bold flex-1 truncate">
-            {onPresets ? t('home.mode_training_title') : t('home.build_own')}
-          </h1>
-          {!onPresets && (
-            <button
-              onClick={reset}
-              className="text-brand-muted text-xs px-2 py-1 active:text-white"
-            >
-              {t('home.reset')}
-            </button>
-          )}
-        </div>
-
-        {!onPresets && (
-          <div className="flex gap-1.5 mt-3" aria-label={t('home.step_of', { n: stepIndex + 1, total: steps.length })}>
-            {steps.map((s, i) => (
-              <span
-                key={s}
-                className={`h-1 flex-1 rounded-full transition-colors ${
-                  i <= stepIndex ? 'bg-brand-accent' : 'bg-brand-border'
-                }`}
-              />
-            ))}
-          </div>
         )}
-      </header>
+      >
+        {!onPresets && (
+          <StepBar
+            total={steps.length}
+            current={stepIndex}
+            label={t('home.step_of', { n: stepIndex + 1, total: steps.length })}
+          />
+        )}
+      </ScreenHeader>
 
-      {/* Body — the only scrolling region. */}
-      <main className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-6">
+      <ScreenBody>
         {onPresets && (
           <Section title={t('home.picker_title')}>
             <div className="space-y-2">
@@ -463,7 +318,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                   </button>
                   <div className="flex flex-wrap gap-1.5">
                     {group.categories.map((cat) => (
-                      <PickChip
+                      <Chip
                         key={cat}
                         label={t(`category.${cat}`)}
                         selected={selCats.has(cat)}
@@ -505,7 +360,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                 <p className="text-brand-muted text-xs">{t('home.refine_continent')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {ALL_CONTINENT_FILTERS.map((cont) => (
-                    <PickChip
+                    <Chip
                       key={cont}
                       label={t(`home.continent_${cont}`)}
                       selected={selConts.has(cont)}
@@ -520,7 +375,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
               <p className="text-brand-muted text-xs">{t('home.refine_traits')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {DECK_TRAITS.map((trait) => (
-                  <PickChip
+                  <Chip
                     key={trait.tag}
                     label={t(trait.labelKey)}
                     selected={selTraits.has(trait.tag)}
@@ -553,11 +408,11 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
             </section>
           </>
         )}
-      </main>
+      </ScreenBody>
 
-      {/* Footer — fixed. The deck size and the one action, always reachable. */}
+      {/* The deck size and the one action, always reachable. */}
       {!onPresets && (
-        <footer className="flex-shrink-0 px-4 pt-3 pb-6 border-t border-brand-border bg-brand-surface/40 backdrop-blur space-y-3">
+        <StickyFooter>
           <p className="text-center text-sm text-brand-muted" aria-live="polite">
             {nothingSelected
               ? t('home.pick_something')
@@ -573,16 +428,16 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
           >
             {isLastStep ? t('home.play') : t('home.next')}
           </Button>
-        </footer>
+        </StickyFooter>
       )}
 
       {onPresets && (
-        <footer className="flex-shrink-0 px-4 pt-3 pb-6 border-t border-brand-border bg-brand-surface/40 backdrop-blur">
+        <StickyFooter>
           <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setStep('who'); }}>
             {t('home.build_own')}
           </Button>
-        </footer>
+        </StickyFooter>
       )}
-    </div>
+    </ScreenFrame>
   );
 }

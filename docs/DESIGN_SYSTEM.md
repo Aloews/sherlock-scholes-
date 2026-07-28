@@ -1,10 +1,9 @@
-# Design system — the colour layer
+# Design system
 
-This is step one of a design system, and it is deliberately only the colour
-layer: tokens and the rules for using them. The component vocabulary
-(`OptionRow`, `PickChip`, `SelectRow`, the screen frame) still lives inside
-`src/screens/DeckPickerScreen.tsx` and has not been extracted yet — see
-"What is still missing" at the bottom.
+Two layers so far: the colours, and the controls. Both are real — every
+screen can use them — but only the deck picker has been built on them yet.
+Bringing the rest of the app over is the work that remains; see "What is
+still missing".
 
 ## Where colours live
 
@@ -59,14 +58,46 @@ Three deliberate colour changes came out of the merge:
 Everything else is byte-identical — verified by screenshotting the app
 before and after.
 
+## The controls
+
+```
+src/shared/ui/ScreenFrame.tsx   ScreenFrame · ScreenHeader · ScreenBody
+                                StickyFooter · StepBar
+src/shared/ui/OptionRow.tsx     one row = one choice
+src/shared/ui/Chip.tsx          one chip = one toggle
+src/shared/ui/SelectRow.tsx     a native <select> in OptionRow's clothes
+src/shared/ui/Section.tsx       heading + hint + content
+src/shared/ui/Button.tsx        the primary action
+```
+
+**The frame has three parts and only the middle one scrolls.** Header and
+footer stay put, so the title and the primary action are always where the
+player left them. The picker used to live inside HomeScreen's hero, which
+is how its options ended up under the fold with the Play button below
+them, off screen on a phone.
+
+**A row that toggles ends in a check circle. A row that acts ends in a
+chevron.** That check circle is the app's only "this is on" signal — if a
+screen needs to show selection, it uses `OptionRow` or `Chip`, it does not
+invent a fifth treatment. Before the picker rework there were four:
+filled chips, outlined chips, bordered cards and bare selects.
+
+**Chips tint, they don't fill.** A group with a dozen chips on by default
+would otherwise be a block of orange, and the accent belongs to the
+primary action alone.
+
+**When to use which.** One choice with an explanation → `OptionRow`. Many
+short choices → `Chip`. More options than fit on a screen → `SelectRow`.
+A whole flow → the frame.
+
 ## What is still missing
 
-* **The component vocabulary.** 49 raw `<button>` across the screens
-  against 20 `<Button>`, and the "surface card" pattern
-  (`bg-brand-surface` + `border-brand-border` + rounded) is written out
-  inline about 40 times. That is the next step: lift the picker's
-  vocabulary into `shared/ui` and apply it screen by screen, heaviest
-  traffic first (`TrainingScreen`).
+* **The other screens.** 49 raw `<button>` against 20 `<Button>`, and the
+  "surface card" pattern written out inline about 40 times. Next:
+  `TrainingScreen` (26 hex literals and 13 raw buttons before the token
+  pass, and the screen players spend almost all their time in), then
+  `EndScreen`, `ProScreen`, lobby and game, tutorial; `AdminScreen` last,
+  since only the owner sees it.
 * **Type and spacing scales.** Sizes are still chosen per screen.
-* **One "selected" state.** The picker has one; the rest of the app has
-  not been brought onto it yet.
+* **States other than "selected".** Loading, empty and error are still
+  written by hand each time.
