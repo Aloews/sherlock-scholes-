@@ -61,6 +61,13 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_pageviews_i18n.py --limit 600
 
+      # cards.fame is a PERCENTILE, so the pageviews_i18n step just above moves
+      # the scale it's computed from — recompute it (and the tier/'legend' tag
+      # derived from it) again here, after the last thing that changes it.
+      - name: Refresh card fame (after pageviews_i18n)
+        if: always()
+        run: python docs/cards_fame_refresh.py
+
       # Русские имена клубов для career_stats (и латинские для legend_career):
       # summary-экран показывает названия на языке интерфейса. Резолвы
       # кешируются, поэтому после первой ночи шаг почти мгновенный.
