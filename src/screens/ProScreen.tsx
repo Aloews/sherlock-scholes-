@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  IconArrowLeft, IconStar, IconCheck, IconCrown, IconLock,
+  IconStar, IconCheck, IconCrown, IconLock,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
+import { Chip } from '@/shared/ui/Chip';
+import { ScreenFrame, ScreenHeader } from '@/shared/ui/ScreenFrame';
 import { useProStore } from '@/shared/store/proStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import {
@@ -63,18 +65,12 @@ export function ProScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 pt-8">
-        <button
-          onClick={() => { hapticImpact('light'); navigate(-1); }}
-          aria-label={t('pro.back')}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white transition-colors"
-        >
-          <IconArrowLeft size={18} stroke={2} />
-        </button>
-        <span className="text-white font-bold">{t('pro.title')}</span>
-      </div>
+    <ScreenFrame>
+      <ScreenHeader
+        title={t('pro.title')}
+        onBack={() => { hapticImpact('light'); navigate(-1); }}
+        backLabel={t('pro.back')}
+      />
 
       <div className="flex-1 px-6 pb-8 flex flex-col items-center">
         {/* Hero */}
@@ -90,7 +86,7 @@ export function ProScreen() {
         </div>
 
         {/* Benefits */}
-        <div className="w-full max-w-sm bg-brand-surface rounded-2xl border border-brand-border p-4 space-y-3">
+        <div className="ds-panel w-full max-w-sm bg-brand-surface rounded-2xl border border-brand-border p-4 space-y-3">
           <p className="text-brand-muted text-xs uppercase tracking-wider">
             {t('pro.benefits_title')}
           </p>
@@ -122,7 +118,7 @@ export function ProScreen() {
               {buying ? t('pro.buying') : t('pro.buy', { stars: PRO_PRICE_STARS })}
             </Button>
             {error && (
-              <div className="bg-brand-surface border border-brand-border rounded-2xl p-3 text-center animate-fade-in">
+              <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 text-center animate-fade-in">
                 <p className="text-brand-muted text-sm">{t('pro.buy_error')}</p>
               </div>
             )}
@@ -137,25 +133,23 @@ export function ProScreen() {
             </p>
             {!isPro && <IconLock size={13} stroke={2} className="text-brand-muted" />}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-wrap gap-2">
             {PRO_FRAMES.map((frame) => {
               const color = FRAME_COLOR[frame];
-              const selected = proFrame === frame;
               return (
-                <button
+                <Chip
                   key={frame}
+                  label={t(`pro.frame_${frame}`)}
+                  selected={proFrame === frame}
                   disabled={!isPro}
+                  swatch={
+                    <span
+                      className="block w-3.5 h-3.5 rounded-full bg-brand-border flex-shrink-0"
+                      style={color ? { boxShadow: `0 0 0 2px ${color}` } : undefined}
+                    />
+                  }
                   onClick={() => { hapticImpact('light'); setProFrame(frame); }}
-                  className={`rounded-xl py-3 px-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    selected ? 'border-brand-accent text-white' : 'border-brand-border text-brand-muted'
-                  }`}
-                >
-                  <span
-                    className="block w-6 h-6 rounded-full mx-auto mb-1.5 bg-brand-border"
-                    style={color ? { boxShadow: `0 0 0 2px ${color}` } : undefined}
-                  />
-                  {t(`pro.frame_${frame}`)}
-                </button>
+                />
               );
             })}
           </div>
@@ -164,6 +158,6 @@ export function ProScreen() {
           )}
         </div>
       </div>
-    </div>
+    </ScreenFrame>
   );
 }
