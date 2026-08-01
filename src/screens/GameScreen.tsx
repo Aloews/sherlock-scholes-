@@ -232,7 +232,7 @@ export function GameScreen() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <div className="rounded-2xl bg-brand-surface border border-brand-border p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
+                  <div className="ds-panel rounded-2xl bg-brand-surface border border-brand-border p-8 text-center min-h-[260px] flex flex-col items-center justify-center gap-3">
                     <div className="text-5xl">✅</div>
                     <p className="text-brand-accent font-semibold text-lg">{t('game.all_cards_done')}</p>
                     <p className="text-brand-muted text-sm">{t('game.waiting_timer')}</p>
@@ -263,7 +263,7 @@ export function GameScreen() {
                 <div className="text-6xl">👂</div>
                 <p className="text-white text-3xl font-bold">{t('game.listening')}</p>
 
-                <div className="bg-brand-surface border border-brand-border rounded-2xl px-8 py-4">
+                <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-8 py-4">
                   <p className="text-brand-accent font-black text-5xl">{correctCount}</p>
                   <p className="text-brand-muted text-xs mt-1">
                     {t('game.opponent_progress', { n: correctCount })}
@@ -290,7 +290,7 @@ export function GameScreen() {
                     <div className="text-6xl">👂</div>
                     <p className="text-white text-xl font-bold">{t('game.your_team_explaining')}</p>
                     <p className="text-brand-muted">{t('game.listen_and_guess')}</p>
-                    <div className="bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
+                    <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
                       <p className="text-brand-accent font-black text-4xl">{correctCount}</p>
                       <p className="text-brand-muted text-xs">{t('game.guessed_count')}</p>
                     </div>
@@ -304,7 +304,7 @@ export function GameScreen() {
                       </p>
                       <p className="text-brand-muted text-sm mt-1">{t('game.wait_your_turn')}</p>
                     </div>
-                    <div className="bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
+                    <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
                       <p className="text-blue-400 font-black text-4xl">{correctCount}</p>
                       <p className="text-brand-muted text-xs">{t('game.their_round_points')}</p>
                     </div>

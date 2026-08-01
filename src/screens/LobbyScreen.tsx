@@ -74,7 +74,7 @@ export function LobbyScreen() {
         {!isTeamMode && (
           <div className="space-y-3">
             {/* Host slot */}
-            <div className="bg-brand-surface rounded-2xl border border-brand-border p-4 flex items-center gap-3">
+            <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-4 flex items-center gap-3">
               {hostPlayer ? (
                 <>
                   <Avatar
@@ -99,7 +99,7 @@ export function LobbyScreen() {
 
             {/* Slot 2 */}
             {player2 ? (
-              <div className="bg-brand-surface rounded-2xl border border-brand-border p-4 flex items-center gap-3">
+              <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-4 flex items-center gap-3">
                 <Avatar
                   name={player2.player?.first_name ?? '?'}
                   src={player2.player?.avatar_url}
@@ -197,7 +197,7 @@ export function LobbyScreen() {
 
             {/* Unassigned players */}
             {unassigned.length > 0 && (
-              <div className="bg-brand-surface rounded-2xl border border-brand-border p-4">
+              <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-4">
                 <p className="text-brand-muted text-sm mb-3">{t('lobby.not_assigned')}</p>
                 <div className="flex flex-wrap gap-2">
                   {unassigned.map((rp) => (

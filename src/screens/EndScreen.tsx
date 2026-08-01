@@ -253,7 +253,7 @@ export function EndScreen() {
           </p>
           <div className="space-y-2">
             {allRoundsData.map(({ team, rounds }) => (
-              <div key={team.id} className="bg-brand-surface rounded-2xl border border-brand-border p-4">
+              <div key={team.id} className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
                   <span className="font-semibold text-white">{team.name}</span>
@@ -288,7 +288,7 @@ export function EndScreen() {
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}>
           <p className="text-brand-muted text-sm uppercase tracking-wider mb-3">{t('end.players')}</p>
-          <div className="bg-brand-surface rounded-2xl border border-brand-border p-4">
+          <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border p-4">
             <div className="flex flex-wrap gap-2">
               {roomPlayers.map((rp) => {
                 const team = teams.find((tm) => tm.id === rp.team_id);

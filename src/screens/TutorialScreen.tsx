@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import { cloudSet } from '@/shared/lib/telegram';
 import { useDesign } from '@/shared/design/useDesign';
+import { Button } from '@/shared/ui/Button';
 import {
   IconUsers,
   IconUserPlus,
@@ -131,27 +132,23 @@ export function TutorialScreen() {
 
       {/* Nav buttons */}
       <div className="flex gap-3 px-6 pb-10">
-        <button
+        <Button
+          variant="secondary"
+          size="lg"
+          className="flex-1"
           disabled={current === 0}
           onClick={() => go(current - 1)}
-          className={`flex-1 rounded-2xl border border-brand-border text-brand-muted font-bold disabled:opacity-30 transition-opacity ${master ? 'h-[54px] text-[13px]' : 'py-3'}`}
         >
           ← {t('tutorial.back')}
-        </button>
+        </Button>
         {isLast ? (
-          <button
-            onClick={finish}
-            className={`flex-1 rounded-2xl ${master ? 'ds-btn-primary h-[54px] text-[13px]' : 'py-3 bg-brand-accent text-brand-bg font-black'}`}
-          >
+          <Button size="lg" className="flex-1" onClick={finish}>
             {t('tutorial.finish')}
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={() => go(current + 1)}
-            className={`flex-1 rounded-2xl ${master ? 'ds-btn-primary h-[54px] text-[13px]' : 'py-3 bg-brand-accent text-brand-bg font-bold'}`}
-          >
+          <Button size="lg" className="flex-1" onClick={() => go(current + 1)}>
             {t('tutorial.next')} →
-          </button>
+          </Button>
         )}
       </div>
     </div>

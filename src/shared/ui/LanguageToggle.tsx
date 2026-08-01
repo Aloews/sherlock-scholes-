@@ -34,7 +34,10 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
       aria-label="Language"
       onChange={(e) => { hapticImpact('light'); setLanguage(e.target.value as AppLang); }}
       className={clsx(
-        'bg-brand-surface rounded-xl px-2.5 py-1.5 appearance-none',
+        // h-9, matching the icon buttons beside it (DesignToggle, tutorial,
+        // sound, Pro) — this used to size from its own text padding alone
+        // and sat visibly shorter than its siblings in the header row.
+        'h-9 bg-brand-surface rounded-xl px-2.5 appearance-none',
         'border border-brand-border text-xs font-bold select-none text-white',
         'hover:border-brand-muted/50 transition-colors focus:outline-none',
         'focus:border-brand-accent cursor-pointer',
