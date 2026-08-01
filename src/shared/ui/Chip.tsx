@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { IconLock } from '@tabler/icons-react';
 
 /**
@@ -13,20 +14,25 @@ export interface ChipProps {
   selected: boolean;
   /** Shows the gold Pro padlock before the label. */
   locked?: boolean;
+  /** Small colour dot before the label — a cosmetic swatch, not a status. */
+  swatch?: ReactNode;
+  disabled?: boolean;
   onClick: () => void;
 }
 
-export function Chip({ label, selected, locked, onClick }: ChipProps) {
+export function Chip({ label, selected, locked, swatch, disabled, onClick }: ChipProps) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center gap-1 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
+      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
         selected
           ? 'border-brand-accent bg-brand-accent/15 text-white'
           : 'border-brand-border bg-brand-surface text-brand-muted active:text-white'
-      }`}
+      } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
+      {swatch}
       {/* Pro gold is fixed across designs — it marks the paid tier, not a state. */}
       {locked && <IconLock size={11} stroke={2.5} className="text-[#FFD24A]" />}
       {label}

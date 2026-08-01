@@ -7,6 +7,8 @@ import {
 } from '@/features/admin/adminApi';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
+import { Button } from '@/shared/ui/Button';
+import { Chip } from '@/shared/ui/Chip';
 
 // Min characters before the search auto-fires, and the debounce pause after the
 // last keystroke — keeps us off "a query per letter" on a 3000+ row ilike.
@@ -95,16 +97,16 @@ export function AdminScreen() {
             onKeyDown={(e) => e.key === 'Enter' && login()}
           />
           {authError && <p className="text-red-400 text-sm text-center">{authError}</p>}
-          <button
-            className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+          <Button
+            fullWidth
             disabled={checking || !pwInput}
             onClick={login}
           >
             {checking ? <><Spinner /> Проверяю…</> : 'Войти'}
-          </button>
-          <button className="w-full text-brand-muted text-sm" onClick={() => navigate('/')}>
+          </Button>
+          <Button fullWidth variant="ghost" onClick={() => navigate('/')}>
             На главную
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -154,12 +156,12 @@ function StaffCabinet({ password, role, onLogout }: {
       {/* Tabs */}
       <div className="flex gap-2">
         {(['reports', 'cards'] as Tab[]).map((tb) => (
-          <button key={tb}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-              tab === tb ? 'bg-brand-accent text-brand-bg' : 'bg-brand-surface border border-brand-border text-brand-muted'}`}
-            onClick={() => setTab(tb)}>
-            {tb === 'reports' ? 'Репорты' : 'Карточки'}
-          </button>
+          <Chip
+            key={tb}
+            label={tb === 'reports' ? 'Репорты' : 'Карточки'}
+            selected={tab === tb}
+            onClick={() => setTab(tb)}
+          />
         ))}
       </div>
 
@@ -211,7 +213,7 @@ function ReportsPanel({ password, onOpenCard }: {
       </p>
       {rows.map((r) => (
         <div key={r.card_id}
-          className="bg-brand-surface border border-brand-border rounded-xl p-3 space-y-2">
+          className="ds-panel bg-brand-surface border border-brand-border rounded-xl p-3 space-y-2">
           <div className="flex items-start gap-2.5">
             {r.photo_url
               ? <img src={r.photo_url} alt="" className="w-9 h-9 rounded-full object-cover object-top shrink-0" />
@@ -350,14 +352,12 @@ function CardsPanel({ password, isAdmin, form, setForm }: {
             <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted" />
           )}
         </div>
-        <button className="px-4 rounded-lg bg-brand-surface border border-brand-border text-sm flex items-center gap-2"
-          onClick={() => runSearch(query)} disabled={searching}>
+        <Button variant="secondary" size="sm" onClick={() => runSearch(query)} disabled={searching}>
           {searching ? <Spinner /> : 'Найти'}
-        </button>
-        <button className="px-4 rounded-lg bg-brand-accent text-brand-bg text-sm"
-          onClick={() => setForm({ ...EMPTY })}>
+        </Button>
+        <Button size="sm" onClick={() => setForm({ ...EMPTY })}>
           + Новая
-        </button>
+        </Button>
       </div>
 
       {results.length > 0 && (
@@ -381,7 +381,7 @@ function CardsPanel({ password, isAdmin, form, setForm }: {
       {msg && <p className="text-xs text-brand-accent">{msg}</p>}
 
       {form && (
-        <div className="space-y-3 bg-brand-surface/40 border border-brand-border rounded-xl p-3">
+        <div className="ds-panel space-y-3 bg-brand-surface/40 border border-brand-border rounded-xl p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-brand-muted text-xs">{form.id ? `id: ${form.id}` : 'Новая карточка'}</p>
             {form.delete_candidate && (
@@ -452,21 +452,18 @@ function CardsPanel({ password, isAdmin, form, setForm }: {
           </label>
 
           <div className="flex flex-wrap gap-2 pt-1">
-            <button className="flex-1 h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
-              onClick={save} disabled={saving || !form.name}>
+            <Button className="flex-1" onClick={save} disabled={saving || !form.name}>
               {saving ? '...' : (form.id ? 'Сохранить' : 'Добавить')}
-            </button>
+            </Button>
             {form.id && (
-              <button className="px-4 h-11 rounded-lg bg-brand-surface border border-brand-border text-brand-muted text-sm"
-                onClick={toggleCandidate} disabled={saving}>
+              <Button variant="secondary" onClick={toggleCandidate} disabled={saving}>
                 {form.delete_candidate ? 'Снять кандидата' : 'В кандидаты'}
-              </button>
+              </Button>
             )}
             {isAdmin && form.id && (
-              <button className="px-4 h-11 rounded-lg bg-red-900/60 border border-red-500/30 text-red-200 text-sm"
-                onClick={del} disabled={saving}>
+              <Button variant="danger" onClick={del} disabled={saving}>
                 Деактивировать
-              </button>
+              </Button>
             )}
           </div>
         </div>

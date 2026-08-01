@@ -70,7 +70,18 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
         >
           <div className="h-1" style={{ background: 'var(--accent-gradient)' }} />
           {card.photo_url && (
-            <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
+            // Smaller and edge-masked than the classic card's watermark: the
+            // master composition is shorter and centred, so the classic
+            // sizing bled a legible, off-centre face across the icon badge
+            // and name instead of reading as a background texture.
+            <div
+              className="absolute -right-3 -bottom-4 w-24 h-24 pointer-events-none select-none"
+              style={{
+                maskImage: 'radial-gradient(circle at 60% 40%, black 0%, transparent 75%)',
+                WebkitMaskImage: 'radial-gradient(circle at 60% 40%, black 0%, transparent 75%)',
+              }}
+              aria-hidden
+            >
               <img
                 src={card.photo_url}
                 alt=""
