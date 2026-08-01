@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle, tierFrameStyle } from '@/shared/lib/tier';
+import { photoFitClass } from '@/shared/lib/photoFit';
 import { useDesign } from '@/shared/design/useDesign';
 import {
   CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR,
@@ -74,7 +75,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
               <img
                 src={card.photo_url}
                 alt=""
-                className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+                className={clsx('w-full h-full opacity-[0.13]', photoFitClass(card.category))}
               />
             </div>
           )}
@@ -122,7 +123,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
           <img
             src={card.photo_url}
             alt=""
-            className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+            className={clsx('w-full h-full opacity-[0.13]', photoFitClass(card.category))}
           />
         </div>
       )}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { clsx } from 'clsx';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -21,6 +22,7 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
+import { photoFitClass, photoFitCircleClass } from '@/shared/lib/photoFit';
 import { useDesign } from '@/shared/design/useDesign';
 import type { CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -124,9 +126,10 @@ function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}
-      // object-top: football photos have the face in the upper third, so the
-      // circle crops from the top — centre-cropping cuts the head off.
-      className="w-8 h-8 shrink-0 rounded-full object-cover object-top"
+      // Portraits crop from the top: football photos have the face in the
+      // upper third, so centre-cropping cuts the head off. Crests and scenes
+      // are shown whole instead — see photoFit.ts.
+      className={clsx('w-8 h-8 shrink-0 rounded-full', photoFitCircleClass(category))}
     />
   );
   // With a real photo, tap opens the full-size lightbox.
@@ -714,7 +717,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                     <img
                       src={currentCard.photo_url}
                       alt=""
-                      className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+                      className={clsx('w-full h-full opacity-[0.13]', photoFitClass(currentCard.category))}
                     />
                   </div>
                 )}
