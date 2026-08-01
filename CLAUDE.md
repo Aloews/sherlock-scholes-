@@ -60,9 +60,29 @@ that file.
 npx tsc --noEmit          # noUnusedLocals is on
 npm run build
 node scripts/check-i18n.mjs
+npm test                  # vitest: unit + property + data-integrity
+```
+
+The scraper's tests are standalone scripts, not a pytest suite — pytest
+collects nothing from them. Run them directly:
+
+```bash
+cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
 ```
 
 GitHub Actions in this repo **regularly loses the `pull_request` event**, so
 a push can end up with no check run at all — which reads as "still running",
 not as a failure. After pushing, look at the PR's checks; if only Vercel is
 there, trigger `ci.yml` by `workflow_dispatch`.
+
+## The engineering standards
+
+`docs/ENGINEERING_CONSTITUTION.md` is the long-form standard, with a
+per-area document beside it (`docs/TYPESCRIPT_STANDARD.md`,
+`docs/TESTING_STANDARD.md`, `docs/SUPABASE_STANDARD.md`, and the rest), plus
+decision records in `docs/ADR/` and checklists in `docs/CHECKLISTS/`.
+`docs/AI_ENGINEERING_GUIDE.md` is the agent-facing entry point.
+
+The rules above are the ones this project keeps getting wrong, so they stay
+here in full. Where the constitution and this file disagree about the app
+itself, this file is current — it is edited as the code changes.
