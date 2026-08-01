@@ -59,3 +59,12 @@ lerna-debug.log*
 
 # TypeScript cache
 *.tsbuildinfo
+
+# test artifacts
+coverage/
+reports/
+.stryker-tmp/
+.nyc_output/
+.pytest_cache/
+.hypothesis/
+.mutmut-cache

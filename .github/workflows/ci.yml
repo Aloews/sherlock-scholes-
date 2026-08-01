@@ -3,6 +3,10 @@ name: ci
 # Frontend gate: typecheck + production build on every push to main and every
 # PR. Vercel deploys main independently — this is the safety net that turns a
 # broken push red within a couple of minutes.
+#
+# The test/mutation/python jobs below were added with the test harness: they run
+# the unit + property + data-integrity suites, enforce coverage + mutation-score
+# gates on the game logic core, and run the offline scraper tests.
 
 on:
   push:
@@ -33,3 +37,54 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Unit + property + data-integrity (with coverage gate)
+        run: npm run test:cov
+
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Mutation testing (StrykerJS, game-logic core)
+        run: npm run test:mutation
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: reports/mutation/
+          if-no-files-found: ignore
+
+  python-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: football_scraper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Pytest (offline property + unit)
+        run: python -m pytest -q
