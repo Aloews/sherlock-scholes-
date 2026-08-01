@@ -105,7 +105,8 @@
   "tabs": {
     "home": "Accueil",
     "collection": "Cartes",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Profil"
   },
   "collection": {
     "title": "Collection",
@@ -138,6 +139,18 @@
     "attr_defense": "Défense",
     "attr_physical": "Physique",
     "ovr_aria": "Note globale {{value}}"
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Niveau {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP avant le niveau suivant"
+  },
+  "level": {
+    "title_1": "Stagiaire",
+    "title_5": "Détective",
+    "title_10": "Inspecteur détective",
+    "title_15": "Inspecteur principal",
+    "title_20": "Limier légendaire"
   },
   "pro": {
     "title": "Sherlock Pro",

@@ -343,5 +343,6 @@ export interface PlayerStats {
   games_won: number;
   cards_guessed: number;
   total_score: number;
+  xp: number;
   updated_at: string;
 }

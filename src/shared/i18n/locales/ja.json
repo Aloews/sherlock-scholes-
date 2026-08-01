@@ -103,7 +103,8 @@
   "tabs": {
     "home": "ホーム",
     "collection": "カード",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "プロフィール"
   },
   "collection": {
     "title": "コレクション",
@@ -136,6 +137,18 @@
     "attr_defense": "ディフェンス",
     "attr_physical": "フィジカル",
     "ovr_aria": "総合値 {{value}}"
+  },
+  "profile": {
+    "title": "プロフィール",
+    "level": "レベル {{n}}",
+    "xp_progress": "次のレベルまで {{into}} / {{total}} XP"
+  },
+  "level": {
+    "title_1": "見習い",
+    "title_5": "刑事",
+    "title_10": "警部補",
+    "title_15": "上級警部",
+    "title_20": "伝説の名探偵"
   },
   "pro": {
     "title": "Sherlock Pro",

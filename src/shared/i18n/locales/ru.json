@@ -109,7 +109,8 @@
   "tabs": {
     "home": "Главная",
     "collection": "Карты",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "Профиль"
   },
   "collection": {
     "title": "Коллекция",
@@ -142,6 +143,18 @@
     "attr_defense": "Оборона",
     "attr_physical": "Физика",
     "ovr_aria": "Общий рейтинг {{value}}"
+  },
+  "profile": {
+    "title": "Профиль",
+    "level": "Уровень {{n}}",
+    "xp_progress": "{{into}} / {{total}} XP до следующего уровня"
+  },
+  "level": {
+    "title_1": "Стажёр",
+    "title_5": "Детектив",
+    "title_10": "Детектив-инспектор",
+    "title_15": "Старший инспектор",
+    "title_20": "Легендарный сыщик"
   },
   "pro": {
     "title": "Sherlock Pro",

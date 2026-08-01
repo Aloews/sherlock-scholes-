@@ -103,7 +103,8 @@
   "tabs": {
     "home": "主页",
     "collection": "卡片",
-    "pro": "Pro"
+    "pro": "Pro",
+    "profile": "资料"
   },
   "collection": {
     "title": "收藏",
@@ -136,6 +137,18 @@
     "attr_defense": "防守",
     "attr_physical": "身体",
     "ovr_aria": "综合评分 {{value}}"
+  },
+  "profile": {
+    "title": "个人资料",
+    "level": "等级 {{n}}",
+    "xp_progress": "距下一等级还需 {{into}} / {{total}} XP"
+  },
+  "level": {
+    "title_1": "见习生",
+    "title_5": "侦探",
+    "title_10": "探长",
+    "title_15": "高级探长",
+    "title_20": "传奇神探"
   },
   "pro": {
     "title": "Sherlock Pro",
