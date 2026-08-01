@@ -18,7 +18,9 @@ export default defineConfig({
       // yet gated — the harness is being grown outward from the core.
       include: [
         'src/features/game/stateMachine.ts',
+        'src/features/game/useTimer.ts',
         'src/shared/lib/tier.ts',
+        'src/shared/lib/pro.ts',
       ],
       thresholds: {
         lines: 90,
