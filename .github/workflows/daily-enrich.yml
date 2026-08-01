@@ -51,6 +51,13 @@ jobs:
           restore-keys: |
             scraper-cache-
 
+      # Выбросить из восстановленного кеша записи «ничего не найдено». Кеш
+      # без TTL и переезжает между прогонами, поэтому один промах иначе
+      # отвечает «статьи нет» вечно и шаг молча работает вхолостую
+      # («115 карточек обработано, бюджет 0/20000»). Только диск, без сети.
+      - name: Prune stale cache misses
+        run: APPLY=1 python docs/cache_prune_empty.py
+
       - name: Run daily enrichment
         run: python docs/daily_enrich.py
 

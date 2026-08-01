@@ -14,6 +14,13 @@ cd /d "%PROJECT%"
 echo. >> daily_enrich.log
 echo [%date% %time%] ===== START ===== >> daily_enrich.log
 
+REM --- Выбросить из кеша записи "ничего не найдено": кеш без TTL, поэтому
+REM     один промах иначе отвечает "статьи нет" вечно и шаги работают
+REM     вхолостую. Только диск, без сети и без бюджета.
+set APPLY=1
+python docs\cache_prune_empty.py >> daily_enrich.log 2>&1
+set APPLY=
+
 python docs\daily_enrich.py >> daily_enrich.log 2>&1
 
 REM --- Описания неигровых карточек (клубы, стадионы, тренеры, судьи,
