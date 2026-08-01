@@ -86,5 +86,23 @@ jobs:
           python-version: '3.11'
       - name: Install deps
         run: pip install -r requirements.txt
-      - name: Pytest (offline property + unit)
+      # Only test_property_canonical.py is a pytest suite — the rest are
+      # standalone scripts pytest collects nothing from.
+      - name: Pytest (offline property suite)
         run: python -m pytest -q
+
+      # The other scraper tests print ok/FAIL and exit 1, so pytest walks past
+      # them and this job went green while any of them could be failing. Run
+      # them the way they are meant to be run, and fail the job if any does.
+      - name: Standalone scraper tests
+        run: |
+          failed=""
+          for f in tests/test_*.py; do
+            echo "::group::$f"
+            python "$f" || failed="$failed $f"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "Failed:$failed"
+            exit 1
+          fi
