@@ -127,7 +127,15 @@
     "f_height": "키",
     "f_years": "연도",
     "f_caps": "A매치",
-    "f_clubs": "클럽"
+    "f_clubs": "클럽",
+    "attributes": "능력치",
+    "attr_pace": "스피드",
+    "attr_shooting": "슈팅",
+    "attr_passing": "패스",
+    "attr_dribbling": "드리블",
+    "attr_defense": "수비",
+    "attr_physical": "피지컬",
+    "ovr_aria": "종합 능력치 {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",

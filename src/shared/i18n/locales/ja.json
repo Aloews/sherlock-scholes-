@@ -127,7 +127,15 @@
     "f_height": "身長",
     "f_years": "年",
     "f_caps": "代表",
-    "f_clubs": "クラブ"
+    "f_clubs": "クラブ",
+    "attributes": "能力値",
+    "attr_pace": "スピード",
+    "attr_shooting": "シュート",
+    "attr_passing": "パス",
+    "attr_dribbling": "ドリブル",
+    "attr_defense": "ディフェンス",
+    "attr_physical": "フィジカル",
+    "ovr_aria": "総合値 {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",

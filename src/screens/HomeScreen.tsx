@@ -193,11 +193,9 @@ export function HomeScreen() {
         {view === 'home' && master && (
           <HomeLandingMaster
             playerName={player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : null}
-            isPro={isPro}
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
-            onCollection={() => { hapticImpact('light'); navigate('/collection'); }}
           />
         )}
 

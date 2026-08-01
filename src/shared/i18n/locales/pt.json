@@ -129,7 +129,15 @@
     "f_height": "Altura",
     "f_years": "Anos",
     "f_caps": "Seleção",
-    "f_clubs": "Clubes"
+    "f_clubs": "Clubes",
+    "attributes": "Atributos",
+    "attr_pace": "Ritmo",
+    "attr_shooting": "Finalização",
+    "attr_passing": "Passe",
+    "attr_dribbling": "Drible",
+    "attr_defense": "Defesa",
+    "attr_physical": "Físico",
+    "ovr_aria": "Avaliação geral {{value}}"
   },
   "pro": {
     "title": "Sherlock Pro",
