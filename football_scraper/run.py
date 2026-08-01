@@ -464,6 +464,14 @@ def run_pageviews(cfg, dry_run, process_all=False):
 
 # Disambiguation suffixes tried when the exact card name has no ruwiki
 # pageviews data, keyed by card category. Order matters: most specific first.
+#
+# SUPERSEDED by cards_photos_candidates(), which --cards-pageviews now uses
+# instead. This table put the BARE NAME first for every category, and for a
+# club the bare name is usually the city: «Краснодар» scored 767k views from
+# the city's article, «Брест» from the Belarusian town, «Сатурн» from the
+# planet. The photos resolver had already solved this (see
+# CARDS_PHOTOS_VARIANT_FIRST) — the two now share one ordering, so a club
+# card can never be measured by its city again. Kept for reference only.
 CARDS_PV_VARIANTS = {
     "player":        ["(футболист)"],
     "woman":         ["(футболистка)", "(футболист)"],
@@ -527,12 +535,13 @@ def run_cards_pageviews(cfg, dry_run):
     print("Читаю cards (pageviews IS NULL)...", flush=True)
     cards = cards_client.fetch_cards_missing_pageviews()
 
+    # The SAME title order the photo resolver uses: clubs and stadiums try
+    # "<name> (футбольный клуб)" / "(стадион)" BEFORE the bare name, because
+    # the bare name is the city ("Краснодар", "Брест") or the person the
+    # ground is named after. Measuring a club by its city's article is what
+    # produced the 767k "Краснодар" score in the deck.
     def candidates(card):
-        name = (card.get("name") or "").strip()
-        if not name:
-            return []
-        variants = CARDS_PV_VARIANTS.get(card.get("category"), [])
-        return [name] + ["{} {}".format(name, v) for v in variants]
+        return cards_photos_candidates(card)
 
     def is_cached(article):
         key = "|".join([
@@ -867,27 +876,68 @@ CLUB_P31_ALLOW = frozenset((
     "Q847017",     # sports club
     "Q12973014",   # sports team
 ))
+# People cards had NO guard at all, which is how a mononym card walked off
+# with a stranger's article: «Данте» took Dante Alighieri the poet, «Адриан»
+# took Hadrian the Roman emperor, and their enwiki titles became cards.name_en.
+# Requiring Q5 costs one cached claim lookup and rejects a city or a film
+# standing in for a person.
+HUMAN_P31_ALLOW = frozenset(("Q5",))
 CARD_P31_ALLOW = {
     "stadium":       STADIUM_P31_ALLOW,
     "club":          CLUB_P31_ALLOW,
     "club_nickname": CLUB_P31_ALLOW,
+    "player":        HUMAN_P31_ALLOW,
+    "woman":         HUMAN_P31_ALLOW,
+    "coach":         HUMAN_P31_ALLOW,
+    "referee":       HUMAN_P31_ALLOW,
+    "commentator":   HUMAN_P31_ALLOW,
 }
+
+# Q5 alone does not save a MONONYM card: Dante the poet is as human as Dante
+# the defender. For single-word player names — the only ones where a namesake
+# is likely — the entity must also be a footballer by occupation (P106).
+# Deliberately NOT applied to multi-word names: an incomplete Wikidata item
+# missing P106 would otherwise lose a resolution that is already correct.
+FOOTBALLER_OCCUPATION = "Q937857"   # association football player
+MONONYM_P106_CATEGORIES = ("player", "woman")
+
+
+def is_mononym(name):
+    """A one-word card name — «Педро», «Данте», «Халк». These are the names
+    that collide with famous non-footballers."""
+    return len((name or "").split()) == 1
 
 
 def make_card_qid_validator(card, wikidata, cache, budget):
-    """For stadium/club cards: a callback that accepts a QID only when its
-    P31 intersects the category's allow-set (so the namesake person, city or
-    common noun is rejected and the next title variant / search hit is
-    tried). Other categories get None — no validation."""
+    """A callback that accepts a QID only when the entity is the right KIND of
+    thing for this card, so a namesake person, city or common noun is rejected
+    and the next title variant / search hit is tried instead.
+
+      * P31 must intersect the category's allow-set (see CARD_P31_ALLOW);
+      * a MONONYM player/woman card must additionally carry the footballer
+        occupation (P106), which is what tells «Данте» the defender from
+        «Данте» the poet.
+
+    Categories without an allow-set get None — no validation."""
     allow = CARD_P31_ALLOW.get(card.get("category"))
     if not allow:
         return None
+    needs_occupation = (card.get("category") in MONONYM_P106_CATEGORIES
+                        and is_mononym(card.get("name")))
 
     def _ok(qid):
         # Budget counts only real network calls, as everywhere else.
         if cache.get("wikidata_p31", qid) is None:
             budget.consume()
-        return bool(set(wikidata.instance_of_qids(qid)) & allow)
+        if not set(wikidata.instance_of_qids(qid)) & allow:
+            return False
+        if not needs_occupation:
+            return True
+        # claim_item_ids caches under 'wikidata_<prop lowercased>'; match it
+        # exactly or the budget is charged for cache hits.
+        if cache.get("wikidata_p106", qid) is None:
+            budget.consume()
+        return FOOTBALLER_OCCUPATION in wikidata.claim_item_ids(qid, "P106")
 
     return _ok
 

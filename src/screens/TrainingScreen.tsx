@@ -22,56 +22,23 @@ import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import { useDesign } from '@/shared/design/useDesign';
-import type { CardCategory, ContinentFilter } from '@/shared/types/database';
+import type { CardCategory } from '@/shared/types/database';
+import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
+import { Button } from '@/shared/ui/Button';
+import { Chip } from '@/shared/ui/Chip';
 
+// The picker hands over ONE deck filter (see src/shared/types/deck.ts) —
+// the same object the counter counted and the RPC deals from. Ten separate
+// route-state fields used to travel here and be re-assembled by hand.
 interface TrainingState {
-  categories: CardCategory[] | null;
-  continents?: ContinentFilter[] | null; // player cards only; null = all
-  minPageviews?: number | null;          // legacy difficulty floor; null = whole deck
-  tags?: string[] | null;                // special-category filter (вратари / star / …)
-  difficulty?: number | null;            // onboarding pv floor (default quick game); null = no cap
-  boostCountries?: string[] | null;      // local heroes pass floor/4 during onboarding
-  lang?: string | null;                  // interface language -> commentator locale filter
-  countries?: string[] | null;           // deck filter: exact player countries (ISO); null = all
-  leagues?: string[] | null;             // deck filter: player top_league values; null = all
-  tiers?: string[] | null;               // deck filter: recognizability tiers (legendary/epic/rare/common)
+  filter?: DeckFilter | null;
 }
 
-const TEAM_COLOR: Record<Team, string> = {
-  orange: '#FF6300',
-  blue:   '#4A9EFF',
-};
-
-// History row status bar (Variant 4): guessed = success green, skipped =
-// warning orange.
-const STATUS_GUESSED = '#00C97D';
-const STATUS_SKIPPED = '#FF6300';
-
-// Score separator — muted slate, NOT a pure grey (Variant 5 palette).
-const SCORE_DIVIDER = '#4A5270';
-
-// cards.clubs_minutes is summed ONLY from the 2022–2024 API-Football cache, so
-// every minute total it carries is a partial, often misleading tail (Nathan
-// Redmond "Саутгемптон 1 мин", Walcott 490'). We therefore NEVER render minutes
+// History row status bar: guessed = success, skipped = the accent.
 // or hours from it — clubChips() shows clubs+years (legend_career),
 // matches/goals (career_stats), or the bare club NAMES only.
 
-const CATEGORY_COLOR: Record<CardCategory, string> = {
-  player:        '#FF6300',
-  club:          '#4A9EFF',
-  club_nickname: '#4A9EFF',
-  stadium:       '#00C97D',
-  term:          '#B47AFF',
-  position:      '#B47AFF',
-  referee:       '#FFD24A',
-  coach:         '#FFD24A',
-  commentator:   '#7A8499',
-  woman:         '#FF6BA8',
-  derby:         '#F43F5E',
-  trophy:        '#FFD24A',
-  era:           '#22D3EE',
-};
 
 // Category label in the interface language. The DB's Russian category_ru is
 // preferred only on ru (it can carry admin-customised labels); every other
@@ -94,6 +61,34 @@ const googleSearch = (name: string) => {
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
+const TEAM_COLOR: Record<Team, string> = {
+  orange: '#FF6300',
+  blue:   '#4A9EFF',
+};
+
+// History row status bar: guessed = success green, skipped = warning orange.
+const STATUS_GUESSED = '#00C97D';
+const STATUS_SKIPPED = '#FF6300';
+
+// Score separator — muted slate, NOT a pure grey.
+const SCORE_DIVIDER = '#4A5270';
+
+const CATEGORY_COLOR: Record<CardCategory, string> = {
+  player:        '#FF6300',
+  club:          '#4A9EFF',
+  club_nickname: '#4A9EFF',
+  stadium:       '#00C97D',
+  term:          '#B47AFF',
+  position:      '#B47AFF',
+  referee:       '#FFD24A',
+  coach:         '#FFD24A',
+  commentator:   '#7A8499',
+  woman:         '#FF6BA8',
+  derby:         '#F43F5E',
+  trophy:        '#FFD24A',
+  era:           '#22D3EE',
+};
+
 function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
   photoUrl?: string | null;
   category: CardCategory;
@@ -210,19 +205,17 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
         <p className="text-brand-muted text-xs truncate">{name}</p>
 
         {done ? (
-          <p className="text-[#00C97D] text-sm py-4 text-center">{t('report.thanks')}</p>
+          <p className="text-brand-success text-sm py-4 text-center">{t('report.thanks')}</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {REPORT_REASONS.map((r) => (
-                <button key={r}
-                  className={`rounded-lg px-3 py-2.5 text-sm text-left transition-colors border ${
-                    reason === r
-                      ? 'bg-brand-accent/20 text-white border-brand-accent'
-                      : 'bg-brand-border text-brand-muted border-transparent'}`}
-                  onClick={() => setReason(r as ReportReason)}>
-                  {t(`report.reason_${r}`)}
-                </button>
+                <Chip
+                  key={r}
+                  label={t(`report.reason_${r}`)}
+                  selected={reason === r}
+                  onClick={() => setReason(r as ReportReason)}
+                />
               ))}
             </div>
             <textarea
@@ -232,14 +225,16 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
               onChange={(e) => setComment(e.target.value)}
             />
             {status === 'error' && (
-              <p className="text-red-400 text-xs text-center">{t('report.error')}</p>
+              <p className="text-brand-danger text-xs text-center">{t('report.error')}</p>
             )}
-            <button
-              className="w-full h-11 rounded-lg bg-brand-accent text-brand-bg font-medium disabled:opacity-50"
-              disabled={!reason || status === 'sending'}
-              onClick={submit}>
-              {status === 'sending' ? '…' : t('report.submit')}
-            </button>
+            <Button
+              fullWidth
+              loading={status === 'sending'}
+              disabled={!reason}
+              onClick={submit}
+            >
+              {t('report.submit')}
+            </Button>
           </>
         )}
       </motion.div>
@@ -251,58 +246,32 @@ function ReportSheet({ entry, onClose }: { entry: HistoryEntry; onClose: () => v
 export function TrainingScreen() {
   const location = useLocation();
   const state    = location.state as TrainingState | null;
-  const categories = state?.categories ?? null;
-  const continents = state?.continents ?? null;
-  const minPageviews = state?.minPageviews ?? null;
-  const tags = state?.tags ?? null;
-  const difficulty = state?.difficulty ?? null;
-  const boostCountries = state?.boostCountries ?? null;
-  const lang = state?.lang ?? null;
-  const countries = state?.countries ?? null;
-  const leagues = state?.leagues ?? null;
-  const tiers = state?.tiers ?? null;
+  // Entering /training directly (refresh, deep link) plays the whole deck.
+  const filter = state?.filter ?? {};
 
   const [gameKey, setGameKey] = useState(0);
 
   return (
     <TrainingGame
       key={gameKey}
-      categories={categories}
-      continents={continents}
-      minPageviews={minPageviews}
-      tags={tags}
-      difficulty={difficulty}
-      boostCountries={boostCountries}
-      lang={lang}
-      countries={countries}
-      leagues={leagues}
-      tiers={tiers}
+      filter={filter}
       onPlayAgain={() => setGameKey((k) => k + 1)}
     />
   );
 }
 
 interface TrainingGameProps {
-  categories: CardCategory[] | null;
-  continents: ContinentFilter[] | null;
-  minPageviews: number | null;
-  tags: string[] | null;
-  difficulty: number | null;
-  boostCountries: string[] | null;
-  lang: string | null;
-  countries: string[] | null;
-  leagues: string[] | null;
-  tiers: string[] | null;
+  filter: DeckFilter;
   onPlayAgain: () => void;
 }
 
-function TrainingGame({ categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers, onPlayAgain }: TrainingGameProps) {
+function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const design = useDesign();
 
   const { currentCard, loading, scores, activeTeam, history, guess, skip, passTurn } =
-    useTraining(categories, continents, minPageviews, tags, difficulty, boostCountries, lang, countries, leagues, tiers);
+    useTraining(filter);
 
   const [finished, setFinished] = useState(false);
   // Full-size photo lightbox (history avatars). null = closed.
@@ -577,7 +546,7 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
                       })()}
                       {/* Titles first, in gold — the headline fact. Wraps (no clip). */}
                       {titles.length > 0 && (
-                        <p className="text-[#FFD24A] text-xs font-medium leading-snug mt-0.5">
+                        <p className="text-brand-pro text-xs font-medium leading-snug mt-0.5">
                           🏆 {titles.join(' · ')}
                         </p>
                       )}
@@ -653,21 +622,13 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
-            style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
-            onClick={() => { hapticImpact('light'); onPlayAgain(); }}
-          >
-            {/* Match the game screen's IconArrowsExchange: same icon set, size 16, stroke 2 */}
+          <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); onPlayAgain(); }}>
             <IconReload size={16} stroke={2} />
             {t('end.play_again')}
-          </button>
-          <button
-            className="w-full h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-colors hover:opacity-90"
-            onClick={() => { hapticImpact('light'); navigate('/'); }}
-          >
+          </Button>
+          <Button fullWidth size="lg" variant="surface" onClick={() => { hapticImpact('light'); navigate('/'); }}>
             {t('quick.home')}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -787,21 +748,23 @@ function TrainingGame({ categories, continents, minPageviews, tags, difficulty, 
 
       {/* Actions */}
       <div className="px-4 pb-8 flex gap-3">
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ backgroundColor: TEAM_COLOR.orange, color: '#0A0E1A' }}
+        <Button
+          size="lg"
+          className="flex-1"
           disabled={!currentCard}
           onClick={() => { hapticImpact('medium'); playSound('correct'); guess(); }}
         >
           {t('quick.guessed')}
-        </button>
-        <button
-          className="flex-1 h-14 rounded-md text-lg font-medium text-white bg-brand-surface transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+        </Button>
+        <Button
+          size="lg"
+          variant="surface"
+          className="flex-1"
           disabled={!currentCard}
           onClick={() => { hapticImpact('light'); playSound('skip'); skip(); }}
         >
           {t('quick.skip')}
-        </button>
+        </Button>
       </div>
     </div>
   );
