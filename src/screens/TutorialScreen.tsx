@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import { cloudSet } from '@/shared/lib/telegram';
+import { useDesign } from '@/shared/design/useDesign';
 import {
   IconUsers,
   IconUserPlus,
@@ -24,6 +25,7 @@ const slideVariants = {
 };
 
 export function TutorialScreen() {
+  const master = useDesign() === 'master';
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [current,   setCurrent]   = useState(0);
@@ -58,7 +60,7 @@ export function TutorialScreen() {
   const isLast = current === TOTAL - 1;
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Skip — finishes the tutorial from any slide (same finish() as the
           last-slide button / left-swipe). Hidden on the last slide where the
           primary action is already "Finish". */}
@@ -88,11 +90,25 @@ export function TutorialScreen() {
             onDragEnd={handleDragEnd}
             className="flex flex-col items-center text-center max-w-xs w-full select-none cursor-grab active:cursor-grabbing"
           >
-            <Icon size={64} stroke={1.5} className="text-brand-accent" />
-            <h2 className="text-3xl font-black text-white mt-6">
+            {master ? (
+              /* The prototype frames the slide icon in a 104px rounded square
+                 with a warm inner wash and an accent hairline. */
+              <span
+                className="w-[104px] h-[104px] rounded-[28px] flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(155deg, rgb(var(--brand-accent) / 0.16), rgb(var(--brand-accent) / 0.03))',
+                  border: '1px solid rgb(var(--brand-accent) / 0.3)',
+                }}
+              >
+                <Icon size={46} stroke={1.5} className="text-brand-accent" />
+              </span>
+            ) : (
+              <Icon size={64} stroke={1.5} className="text-brand-accent" />
+            )}
+            <h2 className={`ds-display font-black text-white mt-6 ${master ? 'text-2xl' : 'text-3xl'}`}>
               {t(`tutorial.title_${current + 1}`)}
             </h2>
-            <p className="text-base text-brand-muted mt-4 max-w-xs leading-relaxed">
+            <p className={`text-brand-muted mt-4 max-w-xs leading-relaxed ${master ? 'text-sm' : 'text-base'}`}>
               {t(`tutorial.text_${current + 1}`)}
             </p>
           </motion.div>
@@ -105,9 +121,10 @@ export function TutorialScreen() {
           <button
             key={i}
             onClick={() => go(i)}
-            className={`w-2 h-2 rounded-full transition-colors ${
+            aria-label={`${i + 1}`}
+            className={`h-1.5 rounded-full transition-all ${
               i === current ? 'bg-brand-accent' : 'bg-brand-border'
-            }`}
+            } ${master && i === current ? 'w-5' : master ? 'w-1.5' : 'w-2 h-2'}`}
           />
         ))}
       </div>
@@ -117,21 +134,21 @@ export function TutorialScreen() {
         <button
           disabled={current === 0}
           onClick={() => go(current - 1)}
-          className="flex-1 py-3 rounded-2xl border border-brand-border text-brand-muted font-bold disabled:opacity-30 transition-opacity"
+          className={`flex-1 rounded-2xl border border-brand-border text-brand-muted font-bold disabled:opacity-30 transition-opacity ${master ? 'h-[54px] text-[13px]' : 'py-3'}`}
         >
           ← {t('tutorial.back')}
         </button>
         {isLast ? (
           <button
             onClick={finish}
-            className="flex-1 py-3 rounded-2xl bg-brand-accent text-brand-bg font-black"
+            className={`flex-1 rounded-2xl ${master ? 'ds-btn-primary h-[54px] text-[13px]' : 'py-3 bg-brand-accent text-brand-bg font-black'}`}
           >
             {t('tutorial.finish')}
           </button>
         ) : (
           <button
             onClick={() => go(current + 1)}
-            className="flex-1 py-3 rounded-2xl bg-brand-accent text-brand-bg font-bold"
+            className={`flex-1 rounded-2xl ${master ? 'ds-btn-primary h-[54px] text-[13px]' : 'py-3 bg-brand-accent text-brand-bg font-bold'}`}
           >
             {t('tutorial.next')} →
           </button>

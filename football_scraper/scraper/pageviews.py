@@ -339,6 +339,43 @@ class WikiPagePropsClient:
         self.cache.set(self.cache_prefix + "_pageimage", key, {"url": url})
         return url
 
+    def extract_for_title(self, title):
+        """Plain-text LEAD (intro section) of an article — the source of the
+        card blurb in cards.descriptions (docs/cards_descriptions_build.py).
+
+        One call: action=query & prop=extracts & exintro & explaintext, with
+        redirects followed. The intro is stored whole (the caller trims it to
+        a blurb, and keeping the full text means a re-shape costs nothing).
+        Returns '' for a missing page or an article with no lead. Cached per
+        title (namespace <cache_prefix>_extract), the empty result included;
+        same pause, retry and budget contract as every other call."""
+        cached = self.cache.get(self.cache_prefix + "_extract", title)
+        if cached is not None:
+            return cached.get("extract") or ""
+
+        data = self._query(
+            {
+                "action": "query",
+                "format": "json",
+                "titles": title,
+                "prop": "extracts",
+                "exintro": 1,
+                "explaintext": 1,
+                "redirects": 1,
+            }
+        )
+
+        extract = ""
+        pages = ((data or {}).get("query") or {}).get("pages") or {}
+        for page in pages.values():
+            text = (page.get("extract") or "").strip()
+            if text:
+                extract = text
+                break
+
+        self.cache.set(self.cache_prefix + "_extract", title, {"extract": extract})
+        return extract
+
     def search_titles(self, query, limit=3):
         """Full-text article search (action=query & list=search) — the LAST
         resort of the card resolvers, after every exact title variant missed:

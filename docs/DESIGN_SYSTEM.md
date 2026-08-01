@@ -1,0 +1,118 @@
+# Design systems (switchable)
+
+> **Scope note.** The switch now covers **layout as well as tokens**. Flipping
+> to `master` restructures the app: its own Home landing, bottom tab bar,
+> splash, onboarding, card composition, timer and results treatment — not just
+> a repaint. `classic` renders exactly as it always did.
+>
+> Still unported from the prototype, because the schema has no data behind
+> them: the Rating and Profile tabs, the streak chip, daily tasks, levels,
+> achievements. Those are features rather than styling — see
+> `docs/PROGRESSION_FEATURES_HANDOFF.md`.
+>
+> The dossier's OVR badge and its six "Характеристики" bars (`CardDossier.tsx`)
+> are wired and render whenever `cards.ovr` / `cards.attributes` carry a value
+> (`docs/cards_attributes_column.sql` adds the nullable columns). No card has
+> real ratings yet — populating ~1.5k player cards with genuine attributes is
+> a separate data-acquisition project, not this one — so today the badge/bars
+> are simply absent everywhere.
+> `docs/DESIGN_V2_HANDOFF.md` holds the original inventory and the
+> per-design-variant architecture the layout work follows.
+
+The app ships **two complete visual languages**, switched at runtime by the
+palette button in the Home header. The choice is stored per device and
+survives a reload.
+
+| id | name | look |
+|----|------|------|
+| `master` *(default)* | «Новый дизайн» / "New design" | Sherlock Scholes master design system: gradient accent (`#FFE0C2 → #FF8A3D → #FF6300 → #C24A00`), Playfair Display headings, lit page background, uppercase CTAs, heavier rarity glows |
+| `classic` | «Классический дизайн» / "Classic design" | the original shipped look: flat `#FF6300`, Inter everywhere, no page glow |
+
+## How it works
+
+1. **Tokens are CSS variables.** `src/index.css` defines two full token sets —
+   `:root, [data-design='classic']` and `[data-design='master']`. Colours are
+   stored as raw `R G B` channels, not hex.
+2. **Tailwind resolves through them.** `tailwind.config.ts` maps every
+   `brand-*` colour to `rgb(var(--brand-…) / <alpha-value>)`, so all ~200
+   existing `bg-brand-surface` / `text-brand-muted/70` usages retint on a
+   switch, with opacity modifiers intact. No component knows a design
+   system exists.
+3. **Switching is one attribute.** `applyDesign()` sets
+   `<html data-design="…">` (`src/shared/design/designs.ts`). `useDesignSync()`
+   in `App.tsx` keeps it on the persisted value; an inline script in
+   `index.html` sets it before first paint so the other design never flashes.
+4. **Persistence** lives in `settingsStore` (`sherlock_settings`, v5) — the
+   same key the pre-paint script reads.
+
+## Beyond colour
+
+Things a variable can't express alone get a component class in `index.css`:
+
+| class | what it does |
+|-------|--------------|
+| `.ds-screen` | page backdrop — the master radial glow, `none` in classic. Pair with `bg-brand-bg` on screen roots (they paint over `<body>`) |
+| `.ds-display` | display face — Playfair Display in master, Inter in classic. Card names, screen headings, big numbers |
+| `.ds-panel` | raised surface — flat in classic, warm-lit with depth in master |
+| `.ds-btn-primary` | primary fill — solid accent in classic, brand gradient + uppercase tracking in master (drives `Button variant="primary"`) |
+| `.ds-accent-text` | accent-filled text; in classic the "gradient" is a flat colour, so it renders plain orange |
+
+Rarity frames (`src/shared/lib/tier.ts`) take the design as an argument: the
+tier **colours** stay fixed (`TIER_COLOR`), only the ring width and glow
+spread change. Components that render them call `useDesign()` and pass it, so
+the frame restyles the instant the player flips designs.
+
+## Adding a token
+
+Add it to **both** blocks in `src/index.css`. If it's a colour meant to be
+used through Tailwind, store `R G B` channels and expose it in
+`tailwind.config.ts` via the `brand()` helper.
+
+## What is *not* design-dependent
+
+Card data colours stay fixed in both designs, because they encode meaning
+rather than style: `CATEGORY_COLOR` (player orange, club blue, …),
+`TIER_COLOR`, team colours (orange/blue), and status colours.
+
+## The control vocabulary
+
+Colours are only half a design system; the other half is having one way to
+draw a choice. These live in `src/shared/ui/` and are design-agnostic — they
+ride the `brand-*` tokens, so they retint with the switcher on their own:
+
+```
+ScreenFrame.tsx   ScreenFrame · ScreenHeader · ScreenBody
+                  StickyFooter · StepBar
+OptionRow.tsx     one row = one choice
+Chip.tsx          one chip = one toggle
+SelectRow.tsx     a native <select> in OptionRow's clothes
+Section.tsx       heading + hint + content
+Button.tsx        the primary action
+```
+
+**The frame has three parts and only the middle one scrolls.** Header and
+footer stay put, so the title and the primary action are always where the
+player left them. It sizes itself with `--tabbar-h`, so a footer never ends
+up underneath the master design's fixed tab bar — where taps land on the tab
+instead of the button. The deck picker used to live inside HomeScreen's
+hero, which is how its options ended up under the fold with the Play button
+below them, off screen on a phone.
+
+**A row that toggles ends in a check circle. A row that acts ends in a
+chevron.** That check circle is the app's only "this is on" signal — a
+screen that needs to show selection uses `OptionRow` or `Chip` rather than
+inventing a fifth treatment. The picker had four before it was reworked:
+filled chips, outlined chips, bordered cards and bare selects.
+
+**Chips tint, they don't fill.** A group with a dozen chips on by default
+would otherwise be a block of accent, and the accent belongs to the primary
+action alone.
+
+**When to use which.** One choice with an explanation → `OptionRow`. Many
+short choices → `Chip`. More options than fit on a screen → `SelectRow`. A
+whole flow → the frame.
+
+So far only `DeckPickerScreen` and `TrainingScreen` are built on this.
+Bringing the rest over — `EndScreen`, `ProScreen`, lobby and game, tutorial,
+`AdminScreen` last — is open work: the app still has ~49 raw `<button>`
+against 20 `<Button>`.

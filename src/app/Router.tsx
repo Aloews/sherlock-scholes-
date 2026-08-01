@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
+import { useDesign } from '@/shared/design/useDesign';
+import { TabBar, TAB_ROUTES } from '@/app/TabBar';
 import { HomeScreen }     from '@/screens/HomeScreen';
 
 // HomeScreen stays static so the first screen never flashes. The rest are
@@ -12,6 +14,7 @@ const GameScreen     = lazy(() => import('@/screens/GameScreen').then((m) => ({ 
 const EndScreen      = lazy(() => import('@/screens/EndScreen').then((m) => ({ default: m.EndScreen })));
 const TrainingScreen = lazy(() => import('@/screens/TrainingScreen').then((m) => ({ default: m.TrainingScreen })));
 const TutorialScreen = lazy(() => import('@/screens/TutorialScreen').then((m) => ({ default: m.TutorialScreen })));
+const CollectionScreen = lazy(() => import('@/screens/CollectionScreen').then((m) => ({ default: m.CollectionScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
@@ -20,7 +23,7 @@ const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ de
 // (matching the splash), no text, so there's no white flash while chunks load.
 function LazyFallback() {
   return (
-    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+    <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
       <motion.svg
         viewBox="0 0 24 24"
         className="w-12 h-12"
@@ -57,7 +60,16 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 export function Router() {
   useSessionRestore();
+  const { pathname } = useLocation();
+  // The tab bar belongs to the master app shell, and only to its root routes —
+  // never over a live game, lobby or results, where leaving mid-round by a
+  // stray tap would be destructive. `with-tabbar` shortens the screens'
+  // min-h-screen by the bar's height (see index.css).
+  const showTabs = useDesign() === 'master'
+    && (TAB_ROUTES as readonly string[]).includes(pathname);
+
   return (
+    <div className={showTabs ? 'with-tabbar' : undefined}>
     <Suspense fallback={<LazyFallback />}>
     <Routes>
       <Route path="/" element={<PageTransition><HomeScreen /></PageTransition>} />
@@ -87,10 +99,13 @@ export function Router() {
       />
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
+      <Route path="/collection" element={<PageTransition><CollectionScreen /></PageTransition>} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
+    {showTabs && <TabBar />}
+    </div>
   );
 }

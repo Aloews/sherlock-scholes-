@@ -1,68 +1,88 @@
-# CLAUDE.md — agent operating rules for Sherlock Scholes
+# Sherlock Scholes — working rules
 
-This file is the entrypoint for AI coding agents (Claude Code, and via
-`AGENTS.md` also Codex, Cursor, Windsurf, Gemini CLI…). It is intentionally
-short. The binding rules live in the **Engineering Constitution**:
-[`docs/ENGINEERING_CONSTITUTION.md`](./docs/ENGINEERING_CONSTITUTION.md).
+A Telegram Mini App: one phone, two teams, a deck of football cards to
+explain. React + Vite + Tailwind on Supabase.
 
-Read it, and the standard for whatever you're touching, before you change code.
+## Every user-visible string ships in all nine languages
 
-## What this project is
+The app is translated into **ru, en, es, pt, fr, ar, ja, ko, zh**. A feature
+is not finished until its strings exist in every one of them.
 
-Telegram Mini App — a football "Alias" game. React 18 + TypeScript + Vite +
-Zustand + Supabase on the frontend (`src/`); an offline Python scraper
-(`football_scraper/`) builds the card deck. No custom backend — the client talks
-to Supabase (PostgREST + RPC) directly.
+* **No literal user-visible text in components.** It goes through `t()` with
+  a key in `src/shared/i18n/locales/*.json`.
+* **Add the key to all nine files in the same commit** — not "ru now,
+  the rest later". A missing key falls back to the raw key or to Russian,
+  and that is what the player sees.
+* **Plurals follow the language, not the base.** ru needs
+  `_one/_few/_many/_other`, en `_one/_other`, ja/ko/zh only `_other`. Do not
+  invent forms a language does not have; do not drop forms it needs.
+* **Check before opening a PR:**
 
-## The 10 rules you must not break
+  ```bash
+  node scripts/check-i18n.mjs
+  ```
 
-1. **Never trust existing code.** Assume hidden bugs; prove correctness with tests.
-2. **Regression-first.** For every bug: write a failing test that reproduces it,
-   *then* fix, *then* green. No fix without such a test.
-3. **TypeScript strict, zero `any`.** No `any`, no non-null `!` to silence the
-   compiler, no `@ts-ignore` without a justifying comment. See
-   [`docs/TYPESCRIPT_STANDARD.md`](./docs/TYPESCRIPT_STANDARD.md).
-4. **Respect the layers.** Feature-Sliced Design; `shared` never imports from
-   `features`/`screens`. See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-5. **Never mutate game phase directly** — go through `features/game/stateMachine.ts`.
-6. **The deck is production data.** Any change to `sherlock_cards.csv` or card
-   generation must pass the data-integrity suite. See
-   [`docs/DATA_QUALITY_STANDARD.md`](./docs/DATA_QUALITY_STANDARD.md).
-7. **All user-facing text via i18n**, keys kept in sync across all 9 locales in
-   `src/shared/i18n/locales/`.
-8. **Supabase changes are migrations**, and you must consider RLS. Never disable
-   RLS to make something work. See [`docs/SUPABASE_STANDARD.md`](./docs/SUPABASE_STANDARD.md).
-9. **Never weaken a quality gate** (coverage, mutation, lint) to make your change
-   pass. Lowering a bar needs an ADR.
-10. **Secrets never leave `.env`.** No keys in code, tests, logs, or commits.
+  It compares keys by stem, so legitimate plural differences pass and real
+  gaps fail.
 
-## Definition of Done
+Translate rather than transliterate, and keep the register the rest of the
+file uses. Proper nouns that travel unchanged (La Liga, Serie A) still get
+an entry — an explicit identity mapping beats a silent fallback, because the
+fallback hides the case where the name *should* differ (`Premier League`
+means England here; Russia's top flight is its own entry).
 
-See the constitution § 3. In short: typecheck + build + lint green; unit +
-(where relevant) property + data-integrity tests added; coverage & mutation gates
-hold; regression test for every bug; i18n synced; docs/ADR updated; CI green.
+`ar` is right-to-left: check that any layout you touch survives it.
 
-## Commands
+## Design system
+
+Two switchable visual languages, `master` (default) and `classic`, selected
+at runtime — see `docs/DESIGN_SYSTEM.md`. Colours are CSS variables in
+`src/index.css`; never hardcode a hex in a component. Selection is expressed
+only by `OptionRow` and `Chip` in `src/shared/ui/`, never by a new
+treatment.
+
+## The deck
+
+One filter object (`DeckFilter`, `src/shared/types/deck.ts`) and one SQL
+predicate (`cards_matching`), with `pick_random_cards` and `count_deck` as
+its only wrappers — so the number under a button and the cards dealt can
+never disagree. Background in `docs/FILTERS_REWORK.md`.
+
+`supabase/migrations/deck_rpc.sql` also carries the **legacy 12-parameter
+`pick_random_cards`**. It is a temporary shim: production calls it
+positionally, and dropping it took the live app down once. Remove it only
+after the new frontend is deployed everywhere; the `DROP` is written out in
+that file.
+
+## Checks
 
 ```bash
-npm run dev          # run the mini app locally (Vite)
-npm run typecheck    # tsc --noEmit (strict)
-npm run build        # tsc && vite build
-npm test             # Vitest: unit + property + data-integrity
-npm run test:cov     # + coverage gate
-npm run test:mutation# StrykerJS mutation testing (game-logic core)
-
-cd football_scraper && pip install -r requirements.txt && python -m pytest -q
+npx tsc --noEmit          # noUnusedLocals is on
+npm run build
+node scripts/check-i18n.mjs
+npm test                  # vitest: unit + property + data-integrity
 ```
 
-See [`TESTING.md`](./TESTING.md) for the test layout and how to read a mutation
-report.
+The scraper's tests are standalone scripts, not a pytest suite — pytest
+collects nothing from them. Run them directly:
 
-## Workflow expectations for agents
+```bash
+cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
+```
 
-- Work on a branch; open a **draft PR**; keep PRs small and focused.
-- Fill in [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md).
-- If a task is ambiguous or architecturally significant, **stop and ask** rather
-  than guessing.
-- Do not touch content that contradicts how it was described without flagging it.
-- Full agent guidance: [`docs/AI_ENGINEERING_GUIDE.md`](./docs/AI_ENGINEERING_GUIDE.md).
+GitHub Actions in this repo **regularly loses the `pull_request` event**, so
+a push can end up with no check run at all — which reads as "still running",
+not as a failure. After pushing, look at the PR's checks; if only Vercel is
+there, trigger `ci.yml` by `workflow_dispatch`.
+
+## The engineering standards
+
+`docs/ENGINEERING_CONSTITUTION.md` is the long-form standard, with a
+per-area document beside it (`docs/TYPESCRIPT_STANDARD.md`,
+`docs/TESTING_STANDARD.md`, `docs/SUPABASE_STANDARD.md`, and the rest), plus
+decision records in `docs/ADR/` and checklists in `docs/CHECKLISTS/`.
+`docs/AI_ENGINEERING_GUIDE.md` is the agent-facing entry point.
+
+The rules above are the ones this project keeps getting wrong, so they stay
+here in full. Where the constitution and this file disagree about the app
+itself, this file is current — it is edited as the code changes.

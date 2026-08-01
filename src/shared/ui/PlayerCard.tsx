@@ -1,57 +1,25 @@
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
-import {
-  IconUser,
-  IconShield,
-  IconBuildingStadium,
-  IconTag,
-  IconTarget,
-  IconFlag,
-  IconClipboard,
-  IconMicrophone,
-  IconSwords,
-  IconTrophy,
-  IconHourglass,
-} from '@tabler/icons-react';
-import type { Card, CardCategory } from '@/shared/types/database';
+import type { Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
-import { tierCardStyle } from '@/shared/lib/tier';
+import { tierCardStyle, tierFrameStyle } from '@/shared/lib/tier';
+import { useDesign } from '@/shared/design/useDesign';
+import {
+  CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR,
+} from '@/shared/ui/CategoryIcon';
+
+/** Everything the card actually renders. Declared as a Pick rather than the
+ * full `Card` so callers that fetched only the display columns — the
+ * Collection screen — can reuse this component without inventing the rest. */
+export type PlayerCardData = Pick<
+  Card,
+  'name' | 'name_en' | 'category' | 'category_ru' | 'photo_url' | 'tier' | 'card_translations'
+>;
 
 interface PlayerCardProps {
-  card: Card;
+  card: PlayerCardData;
   mode: 'explainer' | 'hidden';
   className?: string;
-}
-
-const CATEGORY_COLOR: Record<CardCategory, string> = {
-  player:        '#FF6300',
-  club:          '#4A9EFF',
-  club_nickname: '#4A9EFF',
-  stadium:       '#00C97D',
-  term:          '#B47AFF',
-  position:      '#B47AFF',
-  referee:       '#FFD24A',
-  coach:         '#FFD24A',
-  commentator:   '#7A8499',
-  woman:         '#FF6BA8',
-  derby:         '#F43F5E',
-  trophy:        '#FFD24A',
-  era:           '#22D3EE',
-};
-
-function CategoryIcon({ category, color }: { category: CardCategory; color: string }) {
-  const props = { size: 13, color, stroke: 1.75 };
-  if (category === 'club' || category === 'club_nickname') return <IconShield      {...props} />;
-  if (category === 'stadium')                              return <IconBuildingStadium {...props} />;
-  if (category === 'term')                                 return <IconTag          {...props} />;
-  if (category === 'position')                             return <IconTarget       {...props} />;
-  if (category === 'referee')                              return <IconFlag         {...props} />;
-  if (category === 'coach')                                return <IconClipboard    {...props} />;
-  if (category === 'commentator')                          return <IconMicrophone   {...props} />;
-  if (category === 'derby')                                return <IconSwords       {...props} />;
-  if (category === 'trophy')                               return <IconTrophy       {...props} />;
-  if (category === 'era')                                  return <IconHourglass    {...props} />;
-  return <IconUser {...props} />;  // player, woman, default
 }
 
 export function PlayerCard({ card, mode, className }: PlayerCardProps) {
@@ -77,7 +45,8 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
     );
   }
 
-  const catColor = CATEGORY_COLOR[card.category] ?? '#7A8499';
+  const design   = useDesign();
+  const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
   // Localized category label; the DB's Russian category_ru wins only on ru
   // (it can carry admin-customised labels).
   const label    = i18n.language.startsWith('ru') && card.category_ru
@@ -86,15 +55,59 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   // Translation -> name_en -> name, per the interface language (same rule
   // as the quick-game summary).
   const name     = cardDisplayName(card, i18n.language);
+  const master   = design === 'master';
+
+  // Master: the prototype's composition — gradient rarity frame around a
+  // gradient-filled card, centred category badge, big Playfair name, category
+  // in caps beneath. Classic keeps the original left-aligned header + name.
+  if (master) {
+    const frame = tierFrameStyle(card.tier, design);
+    return (
+      <div className={clsx('rounded-[20px]', className)} style={frame}>
+        <div
+          className="relative rounded-[18.5px] overflow-hidden"
+          style={{ background: 'linear-gradient(180deg, #161d30, #0c0f1c)' }}
+        >
+          <div className="h-1" style={{ background: 'var(--accent-gradient)' }} />
+          {card.photo_url && (
+            <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
+              <img
+                src={card.photo_url}
+                alt=""
+                className="w-full h-full object-cover object-top rounded-full opacity-[0.13]"
+              />
+            </div>
+          )}
+          <div className="relative px-5 pt-6 pb-7 flex flex-col items-center text-center">
+            <span
+              className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+              style={{ backgroundColor: 'rgb(var(--brand-accent) / 0.08)', border: `1px solid ${catColor}66` }}
+            >
+              <CategoryIcon category={card.category} color={catColor} size={20} />
+            </span>
+            <p className="ds-display text-[26px] font-bold text-white leading-[1.15]">{name}</p>
+            <span
+              className="text-[10.5px] font-bold uppercase tracking-[0.14em] mt-2"
+              style={{ color: catColor }}
+            >
+              {label}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={clsx(
-        'relative rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
+        'ds-panel relative rounded-2xl bg-brand-surface border border-brand-border overflow-hidden',
         className,
       )}
       // Rarity tier: subtle coloured frame + glow (common/unknown → none).
-      style={tierCardStyle(card.tier)}
+      // The design id is passed explicitly so the frame restyles the moment
+      // the player switches design systems.
+      style={tierCardStyle(card.tier, design)}
     >
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />
@@ -122,9 +135,10 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
         </span>
       </div>
 
-      {/* Card name — centred, medium weight */}
+      {/* Card name — centred, medium weight, display face (Playfair in the
+          master design, Inter in classic). */}
       <div className="relative px-5 pt-4 pb-8 text-center">
-        <p className="text-3xl font-medium text-white leading-snug">{name}</p>
+        <p className="ds-display text-3xl font-medium text-white leading-snug">{name}</p>
       </div>
     </div>
   );

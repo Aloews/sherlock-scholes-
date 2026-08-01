@@ -12,9 +12,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Design system (see src/shared/design/designs.ts) — read the persisted
+      // setting and put it on <html> BEFORE first paint, so a player on the
+      // non-default design never sees the other one flash. React re-applies
+      // the same value on mount; this is only about paint order.
+      (function () {
+        var fallback = 'master';
+        try {
+          var raw = localStorage.getItem('sherlock_settings');
+          var saved = raw && JSON.parse(raw).state.design;
+          document.documentElement.dataset.design =
+            saved === 'classic' || saved === 'master' ? saved : fallback;
+        } catch (e) {
+          document.documentElement.dataset.design = fallback;
+        }
+      })();
+    </script>
   </head>
   <body class="bg-brand-bg text-white">
     <div id="root"></div>

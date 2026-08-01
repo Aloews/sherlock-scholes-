@@ -4,7 +4,7 @@ import { supabase } from '@/shared/lib/supabase';
 import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
-import { pickRandomCards } from '@/features/game/cardRandomizer';
+import { pickCards } from '@/features/game/cardRandomizer';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -342,8 +342,9 @@ export async function activateRound(round: Round, room: Room): Promise<boolean> 
   const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
   const { categories } = room.settings;
 
-  // null min_pageviews — no difficulty filter, the whole deck.
-  const cards = await pickRandomCards(cardsCount, categories, null);
+  // Competitive rooms take the whole deck of the room's categories — no
+  // fame floor, so both teams face the same spread (see DeckFilter).
+  const cards = await pickCards({ categories }, cardsCount);
 
   await supabase.from('round_cards').insert(
     cards.map((card, i) => ({
