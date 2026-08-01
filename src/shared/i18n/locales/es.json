@@ -83,7 +83,17 @@
     "load_more": "Cargar más",
     "pro_title": "La colección es de Pro",
     "pro_body": "El catálogo completo de más de 2000 cartas con rarezas y búsqueda es parte de Sherlock Pro.",
-    "pro_cta": "Obtener Pro"
+    "pro_cta": "Obtener Pro",
+    "dossier": "Expediente",
+    "trophies": "Trofeos",
+    "career": "Carrera",
+    "about": "Acerca de",
+    "f_country": "País",
+    "f_position": "Posición",
+    "f_height": "Altura",
+    "f_years": "Años",
+    "f_caps": "Internac.",
+    "f_clubs": "Clubes"
   },
   "profile": {
     "title": "Perfil",

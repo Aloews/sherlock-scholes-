@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
-import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
@@ -12,7 +11,9 @@ import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { useProStore } from '@/shared/store/proStore';
-import { fetchCollection, type CollectionCard } from '@/features/collection/collectionApi';
+import { fetchCollection, fetchCard, type CollectionCard } from '@/features/collection/collectionApi';
+import { CardDossier } from '@/screens/collection/CardDossier';
+import type { Card } from '@/shared/types/database';
 import {
   ALL_CATEGORIES, TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN,
   type CardCategory, type Tier,
@@ -108,7 +109,19 @@ export function CollectionScreen() {
   const [term, setTerm] = useState('');
   // Bumped by the retry button to re-run the current query.
   const [reloadKey, setReloadKey] = useState(0);
-  const [openCard, setOpenCard] = useState<CollectionCard | null>(null);
+  // Tapping a cell opens the dossier, which needs the full row — the grid only
+  // fetched display columns. `openId` drives the fetch; `openCard` holds it.
+  const [openId,   setOpenId]   = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<Card | null>(null);
+
+  useEffect(() => {
+    if (!openId) { setOpenCard(null); return; }
+    let cancelled = false;
+    fetchCard(openId)
+      .then((full) => { if (!cancelled) setOpenCard(full); })
+      .catch(() => { if (!cancelled) setOpenId(null); });
+    return () => { cancelled = true; };
+  }, [openId]);
 
   useEffect(() => {
     const id = setTimeout(() => setTerm(searchQuery), SEARCH_DEBOUNCE_MS);
@@ -274,7 +287,8 @@ export function CollectionScreen() {
                 {cards.map((card) => (
                   <CollectionCell key={card.id} card={card} onOpen={() => {
                     hapticImpact('light');
-                    setOpenCard(card);
+                    setOpenId(card.id);
+                    trackEvent('collection_card_opened', { tier: card.tier ?? 'none' });
                   }} />
                 ))}
               </div>
@@ -306,7 +320,7 @@ export function CollectionScreen() {
       </div>
       )}
 
-      {/* Card detail — centred sheet over the repo's usual backdrop. */}
+      {/* Card detail — the full-screen dossier (screens/collection/CardDossier). */}
       <AnimatePresence>
         {openCard && (
           <motion.div
@@ -314,30 +328,12 @@ export function CollectionScreen() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            onClick={() => setOpenCard(null)}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
           >
-            <motion.div
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm"
-            >
-              <PlayerCard card={openCard} mode="explainer" />
-              <Button
-                fullWidth
-                variant="ghost"
-                className="mt-3"
-                onClick={() => setOpenCard(null)}
-              >
-                {t('home.back')}
-              </Button>
-            </motion.div>
+            <CardDossier card={openCard} onClose={() => setOpenId(null)} />
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

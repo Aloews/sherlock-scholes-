@@ -86,7 +86,17 @@
     "load_more": "عرض المزيد",
     "pro_title": "المجموعة ميزة Pro",
     "pro_body": "الفهرس الكامل لأكثر من 2000 بطاقة مع درجات الندرة والبحث جزء من Sherlock Pro.",
-    "pro_cta": "احصل على Pro"
+    "pro_cta": "احصل على Pro",
+    "dossier": "ملف",
+    "trophies": "الألقاب",
+    "career": "المسيرة",
+    "about": "نبذة",
+    "f_country": "الدولة",
+    "f_position": "المركز",
+    "f_height": "الطول",
+    "f_years": "السنوات",
+    "f_caps": "المنتخب",
+    "f_clubs": "الأندية"
   },
   "profile": {
     "title": "الملف الشخصي",

@@ -89,7 +89,17 @@
     "load_more": "Load more",
     "pro_title": "Collection is a Pro feature",
     "pro_body": "The full catalog of 2000+ cards with rarities and search is part of Sherlock Pro.",
-    "pro_cta": "Get Pro"
+    "pro_cta": "Get Pro",
+    "dossier": "Dossier",
+    "trophies": "Trophies",
+    "career": "Career",
+    "about": "About",
+    "f_country": "Country",
+    "f_position": "Position",
+    "f_height": "Height",
+    "f_years": "Years",
+    "f_caps": "Caps",
+    "f_clubs": "Clubs"
   },
   "profile": {
     "title": "Profile",
