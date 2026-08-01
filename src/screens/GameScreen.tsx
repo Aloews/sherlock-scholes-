@@ -8,6 +8,7 @@ import { useTimer } from '@/features/game/useTimer';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Timer } from '@/shared/ui/Timer';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
+import { useDesign } from '@/shared/design/useDesign';
 import { Button } from '@/shared/ui/Button';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -87,6 +88,7 @@ function RoundSummaryOverlay() {
 }
 
 export function GameScreen() {
+  const master = useDesign() === 'master';
   const navigate = useNavigate();
   const { phase, countdown, teamScores, currentRound } = useGameStore();
   const { t } = useTranslation();
@@ -153,7 +155,7 @@ export function GameScreen() {
 
   if (!currentRound) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
         <div className="text-brand-muted text-center">
           <div className="text-4xl mb-3">⚽</div>
           <p>{t('game.loading')}</p>
@@ -166,12 +168,12 @@ export function GameScreen() {
   const roundLabel = t('game.round_label', { n: currentRound.round_number });
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {phase === 'countdown' && countdown > 0 && <CountdownOverlay n={countdown} />}
       {phase === 'round_summary' && <RoundSummaryOverlay />}
 
       {/* Score bar */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-brand-border">
+      <div className={`flex items-center justify-between px-4 pt-6 pb-3 ${master ? '' : 'border-b border-brand-border'}`}>
         <Scoreboard scores={teamScores} compact />
         <div className="flex items-center gap-2">
           <div className="text-xs text-brand-muted font-medium">{roundLabel}</div>
@@ -208,7 +210,7 @@ export function GameScreen() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 px-4 overflow-y-auto">
+      <div className={`flex-1 px-4 overflow-y-auto ${master ? 'flex flex-col justify-center' : ''}`}>
         {isExplainer ? (
           <div className="space-y-3">
             <AnimatePresence mode="wait">
@@ -316,7 +318,7 @@ export function GameScreen() {
 
       {/* Action buttons — explainer only */}
       {isExplainer && activeCard && activeCard.status === 'pending' && (
-        <div className="px-4 pb-6 pt-3 grid grid-cols-2 gap-3 border-t border-brand-border">
+        <div className={`px-4 pb-6 pt-3 grid grid-cols-2 gap-3 ${master ? '' : 'border-t border-brand-border'}`}>
           <Button size="lg" variant="secondary" onClick={markSkipped}>
             <IconChevronsRight size={18} stroke={2} />
             {t('game.skip')}
@@ -328,7 +330,7 @@ export function GameScreen() {
       )}
 
       {isExplainer && (!activeCard || activeCard.status !== 'pending') && (
-        <div className="px-4 pb-6 pt-3 border-t border-brand-border">
+        <div className={`px-4 pb-6 pt-3 ${master ? '' : 'border-t border-brand-border'}`}>
           <Button fullWidth size="lg" variant="secondary" disabled>
             {t('game.waiting_timer')}
           </Button>

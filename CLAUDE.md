@@ -1,0 +1,68 @@
+# Sherlock Scholes — working rules
+
+A Telegram Mini App: one phone, two teams, a deck of football cards to
+explain. React + Vite + Tailwind on Supabase.
+
+## Every user-visible string ships in all nine languages
+
+The app is translated into **ru, en, es, pt, fr, ar, ja, ko, zh**. A feature
+is not finished until its strings exist in every one of them.
+
+* **No literal user-visible text in components.** It goes through `t()` with
+  a key in `src/shared/i18n/locales/*.json`.
+* **Add the key to all nine files in the same commit** — not "ru now,
+  the rest later". A missing key falls back to the raw key or to Russian,
+  and that is what the player sees.
+* **Plurals follow the language, not the base.** ru needs
+  `_one/_few/_many/_other`, en `_one/_other`, ja/ko/zh only `_other`. Do not
+  invent forms a language does not have; do not drop forms it needs.
+* **Check before opening a PR:**
+
+  ```bash
+  node scripts/check-i18n.mjs
+  ```
+
+  It compares keys by stem, so legitimate plural differences pass and real
+  gaps fail.
+
+Translate rather than transliterate, and keep the register the rest of the
+file uses. Proper nouns that travel unchanged (La Liga, Serie A) still get
+an entry — an explicit identity mapping beats a silent fallback, because the
+fallback hides the case where the name *should* differ (`Premier League`
+means England here; Russia's top flight is its own entry).
+
+`ar` is right-to-left: check that any layout you touch survives it.
+
+## Design system
+
+Two switchable visual languages, `master` (default) and `classic`, selected
+at runtime — see `docs/DESIGN_SYSTEM.md`. Colours are CSS variables in
+`src/index.css`; never hardcode a hex in a component. Selection is expressed
+only by `OptionRow` and `Chip` in `src/shared/ui/`, never by a new
+treatment.
+
+## The deck
+
+One filter object (`DeckFilter`, `src/shared/types/deck.ts`) and one SQL
+predicate (`cards_matching`), with `pick_random_cards` and `count_deck` as
+its only wrappers — so the number under a button and the cards dealt can
+never disagree. Background in `docs/FILTERS_REWORK.md`.
+
+`supabase/migrations/deck_rpc.sql` also carries the **legacy 12-parameter
+`pick_random_cards`**. It is a temporary shim: production calls it
+positionally, and dropping it took the live app down once. Remove it only
+after the new frontend is deployed everywhere; the `DROP` is written out in
+that file.
+
+## Checks
+
+```bash
+npx tsc --noEmit          # noUnusedLocals is on
+npm run build
+node scripts/check-i18n.mjs
+```
+
+GitHub Actions in this repo **regularly loses the `pull_request` event**, so
+a push can end up with no check run at all — which reads as "still running",
+not as a failure. After pushing, look at the PR's checks; if only Vercel is
+there, trigger `ci.yml` by `workflow_dispatch`.

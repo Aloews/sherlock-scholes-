@@ -63,7 +63,7 @@ export function ProScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 pt-8">
         <button
@@ -85,7 +85,7 @@ export function ProScreen() {
           >
             <IconCrown size={36} stroke={1.5} color="#FFD24A" />
           </div>
-          <h1 className="text-white text-2xl font-black">{t('pro.title')}</h1>
+          <h1 className="ds-display text-white text-2xl font-black">{t('pro.title')}</h1>
           <p className="text-brand-muted text-sm">{t('pro.subtitle')}</p>
         </div>
 
