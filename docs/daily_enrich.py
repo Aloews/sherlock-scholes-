@@ -19,10 +19,21 @@ ORDER (why):
   4. translations   untranslated card names -> card_translations.      (run.py --cards-translations)
   5. legend/career  FREE cache-only reprocess of legend_career+titles. (reprocess, APPLY=1)
   6. tier           recompute tier LAST so new stars/facts/titles count. (tier_build, APPLY=1)
+  7. fame           recompute cards.fame LAST of all — it is a PERCENTILE, so
+                    every step above (new cards, pageviews, active flips) shifts
+                    the scale. Also re-derives tier + the Pro 'legend' tag from
+                    the refreshed fame, which is why it runs after step 6, not
+                    before it.                        (cards_fame_refresh.py)
 
-Budget: steps 1-4 spend the shared Wikimedia budget; 5-6 spend ZERO (pure DB).
+Budget: steps 1-4 spend the shared Wikimedia budget; 5-7 spend ZERO (pure DB).
 Putting the free steps last means a budget wall in steps 1-4 still lets tier +
-legend reprocess run to completion every day.
+legend reprocess + fame refresh run to completion every day.
+
+Note: the daily workflow (.github/workflows/daily-enrich.yml) also runs
+cards_pageviews_i18n.py AFTER this orchestrator, which changes the very metric
+fame is computed from — so the workflow re-runs cards_fame_refresh.py again
+after that step. Running it here too keeps a standalone `python
+docs/daily_enrich.py` correct on its own.
 
 Run from anywhere:  python docs/daily_enrich.py
 CI:                  see .github/workflows/daily-enrich.yml
@@ -47,18 +58,20 @@ def _env(**extra):
 # (label, argv, env) — all run with cwd=SCRAPER (run.py modes need it; the
 # docs/ scripts compute their own paths, so cwd is harmless for them).
 STEPS = [
-    ("1/6 newcomers (resolve + facts/tier/wc2026)",
+    ("1/7 newcomers (resolve + facts/tier/wc2026)",
      [PY, os.path.join(HERE, "cards_enrich_newcomers.py"), "--apply"], _env()),
-    ("2/6 career_stats (legends + clubs_minutes-tail players)",
+    ("2/7 career_stats (legends + clubs_minutes-tail players)",
      [PY, os.path.join(HERE, "cards_career_build.py")], _env(APPLY="1")),
-    ("3/6 photos (cards without photo_url)",
+    ("3/7 photos (cards without photo_url)",
      [PY, "run.py", "--cards-photos"], _env()),
-    ("4/6 translations (card_translations)",
+    ("4/7 translations (card_translations)",
      [PY, "run.py", "--cards-translations"], _env()),
-    ("5/6 legend/career reprocess (free, cache-only)",
+    ("5/7 legend/career reprocess (free, cache-only)",
      [PY, os.path.join(HERE, "cards_legend_career_reprocess.py")], _env(APPLY="1")),
-    ("6/6 tier recompute (after new stars/facts)",
+    ("6/7 tier recompute (after new stars/facts)",
      [PY, os.path.join(HERE, "cards_tier_build.py")], _env(APPLY="1")),
+    ("7/7 fame recompute (percentile drifts on every import)",
+     [PY, os.path.join(HERE, "cards_fame_refresh.py")], _env()),
 ]
 
 

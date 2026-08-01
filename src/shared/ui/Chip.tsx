@@ -21,7 +21,7 @@ export function Chip({ label, selected, locked, onClick }: ChipProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
+      className={`inline-flex items-center gap-1 h-11 px-3.5 rounded-full text-xs font-medium border transition-colors ${
         selected
           ? 'border-brand-accent bg-brand-accent/15 text-white'
           : 'border-brand-border bg-brand-surface text-brand-muted active:text-white'
