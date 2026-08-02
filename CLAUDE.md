@@ -3,6 +3,17 @@
 A Telegram Mini App: one phone, two teams, a deck of football cards to
 explain. React + Vite + Tailwind on Supabase.
 
+## Read the map first
+
+**[`docs/MAP.md`](./docs/MAP.md)** — what exists, where, and how it connects:
+routes and screens, the deck path, the layer graph, every RPC and Edge
+Function with the file it lives in, the enrichment pipeline, and the traps
+that have actually bitten this project.
+
+Read the section you need there instead of walking the tree with `grep`. It
+is meant to answer "where does X live" in one hop. If it disagrees with the
+code, the code wins — fix the map in the same PR.
+
 ## Every user-visible string ships in all nine languages
 
 The app is translated into **ru, en, es, pt, fr, ar, ja, ko, zh**. A feature
