@@ -311,6 +311,16 @@ export interface Round {
   time_seconds: number;
 }
 
+// The card columns the in-game screen actually renders — the same set
+// PlayerCard declares. A competitive round joins ONLY these (see
+// fetchRoundCards): pulling whole rows meant shipping facts, career_stats,
+// legend_career and clubs_minutes to both players for every card of the
+// round, and nothing on the game or end screen reads them.
+export type PlayableCard = Pick<
+  Card,
+  'id' | 'name' | 'name_en' | 'category' | 'category_ru' | 'photo_url' | 'tier' | 'card_translations'
+>;
+
 export interface RoundCard {
   id: string;
   round_id: string;
@@ -318,7 +328,7 @@ export interface RoundCard {
   status: 'pending' | 'correct' | 'skipped';
   card_order: number;
   decided_at: string | null;
-  card?: Card;              // joined via .select('*, card:cards(*)')
+  card?: PlayableCard;      // joined via fetchRoundCards — display columns only
 }
 
 export interface Score {
