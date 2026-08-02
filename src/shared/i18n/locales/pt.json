@@ -152,6 +152,21 @@
     "title_15": "Inspetor-chefe",
     "title_20": "Sabujo lendário"
   },
+  "quests": {
+    "title": "Missões da semana",
+    "claimed": "Resgatado",
+    "claim": "+{{xp}} XP",
+    "days_left_one": "resta {{count}} dia",
+    "days_left_other": "restam {{count}} dias",
+    "metric": {
+      "cards_guessed_one": "Adivinhe {{count}} carta",
+      "cards_guessed_other": "Adivinhe {{count}} cartas",
+      "games_played_one": "Jogue {{count}} partida",
+      "games_played_other": "Jogue {{count}} partidas",
+      "games_won_one": "Vença {{count}} partida",
+      "games_won_other": "Vença {{count}} partidas"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "Compra única — seu para sempre",
