@@ -484,72 +484,21 @@ export async function endRound(
 // ─── Player Stats ─────────────────────────────────────────────
 
 async function updatePlayerStats(roomId: string): Promise<void> {
-  const [
-    { data: roomPlayers },
-    { data: scores },
-    { data: rounds },
-  ] = await Promise.all([
-    supabase.from('room_players').select('player_id, team_id').eq('room_id', roomId),
-    supabase.from('scores').select('team_id, points').eq('room_id', roomId),
-    supabase.from('rounds').select('id, explainer_id').eq('room_id', roomId),
-  ]);
-
-  if (!roomPlayers?.length) return;
-
-  const roundExplainer: Record<string, number | null> = {};
-  for (const r of rounds ?? []) {
-    roundExplainer[r.id] = r.explainer_id;
-  }
-
-  const cardsPerExplainer: Record<number, number> = {};
-  const roundIds = Object.keys(roundExplainer);
-  if (roundIds.length > 0) {
-    const { data: correctCards } = await supabase
-      .from('round_cards')
-      .select('round_id')
-      .in('round_id', roundIds)
-      .eq('status', 'correct');
-    for (const rc of correctCards ?? []) {
-      const explainerId = roundExplainer[rc.round_id];
-      if (explainerId != null) {
-        cardsPerExplainer[explainerId] = (cardsPerExplainer[explainerId] ?? 0) + 1;
-      }
-    }
-  }
-
-  const teamPoints: Record<string, number> = {};
-  for (const s of scores ?? []) {
-    teamPoints[s.team_id] = (teamPoints[s.team_id] ?? 0) + s.points;
-  }
-
-  const maxPoints = Math.max(0, ...Object.values(teamPoints));
-  const winnerTeamIds = maxPoints > 0
-    ? Object.entries(teamPoints).filter(([, pts]) => pts === maxPoints).map(([id]) => id)
-    : [];
-
-  const results = await Promise.all(
-    (roomPlayers as { player_id: number; team_id: string | null }[]).map((rp) => {
-      const teamScore    = rp.team_id ? (teamPoints[rp.team_id] ?? 0) : 0;
-      const won          = rp.team_id ? winnerTeamIds.includes(rp.team_id) : false;
-      const cardsGuessed = cardsPerExplainer[rp.player_id] ?? 0;
-      return supabase.rpc('increment_player_stats', {
-        p_player_id:     rp.player_id,
-        p_games_played:  1,
-        p_games_won:     won ? 1 : 0,
-        p_cards_guessed: cardsGuessed,
-        p_total_score:   teamScore,
-      });
-    }),
-  );
-  // A console line is invisible inside a Telegram WebView, which is how a
-  // broken stats path ran unnoticed: increment_player_stats was raising
-  // "column xp does not exist" on every game, and nothing said so. Report it
-  // where it can actually be seen.
-  for (const r of results) {
-    if (r.error) {
-      console.error('[stats] increment_player_stats failed:', r.error.code, r.error.message);
-      trackEvent('stats_award_failed', { code: r.error.code ?? 'unknown' });
-    }
+  // One call. The arithmetic — who won, who explained which cards — lives in
+  // award_room_stats() (supabase/migrations/award_stats_on_finish.sql), where
+  // a trigger on the room finishing has almost certainly run it already. This
+  // is the retry for the case where it has not, and it is a no-op when the
+  // room is already scored, so it can never double-count.
+  //
+  // It replaces four round-trips the client made AFTER being told the game
+  // was over: close the app at that moment and the game was scored for
+  // nobody, with nothing to notice it.
+  const { error } = await supabase.rpc('award_room_stats', { p_room_id: roomId });
+  if (error) {
+    // A console line inside a Telegram WebView is seen by nobody, which is how
+    // a broken stats path once ran unnoticed for a day.
+    console.error('[stats] award_room_stats failed:', error.code, error.message);
+    trackEvent('stats_award_failed', { code: error.code ?? 'unknown' });
   }
 }
 

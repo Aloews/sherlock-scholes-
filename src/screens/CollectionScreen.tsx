@@ -7,6 +7,8 @@ import { Button } from '@/shared/ui/Button';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
+import { photoFitClass } from '@/shared/lib/photoFit';
+import { clsx } from 'clsx';
 import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -49,26 +51,55 @@ function CollectionCell({ card, onOpen }: {
       transition={{ duration: 0.1 }}
       onClick={onOpen}
       aria-label={cardDisplayName(card, i18n.language)}
-      className="ds-panel min-h-[150px] rounded-2xl bg-brand-surface border border-brand-border
-                 p-3 flex flex-col items-center justify-center gap-2 text-center"
+      className="ds-panel relative min-h-[150px] rounded-2xl bg-brand-surface border border-brand-border
+                 overflow-hidden flex flex-col justify-end text-left"
       style={tierCardStyle(card.tier, design)}
     >
-      <CategoryIcon category={card.category} color={color} size={22} />
-      <p className="ds-display text-[13px] font-bold text-white leading-tight line-clamp-2">
-        {cardDisplayName(card, i18n.language)}
-      </p>
-      {card.tier ? (
-        <span
-          className="text-[9px] uppercase tracking-[0.14em] font-semibold"
-          style={{ color: TIER_COLOR[card.tier] }}
-        >
-          {tierLabel(card.tier, i18n.language)}
-        </span>
+      {/* The photo IS the cell. Crests keep their own padding via
+          photoFitClass, so a shield is shown whole while a headshot fills the
+          frame — the same rule the card watermark follows. */}
+      {card.photo_url ? (
+        <img
+          src={card.photo_url}
+          alt=""
+          loading="lazy"
+          aria-hidden
+          className={clsx('absolute inset-0 w-full h-full', photoFitClass(card.category))}
+        />
       ) : (
-        <span className="text-[9px] uppercase tracking-[0.14em] text-brand-muted/70">
-          {label}
-        </span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <CategoryIcon category={card.category} color={color} size={34} />
+        </div>
       )}
+
+      {/* Scrim: the name sits on a photo whose brightness we do not control,
+          so it gets its own gradient rather than relying on the image being
+          dark enough. Opaque at the bottom, clear by the middle. */}
+      <div
+        className="absolute inset-x-0 bottom-0 h-3/5 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, rgba(8,10,18,0.94) 15%, rgba(8,10,18,0.72) 45%, transparent)' }}
+      />
+
+      <div className="relative p-2.5 pt-6">
+        <p className="ds-display text-[13px] font-bold text-white leading-tight line-clamp-2">
+          {cardDisplayName(card, i18n.language)}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <CategoryIcon category={card.category} color={color} size={12} />
+          {card.tier ? (
+            <span
+              className="text-[9px] uppercase tracking-[0.14em] font-semibold"
+              style={{ color: TIER_COLOR[card.tier] }}
+            >
+              {tierLabel(card.tier, i18n.language)}
+            </span>
+          ) : (
+            <span className="text-[9px] uppercase tracking-[0.14em] text-brand-muted">
+              {label}
+            </span>
+          )}
+        </div>
+      </div>
     </motion.button>
   );
 }

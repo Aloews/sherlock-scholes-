@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle, tierFrameStyle } from '@/shared/lib/tier';
-import { photoFitClass } from '@/shared/lib/photoFit';
+import { CardWatermark } from '@/shared/ui/CardWatermark';
 import { useDesign } from '@/shared/design/useDesign';
 import {
   CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR,
@@ -71,24 +71,7 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
         >
           <div className="h-1" style={{ background: 'var(--accent-gradient)' }} />
           {card.photo_url && (
-            // Smaller and edge-masked than the classic card's watermark: the
-            // master composition is shorter and centred, so the classic
-            // sizing bled a legible, off-centre face across the icon badge
-            // and name instead of reading as a background texture.
-            <div
-              className="absolute -right-3 -bottom-4 w-24 h-24 pointer-events-none select-none"
-              style={{
-                maskImage: 'radial-gradient(circle at 60% 40%, black 0%, transparent 75%)',
-                WebkitMaskImage: 'radial-gradient(circle at 60% 40%, black 0%, transparent 75%)',
-              }}
-              aria-hidden
-            >
-              <img
-                src={card.photo_url}
-                alt=""
-                className={clsx('w-full h-full opacity-[0.13]', photoFitClass(card.category))}
-              />
-            </div>
+            <CardWatermark src={card.photo_url} category={card.category} />
           )}
           <div className="relative px-5 pt-6 pb-7 flex flex-col items-center text-center">
             <span
@@ -124,19 +107,12 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />
 
-      {/* Watermark (variant 5 of the design review): the card's own wiki
-          photo ghosted in the corner behind the name — a visual hint for the
-          explainer that costs zero space. Photo only, preloaded a card ahead
+      {/* The card's own wiki photo, ghosted behind the name — a hint for the
+          explainer that costs no layout space. Preloaded a card ahead
           (useGame/useTraining) so it appears together with the card; cards
           without a photo show nothing. */}
       {card.photo_url && (
-        <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
-          <img
-            src={card.photo_url}
-            alt=""
-            className={clsx('w-full h-full opacity-[0.13]', photoFitClass(card.category))}
-          />
-        </div>
+        <CardWatermark src={card.photo_url} category={card.category} />
       )}
 
       {/* Category label */}
