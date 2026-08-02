@@ -22,7 +22,8 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
-import { photoFitClass, photoFitCircleClass } from '@/shared/lib/photoFit';
+import { photoFitCircleClass } from '@/shared/lib/photoFit';
+import { CardWatermark } from '@/shared/ui/CardWatermark';
 import { useDesign } from '@/shared/design/useDesign';
 import type { CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -713,13 +714,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                     with the card; no photo — no watermark. Same markup as
                     the multiplayer PlayerCard. */}
                 {currentCard.photo_url && (
-                  <div className="absolute -right-4 -bottom-6 w-36 h-36 pointer-events-none select-none" aria-hidden>
-                    <img
-                      src={currentCard.photo_url}
-                      alt=""
-                      className={clsx('w-full h-full opacity-[0.13]', photoFitClass(currentCard.category))}
-                    />
-                  </div>
+                  <CardWatermark src={currentCard.photo_url} category={currentCard.category} />
                 )}
                 <span
                   className="relative text-[11px] uppercase tracking-widest font-medium"
