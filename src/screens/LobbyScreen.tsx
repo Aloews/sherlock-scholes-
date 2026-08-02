@@ -9,6 +9,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { VoiceControl } from '@/features/voice/VoiceControl';
 import { useDesign } from '@/shared/design/useDesign';
 import { IconCheck } from '@tabler/icons-react';
 
@@ -69,6 +70,10 @@ export function LobbyScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+
+        {/* Voice is opt-in and asks for the microphone only when tapped.
+            Renders nothing when LiveKit is unconfigured. */}
+        <VoiceControl roomId={room.id} />
 
         {/* ── 1v1 layout: two player slots ── */}
         {!isTeamMode && (

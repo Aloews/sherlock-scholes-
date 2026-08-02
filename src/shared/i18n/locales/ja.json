@@ -243,6 +243,23 @@
     "min_players": "各チーム最低2人必要です",
     "room_full_1v1": "ルームが満員です（1v1は最大2人）"
   },
+  "voice": {
+    "title": "ボイスチャット",
+    "enable": "音声をオンにする",
+    "mute": "マイクをミュート",
+    "unmute": "マイクをオンにする",
+    "leave": "切断する",
+    "status_off": "オフ · オンにするときにマイクの許可を求めます",
+    "status_connecting": "接続中…",
+    "status_muted": "マイクはミュート中",
+    "status_denied": "マイクへのアクセスがありません",
+    "status_unavailable": "利用できません",
+    "level_full": "接続は良好",
+    "level_voice": "音声",
+    "level_voice_low": "接続が弱い · 低帯域モード",
+    "level_text": "接続できません",
+    "level_text_hint": "回線が音声に耐えられません。Wi-Fi を試すか、文字で伝えてください。"
+  },
   "game": {
     "round_starting": "ラウンド開始",
     "go": "GO！",

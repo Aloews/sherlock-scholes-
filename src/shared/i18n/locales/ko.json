@@ -243,6 +243,23 @@
     "min_players": "각 팀에 최소 2명이 필요합니다",
     "room_full_1v1": "방이 가득 찼습니다 (1v1, 최대 2명)"
   },
+  "voice": {
+    "title": "음성 채팅",
+    "enable": "음성 켜기",
+    "mute": "마이크 음소거",
+    "unmute": "마이크 켜기",
+    "leave": "연결 끊기",
+    "status_off": "꺼짐 · 켤 때 마이크 권한을 요청합니다",
+    "status_connecting": "연결 중…",
+    "status_muted": "마이크 음소거됨",
+    "status_denied": "마이크에 접근할 수 없습니다",
+    "status_unavailable": "사용할 수 없음",
+    "level_full": "연결 상태 좋음",
+    "level_voice": "음성",
+    "level_voice_low": "연결이 약함 · 저대역 모드",
+    "level_text": "연결할 수 없음",
+    "level_text_hint": "회선이 음성을 감당하지 못합니다. Wi-Fi를 쓰거나 채팅으로 알려주세요."
+  },
   "game": {
     "round_starting": "라운드 시작",
     "go": "고!",

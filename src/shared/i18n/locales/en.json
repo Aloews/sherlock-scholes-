@@ -247,6 +247,23 @@
     "min_players": "Minimum 2 players in each team required",
     "room_full_1v1": "Room is full (1v1, max 2 players)"
   },
+  "voice": {
+    "title": "Voice chat",
+    "enable": "Turn on voice",
+    "mute": "Mute microphone",
+    "unmute": "Unmute microphone",
+    "leave": "Disconnect",
+    "status_off": "Off · we'll ask for the mic when you turn it on",
+    "status_connecting": "Connecting…",
+    "status_muted": "Microphone muted",
+    "status_denied": "No microphone access",
+    "status_unavailable": "Unavailable",
+    "level_full": "Great connection",
+    "level_voice": "Voice",
+    "level_voice_low": "Weak connection · low-bandwidth mode",
+    "level_text": "Connection unavailable",
+    "level_text_hint": "The link can't carry voice — try Wi-Fi, or type instead."
+  },
   "game": {
     "round_starting": "Round starting",
     "go": "GO!",
