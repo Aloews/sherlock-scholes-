@@ -22,6 +22,18 @@
 -- Run in the Supabase SQL Editor as one script. Idempotent.
 -- ============================================================
 
+-- ─── 0. Dependency this migration cannot assume ─────────────
+-- increment_player_stats() below writes player_stats.xp, which
+-- player_progression_xp.sql adds. Applying THIS file without that one left
+-- production with a function referencing a column that did not exist: every
+-- call raised "column xp does not exist", so nothing was credited at all —
+-- not quests, not xp, not even games_played. The game looked fine; the
+-- statistics silently stopped.
+--
+-- A migration must not depend on another having been run by hand. Adding the
+-- column here is idempotent and makes this file safe on its own.
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0;
+
 -- ─── 1. Catalogue ───────────────────────────────────────────
 -- `metric` names the counter this task watches; it must match a column that
 -- increment_player_stats() already receives, so a task can never ask for

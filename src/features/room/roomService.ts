@@ -4,8 +4,9 @@ import { supabase } from '@/shared/lib/supabase';
 import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
-import { pickCards } from '@/features/game/cardRandomizer';
+import { pickCardIds } from '@/features/game/cardRandomizer';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
+import { trackEvent } from '@/shared/lib/analytics';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -345,12 +346,15 @@ export async function activateRound(round: Round, room: Room): Promise<boolean> 
 
   // Competitive rooms take the whole deck of the room's categories — no
   // fame floor, so both teams face the same spread (see DeckFilter).
-  const cards = await pickCards({ categories }, cardsCount);
+  // Ids only: this inserts round_cards and never reads another column. Asking
+  // for whole rows shipped 141 kB to the host to extract 100 UUIDs (4.9 kB),
+  // on the critical path between "start" and the first card appearing.
+  const cardIds = await pickCardIds({ categories }, cardsCount);
 
   await supabase.from('round_cards').insert(
-    cards.map((card, i) => ({
+    cardIds.map((cardId, i) => ({
       round_id:   round.id,
-      card_id:    card.id,
+      card_id:    cardId,
       card_order: i + 1,
       status:     'pending',
     })),
@@ -537,8 +541,15 @@ async function updatePlayerStats(roomId: string): Promise<void> {
       });
     }),
   );
+  // A console line is invisible inside a Telegram WebView, which is how a
+  // broken stats path ran unnoticed: increment_player_stats was raising
+  // "column xp does not exist" on every game, and nothing said so. Report it
+  // where it can actually be seen.
   for (const r of results) {
-    if (r.error) console.error('[stats] increment_player_stats failed:', r.error.code, r.error.message);
+    if (r.error) {
+      console.error('[stats] increment_player_stats failed:', r.error.code, r.error.message);
+      trackEvent('stats_award_failed', { code: r.error.code ?? 'unknown' });
+    }
   }
 }
 
