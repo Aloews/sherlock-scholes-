@@ -5,6 +5,7 @@ import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
 import { pickCards } from '@/features/game/cardRandomizer';
+import { isCardTranslationLang } from '@/shared/lib/cardName';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -369,19 +370,44 @@ export async function activateRound(round: Round, room: Room): Promise<boolean> 
 // rejection the plain select is used for the rest of the session.
 let cardsEmbedTranslations = true;
 
-export async function fetchRoundCards(roundId: string): Promise<RoundCard[]> {
-  if (cardsEmbedTranslations) {
+// Only what PlayerCard draws (PlayableCard). A 1v1 round holds 100 cards, and
+// `cards(*)` shipped every column of each — facts, career_stats, legend_career,
+// clubs_minutes, attributes — to BOTH players, on every round. Measured against
+// production: 111 kB of card columns where the screen reads 13 kB, 61 kB of it
+// JSONB that neither the game screen nor the end screen ever opens.
+//
+// Widening this back to `*` is how the slow load comes back. If a screen needs
+// a heavy column, fetch it for the handful of cards that screen shows.
+const PLAY_COLUMNS = 'id, name, name_en, category, category_ru, photo_url, tier';
+
+/**
+ * The cards of a round, in play order, carrying only what the screen draws.
+ *
+ * `lang` decides whether translations travel at all. cardDisplayName() reads
+ * card_translations ONLY for the seven languages that keep card names there —
+ * ru falls back to `name` and en to `name_en`, so for those two the embed is
+ * pure waste, and for the rest only that one language is of any use.
+ */
+export async function fetchRoundCards(roundId: string, lang: string): Promise<RoundCard[]> {
+  const base = lang.slice(0, 2);
+  const wantsTranslations = cardsEmbedTranslations && isCardTranslationLang(base);
+
+  if (wantsTranslations) {
     const { data, error } = await supabase
       .from('round_cards')
-      .select('*, card:cards(*, card_translations(*))')
+      // card_translations(*) would also carry `source` — provenance for the
+      // enrichment scripts, never shown to a player.
+      .select(`*, card:cards(${PLAY_COLUMNS}, card_translations(card_id, lang, name))`)
       .eq('round_id', roundId)
+      .eq('card.card_translations.lang', base)
       .order('card_order');
     if (!error) return (data ?? []) as RoundCard[];
     cardsEmbedTranslations = false; // pre-migration DB — retry without
   }
+
   const { data } = await supabase
     .from('round_cards')
-    .select('*, card:cards(*)')
+    .select(`*, card:cards(${PLAY_COLUMNS})`)
     .eq('round_id', roundId)
     .order('card_order');
   return (data ?? []) as RoundCard[];

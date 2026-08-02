@@ -8,6 +8,10 @@ import { transition } from '@/features/game/stateMachine';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import { playSound } from '@/shared/lib/sounds';
+// Read at call time, not captured in a dep array: the round's cards are
+// fetched in realtime callbacks, and a language switched mid-game must apply
+// to the next round rather than to the next remount.
+import i18n from '@/shared/i18n';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
 
@@ -47,7 +51,7 @@ export function useGame() {
           if (!round) return;
           if (round.status === 'active') {
             setCurrentRound(round);
-            const cards = await roomService.fetchRoundCards(round.id);
+            const cards = await roomService.fetchRoundCards(round.id, i18n.language);
             setCurrentCards(cards);
             transition('round_active');
           } else if (round.status === 'completed') {
@@ -108,7 +112,7 @@ export function useGame() {
         .single();
       if (data) {
         setCurrentRound(data as Round);
-        const cards = await roomService.fetchRoundCards(data.id);
+        const cards = await roomService.fetchRoundCards(data.id, i18n.language);
         setCurrentCards(cards);
         if ((data as Round).status === 'active') transition('round_active');
       }

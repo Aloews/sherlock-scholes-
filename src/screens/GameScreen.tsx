@@ -260,7 +260,6 @@ export function GameScreen() {
             {/* ── 1v1 guesser view ── */}
             {is1v1 ? (
               <>
-                <div className="text-6xl">👂</div>
                 <p className="text-white text-3xl font-bold">{t('game.listening')}</p>
 
                 <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-8 py-4">
@@ -287,7 +286,6 @@ export function GameScreen() {
               <>
                 {isMyTeamsTurn ? (
                   <>
-                    <div className="text-6xl">👂</div>
                     <p className="text-white text-xl font-bold">{t('game.your_team_explaining')}</p>
                     <p className="text-brand-muted">{t('game.listen_and_guess')}</p>
                     <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-6 py-3">
