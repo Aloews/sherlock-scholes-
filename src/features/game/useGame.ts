@@ -15,6 +15,10 @@ import i18n from '@/shared/i18n';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Round, RoundCard, Room, TeamScore } from '@/shared/types/database';
 
+// How many card photos to keep warm ahead of the one being explained.
+// Matches useTraining's window — the same trade-off, the same answer.
+const PHOTO_PRELOAD_AHEAD = 5;
+
 export function useGame() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
@@ -253,12 +257,31 @@ export function useGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRound?.id, currentRound?.status, room?.id, room?.status, player?.id]);
 
-  // Warm the round's watermark photos as soon as the deal lands, so each
-  // photo shows the moment its card appears (a round is only a handful of
-  // cards — preloading them all is cheap).
+  // Needed by the preload effect below, so it is derived here rather than
+  // down with the rest of the derived state.
+  const isExplainer = currentRound?.explainer_id === player?.id;
+
+  // Warm the watermark photos just ahead of the card being explained.
+  //
+  // This used to preload the whole round, on the reasoning that "a round is
+  // only a handful of cards". That stopped being true when 1v1 started
+  // dealing 100: the photos average 67 kB and each is a Commons redirect
+  // chain, so it meant ~6.6 MB over ~300 requests the instant the round
+  // landed — starving the connection the game itself needs.
+  //
+  // Two limits, both of which have to hold:
+  //   • only the EXPLAINER sees a card at all (GameScreen renders the
+  //     listening view for everyone else), so the guesser fetched megabytes
+  //     of images it could never display;
+  //   • a window, not the deck — the same rule useTraining already follows.
   useEffect(() => {
-    preloadPhotos(currentCards.map((rc) => rc.card?.photo_url));
-  }, [currentCards]);
+    if (!isExplainer) return;
+    preloadPhotos(
+      currentCards
+        .slice(activeCardIndex, activeCardIndex + PHOTO_PRELOAD_AHEAD)
+        .map((rc) => rc.card?.photo_url),
+    );
+  }, [currentCards, activeCardIndex, isExplainer]);
 
   // ─── Card actions (explainer only) ────────────────────────
 
@@ -291,7 +314,6 @@ export function useGame() {
   // ─── Derived state ─────────────────────────────────────────
 
   const is1v1       = room?.mode === '1v1';
-  const isExplainer = currentRound?.explainer_id === player?.id;
   const activeCard  = currentCards[activeCardIndex] ?? null;
 
   const myRoomPlayer = useGameStore.getState().roomPlayers.find((rp) => rp.player_id === player?.id);
