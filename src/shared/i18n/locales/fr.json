@@ -262,6 +262,23 @@
     "min_players": "Minimum 2 joueurs par équipe requis",
     "room_full_1v1": "Salon complet (1v1, 2 joueurs max)"
   },
+  "voice": {
+    "title": "Chat vocal",
+    "enable": "Activer la voix",
+    "mute": "Couper le micro",
+    "unmute": "Activer le micro",
+    "leave": "Se déconnecter",
+    "status_off": "Désactivé · le micro sera demandé à l'activation",
+    "status_connecting": "Connexion…",
+    "status_muted": "Micro coupé",
+    "status_denied": "Pas d'accès au micro",
+    "status_unavailable": "Indisponible",
+    "level_full": "Excellente connexion",
+    "level_voice": "Voix",
+    "level_voice_low": "Connexion faible · mode économe",
+    "level_text": "Connexion indisponible",
+    "level_text_hint": "La liaison ne supporte pas la voix — essayez le Wi-Fi ou écrivez."
+  },
   "game": {
     "round_starting": "La manche commence",
     "go": "GO !",

@@ -254,6 +254,23 @@
     "min_players": "每队至少需要2名玩家",
     "room_full_1v1": "房间已满（1v1 最多2人）"
   },
+  "voice": {
+    "title": "语音聊天",
+    "enable": "开启语音",
+    "mute": "静音麦克风",
+    "unmute": "开启麦克风",
+    "leave": "断开连接",
+    "status_off": "已关闭 · 开启时会请求麦克风权限",
+    "status_connecting": "连接中…",
+    "status_muted": "麦克风已静音",
+    "status_denied": "无法访问麦克风",
+    "status_unavailable": "不可用",
+    "level_full": "连接良好",
+    "level_voice": "语音",
+    "level_voice_low": "连接较弱 · 省流模式",
+    "level_text": "连接不可用",
+    "level_text_hint": "线路无法承载语音 — 试试 Wi-Fi，或改用文字。"
+  },
   "game": {
     "round_starting": "回合即将开始",
     "go": "开始！",

@@ -262,6 +262,23 @@
     "min_players": "Mínimo de 2 jogadores por equipe",
     "room_full_1v1": "Sala cheia (1v1, máx. 2 jogadores)"
   },
+  "voice": {
+    "title": "Chat de voz",
+    "enable": "Ativar voz",
+    "mute": "Silenciar microfone",
+    "unmute": "Ativar microfone",
+    "leave": "Desconectar",
+    "status_off": "Desligado · pediremos o microfone ao ativar",
+    "status_connecting": "Conectando…",
+    "status_muted": "Microfone silenciado",
+    "status_denied": "Sem acesso ao microfone",
+    "status_unavailable": "Indisponível",
+    "level_full": "Ótima conexão",
+    "level_voice": "Voz",
+    "level_voice_low": "Conexão fraca · modo econômico",
+    "level_text": "Conexão indisponível",
+    "level_text_hint": "A ligação não suporta voz — tente Wi-Fi ou escreva."
+  },
   "game": {
     "round_starting": "Rodada começando",
     "go": "VAI!",
