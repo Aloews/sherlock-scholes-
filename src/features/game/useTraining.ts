@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { pickCards } from './cardRandomizer';
+import { pickCardsLight, CARD_DETAIL_COLUMNS } from './cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
@@ -14,6 +14,11 @@ import { normalizeFilter, type DeckFilter } from '@/shared/types/deck';
 // randomly, so later batches overlap with what we've already seen.
 const BATCH       = 1000; // PostgREST max-rows cap per request
 const PRELOAD_AT  = 25;   // fetch next batch when this many cards remain
+// How far ahead of the current card to fetch the heavy JSONB. The history row
+// is drawn the instant a card is decided, so its career lines have to be in
+// memory BEFORE that — enriching afterwards would show the row and then pop
+// the detail in. Ten cards is comfortable headroom at any tapping speed.
+const DETAIL_AHEAD = 10;
 // A batch shorter than BATCH means the whole (filtered) deck fit into it.
 // Otherwise the deck is exhausted when batches stop bringing new cards.
 const MAX_ZERO_NEW_BATCHES = 2;
@@ -90,6 +95,26 @@ export function useTraining(filter: DeckFilter) {
       (c) => (byId[c.id] ? { ...c, card_translations: byId[c.id] } : c)));
   }, []);
 
+  // Bring in the five heavy JSONB columns for cards about to be played.
+  // Same shape as fetchTranslations above: fetch, merge, fail silently — a
+  // card without its career lines still plays, it just shows fewer of them.
+  const detailedRef = useRef<Set<string>>(new Set());
+  const fetchCardDetails = useCallback(async (ids: string[]) => {
+    const missing = ids.filter((id) => !detailedRef.current.has(id));
+    if (missing.length === 0) return;
+    for (const id of missing) detailedRef.current.add(id);
+    const { data } = await supabase
+      .from('cards')
+      .select(CARD_DETAIL_COLUMNS)
+      .in('id', missing);
+    if (!data?.length) return;
+    const byId: Record<string, Partial<Card>> = {};
+    for (const row of data as unknown as (Partial<Card> & { id: string })[]) {
+      byId[row.id] = row;
+    }
+    setCards((prev) => prev.map((c) => (byId[c.id] ? { ...c, ...byId[c.id] } : c)));
+  }, []);
+
   // Append a batch, keeping only cards we haven't seen this session, and
   // detect deck exhaustion (see BATCH/MAX_ZERO_NEW_BATCHES above).
   const absorbBatch = useCallback((batch: Card[]) => {
@@ -114,7 +139,7 @@ export function useTraining(filter: DeckFilter) {
     seenIdsRef.current = new Set();
     zeroNewRef.current = 0;
     exhaustedRef.current = false;
-    pickCards(deckFilter, BATCH)
+    pickCardsLight(deckFilter, BATCH)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => setLoading(false));
@@ -124,7 +149,7 @@ export function useTraining(filter: DeckFilter) {
   const preloadMore = useCallback(() => {
     if (isPreloadingRef.current || exhaustedRef.current) return;
     isPreloadingRef.current = true;
-    pickCards(deckFilter, BATCH)
+    pickCardsLight(deckFilter, BATCH)
       .then(absorbBatch)
       .catch(() => undefined)
       .finally(() => { isPreloadingRef.current = false; });
@@ -135,6 +160,15 @@ export function useTraining(filter: DeckFilter) {
   useEffect(() => {
     preloadPhotos(cards.slice(index, index + 5).map((c) => c.photo_url));
   }, [index, cards]);
+
+  // Keep the career lines of the next few cards in memory for the same reason,
+  // and further ahead: a photo that arrives late is a blank corner, but a
+  // history row that arrives without its career line is a row that visibly
+  // changes after the player has already read it.
+  useEffect(() => {
+    const ids = cards.slice(index, index + DETAIL_AHEAD).map((c) => c.id);
+    if (ids.length) void fetchCardDetails(ids);
+  }, [index, cards, fetchCardDetails]);
 
   // Top up the deck as the player nears the end. Decoupled from the tap
   // handler (was inside the setIndex updater) so a batch arriving mid-transition
