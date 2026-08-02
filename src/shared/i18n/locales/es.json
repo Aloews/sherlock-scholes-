@@ -152,6 +152,21 @@
     "title_15": "Inspector jefe",
     "title_20": "Sabueso legendario"
   },
+  "quests": {
+    "title": "Misiones semanales",
+    "claimed": "Reclamado",
+    "claim": "+{{xp}} XP",
+    "days_left_one": "queda {{count}} día",
+    "days_left_other": "quedan {{count}} días",
+    "metric": {
+      "cards_guessed_one": "Adivina {{count}} carta",
+      "cards_guessed_other": "Adivina {{count}} cartas",
+      "games_played_one": "Juega {{count}} partida",
+      "games_played_other": "Juega {{count}} partidas",
+      "games_won_one": "Gana {{count}} partida",
+      "games_won_other": "Gana {{count}} partidas"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "Compra única — tuyo para siempre",

@@ -155,6 +155,37 @@
     "title_15": "مفتش أول",
     "title_20": "محقق أسطوري"
   },
+  "quests": {
+    "title": "مهام الأسبوع",
+    "claimed": "تم الاستلام",
+    "claim": "‎+{{xp}} خبرة",
+    "days_left_zero": "لم يتبقَّ أي يوم",
+    "days_left_one": "يتبقّى يوم واحد",
+    "days_left_two": "يتبقّى يومان",
+    "days_left_few": "تتبقّى {{count}} أيام",
+    "days_left_many": "يتبقّى {{count}} يومًا",
+    "days_left_other": "يتبقّى {{count}} يوم",
+    "metric": {
+      "cards_guessed_zero": "خمِّن {{count}} بطاقة",
+      "cards_guessed_one": "خمِّن بطاقة واحدة",
+      "cards_guessed_two": "خمِّن بطاقتين",
+      "cards_guessed_few": "خمِّن {{count}} بطاقات",
+      "cards_guessed_many": "خمِّن {{count}} بطاقة",
+      "cards_guessed_other": "خمِّن {{count}} بطاقة",
+      "games_played_zero": "العب {{count}} مباراة",
+      "games_played_one": "العب مباراة واحدة",
+      "games_played_two": "العب مباراتين",
+      "games_played_few": "العب {{count}} مباريات",
+      "games_played_many": "العب {{count}} مباراة",
+      "games_played_other": "العب {{count}} مباراة",
+      "games_won_zero": "اربح {{count}} مباراة",
+      "games_won_one": "اربح مباراة واحدة",
+      "games_won_two": "اربح مباراتين",
+      "games_won_few": "اربح {{count}} مباريات",
+      "games_won_many": "اربح {{count}} مباراة",
+      "games_won_other": "اربح {{count}} مباراة"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "شراء لمرة واحدة — ملكك للأبد",

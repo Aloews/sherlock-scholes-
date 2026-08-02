@@ -150,6 +150,17 @@
     "title_15": "高级探长",
     "title_20": "传奇神探"
   },
+  "quests": {
+    "title": "本周任务",
+    "claimed": "已领取",
+    "claim": "+{{xp}} XP",
+    "days_left_other": "剩余 {{count}} 天",
+    "metric": {
+      "cards_guessed_other": "猜对 {{count}} 张卡片",
+      "games_played_other": "进行 {{count}} 局游戏",
+      "games_won_other": "赢下 {{count}} 局游戏"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "一次购买，永久拥有",

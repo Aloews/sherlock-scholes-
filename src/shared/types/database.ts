@@ -346,3 +346,22 @@ export interface PlayerStats {
   xp: number;
   updated_at: string;
 }
+
+// What a weekly quest counts. Matches the CHECK on weekly_tasks.metric and
+// the counters increment_player_stats() already receives — a task cannot ask
+// for something the game does not measure.
+export type QuestMetric = 'cards_guessed' | 'games_played' | 'games_won';
+
+// One row of get_weekly_quests() (supabase/migrations/weekly_quests.sql).
+// The label is not here and never will be: the app has nine languages, so the
+// client renders t(`quests.metric.${metric}`, { count: target }) instead of
+// translating database content.
+export interface WeeklyQuest {
+  code: string;
+  metric: QuestMetric;
+  target: number;
+  reward_xp: number;
+  progress: number;
+  claimed_at: string | null;
+  week_start: string;  // ISO date, the Monday 00:00 UTC the week starts at
+}
