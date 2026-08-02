@@ -6,6 +6,7 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { levelProgress, levelTitleKey } from '@/shared/lib/level';
+import { WeeklyQuests } from '@/screens/profile/WeeklyQuests';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -15,7 +16,7 @@ export function ProfileScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { player } = useAuthStore();
-  const { stats, loading } = usePlayerStats(player?.id ?? null);
+  const { stats, loading, reload } = usePlayerStats(player?.id ?? null);
 
   const name = player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : '';
   const progress = levelProgress(stats?.xp ?? 0);
@@ -72,6 +73,11 @@ export function ProfileScreen() {
               </>
             )}
           </div>
+
+          {/* Weekly quests (phase 4). Claiming one awards xp server-side, so
+              the header card is re-read afterwards rather than incremented
+              locally — the bar must never disagree with the database. */}
+          <WeeklyQuests playerId={player?.id ?? null} onClaimed={() => void reload()} />
 
           {/* TODO(profile-v2): achievement ribbon (phase 2, once
               player_achievements exists) and the settings rows from the

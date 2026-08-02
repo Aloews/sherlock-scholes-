@@ -150,6 +150,17 @@
     "title_15": "수석 수사관",
     "title_20": "전설의 명탐정"
   },
+  "quests": {
+    "title": "주간 퀘스트",
+    "claimed": "수령 완료",
+    "claim": "+{{xp}} XP",
+    "days_left_other": "{{count}}일 남음",
+    "metric": {
+      "cards_guessed_other": "카드 {{count}}장 맞히기",
+      "games_played_other": "{{count}}판 플레이하기",
+      "games_won_other": "{{count}}판 승리하기"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "한 번 구매하면 영원히 소유",

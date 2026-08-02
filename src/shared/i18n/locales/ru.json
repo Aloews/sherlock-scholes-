@@ -156,6 +156,29 @@
     "title_15": "Старший инспектор",
     "title_20": "Легендарный сыщик"
   },
+  "quests": {
+    "title": "Задания недели",
+    "claimed": "Получено",
+    "claim": "+{{xp}} XP",
+    "days_left_one": "остался {{count}} день",
+    "days_left_few": "осталось {{count}} дня",
+    "days_left_many": "осталось {{count}} дней",
+    "days_left_other": "осталось {{count}} дня",
+    "metric": {
+      "cards_guessed_one": "Угадать {{count}} карточку",
+      "cards_guessed_few": "Угадать {{count}} карточки",
+      "cards_guessed_many": "Угадать {{count}} карточек",
+      "cards_guessed_other": "Угадать {{count}} карточки",
+      "games_played_one": "Сыграть {{count}} игру",
+      "games_played_few": "Сыграть {{count}} игры",
+      "games_played_many": "Сыграть {{count}} игр",
+      "games_played_other": "Сыграть {{count}} игры",
+      "games_won_one": "Выиграть {{count}} игру",
+      "games_won_few": "Выиграть {{count}} игры",
+      "games_won_many": "Выиграть {{count}} игр",
+      "games_won_other": "Выиграть {{count}} игры"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "Разовая покупка — открывается навсегда",

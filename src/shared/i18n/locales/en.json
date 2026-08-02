@@ -152,6 +152,21 @@
     "title_15": "Senior Inspector",
     "title_20": "Legendary Sleuth"
   },
+  "quests": {
+    "title": "Weekly quests",
+    "claimed": "Claimed",
+    "claim": "+{{xp}} XP",
+    "days_left_one": "{{count}} day left",
+    "days_left_other": "{{count}} days left",
+    "metric": {
+      "cards_guessed_one": "Guess {{count}} card",
+      "cards_guessed_other": "Guess {{count}} cards",
+      "games_played_one": "Play {{count}} game",
+      "games_played_other": "Play {{count}} games",
+      "games_won_one": "Win {{count}} game",
+      "games_won_other": "Win {{count}} games"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "One-time purchase — yours forever",

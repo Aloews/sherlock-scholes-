@@ -150,6 +150,17 @@
     "title_15": "上級警部",
     "title_20": "伝説の名探偵"
   },
+  "quests": {
+    "title": "今週のクエスト",
+    "claimed": "受取済み",
+    "claim": "+{{xp}} XP",
+    "days_left_other": "残り{{count}}日",
+    "metric": {
+      "cards_guessed_other": "カードを{{count}}枚当てる",
+      "games_played_other": "{{count}}回プレイする",
+      "games_won_other": "{{count}}回勝利する"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "買い切り — ずっとあなたのもの",

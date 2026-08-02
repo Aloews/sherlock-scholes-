@@ -152,6 +152,21 @@
     "title_15": "Inspecteur principal",
     "title_20": "Limier légendaire"
   },
+  "quests": {
+    "title": "Quêtes de la semaine",
+    "claimed": "Récupéré",
+    "claim": "+{{xp}} XP",
+    "days_left_one": "il reste {{count}} jour",
+    "days_left_other": "il reste {{count}} jours",
+    "metric": {
+      "cards_guessed_one": "Devine {{count}} carte",
+      "cards_guessed_other": "Devine {{count}} cartes",
+      "games_played_one": "Joue {{count}} partie",
+      "games_played_other": "Joue {{count}} parties",
+      "games_won_one": "Gagne {{count}} partie",
+      "games_won_other": "Gagne {{count}} parties"
+    }
+  },
   "pro": {
     "title": "Sherlock Pro",
     "subtitle": "Achat unique — à vous pour toujours",
