@@ -40,7 +40,7 @@ flowchart LR
 |---|---|---|
 | `/` | `HomeScreen` | лендинг, выбор режима, вход в комнату |
 | `/lobby` | `LobbyScreen` | сбор команд, старт игры, вход в голосовой канал |
-| `/game` | `GameScreen` | сетевая игра по раундам |
+| `/game` | `GameScreen` | сетевая игра по раундам; голосом управляют компактно, в шапке |
 | `/end` | `EndScreen` | итоги, история карточек |
 | `/training` | `TrainingScreen` | быстрая игра на одном телефоне |
 | `/collection` | `CollectionScreen` → `collection/CardDossier` | коллекция и досье карточки (Pro) |
@@ -237,5 +237,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Несколько записей подряд с клиента там, где realtime будит остальных после первой | `end_round_rpc.sql` |
 | Страховка живёт только на клиенте — а клиентов не осталось | `sweep_stale_rooms.sql` |
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |
+| Подписка на дорожку принята за воспроизведение — LiveKit её не играет, нужен `attach()` в DOM | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
+| Сессия голоса внутри экрана — размонтирование рвёт канал, поэтому она над роутером | `src/features/voice/VoiceProvider.tsx` |
+| `npm run build` без `VITE_LIVEKIT_URL` вырезает голос целиком — чанка LiveKit в `dist/` нет | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |
