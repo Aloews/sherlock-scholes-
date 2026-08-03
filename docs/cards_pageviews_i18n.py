@@ -360,6 +360,16 @@ def main():
             print(f"  wikidata батч упал ({e}), пропуск 50 карточек")
             time.sleep(WD_BATCH_PAUSE)
             continue
+        except RuntimeError as e:
+            # Дневной бюджет Wikimedia кончился. Он ОБЩИЙ с шагами фото и
+            # описаний (photos_budget.json), так что в ночном прогоне стену
+            # ставит их трафик, а не наш. Останавливаемся вежливо, как
+            # cards_descriptions_build.py: резолв уже сложен в кеш, и завтра
+            # прогон продолжится с него, а не начнёт заново.
+            print(f"\n!!! {e}")
+            print("!!! Прогресс резолва сохранён в кеше, продолжите завтра.",
+                  flush=True)
+            break
         time.sleep(WD_BATCH_PAUSE)
         for c in chunk:
             titles = links.get(c["id"])
