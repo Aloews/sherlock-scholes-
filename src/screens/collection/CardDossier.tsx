@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { IconChevronLeft, IconTrophy, IconShirt } from '@tabler/icons-react';
+import { IconChevronLeft, IconTrophy, IconShirt, IconFlag } from '@tabler/icons-react';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
+import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -71,12 +72,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     facts?.clubs_count && { label: t('collection.f_clubs'), value: String(facts.clubs_count) },
   ].filter(Boolean).slice(0, 4) as { label: string; value: string }[];
 
-  // Trophies: structural titles plus tournaments, deduped.
-  const trophies = [
-    ...(facts?.titles ?? []),
-    ...(card.legend_career?.titles ?? []),
-    ...(facts?.tournaments ?? []),
-  ].filter((v, i, a) => v && a.indexOf(v) === i);
+  // Trophies are things WON; facts.tournaments is where a player turned up.
+  // The rule lives in shared/lib/honours.ts and is tested there — it used to
+  // be a concatenation here, which credited players with honours they never
+  // had. See honours.test.ts.
+  const { trophies, tournaments } = splitHonours({
+    titles: facts?.titles,
+    legendTitles: card.legend_career?.titles,
+    tournaments: facts?.tournaments,
+  });
 
   // Career: legends carry clubs+years, veterans carry clubs+apps/goals.
   const career: { club: string; meta: string }[] =
@@ -206,6 +210,22 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                   className="ds-panel flex items-center gap-2.5 bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5"
                 >
                   <IconTrophy size={15} stroke={1.75} style={{ color: TIER_COLOR.legendary }} />
+                  <span className="text-[12.5px] text-white/90">{tr}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {tournaments.length > 0 && (
+          <Section title={t('collection.tournaments')}>
+            <div className="space-y-2">
+              {tournaments.map((tr) => (
+                <div
+                  key={tr}
+                  className="ds-panel flex items-center gap-2.5 bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5"
+                >
+                  <IconFlag size={15} stroke={1.75} className="text-brand-muted" />
                   <span className="text-[12.5px] text-white/90">{tr}</span>
                 </div>
               ))}

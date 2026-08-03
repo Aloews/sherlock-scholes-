@@ -50,6 +50,7 @@ export type VoiceUnavailableReason =
   | 'room_finished'         // 409
   | 'no_team_yet'           // 409 — team mode, no side picked yet
   | 'voice_not_configured'  // 503 — the server's LiveKit secrets are missing
+  | 'lookup_failed'         // 503 — the server could not read the room, so it does not know
   // Neither:
   | 'network'               // no answer at all
   | 'malformed';            // 200 carrying no token
@@ -61,7 +62,7 @@ export type VoiceGrant =
 /** Error codes the Edge Function returns; see its README for the full table. */
 const SERVER_REASONS: readonly VoiceUnavailableReason[] = [
   'bad_request', 'unauthorized', 'not_in_room', 'no_such_room',
-  'room_finished', 'no_team_yet', 'voice_not_configured',
+  'room_finished', 'no_team_yet', 'voice_not_configured', 'lookup_failed',
 ];
 
 /**

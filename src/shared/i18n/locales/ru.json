@@ -142,7 +142,8 @@
     "attr_dribbling": "Дриблинг",
     "attr_defense": "Оборона",
     "attr_physical": "Физика",
-    "ovr_aria": "Общий рейтинг {{value}}"
+    "ovr_aria": "Общий рейтинг {{value}}",
+    "tournaments": "Турниры"
   },
   "profile": {
     "title": "Профиль",
@@ -304,7 +305,8 @@
     "reason_no_team_yet": "Сначала выберите команду",
     "reason_voice_not_configured": "Голосовой сервер не настроен",
     "reason_network": "Нет связи с сервером",
-    "reason_malformed": "Сервер ответил неожиданно"
+    "reason_malformed": "Сервер ответил неожиданно",
+    "reason_lookup_failed": "Сервер не смог проверить комнату"
   },
   "game": {
     "round_starting": "Раунд начинается",

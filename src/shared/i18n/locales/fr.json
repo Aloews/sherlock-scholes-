@@ -138,7 +138,8 @@
     "attr_dribbling": "Dribble",
     "attr_defense": "Défense",
     "attr_physical": "Physique",
-    "ovr_aria": "Note globale {{value}}"
+    "ovr_aria": "Note globale {{value}}",
+    "tournaments": "Tournois"
   },
   "profile": {
     "title": "Profil",
@@ -288,7 +289,8 @@
     "reason_no_team_yet": "Choisissez d'abord une équipe",
     "reason_voice_not_configured": "Le serveur vocal n'est pas configuré",
     "reason_network": "Pas de connexion au serveur",
-    "reason_malformed": "Le serveur a répondu de façon inattendue"
+    "reason_malformed": "Le serveur a répondu de façon inattendue",
+    "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon"
   },
   "game": {
     "round_starting": "La manche commence",

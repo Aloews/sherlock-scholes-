@@ -136,7 +136,8 @@
     "attr_dribbling": "드리블",
     "attr_defense": "수비",
     "attr_physical": "피지컬",
-    "ovr_aria": "종합 능력치 {{value}}"
+    "ovr_aria": "종합 능력치 {{value}}",
+    "tournaments": "출전 대회"
   },
   "profile": {
     "title": "프로필",
@@ -280,7 +281,8 @@
     "reason_no_team_yet": "먼저 팀을 선택하세요",
     "reason_voice_not_configured": "음성 서버가 설정되지 않았습니다",
     "reason_network": "서버에 연결할 수 없습니다",
-    "reason_malformed": "서버 응답이 올바르지 않습니다"
+    "reason_malformed": "서버 응답이 올바르지 않습니다",
+    "reason_lookup_failed": "서버가 방을 확인하지 못했습니다"
   },
   "game": {
     "round_starting": "라운드 시작",

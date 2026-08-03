@@ -136,7 +136,8 @@
     "attr_dribbling": "盘带",
     "attr_defense": "防守",
     "attr_physical": "身体",
-    "ovr_aria": "综合评分 {{value}}"
+    "ovr_aria": "综合评分 {{value}}",
+    "tournaments": "参加的赛事"
   },
   "profile": {
     "title": "个人资料",
@@ -280,7 +281,8 @@
     "reason_no_team_yet": "请先选择队伍",
     "reason_voice_not_configured": "语音服务器未配置",
     "reason_network": "无法连接服务器",
-    "reason_malformed": "服务器返回异常"
+    "reason_malformed": "服务器返回异常",
+    "reason_lookup_failed": "服务器无法核对房间"
   },
   "game": {
     "round_starting": "回合即将开始",

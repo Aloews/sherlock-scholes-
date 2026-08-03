@@ -141,7 +141,8 @@
     "attr_dribbling": "المراوغة",
     "attr_defense": "الدفاع",
     "attr_physical": "القوة البدنية",
-    "ovr_aria": "التقييم العام {{value}}"
+    "ovr_aria": "التقييم العام {{value}}",
+    "tournaments": "البطولات"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -313,7 +314,8 @@
     "reason_no_team_yet": "اختر فريقًا أولاً",
     "reason_voice_not_configured": "خادم الصوت غير مُهيّأ",
     "reason_network": "لا يوجد اتصال بالخادم",
-    "reason_malformed": "ردّ الخادم بشكل غير متوقع"
+    "reason_malformed": "ردّ الخادم بشكل غير متوقع",
+    "reason_lookup_failed": "تعذّر على الخادم التحقق من الغرفة"
   },
   "game": {
     "round_starting": "الجولة تبدأ",

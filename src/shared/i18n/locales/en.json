@@ -138,7 +138,8 @@
     "attr_dribbling": "Dribbling",
     "attr_defense": "Defending",
     "attr_physical": "Physical",
-    "ovr_aria": "Overall rating {{value}}"
+    "ovr_aria": "Overall rating {{value}}",
+    "tournaments": "Tournaments"
   },
   "profile": {
     "title": "Profile",
@@ -288,7 +289,8 @@
     "reason_no_team_yet": "Pick a team first",
     "reason_voice_not_configured": "The voice server is not set up",
     "reason_network": "No connection to the server",
-    "reason_malformed": "The server gave an unexpected answer"
+    "reason_malformed": "The server gave an unexpected answer",
+    "reason_lookup_failed": "The server could not check the room"
   },
   "game": {
     "round_starting": "Round starting",

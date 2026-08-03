@@ -138,7 +138,8 @@
     "attr_dribbling": "Regate",
     "attr_defense": "Defensa",
     "attr_physical": "Físico",
-    "ovr_aria": "Valoración general {{value}}"
+    "ovr_aria": "Valoración general {{value}}",
+    "tournaments": "Torneos"
   },
   "profile": {
     "title": "Perfil",
@@ -288,7 +289,8 @@
     "reason_no_team_yet": "Primero elige un equipo",
     "reason_voice_not_configured": "El servidor de voz no está configurado",
     "reason_network": "Sin conexión con el servidor",
-    "reason_malformed": "El servidor respondió de forma inesperada"
+    "reason_malformed": "El servidor respondió de forma inesperada",
+    "reason_lookup_failed": "El servidor no pudo comprobar la sala"
   },
   "game": {
     "round_starting": "Empieza la ronda",
