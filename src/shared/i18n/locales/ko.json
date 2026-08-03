@@ -136,7 +136,8 @@
     "attr_dribbling": "드리블",
     "attr_defense": "수비",
     "attr_physical": "피지컬",
-    "ovr_aria": "종합 능력치 {{value}}"
+    "ovr_aria": "종합 능력치 {{value}}",
+    "tournaments": "출전 대회"
   },
   "profile": {
     "title": "프로필",
@@ -269,7 +270,19 @@
     "level_voice": "음성",
     "level_voice_low": "연결이 약함 · 저대역 모드",
     "level_text": "연결할 수 없음",
-    "level_text_hint": "회선이 음성을 감당하지 못합니다. Wi-Fi를 쓰거나 채팅으로 알려주세요."
+    "level_text_hint": "회선이 음성을 감당하지 못합니다. Wi-Fi를 쓰거나 채팅으로 알려주세요.",
+    "reason_not_configured": "음성 채팅이 설정되지 않았습니다",
+    "reason_no_init_data": "텔레그램 안에서 게임을 열어 주세요",
+    "reason_bad_request": "음성을 요청하지 못했습니다",
+    "reason_unauthorized": "세션을 확인하지 못했습니다",
+    "reason_not_in_room": "이 방에 참여하고 있지 않습니다",
+    "reason_no_such_room": "방을 찾을 수 없습니다",
+    "reason_room_finished": "게임이 이미 끝났습니다",
+    "reason_no_team_yet": "먼저 팀을 선택하세요",
+    "reason_voice_not_configured": "음성 서버가 설정되지 않았습니다",
+    "reason_network": "서버에 연결할 수 없습니다",
+    "reason_malformed": "서버 응답이 올바르지 않습니다",
+    "reason_lookup_failed": "서버가 방을 확인하지 못했습니다"
   },
   "game": {
     "round_starting": "라운드 시작",

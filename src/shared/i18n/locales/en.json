@@ -138,7 +138,8 @@
     "attr_dribbling": "Dribbling",
     "attr_defense": "Defending",
     "attr_physical": "Physical",
-    "ovr_aria": "Overall rating {{value}}"
+    "ovr_aria": "Overall rating {{value}}",
+    "tournaments": "Tournaments"
   },
   "profile": {
     "title": "Profile",
@@ -277,7 +278,19 @@
     "level_voice": "Voice",
     "level_voice_low": "Weak connection · low-bandwidth mode",
     "level_text": "Connection unavailable",
-    "level_text_hint": "The link can't carry voice — try Wi-Fi, or type instead."
+    "level_text_hint": "The link can't carry voice — try Wi-Fi, or type instead.",
+    "reason_not_configured": "Voice chat is not set up",
+    "reason_no_init_data": "Open the game inside Telegram",
+    "reason_bad_request": "Could not request voice",
+    "reason_unauthorized": "Could not verify your session",
+    "reason_not_in_room": "You are not in this room",
+    "reason_no_such_room": "Room not found",
+    "reason_room_finished": "The game is already over",
+    "reason_no_team_yet": "Pick a team first",
+    "reason_voice_not_configured": "The voice server is not set up",
+    "reason_network": "No connection to the server",
+    "reason_malformed": "The server gave an unexpected answer",
+    "reason_lookup_failed": "The server could not check the room"
   },
   "game": {
     "round_starting": "Round starting",

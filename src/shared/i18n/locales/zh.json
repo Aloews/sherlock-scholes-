@@ -136,7 +136,8 @@
     "attr_dribbling": "盘带",
     "attr_defense": "防守",
     "attr_physical": "身体",
-    "ovr_aria": "综合评分 {{value}}"
+    "ovr_aria": "综合评分 {{value}}",
+    "tournaments": "参加的赛事"
   },
   "profile": {
     "title": "个人资料",
@@ -269,7 +270,19 @@
     "level_voice": "语音",
     "level_voice_low": "连接较弱 · 省流模式",
     "level_text": "连接不可用",
-    "level_text_hint": "线路无法承载语音 — 试试 Wi-Fi，或改用文字。"
+    "level_text_hint": "线路无法承载语音 — 试试 Wi-Fi，或改用文字。",
+    "reason_not_configured": "语音聊天未配置",
+    "reason_no_init_data": "请在 Telegram 中打开游戏",
+    "reason_bad_request": "无法请求语音",
+    "reason_unauthorized": "无法验证你的会话",
+    "reason_not_in_room": "你不在该房间中",
+    "reason_no_such_room": "未找到房间",
+    "reason_room_finished": "游戏已结束",
+    "reason_no_team_yet": "请先选择队伍",
+    "reason_voice_not_configured": "语音服务器未配置",
+    "reason_network": "无法连接服务器",
+    "reason_malformed": "服务器返回异常",
+    "reason_lookup_failed": "服务器无法核对房间"
   },
   "game": {
     "round_starting": "回合即将开始",

@@ -138,7 +138,8 @@
     "attr_dribbling": "Regate",
     "attr_defense": "Defensa",
     "attr_physical": "Físico",
-    "ovr_aria": "Valoración general {{value}}"
+    "ovr_aria": "Valoración general {{value}}",
+    "tournaments": "Torneos"
   },
   "profile": {
     "title": "Perfil",
@@ -277,7 +278,19 @@
     "level_voice": "Voz",
     "level_voice_low": "Conexión débil · modo de bajo consumo",
     "level_text": "Conexión no disponible",
-    "level_text_hint": "El enlace no soporta voz: prueba con Wi-Fi o escribe."
+    "level_text_hint": "El enlace no soporta voz: prueba con Wi-Fi o escribe.",
+    "reason_not_configured": "El chat de voz no está configurado",
+    "reason_no_init_data": "Abre el juego dentro de Telegram",
+    "reason_bad_request": "No se pudo solicitar la voz",
+    "reason_unauthorized": "No se pudo verificar tu sesión",
+    "reason_not_in_room": "No estás en esta sala",
+    "reason_no_such_room": "Sala no encontrada",
+    "reason_room_finished": "La partida ya terminó",
+    "reason_no_team_yet": "Primero elige un equipo",
+    "reason_voice_not_configured": "El servidor de voz no está configurado",
+    "reason_network": "Sin conexión con el servidor",
+    "reason_malformed": "El servidor respondió de forma inesperada",
+    "reason_lookup_failed": "El servidor no pudo comprobar la sala"
   },
   "game": {
     "round_starting": "Empieza la ronda",

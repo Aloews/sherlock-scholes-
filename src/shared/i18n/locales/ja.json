@@ -136,7 +136,8 @@
     "attr_dribbling": "ドリブル",
     "attr_defense": "ディフェンス",
     "attr_physical": "フィジカル",
-    "ovr_aria": "総合値 {{value}}"
+    "ovr_aria": "総合値 {{value}}",
+    "tournaments": "出場大会"
   },
   "profile": {
     "title": "プロフィール",
@@ -269,7 +270,19 @@
     "level_voice": "音声",
     "level_voice_low": "接続が弱い · 低帯域モード",
     "level_text": "接続できません",
-    "level_text_hint": "回線が音声に耐えられません。Wi-Fi を試すか、文字で伝えてください。"
+    "level_text_hint": "回線が音声に耐えられません。Wi-Fi を試すか、文字で伝えてください。",
+    "reason_not_configured": "ボイスチャットは設定されていません",
+    "reason_no_init_data": "Telegram 内でゲームを開いてください",
+    "reason_bad_request": "音声をリクエストできませんでした",
+    "reason_unauthorized": "セッションを確認できませんでした",
+    "reason_not_in_room": "このルームに参加していません",
+    "reason_no_such_room": "ルームが見つかりません",
+    "reason_room_finished": "ゲームは終了しています",
+    "reason_no_team_yet": "先にチームを選んでください",
+    "reason_voice_not_configured": "ボイスサーバーが設定されていません",
+    "reason_network": "サーバーに接続できません",
+    "reason_malformed": "サーバーの応答が不正です",
+    "reason_lookup_failed": "サーバーがルームを確認できませんでした"
   },
   "game": {
     "round_starting": "ラウンド開始",

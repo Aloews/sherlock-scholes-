@@ -142,7 +142,8 @@
     "attr_dribbling": "Дриблинг",
     "attr_defense": "Оборона",
     "attr_physical": "Физика",
-    "ovr_aria": "Общий рейтинг {{value}}"
+    "ovr_aria": "Общий рейтинг {{value}}",
+    "tournaments": "Турниры"
   },
   "profile": {
     "title": "Профиль",
@@ -293,7 +294,19 @@
     "level_voice": "Голос",
     "level_voice_low": "Слабая связь · экономный режим",
     "level_text": "Связь недоступна",
-    "level_text_hint": "Канал не тянет голос — попробуйте Wi-Fi или пишите в чат."
+    "level_text_hint": "Канал не тянет голос — попробуйте Wi-Fi или пишите в чат.",
+    "reason_not_configured": "Голосовой чат не настроен",
+    "reason_no_init_data": "Откройте игру внутри Telegram",
+    "reason_bad_request": "Не удалось запросить голос",
+    "reason_unauthorized": "Не удалось подтвердить вход",
+    "reason_not_in_room": "Вы не в этой комнате",
+    "reason_no_such_room": "Комната не найдена",
+    "reason_room_finished": "Игра уже завершена",
+    "reason_no_team_yet": "Сначала выберите команду",
+    "reason_voice_not_configured": "Голосовой сервер не настроен",
+    "reason_network": "Нет связи с сервером",
+    "reason_malformed": "Сервер ответил неожиданно",
+    "reason_lookup_failed": "Сервер не смог проверить комнату"
   },
   "game": {
     "round_starting": "Раунд начинается",
