@@ -3,6 +3,17 @@
 // filter in the browser — it filters in Postgres (category + ilike on the
 // name) and pages through the result. See docs/DESIGN_SYSTEM.md for the
 // visual side; this module is data only.
+//
+// Ordering goes through the collection_page RPC
+// (supabase/migrations/collection_page_by_lang.sql) rather than .order(),
+// for two reasons that both bite silently:
+//   * the sort key is `pageviews_i18n ->> lang`, and PostgREST orders that
+//     as TEXT — "9" would outrank "10000";
+//   * the fallback when a language is missing has to be COALESCE, not
+//     GREATEST. With GREATEST the Russian score always wins and a French
+//     player still opens «Клубы» on «Зенит», which is the whole bug.
+// The RPC returns SETOF cards, so column selection and the
+// card_translations embed work exactly as they did on the plain select.
 
 import { supabase } from '@/shared/lib/supabase';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
@@ -25,12 +36,11 @@ export const COLLECTION_PAGE_SIZE = 48;
 // as fetchRoundCards() in features/room/roomService.ts.
 let embedTranslations = true;
 
-// PostgREST parses `or=(…)` as a filter expression, so a comma or paren typed
-// into the search box would corrupt it. Strip the syntax characters; `%` and
-// `_` are left alone (they only widen the player's own LIKE).
-function sanitizeTerm(term: string): string {
-  return term.replace(/[,()\\]/g, ' ').trim();
-}
+// The search term used to be stripped of `,()\` because PostgREST parses
+// `or=(…)` as a filter expression and those characters corrupted it. The RPC
+// takes the term as a bind parameter, so that class of breakage is gone and
+// the stripping with it — «Интер (Майами)» is now findable by typing it.
+// `%` and `_` still reach LIKE as wildcards, exactly as before.
 
 export interface CollectionPage {
   cards: CollectionCard[];
@@ -45,25 +55,23 @@ export async function fetchCollection(opts: {
   lang: string;
 }): Promise<CollectionPage> {
   const { category, query, offset, lang } = opts;
-  const term = sanitizeTerm(query);
+  const term = query.trim();
   const wantTranslations = embedTranslations && isCardTranslationLang(lang);
 
-  const run = async (withTranslations: boolean) => {
-    let q = supabase
-      .from('cards')
-      .select(withTranslations ? `${COLUMNS},card_translations(*)` : COLUMNS)
-      .eq('active', true);
-    if (category !== 'all') q = q.eq('category', category);
-    // Russian names live in `name`, English in `name_en` — search both.
-    if (term) q = q.or(`name.ilike.%${term}%,name_en.ilike.%${term}%`);
-    return q
-      // Most-known first. `name` breaks ties so paging stays stable — cards
-      // with a null pageviews (every non-player category) would otherwise
-      // come back in arbitrary order and repeat across pages.
-      .order('pageviews', { ascending: false, nullsFirst: false })
-      .order('name', { ascending: true })
-      .range(offset, offset + COLLECTION_PAGE_SIZE - 1);
-  };
+  const run = async (withTranslations: boolean) =>
+    supabase
+      .rpc('collection_page', {
+        // The RPC re-normalizes, but sending the base tag keeps the request
+        // identical for 'pt' and 'pt-BR' so the PostgREST plan cache hits.
+        p_lang: lang.slice(0, 2),
+        p_category: category === 'all' ? null : category,
+        // Russian names live in `name`, English in `name_en` — the RPC
+        // searches both.
+        p_query: term || null,
+        p_limit: COLLECTION_PAGE_SIZE,
+        p_offset: offset,
+      })
+      .select(withTranslations ? `${COLUMNS},card_translations(*)` : COLUMNS);
 
   let { data, error } = await run(wantTranslations);
   if (error && wantTranslations) {

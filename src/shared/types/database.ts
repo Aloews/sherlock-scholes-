@@ -276,7 +276,9 @@ export interface Card {
   category_ru: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
   forbidden_words: string[];
-  pageviews: number | null; // Wikipedia pageviews; null for non-player cards
+  pageviews: number | null; // ru-wiki views ONLY (every category has them, non-players included).
+                            // Not an ordering key on its own: see pageviews_i18n and
+                            // collection_views() in collection_page_by_lang.sql.
   photo_url: string | null; // Commons photo (players); null = no photo
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
   country?: string | null;      // ISO code for the flag (GB-ENG etc.); absent until cards_country_column.sql runs
