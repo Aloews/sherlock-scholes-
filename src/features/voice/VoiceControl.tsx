@@ -3,21 +3,27 @@ import { clsx } from 'clsx';
 import {
   IconMicrophone, IconMicrophoneOff, IconLoader2, IconAlertTriangle,
 } from '@tabler/icons-react';
-import { useVoiceChat } from './useVoiceChat';
+import { useVoice } from './VoiceProvider';
 import { voiceEnabled } from './voiceApi';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
- * The voice channel's only entry point. Lives in the lobby, because that is
- * where the microphone prompt belongs (docs/VIDEOCHAT_HANDOFF.md §4) — not on
- * app start, when the player has not asked for anything.
+ * The voice channel's controls. Shown in the lobby AND in the game: the
+ * session itself lives in VoiceProvider, above the router, so it survives the
+ * navigation between them — rendering it only in the lobby used to tear the
+ * channel down the moment the game began.
+ *
+ * The microphone is still asked for on tap, never on app start
+ * (docs/VIDEOCHAT_HANDOFF.md §4).
  *
  * Renders nothing at all when voice is not configured, so a deployment
  * without LiveKit looks exactly like today's build.
  */
 export function VoiceControl({ roomId }: { roomId: string | null }) {
+  // roomId stays in the signature so callers read naturally; the session
+  // itself is shared and keyed on the store's room.
   const { t } = useTranslation();
-  const { status, reason, level, muted, connect, disconnect, toggleMute } = useVoiceChat(roomId);
+  const { status, reason, level, muted, connect, disconnect, toggleMute } = useVoice();
 
   if (!voiceEnabled() || !roomId) return null;
 
