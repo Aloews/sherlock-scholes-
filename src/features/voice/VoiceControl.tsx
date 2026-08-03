@@ -17,7 +17,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
  */
 export function VoiceControl({ roomId }: { roomId: string | null }) {
   const { t } = useTranslation();
-  const { status, level, muted, connect, disconnect, toggleMute } = useVoiceChat(roomId);
+  const { status, reason, level, muted, connect, disconnect, toggleMute } = useVoiceChat(roomId);
 
   if (!voiceEnabled() || !roomId) return null;
 
@@ -58,7 +58,12 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
             {status === 'connecting'  && t('voice.status_connecting')}
             {status === 'on'          && t(muted ? 'voice.status_muted' : `voice.level_${level}`)}
             {status === 'denied'      && t('voice.status_denied')}
-            {status === 'unavailable' && t('voice.status_unavailable')}
+            {/* Every refusal used to read "Недоступен". The player is now told
+                which one it is, because four of them they can act on. */}
+            {status === 'unavailable' && t(
+              reason ? `voice.reason_${reason}` : 'voice.status_unavailable',
+              { defaultValue: t('voice.status_unavailable') },
+            )}
           </p>
         </div>
 
