@@ -22,7 +22,9 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
+import { hapticImpact, cloudGet, getStartParam } from '@/shared/lib/telegram';
+import { useMainButton } from '@/shared/lib/useMainButton';
+import { normalizeCode } from '@/features/lobby/invite';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -74,6 +76,34 @@ export function HomeScreen() {
     if (code.trim().length !== 6) return;
     await joinRoom(code.trim());
   };
+
+  // Arrived through an invite link (t.me/…?startapp=CODE): Telegram hands the
+  // payload over as start_param, and this is the only place that reads it —
+  // without this half, the link opens the app and the code goes nowhere.
+  // It is unverified input, so it is validated as a room code before use.
+  const startParamHandled = useRef(false);
+  useEffect(() => {
+    if (startParamHandled.current) return;
+    const invited = normalizeCode(getStartParam());
+    if (!invited) return;
+    startParamHandled.current = true;
+    setCode(invited);
+    setView('join');
+    // Go straight in. The point of the link is that there is nothing to type;
+    // if the room is gone or full, the join view is already showing with the
+    // code filled in and the error underneath it.
+    void joinRoom(invited);
+  }, [joinRoom]);
+
+  // Telegram draws MainButton above the on-screen keyboard, which is exactly
+  // where the in-page "Join" button is not: on a phone the keyboard covers it
+  // the moment the field takes focus (docs/LOBBY_AND_VOICE_FIXES.md §2).
+  useMainButton({
+    visible: view === 'join',
+    text: t('home.join_room'),
+    active: code.trim().length === 6 && !loading,
+    onClick: () => { void handleJoin(); },
+  });
 
   // Hidden admin entrance: 5 quick taps on the hero logo (each ≤600ms after the
   // previous) open the password-gated /admin route. No visible hint.
@@ -380,6 +410,13 @@ export function HomeScreen() {
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
+                // The keyboard's own action key submits, so the player never
+                // has to reach a button hidden behind that keyboard.
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleJoin(); } }}
+                enterKeyHint="go"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder={t('home.room_code_placeholder')}
                 className="w-full h-14 bg-brand-surface border border-brand-border rounded-2xl px-4 text-white text-2xl font-black tracking-[0.5em] text-center uppercase placeholder-brand-muted/50 focus:outline-none focus:border-brand-accent transition-colors"
                 autoFocus

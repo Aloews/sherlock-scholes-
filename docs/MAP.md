@@ -51,6 +51,13 @@ flowchart LR
 
 `DeckPickerScreen` и `home/HomeLandingMaster` — не роуты, а части `HomeScreen`.
 
+**Приглашение в комнату — две половины одной фичи.** `features/lobby/invite.ts`
+строит ссылку `t.me/<бот>?startapp=<КОД>`, а `HomeScreen` читает её обратно
+через `getStartParam()` (`shared/lib/telegram.ts` → `initDataUnsafe.start_param`)
+и сразу пробует войти. Одна половина без другой бесполезна: ссылка откроет
+приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
+проходит через `normalizeCode()` до любого использования.
+
 ---
 
 ## 3. Путь колоды — главный инвариант
@@ -107,7 +114,7 @@ flowchart TD
 |---|---|---|
 | Состояние | `shared/store/` | `authStore`, `gameStore`, `proStore`, `settingsStore` (Zustand) |
 | Типы | `shared/types/` | `database.ts` (зеркало схемы), `deck.ts` (фильтр), `game.ts` |
-| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `supabase` |
+| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `useMainButton`, `supabase` |
 | Компоненты | `shared/ui/` | `Button`, `Chip`, `OptionRow`, `PlayerCard`, `Avatar`, `Timer`, … |
 | Фичи | `features/<имя>/` | `use<Фича>.ts` + `<фича>Api.ts` |
 
@@ -225,3 +232,4 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Несколько записей подряд с клиента там, где realtime будит остальных после первой | `end_round_rpc.sql` |
 | Страховка живёт только на клиенте — а клиентов не осталось | `sweep_stale_rooms.sql` |
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |
+| Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |

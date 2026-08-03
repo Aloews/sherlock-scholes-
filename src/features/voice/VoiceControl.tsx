@@ -15,7 +15,13 @@ import { hapticImpact } from '@/shared/lib/telegram';
  * Renders nothing at all when voice is not configured, so a deployment
  * without LiveKit looks exactly like today's build.
  */
-export function VoiceControl({ roomId }: { roomId: string | null }) {
+interface VoiceControlProps {
+  roomId: string | null;
+  /** Team mode, no team chosen yet: the server would refuse with `no_team_yet`. */
+  needsTeam?: boolean;
+}
+
+export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
   const { t } = useTranslation();
   const { status, level, muted, connect, disconnect, toggleMute } = useVoiceChat(roomId);
 
@@ -23,13 +29,15 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
 
   const busy = status === 'connecting';
   const live = status === 'on';
+  // Blocked, not broken: the player has something to do about it.
+  const blocked = needsTeam && !live;
 
   return (
     <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3.5">
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => {
             hapticImpact('light');
             if (live) { void toggleMute(); } else { void connect(); }
@@ -41,7 +49,7 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
             live && !muted
               ? 'border-brand-accent bg-brand-accent/15 text-white'
               : 'border-brand-border bg-brand-bg text-brand-muted',
-            busy && 'opacity-50',
+            (busy || blocked) && 'opacity-50',
           )}
         >
           {busy
@@ -54,11 +62,15 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white">{t('voice.title')}</p>
           <p className="text-[10.5px] text-brand-muted mt-0.5">
-            {status === 'off'         && t('voice.status_off')}
-            {status === 'connecting'  && t('voice.status_connecting')}
-            {status === 'on'          && t(muted ? 'voice.status_muted' : `voice.level_${level}`)}
-            {status === 'denied'      && t('voice.status_denied')}
-            {status === 'unavailable' && t('voice.status_unavailable')}
+            {blocked
+              ? t('voice.status_needs_team')
+              : <>
+                  {status === 'off'         && t('voice.status_off')}
+                  {status === 'connecting'  && t('voice.status_connecting')}
+                  {status === 'on'          && t(muted ? 'voice.status_muted' : `voice.level_${level}`)}
+                  {status === 'denied'      && t('voice.status_denied')}
+                  {status === 'unavailable' && t('voice.status_unavailable')}
+                </>}
           </p>
         </div>
 
