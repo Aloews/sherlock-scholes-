@@ -138,6 +138,9 @@ flowchart TD
 | `get_weekly_quests`, `claim_weekly_task`, `weekly_task_codes`, `current_week_start` | `weekly_quests.sql` | задания недели |
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
 | `create_team_room` | `create_team_room.sql` | создание комнаты |
+| `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
+| `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
+| `sweep_stale_rooms` | `sweep_stale_rooms.sql` | серверная развёртка брошенных игр, `pg_cron` каждые 5 минут |
 
 ⚠️ **`grant_pro` в репозитории нет.** `tg-pay` зовёт её по предполагаемой
 сигнатуре `grant_pro(p_secret text, p_telegram_id bigint)`, а определение
@@ -219,4 +222,6 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Секрет в переменной с префиксом `VITE_` → попадает в бандл | `supabase/functions/livekit-token/README.md` |
 | Миграция молча зависит от другой, применённой руками | `weekly_quests.sql` §0 |
 | Начисление статистики «выстрелил и забыл» с клиента | `award_stats_on_finish.sql` |
+| Несколько записей подряд с клиента там, где realtime будит остальных после первой | `end_round_rpc.sql` |
+| Страховка живёт только на клиенте — а клиентов не осталось | `sweep_stale_rooms.sql` |
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |

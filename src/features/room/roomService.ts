@@ -266,7 +266,7 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
       .select();
 
     if (error || !rounds?.length) throw new Error('Failed to create rounds');
-    await activateRound(rounds[0] as Round, room);
+    await activateRound((rounds[0] as Round).id, room);
     return;
   }
 
@@ -315,7 +315,7 @@ export async function startGame(room: Room, teams: Team[]): Promise<void> {
     .select();
 
   if (roundError || !rounds?.length) throw new Error('Failed to create rounds');
-  await activateRound(rounds[0] as Round, room);
+  await activateRound((rounds[0] as Round).id, room);
 }
 
 // How long the round-summary overlay stays up between rounds. The runner
@@ -330,12 +330,12 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 // and the useGame watchdog can never deal two hands or start the timer twice.
 // Cards are inserted BEFORE the round goes 'active' — clients fetch the hand
 // the moment they see the active event.
-export async function activateRound(round: Round, room: Room): Promise<boolean> {
+export async function activateRound(roundId: string, room: Room): Promise<boolean> {
   const { data: claimed } = await supabase
     .from('rooms')
-    .update({ status: 'playing', current_round_id: round.id, started_at: new Date().toISOString() })
+    .update({ status: 'playing', current_round_id: roundId, started_at: new Date().toISOString() })
     .eq('id', room.id)
-    .or(`current_round_id.is.null,current_round_id.neq.${round.id}`)
+    .or(`current_round_id.is.null,current_round_id.neq.${roundId}`)
     .select('id');
 
   if (!claimed?.length) return false;
@@ -353,7 +353,7 @@ export async function activateRound(round: Round, room: Room): Promise<boolean> 
 
   await supabase.from('round_cards').insert(
     cardIds.map((cardId, i) => ({
-      round_id:   round.id,
+      round_id:   roundId,
       card_id:    cardId,
       card_order: i + 1,
       status:     'pending',
@@ -363,7 +363,7 @@ export async function activateRound(round: Round, room: Room): Promise<boolean> 
   await supabase
     .from('rounds')
     .update({ status: 'active', started_at: new Date().toISOString() })
-    .eq('id', round.id);
+    .eq('id', roundId);
   return true;
 }
 
@@ -426,44 +426,95 @@ export async function markCard(cardId: string, status: 'correct' | 'skipped'): P
 
 // ─── End Round ───────────────────────────────────────────────
 
-export async function endRound(
-  round: Round,
-  room: Room,
-  allRounds: Round[],
-): Promise<'next_round' | 'game_end' | 'already_ended'> {
-  // Atomic claim: whoever flips active→completed first carries on; everyone
-  // else (a double call, or the non-explainer fallback in useGame) stops here.
-  // Without the status guard two concurrent calls would double-write scores
-  // and activate the next round twice (duplicate round_cards).
+export type EndRoundOutcome = 'next_round' | 'game_end' | 'already_ended';
+
+/**
+ * Close a round: claim it, write its score, and either point at the next round
+ * or finish the game — all inside ONE server transaction.
+ *
+ * The transaction is the whole point. This used to be four client calls in a
+ * row, and the FIRST of them (rounds → 'completed') is what wakes every other
+ * client through realtime. Those clients then fetched the scores — arriving in
+ * the window before the third call had written them. For round 1 the answer
+ * was always 0:0, reproducibly, and a player reported exactly that after
+ * scoring 63. Postgres emits the realtime event at COMMIT, so with the whole
+ * sequence in end_round() the score row is already there when the event lands.
+ *
+ * Reordering the client calls was not an option: that first write is also the
+ * atomic claim that stops the explainer and the useGame watchdog from scoring
+ * the same round twice. See supabase/migrations/end_round_rpc.sql.
+ */
+export async function endRound(roundId: string, room: Room): Promise<EndRoundOutcome> {
+  const { data, error } = await supabase.rpc('end_round', { p_round_id: roundId });
+
+  // PGRST202 = the function is not on this database yet. Any other error is a
+  // real failure, and the legacy path below re-claims safely in either case
+  // (an already-completed round yields 'already_ended'), so falling back costs
+  // nothing but a round-trip.
+  if (error) {
+    console.error('[game] end_round rpc failed:', error.code, error.message);
+    return endRoundLegacy(roundId, room);
+  }
+
+  const { outcome, next_round_id: nextRoundId } =
+    data as { outcome: EndRoundOutcome; next_round_id: string | null };
+
+  // Statistics are credited by trg_award_room_stats inside that same
+  // transaction (award_stats_on_finish.sql), so 'game_end' needs no follow-up
+  // call from a phone that is being told to navigate away.
+  if (outcome !== 'next_round' || !nextRoundId) return outcome;
+
+  // Hold the summary on screen before the next round starts — without this
+  // the next 'active' event lands within a second and nobody reads the score.
+  // If this client dies mid-pause, the useGame watchdog activates the round.
+  await sleep(SUMMARY_PAUSE_MS);
+  await activateRound(nextRoundId, room);
+  return 'next_round';
+}
+
+/**
+ * The pre-RPC sequence, kept only until end_round_rpc.sql is on every
+ * database — same shape as the join_1v1_room fallback above. It carries the
+ * 0:0 race by construction; it is here so a frontend deployed ahead of the
+ * migration still plays, not because it is correct.
+ */
+async function endRoundLegacy(roundId: string, room: Room): Promise<EndRoundOutcome> {
   const { data: claimed } = await supabase
     .from('rounds')
     .update({ status: 'completed', ended_at: new Date().toISOString() })
-    .eq('id', round.id)
+    .eq('id', roundId)
     .eq('status', 'active')
-    .select('id');
+    .select('team_id, round_number');
 
-  if (!claimed?.length) return 'already_ended';
+  const claimedRound = (claimed ?? [])[0] as { team_id: string; round_number: number } | undefined;
+  if (!claimedRound) return 'already_ended';
 
   const { data: cards } = await supabase
     .from('round_cards')
     .select('status')
-    .eq('round_id', round.id);
+    .eq('round_id', roundId);
 
   const points = (cards ?? []).filter((c) => c.status === 'correct').length;
 
   const { error: scoreErr } = await supabase.from('scores').upsert({
     room_id:  room.id,
-    team_id:  round.team_id,
-    round_id: round.id,
+    team_id:  claimedRound.team_id,
+    round_id: roundId,
     points,
   });
   if (scoreErr) console.error('[game] scores upsert failed:', scoreErr.code, scoreErr.message);
 
-  const nextRound = allRounds.find(
-    (r) => r.round_number === round.round_number + 1 && r.status === 'pending',
-  );
+  const { data: next } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('room_id', room.id)
+    .eq('round_number', claimedRound.round_number + 1)
+    .eq('status', 'pending')
+    .maybeSingle();
 
-  if (!nextRound) {
+  const nextRoundId = (next as { id: string } | null)?.id;
+
+  if (!nextRoundId) {
     await supabase
       .from('rooms')
       .update({ status: 'finished', ended_at: new Date().toISOString() })
@@ -473,11 +524,8 @@ export async function endRound(
     return 'game_end';
   }
 
-  // Hold the summary on screen before the next round starts — without this
-  // the next 'active' event lands within a second and nobody reads the score.
-  // If this client dies mid-pause, the useGame watchdog activates the round.
   await sleep(SUMMARY_PAUSE_MS);
-  await activateRound(nextRound, room);
+  await activateRound(nextRoundId, room);
   return 'next_round';
 }
 

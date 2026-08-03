@@ -185,22 +185,12 @@ export function useGame() {
       + currentRound.time_seconds * 1000 + graceMs;
 
     const roundId = currentRound.id;
-    const roomId  = room.id;
     const timer = setTimeout(async () => {
-      // Re-check against the DB, not the store — the 'completed' event may
-      // simply not have reached this client yet.
-      const { data: fresh } = await supabase
-        .from('rounds')
-        .select()
-        .eq('id', roundId)
-        .single();
-      if (!fresh || (fresh as Round).status !== 'active') return;
-      const { data: allRounds } = await supabase
-        .from('rounds')
-        .select()
-        .eq('room_id', roomId)
-        .order('round_number');
-      await roomService.endRound(fresh as Round, room, (allRounds ?? []) as Round[]);
+      // No pre-checks: end_round claims the round atomically and answers
+      // 'already_ended' if the explainer got there first, so the two selects
+      // this used to make — one to re-read the round, one for the whole
+      // rounds list — were a slower way of asking the same question.
+      await roomService.endRound(roundId, room);
     }, Math.max(0, deadline - Date.now()));
 
     return () => clearTimeout(timer);
@@ -242,7 +232,7 @@ export function useGame() {
         : undefined;
 
       if (next) {
-        await roomService.activateRound(next, freshRoom);
+        await roomService.activateRound(next.id, freshRoom);
       } else {
         // Final round done but the runner died before closing the room.
         await supabase
@@ -303,12 +293,7 @@ export function useGame() {
 
   const handleRoundEnd = useCallback(async () => {
     if (!currentRound || !room) return;
-    const { data: allRounds } = await supabase
-      .from('rounds')
-      .select()
-      .eq('room_id', room.id)
-      .order('round_number');
-    await roomService.endRound(currentRound, room, (allRounds ?? []) as Round[]);
+    await roomService.endRound(currentRound.id, room);
   }, [currentRound, room]);
 
   // ─── Derived state ─────────────────────────────────────────
