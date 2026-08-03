@@ -172,8 +172,13 @@ flowchart LR
 ```
 
 `fame` — **перцентиль**, поэтому его пересчитывают после последнего шага,
-меняющего `pageviews`. Иначе шкала съезжает, а вместе с ней `tier` и тег
-`legend`.
+меняющего `pageviews` или `pageviews_i18n`. Иначе шкала съезжает, а вместе с
+ней `tier` и тег `legend`.
+
+⚠️ Считается он **не от `cards.pageviews`**: та колонка — только ру-вики.
+Метрика — `GREATEST(pageviews_ru, max по 8 языкам из pageviews_i18n)`
+(`deck_fame.sql`). Ранговая корреляция ru-only с этой осью — 0.172, то есть
+это разные величины; замер в `docs/PLAYER_ATTENTION_ANALYSIS.md`.
 
 ⚠️ Кэш скрапера **не имеет TTL и переезжает между прогонами CI**. Один
 записанный промах «ничего не найдено» глушил бы запрос вечно — поэтому
@@ -225,3 +230,5 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Несколько записей подряд с клиента там, где realtime будит остальных после первой | `end_round_rpc.sql` |
 | Страховка живёт только на клиенте — а клиентов не осталось | `sweep_stale_rooms.sql` |
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |
+| `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
+| `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |
