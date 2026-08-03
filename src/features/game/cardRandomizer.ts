@@ -89,6 +89,49 @@ export async function pickCards(filter: DeckFilter, count: number): Promise<Card
   throw lastError;
 }
 
+// Everything the quick game needs to PLAY a card and to draw its history row
+// the instant it is decided. The five heavy JSONB columns — clubs_minutes,
+// legend_career, career_stats, facts, descriptions — are deliberately absent;
+// fetchCardDetails() brings those in for the handful of cards actually about
+// to be played. See pickCardsLight.
+//
+// Also absent because nothing in the quick game reads them: forbidden_words,
+// pageviews_i18n, langs, tags, difficulty, continent, delete_candidate.
+const LIGHT_COLUMNS = [
+  'id', 'name', 'name_en', 'category', 'category_ru', 'photo_url', 'tier',
+  'country', 'position_ru', 'top_club', 'top_minutes',
+].join(',');
+
+/** The five columns that make a full card row expensive. */
+export const CARD_DETAIL_COLUMNS =
+  'id,clubs_minutes,legend_career,career_stats,facts,descriptions';
+
+/**
+ * A batch for the quick game, without the heavy JSONB.
+ *
+ * Same RPC and predicate as pickCards — this deals exactly what pickCards
+ * would. A batch is up to 1000 cards, and asking for whole rows cost 1.41 MB
+ * to start a game; without the five JSONB columns it is 364 kB, and the
+ * career lines are fetched per card as play approaches them.
+ *
+ * card_translations cannot be embedded here — PostgREST reads it as a column
+ * of the function's result and errors. useTraining already fetches those
+ * separately, which is why that is not a loss.
+ */
+export async function pickCardsLight(filter: DeckFilter, count: number): Promise<Card[]> {
+  const { data, error } = await supabase
+    .rpc('pick_random_cards', {
+      p_filter: normalizeFilter(filter),
+      p_count: count,
+      p_init_data: initData(),
+    })
+    .select(LIGHT_COLUMNS);
+  if (error) throw new Error(`pick_random_cards failed: ${error.message}`);
+  // The narrowed row is a Card minus the heavy columns; the game treats a
+  // missing career line and an absent one identically, so the cast is honest.
+  return (data ?? []) as unknown as Card[];
+}
+
 /**
  * The ids of `count` random cards matching the filter — nothing else.
  *
