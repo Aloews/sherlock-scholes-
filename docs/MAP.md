@@ -197,7 +197,14 @@ node scripts/check-i18n.mjs
 npm run build
 cd football_scraper && python3 -m pytest -q          # только hypothesis-тест
 cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
+
+# Серверная логика — руками, базы в CI нет:
+psql "$DATABASE_URL" -f supabase/tests/sweep_stale_rooms.test.sql
 ```
+
+`supabase/tests/*.test.sql` — фикстуры и проверки внутри одной транзакции с
+`ROLLBACK`. Гонять **не на проде**: развёртка обходит все комнаты, а тест
+вызывает её и с нулевым запасом. Локальная копия или ветка Supabase.
 
 Тесты фронта: `src/**/*.test.ts`, плюс `test/data-integrity/cards.test.ts`
 поверх `sherlock_cards.csv`.
