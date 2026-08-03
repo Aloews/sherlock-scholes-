@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  IconUsersGroup, IconUser, IconUserCircle, IconQuestionMark, IconVolume, IconVolumeOff,
+  IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
+import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { HomeLandingMaster } from '@/screens/home/HomeLandingMaster';
@@ -119,53 +120,52 @@ export function HomeScreen() {
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pt-8">
-        {/* Wraps rather than overflowing — five controls plus the logo don't
-            fit on one line on the narrowest phones. */}
-        <div className="flex items-center flex-wrap gap-1.5">
-          <img
-            src="/logo-white-clean.png"
-            alt="Шерлок Скоулс"
-            className="h-8 w-auto"
-          />
+      <div className="flex items-center justify-between gap-2 p-4 pt-8">
+        {/* One row, no wrapping. It used to hold eight things — a second copy
+            of the logo that is already the hero below it, and chips for
+            Profile and Pro that the master design keeps in the tab bar. On a
+            390px phone they wrapped onto a second line and read as a pile of
+            mismatched glyphs. What is left is what has nowhere else to live:
+            language, design, tutorial, sound. */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          {!master && (
+            <img src="/logo-white-clean.png" alt="Шерлок Скоулс" className="h-8 w-auto mr-0.5" />
+          )}
           <LanguageToggle />
           <DesignToggle />
-          <button
-            onClick={() => { hapticImpact('light'); navigate('/tutorial'); }}
-            aria-label={t('home.tutorial_button_aria')}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
+          <IconButton
+            onClick={() => navigate('/tutorial')}
+            label={t('home.tutorial_button_aria')}
           >
-            <IconQuestionMark size={18} stroke={1.5} />
-          </button>
-          <button
-            onClick={() => { hapticImpact('light'); setSoundEnabled(!soundEnabled); }}
-            aria-label={t('home.sound_toggle_aria')}
-            aria-pressed={soundEnabled}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
+            <IconHelp size={17} stroke={1.75} />
+          </IconButton>
+          <IconButton
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            label={t('home.sound_toggle_aria')}
+            pressed={soundEnabled}
           >
-            {soundEnabled ? <IconVolume size={16} stroke={2} /> : <IconVolumeOff size={16} stroke={2} />}
-          </button>
-          <button
-            onClick={() => { hapticImpact('light'); navigate('/pro'); }}
-            aria-label={t('pro.title')}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border transition-colors hover:text-white"
-            style={isPro ? { borderColor: '#FFD24A', color: '#FFD24A' } : undefined}
-          >
-            <IconCrown size={16} stroke={2} className={isPro ? '' : 'text-brand-muted'} />
-          </button>
-          {player && (
-            <button
-              onClick={() => { hapticImpact('light'); navigate('/profile'); }}
-              aria-label={t('profile.title')}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent transition-colors"
-            >
-              <IconUserCircle size={18} stroke={1.5} />
-            </button>
+            {soundEnabled
+              ? <IconVolume    size={17} stroke={1.75} />
+              : <IconVolumeOff size={17} stroke={1.75} />}
+          </IconButton>
+          {/* Classic has no tab bar, so these two keep their only entry point. */}
+          {!master && (
+            <IconButton onClick={() => navigate('/pro')} label={t('pro.title')} active={isPro}>
+              <IconCrown size={17} stroke={1.75} />
+            </IconButton>
+          )}
+          {!master && player && (
+            <IconButton onClick={() => navigate('/profile')} label={t('profile.title')}>
+              <IconUserCircle size={17} stroke={1.75} />
+            </IconButton>
           )}
         </div>
         {player && (
-          <span
-            className="rounded-full inline-block"
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/profile'); }}
+            aria-label={t('profile.title')}
+            className="rounded-full inline-block shrink-0"
             style={isPro && FRAME_COLOR[proFrame]
               ? { boxShadow: `0 0 0 2px ${FRAME_COLOR[proFrame]}` }
               : undefined}
@@ -175,7 +175,7 @@ export function HomeScreen() {
               src={player.avatar_url}
               size="md"
             />
-          </span>
+          </button>
         )}
       </div>
 

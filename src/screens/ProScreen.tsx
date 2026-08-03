@@ -115,7 +115,17 @@ export function ProScreen() {
             </div>
             <p className="text-brand-muted/60 text-xs text-center">{t('pro.price_note')}</p>
             <Button fullWidth size="lg" onClick={handleBuy} disabled={buying}>
-              {buying ? t('pro.buying') : t('pro.buy', { stars: PRO_PRICE_STARS })}
+              {/* The star used to be a ⭐ inside the translated string: an
+                  emoji, so it rendered as the platform's own yellow blob on
+                  an orange button, at whatever size the font gave it, in all
+                  nine languages. Same icon set as everything else now, and it
+                  takes the button's own colour. */}
+              {buying ? t('pro.buying') : (
+                <>
+                  {t('pro.buy', { stars: PRO_PRICE_STARS })}
+                  <IconStar size={17} stroke={2} fill="currentColor" />
+                </>
+              )}
             </Button>
             {error && (
               <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 text-center animate-fade-in">

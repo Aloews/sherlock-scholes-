@@ -170,7 +170,7 @@
     "benefit_cosmetics": "外观：头像边框与主题",
     "benefit_forever": "买一次，永久保留",
     "price_note": "价格为临时定价，之后会调整",
-    "buy": "{{stars}} ⭐ 解锁",
+    "buy": "{{stars}} 解锁",
     "buying": "正在打开支付…",
     "buy_error": "无法打开支付，请重试。",
     "owned_title": "Pro 已激活",
