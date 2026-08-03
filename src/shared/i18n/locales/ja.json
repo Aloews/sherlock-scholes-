@@ -170,7 +170,7 @@
     "benefit_cosmetics": "コスメ：アバターフレームとテーマ",
     "benefit_forever": "一度買えば永久に使えます",
     "price_note": "価格は暫定です。後で調整します",
-    "buy": "{{stars}} ⭐ でアンロック",
+    "buy": "{{stars}} でアンロック",
     "buying": "支払い画面を開いています…",
     "buy_error": "支払いを開けませんでした。もう一度お試しください。",
     "owned_title": "Pro が有効です",

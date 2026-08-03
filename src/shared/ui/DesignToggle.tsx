@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { clsx } from 'clsx';
 import { IconPalette } from '@tabler/icons-react';
 import { useDesignSwitcher } from '@/shared/design/useDesign';
 import { DESIGNS } from '@/shared/design/designs';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { IconButton } from '@/shared/ui/IconButton';
 
 interface DesignToggleProps {
   className?: string;
@@ -18,24 +16,16 @@ export function DesignToggle({ className }: DesignToggleProps) {
   const { design, next, toggle } = useDesignSwitcher();
 
   return (
-    <motion.button
-      whileTap={{ scale: 0.94 }}
-      transition={{ duration: 0.1 }}
-      onClick={() => { hapticImpact('light'); toggle(); }}
-      aria-label={t('home.design_toggle_aria', { design: t(DESIGNS[next].labelKey) })}
+    <IconButton
+      onClick={toggle}
+      label={t('home.design_toggle_aria', { design: t(DESIGNS[next].labelKey) })}
       title={t(DESIGNS[design].labelKey)}
-      className={clsx(
-        'w-9 h-9 flex items-center justify-center rounded-xl bg-brand-surface',
-        'border border-brand-border transition-colors',
-        // The active design is legible at a glance: the new system lights the
-        // button up in the accent, classic leaves it muted.
-        design === 'master'
-          ? 'border-brand-accent/50 text-brand-accent'
-          : 'text-brand-muted hover:text-white hover:border-brand-accent',
-        className,
-      )}
+      // The active design is legible at a glance: the new system lights the
+      // button up in the accent, classic leaves it muted.
+      active={design === 'master'}
+      className={className}
     >
-      <IconPalette size={16} stroke={2} />
-    </motion.button>
+      <IconPalette size={17} stroke={1.75} />
+    </IconButton>
   );
 }

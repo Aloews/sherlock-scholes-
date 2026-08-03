@@ -176,7 +176,7 @@
     "benefit_cosmetics": "Cosmetics: avatar frames & themes",
     "benefit_forever": "Buy once — keep it forever",
     "price_note": "Price is provisional, we'll tune it later",
-    "buy": "Unlock for {{stars}} ⭐",
+    "buy": "Unlock for {{stars}}",
     "buying": "Opening payment…",
     "buy_error": "Couldn't open payment. Please try again.",
     "owned_title": "Pro is active",

@@ -170,7 +170,7 @@
     "benefit_cosmetics": "코스메틱: 아바타 테두리와 테마",
     "benefit_forever": "한 번 구매로 평생 사용",
     "price_note": "가격은 임시이며 추후 조정됩니다",
-    "buy": "{{stars}} ⭐ 로 잠금 해제",
+    "buy": "{{stars}} 로 잠금 해제",
     "buying": "결제 여는 중…",
     "buy_error": "결제를 열 수 없습니다. 다시 시도해 주세요.",
     "owned_title": "Pro 활성화됨",
