@@ -19,6 +19,16 @@ const STATS_INTERVAL_MS = 5000;
 const CONNECT_TIMEOUT_MS = 12_000;
 
 /**
+ * How many times a call may put itself back together before giving up.
+ *
+ * A service that drops us the moment we join would otherwise be retried
+ * forever, and a reconnect loop mid-round is worse than a channel that says
+ * plainly it is down. Two is enough to cross a cell handover and to move to
+ * the other service once.
+ */
+const MAX_RECOVERIES = 2;
+
+/**
  * The in-game voice channel. Audio only in this phase.
  *
  * The service is behind `providers/`: this hook knows about a session it can
@@ -58,8 +68,20 @@ export function useVoiceChat(roomId: string | null) {
   // it was AT CONNECT TIME, so a player who muted themselves and then hit a
   // bad patch of network had their microphone switched back on for them.
   const mutedRef = useRef(false);
+  // What the server allowed for THIS room, kept so a mid-call drop can walk on
+  // without asking again from scratch.
+  const chainRef = useRef<VoiceProviderId[]>([]);
+  // Deliberate hang-ups must not be recovered from. Without this, disconnect()
+  // would race its own adapter's Disconnected event and reconnect the player
+  // to the call they just left.
+  const leavingRef = useRef(false);
+  // Automatic recoveries spent on this session. Bounded, because a service
+  // that drops us the moment we join would otherwise be retried forever, and
+  // a reconnect loop is worse than a channel that is honestly down.
+  const recoveriesRef = useRef(0);
 
   const disconnect = useCallback(() => {
+    leavingRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     void sessionRef.current?.disconnect();
     sessionRef.current = null;
@@ -77,8 +99,118 @@ export function useVoiceChat(roomId: string | null) {
   // Leaving the screen must not leave a microphone open.
   useEffect(() => disconnect, [disconnect]);
 
+  /**
+   * Take a freshly opened session live: microphone, playback, quality ladder.
+   *
+   * Shared by the first connect and by every in-room recovery, so a call that
+   * moved to another service mid-round comes back with the same behaviour it
+   * had before — including the mute the player had set.
+   */
+  const activate = useCallback(async (session: VoiceSession, on: VoiceProviderId, firstTime: boolean) => {
+    // Asking for the microphone here, not on app start: the handoff is
+    // explicit that the prompt belongs to the moment the player opts in.
+    // A recovery keeps whatever the player chose rather than re-opening a
+    // microphone they had closed.
+    await session.setMicrophoneEnabled(!mutedRef.current);
+    // Spend the tap that got us here — connect() only ever runs from one.
+    // Telegram's WebView does not always carry the gesture through, so the
+    // result is read rather than assumed. A recovery has no gesture at all,
+    // which is exactly why the outcome is read and surfaced rather than
+    // assumed to have worked.
+    await session.startAudio().catch(() => { /* the button is the retry */ });
+
+    sessionRef.current = session;
+    setProvider(on);
+    setStatus('on');
+    if (firstTime) { setMuted(false); mutedRef.current = false; }
+    setAudioBlocked(!session.canPlaybackAudio());
+
+    // Measure the link and let the ladder move the level. Down fast, up
+    // slow — see voiceQuality.ts.
+    timerRef.current = setInterval(async () => {
+      const stats = await session.linkStats();
+      if (!stats) return;
+      const measured = levelFor(stats);
+      streakRef.current = measured === levelRef.current ? 0 : streakRef.current + 1;
+      const next = nextLevel(levelRef.current, measured, streakRef.current);
+      if (next !== levelRef.current) {
+        levelRef.current = next;
+        setLevel(next);
+        streakRef.current = 0;
+        const preset = audioPreset(next);
+        // 'text' means the link cannot carry voice: stop publishing rather
+        // than pretend, so the player is not talking into a dead channel.
+        // A player who muted themselves stays muted — the ladder may close
+        // the microphone, never open it.
+        await session.setMicrophoneEnabled(preset !== null && !mutedRef.current);
+      }
+    }, STATS_INTERVAL_MS);
+  }, []);
+
+  /**
+   * The link went away on its own, mid-call. Get the player back on air.
+   *
+   * THIS IS THE IN-ROOM HALF OF FAILOVER. connect() walks the chain when a
+   * service will not come up in the first place; this walks it when one dies
+   * with a game in progress — which is the case that actually costs a round,
+   * because nobody taps anything and the channel simply goes quiet.
+   *
+   * The service that just dropped goes to the BACK of the order, not out of
+   * it: a service can drop for reasons that are not its fault, and a chain of
+   * one would otherwise end the call the first time a phone changed cell.
+   */
+  const recover = useCallback(async (failed: VoiceProviderId | null) => {
+    if (leavingRef.current) return;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    void sessionRef.current?.disconnect();
+    sessionRef.current = null;
+    closeAudioSink();
+
+    if (!roomId || recoveriesRef.current >= MAX_RECOVERIES) {
+      // Out of budget: say the channel is down rather than keep a player
+      // staring at "Подключаюсь…" through the rest of the round.
+      setStatus('unavailable');
+      setReason('network');
+      setSpeaking([]);
+      setProvider(null);
+      return;
+    }
+    recoveriesRef.current += 1;
+    setStatus('connecting');
+    setSpeaking([]);
+
+    const order = rotatePast(chainRef.current, failed);
+    const granted = await fetchVoiceToken(roomId, order[0]);
+    if (!granted.ok) { setStatus('unavailable'); setReason(granted.reason); return; }
+
+    try {
+      const started = await openWithFailover(roomId, { ...granted.credentials, chain: order }, {
+        sink: audioSink(),
+        onSpeakers: setSpeaking,
+        onPlaybackChanged: (playing) => setAudioBlocked(!playing),
+        onDisconnected: () => { void recoverRef.current?.(providerRef.current); },
+      });
+      if (!started.ok) { setStatus('unavailable'); setReason(started.reason); closeAudioSink(); return; }
+      chainRef.current = started.chain;
+      providerRef.current = started.provider;
+      await activate(started.session, started.provider, false);
+    } catch (err) {
+      setStatus(isMicrophoneDenied(err) ? 'denied' : 'unavailable');
+      setReason(isMicrophoneDenied(err) ? null : 'network');
+      closeAudioSink();
+    }
+  }, [roomId, activate]);
+
+  // The drop handler is installed into adapters that outlive the callback that
+  // built them, so it is reached through a ref rather than captured.
+  const recoverRef = useRef(recover);
+  recoverRef.current = recover;
+  const providerRef = useRef<VoiceProviderId | null>(null);
+
   const connect = useCallback(async () => {
     if (!roomId || !voiceEnabled() || sessionRef.current) return;
+    leavingRef.current = false;
+    recoveriesRef.current = 0;
     setStatus('connecting');
     setReason(null);
 
@@ -97,7 +229,7 @@ export function useVoiceChat(roomId: string | null) {
         sink: audioSink(),
         onSpeakers: setSpeaking,
         onPlaybackChanged: (playing) => setAudioBlocked(!playing),
-        onDisconnected: () => disconnect(),
+        onDisconnected: () => { void recoverRef.current?.(providerRef.current); },
       });
       if (!started.ok) {
         setStatus('unavailable');
@@ -105,49 +237,14 @@ export function useVoiceChat(roomId: string | null) {
         closeAudioSink();
         return;
       }
-      const session = started.session;
-      opened = session;
-      setProvider(started.provider);
-
-      // Asking for the microphone here, not on app start: the handoff is
-      // explicit that the prompt belongs to the moment the player opts in.
-      await session.setMicrophoneEnabled(true);
-      // Spend the tap that got us here — connect() only ever runs from one.
-      // Telegram's WebView does not always carry the gesture through, so the
-      // result is read rather than assumed.
-      await session.startAudio().catch(() => { /* the button is the retry */ });
-
-      sessionRef.current = session;
-      setStatus('on');
-      setMuted(false);
-      mutedRef.current = false;
-      setAudioBlocked(!session.canPlaybackAudio());
-
-      // Measure the link and let the ladder move the level. Down fast, up
-      // slow — see voiceQuality.ts.
-      timerRef.current = setInterval(async () => {
-        const stats = await session.linkStats();
-        if (!stats) return;
-        const measured = levelFor(stats);
-        streakRef.current = measured === levelRef.current ? 0 : streakRef.current + 1;
-        const next = nextLevel(levelRef.current, measured, streakRef.current);
-        if (next !== levelRef.current) {
-          levelRef.current = next;
-          setLevel(next);
-          streakRef.current = 0;
-          const preset = audioPreset(next);
-          // 'text' means the link cannot carry voice: stop publishing rather
-          // than pretend, so the player is not talking into a dead channel.
-          // A player who muted themselves stays muted — the ladder may close
-          // the microphone, never open it.
-          await session.setMicrophoneEnabled(preset !== null && !mutedRef.current);
-        }
-      }, STATS_INTERVAL_MS);
+      opened = started.session;
+      chainRef.current = started.chain;
+      providerRef.current = started.provider;
+      await activate(started.session, started.provider, true);
     } catch (err) {
       // A denied microphone is a choice, not a fault — the handoff says stay
       // quiet and carry on. Anything else is a link that would not come up.
-      const denied = err instanceof DOMException &&
-        (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+      const denied = isMicrophoneDenied(err);
       setStatus(denied ? 'denied' : 'unavailable');
       // The token was granted, so the server is not the problem: the link to
       // the voice service is. Says so rather than repeating the last
@@ -161,7 +258,7 @@ export function useVoiceChat(roomId: string | null) {
       // owns any more.
       closeAudioSink();
     }
-  }, [roomId, disconnect]);
+  }, [roomId, activate]);
 
   /**
    * Second attempt at playback, on a fresh tap.
@@ -200,7 +297,7 @@ type OpenHooks = {
 };
 
 type OpenResult =
-  | { ok: true; session: VoiceSession; provider: VoiceProviderId }
+  | { ok: true; session: VoiceSession; provider: VoiceProviderId; chain: VoiceProviderId[] }
   | { ok: false; reason: VoiceUnavailableReason };
 
 /**
@@ -265,7 +362,7 @@ async function openWithFailover(
         transport.connect({ credentials, ...hooks }),
         CONNECT_TIMEOUT_MS,
       );
-      return { ok: true, session, provider: id };
+      return { ok: true, session, provider: id, chain: order };
     } catch (err) {
       if (isMicrophoneDenied(err)) throw err;
       // Whatever this service did, the next one gets a clean sink: a half-open
@@ -331,4 +428,17 @@ function audioSink(): HTMLElement {
 
 function closeAudioSink(): void {
   document.querySelector(`[${SINK_ATTR}]`)?.remove();
+}
+
+/**
+ * The same services, with the one that just failed moved to the back.
+ *
+ * Not removed: a service can drop a call for reasons that are not its own —
+ * a phone changing cell, a tunnel — and a chain of one would end the call the
+ * first time that happened. It goes last so anything else is tried first.
+ */
+function rotatePast(chain: VoiceProviderId[], failed: VoiceProviderId | null): VoiceProviderId[] {
+  if (chain.length === 0) return failed ? [failed] : voiceChain();
+  if (!failed || !chain.includes(failed)) return chain;
+  return [...chain.filter((id) => id !== failed), failed];
 }
