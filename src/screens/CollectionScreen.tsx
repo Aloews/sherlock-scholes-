@@ -58,7 +58,10 @@ function CollectionCell({ card, onOpen }: {
       {/* The photo IS the cell. Crests keep their own padding via
           photoFitClass, so a shield is shown whole while a headshot fills the
           frame — the same rule the card watermark follows. */}
-      {card.photo_url ? (
+      {/* No photo means no picture — the frame, the name and the rarity row
+          carry the cell on their own. A category glyph blown up to fill the
+          middle read as artwork the card does not have. */}
+      {card.photo_url && (
         <img
           src={card.photo_url}
           alt=""
@@ -66,10 +69,6 @@ function CollectionCell({ card, onOpen }: {
           aria-hidden
           className={clsx('absolute inset-0 w-full h-full', photoFitClass(card.category))}
         />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <CategoryIcon category={card.category} color={color} size={34} />
-        </div>
       )}
 
       {/* Scrim: the name sits on a photo whose brightness we do not control,

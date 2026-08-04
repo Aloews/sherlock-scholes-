@@ -179,8 +179,13 @@ flowchart LR
 ```
 
 `fame` — **перцентиль**, поэтому его пересчитывают после последнего шага,
-меняющего `pageviews`. Иначе шкала съезжает, а вместе с ней `tier` и тег
-`legend`.
+меняющего `pageviews` или `pageviews_i18n`. Иначе шкала съезжает, а вместе с
+ней `tier` и тег `legend`.
+
+⚠️ Считается он **не от `cards.pageviews`**: та колонка — только ру-вики.
+Метрика — `GREATEST(pageviews_ru, max по 8 языкам из pageviews_i18n)`
+(`deck_fame.sql`). Ранговая корреляция ru-only с этой осью — 0.172, то есть
+это разные величины; замер в `docs/PLAYER_ATTENTION_ANALYSIS.md`.
 
 ⚠️ Кэш скрапера **не имеет TTL и переезжает между прогонами CI**. Один
 записанный промах «ничего не найдено» глушил бы запрос вечно — поэтому
@@ -199,7 +204,14 @@ node scripts/check-i18n.mjs
 npm run build
 cd football_scraper && python3 -m pytest -q          # только hypothesis-тест
 cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
+
+# Серверная логика — руками, базы в CI нет:
+psql "$DATABASE_URL" -f supabase/tests/sweep_stale_rooms.test.sql
 ```
+
+`supabase/tests/*.test.sql` — фикстуры и проверки внутри одной транзакции с
+`ROLLBACK`. Гонять **не на проде**: развёртка обходит все комнаты, а тест
+вызывает её и с нулевым запасом. Локальная копия или ветка Supabase.
 
 Тесты фронта: `src/**/*.test.ts`, плюс `test/data-integrity/cards.test.ts`
 поверх `sherlock_cards.csv`.
@@ -233,3 +245,5 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Страховка живёт только на клиенте — а клиентов не осталось | `sweep_stale_rooms.sql` |
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
+| `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
+| `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |

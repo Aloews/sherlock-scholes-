@@ -138,7 +138,8 @@
     "attr_dribbling": "Dribble",
     "attr_defense": "Défense",
     "attr_physical": "Physique",
-    "ovr_aria": "Note globale {{value}}"
+    "ovr_aria": "Note globale {{value}}",
+    "tournaments": "Tournois"
   },
   "profile": {
     "title": "Profil",
@@ -278,12 +279,23 @@
     "status_muted": "Micro coupé",
     "status_denied": "Pas d'accès au micro",
     "status_unavailable": "Indisponible",
-    "status_needs_team": "Choisis d’abord une équipe",
     "level_full": "Excellente connexion",
     "level_voice": "Voix",
     "level_voice_low": "Connexion faible · mode économe",
     "level_text": "Connexion indisponible",
-    "level_text_hint": "La liaison ne supporte pas la voix — essayez le Wi-Fi ou écrivez."
+    "level_text_hint": "La liaison ne supporte pas la voix — essayez le Wi-Fi ou écrivez.",
+    "reason_not_configured": "Le chat vocal n'est pas configuré",
+    "reason_no_init_data": "Ouvrez le jeu dans Telegram",
+    "reason_bad_request": "Impossible de demander la voix",
+    "reason_unauthorized": "Impossible de vérifier votre session",
+    "reason_not_in_room": "Vous n'êtes pas dans ce salon",
+    "reason_no_such_room": "Salon introuvable",
+    "reason_room_finished": "La partie est déjà terminée",
+    "reason_no_team_yet": "Choisissez d'abord une équipe",
+    "reason_voice_not_configured": "Le serveur vocal n'est pas configuré",
+    "reason_network": "Pas de connexion au serveur",
+    "reason_malformed": "Le serveur a répondu de façon inattendue",
+    "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon"
   },
   "game": {
     "round_starting": "La manche commence",

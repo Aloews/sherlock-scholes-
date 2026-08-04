@@ -64,15 +64,32 @@ async function rpc(fn: string, args: Record<string, unknown>): Promise<Response>
   });
 }
 
-async function select(path: string): Promise<unknown[]> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SERVICE_ROLE,
-      Authorization: `Bearer ${SERVICE_ROLE}`,
-    },
-  });
-  if (!r.ok) return [];
-  return (await r.json().catch(() => [])) as unknown[];
+/**
+ * A read that says whether it actually happened.
+ *
+ * The previous version returned [] for BOTH "no such row" and "the request
+ * failed", so a blip on the way to PostgREST came back to the player as a
+ * confident `not_in_room` — the wrong answer, with a 403 that reads like a
+ * verdict on them. A lookup that did not complete is a server fault and must
+ * say so.
+ */
+async function select(path: string): Promise<{ ok: boolean; rows: unknown[] }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: {
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+      },
+    });
+    if (!r.ok) {
+      console.error(`select failed: ${r.status} for ${path.split("?")[0]}`);
+      return { ok: false, rows: [] };
+    }
+    return { ok: true, rows: (await r.json().catch(() => [])) as unknown[] };
+  } catch (err) {
+    console.error(`select threw for ${path.split("?")[0]}: ${err}`);
+    return { ok: false, rows: [] };
+  }
 }
 
 // get_user_status raises 28000 on a bad signature -> non-2xx here.
@@ -131,15 +148,25 @@ Deno.serve(async (req) => {
   if (telegramId === null) return json({ error: "unauthorized" }, 401);
 
   // Membership decides everything: the caller must actually be in this room.
-  const membership = await select(
+  const membershipRead = await select(
     `room_players?room_id=eq.${encodeURIComponent(roomId)}` +
     `&player_id=eq.${telegramId}&select=team_id&limit=1`,
-  ) as { team_id: string | null }[];
-  if (membership.length === 0) return json({ error: "not_in_room" }, 403);
+  );
+  if (!membershipRead.ok) return json({ error: "lookup_failed" }, 503);
+  const membership = membershipRead.rows as { team_id: string | null }[];
+  if (membership.length === 0) {
+    // Named, because "not_in_room" was indistinguishable from four other
+    // refusals on the player's screen and this pair is what has to be checked
+    // against the table when it happens.
+    console.warn(`not_in_room: room=${roomId} player=${telegramId}`);
+    return json({ error: "not_in_room" }, 403);
+  }
 
-  const rooms = await select(
+  const roomsRead = await select(
     `rooms?id=eq.${encodeURIComponent(roomId)}&select=mode,status&limit=1`,
-  ) as { mode: string; status: string }[];
+  );
+  if (!roomsRead.ok) return json({ error: "lookup_failed" }, 503);
+  const rooms = roomsRead.rows as { mode: string; status: string }[];
   if (rooms.length === 0) return json({ error: "no_such_room" }, 404);
   if (rooms[0].status === "finished") return json({ error: "room_finished" }, 409);
 

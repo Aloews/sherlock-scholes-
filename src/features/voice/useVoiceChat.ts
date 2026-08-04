@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { fetchVoiceToken, livekitUrl, voiceEnabled } from './voiceApi';
+import { fetchVoiceToken, livekitUrl, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
 import { levelFor, nextLevel, audioPreset, type VoiceLevel } from './voiceQuality';
 import type { Room } from 'livekit-client';
 
@@ -22,6 +22,11 @@ export function useVoiceChat(roomId: string | null) {
   const [level, setLevel] = useState<VoiceLevel>('voice');
   const [muted, setMuted] = useState(false);
   const [speaking, setSpeaking] = useState<string[]>([]);
+  // Why the last attempt failed. Kept beside the status because 'unavailable'
+  // alone is what made this bug undiagnosable from a player's screen.
+  const [reason, setReason] = useState<VoiceUnavailableReason | null>(
+    voiceEnabled() ? null : 'not_configured',
+  );
 
   const roomRef = useRef<Room | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -35,6 +40,7 @@ export function useVoiceChat(roomId: string | null) {
     streakRef.current = 0;
     setSpeaking([]);
     setStatus(voiceEnabled() ? 'off' : 'unavailable');
+    setReason(voiceEnabled() ? null : 'not_configured');
   }, []);
 
   // Leaving the screen must not leave a microphone open.
@@ -43,9 +49,10 @@ export function useVoiceChat(roomId: string | null) {
   const connect = useCallback(async () => {
     if (!roomId || !voiceEnabled() || roomRef.current) return;
     setStatus('connecting');
+    setReason(null);
 
     const granted = await fetchVoiceToken(roomId);
-    if (!granted) { setStatus('unavailable'); return; }
+    if (!granted.ok) { setStatus('unavailable'); setReason(granted.reason); return; }
 
     try {
       const { Room: LKRoom, RoomEvent } = await import('livekit-client');
@@ -89,6 +96,9 @@ export function useVoiceChat(roomId: string | null) {
       const denied = err instanceof DOMException &&
         (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
       setStatus(denied ? 'denied' : 'unavailable');
+      // The token was granted, so the server is not the problem: the link to
+      // LiveKit is. Says so rather than repeating the last token-stage reason.
+      setReason(denied ? null : 'network');
       void roomRef.current?.disconnect();
       roomRef.current = null;
     }
@@ -102,7 +112,7 @@ export function useVoiceChat(roomId: string | null) {
     await room.localParticipant.setMicrophoneEnabled(!next && audioPreset(levelRef.current) !== null);
   }, [muted]);
 
-  return { status, level, muted, speaking, connect, disconnect, toggleMute };
+  return { status, reason, level, muted, speaking, connect, disconnect, toggleMute };
 }
 
 /** RTT and loss from the publisher's WebRTC stats, averaged by the browser. */

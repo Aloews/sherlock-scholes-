@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
+import { VoiceProvider } from '@/features/voice/VoiceProvider';
 import { useDesign } from '@/shared/design/useDesign';
 import { TabBar, TAB_ROUTES } from '@/app/TabBar';
 import { HomeScreen }     from '@/screens/HomeScreen';
@@ -70,6 +71,9 @@ export function Router() {
     && (TAB_ROUTES as readonly string[]).includes(pathname);
 
   return (
+    // VoiceProvider sits ABOVE the routes on purpose: the session must survive
+    // lobby -> /game, which unmounts the lobby. See VoiceProvider.tsx.
+    <VoiceProvider>
     <div className={showTabs ? 'with-tabbar' : undefined}>
     <Suspense fallback={<LazyFallback />}>
     <Routes>
@@ -109,5 +113,6 @@ export function Router() {
     </Suspense>
     {showTabs && <TabBar />}
     </div>
+    </VoiceProvider>
   );
 }

@@ -138,7 +138,8 @@
     "attr_dribbling": "Drible",
     "attr_defense": "Defesa",
     "attr_physical": "Físico",
-    "ovr_aria": "Avaliação geral {{value}}"
+    "ovr_aria": "Avaliação geral {{value}}",
+    "tournaments": "Torneios"
   },
   "profile": {
     "title": "Perfil",
@@ -278,12 +279,23 @@
     "status_muted": "Microfone silenciado",
     "status_denied": "Sem acesso ao microfone",
     "status_unavailable": "Indisponível",
-    "status_needs_team": "Escolha um time primeiro",
     "level_full": "Ótima conexão",
     "level_voice": "Voz",
     "level_voice_low": "Conexão fraca · modo econômico",
     "level_text": "Conexão indisponível",
-    "level_text_hint": "A ligação não suporta voz — tente Wi-Fi ou escreva."
+    "level_text_hint": "A ligação não suporta voz — tente Wi-Fi ou escreva.",
+    "reason_not_configured": "O chat de voz não está configurado",
+    "reason_no_init_data": "Abra o jogo dentro do Telegram",
+    "reason_bad_request": "Não foi possível solicitar a voz",
+    "reason_unauthorized": "Não foi possível verificar sua sessão",
+    "reason_not_in_room": "Você não está nesta sala",
+    "reason_no_such_room": "Sala não encontrada",
+    "reason_room_finished": "A partida já terminou",
+    "reason_no_team_yet": "Escolha um time primeiro",
+    "reason_voice_not_configured": "O servidor de voz não está configurado",
+    "reason_network": "Sem conexão com o servidor",
+    "reason_malformed": "O servidor deu uma resposta inesperada",
+    "reason_lookup_failed": "O servidor não conseguiu verificar a sala"
   },
   "game": {
     "round_starting": "Rodada começando",
