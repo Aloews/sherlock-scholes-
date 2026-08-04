@@ -24,6 +24,7 @@ import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet, getStartParam } from '@/shared/lib/telegram';
 import { useMainButton } from '@/shared/lib/useMainButton';
+import { useKeyboardOpen } from '@/shared/lib/useKeyboardOpen';
 import { normalizeCode } from '@/features/lobby/invite';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
@@ -104,6 +105,18 @@ export function HomeScreen() {
     active: code.trim().length === 6 && !loading,
     onClick: () => { void handleJoin(); },
   });
+
+  // MainButton rides above the keyboard, but the field itself can still end up
+  // under it — the join view autofocuses, so on a short screen the keyboard
+  // comes up over the very thing being typed into. Telegram tells us when that
+  // happens (viewportHeight drops, viewportStableHeight does not); bring the
+  // field back into the middle of what is left.
+  const codeInputRef = useRef<HTMLInputElement>(null);
+  const keyboardOpen = useKeyboardOpen();
+  useEffect(() => {
+    if (view !== 'join' || !keyboardOpen) return;
+    codeInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [view, keyboardOpen]);
 
   // Hidden admin entrance: 5 quick taps on the hero logo (each ≤600ms after the
   // previous) open the password-gated /admin route. No visible hint.
@@ -406,6 +419,7 @@ export function HomeScreen() {
                 {t('home.room_code_label')}
               </label>
               <input
+                ref={codeInputRef}
                 type="text"
                 maxLength={6}
                 value={code}

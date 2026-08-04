@@ -60,6 +60,13 @@ declare global {
         };
         setHeaderColor(color: string): void;
         setBackgroundColor(color: string): void;
+        // Geometry. `viewportHeight` shrinks when the on-screen keyboard opens;
+        // `viewportStableHeight` keeps the last stable value, so the difference
+        // between them is how we know the keyboard is up.
+        viewportHeight?: number;
+        viewportStableHeight?: number;
+        onEvent?(event: 'viewportChanged', fn: () => void): void;
+        offEvent?(event: 'viewportChanged', fn: () => void): void;
         openTelegramLink(url: string): void;
         openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
         CloudStorage?: {
@@ -178,6 +185,32 @@ export function openTelegramLink(url: string): boolean {
 export function getStartParam(): string {
   const raw = tg?.initDataUnsafe?.start_param;
   return typeof raw === 'string' ? raw : '';
+}
+
+export interface Viewport {
+  /** Visible height right now — the keyboard eats into this one. */
+  height: number;
+  /** The last stable height, unaffected by the keyboard opening. */
+  stableHeight: number;
+}
+
+/** Current geometry, or null outside Telegram (or on a client too old to report it). */
+export function getViewport(): Viewport | null {
+  const h = tg?.viewportHeight;
+  const s = tg?.viewportStableHeight;
+  if (typeof h !== 'number' || typeof s !== 'number') return null;
+  return { height: h, stableHeight: s };
+}
+
+/**
+ * Subscribes to Telegram's `viewportChanged`, which fires when the keyboard
+ * opens or closes (among other things). Returns a cleanup function; no-op
+ * outside Telegram.
+ */
+export function onViewportChanged(fn: () => void): () => void {
+  if (!tg?.onEvent || !tg.offEvent) return () => {};
+  tg.onEvent('viewportChanged', fn);
+  return () => tg.offEvent?.('viewportChanged', fn);
 }
 
 export interface MainButtonOptions {
