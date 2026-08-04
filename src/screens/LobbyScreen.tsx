@@ -11,8 +11,9 @@ import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact, hapticError, openTelegramLink } from '@/shared/lib/telegram';
 import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { VoiceControl } from '@/features/voice/VoiceControl';
+import { QrCode } from '@/shared/ui/QrCode';
 import { useDesign } from '@/shared/design/useDesign';
-import { IconCheck, IconUserPlus } from '@tabler/icons-react';
+import { IconCheck, IconUserPlus, IconQrcode } from '@tabler/icons-react';
 
 /** How long the code label stays on "Copied" before going back to the hint. */
 const COPY_FEEDBACK_MS = 2000;
@@ -36,6 +37,10 @@ export function LobbyScreen() {
   // The label under the code answers back for a moment, so copying is not a
   // silent act of faith. Cleared on unmount — the timer outlives the screen.
   const [copied, setCopied] = useState<CopyState>('idle');
+  // The QR is for the table, not the chat: the other phone is right here, and
+  // reading six characters aloud is what it replaces. Hidden until asked for —
+  // it is a big white square in a dark room.
+  const [showQr, setShowQr] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
@@ -116,10 +121,31 @@ export function LobbyScreen() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
-        <Button fullWidth variant="secondary" onClick={() => { void invite(); }}>
-          <IconUserPlus size={18} stroke={2} />
-          {t('lobby.invite_button')}
-        </Button>
+        <div className="flex gap-2">
+          <Button fullWidth variant="secondary" onClick={() => { void invite(); }}>
+            <IconUserPlus size={18} stroke={2} />
+            {t('lobby.invite_button')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => { hapticImpact('light'); setShowQr((v) => !v); }}
+            aria-expanded={showQr}
+          >
+            <IconQrcode size={18} stroke={2} />
+            <span className="sr-only">{t('lobby.qr_button')}</span>
+          </Button>
+        </div>
+
+        {showQr && (
+          <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 flex flex-col items-center gap-3 animate-fade-in">
+            <QrCode
+              value={deepLink(room.code)}
+              size={200}
+              label={t('lobby.qr_alt', { code: room.code })}
+            />
+            <p className="text-brand-muted text-xs text-center">{t('lobby.qr_hint')}</p>
+          </div>
+        )}
 
         {/* Voice is opt-in and asks for the microphone only when tapped.
             Renders nothing when LiveKit is unconfigured. In team mode the

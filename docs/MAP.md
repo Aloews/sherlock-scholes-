@@ -58,6 +58,11 @@ flowchart LR
 приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
 проходит через `normalizeCode()` до любого использования.
 
+Третий путь — QR на ту же ссылку: `shared/lib/qr.ts` (свой кодировщик, без
+зависимости в бандле) и `shared/ui/QrCode.tsx`. Правится он только вместе с
+`qr.test.ts`, который читает нарисованное настоящим декодером: ошибка в битах
+даёт код, который выглядит безупречно и не сканируется.
+
 ---
 
 ## 3. Путь колоды — главный инвариант
@@ -114,7 +119,7 @@ flowchart TD
 |---|---|---|
 | Состояние | `shared/store/` | `authStore`, `gameStore`, `proStore`, `settingsStore` (Zustand) |
 | Типы | `shared/types/` | `database.ts` (зеркало схемы), `deck.ts` (фильтр), `game.ts` |
-| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `useMainButton`, `supabase` |
+| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `useMainButton`, `useKeyboardOpen`, `qr`, `supabase` |
 | Компоненты | `shared/ui/` | `Button`, `Chip`, `OptionRow`, `PlayerCard`, `Avatar`, `Timer`, … |
 | Фичи | `features/<имя>/` | `use<Фича>.ts` + `<фича>Api.ts` |
 
