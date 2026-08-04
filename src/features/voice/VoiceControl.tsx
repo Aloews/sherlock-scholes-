@@ -21,9 +21,22 @@ import { hapticImpact } from '@/shared/lib/telegram';
  * room for one, and muting yourself mid-explanation should cost one tap.
  *
  * Renders nothing at all when voice is not configured, so a deployment
- * without LiveKit looks exactly like today's build.
+ * without a voice service looks exactly like today's build.
  */
-export function VoiceControl({ roomId, compact = false }: { roomId: string | null; compact?: boolean }) {
+interface VoiceControlProps {
+  roomId: string | null;
+  /**
+   * Team mode with no team picked yet. The server refuses this with
+   * `no_team_yet` — a team-less player has no channel, and the room-wide one
+   * would leak both teams' talk. Knowing it in advance lets the lobby say so
+   * before the tap instead of after the round trip.
+   */
+  needsTeam?: boolean;
+  /** The in-game form: icons only, no panel. */
+  compact?: boolean;
+}
+
+export function VoiceControl({ roomId, needsTeam = false, compact = false }: VoiceControlProps) {
   // roomId stays in the signature so callers read naturally; the session
   // itself is shared and keyed on the store's room.
   const { t } = useTranslation();
@@ -33,7 +46,15 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
 
   const busy = status === 'connecting';
   const live = status === 'on';
-  const micLabel = live ? t(muted ? 'voice.unmute' : 'voice.mute') : t('voice.enable');
+
+  // Blocked, not broken: the player has something to do about it. Same string
+  // the server's own refusal would produce, one round trip earlier.
+  const blocked = needsTeam && !live;
+
+  const micLabel = blocked
+    ? t('voice.reason_no_team_yet')
+    : live ? t(muted ? 'voice.unmute' : 'voice.mute') : t('voice.enable');
+
   const onMic = () => {
     hapticImpact('light');
     if (live) { void toggleMute(); } else { void connect(); }
@@ -72,14 +93,14 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
         )}
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={onMic}
           aria-label={micLabel}
           aria-pressed={live && !muted}
           className={clsx(
             'p-1.5 rounded-lg transition-colors',
             live && !muted ? 'text-brand-accent' : 'text-brand-muted hover:text-white',
-            busy && 'opacity-50',
+            (busy || blocked) && 'opacity-50',
           )}
         >
           {micIcon}
@@ -93,7 +114,7 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={onMic}
           aria-label={micLabel}
           aria-pressed={live && !muted}
@@ -102,7 +123,7 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
             live && !muted
               ? 'border-brand-accent bg-brand-accent/15 text-white'
               : 'border-brand-border bg-brand-bg text-brand-muted',
-            busy && 'opacity-50',
+            (busy || blocked) && 'opacity-50',
           )}
         >
           {micIcon}
@@ -111,6 +132,8 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white">{t('voice.title')}</p>
           <p className="text-[10.5px] text-brand-muted mt-0.5">
+            {blocked && t('voice.reason_no_team_yet')}
+            {!blocked && <>
             {status === 'off'         && t('voice.status_off')}
             {status === 'connecting'  && t('voice.status_connecting')}
             {status === 'on'          && liveLabel}
@@ -121,6 +144,7 @@ export function VoiceControl({ roomId, compact = false }: { roomId: string | nul
               reason ? `voice.reason_${reason}` : 'voice.status_unavailable',
               { defaultValue: t('voice.status_unavailable') },
             )}
+            </>}
           </p>
         </div>
 

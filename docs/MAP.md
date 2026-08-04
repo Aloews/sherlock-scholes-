@@ -51,6 +51,13 @@ flowchart LR
 
 `DeckPickerScreen` и `home/HomeLandingMaster` — не роуты, а части `HomeScreen`.
 
+**Приглашение в комнату — две половины одной фичи.** `features/lobby/invite.ts`
+строит ссылку `t.me/<бот>?startapp=<КОД>`, а `HomeScreen` читает её обратно
+через `getStartParam()` (`shared/lib/telegram.ts` → `initDataUnsafe.start_param`)
+и сразу пробует войти. Одна половина без другой бесполезна: ссылка откроет
+приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
+проходит через `normalizeCode()` до любого использования.
+
 ---
 
 ## 3. Путь колоды — главный инвариант
@@ -107,7 +114,7 @@ flowchart TD
 |---|---|---|
 | Состояние | `shared/store/` | `authStore`, `gameStore`, `proStore`, `settingsStore` (Zustand) |
 | Типы | `shared/types/` | `database.ts` (зеркало схемы), `deck.ts` (фильтр), `game.ts` |
-| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `supabase` |
+| Чистая логика | `shared/lib/` | `level`, `quests`, `tier`, `pro`, `photoFit`, `cardName`, `flag`, `sounds`, `telegram`, `useMainButton`, `supabase` |
 | Компоненты | `shared/ui/` | `Button`, `Chip`, `OptionRow`, `PlayerCard`, `Avatar`, `Timer`, … |
 | Фичи | `features/<имя>/` | `use<Фича>.ts` + `<фича>Api.ts` |
 
@@ -241,8 +248,9 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Клавиатура перекрывает кнопку; код комнаты не копируется | `docs/LOBBY_AND_VOICE_FIXES.md` |
 | Подписка на дорожку принята за воспроизведение — LiveKit её не играет, нужен `attach()` в DOM | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
 | Сессия голоса внутри экрана — размонтирование рвёт канал, поэтому она над роутером | `src/features/voice/VoiceProvider.tsx` |
-| `npm run build` без `VITE_LIVEKIT_URL` вырезает голос целиком — чанка LiveKit в `dist/` нет | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
+| `npm run build` без переменных голоса вырезает его целиком — SDK-чанка в `dist/` нет | `docs/VOICE_PROVIDERS.md` §5 |
 | `VOICE_PROVIDER` и `VITE_VOICE_PROVIDER` разошлись — токен валиден и бесполезен | `docs/VOICE_PROVIDERS.md` §1 |
 | SDK сервиса импортирован статически — попадёт в бандл всем, включая тех, кто на другом сервисе | `src/features/voice/providers/index.ts` |
+| Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |
