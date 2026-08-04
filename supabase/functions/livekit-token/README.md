@@ -1,13 +1,37 @@
 # livekit-token — setup
 
-Issues a short-lived LiveKit access token for the in-game voice channel.
-Nothing here works until the three values below are set; until then the voice
-UI hides itself and the game plays exactly as before.
+Issues a short-lived access token for the in-game voice channel.
 
-## Where each value goes
+**The name is historical.** This function issues tokens for whichever voice
+service is configured — LiveKit, Daily or Agora — not only LiveKit. It keeps
+the name because deployed frontends call it by that name, and renaming a live
+entry point is the mistake `pick_random_cards` already taught this project
+once (CLAUDE.md). Rename it when there is a deploy window for both halves.
 
-There are three, and **only one of them is public**. Putting the wrong one in
-the wrong place is the one mistake that matters here.
+Which service, and every variable each one needs, is in
+**[`docs/VOICE_PROVIDERS.md`](../../../docs/VOICE_PROVIDERS.md)**. The fastest
+way to see what is missing:
+
+```bash
+node scripts/check-voice.mjs --vars
+```
+
+Nothing here works until the values below are set; until then the voice UI
+hides itself and the game plays exactly as before.
+
+## Choosing the service
+
+`VOICE_PROVIDER` (a Supabase secret) selects the issuer: `livekit` (default),
+`daily` or `agora`. The client sends its own `provider` as a **hint only** —
+it is echoed back in a `provider_mismatch`, never acted on. Letting a caller
+pick the issuer would let it pick which set of secrets to exercise.
+
+## Where each value goes — LiveKit
+
+Three values, and **only one of them is public**. Putting the wrong one in the
+wrong place is the one mistake that matters here. Daily's and Agora's tables
+are in [`docs/VOICE_PROVIDERS.md`](../../../docs/VOICE_PROVIDERS.md) §2 and
+follow the same rule: the address is public, the signing material never is.
 
 | Value | Where | Why there |
 |---|---|---|
@@ -44,11 +68,13 @@ logs (`supabase functions logs livekit-token`) name the reason:
 
 | Response | Meaning |
 |---|---|
-| `voice_not_configured` | The two secrets are not set on the deployed function. |
+| `voice_not_configured` | The configured provider's secrets are not set. The body carries `provider` and a `missing` list naming exactly which. |
 | `unauthorized` | `initData` failed HMAC validation — the caller is not a real Mini App session. |
 | `not_in_room` | The authenticated player is not a member of that room. |
 | `no_team_yet` | Team mode, and the player has not picked a side. There is no channel they belong to yet. |
 | `room_finished` | The game is over. |
+| `provider_mismatch` | The frontend is built for one service and this deployment signs for another. The token would be valid and unusable. |
+| `issue_failed` | The voice service itself refused to mint a credential — a server fault, not a verdict on the player. |
 
 ## What the token allows
 

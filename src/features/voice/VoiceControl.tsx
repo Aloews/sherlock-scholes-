@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 import {
-  IconMicrophone, IconMicrophoneOff, IconLoader2, IconAlertTriangle,
+  IconMicrophone, IconMicrophoneOff, IconLoader2, IconAlertTriangle, IconVolumeOff,
 } from '@tabler/icons-react';
 import { useVoice } from './VoiceProvider';
 import { voiceEnabled } from './voiceApi';
@@ -16,8 +16,12 @@ import { hapticImpact } from '@/shared/lib/telegram';
  * The microphone is still asked for on tap, never on app start
  * (docs/VIDEOCHAT_HANDOFF.md §4).
  *
+ * `compact` is the in-game form: icons only, sized to sit beside the sound
+ * button in the score bar. Same session, same taps, no panel — a round has no
+ * room for one, and muting yourself mid-explanation should cost one tap.
+ *
  * Renders nothing at all when voice is not configured, so a deployment
- * without LiveKit looks exactly like today's build.
+ * without a voice service looks exactly like today's build.
  */
 interface VoiceControlProps {
   roomId: string | null;
@@ -28,21 +32,82 @@ interface VoiceControlProps {
    * before the tap instead of after the round trip.
    */
   needsTeam?: boolean;
+  /** The in-game form: icons only, no panel. */
+  compact?: boolean;
 }
 
-export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
+export function VoiceControl({ roomId, needsTeam = false, compact = false }: VoiceControlProps) {
   // roomId stays in the signature so callers read naturally; the session
   // itself is shared and keyed on the store's room.
   const { t } = useTranslation();
-  const { status, reason, level, muted, connect, disconnect, toggleMute } = useVoice();
+  const { status, reason, level, muted, audioBlocked, connect, disconnect, toggleMute, startAudio } = useVoice();
 
   if (!voiceEnabled() || !roomId) return null;
 
   const busy = status === 'connecting';
   const live = status === 'on';
+
   // Blocked, not broken: the player has something to do about it. Same string
   // the server's own refusal would produce, one round trip earlier.
   const blocked = needsTeam && !live;
+
+  const micLabel = blocked
+    ? t('voice.reason_no_team_yet')
+    : live ? t(muted ? 'voice.unmute' : 'voice.mute') : t('voice.enable');
+
+  const onMic = () => {
+    hapticImpact('light');
+    if (live) { void toggleMute(); } else { void connect(); }
+  };
+  // startAudio() must run inside the handler: the gesture is what unblocks
+  // playback, and awaiting anything first spends it.
+  const onUnblock = () => {
+    hapticImpact('light');
+    void startAudio();
+  };
+
+  // Connected but inaudible is the failure this whole file exists to end, so
+  // it outranks "microphone off" in the one line the player reads.
+  const liveLabel = audioBlocked
+    ? t('voice.audio_blocked')
+    : t(muted ? 'voice.status_muted' : `voice.level_${level}`);
+
+  const micIcon = busy
+    ? <IconLoader2 size={18} stroke={2} className="animate-spin" />
+    : live && !muted
+      ? <IconMicrophone size={18} stroke={2} />
+      : <IconMicrophoneOff size={18} stroke={2} />;
+
+  if (compact) {
+    return (
+      <div className="flex items-center">
+        {live && audioBlocked && (
+          <button
+            type="button"
+            onClick={onUnblock}
+            aria-label={t('voice.enable_audio')}
+            className="p-1.5 rounded-lg text-brand-accent transition-colors"
+          >
+            <IconVolumeOff size={18} stroke={1.5} />
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={busy || blocked}
+          onClick={onMic}
+          aria-label={micLabel}
+          aria-pressed={live && !muted}
+          className={clsx(
+            'p-1.5 rounded-lg transition-colors',
+            live && !muted ? 'text-brand-accent' : 'text-brand-muted hover:text-white',
+            (busy || blocked) && 'opacity-50',
+          )}
+        >
+          {micIcon}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3.5">
@@ -50,11 +115,8 @@ export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
         <button
           type="button"
           disabled={busy || blocked}
-          onClick={() => {
-            hapticImpact('light');
-            if (live) { void toggleMute(); } else { void connect(); }
-          }}
-          aria-label={live ? t(muted ? 'voice.unmute' : 'voice.mute') : t('voice.enable')}
+          onClick={onMic}
+          aria-label={micLabel}
           aria-pressed={live && !muted}
           className={clsx(
             'w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-colors',
@@ -64,11 +126,7 @@ export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
             (busy || blocked) && 'opacity-50',
           )}
         >
-          {busy
-            ? <IconLoader2 size={18} stroke={2} className="animate-spin" />
-            : live && !muted
-              ? <IconMicrophone size={18} stroke={2} />
-              : <IconMicrophoneOff size={18} stroke={2} />}
+          {micIcon}
         </button>
 
         <div className="flex-1 min-w-0">
@@ -78,7 +136,7 @@ export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
             {!blocked && <>
             {status === 'off'         && t('voice.status_off')}
             {status === 'connecting'  && t('voice.status_connecting')}
-            {status === 'on'          && t(muted ? 'voice.status_muted' : `voice.level_${level}`)}
+            {status === 'on'          && liveLabel}
             {status === 'denied'      && t('voice.status_denied')}
             {/* Every refusal used to read "Недоступен". The player is now told
                 which one it is, because four of them they can act on. */}
@@ -100,6 +158,19 @@ export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
           </button>
         )}
       </div>
+
+      {/* The browser refused to play the incoming audio. Nothing is broken and
+          reconnecting would not help — only a tap lifts it, so offer one. */}
+      {live && audioBlocked && (
+        <button
+          type="button"
+          onClick={onUnblock}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-brand-accent bg-brand-accent/15 text-white text-[11px] py-2 mt-2.5 transition-colors"
+        >
+          <IconVolumeOff size={13} stroke={2} />
+          {t('voice.enable_audio')}
+        </button>
+      )}
 
       {/* The player is told the link is bad rather than left wondering why
           nobody answers — the handoff asks for the level to be visible. */}

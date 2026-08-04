@@ -11,6 +11,7 @@ import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { useDesign } from '@/shared/design/useDesign';
 import { Button } from '@/shared/ui/Button';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
+import { VoiceControl } from '@/features/voice/VoiceControl';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound, isMuted, toggleMute } from '@/shared/lib/sounds';
 
@@ -90,7 +91,7 @@ function RoundSummaryOverlay() {
 export function GameScreen() {
   const master = useDesign() === 'master';
   const navigate = useNavigate();
-  const { phase, countdown, teamScores, currentRound } = useGameStore();
+  const { phase, countdown, teamScores, currentRound, room } = useGameStore();
   const { t } = useTranslation();
   const {
     activeCard,
@@ -177,6 +178,10 @@ export function GameScreen() {
         <Scoreboard scores={teamScores} compact />
         <div className="flex items-center gap-2">
           <div className="text-xs text-brand-muted font-medium">{roundLabel}</div>
+          {/* The voice session is the lobby's — VoiceProvider holds it above
+              the router. This is only the tap surface, so a player can mute
+              themselves mid-round instead of walking back to the lobby. */}
+          <VoiceControl roomId={room?.id ?? null} compact />
           <MuteButton />
         </div>
       </div>
