@@ -134,30 +134,65 @@ describe('fetchVoiceToken — the request that is sent and refused', () => {
 });
 
 describe('fetchVoiceToken — the happy path and its contract', () => {
-  it('returns the token and the channel the server picked', async () => {
+  it('returns the credentials the server picked', async () => {
     const api = await loadApi(LIVEKIT_URL);
 
     await expect(api.fetchVoiceToken('room-1')).resolves.toEqual({
       ok: true,
-      token: 'jwt.token.here',
-      channel: 'room-1:team-a',
+      credentials: {
+        provider: 'livekit',
+        token: 'jwt.token.here',
+        channel: 'room-1:team-a',
+        // LiveKit's address is public and known at build time, so the client
+        // fills it in when the server does not send one.
+        url: LIVEKIT_URL,
+        identity: undefined,
+        appId: undefined,
+      },
     });
   });
 
-  it('sends initData and the room, and names neither the channel nor the player', async () => {
+  it('lets the server override the provider the build guessed', async () => {
+    // The server holds the secrets, so it is the side that knows which
+    // service it just signed for. A build pointed at the wrong one has to
+    // fail in the adapter, not quietly join nothing.
+    const api = await loadApi(LIVEKIT_URL);
+    invoke.mockResolvedValue({
+      data: {
+        provider: 'daily', token: 'meeting-token', channel: 'ss_room-1',
+        url: 'https://team.daily.co/ss_room-1',
+      },
+      error: null,
+    });
+
+    const grant = await api.fetchVoiceToken('room-1');
+    expect(grant.ok && grant.credentials.provider).toBe('daily');
+    expect(grant.ok && grant.credentials.url).toBe('https://team.daily.co/ss_room-1');
+  });
+
+  it('refuses an answer with no channel, the same as one with no token', async () => {
+    // The channel is the half that keeps teams apart. A 200 without it is not
+    // a usable grant, and joining "wherever" is the one outcome to rule out.
+    const api = await loadApi(LIVEKIT_URL);
+    invoke.mockResolvedValue({ data: { token: 'jwt.token.here' }, error: null });
+    await expect(api.fetchVoiceToken('room-1')).resolves.toEqual({ ok: false, reason: 'malformed' });
+  });
+
+  it('sends initData, the room and the provider — and names neither the channel nor the player', async () => {
     // The security contract from voiceApi's own docstring: the server derives
     // the identity from the validated initData and the channel from the
     // player's team. A client that could name its own channel could join the
-    // opposing team's and hear the explainer.
+    // opposing team's and hear the explainer. `provider` is safe to send —
+    // it selects which service to sign for, never who or where.
     const api = await loadApi(LIVEKIT_URL);
     await api.fetchVoiceToken('room-42');
 
     expect(invoke).toHaveBeenCalledWith('livekit-token', {
-      body: { initData: INIT_DATA, roomId: 'room-42' },
+      body: { initData: INIT_DATA, roomId: 'room-42', provider: 'livekit' },
     });
 
     const [, options] = invoke.mock.calls[0] as [string, { body: Record<string, unknown> }];
-    expect(Object.keys(options.body).sort()).toEqual(['initData', 'roomId']);
+    expect(Object.keys(options.body).sort()).toEqual(['initData', 'provider', 'roomId']);
     expect(options.body).not.toHaveProperty('channel');
     expect(options.body).not.toHaveProperty('playerId');
   });

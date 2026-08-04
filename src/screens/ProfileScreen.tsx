@@ -7,6 +7,7 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { levelProgress, levelTitleKey } from '@/shared/lib/level';
 import { WeeklyQuests } from '@/screens/profile/WeeklyQuests';
+import { SoundCheckPanel } from '@/features/voice/SoundCheckPanel';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -78,6 +79,13 @@ export function ProfileScreen() {
               the header card is re-read afterwards rather than incremented
               locally — the bar must never disagree with the database. */}
           <WeeklyQuests playerId={player?.id ?? null} onClaimed={() => void reload()} />
+
+          {/* Sound check. Here rather than in the lobby because it is a
+              settings-shaped thing you do once on a new phone, and because a
+              lobby with a live game behind it is the wrong place to open a
+              microphone. Needs no voice provider configured — it never leaves
+              the device. */}
+          <SoundCheckPanel />
 
           {/* TODO(profile-v2): achievement ribbon (phase 2, once
               player_achievements exists) and the settings rows from the

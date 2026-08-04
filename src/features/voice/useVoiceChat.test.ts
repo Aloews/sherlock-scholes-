@@ -2,102 +2,74 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-// "Пишет, что всё подключено, но ничего не слышно."
+// The session, with the service faked out.
 //
-// The token was granted, LiveKit connected, the microphone was published —
-// and the room was silent, because a subscribed track is not a played track.
-// LiveKit hands the audio over and stops; attaching it to an element in the
-// document is the application's job, and nothing here was doing it.
-//
-// These tests pin that job: that an incoming audio track ends up in an
-// element the browser can play, that it leaves when the track does, and that
-// a refused autoplay is reported rather than swallowed. Ten of the sixteen
-// fail against the version that shipped; the other six guard the teardown,
-// which could not be wrong yet because nothing was ever attached.
+// Everything provider-shaped now lives in providers/ and is tested there
+// (providers/livekit.test.ts holds the "connected but nothing is audible"
+// regression). What is left here is what the hook itself owes the game: a
+// place for remote audio that exists while a call does and not afterwards, a
+// blocked autoplay reported rather than swallowed, a muted player who stays
+// muted, and a failed connect that closes what it opened.
 
-const RoomEvent = {
-  ActiveSpeakersChanged: 'activeSpeakersChanged',
-  TrackSubscribed: 'trackSubscribed',
-  TrackUnsubscribed: 'trackUnsubscribed',
-  AudioPlaybackStatusChanged: 'audioPlaybackChanged',
-  Disconnected: 'disconnected',
-} as const;
+const fake = vi.hoisted(() => {
+  const config = { refuseMic: false, refusePlayback: false, failConnect: false, attachOnConnect: false };
 
-const lk = vi.hoisted(() => {
-  /** Flipped before connect() to build a room that behaves a certain way. */
-  const config = { refusePlayback: false, refuseMic: false, subscribeOnConnect: false };
-
-  /** What LiveKit passes to TrackSubscribed: something that can attach itself. */
-  function track(kind: 'audio' | 'video' = 'audio') {
-    const attached: HTMLMediaElement[] = [];
-    return {
-      kind,
-      attach() {
-        const el = document.createElement(kind === 'audio' ? 'audio' : 'video');
-        attached.push(el);
-        return el;
-      },
-      detach() {
-        const out = [...attached];
-        attached.length = 0;
-        return out;
-      },
-    };
-  }
-
-  class FakeRoom {
-    handlers = new Map<string, ((...args: never[]) => void)[]>();
-    localParticipant = {
-      setMicrophoneEnabled: vi.fn(async (on: boolean) => {
-        if (on && this.micRefused) throw new DOMException('denied', 'NotAllowedError');
-      }),
-    };
-    canPlaybackAudio = true;
+  class FakeSession {
+    micCalls: boolean[] = [];
     startAudioCalls = 0;
-    /** Where readLinkStats() digs for the WebRTC numbers. */
-    engine: { pcManager: { publisher: { getStats: () => Promise<unknown> } } } | undefined;
-    /** Makes startAudio() reject the way a blocked autoplay does. */
-    playbackRefused = config.refusePlayback;
-
-    on(event: string, cb: (...args: never[]) => void) {
-      const list = this.handlers.get(event) ?? [];
-      list.push(cb);
-      this.handlers.set(event, list);
-      return this;
-    }
-
-    emit(event: string, ...args: unknown[]) {
-      for (const cb of this.handlers.get(event) ?? []) (cb as (...a: unknown[]) => void)(...args);
-    }
-
     disconnectCalls = 0;
-    /** Makes the microphone prompt refuse, the way a denied permission does. */
-    micRefused = config.refuseMic;
+    playable = true;
+    stats: { rttMs: number; loss: number } | null = null;
+    /** The sink the hook handed over — the adapter's only way to be heard. */
+    sink: HTMLElement | null = null;
 
-    async connect() {
-      // Autosubscribe: the other player's microphone arrives as part of
-      // connecting, not at some later moment we control.
-      if (config.subscribeOnConnect) this.emit('trackSubscribed', track());
+    async setMicrophoneEnabled(on: boolean) {
+      this.micCalls.push(on);
+      if (on && config.refuseMic) throw new DOMException('denied', 'NotAllowedError');
     }
     async startAudio() {
       this.startAudioCalls += 1;
-      if (this.playbackRefused) { this.canPlaybackAudio = false; throw new Error('blocked'); }
-      this.canPlaybackAudio = true;
+      if (config.refusePlayback) { this.playable = false; throw new Error('blocked'); }
+      this.playable = true;
     }
+    canPlaybackAudio() { return this.playable; }
+    async linkStats() { return this.stats; }
     async disconnect() { this.disconnectCalls += 1; }
+
+    /** Stands in for a track arriving: something lands in the sink. */
+    play() { this.sink?.appendChild(document.createElement('audio')); }
   }
 
-  const rooms: FakeRoom[] = [];
-  class TrackedRoom extends FakeRoom {
-    constructor() { super(); rooms.push(this); }
-  }
-  return { config, rooms, track, TrackedRoom };
+  const sessions: FakeSession[] = [];
+  const hooks: { speakers?: (ids: string[]) => void; playback?: (playing: boolean) => void; dropped?: () => void } = {};
+
+  const transport = {
+    id: 'livekit' as const,
+    async connect(options: {
+      sink: HTMLElement;
+      onSpeakers: (ids: string[]) => void;
+      onPlaybackChanged: (playing: boolean) => void;
+      onDisconnected: () => void;
+    }) {
+      if (config.failConnect) throw new Error('no link');
+      const session = new FakeSession();
+      session.sink = options.sink;
+      hooks.speakers = options.onSpeakers;
+      hooks.playback = options.onPlaybackChanged;
+      hooks.dropped = options.onDisconnected;
+      sessions.push(session);
+      if (config.attachOnConnect) session.play();
+      return session;
+    },
+  };
+
+  return { config, sessions, hooks, transport };
 });
 
-vi.mock('livekit-client', () => ({
-  Room: lk.TrackedRoom,
-  RoomEvent,
-  Track: { Kind: { Audio: 'audio', Video: 'video' } },
+vi.mock('./providers', () => ({
+  loadTransport: async () => fake.transport,
+  voiceProvider: () => 'livekit',
+  voiceProviderMisconfigured: () => false,
 }));
 
 const fetchVoiceToken = vi.fn();
@@ -110,7 +82,7 @@ vi.mock('./voiceApi', () => ({
 import { useVoiceChat } from './useVoiceChat';
 
 const playing = () => document.querySelectorAll('audio');
-const room = () => lk.rooms[lk.rooms.length - 1];
+const session = () => fake.sessions[fake.sessions.length - 1];
 
 let release: (() => void) | null = null;
 
@@ -124,12 +96,16 @@ async function connected() {
 }
 
 beforeEach(() => {
-  lk.rooms.length = 0;
-  lk.config.refusePlayback = false;
-  lk.config.refuseMic = false;
-  lk.config.subscribeOnConnect = false;
+  fake.sessions.length = 0;
+  fake.config.refuseMic = false;
+  fake.config.refusePlayback = false;
+  fake.config.failConnect = false;
+  fake.config.attachOnConnect = false;
   fetchVoiceToken.mockReset();
-  fetchVoiceToken.mockResolvedValue({ ok: true, token: 'jwt.token.here', channel: 'ss_room-1' });
+  fetchVoiceToken.mockResolvedValue({
+    ok: true,
+    credentials: { provider: 'livekit', token: 'jwt.token.here', channel: 'ss_room-1', url: 'wss://example' },
+  });
 });
 
 afterEach(() => {
@@ -138,70 +114,50 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('incoming audio', () => {
-  it('plays the other player\'s microphone instead of dropping it', async () => {
+describe('the place remote audio goes', () => {
+  it('hands the adapter a sink that is already in the document', async () => {
     await connected();
-    expect(playing()).toHaveLength(0);
-
-    const track = lk.track();
-    act(() => room().emit(RoomEvent.TrackSubscribed, track));
-
-    // In the document, not merely created: an element nobody appended is an
-    // element nobody hears, which is exactly what the bug looked like.
-    expect(playing()).toHaveLength(1);
-    expect(document.body.contains(playing()[0])).toBe(true);
-  });
-
-  it('gives every speaker their own element', async () => {
-    await connected();
-    act(() => {
-      room().emit(RoomEvent.TrackSubscribed, lk.track());
-      room().emit(RoomEvent.TrackSubscribed, lk.track());
-    });
-    expect(playing()).toHaveLength(2);
-  });
-
-  it('ignores tracks that are not audio', async () => {
-    await connected();
-    act(() => room().emit(RoomEvent.TrackSubscribed, lk.track('video')));
-    expect(playing()).toHaveLength(0);
-    expect(document.querySelectorAll('video')).toHaveLength(0);
-  });
-
-  it('takes the element away when the track goes', async () => {
-    await connected();
-    const track = lk.track();
-    act(() => room().emit(RoomEvent.TrackSubscribed, track));
-    act(() => room().emit(RoomEvent.TrackUnsubscribed, track));
-    expect(playing()).toHaveLength(0);
+    expect(session().sink).not.toBeNull();
+    // An element outside the document is an element nobody hears — the
+    // failure this whole seam exists to prevent.
+    expect(document.body.contains(session().sink)).toBe(true);
   });
 
   it('leaves nothing playing after a disconnect', async () => {
     const result = await connected();
-    act(() => room().emit(RoomEvent.TrackSubscribed, lk.track()));
+    act(() => session().play());
+    expect(playing()).toHaveLength(1);
+
     act(() => result.current.disconnect());
     expect(playing()).toHaveLength(0);
+    expect(session().disconnectCalls).toBe(1);
     expect(result.current.status).toBe('off');
   });
 
   it('leaves nothing playing when the hook unmounts', async () => {
     await connected();
-    act(() => room().emit(RoomEvent.TrackSubscribed, lk.track()));
+    act(() => session().play());
     act(() => { release?.(); release = null; });
     expect(playing()).toHaveLength(0);
+  });
+
+  it('reuses one sink across reconnects instead of stacking them', async () => {
+    const result = await connected();
+    act(() => result.current.disconnect());
+    await act(async () => { await result.current.connect(); });
+    expect(document.querySelectorAll('[data-voice-sink]')).toHaveLength(1);
   });
 });
 
 describe('autoplay policy', () => {
   it('spends the connecting tap on starting playback', async () => {
     const result = await connected();
-    expect(room().startAudioCalls).toBe(1);
+    expect(session().startAudioCalls).toBe(1);
     expect(result.current.audioBlocked).toBe(false);
   });
 
   it('reports a refusal rather than looking connected and silent', async () => {
-    // A WebView that did not carry the gesture through: startAudio rejects.
-    lk.config.refusePlayback = true;
+    fake.config.refusePlayback = true;
     const result = await connected();
 
     // Still a live session — the link is fine, only the speaker is shut. That
@@ -211,27 +167,27 @@ describe('autoplay policy', () => {
     expect(result.current.audioBlocked).toBe(true);
   });
 
-  it('follows the browser when it changes its mind', async () => {
+  it('follows the adapter when the browser changes its mind', async () => {
     const result = await connected();
-    act(() => room().emit(RoomEvent.AudioPlaybackStatusChanged, false));
+    act(() => fake.hooks.playback?.(false));
     expect(result.current.audioBlocked).toBe(true);
-    act(() => room().emit(RoomEvent.AudioPlaybackStatusChanged, true));
+    act(() => fake.hooks.playback?.(true));
     expect(result.current.audioBlocked).toBe(false);
   });
 
   it('clears the block when the player taps to allow it', async () => {
     const result = await connected();
-    act(() => room().emit(RoomEvent.AudioPlaybackStatusChanged, false));
+    act(() => fake.hooks.playback?.(false));
     expect(result.current.audioBlocked).toBe(true);
 
     await act(async () => { await result.current.startAudio(); });
-    expect(room().startAudioCalls).toBe(2);
+    expect(session().startAudioCalls).toBe(2);
     expect(result.current.audioBlocked).toBe(false);
   });
 
   it('keeps the button when the tap did not take', async () => {
     const result = await connected();
-    room().playbackRefused = true;
+    fake.config.refusePlayback = true;
     await act(async () => { await result.current.startAudio(); });
     expect(result.current.audioBlocked).toBe(true);
   });
@@ -241,17 +197,17 @@ describe('autoplay policy', () => {
     release = unmount;
     await act(async () => { await result.current.startAudio(); });
     expect(result.current.audioBlocked).toBe(false);
-    expect(lk.rooms).toHaveLength(0);
+    expect(fake.sessions).toHaveLength(0);
   });
 });
 
 describe('a connection that fails after the link came up', () => {
-  // The microphone prompt is answered AFTER room.connect() has succeeded, so
-  // "denied" arrives with a live room behind it. The old cleanup reached for
-  // roomRef, which is only set once everything worked — so it disconnected
-  // null and left the room open: still subscribed, still delivering audio,
-  // under a screen that said the connection had failed.
-  beforeEach(() => { lk.config.refuseMic = true; });
+  // The microphone prompt is answered AFTER the transport has connected, so
+  // "denied" arrives with a live session behind it. Cleanup that reached for
+  // the ref — only set once everything worked — disconnected null and left
+  // the session open: still subscribed, still delivering audio, under a
+  // screen that said the connection had failed.
+  beforeEach(() => { fake.config.refuseMic = true; });
 
   it('reports the denial', async () => {
     const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
@@ -260,23 +216,43 @@ describe('a connection that fails after the link came up', () => {
     expect(result.current.status).toBe('denied');
   });
 
-  it('closes the room it opened', async () => {
+  it('closes the session it opened', async () => {
     const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
     release = unmount;
     await act(async () => { await result.current.connect(); });
-    expect(room().disconnectCalls).toBe(1);
+    expect(session().disconnectCalls).toBe(1);
   });
 
   it('leaves nothing playing from tracks that arrived first', async () => {
-    // Autosubscribe delivers on connect, before the prompt is answered — so
-    // there is already audio in the document when the denial lands.
-    lk.config.subscribeOnConnect = true;
+    fake.config.attachOnConnect = true;
     const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
     release = unmount;
     await act(async () => { await result.current.connect(); });
 
     expect(result.current.status).toBe('denied');
     expect(playing()).toHaveLength(0);
+  });
+
+  it('says "network", not the last token-stage reason, when the link will not come up', async () => {
+    fake.config.refuseMic = false;
+    fake.config.failConnect = true;
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('network');
+  });
+});
+
+describe('what the server refused', () => {
+  it('carries the reason through instead of one shared silence', async () => {
+    fetchVoiceToken.mockResolvedValue({ ok: false, reason: 'no_team_yet' });
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('no_team_yet');
+    expect(fake.sessions).toHaveLength(0);
   });
 });
 
@@ -287,13 +263,6 @@ describe('the quality ladder and a muted player', () => {
   // setMicrophoneEnabled(true) and put a player who had muted themselves back
   // on air without a word. The microphone may be closed by the ladder; it may
   // never be opened by it.
-  const stats = (rttMs: number, loss: number) => ({
-    forEach(cb: (r: Record<string, unknown>) => void) {
-      cb({ type: 'candidate-pair', currentRoundTripTime: rttMs / 1000 });
-      cb({ type: 'outbound-rtp', packetsSent: 1000 });
-      cb({ type: 'remote-inbound-rtp', packetsLost: Math.round(loss * 1000) });
-    },
-  });
 
   /** Runs enough ladder ticks for a level change to survive the streak rule. */
   async function tick(times: number) {
@@ -310,18 +279,25 @@ describe('the quality ladder and a muted player', () => {
     release = unmount;
     await act(async () => { await result.current.connect(); });
 
-    const mic = room().localParticipant.setMicrophoneEnabled;
     // A link good enough to carry voice, so the ladder wants the mic OPEN.
-    room().engine = { pcManager: { publisher: { getStats: async () => stats(40, 0) } } };
+    session().stats = { rttMs: 40, loss: 0 };
 
     await act(async () => { await result.current.toggleMute(); });
     expect(result.current.muted).toBe(true);
-    expect(mic).toHaveBeenLastCalledWith(false);
+    expect(session().micCalls.at(-1)).toBe(false);
 
     await tick(4);
     // The ladder did run — it climbed a rung — and still left them muted.
     expect(result.current.level).toBe('full');
-    expect(mic).toHaveBeenLastCalledWith(false);
+    expect(session().micCalls.at(-1)).toBe(false);
     expect(result.current.muted).toBe(true);
+  });
+
+  it('closes the microphone when the link cannot carry voice at all', async () => {
+    const result = await connected();
+    session().stats = { rttMs: 900, loss: 0.5 };
+    await tick(2);
+    expect(result.current.level).toBe('text');
+    expect(session().micCalls.at(-1)).toBe(false);
   });
 });

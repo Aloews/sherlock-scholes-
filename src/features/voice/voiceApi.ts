@@ -1,29 +1,38 @@
 import { supabase } from '@/shared/lib/supabase';
 import { getRawInitData } from '@/shared/lib/telegram';
+import { voiceProvider, voiceProviderMisconfigured, type VoiceCredentials } from './providers';
 
-// The LiveKit server URL is public — it is just an address, and the browser
-// has to know it to connect. The API key and secret are NOT here and must
-// never be: they live in Supabase secrets, and only the livekit-token Edge
-// Function ever sees them.
+// Service addresses are public — they are just addresses, and the browser has
+// to know where to connect. Every KEY and SECRET is absent by design: those
+// live in Supabase secrets, where only the token Edge Function reads them.
+//
+// Daily and Agora need no address here at all: Daily's room URL is created
+// per-room by the server, and Agora's app id travels with the token. So the
+// "is voice configured" question is answered per provider, below.
 const LIVEKIT_URL = import.meta.env.VITE_LIVEKIT_URL as string | undefined;
 
 /**
  * Whether voice is configured at all. When it is not — no env var, no
  * deployed function — every entry point hides itself and the game plays
  * exactly as it does today. Voice is a layer on top, never a dependency.
+ *
+ * `VITE_VOICE_ENABLED` is the switch for providers that need nothing public.
+ * Without it, a Daily or Agora deployment would have no way to say "yes, this
+ * build has voice" and the UI would stay hidden with everything else correct.
  */
 export function voiceEnabled(): boolean {
-  return typeof LIVEKIT_URL === 'string' && LIVEKIT_URL.length > 0;
+  if (voiceProviderMisconfigured()) return false;
+  switch (voiceProvider()) {
+    case 'livekit':
+      return typeof LIVEKIT_URL === 'string' && LIVEKIT_URL.length > 0;
+    case 'daily':
+    case 'agora':
+      return import.meta.env.VITE_VOICE_ENABLED === 'true';
+  }
 }
 
 export function livekitUrl(): string {
   return LIVEKIT_URL ?? '';
-}
-
-export interface VoiceToken {
-  token: string;
-  /** The channel the server picked. Informational — the token already binds it. */
-  channel: string;
 }
 
 /**
@@ -49,20 +58,23 @@ export type VoiceUnavailableReason =
   | 'no_such_room'          // 404
   | 'room_finished'         // 409
   | 'no_team_yet'           // 409 — team mode, no side picked yet
-  | 'voice_not_configured'  // 503 — the server's LiveKit secrets are missing
+  | 'provider_mismatch'     // 409 — this build and that deployment target different services
+  | 'voice_not_configured'  // 503 — the server's secrets for its provider are missing
+  | 'issue_failed'          // 503 — the voice service refused to mint a credential
   | 'lookup_failed'         // 503 — the server could not read the room, so it does not know
   // Neither:
   | 'network'               // no answer at all
-  | 'malformed';            // 200 carrying no token
+  | 'malformed';            // 200 carrying no usable credential
 
 export type VoiceGrant =
-  | { ok: true; token: string; channel: string }
+  | { ok: true; credentials: VoiceCredentials }
   | { ok: false; reason: VoiceUnavailableReason };
 
 /** Error codes the Edge Function returns; see its README for the full table. */
 const SERVER_REASONS: readonly VoiceUnavailableReason[] = [
   'bad_request', 'unauthorized', 'not_in_room', 'no_such_room',
-  'room_finished', 'no_team_yet', 'voice_not_configured', 'lookup_failed',
+  'room_finished', 'no_team_yet', 'provider_mismatch', 'voice_not_configured',
+  'issue_failed', 'lookup_failed',
 ];
 
 /**
@@ -105,10 +117,31 @@ export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
   const initData = getRawInitData();
   if (!initData) return { ok: false, reason: 'no_init_data' };
 
+  // The function name is historical — it issues tokens for whichever service
+  // is configured, not only LiveKit. Renaming it would strand the deployed
+  // frontends that call this one, which is the mistake `pick_random_cards`
+  // already taught this project once (CLAUDE.md).
   const { data, error } = await supabase.functions.invoke('livekit-token', {
-    body: { initData, roomId },
+    body: { initData, roomId, provider: voiceProvider() },
   });
   if (error) return { ok: false, reason: await reasonFromError(error) };
-  if (!data?.token) return { ok: false, reason: 'malformed' };
-  return { ok: true, token: data.token as string, channel: data.channel as string };
+  if (!data?.token || !data?.channel) return { ok: false, reason: 'malformed' };
+
+  return {
+    ok: true,
+    credentials: {
+      // The server's answer wins over the build's guess: it is the side that
+      // holds the secrets, so it is the side that knows which service it just
+      // signed for. A build pointed at the wrong provider fails loudly in the
+      // adapter rather than quietly joining nothing.
+      provider: data.provider ?? voiceProvider(),
+      token: data.token as string,
+      channel: data.channel as string,
+      // LiveKit's address is public and known at build time; the others are
+      // per-room and only the server can say.
+      url: (data.url as string | undefined) ?? (livekitUrl() || undefined),
+      identity: data.identity as string | undefined,
+      appId: data.appId as string | undefined,
+    },
+  };
 }

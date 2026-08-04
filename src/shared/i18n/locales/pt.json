@@ -289,10 +289,27 @@
     "reason_no_such_room": "Sala não encontrada",
     "reason_room_finished": "A partida já terminou",
     "reason_no_team_yet": "Escolha um time primeiro",
+    "reason_provider_mismatch": "A app e o servidor apontam para serviços diferentes",
     "reason_voice_not_configured": "O servidor de voz não está configurado",
+    "reason_issue_failed": "O serviço de voz recusou o acesso",
     "reason_network": "Sem conexão com o servidor",
     "reason_malformed": "O servidor deu uma resposta inesperada",
     "reason_lookup_failed": "O servidor não conseguiu verificar a sala"
+  },
+  "soundcheck": {
+    "title": "Teste de som",
+    "intro": "Verifica o microfone e a reprodução neste dispositivo — sem sala e sem segundo jogador.",
+    "start": "Iniciar o teste",
+    "stop": "Parar",
+    "asking": "A pedir o microfone…",
+    "denied": "O acesso ao microfone não foi concedido. Permita-o nas definições do Telegram e tente de novo.",
+    "failed": "Não há microfone disponível neste dispositivo.",
+    "listening": "O microfone está a ser ouvido",
+    "silent": "Diga algo — a barra deve mexer-se",
+    "monitor_on": "Ouvir-se",
+    "monitor_off": "Deixar de se ouvir",
+    "monitor_hint": "Melhor com auscultadores: sem eles o altifalante volta ao microfone e ganha eco.",
+    "blocked": "O navegador bloqueou o som — toque em «Ouvir-se» outra vez"
   },
   "game": {
     "round_starting": "Rodada começando",

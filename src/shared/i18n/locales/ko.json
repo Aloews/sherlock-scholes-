@@ -281,10 +281,27 @@
     "reason_no_such_room": "방을 찾을 수 없습니다",
     "reason_room_finished": "게임이 이미 끝났습니다",
     "reason_no_team_yet": "먼저 팀을 선택하세요",
+    "reason_provider_mismatch": "앱과 서버가 서로 다른 서비스를 가리킵니다",
     "reason_voice_not_configured": "음성 서버가 설정되지 않았습니다",
+    "reason_issue_failed": "음성 서비스가 접근을 거부했습니다",
     "reason_network": "서버에 연결할 수 없습니다",
     "reason_malformed": "서버 응답이 올바르지 않습니다",
     "reason_lookup_failed": "서버가 방을 확인하지 못했습니다"
+  },
+  "soundcheck": {
+    "title": "소리 점검",
+    "intro": "이 기기의 마이크와 재생을 점검합니다. 방도 상대도 필요 없습니다.",
+    "start": "점검 시작",
+    "stop": "중지",
+    "asking": "마이크 권한을 요청하는 중…",
+    "denied": "마이크 접근이 허용되지 않았습니다. 텔레그램 설정에서 허용한 뒤 다시 시도해 주세요.",
+    "failed": "이 기기에서 쓸 수 있는 마이크가 없습니다.",
+    "listening": "마이크가 들어오고 있습니다",
+    "silent": "뭔가 말해 보세요 — 막대가 움직여야 합니다",
+    "monitor_on": "내 소리 듣기",
+    "monitor_off": "내 소리 끄기",
+    "monitor_hint": "이어폰을 쓰는 편이 좋습니다. 없으면 스피커 소리가 마이크로 돌아가 하울링이 납니다.",
+    "blocked": "브라우저가 재생을 막았습니다 — 「내 소리 듣기」를 다시 눌러 주세요"
   },
   "game": {
     "round_starting": "라운드 시작",

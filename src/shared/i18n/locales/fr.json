@@ -289,10 +289,27 @@
     "reason_no_such_room": "Salon introuvable",
     "reason_room_finished": "La partie est déjà terminée",
     "reason_no_team_yet": "Choisissez d'abord une équipe",
+    "reason_provider_mismatch": "L'app et le serveur visent des services différents",
     "reason_voice_not_configured": "Le serveur vocal n'est pas configuré",
+    "reason_issue_failed": "Le service vocal a refusé l'accès",
     "reason_network": "Pas de connexion au serveur",
     "reason_malformed": "Le serveur a répondu de façon inattendue",
     "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon"
+  },
+  "soundcheck": {
+    "title": "Test du son",
+    "intro": "Vérifie le micro et la lecture sur cet appareil — sans salon ni second joueur.",
+    "start": "Lancer le test",
+    "stop": "Arrêter",
+    "asking": "Demande du micro…",
+    "denied": "L'accès au micro n'a pas été accordé. Autorisez-le dans les réglages de Telegram et réessayez.",
+    "failed": "Aucun micro disponible sur cet appareil.",
+    "listening": "Le micro passe bien",
+    "silent": "Dites quelque chose — la barre doit bouger",
+    "monitor_on": "S'entendre",
+    "monitor_off": "Ne plus s'entendre",
+    "monitor_hint": "Mieux au casque : sans lui, le haut-parleur revient dans le micro et siffle.",
+    "blocked": "Le navigateur a bloqué le son — appuyez encore sur « S'entendre »"
   },
   "game": {
     "round_starting": "La manche commence",

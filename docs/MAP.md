@@ -150,7 +150,9 @@ flowchart TD
 **Edge Functions** (`supabase/functions/`):
 
 * `tg-pay` — оплата Telegram Stars; проверяет `initData` на сервере.
-* `livekit-token` — токен голосового канала; канал выбирает сервер.
+* `livekit-token` — токен голосового канала; канал **и сервис** выбирает
+  сервер (`VOICE_PROVIDER`: livekit / daily / agora). Имя историческое —
+  `docs/VOICE_PROVIDERS.md`.
 
 **RLS**: `supabase/migrations/rls_lockdown.sql` — образец для новых таблиц.
 Игрок читает свой прогресс, но **не пишет** его; запись — только через
@@ -240,5 +242,7 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Подписка на дорожку принята за воспроизведение — LiveKit её не играет, нужен `attach()` в DOM | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
 | Сессия голоса внутри экрана — размонтирование рвёт канал, поэтому она над роутером | `src/features/voice/VoiceProvider.tsx` |
 | `npm run build` без `VITE_LIVEKIT_URL` вырезает голос целиком — чанка LiveKit в `dist/` нет | `docs/LOBBY_AND_VOICE_FIXES.md` §3 |
+| `VOICE_PROVIDER` и `VITE_VOICE_PROVIDER` разошлись — токен валиден и бесполезен | `docs/VOICE_PROVIDERS.md` §1 |
+| SDK сервиса импортирован статически — попадёт в бандл всем, включая тех, кто на другом сервисе | `src/features/voice/providers/index.ts` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |

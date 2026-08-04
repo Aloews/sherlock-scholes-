@@ -281,10 +281,27 @@
     "reason_no_such_room": "ルームが見つかりません",
     "reason_room_finished": "ゲームは終了しています",
     "reason_no_team_yet": "先にチームを選んでください",
+    "reason_provider_mismatch": "アプリとサーバーが別のサービスを指しています",
     "reason_voice_not_configured": "ボイスサーバーが設定されていません",
+    "reason_issue_failed": "音声サービスがアクセスを拒否しました",
     "reason_network": "サーバーに接続できません",
     "reason_malformed": "サーバーの応答が不正です",
     "reason_lookup_failed": "サーバーがルームを確認できませんでした"
+  },
+  "soundcheck": {
+    "title": "サウンドチェック",
+    "intro": "この端末のマイクと再生を確認します。ルームも相手も必要ありません。",
+    "start": "チェックを始める",
+    "stop": "停止",
+    "asking": "マイクの許可を求めています…",
+    "denied": "マイクへのアクセスが許可されませんでした。Telegram の設定で許可してからやり直してください。",
+    "failed": "この端末で使えるマイクがありません。",
+    "listening": "マイクが届いています",
+    "silent": "何か話してください — バーが動くはずです",
+    "monitor_on": "自分の声を聞く",
+    "monitor_off": "自分の声を止める",
+    "monitor_hint": "イヤホン推奨です。使わないとスピーカーの音がマイクに戻ってハウリングします。",
+    "blocked": "ブラウザが再生をブロックしました。「自分の声を聞く」をもう一度押してください"
   },
   "game": {
     "round_starting": "ラウンド開始",
