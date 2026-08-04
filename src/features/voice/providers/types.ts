@@ -75,6 +75,17 @@ export interface VoiceCredentials {
   identity?: string;
   /** Agora's app id. Public, but it travels with the token so one place decides which project. */
   appId?: string;
+  /**
+   * Every service the SERVER is willing to sign for on this room, preferred
+   * first. Failover walks it.
+   *
+   * It travels with the credential rather than being configured on the client
+   * because it is an authorisation, not a preference: asking for a service
+   * outside this list is refused. That keeps the original rule intact — a
+   * caller still cannot choose which secrets the server exercises — while
+   * letting it ask for the next one when the first will not come up.
+   */
+  chain?: VoiceProviderId[];
 }
 
 export interface VoiceConnectOptions {

@@ -90,6 +90,7 @@ const PROVIDERS = {
 
 const SHARED_CLIENT = [
   ['VITE_VOICE_PROVIDER', 'livekit | daily | agora. Unset means livekit, which is what production runs.'],
+  ['VITE_VOICE_FALLBACK', 'Optional second service. Its adapter is bundled too — that is what failover needs.'],
 ];
 
 function inventory() {
@@ -110,6 +111,7 @@ function inventory() {
 
   console.log('\n  Server (supabase secrets set …; NEVER in the repo, never VITE_):');
   console.log(`    [ server ] ${'VOICE_PROVIDER'.padEnd(23)} livekit | daily | agora. The server's choice is the one that counts.`);
+  console.log(`    [ server ] ${'VOICE_PROVIDER_FALLBACK'.padEnd(23)} Optional. Must match VITE_VOICE_FALLBACK, and needs its own secrets set.`);
   for (const [id, p] of Object.entries(PROVIDERS)) {
     for (const [name, why] of p.server) {
       console.log(`    [ server ] ${name.padEnd(23)} ${p.label}: ${why}${id === chosen ? '   ← needed now' : ''}`);
@@ -189,6 +191,8 @@ async function main() {
 
   /** The provider the deployment admits to, from whichever answer carries it. */
   let serverProvider = null;
+  /** Every service it is willing to sign for, preferred first. Failover walks it. */
+  let serverChain = null;
 
   // ─── 2. reachable ────────────────────────────────────────
   try {
@@ -197,6 +201,7 @@ async function main() {
     let body = {};
     try { body = JSON.parse(text); } catch { /* not JSON; the raw text is reported below */ }
     if (body.provider) serverProvider = body.provider;
+    if (Array.isArray(body.chain) && body.chain.length) serverChain = body.chain;
 
     if (res.status === 400) {
       record('reachable', true, "400 bad_request — the function is deployed and its provider's secrets are set.");
@@ -254,7 +259,20 @@ async function main() {
         `server signs for ${serverProvider}; VITE_VOICE_PROVIDER is unset here, which means livekit.` +
         (agrees ? '' : `\n        Set VITE_VOICE_PROVIDER=${serverProvider} for the frontend and rebuild.`));
     } else if (local === serverProvider) {
-      record('provider', true, `both halves are on ${serverProvider}.`);
+      const fallback = (serverChain ?? []).slice(1);
+      const localFallback = process.env.VITE_VOICE_FALLBACK || null;
+      let note = `both halves are on ${serverProvider}.`;
+      if (fallback.length === 0) {
+        note += ' No fallback configured — one service is the whole plan.';
+      } else if (!localFallback) {
+        note += ` Server can fail over to ${fallback.join(', ')}, but the frontend carries no fallback adapter:` +
+          `\n        set VITE_VOICE_FALLBACK=${fallback[0]} and rebuild, or the chain is decoration.`;
+      } else if (!fallback.includes(localFallback)) {
+        note += ` Fallbacks disagree: frontend carries ${localFallback}, server offers ${fallback.join(', ')}.`;
+      } else {
+        note += ` Failover ready: ${serverChain.join(' -> ')}.`;
+      }
+      record('provider', true, note);
     } else {
       record('provider', false,
         `the frontend is built for ${local}, the server signs for ${serverProvider}.\n` +

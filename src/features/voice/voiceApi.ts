@@ -1,6 +1,9 @@
 import { supabase } from '@/shared/lib/supabase';
 import { getRawInitData } from '@/shared/lib/telegram';
-import { voiceProvider, voiceProviderMisconfigured, type VoiceCredentials } from './providers';
+import {
+  voiceProvider, voiceProviderMisconfigured, isVoiceProviderId,
+  type VoiceCredentials, type VoiceProviderId,
+} from './providers';
 
 // Service addresses are public — they are just addresses, and the browser has
 // to know where to connect. Every KEY and SECRET is absent by design: those
@@ -109,7 +112,16 @@ async function reasonFromError(error: unknown): Promise<VoiceUnavailableReason> 
  * WITH ITS REASON. Collapsing every refusal into one silent null is what made
  * the production failure impossible to place from the outside.
  */
-export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
+export async function fetchVoiceToken(
+  roomId: string,
+  /**
+   * Which service to sign for. Omitted on the first attempt — the server's own
+   * preference wins — and named only by failover, which may ask for anything
+   * in the `chain` the server published. Outside that list the server refuses,
+   * so this stays a request rather than a choice.
+   */
+  provider?: VoiceProviderId,
+): Promise<VoiceGrant> {
   if (!voiceEnabled()) return { ok: false, reason: 'not_configured' };
 
   // Nothing to prove who we are: the request is not sent at all, which is why
@@ -122,7 +134,7 @@ export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
   // frontends that call this one, which is the mistake `pick_random_cards`
   // already taught this project once (CLAUDE.md).
   const { data, error } = await supabase.functions.invoke('livekit-token', {
-    body: { initData, roomId, provider: voiceProvider() },
+    body: { initData, roomId, provider: provider ?? voiceProvider() },
   });
   if (error) return { ok: false, reason: await reasonFromError(error) };
   if (!data?.token || !data?.channel) return { ok: false, reason: 'malformed' };
@@ -142,6 +154,10 @@ export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
       url: (data.url as string | undefined) ?? (livekitUrl() || undefined),
       identity: data.identity as string | undefined,
       appId: data.appId as string | undefined,
+      // Only names this build can act on. A server offering a service this
+      // frontend was not built with would otherwise send failover chasing an
+      // adapter that is not in the bundle.
+      chain: (data.chain as VoiceProviderId[] | undefined)?.filter(isVoiceProviderId),
     },
   };
 }

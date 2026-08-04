@@ -1,12 +1,22 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchVoiceToken, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
-import { loadTransport } from './providers';
+import { loadTransport, voiceChain } from './providers';
 import { levelFor, nextLevel, audioPreset, type VoiceLevel } from './voiceQuality';
-import type { VoiceSession } from './providers';
+import type { VoiceProviderId, VoiceSession, VoiceCredentials } from './providers';
 
 export type VoiceStatus = 'off' | 'connecting' | 'on' | 'denied' | 'unavailable';
 
 const STATS_INTERVAL_MS = 5000;
+
+/**
+ * How long a service gets to bring a link up before it is treated as down.
+ *
+ * A service that is blocked or unroutable does not usually refuse — it hangs,
+ * and a hung connect() never rejects, so failover would never fire without a
+ * clock. Long enough for a slow phone on a bad network to finish a real
+ * handshake, short enough that a dead service does not eat the round.
+ */
+const CONNECT_TIMEOUT_MS = 12_000;
 
 /**
  * The in-game voice channel. Audio only in this phase.
@@ -29,6 +39,10 @@ export function useVoiceChat(roomId: string | null) {
   // Separate from every other failure: nothing is broken and nothing needs
   // reconnecting — it needs a tap. See startAudio() below.
   const [audioBlocked, setAudioBlocked] = useState(false);
+  // Which service is actually carrying the call. Not always the preferred one:
+  // failover may have walked past it. Reported so a live session can be placed
+  // without guessing which half of the configuration was in play.
+  const [provider, setProvider] = useState<VoiceProviderId | null>(null);
   // Why the last attempt failed. Kept beside the status because 'unavailable'
   // alone is what made this bug undiagnosable from a player's screen.
   const [reason, setReason] = useState<VoiceUnavailableReason | null>(
@@ -55,6 +69,7 @@ export function useVoiceChat(roomId: string | null) {
     closeAudioSink();
     setSpeaking([]);
     setAudioBlocked(false);
+    setProvider(null);
     setStatus(voiceEnabled() ? 'off' : 'unavailable');
     setReason(voiceEnabled() ? null : 'not_configured');
   }, []);
@@ -78,25 +93,21 @@ export function useVoiceChat(roomId: string | null) {
     let opened: VoiceSession | null = null;
 
     try {
-      const transport = await loadTransport();
-      // The build loaded one adapter; the server signed for whichever service
-      // ITS secrets belong to. When those differ, the credential is valid and
-      // useless — the adapter would hand a Daily token to LiveKit and get a
-      // timeout. Say which mismatch it is instead.
-      if (granted.credentials.provider !== transport.id) {
-        setStatus('unavailable');
-        setReason('provider_mismatch');
-        return;
-      }
-
-      const session = await transport.connect({
-        credentials: granted.credentials,
+      const started = await openWithFailover(roomId, granted.credentials, {
         sink: audioSink(),
         onSpeakers: setSpeaking,
         onPlaybackChanged: (playing) => setAudioBlocked(!playing),
         onDisconnected: () => disconnect(),
       });
+      if (!started.ok) {
+        setStatus('unavailable');
+        setReason(started.reason);
+        closeAudioSink();
+        return;
+      }
+      const session = started.session;
       opened = session;
+      setProvider(started.provider);
 
       // Asking for the microphone here, not on app start: the handoff is
       // explicit that the prompt belongs to the moment the player opts in.
@@ -175,7 +186,122 @@ export function useVoiceChat(roomId: string | null) {
     await session.setMicrophoneEnabled(!next && audioPreset(levelRef.current) !== null);
   }, [muted]);
 
-  return { status, reason, level, muted, speaking, audioBlocked, connect, disconnect, toggleMute, startAudio };
+  return {
+    status, reason, level, muted, speaking, audioBlocked, provider,
+    connect, disconnect, toggleMute, startAudio,
+  };
+}
+
+type OpenHooks = {
+  sink: HTMLElement;
+  onSpeakers(ids: string[]): void;
+  onPlaybackChanged(playing: boolean): void;
+  onDisconnected(): void;
+};
+
+type OpenResult =
+  | { ok: true; session: VoiceSession; provider: VoiceProviderId }
+  | { ok: false; reason: VoiceUnavailableReason };
+
+/**
+ * Bring a link up, trying the next service when one will not come up.
+ *
+ * WHAT THIS IS FOR, and what it is deliberately not for. Failover fires on a
+ * service that cannot be REACHED — blocked, unroutable, having a bad day —
+ * not on a service that is merely slow. Switching does not fix a weak last
+ * mile: both services carry the same WebRTC over the same phone on the same
+ * network, and a swap costs a teardown, a round trip for new credentials and
+ * a fresh handshake. That is several seconds of silence, which is worse than
+ * the dip that would have prompted it. Bad links are the quality ladder's
+ * job (voiceQuality.ts); unreachable services are this one's.
+ *
+ * The order comes from the SERVER, in `credentials.chain`. The client may ask
+ * for anything in that list and nothing outside it, so the original rule
+ * holds: a caller still cannot choose which set of secrets to exercise.
+ *
+ * A microphone denial ends the walk immediately. It is the player's answer,
+ * it will be the same answer at every service, and asking a second time is
+ * just a second prompt.
+ */
+async function openWithFailover(
+  roomId: string,
+  first: VoiceCredentials,
+  hooks: OpenHooks,
+): Promise<OpenResult> {
+  // The server's list wins; the build's own chain is the fallback for a
+  // deployment too old to send one.
+  const order = dedupe([first.provider, ...(first.chain ?? voiceChain())]);
+  let lastReason: VoiceUnavailableReason = 'network';
+
+  for (const id of order) {
+    // The adapter is checked BEFORE the credential, so a chain entry this
+    // build was not compiled with costs nothing. The server's list is what it
+    // is willing to sign for, not a promise that every frontend carries it.
+    let transport;
+    try {
+      transport = await loadTransport(id);
+    } catch {
+      continue;
+    }
+
+    // The first credential is in hand; every later one has to be minted anew,
+    // because a token is only ever valid at the service that signed it.
+    let credentials: VoiceCredentials;
+    if (id === first.provider) {
+      credentials = first;
+    } else {
+      const granted = await fetchVoiceToken(roomId, id);
+      if (!granted.ok) { lastReason = granted.reason; continue; }
+      credentials = granted.credentials;
+    }
+
+    // A credential for one service handed to another's adapter is valid and
+    // useless — it would wait out a handshake that cannot happen. Refuse it
+    // here rather than spend the timeout discovering it.
+    if (credentials.provider !== transport.id) { lastReason = 'provider_mismatch'; continue; }
+
+    try {
+      const session = await withTimeout(
+        transport.connect({ credentials, ...hooks }),
+        CONNECT_TIMEOUT_MS,
+      );
+      return { ok: true, session, provider: id };
+    } catch (err) {
+      if (isMicrophoneDenied(err)) throw err;
+      // Whatever this service did, the next one gets a clean sink: a half-open
+      // adapter may have attached something before giving up.
+      hooks.sink.replaceChildren();
+      lastReason = 'network';
+    }
+  }
+
+  return { ok: false, reason: lastReason };
+}
+
+function dedupe(ids: VoiceProviderId[]): VoiceProviderId[] {
+  return [...new Set(ids)];
+}
+
+function isMicrophoneDenied(err: unknown): boolean {
+  return err instanceof DOMException &&
+    (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+}
+
+/**
+ * A promise with a deadline.
+ *
+ * A blocked service does not refuse, it hangs — so a connect() that never
+ * settles is the normal shape of the failure failover exists for, and without
+ * a clock the walk would stop at the first one forever.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('voice: connect timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
 }
 
 const SINK_ATTR = 'data-voice-sink';

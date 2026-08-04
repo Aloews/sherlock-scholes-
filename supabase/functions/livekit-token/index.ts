@@ -42,6 +42,7 @@
 //
 // SECRETS (supabase secrets set …, NOT in the repo) — see README.md:
 //   VOICE_PROVIDER                       livekit | daily | agora  (default livekit)
+//   VOICE_PROVIDER_FALLBACK              optional second service, for failover
 //   LIVEKIT_API_KEY, LIVEKIT_API_SECRET  for livekit
 //   DAILY_API_KEY, DAILY_DOMAIN          for daily
 //   AGORA_APP_ID, AGORA_APP_CERTIFICATE  for agora
@@ -50,6 +51,9 @@
 type ProviderId = "livekit" | "daily" | "agora";
 
 const VOICE_PROVIDER = (Deno.env.get("VOICE_PROVIDER") || "livekit") as ProviderId;
+// The service to sign for when the preferred one will not come up on the
+// player's device. Optional; without it there is nowhere to fail over to.
+const VOICE_PROVIDER_FALLBACK = Deno.env.get("VOICE_PROVIDER_FALLBACK") ?? "";
 
 const LIVEKIT_API_KEY = Deno.env.get("LIVEKIT_API_KEY") ?? "";
 const LIVEKIT_API_SECRET = Deno.env.get("LIVEKIT_API_SECRET") ?? "";
@@ -158,8 +162,9 @@ Deno.serve(async (req) => {
 
   // Unconfigured deployment: answer honestly instead of signing with "".
   // The client treats this as "voice is off" and hides its button.
-  const missing = missingSecrets(VOICE_PROVIDER);
-  if (missing.length > 0) {
+  const chain = configuredChain();
+  if (chain.length === 0) {
+    const missing = missingSecrets(VOICE_PROVIDER);
     console.error(`voice_not_configured: ${VOICE_PROVIDER} needs ${missing.join(", ")}`);
     return json({ error: "voice_not_configured", provider: VOICE_PROVIDER, missing }, 503);
   }
@@ -175,7 +180,7 @@ Deno.serve(async (req) => {
   // the check had no answer to read and reported a correctly-deployed function
   // as an old one. The name is not a secret: it is already in the bundle as
   // VITE_VOICE_PROVIDER.
-  if (!initData || !roomId) return json({ error: "bad_request", provider: VOICE_PROVIDER }, 400);
+  if (!initData || !roomId) return json({ error: "bad_request", provider: chain[0], chain }, 400);
 
   const telegramId = await validateInitData(initData);
   if (telegramId === null) return json({ error: "unauthorized" }, 401);
@@ -217,23 +222,43 @@ Deno.serve(async (req) => {
     return json({ error: "no_team_yet" }, 409);
   }
 
-  // The caller's `provider` is a hint used for one thing only: telling it
-  // plainly that its build and this deployment disagree. It never selects the
-  // issuer — that would let a caller choose which secrets to exercise.
-  if (payload?.provider && payload.provider !== VOICE_PROVIDER) {
-    console.warn(`provider_mismatch: client=${payload.provider} server=${VOICE_PROVIDER}`);
-    return json({ error: "provider_mismatch", provider: VOICE_PROVIDER }, 409);
+  // The caller may ASK for a service, and only from the chain this deployment
+  // published. That is what lets failover reach the second one; it is not a
+  // free choice. Anything outside the chain is refused, so the original rule
+  // holds — a caller still cannot pick which set of secrets to exercise, only
+  // which of the ones already authorised for this room.
+  const asked = payload?.provider;
+  if (asked && !chain.includes(asked as ProviderId)) {
+    console.warn(`provider_mismatch: client=${asked} server=${chain.join(",")}`);
+    return json({ error: "provider_mismatch", provider: chain[0], chain }, 409);
   }
+  const chosen = (asked as ProviderId | undefined) ?? chain[0];
 
   try {
-    return json(await issue(VOICE_PROVIDER, channel, String(telegramId)));
+    const credential = await issue(chosen, channel, String(telegramId));
+    // The chain travels with every credential so the client knows where it may
+    // go next without being configured with the answer separately.
+    return json({ ...credential, chain });
   } catch (err) {
     // A provider that would not mint is a server fault, not a verdict on the
     // player: `not_in_room` and friends are already ruled out by here.
-    console.error(`issue failed for ${VOICE_PROVIDER}: ${err}`);
-    return json({ error: "issue_failed", provider: VOICE_PROVIDER }, 503);
+    console.error(`issue failed for ${chosen}: ${err}`);
+    return json({ error: "issue_failed", provider: chosen, chain }, 503);
   }
 });
+
+/**
+ * The services this deployment can actually sign for, preferred first.
+ *
+ * Filtered by whether the secrets are present rather than by what was named:
+ * a fallback configured without its keys is not a fallback, and sending it in
+ * the chain would send the client off to collect a 503.
+ */
+function configuredChain(): ProviderId[] {
+  const named = [VOICE_PROVIDER, VOICE_PROVIDER_FALLBACK]
+    .filter((id): id is ProviderId => id === "livekit" || id === "daily" || id === "agora");
+  return [...new Set(named)].filter((id) => missingSecrets(id).length === 0);
+}
 
 // ─── Issuers ────────────────────────────────────────────────────────────────
 
