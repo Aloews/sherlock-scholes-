@@ -59,12 +59,18 @@ BEGIN
   ASSERT collection_views(523129, '{"ru":445343}'::jsonb, 'ru') = 445343,
     'ru viewer must prefer the collected ru key over cards.pageviews';
 
-  -- 4. Card never processed at all: the Russian order is a better stand-in
-  --    than nothing, for every language.
-  ASSERT collection_views(120173, NULL, 'fr') = 120173,
-    'a card with no language data must fall back to cards.pageviews';
-  ASSERT collection_views(120173, '{}'::jsonb, 'ko') = 120173,
-    'an empty vector counts as no language data';
+  -- 4. Card never processed at all scores 0 for a FOREIGN language — it does
+  --    NOT borrow its Russian count. Mixing the two scales put «Брест» (a
+  --    Belarusian city's ru views) above Tottenham's real Korean views at the
+  --    top of the Korean «Клубы» tab. The Russian order survives as the
+  --    caller's SECOND sort key, asserted further down.
+  ASSERT collection_views(255299, NULL, 'ko') = 0,
+    'no language data must not lend a Russian score to a Korean viewer';
+  ASSERT collection_views(255299, '{}'::jsonb, 'fr') = 0,
+    'an empty vector must not lend a Russian score either';
+  -- …but a ru viewer still reads that very column.
+  ASSERT collection_views(255299, NULL, 'ru') = 255299,
+    'a ru viewer reads cards.pageviews even with no vector';
 
   -- 5. Processed, but no article in this language -> 0, NOT the Russian
   --    score. This is the line that keeps a Russian-only club out of a
@@ -95,7 +101,15 @@ BEGIN
     ('ZZTESTCOL Девять', 'ZZTESTCOL Nine',   'club', true,      0,
        '{"fr":9}'::jsonb),
     ('ZZTESTCOL Десять', 'ZZTESTCOL TenK',   'club', true,      0,
-       '{"fr":10000}'::jsonb);
+       '{"fr":10000}'::jsonb),
+    -- The «Брест» shape: no language data at all, and a huge Russian score
+    -- that is not even this card's subject. Must sit in the TAIL for fr,
+    -- behind every card with a real French measurement — including the one
+    -- whose French count is 9.
+    ('ZZTESTCOL Брест',  'ZZTESTCOL Brest',  'club', true, 255299, NULL),
+    -- Tail-mate with a smaller Russian score, to prove the tail is ordered
+    -- by pageviews and not by name.
+    ('ZZTESTCOL Абвгд',  'ZZTESTCOL Abcde',  'club', true,   1000, NULL);
 
   SELECT array_agg(name ORDER BY ord) INTO v_names
   FROM (
@@ -103,9 +117,19 @@ BEGIN
     FROM collection_page('fr', 'club', 'ZZTESTCOL', 50, 0)
   ) s;
 
+  -- Measured-in-French first (190000 > 10000 > 2100 > 9), then the tail we
+  -- cannot measure in French, in Russian order (255299 > 1000).
   ASSERT v_names = ARRAY['ZZTESTCOL Ланс', 'ZZTESTCOL Десять',
-                         'ZZTESTCOL Зенит', 'ZZTESTCOL Девять'],
+                         'ZZTESTCOL Зенит', 'ZZTESTCOL Девять',
+                         'ZZTESTCOL Брест', 'ZZTESTCOL Абвгд'],
     'fr order wrong, got: ' || COALESCE(array_to_string(v_names, ' | '), '<null>');
+
+  -- The regression itself, stated as its own assertion: a card with no
+  -- language data must never outrank a real measurement, however small.
+  ASSERT array_position(v_names, 'ZZTESTCOL Брест')
+         > array_position(v_names, 'ZZTESTCOL Девять'),
+    'a card with no language data outranked a real French count — the '
+    'scale-mixing bug is back';
 
   -- The same four cards for a Russian viewer: «Зенит» is genuinely first
   -- here, which is the point — the fix is not "demote Зенит", it is "rank by
