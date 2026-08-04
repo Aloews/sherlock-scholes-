@@ -159,6 +159,37 @@ check_true("у клуба варианты заголовков непусты",
            len(club_titles) >= 2)
 
 # --------------------------------------------------------------------------
+# club guard — what may and may not stand in for a club card.
+#
+# The language-pageviews collector (docs/cards_pageviews_i18n.py) resolves
+# every non-player card through this validator, so a hole here is written
+# straight into cards.pageviews_i18n and then into fame and the rarity frame.
+# --------------------------------------------------------------------------
+ZENITH = ["Q182167"]          # astronomical zenith — the ru-wiki «Зенит»
+DEFUNCT_CLUB = ["Q94579592"]  # defunct association football club
+
+v_club = run.make_card_qid_validator(
+    {"category": "club", "name": "Зенит"},
+    FakeWikidata(p31={"Q_club": CLUB, "Q_zenith": ZENITH,
+                      "Q_city": CITY, "Q_defunct": DEFUNCT_CLUB}),
+    WarmCache(), NoBudget())
+check_true("клуб: действующий клуб принимается", v_club("Q_club"))
+check_false("клуб: астрономический зенит отбраковывается", v_club("Q_zenith"))
+check_false("клуб: город отбраковывается", v_club("Q_city"))
+# Мордовия and Анжи are dissolved: without this class the guard rejected the
+# RIGHT article, and the cards stayed without language views AND without a
+# photo (the photo step shares this allow-set).
+check_true("клуб: расформированный клуб принимается", v_club("Q_defunct"))
+
+# A club card must not be satisfied by a person — «Сантьяго Бернабеу» the
+# man is a legitimate Q5 and would otherwise pass any human-shaped check.
+check_false("клуб: человек отбраковывается",
+            run.make_card_qid_validator(
+                {"category": "club", "name": "Зенит"},
+                FakeWikidata(p31={"Q_person": HUMAN}),
+                WarmCache(), NoBudget())("Q_person"))
+
+# --------------------------------------------------------------------------
 print("-" * 60)
 if FAILURES:
     print("ПРОВАЛЕНО {} проверок:".format(len(FAILURES)))

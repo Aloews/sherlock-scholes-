@@ -875,6 +875,7 @@ CLUB_P31_ALLOW = frozenset((
     "Q10651067",   # representation team
     "Q847017",     # sports club
     "Q12973014",   # sports team
+    "Q94579592",   # defunct association football club (Мордовия, Анжи)
 ))
 # People cards had NO guard at all, which is how a mononym card walked off
 # with a stranger's article: «Данте» took Dante Alighieri the poet, «Адриан»
