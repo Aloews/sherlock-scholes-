@@ -238,18 +238,16 @@ async function main() {
   // voice.reason_provider_mismatch; this catches it before a player does.
   try {
     const local = process.env.VITE_VOICE_PROVIDER || null;
+    // The empty-body 400 above already carries `provider`, which is the only
+    // answer this check can get: everything past that point in the function
+    // needs a real initData, and that cannot be forged from here by design.
+    // A deployment that says nothing is therefore an OLD one — reported as a
+    // failure rather than a pass, because the version that answers is the
+    // version that has the provider support this is checking for.
     if (!serverProvider) {
-      // Any provider name the server does not share makes it answer with its
-      // own, which is all this needs.
-      const res = await post({ initData: 'x', roomId: 'x', provider: '__probe__' });
-      const body = await res.json().catch(() => ({}));
-      serverProvider = body.provider ?? null;
-    }
-
-    if (!serverProvider) {
-      record('provider', true,
-        'the deployment does not name its provider — an older function, deployed before this was added. ' +
-        'Nothing to disagree about; redeploy to get the check.');
+      record('provider', false,
+        'the deployment does not name its provider, so it predates multi-provider support.\n' +
+        '        Redeploy the function: supabase functions deploy livekit-token');
     } else if (!local) {
       const agrees = serverProvider === 'livekit';
       record('provider', agrees,

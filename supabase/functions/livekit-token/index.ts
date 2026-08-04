@@ -169,7 +169,13 @@ Deno.serve(async (req) => {
     | null;
   const initData = payload?.initData;
   const roomId = payload?.roomId;
-  if (!initData || !roomId) return json({ error: "bad_request" }, 400);
+  // `provider` rides along on the refusal so the deployment can be ASKED which
+  // service it signs for without holding a valid session. Everything past this
+  // point needs initData, and check-voice cannot forge that — so without this
+  // the check had no answer to read and reported a correctly-deployed function
+  // as an old one. The name is not a secret: it is already in the bundle as
+  // VITE_VOICE_PROVIDER.
+  if (!initData || !roomId) return json({ error: "bad_request", provider: VOICE_PROVIDER }, 400);
 
   const telegramId = await validateInitData(initData);
   if (telegramId === null) return json({ error: "unauthorized" }, 401);
