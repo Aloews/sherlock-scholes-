@@ -427,5 +427,18 @@
     "Bundesliga": "분데스리가",
     "Ligue 1": "리그 1",
     "Eredivisie": "에레디비시"
+  },
+  "friends": {
+    "title": "친구",
+    "entry_hint": "랭킹과 함께 플레이한 사람들",
+    "loading": "불러오는 중…",
+    "list_title": "친구 랭킹",
+    "list_empty": "아직 없습니다. 함께 플레이한 사람을 아래에서 추가하세요.",
+    "suggestions_title": "친구로 추가",
+    "suggestions_intro": "같은 방에서 플레이한 적이 있습니다",
+    "add": "추가",
+    "remove": "친구 삭제",
+    "level_and_games": "레벨 {{level}} · 게임 수: {{games}}",
+    "played_together": "함께한 게임: {{games}}"
   }
 }

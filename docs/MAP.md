@@ -45,6 +45,7 @@ flowchart LR
 | `/training` | `TrainingScreen` | быстрая игра на одном телефоне |
 | `/collection` | `CollectionScreen` → `collection/CardDossier` | коллекция и досье карточки (Pro) |
 | `/profile` | `ProfileScreen` → `profile/WeeklyQuests` | уровень, XP, задания недели |
+| `/friends` | `FriendsScreen` | рейтинг друзей по XP и кого добавить |
 | `/pro` | `ProScreen` | покупка Pro за Telegram Stars |
 | `/tutorial` | `TutorialScreen` | обучение |
 | `/admin` | `AdminScreen` | кабинет: правка карточек, репорты (по паролю) |
@@ -124,7 +125,7 @@ flowchart TD
 | Фичи | `features/<имя>/` | `use<Фича>.ts` + `<фича>Api.ts` |
 
 Фичи: `auth`, `room`, `lobby`, `game`, `collection`, `pro`, `quests`,
-`reports`, `admin`, `voice`.
+`reports`, `admin`, `voice`, `friends`.
 
 ---
 
@@ -154,6 +155,7 @@ flowchart TD
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
 | `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
 | `sweep_stale_rooms` | `sweep_stale_rooms.sql` | серверная развёртка брошенных игр, `pg_cron` каждые 5 минут |
+| `record_room_encounters`, `friends_with_rating`, `friend_suggestions`, `add_friend`, `remove_friend` | `friends_and_rating.sql` | кто с кем играл, рейтинг друзей и рекомендации |
 
 ⚠️ **`grant_pro` в репозитории нет.** `tg-pay` зовёт её по предполагаемой
 сигнатуре `grant_pro(p_secret text, p_telegram_id bigint)`, а определение
@@ -280,6 +282,7 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | `VOICE_PROVIDER` и `VITE_VOICE_PROVIDER` разошлись — токен валиден и бесполезен | `docs/VOICE_PROVIDERS.md` §1 |
 | SDK сервиса импортирован статически — попадёт в бандл всем, включая тех, кто на другом сервисе | `src/features/voice/providers/index.ts` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
+| Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | Сортировка по `pageviews_i18n->>lang` через PostgREST — она **текстовая**, «9» > «10000» | §7, `collection_page_by_lang.sql` |
 | Запасной путь языка написан через `GREATEST`, а не `COALESCE` — русский счёт всегда больше, и порядок не меняется | `collection_page_by_lang.sql` |

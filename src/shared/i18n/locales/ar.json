@@ -492,5 +492,18 @@
     "Ligue 1": "الدوري الفرنسي",
     "Eredivisie": "الدوري الهولندي",
     "Russian Premier League": "الدوري الروسي الممتاز"
+  },
+  "friends": {
+    "title": "الأصدقاء",
+    "entry_hint": "الترتيب ومن لعبت معهم",
+    "loading": "جارٍ التحميل…",
+    "list_title": "ترتيب الأصدقاء",
+    "list_empty": "لا أحد بعد. أضف من لعبت معهم — هم في الأسفل.",
+    "suggestions_title": "إضافة إلى الأصدقاء",
+    "suggestions_intro": "لقد كنتما في الغرفة نفسها",
+    "add": "إضافة",
+    "remove": "إزالة من الأصدقاء",
+    "level_and_games": "المستوى {{level}} · المباريات: {{games}}",
+    "played_together": "مباريات معًا: {{games}}"
   }
 }

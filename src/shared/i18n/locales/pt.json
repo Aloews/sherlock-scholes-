@@ -440,5 +440,18 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "friends": {
+    "title": "Amigos",
+    "entry_hint": "Ranking e com quem você já jogou",
+    "loading": "Carregando…",
+    "list_title": "Ranking de amigos",
+    "list_empty": "Ninguém ainda. Adicione quem você já jogou — estão abaixo.",
+    "suggestions_title": "Adicionar aos amigos",
+    "suggestions_intro": "Vocês já estiveram na mesma sala",
+    "add": "Adicionar",
+    "remove": "Remover dos amigos",
+    "level_and_games": "Nível {{level}} · partidas: {{games}}",
+    "played_together": "Partidas juntos: {{games}}"
   }
 }
