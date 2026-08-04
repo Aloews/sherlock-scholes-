@@ -440,5 +440,18 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "voice_services": {
+    "title": "Voice service",
+    "intro": "Which service this build talks to, and how the link is doing. Two of three always read “not in this build” — by design: the app ships one.",
+    "state_absent": "Not in this build",
+    "state_misconfigured": "Unknown service configured",
+    "state_off": "Ready, not connected yet",
+    "state_connecting": "Connecting…",
+    "state_live": "Connected",
+    "state_blocked": "Connected, but the browser will not play audio",
+    "state_denied": "Microphone access denied",
+    "state_failed": "Could not connect",
+    "link": "{{rtt}} ms · {{lossPercent}}% loss · {{quality}}"
   }
 }

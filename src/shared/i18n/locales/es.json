@@ -440,5 +440,18 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "voice_services": {
+    "title": "Servicio de voz",
+    "intro": "Qué servicio usa esta versión y cómo va la conexión. Dos de tres siempre dicen «no está en esta versión»: la app incluye uno solo.",
+    "state_absent": "No está en esta versión",
+    "state_misconfigured": "Servicio desconocido configurado",
+    "state_off": "Listo, aún sin conectar",
+    "state_connecting": "Conectando…",
+    "state_live": "Conectado",
+    "state_blocked": "Conectado, pero el navegador no reproduce el audio",
+    "state_denied": "Sin acceso al micrófono",
+    "state_failed": "No se pudo conectar",
+    "link": "{{rtt}} ms · {{lossPercent}}% de pérdida · {{quality}}"
   }
 }
