@@ -42,6 +42,14 @@ declare global {
           disable(): void;
           onClick(fn: () => void): void;
           offClick(fn: () => void): void;
+          // Documented setters. `text` is readable but Telegram only repaints
+          // on setText/setParams, so assigning the property is not enough.
+          // Optional because old clients predate them.
+          setText?(text: string): void;
+          setParams?(params: {
+            text?: string; color?: string; text_color?: string;
+            is_active?: boolean; is_visible?: boolean;
+          }): void;
         };
         BackButton: {
           isVisible: boolean;
@@ -151,6 +159,56 @@ export function openInvoice(link: string, cb: (status: InvoiceStatus) => void): 
   if (!tg?.openInvoice) return false;
   tg.openInvoice(link, cb);
   return true;
+}
+
+// Opens a t.me link with the Telegram client's own handler, which keeps the
+// user inside the app (window.open would bounce them to a browser tab and
+// often gets blocked). Returns false outside Telegram so the caller can fall
+// back — EndScreen's share does exactly that.
+export function openTelegramLink(url: string): boolean {
+  if (!tg?.openTelegramLink) return false;
+  tg.openTelegramLink(url);
+  return true;
+}
+
+// The `startapp=` payload of the deep link the app was opened with. Telegram
+// puts it in initDataUnsafe.start_param; it is UNVERIFIED (hence "unsafe"),
+// so treat it as untrusted input — here it is only ever a room code, which is
+// validated before use and gives no privilege on its own.
+export function getStartParam(): string {
+  const raw = tg?.initDataUnsafe?.start_param;
+  return typeof raw === 'string' ? raw : '';
+}
+
+export interface MainButtonOptions {
+  text: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+/**
+ * Telegram's own bottom button. It is drawn by the client ABOVE the on-screen
+ * keyboard, which is the whole reason it exists here: a submit button in the
+ * page flow disappears under the keyboard on a phone (docs/LOBBY_AND_VOICE_FIXES.md §2).
+ *
+ * Returns a cleanup function that unhooks the handler and hides the button —
+ * always call it, or the next screen inherits a button that does the previous
+ * screen's job. No-op outside Telegram.
+ */
+export function showMainButton({ text, active, onClick }: MainButtonOptions): () => void {
+  const mb = tg?.MainButton;
+  if (!mb) return () => {};
+  if (mb.setParams) mb.setParams({ text, is_active: active, is_visible: true });
+  else {
+    if (mb.setText) mb.setText(text);
+    if (active) mb.enable(); else mb.disable();
+    mb.show();
+  }
+  mb.onClick(onClick);
+  return () => {
+    mb.offClick(onClick);
+    mb.hide();
+  };
 }
 
 // Telegram CloudStorage — per-user key/value synced by Telegram. Used for the

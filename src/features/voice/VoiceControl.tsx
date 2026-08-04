@@ -19,7 +19,18 @@ import { hapticImpact } from '@/shared/lib/telegram';
  * Renders nothing at all when voice is not configured, so a deployment
  * without LiveKit looks exactly like today's build.
  */
-export function VoiceControl({ roomId }: { roomId: string | null }) {
+interface VoiceControlProps {
+  roomId: string | null;
+  /**
+   * Team mode with no team picked yet. The server refuses this with
+   * `no_team_yet` — a team-less player has no channel, and the room-wide one
+   * would leak both teams' talk. Knowing it in advance lets the lobby say so
+   * before the tap instead of after the round trip.
+   */
+  needsTeam?: boolean;
+}
+
+export function VoiceControl({ roomId, needsTeam = false }: VoiceControlProps) {
   // roomId stays in the signature so callers read naturally; the session
   // itself is shared and keyed on the store's room.
   const { t } = useTranslation();
@@ -29,13 +40,16 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
 
   const busy = status === 'connecting';
   const live = status === 'on';
+  // Blocked, not broken: the player has something to do about it. Same string
+  // the server's own refusal would produce, one round trip earlier.
+  const blocked = needsTeam && !live;
 
   return (
     <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3.5">
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => {
             hapticImpact('light');
             if (live) { void toggleMute(); } else { void connect(); }
@@ -47,7 +61,7 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
             live && !muted
               ? 'border-brand-accent bg-brand-accent/15 text-white'
               : 'border-brand-border bg-brand-bg text-brand-muted',
-            busy && 'opacity-50',
+            (busy || blocked) && 'opacity-50',
           )}
         >
           {busy
@@ -60,6 +74,8 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white">{t('voice.title')}</p>
           <p className="text-[10.5px] text-brand-muted mt-0.5">
+            {blocked && t('voice.reason_no_team_yet')}
+            {!blocked && <>
             {status === 'off'         && t('voice.status_off')}
             {status === 'connecting'  && t('voice.status_connecting')}
             {status === 'on'          && t(muted ? 'voice.status_muted' : `voice.level_${level}`)}
@@ -70,6 +86,7 @@ export function VoiceControl({ roomId }: { roomId: string | null }) {
               reason ? `voice.reason_${reason}` : 'voice.status_unavailable',
               { defaultValue: t('voice.status_unavailable') },
             )}
+            </>}
           </p>
         </div>
 

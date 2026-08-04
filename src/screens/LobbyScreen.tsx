@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLobby } from '@/features/lobby/useLobby';
@@ -8,10 +8,16 @@ import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { hapticImpact, hapticError, openTelegramLink } from '@/shared/lib/telegram';
+import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { VoiceControl } from '@/features/voice/VoiceControl';
 import { useDesign } from '@/shared/design/useDesign';
-import { IconCheck } from '@tabler/icons-react';
+import { IconCheck, IconUserPlus } from '@tabler/icons-react';
+
+/** How long the code label stays on "Copied" before going back to the hint. */
+const COPY_FEEDBACK_MS = 2000;
+
+type CopyState = 'idle' | 'code' | 'link' | 'failed';
 
 export function LobbyScreen() {
   const master = useDesign() === 'master';
@@ -27,12 +33,45 @@ export function LobbyScreen() {
     if (!room) navigate('/');
   }, [room, navigate]);
 
+  // The label under the code answers back for a moment, so copying is not a
+  // silent act of faith. Cleared on unmount — the timer outlives the screen.
+  const [copied, setCopied] = useState<CopyState>('idle');
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
+  const flash = (state: CopyState) => {
+    setCopied(state);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied('idle'), COPY_FEEDBACK_MS);
+  };
+
   if (!room) return null;
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(room.code);
-    hapticImpact('light');
+  // Buzz only on success. The old version fired the haptic unconditionally
+  // next to an unawaited clipboard promise, so a refused copy still felt like
+  // one that worked.
+  const copyCode = async () => {
+    const ok = await copyText(room.code);
+    if (ok) hapticImpact('light'); else hapticError();
+    flash(ok ? 'code' : 'failed');
   };
+
+  // Telegram's share sheet with a startapp link, so the invitee lands in the
+  // Mini App with the code already in the field instead of retyping six
+  // characters read out loud. Outside Telegram there is no sheet: copy the
+  // same link and say so.
+  const invite = async () => {
+    hapticImpact('light');
+    const text = t('lobby.invite_text', { code: room.code });
+    if (openTelegramLink(shareLink(room.code, text))) return;
+    const ok = await copyText(deepLink(room.code));
+    flash(ok ? 'link' : 'failed');
+  };
+
+  const codeHint = copied === 'code'   ? t('lobby.copied')
+                 : copied === 'link'   ? t('lobby.link_copied')
+                 : copied === 'failed' ? t('lobby.copy_failed')
+                 : t('lobby.tap_to_copy');
 
   const playersByTeam = (teamId: string) =>
     roomPlayers.filter((rp) => rp.team_id === teamId);
@@ -58,11 +97,17 @@ export function LobbyScreen() {
           <p className="text-brand-muted text-xs">{t('lobby.room_code')}</p>
           <button
             className={`text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors ${master ? 'ds-display' : ''}`}
-            onClick={copyCode}
+            onClick={() => { void copyCode(); }}
           >
             {room.code}
           </button>
-          <p className="text-brand-muted/50 text-xs">{t('lobby.tap_to_copy')}</p>
+          <p
+            className={`text-xs ${copied === 'failed' ? 'text-red-400'
+              : copied === 'idle' ? 'text-brand-muted/50' : 'text-brand-accent'}`}
+            aria-live="polite"
+          >
+            {codeHint}
+          </p>
         </div>
         <div className="w-16 flex justify-end">
           <LanguageToggle />
@@ -71,9 +116,16 @@ export function LobbyScreen() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
+        <Button fullWidth variant="secondary" onClick={() => { void invite(); }}>
+          <IconUserPlus size={18} stroke={2} />
+          {t('lobby.invite_button')}
+        </Button>
+
         {/* Voice is opt-in and asks for the microphone only when tapped.
-            Renders nothing when LiveKit is unconfigured. */}
-        <VoiceControl roomId={room.id} />
+            Renders nothing when LiveKit is unconfigured. In team mode the
+            channel is the team's, so there is nothing to join until a team is
+            picked — say that instead of "unavailable". */}
+        <VoiceControl roomId={room.id} needsTeam={isTeamMode && !myTeamId} />
 
         {/* ── 1v1 layout: two player slots ── */}
         {!isTeamMode && (
