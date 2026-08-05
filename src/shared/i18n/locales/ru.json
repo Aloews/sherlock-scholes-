@@ -484,5 +484,18 @@
     "state_denied": "Нет доступа к микрофону",
     "state_failed": "Подключиться не удалось",
     "link": "{{rtt}} мс · потери {{lossPercent}}% · {{quality}}"
+  },
+  "friends": {
+    "title": "Друзья",
+    "entry_hint": "Рейтинг и те, с кем ты уже играл",
+    "loading": "Загружаем…",
+    "list_title": "Рейтинг друзей",
+    "list_empty": "Пока никого. Добавь тех, с кем играл — они ниже.",
+    "suggestions_title": "Добавить в друзья",
+    "suggestions_intro": "Вы уже играли в одной комнате",
+    "add": "Добавить",
+    "remove": "Убрать из друзей",
+    "level_and_games": "Уровень {{level}} · игр: {{games}}",
+    "played_together": "Вместе сыграно: {{games}}"
   }
 }

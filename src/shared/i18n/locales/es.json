@@ -454,5 +454,18 @@
     "state_denied": "Sin acceso al micrófono",
     "state_failed": "No se pudo conectar",
     "link": "{{rtt}} ms · {{lossPercent}}% de pérdida · {{quality}}"
+  },
+  "friends": {
+    "title": "Amigos",
+    "entry_hint": "Clasificación y con quién has jugado",
+    "loading": "Cargando…",
+    "list_title": "Clasificación de amigos",
+    "list_empty": "Todavía nadie. Añade a quienes has jugado: están abajo.",
+    "suggestions_title": "Añadir a amigos",
+    "suggestions_intro": "Ya habéis estado en la misma sala",
+    "add": "Añadir",
+    "remove": "Quitar de amigos",
+    "level_and_games": "Nivel {{level}} · partidas: {{games}}",
+    "played_together": "Partidas juntos: {{games}}"
   }
 }

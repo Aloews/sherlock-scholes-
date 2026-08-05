@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconUsers, IconChevronRight } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { useAuthStore } from '@/shared/store/authStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
@@ -86,6 +86,23 @@ export function ProfileScreen() {
               lobby with a live game behind it is the wrong place to open a
               microphone. Needs no voice provider configured — it never leaves
               the device. */}
+          {/* Friends live on their own screen: the list is a ranking and the
+              suggestions are a decision, and neither belongs squeezed under
+              the stats card. */}
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/friends'); }}
+            className="ds-panel w-full bg-brand-surface border border-brand-border rounded-2xl p-4
+                       flex items-center gap-3 text-left hover:border-brand-accent transition-colors"
+          >
+            <span className="text-brand-accent shrink-0"><IconUsers size={20} stroke={1.75} /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm text-white font-semibold">{t('friends.title')}</span>
+              <span className="block text-[11px] text-brand-muted mt-0.5">{t('friends.entry_hint')}</span>
+            </span>
+            <span className="text-brand-muted shrink-0"><IconChevronRight size={16} stroke={2} /></span>
+          </button>
+
           <SoundCheckPanel />
 
           {/* The other half of the same question. SoundCheckPanel settles the

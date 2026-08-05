@@ -441,5 +441,18 @@
     "state_denied": "麦克风权限被拒绝",
     "state_failed": "无法连接",
     "link": "{{rtt}} 毫秒 · 丢包 {{lossPercent}}% · {{quality}}"
+  },
+  "friends": {
+    "title": "好友",
+    "entry_hint": "排行榜，以及和你玩过的人",
+    "loading": "加载中…",
+    "list_title": "好友排行",
+    "list_empty": "还没有好友。把一起玩过的人加进来——他们就在下面。",
+    "suggestions_title": "加为好友",
+    "suggestions_intro": "你们已经在同一个房间玩过",
+    "add": "添加",
+    "remove": "移除好友",
+    "level_and_games": "等级 {{level}} · 场次：{{games}}",
+    "played_together": "一起玩过：{{games}}"
   }
 }
