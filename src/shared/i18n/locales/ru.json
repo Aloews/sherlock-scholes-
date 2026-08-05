@@ -19,6 +19,7 @@
     "room_code_label": "Код комнаты",
     "room_code_placeholder": "ABC123",
     "join_room": "Войти в комнату",
+    "joining": "Входим в комнату…",
     "footer": "Sherlock Scholes • Football Edition",
     "mode_team_title": "Командная игра",
     "mode_team_desc": "4+ игроков, две команды объясняют по очереди",
@@ -470,5 +471,18 @@
     "Ligue 1": "Лига 1",
     "Eredivisie": "Эредивизи",
     "Russian Premier League": "РПЛ (Россия)"
+  },
+  "voice_services": {
+    "title": "Голосовой сервис",
+    "intro": "Какой сервис в этой сборке и что со связью. Два из трёх всегда «не в этой сборке» — так и задумано: приложение везёт один.",
+    "state_absent": "Не в этой сборке",
+    "state_misconfigured": "Указан неизвестный сервис",
+    "state_off": "Готов, ещё не подключались",
+    "state_connecting": "Подключаемся…",
+    "state_live": "Связь есть",
+    "state_blocked": "Подключено, но браузер не проигрывает звук",
+    "state_denied": "Нет доступа к микрофону",
+    "state_failed": "Подключиться не удалось",
+    "link": "{{rtt}} мс · потери {{lossPercent}}% · {{quality}}"
   }
 }

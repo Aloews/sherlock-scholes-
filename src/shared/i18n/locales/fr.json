@@ -19,6 +19,7 @@
     "room_code_label": "Code du salon",
     "room_code_placeholder": "ABC123",
     "join_room": "Rejoindre le salon",
+    "joining": "Connexion à la salle…",
     "footer": "Sherlock Scholes • Football Edition",
     "mode_team_title": "Jeu en équipes",
     "mode_team_desc": "4+ joueurs, deux équipes expliquent à tour de rôle",
@@ -440,5 +441,18 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "voice_services": {
+    "title": "Service vocal",
+    "intro": "Quel service utilise cette version et comment se porte la liaison. Deux sur trois indiquent toujours « pas dans cette version » : l’app n’en embarque qu’un.",
+    "state_absent": "Pas dans cette version",
+    "state_misconfigured": "Service inconnu configuré",
+    "state_off": "Prêt, pas encore connecté",
+    "state_connecting": "Connexion…",
+    "state_live": "Connecté",
+    "state_blocked": "Connecté, mais le navigateur ne joue pas le son",
+    "state_denied": "Accès au micro refusé",
+    "state_failed": "Connexion impossible",
+    "link": "{{rtt}} ms · {{lossPercent}} % de perte · {{quality}}"
   }
 }

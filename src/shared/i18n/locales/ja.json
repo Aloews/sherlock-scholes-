@@ -19,6 +19,7 @@
     "room_code_label": "ルームコード",
     "room_code_placeholder": "ABC123",
     "join_room": "ルームに参加",
+    "joining": "ルームに参加しています…",
     "footer": "Sherlock Scholes • Football Edition",
     "mode_team_title": "チーム戦",
     "mode_team_desc": "4人以上、2チームが交代で説明",
@@ -427,5 +428,18 @@
     "Bundesliga": "ブンデスリーガ",
     "Ligue 1": "リーグ・アン",
     "Eredivisie": "エールディヴィジ"
+  },
+  "voice_services": {
+    "title": "ボイスサービス",
+    "intro": "このビルドが使うサービスと回線の状態です。3つのうち2つは常に「このビルドには含まれません」— アプリは1つだけを同梱します。",
+    "state_absent": "このビルドには含まれません",
+    "state_misconfigured": "不明なサービスが設定されています",
+    "state_off": "準備完了、未接続",
+    "state_connecting": "接続中…",
+    "state_live": "接続済み",
+    "state_blocked": "接続済みですが、ブラウザが音声を再生しません",
+    "state_denied": "マイクへのアクセスが拒否されました",
+    "state_failed": "接続できませんでした",
+    "link": "{{rtt}} ms · 損失 {{lossPercent}}% · {{quality}}"
   }
 }

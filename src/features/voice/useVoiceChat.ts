@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchVoiceToken, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
 import { loadTransport, voiceChain } from './providers';
-import { levelFor, nextLevel, audioPreset, type VoiceLevel } from './voiceQuality';
+import { levelFor, nextLevel, audioPreset, type VoiceLevel, type LinkStats } from './voiceQuality';
 import type { VoiceProviderId, VoiceSession, VoiceCredentials } from './providers';
 
 export type VoiceStatus = 'off' | 'connecting' | 'on' | 'denied' | 'unavailable';
@@ -58,6 +58,10 @@ export function useVoiceChat(roomId: string | null) {
   const [reason, setReason] = useState<VoiceUnavailableReason | null>(
     voiceEnabled() ? null : 'not_configured',
   );
+  // The last measurement behind `level`. The ladder deliberately smooths the
+  // level, so the raw numbers are the only way to see a link going bad before
+  // it has gone bad — which is what a diagnostics panel is for.
+  const [linkStats, setLinkStats] = useState<LinkStats | null>(null);
 
   const sessionRef = useRef<VoiceSession | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,6 +96,7 @@ export function useVoiceChat(roomId: string | null) {
     setSpeaking([]);
     setAudioBlocked(false);
     setProvider(null);
+    setLinkStats(null);
     setStatus(voiceEnabled() ? 'off' : 'unavailable');
     setReason(voiceEnabled() ? null : 'not_configured');
   }, []);
@@ -130,6 +135,10 @@ export function useVoiceChat(roomId: string | null) {
     timerRef.current = setInterval(async () => {
       const stats = await session.linkStats();
       if (!stats) return;
+      // The raw numbers behind `level`. The ladder smooths deliberately, so
+      // these are the only way to watch a link going bad before it has gone —
+      // which is what the diagnostics panel is for.
+      setLinkStats(stats);
       const measured = levelFor(stats);
       streakRef.current = measured === levelRef.current ? 0 : streakRef.current + 1;
       const next = nextLevel(levelRef.current, measured, streakRef.current);
@@ -284,7 +293,7 @@ export function useVoiceChat(roomId: string | null) {
   }, [muted]);
 
   return {
-    status, reason, level, muted, speaking, audioBlocked, provider,
+    status, reason, level, linkStats, muted, speaking, audioBlocked, provider,
     connect, disconnect, toggleMute, startAudio,
   };
 }

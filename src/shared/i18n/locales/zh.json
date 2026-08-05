@@ -19,6 +19,7 @@
     "room_code_label": "房间码",
     "room_code_placeholder": "ABC123",
     "join_room": "加入房间",
+    "joining": "正在进入房间…",
     "footer": "Sherlock Scholes • Football Edition",
     "mode_team_title": "团队模式",
     "mode_team_desc": "4人以上，两队轮流讲解",
@@ -427,5 +428,18 @@
     "Ligue 1": "法甲",
     "Eredivisie": "荷甲",
     "Russian Premier League": "俄超"
+  },
+  "voice_services": {
+    "title": "语音服务",
+    "intro": "这个版本使用哪个服务，以及连接情况。三个里总有两个显示“不在此版本中”——这是有意为之，应用只打包一个。",
+    "state_absent": "不在此版本中",
+    "state_misconfigured": "配置了未知服务",
+    "state_off": "就绪，尚未连接",
+    "state_connecting": "连接中…",
+    "state_live": "已连接",
+    "state_blocked": "已连接，但浏览器不播放声音",
+    "state_denied": "麦克风权限被拒绝",
+    "state_failed": "无法连接",
+    "link": "{{rtt}} 毫秒 · 丢包 {{lossPercent}}% · {{quality}}"
   }
 }
