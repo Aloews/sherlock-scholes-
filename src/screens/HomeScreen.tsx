@@ -30,7 +30,8 @@ import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
 
-type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
+type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training'
+  | 'join' | 'joining';
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -89,11 +90,21 @@ export function HomeScreen() {
     if (!invited) return;
     startParamHandled.current = true;
     setCode(invited);
-    setView('join');
-    // Go straight in. The point of the link is that there is nothing to type;
-    // if the room is gone or full, the join view is already showing with the
-    // code filled in and the error underneath it.
-    void joinRoom(invited);
+    // NOT the join view: it autofocuses the code field, so an invitee who has
+    // nothing to type would still get a keyboard thrown at them over a form
+    // that is already filled in. This view has no input at all.
+    setView('joining');
+
+    let cancelled = false;
+    void (async () => {
+      await joinRoom(invited);
+      if (cancelled) return;
+      // joinRoom navigates to the lobby on success, so reaching here with no
+      // room means it failed — fall back to the form with the code and the
+      // error already in place.
+      if (!useGameStore.getState().room) setView('join');
+    })();
+    return () => { cancelled = true; };
   }, [joinRoom]);
 
   // Telegram draws MainButton above the on-screen keyboard, which is exactly
@@ -147,6 +158,27 @@ export function HomeScreen() {
     void recordQuickGameStart(); // increment AFTER reading the floor for this game
     navigate('/training', { state: { filter } });
   };
+
+  // An invite link goes straight into the room. All the player sees on the way
+  // is which room they are entering — no landing, no form, no keyboard.
+  if (view === 'joining') {
+    return (
+      <div className="min-h-screen bg-brand-bg ds-screen flex flex-col items-center justify-center px-6 gap-4">
+        <img src="/logo-white-clean.png" alt="" className="w-[132px] max-w-full h-auto" />
+        <span
+          className="w-[30px] h-[30px] rounded-full animate-spin"
+          style={{
+            border: '2.5px solid rgb(var(--brand-accent) / 0.2)',
+            borderTopColor: 'rgb(var(--brand-accent))',
+            animationDuration: '0.9s',
+          }}
+          aria-hidden
+        />
+        <p className="text-white text-sm" aria-live="polite">{t('home.joining')}</p>
+        <p className="ds-display text-2xl font-black text-white tracking-widest">{code}</p>
+      </div>
+    );
+  }
 
   if (view === 'create_training') {
     return (
