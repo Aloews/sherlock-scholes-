@@ -8,6 +8,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import { levelProgress, levelTitleKey } from '@/shared/lib/level';
 import { WeeklyQuests } from '@/screens/profile/WeeklyQuests';
 import { SoundCheckPanel } from '@/features/voice/SoundCheckPanel';
+import { VoiceServicesPanel } from '@/features/voice/VoiceServicesPanel';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -103,6 +104,12 @@ export function ProfileScreen() {
           </button>
 
           <SoundCheckPanel />
+
+          {/* The other half of the same question. SoundCheckPanel settles the
+              device; this settles the service — which one this build talks to,
+              and whether the link to it is up. Together they cover both ends of
+              "мне не слышно". */}
+          <VoiceServicesPanel />
 
           {/* TODO(profile-v2): achievement ribbon (phase 2, once
               player_achievements exists) and the settings rows from the
