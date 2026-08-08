@@ -286,6 +286,7 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | Сортировка по `pageviews_i18n->>lang` через PostgREST — она **текстовая**, «9» > «10000» | §7, `collection_page_by_lang.sql` |
 | Запасной путь языка написан через `GREATEST`, а не `COALESCE` — русский счёт всегда больше, и порядок не меняется | `collection_page_by_lang.sql` |
+| Русский счёт подставлен в тот же ключ сортировки, что и иностранный: шкалы разные (ru — сотни тысяч, ko — десятки), и нерезолвнутая карточка всплывает наверх. «Брест» (город) обогнал «Тоттенхэм» в корейской вкладке | `collection_page_by_lang.sql` |
 | Неигровая карточка резолвится по голому названию: «Зенит» — это зенит-надир, «Факел» — факел | §7, `cards_pageviews_i18n.py` |
 | Ошибка `maxlag` от Wikidata принята за успех — она приходит **HTTP 200** с телом-ошибкой | §7, `cards_pageviews_i18n.py` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |

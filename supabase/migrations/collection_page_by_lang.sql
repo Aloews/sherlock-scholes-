@@ -31,15 +31,34 @@
 --   2. lang = 'ru' -> pageviews    ru has always lived in the scalar column;
 --                                  cards filled before ru joined LANGS carry
 --                                  no 'ru' key and must not read as zero
---   3. pageviews_i18n IS NULL      the card was never processed at all: the
---      -> pageviews                Russian order beats a random one
---   4. 0                           processed, but no article in this
---                                  language — that is "unknown here", and
---                                  it is a real signal, not missing data
+--   3. 0                           we do not know this card in this language
 --
--- Step 4 is the one that fixes the complaint: a Russian club with no French
--- article scores 0 for a French viewer instead of borrowing its Russian
--- fame.
+-- Step 3 is what fixes the complaint: a Russian club with no French article
+-- scores 0 for a French viewer instead of borrowing its Russian fame.
+--
+-- ── Why "else the Russian order" is a TIEBREAK and not a fallback value ──
+-- The first version of this function had a fourth branch: a card with no
+-- language data at all fell back to cards.pageviews, on the reasoning that
+-- Russian order beats random order. That shipped, and it was wrong — not
+-- in principle but in ARITHMETIC. A Russian pageview count and a Korean one
+-- are not on the same scale: ru numbers run to the hundreds of thousands,
+-- ko numbers to the tens of thousands. Mixing them in one sort key means the
+-- unprocessed card always wins. Production, Korean, «Клубы», top three:
+--
+--     Брест        255 299   <- no language data; the BELARUSIAN CITY's
+--     Монреаль     149 395      Russian views, standing in for a club
+--     Дюссельдорф  132 407
+--     ...
+--     Тоттенхэм     23 809   <- an actual Korean pageview count
+--
+-- The three cards the P31 guard refused (so they carry a city's score, see
+-- cards_pageviews_i18n.py) floated to the TOP of the very language they
+-- were least known in. Worse than the «Зенит» this migration set out to fix.
+--
+-- The intent was right and is kept, as a SECOND sort key: cards we know in
+-- this language rank first, ordered by that language; everything else forms
+-- a tail behind them, ordered by cards.pageviews — Russian order, still
+-- better than random, but never competing with a real measurement.
 --
 -- ── This does NOT touch the deck ────────────────────────────────────────
 -- The deck is one filter and one predicate (docs/MAP.md §3): cards_matching,
@@ -64,15 +83,15 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   SELECT COALESCE(
     CASE WHEN p_i18n ->> p_lang ~ '^[0-9]+$'
          THEN (p_i18n ->> p_lang)::bigint END,
-    CASE WHEN p_lang = 'ru'   THEN p_pageviews END,
-    CASE WHEN p_i18n IS NULL OR p_i18n = '{}'::jsonb THEN p_pageviews END,
+    CASE WHEN p_lang = 'ru' THEN p_pageviews END,
     0
   );
 $$;
 
 COMMENT ON FUNCTION public.collection_views(bigint, jsonb, text) IS
   'Views of a card in ONE language for Collection ordering: pageviews_i18n->>lang, '
-  'falling back to cards.pageviews for ru and for cards with no language data, else 0.';
+  'or cards.pageviews when the language IS ru, else 0. Never mixes scales: a card '
+  'unknown in this language scores 0 and is ordered by the caller''s tiebreak.';
 
 -- One page of the Collection catalog.
 --
@@ -101,8 +120,13 @@ LANGUAGE sql STABLE SET search_path TO 'public' AS $$
          OR c.name_en ILIKE '%' || p_query || '%')
   ORDER BY
     collection_views(c.pageviews, c.pageviews_i18n, left(COALESCE(p_lang, 'ru'), 2)) DESC,
-    -- `name` breaks ties so paging stays stable: without it the cards that
-    -- score 0 in this language come back in arbitrary order and repeat
+    -- The tail: everything we cannot measure in this language, in Russian
+    -- popularity order. Second key, never merged into the first — see the
+    -- «Брест» arithmetic above. For a ru viewer this is the same number as
+    -- the first key, so it changes nothing there.
+    COALESCE(c.pageviews, 0) DESC,
+    -- `name` breaks the remaining ties so paging stays stable: without it
+    -- cards equal on both keys come back in arbitrary order and repeat
     -- across pages.
     c.name ASC
   LIMIT  GREATEST(COALESCE(p_limit, 48), 0)
