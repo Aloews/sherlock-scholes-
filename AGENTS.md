@@ -3,12 +3,15 @@
 This repository uses a single standard for all AI coding agents — Claude Code,
 OpenAI Codex, Cursor, Windsurf, Gemini CLI, Aider, and any other agentic tool.
 
-**The operating rules are in [`CLAUDE.md`](./CLAUDE.md)**, which points into the
-[`docs/ENGINEERING_CONSTITUTION.md`](./docs/ENGINEERING_CONSTITUTION.md).
+**The operating rules are in [`CLAUDE.md`](./CLAUDE.md)** — the hands-on,
+frequently-updated working rules for this app (i18n, design system, the deck,
+local checks). It is authoritative on how the app itself works and links out to
+the long-form [`docs/ENGINEERING_CONSTITUTION.md`](./docs/ENGINEERING_CONSTITUTION.md)
+and the per-area standards.
 
-`AGENTS.md` and `CLAUDE.md` are kept intentionally identical in intent: whichever
-file your tool reads, you get the same rules. If your tool reads only one of
-them, that is enough — both defer to the constitution.
+Whichever file your tool reads, the path is the same: read `CLAUDE.md` first,
+then the relevant `docs/*_STANDARD.md`. Where `CLAUDE.md` and the constitution
+disagree about the app itself, `CLAUDE.md` is current.
 
 ## TL;DR for any agent
 
