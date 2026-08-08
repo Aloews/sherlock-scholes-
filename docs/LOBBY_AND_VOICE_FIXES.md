@@ -209,12 +209,49 @@ const copyCode = () => {
 Ниже — что установлено фактами, чтобы следующая сессия не проверяла это
 заново.
 
+> ### 🔴 НАЙДЕНО 5 августа 2026: сервер и фронт настроены на РАЗНЫЕ сервисы
+>
+> `npm run check:voice` против прода: **3 из 4**.
+>
+> ```
+> PASS  preflight    200, заголовки совпадают с supabase-js
+> PASS  reachable    400 bad_request — функция задеплоена, секреты на месте
+> PASS  identity     401 unauthorized — HMAC проверяется
+> FAIL  provider     server signs for daily; VITE_VOICE_PROVIDER не задан → livekit
+> ```
+>
+> **Что происходит.** Edge Function подписывает токен **Daily**, а собранный
+> фронт грузит адаптер **LiveKit** (в проде лежит `VITE_LIVEKIT_URL`,
+> `wss://sherlok-1k9zd0ef.livekit.cloud`, — проверено в бандле). Клиент видит
+> `credentials.provider !== transport.id`, отказывается подсовывать чужой
+> токен и встаёт с причиной `provider_mismatch`. Голос не подключится ни у
+> кого, сколько ни жми, и это **не** микрофон, не `initData` и не гранты.
+>
+> **Починка — одно значение, на выбор какое.** Обе стороны рабочие, вопрос
+> только в том, какой сервис нужен:
+>
+> ```bash
+> # А) вернуть сервер к LiveKit — фронт уже собран под него, пересборка не нужна
+> supabase secrets set VOICE_PROVIDER=livekit --project-ref konoavrduynecxblqfvq
+>
+> # Б) или перевести фронт на Daily — Vercel → Environment Variables → Redeploy
+> VITE_VOICE_PROVIDER=daily
+> VITE_VOICE_ENABLED=true        # у Daily нет публичного адреса, включает UI
+> ```
+>
+> После любой из них: `npm run check:voice` должен дать 4/4.
+>
+> ⚠️ **Почему это дожило до игрока.** Рассинхрон видно только этой проверкой,
+> а она не в CI: секреты сервера меняются мимо репозитория, и коммит,
+> которого не было, никакая сборка не поймает. Прогоняйте `check:voice`
+> после каждой правки секретов — это единственное место, где такое ловится.
+
 ```bash
-npm run check:voice     # preflight + доступность + проверка подписи
+npm run check:voice     # preflight + доступность + провайдер + подпись
 ```
 
 `scripts/check-voice.mjs` превращает разовую ручную проверку звеньев в
-повторяемую. На проде **3/3 проходят**: preflight отвечает 200 и разрешает
+повторяемую. Три серверных звена на проде проходят: preflight отвечает 200 и разрешает
 ровно те четыре заголовка, что шлёт supabase-js (`authorization`, `apikey`,
 `content-type`, `x-client-info` — снято с версии 2.106.2, а не предположено);
 пустой POST даёт `400 bad_request`, то есть функция задеплоена и секреты на
