@@ -10,6 +10,24 @@ import { trackEvent } from '@/shared/lib/analytics';
 
 // ─── Room ───────────────────────────────────────────────────
 
+// How wide the language pool is (DeckFilter.lang_pool), relative to ONE
+// round's hand. Dealing exactly the top N would deal the same N every time,
+// so the pool is deliberately wider and the hand is drawn at random from it.
+//
+// The floor matters more than the factor. activateRound runs per round and
+// asks for cards_per_round each time — 5 in a team game. A pool of 5x3=15
+// would make a three-round match redeal the same fifteen cards to both
+// teams; the floor is what keeps a whole match varied, while the factor
+// covers 1v1, which burns 100 cards in a single round.
+const LANG_POOL_FACTOR = 3;
+const LANG_POOL_MIN = 150;
+
+/** Cards the room may reach into, ranked by its language. */
+export function roomLangPool(cardsPerRound: number): number {
+  return Math.max(cardsPerRound * LANG_POOL_FACTOR, LANG_POOL_MIN);
+}
+
+
 export async function createRoom(
   hostId: number,
   settings: Partial<RoomSettings> = {},
@@ -20,6 +38,7 @@ export async function createRoom(
       round_seconds:   60,
       total_rounds:    3,
       categories:      null,
+      lang:            null,
       ...settings,
       cards_per_round: 100, // always 100 for 1v1 — override any user setting
     };
@@ -37,6 +56,7 @@ export async function createRoom(
     cards_per_round: 5,
     total_rounds:    3,
     categories:      null,
+    lang:            null,
     ...settings,
   };
 
@@ -342,14 +362,29 @@ export async function activateRound(roundId: string, room: Room): Promise<boolea
 
   // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
   const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
-  const { categories } = room.settings;
+  const { categories, lang } = room.settings;
 
-  // Competitive rooms take the whole deck of the room's categories — no
+  // Competitive rooms take the whole deck of the room's categories, with no
   // fame floor, so both teams face the same spread (see DeckFilter).
+  //
+  // They DO get a language pool. Asking for a lot of cards used to mean
+  // reaching uniformly into a 3287-card deck ranked, if at all, by Russian
+  // popularity — so a French or Korean room met cards nobody at the table
+  // had heard of. lang_pool ranks by the room's language and deals out of
+  // the top of it; the pool is kept comfortably wider than the hand so two
+  // rounds are never the same (supabase/migrations/deck_lang_pool.sql).
+  //
+  // The room's language is fixed by the host at creation, NOT taken from
+  // each client: teams share one deck, and a French host's room must deal
+  // the same cards to a guest whose phone happens to be in English.
+  //
   // Ids only: this inserts round_cards and never reads another column. Asking
   // for whole rows shipped 141 kB to the host to extract 100 UUIDs (4.9 kB),
   // on the critical path between "start" and the first card appearing.
-  const cardIds = await pickCardIds({ categories }, cardsCount);
+  const cardIds = await pickCardIds(
+    { categories, lang, lang_pool: lang ? roomLangPool(cardsCount) : null },
+    cardsCount,
+  );
 
   await supabase.from('round_cards').insert(
     cardIds.map((cardId, i) => ({

@@ -96,7 +96,9 @@
     "preset_legends_desc": "Os maiores jogadores da história",
     "filter_all_countries": "Todos os países",
     "filter_all_leagues": "Todas as ligas",
-    "tag_wc2026": "Copa 2026"
+    "tag_wc2026": "Copa 2026",
+    "room_categories": "Quais cartas",
+    "room_categories_empty": "Escolha pelo menos um grupo"
   },
   "design": {
     "master": "Novo design",
@@ -440,5 +442,9 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "lang": {
+    "first_run_title": "Escolha o seu idioma",
+    "first_run_hint": "Interface e seleção de cartas. Pode alterar depois nas definições."
   }
 }

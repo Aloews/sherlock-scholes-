@@ -96,7 +96,9 @@
     "preset_not_players": "No footballers",
     "preset_not_players_desc": "Clubs, stadiums, terms, derbies",
     "preset_legends": "Legends",
-    "preset_legends_desc": "The greatest players in history"
+    "preset_legends_desc": "The greatest players in history",
+    "room_categories": "Which cards",
+    "room_categories_empty": "Pick at least one group"
   },
   "design": {
     "master": "New design",
@@ -440,5 +442,9 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "lang": {
+    "first_run_title": "Choose your language",
+    "first_run_hint": "Interface and card selection. You can change it later in settings."
   }
 }

@@ -32,7 +32,7 @@ import {
 import { countCards } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
-import { fameFloor, fameStartLevel } from '@/features/game/onboarding';
+import { fameFloor, fameStartLevel, langPool } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { ALL_CONTINENT_FILTERS, type CardCategory, type ContinentFilter } from '@/shared/types/database';
@@ -85,6 +85,15 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   ];
   const everything = withPlayers && selCats.size === NON_PLAYER_CATEGORIES.length;
 
+  // Onboarding easing. The fame floor applies to the one-tap presets, which
+  // have no fame step to show it in; the wizard pre-selects the step instead.
+  // The language pool applies to BOTH — it is not an alternative difficulty
+  // dimension but the answer to "can this player guess the card at all",
+  // and count_deck honours it too, so the number under the button stays the
+  // number that gets dealt (see supabase/migrations/deck_lang_pool.sql).
+  const onboardingFloor = fameFloor(gamesPlayed);
+  const onboardingPool = langPool(gamesPlayed);
+
   const filter: DeckFilter = normalizeFilter({
     categories: everything ? null : selectedCats,
     continents: withPlayers && selConts.size ? [...selConts] : null,
@@ -93,13 +102,13 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
     tags:       withPlayers && selTraits.size ? [...selTraits] : null,
     fame_min:   FAME_MIN[fameLevel],
     lang,
+    lang_pool:  onboardingPool,
   });
 
-  // Onboarding easing for the one-tap presets, which have no fame step to
-  // show it in: whoever asks for more fame wins.
-  const onboardingFloor = fameFloor(gamesPlayed);
   const withFloor = (f: DeckFilter): DeckFilter => normalizeFilter({
-    ...f, lang, fame_min: Math.max(f.fame_min ?? 0, onboardingFloor),
+    ...f, lang,
+    fame_min: Math.max(f.fame_min ?? 0, onboardingFloor),
+    lang_pool: onboardingPool,
   });
 
   const nothingSelected = selectedCats.length === 0;
@@ -130,6 +139,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
       const n = await countCards({
         ...preset.filter, lang,
         fame_min: Math.max(preset.filter.fame_min ?? 0, onboardingFloor),
+        lang_pool: onboardingPool,
       });
       return [preset.id, n ?? -1] as const;
     })).then((entries) => {

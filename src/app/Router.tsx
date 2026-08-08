@@ -1,5 +1,7 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { hasChosenLanguage } from '@/shared/i18n';
+import { FirstRunLanguage } from '@/screens/FirstRunLanguage';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
@@ -63,12 +65,19 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 export function Router() {
   useSessionRestore();
   const { pathname } = useLocation();
+  // Asked once, before any route renders: the language was previously guessed
+  // silently, so a wrong guess was invisible AND changed which cards the
+  // player is dealt. State (not a bare read) so choosing dismisses it without
+  // a reload. See screens/FirstRunLanguage.tsx.
+  const [needsLang, setNeedsLang] = useState(() => !hasChosenLanguage());
   // The tab bar belongs to the master app shell, and only to its root routes —
   // never over a live game, lobby or results, where leaving mid-round by a
   // stray tap would be destructive. `with-tabbar` shortens the screens'
   // min-h-screen by the bar's height (see index.css).
   const showTabs = useDesign() === 'master'
     && (TAB_ROUTES as readonly string[]).includes(pathname);
+
+  if (needsLang) return <FirstRunLanguage onDone={() => setNeedsLang(false)} />;
 
   return (
     // VoiceProvider sits ABOVE the routes on purpose: the session must survive

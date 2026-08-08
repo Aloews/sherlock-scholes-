@@ -94,7 +94,9 @@
     "preset_legends_desc": "歴史上最高の選手たち",
     "filter_all_countries": "すべての国",
     "filter_all_leagues": "すべてのリーグ",
-    "tag_wc2026": "W杯2026"
+    "tag_wc2026": "W杯2026",
+    "room_categories": "カードの種類",
+    "room_categories_empty": "グループを1つ以上選んでください"
   },
   "design": {
     "master": "新デザイン",
@@ -427,5 +429,9 @@
     "Bundesliga": "ブンデスリーガ",
     "Ligue 1": "リーグ・アン",
     "Eredivisie": "エールディヴィジ"
+  },
+  "lang": {
+    "first_run_title": "言語を選択",
+    "first_run_hint": "画面とカードの選定に使われます。後から設定で変更できます。"
   }
 }

@@ -28,9 +28,17 @@ import { useKeyboardOpen } from '@/shared/lib/useKeyboardOpen';
 import { normalizeCode } from '@/features/lobby/invite';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
+import { RoomCategoryPicker } from './home/RoomCategoryPicker';
 import type { DeckFilter } from '@/shared/types/deck';
+import type { CardCategory } from '@/shared/types/database';
 
 type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training' | 'join';
+
+// Mirrors the defaults createRoom() applies (features/room/roomService.ts).
+// They are needed here only to size the language pool the counter shows, so
+// the number under the toggles matches the deck the room will deal.
+const TEAM_CARDS_PER_ROUND = 5;
+const ONE_V_ONE_CARDS_PER_ROUND = 100;
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -40,7 +48,11 @@ export function HomeScreen() {
   const isPro = useProStore((s) => s.isPro);
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom, joinRoom } = useRoom();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Card kinds for the room being created. null = every category, which is
+  // what a room defaulted to before this control existed.
+  const [roomCats, setRoomCats] = useState<CardCategory[] | null>(null);
+  const roomCatsEmpty = roomCats !== null && roomCats.length === 0;
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
   // The landing block has a different layout per design; everything below it
   // (mode select, room settings, chip picker, join) is shared.
@@ -362,7 +374,21 @@ export function HomeScreen() {
                 ))}
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom()}>
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border">
+              <RoomCategoryPicker
+                value={roomCats}
+                onChange={setRoomCats}
+                lang={i18n.language.slice(0, 2)}
+                cardsPerRound={TEAM_CARDS_PER_ROUND}
+              />
+            </div>
+            <Button
+              fullWidth
+              size="lg"
+              loading={loading}
+              disabled={roomCatsEmpty}
+              onClick={() => createRoom({ categories: roomCats, lang: i18n.language.slice(0, 2) })}
+            >
               {t('home.create_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
@@ -400,7 +426,24 @@ export function HomeScreen() {
                 <span className="text-white">60s</span>
               </div>
             </div>
-            <Button fullWidth size="lg" loading={loading} onClick={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}>
+            <div className="bg-brand-surface rounded-2xl p-4 border border-brand-border">
+              <RoomCategoryPicker
+                value={roomCats}
+                onChange={setRoomCats}
+                lang={i18n.language.slice(0, 2)}
+                cardsPerRound={ONE_V_ONE_CARDS_PER_ROUND}
+              />
+            </div>
+            <Button
+              fullWidth
+              size="lg"
+              loading={loading}
+              disabled={roomCatsEmpty}
+              onClick={() => createRoom(
+                { total_rounds: rounds1v1, categories: roomCats, lang: i18n.language.slice(0, 2) },
+                '1v1',
+              )}
+            >
               {t('home.create_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>

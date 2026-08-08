@@ -90,6 +90,15 @@ flowchart TD
 * `pick_random_cards` и `count_deck` — **единственные** обёртки над
   `cards_matching`. Новый способ выбирать карточки заводить нельзя: он
   разойдётся со счётчиком.
+* `DeckFilter.lang_pool` (`deck_lang_pool.sql`) — раздача только из N
+  карточек, **самых известных в языке игрока** (`collection_views`, §6).
+  Это **не** второй способ отбора: `cards_matching` по-прежнему решает,
+  что подходит, а пул — это `LIMIT` поверх него, применённый **в обеих
+  обёртках одинаково**. Добавить его в раздачу и забыть в счётчике —
+  ровно то расхождение, ради которого написан весь этот раздел.
+  Зачем он, если есть `fame_min`: `cards.fame` — перцентиль **максимума
+  по девяти языкам**, то есть «известен где-то». «Зенит» проходит порог
+  за счёт одних русских просмотров, а кореец-новичок его не угадает.
 * Предыстория — `docs/FILTERS_REWORK.md`.
 
 ⚠️ В `deck_rpc.sql` лежит **легаси-версия `pick_random_cards` на 12
@@ -147,6 +156,7 @@ flowchart TD
 | `cards_matching`, `pick_random_cards`, `count_deck` | `deck_rpc.sql` | колода |
 | `fame_tier`, `refresh_card_fame` | `deck_fame.sql` | известность (перцентиль) и производные |
 | `collection_views`, `collection_page` | `collection_page_by_lang.sql` | коллекция: страница каталога в порядке языка зрителя. **Не путь колоды** — карточку не раздаёт |
+| `pick_random_cards`, `count_deck` (языковой пул) | `deck_lang_pool.sql` | `DeckFilter.lang_pool`: раздача из топ-N по языку игрока. `collection_views` тут переиспользуется как единственное определение «насколько известна здесь» |
 | `increment_player_stats` | `player_progression_xp.sql`, `weekly_quests.sql` | статистика + XP + прогресс заданий, `SECURITY DEFINER` |
 | `get_weekly_quests`, `claim_weekly_task`, `weekly_task_codes`, `current_week_start` | `weekly_quests.sql` | задания недели |
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
@@ -284,6 +294,11 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Сортировка по `pageviews_i18n->>lang` через PostgREST — она **текстовая**, «9» > «10000» | §7, `collection_page_by_lang.sql` |
 | Запасной путь языка написан через `GREATEST`, а не `COALESCE` — русский счёт всегда больше, и порядок не меняется | `collection_page_by_lang.sql` |
 | Русский счёт подставлен в тот же ключ сортировки, что и иностранный: шкалы разные (ru — сотни тысяч, ko — десятки), и нерезолвнутая карточка всплывает наверх. «Брест» (город) обогнал «Тоттенхэм» в корейской вкладке | `collection_page_by_lang.sql` |
+| `lang_pool` применён к раздаче, но не к счётчику (или наоборот) — счётчик обещает 3287, а комната видит 150 | §3, `deck_lang_pool.sql` |
+| Размер пула привязан к одному раунду: у команд `cards_per_round`=5, и пул 5×3=15 раздаёт один и тот же десяток весь матч | `roomService.roomLangPool` |
+| «Раздавать топ-N по языку» без случайности внутри пула — каждая игра одинаковая | `deck_lang_pool.sql`, тест `deck_lang_pool.test.sql` |
+| Тест «раздача случайна» через `generate_series`: `pick_random_cards` объявлена `STABLE`, и планировщик вправе позвать её один раз | `supabase/tests/deck_lang_pool.test.sql` |
+| Модуль читает `localStorage`/`window` на импорте — падает в Node-тестах и в закрытом webview | `shared/i18n/index.ts` |
 | Неигровая карточка резолвится по голому названию: «Зенит» — это зенит-надир, «Факел» — факел | §7, `cards_pageviews_i18n.py` |
 | Ошибка `maxlag` от Wikidata принята за успех — она приходит **HTTP 200** с телом-ошибкой | §7, `cards_pageviews_i18n.py` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |

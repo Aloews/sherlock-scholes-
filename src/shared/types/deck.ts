@@ -22,8 +22,23 @@ export interface DeckFilter {
   tags?: string[] | null;
   /** Recognizability floor, 0..100 (cards.fame). 0/null = no floor. */
   fame_min?: number | null;
-  /** Interface language — filters culture-bound cards (commentators). */
+  /** Interface language — filters culture-bound cards (commentators), and
+   *  is the language `lang_pool` ranks by. */
   lang?: string | null;
+  /**
+   * Deal only from the `lang_pool` cards best known in `lang`.
+   *
+   * NOT a second way to select cards: cards_matching still decides what is
+   * eligible, this caps how deep into that result the deal may reach, and
+   * `count_deck` applies the very same cap (supabase/migrations/
+   * deck_lang_pool.sql). null/absent = the whole match, as before.
+   *
+   * Why it exists when `fame_min` already narrows the deck: cards.fame is a
+   * percentile of the MAX across nine languages, so it means "famous
+   * somewhere". «Зенит» is fame 84 on Russian views alone and a Korean
+   * beginner still cannot guess it. This ranks by the player's OWN language.
+   */
+  lang_pool?: number | null;
 }
 
 // ─── Recognizability: the ONE fame axis ──────────────────────────────
@@ -159,6 +174,7 @@ export function normalizeFilter(filter: DeckFilter): DeckFilter {
   if (filter.tags?.length) out.tags = [...filter.tags].sort();
   if (filter.fame_min) out.fame_min = filter.fame_min;
   if (filter.lang) out.lang = filter.lang;
+  if (filter.lang_pool) out.lang_pool = filter.lang_pool;
   return out;
 }
 

@@ -40,6 +40,33 @@ export function fameFloor(games: number): number {
   return Math.round((85 * (30 - games)) / 20);
 }
 
+// How many cards the deal may reach into, ranked by the PLAYER'S language —
+// DeckFilter.lang_pool (supabase/migrations/deck_lang_pool.sql). 0 = no cap.
+//
+// fameFloor above is not enough on its own, and the reason is worth keeping
+// here because it is easy to "simplify" away: cards.fame is a percentile of
+// the MAX across nine languages (deck_fame.sql), chosen so a Korean or
+// Mexican hero ranks on his own wiki. That makes a high fame mean "famous
+// SOMEWHERE". «Зенит» clears fame 84 on Russian views alone, and a Korean
+// beginner still cannot guess it. The floor keeps out the globally obscure;
+// this keeps out the locally unguessable.
+//
+//   games <5    -> 120  household names IN THIS LANGUAGE and nothing else
+//   games 5-29  -> grows 120 -> 900, the pool widens with confidence
+//   games >=30  -> 0    no cap; the deck is the whole deck
+//
+// The pool is much wider than a hand (a round deals ~30) on purpose: a hand
+// drawn at random from 120 is different every time, whereas dealing "the 30
+// best known" would deal the same 30 forever. See the migration's header.
+const POOL_START = 120;
+const POOL_END = 900;
+
+export function langPool(games: number): number {
+  if (games >= 30) return 0;
+  if (games < 5) return POOL_START;
+  return Math.round(POOL_START + ((POOL_END - POOL_START) * (games - 5)) / 25);
+}
+
 // The same easing, expressed as a step of the picker's fame control — used
 // to PRE-SELECT that step when a player opens the wizard. In the wizard the
 // floor is never applied on top: whatever step is highlighted is exactly

@@ -94,7 +94,9 @@
     "preset_legends_desc": "历史上最伟大的球员",
     "filter_all_countries": "所有国家",
     "filter_all_leagues": "所有联赛",
-    "tag_wc2026": "2026世界杯"
+    "tag_wc2026": "2026世界杯",
+    "room_categories": "卡牌类型",
+    "room_categories_empty": "请至少选择一组"
   },
   "design": {
     "master": "新设计",
@@ -427,5 +429,9 @@
     "Ligue 1": "法甲",
     "Eredivisie": "荷甲",
     "Russian Premier League": "俄超"
+  },
+  "lang": {
+    "first_run_title": "选择你的语言",
+    "first_run_hint": "界面与卡牌选择。之后可在设置中更改。"
   }
 }

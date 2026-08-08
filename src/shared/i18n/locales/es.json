@@ -96,7 +96,9 @@
     "preset_legends_desc": "Los mejores jugadores de la historia",
     "filter_all_countries": "Todos los países",
     "filter_all_leagues": "Todas las ligas",
-    "tag_wc2026": "Mundial 2026"
+    "tag_wc2026": "Mundial 2026",
+    "room_categories": "Qué cartas",
+    "room_categories_empty": "Elige al menos un grupo"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -440,5 +442,9 @@
     "Bundesliga": "Bundesliga",
     "Ligue 1": "Ligue 1",
     "Eredivisie": "Eredivisie"
+  },
+  "lang": {
+    "first_run_title": "Elige tu idioma",
+    "first_run_hint": "Interfaz y selección de cartas. Puedes cambiarlo después en ajustes."
   }
 }

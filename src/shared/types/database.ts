@@ -122,6 +122,11 @@ export interface RoomSettings {
   cards_per_round: number;
   total_rounds: number;
   categories: CardCategory[] | null; // null = all categories
+  /** Language the room's deck is ranked by, fixed by the host at creation.
+   *  Deliberately part of the ROOM and not read from each client: both teams
+   *  play one deck, so a guest whose phone is in another language must still
+   *  get the host's cards. null = rank as before (no language pool). */
+  lang?: string | null;
 }
 
 export type GameMode = 'team' | '1v1';

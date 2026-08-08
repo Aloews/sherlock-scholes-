@@ -100,7 +100,9 @@
     "preset_not_players": "Без футболистов",
     "preset_not_players_desc": "Клубы, стадионы, термины, дерби",
     "preset_legends": "Легенды",
-    "preset_legends_desc": "Величайшие игроки в истории"
+    "preset_legends_desc": "Величайшие игроки в истории",
+    "room_categories": "Какие карточки",
+    "room_categories_empty": "Выберите хотя бы одну группу"
   },
   "design": {
     "master": "Новый дизайн",
@@ -470,5 +472,9 @@
     "Ligue 1": "Лига 1",
     "Eredivisie": "Эредивизи",
     "Russian Premier League": "РПЛ (Россия)"
+  },
+  "lang": {
+    "first_run_title": "Выберите язык",
+    "first_run_hint": "Интерфейс и подбор карточек. Можно изменить позже в настройках."
   }
 }
