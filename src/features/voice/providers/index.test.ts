@@ -70,6 +70,6 @@ describe('a build with no voice configured', () => {
     // At runtime it is a guard connect() never reaches, and a clear message if
     // anything else ever does.
     const mod = await load('livekit', { VITE_LIVEKIT_URL: '', VITE_VOICE_ENABLED: '' });
-    await expect(mod.loadTransport()).rejects.toThrow(/not configured/);
+    await expect(mod.loadTransport('livekit')).rejects.toThrow(/not configured/);
   });
 });

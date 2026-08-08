@@ -22,6 +22,8 @@ const fake = vi.hoisted(() => {
     stats: { rttMs: number; loss: number } | null = null;
     /** The sink the hook handed over — the adapter's only way to be heard. */
     sink: HTMLElement | null = null;
+    /** Which service built this session. */
+    provider = 'livekit';
 
     async setMicrophoneEnabled(on: boolean) {
       this.micCalls.push(on);
@@ -43,33 +45,57 @@ const fake = vi.hoisted(() => {
   const sessions: FakeSession[] = [];
   const hooks: { speakers?: (ids: string[]) => void; playback?: (playing: boolean) => void; dropped?: () => void } = {};
 
-  const transport = {
-    id: 'livekit' as const,
-    async connect(options: {
-      sink: HTMLElement;
-      onSpeakers: (ids: string[]) => void;
-      onPlaybackChanged: (playing: boolean) => void;
-      onDisconnected: () => void;
-    }) {
-      if (config.failConnect) throw new Error('no link');
-      const session = new FakeSession();
-      session.sink = options.sink;
-      hooks.speakers = options.onSpeakers;
-      hooks.playback = options.onPlaybackChanged;
-      hooks.dropped = options.onDisconnected;
-      sessions.push(session);
-      if (config.attachOnConnect) session.play();
-      return session;
-    },
+  /** Services that will not come up, by id. Failover's whole subject. */
+  const unreachable = new Set<string>();
+  /** Services whose connect() hangs forever rather than refusing. */
+  const hangs = new Set<string>();
+  const attempts: string[] = [];
+
+  function makeTransport(id: string) {
+    return {
+      id,
+      async connect(options: {
+        sink: HTMLElement;
+        onSpeakers: (ids: string[]) => void;
+        onPlaybackChanged: (playing: boolean) => void;
+        onDisconnected: () => void;
+      }) {
+        attempts.push(id);
+        if (hangs.has(id)) return new Promise<never>(() => {});
+        if (config.failConnect || unreachable.has(id)) throw new Error(`${id}: no link`);
+        const session = new FakeSession();
+        session.provider = id;
+        session.sink = options.sink;
+        hooks.speakers = options.onSpeakers;
+        hooks.playback = options.onPlaybackChanged;
+        hooks.dropped = options.onDisconnected;
+        sessions.push(session);
+        if (config.attachOnConnect) session.play();
+        return session;
+      },
+    };
+  }
+
+  const transports: Record<string, ReturnType<typeof makeTransport>> = {
+    livekit: makeTransport('livekit'),
+    daily: makeTransport('daily'),
+    agora: makeTransport('agora'),
   };
 
-  return { config, sessions, hooks, transport };
+  return { config, sessions, hooks, transports, unreachable, hangs, attempts };
 });
 
 vi.mock('./providers', () => ({
-  loadTransport: async () => fake.transport,
+  loadTransport: async (id: string) => {
+    const transport = fake.transports[id];
+    if (!transport) throw new Error(`no adapter for ${id}`);
+    return transport;
+  },
   voiceProvider: () => 'livekit',
+  voiceFallback: () => null,
+  voiceChain: () => ['livekit'],
   voiceProviderMisconfigured: () => false,
+  isVoiceProviderId: (v: unknown) => ['livekit', 'daily', 'agora'].includes(v as string),
 }));
 
 const fetchVoiceToken = vi.fn();
@@ -97,6 +123,9 @@ async function connected() {
 
 beforeEach(() => {
   fake.sessions.length = 0;
+  fake.attempts.length = 0;
+  fake.unreachable.clear();
+  fake.hangs.clear();
   fake.config.refuseMic = false;
   fake.config.refusePlayback = false;
   fake.config.failConnect = false;
@@ -299,5 +328,269 @@ describe('the quality ladder and a muted player', () => {
     await tick(2);
     expect(result.current.level).toBe('text');
     expect(session().micCalls.at(-1)).toBe(false);
+  });
+});
+
+describe('failover to the next service', () => {
+  // Failover is for a service that cannot be REACHED, not one that is merely
+  // slow: switching costs a teardown, a round trip and a fresh handshake, and
+  // it does nothing for a weak last mile — both services carry the same
+  // WebRTC over the same phone. Bad links are the quality ladder's job.
+  //
+  // The order comes from the SERVER, in credentials.chain, so a client still
+  // cannot pick which set of secrets the server exercises.
+
+  /** A grant for `id`, offering `chain` as the services the server allows. */
+  const grant = (id: string, chain?: string[]) => ({
+    ok: true,
+    credentials: { provider: id, token: `${id}-token`, channel: 'ss_room-1', url: 'wss://example', chain },
+  });
+
+  function chainOf(primary: string, fallback: string) {
+    fetchVoiceToken.mockImplementation(async (_room: string, asked?: string) =>
+      grant(asked ?? primary, [primary, fallback]));
+  }
+
+  it('walks to the fallback when the first service will not come up', async () => {
+    chainOf('daily', 'agora');
+    fake.unreachable.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.provider).toBe('agora');
+    expect(fake.attempts).toEqual(['daily', 'agora']);
+  });
+
+  it('mints a fresh credential for the service it moves to', async () => {
+    // A token is only valid at the service that signed it, so the second
+    // attempt must ask again rather than reuse what is in hand.
+    chainOf('daily', 'agora');
+    fake.unreachable.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(2);
+    expect(fetchVoiceToken).toHaveBeenLastCalledWith('room-1', 'agora');
+    expect(session().provider).toBe('agora');
+  });
+
+  it('stays on the first service when it works', async () => {
+    chainOf('daily', 'agora');
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.provider).toBe('daily');
+    expect(fake.attempts).toEqual(['daily']);
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up with a reason when every service in the chain is down', async () => {
+    chainOf('daily', 'agora');
+    fake.unreachable.add('daily');
+    fake.unreachable.add('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('network');
+    expect(fake.attempts).toEqual(['daily', 'agora']);
+    expect(playing()).toHaveLength(0);
+  });
+
+  it('does not walk past a denied microphone', async () => {
+    // The player's answer will be the same at every service. Walking on would
+    // only prompt them again, once per provider.
+    chainOf('daily', 'agora');
+    fake.config.refuseMic = true;
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('denied');
+    expect(fake.attempts).toEqual(['daily']);
+  });
+
+  it('stays put when the server offers no chain', async () => {
+    // A deployment too old to send one. The build's own chain is a single
+    // service, so there is nowhere to go and nothing extra to ask for.
+    fetchVoiceToken.mockResolvedValue(grant('livekit'));
+    fake.unreachable.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(fake.attempts).toEqual(['livekit']);
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not try the same service twice when the chain repeats it', async () => {
+    fetchVoiceToken.mockImplementation(async (_r: string, asked?: string) =>
+      grant(asked ?? 'daily', ['daily', 'daily']));
+    fake.unreachable.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fake.attempts).toEqual(['daily']);
+  });
+
+  it('refuses a credential minted for a different service than it asked for', async () => {
+    // Valid and useless: the adapter would wait out a handshake that cannot
+    // happen. Caught before the timeout rather than by it.
+    fetchVoiceToken.mockImplementation(async (_r: string, asked?: string) =>
+      asked === 'agora' ? grant('daily', ['daily', 'agora']) : grant('daily', ['daily', 'agora']));
+    fake.unreachable.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('provider_mismatch');
+  });
+});
+
+describe('a service that hangs instead of refusing', () => {
+  // The normal shape of a blocked service: connect() never settles. Without a
+  // clock the walk would stop at the first one forever.
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('times out and moves on', async () => {
+    fetchVoiceToken.mockImplementation(async (_r: string, asked?: string) => ({
+      ok: true,
+      credentials: {
+        provider: asked ?? 'daily', token: 't', channel: 'ss_room-1',
+        url: 'wss://example', chain: ['daily', 'agora'],
+      },
+    }));
+    fake.hangs.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    const connecting = act(async () => { await result.current.connect(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
+    await connecting;
+
+    expect(fake.attempts).toEqual(['daily', 'agora']);
+    expect(result.current.provider).toBe('agora');
+  });
+});
+
+describe('a service that dies mid-call', () => {
+  // The in-room half. connect()'s walk covers a service that will not come up
+  // in the first place; this covers one that dies with a game in progress —
+  // the case that actually costs a round, because nobody taps anything and
+  // the channel simply goes quiet.
+  const grant = (id: string, chain?: string[]) => ({
+    ok: true,
+    credentials: { provider: id, token: `${id}-token`, channel: 'ss_room-1', url: 'wss://example', chain },
+  });
+
+  function chainOf(primary: string, fallback: string) {
+    fetchVoiceToken.mockImplementation(async (_room: string, asked?: string) =>
+      grant(asked ?? primary, [primary, fallback]));
+  }
+
+  async function live(primary: string, fallback: string) {
+    chainOf(primary, fallback);
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('on');
+    return result;
+  }
+
+  it('moves to the other service and comes back on air', async () => {
+    const result = await live('daily', 'agora');
+    fake.unreachable.add('daily');
+    fake.attempts.length = 0;
+
+    await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+    await act(async () => {});
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.provider).toBe('agora');
+  });
+
+  it('tries the other service first, then the one that dropped', async () => {
+    // Not removed from the chain: a service can drop a call for reasons that
+    // are not its own, and a chain of one would end the call the first time a
+    // phone changed cell.
+    const result = await live('daily', 'agora');
+    fake.unreachable.add('agora');
+    fake.attempts.length = 0;
+
+    await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+    await act(async () => {});
+
+    expect(fake.attempts).toEqual(['agora', 'daily']);
+    expect(result.current.provider).toBe('daily');
+    expect(result.current.status).toBe('on');
+  });
+
+  it('keeps a muted player muted across the move', async () => {
+    const result = await live('daily', 'agora');
+    await act(async () => { await result.current.toggleMute(); });
+    expect(result.current.muted).toBe(true);
+
+    fake.unreachable.add('daily');
+    await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+    await act(async () => {});
+
+    expect(result.current.provider).toBe('agora');
+    expect(result.current.muted).toBe(true);
+    // The new session was opened with the microphone closed, not reopened.
+    expect(session().micCalls[0]).toBe(false);
+  });
+
+  it('does not recover from a hang-up the player asked for', async () => {
+    // disconnect() races its own adapter's Disconnected event; without the
+    // guard the player would be reconnected to the call they just left.
+    const result = await live('daily', 'agora');
+    act(() => result.current.disconnect());
+    fake.attempts.length = 0;
+
+    await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+    expect(result.current.status).toBe('off');
+    expect(fake.attempts).toEqual([]);
+  });
+
+  it('gives up rather than looping when nothing will hold', async () => {
+    const result = await live('daily', 'agora');
+    fake.unreachable.add('daily');
+    fake.unreachable.add('agora');
+
+    await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+    await act(async () => {});
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('network');
+    expect(playing()).toHaveLength(0);
+  });
+
+  it('stops after the recovery budget is spent', async () => {
+    // A service that drops us the moment we join must not be retried forever:
+    // a reconnect loop mid-round is worse than a channel that says it is down.
+    const result = await live('daily', 'agora');
+
+    for (let i = 0; i < 3; i += 1) {
+      await act(async () => { fake.hooks.dropped?.(); await Promise.resolve(); });
+      await act(async () => {});
+    }
+
+    expect(result.current.status).toBe('unavailable');
   });
 });

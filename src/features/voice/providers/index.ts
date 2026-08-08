@@ -1,64 +1,105 @@
-// Which service this build talks to, and how its SDK gets loaded.
+// Which services this build can talk to, and how their SDKs get loaded.
 //
-// WHY THE SWITCH IS WRITTEN LIKE THIS. `VITE_VOICE_PROVIDER` is substituted by
-// Vite as a literal at build time, so the switch below folds to one branch and
-// the other adapters — with their SDKs, several hundred KB each — are dropped
-// from the build entirely. A deployment on Daily never downloads LiveKit, and
-// a deployment with no provider configured downloads none of them.
+// TWO variables, not one, because failover needs two adapters in the bundle:
 //
-// The same mechanism has a sharp edge worth knowing about: building without
-// the variables set removes the whole voice path, so `dist/` legitimately
-// contains no SDK chunk at all. That is correct, and it is also how a broken
-// build looks. `npm run check:voice` reports which variables this build was
-// compiled with; see docs/VOICE_PROVIDERS.md.
+//   VITE_VOICE_PROVIDER   the service to use
+//   VITE_VOICE_FALLBACK   the one to try when that service will not come up
+//
+// Both are substituted by Vite as literals before Rollup runs, so the guards
+// below fold away and an adapter nobody named — with its SDK, several hundred
+// KB — never enters the build. A deployment with no fallback ships one SDK; a
+// deployment with no voice at all ships none.
+//
+// THE SHAPE OF THESE GUARDS IS LOAD-BEARING, and both halves were arrived at
+// by building and measuring `dist/`:
+//
+//   * Compare against the RAW literal. Routing through a function defeats the
+//     fold: the call is not evaluable at build time, every branch survives,
+//     and every deployment ships every SDK.
+//   * `if`, not `switch`. Rollup eliminates dead if-branches and does NOT
+//     eliminate dead switch-cases. The switch version built all three.
+//
+// See docs/VOICE_PROVIDERS.md §5 for the measured table.
 
 import { isVoiceProviderId, type VoiceProviderId, type VoiceTransport } from './types';
 
 const CONFIGURED = import.meta.env.VITE_VOICE_PROVIDER as string | undefined;
+const FALLBACK = import.meta.env.VITE_VOICE_FALLBACK as string | undefined;
 
 /**
- * The provider this build uses.
+ * The service this build prefers.
  *
- * Defaults to LiveKit because that is what production runs today: an existing
- * deployment that sets only `VITE_LIVEKIT_URL` keeps working untouched.
+ * Defaults to LiveKit because that is what production ran first: a deployment
+ * that sets only `VITE_LIVEKIT_URL` keeps working untouched.
  */
 export function voiceProvider(): VoiceProviderId {
   return isVoiceProviderId(CONFIGURED) ? CONFIGURED : 'livekit';
 }
 
-/** True when `VITE_VOICE_PROVIDER` is set to something nobody implements. */
-export function voiceProviderMisconfigured(): boolean {
-  return typeof CONFIGURED === 'string' && CONFIGURED.length > 0 && !isVoiceProviderId(CONFIGURED);
+/**
+ * The service to try when the preferred one will not come up. Null when none
+ * is configured, which is the ordinary case.
+ *
+ * A fallback equal to the primary is treated as absent — retrying the same
+ * service through the same path is not failover, it is a second helping of
+ * the same failure.
+ */
+export function voiceFallback(): VoiceProviderId | null {
+  if (!isVoiceProviderId(FALLBACK)) return null;
+  return FALLBACK === voiceProvider() ? null : FALLBACK;
 }
 
-export async function loadTransport(): Promise<VoiceTransport> {
+/** Preferred first, fallback second. What connect() walks. */
+export function voiceChain(): VoiceProviderId[] {
+  const fallback = voiceFallback();
+  return fallback ? [voiceProvider(), fallback] : [voiceProvider()];
+}
+
+/** True when either variable is set to a name nobody implements. */
+export function voiceProviderMisconfigured(): boolean {
+  const named = (value: string | undefined) =>
+    typeof value === 'string' && value.length > 0 && !isVoiceProviderId(value);
+  return named(CONFIGURED) || named(FALLBACK);
+}
+
+/**
+ * The adapter for one service.
+ *
+ * Throws rather than falling back to LiveKit when asked for something this
+ * build does not carry: a silent substitution would hand LiveKit a Daily
+ * token and wait for a connection that cannot happen, which is the failure
+ * this whole seam exists to make loud.
+ */
+export async function loadTransport(id: VoiceProviderId): Promise<VoiceTransport> {
   // Unreachable at runtime — connect() checks voiceEnabled() first — and that
-  // is not what this is for. Written against the raw literals, it folds to a
-  // bare `throw` in a build with no voice configured, which makes every
-  // import() below unreachable and takes all three SDKs out of `dist/`. A
-  // deployment without voice does not pay for voice; that property predates
-  // the providers and is worth the odd-looking guard.
+  // is not what this is for. Against the raw literals it folds to a bare
+  // `throw` in a build with no voice configured, making every import() below
+  // unreachable and taking all three SDKs out of `dist/`.
   if (!import.meta.env.VITE_LIVEKIT_URL && import.meta.env.VITE_VOICE_ENABLED !== 'true') {
     throw new Error('voice is not configured in this build');
   }
 
-  // Compared against the RAW literal, one `if` per provider. Both halves of
-  // that are load-bearing, and both were arrived at by measuring `dist/`:
-  //
-  //   * Vite substitutes `import.meta.env.VITE_VOICE_PROVIDER` before Rollup
-  //     runs, so each condition becomes `if (false)` and the branch — with its
-  //     `import()`, and therefore its SDK chunk — is dropped. Routing this
-  //     through voiceProvider() defeats it: the call is not foldable, every
-  //     branch survives, and every deployment ships all three SDKs.
-  //   * `if`, not `switch`: Rollup eliminates dead if-branches and does NOT
-  //     eliminate dead switch-cases. The switch version built all three.
-  if (import.meta.env.VITE_VOICE_PROVIDER === 'daily') {
+  if (id === 'daily' && (
+    import.meta.env.VITE_VOICE_PROVIDER === 'daily' || import.meta.env.VITE_VOICE_FALLBACK === 'daily'
+  )) {
     return (await import('./daily')).dailyTransport;
   }
-  if (import.meta.env.VITE_VOICE_PROVIDER === 'agora') {
+
+  if (id === 'agora' && (
+    import.meta.env.VITE_VOICE_PROVIDER === 'agora' || import.meta.env.VITE_VOICE_FALLBACK === 'agora'
+  )) {
     return (await import('./agora')).agoraTransport;
   }
-  return (await import('./livekit')).livekitTransport;
+
+  if (id === 'livekit' && (
+    import.meta.env.VITE_VOICE_PROVIDER !== 'daily' && import.meta.env.VITE_VOICE_PROVIDER !== 'agora'
+      ? true
+      : import.meta.env.VITE_VOICE_FALLBACK === 'livekit'
+  )) {
+    return (await import('./livekit')).livekitTransport;
+  }
+
+  throw new Error(`voice: this build does not carry the ${id} adapter`);
 }
 
 export type { VoiceCredentials, VoiceProviderId, VoiceSession, VoiceTransport } from './types';
