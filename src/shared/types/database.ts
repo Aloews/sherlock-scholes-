@@ -327,6 +327,18 @@ export interface Round {
   started_at: string | null;
   ended_at: string | null;
   time_seconds: number;
+  /**
+   * When the clock was put on hold, or null while it runs.
+   *
+   * Held on the ROUND rather than on a device because nothing counts the timer
+   * down — every client derives the remaining seconds from `started_at`, and
+   * the round is ended by whoever reaches the deadline first. A pause one
+   * client knew about would stop that client's display while everyone else's
+   * ran out. See supabase/migrations/pause_round_on_voice_drop.sql.
+   */
+  paused_at: string | null;
+  /** Milliseconds already spent paused, excluding a pause in progress. */
+  paused_ms: number;
 }
 
 // The card columns the in-game screen actually renders — the same set

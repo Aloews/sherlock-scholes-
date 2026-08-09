@@ -341,6 +341,7 @@
     "skip": "⏭ Passer",
     "correct": "✓ Correct",
     "round_label": "Manche {{n}}",
+    "paused_voice": "En pause : on attend la connexion de celui qui explique",
     "other_team": "Autre équipe",
     "listening": "Écoutez",
     "opponent_progress": "Expliquées : {{n}}",

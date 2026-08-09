@@ -8,6 +8,7 @@ import { transition } from '@/features/game/stateMachine';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { preloadPhotos } from '@/shared/lib/preloadPhotos';
 import { playSound } from '@/shared/lib/sounds';
+import { deadlineAt } from './roundClock';
 // Read at call time, not captured in a dep array: the round's cards are
 // fetched in realtime callbacks, and a language switched mid-game must apply
 // to the next round rather than to the next remount.
@@ -181,8 +182,16 @@ export function useGame() {
     const { roomPlayers } = useGameStore.getState();
     const idx = roomPlayers.findIndex((rp) => rp.player_id === player?.id);
     const graceMs  = 4000 + Math.max(0, idx) * 1500;
-    const deadline = new Date(currentRound.started_at).getTime()
-      + currentRound.time_seconds * 1000 + graceMs;
+    // Through roundClock, not from started_at directly: a held round's
+    // deadline moves, and a fallback that ignored that would end the round
+    // while every screen still showed time left — the pause undone by the
+    // safety net meant to protect the round.
+    const deadline = deadlineAt({
+      startedAt: currentRound.started_at,
+      seconds: currentRound.time_seconds,
+      pausedMs: currentRound.paused_ms ?? 0,
+      pausedAt: currentRound.paused_at ?? null,
+    }, Date.now()) + graceMs;
 
     const roundId = currentRound.id;
     const timer = setTimeout(async () => {
@@ -195,7 +204,8 @@ export function useGame() {
 
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRound?.id, currentRound?.status, currentRound?.started_at, room?.id, player?.id]);
+  }, [currentRound?.id, currentRound?.status, currentRound?.started_at,
+      currentRound?.paused_at, currentRound?.paused_ms, room?.id, player?.id]);
 
   // ─── Watchdog: the round runner died between rounds ────────
   // endRound holds the summary for SUMMARY_PAUSE_MS before activating the

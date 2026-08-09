@@ -333,6 +333,7 @@
     "skip": "⏭ 건너뛰기",
     "correct": "✓ 정답",
     "round_label": "라운드 {{n}}",
+    "paused_voice": "일시정지 — 설명하는 사람의 연결을 기다리는 중",
     "other_team": "상대 팀",
     "listening": "들어요",
     "opponent_progress": "설명함: {{n}}",
