@@ -97,7 +97,9 @@
     "preset_legends_desc": "Los mejores jugadores de la historia",
     "filter_all_countries": "Todos los países",
     "filter_all_leagues": "Todas las ligas",
-    "tag_wc2026": "Mundial 2026"
+    "tag_wc2026": "Mundial 2026",
+    "filter_all_squads": "Cualquier plantilla",
+    "squad_as_of": "Plantilla a {{date}} — de los artículos de los jugadores, no en directo"
   },
   "design": {
     "master": "Diseño nuevo",

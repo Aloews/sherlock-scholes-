@@ -33,6 +33,7 @@ import { countCards } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
 import { fameFloor, fameStartLevel } from '@/features/game/onboarding';
+import { fetchSquads, type Squad } from '@/features/game/squads';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { ALL_CONTINENT_FILTERS, type CardCategory, type ContinentFilter } from '@/shared/types/database';
@@ -55,6 +56,15 @@ interface Props {
 
 // ─── The screen ──────────────────────────────────────────────────────
 
+/** The as-of date, or a dash when the squad table has never been built. */
+function formatAsOf(iso: string | null, lang: string): string {
+  if (!iso) return '—';
+  const when = new Date(iso);
+  return Number.isNaN(when.getTime())
+    ? '—'
+    : when.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onStart }: Props) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.slice(0, 2);
@@ -70,11 +80,17 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   const [selTraits, setSelTraits] = useState<Set<string>>(new Set());
   const [selCountry, setSelCountry] = useState('');
   const [selLeague, setSelLeague] = useState('');
+  const [selSquad, setSelSquad] = useState('');
+  const [squads, setSquads] = useState<Squad[]>([]);
   const [countryOpts, setCountryOpts] = useState<string[] | null>(null);
 
   const [deckCount, setDeckCount] = useState<number | null>(null);
   const [presetCounts, setPresetCounts] = useState<Record<string, number> | null>(null);
   const [fameCounts, setFameCounts] = useState<Record<string, number> | null>(null);
+
+  // The squads are a short list that changes once a night, so it is fetched
+  // when the picker opens rather than on every keystroke of the filter.
+  useEffect(() => { void fetchSquads().then(setSquads); }, []);
 
   // ── The filter under construction ────────────────────────────────
   // Player-only dimensions are dropped when players are not in the deck,
@@ -85,11 +101,18 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   ];
   const everything = withPlayers && selCats.size === NON_PLAYER_CATEGORIES.length;
 
+  // Picking a squad means the squad. The predicate is player-shaped — it
+  // narrows players and lets every other category through, like leagues and
+  // countries — so without this "состав Арсенала" would deal 23 Arsenal
+  // players among four hundred club cards and every stadium in the deck.
   const filter: DeckFilter = normalizeFilter({
-    categories: everything ? null : selectedCats,
+    categories: selSquad && withPlayers
+      ? (['player'] as CardCategory[])
+      : everything ? null : selectedCats,
     continents: withPlayers && selConts.size ? [...selConts] : null,
     countries:  withPlayers && selCountry ? [selCountry] : null,
     leagues:    withPlayers && selLeague ? [selLeague] : null,
+    clubs:      withPlayers && selSquad ? [selSquad] : null,
     tags:       withPlayers && selTraits.size ? [...selTraits] : null,
     fame_min:   FAME_MIN[fameLevel],
     lang,
@@ -405,6 +428,36 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                   value: lg, label: t(`league.${lg}`, { defaultValue: lg }),
                 }))}
               />
+              {!!squads.length && (
+                <>
+                  <SelectRow
+                    label={t('home.filter_all_squads')}
+                    value={selSquad}
+                    onChange={setSelSquad}
+                    options={squads.map((s) => ({
+                      value: s.key,
+                      // The count is part of the choice: a squad of nine plays
+                      // very differently from one of twenty-three, and the
+                      // player deserves to know before the round starts.
+                      label: `${s.name} · ${s.players}`,
+                    }))}
+                  />
+                  {/* Says how old this is, every time. The squad comes from
+                      when each player's article was last read, so a transfer
+                      from last week is not in it — and a stale fact shown as
+                      current is the lie we refuse elsewhere. */}
+                  {!!selSquad && (
+                    <p className="text-[10.5px] text-brand-muted px-1">
+                      {t('home.squad_as_of', {
+                        date: formatAsOf(
+                          squads.find((s) => s.key === selSquad)?.asOf ?? null,
+                          i18n.language,
+                        ),
+                      })}
+                    </p>
+                  )}
+                </>
+              )}
             </section>
           </>
         )}

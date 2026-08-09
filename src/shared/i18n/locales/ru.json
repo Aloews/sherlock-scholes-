@@ -101,7 +101,9 @@
     "preset_not_players": "Без футболистов",
     "preset_not_players_desc": "Клубы, стадионы, термины, дерби",
     "preset_legends": "Легенды",
-    "preset_legends_desc": "Величайшие игроки в истории"
+    "preset_legends_desc": "Величайшие игроки в истории",
+    "filter_all_squads": "Любой состав",
+    "squad_as_of": "Состав на {{date}} — по статьям игроков, не в прямом эфире"
   },
   "design": {
     "master": "Новый дизайн",

@@ -100,7 +100,9 @@
     "preset_legends_desc": "أعظم اللاعبين في التاريخ",
     "filter_all_countries": "كل الدول",
     "filter_all_leagues": "كل الدوريات",
-    "tag_wc2026": "كأس العالم 2026"
+    "tag_wc2026": "كأس العالم 2026",
+    "filter_all_squads": "أي تشكيلة",
+    "squad_as_of": "التشكيلة حتى {{date}} — من مقالات اللاعبين، وليست مباشرة"
   },
   "design": {
     "master": "التصميم الجديد",

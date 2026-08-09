@@ -95,7 +95,9 @@
     "preset_legends_desc": "역사상 최고의 선수들",
     "filter_all_countries": "모든 국가",
     "filter_all_leagues": "모든 리그",
-    "tag_wc2026": "월드컵 2026"
+    "tag_wc2026": "월드컵 2026",
+    "filter_all_squads": "모든 스쿼드",
+    "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다"
   },
   "design": {
     "master": "새 디자인",

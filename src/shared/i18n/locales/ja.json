@@ -95,7 +95,9 @@
     "preset_legends_desc": "歴史上最高の選手たち",
     "filter_all_countries": "すべての国",
     "filter_all_leagues": "すべてのリーグ",
-    "tag_wc2026": "W杯2026"
+    "tag_wc2026": "W杯2026",
+    "filter_all_squads": "すべての所属",
+    "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません"
   },
   "design": {
     "master": "新デザイン",

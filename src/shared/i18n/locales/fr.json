@@ -97,7 +97,9 @@
     "preset_legends_desc": "Les plus grands joueurs de l’histoire",
     "filter_all_countries": "Tous les pays",
     "filter_all_leagues": "Tous les championnats",
-    "tag_wc2026": "Coupe du monde 2026"
+    "tag_wc2026": "Coupe du monde 2026",
+    "filter_all_squads": "N’importe quel effectif",
+    "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct"
   },
   "design": {
     "master": "Nouveau design",

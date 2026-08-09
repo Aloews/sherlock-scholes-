@@ -97,7 +97,9 @@
     "preset_legends_desc": "Os maiores jogadores da história",
     "filter_all_countries": "Todos os países",
     "filter_all_leagues": "Todas as ligas",
-    "tag_wc2026": "Copa 2026"
+    "tag_wc2026": "Copa 2026",
+    "filter_all_squads": "Qualquer elenco",
+    "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo"
   },
   "design": {
     "master": "Novo design",

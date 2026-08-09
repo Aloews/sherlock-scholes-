@@ -95,7 +95,9 @@
     "preset_legends_desc": "历史上最伟大的球员",
     "filter_all_countries": "所有国家",
     "filter_all_leagues": "所有联赛",
-    "tag_wc2026": "2026世界杯"
+    "tag_wc2026": "2026世界杯",
+    "filter_all_squads": "任意阵容",
+    "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时"
   },
   "design": {
     "master": "新设计",

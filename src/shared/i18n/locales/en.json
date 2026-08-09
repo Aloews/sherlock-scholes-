@@ -97,7 +97,9 @@
     "preset_not_players": "No footballers",
     "preset_not_players_desc": "Clubs, stadiums, terms, derbies",
     "preset_legends": "Legends",
-    "preset_legends_desc": "The greatest players in history"
+    "preset_legends_desc": "The greatest players in history",
+    "filter_all_squads": "Any squad",
+    "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live"
   },
   "design": {
     "master": "New design",
