@@ -93,6 +93,13 @@ $$;
 revoke all on function public.claim_room_voice_provider(uuid, text) from public;
 revoke all on function public.claim_room_voice_provider(uuid, text) from anon;
 revoke all on function public.claim_room_voice_provider(uuid, text) from authenticated;
+-- And then hand it back to the one caller that must have it. EXECUTE is
+-- granted to PUBLIC by default, so revoking from PUBLIC takes it away from
+-- service_role too — the Edge Function would get "permission denied", report
+-- lookup_failed, and voice would be dead for everyone the moment this shipped.
+-- Same explicit re-grant get_user_status needs, for the same reason
+-- (pro_users.sql).
+grant execute on function public.claim_room_voice_provider(uuid, text) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- move_room_voice_provider — take the whole room somewhere else, once.
@@ -141,6 +148,7 @@ $$;
 revoke all on function public.move_room_voice_provider(uuid, text, text) from public;
 revoke all on function public.move_room_voice_provider(uuid, text, text) from anon;
 revoke all on function public.move_room_voice_provider(uuid, text, text) from authenticated;
+grant execute on function public.move_room_voice_provider(uuid, text, text) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- Old frontends keep working.

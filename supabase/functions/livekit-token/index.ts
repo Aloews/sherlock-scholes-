@@ -25,9 +25,12 @@
 //   1v1  mode — one channel for the ROOM. The two players are explaining to
 //               each other, so they have to hear each other.
 //
-// WHICH SERVICE: the caller says what it can speak, the server serves it if it
-// has the keys. `VOICE_PROVIDER` remains the default for a caller that says
-// nothing, and the answer always names what was signed.
+// WHICH SERVICE: the ROOM decides, and the caller's ask is only the opening
+// bid. A channel exists inside one vendor, so two players on two services are
+// in two different rooms while both screens say "connected" — the one failure
+// shape that looks like success. The first caller pins the room; everyone
+// after is signed for that, whatever they asked for. A caller whose service
+// just refused it says so, and the room moves.
 //
 // THIS REVERSES AN EARLIER DECISION, and the reason is a production outage on
 // 8 August 2026. The rule used to be "the server's choice, never the
@@ -40,8 +43,8 @@
 // making the SERVER adapt is the only place the disagreement can be absorbed.
 //
 // What the caller can and cannot influence, precisely:
-//   • CAN pick among providers this deployment already has secrets for. That
-//     is a choice between services we configured, nothing more.
+//   • CAN pick among providers this deployment already has secrets for, and
+//     CAN move its own room to one of them by reporting a failure.
 //   • CANNOT reach an unconfigured provider (`missingSecrets` gates it),
 //     cannot name its own channel, and cannot name its own identity — both
 //     still come from the validated initData and the room's own tables.
