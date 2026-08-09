@@ -31,6 +31,8 @@ export interface ServiceRow {
   level: VoiceLevel | null;
   /** The last raw measurement, for a live service that has been measured. */
   stats: LinkStats | null;
+  /** What the service itself said when it refused. Vendor English, on purpose. */
+  detail: string | null;
 }
 
 export interface ServiceStatusInput {
@@ -41,6 +43,8 @@ export interface ServiceStatusInput {
   level: VoiceLevel;
   stats: LinkStats | null;
   audioBlocked: boolean;
+  /** The provider's own words for the last failure, if it gave any. */
+  detail?: string | null;
 }
 
 /** The active service's state, given everything the session knows. */
@@ -68,7 +72,7 @@ function activeState(input: ServiceStatusInput): ServiceState {
 export function serviceRows(input: ServiceStatusInput): ServiceRow[] {
   return VOICE_PROVIDER_IDS.map((id) => {
     if (id !== input.active) {
-      return { id, state: 'absent' as const, reason: null, level: null, stats: null };
+      return { id, state: 'absent' as const, reason: null, level: null, stats: null, detail: null };
     }
     const state = activeState(input);
     const live = state === 'live' || state === 'blocked';
@@ -78,6 +82,9 @@ export function serviceRows(input: ServiceStatusInput): ServiceRow[] {
       reason: state === 'failed' ? input.reason : null,
       level: live ? input.level : null,
       stats: live ? input.stats : null,
+      // Only ever alongside a failure: a quoted vendor string next to a
+      // working connection reads as a warning about nothing.
+      detail: state === 'failed' ? input.detail ?? null : null,
     };
   });
 }

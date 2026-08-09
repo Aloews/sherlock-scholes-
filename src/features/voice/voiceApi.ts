@@ -64,7 +64,15 @@ export type VoiceUnavailableReason =
   | 'lookup_failed'         // 503 — the server could not read the room, so it does not know
   // Neither:
   | 'network'               // no answer at all
-  | 'malformed';            // 200 carrying no usable credential
+  | 'malformed'             // 200 carrying no usable credential
+  // The token was granted and the SERVICE is what failed. Split out of
+  // 'network' because the two need opposite fixes and were indistinguishable
+  // on the player's screen for a week: "нет связи с сервером" was reported
+  // while the function answered 200 and the voice service was the half that
+  // would not come up.
+  | 'sdk_failed'            // the adapter's chunk would not load
+  | 'join_failed'           // the service refused the join
+  | 'join_timeout';         // the service took the token and never answered
 
 export type VoiceGrant =
   | { ok: true; credentials: VoiceCredentials }

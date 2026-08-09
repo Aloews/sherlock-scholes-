@@ -327,6 +327,9 @@
     "reason_voice_not_configured": "خادم الصوت غير مُهيّأ",
     "reason_issue_failed": "خدمة الصوت رفضت منح الوصول",
     "reason_network": "لا يوجد اتصال بالخادم",
+    "reason_sdk_failed": "تعذّر تحميل وحدة الصوت",
+    "reason_join_failed": "رفضت الخدمة الاتصال",
+    "reason_join_timeout": "لم تردّ الخدمة في الوقت المحدد",
     "reason_malformed": "ردّ الخادم بشكل غير متوقع",
     "reason_lookup_failed": "تعذّر على الخادم التحقق من الغرفة"
   },
@@ -505,7 +508,9 @@
     "state_blocked": "متصل، لكن المتصفح لا يشغّل الصوت",
     "state_denied": "تم رفض الوصول إلى الميكروفون",
     "state_failed": "تعذّر الاتصال",
-    "link": "{{rtt}} م.ث · فقد {{lossPercent}}٪ · {{quality}}"
+    "link": "{{rtt}} م.ث · فقد {{lossPercent}}٪ · {{quality}}",
+    "auto_connect": "الانضمام إلى الصوت تلقائيًا",
+    "auto_connect_off": "عند الضغط فقط"
   },
   "friends": {
     "title": "الأصدقاء",

@@ -294,6 +294,9 @@
     "reason_voice_not_configured": "ボイスサーバーが設定されていません",
     "reason_issue_failed": "音声サービスがアクセスを拒否しました",
     "reason_network": "サーバーに接続できません",
+    "reason_sdk_failed": "ボイスモジュールを読み込めませんでした",
+    "reason_join_failed": "サービスが接続を拒否しました",
+    "reason_join_timeout": "サービスから応答がありませんでした",
     "reason_malformed": "サーバーの応答が不正です",
     "reason_lookup_failed": "サーバーがルームを確認できませんでした"
   },
@@ -440,7 +443,9 @@
     "state_blocked": "接続済みですが、ブラウザが音声を再生しません",
     "state_denied": "マイクへのアクセスが拒否されました",
     "state_failed": "接続できませんでした",
-    "link": "{{rtt}} ms · 損失 {{lossPercent}}% · {{quality}}"
+    "link": "{{rtt}} ms · 損失 {{lossPercent}}% · {{quality}}",
+    "auto_connect": "自動でボイスに参加する",
+    "auto_connect_off": "タップしたときだけ"
   },
   "friends": {
     "title": "フレンド",

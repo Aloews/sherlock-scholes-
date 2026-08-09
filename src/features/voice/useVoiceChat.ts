@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchVoiceToken, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
 import { loadTransport } from './providers';
 import { levelFor, nextLevel, audioPreset, type VoiceLevel, type LinkStats } from './voiceQuality';
+import { JOIN_TIMEOUT_MS } from './connectPolicy';
 import type { VoiceSession } from './providers';
 
 export type VoiceStatus = 'off' | 'connecting' | 'on' | 'denied' | 'unavailable';
@@ -38,6 +39,10 @@ export function useVoiceChat(roomId: string | null) {
   // level, so the raw numbers are the only way to see a link going bad before
   // it has gone bad — which is what a diagnostics panel is for.
   const [linkStats, setLinkStats] = useState<LinkStats | null>(null);
+  // The provider's own words for why it would not come up. Never shown as the
+  // primary message — it is vendor English — but a diagnostics panel that
+  // cannot quote the service is how a week goes into guessing.
+  const [detail, setDetail] = useState<string | null>(null);
 
   const sessionRef = useRef<VoiceSession | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -70,6 +75,7 @@ export function useVoiceChat(roomId: string | null) {
     if (!roomId || !voiceEnabled() || sessionRef.current) return;
     setStatus('connecting');
     setReason(null);
+    setDetail(null);
 
     const granted = await fetchVoiceToken(roomId);
     if (!granted.ok) { setStatus('unavailable'); setReason(granted.reason); return; }
@@ -81,8 +87,10 @@ export function useVoiceChat(roomId: string | null) {
     // was being told the connection had failed.
     let opened: VoiceSession | null = null;
 
+    let stage: 'sdk' | 'join' = 'sdk';
     try {
       const transport = await loadTransport();
+      stage = 'join';
       // The build loaded one adapter; the server signed for whichever service
       // ITS secrets belong to. When those differ, the credential is valid and
       // useless — the adapter would hand a Daily token to LiveKit and get a
@@ -93,13 +101,19 @@ export function useVoiceChat(roomId: string | null) {
         return;
       }
 
-      const session = await transport.connect({
-        credentials: granted.credentials,
-        sink: audioSink(),
-        onSpeakers: setSpeaking,
-        onPlaybackChanged: (playing) => setAudioBlocked(!playing),
-        onDisconnected: () => disconnect(),
-      });
+      // A join with no deadline is how "Подключаемся…" becomes permanent: the
+      // service can accept the token and then never answer, and nothing in the
+      // SDKs promises otherwise.
+      const session = await withTimeout(
+        transport.connect({
+          credentials: granted.credentials,
+          sink: audioSink(),
+          onSpeakers: setSpeaking,
+          onPlaybackChanged: (playing) => setAudioBlocked(!playing),
+          onDisconnected: () => disconnect(),
+        }),
+        JOIN_TIMEOUT_MS,
+      );
       opened = session;
 
       // Asking for the microphone here, not on app start: the handoff is
@@ -143,10 +157,17 @@ export function useVoiceChat(roomId: string | null) {
       const denied = err instanceof DOMException &&
         (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
       setStatus(denied ? 'denied' : 'unavailable');
-      // The token was granted, so the server is not the problem: the link to
-      // the voice service is. Says so rather than repeating the last
-      // token-stage reason.
-      setReason(denied ? null : 'network');
+      // The token was granted, so the server is not the problem — the service
+      // is. WHICH part of it matters: a chunk that would not load, a join that
+      // was refused and a join that never answered are three different
+      // afternoons, and they all used to read as "network".
+      setReason(
+        denied ? null
+        : stage === 'sdk' ? 'sdk_failed'
+        : err instanceof JoinTimeout ? 'join_timeout'
+        : 'join_failed',
+      );
+      setDetail(denied ? null : messageOf(err));
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       void opened?.disconnect();
       sessionRef.current = null;
@@ -181,7 +202,7 @@ export function useVoiceChat(roomId: string | null) {
   }, [muted]);
 
   return {
-    status, reason, level, linkStats, muted, speaking, audioBlocked,
+    status, reason, detail, level, linkStats, muted, speaking, audioBlocked,
     connect, disconnect, toggleMute, startAudio,
   };
 }
@@ -213,4 +234,28 @@ function audioSink(): HTMLElement {
 
 function closeAudioSink(): void {
   document.querySelector(`[${SINK_ATTR}]`)?.remove();
+}
+
+/** Thrown when a join outlives its deadline, so the catch can name it. */
+class JoinTimeout extends Error {
+  constructor(ms: number) {
+    super(`the service did not answer within ${Math.round(ms / 1000)}s`);
+    this.name = 'JoinTimeout';
+  }
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new JoinTimeout(ms)), ms);
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+/** The provider's message, trimmed to something a panel can hold. */
+function messageOf(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err);
+  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
 }

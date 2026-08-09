@@ -1,6 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useSettingsStore } from '@/shared/store/settingsStore';
+import { useAuthStore } from '@/shared/store/authStore';
 import { useVoiceChat } from './useVoiceChat';
+import { useAutoConnect } from './useAutoConnect';
+import { voiceEnabled } from './voiceApi';
 
 /**
  * One voice session for the whole app, held ABOVE the router.
@@ -26,7 +30,28 @@ const VoiceContext = createContext<VoiceSession | null>(null);
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const roomId = useGameStore((s) => s.room?.id ?? null);
+  const mode = useGameStore((s) => s.room?.mode ?? null);
+  const myId = useAuthStore((s) => s.player?.id ?? null);
+  const myTeamId = useGameStore(
+    (s) => s.roomPlayers.find((rp) => rp.player_id === myId)?.team_id ?? null,
+  );
+  const optedOut = useSettingsStore((s) => !s.voiceAutoConnect);
   const session = useVoiceChat(roomId);
+
+  // Joining on arrival rather than on a tap. The policy — and every place it
+  // refuses to act — is in connectPolicy.ts, next to its tests.
+  useAutoConnect({
+    enabled: voiceEnabled(),
+    status: session.status,
+    reason: session.reason,
+    roomId,
+    // Team mode with nobody's team picked: the server refuses by design, so
+    // there is nothing to attempt yet.
+    needsTeam: mode !== '1v1' && myTeamId === null,
+    optedOut,
+    connect: session.connect,
+  });
+
   return <VoiceContext.Provider value={session}>{children}</VoiceContext.Provider>;
 }
 
