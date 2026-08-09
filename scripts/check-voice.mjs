@@ -23,8 +23,8 @@
  *   3. identity         POST with unsigned initData must be 401 unauthorized —
  *                       proof the HMAC check is live and a forged session
  *                       cannot get a token.
- *   4. provider         which service this deployment signs for, and whether
- *                       the frontend in this environment agrees with it.
+ *   4. provider         which services this deployment can sign for, and
+ *                       whether the one this frontend speaks is among them.
  *
  * It also prints a VARIABLE INVENTORY: every value each provider needs, where
  * it goes, and whether this environment has it. Server secrets cannot be read
@@ -187,8 +187,10 @@ async function main() {
     body: JSON.stringify(body),
   });
 
-  /** The provider the deployment admits to, from whichever answer carries it. */
+  /** The provider the deployment defaults to, from whichever answer carries it. */
   let serverProvider = null;
+  /** Every provider it holds secrets for — the set that actually decides. */
+  let serveable = null;
 
   // ─── 2. reachable ────────────────────────────────────────
   try {
@@ -197,6 +199,7 @@ async function main() {
     let body = {};
     try { body = JSON.parse(text); } catch { /* not JSON; the raw text is reported below */ }
     if (body.provider) serverProvider = body.provider;
+    if (Array.isArray(body.serves)) serveable = body.serves;
 
     if (res.status === 400) {
       record('reachable', true, "400 bad_request — the function is deployed and its provider's secrets are set.");
@@ -231,39 +234,39 @@ async function main() {
     record('identity', false, `POST did not complete: ${err.message}`);
   }
 
-  // ─── 4. provider agreement ───────────────────────────────
-  // A build and a deployment pointed at different services produce a valid,
-  // useless credential: the adapter would hand a Daily token to LiveKit and
-  // wait for a connection that cannot happen. The app reports this as
-  // voice.reason_provider_mismatch; this catches it before a player does.
+  // ─── 4. can the server serve this build ──────────────────
+  // The question is no longer "do the two settings match". The function serves
+  // whichever provider the caller asks for, as long as it holds that
+  // provider's secrets, so what matters is whether THIS build's service is in
+  // that set. A frontend on a service the deployment has no keys for still
+  // gets nothing — that is the remaining failure, and it is the one worth
+  // catching before a player does.
   try {
-    const local = process.env.VITE_VOICE_PROVIDER || null;
-    if (!serverProvider) {
-      // Any provider name the server does not share makes it answer with its
-      // own, which is all this needs.
-      const res = await post({ initData: 'x', roomId: 'x', provider: '__probe__' });
+    const local = process.env.VITE_VOICE_PROVIDER || 'livekit';
+    if (!serveable) {
+      const res = await post({ initData: 'x', roomId: 'x' });
       const body = await res.json().catch(() => ({}));
-      serverProvider = body.provider ?? null;
+      serveable = Array.isArray(body.serves) ? body.serves : null;
+      serverProvider = body.provider ?? serverProvider;
     }
 
-    if (!serverProvider) {
+    if (!serveable) {
       record('provider', true,
-        'the deployment does not name its provider — an older function, deployed before this was added. ' +
-        'Nothing to disagree about; redeploy to get the check.');
-    } else if (!local) {
-      const agrees = serverProvider === 'livekit';
-      record('provider', agrees,
-        `server signs for ${serverProvider}; VITE_VOICE_PROVIDER is unset here, which means livekit.` +
-        (agrees ? '' : `\n        Set VITE_VOICE_PROVIDER=${serverProvider} for the frontend and rebuild.`));
-    } else if (local === serverProvider) {
-      record('provider', true, `both halves are on ${serverProvider}.`);
+        'the deployment does not list what it can serve — a function older than this check. ' +
+        'Redeploy supabase/functions/livekit-token to get it.');
+    } else if (serveable.includes(local)) {
+      const dflt = serverProvider && serverProvider !== local
+        ? ` Its default is ${serverProvider}, which only applies to callers that ask for nothing.`
+        : '';
+      record('provider', true,
+        `this build speaks ${local}, and the deployment can serve ${serveable.join(', ')}.${dflt}`);
     } else {
       record('provider', false,
-        `the frontend is built for ${local}, the server signs for ${serverProvider}.\n` +
-        '        The credential would be valid and unusable. Make VOICE_PROVIDER and VITE_VOICE_PROVIDER agree.');
+        `this build speaks ${local}; the deployment can only serve ${serveable.join(', ')}.\n` +
+        `        Either give it the ${local} secrets, or build the frontend for one of those.`);
     }
   } catch (err) {
-    record('provider', false, `could not determine the server's provider: ${err.message}`);
+    record('provider', false, `could not ask the server what it serves: ${err.message}`);
   }
 
   const failed = results.filter((r) => !r.ok);
