@@ -333,6 +333,7 @@
     "skip": "⏭ 跳过",
     "correct": "✓ 正确",
     "round_label": "第 {{n}} 回合",
+    "paused_voice": "已暂停 — 正在等待解说者的连接",
     "other_team": "对方队伍",
     "listening": "听",
     "opponent_progress": "已讲解：{{n}}",

@@ -341,6 +341,7 @@
     "skip": "⏭ Saltar",
     "correct": "✓ Correcto",
     "round_label": "Ronda {{n}}",
+    "paused_voice": "En pausa: esperando la conexión de quien explica",
     "other_team": "Otro equipo",
     "listening": "Escucha",
     "opponent_progress": "Explicadas: {{n}}",

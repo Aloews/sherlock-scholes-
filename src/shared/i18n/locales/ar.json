@@ -366,6 +366,7 @@
     "skip": "⏭ تخطٍّ",
     "correct": "✓ صحيح",
     "round_label": "الجولة {{n}}",
+    "paused_voice": "إيقاف مؤقت: بانتظار عودة اتصال الشارح",
     "other_team": "الفريق الآخر",
     "listening": "استمع",
     "opponent_progress": "تم شرح: {{n}}",

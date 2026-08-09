@@ -4,12 +4,16 @@ interface TimerProps {
   remaining: number;
   total: number;
   size?: 'sm' | 'lg';
+  /** The clock is held — the number is not counting down right now. */
+  paused?: boolean;
 }
 
-export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
+export function Timer({ remaining, total, size = 'lg', paused = false }: TimerProps) {
   const master    = useDesign() === 'master';
   const pct       = remaining / total;
-  const isPulsing = remaining <= 10;
+  // A held clock does not pulse. The pulse means "hurry", and hurrying is
+  // exactly what a player waiting on their connection cannot do.
+  const isPulsing = !paused && remaining <= 10;
 
   // The master design's ring is thinner and its track is a faint white rather
   // than the border token — the prototype's proportions.
@@ -47,7 +51,7 @@ export function Timer({ remaining, total, size = 'lg' }: TimerProps) {
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          className="transition-all duration-500"
+          className={`transition-all duration-500 ${paused ? 'opacity-40' : ''}`}
         />
       </svg>
       <span

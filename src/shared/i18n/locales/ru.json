@@ -357,6 +357,7 @@
     "skip": "⏭ Пропустить",
     "correct": "✓ Угадали",
     "round_label": "Раунд {{n}}",
+    "paused_voice": "Пауза: ждём связь у объясняющего",
     "other_team": "Другая команда",
     "listening": "Слушай",
     "opponent_progress": "Объяснено: {{n}}",

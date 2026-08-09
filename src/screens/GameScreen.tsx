@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { IconVolume, IconVolumeOff, IconChevronsRight } from '@tabler/icons-react';
 import { useGame } from '@/features/game/useGame';
 import { useTimer } from '@/features/game/useTimer';
+import { usePauseOnVoiceDrop } from '@/features/game/usePauseOnVoiceDrop';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Timer } from '@/shared/ui/Timer';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -12,6 +13,9 @@ import { useDesign } from '@/shared/design/useDesign';
 import { Button } from '@/shared/ui/Button';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { VoiceControl } from '@/features/voice/VoiceControl';
+import { useVoice } from '@/features/voice/VoiceProvider';
+import { voiceEnabled } from '@/features/voice/voiceApi';
+import { useSettingsStore } from '@/shared/store/settingsStore';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { playSound, isMuted, toggleMute } from '@/shared/lib/sounds';
 
@@ -108,14 +112,36 @@ export function GameScreen() {
     handleRoundEnd,
   } = useGame();
 
-  const { remaining } = useTimer(currentRound, {
+  const voice = useVoice();
+  const optedOutOfVoice = useSettingsStore((s) => !s.voiceAutoConnect);
+
+  // The explainer's link is what the round depends on: they are the one
+  // talking. Holding the clock is a fact about the round, written server-side
+  // so every screen and the round-ending fallback move together — see
+  // usePauseOnVoiceDrop and roundClock.
+  usePauseOnVoiceDrop({
+    roundId: currentRound?.id ?? null,
+    roundActive: currentRound?.status === 'active',
+    isExplainer,
+    voiceInUse: voiceEnabled() && !optedOutOfVoice,
+    status: voice.status,
+  });
+
+  // Read from the round rather than from useTimer's own answer below: the tick
+  // callback is an argument to that call, so it cannot depend on its result.
+  const clockHeld = currentRound?.paused_at != null;
+
+  const { remaining, paused } = useTimer(currentRound, {
     onExpire: useCallback(() => {
       if (isExplainer) handleRoundEnd();
     }, [isExplainer, handleRoundEnd]),
     onTick: useCallback((rem: number) => {
+      // Silence while the clock is held. The countdown sounds mean "you are
+      // running out of time", and a player waiting on their network is not.
+      if (clockHeld) return;
       if (rem > 0 && rem <= 10) playSound('tick');
       if (rem === 0) playSound('gong');
-    }, []),
+    }, [clockHeld]),
   });
 
   const [scorePops, setScorePops] = useState<number[]>([]);
@@ -189,9 +215,17 @@ export function GameScreen() {
       {/* Timer */}
       <div className="flex flex-col items-center py-4">
         {currentRound.status === 'active' ? (
-          <Timer remaining={remaining} total={currentRound.time_seconds} size="lg" />
+          <Timer remaining={remaining} total={currentRound.time_seconds} size="lg" paused={paused} />
         ) : (
           <div className="text-4xl font-black text-brand-muted">{currentRound.time_seconds}</div>
+        )}
+        {/* Said out loud rather than left to the frozen digits: a timer that
+            has simply stopped reads as the app hanging, which is the thing a
+            player reacts to by leaving. */}
+        {paused && (
+          <p className="text-brand-muted text-xs mt-1.5 text-center px-6">
+            {t('game.paused_voice')}
+          </p>
         )}
         <p className="text-brand-muted text-xs mt-1">
           <span className="relative inline-block">

@@ -333,6 +333,7 @@
     "skip": "⏭ スキップ",
     "correct": "✓ 正解",
     "round_label": "ラウンド {{n}}",
+    "paused_voice": "一時停止 — 説明役の接続を待っています",
     "other_team": "相手チーム",
     "listening": "聞いて",
     "opponent_progress": "説明済み：{{n}}",
