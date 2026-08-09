@@ -129,6 +129,16 @@ export async function fetchVoiceToken(
    * the list it can serve, and refuses the rest (supabase/functions/README).
    */
   provider: VoiceProviderId = voiceProvider(),
+  /**
+   * A service that just refused this player, so the room can be moved off it.
+   *
+   * Without this the room's own pin defeats the failover ladder: the server
+   * keeps signing for the agreed service, and a client walking to the next
+   * rung is handed the same dead vendor again. The server moves the room only
+   * when this names the service the room is actually on — and the move is
+   * compare-and-swap, so simultaneous reports produce one move between them.
+   */
+  failed?: VoiceProviderId | null,
 ): Promise<VoiceGrant> {
   if (!voiceEnabled()) return { ok: false, reason: 'not_configured' };
 
@@ -142,7 +152,11 @@ export async function fetchVoiceToken(
   // frontends that call this one, which is the mistake `pick_random_cards`
   // already taught this project once (CLAUDE.md).
   const { data, error } = await supabase.functions.invoke('livekit-token', {
-    body: { initData, roomId, provider },
+    // `failed` is omitted rather than sent as null when there is nothing to
+    // report: the server treats its presence as "move the room off this", and
+    // a key that is always there invites a reader to think it always means
+    // something.
+    body: { initData, roomId, provider, ...(failed ? { failed } : {}) },
   });
   if (error) return { ok: false, reason: await reasonFromError(error) };
   if (!data?.token || !data?.channel) return { ok: false, reason: 'malformed' };

@@ -137,6 +137,22 @@ export interface Room {
   created_at: string;
   started_at: string | null;
   ended_at: string | null;
+  /**
+   * The voice service everyone in this room must use, or null before anybody
+   * has asked for a token. A channel exists inside one vendor only, so two
+   * players on two services hear silence while both are told they are
+   * connected — see supabase/migrations/room_voice_provider.sql.
+   *
+   * Only the server writes it. It arrives here through the ordinary realtime
+   * UPDATE on `rooms`, which is what lets the rest of the room follow when one
+   * player's failure moves it.
+   *
+   * Spelled out here rather than imported from `features/voice`: this is a
+   * column, and `shared` does not depend on a feature. The voice code's own
+   * `VoiceProviderId` is the same three names, checked against the same
+   * constraint in the migration.
+   */
+  voice_provider: 'livekit' | 'daily' | 'agora' | null;
 }
 
 export interface Team {

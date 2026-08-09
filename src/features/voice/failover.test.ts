@@ -63,29 +63,39 @@ describe('providerOrder', () => {
 describe('nextProvider', () => {
   const order = ['daily', 'livekit', 'agora'] as const;
 
-  it('moves to the next service when the vendor is the one at fault', () => {
-    expect(nextProvider(order, 'daily', 'join_failed')).toBe('livekit');
-    expect(nextProvider(order, 'livekit', 'join_timeout')).toBe('agora');
+  it('moves to a service nobody has tried yet', () => {
+    expect(nextProvider(order, ['daily'], 'join_failed')).toBe('livekit');
+    expect(nextProvider(order, ['daily', 'livekit'], 'join_timeout')).toBe('agora');
   });
 
-  it('stops at the end of the ladder rather than starting over', () => {
-    expect(nextProvider(order, 'agora', 'join_failed')).toBeNull();
+  it('stops when everything has had a turn, rather than starting over', () => {
+    expect(nextProvider(order, ['daily', 'livekit', 'agora'], 'join_failed')).toBeNull();
+  });
+
+  // THE ONE THE POSITIONAL VERSION GOT WRONG. The room pins the service, so a
+  // client that asked for livekit can be handed daily and fail on THAT. The
+  // rung it stood on — livekit — has still not been tried, and skipping it
+  // because of where the loop happened to be is how a ladder spends every
+  // remaining turn on the vendor that already refused.
+  it('offers a rung that was asked for but never actually reached', () => {
+    expect(nextProvider(order, ['daily'], 'join_failed')).toBe('livekit');
+    expect(nextProvider(['livekit', 'daily', 'agora'], ['daily'], 'join_failed')).toBe('livekit');
   });
 
   it('stops immediately on a verdict every service would repeat', () => {
-    expect(nextProvider(order, 'daily', 'no_team_yet')).toBeNull();
-    expect(nextProvider(order, 'daily', 'not_in_room')).toBeNull();
+    expect(nextProvider(order, ['daily'], 'no_team_yet')).toBeNull();
+    expect(nextProvider(order, ['daily'], 'not_in_room')).toBeNull();
   });
 
   // A refused microphone arrives with no reason at all — the hook reports it
   // as `denied`, not as a failure. Nothing about it is the vendor's, and the
   // next service would prompt again.
   it('stops when there is no failure to blame on anyone', () => {
-    expect(nextProvider(order, 'daily', null)).toBeNull();
+    expect(nextProvider(order, ['daily'], null)).toBeNull();
   });
 
-  it('stops when the service that failed is not on the ladder', () => {
-    expect(nextProvider(['livekit', 'agora'], 'daily', 'join_failed')).toBeNull();
-    expect(nextProvider(['livekit'], 'daily', 'join_failed')).toBeNull();
+  it('stops when the build carries nothing else', () => {
+    expect(nextProvider(['livekit'], ['livekit'], 'join_failed')).toBeNull();
+    expect(nextProvider([], [], 'join_failed')).toBeNull();
   });
 });

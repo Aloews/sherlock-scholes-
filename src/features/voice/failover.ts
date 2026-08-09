@@ -61,20 +61,24 @@ export function providerOrder(
 }
 
 /**
- * The next service after one that just failed, or null to stop.
+ * The next service to try, or null to stop.
  *
- * Null covers both endings and they are not the same ending: a failure nobody
- * else can fix, and a ladder that has run out of rungs. The caller keeps the
- * failing reason either way, so the player is told what went wrong rather than
- * that everything did.
+ * TAKES WHAT HAS BEEN TRIED, NOT WHERE WE ARE. Those stopped being the same
+ * thing once the room could pin a service: the client asks for one vendor and
+ * the server signs for the room's, so the rung we stood on and the service we
+ * actually reached diverge. Walking positionally from the rung then spends a
+ * turn on a vendor that already refused — and, with the pin in place, spent
+ * every remaining turn on it.
+ *
+ * Null covers two different endings: a failure nobody else can fix, and a
+ * ladder with nothing left untried. The caller keeps the failing reason for
+ * both, so the player is told what went wrong rather than that everything did.
  */
 export function nextProvider(
   order: readonly VoiceProviderId[],
-  failed: VoiceProviderId,
+  attempted: readonly VoiceProviderId[],
   reason: VoiceUnavailableReason | null,
 ): VoiceProviderId | null {
   if (!isProviderFault(reason)) return null;
-  const at = order.indexOf(failed);
-  if (at < 0) return null;
-  return order[at + 1] ?? null;
+  return order.find((id) => !attempted.includes(id)) ?? null;
 }

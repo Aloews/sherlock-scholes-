@@ -17,6 +17,13 @@ interface AttemptFailure {
   detail: string | null;
   /** The player refused the microphone. Ends the ladder, not just this rung. */
   denied: boolean;
+  /**
+   * The service that actually failed — what the server signed for, which is
+   * not always the rung we were standing on. Blaming the rung would send
+   * somebody to look at a service that was never contacted, and would ask the
+   * server to move a room off a vendor it is not on.
+   */
+  on: VoiceProviderId;
 }
 
 type AttemptResult = { ok: true } | AttemptFailure;
@@ -108,9 +115,15 @@ export function useVoiceChat(roomId: string | null) {
    * is worth taking to the next vendor is failover.ts's question, and it is
    * answered once, in the ladder below, instead of at each exit here.
    */
-  const attemptOn = useCallback(async (providerId: VoiceProviderId): Promise<AttemptResult> => {
-    const granted = await fetchVoiceToken(roomId!, providerId);
-    if (!granted.ok) return { ok: false, reason: granted.reason, detail: null, denied: false };
+  const attemptOn = useCallback(async (
+    providerId: VoiceProviderId,
+    /** A service that already failed this round, for the server to move off. */
+    deadProvider: VoiceProviderId | null,
+  ): Promise<AttemptResult> => {
+    const granted = await fetchVoiceToken(roomId!, providerId, deadProvider);
+    if (!granted.ok) {
+      return { ok: false, reason: granted.reason, detail: null, denied: false, on: providerId };
+    }
 
     // Held outside the try so a failure AFTER the link came up can still close
     // it. `sessionRef` cannot serve: it is only set once everything succeeded,
@@ -135,7 +148,7 @@ export function useVoiceChat(roomId: string | null) {
     if (signed !== providerId && !availableProviders().includes(signed)) {
       // The room is on a service this build cannot load at all. Nothing here
       // can fix that; the ladder may as well try what it does carry.
-      return { ok: false, reason: 'provider_mismatch', detail: null, denied: false };
+      return { ok: false, reason: 'provider_mismatch', detail: null, denied: false, on: signed };
     }
 
     let stage: 'sdk' | 'join' = 'sdk';
@@ -213,6 +226,7 @@ export function useVoiceChat(roomId: string | null) {
       // afternoons, and they all used to read as "network".
       return {
         ok: false,
+        on: signed,
         denied,
         reason: denied ? null
           : stage === 'sdk' ? 'sdk_failed'
@@ -255,14 +269,27 @@ export function useVoiceChat(roomId: string | null) {
     try {
       const order = providerOrder(voiceProvider(), availableProviders());
       let first: AttemptFailure | null = null;
+      // Services that have genuinely had a turn — which is not the same as
+      // rungs the loop has passed, because the server can hand us a different
+      // vendor than the one we asked for.
+      const attempted: VoiceProviderId[] = [];
+      // The service that just refused us, carried to the next attempt so the
+      // SERVER can move the room off it. Without this, obeying the room's pin
+      // defeats the ladder outright: every rung is handed the same dead vendor
+      // and the player gets three attempts at one broken service.
+      let dead: VoiceProviderId | null = null;
+      let target: VoiceProviderId | null = order[0] ?? null;
 
-      for (const id of order) {
-        setActive(id);
-        const result = await attemptOn(id);
+      while (target) {
+        setActive(target);
+        const result = await attemptOn(target, dead);
         if (result.ok) return;
 
         first ??= result;
-        setTried((t) => ({ ...t, [id]: { reason: result.reason, detail: result.detail } }));
+        // Recorded against the service that actually failed, not the rung we
+        // stood on: the panel must send a person to the vendor that was really
+        // contacted.
+        setTried((t) => ({ ...t, [result.on]: { reason: result.reason, detail: result.detail } }));
 
         if (result.denied) {
           setStatus('denied');
@@ -270,7 +297,16 @@ export function useVoiceChat(roomId: string | null) {
           setDetail(null);
           return;
         }
-        if (!nextProvider(order, id, result.reason)) break;
+
+        // Handed a vendor that already refused us this round: the room did not
+        // move, so asking again produces the same refusal. This is also what
+        // keeps the loop finite — `attempted` only grows on services actually
+        // reached, so without it a server that never moves would hand back the
+        // same one forever.
+        if (attempted.includes(result.on)) break;
+        attempted.push(result.on);
+        dead = result.on;
+        target = nextProvider(order, attempted, result.reason);
       }
 
       setStatus('unavailable');

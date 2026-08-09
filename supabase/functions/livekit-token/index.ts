@@ -142,13 +142,27 @@ async function select(path: string): Promise<{ ok: boolean; rows: unknown[] }> {
  * this whole path exists to make impossible, and it is why the answer comes
  * from the room rather than from whatever the caller happened to ask for.
  *
- * Three cases:
+ * Four cases:
  *   • nobody has decided yet — this caller decides, atomically;
- *   • already decided and we can still sign for it — that, whatever was asked;
- *   • already decided and we CANNOT sign for it any more (its keys were taken
- *     off this deployment) — the room has to move or it is silent for
- *     everybody. The move is compare-and-swap, so simultaneous callers make
- *     one move between them instead of dragging the room back and forth.
+ *   • decided, and the caller reports that very service just refused it — the
+ *     room moves. Without this the pin DEFEATS the client's failover ladder
+ *     outright: we would keep signing for the dead service, and a client
+ *     walking to its next option would be handed the same one every time;
+ *   • decided and we can still sign for it — that, whatever was asked;
+ *   • decided and we CANNOT sign for it any more (its keys were taken off this
+ *     deployment) — the room has to move or it is silent for everybody.
+ *
+ * Both moves are compare-and-swap on the service being left, so simultaneous
+ * callers make one move between them instead of dragging the room back and
+ * forth while everybody reconnects.
+ *
+ * WHAT A CALLER CAN DO WITH THIS, stated plainly because it is new power: a
+ * player who is already in the room can cause it to change vendor by claiming
+ * a service failed. They cannot pick a service this deployment has no keys
+ * for, cannot touch a room they are not in — membership is checked above — and
+ * cannot name the channel or their identity. So the worst a liar achieves is
+ * moving their own room onto another of our vendors, which everybody survives;
+ * they could disrupt the game far more cheaply by staying silent.
  *
  * Null means the database would not answer. The caller reports lookup_failed
  * rather than guessing, because guessing here is exactly how a room ends up
@@ -158,11 +172,17 @@ async function agreeProvider(
   roomId: string,
   pinned: string | null,
   asked: ProviderId,
+  failed: string | undefined,
   serveable: ProviderId[],
 ): Promise<ProviderId | null> {
-  if (pinned && serveable.includes(pinned as ProviderId)) return pinned as ProviderId;
+  const deadHere = Boolean(pinned && failed === pinned && asked !== pinned);
+  if (pinned && !deadHere && serveable.includes(pinned as ProviderId)) {
+    return pinned as ProviderId;
+  }
 
-  if (pinned) {
+  if (deadHere) {
+    console.warn(`room ${roomId}: ${pinned} refused a player; moving the room to ${asked}`);
+  } else if (pinned) {
     console.warn(
       `room ${roomId} was pinned to ${pinned}, which this deployment can no ` +
       `longer serve (${serveable.join(",")}). Moving it to ${asked}.`,
@@ -238,7 +258,7 @@ Deno.serve(async (req) => {
   }
 
   const payload = await req.json().catch(() => null) as
-    | { initData?: string; roomId?: string; provider?: string }
+    | { initData?: string; roomId?: string; provider?: string; failed?: string }
     | null;
   const initData = payload?.initData;
   const roomId = payload?.roomId;
@@ -313,7 +333,13 @@ Deno.serve(async (req) => {
   // screens say "connected" — the one failure shape that looks like success.
   // The first caller fixes the service; everyone after is signed for that one
   // whatever they asked for.
-  const provider = await agreeProvider(roomId, rooms[0].voice_provider, asked, serveable);
+  const provider = await agreeProvider(
+    roomId,
+    rooms[0].voice_provider,
+    asked,
+    typeof payload?.failed === "string" ? payload.failed : undefined,
+    serveable,
+  );
   if (provider === null) return json({ error: "lookup_failed" }, 503);
   if (provider !== asked) {
     // Not an error: the caller will be told which service it actually got, and
