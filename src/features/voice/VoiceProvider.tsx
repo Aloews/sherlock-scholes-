@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -36,7 +36,29 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     (s) => s.roomPlayers.find((rp) => rp.player_id === myId)?.team_id ?? null,
   );
   const optedOut = useSettingsStore((s) => !s.voiceAutoConnect);
+  // The service the ROOM is on. Written only by the server, and it arrives
+  // here through the ordinary realtime UPDATE on `rooms` that the lobby and
+  // the game already subscribe to.
+  const roomProvider = useGameStore((s) => s.room?.voice_provider ?? null);
   const session = useVoiceChat(roomId);
+
+  /**
+   * Follow the room when it changes service.
+   *
+   * One player's failure moves the whole room — that is the only way a channel
+   * stays shared, because a channel lives inside one vendor. Everyone else is
+   * still happily connected to the old one, talking to nobody. They cannot
+   * notice on their own: their link is fine, it is simply somewhere the others
+   * are not, and it looks exactly like a room where nobody is speaking.
+   *
+   * Dropping the session is enough to fix it. Auto-connect below sees 'off'
+   * and reconnects, and the server now signs for the new service.
+   */
+  const { status, active, disconnect } = session;
+  useEffect(() => {
+    if (status !== 'on' || !roomProvider || roomProvider === active) return;
+    disconnect();
+  }, [status, active, roomProvider, disconnect]);
 
   // Joining on arrival rather than on a tap. The policy — and every place it
   // refuses to act — is in connectPolicy.ts, next to its tests.

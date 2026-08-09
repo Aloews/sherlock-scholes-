@@ -471,8 +471,197 @@ describe('walking to the next service', () => {
     release = unmount;
     await act(async () => { await result.current.connect(); });
 
-    expect(fetchVoiceToken).toHaveBeenNthCalledWith(1, 'room-1', 'livekit');
-    expect(fetchVoiceToken).toHaveBeenNthCalledWith(2, 'room-1', 'daily');
+    expect(fetchVoiceToken).toHaveBeenNthCalledWith(1, 'room-1', 'livekit', null);
+    expect(fetchVoiceToken).toHaveBeenNthCalledWith(2, 'room-1', 'daily', 'livekit');
+  });
+});
+
+// A channel exists inside one vendor. Two players on two services are in two
+// different rooms while both screens read "Связь есть" and neither hears
+// anything — the one failure shape that looks like success. The room decides,
+// server-side, and the client's job is to do as it is told.
+describe('the service the room already agreed on', () => {
+  const allThree = () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    fake.build.preferred = 'livekit';
+  };
+
+  /** The server signs for `pinned` no matter what the caller asks for. */
+  const roomPinnedTo = (pinned: string) => {
+    fetchVoiceToken.mockImplementation(async () => ({
+      ok: true,
+      credentials: { provider: pinned, token: 'jwt', channel: 'ss_room-1', url: 'wss://example' },
+    }));
+  };
+
+  it('loads the service the server signed for, not the one it asked for', async () => {
+    allThree();
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('agora');
+  });
+
+  // The whole point of obeying: one round trip, not three. Refusing the
+  // mismatch used to walk livekit → daily → agora to reach the answer the
+  // first response already carried.
+  it('gets there in one attempt instead of walking the ladder', async () => {
+    allThree();
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+    expect(fake.build.asked).toEqual(['agora']);
+  });
+
+  it('still refuses when the room is on a service this build cannot load', async () => {
+    fake.build.available = ['livekit'];
+    fake.build.preferred = 'livekit';
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('provider_mismatch');
+    expect(fake.build.asked).toEqual([]);
+  });
+
+  // Being sent somewhere else must not cost the ladder its remaining rungs:
+  // the room's service failing is still a reason to try the next one.
+  it('keeps walking when the room’s own service will not come up', async () => {
+    allThree();
+    roomPinnedTo('daily');
+    fake.build.refuse.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fake.build.asked[0]).toBe('daily');
+    expect(fake.build.asked.length).toBeGreaterThan(1);
+  });
+
+  // OBEYING THE ROOM CAN NEUTER THE LADDER. The server signs for the pinned
+  // service every time, so a client walking to the next rung is handed the
+  // same dead vendor again — three attempts, one service, no failover left.
+  // The way out is not to stop obeying: it is to tell the server the service
+  // is dead, so the ROOM moves and everyone moves with it.
+  it('asks the server to move the room off a service that will not come up', async () => {
+    allThree();
+    fake.build.refuse.add('daily');
+
+    // A server that honours a reported failure by moving the room.
+    let pinned = 'daily';
+    fetchVoiceToken.mockImplementation(async (
+      _roomId: string,
+      provider: string,
+      failed?: string,
+    ) => {
+      if (failed && failed === pinned && provider !== pinned) pinned = provider;
+      return {
+        ok: true,
+        credentials: { provider: pinned, token: 'jwt', channel: 'ss_room-1', url: 'wss://example' },
+      };
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    // Not three attempts on daily: the room was moved and the second attempt
+    // landed somewhere that works.
+    expect(fake.build.asked).toEqual(['daily', 'livekit']);
+    expect(result.current.active).toBe('livekit');
+  });
+
+  it('names the service that actually failed, not the one it asked for', async () => {
+    allThree();
+    roomPinnedTo('daily');
+    fake.build.refuse.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    // Attempt 2 asks for livekit and reports that DAILY is what died — the
+    // service it was actually handed, not the rung it was standing on.
+    expect(fetchVoiceToken).toHaveBeenNthCalledWith(2, 'room-1', 'livekit', 'daily');
+    // And the panel blames daily, which is the one a person can go and look at.
+    expect(result.current.tried.daily?.reason).toBe('join_failed');
+  });
+});
+
+// A link that dies mid-game is the ordinary case, not the exception: phones
+// change networks, lock, and lose the room. The player is holding one device
+// and explaining a card — nothing here may need a tap.
+describe('a link that dies in the middle of a game', () => {
+  it('reports the drop as a session that is simply off again', async () => {
+    const result = await connected();
+    act(() => fake.hooks.dropped?.());
+
+    // 'off' rather than 'unavailable' on purpose: nothing refused us, so
+    // auto-connect is free to try again immediately (connectPolicy.ts).
+    expect(result.current.status).toBe('off');
+    expect(result.current.reason).toBeNull();
+  });
+
+  it('leaves nothing playing behind when the link drops', async () => {
+    const result = await connected();
+    act(() => session().play());
+    act(() => fake.hooks.dropped?.());
+    expect(playing()).toHaveLength(0);
+    expect(result.current.status).toBe('off');
+  });
+
+  it('comes back on the same service when that service is healthy', async () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    const result = await connected();
+    act(() => fake.hooks.dropped?.());
+
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('livekit');
+  });
+
+  // The reconnect is a fresh climb, so a service that has since died is walked
+  // past exactly as it would be on a first join.
+  it('changes service when the old one will not take it back', async () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    const result = await connected();
+    act(() => fake.hooks.dropped?.());
+
+    fake.build.refuse.add('livekit');
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('daily');
+  });
+
+  it('forgets the previous round’s failures when it reconnects', async () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    fake.build.refuse.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.tried.livekit).toBeTruthy();
+
+    act(() => result.current.disconnect());
+    fake.build.refuse.clear();
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.tried).toEqual({});
   });
 });
 

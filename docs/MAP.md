@@ -285,6 +285,11 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Daily оставлен незакрытым после провала — он один на страницу, и ломается не эта попытка, а все следующие | `docs/LOBBY_AND_VOICE_FIXES.md` §3, `providers/daily.ts` |
 | Перебор сервисов продолжен после отказа в микрофоне — один «нет» превращается в три запроса подряд | `src/features/voice/failover.ts` |
 | «Повторить» и «сменить сервис» смешаны в одно решение — игрок ждёт три круга, чтобы услышать то же самое про комнату | `failover.ts` против `connectPolicy.ts` |
+| Двое в одной комнате на разных вендорах — оба видят «Связь есть» и молчат; отказ выглядит как успех | `room_voice_provider.sql`, `docs/VOICE_PROVIDERS.md` |
+| `revoke ... from public` без явного `grant ... to service_role` — Edge Function получает permission denied, голос умирает у всех | `room_voice_provider.sql`, `pro_users.sql` |
+| Клиент не говорит, какой сервис отказал — закрепление комнаты убивает перебор, каждая ступень получает того же мертвеца | `useVoiceChat.ts` → `failed`, Edge `agreeProvider` |
+| Лестница шагает по ступеням, а не по реально опробованным сервисам — сервер может выдать другой, и ступень тратится впустую | `failover.ts` `nextProvider` |
+| Agora входит в канал до запроса микрофона — отказ оставляет игрока в канале, слышащим всех, под экраном «нет доступа» | `providers/agora.ts` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |

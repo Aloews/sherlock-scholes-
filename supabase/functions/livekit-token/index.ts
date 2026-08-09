@@ -25,9 +25,12 @@
 //   1v1  mode — one channel for the ROOM. The two players are explaining to
 //               each other, so they have to hear each other.
 //
-// WHICH SERVICE: the caller says what it can speak, the server serves it if it
-// has the keys. `VOICE_PROVIDER` remains the default for a caller that says
-// nothing, and the answer always names what was signed.
+// WHICH SERVICE: the ROOM decides, and the caller's ask is only the opening
+// bid. A channel exists inside one vendor, so two players on two services are
+// in two different rooms while both screens say "connected" — the one failure
+// shape that looks like success. The first caller pins the room; everyone
+// after is signed for that, whatever they asked for. A caller whose service
+// just refused it says so, and the room moves.
 //
 // THIS REVERSES AN EARLIER DECISION, and the reason is a production outage on
 // 8 August 2026. The rule used to be "the server's choice, never the
@@ -40,8 +43,8 @@
 // making the SERVER adapt is the only place the disagreement can be absorbed.
 //
 // What the caller can and cannot influence, precisely:
-//   • CAN pick among providers this deployment already has secrets for. That
-//     is a choice between services we configured, nothing more.
+//   • CAN pick among providers this deployment already has secrets for, and
+//     CAN move its own room to one of them by reporting a failure.
 //   • CANNOT reach an unconfigured provider (`missingSecrets` gates it),
 //     cannot name its own channel, and cannot name its own identity — both
 //     still come from the validated initData and the room's own tables.
@@ -134,6 +137,79 @@ async function select(path: string): Promise<{ ok: boolean; rows: unknown[] }> {
   }
 }
 
+/**
+ * Which service this ROOM is on — agreeing with everyone already in it.
+ *
+ * A channel lives inside one vendor, so two players on two services cannot
+ * hear each other while both are told they are connected. That is the failure
+ * this whole path exists to make impossible, and it is why the answer comes
+ * from the room rather than from whatever the caller happened to ask for.
+ *
+ * Four cases:
+ *   • nobody has decided yet — this caller decides, atomically;
+ *   • decided, and the caller reports that very service just refused it — the
+ *     room moves. Without this the pin DEFEATS the client's failover ladder
+ *     outright: we would keep signing for the dead service, and a client
+ *     walking to its next option would be handed the same one every time;
+ *   • decided and we can still sign for it — that, whatever was asked;
+ *   • decided and we CANNOT sign for it any more (its keys were taken off this
+ *     deployment) — the room has to move or it is silent for everybody.
+ *
+ * Both moves are compare-and-swap on the service being left, so simultaneous
+ * callers make one move between them instead of dragging the room back and
+ * forth while everybody reconnects.
+ *
+ * WHAT A CALLER CAN DO WITH THIS, stated plainly because it is new power: a
+ * player who is already in the room can cause it to change vendor by claiming
+ * a service failed. They cannot pick a service this deployment has no keys
+ * for, cannot touch a room they are not in — membership is checked above — and
+ * cannot name the channel or their identity. So the worst a liar achieves is
+ * moving their own room onto another of our vendors, which everybody survives;
+ * they could disrupt the game far more cheaply by staying silent.
+ *
+ * Null means the database would not answer. The caller reports lookup_failed
+ * rather than guessing, because guessing here is exactly how a room ends up
+ * split across two vendors.
+ */
+async function agreeProvider(
+  roomId: string,
+  pinned: string | null,
+  asked: ProviderId,
+  failed: string | undefined,
+  serveable: ProviderId[],
+): Promise<ProviderId | null> {
+  const deadHere = Boolean(pinned && failed === pinned && asked !== pinned);
+  if (pinned && !deadHere && serveable.includes(pinned as ProviderId)) {
+    return pinned as ProviderId;
+  }
+
+  if (deadHere) {
+    console.warn(`room ${roomId}: ${pinned} refused a player; moving the room to ${asked}`);
+  } else if (pinned) {
+    console.warn(
+      `room ${roomId} was pinned to ${pinned}, which this deployment can no ` +
+      `longer serve (${serveable.join(",")}). Moving it to ${asked}.`,
+    );
+  }
+
+  const r = pinned
+    ? await rpc("move_room_voice_provider", { p_room_id: roomId, p_from: pinned, p_to: asked })
+    : await rpc("claim_room_voice_provider", { p_room_id: roomId, p_wanted: asked });
+  if (!r.ok) {
+    console.error(`voice provider agreement failed for room ${roomId}: ${r.status}`);
+    return null;
+  }
+  const agreed = await r.json().catch(() => null);
+  // A room that exists always comes back with a service. Anything else means
+  // the row vanished between two statements, and signing on a guess would be
+  // worse than refusing.
+  if (typeof agreed !== "string" || !serveable.includes(agreed as ProviderId)) {
+    console.error(`room ${roomId} agreed on ${agreed}, which is not serveable`);
+    return null;
+  }
+  return agreed as ProviderId;
+}
+
 // get_user_status raises 28000 on a bad signature -> non-2xx here.
 async function validateInitData(initData: string): Promise<number | null> {
   const r = await rpc("get_user_status", { p_init_data: initData });
@@ -185,7 +261,7 @@ Deno.serve(async (req) => {
   }
 
   const payload = await req.json().catch(() => null) as
-    | { initData?: string; roomId?: string; provider?: string }
+    | { initData?: string; roomId?: string; provider?: string; failed?: string }
     | null;
   const initData = payload?.initData;
   const roomId = payload?.roomId;
@@ -218,10 +294,11 @@ Deno.serve(async (req) => {
   }
 
   const roomsRead = await select(
-    `rooms?id=eq.${encodeURIComponent(roomId)}&select=mode,status&limit=1`,
+    `rooms?id=eq.${encodeURIComponent(roomId)}&select=mode,status,voice_provider&limit=1`,
   );
   if (!roomsRead.ok) return json({ error: "lookup_failed" }, 503);
-  const rooms = roomsRead.rows as { mode: string; status: string }[];
+  const rooms = roomsRead.rows as
+    { mode: string; status: string; voice_provider: string | null }[];
   if (rooms.length === 0) return json({ error: "no_such_room" }, 404);
   if (rooms[0].status === "finished") return json({ error: "room_finished" }, 409);
 
@@ -242,8 +319,8 @@ Deno.serve(async (req) => {
   // Serve what the caller can actually speak. A build ships exactly one SDK,
   // so this is not a preference — it is the only service that build can join.
   const wanted = payload?.provider;
-  const provider = resolveProvider(wanted, serveable);
-  if (provider === null) {
+  const asked = resolveProvider(wanted, serveable);
+  if (asked === null) {
     // Still possible, and now it means something a person can act on: the
     // build wants a service this deployment holds no keys for. The answer says
     // which ones it does hold.
@@ -252,6 +329,25 @@ Deno.serve(async (req) => {
       { error: "provider_mismatch", provider: VOICE_PROVIDER, serves: serveable },
       409,
     );
+  }
+
+  // THE ROOM DECIDES, NOT THE DEVICE. A channel exists only inside one vendor,
+  // so two players on two services are in two different rooms while both
+  // screens say "connected" — the one failure shape that looks like success.
+  // The first caller fixes the service; everyone after is signed for that one
+  // whatever they asked for.
+  const provider = await agreeProvider(
+    roomId,
+    rooms[0].voice_provider,
+    asked,
+    typeof payload?.failed === "string" ? payload.failed : undefined,
+    serveable,
+  );
+  if (provider === null) return json({ error: "lookup_failed" }, 503);
+  if (provider !== asked) {
+    // Not an error: the caller will be told which service it actually got, and
+    // a build that carries the adapter simply loads that one instead.
+    console.info(`room ${roomId} is on ${provider}; caller asked for ${asked}`);
   }
 
   try {
