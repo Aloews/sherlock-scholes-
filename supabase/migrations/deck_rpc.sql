@@ -98,6 +98,8 @@ AS $$
            THEN ARRAY(SELECT jsonb_array_elements_text(p_filter -> 'leagues')) END AS leagues,
       CASE WHEN jsonb_typeof(p_filter -> 'tags') = 'array'
            THEN ARRAY(SELECT jsonb_array_elements_text(p_filter -> 'tags')) END AS tags,
+      CASE WHEN jsonb_typeof(p_filter -> 'clubs') = 'array'
+           THEN ARRAY(SELECT jsonb_array_elements_text(p_filter -> 'clubs')) END AS clubs,
       NULLIF(p_filter ->> 'fame_min', '')::int AS fame_min,
       NULLIF(p_filter ->> 'lang', '')          AS lang
   )
@@ -124,6 +126,15 @@ AS $$
     AND (f.tags IS NULL OR cardinality(f.tags) = 0
          OR c.category <> 'player'
          OR c.tags && f.tags)
+    -- A club's CURRENT squad (supabase/migrations/current_squads.sql). Keys are
+    -- club_match_key values, produced by deck_squads and handed straight back,
+    -- so both sides of this comparison were built by the same function from
+    -- the same column — no cross-source name matching here.
+    AND (f.clubs IS NULL OR cardinality(f.clubs) = 0
+         OR c.category <> 'player'
+         OR EXISTS (SELECT 1 FROM card_current_club cc
+                     WHERE cc.card_id = c.id
+                       AND cc.club_key = ANY(f.clubs)))
     -- Cards that only make sense in some cultures (commentators) carry an
     -- explicit language list; everything else passes.
     AND (c.langs IS NULL OR f.lang IS NULL OR f.lang = ANY(c.langs));
