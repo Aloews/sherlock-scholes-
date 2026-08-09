@@ -260,6 +260,22 @@ async function main() {
         : '';
       record('provider', true,
         `this build speaks ${local}, and the deployment can serve ${serveable.join(', ')}.${dflt}`);
+
+      // With failover on, the spares are only spares if the server can sign
+      // for them too. A build that carries three SDKs and a deployment with
+      // one set of keys walks the whole ladder to fail three times.
+      if (process.env.VITE_VOICE_FALLBACK === 'true') {
+        const spares = ['livekit', 'daily', 'agora'].filter((p) => p !== local);
+        const usable = spares.filter((p) => serveable.includes(p));
+        record('fallback', usable.length > 0,
+          usable.length === spares.length
+            ? `failover is on and every spare is usable: ${spares.join(', ')}.`
+            : usable.length > 0
+              ? `failover is on; usable spares: ${usable.join(', ')}. ` +
+                `No keys for ${spares.filter((p) => !usable.includes(p)).join(', ')}, so those rungs fail.`
+              : `failover is on but the deployment holds keys for ${local} only, ` +
+                'so the ladder has nothing to fall back to — three SDKs in the bundle buy nothing.');
+      }
     } else {
       record('provider', false,
         `this build speaks ${local}; the deployment can only serve ${serveable.join(', ')}.\n` +

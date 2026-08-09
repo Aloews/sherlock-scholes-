@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 import { IconCircleCheck, IconCircleDashed, IconLoader2, IconAlertTriangle } from '@tabler/icons-react';
 import { useVoice } from './VoiceProvider';
-import { voiceProvider, voiceProviderMisconfigured } from './providers';
+import { availableProviders, voiceProviderMisconfigured } from './providers';
 import { serviceRows, formatStats, type ServiceRow, type ServiceState } from './serviceStatus';
 
 /** Vendor names are trademarks: the same in every locale, never translated. */
@@ -15,16 +15,19 @@ const SERVICE_NAMES = { livekit: 'LiveKit', daily: 'Daily', agora: 'Agora' } as 
  * this one answers "which service are we even on, and is it up". Both live in
  * the profile, because both are questions asked when something is wrong.
  *
- * Two of the three rows always read "not in this build" — that is correct, not
- * a fault. Only one adapter is compiled in (providers/index.ts), and the two
- * SDKs that are absent are absent on purpose.
+ * What the rows mean depends on how the build was made. Without
+ * `VITE_VOICE_FALLBACK` only one adapter is compiled in, and the other two read
+ * "not in this build" — correct, not a fault. With it, all three are here: one
+ * carries the audio and the rest wait as spares, until the ladder tries one and
+ * it earns a reason of its own.
  */
 export function VoiceServicesPanel() {
   const { t } = useTranslation();
-  const { status, reason, detail, level, linkStats, audioBlocked } = useVoice();
+  const { status, reason, detail, level, linkStats, audioBlocked, active, tried } = useVoice();
 
   const rows = serviceRows({
-    active: voiceProvider(),
+    active,
+    available: availableProviders(),
     misconfigured: voiceProviderMisconfigured(),
     status,
     reason,
@@ -32,6 +35,7 @@ export function VoiceServicesPanel() {
     stats: linkStats,
     audioBlocked,
     detail,
+    tried,
   });
 
   return (
@@ -54,7 +58,8 @@ export function VoiceServicesPanel() {
 
 function ServiceLine({ row }: { row: ServiceRow }) {
   const { t } = useTranslation();
-  const absent = row.state === 'absent';
+  // Both are "nothing is happening here", and neither is a warning.
+  const absent = row.state === 'absent' || row.state === 'standby';
 
   return (
     <li

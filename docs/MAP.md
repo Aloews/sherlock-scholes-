@@ -281,6 +281,10 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | `npm run build` без переменных голоса вырезает его целиком — SDK-чанка в `dist/` нет | `docs/VOICE_PROVIDERS.md` §5 |
 | `VOICE_PROVIDER` и `VITE_VOICE_PROVIDER` разошлись — токен валиден и бесполезен | `docs/VOICE_PROVIDERS.md` §1 |
 | SDK сервиса импортирован статически — попадёт в бандл всем, включая тех, кто на другом сервисе | `src/features/voice/providers/index.ts` |
+| Загрузка адаптера через `voiceProvider()`, а не сырой литерал — ветки не сворачиваются, и все три SDK едут в каждую сборку | `src/features/voice/providers/index.ts` |
+| Daily оставлен незакрытым после провала — он один на страницу, и ломается не эта попытка, а все следующие | `docs/LOBBY_AND_VOICE_FIXES.md` §3, `providers/daily.ts` |
+| Перебор сервисов продолжен после отказа в микрофоне — один «нет» превращается в три запроса подряд | `src/features/voice/failover.ts` |
+| «Повторить» и «сменить сервис» смешаны в одно решение — игрок ждёт три круга, чтобы услышать то же самое про комнату | `failover.ts` против `connectPolicy.ts` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |

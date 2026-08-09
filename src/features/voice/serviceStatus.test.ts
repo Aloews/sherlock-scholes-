@@ -6,6 +6,8 @@ import { serviceRows, formatStats, type ServiceStatusInput } from './serviceStat
 
 const base: ServiceStatusInput = {
   active: 'livekit',
+  // A build without VITE_VOICE_FALLBACK: one adapter, no ladder to walk.
+  available: ['livekit'],
   misconfigured: false,
   status: 'off',
   reason: null,
@@ -28,7 +30,7 @@ describe('serviceRows', () => {
   });
 
   it('follows the active provider', () => {
-    const rows = serviceRows({ ...base, active: 'agora' });
+    const rows = serviceRows({ ...base, active: 'agora', available: ['agora'] });
     expect(rows.find((r) => r.id === 'agora')!.state).toBe('off');
     expect(rows.find((r) => r.id === 'livekit')!.state).toBe('absent');
   });

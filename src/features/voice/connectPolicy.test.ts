@@ -123,6 +123,32 @@ describe('shouldAutoConnect', () => {
   it('does not try again after a verdict', () => {
     expect(shouldAutoConnect({ ...base, reason: 'not_in_room' })).toBe(false);
   });
+
+  // THE STATE A FAILURE ACTUALLY LEAVES BEHIND. useVoiceChat sets
+  // 'unavailable', never 'off' — so the tests above, which all pass 'off',
+  // agreed with a policy that could not fire. The retry budget, the backoff and
+  // the jitter were unreachable in the app while thirty-five tests said
+  // otherwise. Assert the state the hook sets, not the one the policy assumed.
+  describe('after a failed attempt, which lands on unavailable', () => {
+    const failed = { ...base, status: 'unavailable' as const };
+
+    it('retries a transient failure', () => {
+      expect(shouldAutoConnect({ ...failed, reason: 'join_failed' })).toBe(true);
+      expect(shouldAutoConnect({ ...failed, reason: 'join_timeout' })).toBe(true);
+      expect(shouldAutoConnect({ ...failed, reason: 'network' })).toBe(true);
+    });
+
+    it('accepts a verdict as final', () => {
+      expect(shouldAutoConnect({ ...failed, reason: 'provider_mismatch' })).toBe(false);
+      expect(shouldAutoConnect({ ...failed, reason: 'no_team_yet' })).toBe(false);
+      expect(shouldAutoConnect({ ...failed, reason: 'voice_not_configured' })).toBe(false);
+    });
+
+    it('still refuses when the player opted out or has no room', () => {
+      expect(shouldAutoConnect({ ...failed, reason: 'network', optedOut: true })).toBe(false);
+      expect(shouldAutoConnect({ ...failed, reason: 'network', roomId: null })).toBe(false);
+    });
+  });
 });
 
 describe('the join deadline', () => {

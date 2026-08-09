@@ -1,6 +1,9 @@
 import { supabase } from '@/shared/lib/supabase';
 import { getRawInitData } from '@/shared/lib/telegram';
-import { voiceProvider, voiceProviderMisconfigured, type VoiceCredentials } from './providers';
+import {
+  voiceProvider, voiceProviderMisconfigured,
+  type VoiceCredentials, type VoiceProviderId,
+} from './providers';
 
 // Service addresses are public — they are just addresses, and the browser has
 // to know where to connect. Every KEY and SECRET is absent by design: those
@@ -117,7 +120,16 @@ async function reasonFromError(error: unknown): Promise<VoiceUnavailableReason> 
  * WITH ITS REASON. Collapsing every refusal into one silent null is what made
  * the production failure impossible to place from the outside.
  */
-export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
+export async function fetchVoiceToken(
+  roomId: string,
+  /**
+   * Which service to be signed for. Defaults to the build's own, so a caller
+   * that is not walking the failover ladder behaves exactly as before. The
+   * server will only honour a provider it holds secrets for — it answers with
+   * the list it can serve, and refuses the rest (supabase/functions/README).
+   */
+  provider: VoiceProviderId = voiceProvider(),
+): Promise<VoiceGrant> {
   if (!voiceEnabled()) return { ok: false, reason: 'not_configured' };
 
   // Nothing to prove who we are: the request is not sent at all, which is why
@@ -130,7 +142,7 @@ export async function fetchVoiceToken(roomId: string): Promise<VoiceGrant> {
   // frontends that call this one, which is the mistake `pick_random_cards`
   // already taught this project once (CLAUDE.md).
   const { data, error } = await supabase.functions.invoke('livekit-token', {
-    body: { initData, roomId, provider: voiceProvider() },
+    body: { initData, roomId, provider },
   });
   if (error) return { ok: false, reason: await reasonFromError(error) };
   if (!data?.token || !data?.channel) return { ok: false, reason: 'malformed' };

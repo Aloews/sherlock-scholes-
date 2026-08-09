@@ -1,13 +1,30 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchVoiceToken, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
-import { loadTransport } from './providers';
+import { loadTransportFor, availableProviders, voiceProvider } from './providers';
 import { levelFor, nextLevel, audioPreset, type VoiceLevel, type LinkStats } from './voiceQuality';
 import { JOIN_TIMEOUT_MS } from './connectPolicy';
-import type { VoiceSession } from './providers';
+import { providerOrder, nextProvider } from './failover';
+import type { VoiceSession, VoiceProviderId } from './providers';
 
 export type VoiceStatus = 'off' | 'connecting' | 'on' | 'denied' | 'unavailable';
 
 const STATS_INTERVAL_MS = 5000;
+
+/** What one service's turn ended in. */
+interface AttemptFailure {
+  ok: false;
+  reason: VoiceUnavailableReason | null;
+  detail: string | null;
+  /** The player refused the microphone. Ends the ladder, not just this rung. */
+  denied: boolean;
+}
+
+type AttemptResult = { ok: true } | AttemptFailure;
+
+/** How each service answered this time round. Empty until something is tried. */
+export type ProviderAttempts = Partial<
+  Record<VoiceProviderId, { reason: VoiceUnavailableReason | null; detail: string | null }>
+>;
 
 /**
  * The in-game voice channel. Audio only in this phase.
@@ -43,6 +60,15 @@ export function useVoiceChat(roomId: string | null) {
   // primary message — it is vendor English — but a diagnostics panel that
   // cannot quote the service is how a week goes into guessing.
   const [detail, setDetail] = useState<string | null>(null);
+  // The service currently in use, or being tried. Not the same as the build's
+  // preferred one once the ladder has walked past it, and the panel must show
+  // which one is actually carrying the audio rather than which one was asked
+  // for first.
+  const [active, setActive] = useState<VoiceProviderId>(voiceProvider());
+  // What every service that got a turn answered. The panel reads this: after a
+  // failover, "Daily refused, LiveKit is up" is the whole story, and one
+  // reason on one row cannot tell it.
+  const [tried, setTried] = useState<ProviderAttempts>({});
 
   const sessionRef = useRef<VoiceSession | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -53,6 +79,12 @@ export function useVoiceChat(roomId: string | null) {
   // it was AT CONNECT TIME, so a player who muted themselves and then hit a
   // bad patch of network had their microphone switched back on for them.
   const mutedRef = useRef(false);
+  // True from the first line of connect() until it has either a session or a
+  // failure. `sessionRef` cannot serve as the guard: it stays null for the
+  // whole attempt, so a tap arriving while auto-connect was mid-join let both
+  // run, and two adapters each built a client. Daily allows exactly one per
+  // page and rejects the second — see providers/daily.ts.
+  const connectingRef = useRef(false);
 
   const disconnect = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -71,14 +103,14 @@ export function useVoiceChat(roomId: string | null) {
   // Leaving the screen must not leave a microphone open.
   useEffect(() => disconnect, [disconnect]);
 
-  const connect = useCallback(async () => {
-    if (!roomId || !voiceEnabled() || sessionRef.current) return;
-    setStatus('connecting');
-    setReason(null);
-    setDetail(null);
-
-    const granted = await fetchVoiceToken(roomId);
-    if (!granted.ok) { setStatus('unavailable'); setReason(granted.reason); return; }
+  /**
+   * One service, one attempt. Reports rather than decides: whether a failure
+   * is worth taking to the next vendor is failover.ts's question, and it is
+   * answered once, in the ladder below, instead of at each exit here.
+   */
+  const attemptOn = useCallback(async (providerId: VoiceProviderId): Promise<AttemptResult> => {
+    const granted = await fetchVoiceToken(roomId!, providerId);
+    if (!granted.ok) return { ok: false, reason: granted.reason, detail: null, denied: false };
 
     // Held outside the try so a failure AFTER the link came up can still close
     // it. `sessionRef` cannot serve: it is only set once everything succeeded,
@@ -89,16 +121,14 @@ export function useVoiceChat(roomId: string | null) {
 
     let stage: 'sdk' | 'join' = 'sdk';
     try {
-      const transport = await loadTransport();
+      const transport = await loadTransportFor(providerId);
       stage = 'join';
-      // The build loaded one adapter; the server signed for whichever service
-      // ITS secrets belong to. When those differ, the credential is valid and
-      // useless — the adapter would hand a Daily token to LiveKit and get a
-      // timeout. Say which mismatch it is instead.
+      // The adapter we loaded and the service the server signed for must be the
+      // same one. They can still differ — a deployment that will not serve what
+      // we asked for falls back to its own default — and the credential is then
+      // valid and useless. Say so, and let the ladder move on.
       if (granted.credentials.provider !== transport.id) {
-        setStatus('unavailable');
-        setReason('provider_mismatch');
-        return;
+        return { ok: false, reason: 'provider_mismatch', detail: null, denied: false };
       }
 
       // A join with no deadline is how "Подключаемся…" becomes permanent: the
@@ -151,23 +181,12 @@ export function useVoiceChat(roomId: string | null) {
           await session.setMicrophoneEnabled(preset !== null && !mutedRef.current);
         }
       }, STATS_INTERVAL_MS);
+      return { ok: true };
     } catch (err) {
       // A denied microphone is a choice, not a fault — the handoff says stay
       // quiet and carry on. Anything else is a link that would not come up.
       const denied = err instanceof DOMException &&
         (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
-      setStatus(denied ? 'denied' : 'unavailable');
-      // The token was granted, so the server is not the problem — the service
-      // is. WHICH part of it matters: a chunk that would not load, a join that
-      // was refused and a join that never answered are three different
-      // afternoons, and they all used to read as "network".
-      setReason(
-        denied ? null
-        : stage === 'sdk' ? 'sdk_failed'
-        : err instanceof JoinTimeout ? 'join_timeout'
-        : 'join_failed',
-      );
-      setDetail(denied ? null : messageOf(err));
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       void opened?.disconnect();
       sessionRef.current = null;
@@ -175,8 +194,83 @@ export function useVoiceChat(roomId: string | null) {
       // failure here can still leave someone talking into an element nobody
       // owns any more.
       closeAudioSink();
+      // The token was granted, so the server is not the problem — the service
+      // is. WHICH part of it matters: a chunk that would not load, a join that
+      // was refused and a join that never answered are three different
+      // afternoons, and they all used to read as "network".
+      return {
+        ok: false,
+        denied,
+        reason: denied ? null
+          : stage === 'sdk' ? 'sdk_failed'
+          : err instanceof JoinTimeout ? 'join_timeout'
+          : 'join_failed',
+        detail: denied ? null : messageOf(err),
+      };
     }
   }, [roomId, disconnect]);
+
+  /**
+   * Try the services in turn, and stop for the right reasons.
+   *
+   * ONE ATTEMPT AT A TIME. Auto-connect fires from an effect and the button
+   * fires from a tap, and neither knows about the other. `sessionRef` is no
+   * guard: it is null for the whole of an attempt, so two overlapping calls
+   * both got as far as building a client — and Daily allows exactly one per
+   * page, so the second was refused and the first was stranded.
+   *
+   * WHERE THE LADDER STOPS, which matters more than where it walks:
+   *   • a refused microphone ends everything. The next service would prompt
+   *     again, and a player who said no must be asked once, by a tap, never by
+   *     a loop working through vendors;
+   *   • a failure that is not the vendor's — the room, the player, our own
+   *     server — ends it too. All three would answer identically, and the
+   *     player would wait three times as long to read the same sentence;
+   *   • the reason kept is the FIRST service's, not the last. It is the one
+   *     the deployment chose and the one worth fixing; "Agora also declined"
+   *     is true and useless.
+   */
+  const connect = useCallback(async () => {
+    if (connectingRef.current || sessionRef.current) return;
+    if (!roomId || !voiceEnabled()) return;
+    connectingRef.current = true;
+    setStatus('connecting');
+    setReason(null);
+    setDetail(null);
+    setTried({});
+
+    try {
+      const order = providerOrder(voiceProvider(), availableProviders());
+      let first: AttemptFailure | null = null;
+
+      for (const id of order) {
+        setActive(id);
+        const result = await attemptOn(id);
+        if (result.ok) return;
+
+        first ??= result;
+        setTried((t) => ({ ...t, [id]: { reason: result.reason, detail: result.detail } }));
+
+        if (result.denied) {
+          setStatus('denied');
+          setReason(null);
+          setDetail(null);
+          return;
+        }
+        if (!nextProvider(order, id, result.reason)) break;
+      }
+
+      setStatus('unavailable');
+      setReason(first?.reason ?? 'network');
+      setDetail(first?.detail ?? null);
+      // Back to the service this deployment prefers: the panel, the next
+      // attempt and the next reading of the logs should all start where the
+      // build starts, not wherever the ladder happened to give up.
+      setActive(voiceProvider());
+    } finally {
+      connectingRef.current = false;
+    }
+  }, [roomId, attemptOn]);
 
   /**
    * Second attempt at playback, on a fresh tap.
@@ -203,6 +297,7 @@ export function useVoiceChat(roomId: string | null) {
 
   return {
     status, reason, detail, level, linkStats, muted, speaking, audioBlocked,
+    active, tried,
     connect, disconnect, toggleMute, startAudio,
   };
 }

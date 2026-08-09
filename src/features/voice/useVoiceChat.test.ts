@@ -43,33 +43,53 @@ const fake = vi.hoisted(() => {
   const sessions: FakeSession[] = [];
   const hooks: { speakers?: (ids: string[]) => void; playback?: (playing: boolean) => void; dropped?: () => void } = {};
 
-  const transport = {
-    id: 'livekit' as const,
-    async connect(options: {
-      sink: HTMLElement;
-      onSpeakers: (ids: string[]) => void;
-      onPlaybackChanged: (playing: boolean) => void;
-      onDisconnected: () => void;
-    }) {
-      if (config.failConnect) throw new Error('no link');
-      const session = new FakeSession();
-      session.sink = options.sink;
-      hooks.speakers = options.onSpeakers;
-      hooks.playback = options.onPlaybackChanged;
-      hooks.dropped = options.onDisconnected;
-      sessions.push(session);
-      if (config.attachOnConnect) session.play();
-      return session;
-    },
+  /** Services this build carries, and which one it prefers. */
+  const build = {
+    preferred: 'livekit' as string,
+    available: ['livekit'] as string[],
+    /** Services whose join throws, so the ladder has something to walk past. */
+    refuse: new Set<string>(),
+    /** Services whose adapter chunk will not load at all. */
+    unloadable: new Set<string>(),
+    /** The order loadTransportFor was asked for, which is the ladder itself. */
+    asked: [] as string[],
   };
 
-  return { config, sessions, hooks, transport };
+  function transportFor(id: string) {
+    if (build.unloadable.has(id)) throw new Error(`${id}: chunk failed`);
+    return {
+      id,
+      async connect(options: {
+        sink: HTMLElement;
+        onSpeakers: (ids: string[]) => void;
+        onPlaybackChanged: (playing: boolean) => void;
+        onDisconnected: () => void;
+      }) {
+        if (config.failConnect || build.refuse.has(id)) throw new Error(`no link (${id})`);
+        const session = new FakeSession();
+        session.sink = options.sink;
+        hooks.speakers = options.onSpeakers;
+        hooks.playback = options.onPlaybackChanged;
+        hooks.dropped = options.onDisconnected;
+        sessions.push(session);
+        if (config.attachOnConnect) session.play();
+        return session;
+      },
+    };
+  }
+
+  return { config, sessions, hooks, build, transportFor };
 });
 
 vi.mock('./providers', () => ({
-  loadTransport: async () => fake.transport,
-  voiceProvider: () => 'livekit',
+  loadTransportFor: async (id: string) => {
+    fake.build.asked.push(id);
+    return fake.transportFor(id);
+  },
+  availableProviders: () => fake.build.available,
+  voiceProvider: () => fake.build.preferred,
   voiceProviderMisconfigured: () => false,
+  VOICE_PROVIDER_IDS: ['livekit', 'daily', 'agora'],
 }));
 
 const fetchVoiceToken = vi.fn();
@@ -101,11 +121,18 @@ beforeEach(() => {
   fake.config.refusePlayback = false;
   fake.config.failConnect = false;
   fake.config.attachOnConnect = false;
+  fake.build.preferred = 'livekit';
+  fake.build.available = ['livekit'];
+  fake.build.refuse.clear();
+  fake.build.unloadable.clear();
+  fake.build.asked.length = 0;
   fetchVoiceToken.mockReset();
-  fetchVoiceToken.mockResolvedValue({
+  // The server signs for whichever service it was asked for (#54), so the
+  // credential's provider follows the argument rather than a fixed value.
+  fetchVoiceToken.mockImplementation(async (_roomId: string, provider = 'livekit') => ({
     ok: true,
-    credentials: { provider: 'livekit', token: 'jwt.token.here', channel: 'ss_room-1', url: 'wss://example' },
-  });
+    credentials: { provider, token: 'jwt.token.here', channel: 'ss_room-1', url: 'wss://example' },
+  }));
 });
 
 afterEach(() => {
@@ -266,6 +293,186 @@ describe('what the server refused', () => {
     expect(result.current.status).toBe('unavailable');
     expect(result.current.reason).toBe('no_team_yet');
     expect(fake.sessions).toHaveLength(0);
+  });
+});
+
+// Auto-connect fires from an effect; the button fires from a tap; neither
+// knows about the other. The guard used to be `sessionRef`, which is null for
+// the whole of an attempt — so both got through and each built a client.
+// Daily allows exactly one per page and refuses the second, which is how a
+// race turned into a voice channel that was dead until the app restarted.
+describe('one attempt at a time', () => {
+  it('ignores a second connect while the first is still in flight', async () => {
+    let letTokenThrough!: () => void;
+    const held = new Promise<void>((resolve) => { letTokenThrough = resolve; });
+    fetchVoiceToken.mockImplementationOnce(async () => {
+      await held;
+      return {
+        ok: true,
+        credentials: { provider: 'livekit', token: 'jwt', channel: 'ss_room-1', url: 'wss://example' },
+      };
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+
+    await act(async () => {
+      const first = result.current.connect();
+      const second = result.current.connect();
+      letTokenThrough();
+      await Promise.all([first, second]);
+    });
+
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+    expect(fake.sessions).toHaveLength(1);
+    expect(result.current.status).toBe('on');
+  });
+
+  // The guard has to come back off on every path, or one failure means no
+  // voice for the rest of the session — a worse bug than the one it fixes.
+  it('lets the next attempt run after a failure', async () => {
+    fake.config.failConnect = true;
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('unavailable');
+
+    fake.config.failConnect = false;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('on');
+  });
+});
+
+// Three services, tried in turn. The interesting half is where the ladder
+// refuses to walk: a player who said no to the microphone must not be asked
+// twice more, and a room they are not in will be refused by all three.
+describe('walking to the next service', () => {
+  const allThree = () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    fake.build.preferred = 'livekit';
+  };
+
+  it('takes a refused join to the next service and connects there', async () => {
+    allThree();
+    fake.build.refuse.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('daily');
+    expect(fake.build.asked).toEqual(['livekit', 'daily']);
+  });
+
+  it('starts with the service the build prefers', async () => {
+    allThree();
+    fake.build.preferred = 'agora';
+    fake.build.refuse.add('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fake.build.asked[0]).toBe('agora');
+    expect(result.current.active).toBe('livekit');
+  });
+
+  it('walks past an adapter whose chunk will not load', async () => {
+    allThree();
+    fake.build.unloadable.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('daily');
+  });
+
+  // Every service refusing is still one failure to report, and the one worth
+  // reporting is the first — the service this deployment actually chose.
+  it('keeps the first service’s reason when they all refuse', async () => {
+    allThree();
+    for (const id of ['livekit', 'daily', 'agora']) fake.build.refuse.add(id);
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('join_failed');
+    expect(result.current.detail).toMatch(/livekit/);
+    expect(fake.build.asked).toEqual(['livekit', 'daily', 'agora']);
+    // Every rung is recorded, so the panel can say which spares are gone.
+    expect(Object.keys(result.current.tried).sort()).toEqual(['agora', 'daily', 'livekit']);
+  });
+
+  // THE ONE THAT MUST NOT REGRESS. A microphone the player refused is an
+  // answer, and a ladder that keeps going asks for it again on the next
+  // vendor — three prompts for one "no".
+  it('stops the whole ladder when the player refuses the microphone', async () => {
+    allThree();
+    fake.config.refuseMic = true;
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('denied');
+    expect(fake.build.asked).toEqual(['livekit']);
+  });
+
+  it('does not shop around for a room the player is not in', async () => {
+    allThree();
+    fetchVoiceToken.mockResolvedValue({ ok: false, reason: 'not_in_room' });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.reason).toBe('not_in_room');
+    expect(fake.build.asked).toEqual([]);
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not shop around when our own token function is unreachable', async () => {
+    allThree();
+    fetchVoiceToken.mockResolvedValue({ ok: false, reason: 'network' });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.reason).toBe('network');
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+  });
+
+  // A build without VITE_VOICE_FALLBACK carries one adapter, and must behave
+  // exactly as it did before any of this existed.
+  it('tries exactly one service when only one is compiled in', async () => {
+    fake.build.available = ['livekit'];
+    fake.build.refuse.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(fake.build.asked).toEqual(['livekit']);
+  });
+
+  it('asks the server to sign for the service it is about to try', async () => {
+    allThree();
+    fake.build.refuse.add('livekit');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fetchVoiceToken).toHaveBeenNthCalledWith(1, 'room-1', 'livekit');
+    expect(fetchVoiceToken).toHaveBeenNthCalledWith(2, 'room-1', 'daily');
   });
 });
 

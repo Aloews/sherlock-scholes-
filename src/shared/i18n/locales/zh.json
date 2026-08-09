@@ -434,8 +434,9 @@
   },
   "voice_services": {
     "title": "语音服务",
-    "intro": "这个版本使用哪个服务，以及连接情况。三个里总有两个显示“不在此版本中”——这是有意为之，应用只打包一个。",
+    "intro": "哪个服务在传输语音，其余的处于什么状态。某个服务不可用时，应用会自动切换到下一个。",
     "state_absent": "不在此版本中",
+    "state_standby": "备用",
     "state_misconfigured": "配置了未知服务",
     "state_off": "就绪，尚未连接",
     "state_connecting": "连接中…",

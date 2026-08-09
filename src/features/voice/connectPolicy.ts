@@ -80,6 +80,12 @@ export function decideRetry(
  *   • a player who turned voice off stays off;
  *   • a player who refused the microphone is never asked again by a timer;
  *   • a session already up, or on its way up, is left alone.
+ *
+ * `unavailable` is a state to act on, not one to stop at. This function first
+ * shipped accepting only `off`, which no failure ever produces — a failed
+ * attempt lands on `unavailable` — so the retry budget below was unreachable
+ * and every failure was final. The tests passed because they called this with
+ * the state they assumed rather than the one the hook sets.
  */
 export function shouldAutoConnect(input: {
   enabled: boolean;
@@ -92,8 +98,10 @@ export function shouldAutoConnect(input: {
   optedOut: boolean;
 }): boolean {
   if (!input.enabled || input.optedOut || !input.roomId || input.needsTeam) return false;
-  if (input.status !== 'off') return false;
-  // 'off' with a reason means a previous attempt ended; only retry the ones
-  // worth retrying, and let the retry schedule — not this — decide when.
+  // 'connecting' and 'on' are already handled; 'denied' is the player's answer
+  // and only a tap may revisit it.
+  if (input.status !== 'off' && input.status !== 'unavailable') return false;
+  // A reason means a previous attempt ended: retry only the ones worth
+  // retrying, and let the retry schedule — not this — decide when.
   return input.reason === null || isTransient(input.reason);
 }
