@@ -25,12 +25,29 @@
 //   1v1  mode — one channel for the ROOM. The two players are explaining to
 //               each other, so they have to hear each other.
 //
-// WHICH SERVICE is the server's choice, not the caller's: VOICE_PROVIDER (a
-// secret) selects the issuer, and the answer names the provider it signed for
-// so a frontend built against a different one fails loudly instead of joining
-// nothing. The client's `provider` field is a HINT ONLY — it is echoed back in
-// the mismatch, never acted on. Letting a caller pick the issuer would let it
-// pick which set of secrets to exercise.
+// WHICH SERVICE: the caller says what it can speak, the server serves it if it
+// has the keys. `VOICE_PROVIDER` remains the default for a caller that says
+// nothing, and the answer always names what was signed.
+//
+// THIS REVERSES AN EARLIER DECISION, and the reason is a production outage on
+// 8 August 2026. The rule used to be "the server's choice, never the
+// caller's", which sounded safe and meant that a build compiled against
+// LiveKit could not be served by a deployment whose VOICE_PROVIDER had been
+// moved to Daily. Two knobs in two dashboards had to agree, nothing checked
+// that they did, and when they drifted every player lost voice with a message
+// nobody was watching for. A frontend cannot choose its adapter at runtime —
+// only one SDK is compiled in (src/features/voice/providers/index.ts) — so
+// making the SERVER adapt is the only place the disagreement can be absorbed.
+//
+// What the caller can and cannot influence, precisely:
+//   • CAN pick among providers this deployment already has secrets for. That
+//     is a choice between services we configured, nothing more.
+//   • CANNOT reach an unconfigured provider (`missingSecrets` gates it),
+//     cannot name its own channel, and cannot name its own identity — both
+//     still come from the validated initData and the room's own tables.
+// So the widest thing a forged request buys is which of OUR vendors mints a
+// token for the room it was already entitled to. That is worth an outage
+// class.
 //
 // SECURITY
 //   • No API secret ever leaves this function. The browser receives a
@@ -157,9 +174,12 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   // Unconfigured deployment: answer honestly instead of signing with "".
-  // The client treats this as "voice is off" and hides its button.
-  const missing = missingSecrets(VOICE_PROVIDER);
-  if (missing.length > 0) {
+  // The client treats this as "voice is off" and hides its button. "Serveable"
+  // is now the test, not the default alone — a deployment holding Daily keys
+  // can serve a Daily build even if VOICE_PROVIDER still says livekit.
+  const serveable = serveableProviders();
+  if (serveable.length === 0) {
+    const missing = missingSecrets(VOICE_PROVIDER);
     console.error(`voice_not_configured: ${VOICE_PROVIDER} needs ${missing.join(", ")}`);
     return json({ error: "voice_not_configured", provider: VOICE_PROVIDER, missing }, 503);
   }
@@ -169,7 +189,15 @@ Deno.serve(async (req) => {
     | null;
   const initData = payload?.initData;
   const roomId = payload?.roomId;
-  if (!initData || !roomId) return json({ error: "bad_request" }, 400);
+  // `provider` and `serves` ride along on the refusal so the deployment can be
+  // ASKED what it signs for without holding a valid session. Everything past
+  // this point needs initData, and check-voice cannot forge that — so without
+  // this the check had no answer to read and reported a correctly-deployed
+  // function as an old one. Neither name is a secret: the frontend's own
+  // choice is already in the bundle as VITE_VOICE_PROVIDER.
+  if (!initData || !roomId) {
+    return json({ error: "bad_request", provider: VOICE_PROVIDER, serves: serveable }, 400);
+  }
 
   const telegramId = await validateInitData(initData);
   if (telegramId === null) return json({ error: "unauthorized" }, 401);
@@ -211,23 +239,51 @@ Deno.serve(async (req) => {
     return json({ error: "no_team_yet" }, 409);
   }
 
-  // The caller's `provider` is a hint used for one thing only: telling it
-  // plainly that its build and this deployment disagree. It never selects the
-  // issuer — that would let a caller choose which secrets to exercise.
-  if (payload?.provider && payload.provider !== VOICE_PROVIDER) {
-    console.warn(`provider_mismatch: client=${payload.provider} server=${VOICE_PROVIDER}`);
-    return json({ error: "provider_mismatch", provider: VOICE_PROVIDER }, 409);
+  // Serve what the caller can actually speak. A build ships exactly one SDK,
+  // so this is not a preference — it is the only service that build can join.
+  const wanted = payload?.provider;
+  const provider = resolveProvider(wanted, serveable);
+  if (provider === null) {
+    // Still possible, and now it means something a person can act on: the
+    // build wants a service this deployment holds no keys for. The answer says
+    // which ones it does hold.
+    console.warn(`provider_mismatch: client=${wanted} serveable=${serveable.join(",")}`);
+    return json(
+      { error: "provider_mismatch", provider: VOICE_PROVIDER, serves: serveable },
+      409,
+    );
   }
 
   try {
-    return json(await issue(VOICE_PROVIDER, channel, String(telegramId)));
+    return json(await issue(provider, channel, String(telegramId)));
   } catch (err) {
     // A provider that would not mint is a server fault, not a verdict on the
     // player: `not_in_room` and friends are already ruled out by here.
-    console.error(`issue failed for ${VOICE_PROVIDER}: ${err}`);
-    return json({ error: "issue_failed", provider: VOICE_PROVIDER }, 503);
+    console.error(`issue failed for ${provider}: ${err}`);
+    return json({ error: "issue_failed", provider }, 503);
   }
 });
+
+/** Every provider this deployment holds complete secrets for. */
+function serveableProviders(): ProviderId[] {
+  return (["livekit", "daily", "agora"] as ProviderId[])
+    .filter((p) => missingSecrets(p).length === 0);
+}
+
+/**
+ * Which provider to sign for, given what the caller asked.
+ *
+ * A caller that names nothing gets the configured default — that is what
+ * VOICE_PROVIDER is still for. A caller that names one gets it when the keys
+ * are here, and null when they are not, which is the only remaining mismatch.
+ */
+function resolveProvider(wanted: string | undefined, serveable: ProviderId[]): ProviderId | null {
+  if (!wanted) {
+    return serveable.includes(VOICE_PROVIDER) ? VOICE_PROVIDER : serveable[0];
+  }
+  const asked = serveable.find((p) => p === wanted);
+  return asked ?? null;
+}
 
 // ─── Issuers ────────────────────────────────────────────────────────────────
 
