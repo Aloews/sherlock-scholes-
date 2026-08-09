@@ -398,8 +398,54 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** The provider's message, trimmed to something a panel can hold. */
+/**
+ * The provider's message, trimmed to something a panel can hold.
+ *
+ * NOT EVERY SDK REJECTS WITH AN Error. Daily rejects with a plain object, and
+ * `String()` on one of those produces "[object Object]" — which is what
+ * production showed under the Daily row, in the one place built to quote the
+ * service verbatim. A diagnostic line that says nothing is worse than none: it
+ * looks like an answer.
+ *
+ * So the shapes the three SDKs actually use are read in turn, and anything
+ * still unrecognised is serialised rather than stringified — ugly JSON is
+ * searchable, "[object Object]" is not.
+ */
 function messageOf(err: unknown): string {
-  const text = err instanceof Error ? err.message : String(err);
+  return trim(extract(err));
+}
+
+function extract(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string') return err;
+  if (err == null) return 'unknown error';
+
+  if (typeof err === 'object') {
+    const bag = err as Record<string, unknown>;
+    // `errorMsg` is Daily's, `msg`/`reason` appear on Agora and LiveKit
+    // disconnect payloads, `message` covers Error-shaped objects that did not
+    // come from the Error constructor (a different realm, a structured clone).
+    for (const key of ['errorMsg', 'message', 'msg', 'reason', 'error_message']) {
+      const value = bag[key];
+      if (typeof value === 'string' && value.length > 0) return value;
+    }
+    // A nested error is common: { error: { msg: … } }. One level only —
+    // deeper than that and we are guessing at a shape nobody documented.
+    const nested = bag.error;
+    if (nested && nested !== err) {
+      const inner = extract(nested);
+      if (inner && inner !== 'unknown error') return inner;
+    }
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== '{}') return json;
+    } catch { /* circular, or something that will not serialise */ }
+  }
+
+  const text = String(err);
+  return text === '[object Object]' ? 'unknown error' : text;
+}
+
+function trim(text: string): string {
   return text.length > 160 ? `${text.slice(0, 157)}…` : text;
 }

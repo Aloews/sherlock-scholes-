@@ -710,3 +710,51 @@ describe('the quality ladder and a muted player', () => {
     expect(session().micCalls.at(-1)).toBe(false);
   });
 });
+
+// Production showed "[object Object]" under the Daily row — in the one place
+// built to quote the service word for word. Not every SDK rejects with an
+// Error, and String() on a plain object says nothing while looking like an
+// answer.
+describe('quoting a service that did not throw an Error', () => {
+  // Swapping the transport out is heavier than the other fakes here, so it is
+  // put back afterwards rather than left for the next file to trip over.
+  const realTransportFor = fake.transportFor;
+  afterEach(() => { fake.transportFor = realTransportFor; });
+
+  it.each([
+    [{ errorMsg: 'Meeting has ended' }, /Meeting has ended/],
+    [{ message: 'not allowed' }, /not allowed/],
+    [{ msg: 'token expired' }, /token expired/],
+    [{ error: { msg: 'nested reason' } }, /nested reason/],
+    ['a plain string', /a plain string/],
+    [new Error('an ordinary error'), /an ordinary error/],
+  ])('reads %o', async (thrown, expected) => {
+    fake.build.available = ['livekit'];
+    fake.transportFor = () => ({
+      id: 'livekit',
+      async connect() { throw thrown; },
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.detail).toMatch(expected);
+  });
+
+  it('never shows the string that says nothing', async () => {
+    fake.build.available = ['livekit'];
+    fake.transportFor = () => ({
+      id: 'livekit',
+      async connect() { throw { weird: true, nested: { deep: 1 } }; },
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.detail).not.toBe('[object Object]');
+    // Ugly JSON is searchable; "[object Object]" is not.
+    expect(result.current.detail).toMatch(/weird/);
+  });
+});

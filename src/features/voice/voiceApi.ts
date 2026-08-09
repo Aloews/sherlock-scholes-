@@ -120,6 +120,42 @@ async function reasonFromError(error: unknown): Promise<VoiceUnavailableReason> 
  * WITH ITS REASON. Collapsing every refusal into one silent null is what made
  * the production failure impossible to place from the outside.
  */
+/**
+ * A credential for a channel of one, to test a service with.
+ *
+ * No room, and none needed: the server derives the channel from the caller's
+ * own validated telegram id, so it is a room nobody else can be issued a token
+ * for. The client still names nothing — the rule that keeps teams apart is not
+ * bent here, only applied to a channel with one seat.
+ *
+ * This exists because "проверить звук" tested the device and stopped there:
+ * microphone, meter, loopback, no network at all. It could not answer the
+ * question people were actually asking, which is whether the voice reaches
+ * LiveKit, Daily or Agora from THIS phone, on THIS network.
+ */
+export async function fetchCheckToken(provider: VoiceProviderId): Promise<VoiceGrant> {
+  const initData = getRawInitData();
+  if (!initData) return { ok: false, reason: 'no_init_data' };
+
+  const { data, error } = await supabase.functions.invoke('livekit-token', {
+    body: { initData, provider, purpose: 'check' },
+  });
+  if (error) return { ok: false, reason: await reasonFromError(error) };
+  if (!data?.token || !data?.channel) return { ok: false, reason: 'malformed' };
+
+  return {
+    ok: true,
+    credentials: {
+      provider: data.provider ?? provider,
+      token: data.token as string,
+      channel: data.channel as string,
+      url: (data.url as string | undefined) ?? (livekitUrl() || undefined),
+      identity: data.identity as string | undefined,
+      appId: data.appId as string | undefined,
+    },
+  };
+}
+
 export async function fetchVoiceToken(
   roomId: string,
   /**

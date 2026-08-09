@@ -20,6 +20,16 @@ export interface DeckFilter {
   leagues?: string[] | null;
   /** Player traits (cards.tags overlap): goalkeeper, world_cup, … */
   tags?: string[] | null;
+  /**
+   * Current squads, as `club_key` values from `deck_squads()`.
+   *
+   * Never a club name typed anywhere: the keys are produced by the server and
+   * handed straight back, so both sides of the comparison were built by one
+   * function from one column. "Current" means the club the player had not left
+   * when their article was last read — see current_squads.sql, and say
+   * as-of on screen rather than implying it is live.
+   */
+  clubs?: string[] | null;
   /** Recognizability floor, 0..100 (cards.fame). 0/null = no floor. */
   fame_min?: number | null;
   /** Interface language — filters culture-bound cards (commentators). */
@@ -157,6 +167,7 @@ export function normalizeFilter(filter: DeckFilter): DeckFilter {
   if (filter.countries?.length) out.countries = [...filter.countries].sort();
   if (filter.leagues?.length) out.leagues = [...filter.leagues].sort();
   if (filter.tags?.length) out.tags = [...filter.tags].sort();
+  if (filter.clubs?.length) out.clubs = [...filter.clubs].sort();
   if (filter.fame_min) out.fame_min = filter.fame_min;
   if (filter.lang) out.lang = filter.lang;
   return out;

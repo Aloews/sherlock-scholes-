@@ -95,7 +95,9 @@
     "preset_legends_desc": "역사상 최고의 선수들",
     "filter_all_countries": "모든 국가",
     "filter_all_leagues": "모든 리그",
-    "tag_wc2026": "월드컵 2026"
+    "tag_wc2026": "월드컵 2026",
+    "filter_all_squads": "모든 스쿼드",
+    "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다"
   },
   "design": {
     "master": "새 디자인",
@@ -302,7 +304,7 @@
   },
   "soundcheck": {
     "title": "소리 점검",
-    "intro": "이 기기의 마이크와 재생을 점검합니다. 방도 상대도 필요 없습니다.",
+    "intro": "서로 다른 두 가지 확인입니다. 첫째는 이 기기의 마이크와 소리, 둘째는 이 네트워크에서 음성 서비스 서버까지 목소리가 닿는지입니다.",
     "start": "점검 시작",
     "stop": "중지",
     "asking": "마이크 권한을 요청하는 중…",
@@ -313,7 +315,14 @@
     "monitor_on": "내 소리 듣기",
     "monitor_off": "내 소리 끄기",
     "monitor_hint": "이어폰을 쓰는 편이 좋습니다. 없으면 스피커 소리가 마이크로 돌아가 하울링이 납니다.",
-    "blocked": "브라우저가 재생을 막았습니다 — 「내 소리 듣기」를 다시 눌러 주세요"
+    "blocked": "브라우저가 재생을 막았습니다 — 「내 소리 듣기」를 다시 눌러 주세요",
+    "services_title": "서비스 연결",
+    "services_hint": "각 서비스에 차례로 접속해 회선을 측정합니다. 서버를 거쳐 자기 목소리를 듣는 것은 불가능합니다. 서버는 본인 음성을 돌려보내지 않으며, 그러려면 상대가 한 명 더 필요합니다.",
+    "services_run": "서비스 확인",
+    "services_running": "확인 중…",
+    "services_reachable": "목소리가 닿습니다",
+    "services_failed": "목소리가 닿지 않습니다",
+    "services_pending": "대기 중"
   },
   "game": {
     "round_starting": "라운드 시작",

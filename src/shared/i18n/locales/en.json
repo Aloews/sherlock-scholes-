@@ -97,7 +97,9 @@
     "preset_not_players": "No footballers",
     "preset_not_players_desc": "Clubs, stadiums, terms, derbies",
     "preset_legends": "Legends",
-    "preset_legends_desc": "The greatest players in history"
+    "preset_legends_desc": "The greatest players in history",
+    "filter_all_squads": "Any squad",
+    "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live"
   },
   "design": {
     "master": "New design",
@@ -310,7 +312,7 @@
   },
   "soundcheck": {
     "title": "Sound check",
-    "intro": "Checks the microphone and playback on this device — no room, no second player.",
+    "intro": "Two separate checks. The first is the microphone and audio on this device. The second is whether your voice reaches the voice services’ servers from this network.",
     "start": "Start the check",
     "stop": "Stop",
     "asking": "Asking for the mic…",
@@ -321,7 +323,14 @@
     "monitor_on": "Hear yourself",
     "monitor_off": "Stop hearing yourself",
     "monitor_hint": "Headphones are better: without them the speaker feeds back into the mic.",
-    "blocked": "The browser blocked playback — tap «Hear yourself» again"
+    "blocked": "The browser blocked playback — tap «Hear yourself» again",
+    "services_title": "Reaching the services",
+    "services_hint": "Connects to each service in turn and measures the link. Hearing yourself through a server is not possible: a server does not send your own audio back — that needs a second participant.",
+    "services_run": "Check the services",
+    "services_running": "Checking…",
+    "services_reachable": "Voice gets through",
+    "services_failed": "Voice does not get through",
+    "services_pending": "Queued"
   },
   "game": {
     "round_starting": "Round starting",

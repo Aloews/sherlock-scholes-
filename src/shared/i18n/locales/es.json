@@ -97,7 +97,9 @@
     "preset_legends_desc": "Los mejores jugadores de la historia",
     "filter_all_countries": "Todos los países",
     "filter_all_leagues": "Todas las ligas",
-    "tag_wc2026": "Mundial 2026"
+    "tag_wc2026": "Mundial 2026",
+    "filter_all_squads": "Cualquier plantilla",
+    "squad_as_of": "Plantilla a {{date}} — de los artículos de los jugadores, no en directo"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -310,7 +312,7 @@
   },
   "soundcheck": {
     "title": "Prueba de sonido",
-    "intro": "Comprueba el micrófono y la reproducción en este dispositivo, sin sala ni segundo jugador.",
+    "intro": "Dos comprobaciones distintas. La primera, el micrófono y el sonido en este dispositivo. La segunda, si tu voz llega a los servidores de los servicios de voz desde esta red.",
     "start": "Empezar la prueba",
     "stop": "Detener",
     "asking": "Pidiendo el micrófono…",
@@ -321,7 +323,14 @@
     "monitor_on": "Escucharte",
     "monitor_off": "Dejar de escucharte",
     "monitor_hint": "Mejor con auriculares: sin ellos el altavoz vuelve al micrófono y se acopla.",
-    "blocked": "El navegador bloqueó el sonido: pulsa «Escucharte» otra vez"
+    "blocked": "El navegador bloqueó el sonido: pulsa «Escucharte» otra vez",
+    "services_title": "Conexión con los servicios",
+    "services_hint": "Se conecta a cada servicio por turnos y mide el enlace. Oírte a ti mismo a través del servidor no es posible: el servidor no devuelve tu propio audio; para eso hace falta un segundo participante.",
+    "services_run": "Comprobar los servicios",
+    "services_running": "Comprobando…",
+    "services_reachable": "La voz llega",
+    "services_failed": "La voz no llega",
+    "services_pending": "En cola"
   },
   "game": {
     "round_starting": "Empieza la ronda",

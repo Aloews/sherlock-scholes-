@@ -95,7 +95,9 @@
     "preset_legends_desc": "历史上最伟大的球员",
     "filter_all_countries": "所有国家",
     "filter_all_leagues": "所有联赛",
-    "tag_wc2026": "2026世界杯"
+    "tag_wc2026": "2026世界杯",
+    "filter_all_squads": "任意阵容",
+    "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时"
   },
   "design": {
     "master": "新设计",
@@ -302,7 +304,7 @@
   },
   "soundcheck": {
     "title": "声音检查",
-    "intro": "检查本机的麦克风与播放 — 不需要房间，也不需要第二个玩家。",
+    "intro": "两项不同的检查。第一项是这台设备的麦克风和声音，第二项是你的声音能否从当前网络到达语音服务的服务器。",
     "start": "开始检查",
     "stop": "停止",
     "asking": "正在请求麦克风…",
@@ -313,7 +315,14 @@
     "monitor_on": "听自己",
     "monitor_off": "不听自己",
     "monitor_hint": "建议戴耳机：不戴时扬声器会回到麦克风，产生啸叫。",
-    "blocked": "浏览器阻止了播放 — 请再次点击「听自己」"
+    "blocked": "浏览器阻止了播放 — 请再次点击「听自己」",
+    "services_title": "与服务的连接",
+    "services_hint": "依次连接每个服务并测量链路。无法通过服务器听到自己：服务器不会把你自己的音频送回来，那需要第二位参与者。",
+    "services_run": "检查服务",
+    "services_running": "检查中…",
+    "services_reachable": "语音可以送达",
+    "services_failed": "语音无法送达",
+    "services_pending": "排队中"
   },
   "game": {
     "round_starting": "回合即将开始",

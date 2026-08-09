@@ -97,7 +97,9 @@
     "preset_legends_desc": "Les plus grands joueurs de l’histoire",
     "filter_all_countries": "Tous les pays",
     "filter_all_leagues": "Tous les championnats",
-    "tag_wc2026": "Coupe du monde 2026"
+    "tag_wc2026": "Coupe du monde 2026",
+    "filter_all_squads": "N’importe quel effectif",
+    "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct"
   },
   "design": {
     "master": "Nouveau design",
@@ -310,7 +312,7 @@
   },
   "soundcheck": {
     "title": "Test du son",
-    "intro": "Vérifie le micro et la lecture sur cet appareil — sans salon ni second joueur.",
+    "intro": "Deux vérifications distinctes. La première : le micro et le son sur cet appareil. La seconde : si votre voix atteint les serveurs des services vocaux depuis ce réseau.",
     "start": "Lancer le test",
     "stop": "Arrêter",
     "asking": "Demande du micro…",
@@ -321,7 +323,14 @@
     "monitor_on": "S'entendre",
     "monitor_off": "Ne plus s'entendre",
     "monitor_hint": "Mieux au casque : sans lui, le haut-parleur revient dans le micro et siffle.",
-    "blocked": "Le navigateur a bloqué le son — appuyez encore sur « S'entendre »"
+    "blocked": "Le navigateur a bloqué le son — appuyez encore sur « S'entendre »",
+    "services_title": "Liaison avec les services",
+    "services_hint": "Se connecte à chaque service tour à tour et mesure la liaison. S’entendre via le serveur est impossible : un serveur ne vous renvoie pas votre propre audio — il faudrait un second participant.",
+    "services_run": "Vérifier les services",
+    "services_running": "Vérification…",
+    "services_reachable": "La voix passe",
+    "services_failed": "La voix ne passe pas",
+    "services_pending": "En attente"
   },
   "game": {
     "round_starting": "La manche commence",
