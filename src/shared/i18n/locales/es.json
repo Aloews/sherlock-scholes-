@@ -447,8 +447,9 @@
   },
   "voice_services": {
     "title": "Servicio de voz",
-    "intro": "Qué servicio usa esta versión y cómo va la conexión. Dos de tres siempre dicen «no está en esta versión»: la app incluye uno solo.",
+    "intro": "Qué servicio lleva el audio y qué hacen los demás. Si uno no está disponible, la app pasa al siguiente por su cuenta.",
     "state_absent": "No está en esta versión",
+    "state_standby": "En reserva",
     "state_misconfigured": "Servicio desconocido configurado",
     "state_off": "Listo, aún sin conectar",
     "state_connecting": "Conectando…",

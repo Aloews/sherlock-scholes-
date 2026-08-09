@@ -447,8 +447,9 @@
   },
   "voice_services": {
     "title": "Voice service",
-    "intro": "Which service this build talks to, and how the link is doing. Two of three always read “not in this build” — by design: the app ships one.",
+    "intro": "Which service is carrying the audio, and what the others are doing. If one is unavailable, the app moves on to the next by itself.",
     "state_absent": "Not in this build",
+    "state_standby": "On standby",
     "state_misconfigured": "Unknown service configured",
     "state_off": "Ready, not connected yet",
     "state_connecting": "Connecting…",

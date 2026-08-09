@@ -1,5 +1,5 @@
 import { VOICE_PROVIDER_IDS, type VoiceProviderId } from './providers';
-import type { VoiceStatus } from './useVoiceChat';
+import type { ProviderAttempts, VoiceStatus } from './useVoiceChat';
 import type { VoiceUnavailableReason } from './voiceApi';
 import type { LinkStats, VoiceLevel } from './voiceQuality';
 
@@ -13,7 +13,8 @@ import type { LinkStats, VoiceLevel } from './voiceQuality';
  * decision.
  */
 export type ServiceState =
-  | 'absent'        // not the provider this build was compiled with
+  | 'absent'        // not compiled into this build at all
+  | 'standby'       // compiled in and available as a fallback; not in use
   | 'misconfigured' // VITE_VOICE_PROVIDER names something nobody implements
   | 'off'           // this build's service, nobody has connected yet
   | 'connecting'
@@ -36,7 +37,10 @@ export interface ServiceRow {
 }
 
 export interface ServiceStatusInput {
+  /** The service in use, or last tried — not necessarily the build's default. */
   active: VoiceProviderId;
+  /** Services whose adapters this build actually carries. */
+  available: readonly VoiceProviderId[];
   misconfigured: boolean;
   status: VoiceStatus;
   reason: VoiceUnavailableReason | null;
@@ -45,6 +49,8 @@ export interface ServiceStatusInput {
   audioBlocked: boolean;
   /** The provider's own words for the last failure, if it gave any. */
   detail?: string | null;
+  /** How each service that got a turn answered, from the failover ladder. */
+  tried?: ProviderAttempts;
 }
 
 /** The active service's state, given everything the session knows. */
@@ -70,10 +76,24 @@ function activeState(input: ServiceStatusInput): ServiceState {
  * cure is a panel that names which service this build even has.
  */
 export function serviceRows(input: ServiceStatusInput): ServiceRow[] {
+  const tried = input.tried ?? {};
+
   return VOICE_PROVIDER_IDS.map((id) => {
-    if (id !== input.active) {
+    // No adapter for it in this build, so it is not a fallback and not a
+    // fault: it is simply not here.
+    if (!input.available.includes(id)) {
       return { id, state: 'absent' as const, reason: null, level: null, stats: null, detail: null };
     }
+
+    if (id !== input.active) {
+      // Compiled in, so the ladder could reach it. Whether it already did is
+      // the difference between a spare and a service that has been ruled out.
+      const attempt = tried[id];
+      return attempt
+        ? { id, state: 'failed' as const, reason: attempt.reason, level: null, stats: null, detail: attempt.detail }
+        : { id, state: 'standby' as const, reason: null, level: null, stats: null, detail: null };
+    }
+
     const state = activeState(input);
     const live = state === 'live' || state === 'blocked';
     return {
