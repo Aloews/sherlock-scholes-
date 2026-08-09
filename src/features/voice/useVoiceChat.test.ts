@@ -233,14 +233,27 @@ describe('a connection that fails after the link came up', () => {
     expect(playing()).toHaveLength(0);
   });
 
-  it('says "network", not the last token-stage reason, when the link will not come up', async () => {
+  // The token was granted, so this is the SERVICE failing, not the server —
+  // and which part of the service matters. "network" used to cover a refused
+  // join, a silent one and a chunk that would not load; on production that
+  // ambiguity cost a week.
+  it('names a refused join rather than blaming the network', async () => {
     fake.config.refuseMic = false;
     fake.config.failConnect = true;
     const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
     release = unmount;
     await act(async () => { await result.current.connect(); });
     expect(result.current.status).toBe('unavailable');
-    expect(result.current.reason).toBe('network');
+    expect(result.current.reason).toBe('join_failed');
+  });
+
+  it("quotes the service's own words, so the failure can be searched for", async () => {
+    fake.config.refuseMic = false;
+    fake.config.failConnect = true;
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.detail).toMatch(/no link/i);
   });
 });
 

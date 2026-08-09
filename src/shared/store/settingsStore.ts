@@ -15,7 +15,10 @@ import { DEFAULT_DESIGN, isDesignId, type DesignId } from '@/shared/design/desig
 
 interface SettingsState {
   soundEnabled: boolean;
+  /** Auto-join the voice channel on entering a room. Off means "only on tap". */
+  voiceAutoConnect: boolean;
   setSoundEnabled(on: boolean): void;
+  setVoiceAutoConnect(on: boolean): void;
   proFrame: ProFrame;
   setProFrame(frame: ProFrame): void;
   design: DesignId;
@@ -27,6 +30,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       soundEnabled: true,
       setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+      voiceAutoConnect: true,
+      setVoiceAutoConnect: (voiceAutoConnect) => set({ voiceAutoConnect }),
       proFrame: 'default',
       setProFrame: (proFrame) => set({ proFrame }),
       design: DEFAULT_DESIGN,

@@ -21,7 +21,7 @@ const SERVICE_NAMES = { livekit: 'LiveKit', daily: 'Daily', agora: 'Agora' } as 
  */
 export function VoiceServicesPanel() {
   const { t } = useTranslation();
-  const { status, reason, level, linkStats, audioBlocked } = useVoice();
+  const { status, reason, detail, level, linkStats, audioBlocked } = useVoice();
 
   const rows = serviceRows({
     active: voiceProvider(),
@@ -31,6 +31,7 @@ export function VoiceServicesPanel() {
     level,
     stats: linkStats,
     audioBlocked,
+    detail,
   });
 
   return (
@@ -75,6 +76,13 @@ function ServiceLine({ row }: { row: ServiceRow }) {
             ? t(`voice.reason_${row.reason}`, { defaultValue: t('voice_services.state_failed') })
             : t(`voice_services.state_${row.state}`)}
         </p>
+
+        {/* What the service itself said. Untranslated by design: it is a
+            vendor's own message, and paraphrasing it would lose the only
+            string that can be searched for. */}
+        {row.detail && (
+          <p className="text-[10.5px] text-brand-muted/70 mt-0.5 break-words">{row.detail}</p>
+        )}
 
         {/* Raw numbers, not just the smoothed level: a link on its way down is
             visible here a good while before the ladder admits it. */}

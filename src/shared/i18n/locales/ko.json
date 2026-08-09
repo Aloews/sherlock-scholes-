@@ -294,6 +294,9 @@
     "reason_voice_not_configured": "음성 서버가 설정되지 않았습니다",
     "reason_issue_failed": "음성 서비스가 접근을 거부했습니다",
     "reason_network": "서버에 연결할 수 없습니다",
+    "reason_sdk_failed": "음성 모듈을 불러오지 못했습니다",
+    "reason_join_failed": "서비스가 연결을 거부했습니다",
+    "reason_join_timeout": "서비스가 제때 응답하지 않았습니다",
     "reason_malformed": "서버 응답이 올바르지 않습니다",
     "reason_lookup_failed": "서버가 방을 확인하지 못했습니다"
   },
@@ -440,7 +443,9 @@
     "state_blocked": "연결됐지만 브라우저가 소리를 재생하지 않습니다",
     "state_denied": "마이크 접근이 거부됨",
     "state_failed": "연결하지 못했습니다",
-    "link": "{{rtt}} ms · 손실 {{lossPercent}}% · {{quality}}"
+    "link": "{{rtt}} ms · 손실 {{lossPercent}}% · {{quality}}",
+    "auto_connect": "음성 채팅 자동 참가",
+    "auto_connect_off": "누를 때만"
   },
   "friends": {
     "title": "친구",

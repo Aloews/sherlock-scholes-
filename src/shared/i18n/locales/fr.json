@@ -302,6 +302,9 @@
     "reason_voice_not_configured": "Le serveur vocal n'est pas configuré",
     "reason_issue_failed": "Le service vocal a refusé l'accès",
     "reason_network": "Pas de connexion au serveur",
+    "reason_sdk_failed": "Le module vocal n’a pas pu se charger",
+    "reason_join_failed": "Le service a refusé la connexion",
+    "reason_join_timeout": "Le service n’a pas répondu à temps",
     "reason_malformed": "Le serveur a répondu de façon inattendue",
     "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon"
   },
@@ -453,7 +456,9 @@
     "state_blocked": "Connecté, mais le navigateur ne joue pas le son",
     "state_denied": "Accès au micro refusé",
     "state_failed": "Connexion impossible",
-    "link": "{{rtt}} ms · {{lossPercent}} % de perte · {{quality}}"
+    "link": "{{rtt}} ms · {{lossPercent}} % de perte · {{quality}}",
+    "auto_connect": "Rejoindre le vocal automatiquement",
+    "auto_connect_off": "Uniquement sur appui"
   },
   "friends": {
     "title": "Amis",

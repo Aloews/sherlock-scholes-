@@ -318,6 +318,9 @@
     "reason_voice_not_configured": "Голосовой сервер не настроен",
     "reason_issue_failed": "Голосовой сервер не выдал доступ",
     "reason_network": "Нет связи с сервером",
+    "reason_sdk_failed": "Не удалось загрузить голосовой модуль",
+    "reason_join_failed": "Сервис отклонил подключение",
+    "reason_join_timeout": "Сервис не ответил вовремя",
     "reason_malformed": "Сервер ответил неожиданно",
     "reason_lookup_failed": "Сервер не смог проверить комнату"
   },
@@ -483,7 +486,9 @@
     "state_blocked": "Подключено, но браузер не проигрывает звук",
     "state_denied": "Нет доступа к микрофону",
     "state_failed": "Подключиться не удалось",
-    "link": "{{rtt}} мс · потери {{lossPercent}}% · {{quality}}"
+    "link": "{{rtt}} мс · потери {{lossPercent}}% · {{quality}}",
+    "auto_connect": "Подключаться к голосу автоматически",
+    "auto_connect_off": "Только по нажатию"
   },
   "friends": {
     "title": "Друзья",

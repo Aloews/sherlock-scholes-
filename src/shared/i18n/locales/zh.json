@@ -294,6 +294,9 @@
     "reason_voice_not_configured": "语音服务器未配置",
     "reason_issue_failed": "语音服务拒绝了访问",
     "reason_network": "无法连接服务器",
+    "reason_sdk_failed": "语音模块加载失败",
+    "reason_join_failed": "服务拒绝了连接",
+    "reason_join_timeout": "服务未在规定时间内响应",
     "reason_malformed": "服务器返回异常",
     "reason_lookup_failed": "服务器无法核对房间"
   },
@@ -440,7 +443,9 @@
     "state_blocked": "已连接，但浏览器不播放声音",
     "state_denied": "麦克风权限被拒绝",
     "state_failed": "无法连接",
-    "link": "{{rtt}} 毫秒 · 丢包 {{lossPercent}}% · {{quality}}"
+    "link": "{{rtt}} 毫秒 · 丢包 {{lossPercent}}% · {{quality}}",
+    "auto_connect": "自动加入语音",
+    "auto_connect_off": "仅在点击时"
   },
   "friends": {
     "title": "好友",

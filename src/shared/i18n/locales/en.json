@@ -302,6 +302,9 @@
     "reason_voice_not_configured": "The voice server is not set up",
     "reason_issue_failed": "The voice service refused access",
     "reason_network": "No connection to the server",
+    "reason_sdk_failed": "The voice module would not load",
+    "reason_join_failed": "The service refused the connection",
+    "reason_join_timeout": "The service did not answer in time",
     "reason_malformed": "The server gave an unexpected answer",
     "reason_lookup_failed": "The server could not check the room"
   },
@@ -453,7 +456,9 @@
     "state_blocked": "Connected, but the browser will not play audio",
     "state_denied": "Microphone access denied",
     "state_failed": "Could not connect",
-    "link": "{{rtt}} ms · {{lossPercent}}% loss · {{quality}}"
+    "link": "{{rtt}} ms · {{lossPercent}}% loss · {{quality}}",
+    "auto_connect": "Join voice automatically",
+    "auto_connect_off": "Only when tapped"
   },
   "friends": {
     "title": "Friends",

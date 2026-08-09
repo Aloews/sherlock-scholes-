@@ -302,6 +302,9 @@
     "reason_voice_not_configured": "O servidor de voz não está configurado",
     "reason_issue_failed": "O serviço de voz recusou o acesso",
     "reason_network": "Sem conexão com o servidor",
+    "reason_sdk_failed": "Não foi possível carregar o módulo de voz",
+    "reason_join_failed": "O serviço recusou a conexão",
+    "reason_join_timeout": "O serviço não respondeu a tempo",
     "reason_malformed": "O servidor deu uma resposta inesperada",
     "reason_lookup_failed": "O servidor não conseguiu verificar a sala"
   },
@@ -453,7 +456,9 @@
     "state_blocked": "Conectado, mas o navegador não reproduz o áudio",
     "state_denied": "Sem acesso ao microfone",
     "state_failed": "Não foi possível conectar",
-    "link": "{{rtt}} ms · {{lossPercent}}% de perda · {{quality}}"
+    "link": "{{rtt}} ms · {{lossPercent}}% de perda · {{quality}}",
+    "auto_connect": "Entrar no chat de voz automaticamente",
+    "auto_connect_off": "Somente ao tocar"
   },
   "friends": {
     "title": "Amigos",
