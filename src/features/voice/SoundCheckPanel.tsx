@@ -4,6 +4,7 @@ import {
   IconMicrophone, IconLoader2, IconAlertTriangle, IconVolumeOff, IconHeadphones, IconCheck,
 } from '@tabler/icons-react';
 import { useSoundCheck, heardSomething } from './useSoundCheck';
+import { useServiceCheck } from './useServiceCheck';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
@@ -112,6 +113,93 @@ export function SoundCheckPanel() {
       {/* Playing a microphone back through a phone's own speaker is a feedback
           loop. Saying so before the tap, not after the howl. */}
       {running && <p className="text-[10.5px] text-brand-muted">{t('soundcheck.monitor_hint')}</p>}
+
+      <ServiceReachability />
     </div>
   );
 }
+
+/**
+ * The other half: does the voice get OUT of this phone, to each service.
+ *
+ * Kept beside the microphone meter because they are asked together and answer
+ * different halves — "can this device hear me" and "can the service". The old
+ * panel only ever answered the first, which is why "проверить звук" could pass
+ * on a phone that could not hold a call.
+ */
+function ServiceReachability() {
+  const { t } = useTranslation();
+  const { running, results, run } = useServiceCheck();
+
+  return (
+    <div className="pt-3 mt-1 border-t border-brand-border/60 space-y-2">
+      <div>
+        <p className="text-xs text-white font-semibold">{t('soundcheck.services_title')}</p>
+        {/* Says up front what it cannot do. An SFU does not send your own
+            audio back, so "hear yourself through the server" is not a thing
+            to promise — see useServiceCheck. */}
+        <p className="text-[10.5px] text-brand-muted mt-1 leading-relaxed">
+          {t('soundcheck.services_hint')}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => { hapticImpact('light'); void run(); }}
+        disabled={running}
+        className={clsx(
+          'h-10 px-4 rounded-xl border text-xs transition-colors flex items-center gap-2',
+          running
+            ? 'border-brand-border bg-brand-bg text-brand-muted'
+            : 'border-brand-accent bg-brand-accent/15 text-white',
+        )}
+      >
+        {running && <IconLoader2 size={14} stroke={2} className="animate-spin" />}
+        {t(running ? 'soundcheck.services_running' : 'soundcheck.services_run')}
+      </button>
+
+      {results.length > 0 && (
+        <ul className="space-y-1.5">
+          {results.map((row) => (
+            <li key={row.provider} className="flex items-start gap-2 text-[10.5px]">
+              <span className={clsx(
+                'mt-0.5 shrink-0',
+                row.outcome === 'reachable' ? 'text-brand-accent'
+                  : row.outcome === 'failed' ? 'text-red-400' : 'text-brand-muted',
+              )}>
+                {row.outcome === 'running'
+                  ? <IconLoader2 size={13} stroke={2} className="animate-spin" />
+                  : row.outcome === 'reachable'
+                    ? <IconCheck size={13} stroke={2} />
+                    : row.outcome === 'failed'
+                      ? <IconAlertTriangle size={13} stroke={2} />
+                      : <IconMicrophone size={13} stroke={2} />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-white">{SERVICE_NAMES[row.provider]}</p>
+                <p className="text-brand-muted">
+                  {t(`soundcheck.services_${row.outcome === 'running' ? 'running' : row.outcome}`)}
+                  {row.stats && (
+                    <span className="tabular-nums">
+                      {' · '}{Math.round(row.stats.rttMs)} ms
+                      {' · '}{Math.round(row.stats.loss * 100)}%
+                    </span>
+                  )}
+                </p>
+                {/* The vendor's own words, untranslated for the same reason
+                    the services panel keeps them: a paraphrase loses the one
+                    string that can be searched for. */}
+                {row.detail && (
+                  <p className="text-brand-muted/70 break-words">{row.detail}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Vendor names are trademarks: the same in every locale, never translated. */
+const SERVICE_NAMES = { livekit: 'LiveKit', daily: 'Daily', agora: 'Agora' } as const;

@@ -310,7 +310,7 @@
   },
   "soundcheck": {
     "title": "Teste de som",
-    "intro": "Verifica o microfone e a reprodução neste dispositivo — sem sala e sem segundo jogador.",
+    "intro": "Duas verificações diferentes. A primeira é o microfone e o som neste aparelho. A segunda é se a sua voz chega aos servidores dos serviços de voz a partir desta rede.",
     "start": "Iniciar o teste",
     "stop": "Parar",
     "asking": "A pedir o microfone…",
@@ -321,7 +321,14 @@
     "monitor_on": "Ouvir-se",
     "monitor_off": "Deixar de se ouvir",
     "monitor_hint": "Melhor com auscultadores: sem eles o altifalante volta ao microfone e ganha eco.",
-    "blocked": "O navegador bloqueou o som — toque em «Ouvir-se» outra vez"
+    "blocked": "O navegador bloqueou o som — toque em «Ouvir-se» outra vez",
+    "services_title": "Conexão com os serviços",
+    "services_hint": "Conecta a cada serviço por vez e mede o enlace. Ouvir a si mesmo pelo servidor não é possível: o servidor não devolve o seu próprio áudio — para isso é preciso um segundo participante.",
+    "services_run": "Verificar os serviços",
+    "services_running": "Verificando…",
+    "services_reachable": "A voz chega",
+    "services_failed": "A voz não chega",
+    "services_pending": "Na fila"
   },
   "game": {
     "round_starting": "Rodada começando",

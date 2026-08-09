@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
   }
 
   const payload = await req.json().catch(() => null) as
-    | { initData?: string; roomId?: string; provider?: string; failed?: string }
+    | { initData?: string; roomId?: string; provider?: string; failed?: string; purpose?: string }
     | null;
   const initData = payload?.initData;
   const roomId = payload?.roomId;
@@ -271,12 +271,49 @@ Deno.serve(async (req) => {
   // this the check had no answer to read and reported a correctly-deployed
   // function as an old one. Neither name is a secret: the frontend's own
   // choice is already in the bundle as VITE_VOICE_PROVIDER.
-  if (!initData || !roomId) {
+  // A diagnostic run needs no room: it is one player alone, proving their
+  // voice reaches a service at all. Everything else still does.
+  const isCheck = payload?.purpose === "check";
+  if (!initData || (!roomId && !isCheck)) {
     return json({ error: "bad_request", provider: VOICE_PROVIDER, serves: serveable }, 400);
   }
 
   const telegramId = await validateInitData(initData);
   if (telegramId === null) return json({ error: "unauthorized" }, 401);
+
+  // ─── The diagnostic path ───────────────────────────────────────────────
+  //
+  // WHY IT MAY SKIP THE ROOM CHECKS. The channel is derived from the caller's
+  // own validated telegram id and nothing else, so it is a room of one that
+  // only they can ever be issued a token for. There is no membership question
+  // to ask, because there is nobody else to be a member.
+  //
+  // The rule this does NOT bend is the one that matters: the client still does
+  // not name its channel. `chk_<id>` is computed here, from an id the HMAC
+  // proved, exactly as `ss_<roomId>` is. A caller asking to "check" cannot
+  // reach a game channel — the names cannot collide, and it never sees a room.
+  if (isCheck) {
+    const provider = resolveProvider(payload?.provider, serveable);
+    if (provider === null) {
+      return json(
+        { error: "provider_mismatch", provider: VOICE_PROVIDER, serves: serveable },
+        409,
+      );
+    }
+    try {
+      return json(await issue(provider, `chk_${telegramId}`, String(telegramId)));
+    } catch (err) {
+      console.error(`check issue failed for ${provider}: ${err}`);
+      return json({ error: "issue_failed", provider }, 503);
+    }
+  }
+
+  // Past the diagnostic branch, a room is mandatory again. Stated as its own
+  // guard rather than left to the check above, so the type narrows here and a
+  // later edit cannot quietly reach the room queries without one.
+  if (!roomId) {
+    return json({ error: "bad_request", provider: VOICE_PROVIDER, serves: serveable }, 400);
+  }
 
   // Membership decides everything: the caller must actually be in this room.
   const membershipRead = await select(
