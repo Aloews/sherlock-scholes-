@@ -269,6 +269,54 @@ describe('what the server refused', () => {
   });
 });
 
+// Auto-connect fires from an effect; the button fires from a tap; neither
+// knows about the other. The guard used to be `sessionRef`, which is null for
+// the whole of an attempt — so both got through and each built a client.
+// Daily allows exactly one per page and refuses the second, which is how a
+// race turned into a voice channel that was dead until the app restarted.
+describe('one attempt at a time', () => {
+  it('ignores a second connect while the first is still in flight', async () => {
+    let letTokenThrough!: () => void;
+    const held = new Promise<void>((resolve) => { letTokenThrough = resolve; });
+    fetchVoiceToken.mockImplementationOnce(async () => {
+      await held;
+      return {
+        ok: true,
+        credentials: { provider: 'livekit', token: 'jwt', channel: 'ss_room-1', url: 'wss://example' },
+      };
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+
+    await act(async () => {
+      const first = result.current.connect();
+      const second = result.current.connect();
+      letTokenThrough();
+      await Promise.all([first, second]);
+    });
+
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+    expect(fake.sessions).toHaveLength(1);
+    expect(result.current.status).toBe('on');
+  });
+
+  // The guard has to come back off on every path, or one failure means no
+  // voice for the rest of the session — a worse bug than the one it fixes.
+  it('lets the next attempt run after a failure', async () => {
+    fake.config.failConnect = true;
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('unavailable');
+
+    fake.config.failConnect = false;
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.status).toBe('on');
+  });
+});
+
 describe('the quality ladder and a muted player', () => {
   // The ladder runs on an interval created once, inside connect(). It used to
   // read `muted` out of that closure — the value AT CONNECT TIME, always

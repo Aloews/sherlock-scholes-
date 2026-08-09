@@ -47,20 +47,42 @@ const daily = vi.hoisted(() => {
   }
 
   const calls: FakeCall[] = [];
+  // Daily's real singleton: createCallObject throws while an instance is
+  // alive, and only destroy() releases it. Reproducing that here is the whole
+  // point — an SDK mock that allows two would have let the production bug pass.
+  let live: FakeCall | null = null;
+
+  class SingletonCall extends FakeCall {
+    override async destroy() { live = null; return super.destroy(); }
+  }
+
   return {
     config,
     calls,
-    createCallObject: vi.fn(() => { const c = new FakeCall(); calls.push(c); return c; }),
+    getCallInstance: vi.fn(() => live),
+    createCallObject: vi.fn(() => {
+      if (live) throw new Error('Duplicate DailyIframe instances are not allowed');
+      const c = new SingletonCall();
+      live = c;
+      calls.push(c);
+      return c;
+    }),
+    /** Strands an instance, as a failed attempt used to. */
+    strand() { live = new SingletonCall(); return live; },
     reset() {
       config.joinError = null;
       config.joinHangs = false;
       calls.length = 0;
+      live = null;
     },
   };
 });
 
 vi.mock('@daily-co/daily-js', () => ({
-  default: { createCallObject: daily.createCallObject },
+  default: {
+    createCallObject: daily.createCallObject,
+    getCallInstance: daily.getCallInstance,
+  },
 }));
 
 const { dailyTransport } = await import('./daily');
@@ -131,6 +153,63 @@ describe('joining', () => {
     daily.config.joinError = new Error('rejected: room not found');
     await expect(dailyTransport.connect(connectOptions(sink)))
       .rejects.toThrow(/room not found/);
+  });
+});
+
+// The production bug, and the reason this file exists at all. Daily refuses a
+// second call object at CREATION, so an instance stranded by a failed attempt
+// does not break that attempt — it breaks every attempt after it, and the
+// duplicate error is the only thing anybody ever gets to see. The first
+// failure, the one worth reading, is gone.
+describe('the one call object Daily allows', () => {
+  it('destroys the call object when the join is refused', async () => {
+    daily.config.joinError = new Error('rejected: room not found');
+    await expect(dailyTransport.connect(connectOptions(sink))).rejects.toThrow();
+    expect(daily.calls[0].destroyCalls).toBe(1);
+  });
+
+  // Without the teardown above this is the test that fails, and it fails with
+  // "Duplicate DailyIframe instances are not allowed" — the exact string the
+  // diagnostics panel showed on the device.
+  it('lets the next attempt through after a refused join', async () => {
+    daily.config.joinError = new Error('rejected: room not found');
+    await expect(dailyTransport.connect(connectOptions(sink)))
+      .rejects.toThrow(/room not found/);
+
+    daily.config.joinError = null;
+    const session = await dailyTransport.connect(connectOptions(sink));
+
+    expect(daily.calls).toHaveLength(2);
+    expect(daily.calls[1].joined).toEqual({
+      url: 'https://team.daily.co/ss12345',
+      token: 'meeting-token',
+    });
+    await session.disconnect();
+  });
+
+  it('reports the service’s own refusal, not the duplicate that follows it', async () => {
+    daily.config.joinError = new Error('rejected: room not found');
+    await expect(dailyTransport.connect(connectOptions(sink)))
+      .rejects.toThrow(/room not found/);
+    await expect(dailyTransport.connect(connectOptions(sink)))
+      .rejects.toThrow(/room not found/);
+  });
+
+  // Belt and braces: an instance stranded by something this adapter did not do
+  // — an older build, a hot reload — must not cost the player their voice
+  // channel until they restart the app.
+  it('sweeps an instance nothing owns before creating its own', async () => {
+    const stranded = daily.strand();
+    await dailyTransport.connect(connectOptions(sink));
+    expect(stranded.destroyCalls).toBe(1);
+    expect(daily.calls[0].joined).toBeTruthy();
+  });
+
+  it('connects anyway when the SDK will not say whether an instance exists', async () => {
+    daily.getCallInstance.mockImplementationOnce(() => { throw new Error('not supported'); });
+    const session = await dailyTransport.connect(connectOptions(sink));
+    expect(daily.calls[0].joined).toBeTruthy();
+    await session.disconnect();
   });
 });
 

@@ -53,6 +53,12 @@ export function useVoiceChat(roomId: string | null) {
   // it was AT CONNECT TIME, so a player who muted themselves and then hit a
   // bad patch of network had their microphone switched back on for them.
   const mutedRef = useRef(false);
+  // True from the first line of connect() until it has either a session or a
+  // failure. `sessionRef` cannot serve as the guard: it stays null for the
+  // whole attempt, so a tap arriving while auto-connect was mid-join let both
+  // run, and two adapters each built a client. Daily allows exactly one per
+  // page and rejects the second — see providers/daily.ts.
+  const connectingRef = useRef(false);
 
   const disconnect = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -71,7 +77,7 @@ export function useVoiceChat(roomId: string | null) {
   // Leaving the screen must not leave a microphone open.
   useEffect(() => disconnect, [disconnect]);
 
-  const connect = useCallback(async () => {
+  const attemptConnect = useCallback(async () => {
     if (!roomId || !voiceEnabled() || sessionRef.current) return;
     setStatus('connecting');
     setReason(null);
@@ -177,6 +183,26 @@ export function useVoiceChat(roomId: string | null) {
       closeAudioSink();
     }
   }, [roomId, disconnect]);
+
+  /**
+   * One attempt at a time.
+   *
+   * Auto-connect fires from an effect and the button fires from a tap, and
+   * neither knows about the other. `sessionRef` is no guard against that: it
+   * is null for the whole of an attempt, so two overlapping calls both got as
+   * far as building a client — and Daily allows exactly one per page, so the
+   * second was refused and the first was stranded. The refusal is what the
+   * player saw; the stranding is what kept them seeing it.
+   */
+  const connect = useCallback(async () => {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
+    try {
+      await attemptConnect();
+    } finally {
+      connectingRef.current = false;
+    }
+  }, [attemptConnect]);
 
   /**
    * Second attempt at playback, on a fresh tap.
