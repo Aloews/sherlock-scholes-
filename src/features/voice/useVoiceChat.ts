@@ -119,17 +119,30 @@ export function useVoiceChat(roomId: string | null) {
     // was being told the connection had failed.
     let opened: VoiceSession | null = null;
 
+    // THE SERVER'S ANSWER WINS. It signed for whichever service the ROOM is
+    // on, which is not always the one we asked for — the first player to
+    // arrive fixed it for everybody. Loading what it named, rather than
+    // refusing the mismatch, is what keeps a room on one vendor: a channel
+    // exists inside one service only, and two players on two of them hear
+    // silence while both are told they are connected.
+    //
+    // Refusing used to be right, back when the server signed for its own
+    // choice and a mismatch meant two dashboards had drifted. Now it just
+    // costs rungs: pinned to agora with a livekit-first build, the ladder
+    // walked livekit → mismatch → daily → mismatch → agora to reach an answer
+    // it was handed at the first step.
+    const signed = granted.credentials.provider;
+    if (signed !== providerId && !availableProviders().includes(signed)) {
+      // The room is on a service this build cannot load at all. Nothing here
+      // can fix that; the ladder may as well try what it does carry.
+      return { ok: false, reason: 'provider_mismatch', detail: null, denied: false };
+    }
+
     let stage: 'sdk' | 'join' = 'sdk';
     try {
-      const transport = await loadTransportFor(providerId);
+      const transport = await loadTransportFor(signed);
       stage = 'join';
-      // The adapter we loaded and the service the server signed for must be the
-      // same one. They can still differ — a deployment that will not serve what
-      // we asked for falls back to its own default — and the credential is then
-      // valid and useless. Say so, and let the ladder move on.
-      if (granted.credentials.provider !== transport.id) {
-        return { ok: false, reason: 'provider_mismatch', detail: null, denied: false };
-      }
+      if (signed !== providerId) setActive(signed);
 
       // A join with no deadline is how "Подключаемся…" becomes permanent: the
       // service can accept the token and then never answer, and nothing in the

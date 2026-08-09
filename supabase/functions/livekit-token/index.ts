@@ -134,6 +134,59 @@ async function select(path: string): Promise<{ ok: boolean; rows: unknown[] }> {
   }
 }
 
+/**
+ * Which service this ROOM is on — agreeing with everyone already in it.
+ *
+ * A channel lives inside one vendor, so two players on two services cannot
+ * hear each other while both are told they are connected. That is the failure
+ * this whole path exists to make impossible, and it is why the answer comes
+ * from the room rather than from whatever the caller happened to ask for.
+ *
+ * Three cases:
+ *   • nobody has decided yet — this caller decides, atomically;
+ *   • already decided and we can still sign for it — that, whatever was asked;
+ *   • already decided and we CANNOT sign for it any more (its keys were taken
+ *     off this deployment) — the room has to move or it is silent for
+ *     everybody. The move is compare-and-swap, so simultaneous callers make
+ *     one move between them instead of dragging the room back and forth.
+ *
+ * Null means the database would not answer. The caller reports lookup_failed
+ * rather than guessing, because guessing here is exactly how a room ends up
+ * split across two vendors.
+ */
+async function agreeProvider(
+  roomId: string,
+  pinned: string | null,
+  asked: ProviderId,
+  serveable: ProviderId[],
+): Promise<ProviderId | null> {
+  if (pinned && serveable.includes(pinned as ProviderId)) return pinned as ProviderId;
+
+  if (pinned) {
+    console.warn(
+      `room ${roomId} was pinned to ${pinned}, which this deployment can no ` +
+      `longer serve (${serveable.join(",")}). Moving it to ${asked}.`,
+    );
+  }
+
+  const r = pinned
+    ? await rpc("move_room_voice_provider", { p_room_id: roomId, p_from: pinned, p_to: asked })
+    : await rpc("claim_room_voice_provider", { p_room_id: roomId, p_wanted: asked });
+  if (!r.ok) {
+    console.error(`voice provider agreement failed for room ${roomId}: ${r.status}`);
+    return null;
+  }
+  const agreed = await r.json().catch(() => null);
+  // A room that exists always comes back with a service. Anything else means
+  // the row vanished between two statements, and signing on a guess would be
+  // worse than refusing.
+  if (typeof agreed !== "string" || !serveable.includes(agreed as ProviderId)) {
+    console.error(`room ${roomId} agreed on ${agreed}, which is not serveable`);
+    return null;
+  }
+  return agreed as ProviderId;
+}
+
 // get_user_status raises 28000 on a bad signature -> non-2xx here.
 async function validateInitData(initData: string): Promise<number | null> {
   const r = await rpc("get_user_status", { p_init_data: initData });
@@ -218,10 +271,11 @@ Deno.serve(async (req) => {
   }
 
   const roomsRead = await select(
-    `rooms?id=eq.${encodeURIComponent(roomId)}&select=mode,status&limit=1`,
+    `rooms?id=eq.${encodeURIComponent(roomId)}&select=mode,status,voice_provider&limit=1`,
   );
   if (!roomsRead.ok) return json({ error: "lookup_failed" }, 503);
-  const rooms = roomsRead.rows as { mode: string; status: string }[];
+  const rooms = roomsRead.rows as
+    { mode: string; status: string; voice_provider: string | null }[];
   if (rooms.length === 0) return json({ error: "no_such_room" }, 404);
   if (rooms[0].status === "finished") return json({ error: "room_finished" }, 409);
 
@@ -242,8 +296,8 @@ Deno.serve(async (req) => {
   // Serve what the caller can actually speak. A build ships exactly one SDK,
   // so this is not a preference — it is the only service that build can join.
   const wanted = payload?.provider;
-  const provider = resolveProvider(wanted, serveable);
-  if (provider === null) {
+  const asked = resolveProvider(wanted, serveable);
+  if (asked === null) {
     // Still possible, and now it means something a person can act on: the
     // build wants a service this deployment holds no keys for. The answer says
     // which ones it does hold.
@@ -252,6 +306,19 @@ Deno.serve(async (req) => {
       { error: "provider_mismatch", provider: VOICE_PROVIDER, serves: serveable },
       409,
     );
+  }
+
+  // THE ROOM DECIDES, NOT THE DEVICE. A channel exists only inside one vendor,
+  // so two players on two services are in two different rooms while both
+  // screens say "connected" — the one failure shape that looks like success.
+  // The first caller fixes the service; everyone after is signed for that one
+  // whatever they asked for.
+  const provider = await agreeProvider(roomId, rooms[0].voice_provider, asked, serveable);
+  if (provider === null) return json({ error: "lookup_failed" }, 503);
+  if (provider !== asked) {
+    // Not an error: the caller will be told which service it actually got, and
+    // a build that carries the adapter simply loads that one instead.
+    console.info(`room ${roomId} is on ${provider}; caller asked for ${asked}`);
   }
 
   try {

@@ -476,6 +476,81 @@ describe('walking to the next service', () => {
   });
 });
 
+// A channel exists inside one vendor. Two players on two services are in two
+// different rooms while both screens read "Связь есть" and neither hears
+// anything — the one failure shape that looks like success. The room decides,
+// server-side, and the client's job is to do as it is told.
+describe('the service the room already agreed on', () => {
+  const allThree = () => {
+    fake.build.available = ['livekit', 'daily', 'agora'];
+    fake.build.preferred = 'livekit';
+  };
+
+  /** The server signs for `pinned` no matter what the caller asks for. */
+  const roomPinnedTo = (pinned: string) => {
+    fetchVoiceToken.mockImplementation(async () => ({
+      ok: true,
+      credentials: { provider: pinned, token: 'jwt', channel: 'ss_room-1', url: 'wss://example' },
+    }));
+  };
+
+  it('loads the service the server signed for, not the one it asked for', async () => {
+    allThree();
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('on');
+    expect(result.current.active).toBe('agora');
+  });
+
+  // The whole point of obeying: one round trip, not three. Refusing the
+  // mismatch used to walk livekit → daily → agora to reach the answer the
+  // first response already carried.
+  it('gets there in one attempt instead of walking the ladder', async () => {
+    allThree();
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fetchVoiceToken).toHaveBeenCalledTimes(1);
+    expect(fake.build.asked).toEqual(['agora']);
+  });
+
+  it('still refuses when the room is on a service this build cannot load', async () => {
+    fake.build.available = ['livekit'];
+    fake.build.preferred = 'livekit';
+    roomPinnedTo('agora');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.status).toBe('unavailable');
+    expect(result.current.reason).toBe('provider_mismatch');
+    expect(fake.build.asked).toEqual([]);
+  });
+
+  // Being sent somewhere else must not cost the ladder its remaining rungs:
+  // the room's service failing is still a reason to try the next one.
+  it('keeps walking when the room’s own service will not come up', async () => {
+    allThree();
+    roomPinnedTo('daily');
+    fake.build.refuse.add('daily');
+
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    expect(fake.build.asked[0]).toBe('daily');
+    expect(fake.build.asked.length).toBeGreaterThan(1);
+  });
+});
+
 describe('the quality ladder and a muted player', () => {
   // The ladder runs on an interval created once, inside connect(). It used to
   // read `muted` out of that closure — the value AT CONNECT TIME, always
