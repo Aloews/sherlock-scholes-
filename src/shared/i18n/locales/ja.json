@@ -495,7 +495,15 @@
     "loading": "日程を読み込み中…",
     "empty": "予定された試合はありません",
     "today": "今日",
-    "tomorrow": "明日"
+    "tomorrow": "明日",
+    "predict": "スコアを予想",
+    "predict_save": "保存",
+    "predict_closed": "試合が始まっているため受け付けられません",
+    "your_prediction": "あなたの予想",
+    "points_pending": "結果待ち",
+    "points_awarded": "+{{n}}",
+    "total_points": "予想ポイント: {{n}}",
+    "rules": "完全一致5、得失点差3、勝敗2"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

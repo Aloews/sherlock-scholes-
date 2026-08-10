@@ -495,7 +495,15 @@
     "loading": "일정을 불러오는 중…",
     "empty": "예정된 경기가 없습니다",
     "today": "오늘",
-    "tomorrow": "내일"
+    "tomorrow": "내일",
+    "predict": "스코어 예측",
+    "predict_save": "저장",
+    "predict_closed": "경기가 시작되어 접수되지 않았습니다",
+    "your_prediction": "내 예측",
+    "points_pending": "결과 대기 중",
+    "points_awarded": "+{{n}}",
+    "total_points": "예측 점수: {{n}}",
+    "rules": "정확한 스코어 5, 골 득실 3, 승패 2"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

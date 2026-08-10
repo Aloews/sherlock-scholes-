@@ -570,7 +570,15 @@
     "loading": "جارٍ تحميل الجدول…",
     "empty": "لا توجد مباريات بعد",
     "today": "اليوم",
-    "tomorrow": "غدًا"
+    "tomorrow": "غدًا",
+    "predict": "توقّع النتيجة",
+    "predict_save": "حفظ",
+    "predict_closed": "بدأت المباراة — لم يُقبل التوقّع",
+    "your_prediction": "توقّعك",
+    "points_pending": "بانتظار النتيجة",
+    "points_awarded": "+{{n}}",
+    "total_points": "نقاط التوقّعات: {{n}}",
+    "rules": "النتيجة المضبوطة ٥، فارق الأهداف ٣، الفائز ٢"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

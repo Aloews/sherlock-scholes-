@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
 import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
+import { PredictionRow } from '@/features/fixtures/PredictionRow';
+import { fetchMyPredictions, totalPoints, type Prediction } from '@/features/fixtures/predictionsApi';
+import { getRawInitData } from '@/shared/lib/telegram';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
@@ -26,15 +29,35 @@ export function MatchesScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [fixtures, setFixtures] = useState<Fixture[] | null>(null);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const rows = await fetchUpcomingFixtures();
-      if (!cancelled) setFixtures(rows);
+      // Together: a fixture list without the player's own predictions would
+      // render every match as un-predicted for a moment, and then rewrite
+      // itself. One flash of wrong is worse than one moment of nothing.
+      const [rows, mine] = await Promise.all([
+        fetchUpcomingFixtures(),
+        fetchMyPredictions(getRawInitData()),
+      ]);
+      if (cancelled) return;
+      setFixtures(rows);
+      setPredictions(mine);
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const byFixture = useMemo(() => {
+    const map = new Map<string, Prediction>();
+    for (const p of predictions) map.set(p.fixture_id, p);
+    return map;
+  }, [predictions]);
+
+  const settledPoints = useMemo(
+    () => totalPoints(predictions.filter((p) => p.settled_at !== null)),
+    [predictions],
+  );
 
   const days = useMemo(() => groupByDay(fixtures ?? []), [fixtures]);
 
@@ -79,6 +102,11 @@ export function MatchesScreen() {
             asked and there is nothing, asked and here it is. Collapsing the
             first two would show "no matches" to somebody whose list is one
             round trip away. */}
+        {settledPoints > 0 && (
+          <p className="text-brand-muted text-xs">{t('matches.total_points', { n: settledPoints })}</p>
+        )}
+        <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
+
         {fixtures === null && (
           <p className="text-brand-muted text-sm text-center py-8">{t('matches.loading')}</p>
         )}
@@ -97,8 +125,9 @@ export function MatchesScreen() {
             {list.map((fixture) => (
               <div
                 key={fixture.id}
-                className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 flex items-center gap-3"
+                className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3"
               >
+                <div className="flex items-center gap-3">
                 <span className="ds-display text-white text-sm font-bold tabular-nums shrink-0 w-12">
                   {timeFmt.format(new Date(fixture.commence_at))}
                 </span>
@@ -117,6 +146,20 @@ export function MatchesScreen() {
                     defaultValue: readableSportKey(fixture.sport_key),
                   })}
                 </span>
+                </div>
+
+                <div className="mt-2 pl-[3.75rem]">
+                  <PredictionRow
+                    fixture={fixture}
+                    existing={byFixture.get(fixture.id)}
+                    onSaved={(saved) => {
+                      setPredictions((prev) => [
+                        saved,
+                        ...prev.filter((p) => p.fixture_id !== saved.fixture_id),
+                      ]);
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>

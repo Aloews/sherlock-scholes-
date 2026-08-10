@@ -510,7 +510,15 @@
     "loading": "Loading the schedule…",
     "empty": "No matches scheduled yet",
     "today": "Today",
-    "tomorrow": "Tomorrow"
+    "tomorrow": "Tomorrow",
+    "predict": "Predict the score",
+    "predict_save": "Save",
+    "predict_closed": "The match has started — not accepted",
+    "your_prediction": "Your prediction",
+    "points_pending": "awaiting the result",
+    "points_awarded": "+{{n}}",
+    "total_points": "Prediction points: {{n}}",
+    "rules": "Exact score 5, right goal difference 3, right winner 2"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",

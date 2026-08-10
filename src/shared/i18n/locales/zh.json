@@ -495,7 +495,15 @@
     "loading": "正在加载赛程…",
     "empty": "暂无比赛",
     "today": "今天",
-    "tomorrow": "明天"
+    "tomorrow": "明天",
+    "predict": "预测比分",
+    "predict_save": "保存",
+    "predict_closed": "比赛已开始，未接受",
+    "your_prediction": "你的预测",
+    "points_pending": "等待结果",
+    "points_awarded": "+{{n}}",
+    "total_points": "预测积分：{{n}}",
+    "rules": "比分全中 5，净胜球正确 3，胜负正确 2"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

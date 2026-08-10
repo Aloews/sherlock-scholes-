@@ -510,7 +510,15 @@
     "loading": "Chargement du calendrier…",
     "empty": "Aucun match pour l’instant",
     "today": "Aujourd’hui",
-    "tomorrow": "Demain"
+    "tomorrow": "Demain",
+    "predict": "Pronostiquer",
+    "predict_save": "Enregistrer",
+    "predict_closed": "Le match a commencé : refusé",
+    "your_prediction": "Ton pronostic",
+    "points_pending": "en attente du résultat",
+    "points_awarded": "+{{n}}",
+    "total_points": "Points de pronostic : {{n}}",
+    "rules": "Score exact 5, différence exacte 3, vainqueur exact 2"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

@@ -177,6 +177,7 @@ flowchart TD
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
 | `create_team_room` | `create_team_room.sql` | создание комнаты |
 | `set_room_deck_filter` | `room_deck_filter.sql` | хост выбирает колоду комнаты; пишет `settings.deck` и зеркалит `settings.categories`. Только хост, только пока `waiting` — `rooms` пишут все, политика `USING (true)` |
+| `predict_match`, `my_predictions`, `prediction_points`, `settle_predictions`, `sports_awaiting_scores`, `upsert_fixture_scores` | `match_predictions.sql` | прогноз счёта игроком. **Не букмекерский** — коэффициенты вне экрана по §4 `LIVE_FOOTBALL_HANDOFF.md`. Приём закрывается по `now()` на сервере. Начисляют и пишут счёт только `service_role` |
 | `invite_to_room`, `pending_room_invites`, `decline_room_invite`, `room_invite_ttl` | `room_invites.sql` | позвать друга в комнату без кода. Обе стороны выводятся из подписанного `initData`: приглашение называет двоих, и клиенту нельзя дать назваться любым из них. Срок жизни выводится из статуса комнаты, а не из cron |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
@@ -361,6 +362,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Второй вход в комнату мимо `joinByCode()` — расходится с первым по ошибкам и по экрану, на который попадаешь; протухает всегда второй | `screens/HomeScreen.tsx` |
 | Приглашение показано после старта комнаты — зовёт на экран, который его же и отвергнет. `pending_room_invites` фильтрует по статусу комнаты | `room_invites.sql` |
 | Сервис, который заведомо не подключается, оставлен в лестнице переключения — тратит настоящую попытку и показывает игроку ошибку, с которой он ничего не сделает | `providers/types.ts`, `OFFERED_VOICE_PROVIDER_IDS` |
+| Счета матчей тянут по расписанию, а не по спросу — `/scores` стоит кредит за вызов при потолке 500 в месяц. Спрашивать надо только турниры, где ждёт живой прогноз | `match_predictions.sql`, `sports_awaiting_scores` |
+| `points = 0` вместо `NULL` у неразобранного прогноза — «ещё не считали» и «ты не угадал» это разные ответы | `match_predictions.sql` |
 | Ключ i18n, заканчивающийся на `_one`/`_few`/`_other`, — для i18next это форма множественного числа, а не ключ. `soccer_france_ligue_one` пропал из арабского как «нет формы `_other`» | `features/fixtures/leagues.ts`, `leagueKey` |
 | Приглашение по ссылке съедено гонкой с авторизацией: `joinRoom` при `player === null` отказывает мгновенно, а защёлка «уже обработал» ставилась до вызова — единственная попытка была заведомо провальной | `screens/HomeScreen.tsx`, эффект `start_param` |
 | Матчи сгруппированы по дню на сервере — 22:00 UTC это сегодня в Мадриде и завтра в Токио; день считается там, где стоит зритель | `features/fixtures/fixturesApi.ts`, `groupByDay` |

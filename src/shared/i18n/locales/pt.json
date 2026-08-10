@@ -510,7 +510,15 @@
     "loading": "Carregando a agenda…",
     "empty": "Ainda não há jogos",
     "today": "Hoje",
-    "tomorrow": "Amanhã"
+    "tomorrow": "Amanhã",
+    "predict": "Palpitar",
+    "predict_save": "Salvar",
+    "predict_closed": "O jogo já começou: não aceito",
+    "your_prediction": "Seu palpite",
+    "points_pending": "aguardando o resultado",
+    "points_awarded": "+{{n}}",
+    "total_points": "Pontos de palpite: {{n}}",
+    "rules": "Placar exato 5, saldo certo 3, vencedor certo 2"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
