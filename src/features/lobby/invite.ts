@@ -16,6 +16,54 @@ export function normalizeCode(raw: string | null | undefined): string | null {
   return CODE_RE.test(code) ? code : null;
 }
 
+/** Room codes are six characters. Exported so the UI never re-guesses it. */
+export const CODE_LENGTH = 6;
+
+/**
+ * What a room code field should hold after each keystroke or paste.
+ *
+ * THE FIELD MUST NOT FIGHT THE KEYBOARD. It used to store
+ * `e.target.value.toUpperCase()`, which is a different string from what the
+ * IME just produced — and on Android a controlled input whose value is
+ * rewritten mid-composition can drop the character that caused the rewrite.
+ * Normalising to a set the keyboard cannot leave (uppercase A–Z0–9 only, at
+ * most six) is not a smaller version of that problem: once the field holds
+ * exactly what a valid code can hold, every later keystroke is either accepted
+ * verbatim or was never part of a code.
+ *
+ * It also absorbs the three things people actually paste — a code with spaces
+ * or dashes, and the invite link itself.
+ */
+export function sanitizeCodeInput(raw: string): string {
+  return extractCode(raw).slice(0, CODE_LENGTH);
+}
+
+/**
+ * The code inside whatever was pasted.
+ *
+ * A shared invite arrives as a whole URL far more often than as six bare
+ * characters, and stripping punctuation from `https://t.me/…?startapp=ABC123`
+ * yields a wall of letters with the code buried in it. So the link is read as
+ * a link first, and only text that is not one gets the blunt treatment.
+ */
+function extractCode(raw: string): string {
+  const text = (raw ?? '').trim();
+  const fromLink = /[?&]startapp=([^&\s]+)/i.exec(text);
+  const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
+  return candidate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * A complete code from arbitrary pasted text, or null.
+ *
+ * Distinct from `sanitizeCodeInput`, which is deliberately permissive because
+ * a half-typed code is a normal state. This one answers "is there something to
+ * join with", and the caller may act on it without asking.
+ */
+export function codeFromText(raw: string | null | undefined): string | null {
+  return normalizeCode(extractCode(raw ?? ''));
+}
+
 /**
  * The link that opens the Mini App with the room code already filled in.
  * Telegram delivers everything after `startapp=` as initDataUnsafe.start_param,

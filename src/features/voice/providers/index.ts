@@ -19,7 +19,12 @@
 // tries, and the second is fetched only after the first has failed. Left unset,
 // every line below folds exactly as it did before and the bundle is unchanged.
 
-import { isVoiceProviderId, VOICE_PROVIDER_IDS, type VoiceProviderId, type VoiceTransport } from './types';
+import {
+  isVoiceProviderId,
+  OFFERED_VOICE_PROVIDER_IDS,
+  type VoiceProviderId,
+  type VoiceTransport,
+} from './types';
 
 const CONFIGURED = import.meta.env.VITE_VOICE_PROVIDER as string | undefined;
 
@@ -56,7 +61,10 @@ export function voiceFallbackEnabled(): boolean {
  */
 export function availableProviders(): VoiceProviderId[] {
   if (!voiceFallbackEnabled()) return [voiceProvider()];
-  return [...VOICE_PROVIDER_IDS];
+  // OFFERED, not every id we can parse: Daily is withdrawn, and a ladder rung
+  // that is known to fail spends a real attempt and shows the player a fault
+  // they cannot act on. See OFFERED_VOICE_PROVIDER_IDS.
+  return [...OFFERED_VOICE_PROVIDER_IDS];
 }
 
 /**
@@ -127,4 +135,4 @@ export async function loadTransport(): Promise<VoiceTransport> {
 }
 
 export type { VoiceCredentials, VoiceProviderId, VoiceSession, VoiceTransport } from './types';
-export { VOICE_PROVIDER_IDS, isVoiceProviderId } from './types';
+export { VOICE_PROVIDER_IDS, OFFERED_VOICE_PROVIDER_IDS, isVoiceProviderId } from './types';
