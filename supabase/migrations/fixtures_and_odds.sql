@@ -90,6 +90,16 @@ alter table public.odds_api_budget enable row level security;
 
 drop policy if exists fixtures_read on public.fixtures;
 create policy fixtures_read on public.fixtures for select to anon, authenticated using (true);
+-- The grant belongs next to the policy, always: Postgres checks it FIRST, so a
+-- policy without a grant is a table nobody can read. This file had exactly
+-- that, and it was a latent 42501 only because no screen reads fixtures yet.
+-- The same omission in current_squads.sql took the whole deck down — see the
+-- note there.
+grant select on public.fixtures to anon, authenticated;
+
+-- fixture_odds and odds_api_budget get NO grant and NO policy, deliberately.
+-- That pair is the lockdown described at the top of this file, and it is what
+-- keeps bookmaker prices off every screen.
 
 -- ---------------------------------------------------------------------------
 -- The monthly ceiling.
