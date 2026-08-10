@@ -102,7 +102,8 @@
     "tag_wc2026": "W杯2026",
     "filter_all_squads": "すべての所属",
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
-    "matches_link": "今後の試合"
+    "matches_link": "今後の試合",
+    "fantasy_link": "ファンタジーリーグ"
   },
   "design": {
     "master": "新デザイン",
@@ -532,5 +533,23 @@
     "soccer_uefa_nations_league": "ネーションズリーグ",
     "soccer_conmebol_copa_libertadores": "コパ・リベルタドーレス",
     "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ"
+  },
+  "fantasy": {
+    "title": "ファンタジー",
+    "rules": "カードはクラブの結果で加点：勝ち3、引き分け1、無失点+2、得点+1、大敗−1。キャプテンは2倍。",
+    "this_round": "今節",
+    "next_round": "次節",
+    "locks_at": "締切 {{when}}",
+    "locked": "締め切り済み",
+    "no_schedule": "この節の日程はまだです",
+    "picked_of": "{{total}}人中{{n}}人",
+    "pick_captain": "星で主将を選択",
+    "make_captain": "キャプテンにする",
+    "remove": "外す",
+    "save": "スカッドを登録",
+    "saved": "登録しました",
+    "refused": "受付不可：締切済みか、編成が不正です",
+    "search": "選手・クラブを検索",
+    "standings": "リーグ順位"
   }
 }

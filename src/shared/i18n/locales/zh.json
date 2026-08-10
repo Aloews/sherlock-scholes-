@@ -102,7 +102,8 @@
     "tag_wc2026": "2026世界杯",
     "filter_all_squads": "任意阵容",
     "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
-    "matches_link": "近期比赛"
+    "matches_link": "近期比赛",
+    "fantasy_link": "梦幻联赛"
   },
   "design": {
     "master": "新设计",
@@ -532,5 +533,23 @@
     "soccer_uefa_nations_league": "欧洲国家联赛",
     "soccer_conmebol_copa_libertadores": "南美解放者杯",
     "soccer_conmebol_copa_sudamericana": "南美杯"
+  },
+  "fantasy": {
+    "title": "梦幻联赛",
+    "rules": "卡牌按所属俱乐部成绩得分：胜3、平1、零封+2、进球+1、大比分失利−1。队长翻倍。",
+    "this_round": "本轮",
+    "next_round": "下一轮",
+    "locks_at": "截止 {{when}}",
+    "locked": "已截止",
+    "no_schedule": "本轮赛程尚未公布",
+    "picked_of": "已选 {{n}}/{{total}}",
+    "pick_captain": "点星号选择队长",
+    "make_captain": "设为队长",
+    "remove": "移除",
+    "save": "提交阵容",
+    "saved": "阵容已提交",
+    "refused": "未接受：本轮已截止或阵容无效",
+    "search": "搜索球员或俱乐部",
+    "standings": "联赛排名"
   }
 }

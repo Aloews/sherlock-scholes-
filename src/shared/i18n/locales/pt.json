@@ -104,7 +104,8 @@
     "tag_wc2026": "Copa 2026",
     "filter_all_squads": "Qualquer elenco",
     "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo",
-    "matches_link": "Próximos jogos"
+    "matches_link": "Próximos jogos",
+    "fantasy_link": "Liga fantasy"
   },
   "design": {
     "master": "Novo design",
@@ -547,5 +548,23 @@
     "soccer_uefa_nations_league": "Liga das Nações",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
     "soccer_conmebol_copa_sudamericana": "Copa Sul-Americana"
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "rules": "A carta pontua pelo clube: vitória 3, empate 1, sem sofrer gols +2, gol +1, derrota pesada −1. Capitão dobra.",
+    "this_round": "Rodada atual",
+    "next_round": "Próxima rodada",
+    "locks_at": "Fecha {{when}}",
+    "locked": "Fechado",
+    "no_schedule": "Ainda sem calendário",
+    "picked_of": "Escolhidos {{n}} de {{total}}",
+    "pick_captain": "Escolha o capitão na estrela",
+    "make_captain": "Tornar capitão",
+    "remove": "Remover",
+    "save": "Salvar escalação",
+    "saved": "Escalação salva",
+    "refused": "Não aceito: rodada fechada ou escalação inválida",
+    "search": "Buscar jogador ou clube",
+    "standings": "Classificação"
   }
 }

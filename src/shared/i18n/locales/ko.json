@@ -102,7 +102,8 @@
     "tag_wc2026": "월드컵 2026",
     "filter_all_squads": "모든 스쿼드",
     "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
-    "matches_link": "예정된 경기"
+    "matches_link": "예정된 경기",
+    "fantasy_link": "판타지 리그"
   },
   "design": {
     "master": "새 디자인",
@@ -532,5 +533,23 @@
     "soccer_uefa_nations_league": "네이션스리그",
     "soccer_conmebol_copa_libertadores": "코파 리베르타도레스",
     "soccer_conmebol_copa_sudamericana": "코파 수다메리카나"
+  },
+  "fantasy": {
+    "title": "판타지",
+    "rules": "카드는 소속 클럽 결과로 득점: 승 3, 무 1, 무실점 +2, 득점 +1, 대패 −1. 주장은 2배.",
+    "this_round": "이번 라운드",
+    "next_round": "다음 라운드",
+    "locks_at": "마감 {{when}}",
+    "locked": "마감됨",
+    "no_schedule": "아직 일정이 없습니다",
+    "picked_of": "{{total}}명 중 {{n}}명",
+    "pick_captain": "별을 눌러 주장 선택",
+    "make_captain": "주장으로 지정",
+    "remove": "제외",
+    "save": "스쿼드 저장",
+    "saved": "저장되었습니다",
+    "refused": "거부됨: 마감되었거나 스쿼드가 올바르지 않습니다",
+    "search": "선수 또는 클럽 검색",
+    "standings": "리그 순위"
   }
 }

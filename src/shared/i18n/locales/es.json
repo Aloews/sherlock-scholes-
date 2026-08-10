@@ -104,7 +104,8 @@
     "tag_wc2026": "Mundial 2026",
     "filter_all_squads": "Cualquier plantilla",
     "squad_as_of": "Plantilla a {{date}} — de los artículos de los jugadores, no en directo",
-    "matches_link": "Próximos partidos"
+    "matches_link": "Próximos partidos",
+    "fantasy_link": "Liga fantasy"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -547,5 +548,23 @@
     "soccer_uefa_nations_league": "Liga de Naciones",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
     "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "rules": "Una carta puntúa por su club: victoria 3, empate 1, portería a cero +2, gol +1, derrota abultada −1. El capitán dobla.",
+    "this_round": "Jornada actual",
+    "next_round": "Próxima jornada",
+    "locks_at": "Cierra {{when}}",
+    "locked": "Cerrado",
+    "no_schedule": "Aún no hay calendario",
+    "picked_of": "Elegidos {{n}} de {{total}}",
+    "pick_captain": "Elige capitán con la estrella",
+    "make_captain": "Hacer capitán",
+    "remove": "Quitar",
+    "save": "Guardar plantilla",
+    "saved": "Plantilla guardada",
+    "refused": "No aceptado: jornada cerrada o plantilla inválida",
+    "search": "Buscar jugador o club",
+    "standings": "Clasificación"
   }
 }

@@ -104,7 +104,8 @@
     "tag_wc2026": "Coupe du monde 2026",
     "filter_all_squads": "N’importe quel effectif",
     "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct",
-    "matches_link": "Prochains matchs"
+    "matches_link": "Prochains matchs",
+    "fantasy_link": "Ligue fantasy"
   },
   "design": {
     "master": "Nouveau design",
@@ -547,5 +548,23 @@
     "soccer_uefa_nations_league": "Ligue des nations",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
     "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "rules": "Une carte marque grâce à son club : victoire 3, nul 1, clean sheet +2, but +1, lourde défaite −1. Capitaine doublé.",
+    "this_round": "Journée en cours",
+    "next_round": "Prochaine journée",
+    "locks_at": "Clôture {{when}}",
+    "locked": "Clôturé",
+    "no_schedule": "Pas encore de calendrier",
+    "picked_of": "{{n}} sur {{total}} choisis",
+    "pick_captain": "Choisis un capitaine avec l’étoile",
+    "make_captain": "Nommer capitaine",
+    "remove": "Retirer",
+    "save": "Valider l’équipe",
+    "saved": "Équipe validée",
+    "refused": "Refusé : journée close ou équipe invalide",
+    "search": "Chercher un joueur ou un club",
+    "standings": "Classement"
   }
 }
