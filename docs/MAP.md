@@ -184,6 +184,14 @@ flowchart TD
 * `livekit-token` — токен голосового канала; канал **и сервис** выбирает
   сервер (`VOICE_PROVIDER`: livekit / daily / agora). Имя историческое —
   `docs/VOICE_PROVIDERS.md`.
+* `assistant-bot` — личный ассистент владельца в отдельном боте. К игре
+  отношения не имеет и **секретов с ней не делит**: читает
+  `ASSISTANT_BOT_TOKEN`, тогда как `tg-pay` читает `TELEGRAM_BOT_TOKEN`, а
+  `tg_validate_init_data` — запись Vault `telegram_bot_token`. Секрет вебхука
+  не заводится вручную: это `sha256(ASSISTANT_BOT_TOKEN)`, поэтому установка и
+  проверка не могут разойтись — но ротация токена требует повторного
+  `{"action":"install"}`. Владелец фиксируется по первому написавшему
+  (`assistant_owner`), остальные игнорируются молча.
 
 **RLS**: `supabase/migrations/rls_lockdown.sql` — образец для новых таблиц.
 Игрок читает свой прогресс, но **не пишет** его; запись — только через
@@ -315,6 +323,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | `RETURN QUERY` принят за выход из функции — он только дописывает строки, и ранний возврат проваливается в код под собой | `pause_round_on_voice_drop.sql` |
 | Комната раздаёт `{ categories }` вместо своего фильтра — лиги, составы и порог известности остаются в тренировке | `features/room/roomDeck.ts`, §6 `set_room_deck_filter` |
 | `update rooms` из клиента вместо RPC — политика `USING (true)`, и любой гость перекраивает колоду хоста | `room_deck_filter.sql` |
+| «Я не писал грант» ≠ «гранта нет»: Supabase раздаёт `alter default privileges ... to anon, authenticated` для таблиц, созданных ролью `postgres`, — сработает дефолт или нет, по файлу не видно. Закрытая таблица закрывается явным `revoke` | `assistant_bot.sql` |
+| Токен ассистента ротирован без повторного `install` — секрет вебхука выведен из токена, и Telegram получает 403 на каждый апдейт | `functions/assistant-bot/README.md` |
 | **Политика RLS без `GRANT SELECT`** — Postgres проверяет грант ПЕРВЫМ, и вызывающий получает `42501` ещё до политики. `card_current_club` уехала так, и это уронило **всю колоду**: `cards_matching` её читает, а она `LANGUAGE sql STABLE` **без** `SECURITY DEFINER`, то есть исполняется от игрока | `current_squads.sql`, `fixtures_and_odds.sql` |
 | Симптом «не грузится игра» ищут в бандле и в деплое, а лежит он в гранте на маленькую справочную таблицу за три слоя от экрана | §3, `deck_rpc.sql` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
