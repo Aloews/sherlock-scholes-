@@ -10,7 +10,12 @@ tables.
 | Secret | Who sets it | What breaks without it |
 |---|---|---|
 | `ASSISTANT_BOT_TOKEN` | you, from @BotFather | everything — the function 403s every update |
-| `ANTHROPIC_API_KEY` | you, from console.anthropic.com | only the answers; `/start`, `/whoami`, `/reset` still work and the bot says the model is not configured |
+| `ANTHROPIC_API_KEY` | you, from console.anthropic.com | Claude. Gemini still answers if its key is set |
+| `GEMINI_API_KEY` | you, from aistudio.google.com | Gemini. Claude still answers if its key is set |
+| `GEMINI_MODEL` | optional; defaults to `gemini-2.5-flash` | nothing — until Google retires that name, and then everything Gemini, as a 404. `/models` lists what the key really sees |
+
+With neither model key the bot still answers `/start`, `/whoami`, `/model`,
+`/models` and `/reset`, and names the secret that is missing.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the Functions
 runtime — never set them by hand.
@@ -68,10 +73,30 @@ delete from assistant_owner;         -- next person to write becomes the owner
 
 | Command | Effect |
 |---|---|
-| `/start` | greeting, and a warning if the model key is missing |
+| `/start` | greeting, plus which model answers and which keys are missing |
+| `/model` | what is running now, and what else is on offer |
+| `/model claude` / `/model gemini` | switch, stored in `assistant_owner.model` |
+| `/models` | ask the providers what these keys can actually see |
 | `/whoami` | your Telegram id |
 | `/reset` | delete this conversation's history |
-| anything else | goes to the model, with the last 20 turns as context |
+| anything else | goes to the chosen model, with the last 20 turns as context |
+
+## The two models
+
+| | Claude Opus 5 | Gemini Flash |
+|---|---|---|
+| For | analysis, code, anything worth re-reading | short questions, quick lookups |
+| Thinking | adaptive, low effort | **off** (`thinkingBudget: 0`) |
+
+**What makes Flash cheap is `thinkingBudget: 0`, not the name.** Flash thinks by
+default and bills for it, so a "Flash" that was never told to stop is the same
+money for a smaller model. That field is also the one most likely to be
+rejected by a future model, and a rejection costs the whole answer — so a 400
+that names it is retried once without it, and the log says which happened.
+
+A stored choice is a preference, not a promise: if its key is removed, the bot
+answers with the other model **and says so** rather than going quiet. `/model X`
+refuses to store a choice whose key is missing, for the same reason.
 
 ## Troubleshooting
 
@@ -82,5 +107,6 @@ Telegram got back from us.
   not set. Re-run install.
 * **Bot silent, no error in the webhook info** — someone else is bound as
   owner. `select * from assistant_owner`.
-* **"Модель не ответила: …"** — the model call failed and the bot is quoting
-  the API. A 401 is the key, a 429 is a rate limit.
+* **"… не ответила: …"** — the model call failed and the bot is quoting the
+  API verbatim. A 401 is the key, a 429 is a rate limit, a 404 from Google is
+  a retired model name — run `/models` and set `GEMINI_MODEL` to one it lists.

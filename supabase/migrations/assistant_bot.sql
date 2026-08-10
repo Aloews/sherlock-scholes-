@@ -37,6 +37,21 @@ create table if not exists public.assistant_owner (
   bound_at     timestamptz not null default now()
 );
 
+-- Which model the assistant answers with. Added after the table shipped, hence
+-- the separate statement rather than a column in the create above.
+--
+-- NULL means "whatever is configured", resolved per request rather than baked
+-- in. That indirection is the point: a stored choice whose key has since been
+-- removed must not turn the bot mute, and a bot that answers with the other
+-- model and says so is strictly better than one that answers with nothing.
+alter table public.assistant_owner
+  add column if not exists model text;
+
+comment on column public.assistant_owner.model is
+  'Chosen model id (see MODELS in the assistant-bot function). NULL = pick the '
+  'first provider that has a key. Never trusted blindly: a choice whose key is '
+  'gone falls back, because a silent bot is worse than a cheaper answer.';
+
 comment on table public.assistant_owner is
   'The single Telegram account the assistant bot replies to. Bound on first '
   'contact. To rebind: delete the row and message the bot again.';
