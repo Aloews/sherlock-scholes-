@@ -52,6 +52,14 @@ jobs:
       - name: Unit + property + data-integrity (with coverage gate)
         run: npm run test:cov
 
+      # A missing translation key is not a test failure — it is a player
+      # seeing a raw key, or Russian, in the middle of their own language.
+      # CLAUDE.md has said "check before opening a PR" since the nine locales
+      # landed, and a check that depends on remembering is not a check.
+      # Offline, no network, exits 1 on a real gap.
+      - name: Translations complete in all nine locales
+        run: node scripts/check-i18n.mjs
+
   mutation:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -72,6 +80,35 @@ jobs:
           name: stryker-report
           path: reports/mutation/
           if-no-files-found: ignore
+
+  # The voice server, checked from outside — preflight headers, the 400/401
+  # shapes that prove the HMAC check is live, and which providers this
+  # deployment can actually sign for.
+  #
+  # IT NEEDS A LIVE DEPLOYMENT TO TALK TO, so it runs only where one has been
+  # configured, and is SKIPPED otherwise. That distinction is the whole point:
+  # check-voice.mjs exits 0 when it has no URL, so a job that ran it
+  # unconditionally would report success without having checked anything —
+  # which is the exact defect the python job was carrying (see its comment).
+  # A skipped job says "not checked"; a green one would have lied.
+  #
+  # To turn it on: repository variable SUPABASE_URL, repository secret
+  # SUPABASE_ANON_KEY. The anon key is public by design — it is in the client
+  # bundle already — and no server secret is involved.
+  voice-check:
+    if: ${{ vars.SUPABASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Voice server reachable, signing, and refusing forged sessions
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scripts/check-voice.mjs
 
   python-tests:
     runs-on: ubuntu-latest

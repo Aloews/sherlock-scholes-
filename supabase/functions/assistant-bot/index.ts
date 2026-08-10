@@ -50,6 +50,22 @@ const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+/**
+ * The key the DATABASE tool reads with — deliberately the public one.
+ *
+ * The bot holds SERVICE_ROLE for its own two tables, and that key bypasses RLS
+ * entirely. Handing it to a tool the model drives would mean the model's
+ * mistakes, and anything that talks its way into the model, reach every row in
+ * the project — including this conversation and the players' rows. As anon it
+ * sees exactly what the game's own client sees and nothing else, and that is a
+ * property of Postgres rather than of the allowlist I remembered to write.
+ *
+ * Injected by the Functions runtime alongside SUPABASE_URL, so it costs no
+ * setup. It is public by construction: the same key ships in the browser
+ * bundle.
+ */
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
 /** Google renames these on its own schedule; `/models` says what the key sees. */
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
 
@@ -330,6 +346,73 @@ const TOOLS: ToolDef[] = [
     run: async (args) =>
       typeof args.path === "string" ? await readRepoFile(args.path) : "Не указан path.",
   },
+  {
+    name: "query_db",
+    description:
+      "Запрос к боевой базе через PostgREST, ТОЛЬКО ЧТЕНИЕ и только то, что " +
+      "видит обычный игрок. Передай путь после /rest/v1/, например " +
+      "'cards?select=id,name&category=eq.player&limit=5' или " +
+      "'cards?select=count'. Приватные таблицы недоступны — это не список " +
+      "запретов, а права в Postgres.",
+    properties: { path: { type: "string", description: "Путь PostgREST после /rest/v1/" } },
+    required: ["path"],
+    run: async (args) => {
+      if (typeof args.path !== "string") return "Не указан path.";
+      if (!ANON_KEY) return "Публичный ключ базы не настроен, читать нечем.";
+      const path = args.path.replace(/^\/+/, "");
+
+      // GET only. PostgREST writes through POST/PATCH/DELETE, and the anon key
+      // is not the reason this is read-only — this line is. Both have to hold.
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, Prefer: "count=exact" },
+      });
+      const body = await r.text().catch(() => "");
+      if (!r.ok) {
+        // Handed over verbatim: 42501 means the table is closed to players,
+        // which is an ANSWER about the schema, not a malfunction to smooth over.
+        return `PostgREST ${r.status}: ${body.slice(0, 2000)}`;
+      }
+      return body.length > 20_000
+        ? body.slice(0, 20_000) + "\n[…обрезано, добавьте limit= или select= поуже]"
+        : body;
+    },
+  },
+  {
+    name: "ci_status",
+    description:
+      "Последние прогоны GitHub Actions: ветка, событие, вывод каждой джобы. " +
+      "Отвечает на «зелёный ли CI сейчас» фактом, а не предположением.",
+    properties: {
+      branch: { type: "string", description: "Ветка, необязательно; по умолчанию все" },
+    },
+    required: [],
+    run: async (args) => {
+      const branch = typeof args.branch === "string" && args.branch ? `&branch=${encodeURIComponent(args.branch)}` : "";
+      const r = await fetch(
+        `https://api.github.com/repos/${REPO}/actions/runs?per_page=8${branch}`,
+        { headers: { Accept: "application/vnd.github+json", "User-Agent": "sherlock-assistant" } },
+      );
+      if (!r.ok) return `GitHub Actions ${r.status}: ${await r.text().catch(() => "")}`;
+      const data = (await r.json()) as {
+        workflow_runs?: {
+          name?: string; head_branch?: string; event?: string;
+          status?: string; conclusion?: string | null; created_at?: string;
+          html_url?: string;
+        }[];
+      };
+      const runs = data.workflow_runs ?? [];
+      if (runs.length === 0) return "Прогонов не найдено.";
+      return runs
+        .map((run) =>
+          `${run.created_at ?? "?"} ${run.name ?? "?"} [${run.head_branch ?? "?"}/${run.event ?? "?"}] ` +
+          // A run still going has no conclusion, and reporting that as "no
+          // result" reads as failure. MAP.md §8 also warns that Actions drops
+          // the pull_request event outright, so "нет прогона" is a real state.
+          `→ ${run.status === "completed" ? (run.conclusion ?? "без вывода") : `идёт (${run.status ?? "?"})`}`,
+        )
+        .join("\n");
+    },
+  },
 ];
 
 async function runTool(name: string, args: Record<string, unknown>): Promise<string> {
@@ -355,11 +438,26 @@ const SYSTEM_PROMPT = `Ты — личный ассистент владельц
 Edge Functions на Deno). Карточки обогащаются из Википедии. Репозиторий
 ${REPO}, ветка ${BRANCH}.
 
-У ТЕБЯ ЕСТЬ ДОСТУП К РЕПОЗИТОРИЮ — инструменты list_files и read_file. Это
-меняет то, как ты отвечаешь на вопросы о проекте: не рассуждай о том, как там
-скорее всего устроено, а прочитай и скажи, как есть. Начинай с docs/MAP.md —
-это карта проекта, она отвечает на «где что лежит» за один шаг. Правила
-разработки лежат в CLAUDE.md, инженерные стандарты — в docs/.
+ЧЕМ ТЫ РАСПОЛАГАЕШЬ. Четыре инструмента, и это меняет то, как ты отвечаешь:
+не рассуждай о том, как там скорее всего устроено, а посмотри и скажи, как
+есть.
+
+  list_files, read_file — этот репозиторий. Начинай с docs/MAP.md: это карта,
+  она отвечает на «где что лежит» за один шаг. Правила разработки в CLAUDE.md,
+  инженерные стандарты в docs/.
+
+  query_db — боевая база через PostgREST, только чтение и только то, что видит
+  обычный игрок. Приватные таблицы закрыты правами Postgres, а не списком
+  запретов, так что 42501 в ответе — это факт о схеме, а не поломка: так и
+  скажи. Писать в базу ты не можешь вообще.
+
+  ci_status — последние прогоны GitHub Actions. Важно: Actions в этом проекте
+  регулярно теряет событие pull_request, и «прогона нет» — это отдельное
+  состояние, не то же самое, что «упало», и не то же самое, что «зелено».
+
+ЧЕГО У ТЕБЯ НЕТ. Ты не можешь ничего изменить: ни коммита, ни записи в базу,
+ни перезапуска CI. Если ответ требует действия — скажи, какое именно, и не
+делай вид, что выполнил его.
 
 ЧЕСТНОСТЬ ВАЖНЕЕ ПОЛЕЗНОСТИ. Разделяй то, что ты прочитал, и то, что
 предполагаешь, и говори, чем именно ты это знаешь — называй файл. Если не
@@ -678,7 +776,10 @@ async function repoStatus(): Promise<string> {
       : null;
     return `Репозиторий ${REPO}@${BRANCH}: вижу ${paths.length} файлов.\n` +
       (age === null ? "" : `Список обновлён ${age} мин назад (обновляется раз в час).\n`) +
-      "Содержимое файлов читается напрямую, без кэша.";
+      "Содержимое файлов читается напрямую, без кэша.\n\n" +
+      `База: ${ANON_KEY ? "читаю правами обычного игрока (запись невозможна)" : "публичный ключ не настроен"}\n` +
+      "CI: вижу прогоны GitHub Actions\n" +
+      `Инструменты: ${TOOLS.map((t) => t.name).join(", ")}`;
   } catch (err) {
     return `Репозиторий недоступен: ${err instanceof Error ? err.message : err}`;
   }
@@ -848,6 +949,10 @@ async function install(): Promise<Response> {
     gemini_model: GEMINI_MODEL,
     repo: `${REPO}@${BRANCH}`,
     repo_files: repoFiles,
+    // The database tool reads as anon on purpose; this says whether that key
+    // arrived, not what it is.
+    db_read_as_anon: ANON_KEY !== "",
+    tools: TOOLS.map((t) => t.name),
   });
 }
 

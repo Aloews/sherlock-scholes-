@@ -77,18 +77,48 @@ delete from assistant_owner;         -- next person to write becomes the owner
 | `/model` | what is running now, and what else is on offer |
 | `/model claude` / `/model gemini` | switch, stored in `assistant_owner.model` |
 | `/models` | ask the providers what these keys can actually see |
-| `/repo` | whether the repository is reachable, and how fresh the file list is |
+| `/repo` | what it can see: the repository, the database, CI |
 | `/usage` | tokens spent so far, per model |
 | `/whoami` | your Telegram id |
 | `/reset` | delete this conversation's history |
 | anything else | goes to the chosen model, with the last 20 turns as context |
 
-## It can read the repository
+## What it can see
 
 Asked "is the test setup in order", an assistant with no access can only say
-so — honest and useless. So it has two tools, `list_files` and `read_file`,
-pointed at this repository, and both models reach them through their own
-calling conventions.
+so — honest and useless. It has four tools, and both models reach them through
+their own calling conventions.
+
+| Tool | Reaches | As |
+|---|---|---|
+| `list_files`, `read_file` | this repository | anonymously — it is public |
+| `query_db` | the live database | **the anon key**, i.e. what a player sees |
+| `ci_status` | GitHub Actions runs | anonymously |
+
+**It can change nothing.** No commit, no write, no CI re-run — and the system
+prompt says so, because a model that cannot act but implies it did is worse
+than one that never had access.
+
+### Why `query_db` uses the anon key and not the service role
+
+The function already holds the service role for its own two tables, and that
+key bypasses RLS entirely. Handing it to a tool the *model* drives would mean
+the model's mistakes — and anything that talks its way into the model — reach
+every row in the project, including this conversation and the players' rows.
+
+As anon it sees the game's own public surface and nothing else, and that is a
+property of Postgres rather than of an allowlist someone remembered to write.
+Measured against production:
+
+| Table | anon |
+|---|---|
+| `cards` | 200, 3809 rows |
+| `assistant_chat`, `assistant_owner`, `assistant_repo_tree` | `42501` |
+| `users`, `fixture_odds` | `42501` |
+
+The key is injected by the Functions runtime as `SUPABASE_ANON_KEY`, so there
+is nothing to configure, and it is public by construction — the same key ships
+in the browser bundle.
 
 **No credential is involved.** The repo is public: contents come from
 `raw.githubusercontent.com`, the file list from the GitHub trees API. Point it
