@@ -307,7 +307,11 @@
     "reason_join_failed": "服务拒绝了连接",
     "reason_join_timeout": "服务未在规定时间内响应",
     "reason_malformed": "服务器返回异常",
-    "reason_lookup_failed": "服务器无法核对房间"
+    "reason_lookup_failed": "服务器无法核对房间",
+    "detail_no_payment_method": "该服务账户没有付款方式，因此拒绝所有连接。这是账户设置，不是应用的问题。",
+    "detail_bad_token": "服务拒绝了访问密钥：请检查服务器上的密钥对。",
+    "detail_quota": "账户额度已用尽，服务将拒绝连接直到续费。",
+    "detail_bad_config": "应用请求了服务无法理解的参数。这是我们这边的错误。"
   },
   "soundcheck": {
     "title": "声音检查",

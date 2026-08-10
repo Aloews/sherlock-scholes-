@@ -20,9 +20,14 @@
 //
 // STATUS: written against agora-rtc-sdk-ng's client API (`createClient`,
 // `join`, `publish`, `user-published`/`user-unpublished`, `volume-indicator`,
-// `getRTCStats`), and covered by agora.test.ts — but still not exercised
-// against a live Agora project. The tests hold the shape; only a real session
-// confirms the vocabulary.
+// `getRTCStats`), and covered by agora.test.ts.
+//
+// The tests held the SHAPE of every call and still let a dead adapter ship:
+// they mocked createClient, so nothing in the suite had an opinion about the
+// VALUE of `codec`, and the SDK rejects it (see AGORA_VIDEO_CODECS below). A
+// real device found it in one tap of the service check. Where a value has to
+// come from the vendor's vocabulary rather than ours, the test now pins the
+// value, not just the call.
 
 import type { VoiceConnectOptions, VoiceSession, VoiceTransport } from './types';
 
@@ -47,8 +52,34 @@ interface AgoraMicTrack {
   close(): void;
 }
 
+/**
+ * The only codecs `createClient` accepts.
+ *
+ * `codec` is Agora's VIDEO codec, and there is no audio equivalent to set —
+ * the SDK negotiates Opus for audio on its own. This adapter passed 'opus'
+ * here, which is an audio codec, and the SDK answers:
+ *
+ *   AgoraRTCError INVALID_PARAMS: config.codec can only be set as
+ *   ["vp8","vp9","av1","h264","h265"]
+ *
+ * thrown out of createClient — before join, before the microphone, before
+ * anything this file does. Agora therefore never connected once, on any
+ * device, since the adapter was written; the failover ladder had a third rung
+ * that could not hold weight. Named as a constant so a future edit has to
+ * argue with the list rather than guess at it again.
+ */
+export const AGORA_VIDEO_CODECS = ['vp8', 'vp9', 'av1', 'h264', 'h265'] as const;
+export type AgoraVideoCodec = (typeof AGORA_VIDEO_CODECS)[number];
+
+/**
+ * What we ask for. The call is audio-only — no video track is ever created —
+ * so the value only has to be one the SDK accepts, and vp8 is its own default
+ * and the most widely supported.
+ */
+export const AGORA_CODEC: AgoraVideoCodec = 'vp8';
+
 interface AgoraSdk {
-  createClient(opts: { mode: string; codec: string }): AgoraClient;
+  createClient(opts: { mode: string; codec: AgoraVideoCodec }): AgoraClient;
   createMicrophoneAudioTrack(): Promise<AgoraMicTrack>;
   onAudioAutoplayFailed?: (() => void) | null;
 }
@@ -63,7 +94,7 @@ export const agoraTransport: VoiceTransport = {
     const mod = await import('agora-rtc-sdk-ng');
     const AgoraRTC = (mod.default ?? mod) as unknown as AgoraSdk;
 
-    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'opus' });
+    const client = AgoraRTC.createClient({ mode: 'rtc', codec: AGORA_CODEC });
 
     let blocked = false;
     let leaving = false;

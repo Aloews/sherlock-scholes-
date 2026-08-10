@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import { IconCircleCheck, IconCircleDashed, IconLoader2, IconAlertTriangle } from '@tabler/icons-react';
 import { useVoice } from './VoiceProvider';
 import { availableProviders, voiceProviderMisconfigured } from './providers';
-import { serviceRows, formatStats, type ServiceRow, type ServiceState } from './serviceStatus';
+import { serviceRows, formatStats, explainDetail, type ServiceRow, type ServiceState } from './serviceStatus';
 
 /** Vendor names are trademarks: the same in every locale, never translated. */
 const SERVICE_NAMES = { livekit: 'LiveKit', daily: 'Daily', agora: 'Agora' } as const;
@@ -82,9 +82,19 @@ function ServiceLine({ row }: { row: ServiceRow }) {
             : t(`voice_services.state_${row.state}`)}
         </p>
 
-        {/* What the service itself said. Untranslated by design: it is a
-            vendor's own message, and paraphrasing it would lose the only
-            string that can be searched for. */}
+        {/* What the refusal MEANS, when we can say something true about it.
+            `account-missing-payment-method` is the difference between a bug in
+            this app and a card missing from the Daily account, and only one of
+            those is worth reporting. */}
+        {explainDetail(row.detail) && (
+          <p className="text-[10.5px] text-brand-muted mt-0.5">
+            {t(explainDetail(row.detail) as string)}
+          </p>
+        )}
+
+        {/* And what the service itself said, underneath. Untranslated by
+            design: it is a vendor's own message, and paraphrasing it would
+            lose the only string that can be searched for. */}
         {row.detail && (
           <p className="text-[10.5px] text-brand-muted/70 mt-0.5 break-words">{row.detail}</p>
         )}

@@ -5,6 +5,7 @@ import {
 } from '@tabler/icons-react';
 import { useSoundCheck, heardSomething } from './useSoundCheck';
 import { useServiceCheck } from './useServiceCheck';
+import { explainDetail } from './serviceStatus';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
@@ -186,6 +187,11 @@ function ServiceReachability() {
                     </span>
                   )}
                 </p>
+                {/* What the refusal means, when we can say something true
+                    about it — see explainDetail. */}
+                {explainDetail(row.detail) && (
+                  <p className="text-brand-muted">{t(explainDetail(row.detail) as string)}</p>
+                )}
                 {/* The vendor's own words, untranslated for the same reason
                     the services panel keeps them: a paraphrase loses the one
                     string that can be searched for. */}
