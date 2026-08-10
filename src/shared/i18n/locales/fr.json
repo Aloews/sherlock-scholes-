@@ -317,7 +317,11 @@
     "reason_join_failed": "Le service a refusé la connexion",
     "reason_join_timeout": "Le service n’a pas répondu à temps",
     "reason_malformed": "Le serveur a répondu de façon inattendue",
-    "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon"
+    "reason_lookup_failed": "Le serveur n'a pas pu vérifier le salon",
+    "detail_no_payment_method": "Le compte du service n'a pas de moyen de paiement : il refuse tout le monde. C'est un réglage du compte, pas de l'application.",
+    "detail_bad_token": "Le service a refusé la clé d'accès : vérifie la paire de clés sur le serveur.",
+    "detail_quota": "Le quota du compte est épuisé ; le service refuse jusqu’au renouvellement.",
+    "detail_bad_config": "L'application a demandé quelque chose que le service ne comprend pas. Cette erreur est de notre côté."
   },
   "soundcheck": {
     "title": "Test du son",

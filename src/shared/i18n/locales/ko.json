@@ -307,7 +307,11 @@
     "reason_join_failed": "서비스가 연결을 거부했습니다",
     "reason_join_timeout": "서비스가 제때 응답하지 않았습니다",
     "reason_malformed": "서버 응답이 올바르지 않습니다",
-    "reason_lookup_failed": "서버가 방을 확인하지 못했습니다"
+    "reason_lookup_failed": "서버가 방을 확인하지 못했습니다",
+    "detail_no_payment_method": "서비스 계정에 결제 수단이 없어 모두 거부됩니다. 앱이 아니라 계정 설정 문제입니다.",
+    "detail_bad_token": "서비스가 접근 키를 거부했습니다. 서버의 키 쌍을 확인하세요.",
+    "detail_quota": "계정 한도를 다 썼습니다. 갱신 전까지 서비스가 거부합니다.",
+    "detail_bad_config": "서비스가 이해하지 못하는 값을 앱이 보냈습니다. 이건 우리 쪽 오류입니다."
   },
   "soundcheck": {
     "title": "소리 점검",

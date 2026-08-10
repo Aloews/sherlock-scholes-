@@ -116,3 +116,34 @@ export function formatStats(stats: LinkStats): { rtt: number; lossPercent: numbe
     lossPercent: Math.round(stats.loss * 100),
   };
 }
+
+// ─── Reading the vendor's refusal ────────────────────────────────────
+//
+// The panels quote the service verbatim, deliberately: a paraphrase loses the
+// one string that can be searched for. But `account-missing-payment-method`
+// tells a player nothing, and it is the difference between "this app is
+// broken" and "somebody has to add a card to the Daily account" — one of those
+// is worth reporting as a bug and the other is not.
+//
+// So this adds a sentence ABOVE the quote rather than replacing it. Matching is
+// on a substring because vendors wrap their own codes in prose, and each entry
+// earns its place by having actually appeared: the payment one came off a
+// screenshot from a real phone.
+const DETAIL_HINTS: { match: RegExp; key: string }[] = [
+  { match: /missing-payment-method|payment.method/i, key: 'voice.detail_no_payment_method' },
+  { match: /invalid[-_ ]?token|token.*(expired|invalid)|CAN_NOT_GET_GATEWAY_SERVER/i,
+    key: 'voice.detail_bad_token' },
+  { match: /quota|exceeded|limit.reached|out of minutes/i, key: 'voice.detail_quota' },
+  // Ours, not theirs: a config value the SDK rejects outright. Kept because
+  // the Agora codec bug looked exactly like a service outage from the outside.
+  { match: /INVALID_PARAMS|invalid.argument/i, key: 'voice.detail_bad_config' },
+];
+
+/**
+ * A translation key explaining a vendor's refusal, or null when we have
+ * nothing honest to add and the quote should stand alone.
+ */
+export function explainDetail(detail: string | null | undefined): string | null {
+  if (!detail) return null;
+  return DETAIL_HINTS.find((hint) => hint.match.test(detail))?.key ?? null;
+}

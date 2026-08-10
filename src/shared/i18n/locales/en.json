@@ -317,7 +317,11 @@
     "reason_join_failed": "The service refused the connection",
     "reason_join_timeout": "The service did not answer in time",
     "reason_malformed": "The server gave an unexpected answer",
-    "reason_lookup_failed": "The server could not check the room"
+    "reason_lookup_failed": "The server could not check the room",
+    "detail_no_payment_method": "The service account has no payment method, so it refuses everyone. That is an account setting, not the app.",
+    "detail_bad_token": "The service rejected the access key — check the key pair on the server.",
+    "detail_quota": "The account has run out of its allowance; the service refuses until it is renewed.",
+    "detail_bad_config": "The app asked for something the service does not understand. That one is ours."
   },
   "soundcheck": {
     "title": "Sound check",
