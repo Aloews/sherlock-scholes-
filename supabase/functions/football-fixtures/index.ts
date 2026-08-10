@@ -41,11 +41,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
  * talk about while a tournament is on, and a schedule that knows about the
  * league but not the Euros reads as broken rather than as scoped.
  *
- * A key the provider does not carry is not an error and not a gap in the
- * data: out of season, the provider simply stops listing a tournament. The
- * answer reports which keys failed, so a permanent typo is visible while a
- * quiet off-season is not mistaken for one — send `{"list": true}` to see what
- * it carries right now.
+ * Every key below was COPIED from the provider's own /sports answer on
+ * 10 August 2026, not recalled. Send `{"list": true}` to read it again.
  */
 const SPORT_KEYS = [
   // Europe's big five, plus the league this app's audience actually watches.
@@ -79,7 +76,7 @@ const SPORT_KEYS = [
 
   // National teams. Only the Nations League is carried right now, because the
   // provider lists a tournament while it is running and not before — see
-  // SEASONAL below.
+  // SEASONAL_KEYS below.
   "soccer_uefa_nations_league",
 ];
 
