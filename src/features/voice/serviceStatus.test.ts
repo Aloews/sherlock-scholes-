@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { serviceRows, formatStats, type ServiceStatusInput } from './serviceStatus';
+import { serviceRows, formatStats, explainDetail, type ServiceStatusInput } from './serviceStatus';
 
 // The panel exists because "voice is broken" and "voice is not in this build"
 // looked identical for two sessions. These tests hold the distinction.
@@ -83,5 +83,47 @@ describe('formatStats', () => {
 
   it('keeps a perfect link at zero rather than hiding it', () => {
     expect(formatStats({ rttMs: 0, loss: 0 })).toEqual({ rtt: 0, lossPercent: 0 });
+  });
+});
+
+// ─── explainDetail ───────────────────────────────────────────────────
+//
+// Every string here is one a service actually sent. The Daily one arrived on a
+// screenshot from a real phone, next to a working LiveKit — which is exactly
+// the situation the hint exists for: two of three services down looks like a
+// broken app, and one of the two was a missing card on an account.
+
+describe('explainDetail', () => {
+  it('reads Daily refusing an account with no card on file', () => {
+    expect(explainDetail('account-missing-payment-method'))
+      .toBe('voice.detail_no_payment_method');
+  });
+
+  it('reads a rejected token, however the vendor words it', () => {
+    expect(explainDetail('CAN_NOT_GET_GATEWAY_SERVER: invalid token'))
+      .toBe('voice.detail_bad_token');
+    expect(explainDetail('the token has expired')).toBe('voice.detail_bad_token');
+  });
+
+  it('reads an exhausted allowance', () => {
+    expect(explainDetail('quota exceeded for this project'))
+      .toBe('voice.detail_quota');
+  });
+
+  // The bug that prompted all of this: it looked like a service outage and was
+  // a value of ours the SDK would not accept.
+  it('reads a config the SDK rejects as ours, not theirs', () => {
+    expect(explainDetail(
+      'AgoraRTCError INVALID_PARAMS: config.codec can only be set as ["vp8","vp9"]',
+    )).toBe('voice.detail_bad_config');
+  });
+
+  // Silence beats a guess: an unrecognised message is shown verbatim by the
+  // panels, and inventing a meaning for it would be worse than saying nothing.
+  it('says nothing about a message it does not recognise', () => {
+    expect(explainDetail('something new and unhelpful')).toBeNull();
+    expect(explainDetail('')).toBeNull();
+    expect(explainDetail(null)).toBeNull();
+    expect(explainDetail(undefined)).toBeNull();
   });
 });

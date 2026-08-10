@@ -317,7 +317,11 @@
     "reason_join_failed": "O serviço recusou a conexão",
     "reason_join_timeout": "O serviço não respondeu a tempo",
     "reason_malformed": "O servidor deu uma resposta inesperada",
-    "reason_lookup_failed": "O servidor não conseguiu verificar a sala"
+    "reason_lookup_failed": "O servidor não conseguiu verificar a sala",
+    "detail_no_payment_method": "A conta do serviço não tem forma de pagamento, por isso recusa todos. É uma configuração da conta, não do app.",
+    "detail_bad_token": "O serviço recusou a chave de acesso: verifique o par de chaves no servidor.",
+    "detail_quota": "A conta esgotou o limite; o serviço recusa até ser renovado.",
+    "detail_bad_config": "O app pediu algo que o serviço não entende. Esse erro é nosso."
   },
   "soundcheck": {
     "title": "Teste de som",

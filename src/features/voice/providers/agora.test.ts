@@ -57,7 +57,11 @@ const agora = vi.hoisted(() => {
 
   const sdk = {
     onAudioAutoplayFailed: null as (() => void) | null,
-    createClient: vi.fn(() => { const c = new FakeClient(); clients.push(c); return c; }),
+    // Typed with the config the adapter really passes, so a test can assert
+    // on it — the codec bug hid behind a mock that accepted anything.
+    createClient: vi.fn((_config: { mode: string; codec: string }) => {
+      const c = new FakeClient(); clients.push(c); return c;
+    }),
     createMicrophoneAudioTrack: vi.fn(async () => {
       if (config.micError) throw config.micError;
       const m = new FakeMic();
@@ -81,7 +85,7 @@ const agora = vi.hoisted(() => {
 
 vi.mock('agora-rtc-sdk-ng', () => ({ default: agora.sdk }));
 
-const { agoraTransport } = await import('./agora');
+const { agoraTransport, AGORA_CODEC, AGORA_VIDEO_CODECS } = await import('./agora');
 
 const client = () => agora.clients[agora.clients.length - 1];
 const mic = () => agora.mics[agora.mics.length - 1];
@@ -126,6 +130,28 @@ describe('joining', () => {
       token: 'agora-token',
       uid: '42',
     });
+  });
+
+  // The bug that made every one of the tests below meaningless in production.
+  // `codec` is Agora's VIDEO codec; the adapter asked for 'opus', which is an
+  // audio codec, and createClient threw INVALID_PARAMS before a single line of
+  // this adapter ran. Every test here mocked createClient, so the suite was
+  // green while Agora had never connected once on a real device.
+  //
+  // The rule that catches this class: where the value has to come from the
+  // vendor's vocabulary rather than ours, pin the VALUE, not just the call.
+  it('asks for a codec the SDK actually accepts', async () => {
+    await agoraTransport.connect(connectOptions(sink));
+    const config = vi.mocked(agora.sdk.createClient).mock.calls[0]?.[0];
+    expect(AGORA_VIDEO_CODECS).toContain(config?.codec);
+    expect(config?.mode).toBe('rtc');
+  });
+
+  // Belt and braces: the constant is the SDK's list, not a copy that drifted.
+  // If Agora ever removes one, this is what has to be re-read from their docs.
+  it('never offers an audio codec as the video codec', () => {
+    expect(AGORA_VIDEO_CODECS).not.toContain('opus' as never);
+    expect(AGORA_VIDEO_CODECS).toContain(AGORA_CODEC);
   });
 
   it('refuses to start without an app id, rather than joining nothing', async () => {

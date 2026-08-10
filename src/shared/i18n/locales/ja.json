@@ -307,7 +307,11 @@
     "reason_join_failed": "サービスが接続を拒否しました",
     "reason_join_timeout": "サービスから応答がありませんでした",
     "reason_malformed": "サーバーの応答が不正です",
-    "reason_lookup_failed": "サーバーがルームを確認できませんでした"
+    "reason_lookup_failed": "サーバーがルームを確認できませんでした",
+    "detail_no_payment_method": "サービスのアカウントに支払い方法が未登録のため、全員が拒否されます。アプリではなくアカウントの設定です。",
+    "detail_bad_token": "サービスがアクセスキーを拒否しました。サーバー側の鍵のペアを確認してください。",
+    "detail_quota": "アカウントの上限に達しました。更新されるまでサービスは拒否します。",
+    "detail_bad_config": "サービスが解釈できない値をアプリが渡しました。これは私たちの側の不具合です。"
   },
   "soundcheck": {
     "title": "サウンドチェック",
