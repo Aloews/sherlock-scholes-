@@ -231,6 +231,25 @@ drop policy if exists card_current_club_read on public.card_current_club;
 create policy card_current_club_read on public.card_current_club
   for select to anon, authenticated using (true);
 
+-- THE GRANT IS NOT OPTIONAL, AND ITS ABSENCE TOOK THE GAME DOWN.
+--
+-- A policy and a grant are two different gates, and Postgres checks the GRANT
+-- first: without it the caller gets `42501 permission denied` before the
+-- policy is ever consulted. This file shipped with the policy and without the
+-- grant, and the policy above says exactly what was intended — anyone may
+-- read — so the omission read as complete on every review.
+--
+-- What made it fatal rather than cosmetic: `cards_matching` references this
+-- table, and cards_matching is `LANGUAGE sql STABLE` with NO SECURITY
+-- DEFINER, so it runs as the player. count_deck and pick_random_cards both go
+-- through it. So a missing grant on a small lookup table meant no card could
+-- be dealt and no counter could be drawn, for everyone, on every platform —
+-- and the failure surfaced as "the game won't load", nowhere near this line.
+--
+-- Adding a table that cards_matching touches? Grant it here, in the same
+-- commit, or the deck stops.
+grant select on public.card_current_club to anon, authenticated;
+
 revoke all on function public.rebuild_card_current_clubs() from public, anon, authenticated;
 grant execute on function public.rebuild_card_current_clubs() to service_role;
 grant execute on function public.deck_squads(integer)  to anon, authenticated, service_role;
