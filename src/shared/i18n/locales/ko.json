@@ -502,8 +502,12 @@
     "your_prediction": "내 예측",
     "points_pending": "결과 대기 중",
     "points_awarded": "+{{n}}",
-    "total_points": "예측 점수: {{n}}",
-    "rules": "정확한 스코어 5, 골 득실 3, 승패 2"
+    "rules": "정확한 스코어 5, 골 득실 3, 승패 2",
+    "my_score": "내 점수",
+    "my_rank": "순위",
+    "my_breakdown": "확정: {{settled}} · 정확: {{exact}} · 대기: {{pending}}",
+    "top_predictors": "예측 순위",
+    "exact_short": "정확 {{n}}"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

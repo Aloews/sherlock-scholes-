@@ -502,8 +502,12 @@
     "your_prediction": "你的预测",
     "points_pending": "等待结果",
     "points_awarded": "+{{n}}",
-    "total_points": "预测积分：{{n}}",
-    "rules": "比分全中 5，净胜球正确 3，胜负正确 2"
+    "rules": "比分全中 5，净胜球正确 3，胜负正确 2",
+    "my_score": "我的积分",
+    "my_rank": "排名",
+    "my_breakdown": "已结算：{{settled}} · 全中：{{exact}} · 待定：{{pending}}",
+    "top_predictors": "预测排行榜",
+    "exact_short": "全中 {{n}}"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

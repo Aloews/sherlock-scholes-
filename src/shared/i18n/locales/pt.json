@@ -517,8 +517,12 @@
     "your_prediction": "Seu palpite",
     "points_pending": "aguardando o resultado",
     "points_awarded": "+{{n}}",
-    "total_points": "Pontos de palpite: {{n}}",
-    "rules": "Placar exato 5, saldo certo 3, vencedor certo 2"
+    "rules": "Placar exato 5, saldo certo 3, vencedor certo 2",
+    "my_score": "Meus pontos",
+    "my_rank": "Posição",
+    "my_breakdown": "fechados: {{settled}} · exatos: {{exact}} · pendentes: {{pending}}",
+    "top_predictors": "Melhores palpiteiros",
+    "exact_short": "exatos {{n}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

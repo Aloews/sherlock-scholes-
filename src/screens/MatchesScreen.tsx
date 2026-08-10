@@ -5,7 +5,8 @@ import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
 import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { PredictionRow } from '@/features/fixtures/PredictionRow';
-import { fetchMyPredictions, totalPoints, type Prediction } from '@/features/fixtures/predictionsApi';
+import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
+import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { hapticImpact } from '@/shared/lib/telegram';
 
@@ -54,11 +55,6 @@ export function MatchesScreen() {
     return map;
   }, [predictions]);
 
-  const settledPoints = useMemo(
-    () => totalPoints(predictions.filter((p) => p.settled_at !== null)),
-    [predictions],
-  );
-
   const days = useMemo(() => groupByDay(fixtures ?? []), [fixtures]);
 
   // Built once per language rather than per row: a formatter is expensive and
@@ -102,9 +98,11 @@ export function MatchesScreen() {
             asked and there is nothing, asked and here it is. Collapsing the
             first two would show "no matches" to somebody whose list is one
             round trip away. */}
-        {settledPoints > 0 && (
-          <p className="text-brand-muted text-xs">{t('matches.total_points', { n: settledPoints })}</p>
-        )}
+        {/* Счётчик и рейтинг считает сервер: на этом экране лежат только
+            ближайшие матчи, а очки заработаны и на давно сыгранных. Локальная
+            сумма показывала бы меньше и молча. */}
+        <PredictorsPanel />
+
         <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
 
         {fixtures === null && (

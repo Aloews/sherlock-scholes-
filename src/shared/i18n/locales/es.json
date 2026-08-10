@@ -517,8 +517,12 @@
     "your_prediction": "Tu pronóstico",
     "points_pending": "esperando el resultado",
     "points_awarded": "+{{n}}",
-    "total_points": "Puntos de pronóstico: {{n}}",
-    "rules": "Marcador exacto 5, diferencia acertada 3, ganador acertado 2"
+    "rules": "Marcador exacto 5, diferencia acertada 3, ganador acertado 2",
+    "my_score": "Mis puntos",
+    "my_rank": "Puesto",
+    "my_breakdown": "cerrados: {{settled}} · exactos: {{exact}} · pendientes: {{pending}}",
+    "top_predictors": "Mejores pronosticadores",
+    "exact_short": "exactos {{n}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

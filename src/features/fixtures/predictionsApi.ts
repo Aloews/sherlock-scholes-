@@ -65,3 +65,48 @@ export async function predictMatch(
 export function totalPoints(predictions: Prediction[]): number {
   return predictions.reduce((sum, p) => sum + (p.points ?? 0), 0);
 }
+
+// ── Счётчик и рейтинг ──────────────────────────────────────────────────────
+
+/** Строка таблицы лидеров. Публичная, как рейтинг друзей. */
+export interface PredictorRow {
+  player_id: number;
+  first_name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+  points: number;
+  settled: number;
+  /** Сколько раз счёт угадан в точку. Отличает везение от чутья. */
+  exact: number;
+}
+
+/** Личная сводка. `rank` равен null, когда закрытых прогнозов ещё нет —
+ *  «места пока нет» и «последнее место» это разные вещи. */
+export interface MyPredictionStats {
+  points: number;
+  settled: number;
+  exact: number;
+  pending: number;
+  rank: number | null;
+}
+
+export async function fetchLeaderboard(limit = 20): Promise<PredictorRow[]> {
+  const { data, error } = await supabase.rpc('prediction_leaderboard', { p_limit: limit });
+  if (error) {
+    console.error('[predictions] leaderboard failed:', error.code, error.message);
+    return [];
+  }
+  return (data as PredictorRow[]) ?? [];
+}
+
+export async function fetchMyStats(initData: string): Promise<MyPredictionStats | null> {
+  if (!initData) return null;
+  const { data, error } = await supabase.rpc('my_prediction_stats', { p_init_data: initData });
+  if (error) {
+    console.error('[predictions] my_prediction_stats failed:', error.code, error.message);
+    return null;
+  }
+  // Возвращает ровно одну строку; PostgREST отдаёт её массивом.
+  const rows = (data as MyPredictionStats[]) ?? [];
+  return rows[0] ?? null;
+}

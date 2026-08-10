@@ -502,8 +502,12 @@
     "your_prediction": "あなたの予想",
     "points_pending": "結果待ち",
     "points_awarded": "+{{n}}",
-    "total_points": "予想ポイント: {{n}}",
-    "rules": "完全一致5、得失点差3、勝敗2"
+    "rules": "完全一致5、得失点差3、勝敗2",
+    "my_score": "マイポイント",
+    "my_rank": "順位",
+    "my_breakdown": "確定: {{settled}} · 完全一致: {{exact}} · 待ち: {{pending}}",
+    "top_predictors": "予想ランキング",
+    "exact_short": "完全一致 {{n}}"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

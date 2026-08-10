@@ -577,8 +577,12 @@
     "your_prediction": "توقّعك",
     "points_pending": "بانتظار النتيجة",
     "points_awarded": "+{{n}}",
-    "total_points": "نقاط التوقّعات: {{n}}",
-    "rules": "النتيجة المضبوطة ٥، فارق الأهداف ٣، الفائز ٢"
+    "rules": "النتيجة المضبوطة ٥، فارق الأهداف ٣، الفائز ٢",
+    "my_score": "نقاطي",
+    "my_rank": "الترتيب",
+    "my_breakdown": "مُحتسبة: {{settled}} · مضبوطة: {{exact}} · بالانتظار: {{pending}}",
+    "top_predictors": "أفضل المتوقّعين",
+    "exact_short": "مضبوطة {{n}}"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",
