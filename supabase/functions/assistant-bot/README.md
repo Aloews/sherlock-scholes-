@@ -77,9 +77,34 @@ delete from assistant_owner;         -- next person to write becomes the owner
 | `/model` | what is running now, and what else is on offer |
 | `/model claude` / `/model gemini` | switch, stored in `assistant_owner.model` |
 | `/models` | ask the providers what these keys can actually see |
+| `/repo` | whether the repository is reachable, and how fresh the file list is |
+| `/usage` | tokens spent so far, per model |
 | `/whoami` | your Telegram id |
 | `/reset` | delete this conversation's history |
 | anything else | goes to the chosen model, with the last 20 turns as context |
+
+## It can read the repository
+
+Asked "is the test setup in order", an assistant with no access can only say
+so — honest and useless. So it has two tools, `list_files` and `read_file`,
+pointed at this repository, and both models reach them through their own
+calling conventions.
+
+**No credential is involved.** The repo is public: contents come from
+`raw.githubusercontent.com`, the file list from the GitHub trees API. Point it
+elsewhere with `ASSISTANT_REPO` / `ASSISTANT_BRANCH` — a private repo would
+need a token, which this deliberately does not have.
+
+Three limits, each with a reason:
+
+| Limit | Value | Why |
+|---|---|---|
+| File list cache | 1 hour | The trees API allows 60 anonymous requests an hour **per IP**, and an Edge Function shares its IP. Uncached, the tool works until a neighbour is busy |
+| File contents cache | none | A stale file read back as current is exactly the lie this bot must not tell, and raw.githubusercontent has no ceiling worth managing |
+| Tool rounds per question | 8 | The cost ceiling. Without it a confused model reads the whole repository one file at a time, and you find out from the invoice |
+
+Hitting the round ceiling is reported, not hidden — an answer that stopped
+because it ran out of budget is a different thing from one that finished.
 
 ## The two models
 
