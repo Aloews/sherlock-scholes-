@@ -1,5 +1,9 @@
 // Mirror of Supabase schema v2 — generic card deck
 
+// Type-only, and therefore erased: deck.ts imports CardCategory back from
+// here, and a value import either way would be a real cycle.
+import type { DeckFilter } from './deck';
+
 export type CardCategory =
   | 'player'
   | 'club'
@@ -121,7 +125,19 @@ export interface RoomSettings {
   round_seconds: number;
   cards_per_round: number;
   total_rounds: number;
+  /**
+   * The room's categories. Kept in step with `deck.categories` on every write
+   * so a frontend that predates `deck` still deals the right kind of card —
+   * any client in the room can be the one that activates a round.
+   */
   categories: CardCategory[] | null; // null = all categories
+  /**
+   * The whole deck filter the host chose in the lobby, or absent on every room
+   * created before rooms could carry one. Read it through
+   * `roomDeckFilter()` (src/features/room/roomDeck.ts), never directly — that
+   * function is what falls back to `categories` for those older rooms.
+   */
+  deck?: DeckFilter | null;
 }
 
 export type GameMode = 'team' | '1v1';

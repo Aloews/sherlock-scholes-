@@ -264,7 +264,14 @@
     "waiting_opponent": "相手を待っています",
     "share_code": "コードを友達に送ろう",
     "min_players": "各チーム最低2人必要です",
-    "room_full_1v1": "ルームが満員です（1v1は最大2人）"
+    "room_full_1v1": "ルームが満員です（1v1は最大2人）",
+    "deck_title": "デッキ",
+    "deck_everything": "デッキ全体",
+    "deck_no_players": "選手なし",
+    "deck_categories_other": "カテゴリー{{count}}件",
+    "deck_count_other": "{{count}}枚",
+    "deck_save_failed": "選択を保存できませんでした。全員が以前のデッキのままです",
+    "deck_empty": "この条件に合うカードがありません。条件を広げてください"
   },
   "voice": {
     "title": "ボイスチャット",

@@ -39,7 +39,7 @@ flowchart LR
 | Роут | Экран | Что делает |
 |---|---|---|
 | `/` | `HomeScreen` | лендинг, выбор режима, вход в комнату |
-| `/lobby` | `LobbyScreen` | сбор команд, старт игры, вход в голосовой канал |
+| `/lobby` | `LobbyScreen` | сбор команд, выбор колоды комнаты (`features/lobby/RoomDeckPanel.tsx`, правит только хост), старт игры, вход в голосовой канал |
 | `/game` | `GameScreen` | сетевая игра по раундам; голосом управляют компактно, в шапке |
 | `/end` | `EndScreen` | итоги, история карточек |
 | `/training` | `TrainingScreen` | быстрая игра на одном телефоне |
@@ -78,6 +78,11 @@ flowchart TD
   HS -->|navigate state| TS["TrainingScreen"]
   TS --> UT["useTraining"]
   UT --> CR["features/game/cardRandomizer.ts"]
+  RDP["RoomDeckPanel<br/>хост правит колоду комнаты"] -->|set_room_deck_filter| RS[("rooms.settings.deck")]
+  RS --> RDF["roomDeck.ts<br/>roomDeckFilter()"]
+  RDF -->|счётчик в лобби| CD
+  RDF --> AR["roomService.activateRound"]
+  AR --> CR
   CR --> PRC["pick_random_cards"]
   CD --> CM{{"cards_matching<br/>ЕДИНСТВЕННЫЙ предикат"}}
   PRC --> CM
@@ -88,6 +93,12 @@ flowchart TD
 
 * Тип фильтра — `src/shared/types/deck.ts` (`DeckFilter`).
 * SQL — `supabase/migrations/deck_rpc.sql`.
+* У комнаты фильтр тоже **один**, в `settings.deck`, и читают его **только**
+  через `roomDeckFilter()` (`src/features/room/roomDeck.ts`): она же
+  подставляет `settings.categories` комнатам, созданным до появления `deck`.
+  Пишет его только `set_room_deck_filter` — и заодно зеркалит `categories`,
+  потому что раздать раунд может любой клиент в комнате, включая сборку,
+  которая про `deck` не знает.
 * `pick_random_cards` и `count_deck` — **единственные** обёртки над
   `cards_matching`. Новый способ выбирать карточки заводить нельзя: он
   разойдётся со счётчиком.
@@ -152,6 +163,11 @@ flowchart TD
 | `get_weekly_quests`, `claim_weekly_task`, `weekly_task_codes`, `current_week_start` | `weekly_quests.sql` | задания недели |
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
 | `create_team_room` | `create_team_room.sql` | создание комнаты |
+| `set_room_deck_filter` | `room_deck_filter.sql` | хост выбирает колоду комнаты; пишет `settings.deck` и зеркалит `settings.categories`. Только хост, только пока `waiting` — `rooms` пишут все, политика `USING (true)` |
+| `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
+| `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
+| `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs` |
+| `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
 | `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
 | `sweep_stale_rooms` | `sweep_stale_rooms.sql` | серверная развёртка брошенных игр, `pg_cron` каждые 5 минут |
@@ -290,6 +306,10 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Клиент не говорит, какой сервис отказал — закрепление комнаты убивает перебор, каждая ступень получает того же мертвеца | `useVoiceChat.ts` → `failed`, Edge `agreeProvider` |
 | Лестница шагает по ступеням, а не по реально опробованным сервисам — сервер может выдать другой, и ступень тратится впустую | `failover.ts` `nextProvider` |
 | Agora входит в канал до запроса микрофона — отказ оставляет игрока в канале, слышащим всех, под экраном «нет доступа» | `providers/agora.ts` |
+| `(get_user_status(x)).telegram_id` — функция возвращает **`json`**, а не композит: 42809 на каждом вызове, ещё до любой проверки. Кто зовёт — `tg_validate_init_data()`, она отдаёт `bigint` или `null` | `pause_round_on_voice_drop.sql`, `room_deck_filter.sql` |
+| `RETURN QUERY` принят за выход из функции — он только дописывает строки, и ранний возврат проваливается в код под собой | `pause_round_on_voice_drop.sql` |
+| Комната раздаёт `{ categories }` вместо своего фильтра — лиги, составы и порог известности остаются в тренировке | `features/room/roomDeck.ts`, §6 `set_room_deck_filter` |
+| `update rooms` из клиента вместо RPC — политика `USING (true)`, и любой гость перекраивает колоду хоста | `room_deck_filter.sql` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |

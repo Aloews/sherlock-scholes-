@@ -264,7 +264,14 @@
     "waiting_opponent": "상대 대기 중",
     "share_code": "친구에게 코드를 공유하세요",
     "min_players": "각 팀에 최소 2명이 필요합니다",
-    "room_full_1v1": "방이 가득 찼습니다 (1v1, 최대 2명)"
+    "room_full_1v1": "방이 가득 찼습니다 (1v1, 최대 2명)",
+    "deck_title": "덱",
+    "deck_everything": "덱 전체",
+    "deck_no_players": "선수 제외",
+    "deck_categories_other": "카테고리 {{count}}개",
+    "deck_count_other": "{{count}}장",
+    "deck_save_failed": "선택이 저장되지 않았습니다 — 모두 이전 덱 그대로입니다",
+    "deck_empty": "이 필터에 맞는 카드가 없습니다 — 범위를 넓혀 주세요"
   },
   "voice": {
     "title": "음성 채팅",

@@ -264,7 +264,14 @@
     "waiting_opponent": "等待对手",
     "share_code": "把房间码发给朋友",
     "min_players": "每队至少需要2名玩家",
-    "room_full_1v1": "房间已满（1v1 最多2人）"
+    "room_full_1v1": "房间已满（1v1 最多2人）",
+    "deck_title": "卡组",
+    "deck_everything": "整副卡组",
+    "deck_no_players": "不含球员",
+    "deck_categories_other": "{{count}} 个类别",
+    "deck_count_other": "{{count}} 张",
+    "deck_save_failed": "选择未保存 — 所有人仍是原来的卡组",
+    "deck_empty": "没有符合该筛选的卡片 — 请放宽条件"
   },
   "voice": {
     "title": "语音聊天",

@@ -7,6 +7,9 @@ import type {
 import { pickCardIds } from '@/features/game/cardRandomizer';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
+import { getRawInitData } from '@/shared/lib/telegram';
+import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
+import type { DeckFilter } from '@/shared/types/deck';
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -207,6 +210,33 @@ export async function fetchRoom(roomId: string): Promise<Room> {
   return data as Room;
 }
 
+/**
+ * Store the host's deck choice on the room.
+ *
+ * Through an RPC rather than `rooms.update`, because the row is not protected:
+ * `rooms_public_update` is `USING (true)`, so any client can write any room —
+ * a guest could redeal the host's game, and someone with a room code could
+ * rewrite a lobby they never joined. `set_room_deck_filter` derives the caller
+ * from the signed initData and refuses anyone but the host, the same shape as
+ * pause_round() and claim_room_voice_provider().
+ *
+ * Returns the settings the server actually stored, so the caller renders what
+ * is on the row and not what it hoped to put there. Everyone else in the lobby
+ * learns about it through the realtime UPDATE on `rooms` they already have.
+ */
+export async function setRoomDeckFilter(
+  roomId: string,
+  filter: DeckFilter,
+): Promise<RoomSettings> {
+  const { data, error } = await supabase.rpc('set_room_deck_filter', {
+    p_room_id:   roomId,
+    p_filter:    pinnableFilter(filter),
+    p_init_data: getRawInitData() || null,
+  });
+  if (error) throw new Error(error.message);
+  return data as RoomSettings;
+}
+
 // ─── Teams ──────────────────────────────────────────────────
 
 export async function fetchTeams(roomId: string): Promise<Team[]> {
@@ -342,14 +372,15 @@ export async function activateRound(roundId: string, room: Room): Promise<boolea
 
   // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
   const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
-  const { categories } = room.settings;
 
-  // Competitive rooms take the whole deck of the room's categories — no
-  // fame floor, so both teams face the same spread (see DeckFilter).
+  // One filter for the room, so both teams face the same spread — whatever the
+  // host narrowed it to in the lobby, and the whole deck when they narrowed
+  // nothing. roomDeckFilter is also what the lobby counts, so the number under
+  // the Start button and this hand can never describe different decks.
   // Ids only: this inserts round_cards and never reads another column. Asking
   // for whole rows shipped 141 kB to the host to extract 100 UUIDs (4.9 kB),
   // on the critical path between "start" and the first card appearing.
-  const cardIds = await pickCardIds({ categories }, cardsCount);
+  const cardIds = await pickCardIds(roomDeckFilter(room.settings), cardsCount);
 
   await supabase.from('round_cards').insert(
     cardIds.map((cardId, i) => ({

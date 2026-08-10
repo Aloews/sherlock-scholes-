@@ -119,3 +119,56 @@ describe('endRound', () => {
     expect(from).toHaveBeenCalledWith('scores');
   });
 });
+
+// ─── The room's deck ────────────────────────────────────────────────
+//
+// The deal used to pass `{ categories }` and nothing else, so every dimension
+// the picker offers — leagues, squads, a fame floor — stopped at the training
+// screen. These pin the seam: what the room stores is what the round deals.
+
+describe('activateRound', () => {
+  const roomWith = (settings: Record<string, unknown>) => ({
+    id: 'room-1', mode: 'team',
+    settings: { cards_per_round: 5, categories: null, ...settings },
+  } as unknown as import('@/shared/types/database').Room);
+
+  async function dealtFilter(room: import('@/shared/types/database').Room) {
+    const { pickCardIds } = await import('@/features/game/cardRandomizer');
+    await roomService.activateRound('round-1', room);
+    return vi.mocked(pickCardIds).mock.calls.at(-1)?.[0];
+  }
+
+  it('deals the whole filter the host pinned, not just its categories', async () => {
+    const filter = { categories: ['player'], leagues: ['La Liga'], fame_min: 90 };
+    expect(await dealtFilter(roomWith({ categories: ['player'], deck: filter })))
+      .toEqual(filter);
+  });
+
+  // Rooms created before `deck` existed carry categories alone, and they must
+  // keep dealing exactly what they dealt yesterday.
+  it('deals a pre-filter room from its categories', async () => {
+    expect(await dealtFilter(roomWith({ categories: ['club', 'stadium'] })))
+      .toEqual({ categories: ['club', 'stadium'] });
+  });
+});
+
+describe('setRoomDeckFilter', () => {
+  it('goes through the RPC — `rooms` is writable by anyone', async () => {
+    rpc.mockResolvedValue({ data: { categories: null, deck: {} }, error: null });
+
+    await roomService.setRoomDeckFilter('room-1', { categories: ['player'], lang: 'ru' });
+
+    expect(from).not.toHaveBeenCalled();
+    const [fn, args] = rpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fn).toBe('set_room_deck_filter');
+    expect(args.p_room_id).toBe('room-1');
+    // lang is one phone's setting; a room has several. Stripped before it
+    // reaches the row, not merely ignored when read back.
+    expect(args.p_filter).toEqual({ categories: ['player'] });
+  });
+
+  it('throws rather than reporting a write that did not happen', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'only the host' } });
+    await expect(roomService.setRoomDeckFilter('room-1', {})).rejects.toThrow('only the host');
+  });
+});

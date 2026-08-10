@@ -1,15 +1,22 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/shared/lib/supabase';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import * as roomService from '@/features/room/roomService';
-import { wakeSupabase } from '@/features/game/cardRandomizer';
+import { roomDeckFilter } from '@/features/room/roomDeck';
+import { countCards, wakeSupabase } from '@/features/game/cardRandomizer';
 import { transition } from '@/features/game/stateMachine';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { RoomPlayer, Room } from '@/shared/types/database';
+import type { DeckFilter } from '@/shared/types/deck';
+
+/** How long the host may keep tapping before the choice reaches the room. */
+const DECK_WRITE_DEBOUNCE_MS = 500;
+/** Same idea for the counter — one RPC per pause, not one per tap. */
+const DECK_COUNT_DEBOUNCE_MS = 300;
 
 export function useLobby() {
   const navigate = useNavigate();
@@ -72,6 +79,58 @@ export function useLobby() {
     return () => { supabase.removeChannel(channel); };
   }, [room?.id, setRoom, setRoomPlayers, upsertRoomPlayer, removeRoomPlayer, navigate]);
 
+  // ─── The room's deck ───────────────────────────────────────
+  //
+  // The host edits a DRAFT and the room follows, rather than the other way
+  // round: a write is a round-trip, and a chip that springs back until the
+  // server answers reads as a broken control. Guests hold no draft at all, so
+  // for them `deckFilter` is the row itself and the existing realtime UPDATE
+  // on `rooms` is what moves it.
+  const [deckDraft, setDeckDraft] = useState<DeckFilter | null>(null);
+  const [deckCount, setDeckCount] = useState<number | null>(null);
+  const [deckError, setDeckError] = useState(false);
+
+  const isHost = player ? room?.host_id === player.id : false;
+  const deckFilter = deckDraft ?? (room ? roomDeckFilter(room.settings) : {});
+  const deckKey = JSON.stringify(deckFilter);
+
+  const setDeck = useCallback((next: DeckFilter) => {
+    hapticImpact('light');
+    setDeckDraft(next);
+  }, []);
+
+  // Leaving the lobby must not carry one room's draft into the next.
+  useEffect(() => { setDeckDraft(null); setDeckError(false); }, [room?.id]);
+
+  useEffect(() => {
+    if (!isHost || !room?.id || deckDraft === null) return;
+    const handle = setTimeout(() => {
+      roomService.setRoomDeckFilter(room.id, JSON.parse(deckKey) as DeckFilter)
+        .then(() => setDeckError(false))
+        .catch((err) => {
+          // Loud, because the failure is otherwise invisible: the chips would
+          // stay where the host put them while the round dealt something else.
+          console.error('[lobby] deck filter write failed:', err);
+          setDeckError(true);
+        });
+    }, DECK_WRITE_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [isHost, room?.id, deckDraft, deckKey]);
+
+  // The same count_deck the deal draws from, so the number in the lobby and
+  // the hand of round 1 can never disagree — and an impossible combination is
+  // visible as a 0 before Start rather than as a failure after it.
+  useEffect(() => {
+    if (!room) return;
+    let cancelled = false;
+    setDeckCount(null);
+    const handle = setTimeout(() => {
+      countCards(JSON.parse(deckKey) as DeckFilter)
+        .then((n) => { if (!cancelled) setDeckCount(n); });
+    }, DECK_COUNT_DEBOUNCE_MS);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [room, deckKey]);
+
   // ─── Actions ───────────────────────────────────────────────
 
   const assignTeam = useCallback(
@@ -105,12 +164,15 @@ export function useLobby() {
 
   // ─── Derived state ─────────────────────────────────────────
 
-  const isHost     = player ? room?.host_id === player.id : false;
   const isTeamMode = room?.mode !== '1v1';
   const myTeamId   = roomPlayers.find((rp) => rp.player_id === player?.id)?.team_id ?? null;
 
   const canStart = (() => {
     if (!isHost) return false;
+    // A deck of zero deals nothing: starting would throw inside activateRound
+    // and surface as "couldn't start", with no hint that the filter is why.
+    // `null` is "still counting", which must not block a start.
+    if (deckCount === 0) return false;
     if (room?.mode === '1v1') {
       return roomPlayers.length === 2 && roomPlayers.every((rp) => rp.team_id !== null);
     }
@@ -125,5 +187,6 @@ export function useLobby() {
 
   return {
     room, teams, roomPlayers, isHost, isTeamMode, myTeamId, canStart, assignTeam, startGame,
+    deckFilter, deckCount, deckError, setDeck,
   };
 }
