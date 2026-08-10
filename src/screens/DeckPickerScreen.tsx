@@ -33,7 +33,7 @@ import { countCards } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
 import { fameFloor, fameStartLevel } from '@/features/game/onboarding';
-import { fetchSquads, type Squad } from '@/features/game/squads';
+import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { ALL_CONTINENT_FILTERS, type CardCategory, type ContinentFilter } from '@/shared/types/database';
@@ -55,15 +55,6 @@ interface Props {
 }
 
 // ─── The screen ──────────────────────────────────────────────────────
-
-/** The as-of date, or a dash when the squad table has never been built. */
-function formatAsOf(iso: string | null, lang: string): string {
-  if (!iso) return '—';
-  const when = new Date(iso);
-  return Number.isNaN(when.getTime())
-    ? '—'
-    : when.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onStart }: Props) {
   const { t, i18n } = useTranslation();
@@ -449,7 +440,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                   {!!selSquad && (
                     <p className="text-[10.5px] text-brand-muted px-1">
                       {t('home.squad_as_of', {
-                        date: formatAsOf(
+                        date: formatSquadAsOf(
                           squads.find((s) => s.key === selSquad)?.asOf ?? null,
                           i18n.language,
                         ),

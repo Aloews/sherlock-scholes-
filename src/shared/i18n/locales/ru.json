@@ -288,7 +288,20 @@
     "waiting_opponent": "Жди соперника",
     "share_code": "Покажи другу код",
     "min_players": "Нужно минимум 2 игрока в каждой команде",
-    "room_full_1v1": "Комната заполнена (1v1, максимум 2 игрока)"
+    "room_full_1v1": "Комната заполнена (1v1, максимум 2 игрока)",
+    "deck_title": "Колода",
+    "deck_everything": "Вся колода",
+    "deck_no_players": "Без футболистов",
+    "deck_categories_one": "{{count}} категория",
+    "deck_categories_few": "{{count}} категории",
+    "deck_categories_many": "{{count}} категорий",
+    "deck_categories_other": "{{count}} категорий",
+    "deck_count_one": "{{count}} карта",
+    "deck_count_few": "{{count}} карты",
+    "deck_count_many": "{{count}} карт",
+    "deck_count_other": "{{count}} карт",
+    "deck_save_failed": "Выбор не сохранился — у всех осталась прежняя колода",
+    "deck_empty": "Под такой фильтр карточек нет — расширьте выбор"
   },
   "voice": {
     "title": "Голосовой чат",

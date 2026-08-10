@@ -61,7 +61,13 @@ declare
 begin
   -- Identity from the signed initData, never from an argument. A client that
   -- could name the explainer could freeze a round it is not even in.
-  v_caller := (get_user_status(p_init_data)).telegram_id;
+  --
+  -- tg_validate_init_data, NOT get_user_status: that one returns `json`, so
+  -- `(get_user_status(x)).telegram_id` is composite notation on a scalar and
+  -- raises 42809 on every call — this whole path was dead from the day it
+  -- shipped until 10 August 2026. It also upserts into `users`, which asking
+  -- who is calling has no business doing.
+  v_caller := tg_validate_init_data(p_init_data);
   if v_caller is null then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
@@ -80,7 +86,11 @@ begin
   if v_round.status <> 'active'
      or v_round.paused_at is not null
      or v_round.paused_ms >= max_round_pause_ms() then
+    -- RETURN QUERY appends rows; it does not leave the function. Without the
+    -- bare RETURN the early exit fell straight into the update below and
+    -- answered with two rows.
     return query select v_round.paused_at, v_round.paused_ms;
+    return;
   end if;
 
   update rounds set paused_at = now()
@@ -109,7 +119,7 @@ declare
   v_round  rounds%rowtype;
   v_spent  integer;
 begin
-  v_caller := (get_user_status(p_init_data)).telegram_id;
+  v_caller := tg_validate_init_data(p_init_data);
   if v_caller is null then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
@@ -124,6 +134,7 @@ begin
 
   if v_round.paused_at is null then
     return query select v_round.paused_at, v_round.paused_ms;
+    return;
   end if;
 
   v_spent := least(

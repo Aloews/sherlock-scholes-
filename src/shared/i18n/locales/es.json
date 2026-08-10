@@ -272,7 +272,16 @@
     "waiting_opponent": "Esperando al rival",
     "share_code": "Comparte el código con un amigo",
     "min_players": "Se necesitan mínimo 2 jugadores por equipo",
-    "room_full_1v1": "Sala llena (1v1, máx. 2 jugadores)"
+    "room_full_1v1": "Sala llena (1v1, máx. 2 jugadores)",
+    "deck_title": "Mazo",
+    "deck_everything": "Todo el mazo",
+    "deck_no_players": "Sin futbolistas",
+    "deck_categories_one": "{{count}} categoría",
+    "deck_categories_other": "{{count}} categorías",
+    "deck_count_one": "{{count}} carta",
+    "deck_count_other": "{{count}} cartas",
+    "deck_save_failed": "No se guardó la elección: todos siguen con el mazo anterior",
+    "deck_empty": "Ninguna carta coincide con este filtro: amplía la selección"
   },
   "voice": {
     "title": "Chat de voz",

@@ -10,6 +10,7 @@ import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact, hapticError, openTelegramLink } from '@/shared/lib/telegram';
 import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
+import { RoomDeckPanel } from '@/features/lobby/RoomDeckPanel';
 import { VoiceControl } from '@/features/voice/VoiceControl';
 import { QrCode } from '@/shared/ui/QrCode';
 import { useDesign } from '@/shared/design/useDesign';
@@ -25,6 +26,7 @@ export function LobbyScreen() {
   const navigate = useNavigate();
   const {
     room, teams, roomPlayers, isHost, isTeamMode, myTeamId, canStart, assignTeam, startGame,
+    deckFilter, deckCount, deckError, setDeck,
   } = useLobby();
   const { leaveRoom } = useRoom();
   const { loading, error } = useGameStore();
@@ -152,6 +154,16 @@ export function LobbyScreen() {
             channel is the team's, so there is nothing to join until a team is
             picked — say that instead of "unavailable". */}
         <VoiceControl roomId={room.id} needsTeam={isTeamMode && !myTeamId} />
+
+        {/* What this room deals. The host edits it; everyone else reads it,
+            following through the realtime UPDATE on `rooms`. */}
+        <RoomDeckPanel
+          filter={deckFilter}
+          count={deckCount}
+          isHost={isHost}
+          failed={deckError}
+          onChange={setDeck}
+        />
 
         {/* ── 1v1 layout: two player slots ── */}
         {!isTeamMode && (

@@ -272,7 +272,16 @@
     "waiting_opponent": "Aguardando o adversário",
     "share_code": "Compartilhe o código com um amigo",
     "min_players": "Mínimo de 2 jogadores por equipe",
-    "room_full_1v1": "Sala cheia (1v1, máx. 2 jogadores)"
+    "room_full_1v1": "Sala cheia (1v1, máx. 2 jogadores)",
+    "deck_title": "Baralho",
+    "deck_everything": "Baralho inteiro",
+    "deck_no_players": "Sem jogadores",
+    "deck_categories_one": "{{count}} categoria",
+    "deck_categories_other": "{{count}} categorias",
+    "deck_count_one": "{{count}} carta",
+    "deck_count_other": "{{count}} cartas",
+    "deck_save_failed": "A escolha não foi salva — todos continuam com o baralho anterior",
+    "deck_empty": "Nenhuma carta corresponde a este filtro — amplie a seleção"
   },
   "voice": {
     "title": "Chat de voz",

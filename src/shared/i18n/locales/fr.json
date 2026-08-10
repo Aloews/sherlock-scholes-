@@ -272,7 +272,16 @@
     "waiting_opponent": "En attente de l'adversaire",
     "share_code": "Partagez le code avec un ami",
     "min_players": "Minimum 2 joueurs par équipe requis",
-    "room_full_1v1": "Salon complet (1v1, 2 joueurs max)"
+    "room_full_1v1": "Salon complet (1v1, 2 joueurs max)",
+    "deck_title": "Jeu de cartes",
+    "deck_everything": "Tout le jeu",
+    "deck_no_players": "Sans joueurs",
+    "deck_categories_one": "{{count}} catégorie",
+    "deck_categories_other": "{{count}} catégories",
+    "deck_count_one": "{{count}} carte",
+    "deck_count_other": "{{count}} cartes",
+    "deck_save_failed": "Le choix n'a pas été enregistré — tout le monde garde l'ancien jeu",
+    "deck_empty": "Aucune carte ne correspond à ce filtre — élargis la sélection"
   },
   "voice": {
     "title": "Chat vocal",

@@ -272,7 +272,16 @@
     "waiting_opponent": "Waiting for opponent",
     "share_code": "Share the code with a friend",
     "min_players": "Minimum 2 players in each team required",
-    "room_full_1v1": "Room is full (1v1, max 2 players)"
+    "room_full_1v1": "Room is full (1v1, max 2 players)",
+    "deck_title": "Deck",
+    "deck_everything": "Everything",
+    "deck_no_players": "No players",
+    "deck_categories_one": "{{count}} category",
+    "deck_categories_other": "{{count}} categories",
+    "deck_count_one": "{{count}} card",
+    "deck_count_other": "{{count}} cards",
+    "deck_save_failed": "The choice was not saved — everyone still has the old deck",
+    "deck_empty": "No cards match this filter — widen the choice"
   },
   "voice": {
     "title": "Voice chat",

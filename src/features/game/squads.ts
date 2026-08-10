@@ -28,6 +28,21 @@ export interface Squad {
  */
 export const MIN_SQUAD = 8;
 
+/**
+ * The as-of date, or a dash when the squad table has never been built.
+ *
+ * Lives beside the fetch rather than in a screen because two screens now show
+ * it — the picker and the lobby — and a squad shown without its date in one of
+ * them is the stale-fact-as-current lie this whole type exists to avoid.
+ */
+export function formatSquadAsOf(iso: string | null, lang: string): string {
+  if (!iso) return '—';
+  const when = new Date(iso);
+  return Number.isNaN(when.getTime())
+    ? '—'
+    : when.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export async function fetchSquads(min = MIN_SQUAD): Promise<Squad[]> {
   const { data, error } = await supabase.rpc('deck_squads', { p_min: min });
   if (error || !Array.isArray(data)) return [];
