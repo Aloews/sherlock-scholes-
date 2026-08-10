@@ -31,19 +31,80 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 /**
  * The competitions we ask about.
  *
- * Deliberately a short, explicit list rather than "every soccer key the
- * provider has". /events is free per call but not free in time, and a fixture
- * from a division nobody in this game has a card for is a row that will never
- * match a club and never be shown.
+ * Deliberately explicit rather than "every soccer key the provider has":
+ * /events is free per call but not free in time, and a fixture from a division
+ * nobody here has a card for is a row that will never match a club.
+ *
+ * NATIONAL-TEAM TOURNAMENTS EARN THEIR PLACE differently from leagues. A club
+ * fixture matches a club card; a national one matches nothing in this deck,
+ * because we have no country cards — but it is the football people actually
+ * talk about while a tournament is on, and a schedule that knows about the
+ * league but not the Euros reads as broken rather than as scoped.
+ *
+ * A key the provider does not carry is not an error and not a gap in the
+ * data: out of season, the provider simply stops listing a tournament. The
+ * answer reports which keys failed, so a permanent typo is visible while a
+ * quiet off-season is not mistaken for one — send `{"list": true}` to see what
+ * it carries right now.
  */
 const SPORT_KEYS = [
+  // Europe's big five, plus the league this app's audience actually watches.
   "soccer_epl",
   "soccer_spain_la_liga",
   "soccer_italy_serie_a",
   "soccer_germany_bundesliga",
   "soccer_france_ligue_one",
-  "soccer_uefa_champs_league",
+  "soccer_russia_premier_league",
+  "soccer_netherlands_eredivisie",
+  "soccer_portugal_primeira_liga",
+  "soccer_turkey_super_league",
+
+  // ASIA AND THE AMERICAS. These are here for a reason found by counting: the
+  // deck holds 1758 European players and 39 Asian ones, and the Asians it does
+  // hold average HIGHER fame than the Europeans — the signature of a coverage
+  // gap, not of a continent without notable players. These are the leagues
+  // those players are in.
+  "soccer_japan_j_league",
+  "soccer_korea_kleague1",
+  "soccer_china_superleague",
+  "soccer_usa_mls",
+  "soccer_mexico_ligamx",
+  "soccer_brazil_campeonato",
+  "soccer_argentina_primera_division",
+
+  // Continental club football.
+  "soccer_uefa_champs_league_qualification",
+  "soccer_conmebol_copa_libertadores",
+  "soccer_conmebol_copa_sudamericana",
+
+  // National teams. Only the Nations League is carried right now, because the
+  // provider lists a tournament while it is running and not before — see
+  // SEASONAL below.
+  "soccer_uefa_nations_league",
 ];
+
+/**
+ * Tournaments that exist only while they are on.
+ *
+ * The provider does not carry a World Cup in August, and asking for one is not
+ * an error — it is an off-season. Kept out of SPORT_KEYS so a quiet summer
+ * does not fill `failures` with noise that hides a real, permanent typo; move
+ * one here into SPORT_KEYS when its cycle comes round, or teach this to read
+ * `{"list": true}` and decide for itself.
+ *
+ * Verified against the provider on 10 August 2026: of every national-team
+ * competition, only the Nations League was listed. The World Cup had finished
+ * in July.
+ */
+const SEASONAL_KEYS = [
+  "soccer_fifa_world_cup",
+  "soccer_uefa_european_championship",
+  "soccer_conmebol_copa_america",
+  "soccer_africa_cup_of_nations",
+  "soccer_asian_cup",
+  "soccer_concacaf_gold_cup",
+];
+void SEASONAL_KEYS;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -96,6 +157,23 @@ Deno.serve(async (req) => {
   // whether a call may be made.
   const allowed = await reserve(0);
   if (!allowed) return json({ error: "budget_exhausted" }, 429);
+
+  // `{"list": true}` answers with the competitions the provider currently
+  // carries, instead of fetching anything. /sports is free too, and this is
+  // the only way to choose SPORT_KEYS from fact rather than from guesswork —
+  // a key that does not exist fails silently as an empty fixture list.
+  const body = await req.json().catch(() => ({})) as { list?: boolean };
+  if (body?.list === true) {
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${ODDS_API_KEY}`);
+    if (!r.ok) return json({ error: "sports_failed", status: r.status }, 503);
+    const all = await r.json() as { key?: string; title?: string; group?: string }[];
+    return json({
+      soccer: (Array.isArray(all) ? all : [])
+        .filter((s) => (s.group ?? "").toLowerCase() === "soccer")
+        .map((s) => ({ key: s.key, title: s.title })),
+      credits_left: await creditsLeft(),
+    });
+  }
 
   const rows: Record<string, unknown>[] = [];
   const failures: { sport: string; reason: string }[] = [];
