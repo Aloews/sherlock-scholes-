@@ -107,7 +107,8 @@
     "preset_legends": "Легенды",
     "preset_legends_desc": "Величайшие игроки в истории",
     "filter_all_squads": "Любой состав",
-    "squad_as_of": "Состав на {{date}} — по статьям игроков, не в прямом эфире"
+    "squad_as_of": "Состав на {{date}} — по статьям игроков, не в прямом эфире",
+    "matches_link": "Ближайшие матчи"
   },
   "design": {
     "master": "Новый дизайн",
@@ -537,5 +538,36 @@
     "remove": "Убрать из друзей",
     "level_and_games": "Уровень {{level}} · игр: {{games}}",
     "played_together": "Вместе сыграно: {{games}}"
+  },
+  "matches": {
+    "title": "Ближайшие матчи",
+    "loading": "Загружаем расписание…",
+    "empty": "Расписание пока пустое",
+    "today": "Сегодня",
+    "tomorrow": "Завтра"
+  },
+  "leagues": {
+    "soccer_epl": "Премьер-лига (Англия)",
+    "soccer_spain_la_liga": "Ла Лига",
+    "soccer_italy_serie_a": "Серия А",
+    "soccer_germany_bundesliga": "Бундеслига",
+    "soccer_france_ligue-one": "Лига 1",
+    "soccer_netherlands_eredivisie": "Эредивизи",
+    "soccer_portugal_primeira_liga": "Примейра-лига",
+    "soccer_turkey_super_league": "Суперлига (Турция)",
+    "soccer_russia_premier_league": "РПЛ",
+    "soccer_usa_mls": "MLS",
+    "soccer_mexico_ligamx": "Лига MX",
+    "soccer_brazil_campeonato": "Бразилейрао",
+    "soccer_argentina_primera_division": "Примера (Аргентина)",
+    "soccer_japan_j_league": "Джей-лига",
+    "soccer_korea_kleague1": "К-лига 1",
+    "soccer_china_superleague": "Суперлига Китая",
+    "soccer_uefa_champs_league": "Лига чемпионов",
+    "soccer_uefa_champs_league_qualification": "Лига чемпионов, квалификация",
+    "soccer_uefa_europa_league": "Лига Европы",
+    "soccer_uefa_nations_league": "Лига наций",
+    "soccer_conmebol_copa_libertadores": "Кубок Либертадорес",
+    "soccer_conmebol_copa_sudamericana": "Южноамериканский кубок"
   }
 }

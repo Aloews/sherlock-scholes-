@@ -103,7 +103,8 @@
     "preset_legends": "Legends",
     "preset_legends_desc": "The greatest players in history",
     "filter_all_squads": "Any squad",
-    "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live"
+    "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
+    "matches_link": "Upcoming matches"
   },
   "design": {
     "master": "New design",
@@ -503,5 +504,36 @@
     "remove": "Remove friend",
     "level_and_games": "Level {{level}} · games: {{games}}",
     "played_together": "Games together: {{games}}"
+  },
+  "matches": {
+    "title": "Upcoming matches",
+    "loading": "Loading the schedule…",
+    "empty": "No matches scheduled yet",
+    "today": "Today",
+    "tomorrow": "Tomorrow"
+  },
+  "leagues": {
+    "soccer_epl": "Premier League (England)",
+    "soccer_spain_la_liga": "La Liga",
+    "soccer_italy_serie_a": "Serie A",
+    "soccer_germany_bundesliga": "Bundesliga",
+    "soccer_france_ligue-one": "Ligue 1",
+    "soccer_netherlands_eredivisie": "Eredivisie",
+    "soccer_portugal_primeira_liga": "Primeira Liga",
+    "soccer_turkey_super_league": "Süper Lig",
+    "soccer_russia_premier_league": "Russian Premier League",
+    "soccer_usa_mls": "MLS",
+    "soccer_mexico_ligamx": "Liga MX",
+    "soccer_brazil_campeonato": "Brasileirão",
+    "soccer_argentina_primera_division": "Primera División (Argentina)",
+    "soccer_japan_j_league": "J1 League",
+    "soccer_korea_kleague1": "K League 1",
+    "soccer_china_superleague": "Chinese Super League",
+    "soccer_uefa_champs_league": "Champions League",
+    "soccer_uefa_champs_league_qualification": "Champions League qualifying",
+    "soccer_uefa_europa_league": "Europa League",
+    "soccer_uefa_nations_league": "Nations League",
+    "soccer_conmebol_copa_libertadores": "Copa Libertadores",
+    "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
   }
 }

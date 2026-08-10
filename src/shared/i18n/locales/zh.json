@@ -101,7 +101,8 @@
     "filter_all_leagues": "所有联赛",
     "tag_wc2026": "2026世界杯",
     "filter_all_squads": "任意阵容",
-    "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时"
+    "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
+    "matches_link": "近期比赛"
   },
   "design": {
     "master": "新设计",
@@ -488,5 +489,36 @@
     "remove": "移除好友",
     "level_and_games": "等级 {{level}} · 场次：{{games}}",
     "played_together": "一起玩过：{{games}}"
+  },
+  "matches": {
+    "title": "近期比赛",
+    "loading": "正在加载赛程…",
+    "empty": "暂无比赛",
+    "today": "今天",
+    "tomorrow": "明天"
+  },
+  "leagues": {
+    "soccer_epl": "英格兰超级联赛",
+    "soccer_spain_la_liga": "西班牙甲级联赛",
+    "soccer_italy_serie_a": "意大利甲级联赛",
+    "soccer_germany_bundesliga": "德国足球甲级联赛",
+    "soccer_france_ligue-one": "法国足球甲级联赛",
+    "soccer_netherlands_eredivisie": "荷兰足球甲级联赛",
+    "soccer_portugal_primeira_liga": "葡萄牙超级联赛",
+    "soccer_turkey_super_league": "土耳其超级联赛",
+    "soccer_russia_premier_league": "俄罗斯超级联赛",
+    "soccer_usa_mls": "美国职业大联盟",
+    "soccer_mexico_ligamx": "墨西哥足球超级联赛",
+    "soccer_brazil_campeonato": "巴西足球甲级联赛",
+    "soccer_argentina_primera_division": "阿根廷甲级联赛",
+    "soccer_japan_j_league": "日本职业足球甲级联赛",
+    "soccer_korea_kleague1": "韩国K联赛1",
+    "soccer_china_superleague": "中国足球超级联赛",
+    "soccer_uefa_champs_league": "欧洲冠军联赛",
+    "soccer_uefa_champs_league_qualification": "欧冠资格赛",
+    "soccer_uefa_europa_league": "欧罗巴联赛",
+    "soccer_uefa_nations_league": "欧洲国家联赛",
+    "soccer_conmebol_copa_libertadores": "南美解放者杯",
+    "soccer_conmebol_copa_sudamericana": "南美杯"
   }
 }

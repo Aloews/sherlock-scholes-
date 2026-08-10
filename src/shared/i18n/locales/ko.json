@@ -101,7 +101,8 @@
     "filter_all_leagues": "모든 리그",
     "tag_wc2026": "월드컵 2026",
     "filter_all_squads": "모든 스쿼드",
-    "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다"
+    "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
+    "matches_link": "예정된 경기"
   },
   "design": {
     "master": "새 디자인",
@@ -488,5 +489,36 @@
     "remove": "친구 삭제",
     "level_and_games": "레벨 {{level}} · 게임 수: {{games}}",
     "played_together": "함께한 게임: {{games}}"
+  },
+  "matches": {
+    "title": "예정된 경기",
+    "loading": "일정을 불러오는 중…",
+    "empty": "예정된 경기가 없습니다",
+    "today": "오늘",
+    "tomorrow": "내일"
+  },
+  "leagues": {
+    "soccer_epl": "프리미어리그 (잉글랜드)",
+    "soccer_spain_la_liga": "라리가",
+    "soccer_italy_serie_a": "세리에 A",
+    "soccer_germany_bundesliga": "분데스리가",
+    "soccer_france_ligue-one": "리그 1",
+    "soccer_netherlands_eredivisie": "에레디비시",
+    "soccer_portugal_primeira_liga": "프리메이라 리가",
+    "soccer_turkey_super_league": "쉬페르 리그",
+    "soccer_russia_premier_league": "러시아 프리미어리그",
+    "soccer_usa_mls": "MLS",
+    "soccer_mexico_ligamx": "리가 MX",
+    "soccer_brazil_campeonato": "브라질 세리이 A",
+    "soccer_argentina_primera_division": "프리메라 디비시온 (아르헨티나)",
+    "soccer_japan_j_league": "J1리그",
+    "soccer_korea_kleague1": "K리그1",
+    "soccer_china_superleague": "중국 슈퍼리그",
+    "soccer_uefa_champs_league": "챔피언스리그",
+    "soccer_uefa_champs_league_qualification": "챔피언스리그 예선",
+    "soccer_uefa_europa_league": "유로파리그",
+    "soccer_uefa_nations_league": "네이션스리그",
+    "soccer_conmebol_copa_libertadores": "코파 리베르타도레스",
+    "soccer_conmebol_copa_sudamericana": "코파 수다메리카나"
   }
 }

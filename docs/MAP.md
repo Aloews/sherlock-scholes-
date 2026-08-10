@@ -46,6 +46,7 @@ flowchart LR
 | `/collection` | `CollectionScreen` → `collection/CardDossier` | коллекция и досье карточки (Pro) |
 | `/profile` | `ProfileScreen` → `profile/WeeklyQuests` | уровень, XP, задания недели |
 | `/friends` | `FriendsScreen` | рейтинг друзей по XP и кого добавить |
+| `/matches` | `MatchesScreen` | ближайшие матчи из `fixtures`, сгруппированы по дню **в часовом поясе зрителя**. Коэффициентов нет и быть не может: `fixture_odds` без гранта и без политики |
 | `/pro` | `ProScreen` | покупка Pro за Telegram Stars |
 | `/tutorial` | `TutorialScreen` | обучение |
 | `/admin` | `AdminScreen` | кабинет: правка карточек, репорты (по паролю) |
@@ -360,6 +361,9 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Второй вход в комнату мимо `joinByCode()` — расходится с первым по ошибкам и по экрану, на который попадаешь; протухает всегда второй | `screens/HomeScreen.tsx` |
 | Приглашение показано после старта комнаты — зовёт на экран, который его же и отвергнет. `pending_room_invites` фильтрует по статусу комнаты | `room_invites.sql` |
 | Сервис, который заведомо не подключается, оставлен в лестнице переключения — тратит настоящую попытку и показывает игроку ошибку, с которой он ничего не сделает | `providers/types.ts`, `OFFERED_VOICE_PROVIDER_IDS` |
+| Ключ i18n, заканчивающийся на `_one`/`_few`/`_other`, — для i18next это форма множественного числа, а не ключ. `soccer_france_ligue_one` пропал из арабского как «нет формы `_other`» | `features/fixtures/leagues.ts`, `leagueKey` |
+| Приглашение по ссылке съедено гонкой с авторизацией: `joinRoom` при `player === null` отказывает мгновенно, а защёлка «уже обработал» ставилась до вызова — единственная попытка была заведомо провальной | `screens/HomeScreen.tsx`, эффект `start_param` |
+| Матчи сгруппированы по дню на сервере — 22:00 UTC это сегодня в Мадриде и завтра в Токио; день считается там, где стоит зритель | `features/fixtures/fixturesApi.ts`, `groupByDay` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |

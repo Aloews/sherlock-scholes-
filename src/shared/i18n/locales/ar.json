@@ -106,7 +106,8 @@
     "filter_all_leagues": "كل الدوريات",
     "tag_wc2026": "كأس العالم 2026",
     "filter_all_squads": "أي تشكيلة",
-    "squad_as_of": "التشكيلة حتى {{date}} — من مقالات اللاعبين، وليست مباشرة"
+    "squad_as_of": "التشكيلة حتى {{date}} — من مقالات اللاعبين، وليست مباشرة",
+    "matches_link": "المباريات القادمة"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -563,5 +564,36 @@
     "remove": "إزالة من الأصدقاء",
     "level_and_games": "المستوى {{level}} · المباريات: {{games}}",
     "played_together": "مباريات معًا: {{games}}"
+  },
+  "matches": {
+    "title": "المباريات القادمة",
+    "loading": "جارٍ تحميل الجدول…",
+    "empty": "لا توجد مباريات بعد",
+    "today": "اليوم",
+    "tomorrow": "غدًا"
+  },
+  "leagues": {
+    "soccer_epl": "الدوري الإنجليزي الممتاز",
+    "soccer_spain_la_liga": "الدوري الإسباني",
+    "soccer_italy_serie_a": "الدوري الإيطالي",
+    "soccer_germany_bundesliga": "الدوري الألماني",
+    "soccer_france_ligue-one": "الدوري الفرنسي",
+    "soccer_netherlands_eredivisie": "الدوري الهولندي",
+    "soccer_portugal_primeira_liga": "الدوري البرتغالي",
+    "soccer_turkey_super_league": "الدوري التركي الممتاز",
+    "soccer_russia_premier_league": "الدوري الروسي الممتاز",
+    "soccer_usa_mls": "الدوري الأمريكي",
+    "soccer_mexico_ligamx": "الدوري المكسيكي",
+    "soccer_brazil_campeonato": "الدوري البرازيلي",
+    "soccer_argentina_primera_division": "الدوري الأرجنتيني",
+    "soccer_japan_j_league": "الدوري الياباني",
+    "soccer_korea_kleague1": "الدوري الكوري",
+    "soccer_china_superleague": "الدوري الصيني الممتاز",
+    "soccer_uefa_champs_league": "دوري أبطال أوروبا",
+    "soccer_uefa_champs_league_qualification": "تصفيات دوري أبطال أوروبا",
+    "soccer_uefa_europa_league": "الدوري الأوروبي",
+    "soccer_uefa_nations_league": "دوري الأمم الأوروبية",
+    "soccer_conmebol_copa_libertadores": "كأس ليبرتادوريس",
+    "soccer_conmebol_copa_sudamericana": "كأس سودأمريكانا"
   }
 }

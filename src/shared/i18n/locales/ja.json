@@ -101,7 +101,8 @@
     "filter_all_leagues": "すべてのリーグ",
     "tag_wc2026": "W杯2026",
     "filter_all_squads": "すべての所属",
-    "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません"
+    "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
+    "matches_link": "今後の試合"
   },
   "design": {
     "master": "新デザイン",
@@ -488,5 +489,36 @@
     "remove": "フレンドから外す",
     "level_and_games": "レベル {{level}} · 対戦数: {{games}}",
     "played_together": "一緒に遊んだ回数: {{games}}"
+  },
+  "matches": {
+    "title": "今後の試合",
+    "loading": "日程を読み込み中…",
+    "empty": "予定された試合はありません",
+    "today": "今日",
+    "tomorrow": "明日"
+  },
+  "leagues": {
+    "soccer_epl": "プレミアリーグ（イングランド）",
+    "soccer_spain_la_liga": "ラ・リーガ",
+    "soccer_italy_serie_a": "セリエA",
+    "soccer_germany_bundesliga": "ブンデスリーガ",
+    "soccer_france_ligue-one": "リーグ・アン",
+    "soccer_netherlands_eredivisie": "エールディビジ",
+    "soccer_portugal_primeira_liga": "プリメイラ・リーガ",
+    "soccer_turkey_super_league": "スュペル・リグ",
+    "soccer_russia_premier_league": "ロシア・プレミアリーグ",
+    "soccer_usa_mls": "MLS",
+    "soccer_mexico_ligamx": "リーガMX",
+    "soccer_brazil_campeonato": "ブラジル全国選手権",
+    "soccer_argentina_primera_division": "プリメーラ・ディビシオン（アルゼンチン）",
+    "soccer_japan_j_league": "J1リーグ",
+    "soccer_korea_kleague1": "Kリーグ1",
+    "soccer_china_superleague": "中国スーパーリーグ",
+    "soccer_uefa_champs_league": "チャンピオンズリーグ",
+    "soccer_uefa_champs_league_qualification": "チャンピオンズリーグ予選",
+    "soccer_uefa_europa_league": "ヨーロッパリーグ",
+    "soccer_uefa_nations_league": "ネーションズリーグ",
+    "soccer_conmebol_copa_libertadores": "コパ・リベルタドーレス",
+    "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ"
   }
 }

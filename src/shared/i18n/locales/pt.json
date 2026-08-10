@@ -103,7 +103,8 @@
     "filter_all_leagues": "Todas as ligas",
     "tag_wc2026": "Copa 2026",
     "filter_all_squads": "Qualquer elenco",
-    "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo"
+    "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo",
+    "matches_link": "Próximos jogos"
   },
   "design": {
     "master": "Novo design",
@@ -503,5 +504,36 @@
     "remove": "Remover dos amigos",
     "level_and_games": "Nível {{level}} · partidas: {{games}}",
     "played_together": "Partidas juntos: {{games}}"
+  },
+  "matches": {
+    "title": "Próximos jogos",
+    "loading": "Carregando a agenda…",
+    "empty": "Ainda não há jogos",
+    "today": "Hoje",
+    "tomorrow": "Amanhã"
+  },
+  "leagues": {
+    "soccer_epl": "Premier League (Inglaterra)",
+    "soccer_spain_la_liga": "La Liga",
+    "soccer_italy_serie_a": "Serie A",
+    "soccer_germany_bundesliga": "Bundesliga",
+    "soccer_france_ligue-one": "Ligue 1",
+    "soccer_netherlands_eredivisie": "Eredivisie",
+    "soccer_portugal_primeira_liga": "Primeira Liga",
+    "soccer_turkey_super_league": "Süper Lig",
+    "soccer_russia_premier_league": "Campeonato Russo",
+    "soccer_usa_mls": "MLS",
+    "soccer_mexico_ligamx": "Liga MX",
+    "soccer_brazil_campeonato": "Brasileirão",
+    "soccer_argentina_primera_division": "Primera División (Argentina)",
+    "soccer_japan_j_league": "J1 League",
+    "soccer_korea_kleague1": "K League 1",
+    "soccer_china_superleague": "Superliga Chinesa",
+    "soccer_uefa_champs_league": "Liga dos Campeões",
+    "soccer_uefa_champs_league_qualification": "Liga dos Campeões, qualificação",
+    "soccer_uefa_europa_league": "Liga Europa",
+    "soccer_uefa_nations_league": "Liga das Nações",
+    "soccer_conmebol_copa_libertadores": "Copa Libertadores",
+    "soccer_conmebol_copa_sudamericana": "Copa Sul-Americana"
   }
 }

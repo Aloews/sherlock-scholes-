@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
-  IconCrown,
+  IconCrown, IconBallFootball,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -343,6 +343,21 @@ export function HomeScreen() {
           <div className="w-full max-w-sm">
             <PendingInvitesPanel onJoin={(invitedCode) => { void joinByCode(invitedCode); }} />
           </div>
+        )}
+
+        {/* What football is on next. Under the invitations and above the
+            landing: it is a reason to open the app on a day with no game in
+            it, which is exactly the day the landing has nothing to offer. */}
+        {view === 'home' && (
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/matches'); }}
+            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
+          >
+            <IconBallFootball size={20} stroke={1.75} className="text-brand-muted shrink-0" />
+            <span className="flex-1 text-white text-sm">{t('home.matches_link')}</span>
+            <span className="text-brand-muted text-lg leading-none">›</span>
+          </button>
         )}
 
         {/* ── Landing, master design ── */}
