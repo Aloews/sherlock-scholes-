@@ -59,6 +59,18 @@ flowchart LR
 приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
 проходит через `normalizeCode()` до любого использования.
 
+**Четвёртый путь — и он единственный без кода вообще.** `features/lobby/
+InviteFriendsPanel.tsx` в лобби зовёт друга по имени (`invite_to_room`), а
+`features/lobby/PendingInvitesPanel.tsx` на главной показывает приглашения
+(`pending_room_invites`) — вход в один тап. Приглашение отдаёт **код**, и
+дальше идёт тем же путём, что и набранный руками: `HomeScreen.joinByCode()` —
+единственный вход в комнату, сколько бы способов до него ни вело.
+
+Само поле кода нормализуется `sanitizeCodeInput()` (`invite.ts`): в состоянии
+лежит ровно то, что может быть кодом, поэтому управляемое значение не спорит с
+тем, что только что выдала клавиатура. Оно же вынимает код из вставленной
+ссылки. Полный код запускает вход сам — шестой символ и есть кнопка.
+
 Третий путь — QR на ту же ссылку: `shared/lib/qr.ts` (свой кодировщик, без
 зависимости в бандле) и `shared/ui/QrCode.tsx`. Правится он только вместе с
 `qr.test.ts`, который читает нарисованное настоящим декодером: ошибка в битах
@@ -164,6 +176,7 @@ flowchart TD
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
 | `create_team_room` | `create_team_room.sql` | создание комнаты |
 | `set_room_deck_filter` | `room_deck_filter.sql` | хост выбирает колоду комнаты; пишет `settings.deck` и зеркалит `settings.categories`. Только хост, только пока `waiting` — `rooms` пишут все, политика `USING (true)` |
+| `invite_to_room`, `pending_room_invites`, `decline_room_invite`, `room_invite_ttl` | `room_invites.sql` | позвать друга в комнату без кода. Обе стороны выводятся из подписанного `initData`: приглашение называет двоих, и клиенту нельзя дать назваться любым из них. Срок жизни выводится из статуса комнаты, а не из cron |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
@@ -342,6 +355,11 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Скрипт, который выходит с кодом 0 при отсутствии настроек, поставлен в CI — джоба зеленеет, ничего не проверив. Так вело себя `python-tests`, и так вёл бы себя `check-voice` | `.github/workflows/ci.yml`, джоба `voice-check` |
 | **Политика RLS без `GRANT SELECT`** — Postgres проверяет грант ПЕРВЫМ, и вызывающий получает `42501` ещё до политики. `card_current_club` уехала так, и это уронило **всю колоду**: `cards_matching` её читает, а она `LANGUAGE sql STABLE` **без** `SECURITY DEFINER`, то есть исполняется от игрока | `current_squads.sql`, `fixtures_and_odds.sql` |
 | Симптом «не грузится игра» ищут в бандле и в деплое, а лежит он в гранте на маленькую справочную таблицу за три слоя от экрана | §3, `deck_rpc.sql` |
+| Управляемое поле переписывает то, что выдала клавиатура (`value.toUpperCase()`) — на Android символ, вызвавший переписывание, может пропасть. Держать в состоянии то, что уже является кодом | `features/lobby/invite.ts`, `sanitizeCodeInput` |
+| Вставленную ссылку чистят от пунктуации как текст — из `?startapp=AB12CD` получается стена букв. Ссылку надо сначала прочитать как ссылку | `features/lobby/invite.ts`, `extractCode` |
+| Второй вход в комнату мимо `joinByCode()` — расходится с первым по ошибкам и по экрану, на который попадаешь; протухает всегда второй | `screens/HomeScreen.tsx` |
+| Приглашение показано после старта комнаты — зовёт на экран, который его же и отвергнет. `pending_room_invites` фильтрует по статусу комнаты | `room_invites.sql` |
+| Сервис, который заведомо не подключается, оставлен в лестнице переключения — тратит настоящую попытку и показывает игроку ошибку, с которой он ничего не сделает | `providers/types.ts`, `OFFERED_VOICE_PROVIDER_IDS` |
 | Диплинк `?startapp=` без чтения `start_param` — ссылка открывает приложение, но код никуда не попадает | §2, `features/lobby/invite.ts` |
 | Второй рейтинг рядом с XP — у одного игрока два разных места | `friends_and_rating.sql` |
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |

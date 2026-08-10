@@ -25,7 +25,8 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet, getStartParam } from '@/shared/lib/telegram';
 import { useMainButton } from '@/shared/lib/useMainButton';
 import { useKeyboardOpen } from '@/shared/lib/useKeyboardOpen';
-import { normalizeCode } from '@/features/lobby/invite';
+import { normalizeCode, sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
+import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -74,10 +75,45 @@ export function HomeScreen() {
   const [code,      setCode]      = useState('');
   const [rounds1v1, setRounds1v1] = useState(3);
 
-  const handleJoin = async () => {
-    if (code.trim().length !== 6) return;
-    await joinRoom(code.trim());
+  // What the typed code amounts to. Null until it is a whole one — every use
+  // below asks this rather than measuring the string, so "long enough" and
+  // "actually a code" can never drift apart.
+  const typedCode = normalizeCode(code);
+
+  // Every way into a room ends here: a typed code, an invite link, a friend's
+  // invitation. One path means one set of failure messages and one screen to
+  // land on — a second entrance is the one that goes stale.
+  const joinByCode = async (roomCode: string) => {
+    const valid = normalizeCode(roomCode);
+    if (!valid) return;
+    setCode(valid);
+    setView('joining');
+    await joinRoom(valid);
+    // joinRoom navigates on success, so still being here means it failed.
+    // Fall back to the form, with the code and the error already in place.
+    if (!useGameStore.getState().room) setView('join');
   };
+
+  const handleJoin = async () => {
+    if (!typedCode) return;
+    await joinRoom(typedCode);
+  };
+
+  // THE LAST CHARACTER IS THE BUTTON. Six characters is the whole code, so
+  // there is nothing left to decide once they are there — and asking for a tap
+  // afterwards is asking the player to find a button that the keyboard is
+  // sitting on top of (docs/LOBBY_AND_VOICE_FIXES.md §2).
+  //
+  // Guarded by the code we last tried rather than a boolean: after a failure
+  // the field keeps its contents so it can be corrected, and a plain "already
+  // tried" flag would either re-fire on every render or never fire again.
+  const autoJoined = useRef<string | null>(null);
+  useEffect(() => {
+    if (view !== 'join' || !typedCode || loading) return;
+    if (autoJoined.current === typedCode) return;
+    autoJoined.current = typedCode;
+    void joinRoom(typedCode);
+  }, [view, typedCode, loading, joinRoom]);
 
   // Arrived through an invite link (t.me/…?startapp=CODE): Telegram hands the
   // payload over as start_param, and this is the only place that reads it —
@@ -113,7 +149,7 @@ export function HomeScreen() {
   useMainButton({
     visible: view === 'join',
     text: t('home.join_room'),
-    active: code.trim().length === 6 && !loading,
+    active: typedCode !== null && !loading,
     onClick: () => { void handleJoin(); },
   });
 
@@ -272,6 +308,16 @@ export function HomeScreen() {
           />
           {!master && <p className="text-brand-muted text-lg">{t('home.subtitle')}</p>}
         </div>
+
+        {/* Somebody is waiting for this player. Above the landing on purpose:
+            an invitation is the most actionable thing on the screen, and it
+            expires when the room starts. Renders nothing when there is
+            nothing waiting. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <PendingInvitesPanel onJoin={(invitedCode) => { void joinByCode(invitedCode); }} />
+          </div>
+        )}
 
         {/* ── Landing, master design ── */}
         {view === 'home' && master && (
@@ -453,9 +499,12 @@ export function HomeScreen() {
               <input
                 ref={codeInputRef}
                 type="text"
-                maxLength={6}
+                maxLength={CODE_LENGTH}
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                // Sanitised, not uppercased: the field must hold exactly what
+                // a code can hold, so the controlled value never disagrees with
+                // what the keyboard just produced. See sanitizeCodeInput.
+                onChange={(e) => setCode(sanitizeCodeInput(e.target.value))}
                 // The keyboard's own action key submits, so the player never
                 // has to reach a button hidden behind that keyboard.
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleJoin(); } }}
@@ -468,7 +517,7 @@ export function HomeScreen() {
                 autoFocus
               />
             </div>
-            <Button fullWidth size="lg" loading={loading} disabled={code.length !== 6} onClick={handleJoin}>
+            <Button fullWidth size="lg" loading={loading} disabled={typedCode === null} onClick={handleJoin}>
               {t('home.join_room')}
             </Button>
             <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); setCode(''); setView('home'); }}>

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useLobby } from '@/features/lobby/useLobby';
 import { useRoom } from '@/features/room/useRoom';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useAuthStore } from '@/shared/store/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
@@ -11,6 +12,7 @@ import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { hapticImpact, hapticError, openTelegramLink } from '@/shared/lib/telegram';
 import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { RoomDeckPanel } from '@/features/lobby/RoomDeckPanel';
+import { InviteFriendsPanel } from '@/features/lobby/InviteFriendsPanel';
 import { VoiceControl } from '@/features/voice/VoiceControl';
 import { QrCode } from '@/shared/ui/QrCode';
 import { useDesign } from '@/shared/design/useDesign';
@@ -30,6 +32,7 @@ export function LobbyScreen() {
   } = useLobby();
   const { leaveRoom } = useRoom();
   const { loading, error } = useGameStore();
+  const me = useAuthStore((s) => s.player);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -148,6 +151,11 @@ export function LobbyScreen() {
             <p className="text-brand-muted text-xs text-center">{t('lobby.qr_hint')}</p>
           </div>
         )}
+
+        {/* The code-free way in: tap a name, and they get an invitation on
+            their home screen. The link and QR above stay for everybody the
+            game has never seen this player with. */}
+        <InviteFriendsPanel roomId={room.id} playerId={me?.id ?? null} />
 
         {/* Voice is opt-in and asks for the microphone only when tapped.
             Renders nothing when LiveKit is unconfigured. In team mode the

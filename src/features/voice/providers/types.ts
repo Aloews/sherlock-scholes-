@@ -17,7 +17,34 @@ import type { LinkStats } from '../voiceQuality';
 /** Services the app knows how to talk to. */
 export type VoiceProviderId = 'livekit' | 'daily' | 'agora';
 
+/**
+ * Everything that can arrive and be understood.
+ *
+ * This is the PARSING set, and it still contains Daily deliberately. Rooms
+ * created before Daily was withdrawn carry `voice_provider = 'daily'` in the
+ * database, and `rooms.voice_provider` still accepts it; dropping the value
+ * from the type would turn those rows into unparseable state rather than into
+ * a room that quietly moves to a working service. `providerOrder` already
+ * handles a preferred service that is not on offer — it returns the ladder
+ * without it.
+ */
 export const VOICE_PROVIDER_IDS: readonly VoiceProviderId[] = ['livekit', 'daily', 'agora'];
+
+/**
+ * What this build will actually try, and show.
+ *
+ * DAILY IS WITHDRAWN. The account behind it has no payment method, so every
+ * connection attempt fails with `account-missing-payment-method` — a rung of
+ * the failover ladder that cannot hold weight, and a row in the service check
+ * that reports a fault the player can do nothing about. Offering a service
+ * that is known not to work costs a real attempt on every failover and reads
+ * as the app being broken.
+ *
+ * Kept as a separate list rather than deleted from the one above, because
+ * withdrawing a service and forgetting how to read it are different acts.
+ * Restoring it is one entry here, once the account is paid.
+ */
+export const OFFERED_VOICE_PROVIDER_IDS: readonly VoiceProviderId[] = ['livekit', 'agora'];
 
 export function isVoiceProviderId(value: unknown): value is VoiceProviderId {
   return typeof value === 'string' && (VOICE_PROVIDER_IDS as readonly string[]).includes(value);

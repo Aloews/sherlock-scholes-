@@ -20,13 +20,23 @@ const rowFor = (input: Partial<ServiceStatusInput>, id = 'livekit') =>
   serviceRows({ ...base, ...input }).find((r) => r.id === id)!;
 
 describe('serviceRows', () => {
-  it('reports all three services in a stable order', () => {
-    expect(serviceRows(base).map((r) => r.id)).toEqual(['livekit', 'daily', 'agora']);
+  it('reports the offered services in a stable order, and not the withdrawn one', () => {
+    expect(serviceRows(base).map((r) => r.id)).toEqual(['livekit', 'agora']);
   });
 
   it('marks the services this build does not carry as absent, not failed', () => {
     const rows = serviceRows(base);
-    expect(rows.filter((r) => r.state === 'absent').map((r) => r.id)).toEqual(['daily', 'agora']);
+    expect(rows.filter((r) => r.state === 'absent').map((r) => r.id)).toEqual(['agora']);
+  });
+
+  // A withdrawn service is hidden, but a room CARRYING audio on it is not a
+  // thing to hide — that would make the panel disagree with what the player
+  // can hear, which is the failure this whole panel exists to prevent. Older
+  // rooms can still be pinned to Daily.
+  it('still shows a withdrawn service when it is the one connected', () => {
+    const rows = serviceRows({ ...base, active: 'daily', available: ['daily'], status: 'on' });
+    expect(rows.map((r) => r.id)).toEqual(['livekit', 'agora', 'daily']);
+    expect(rows.find((r) => r.id === 'daily')!.state).toBe('live');
   });
 
   it('follows the active provider', () => {

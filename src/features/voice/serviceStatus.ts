@@ -1,4 +1,4 @@
-import { VOICE_PROVIDER_IDS, type VoiceProviderId } from './providers';
+import { OFFERED_VOICE_PROVIDER_IDS, type VoiceProviderId } from './providers';
 import type { ProviderAttempts, VoiceStatus } from './useVoiceChat';
 import type { VoiceUnavailableReason } from './voiceApi';
 import type { LinkStats, VoiceLevel } from './voiceQuality';
@@ -70,15 +70,25 @@ function activeState(input: ServiceStatusInput): ServiceState {
 /**
  * One row per service the app knows how to talk to, in a stable order.
  *
- * Deliberately reports all three rather than only the active one: "voice does
- * not work" and "voice is not built into this deployment" produced the same
- * screen for two sessions (docs/LOBBY_AND_VOICE_FIXES.md §3), and the cheapest
- * cure is a panel that names which service this build even has.
+ * Deliberately reports every OFFERED service rather than only the active one:
+ * "voice does not work" and "voice is not built into this deployment" produced
+ * the same screen for two sessions (docs/LOBBY_AND_VOICE_FIXES.md §3), and the
+ * cheapest cure is a panel that names which service this build even has.
  */
 export function serviceRows(input: ServiceStatusInput): ServiceRow[] {
   const tried = input.tried ?? {};
 
-  return VOICE_PROVIDER_IDS.map((id) => {
+  // Offered services only — Daily is withdrawn, and a permanently red row for
+  // a service nobody can reach is noise in a panel that exists to tell a player
+  // whether something is wrong. The one exception is a room ALREADY on it: an
+  // older room can still be pinned to Daily, and hiding the service actually
+  // carrying the audio would make the panel lie about what is happening.
+  const shown: VoiceProviderId[] = OFFERED_VOICE_PROVIDER_IDS.includes(input.active as VoiceProviderId)
+    || input.active === null
+    ? [...OFFERED_VOICE_PROVIDER_IDS]
+    : [...OFFERED_VOICE_PROVIDER_IDS, input.active];
+
+  return shown.map((id) => {
     // No adapter for it in this build, so it is not a fallback and not a
     // fault: it is simply not here.
     if (!input.available.includes(id)) {
