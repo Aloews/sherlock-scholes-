@@ -166,7 +166,7 @@ flowchart TD
 | `set_room_deck_filter` | `room_deck_filter.sql` | хост выбирает колоду комнаты; пишет `settings.deck` и зеркалит `settings.categories`. Только хост, только пока `waiting` — `rooms` пишут все, политика `USING (true)` |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
-| `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs` |
+| `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
 | `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
@@ -198,6 +198,9 @@ flowchart LR
   W["Wikidata / Wikipedia<br/>API-Football"] --> R["football_scraper/run.py<br/>scraper/*.py"]
   R --> C["cache/<br/>без TTL, живёт между прогонами"]
   R --> D["docs/*.py<br/>35 скриптов обогащения"]
+  WD["cards_missing_by_country_preview.py<br/>аудит покрытия по странам"] --> IN["cards_insert_missing_players.sql<br/>голые карточки"]
+  IN --> SB
+  IN -.->|"резолв: фото, страна, карьера"| D
   D --> SB[("cards")]
   GH["daily-enrich.yml<br/>05:00 UTC"] --> D
   D --> RF["refresh_card_fame<br/>последним шагом"]
@@ -315,6 +318,10 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | `cards.pageviews` принят за «внимание» — а это только ру-вики | §7, `docs/PLAYER_ATTENTION_ANALYSIS.md` |
 | Сортировка по `pageviews_i18n->>lang` через PostgREST — она **текстовая**, «9» > «10000» | §7, `collection_page_by_lang.sql` |
 | Запасной путь языка написан через `GREATEST`, а не `COALESCE` — русский счёт всегда больше, и порядок не меняется | `collection_page_by_lang.sql` |
+| `P106 = футболист` + сортировка по числу вики — и первым идёт Нобелевский физиолог Шеррингтон, за ним два актёра. Нужны `P54` в клуб с `P641 = футбол` и `P413` (амплуа) | `cards_missing_by_country_preview.py` |
+| `rdfs:label` принят за имя: Викиданные зовут 浅野拓磨 «Takuma ano», а Маркеса — «Rafael Márquez El piojo». Титул статьи правят редакторы, метку — нет | `cards_missing_by_country_preview.py` |
+| `P27` считается одним гражданством — Джонатан Дэвид отвечает на запрос по США и канадец. Страну новой карточке пишет не импорт, а резолв | `cards_missing_by_country_preview.py` |
+| Дубль ищется точным равенством: «Кейсуке Хонда» и «Кэйсукэ Хонда» похожи на 0.47, а «Wataru Endō» и «Wataru Endo» не равны вовсе. Нужны триграммы **и** свёртка диакритики | `cards_insert_missing_players.sql` |
 | Неигровая карточка резолвится по голому названию: «Зенит» — это зенит-надир, «Факел» — факел | §7, `cards_pageviews_i18n.py` |
 | Ошибка `maxlag` от Wikidata принята за успех — она приходит **HTTP 200** с телом-ошибкой | §7, `cards_pageviews_i18n.py` |
 | `player_seasons` принята за готовую историю — 8577 строк-сирот, `players_meta` пуста | `docs/PLAYER_ATTENTION_ANALYSIS.md` §7 |
