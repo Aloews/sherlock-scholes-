@@ -31,8 +31,10 @@ create table if not exists public.card_current_club (
   club       text not null,
   -- What the filter matches on. Both sides are built by the same function
   -- from the same column, so exact equality is safe here — unlike matching
-  -- against another provider's spelling, which needs the care in
-  -- src/features/fixtures/clubMatching.ts.
+  -- against another provider's spelling, which is what `upsert_fixtures`
+  -- resolves by name in fixtures_and_odds.sql. (This comment used to point at
+  -- src/features/fixtures/clubMatching.ts, which has never existed: the
+  -- fixtures pipeline has a server half and no client half yet.)
   club_key   text not null,
   apps       integer,
   -- Which column it was derived from, so a wrong entry can be traced back.

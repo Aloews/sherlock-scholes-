@@ -86,6 +86,10 @@ export function HomeScreen() {
   const joinByCode = async (roomCode: string) => {
     const valid = normalizeCode(roomCode);
     if (!valid) return;
+    // Same reason as the start_param effect below: joinRoom refuses a null
+    // player outright, so acting before authentication lands spends the
+    // attempt on a guaranteed failure.
+    if (!player) return;
     setCode(valid);
     setView('joining');
     await joinRoom(valid);
@@ -110,10 +114,13 @@ export function HomeScreen() {
   const autoJoined = useRef<string | null>(null);
   useEffect(() => {
     if (view !== 'join' || !typedCode || loading) return;
+    // Not yet authenticated: joinRoom would refuse instantly, and the latch
+    // below would record that refusal as "already tried this code".
+    if (!player) return;
     if (autoJoined.current === typedCode) return;
     autoJoined.current = typedCode;
     void joinRoom(typedCode);
-  }, [view, typedCode, loading, joinRoom]);
+  }, [view, typedCode, loading, joinRoom, player]);
 
   // Arrived through an invite link (t.me/…?startapp=CODE): Telegram hands the
   // payload over as start_param, and this is the only place that reads it —
@@ -124,6 +131,22 @@ export function HomeScreen() {
     if (startParamHandled.current) return;
     const invited = normalizeCode(getStartParam());
     if (!invited) return;
+
+    // WAIT FOR THE PLAYER, AND ONLY THEN CLAIM THE PARAM. This is why invite
+    // links did not work.
+    //
+    // Authentication is asynchronous, so `player` is null for the first render
+    // or two after launch — and joinRoom answers a null player instantly with
+    // `errors.auth` rather than joining. The latch used to be set BEFORE that
+    // attempt, so the one attempt an invite got was the one guaranteed to
+    // fail: the invitee landed on the code form with an auth error, holding a
+    // link that had worked perfectly.
+    //
+    // joinRoom's identity changes when the player arrives (it closes over
+    // them), so this effect re-runs on its own — it only ever needed to stop
+    // burning the single attempt before there was anybody to join as.
+    if (!player) return;
+
     startParamHandled.current = true;
     setCode(invited);
     // NOT the join view: it autofocuses the code field, so an invitee who has
@@ -141,7 +164,10 @@ export function HomeScreen() {
       if (!useGameStore.getState().room) setView('join');
     })();
     return () => { cancelled = true; };
-  }, [joinRoom]);
+    // `player` is here so the effect re-runs the moment authentication lands.
+    // Without it the guard above would be a permanent refusal rather than a
+    // wait, which is the same bug in a different shape.
+  }, [joinRoom, player]);
 
   // Telegram draws MainButton above the on-screen keyboard, which is exactly
   // where the in-page "Join" button is not: on a phone the keyboard covers it
