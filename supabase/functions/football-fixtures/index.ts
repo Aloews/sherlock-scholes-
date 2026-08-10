@@ -18,10 +18,13 @@
 // not VITE_-prefixed, is not in the repository, and is not echoed in any
 // answer or log line. A leaked key is somebody else spending our 500.
 //
-// WHAT IT DOES NOT DO: scores. That is `/scores`, it costs a credit a call,
-// and it is a separate deployment with its own schedule — the handoff is
-// explicit that it must not start before the budget guard exists. The guard
-// exists now; the schedule is the next decision, not this one.
+// SCORES ARE THE OTHER ACTION, AND THEY COST. `{"action":"scores"}` calls
+// /scores, one credit per competition, and settles the predictions waiting on
+// it. It is DEMAND-DRIVEN rather than scheduled across the board: the database
+// answers which competitions actually have an unsettled prediction on a match
+// that has plausibly finished (`sports_awaiting_scores`), so a month with no
+// predictions costs nothing. Asking all twenty every day would be 600 credits
+// against a ceiling of 500 — the schedule alone would exhaust the budget.
 // ============================================================================
 
 const ODDS_API_KEY = Deno.env.get("ODDS_API_KEY") ?? "";
@@ -137,6 +140,25 @@ interface OddsApiEvent {
   away_team?: string;
 }
 
+/**
+ * One event from /scores.
+ *
+ * `scores` is an array of two entries keyed by TEAM NAME, not by home/away, so
+ * the side has to be resolved by matching the name back to the event's own
+ * home_team/away_team. A positional read works until the provider reorders
+ * them, and then it silently inverts every result.
+ */
+interface OddsApiScore {
+  id?: string;
+  completed?: boolean;
+  home_team?: string;
+  away_team?: string;
+  scores?: { name?: string; score?: string }[] | null;
+}
+
+/** How far back /scores looks. Matches the seven-day floor in the SQL. */
+const SCORES_DAYS_FROM = 3;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -159,7 +181,13 @@ Deno.serve(async (req) => {
   // carries, instead of fetching anything. /sports is free too, and this is
   // the only way to choose SPORT_KEYS from fact rather than from guesswork —
   // a key that does not exist fails silently as an empty fixture list.
-  const body = await req.json().catch(() => ({})) as { list?: boolean };
+  const body = await req.json().catch(() => ({})) as { list?: boolean; action?: string };
+
+  // Scores, and the settlement that depends on them. Separate action because
+  // it SPENDS: one credit per competition, and only for competitions that have
+  // somebody's prediction waiting on them.
+  if (body?.action === "scores") return await runScores();
+
   if (body?.list === true) {
     const r = await fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${ODDS_API_KEY}`);
     if (!r.ok) return json({ error: "sports_failed", status: r.status }, 503);
@@ -221,6 +249,105 @@ Deno.serve(async (req) => {
     credits_left: await creditsLeft(),
   });
 });
+
+/**
+ * Fetch scores for the competitions that owe somebody an answer, then settle.
+ *
+ * The order matters: reserve, fetch, write, settle. Reserving after the call
+ * would let a failure spend nothing and a success spend nothing either, which
+ * is how a 500-credit ceiling turns out to have been decorative.
+ */
+async function runScores(): Promise<Response> {
+  const waiting = await rpc("sports_awaiting_scores", {});
+  if (!waiting.ok) {
+    console.error(`sports_awaiting_scores failed: ${waiting.status}`);
+    return json({ error: "awaiting_failed" }, 503);
+  }
+  const sports = ((await waiting.json()) as { sport_key?: string }[])
+    .map((row) => row.sport_key)
+    .filter((key): key is string => typeof key === "string");
+
+  // Nothing is waiting, so nothing is spent. This is the normal answer, not an
+  // error: most days nobody has an unsettled prediction on a finished match.
+  if (sports.length === 0) {
+    return json({ sports: 0, scored: 0, settled: 0, credits_left: await creditsLeft() });
+  }
+
+  const rows: Record<string, unknown>[] = [];
+  const failures: { sport: string; reason: string }[] = [];
+  let spent = 0;
+
+  for (const sport of sports) {
+    // One credit, reserved BEFORE the call. A refusal here stops the loop
+    // rather than skipping one competition: the budget is gone either way, and
+    // continuing would produce a partial answer that looks complete.
+    if (!(await reserve(1))) {
+      failures.push({ sport, reason: "budget_exhausted" });
+      break;
+    }
+    spent += 1;
+    try {
+      for (const event of await fetchScores(sport)) {
+        const row = readScore(event);
+        if (row) rows.push(row);
+      }
+    } catch (err) {
+      console.error(`scores failed for ${sport}: ${err}`);
+      failures.push({ sport, reason: String(err).slice(0, 200) });
+    }
+  }
+
+  let written = 0;
+  if (rows.length > 0) {
+    const w = await rpc("upsert_fixture_scores", { p_rows: rows });
+    if (!w.ok) {
+      console.error(`upsert_fixture_scores failed: ${w.status}`);
+      return json({ error: "write_failed", credits_spent: spent }, 503);
+    }
+    written = (await w.json()) as number;
+  }
+
+  // Settle even when nothing was written: a previous run may have stored a
+  // score and failed here, and settlement is idempotent by construction.
+  const settledRes = await rpc("settle_predictions", {});
+  const settled = settledRes.ok ? ((await settledRes.json()) as number) : 0;
+
+  return json({
+    sports: sports.length,
+    credits_spent: spent,
+    scored: written,
+    settled,
+    failures,
+    credits_left: await creditsLeft(),
+  });
+}
+
+/**
+ * A finished match, as a row for upsert_fixture_scores — or null.
+ *
+ * Null for anything still running: the provider reports a live match with
+ * `completed: false` and partial or absent scores, and writing those would
+ * un-finish a match we had already settled.
+ */
+function readScore(event: OddsApiScore): Record<string, unknown> | null {
+  if (!event.id || event.completed !== true || !Array.isArray(event.scores)) return null;
+  // By NAME, not by position — see OddsApiScore.
+  const find = (team?: string) =>
+    event.scores?.find((s) => s.name === team)?.score;
+  const home = Number(find(event.home_team));
+  const away = Number(find(event.away_team));
+  if (!Number.isInteger(home) || !Number.isInteger(away)) return null;
+  return { id: event.id, home_score: home, away_score: away, completed: true };
+}
+
+async function fetchScores(sport: string): Promise<OddsApiScore[]> {
+  const url = `https://api.the-odds-api.com/v4/sports/${sport}/scores/` +
+    `?daysFrom=${SCORES_DAYS_FROM}&apiKey=${ODDS_API_KEY}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 200)}`);
+  const body = await r.json();
+  return Array.isArray(body) ? body as OddsApiScore[] : [];
+}
 
 async function fetchEvents(sport: string): Promise<OddsApiEvent[]> {
   const url = `https://api.the-odds-api.com/v4/sports/${sport}/events?apiKey=${ODDS_API_KEY}`;
