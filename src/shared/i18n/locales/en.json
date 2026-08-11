@@ -104,7 +104,8 @@
     "preset_legends_desc": "The greatest players in history",
     "filter_all_squads": "Any squad",
     "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
-    "matches_link": "Upcoming matches"
+    "matches_link": "Upcoming matches",
+    "fantasy_link": "Fantasy league"
   },
   "design": {
     "master": "New design",
@@ -517,8 +518,12 @@
     "your_prediction": "Your prediction",
     "points_pending": "awaiting the result",
     "points_awarded": "+{{n}}",
-    "total_points": "Prediction points: {{n}}",
-    "rules": "Exact score 5, right goal difference 3, right winner 2"
+    "rules": "Exact score 5, right goal difference 3, right winner 2",
+    "my_score": "My points",
+    "my_rank": "Rank",
+    "my_breakdown": "settled: {{settled}} · exact: {{exact}} · pending: {{pending}}",
+    "top_predictors": "Top predictors",
+    "exact_short": "exact {{n}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
@@ -543,5 +548,23 @@
     "soccer_uefa_nations_league": "Nations League",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
     "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
+  },
+  "fantasy": {
+    "title": "Fantasy",
+    "rules": "A card earns from its club: win 3, draw 1, clean sheet +2, goal +1, heavy defeat −1. Captain doubles.",
+    "this_round": "This round",
+    "next_round": "Next round",
+    "locks_at": "Closes {{when}}",
+    "locked": "Closed",
+    "no_schedule": "No schedule for this round yet",
+    "picked_of": "Picked {{n}} of {{total}}",
+    "pick_captain": "Pick a captain — tap a star",
+    "make_captain": "Make captain",
+    "remove": "Remove",
+    "save": "Submit squad",
+    "saved": "Squad submitted",
+    "refused": "Not accepted: the round is closed, or the squad is invalid",
+    "search": "Search a player or club",
+    "standings": "League standings"
   }
 }

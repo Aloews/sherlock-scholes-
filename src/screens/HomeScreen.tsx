@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
-  IconCrown, IconBallFootball,
+  IconCrown, IconBallFootball, IconTrophy,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -356,6 +356,18 @@ export function HomeScreen() {
           >
             <IconBallFootball size={20} stroke={1.75} className="text-brand-muted shrink-0" />
             <span className="flex-1 text-white text-sm">{t('home.matches_link')}</span>
+            <span className="text-brand-muted text-lg leading-none">›</span>
+          </button>
+        )}
+
+        {view === 'home' && (
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/fantasy'); }}
+            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
+          >
+            <IconTrophy size={20} stroke={1.75} className="text-brand-muted shrink-0" />
+            <span className="flex-1 text-white text-sm">{t('home.fantasy_link')}</span>
             <span className="text-brand-muted text-lg leading-none">›</span>
           </button>
         )}
