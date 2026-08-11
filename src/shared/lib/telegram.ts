@@ -206,6 +206,34 @@ export function getStartParam(): string {
   return typeof raw === 'string' ? raw : '';
 }
 
+/**
+ * Код комнаты, которым нас открыли — из обеих форм приглашения.
+ *
+ * ДВА МЕСТА, ПОТОМУ ЧТО TELEGRAM ДОСТАВЛЯЕТ ИХ ПО-РАЗНОМУ, и ни одно из них не
+ * покрывает другое:
+ *
+ *   ссылка `?startapp=КОД`  → initDataUnsafe.start_param
+ *   кнопка web_app с URL    → обычный location.search приложения
+ *
+ * Вторая форма появилась потому, что первая требует включённого Main Mini App,
+ * а без него Android отвечает `BOT_INVALID`. Бот на `/start КОД` присылает
+ * кнопку, ведущую на `…/?room=КОД`, и код приезжает уже в адресе страницы.
+ *
+ * start_param читается первым: если пришли обе формы сразу, та, что от
+ * Telegram, ближе к истине, чем строка адреса, которую можно набрать руками.
+ * Значение в любом случае НЕПРОВЕРЕННОЕ — это код комнаты, и он проверяется
+ * перед использованием.
+ */
+export function getInviteCode(): string {
+  const fromStartParam = getStartParam();
+  if (fromStartParam) return fromStartParam;
+  try {
+    return new URLSearchParams(window.location.search).get('room') ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export interface Viewport {
   /** Visible height right now — the keyboard eats into this one. */
   height: number;

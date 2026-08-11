@@ -13,6 +13,8 @@
 //      (set when we call setWebhook). We:
 //        • pre_checkout_query   -> answerPreCheckoutQuery(ok: true)
 //        • successful_payment   -> grant_pro(PAY_WEBHOOK_SECRET, payer_id)
+//        • /start <код комнаты> -> ответ кнопкой, открывающей Mini App в этой
+//          комнате. См. handleStart() ниже — это половина приглашений.
 //
 // SECURITY:
 //   • The secret header proves the update really came from Telegram. Without a
@@ -38,6 +40,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 // Keep in sync with src/shared/lib/pro.ts (PRO_PRICE_STARS). Server-authoritative,
 // overridable via secret so the price can change without a redeploy.
 const PRO_PRICE_STARS = Number(Deno.env.get("PRO_PRICE_STARS") ?? "199");
+// Адрес самого приложения. Нужен для web_app-кнопки в ответе на /start.
+const APP_URL = Deno.env.get("APP_URL") ?? "https://sherlock-scholes.vercel.app";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -97,6 +101,56 @@ async function grantPro(telegramId: number): Promise<boolean> {
   return r.ok;
 }
 
+/**
+ * Ответ на `/start <КОД>` — кнопка, открывающая игру сразу в комнате.
+ *
+ * ЗАЧЕМ ЭТО ВООБЩЕ ЕСТЬ. Приглашения раньше уходили ссылкой
+ * `t.me/<бот>?startapp=КОД`, и на Android она отвечала `BOT_INVALID`: эта форма
+ * требует включённого Main Mini App, а у бота его нет. Форма `?start=КОД`
+ * требований не предъявляет никаких — это обычная команда боту, — и приводит
+ * сюда. Одно лишнее касание вместо неработающей ссылки.
+ *
+ * КОД ЕДЕТ В URL КНОПКИ, а не в start_param: кнопка web_app открывает
+ * произвольный адрес, и приложение читает `?room=` из своего location.search.
+ * start_param существует только у startapp-ссылок, то есть ровно у той формы,
+ * которая здесь не работает.
+ *
+ * Код НЕ ПРОВЕРЯЕТСЯ на существование комнаты, и это осознанно: бот не ходит в
+ * базу ради кнопки, а приложение всё равно проверяет код при входе и говорит
+ * «комнаты нет» само. Формат — да: шесть букв и цифр, чтобы в URL не уехало
+ * произвольное содержимое чужого сообщения.
+ */
+async function handleStart(chatId: number, text: string, lang: string): Promise<void> {
+  const raw = text.trim().split(/\s+/)[1] ?? "";
+  const code = /^[A-Za-z0-9]{6}$/.test(raw) ? raw.toUpperCase() : "";
+  const ru = lang.startsWith("ru");
+
+  if (!code) {
+    await tg("sendMessage", {
+      chat_id: chatId,
+      text: ru ? "Открывай игру кнопкой ниже." : "Open the game with the button below.",
+      reply_markup: {
+        inline_keyboard: [[{
+          text: ru ? "Играть" : "Play",
+          web_app: { url: APP_URL },
+        }]],
+      },
+    });
+    return;
+  }
+
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text: ru ? `Комната ${code}. Заходи:` : `Room ${code}. Join:`,
+    reply_markup: {
+      inline_keyboard: [[{
+        text: ru ? `Войти в комнату ${code}` : `Join room ${code}`,
+        web_app: { url: `${APP_URL}/?room=${encodeURIComponent(code)}` },
+      }]],
+    },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -128,6 +182,15 @@ Deno.serve(async (req) => {
         await grantPro(payerId);
         console.log("[tg-pay] granted Pro", payerId, sp.telegram_payment_charge_id);
       }
+      return new Response("ok");
+    }
+
+    // Приглашение: `/start <КОД>`. Стоит после платёжных веток намеренно —
+    // деньги важнее и не должны ждать разбора текста.
+    const text = update.message?.text;
+    const chatId = update.message?.chat?.id;
+    if (typeof text === "string" && text.startsWith("/start") && typeof chatId === "number") {
+      await handleStart(chatId, text, update.message?.from?.language_code ?? "");
       return new Response("ok");
     }
 

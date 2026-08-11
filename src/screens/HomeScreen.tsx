@@ -23,7 +23,7 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact, cloudGet, getStartParam } from '@/shared/lib/telegram';
+import { hapticImpact, cloudGet, getInviteCode } from '@/shared/lib/telegram';
 import { useMainButton } from '@/shared/lib/useMainButton';
 import { useKeyboardOpen } from '@/shared/lib/useKeyboardOpen';
 import { normalizeCode, sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
@@ -133,7 +133,7 @@ export function HomeScreen() {
   const startParamHandled = useRef(false);
   useEffect(() => {
     if (startParamHandled.current) return;
-    const invited = normalizeCode(getStartParam());
+    const invited = normalizeCode(getInviteCode());
     if (!invited) return;
 
     // WAIT FOR THE PLAYER, AND ONLY THEN CLAIM THE PARAM. This is why invite

@@ -58,7 +58,7 @@ flowchart LR
 игра была одна.
 
 **Приглашение в комнату — две половины одной фичи.** `features/lobby/invite.ts`
-строит ссылку `t.me/<бот>?startapp=<КОД>`, а `HomeScreen` читает её обратно
+строит ссылку, `HomeScreen` читает её обратно
 через `getStartParam()` (`shared/lib/telegram.ts` → `initDataUnsafe.start_param`)
 и сразу пробует войти. Одна половина без другой бесполезна: ссылка откроет
 приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
@@ -337,6 +337,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Удаление легаси-`pick_random_cards` до раскатки фронта | §3, `deck_rpc.sql` |
 | `shared/` импортирует из `features/` | §4 |
 | Фаза игры меняется мимо машины состояний | §5 |
+| `t.me/<бот>?startapp=КОД` требует **включённого Main Mini App**; без него Android отвечает `BOT_INVALID`, а страница t.me всё равно рисует «Open App» — она генератор редиректа и ничего не проверяет, так что по ней поломки не видно | `features/lobby/invite.ts` `deepLink` |
+| Код комнаты ищут только в `start_param` — он приходит **лишь** у startapp-ссылок; у кнопки `web_app` код едет в обычном `location.search` | `shared/lib/telegram.ts` `getInviteCode` |
 | `grant select` выдан игрокам, а про `service_role` забыли — конвейер получает `permission denied for table`, и снаружи это выглядит безобидно: «285 прочитано, 0 записано», оба числа правдоподобны | `football_digest.sql`, блок прав |
 | Вставка пачкой через PostgREST без `?on_conflict=<колонка>` — `resolution=ignore-duplicates` целится в первичный ключ, а он bigserial и не передаётся, так что настоящий конфликт по `url` приходит как 409 на всю пачку | `functions/football-digest/index.ts` |
 | RSS с `pubDate` вида «11 Aug 2026 11:46:00 BST» — `new Date()` такую зону не знает, и источник молча отдаёт ноль строк при HTTP 200. Ловится только поимённым `feeds_silent` | `functions/football-digest/index.ts` |

@@ -3,6 +3,14 @@
 
 const BOT = 'sherlock_scholes_bot';
 
+/**
+ * Имя Mini App, если оно заведено в BotFather через /newapp.
+ *
+ * Пусто по умолчанию, и это не заглушка — см. deepLink() ниже: пустая строка
+ * означает «именованного приложения нет», и ссылка строится другой формы.
+ */
+const APP_NAME = (import.meta.env.VITE_TG_APP_NAME as string | undefined) ?? '';
+
 /** Room codes are six chars, uppercase letters and digits — see `create_team_room`. */
 const CODE_RE = /^[A-Z0-9]{6}$/;
 
@@ -48,7 +56,9 @@ export function sanitizeCodeInput(raw: string): string {
  */
 function extractCode(raw: string): string {
   const text = (raw ?? '').trim();
-  const fromLink = /[?&]startapp=([^&\s]+)/i.exec(text);
+  // ОБЕ формы, и `startapp` первой: ссылки, разосланные до смены формата,
+  // продолжают ходить по чатам, и код в них тот же самый.
+  const fromLink = /[?&](?:startapp|start)=([^&\s]+)/i.exec(text);
   const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
   return candidate.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -65,12 +75,35 @@ export function codeFromText(raw: string | null | undefined): string | null {
 }
 
 /**
- * The link that opens the Mini App with the room code already filled in.
- * Telegram delivers everything after `startapp=` as initDataUnsafe.start_param,
- * which getStartParam() reads on launch — the two halves only work together.
+ * Ссылка, которая открывает игру сразу в нужной комнате.
+ *
+ * ТРИ ФОРМЫ, И ВЫБОР МЕЖДУ НИМИ — ЭТО НЕ ВКУС, А НАСТРОЙКА БОТА В BOTFATHER.
+ * Telegram различает их жёстко, и ссылка, которой не соответствует настройка,
+ * не «работает хуже» — она не открывает приложение вовсе:
+ *
+ *   t.me/<бот>?startapp=КОД            нужен включённый Main Mini App
+ *   t.me/<бот>/<имя>?startapp=КОД      нужно приложение, заведённое /newapp
+ *   t.me/<бот>?start=КОД               не нужно ничего
+ *
+ * ЧТО СЛУЧИЛОСЬ. Приглашения уходили первой формой, а на Android приходило
+ * `BOT_INVALID`: клиент доходил до `tg://resolve?domain=…&startapp=…`, и
+ * Telegram отказывал, потому что Main Mini App у бота не включён. Страница
+ * t.me при этом честно рисует кнопку «Open App» для любой ссылки — она просто
+ * генератор редиректа и ничего не проверяет, так что по ней ошибку не видно.
+ *
+ * ПОЭТОМУ ПО УМОЛЧАНИЮ — ТРЕТЬЯ ФОРМА. Она стоит одного лишнего касания
+ * (бот отвечает кнопкой, которая открывает игру), зато не зависит ни от одной
+ * настройки и работает у бота, каким он есть сегодня. Обработчик — в
+ * supabase/functions/tg-pay/index.ts.
+ *
+ * Как только в BotFather заведут приложение через /newapp, достаточно
+ * выставить VITE_TG_APP_NAME — и ссылка станет односоставной, без правок кода.
  */
 export function deepLink(code: string): string {
-  return `https://t.me/${BOT}?startapp=${encodeURIComponent(code)}`;
+  const param = encodeURIComponent(code);
+  return APP_NAME
+    ? `https://t.me/${BOT}/${APP_NAME}?startapp=${param}`
+    : `https://t.me/${BOT}?start=${param}`;
 }
 
 /**
