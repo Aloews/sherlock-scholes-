@@ -372,6 +372,18 @@ export function HomeScreen() {
           </button>
         )}
 
+        {view === 'home' && (
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/quiz'); }}
+            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
+          >
+            <IconHelp size={20} stroke={1.75} className="text-brand-muted shrink-0" />
+            <span className="flex-1 text-white text-sm">{t('home.quiz_link')}</span>
+            <span className="text-brand-muted text-lg leading-none">›</span>
+          </button>
+        )}
+
         {/* ── Landing, master design ── */}
         {view === 'home' && master && (
           <HomeLandingMaster

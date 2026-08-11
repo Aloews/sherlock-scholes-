@@ -103,7 +103,8 @@
     "filter_all_squads": "모든 스쿼드",
     "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
     "matches_link": "예정된 경기",
-    "fantasy_link": "판타지 리그"
+    "fantasy_link": "판타지 리그",
+    "quiz_link": "선수 맞히기"
   },
   "design": {
     "master": "새 디자인",
@@ -551,5 +552,20 @@
     "refused": "거부됨: 마감되었거나 스쿼드가 올바르지 않습니다",
     "search": "선수 또는 클럽 검색",
     "standings": "리그 순위"
+  },
+  "quiz": {
+    "title": "선수 맞히기",
+    "loading": "선수를 찾는 중…",
+    "empty": "아직 맞힐 선수가 없습니다",
+    "more_facts": "힌트 하나 더",
+    "next": "다음",
+    "fact_position": "포지션: {{value}}",
+    "fact_born": "출생: {{value}}",
+    "fact_height": "키: {{value}} cm",
+    "fact_clubs": "소속 클럽 수: {{value}}",
+    "fact_years": "커리어: {{value}}",
+    "fact_national": "대표팀: {{value}}",
+    "fact_caps": "A매치: {{value}}",
+    "fact_tournaments": "참가 대회: {{value}}"
   }
 }

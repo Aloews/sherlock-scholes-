@@ -109,7 +109,8 @@
     "filter_all_squads": "Любой состав",
     "squad_as_of": "Состав на {{date}} — по статьям игроков, не в прямом эфире",
     "matches_link": "Ближайшие матчи",
-    "fantasy_link": "Фэнтези-лига"
+    "fantasy_link": "Фэнтези-лига",
+    "quiz_link": "Угадай игрока"
   },
   "design": {
     "master": "Новый дизайн",
@@ -600,5 +601,20 @@
     "refused": "Не принято: тур закрыт или состав не подходит",
     "search": "Поиск игрока или клуба",
     "standings": "Таблица лиг"
+  },
+  "quiz": {
+    "title": "Угадай игрока",
+    "loading": "Ищем игрока…",
+    "empty": "Пока некого угадывать",
+    "more_facts": "Ещё факт",
+    "next": "Следующий",
+    "fact_position": "Позиция: {{value}}",
+    "fact_born": "Год рождения: {{value}}",
+    "fact_height": "Рост: {{value}} см",
+    "fact_clubs": "Клубов за карьеру: {{value}}",
+    "fact_years": "Карьера: {{value}}",
+    "fact_national": "Сборная: {{value}}",
+    "fact_caps": "Матчей за сборную: {{value}}",
+    "fact_tournaments": "Турниры: {{value}}"
   }
 }

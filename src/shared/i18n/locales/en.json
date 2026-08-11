@@ -105,7 +105,8 @@
     "filter_all_squads": "Any squad",
     "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
     "matches_link": "Upcoming matches",
-    "fantasy_link": "Fantasy league"
+    "fantasy_link": "Fantasy league",
+    "quiz_link": "Guess the player"
   },
   "design": {
     "master": "New design",
@@ -566,5 +567,20 @@
     "refused": "Not accepted: the round is closed, or the squad is invalid",
     "search": "Search a player or club",
     "standings": "League standings"
+  },
+  "quiz": {
+    "title": "Guess the player",
+    "loading": "Finding a player…",
+    "empty": "Nobody to guess yet",
+    "more_facts": "One more fact",
+    "next": "Next",
+    "fact_position": "Position: {{value}}",
+    "fact_born": "Born: {{value}}",
+    "fact_height": "Height: {{value}} cm",
+    "fact_clubs": "Clubs in career: {{value}}",
+    "fact_years": "Career: {{value}}",
+    "fact_national": "National team: {{value}}",
+    "fact_caps": "Caps: {{value}}",
+    "fact_tournaments": "Tournaments: {{value}}"
   }
 }

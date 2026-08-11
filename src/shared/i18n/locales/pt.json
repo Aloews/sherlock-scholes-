@@ -105,7 +105,8 @@
     "filter_all_squads": "Qualquer elenco",
     "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo",
     "matches_link": "Próximos jogos",
-    "fantasy_link": "Liga fantasy"
+    "fantasy_link": "Liga fantasy",
+    "quiz_link": "Adivinhe o jogador"
   },
   "design": {
     "master": "Novo design",
@@ -566,5 +567,20 @@
     "refused": "Não aceito: rodada fechada ou escalação inválida",
     "search": "Buscar jogador ou clube",
     "standings": "Classificação"
+  },
+  "quiz": {
+    "title": "Adivinhe o jogador",
+    "loading": "Procurando jogador…",
+    "empty": "Ainda não há quem adivinhar",
+    "more_facts": "Mais um dado",
+    "next": "Próximo",
+    "fact_position": "Posição: {{value}}",
+    "fact_born": "Nascido em {{value}}",
+    "fact_height": "Altura: {{value}} cm",
+    "fact_clubs": "Clubes na carreira: {{value}}",
+    "fact_years": "Carreira: {{value}}",
+    "fact_national": "Seleção: {{value}}",
+    "fact_caps": "Jogos pela seleção: {{value}}",
+    "fact_tournaments": "Torneios: {{value}}"
   }
 }

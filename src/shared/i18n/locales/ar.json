@@ -108,7 +108,8 @@
     "filter_all_squads": "أي تشكيلة",
     "squad_as_of": "التشكيلة حتى {{date}} — من مقالات اللاعبين، وليست مباشرة",
     "matches_link": "المباريات القادمة",
-    "fantasy_link": "دوري الفانتازي"
+    "fantasy_link": "دوري الفانتازي",
+    "quiz_link": "خمّن اللاعب"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -626,5 +627,20 @@
     "refused": "لم يُقبل: الجولة مغلقة أو التشكيلة غير صالحة",
     "search": "ابحث عن لاعب أو نادٍ",
     "standings": "ترتيب الدوريات"
+  },
+  "quiz": {
+    "title": "خمّن اللاعب",
+    "loading": "جارٍ البحث…",
+    "empty": "لا يوجد من نخمّنه بعد",
+    "more_facts": "معلومة أخرى",
+    "next": "التالي",
+    "fact_position": "المركز: {{value}}",
+    "fact_born": "سنة الميلاد: {{value}}",
+    "fact_height": "الطول: {{value}} سم",
+    "fact_clubs": "عدد الأندية: {{value}}",
+    "fact_years": "المسيرة: {{value}}",
+    "fact_national": "المنتخب: {{value}}",
+    "fact_caps": "مباريات دولية: {{value}}",
+    "fact_tournaments": "البطولات: {{value}}"
   }
 }
