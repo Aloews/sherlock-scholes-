@@ -321,7 +321,11 @@
     "detail_no_payment_method": "该服务账户没有付款方式，因此拒绝所有连接。这是账户设置，不是应用的问题。",
     "detail_bad_token": "服务拒绝了访问密钥：请检查服务器上的密钥对。",
     "detail_quota": "账户额度已用尽，服务将拒绝连接直到续费。",
-    "detail_bad_config": "应用请求了服务无法理解的参数。这是我们这边的错误。"
+    "detail_bad_config": "应用请求了服务无法理解的参数。这是我们这边的错误。",
+    "camera_on": "开启摄像头",
+    "camera_off": "关闭摄像头",
+    "you": "你",
+    "video_held": "视频已关闭：{{level}}"
   },
   "soundcheck": {
     "title": "声音检查",

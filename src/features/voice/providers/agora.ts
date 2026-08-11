@@ -86,6 +86,10 @@ interface AgoraSdk {
 
 export const agoraTransport: VoiceTransport = {
   id: 'agora',
+  // Audio only here — this adapter publishes a microphone track and nothing
+  // else. AGORA_CODEC above is a client-mode setting Agora requires whether or
+  // not any video flows; it is not a picture waiting to be switched on.
+  video: false,
 
   async connect(options: VoiceConnectOptions): Promise<VoiceSession> {
     const { token, channel, appId, identity } = options.credentials;
@@ -144,6 +148,11 @@ export const agoraTransport: VoiceTransport = {
       return {
         async setMicrophoneEnabled(on) {
           await track.setEnabled(on);
+        },
+        // See the same method on the Daily adapter: `video: false` is the
+        // contract, this is the alarm when somebody ignores it.
+        setCameraEnabled() {
+          return Promise.reject(new Error('agora: this adapter is audio only'));
         },
         async startAudio() {
           // There is no element to replay: the SDK retries its own on the next

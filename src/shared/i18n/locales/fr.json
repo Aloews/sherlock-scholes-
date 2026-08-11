@@ -331,7 +331,11 @@
     "detail_no_payment_method": "Le compte du service n'a pas de moyen de paiement : il refuse tout le monde. C'est un réglage du compte, pas de l'application.",
     "detail_bad_token": "Le service a refusé la clé d'accès : vérifie la paire de clés sur le serveur.",
     "detail_quota": "Le quota du compte est épuisé ; le service refuse jusqu’au renouvellement.",
-    "detail_bad_config": "L'application a demandé quelque chose que le service ne comprend pas. Cette erreur est de notre côté."
+    "detail_bad_config": "L'application a demandé quelque chose que le service ne comprend pas. Cette erreur est de notre côté.",
+    "camera_on": "Activer la caméra",
+    "camera_off": "Désactiver la caméra",
+    "you": "Vous",
+    "video_held": "Vidéo désactivée : {{level}}"
   },
   "soundcheck": {
     "title": "Test du son",

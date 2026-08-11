@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import {
-  levelFor, nextLevel, rank, audioPreset, VOICE_LEVELS, UPGRADE_SAMPLES,
+  levelFor, nextLevel, rank, audioPreset, videoAllowed, VOICE_LEVELS, UPGRADE_SAMPLES,
   type VoiceLevel,
 } from './voiceQuality';
 
@@ -115,5 +115,38 @@ describe('audioPreset', () => {
 
   it('treats full and voice alike — this phase ships audio only', () => {
     expect(audioPreset('full')).toEqual(audioPreset('voice'));
+  });
+});
+
+describe('videoAllowed', () => {
+  it('carries a picture on a link that can hold one', () => {
+    expect(videoAllowed('full')).toBe(true);
+    expect(videoAllowed('voice')).toBe(true);
+  });
+
+  // The whole degradation strategy in one assertion: the picture is the first
+  // thing sacrificed, before the audio bitrate and long before the channel.
+  it('drops the picture before anything else', () => {
+    expect(videoAllowed('voice_low')).toBe(false);
+    expect(audioPreset('voice_low')).not.toBeNull();
+  });
+
+  it('carries nothing at all in text mode', () => {
+    expect(videoAllowed('text')).toBe(false);
+  });
+
+  // The ladder starts at `voice` on every connection and climbs one rung per
+  // three good samples. A camera gated on `full` alone would therefore be dead
+  // for the first fifteen seconds of every call — and dead forever on an
+  // ordinary 160 ms intercontinental route, which carries 320x240 perfectly
+  // well. That is not degradation, it is a feature that never arrives.
+  it('is open at the level a fresh connection starts on', () => {
+    expect(videoAllowed('voice')).toBe(true);
+  });
+
+  it('never allows a picture where the audio itself has been given up', () => {
+    fc.assert(fc.property(fc.constantFrom(...VOICE_LEVELS), (level: VoiceLevel) => {
+      if (audioPreset(level) === null) expect(videoAllowed(level)).toBe(false);
+    }));
   });
 });

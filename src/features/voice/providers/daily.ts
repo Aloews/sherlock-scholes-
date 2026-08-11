@@ -51,6 +51,10 @@ interface DailyNetworkStats {
 
 export const dailyTransport: VoiceTransport = {
   id: 'daily',
+  // Audio only here. Daily carries video perfectly well; this adapter never
+  // asked for it, and the token minted for it sets `start_video_off`. The flag
+  // describes THIS ADAPTER, not the vendor — see types.ts.
+  video: false,
 
   async connect(options: VoiceConnectOptions): Promise<VoiceSession> {
     const { url, token } = options.credentials;
@@ -111,6 +115,13 @@ export const dailyTransport: VoiceTransport = {
     return {
       async setMicrophoneEnabled(on) {
         call.setLocalAudio(on);
+      },
+      // Refuses rather than resolves. `video: false` above is what callers are
+      // meant to read; reaching this line is a bug upstream, and a silent
+      // no-op would hide it behind a camera button that lights up and does
+      // nothing.
+      setCameraEnabled() {
+        return Promise.reject(new Error('daily: this adapter is audio only'));
       },
       async startAudio() {
         await sink.start();

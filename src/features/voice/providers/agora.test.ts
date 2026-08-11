@@ -103,6 +103,7 @@ function connectOptions(node: HTMLElement) {
     },
     sink: node,
     onSpeakers: vi.fn(),
+    onVideoChanged: vi.fn(),
     onPlaybackChanged: vi.fn(),
     onDisconnected: vi.fn(),
   };

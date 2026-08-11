@@ -1,10 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchVoiceToken, voiceEnabled, type VoiceUnavailableReason } from './voiceApi';
 import { loadTransportFor, availableProviders, voiceProvider } from './providers';
-import { levelFor, nextLevel, audioPreset, type VoiceLevel, type LinkStats } from './voiceQuality';
+import {
+  levelFor, nextLevel, audioPreset, videoAllowed, type VoiceLevel, type LinkStats,
+} from './voiceQuality';
 import { JOIN_TIMEOUT_MS } from './connectPolicy';
 import { providerOrder, nextProvider } from './failover';
 import type { VoiceSession, VoiceProviderId } from './providers';
+import type { VideoFeed } from './providers/types';
 
 export type VoiceStatus = 'off' | 'connecting' | 'on' | 'denied' | 'unavailable';
 
@@ -34,7 +37,13 @@ export type ProviderAttempts = Partial<
 >;
 
 /**
- * The in-game voice channel. Audio only in this phase.
+ * The in-game voice channel — and, where the service carries one, the picture.
+ *
+ * VIDEO IS A PASSENGER, NOT A PEER. Everything below still treats audio as the
+ * thing that must work: the camera is offered only by adapters that declare it
+ * (`VoiceTransport.video`), only opened when the player taps for it, and closed
+ * by the degradation ladder the moment the link stops deserving it. A failure
+ * to publish a picture never fails a connection — see `openCamera` below.
  *
  * The service is behind `providers/`: this hook knows about a session it can
  * mute, measure and tear down, and nothing about LiveKit, Daily or Agora. The
@@ -76,6 +85,20 @@ export function useVoiceChat(roomId: string | null) {
   // failover, "Daily refused, LiveKit is up" is the whole story, and one
   // reason on one row cannot tell it.
   const [tried, setTried] = useState<ProviderAttempts>({});
+  // Whether the service actually carrying this session has pictures at all.
+  // Read from the transport that connected, never from the build's preferred
+  // provider: the ladder can land the room on an audio-only vendor, and a
+  // camera button that survives that is a button that throws.
+  const [videoSupported, setVideoSupported] = useState(false);
+  // The player's wish, not the wire's state. The ladder closes the camera on a
+  // bad link and reopens it when the link recovers — but only because this
+  // stayed true through the bad patch.
+  const [cameraOn, setCameraOn] = useState(false);
+  // Remote pictures, and our own preview. Separate because they are separate
+  // things: the self-view is mirrored, never subscribed, and belongs in a
+  // corner rather than in the grid.
+  const [feeds, setFeeds] = useState<VideoFeed[]>([]);
+  const [selfFeed, setSelfFeed] = useState<VideoFeed | null>(null);
 
   const sessionRef = useRef<VoiceSession | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,6 +109,13 @@ export function useVoiceChat(roomId: string | null) {
   // it was AT CONNECT TIME, so a player who muted themselves and then hit a
   // bad patch of network had their microphone switched back on for them.
   const mutedRef = useRef(false);
+  // Mirrors `cameraOn` and `videoSupported` for the same reason as `mutedRef`:
+  // the ladder runs on an interval created once per connection, so reading the
+  // state there reads whatever it was AT CONNECT TIME — which is always "off",
+  // and would mean a camera the player switched on could never be closed by a
+  // link going bad, nor reopened when it recovered.
+  const cameraRef = useRef(false);
+  const videoRef = useRef(false);
   // True from the first line of connect() until it has either a session or a
   // failure. `sessionRef` cannot serve as the guard: it stays null for the
   // whole attempt, so a tap arriving while auto-connect was mid-join let both
@@ -103,6 +133,15 @@ export function useVoiceChat(roomId: string | null) {
     closeAudioSink();
     setSpeaking([]);
     setAudioBlocked(false);
+    // The pictures go with the session too. An element left in the layout keeps
+    // showing the last frame of a call that has ended, which reads as a call
+    // that is still running.
+    setFeeds([]);
+    setSelfFeed(null);
+    setCameraOn(false);
+    cameraRef.current = false;
+    setVideoSupported(false);
+    videoRef.current = false;
     setStatus(voiceEnabled() ? 'off' : 'unavailable');
     setReason(voiceEnabled() ? null : 'not_configured');
   }, []);
@@ -165,6 +204,7 @@ export function useVoiceChat(roomId: string | null) {
           credentials: granted.credentials,
           sink: audioSink(),
           onSpeakers: setSpeaking,
+          onVideoChanged: setFeeds,
           onPlaybackChanged: (playing) => setAudioBlocked(!playing),
           onDisconnected: () => disconnect(),
         }),
@@ -184,6 +224,15 @@ export function useVoiceChat(roomId: string | null) {
       setStatus('on');
       setMuted(false);
       mutedRef.current = false;
+      // The camera starts closed on every connection, whatever it was last
+      // time. A device that publishes a picture the moment it reconnects — in
+      // a game whose whole session may be a reconnect after a lost link — is a
+      // device that has decided for its owner.
+      setCameraOn(false);
+      cameraRef.current = false;
+      setSelfFeed(null);
+      videoRef.current = transport.video;
+      setVideoSupported(transport.video);
       setAudioBlocked(!session.canPlaybackAudio());
 
       // Measure the link and let the ladder move the level. Down fast, up
@@ -205,6 +254,17 @@ export function useVoiceChat(roomId: string | null) {
           // A player who muted themselves stays muted — the ladder may close
           // the microphone, never open it.
           await session.setMicrophoneEnabled(preset !== null && !mutedRef.current);
+
+          // VIDEO GOES FIRST, which is the whole strategy of §2 of the
+          // handoff: sacrifice the picture, then the audio bitrate, then the
+          // channel. A step down past `videoAllowed` closes the camera and a
+          // climb back reopens it — but only for a player who still wants one.
+          // `cameraRef` is what survives the bad patch.
+          if (videoRef.current) {
+            const wantCamera = videoAllowed(next) && cameraRef.current;
+            const feed = await session.setCameraEnabled(wantCamera).catch(() => null);
+            setSelfFeed(wantCamera ? feed : null);
+          }
         }
       }, STATS_INTERVAL_MS);
       return { ok: true };
@@ -344,10 +404,50 @@ export function useVoiceChat(roomId: string | null) {
     await session.setMicrophoneEnabled(!next && audioPreset(levelRef.current) !== null);
   }, [muted]);
 
+  /**
+   * The camera, on the player's tap.
+   *
+   * TWO SEPARATE FACTS come out of this, and the UI needs both: `cameraOn` is
+   * what the player asked for, `selfFeed` is what is actually on the wire. They
+   * disagree whenever the link is too weak to carry a picture — the wish is
+   * kept so the ladder can honour it the moment the link recovers, and the UI
+   * says why nothing is showing instead of quietly dropping the tap.
+   *
+   * A camera that will not open — refused permission, no device, another app
+   * holding it — puts the button back out. A lit button over a dead camera is
+   * the same lie as a connected room with no audio.
+   */
+  const toggleCamera = useCallback(async () => {
+    const session = sessionRef.current;
+    if (!session || !videoRef.current) return;
+
+    const next = !cameraRef.current;
+    cameraRef.current = next;
+    setCameraOn(next);
+
+    if (next && !videoAllowed(levelRef.current)) {
+      // Wanted, not published. Nothing to switch off either — the ladder never
+      // opened it.
+      setSelfFeed(null);
+      return;
+    }
+
+    try {
+      const feed = await session.setCameraEnabled(next);
+      setSelfFeed(next ? feed : null);
+      if (next && !feed) { cameraRef.current = false; setCameraOn(false); }
+    } catch {
+      cameraRef.current = false;
+      setCameraOn(false);
+      setSelfFeed(null);
+    }
+  }, []);
+
   return {
     status, reason, detail, level, linkStats, muted, speaking, audioBlocked,
     active, tried,
-    connect, disconnect, toggleMute, startAudio,
+    videoSupported, cameraOn, feeds, selfFeed,
+    connect, disconnect, toggleMute, toggleCamera, startAudio,
   };
 }
 

@@ -331,7 +331,11 @@
     "detail_no_payment_method": "La cuenta del servicio no tiene método de pago, así que rechaza a todos. Es un ajuste de la cuenta, no de la app.",
     "detail_bad_token": "El servicio rechazó la clave de acceso: revisa el par de claves en el servidor.",
     "detail_quota": "La cuenta agotó su límite; el servicio rechaza hasta que se renueve.",
-    "detail_bad_config": "La app pidió algo que el servicio no entiende. Ese fallo es nuestro."
+    "detail_bad_config": "La app pidió algo que el servicio no entiende. Ese fallo es nuestro.",
+    "camera_on": "Activar la cámara",
+    "camera_off": "Desactivar la cámara",
+    "you": "Tú",
+    "video_held": "Vídeo desactivado: {{level}}"
   },
   "soundcheck": {
     "title": "Prueba de sonido",

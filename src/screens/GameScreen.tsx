@@ -13,6 +13,7 @@ import { useDesign } from '@/shared/design/useDesign';
 import { Button } from '@/shared/ui/Button';
 import { Scoreboard } from '@/shared/ui/Scoreboard';
 import { VoiceControl } from '@/features/voice/VoiceControl';
+import { VideoStage } from '@/features/voice/VideoStage';
 import { useVoice } from '@/features/voice/VoiceProvider';
 import { voiceEnabled } from '@/features/voice/voiceApi';
 import { useSettingsStore } from '@/shared/store/settingsStore';
@@ -211,6 +212,10 @@ export function GameScreen() {
           <MuteButton />
         </div>
       </div>
+
+      {/* Faces, if anybody switched a camera on. Above the timer and below the
+          score, where it costs the card nothing and can be ignored. */}
+      <VideoStage />
 
       {/* Timer */}
       <div className="flex flex-col items-center py-4">
