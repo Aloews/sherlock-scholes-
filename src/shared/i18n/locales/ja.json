@@ -105,7 +105,10 @@
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
     "alias_link": "サッカー・アリアス",
-    "digest_link": "今日のダイジェスト",
+    "digest_link": "ゴールとニュース",
+    "top_goal": "週末のベストゴール",
+    "top_moment": "週末のベストシーン",
+    "fresh_clip": "今日の新着動画",
     "arena_link": "2人対戦アリーナ"
   },
   "design": {

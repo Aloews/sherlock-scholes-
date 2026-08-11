@@ -105,7 +105,10 @@
     "fantasy_link": "梦幻联赛",
     "quiz_link": "猜球员",
     "alias_link": "足球猜词",
-    "digest_link": "今日速览",
+    "digest_link": "进球与头条",
+    "top_goal": "本周末最佳进球",
+    "top_moment": "本周末最佳瞬间",
+    "fresh_clip": "今日新视频",
     "arena_link": "双人竞技场"
   },
   "design": {

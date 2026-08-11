@@ -107,7 +107,10 @@
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
     "alias_link": "Football Alias",
-    "digest_link": "Daily digest",
+    "digest_link": "Goals & headlines",
+    "top_goal": "Top goal of the weekend",
+    "top_moment": "Top moment of the weekend",
+    "fresh_clip": "Today's new clip",
     "arena_link": "Two-player arena"
   },
   "design": {

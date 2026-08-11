@@ -107,7 +107,10 @@
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
     "alias_link": "Alias do futebol",
-    "digest_link": "Resumo do dia",
+    "digest_link": "Gols e manchetes",
+    "top_goal": "Melhor gol do fim de semana",
+    "top_moment": "Melhor lance do fim de semana",
+    "fresh_clip": "Vídeo novo de hoje",
     "arena_link": "Arena para dois"
   },
   "design": {

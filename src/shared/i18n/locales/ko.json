@@ -105,7 +105,10 @@
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
     "alias_link": "축구 알리아스",
-    "digest_link": "오늘의 다이제스트",
+    "digest_link": "골과 뉴스",
+    "top_goal": "주말 베스트 골",
+    "top_moment": "주말 베스트 장면",
+    "fresh_clip": "오늘의 새 영상",
     "arena_link": "2인 대전 아레나"
   },
   "design": {
