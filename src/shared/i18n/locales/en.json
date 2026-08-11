@@ -106,7 +106,8 @@
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
-    "alias_link": "Football Alias"
+    "alias_link": "Football Alias",
+    "digest_link": "Daily digest"
   },
   "design": {
     "master": "New design",
@@ -586,5 +587,16 @@
     "fact_national": "National team: {{value}}",
     "fact_caps": "Caps: {{value}}",
     "fact_tournaments": "Tournaments: {{value}}"
+  },
+  "digest": {
+    "title": "Daily digest",
+    "headlines": "Loudest in the last 24 hours",
+    "goals": "Goals and moments",
+    "goals_note": "What the leagues’ own channels posted in the last 24 hours.",
+    "loading": "Loading…",
+    "empty_news": "Nothing came in today.",
+    "empty_goals": "No clips in the last 24 hours.",
+    "loudness_one": "{{n}} outlet",
+    "loudness_other": "{{n}} outlets"
   }
 }

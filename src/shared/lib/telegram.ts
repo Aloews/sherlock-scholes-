@@ -68,6 +68,7 @@ declare global {
         onEvent?(event: 'viewportChanged', fn: () => void): void;
         offEvent?(event: 'viewportChanged', fn: () => void): void;
         openTelegramLink(url: string): void;
+        openLink(url: string, options?: { try_instant_view?: boolean }): void;
         openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
         CloudStorage?: {
           getItem(key: string, cb: (err: string | null, value?: string) => void): void;
@@ -176,6 +177,24 @@ export function openTelegramLink(url: string): boolean {
   if (!tg?.openTelegramLink) return false;
   tg.openTelegramLink(url);
   return true;
+}
+
+/**
+ * Opens an ORDINARY web link outside the Mini App.
+ *
+ * Different method from openTelegramLink, and the difference matters: that one
+ * is for t.me addresses and hands them to the Telegram client, this one is for
+ * everything else and hands them to the system browser. Loading a news site
+ * inside the WebView instead would replace the game with a page that has no
+ * way back to it.
+ *
+ * Falls back to window.open outside Telegram — the app runs in a plain browser
+ * during development, and a link that silently does nothing there is a link
+ * nobody can test.
+ */
+export function openLink(url: string): void {
+  if (tg?.openLink) { tg.openLink(url); return; }
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // The `startapp=` payload of the deep link the app was opened with. Telegram

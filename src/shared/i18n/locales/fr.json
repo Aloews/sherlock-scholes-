@@ -106,7 +106,8 @@
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
-    "alias_link": "Alias du football"
+    "alias_link": "Alias du football",
+    "digest_link": "Résumé du jour"
   },
   "design": {
     "master": "Nouveau design",
@@ -586,5 +587,16 @@
     "fact_national": "Sélection : {{value}}",
     "fact_caps": "Sélections : {{value}}",
     "fact_tournaments": "Tournois : {{value}}"
+  },
+  "digest": {
+    "title": "Résumé du jour",
+    "headlines": "Le plus commenté en 24 heures",
+    "goals": "Buts et moments",
+    "goals_note": "Ce que les chaînes officielles des ligues ont publié en 24 heures.",
+    "loading": "Chargement…",
+    "empty_news": "Rien n’est arrivé aujourd’hui.",
+    "empty_goals": "Aucune vidéo en 24 heures.",
+    "loudness_one": "{{n}} média",
+    "loudness_other": "{{n}} médias"
   }
 }

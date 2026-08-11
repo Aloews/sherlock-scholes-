@@ -109,7 +109,8 @@
     "matches_link": "المباريات القادمة",
     "fantasy_link": "دوري الفانتازي",
     "quiz_link": "خمّن اللاعب",
-    "alias_link": "أليّاس كرة القدم"
+    "alias_link": "أليّاس كرة القدم",
+    "digest_link": "موجز اليوم"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -646,5 +647,19 @@
     "fact_national": "المنتخب: {{value}}",
     "fact_caps": "مباريات دولية: {{value}}",
     "fact_tournaments": "البطولات: {{value}}"
+  },
+  "digest": {
+    "title": "موجز اليوم",
+    "headlines": "الأعلى صوتًا خلال 24 ساعة",
+    "goals": "الأهداف واللقطات",
+    "goals_note": "ما نشرته القنوات الرسمية للدوريات خلال 24 ساعة.",
+    "loading": "جارٍ التحميل…",
+    "empty_news": "لم يصل شيء اليوم.",
+    "empty_goals": "لا مقاطع خلال 24 ساعة.",
+    "loudness_one": "وسيلة واحدة",
+    "loudness_two": "وسيلتان",
+    "loudness_few": "{{n}} وسائل",
+    "loudness_many": "{{n}} وسيلة",
+    "loudness_other": "{{n}} وسيلة"
   }
 }

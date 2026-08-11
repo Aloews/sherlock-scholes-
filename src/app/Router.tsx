@@ -21,6 +21,7 @@ const FriendsScreen  = lazy(() => import('@/screens/FriendsScreen').then((m) => 
 const MatchesScreen  = lazy(() => import('@/screens/MatchesScreen').then((m) => ({ default: m.MatchesScreen })));
 const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => ({ default: m.FantasyScreen })));
 const QuizScreen     = lazy(() => import('@/screens/QuizScreen').then((m) => ({ default: m.QuizScreen })));
+const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
@@ -114,6 +115,7 @@ export function Router() {
       <Route path="/matches"   element={<PageTransition><MatchesScreen /></PageTransition>} />
       <Route path="/fantasy"   element={<PageTransition><FantasyScreen /></PageTransition>} />
       <Route path="/quiz"      element={<PageTransition><QuizScreen /></PageTransition>} />
+      <Route path="/digest"    element={<PageTransition><DigestScreen /></PageTransition>} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />

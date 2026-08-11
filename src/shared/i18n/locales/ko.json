@@ -104,7 +104,8 @@
     "matches_link": "예정된 경기",
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
-    "alias_link": "축구 알리아스"
+    "alias_link": "축구 알리아스",
+    "digest_link": "오늘의 다이제스트"
   },
   "design": {
     "master": "새 디자인",
@@ -571,5 +572,15 @@
     "fact_national": "대표팀: {{value}}",
     "fact_caps": "A매치: {{value}}",
     "fact_tournaments": "참가 대회: {{value}}"
+  },
+  "digest": {
+    "title": "오늘의 다이제스트",
+    "headlines": "24시간 동안 가장 화제",
+    "goals": "골과 장면",
+    "goals_note": "리그 공식 채널이 24시간 안에 올린 영상입니다.",
+    "loading": "불러오는 중…",
+    "empty_news": "오늘은 들어온 소식이 없습니다.",
+    "empty_goals": "24시간 내 영상이 없습니다.",
+    "loudness_other": "{{n}}개 매체"
   }
 }

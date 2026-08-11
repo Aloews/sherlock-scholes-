@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
-  IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2,
+  IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -379,6 +379,11 @@ export function HomeScreen() {
               icon={<IconBallFootball size={20} stroke={1.75} />}
               label={t('home.matches_link')}
               onClick={() => navigate('/matches')}
+            />
+            <HomeGameLink
+              icon={<IconNews size={20} stroke={1.75} />}
+              label={t('home.digest_link')}
+              onClick={() => navigate('/digest')}
             />
             <HomeGameLink
               icon={<IconTrophy size={20} stroke={1.75} />}

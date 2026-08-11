@@ -104,7 +104,8 @@
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
-    "alias_link": "サッカー・アリアス"
+    "alias_link": "サッカー・アリアス",
+    "digest_link": "今日のダイジェスト"
   },
   "design": {
     "master": "新デザイン",
@@ -571,5 +572,15 @@
     "fact_national": "代表: {{value}}",
     "fact_caps": "代表出場: {{value}}",
     "fact_tournaments": "出場大会: {{value}}"
+  },
+  "digest": {
+    "title": "今日のダイジェスト",
+    "headlines": "24時間で最も話題",
+    "goals": "ゴールと名場面",
+    "goals_note": "リーグ公式チャンネルが24時間以内に公開したものです。",
+    "loading": "読み込み中…",
+    "empty_news": "今日は何も届いていません。",
+    "empty_goals": "24時間以内の動画はありません。",
+    "loudness_other": "{{n}}媒体"
   }
 }

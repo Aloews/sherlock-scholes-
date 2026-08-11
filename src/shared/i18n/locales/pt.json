@@ -106,7 +106,8 @@
     "matches_link": "Próximos jogos",
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
-    "alias_link": "Alias do futebol"
+    "alias_link": "Alias do futebol",
+    "digest_link": "Resumo do dia"
   },
   "design": {
     "master": "Novo design",
@@ -586,5 +587,16 @@
     "fact_national": "Seleção: {{value}}",
     "fact_caps": "Jogos pela seleção: {{value}}",
     "fact_tournaments": "Torneios: {{value}}"
+  },
+  "digest": {
+    "title": "Resumo do dia",
+    "headlines": "O mais falado em 24 horas",
+    "goals": "Golos e momentos",
+    "goals_note": "O que os canais oficiais das ligas publicaram em 24 horas.",
+    "loading": "A carregar…",
+    "empty_news": "Hoje não chegou nada.",
+    "empty_goals": "Não houve vídeos em 24 horas.",
+    "loudness_one": "{{n}} meio",
+    "loudness_other": "{{n}} meios"
   }
 }

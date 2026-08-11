@@ -110,7 +110,8 @@
     "matches_link": "Ближайшие матчи",
     "fantasy_link": "Фэнтези-лига",
     "quiz_link": "Угадай игрока",
-    "alias_link": "Футбольный Элиас"
+    "alias_link": "Футбольный Элиас",
+    "digest_link": "Дайджест дня"
   },
   "design": {
     "master": "Новый дизайн",
@@ -620,5 +621,18 @@
     "fact_national": "Сборная: {{value}}",
     "fact_caps": "Матчей за сборную: {{value}}",
     "fact_tournaments": "Турниры: {{value}}"
+  },
+  "digest": {
+    "title": "Дайджест дня",
+    "headlines": "Громче всего за сутки",
+    "goals": "Голы и моменты",
+    "goals_note": "Что официальные каналы лиг выложили за сутки.",
+    "loading": "Загружаем…",
+    "empty_news": "За сутки ничего не пришло.",
+    "empty_goals": "За сутки роликов не было.",
+    "loudness_one": "{{n}} издание",
+    "loudness_few": "{{n}} издания",
+    "loudness_many": "{{n}} изданий",
+    "loudness_other": "{{n}} издания"
   }
 }
