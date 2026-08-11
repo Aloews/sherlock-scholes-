@@ -51,7 +51,6 @@
     "sound_toggle_aria": "소리 켜기/끄기",
     "design_toggle_aria": "{{design}}(으)로 전환",
     "collection": "컬렉션",
-    "welcome_back": "다시 오신 걸 환영해요,",
     "welcome_stranger": "탐정",
     "collection_hint": "전체 덱과 희귀도를 둘러보기",
     "group_special": "스페셜",
@@ -104,7 +103,8 @@
     "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
     "matches_link": "예정된 경기",
     "fantasy_link": "판타지 리그",
-    "quiz_link": "선수 맞히기"
+    "quiz_link": "선수 맞히기",
+    "alias_link": "축구 알리아스"
   },
   "design": {
     "master": "새 디자인",

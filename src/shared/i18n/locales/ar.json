@@ -55,7 +55,6 @@
     "sound_toggle_aria": "تشغيل/إيقاف الصوت",
     "design_toggle_aria": "التبديل إلى {{design}}",
     "collection": "المجموعة",
-    "welcome_back": "أهلًا بعودتك،",
     "welcome_stranger": "محقق",
     "collection_hint": "تصفّح المجموعة كاملة ودرجات ندرتها",
     "group_special": "مميز",
@@ -109,7 +108,8 @@
     "squad_as_of": "التشكيلة حتى {{date}} — من مقالات اللاعبين، وليست مباشرة",
     "matches_link": "المباريات القادمة",
     "fantasy_link": "دوري الفانتازي",
-    "quiz_link": "خمّن اللاعب"
+    "quiz_link": "خمّن اللاعب",
+    "alias_link": "أليّاس كرة القدم"
   },
   "design": {
     "master": "التصميم الجديد",

@@ -51,7 +51,6 @@
     "sound_toggle_aria": "声音开/关",
     "design_toggle_aria": "切换到{{design}}",
     "collection": "收藏",
-    "welcome_back": "欢迎回来,",
     "welcome_stranger": "侦探",
     "collection_hint": "浏览整副牌与稀有度",
     "group_special": "特色",
@@ -104,7 +103,8 @@
     "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
     "matches_link": "近期比赛",
     "fantasy_link": "梦幻联赛",
-    "quiz_link": "猜球员"
+    "quiz_link": "猜球员",
+    "alias_link": "足球猜词"
   },
   "design": {
     "master": "新设计",

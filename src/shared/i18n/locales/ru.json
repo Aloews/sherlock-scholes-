@@ -56,7 +56,6 @@
     "sound_toggle_aria": "Звук вкл/выкл",
     "design_toggle_aria": "Переключить на: {{design}}",
     "collection": "Коллекция",
-    "welcome_back": "С возвращением,",
     "welcome_stranger": "Детектив",
     "collection_hint": "Смотри всю колоду и редкости",
     "group_special": "Особые",
@@ -110,7 +109,8 @@
     "squad_as_of": "Состав на {{date}} — по статьям игроков, не в прямом эфире",
     "matches_link": "Ближайшие матчи",
     "fantasy_link": "Фэнтези-лига",
-    "quiz_link": "Угадай игрока"
+    "quiz_link": "Угадай игрока",
+    "alias_link": "Футбольный Элиас"
   },
   "design": {
     "master": "Новый дизайн",

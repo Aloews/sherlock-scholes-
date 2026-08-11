@@ -51,7 +51,6 @@
     "sound_toggle_aria": "サウンドのオン/オフ",
     "design_toggle_aria": "{{design}}に切り替える",
     "collection": "コレクション",
-    "welcome_back": "おかえりなさい、",
     "welcome_stranger": "探偵",
     "collection_hint": "デッキ全体とレアリティを見る",
     "group_special": "スペシャル",
@@ -104,7 +103,8 @@
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
-    "quiz_link": "選手を当てる"
+    "quiz_link": "選手を当てる",
+    "alias_link": "サッカー・アリアス"
   },
   "design": {
     "master": "新デザイン",

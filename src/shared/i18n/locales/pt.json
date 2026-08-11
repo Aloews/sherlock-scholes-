@@ -52,7 +52,6 @@
     "sound_toggle_aria": "Som liga/desliga",
     "design_toggle_aria": "Mudar para {{design}}",
     "collection": "Coleção",
-    "welcome_back": "Bem-vindo de volta,",
     "welcome_stranger": "Detetive",
     "collection_hint": "Veja todo o baralho e suas raridades",
     "group_special": "Especial",
@@ -106,7 +105,8 @@
     "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo",
     "matches_link": "Próximos jogos",
     "fantasy_link": "Liga fantasy",
-    "quiz_link": "Adivinhe o jogador"
+    "quiz_link": "Adivinhe o jogador",
+    "alias_link": "Alias do futebol"
   },
   "design": {
     "master": "Novo design",

@@ -38,7 +38,7 @@ flowchart LR
 
 | Роут | Экран | Что делает |
 |---|---|---|
-| `/` | `HomeScreen` | лендинг, выбор режима, вход в комнату |
+| `/` | `HomeScreen` | **список игр**: Футбольный Элиас, ближайшие матчи, фэнтези, «Угадай игрока». Действия самого Элиаса — режим и вход в комнату — на шаг внутрь (`view === 'alias'`) |
 | `/lobby` | `LobbyScreen` | сбор команд, выбор колоды комнаты (`features/lobby/RoomDeckPanel.tsx`, правит только хост), старт игры, вход в голосовой канал |
 | `/game` | `GameScreen` | сетевая игра по раундам; голосом управляют компактно, в шапке |
 | `/end` | `EndScreen` | итоги, история карточек |
@@ -52,7 +52,9 @@ flowchart LR
 | `/tutorial` | `TutorialScreen` | обучение |
 | `/admin` | `AdminScreen` | кабинет: правка карточек, репорты (по паролю) |
 
-`DeckPickerScreen` и `home/HomeLandingMaster` — не роуты, а части `HomeScreen`.
+`DeckPickerScreen`, `home/HomeGameLink` и `home/HomeAliasActions` — не роуты, а
+части `HomeScreen`. `home/HomeLandingMaster` удалён: он был лендингом, когда
+игра была одна.
 
 **Приглашение в комнату — две половины одной фичи.** `features/lobby/invite.ts`
 строит ссылку `t.me/<бот>?startapp=<КОД>`, а `HomeScreen` читает её обратно
@@ -329,6 +331,7 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Удаление легаси-`pick_random_cards` до раскатки фронта | §3, `deck_rpc.sql` |
 | `shared/` импортирует из `features/` | §4 |
 | Фаза игры меняется мимо машины состояний | §5 |
+| Новая мини-игра добавлена на главную своей вёрсткой — четыре ряда расходятся по стилю; ряд один на всех | `src/screens/home/HomeGameLink.tsx` |
 | Новая таблица без RLS — игрок пишет себе награды | §6 |
 | PR ответвлён от другой ветки `claude/*` → ложные конфликты после squash | `CLAUDE.md` |
 | Секрет в переменной с префиксом `VITE_` → попадает в бандл | `supabase/functions/livekit-token/README.md` |

@@ -52,7 +52,6 @@
     "sound_toggle_aria": "Son activé/coupé",
     "design_toggle_aria": "Passer au {{design}}",
     "collection": "Collection",
-    "welcome_back": "Bon retour,",
     "welcome_stranger": "Détective",
     "collection_hint": "Parcours tout le jeu et ses raretés",
     "group_special": "Spécial",
@@ -106,7 +105,8 @@
     "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct",
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
-    "quiz_link": "Devine le joueur"
+    "quiz_link": "Devine le joueur",
+    "alias_link": "Alias du football"
   },
   "design": {
     "master": "Nouveau design",
