@@ -597,6 +597,12 @@
     "empty_news": "Nothing came in today.",
     "empty_goals": "No clips in the last 24 hours.",
     "loudness_one": "{{n}} outlet",
-    "loudness_other": "{{n}} outlets"
+    "loudness_other": "{{n}} outlets",
+    "weekend": "Goals of the weekend",
+    "weekend_note": "Goals first, then by view count.",
+    "moment": "moment",
+    "empty_weekend": "No clips from that weekend.",
+    "views_one": "{{n}} view",
+    "views_other": "{{n}} views"
   }
 }

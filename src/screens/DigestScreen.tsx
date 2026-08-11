@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconFlame, IconPlayerPlayFilled, IconExternalLink } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
-import { fetchNews, fetchGoals, type NewsItem, type GoalClip } from '@/features/digest/digestApi';
+import {
+  fetchNews, fetchGoals, fetchWeekendGoals,
+  type NewsItem, type GoalClip, type WeekendGoal,
+} from '@/features/digest/digestApi';
 import { watchUrl, feedLanguage } from '@/features/digest/digestFormat';
 
 /**
@@ -31,16 +34,18 @@ export function DigestScreen() {
 
   const [news, setNews] = useState<NewsItem[] | null>(null);
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
+  const [weekend, setWeekend] = useState<WeekendGoal[] | null>(null);
 
   const lang = feedLanguage(i18n.language);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [n, g] = await Promise.all([fetchNews(lang), fetchGoals()]);
+      const [n, g, w] = await Promise.all([fetchNews(lang), fetchGoals(), fetchWeekendGoals()]);
       if (cancelled) return;
       setNews(n);
       setGoals(g);
+      setWeekend(w);
     })();
     return () => { cancelled = true; };
   }, [lang]);
@@ -51,6 +56,15 @@ export function DigestScreen() {
   );
 
   const open = (url: string) => { hapticImpact('light'); openLink(url); };
+
+  const dayFmt = useMemo(
+    () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
+    [i18n.language],
+  );
+  const viewFmt = useMemo(
+    () => new Intl.NumberFormat(i18n.language, { notation: 'compact' }),
+    [i18n.language],
+  );
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -67,6 +81,67 @@ export function DigestScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
+        {/* ─── Голы выходных ───
+            Первой секцией намеренно: это то, ради чего экран открывают раз в
+            неделю. Окно — последние ЗАВЕРШИВШИЕСЯ выходные, поэтому список не
+            растёт на глазах и не выдаёт половину субботы за итог. */}
+        {weekend !== null && (
+          <section className="space-y-2">
+            <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+              {t('digest.weekend')}
+              {weekend.length > 0 && (
+                <span className="normal-case">
+                  {' · '}
+                  {dayFmt.format(new Date(weekend[0].weekend_start))}
+                  {' – '}
+                  {dayFmt.format(new Date(new Date(weekend[0].weekend_end).getTime() - 1))}
+                </span>
+              )}
+            </p>
+            <p className="text-brand-muted text-[10.5px]">{t('digest.weekend_note')}</p>
+
+            {weekend.length === 0 && (
+              <p className="text-brand-muted text-sm py-4">{t('digest.empty_weekend')}</p>
+            )}
+
+            {weekend.map((clip) => (
+              <button
+                key={clip.video_id}
+                type="button"
+                onClick={() => open(watchUrl(clip))}
+                className="w-full ds-panel bg-brand-surface border border-brand-border rounded-2xl overflow-hidden text-left hover:border-brand-accent/50 transition-colors"
+              >
+                {clip.thumb_url && (
+                  <span className="block relative">
+                    <img src={clip.thumb_url} alt="" loading="lazy" className="w-full aspect-video object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-11 h-11 rounded-full bg-black/55 flex items-center justify-center">
+                        <IconPlayerPlayFilled size={18} className="text-white translate-x-[1px]" />
+                      </span>
+                    </span>
+                  </span>
+                )}
+                <span className="block p-3">
+                  <span className="block text-white text-sm">{clip.title}</span>
+                  <span className="flex items-center gap-1.5 text-brand-muted text-[10.5px] mt-1.5">
+                    <span>{clip.channel}</span>
+                    <span>·</span>
+                    <span>{t('digest.views', { count: clip.views, n: viewFmt.format(clip.views) })}</span>
+                    {/* Разбор по заголовку ошибается в обе стороны, поэтому
+                        не-голы не выброшены, а помечены. Обещать гол и показать
+                        сейв — хуже, чем сказать «момент». */}
+                    {!clip.is_goal && (
+                      <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded bg-brand-bg text-brand-muted">
+                        {t('digest.moment')}
+                      </span>
+                    )}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </section>
+        )}
+
         {/* ─── Заголовки ─── */}
         <section className="space-y-2">
           <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">

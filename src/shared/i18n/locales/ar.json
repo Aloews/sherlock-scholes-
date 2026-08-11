@@ -660,6 +660,15 @@
     "loudness_two": "وسيلتان",
     "loudness_few": "{{n}} وسائل",
     "loudness_many": "{{n}} وسيلة",
-    "loudness_other": "{{n}} وسيلة"
+    "loudness_other": "{{n}} وسيلة",
+    "weekend": "أهداف نهاية الأسبوع",
+    "weekend_note": "الأهداف أولًا، ثم حسب عدد المشاهدات.",
+    "moment": "لقطة",
+    "empty_weekend": "لا مقاطع من نهاية الأسبوع تلك.",
+    "views_one": "مشاهدة واحدة",
+    "views_two": "مشاهدتان",
+    "views_few": "{{n}} مشاهدات",
+    "views_many": "{{n}} مشاهدة",
+    "views_other": "{{n}} مشاهدة"
   }
 }

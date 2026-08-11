@@ -184,6 +184,7 @@ flowchart TD
 | `predict_match`, `my_predictions`, `prediction_points`, `settle_predictions`, `sports_awaiting_scores`, `upsert_fixture_scores` | `match_predictions.sql` | прогноз счёта игроком. **Не букмекерский** — коэффициенты вне экрана по §4 `LIVE_FOOTBALL_HANDOFF.md`. Приём закрывается по `now()` на сервере. Начисляют и пишут счёт только `service_role` |
 | `invite_to_room`, `pending_room_invites`, `decline_room_invite`, `room_invite_ttl` | `room_invites.sql` | позвать друга в комнату без кода. Обе стороны выводятся из подписанного `initData`: приглашение называет двоих, и клиенту нельзя дать назваться любым из них. Срок жизни выводится из статуса комнаты, а не из cron |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
+| `digest_weekend_goals`, `weekend_bounds`, `looks_like_goal` | `weekend_goals.sql` | голы последних **завершившихся** выходных; порядок — сначала голы, внутри по настоящим просмотрам из фида YouTube |
 | `digest_news`, `digest_goals`, `digest_tokens`, `prune_digest` | `football_digest.sql` | дайджест дня; громкость считается ПРИ ЧТЕНИИ, потому что сюжет набирает её постепенно |
 | `fetch_football_digest` | `schedule_football_digest.sql` | pg_cron раз в час → Edge `football-digest` |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
@@ -339,6 +340,9 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Фаза игры меняется мимо машины состояний | §5 |
 | `t.me/<бот>?startapp=КОД` требует **включённого Main Mini App**; без него Android отвечает `BOT_INVALID`, а страница t.me всё равно рисует «Open App» — она генератор редиректа и ничего не проверяет, так что по ней поломки не видно | `features/lobby/invite.ts` `deepLink` |
 | Код комнаты ищут только в `start_param` — он приходит **лишь** у startapp-ссылок; у кнопки `web_app` код едет в обычном `location.search` | `shared/lib/telegram.ts` `getInviteCode` |
+| `resolution=merge-duplicates` без гранта **UPDATE** — PostgREST делает `ON CONFLICT DO UPDATE`, и весь прогон пишет ноль при 75 прочитанных. Второй раз тот же класс отказа в той же фиче | `weekend_goals.sql`, грант рядом |
+| «Atom-фид YouTube не отдаёт просмотров» — отдаёт: `media:statistics` и `media:starRating` внутри `media:group`. На этом «лучшие голы» едва не стали выдумкой | `functions/football-digest/index.ts` `parseAtom` |
+| Разбор голов по основам слов с якорями с обеих сторон — правый якорь режет «scor**ed**» и «golazo**s**»; нужны формы, а не обрубки | `looks_like_goal` |
 | `grant select` выдан игрокам, а про `service_role` забыли — конвейер получает `permission denied for table`, и снаружи это выглядит безобидно: «285 прочитано, 0 записано», оба числа правдоподобны | `football_digest.sql`, блок прав |
 | Вставка пачкой через PostgREST без `?on_conflict=<колонка>` — `resolution=ignore-duplicates` целится в первичный ключ, а он bigserial и не передаётся, так что настоящий конфликт по `url` приходит как 409 на всю пачку | `functions/football-digest/index.ts` |
 | RSS с `pubDate` вида «11 Aug 2026 11:46:00 BST» — `new Date()` такую зону не знает, и источник молча отдаёт ноль строк при HTTP 200. Ловится только поимённым `feeds_silent` | `functions/football-digest/index.ts` |

@@ -597,6 +597,12 @@
     "empty_news": "Hoje não chegou nada.",
     "empty_goals": "Não houve vídeos em 24 horas.",
     "loudness_one": "{{n}} meio",
-    "loudness_other": "{{n}} meios"
+    "loudness_other": "{{n}} meios",
+    "weekend": "Golos do fim de semana",
+    "weekend_note": "Primeiro os golos, depois por visualizações.",
+    "moment": "momento",
+    "empty_weekend": "Não há vídeos desse fim de semana.",
+    "views_one": "{{n}} visualização",
+    "views_other": "{{n}} visualizações"
   }
 }
