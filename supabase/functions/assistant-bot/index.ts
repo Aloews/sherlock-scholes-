@@ -66,8 +66,65 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
  */
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-/** Google renames these on its own schedule; `/models` says what the key sees. */
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
+/**
+ * A pinned Gemini model, when somebody wants one. Empty by default.
+ *
+ * The default USED to be a hardcoded `gemini-2.5-flash`, and that is exactly
+ * the bug this replaces: Google retired it ("no longer available to new
+ * users") and the bot answered 404 in the middle of a question, twice. Any
+ * name written here is correct until it silently is not.
+ */
+const GEMINI_MODEL_PINNED = Deno.env.get("GEMINI_MODEL") ?? "";
+
+/**
+ * The model actually used — discovered from the API rather than remembered.
+ *
+ * ASKING BEATS GUESSING. Cached for the life of the isolate: the list changes
+ * on Google's timescale, not ours, and paying a round trip on every message to
+ * re-learn something that moves twice a year is the wrong trade.
+ */
+let geminiModelCache = "";
+
+/** Newest first, so a retired elder is never the pick. */
+function preferFlash(names: string[]): string | null {
+  const flash = names.filter((n) => /flash/i.test(n) && !/vision|thinking|exp|preview/i.test(n));
+  if (flash.length === 0) return null;
+  // `-latest` aliases exist precisely so callers stop hardcoding versions.
+  const latest = flash.find((n) => n.endsWith("-latest"));
+  if (latest) return latest;
+  const score = (n: string) => {
+    const m = /(\d+)(?:[.-](\d+))?/.exec(n);
+    return m ? Number(m[1]) * 100 + Number(m[2] ?? 0) : 0;
+  };
+  return [...flash].sort((a, b) => score(b) - score(a))[0];
+}
+
+async function geminiModel(): Promise<string> {
+  if (GEMINI_MODEL_PINNED) return GEMINI_MODEL_PINNED;
+  if (geminiModelCache) return geminiModelCache;
+  if (!GEMINI_KEY) return "";
+
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+    headers: { "x-goog-api-key": GEMINI_KEY },
+  });
+  if (!r.ok) throw new Error(`Gemini models ${r.status}: ${(await r.text()).slice(0, 200)}`);
+
+  const data = (await r.json()) as {
+    models?: { name?: string; supportedGenerationMethods?: string[] }[];
+  };
+  const usable = (data.models ?? [])
+    // A model that cannot generateContent is not a candidate whatever it is
+    // called — embedding models match /flash/ too.
+    .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+    .map((m) => (m.name ?? "").replace(/^models\//, ""))
+    .filter((n) => n.length > 0);
+
+  const picked = preferFlash(usable);
+  if (!picked) throw new Error("Gemini: no flash model available to this key");
+  geminiModelCache = picked;
+  console.log("[assistant-bot] gemini model resolved to", picked);
+  return picked;
+}
 
 const REPO = Deno.env.get("ASSISTANT_REPO") ?? "Aloews/sherlock-scholes-";
 const BRANCH = Deno.env.get("ASSISTANT_BRANCH") ?? "main";
@@ -577,6 +634,7 @@ async function askClaude(history: Turn[], prompt: string): Promise<Answer> {
  * retried once without it.
  */
 async function askGemini(history: Turn[], prompt: string): Promise<Answer> {
+  const model = await geminiModel();
   type Part = Record<string, unknown>;
   const contents: { role: string; parts: Part[] }[] = [
     ...history.map((t) => ({
@@ -602,7 +660,7 @@ async function askGemini(history: Turn[], prompt: string): Promise<Answer> {
 
   const call = async (thrifty: boolean, body: typeof contents): Promise<Response> =>
     await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
@@ -691,7 +749,7 @@ const MODELS: Record<ModelId, ModelSpec> = {
     ask: askClaude,
   },
   gemini: {
-    label: `Gemini Flash (${GEMINI_MODEL})`,
+    label: GEMINI_MODEL_PINNED ? `Gemini Flash (${GEMINI_MODEL_PINNED})` : "Gemini Flash",
     hint: "быстро и дёшево, без размышления — для коротких вопросов",
     secret: "GEMINI_API_KEY",
     key: () => GEMINI_KEY,
@@ -752,7 +810,7 @@ async function catalogue(): Promise<string> {
         .filter((n) => n.includes("flash"))
         .slice(0, 15);
       out.push(
-        `Google (сейчас в настройках ${GEMINI_MODEL}):\n` +
+        `Google (сейчас используется ${geminiModelCache || GEMINI_MODEL_PINNED || "подбирается автоматически"}):\n` +
           (flash.length ? flash.join("\n") : `ничего с «flash» не вернулось, HTTP ${r.status}`),
       );
     } catch (err) {
@@ -946,7 +1004,7 @@ async function install(): Promise<Response> {
     webhook: info.result ?? null,
     // Names only — never the values, and never a prefix of one.
     models_configured: configured(),
-    gemini_model: GEMINI_MODEL,
+    gemini_model: GEMINI_MODEL_PINNED || geminiModelCache || "auto",
     repo: `${REPO}@${BRANCH}`,
     repo_files: repoFiles,
     // The database tool reads as anon on purpose; this says whether that key
