@@ -107,7 +107,8 @@
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
     "alias_link": "Alias du football",
-    "digest_link": "Résumé du jour"
+    "digest_link": "Résumé du jour",
+    "arena_link": "Arène à deux"
   },
   "design": {
     "master": "Nouveau design",
@@ -604,5 +605,19 @@
     "empty_weekend": "Aucune vidéo de ce week-end.",
     "views_one": "{{n}} vue",
     "views_other": "{{n}} vues"
+  },
+  "arena": {
+    "title": "Arène",
+    "team_left": "Orange",
+    "team_right": "Bleus",
+    "goal": "BUT !",
+    "winner": "Victoire : {{team}}",
+    "again": "Rejouer",
+    "restart": "Recommencer",
+    "kick": "Tir",
+    "hint": "Posez le téléphone entre vous : chacun sa moitié de commandes.",
+    "pitch_aria": "Terrain de l’arène avec deux joueurs et un ballon",
+    "rules_one": "Le premier à {{n}} but gagne",
+    "rules_other": "Le premier à {{n}} buts gagne"
   }
 }

@@ -105,7 +105,8 @@
     "fantasy_link": "梦幻联赛",
     "quiz_link": "猜球员",
     "alias_link": "足球猜词",
-    "digest_link": "今日速览"
+    "digest_link": "今日速览",
+    "arena_link": "双人竞技场"
   },
   "design": {
     "master": "新设计",
@@ -587,5 +588,18 @@
     "moment": "瞬间",
     "empty_weekend": "那个周末没有视频。",
     "views_other": "{{n}}次播放"
+  },
+  "arena": {
+    "title": "竞技场",
+    "team_left": "橙队",
+    "team_right": "蓝队",
+    "goal": "进球！",
+    "winner": "{{team}}获胜！",
+    "again": "再来一局",
+    "restart": "重新开始",
+    "kick": "射门",
+    "hint": "把手机放在两人中间，左右各管自己的操作。",
+    "pitch_aria": "竞技场球场，两名球员和一个球",
+    "rules_other": "先进{{n}}球者获胜"
   }
 }

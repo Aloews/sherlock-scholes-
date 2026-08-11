@@ -67,6 +67,11 @@ declare global {
         viewportStableHeight?: number;
         onEvent?(event: 'viewportChanged', fn: () => void): void;
         offEvent?(event: 'viewportChanged', fn: () => void): void;
+        // Bot API 7.7. Optional because older clients predate them, and on
+        // those clients a downward drag closes the Mini App — see
+        // setVerticalSwipes below.
+        disableVerticalSwipes?(): void;
+        enableVerticalSwipes?(): void;
         openTelegramLink(url: string): void;
         openLink(url: string, options?: { try_instant_view?: boolean }): void;
         openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
@@ -157,6 +162,23 @@ export function hapticSelection(): void {
 
 export function isInsideTelegram(): boolean {
   return !!tg;
+}
+
+/**
+ * Разрешить или запретить закрытие мини-приложения свайпом вниз.
+ *
+ * ЭТО НУЖНО ЛЮБОМУ ЭКРАНУ, ГДЕ ПАЛЕЦ ТЯНУТ ВНИЗ. По умолчанию Telegram на
+ * Android понимает такое движение как «свернуть приложение»: на арене джойстик
+ * тянут вниз каждые несколько секунд, и без запрета игра сворачивается сама.
+ *
+ * Метод появился в Bot API 7.7, поэтому необязательный: на старом клиенте
+ * запретить нечего, и вызов просто ничего не делает. Экран обязан вернуть всё
+ * как было при уходе — запрет глобальный, а не для одного экрана.
+ */
+export function setVerticalSwipes(enabled: boolean): void {
+  if (!tg) return;
+  if (enabled) tg.enableVerticalSwipes?.();
+  else tg.disableVerticalSwipes?.();
 }
 
 // Open the Telegram Stars payment sheet for an invoice link (from tg-pay).

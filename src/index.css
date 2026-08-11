@@ -29,6 +29,16 @@
     --brand-accent-deep: 255 99 0;
     --brand-highlight:   255 255 255;
 
+    /* Арена. Живут здесь, а не в canvas: правило «никаких hex в компоненте»
+       не отменяется тем, что компонент рисует, а не размечает.
+       Оранжевый против синего — единственная пара, различимая при самой
+       частой форме дальтонизма; красный с зелёным на футбольном поле
+       выглядели бы уместнее и не читались бы у каждого двенадцатого. */
+    --team-left:   255 99 0;    /* #FF6300 */
+    --team-right:   61 156 255; /* #3D9CFF */
+    --pitch-turf:   18 42 33;   /* #122A21 */
+    --pitch-line:  255 255 255;
+
     --app-bg: none;
     --font-display: 'Inter', system-ui, sans-serif;
     --display-tracking: 0em;
@@ -61,6 +71,12 @@
     --brand-accent-soft: 255 224 194;  /* #FFE0C2 */
     --brand-accent-deep: 194 74 0;     /* #C24A00 */
     --brand-highlight:   255 224 194;
+
+    /* Арена — светлее под общий тон master. */
+    --team-left:   255 138 61;  /* #FF8A3D */
+    --team-right:   90 172 255; /* #5AACFF */
+    --pitch-turf:   20 46 37;   /* #142E25 */
+    --pitch-line:  255 255 255;
 
     --app-bg: radial-gradient(120% 90% at 50% -10%, #1c1206 0%, #0a0e1a 55%);
     --font-display: 'Playfair Display', Georgia, serif;

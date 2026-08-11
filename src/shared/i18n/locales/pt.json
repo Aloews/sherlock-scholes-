@@ -107,7 +107,8 @@
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
     "alias_link": "Alias do futebol",
-    "digest_link": "Resumo do dia"
+    "digest_link": "Resumo do dia",
+    "arena_link": "Arena para dois"
   },
   "design": {
     "master": "Novo design",
@@ -604,5 +605,19 @@
     "empty_weekend": "Não há vídeos desse fim de semana.",
     "views_one": "{{n}} visualização",
     "views_other": "{{n}} visualizações"
+  },
+  "arena": {
+    "title": "Arena",
+    "team_left": "Laranjas",
+    "team_right": "Azuis",
+    "goal": "GOL!",
+    "winner": "{{team}} vencem!",
+    "again": "De novo",
+    "restart": "Reiniciar",
+    "kick": "Chute",
+    "hint": "Coloque o celular entre vocês: cada lado tem os seus controles.",
+    "pitch_aria": "Campo da arena com dois jogadores e uma bola",
+    "rules_one": "Ganha quem fizer {{n}} gol",
+    "rules_other": "Ganha quem fizer {{n}} gols"
   }
 }
