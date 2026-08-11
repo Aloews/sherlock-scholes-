@@ -107,7 +107,10 @@
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
     "alias_link": "Alias du football",
-    "digest_link": "Résumé du jour",
+    "digest_link": "Buts et titres",
+    "top_goal": "Plus beau but du week-end",
+    "top_moment": "Meilleure action du week-end",
+    "fresh_clip": "Nouvelle vidéo du jour",
     "arena_link": "Arène à deux"
   },
   "design": {

@@ -13,6 +13,7 @@ import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { HomeGameLink } from '@/screens/home/HomeGameLink';
 import { HomeAliasActions } from '@/screens/home/HomeAliasActions';
+import { HomeGoalPreview } from '@/features/digest/HomeGoalPreview';
 import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
@@ -369,6 +370,16 @@ export function HomeScreen() {
             Order is by what brings somebody back. Alias is the game, so it is
             first; the matches feed is next because it is a reason to open the
             app on a day nobody wants to play. */}
+        {/* Лучший гол выходных — картинкой, а не строкой. Ролики жили за
+            словом «дайджест», которое обещает новости: экран открывали, голов
+            не находили и спрашивали, где они. Строка ниже теперь называет их
+            своим словом, а сам ролик виден отсюда. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <HomeGoalPreview />
+          </div>
+        )}
+
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-2.5">
             <HomeGameLink
