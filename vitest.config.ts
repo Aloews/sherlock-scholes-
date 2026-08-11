@@ -10,7 +10,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+    // .tsx ТОЖЕ. Раньше маска брала только .test.ts, и это выглядело как
+    // «в проекте нет тестов на компоненты» — а на самом деле такой файл
+    // молча не собирался: vitest сообщает «No test files found», и решить,
+    // что тест не нужен, проще, чем догадаться про маску.
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'test/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'lcov'],

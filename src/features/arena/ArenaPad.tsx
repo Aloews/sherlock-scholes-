@@ -44,10 +44,17 @@ export function ArenaPad({ side, input, onKickChange, label, kickLabel, color }:
     if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
   };
 
+  // Отпускание — ОДНО НА ВСЕ ПРИЧИНЫ: палец убрали, приложение свернули,
+  // экран размонтировали. Пока прятание ручки жило только в обработчике
+  // pointerup, свёрнутое приложение возвращалось с ручкой, висящей посреди
+  // площадки без пальца.
   const release = () => {
     stick.current = null;
     input.move = { x: 0, y: 0 };
+    input.kick = false;
     moveKnob(0, 0);
+    if (knobRef.current) knobRef.current.style.opacity = '0';
+    onKickChange(false);
   };
 
   // Палец может уйти вместе со свёрнутым приложением, и тогда pointerup не
