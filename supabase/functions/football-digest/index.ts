@@ -170,6 +170,9 @@ interface ClipRow {
   channel: string;
   published_at: string;
   thumb_url: string | null;
+  /** Просмотры и оценки на момент забора. Растут — поэтому обновляются. */
+  views: number;
+  likes: number;
 }
 
 function parseAtom(xml: string, channel: string): ClipRow[] {
@@ -189,6 +192,11 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
       channel,
       published_at: when.toISOString(),
       thumb_url: /<media:thumbnail[^>]+url="([^"]+)"/i.exec(block)?.[1] ?? null,
+      // ЭТО И ЕСТЬ «ЛУЧШИЕ». Фид YouTube отдаёт media:statistics и starRating —
+      // настоящий сигнал популярности, бесплатно и без ключа. Пока он не был
+      // прочитан, «лучшие голы» пришлось бы выдумывать; с ним это замер.
+      views: Number(/<media:statistics[^>]+views="(\d+)"/i.exec(block)?.[1] ?? 0),
+      likes: Number(/<media:starRating[^>]+count="(\d+)"/i.exec(block)?.[1] ?? 0),
     });
   }
   return out;
@@ -207,7 +215,21 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
  * (и по video_id), и он приходил как 409 на всю пачку: 285 прочитанных
  * заголовков, ноль записанных, и оба числа в отчёте выглядели правдоподобно.
  */
-async function insert(table: string, key: string, rows: unknown[]): Promise<number> {
+async function insert(
+  table: string,
+  key: string,
+  rows: unknown[],
+  /**
+   * merge — переписать существующую строку, ignore — оставить как есть.
+   *
+   * РАЗНОЕ ДЛЯ ДВУХ ТАБЛИЦ, И ЭТО НЕ НЕДОСМОТР. Заголовок, однажды взятый из
+   * ленты, меняться не должен: издание перепишет его через час, и читатель,
+   * уже открывший новость, увидит в ленте другой текст. А у ролика меняется
+   * ровно то, ради чего он здесь — просмотры; строка, замороженная в момент
+   * первого забора, к воскресенью врёт о том, что было лучшим.
+   */
+  merge = false,
+): Promise<number> {
   if (rows.length === 0) return 0;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${key}`, {
     method: "POST",
@@ -215,7 +237,7 @@ async function insert(table: string, key: string, rows: unknown[]): Promise<numb
       "Content-Type": "application/json",
       apikey: SERVICE_ROLE,
       Authorization: `Bearer ${SERVICE_ROLE}`,
-      Prefer: "resolution=ignore-duplicates,return=representation",
+      Prefer: `resolution=${merge ? "merge" : "ignore"}-duplicates,return=representation`,
     },
     body: JSON.stringify(rows),
   });
@@ -268,12 +290,16 @@ async function run(): Promise<Response> {
   );
 
   const newsRows = unique(fresh(news.flat()), (row) => row.url);
-  const clipRows = unique(fresh(clips.flat()), (row) => row.video_id);
+  // РОЛИКИ БЕРУТСЯ ЦЕЛИКОМ, БЕЗ ОКНА В СУТКИ. Экран выходных смотрит на два
+  // дня, которые к понедельнику уже позади, а фид отдаёт всего пятнадцать
+  // записей на канал — выбрасывать из них всё старше суток значило бы не иметь
+  // выходных вовсе. Срок жизни держит prune_digest: десять дней.
+  const clipRows = unique(clips.flat(), (row) => row.video_id);
 
   report.news_seen = newsRows.length;
   report.news_new = await insert("news_items", "url", newsRows);
   report.clips_seen = clipRows.length;
-  report.clips_new = await insert("goal_clips", "video_id", clipRows);
+  report.clips_new = await insert("goal_clips", "video_id", clipRows, true);
   // ПОИМЁННО, а не числом. «Молчит 2 источника» не даёт ничего сделать; лента
   // переезжает и умирает молча, и единственный способ это заметить — увидеть,
   // КТО именно перестал отвечать. Отличает «сегодня тихо» от «полгода назад

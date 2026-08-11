@@ -105,7 +105,8 @@
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
     "alias_link": "축구 알리아스",
-    "digest_link": "오늘의 다이제스트"
+    "digest_link": "오늘의 다이제스트",
+    "arena_link": "2인 대전 아레나"
   },
   "design": {
     "master": "새 디자인",
@@ -581,6 +582,24 @@
     "loading": "불러오는 중…",
     "empty_news": "오늘은 들어온 소식이 없습니다.",
     "empty_goals": "24시간 내 영상이 없습니다.",
-    "loudness_other": "{{n}}개 매체"
+    "loudness_other": "{{n}}개 매체",
+    "weekend": "주말의 골",
+    "weekend_note": "골을 먼저, 그다음은 조회수 순입니다.",
+    "moment": "장면",
+    "empty_weekend": "그 주말의 영상이 없습니다.",
+    "views_other": "조회수 {{n}}회"
+  },
+  "arena": {
+    "title": "아레나",
+    "team_left": "오렌지",
+    "team_right": "블루",
+    "goal": "골!",
+    "winner": "{{team}} 승리!",
+    "again": "다시 하기",
+    "restart": "다시 시작",
+    "kick": "슛",
+    "hint": "휴대폰을 사이에 두세요. 좌우가 각자의 조작입니다.",
+    "pitch_aria": "두 명의 선수와 공이 있는 아레나 경기장",
+    "rules_other": "{{n}}골 먼저 넣으면 승리"
   }
 }

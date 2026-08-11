@@ -41,6 +41,34 @@ export async function fetchNews(lang: string, limit = 30): Promise<NewsItem[]> {
   return (data as NewsItem[]) ?? [];
 }
 
+/**
+ * Ролик выходных. То же, что GoalClip, плюс то, чего у дневного нет: настоящие
+ * просмотры и признак «похоже на гол».
+ */
+export interface WeekendGoal extends GoalClip {
+  views: number;
+  likes: number;
+  /** Разбор заголовка, а не факт. Экран честно помечает остальное как момент. */
+  is_goal: boolean;
+  weekend_start: string;
+  weekend_end: string;
+}
+
+/**
+ * Лучшие голы последних ЗАВЕРШИВШИХСЯ выходных.
+ *
+ * Порядок задаёт сервер: сначала голы, внутри — по просмотрам. Клиент его не
+ * пересортировывает, иначе «лучшее» стало бы значить разное в двух местах.
+ */
+export async function fetchWeekendGoals(limit = 12): Promise<WeekendGoal[]> {
+  const { data, error } = await supabase.rpc('digest_weekend_goals', { p_limit: limit });
+  if (error) {
+    console.error('[digest] digest_weekend_goals failed:', error.code, error.message);
+    return [];
+  }
+  return (data as WeekendGoal[]) ?? [];
+}
+
 export async function fetchGoals(limit = 20): Promise<GoalClip[]> {
   const { data, error } = await supabase.rpc('digest_goals', { p_limit: limit });
   if (error) {

@@ -105,7 +105,8 @@
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
     "alias_link": "サッカー・アリアス",
-    "digest_link": "今日のダイジェスト"
+    "digest_link": "今日のダイジェスト",
+    "arena_link": "2人対戦アリーナ"
   },
   "design": {
     "master": "新デザイン",
@@ -581,6 +582,24 @@
     "loading": "読み込み中…",
     "empty_news": "今日は何も届いていません。",
     "empty_goals": "24時間以内の動画はありません。",
-    "loudness_other": "{{n}}媒体"
+    "loudness_other": "{{n}}媒体",
+    "weekend": "週末のゴール",
+    "weekend_note": "ゴールを先に、その後は再生数順です。",
+    "moment": "名場面",
+    "empty_weekend": "その週末の動画はありません。",
+    "views_other": "{{n}}回再生"
+  },
+  "arena": {
+    "title": "アリーナ",
+    "team_left": "オレンジ",
+    "team_right": "ブルー",
+    "goal": "ゴール！",
+    "winner": "{{team}}の勝ち！",
+    "again": "もう一度",
+    "restart": "やり直す",
+    "kick": "キック",
+    "hint": "スマホを二人の間に置いてください。左右それぞれが自分の操作です。",
+    "pitch_aria": "2人のプレーヤーとボールがいるアリーナのピッチ",
+    "rules_other": "{{n}}点先取で勝ち"
   }
 }
