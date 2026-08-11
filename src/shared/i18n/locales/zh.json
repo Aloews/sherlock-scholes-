@@ -103,7 +103,8 @@
     "filter_all_squads": "任意阵容",
     "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
     "matches_link": "近期比赛",
-    "fantasy_link": "梦幻联赛"
+    "fantasy_link": "梦幻联赛",
+    "quiz_link": "猜球员"
   },
   "design": {
     "master": "新设计",
@@ -551,5 +552,20 @@
     "refused": "未接受：本轮已截止或阵容无效",
     "search": "搜索球员或俱乐部",
     "standings": "联赛排名"
+  },
+  "quiz": {
+    "title": "猜球员",
+    "loading": "正在寻找球员…",
+    "empty": "暂时没有可猜的球员",
+    "more_facts": "再来一条线索",
+    "next": "下一题",
+    "fact_position": "位置：{{value}}",
+    "fact_born": "出生年份：{{value}}",
+    "fact_height": "身高：{{value}} 厘米",
+    "fact_clubs": "效力俱乐部数：{{value}}",
+    "fact_years": "职业生涯：{{value}}",
+    "fact_national": "国家队：{{value}}",
+    "fact_caps": "国家队出场：{{value}}",
+    "fact_tournaments": "参加赛事：{{value}}"
   }
 }

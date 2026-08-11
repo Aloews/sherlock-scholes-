@@ -103,7 +103,8 @@
     "filter_all_squads": "すべての所属",
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
     "matches_link": "今後の試合",
-    "fantasy_link": "ファンタジーリーグ"
+    "fantasy_link": "ファンタジーリーグ",
+    "quiz_link": "選手を当てる"
   },
   "design": {
     "master": "新デザイン",
@@ -551,5 +552,20 @@
     "refused": "受付不可：締切済みか、編成が不正です",
     "search": "選手・クラブを検索",
     "standings": "リーグ順位"
+  },
+  "quiz": {
+    "title": "選手を当てる",
+    "loading": "選手を探しています…",
+    "empty": "まだ出題できません",
+    "more_facts": "ヒントをもう一つ",
+    "next": "次へ",
+    "fact_position": "ポジション: {{value}}",
+    "fact_born": "生年: {{value}}",
+    "fact_height": "身長: {{value}} cm",
+    "fact_clubs": "所属クラブ数: {{value}}",
+    "fact_years": "キャリア: {{value}}",
+    "fact_national": "代表: {{value}}",
+    "fact_caps": "代表出場: {{value}}",
+    "fact_tournaments": "出場大会: {{value}}"
   }
 }
