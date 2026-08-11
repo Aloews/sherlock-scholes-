@@ -57,29 +57,37 @@ export function isVoiceProviderId(value: unknown): value is VoiceProviderId {
 }
 
 /**
+ * One remote picture, ready to be put on screen.
+ *
+ * The ELEMENT travels, not a stream or a track id. Every SDK here builds its
+ * own picture — it knows the codec, the mirroring, the muted/playsinline
+ * flags a mobile browser insists on — and handing React a MediaStream to
+ * re-attach means writing that knowledge a second time, in the component,
+ * per vendor. So the adapter owns the element and the component owns where it
+ * goes: append it, never clone it, never set its `src`.
+ *
+ * HTMLElement, NOT HTMLVideoElement, and the difference is the vendors': the
+ * two SDKs hand the picture over differently and neither is wrong. LiveKit's
+ * `attach()` RETURNS a `<video>`; Agora's `play(container)` is given a node and
+ * injects its own inside it. Narrowing this to HTMLVideoElement would mean the
+ * Agora adapter lying about what it returns, or the component knowing which
+ * vendor it is looking at — and the whole point of this file is that it does
+ * not.
+ */
+export interface VideoFeed {
+  /** Whose picture. The same identity string `onSpeakers` reports. */
+  readonly identity: string;
+  /** Owned by the adapter, already playing. Move it into the layout as-is. */
+  readonly element: HTMLElement;
+}
+
+/**
  * A live session. Everything the UI can do to a connected channel.
  *
  * Every method must tolerate being called after the link has already dropped —
  * teardown races are the normal case, not the exception, and an adapter that
  * throws on a late `disconnect()` turns a lost connection into a crash.
  */
-/**
- * One remote picture, ready to be put on screen.
- *
- * The ELEMENT travels, not a stream or a track id. Every SDK here builds its
- * own `<video>` — it knows the codec, the mirroring, the muted/playsinline
- * flags a mobile browser insists on — and handing React a MediaStream to
- * re-attach means writing that knowledge a second time, in the component,
- * per vendor. So the adapter owns the element and the component owns where it
- * goes: append it, never clone it, never set its `src`.
- */
-export interface VideoFeed {
-  /** Whose picture. The same identity string `onSpeakers` reports. */
-  readonly identity: string;
-  /** Owned by the adapter, already playing. Move it into the layout as-is. */
-  readonly element: HTMLVideoElement;
-}
-
 export interface VoiceSession {
   /** Open or close the local microphone. */
   setMicrophoneEnabled(on: boolean): Promise<void>;

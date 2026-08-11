@@ -29,18 +29,35 @@
 // come from the vendor's vocabulary rather than ours, the test now pins the
 // value, not just the call.
 
-import type { VoiceConnectOptions, VoiceSession, VoiceTransport } from './types';
+import type { VideoFeed, VoiceConnectOptions, VoiceSession, VoiceTransport } from './types';
 
 /** Only the parts of agora-rtc-sdk-ng this adapter uses. */
+interface AgoraVideoTrack {
+  /**
+   * Agora is GIVEN a node and injects its own <video> inside it — the mirror
+   * image of LiveKit, which returns an element. That difference is why
+   * VideoFeed.element is an HTMLElement; see types.ts.
+   */
+  play(element: HTMLElement, config?: { fit?: 'cover' | 'contain' | 'fill' }): void;
+  stop(): void;
+}
+
+interface AgoraCameraTrack extends AgoraVideoTrack {
+  setEnabled(on: boolean): Promise<void>;
+  close(): void;
+}
+
 interface AgoraUser {
   uid: string | number;
   audioTrack?: { play(): void; stop(): void };
+  videoTrack?: AgoraVideoTrack;
 }
 
 interface AgoraClient {
   join(appId: string, channel: string, token: string | null, uid?: string | number | null): Promise<string | number>;
   leave(): Promise<void>;
   publish(tracks: unknown[]): Promise<void>;
+  unpublish(tracks: unknown[]): Promise<void>;
   subscribe(user: AgoraUser, mediaType: 'audio' | 'video'): Promise<void>;
   enableAudioVolumeIndicator(): void;
   getRTCStats(): { RTT?: number; OutgoingAvailableBandwidth?: number };
@@ -72,24 +89,40 @@ export const AGORA_VIDEO_CODECS = ['vp8', 'vp9', 'av1', 'h264', 'h265'] as const
 export type AgoraVideoCodec = (typeof AGORA_VIDEO_CODECS)[number];
 
 /**
- * What we ask for. The call is audio-only — no video track is ever created —
- * so the value only has to be one the SDK accepts, and vp8 is its own default
- * and the most widely supported.
+ * What we ask for. Now that a camera can actually be published, this value is
+ * load-bearing rather than merely acceptable: vp8 is Agora's own default, the
+ * most widely supported across the phones this game runs on, and the cheapest
+ * to encode on the ones that have no hardware h264 path.
  */
 export const AGORA_CODEC: AgoraVideoCodec = 'vp8';
+
+/**
+ * What the camera publishes.
+ *
+ * The same 320×240 at 15fps as the LiveKit adapter, and deliberately so: the
+ * degradation ladder is written once, in voiceQuality.ts, and two vendors
+ * publishing different pictures would make the same rung mean two things.
+ * Agora counts `bitrateMax` in kbps where LiveKit counts bits, which is the
+ * only reason these numbers look different.
+ */
+export const AGORA_CAMERA = {
+  encoderConfig: { width: 320, height: 240, frameRate: 15, bitrateMax: 150 },
+} as const;
 
 interface AgoraSdk {
   createClient(opts: { mode: string; codec: AgoraVideoCodec }): AgoraClient;
   createMicrophoneAudioTrack(): Promise<AgoraMicTrack>;
+  createCameraVideoTrack(opts: typeof AGORA_CAMERA): Promise<AgoraCameraTrack>;
   onAudioAutoplayFailed?: (() => void) | null;
 }
 
 export const agoraTransport: VoiceTransport = {
   id: 'agora',
-  // Audio only here — this adapter publishes a microphone track and nothing
-  // else. AGORA_CODEC above is a client-mode setting Agora requires whether or
-  // not any video flows; it is not a picture waiting to be switched on.
-  video: false,
+  // Pictures too, since the LiveKit adapter grew them. This is not symmetry for
+  // its own sake: the failover ladder can move a room here mid-game, and a
+  // camera that vanishes when the room changes vendor is a feature the player
+  // watches break for no reason they can see.
+  video: true,
 
   async connect(options: VoiceConnectOptions): Promise<VoiceSession> {
     const { token, channel, appId, identity } = options.credentials;
@@ -103,6 +136,16 @@ export const agoraTransport: VoiceTransport = {
     let blocked = false;
     let leaving = false;
     let mic: AgoraMicTrack | null = null;
+    // Kept across calls: the camera is opened and closed by the quality ladder
+    // as the link moves, and building a new track each time would ask the
+    // player for permission again on every recovery.
+    let camera: AgoraCameraTrack | null = null;
+
+    // Keyed by uid, which is what Agora reports and what the token signed. One
+    // video track per participant here, unlike LiveKit: this adapter never
+    // subscribes to a screen share, because it never publishes one.
+    const feeds = new Map<string, VideoFeed>();
+    const publishFeeds = () => options.onVideoChanged([...feeds.values()]);
 
     try {
       // The SDK owns the elements, so this is the only way to learn that the
@@ -115,14 +158,23 @@ export const agoraTransport: VoiceTransport = {
       };
 
       client.on('user-published', (async (user: AgoraUser, mediaType: 'audio' | 'video') => {
-        if (mediaType !== 'audio') return;
         await client.subscribe(user, mediaType);
-        user.audioTrack?.play();
+        if (mediaType === 'audio') { user.audioTrack?.play(); return; }
+
+        // A container per participant, made here and handed over: Agora plays
+        // INTO a node rather than giving one back, so somebody has to own it,
+        // and the layout must not be that somebody — it re-renders.
+        const box = document.createElement('div');
+        box.style.cssText = 'width:100%;height:100%;';
+        user.videoTrack?.play(box, { fit: 'cover' });
+        feeds.set(String(user.uid), { identity: String(user.uid), element: box });
+        publishFeeds();
       }) as (...args: never[]) => void);
 
       client.on('user-unpublished', ((user: AgoraUser, mediaType: 'audio' | 'video') => {
-        if (mediaType !== 'audio') return;
-        user.audioTrack?.stop();
+        if (mediaType === 'audio') { user.audioTrack?.stop(); return; }
+        user.videoTrack?.stop();
+        if (feeds.delete(String(user.uid))) publishFeeds();
       }) as (...args: never[]) => void);
 
       client.enableAudioVolumeIndicator();
@@ -149,10 +201,34 @@ export const agoraTransport: VoiceTransport = {
         async setMicrophoneEnabled(on) {
           await track.setEnabled(on);
         },
-        // See the same method on the Daily adapter: `video: false` is the
-        // contract, this is the alarm when somebody ignores it.
-        setCameraEnabled() {
-          return Promise.reject(new Error('agora: this adapter is audio only'));
+        /**
+         * The camera, published into the same channel as the microphone.
+         *
+         * CLOSED, NOT JUST UNPUBLISHED, when it goes off. `setEnabled(false)`
+         * would leave the device held and its light on — a camera the player
+         * turned off that their phone still says is running is worse than no
+         * camera at all. The track is rebuilt on the next tap; that costs a
+         * moment and buys an honest indicator light.
+         */
+        async setCameraEnabled(on) {
+          if (!on) {
+            if (camera) {
+              await client.unpublish([camera]).catch(() => {});
+              camera.stop();
+              camera.close();
+              camera = null;
+            }
+            return null;
+          }
+
+          if (!camera) {
+            camera = await AgoraRTC.createCameraVideoTrack(AGORA_CAMERA);
+            await client.publish([camera]);
+          }
+          const box = document.createElement('div');
+          box.style.cssText = 'width:100%;height:100%;';
+          camera.play(box, { fit: 'cover' });
+          return { identity: String(identity ?? ''), element: box };
         },
         async startAudio() {
           // There is no element to replay: the SDK retries its own on the next
@@ -179,7 +255,15 @@ export const agoraTransport: VoiceTransport = {
           leaving = true;
           AgoraRTC.onAudioAutoplayFailed = null;
           track.close();
+          // The camera goes with the session, and it goes CLOSED: a live
+          // capture surviving a hang-up is the indicator light that never
+          // turns off.
+          camera?.stop();
+          camera?.close();
+          camera = null;
           options.sink.replaceChildren();
+          feeds.clear();
+          publishFeeds();
           await client.leave().catch(() => {});
         },
       };
