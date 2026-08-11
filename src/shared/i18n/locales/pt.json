@@ -52,7 +52,6 @@
     "sound_toggle_aria": "Som liga/desliga",
     "design_toggle_aria": "Mudar para {{design}}",
     "collection": "Coleção",
-    "welcome_back": "Bem-vindo de volta,",
     "welcome_stranger": "Detetive",
     "collection_hint": "Veja todo o baralho e suas raridades",
     "group_special": "Especial",
@@ -106,7 +105,9 @@
     "squad_as_of": "Elenco em {{date}} — dos artigos dos jogadores, não ao vivo",
     "matches_link": "Próximos jogos",
     "fantasy_link": "Liga fantasy",
-    "quiz_link": "Adivinhe o jogador"
+    "quiz_link": "Adivinhe o jogador",
+    "alias_link": "Alias do futebol",
+    "digest_link": "Resumo do dia"
   },
   "design": {
     "master": "Novo design",
@@ -331,7 +332,11 @@
     "detail_no_payment_method": "A conta do serviço não tem forma de pagamento, por isso recusa todos. É uma configuração da conta, não do app.",
     "detail_bad_token": "O serviço recusou a chave de acesso: verifique o par de chaves no servidor.",
     "detail_quota": "A conta esgotou o limite; o serviço recusa até ser renovado.",
-    "detail_bad_config": "O app pediu algo que o serviço não entende. Esse erro é nosso."
+    "detail_bad_config": "O app pediu algo que o serviço não entende. Esse erro é nosso.",
+    "camera_on": "Ligar a câmara",
+    "camera_off": "Desligar a câmara",
+    "you": "Você",
+    "video_held": "Vídeo desligado: {{level}}"
   },
   "soundcheck": {
     "title": "Teste de som",
@@ -582,5 +587,16 @@
     "fact_national": "Seleção: {{value}}",
     "fact_caps": "Jogos pela seleção: {{value}}",
     "fact_tournaments": "Torneios: {{value}}"
+  },
+  "digest": {
+    "title": "Resumo do dia",
+    "headlines": "O mais falado em 24 horas",
+    "goals": "Golos e momentos",
+    "goals_note": "O que os canais oficiais das ligas publicaram em 24 horas.",
+    "loading": "A carregar…",
+    "empty_news": "Hoje não chegou nada.",
+    "empty_goals": "Não houve vídeos em 24 horas.",
+    "loudness_one": "{{n}} meio",
+    "loudness_other": "{{n}} meios"
   }
 }

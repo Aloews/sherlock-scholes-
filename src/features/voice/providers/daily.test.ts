@@ -99,6 +99,7 @@ function connectOptions(sink: HTMLElement) {
     },
     sink,
     onSpeakers: vi.fn(),
+    onVideoChanged: vi.fn(),
     onPlaybackChanged: vi.fn(),
     onDisconnected: vi.fn(),
   };

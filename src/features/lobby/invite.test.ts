@@ -26,14 +26,17 @@ describe('normalizeCode', () => {
 });
 
 describe('deepLink / shareLink', () => {
-  it('puts the code in startapp, where Telegram reads it back as start_param', () => {
-    expect(deepLink('AB12CD')).toBe('https://t.me/sherlock_scholes_bot?startapp=AB12CD');
+  // `?start=` — единственная форма, которой не нужна настройка в BotFather.
+  // `?startapp=` требует включённого Main Mini App, и без него Android отвечает
+  // BOT_INVALID: ссылка выглядит рабочей и не открывает ничего.
+  it('строит ссылку-команду, которой не нужен Main Mini App', () => {
+    expect(deepLink('AB12CD')).toBe('https://t.me/sherlock_scholes_bot?start=AB12CD');
   });
 
   it('wraps the deep link in the share sheet, encoded once as a parameter', () => {
     const url = new URL(shareLink('AB12CD', 'Play with me — AB12CD'));
     expect(url.origin + url.pathname).toBe('https://t.me/share/url');
-    expect(url.searchParams.get('url')).toBe('https://t.me/sherlock_scholes_bot?startapp=AB12CD');
+    expect(url.searchParams.get('url')).toBe('https://t.me/sherlock_scholes_bot?start=AB12CD');
     expect(url.searchParams.get('text')).toBe('Play with me — AB12CD');
   });
 });
@@ -138,5 +141,23 @@ describe('codeFromText', () => {
     expect(codeFromText('Заходи: https://t.me/sherlock_scholes_bot?startapp=ab12cd')).toBe('AB12CD');
     expect(codeFromText('AB12')).toBeNull();
     expect(codeFromText(null)).toBeNull();
+  });
+});
+
+// Форма приглашения сменилась, а разосланные ссылки остались в чатах. Обе
+// формы обязаны читаться, иначе вчерашнее приглашение перестаёт работать в
+// тот момент, когда друг наконец до него добрался.
+describe('ссылки старого формата', () => {
+  it('код читается из startapp-ссылки', () => {
+    expect(codeFromText('https://t.me/sherlock_scholes_bot?startapp=TQ2ZZ3')).toBe('TQ2ZZ3');
+  });
+
+  it('код читается из start-ссылки', () => {
+    expect(codeFromText('https://t.me/sherlock_scholes_bot?start=TQ2ZZ3')).toBe('TQ2ZZ3');
+  });
+
+  it('обе формы переживают вставку в поле ввода', () => {
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?startapp=AB12CD')).toBe('AB12CD');
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?start=AB12CD')).toBe('AB12CD');
   });
 });

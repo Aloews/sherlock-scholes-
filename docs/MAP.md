@@ -38,7 +38,7 @@ flowchart LR
 
 | Роут | Экран | Что делает |
 |---|---|---|
-| `/` | `HomeScreen` | лендинг, выбор режима, вход в комнату |
+| `/` | `HomeScreen` | **список игр**: Футбольный Элиас, ближайшие матчи, фэнтези, «Угадай игрока». Действия самого Элиаса — режим и вход в комнату — на шаг внутрь (`view === 'alias'`) |
 | `/lobby` | `LobbyScreen` | сбор команд, выбор колоды комнаты (`features/lobby/RoomDeckPanel.tsx`, правит только хост), старт игры, вход в голосовой канал |
 | `/game` | `GameScreen` | сетевая игра по раундам; голосом управляют компактно, в шапке |
 | `/end` | `EndScreen` | итоги, история карточек |
@@ -47,15 +47,18 @@ flowchart LR
 | `/profile` | `ProfileScreen` → `profile/WeeklyQuests` | уровень, XP, задания недели |
 | `/friends` | `FriendsScreen` | рейтинг друзей по XP и кого добавить |
 | `/fantasy` | `FantasyScreen` | фэнтези: состав из пяти, капитан, таблица лиг. **Два разных тура на экране** — заявка на ближайший открытый, таблица по текущему |
+| `/digest` | `DigestScreen` | заголовки суток из открытых RSS-лент и видео с официальных каналов лиг. **Два разных порядка**: заголовки по «громкости» (сколько РАЗНЫХ изданий вышло с тем же сюжетом — просмотров RSS не отдаёт), ролики по времени (Atom-фид YouTube не отдаёт ни просмотров, ни лайков, и рейтинга там нет) |
 | `/matches` | `MatchesScreen` | ближайшие матчи из `fixtures`, сгруппированы по дню **в часовом поясе зрителя**. Коэффициентов нет и быть не может: `fixture_odds` без гранта и без политики |
 | `/pro` | `ProScreen` | покупка Pro за Telegram Stars |
 | `/tutorial` | `TutorialScreen` | обучение |
 | `/admin` | `AdminScreen` | кабинет: правка карточек, репорты (по паролю) |
 
-`DeckPickerScreen` и `home/HomeLandingMaster` — не роуты, а части `HomeScreen`.
+`DeckPickerScreen`, `home/HomeGameLink` и `home/HomeAliasActions` — не роуты, а
+части `HomeScreen`. `home/HomeLandingMaster` удалён: он был лендингом, когда
+игра была одна.
 
 **Приглашение в комнату — две половины одной фичи.** `features/lobby/invite.ts`
-строит ссылку `t.me/<бот>?startapp=<КОД>`, а `HomeScreen` читает её обратно
+строит ссылку, `HomeScreen` читает её обратно
 через `getStartParam()` (`shared/lib/telegram.ts` → `initDataUnsafe.start_param`)
 и сразу пробует войти. Одна половина без другой бесполезна: ссылка откроет
 приложение, но код не подставится. `start_param` — непроверенный ввод, поэтому
@@ -181,6 +184,8 @@ flowchart TD
 | `predict_match`, `my_predictions`, `prediction_points`, `settle_predictions`, `sports_awaiting_scores`, `upsert_fixture_scores` | `match_predictions.sql` | прогноз счёта игроком. **Не букмекерский** — коэффициенты вне экрана по §4 `LIVE_FOOTBALL_HANDOFF.md`. Приём закрывается по `now()` на сервере. Начисляют и пишут счёт только `service_role` |
 | `invite_to_room`, `pending_room_invites`, `decline_room_invite`, `room_invite_ttl` | `room_invites.sql` | позвать друга в комнату без кода. Обе стороны выводятся из подписанного `initData`: приглашение называет двоих, и клиенту нельзя дать назваться любым из них. Срок жизни выводится из статуса комнаты, а не из cron |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
+| `digest_news`, `digest_goals`, `digest_tokens`, `prune_digest` | `football_digest.sql` | дайджест дня; громкость считается ПРИ ЧТЕНИИ, потому что сюжет набирает её постепенно |
+| `fetch_football_digest` | `schedule_football_digest.sql` | pg_cron раз в час → Edge `football-digest` |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
@@ -199,7 +204,12 @@ flowchart TD
 * `tg-pay` — оплата Telegram Stars; проверяет `initData` на сервере.
 * `livekit-token` — токен голосового канала; канал **и сервис** выбирает
   сервер (`VOICE_PROVIDER`: livekit / daily / agora). Имя историческое —
-  `docs/VOICE_PROVIDERS.md`.
+  `docs/VOICE_PROVIDERS.md`. Грант LiveKit разрешает **микрофон и камеру**;
+  демонстрация экрана не разрешена и не будет — на экране объясняющего
+  открыта карточка.
+* `football-digest` — RSS/Atom → `news_items`, `goal_clips`. Ключей не требует
+  вовсе: состав источников определён проверкой, а не репутацией (Reddit и
+  Scorebat отвечают 403 всем, кто не платит). Не ранжирует — только приносит.
 * `assistant-bot` — личный ассистент владельца в отдельном боте. К игре
   отношения не имеет и **секретов с ней не делит**: читает
   `ASSISTANT_BOT_TOKEN`, тогда как `tg-pay` читает `TELEGRAM_BOT_TOKEN`, а
@@ -327,6 +337,13 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Удаление легаси-`pick_random_cards` до раскатки фронта | §3, `deck_rpc.sql` |
 | `shared/` импортирует из `features/` | §4 |
 | Фаза игры меняется мимо машины состояний | §5 |
+| `t.me/<бот>?startapp=КОД` требует **включённого Main Mini App**; без него Android отвечает `BOT_INVALID`, а страница t.me всё равно рисует «Open App» — она генератор редиректа и ничего не проверяет, так что по ней поломки не видно | `features/lobby/invite.ts` `deepLink` |
+| Код комнаты ищут только в `start_param` — он приходит **лишь** у startapp-ссылок; у кнопки `web_app` код едет в обычном `location.search` | `shared/lib/telegram.ts` `getInviteCode` |
+| `grant select` выдан игрокам, а про `service_role` забыли — конвейер получает `permission denied for table`, и снаружи это выглядит безобидно: «285 прочитано, 0 записано», оба числа правдоподобны | `football_digest.sql`, блок прав |
+| Вставка пачкой через PostgREST без `?on_conflict=<колонка>` — `resolution=ignore-duplicates` целится в первичный ключ, а он bigserial и не передаётся, так что настоящий конфликт по `url` приходит как 409 на всю пачку | `functions/football-digest/index.ts` |
+| RSS с `pubDate` вида «11 Aug 2026 11:46:00 BST» — `new Date()` такую зону не знает, и источник молча отдаёт ноль строк при HTTP 200. Ловится только поимённым `feeds_silent` | `functions/football-digest/index.ts` |
+| Порядок «сначала громкость, потом язык» — латиница склеивается по общим словам охотнее кириллицы, и русскому читателю первым выпадает The Guardian | `digest_news`, `ORDER BY` |
+| Новая мини-игра добавлена на главную своей вёрсткой — четыре ряда расходятся по стилю; ряд один на всех | `src/screens/home/HomeGameLink.tsx` |
 | Новая таблица без RLS — игрок пишет себе награды | §6 |
 | PR ответвлён от другой ветки `claude/*` → ложные конфликты после squash | `CLAUDE.md` |
 | Секрет в переменной с префиксом `VITE_` → попадает в бандл | `supabase/functions/livekit-token/README.md` |
@@ -344,6 +361,12 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 | Daily оставлен незакрытым после провала — он один на страницу, и ломается не эта попытка, а все следующие | `docs/LOBBY_AND_VOICE_FIXES.md` §3, `providers/daily.ts` |
 | Перебор сервисов продолжен после отказа в микрофоне — один «нет» превращается в три запроса подряд | `src/features/voice/failover.ts` |
 | «Повторить» и «сменить сервис» смешаны в одно решение — игрок ждёт три круга, чтобы услышать то же самое про комнату | `failover.ts` против `connectPolicy.ts` |
+| Камера у Agora выключена через `setEnabled(false)`, а не закрыта — устройство остаётся захваченным, и лампочка горит у камеры, которую игрок выключил | `providers/agora.ts` `setCameraEnabled` |
+| Кнопка камеры показана по сервису **сборки**, а не по тому, который реально подключился — перебор мог увести комнату на аудио-адаптер, и нажатие бросает | `useVoiceChat.ts` `videoSupported`, `providers/types.ts` `VoiceTransport.video` |
+| `<video>` отрисован в JSX, а поток привязан к нему — ре-рендер подменяет элемент под живой дорожкой; элемент делает адаптер, компонент только решает, где он висит | `src/features/voice/VideoStage.tsx` |
+| Картинка положена в аудио-сток — это скрытый div нулевого размера: камера, которую никто не видит, и трафик, за который платят | `providers/livekit.ts`, тест «keeps pictures out of the audio sink» |
+| Видео-дорожки сложены по участнику, а не по треку — второй трек молча вытесняет первый, и элемент остаётся в DOM навсегда | `providers/livekit.ts` |
+| Камера разрешена только на `full` — лестница стартует с `voice` и лезет вверх по три замера, так что кнопка мертва первые 15 секунд каждого звонка, а на честных 160 мс — навсегда | `voiceQuality.ts` `videoAllowed` |
 | Двое в одной комнате на разных вендорах — оба видят «Связь есть» и молчат; отказ выглядит как успех | `room_voice_provider.sql`, `docs/VOICE_PROVIDERS.md` |
 | `revoke ... from public` без явного `grant ... to service_role` — Edge Function получает permission denied, голос умирает у всех | `room_voice_provider.sql`, `pro_users.sql` |
 | Клиент не говорит, какой сервис отказал — закрепление комнаты убивает перебор, каждая ступень получает того же мертвеца | `useVoiceChat.ts` → `failed`, Edge `agreeProvider` |

@@ -51,7 +51,6 @@
     "sound_toggle_aria": "サウンドのオン/オフ",
     "design_toggle_aria": "{{design}}に切り替える",
     "collection": "コレクション",
-    "welcome_back": "おかえりなさい、",
     "welcome_stranger": "探偵",
     "collection_hint": "デッキ全体とレアリティを見る",
     "group_special": "スペシャル",
@@ -104,7 +103,9 @@
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
-    "quiz_link": "選手を当てる"
+    "quiz_link": "選手を当てる",
+    "alias_link": "サッカー・アリアス",
+    "digest_link": "今日のダイジェスト"
   },
   "design": {
     "master": "新デザイン",
@@ -321,7 +322,11 @@
     "detail_no_payment_method": "サービスのアカウントに支払い方法が未登録のため、全員が拒否されます。アプリではなくアカウントの設定です。",
     "detail_bad_token": "サービスがアクセスキーを拒否しました。サーバー側の鍵のペアを確認してください。",
     "detail_quota": "アカウントの上限に達しました。更新されるまでサービスは拒否します。",
-    "detail_bad_config": "サービスが解釈できない値をアプリが渡しました。これは私たちの側の不具合です。"
+    "detail_bad_config": "サービスが解釈できない値をアプリが渡しました。これは私たちの側の不具合です。",
+    "camera_on": "カメラをオンにする",
+    "camera_off": "カメラをオフにする",
+    "you": "あなた",
+    "video_held": "映像は停止中：{{level}}"
   },
   "soundcheck": {
     "title": "サウンドチェック",
@@ -567,5 +572,15 @@
     "fact_national": "代表: {{value}}",
     "fact_caps": "代表出場: {{value}}",
     "fact_tournaments": "出場大会: {{value}}"
+  },
+  "digest": {
+    "title": "今日のダイジェスト",
+    "headlines": "24時間で最も話題",
+    "goals": "ゴールと名場面",
+    "goals_note": "リーグ公式チャンネルが24時間以内に公開したものです。",
+    "loading": "読み込み中…",
+    "empty_news": "今日は何も届いていません。",
+    "empty_goals": "24時間以内の動画はありません。",
+    "loudness_other": "{{n}}媒体"
   }
 }

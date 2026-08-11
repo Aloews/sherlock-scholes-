@@ -52,7 +52,6 @@
     "sound_toggle_aria": "Son activé/coupé",
     "design_toggle_aria": "Passer au {{design}}",
     "collection": "Collection",
-    "welcome_back": "Bon retour,",
     "welcome_stranger": "Détective",
     "collection_hint": "Parcours tout le jeu et ses raretés",
     "group_special": "Spécial",
@@ -106,7 +105,9 @@
     "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct",
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
-    "quiz_link": "Devine le joueur"
+    "quiz_link": "Devine le joueur",
+    "alias_link": "Alias du football",
+    "digest_link": "Résumé du jour"
   },
   "design": {
     "master": "Nouveau design",
@@ -331,7 +332,11 @@
     "detail_no_payment_method": "Le compte du service n'a pas de moyen de paiement : il refuse tout le monde. C'est un réglage du compte, pas de l'application.",
     "detail_bad_token": "Le service a refusé la clé d'accès : vérifie la paire de clés sur le serveur.",
     "detail_quota": "Le quota du compte est épuisé ; le service refuse jusqu’au renouvellement.",
-    "detail_bad_config": "L'application a demandé quelque chose que le service ne comprend pas. Cette erreur est de notre côté."
+    "detail_bad_config": "L'application a demandé quelque chose que le service ne comprend pas. Cette erreur est de notre côté.",
+    "camera_on": "Activer la caméra",
+    "camera_off": "Désactiver la caméra",
+    "you": "Vous",
+    "video_held": "Vidéo désactivée : {{level}}"
   },
   "soundcheck": {
     "title": "Test du son",
@@ -582,5 +587,16 @@
     "fact_national": "Sélection : {{value}}",
     "fact_caps": "Sélections : {{value}}",
     "fact_tournaments": "Tournois : {{value}}"
+  },
+  "digest": {
+    "title": "Résumé du jour",
+    "headlines": "Le plus commenté en 24 heures",
+    "goals": "Buts et moments",
+    "goals_note": "Ce que les chaînes officielles des ligues ont publié en 24 heures.",
+    "loading": "Chargement…",
+    "empty_news": "Rien n’est arrivé aujourd’hui.",
+    "empty_goals": "Aucune vidéo en 24 heures.",
+    "loudness_one": "{{n}} média",
+    "loudness_other": "{{n}} médias"
   }
 }

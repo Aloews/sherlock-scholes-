@@ -25,10 +25,22 @@ const agora = vi.hoisted(() => {
     close() { this.closed += 1; }
   }
 
+  class FakeCamera {
+    /** Куда Agora попросили играть, и с каким fit. */
+    playedIn: { node: HTMLElement; fit?: string }[] = [];
+    stopped = 0;
+    closed = 0;
+    play(node: HTMLElement, cfg?: { fit?: string }) { this.playedIn.push({ node, fit: cfg?.fit }); }
+    stop() { this.stopped += 1; }
+    close() { this.closed += 1; }
+    async setEnabled() {}
+  }
+
   class FakeClient {
     handlers = new Map<string, (...args: unknown[]) => void>();
     joined: { appId: string; channel: string; token: string | null; uid: unknown } | null = null;
     published: unknown[][] = [];
+    unpublished: unknown[][] = [];
     subscribed: unknown[] = [];
     leaveCalls = 0;
     volumeIndicator = 0;
@@ -46,6 +58,7 @@ const agora = vi.hoisted(() => {
       if (config.publishError) throw config.publishError;
       this.published.push(tracks);
     }
+    async unpublish(tracks: unknown[]) { this.unpublished.push(tracks); }
     async subscribe(user: unknown) { this.subscribed.push(user); }
     enableAudioVolumeIndicator() { this.volumeIndicator += 1; }
     getRTCStats() { return this.stats; }
@@ -54,6 +67,7 @@ const agora = vi.hoisted(() => {
 
   const clients: FakeClient[] = [];
   const mics: FakeMic[] = [];
+  const cameras: FakeCamera[] = [];
 
   const sdk = {
     onAudioAutoplayFailed: null as (() => void) | null,
@@ -68,16 +82,25 @@ const agora = vi.hoisted(() => {
       mics.push(m);
       return m;
     }),
+    // Типизировано тем же объектом, что передаёт адаптер: разрешение и
+    // битрейт — значения из словаря вендора, и мок, принимающий что угодно,
+    // уже один раз пропустил сюда мёртвый адаптер (см. codec выше).
+    createCameraVideoTrack: vi.fn(async (_opts: { encoderConfig: unknown }) => {
+      const c = new FakeCamera();
+      cameras.push(c);
+      return c;
+    }),
   };
 
   return {
-    config, clients, mics, sdk,
+    config, clients, mics, cameras, sdk,
     reset() {
       config.joinError = null;
       config.micError = null;
       config.publishError = null;
       clients.length = 0;
       mics.length = 0;
+      cameras.length = 0;
       sdk.onAudioAutoplayFailed = null;
     },
   };
@@ -85,10 +108,11 @@ const agora = vi.hoisted(() => {
 
 vi.mock('agora-rtc-sdk-ng', () => ({ default: agora.sdk }));
 
-const { agoraTransport, AGORA_CODEC, AGORA_VIDEO_CODECS } = await import('./agora');
+const { agoraTransport, AGORA_CODEC, AGORA_VIDEO_CODECS, AGORA_CAMERA } = await import('./agora');
 
 const client = () => agora.clients[agora.clients.length - 1];
 const mic = () => agora.mics[agora.mics.length - 1];
+const camera = () => agora.cameras[agora.cameras.length - 1];
 
 let sink: HTMLElement;
 
@@ -103,6 +127,7 @@ function connectOptions(node: HTMLElement) {
     },
     sink: node,
     onSpeakers: vi.fn(),
+    onVideoChanged: vi.fn(),
     onPlaybackChanged: vi.fn(),
     onDisconnected: vi.fn(),
   };
@@ -220,13 +245,22 @@ describe('remote audio', () => {
     expect(track.play).toHaveBeenCalled();
   });
 
-  it('ignores video, which this phase does not carry', async () => {
-    await agoraTransport.connect(connectOptions(sink));
+  // Раньше здесь стояла проверка «видео игнорируется» — она фиксировала то,
+  // чего адаптер тогда не умел. Умеет; проверка заменена, а не удалена.
+  it('подписывается на чужую картинку и отдаёт её наверх', async () => {
+    const options = connectOptions(sink);
+    await agoraTransport.connect(options);
     const track = { play: vi.fn(), stop: vi.fn() };
-    await client().emit('user-published', { uid: 7, audioTrack: track }, 'video');
+    await client().emit('user-published', { uid: 7, videoTrack: track }, 'video');
     await Promise.resolve();
-    expect(client().subscribed).toHaveLength(0);
-    expect(track.play).not.toHaveBeenCalled();
+
+    expect(client().subscribed).toHaveLength(1);
+    // Agora играет В узел, а не отдаёт его: контейнер делает адаптер.
+    expect(track.play).toHaveBeenCalledWith(expect.any(HTMLElement), { fit: 'cover' });
+
+    const feeds = (options.onVideoChanged as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0].identity).toBe('7');
   });
 
   it('stops the track when the player unpublishes', async () => {
@@ -359,5 +393,76 @@ describe('link quality', () => {
     const session = await agoraTransport.connect(connectOptions(sink));
     client().getRTCStats = () => { throw new Error('gone'); };
     await expect(session.linkStats()).resolves.toBeNull();
+  });
+});
+
+// ─── Камера ─────────────────────────────────────────────────────────────────
+//
+// Adapter получил видео вслед за LiveKit, потому что лестница отказов может
+// увести комнату сюда посреди партии, и камера, исчезающая вместе со сменой
+// вендора, — это фича, которая ломается на глазах у игрока без причины,
+// которую он мог бы понять.
+describe('камера', () => {
+  it('объявлена как умение адаптера, а не как догадка вызывающего', () => {
+    expect(agoraTransport.video).toBe(true);
+  });
+
+  it('публикует ту же картинку, что и LiveKit', async () => {
+    const session = await agoraTransport.connect(connectOptions(sink));
+    await session.setCameraEnabled(true);
+
+    // Значения из словаря вендора: 320×240 при 15 fps — та же ступень `full`,
+    // что и у LiveKit. Разные числа у двух вендоров означали бы, что одна и та
+    // же ступень лестницы значит два разных качества.
+    expect(agora.sdk.createCameraVideoTrack).toHaveBeenCalledWith(AGORA_CAMERA);
+    expect(AGORA_CAMERA.encoderConfig).toMatchObject({ width: 320, height: 240, frameRate: 15 });
+    expect(client().published.at(-1)).toEqual([camera()]);
+  });
+
+  it('отдаёт свою картинку как узел, в который уже играют', async () => {
+    const session = await agoraTransport.connect(connectOptions(sink));
+    const feed = await session.setCameraEnabled(true);
+    expect(feed?.element).toBeInstanceOf(HTMLElement);
+    expect(camera().playedIn.at(-1)?.node).toBe(feed?.element);
+  });
+
+  // ЗАКРЫВАЕТ, А НЕ ПРОСТО СНИМАЕТ С ПУБЛИКАЦИИ. `setEnabled(false)` оставил бы
+  // устройство захваченным и лампочку горящей: камера, которую игрок выключил,
+  // а телефон считает работающей, хуже, чем отсутствие камеры вовсе.
+  it('закрывает устройство, когда камеру выключают', async () => {
+    const session = await agoraTransport.connect(connectOptions(sink));
+    await session.setCameraEnabled(true);
+    const cam = camera();
+
+    await expect(session.setCameraEnabled(false)).resolves.toBeNull();
+    expect(client().unpublished.at(-1)).toEqual([cam]);
+    expect(cam.closed).toBe(1);
+  });
+
+  it('закрывает камеру и на разрыве сессии', async () => {
+    const options = connectOptions(sink);
+    const session = await agoraTransport.connect(options);
+    await session.setCameraEnabled(true);
+    const cam = camera();
+
+    await session.disconnect();
+    expect(cam.closed).toBe(1);
+    // И картинок больше нет: замерший последний кадр — это то, как
+    // закончившийся звонок продолжает выглядеть живым.
+    const feeds = (options.onVideoChanged as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    expect(feeds).toEqual([]);
+  });
+
+  it('убирает чужую картинку, когда её перестают публиковать', async () => {
+    const options = connectOptions(sink);
+    await agoraTransport.connect(options);
+    const track = { play: vi.fn(), stop: vi.fn() };
+    await client().emit('user-published', { uid: 7, videoTrack: track }, 'video');
+    await Promise.resolve();
+    client().emit('user-unpublished', { uid: 7, videoTrack: track }, 'video');
+
+    expect(track.stop).toHaveBeenCalled();
+    const feeds = (options.onVideoChanged as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    expect(feeds).toEqual([]);
   });
 });

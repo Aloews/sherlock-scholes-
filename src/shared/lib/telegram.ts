@@ -68,6 +68,7 @@ declare global {
         onEvent?(event: 'viewportChanged', fn: () => void): void;
         offEvent?(event: 'viewportChanged', fn: () => void): void;
         openTelegramLink(url: string): void;
+        openLink(url: string, options?: { try_instant_view?: boolean }): void;
         openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
         CloudStorage?: {
           getItem(key: string, cb: (err: string | null, value?: string) => void): void;
@@ -178,6 +179,24 @@ export function openTelegramLink(url: string): boolean {
   return true;
 }
 
+/**
+ * Opens an ORDINARY web link outside the Mini App.
+ *
+ * Different method from openTelegramLink, and the difference matters: that one
+ * is for t.me addresses and hands them to the Telegram client, this one is for
+ * everything else and hands them to the system browser. Loading a news site
+ * inside the WebView instead would replace the game with a page that has no
+ * way back to it.
+ *
+ * Falls back to window.open outside Telegram — the app runs in a plain browser
+ * during development, and a link that silently does nothing there is a link
+ * nobody can test.
+ */
+export function openLink(url: string): void {
+  if (tg?.openLink) { tg.openLink(url); return; }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 // The `startapp=` payload of the deep link the app was opened with. Telegram
 // puts it in initDataUnsafe.start_param; it is UNVERIFIED (hence "unsafe"),
 // so treat it as untrusted input — here it is only ever a room code, which is
@@ -185,6 +204,34 @@ export function openTelegramLink(url: string): boolean {
 export function getStartParam(): string {
   const raw = tg?.initDataUnsafe?.start_param;
   return typeof raw === 'string' ? raw : '';
+}
+
+/**
+ * Код комнаты, которым нас открыли — из обеих форм приглашения.
+ *
+ * ДВА МЕСТА, ПОТОМУ ЧТО TELEGRAM ДОСТАВЛЯЕТ ИХ ПО-РАЗНОМУ, и ни одно из них не
+ * покрывает другое:
+ *
+ *   ссылка `?startapp=КОД`  → initDataUnsafe.start_param
+ *   кнопка web_app с URL    → обычный location.search приложения
+ *
+ * Вторая форма появилась потому, что первая требует включённого Main Mini App,
+ * а без него Android отвечает `BOT_INVALID`. Бот на `/start КОД` присылает
+ * кнопку, ведущую на `…/?room=КОД`, и код приезжает уже в адресе страницы.
+ *
+ * start_param читается первым: если пришли обе формы сразу, та, что от
+ * Telegram, ближе к истине, чем строка адреса, которую можно набрать руками.
+ * Значение в любом случае НЕПРОВЕРЕННОЕ — это код комнаты, и он проверяется
+ * перед использованием.
+ */
+export function getInviteCode(): string {
+  const fromStartParam = getStartParam();
+  if (fromStartParam) return fromStartParam;
+  try {
+    return new URLSearchParams(window.location.search).get('room') ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export interface Viewport {

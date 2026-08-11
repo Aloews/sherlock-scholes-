@@ -51,7 +51,6 @@
     "sound_toggle_aria": "声音开/关",
     "design_toggle_aria": "切换到{{design}}",
     "collection": "收藏",
-    "welcome_back": "欢迎回来,",
     "welcome_stranger": "侦探",
     "collection_hint": "浏览整副牌与稀有度",
     "group_special": "特色",
@@ -104,7 +103,9 @@
     "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
     "matches_link": "近期比赛",
     "fantasy_link": "梦幻联赛",
-    "quiz_link": "猜球员"
+    "quiz_link": "猜球员",
+    "alias_link": "足球猜词",
+    "digest_link": "今日速览"
   },
   "design": {
     "master": "新设计",
@@ -321,7 +322,11 @@
     "detail_no_payment_method": "该服务账户没有付款方式，因此拒绝所有连接。这是账户设置，不是应用的问题。",
     "detail_bad_token": "服务拒绝了访问密钥：请检查服务器上的密钥对。",
     "detail_quota": "账户额度已用尽，服务将拒绝连接直到续费。",
-    "detail_bad_config": "应用请求了服务无法理解的参数。这是我们这边的错误。"
+    "detail_bad_config": "应用请求了服务无法理解的参数。这是我们这边的错误。",
+    "camera_on": "开启摄像头",
+    "camera_off": "关闭摄像头",
+    "you": "你",
+    "video_held": "视频已关闭：{{level}}"
   },
   "soundcheck": {
     "title": "声音检查",
@@ -567,5 +572,15 @@
     "fact_national": "国家队：{{value}}",
     "fact_caps": "国家队出场：{{value}}",
     "fact_tournaments": "参加赛事：{{value}}"
+  },
+  "digest": {
+    "title": "今日速览",
+    "headlines": "24小时内最热",
+    "goals": "进球与瞬间",
+    "goals_note": "各联赛官方频道在24小时内发布的内容。",
+    "loading": "加载中…",
+    "empty_news": "今天没有新内容。",
+    "empty_goals": "24小时内没有视频。",
+    "loudness_other": "{{n}}家媒体"
   }
 }

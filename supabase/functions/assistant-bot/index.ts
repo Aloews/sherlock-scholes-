@@ -625,13 +625,42 @@ async function askClaude(history: Turn[], prompt: string): Promise<Answer> {
 }
 
 /**
- * Google. The cheap answer.
+ * How to tell this model to stop thinking, in the spellings Google has used.
  *
- * WHAT MAKES FLASH CHEAP IS `thinkingBudget: 0`, not the name — it thinks by
- * default and bills for it, so a Flash that was never told to stop is the same
- * money for a smaller model. That field is also the likeliest to be rejected by
- * a future model, and a rejection costs the whole answer, so a 400 naming it is
- * retried once without it.
+ * WHAT MAKES FLASH CHEAP IS BEING TOLD TO STOP THINKING, not the name: it
+ * thinks by default and bills for it, so a Flash left alone costs the same as
+ * a bigger model. The field that says so has been renamed once — `thinkingBudget`
+ * on the 2.5 generation, `thinkingLevel` on the one after — and a request
+ * carrying the wrong one is rejected outright.
+ *
+ * So the spelling is a LADDER, discovered the same way the model name now is.
+ * Hardcoding one of them is what produced a 404 in August and a 400 the week
+ * after: both times the code named a moving part and Google moved it.
+ *
+ * Order matters — cheapest thing that might work first, plain request last.
+ * The last rung has no thinking config at all: it is the expensive answer, and
+ * it is still an answer, which beats a bot that says nothing.
+ */
+const GEMINI_THINKING: (Record<string, unknown> | null)[] = [
+  { thinkingBudget: 0 },
+  { thinkingLevel: "low" },
+  null,
+];
+
+/**
+ * Which rung worked, remembered for this isolate.
+ *
+ * Not persisted: a cold start pays one rejected request and then knows. Storing
+ * it would mean a stale row outliving Google's next rename, which is exactly
+ * the failure this ladder exists to end.
+ */
+let geminiThinkingRung = 0;
+
+/** The result of install's one real Gemini call. Null until it has been made. */
+let geminiProbe: string | null = null;
+
+/**
+ * Google. The cheap answer.
  */
 async function askGemini(history: Turn[], prompt: string): Promise<Answer> {
   const model = await geminiModel();
@@ -658,8 +687,9 @@ async function askGemini(history: Turn[], prompt: string): Promise<Answer> {
     },
   }));
 
-  const call = async (thrifty: boolean, body: typeof contents): Promise<Response> =>
-    await fetch(
+  const call = async (rung: number, body: typeof contents): Promise<Response> => {
+    const thinking = GEMINI_THINKING[rung];
+    return await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
@@ -670,27 +700,51 @@ async function askGemini(history: Turn[], prompt: string): Promise<Answer> {
           tools: [{ function_declarations: declarations }],
           generationConfig: {
             maxOutputTokens: 2048,
-            ...(thrifty ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            ...(thinking ? { thinkingConfig: thinking } : {}),
           },
         }),
       },
     );
+  };
+
+  /**
+   * One answer, walking the thinking ladder if a rung is refused.
+   *
+   * ANY 400 MOVES US DOWN, not only one whose text mentions thinking. That
+   * distinction is what broke: Google answers `{"code":400,"message":"Request
+   * contains an invalid argument."}` with no field named, so a retry that waited
+   * to be told which argument was invalid never fired, and the owner got a
+   * refusal for a field the code was carrying on purpose.
+   *
+   * Only 400 walks. A 429 or a 503 is Google being busy, and stepping down the
+   * ladder for those would make an outage look like an API change and leave the
+   * bot on the expensive rung afterwards.
+   */
+  const ask = async (body: typeof contents): Promise<Response> => {
+    const tried: string[] = [];
+    for (let rung = geminiThinkingRung; rung < GEMINI_THINKING.length; rung++) {
+      const r = await call(rung, body);
+      if (r.ok) {
+        if (rung !== geminiThinkingRung) {
+          console.warn(`[assistant-bot] gemini: thinking config #${geminiThinkingRung} refused, using #${rung}`);
+          geminiThinkingRung = rung;
+        }
+        return r;
+      }
+      const text = (await r.text().catch(() => "")).slice(0, 400);
+      if (r.status !== 400) throw new Error(`Gemini ${r.status}: ${text}`);
+      tried.push(`${JSON.stringify(GEMINI_THINKING[rung])} → ${text}`);
+    }
+    // Every rung refused, so thinking was never the problem. Say what was
+    // actually sent rather than repeating Google's contentless sentence.
+    throw new Error(`Gemini 400 на модели ${model}, все варианты thinking отклонены:\n${tried.join("\n")}`);
+  };
 
   let input = 0;
   let output = 0;
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    let r = await call(true, contents);
-    if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      if (r.status === 400 && /thinking/i.test(body)) {
-        console.warn("[assistant-bot] gemini rejected thinkingBudget, retrying without it");
-        r = await call(false, contents);
-        if (!r.ok) throw new Error(`Gemini ${r.status}: ${await r.text().catch(() => "")}`);
-      } else {
-        throw new Error(`Gemini ${r.status}: ${body}`);
-      }
-    }
+    const r = await ask(contents);
 
     const data = (await r.json().catch(() => ({}))) as {
       candidates?: { content?: { parts?: Part[] }; finishReason?: string }[];
@@ -998,6 +1052,27 @@ async function install(): Promise<Response> {
     repoFiles = err instanceof Error ? err.message : String(err);
   }
 
+  // A HEALTH CHECK THAT DOES NOT EXERCISE THE CALL IS NOT A HEALTH CHECK.
+  // This used to report that the model NAME resolved and stop there — which it
+  // did, cheerfully, while every actual question came back "Gemini 400". The
+  // owner found that, not the install endpoint. So one real question is asked
+  // here, the same way the bot asks, and the answer is the check.
+  //
+  // ONCE PER ISOLATE, and that cap is the point rather than an optimisation:
+  // this endpoint needs no secret (see the header above), so an unguarded probe
+  // would let anyone who knows the URL spend the owner's Gemini quota in a
+  // loop. Cached, a caller gets the answer of the first probe however often
+  // they ask, and the bill is one short question per cold start.
+  if (GEMINI_KEY && geminiProbe === null) {
+    try {
+      await askGemini([], "Ответь одним словом: пинг.");
+      geminiProbe = `ok (thinking: ${JSON.stringify(GEMINI_THINKING[geminiThinkingRung])})`;
+    } catch (err) {
+      geminiProbe = err instanceof Error ? err.message : String(err);
+    }
+  }
+  const geminiCall = GEMINI_KEY ? geminiProbe : "not configured";
+
   return json({
     set_webhook: set.ok === true,
     description: set.description ?? null,
@@ -1005,6 +1080,7 @@ async function install(): Promise<Response> {
     // Names only — never the values, and never a prefix of one.
     models_configured: configured(),
     gemini_model: GEMINI_MODEL_PINNED || geminiModelCache || "auto",
+    gemini_call: geminiCall,
     repo: `${REPO}@${BRANCH}`,
     repo_files: repoFiles,
     // The database tool reads as anon on purpose; this says whether that key

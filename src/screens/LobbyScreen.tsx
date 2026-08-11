@@ -14,6 +14,7 @@ import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { RoomDeckPanel } from '@/features/lobby/RoomDeckPanel';
 import { InviteFriendsPanel } from '@/features/lobby/InviteFriendsPanel';
 import { VoiceControl } from '@/features/voice/VoiceControl';
+import { VideoStage } from '@/features/voice/VideoStage';
 import { QrCode } from '@/shared/ui/QrCode';
 import { useDesign } from '@/shared/design/useDesign';
 import { IconCheck, IconUserPlus, IconQrcode } from '@tabler/icons-react';
@@ -162,6 +163,10 @@ export function LobbyScreen() {
             channel is the team's, so there is nothing to join until a team is
             picked — say that instead of "unavailable". */}
         <VoiceControl roomId={room.id} needsTeam={isTeamMode && !myTeamId} />
+
+        {/* The pictures, when anybody has a camera on. Renders nothing
+            otherwise — no reserved height for a feature most rounds skip. */}
+        <VideoStage className="px-0" />
 
         {/* What this room deals. The host edits it; everyone else reads it,
             following through the realtime UPDATE on `rooms`. */}

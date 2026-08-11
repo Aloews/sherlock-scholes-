@@ -66,6 +66,29 @@ export function nextLevel(
   return current;
 }
 
+/**
+ * Whether the link may carry a picture at this level.
+ *
+ * VIDEO IS THE FIRST THING SACRIFICED (handoff §2), and this is where that is
+ * written down. Below `voice` the camera closes — a link losing 8% of packets
+ * or sitting at 400 ms cannot carry a picture, and spending the uplink on one
+ * is spending it on the thing the players do not need at the expense of the
+ * thing they do.
+ *
+ * WHY `voice` AND NOT `full` ALONE, which is what the handoff's table says. The
+ * ladder starts at `voice` on every connection and climbs one rung per three
+ * good samples — fifteen seconds at the earliest. Gating the camera on `full`
+ * therefore means a camera button that does nothing for the first quarter of a
+ * minute of every call, and one that does nothing FOREVER on a 160 ms link,
+ * which is an ordinary intercontinental route and perfectly able to carry
+ * 320×240. That is not degradation, it is a feature that fails to arrive; the
+ * requirement the table was expressing is "the picture goes first", and it goes
+ * first here too.
+ */
+export function videoAllowed(level: VoiceLevel): boolean {
+  return level === 'full' || level === 'voice';
+}
+
 /** Audio publish settings for a level. 'text' publishes nothing at all. */
 export function audioPreset(level: VoiceLevel): { bitrate: number; dtx: boolean } | null {
   switch (level) {

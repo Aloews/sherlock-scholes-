@@ -4,12 +4,31 @@
 // deployment on another provider — or on none — must not carry it. See
 // providers/index.ts for how the unselected adapters leave the bundle.
 
-import type { VoiceConnectOptions, VoiceSession, VoiceTransport } from './types';
+import type { VideoFeed, VoiceConnectOptions, VoiceSession, VoiceTransport } from './types';
 import type { LinkStats } from '../voiceQuality';
 import type { Room } from 'livekit-client';
 
+/**
+ * What the camera publishes, when it publishes at all.
+ *
+ * 320×240 at 15 fps is the handoff's `full` rung (docs/VIDEOCHAT_HANDOFF.md
+ * §3), and it is deliberately small. Players are on different continents; the
+ * uplink is a phone; and the picture in this game is a face beside a card, not
+ * a thing anyone reads detail from. Asking for 720p and letting the SFU throttle
+ * it down would spend the same battery to arrive at the same size, later.
+ *
+ * Simulcast is off for the same reason: layers below 320×240 buy nothing, and
+ * each one is another encoder running on the phone.
+ */
+const CAMERA_CAPTURE = { resolution: { width: 320, height: 240, frameRate: 15 } };
+const CAMERA_PUBLISH = {
+  simulcast: false,
+  videoEncoding: { maxBitrate: 150_000, maxFramerate: 15 },
+};
+
 export const livekitTransport: VoiceTransport = {
   id: 'livekit',
+  video: true,
 
   async connect(options: VoiceConnectOptions): Promise<VoiceSession> {
     const { url, token } = options.credentials;
@@ -22,18 +41,47 @@ export const livekitTransport: VoiceTransport = {
       options.onSpeakers(speakers.map((s) => s.identity));
     });
 
+    // Remote pictures, keyed by TRACK rather than by participant. A participant
+    // can hold more than one video track — camera and screen share look alike
+    // from here — and keying by identity would let the second silently replace
+    // the first, leaving an element in the layout that nothing will ever
+    // detach.
+    const feeds = new Map<string, VideoFeed>();
+    const publishFeeds = () => options.onVideoChanged([...feeds.values()]);
+
     // A subscribed track is not a played track. LiveKit hands the audio over
     // and stops there; attach() builds the <audio> element, and putting it in
     // the document is ours to do. Skipping this is what "connected but nothing
     // is audible" looks like from the outside — see
     // docs/LOBBY_AND_VOICE_FIXES.md §3.
-    room.on(RoomEvent.TrackSubscribed, (track) => {
-      if (track.kind !== Track.Kind.Audio) return;
-      options.sink.appendChild(track.attach());
+    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (track.kind === Track.Kind.Audio) {
+        options.sink.appendChild(track.attach());
+        return;
+      }
+      if (track.kind !== Track.Kind.Video) return;
+      // Only the camera. The token withholds every other source, so a screen
+      // share cannot arrive — but reading the source rather than trusting that
+      // keeps the two decisions independent.
+      if (track.source !== Track.Source.Camera) return;
+      const element = track.attach() as HTMLVideoElement;
+      // A phone will refuse to play an inline video without these, and refuse
+      // silently: the element sits in the layout showing the first frame, or
+      // nothing at all.
+      element.playsInline = true;
+      element.autoplay = true;
+      element.muted = true;
+      feeds.set(publication.trackSid, { identity: participant.identity, element });
+      publishFeeds();
     });
-    room.on(RoomEvent.TrackUnsubscribed, (track) => {
-      if (track.kind !== Track.Kind.Audio) return;
+    room.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
+      if (track.kind === Track.Kind.Audio) {
+        track.detach().forEach((el) => el.remove());
+        return;
+      }
+      if (track.kind !== Track.Kind.Video) return;
       track.detach().forEach((el) => el.remove());
+      if (feeds.delete(publication.trackSid)) publishFeeds();
     });
 
     room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
@@ -48,6 +96,27 @@ export const livekitTransport: VoiceTransport = {
     return {
       async setMicrophoneEnabled(on) {
         await room.localParticipant.setMicrophoneEnabled(on);
+      },
+      async setCameraEnabled(on) {
+        const publication = await room.localParticipant.setCameraEnabled(
+          on,
+          CAMERA_CAPTURE,
+          CAMERA_PUBLISH,
+        );
+        if (!on) return null;
+        // A publication with no track is what a REFUSED camera looks like:
+        // setCameraEnabled resolves, and there is simply nothing to show. Null
+        // is the honest answer — the caller turns the button back off rather
+        // than leaving an empty tile on screen.
+        const track = publication?.videoTrack;
+        if (!track) return null;
+        const element = track.attach() as HTMLVideoElement;
+        element.playsInline = true;
+        element.autoplay = true;
+        // The local preview must never be audible: it is this device's own
+        // microphone coming back out of this device's own speaker.
+        element.muted = true;
+        return { identity: room.localParticipant.identity, element };
       },
       async startAudio() {
         await room.startAudio();
@@ -64,6 +133,11 @@ export const livekitTransport: VoiceTransport = {
         // but a session torn down mid-handshake may never emit it, and an
         // <audio> element left in the sink keeps playing.
         options.sink.replaceChildren();
+        // Same for the pictures — an <video> the component still holds keeps
+        // showing the last frame of a call that ended.
+        for (const feed of feeds.values()) feed.element.remove();
+        feeds.clear();
+        publishFeeds();
         await room.disconnect();
       },
     };

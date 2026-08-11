@@ -52,7 +52,6 @@
     "sound_toggle_aria": "Sonido sí/no",
     "design_toggle_aria": "Cambiar a {{design}}",
     "collection": "Colección",
-    "welcome_back": "Bienvenido de nuevo,",
     "welcome_stranger": "Detective",
     "collection_hint": "Explora toda la baraja y sus rarezas",
     "group_special": "Especial",
@@ -106,7 +105,9 @@
     "squad_as_of": "Plantilla a {{date}} — de los artículos de los jugadores, no en directo",
     "matches_link": "Próximos partidos",
     "fantasy_link": "Liga fantasy",
-    "quiz_link": "Adivina el jugador"
+    "quiz_link": "Adivina el jugador",
+    "alias_link": "Alias futbolero",
+    "digest_link": "Resumen del día"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -331,7 +332,11 @@
     "detail_no_payment_method": "La cuenta del servicio no tiene método de pago, así que rechaza a todos. Es un ajuste de la cuenta, no de la app.",
     "detail_bad_token": "El servicio rechazó la clave de acceso: revisa el par de claves en el servidor.",
     "detail_quota": "La cuenta agotó su límite; el servicio rechaza hasta que se renueve.",
-    "detail_bad_config": "La app pidió algo que el servicio no entiende. Ese fallo es nuestro."
+    "detail_bad_config": "La app pidió algo que el servicio no entiende. Ese fallo es nuestro.",
+    "camera_on": "Activar la cámara",
+    "camera_off": "Desactivar la cámara",
+    "you": "Tú",
+    "video_held": "Vídeo desactivado: {{level}}"
   },
   "soundcheck": {
     "title": "Prueba de sonido",
@@ -582,5 +587,16 @@
     "fact_national": "Selección: {{value}}",
     "fact_caps": "Internacionalidades: {{value}}",
     "fact_tournaments": "Torneos: {{value}}"
+  },
+  "digest": {
+    "title": "Resumen del día",
+    "headlines": "Lo más sonado en 24 horas",
+    "goals": "Goles y momentos",
+    "goals_note": "Lo que publicaron los canales oficiales de las ligas en 24 horas.",
+    "loading": "Cargando…",
+    "empty_news": "Hoy no ha llegado nada.",
+    "empty_goals": "No hubo vídeos en 24 horas.",
+    "loudness_one": "{{n}} medio",
+    "loudness_other": "{{n}} medios"
   }
 }

@@ -12,7 +12,11 @@ import { renderHook, act } from '@testing-library/react';
 // muted, and a failed connect that closes what it opened.
 
 const fake = vi.hoisted(() => {
-  const config = { refuseMic: false, refusePlayback: false, failConnect: false, attachOnConnect: false };
+  const config = {
+    refuseMic: false, refusePlayback: false, failConnect: false, attachOnConnect: false,
+    /** The camera resolves, and publishes nothing — a device already in use. */
+    refuseCamera: false,
+  };
 
   class FakeSession {
     micCalls: boolean[] = [];
@@ -23,9 +27,16 @@ const fake = vi.hoisted(() => {
     /** The sink the hook handed over — the adapter's only way to be heard. */
     sink: HTMLElement | null = null;
 
+    cameraCalls: boolean[] = [];
+
     async setMicrophoneEnabled(on: boolean) {
       this.micCalls.push(on);
       if (on && config.refuseMic) throw new DOMException('denied', 'NotAllowedError');
+    }
+    async setCameraEnabled(on: boolean) {
+      this.cameraCalls.push(on);
+      if (!on || config.refuseCamera) return null;
+      return { identity: 'me', element: document.createElement('video') };
     }
     async startAudio() {
       this.startAudioCalls += 1;
@@ -41,7 +52,12 @@ const fake = vi.hoisted(() => {
   }
 
   const sessions: FakeSession[] = [];
-  const hooks: { speakers?: (ids: string[]) => void; playback?: (playing: boolean) => void; dropped?: () => void } = {};
+  const hooks: {
+    speakers?: (ids: string[]) => void;
+    videos?: (feeds: { identity: string; element: HTMLVideoElement }[]) => void;
+    playback?: (playing: boolean) => void;
+    dropped?: () => void;
+  } = {};
 
   /** Services this build carries, and which one it prefers. */
   const build = {
@@ -53,15 +69,19 @@ const fake = vi.hoisted(() => {
     unloadable: new Set<string>(),
     /** The order loadTransportFor was asked for, which is the ladder itself. */
     asked: [] as string[],
+    /** Whether the adapter this build loads declares it carries pictures. */
+    video: true,
   };
 
   function transportFor(id: string) {
     if (build.unloadable.has(id)) throw new Error(`${id}: chunk failed`);
     return {
       id,
+      video: build.video,
       async connect(options: {
         sink: HTMLElement;
         onSpeakers: (ids: string[]) => void;
+        onVideoChanged: (feeds: { identity: string; element: HTMLVideoElement }[]) => void;
         onPlaybackChanged: (playing: boolean) => void;
         onDisconnected: () => void;
       }) {
@@ -69,6 +89,7 @@ const fake = vi.hoisted(() => {
         const session = new FakeSession();
         session.sink = options.sink;
         hooks.speakers = options.onSpeakers;
+        hooks.videos = options.onVideoChanged;
         hooks.playback = options.onPlaybackChanged;
         hooks.dropped = options.onDisconnected;
         sessions.push(session);
@@ -121,6 +142,8 @@ beforeEach(() => {
   fake.config.refusePlayback = false;
   fake.config.failConnect = false;
   fake.config.attachOnConnect = false;
+  fake.config.refuseCamera = false;
+  fake.build.video = true;
   fake.build.preferred = 'livekit';
   fake.build.available = ['livekit'];
   fake.build.refuse.clear();
@@ -732,6 +755,7 @@ describe('quoting a service that did not throw an Error', () => {
     fake.build.available = ['livekit'];
     fake.transportFor = () => ({
       id: 'livekit',
+      video: true,
       async connect() { throw thrown; },
     });
 
@@ -746,6 +770,7 @@ describe('quoting a service that did not throw an Error', () => {
     fake.build.available = ['livekit'];
     fake.transportFor = () => ({
       id: 'livekit',
+      video: true,
       async connect() { throw { weird: true, nested: { deep: 1 } }; },
     });
 
@@ -756,5 +781,149 @@ describe('quoting a service that did not throw an Error', () => {
     expect(result.current.detail).not.toBe('[object Object]');
     // Ugly JSON is searchable; "[object Object]" is not.
     expect(result.current.detail).toMatch(/weird/);
+  });
+});
+
+// ─── The camera ─────────────────────────────────────────────────────────────
+//
+// Video is a passenger, never a peer: it is offered only where the service
+// carries it, opened only on a tap, and closed by the ladder the moment the
+// link stops deserving it. What these hold is the difference between what the
+// player ASKED for and what is actually on the wire — the pair that lets a
+// camera survive a bad patch instead of being forgotten by it.
+describe('the camera', () => {
+  it('is not offered by a service that has no pictures', async () => {
+    fake.build.video = false;
+    const result = await connected();
+    expect(result.current.videoSupported).toBe(false);
+
+    // And the tap is a no-op rather than a throw: an audio-only adapter
+    // rejects setCameraEnabled, and the hook must never reach it.
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(session().cameraCalls).toEqual([]);
+    expect(result.current.cameraOn).toBe(false);
+  });
+
+  it('starts closed on every connection', async () => {
+    const result = await connected();
+    expect(result.current.videoSupported).toBe(true);
+    expect(result.current.cameraOn).toBe(false);
+    expect(result.current.selfFeed).toBeNull();
+    expect(session().cameraCalls).toEqual([]);
+  });
+
+  it('opens on a tap and hands back a self-view', async () => {
+    const result = await connected();
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(result.current.cameraOn).toBe(true);
+    expect(result.current.selfFeed?.element.tagName).toBe('VIDEO');
+    expect(session().cameraCalls).toEqual([true]);
+  });
+
+  it('closes again on the next tap', async () => {
+    const result = await connected();
+    await act(async () => { await result.current.toggleCamera(); });
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(result.current.cameraOn).toBe(false);
+    expect(result.current.selfFeed).toBeNull();
+    expect(session().cameraCalls).toEqual([true, false]);
+  });
+
+  // A lit button over a dead camera is the same lie as a connected room with
+  // no audio, which is the failure this whole feature was built out of.
+  it('puts the button back out when the camera will not open', async () => {
+    const result = await connected();
+    fake.config.refuseCamera = true;
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(result.current.cameraOn).toBe(false);
+    expect(result.current.selfFeed).toBeNull();
+  });
+
+  it('shows what the service sends', async () => {
+    const result = await connected();
+    const feed = { identity: '777', element: document.createElement('video') };
+    act(() => { fake.hooks.videos?.([feed]); });
+    expect(result.current.feeds).toEqual([feed]);
+  });
+
+  it('leaves no picture behind when the call ends', async () => {
+    const result = await connected();
+    await act(async () => { await result.current.toggleCamera(); });
+    act(() => { fake.hooks.videos?.([{ identity: '777', element: document.createElement('video') }]); });
+
+    act(() => { result.current.disconnect(); });
+    expect(result.current.feeds).toEqual([]);
+    expect(result.current.selfFeed).toBeNull();
+    expect(result.current.cameraOn).toBe(false);
+  });
+});
+
+describe('the quality ladder and the camera', () => {
+  // VIDEO GOES FIRST (docs/VIDEOCHAT_HANDOFF.md §2): the picture is sacrificed
+  // before the audio bitrate and long before the channel. But the WISH has to
+  // outlive the bad patch — a camera closed by a bad minute and never reopened
+  // is a camera the player has to notice is missing.
+  async function tick(times: number) {
+    for (let i = 0; i < times; i += 1) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    }
+  }
+
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('closes the camera when the link goes bad, and reopens it when it comes back', async () => {
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+
+    session().stats = { rttMs: 40, loss: 0 };
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(result.current.cameraOn).toBe(true);
+    expect(session().cameraCalls.at(-1)).toBe(true);
+
+    // A link that cannot carry a picture.
+    session().stats = { rttMs: 900, loss: 0.5 };
+    await tick(2);
+    expect(result.current.level).toBe('text');
+    expect(session().cameraCalls.at(-1)).toBe(false);
+    // Closed on the wire, still wanted by the player.
+    expect(result.current.cameraOn).toBe(true);
+    expect(result.current.selfFeed).toBeNull();
+
+    // And back. The ladder climbs a rung at a time, so this takes a while.
+    session().stats = { rttMs: 40, loss: 0 };
+    await tick(12);
+    expect(session().cameraCalls.at(-1)).toBe(true);
+    expect(result.current.selfFeed).not.toBeNull();
+  });
+
+  // The mirror of the muted-player rule: the ladder may close a camera, it may
+  // never open one nobody asked for.
+  it('never opens a camera the player did not ask for', async () => {
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    session().stats = { rttMs: 40, loss: 0 };
+    await tick(4);
+    expect(result.current.level).toBe('full');
+    expect(session().cameraCalls.every((on) => on === false)).toBe(true);
+  });
+
+  // Tapping while the link is already too weak: the wish is recorded and
+  // nothing is published, so the UI can say why instead of dropping the tap.
+  it('records the wish without publishing on a link that cannot carry it', async () => {
+    const { result, unmount } = renderHook(() => useVoiceChat('room-1'));
+    release = unmount;
+    await act(async () => { await result.current.connect(); });
+    session().stats = { rttMs: 900, loss: 0.5 };
+    await tick(2);
+    expect(result.current.level).toBe('text');
+
+    const before = session().cameraCalls.length;
+    await act(async () => { await result.current.toggleCamera(); });
+    expect(result.current.cameraOn).toBe(true);
+    expect(result.current.selfFeed).toBeNull();
+    expect(session().cameraCalls).toHaveLength(before);
   });
 });

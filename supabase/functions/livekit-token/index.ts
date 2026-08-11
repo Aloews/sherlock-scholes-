@@ -24,6 +24,8 @@
 //               that is the whole game.
 //   1v1  mode — one channel for the ROOM. The two players are explaining to
 //               each other, so they have to hear each other.
+//   check     — a channel of ONE, `chk_<telegram id>`, for the diagnostic in
+//               the profile. Same rule, applied to a room with one seat.
 //
 // WHICH SERVICE: the ROOM decides, and the caller's ask is only the opening
 // bid. A channel exists inside one vendor, so two players on two services are
@@ -271,6 +273,7 @@ Deno.serve(async (req) => {
   // this the check had no answer to read and reported a correctly-deployed
   // function as an old one. Neither name is a secret: the frontend's own
   // choice is already in the bundle as VITE_VOICE_PROVIDER.
+  //
   // A diagnostic run needs no room: it is one player alone, proving their
   // voice reaches a service at all. Everything else still does.
   const isCheck = payload?.purpose === "check";
@@ -481,9 +484,19 @@ async function issueLiveKit(channel: string, identity: string): Promise<Credenti
       canPublish: true,
       canSubscribe: true,
       canPublishData: false,
-      // Audio only. Even if the client asked for a camera track, the server
-      // refuses it — video is a separate decision, not a client's to make.
-      canPublishSources: ["microphone"],
+      // Microphone and camera, and NOTHING ELSE — screen share in particular.
+      //
+      // The camera was withheld here until video existed; now it does
+      // (docs/VIDEOCHAT_HANDOFF.md phase 3), and the decision is still the
+      // server's: the client cannot widen this list, only decline to use it.
+      // Whether a picture is actually published is the player's tap, and the
+      // degradation ladder closes it again when the link cannot carry one.
+      //
+      // Screen share stays out for a game reason, not a bandwidth one. The
+      // explainer's screen HAS THE CARD ON IT. A teammate who can see it is
+      // not playing, and a grant that allows the source is the only thing
+      // standing between that and one line of client code.
+      canPublishSources: ["microphone", "camera"],
     },
   });
   // No `url`: LiveKit's address is public and the frontend has it as

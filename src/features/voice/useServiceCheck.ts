@@ -113,6 +113,9 @@ async function checkOne(provider: VoiceProviderId): Promise<ServiceCheckResult> 
       credentials: granted.credentials,
       sink,
       onSpeakers: () => {},
+      // The check proves a voice channel comes up, and nothing about pictures:
+      // it never opens a camera, so nothing is ever reported here.
+      onVideoChanged: () => {},
       onPlaybackChanged: () => {},
       onDisconnected: () => {},
     }), JOIN_TIMEOUT_MS);

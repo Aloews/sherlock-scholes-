@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
-  IconCrown, IconBallFootball, IconTrophy,
+  IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
-import { HomeLandingMaster } from '@/screens/home/HomeLandingMaster';
+import { HomeGameLink } from '@/screens/home/HomeGameLink';
+import { HomeAliasActions } from '@/screens/home/HomeAliasActions';
 import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
@@ -22,7 +23,7 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact, cloudGet, getStartParam } from '@/shared/lib/telegram';
+import { hapticImpact, cloudGet, getInviteCode } from '@/shared/lib/telegram';
 import { useMainButton } from '@/shared/lib/useMainButton';
 import { useKeyboardOpen } from '@/shared/lib/useKeyboardOpen';
 import { normalizeCode, sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
@@ -31,8 +32,11 @@ import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
 
-type View = 'home' | 'mode_select' | 'create_team' | 'create_1v1' | 'create_training'
-  | 'join' | 'joining';
+// 'alias' is the football Alias's own menu — quick game, competitive, join.
+// It exists because the home screen is now a LIST OF GAMES and Alias is one of
+// them, rather than the screen itself with three others tacked underneath.
+type View = 'home' | 'alias' | 'mode_select' | 'create_team' | 'create_1v1'
+  | 'create_training' | 'join' | 'joining';
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -129,7 +133,7 @@ export function HomeScreen() {
   const startParamHandled = useRef(false);
   useEffect(() => {
     if (startParamHandled.current) return;
-    const invited = normalizeCode(getStartParam());
+    const invited = normalizeCode(getInviteCode());
     if (!invited) return;
 
     // WAIT FOR THE PLAYER, AND ONLY THEN CLAIM THE PARAM. This is why invite
@@ -345,52 +349,71 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* What football is on next. Under the invitations and above the
-            landing: it is a reason to open the app on a day with no game in
-            it, which is exactly the day the landing has nothing to offer. */}
-        {view === 'home' && (
-          <button
-            type="button"
-            onClick={() => { hapticImpact('light'); navigate('/matches'); }}
-            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
-          >
-            <IconBallFootball size={20} stroke={1.75} className="text-brand-muted shrink-0" />
-            <span className="flex-1 text-white text-sm">{t('home.matches_link')}</span>
-            <span className="text-brand-muted text-lg leading-none">›</span>
-          </button>
-        )}
-
-        {view === 'home' && (
-          <button
-            type="button"
-            onClick={() => { hapticImpact('light'); navigate('/fantasy'); }}
-            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
-          >
-            <IconTrophy size={20} stroke={1.75} className="text-brand-muted shrink-0" />
-            <span className="flex-1 text-white text-sm">{t('home.fantasy_link')}</span>
-            <span className="text-brand-muted text-lg leading-none">›</span>
-          </button>
-        )}
-
-        {view === 'home' && (
-          <button
-            type="button"
-            onClick={() => { hapticImpact('light'); navigate('/quiz'); }}
-            className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
-          >
-            <IconHelp size={20} stroke={1.75} className="text-brand-muted shrink-0" />
-            <span className="flex-1 text-white text-sm">{t('home.quiz_link')}</span>
-            <span className="text-brand-muted text-lg leading-none">›</span>
-          </button>
-        )}
-
-        {/* ── Landing, master design ── */}
+        {/* Whose phone this is. The "Welcome back," above it is gone: it
+            said nothing the avatar in the header does not already say, and it
+            pushed the first real thing on the screen towards the fold. The
+            name stays — it is the one part of that block that was ever
+            information. */}
         {view === 'home' && master && (
-          <HomeLandingMaster
-            playerName={player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : null}
+          <p className="w-full max-w-sm ds-display text-xl font-bold text-white">
+            {player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : t('home.welcome_stranger')}
+          </p>
+        )}
+
+        {/* THE MENU OF GAMES. Alias is a row like the other three, not a
+            stack of tall buttons above them: once there are four games, one
+            entry shouting while three whisper reads as three afterthoughts.
+            Its own actions live one tap in, under `view === 'alias'`.
+
+            Order is by what brings somebody back. Alias is the game, so it is
+            first; the matches feed is next because it is a reason to open the
+            app on a day nobody wants to play. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm space-y-2.5">
+            <HomeGameLink
+              icon={<IconCards size={20} stroke={1.75} />}
+              label={t('home.alias_link')}
+              onClick={() => setView('alias')}
+            />
+            <HomeGameLink
+              icon={<IconBallFootball size={20} stroke={1.75} />}
+              label={t('home.matches_link')}
+              onClick={() => navigate('/matches')}
+            />
+            <HomeGameLink
+              icon={<IconNews size={20} stroke={1.75} />}
+              label={t('home.digest_link')}
+              onClick={() => navigate('/digest')}
+            />
+            <HomeGameLink
+              icon={<IconTrophy size={20} stroke={1.75} />}
+              label={t('home.fantasy_link')}
+              onClick={() => navigate('/fantasy')}
+            />
+            <HomeGameLink
+              icon={<IconHelp size={20} stroke={1.75} />}
+              label={t('home.quiz_link')}
+              onClick={() => navigate('/quiz')}
+            />
+            {/* Classic has no tab bar, so the collection would otherwise have
+                no way in at all once the button stack moved. */}
+            {!master && (
+              <HomeGameLink
+                icon={<IconStack2 size={20} stroke={1.75} />}
+                label={t('home.collection')}
+                onClick={() => navigate('/collection')}
+              />
+            )}
+          </div>
+        )}
+
+        {/* ── The football Alias's own actions ── */}
+        {view === 'alias' && (
+          <HomeAliasActions
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
+            onBack={() => { hapticImpact('light'); setView('home'); }}
           />
         )}
 
@@ -421,24 +444,6 @@ export function HomeScreen() {
                 <p className="text-brand-muted/70 text-sm">{t('stats.first_game')}</p>
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── Main CTA, classic design: quick game, competitive, join ── */}
-        {view === 'home' && !master && (
-          <div className="w-full max-w-sm space-y-3 animate-fade-in">
-            <Button fullWidth size="lg" onClick={() => { hapticImpact('light'); setView('create_training'); }}>
-              {t('home.mode_training_title')}
-            </Button>
-            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('mode_select'); }}>
-              {t('home.competitive_mode')}
-            </Button>
-            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); setView('join'); }}>
-              {t('home.join_game')}
-            </Button>
-            <Button fullWidth size="lg" variant="secondary" onClick={() => { hapticImpact('light'); navigate('/collection'); }}>
-              {t('home.collection')}
-            </Button>
           </div>
         )}
 

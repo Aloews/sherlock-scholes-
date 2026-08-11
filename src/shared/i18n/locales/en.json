@@ -54,7 +54,6 @@
     "sound_toggle_aria": "Sound on/off",
     "design_toggle_aria": "Switch to {{design}}",
     "collection": "Collection",
-    "welcome_back": "Welcome back,",
     "welcome_stranger": "Detective",
     "collection_hint": "Browse the whole deck and its rarities",
     "group_special": "Special",
@@ -106,7 +105,9 @@
     "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
-    "quiz_link": "Guess the player"
+    "quiz_link": "Guess the player",
+    "alias_link": "Football Alias",
+    "digest_link": "Daily digest"
   },
   "design": {
     "master": "New design",
@@ -331,7 +332,11 @@
     "detail_no_payment_method": "The service account has no payment method, so it refuses everyone. That is an account setting, not the app.",
     "detail_bad_token": "The service rejected the access key — check the key pair on the server.",
     "detail_quota": "The account has run out of its allowance; the service refuses until it is renewed.",
-    "detail_bad_config": "The app asked for something the service does not understand. That one is ours."
+    "detail_bad_config": "The app asked for something the service does not understand. That one is ours.",
+    "camera_on": "Turn camera on",
+    "camera_off": "Turn camera off",
+    "you": "You",
+    "video_held": "Video is off: {{level}}"
   },
   "soundcheck": {
     "title": "Sound check",
@@ -582,5 +587,16 @@
     "fact_national": "National team: {{value}}",
     "fact_caps": "Caps: {{value}}",
     "fact_tournaments": "Tournaments: {{value}}"
+  },
+  "digest": {
+    "title": "Daily digest",
+    "headlines": "Loudest in the last 24 hours",
+    "goals": "Goals and moments",
+    "goals_note": "What the leagues’ own channels posted in the last 24 hours.",
+    "loading": "Loading…",
+    "empty_news": "Nothing came in today.",
+    "empty_goals": "No clips in the last 24 hours.",
+    "loudness_one": "{{n}} outlet",
+    "loudness_other": "{{n}} outlets"
   }
 }

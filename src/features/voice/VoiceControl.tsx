@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 import {
   IconMicrophone, IconMicrophoneOff, IconLoader2, IconAlertTriangle, IconVolumeOff,
+  IconVideo, IconVideoOff,
 } from '@tabler/icons-react';
 import { useVoice } from './VoiceProvider';
 import { voiceEnabled } from './voiceApi';
@@ -40,7 +41,10 @@ export function VoiceControl({ roomId, needsTeam = false, compact = false }: Voi
   // roomId stays in the signature so callers read naturally; the session
   // itself is shared and keyed on the store's room.
   const { t } = useTranslation();
-  const { status, reason, level, muted, audioBlocked, connect, disconnect, toggleMute, startAudio } = useVoice();
+  const {
+    status, reason, level, muted, audioBlocked, connect, disconnect, toggleMute, startAudio,
+    videoSupported, cameraOn, toggleCamera,
+  } = useVoice();
 
   if (!voiceEnabled() || !roomId) return null;
 
@@ -78,6 +82,14 @@ export function VoiceControl({ roomId, needsTeam = false, compact = false }: Voi
       ? <IconMicrophone size={18} stroke={2} />
       : <IconMicrophoneOff size={18} stroke={2} />;
 
+  // OFFERED ONLY WHEN THE SERVICE ACTUALLY CARRIES ONE. `videoSupported` comes
+  // from the transport that connected, not from the build's preferred provider:
+  // the failover ladder can land the room on an audio-only vendor, and a camera
+  // button that survives that is a button whose only outcome is a thrown error.
+  const showCamera = live && videoSupported;
+  const onCamera = () => { hapticImpact('light'); void toggleCamera(); };
+  const cameraLabel = t(cameraOn ? 'voice.camera_off' : 'voice.camera_on');
+
   if (compact) {
     return (
       <div className="flex items-center">
@@ -105,6 +117,22 @@ export function VoiceControl({ roomId, needsTeam = false, compact = false }: Voi
         >
           {micIcon}
         </button>
+        {showCamera && (
+          <button
+            type="button"
+            onClick={onCamera}
+            aria-label={cameraLabel}
+            aria-pressed={cameraOn}
+            className={clsx(
+              'p-1.5 rounded-lg transition-colors',
+              cameraOn ? 'text-brand-accent' : 'text-brand-muted hover:text-white',
+            )}
+          >
+            {cameraOn
+              ? <IconVideo size={18} stroke={2} />
+              : <IconVideoOff size={18} stroke={2} />}
+          </button>
+        )}
       </div>
     );
   }
@@ -147,6 +175,25 @@ export function VoiceControl({ roomId, needsTeam = false, compact = false }: Voi
             </>}
           </p>
         </div>
+
+        {showCamera && (
+          <button
+            type="button"
+            onClick={onCamera}
+            aria-label={cameraLabel}
+            aria-pressed={cameraOn}
+            className={clsx(
+              'w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-colors',
+              cameraOn
+                ? 'border-brand-accent bg-brand-accent/15 text-white'
+                : 'border-brand-border bg-brand-bg text-brand-muted',
+            )}
+          >
+            {cameraOn
+              ? <IconVideo size={18} stroke={2} />
+              : <IconVideoOff size={18} stroke={2} />}
+          </button>
+        )}
 
         {live && (
           <button
