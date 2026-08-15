@@ -121,6 +121,25 @@ describe('ArenaPad — удар', () => {
     expect(onKick).toHaveBeenCalledTimes(1);
   });
 
+  it('не начинает бег, когда нажали удар', () => {
+    // Кнопка лежит ВНУТРИ площадки джойстика — так она получает нормальный
+    // размер вместо колонки во весь экран. Плата за это: без stopPropagation
+    // одно нажатие запускало бы ещё и перетаскивание, и игрок бил бы и
+    // одновременно бежал в сторону, куда не целился.
+    const input = makeInput();
+    const { zone, kick } = mount('left', input);
+
+    fireEvent.pointerDown(kick, { pointerId: 1 });
+    fireEvent.pointerMove(kick, { pointerId: 1, clientX: 300, clientY: 300 });
+    expect(input.kick).toBe(true);
+    expect(input.move).toEqual({ x: 0, y: 0 });
+
+    // И джойстик остаётся свободен для второго пальца.
+    drag(zone, 2, [100, 100], [100 + STICK_R, 100]);
+    expect(input.move.x).toBeCloseTo(1, 6);
+    expect(input.kick).toBe(true);
+  });
+
   it('отпускается, когда приложение сворачивают', () => {
     // Палец уходит вместе со свёрнутым приложением, и pointerup не приходит
     // вовсе: без этого игрок вернулся бы к мячу, который бьют без остановки.
