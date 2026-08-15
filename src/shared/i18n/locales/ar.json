@@ -595,7 +595,8 @@
     "top_predictors": "أفضل المتوقّعين",
     "exact_short": "مضبوطة {{n}}",
     "all_leagues": "كل البطولات",
-    "empty_league": "لا مباريات قادمة في هذه البطولة."
+    "empty_league": "لا مباريات قادمة في هذه البطولة.",
+    "where_to_watch": "أين تشاهد · {{source}}"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

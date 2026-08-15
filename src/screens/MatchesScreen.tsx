@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
+import { IconArrowLeft, IconBallFootball, IconDeviceTvOld } from '@tabler/icons-react';
 import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { PredictionRow } from '@/features/fixtures/PredictionRow';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
 import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
-import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
+import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
+import { getRawInitData, hapticImpact, openLink } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 
 /**
@@ -35,6 +36,7 @@ export function MatchesScreen() {
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
   const [league, setLeague] = useState<string | null>(null);
+  const [broadcasts, setBroadcasts] = useState<Map<string, Broadcast>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -42,13 +44,15 @@ export function MatchesScreen() {
       // Together: a fixture list without the player's own predictions would
       // render every match as un-predicted for a moment, and then rewrite
       // itself. One flash of wrong is worse than one moment of nothing.
-      const [rows, mine] = await Promise.all([
+      const [rows, mine, tv] = await Promise.all([
         fetchUpcomingFixtures(),
         fetchMyPredictions(getRawInitData()),
+        fetchBroadcasts(),
       ]);
       if (cancelled) return;
       setFixtures(rows);
       setPredictions(mine);
+      setBroadcasts(tv);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -198,6 +202,31 @@ export function MatchesScreen() {
                   })}
                 </span>
                 </div>
+
+                {/* «Где смотреть» — страница САМОГО турнира, а не канал.
+                    Права перепродаются каждый сезон, и строка «в вашей стране
+                    это такой-то канал» устаревает молча: человек уходит не
+                    туда, а экран выглядит уверенным. Официальная страница
+                    верна всегда, потому что её ведёт правообладатель.
+                    Турнира нет в таблице — ссылки нет: обещать нерабочий
+                    адрес хуже, чем не обещать ничего. */}
+                {broadcasts.get(fixture.sport_key) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticImpact('light');
+                      openLink(broadcasts.get(fixture.sport_key)!.url);
+                    }}
+                    className="mt-2 ml-[3.75rem] inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
+                  >
+                    <IconDeviceTvOld size={13} stroke={1.75} />
+                    <span>
+                      {t('matches.where_to_watch', {
+                        source: broadcasts.get(fixture.sport_key)!.name,
+                      })}
+                    </span>
+                  </button>
+                )}
 
                 <div className="mt-2 pl-[3.75rem]">
                   <PredictionRow

@@ -535,7 +535,8 @@
     "top_predictors": "Meilleurs pronostiqueurs",
     "exact_short": "exacts {{n}}",
     "all_leagues": "Toutes les compétitions",
-    "empty_league": "Aucun match à venir dans cette compétition."
+    "empty_league": "Aucun match à venir dans cette compétition.",
+    "where_to_watch": "Où regarder · {{source}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

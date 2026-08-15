@@ -520,7 +520,8 @@
     "top_predictors": "예측 순위",
     "exact_short": "정확 {{n}}",
     "all_leagues": "모든 대회",
-    "empty_league": "이 대회에 예정된 경기가 없습니다."
+    "empty_league": "이 대회에 예정된 경기가 없습니다.",
+    "where_to_watch": "중계 안내 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

@@ -520,7 +520,8 @@
     "top_predictors": "予想ランキング",
     "exact_short": "完全一致 {{n}}",
     "all_leagues": "すべての大会",
-    "empty_league": "この大会に今後の試合はありません。"
+    "empty_league": "この大会に今後の試合はありません。",
+    "where_to_watch": "放送予定 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

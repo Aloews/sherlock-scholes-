@@ -520,7 +520,8 @@
     "top_predictors": "预测排行榜",
     "exact_short": "全中 {{n}}",
     "all_leagues": "全部赛事",
-    "empty_league": "该赛事暂无即将进行的比赛。"
+    "empty_league": "该赛事暂无即将进行的比赛。",
+    "where_to_watch": "观看方式 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

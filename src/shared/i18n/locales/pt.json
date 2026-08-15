@@ -535,7 +535,8 @@
     "top_predictors": "Melhores palpiteiros",
     "exact_short": "exatos {{n}}",
     "all_leagues": "Todas as competições",
-    "empty_league": "Não há próximos jogos nesta competição."
+    "empty_league": "Não há próximos jogos nesta competição.",
+    "where_to_watch": "Onde assistir · {{source}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
