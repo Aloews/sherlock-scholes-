@@ -49,16 +49,24 @@ export function DigestScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const [n, g, w, wk] = await Promise.all([
-        fetchNews(lang), fetchGoals(), fetchWeekendGoals(), fetchWeekGoals(),
-      ]);
-      if (cancelled) return;
-      setNews(n);
-      setGoals(g);
-      setWeekend(w);
-      setWeek(wk);
-    })();
+    // КАЖДЫЙ РАЗДЕЛ ПОЯВЛЯЕТСЯ САМ, а не все сразу.
+    //
+    // Раньше здесь стоял Promise.all, и экран не показывал НИЧЕГО, пока не
+    // ответит самый медленный из четырёх запросов. Медленный — это заголовки:
+    // громкость считается при чтении и стоит около секунды, тогда как ролики
+    // приходят за треть. То есть три готовых раздела ждали четвёртый, и
+    // ожидание было ровно по худшему, а не по среднему.
+    //
+    // Отдельные промисы вместо одного: каждый setState рисует свой раздел, у
+    // всех уже есть состояние загрузки, и порядок разделов на экране от
+    // порядка ответов не зависит.
+    const run = <T,>(p: Promise<T>, set: (v: T) => void) => {
+      void p.then((v) => { if (!cancelled) set(v); });
+    };
+    run(fetchWeekendGoals(), setWeekend);
+    run(fetchWeekGoals(), setWeek);
+    run(fetchGoals(), setGoals);
+    run(fetchNews(lang), setNews);
     return () => { cancelled = true; };
   }, [lang]);
 

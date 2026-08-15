@@ -44,15 +44,22 @@ export function MatchesScreen() {
       // Together: a fixture list without the player's own predictions would
       // render every match as un-predicted for a moment, and then rewrite
       // itself. One flash of wrong is worse than one moment of nothing.
-      const [rows, mine, tv] = await Promise.all([
+      // Расписание и свои прогнозы — ВМЕСТЕ, и это не лень: список без
+      // прогнозов на мгновение нарисовал бы каждый матч как несыгранный и
+      // тут же переписал себя. Одна вспышка неправды хуже мгновения пустоты.
+      //
+      // А трансляции — ОТДЕЛЬНО, потому что они добавляют строку под матчем и
+      // ничего не переписывают. Держать из-за них весь экран значит ждать по
+      // самому медленному запросу там, где можно ждать по самому быстрому.
+      void fetchBroadcasts().then((tv) => { if (!cancelled) setBroadcasts(tv); });
+
+      const [rows, mine] = await Promise.all([
         fetchUpcomingFixtures(),
         fetchMyPredictions(getRawInitData()),
-        fetchBroadcasts(),
       ]);
       if (cancelled) return;
       setFixtures(rows);
       setPredictions(mine);
-      setBroadcasts(tv);
     })();
     return () => { cancelled = true; };
   }, []);
