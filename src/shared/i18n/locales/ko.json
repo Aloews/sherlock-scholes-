@@ -518,7 +518,9 @@
     "my_rank": "순위",
     "my_breakdown": "확정: {{settled}} · 정확: {{exact}} · 대기: {{pending}}",
     "top_predictors": "예측 순위",
-    "exact_short": "정확 {{n}}"
+    "exact_short": "정확 {{n}}",
+    "all_leagues": "모든 대회",
+    "empty_league": "이 대회에 예정된 경기가 없습니다."
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
@@ -542,7 +544,11 @@
     "soccer_uefa_europa_league": "유로파리그",
     "soccer_uefa_nations_league": "네이션스리그",
     "soccer_conmebol_copa_libertadores": "코파 리베르타도레스",
-    "soccer_conmebol_copa_sudamericana": "코파 수다메리카나"
+    "soccer_conmebol_copa_sudamericana": "코파 수다메리카나",
+    "soccer_fifa_world_cup": "월드컵",
+    "soccer_fifa_world_cup_qualifiers_europe": "월드컵 예선 (유럽)",
+    "soccer_uefa_european_championship": "유럽 선수권",
+    "soccer_uefa_euro_qualification": "유럽 선수권 예선"
   },
   "fantasy": {
     "title": "판타지",

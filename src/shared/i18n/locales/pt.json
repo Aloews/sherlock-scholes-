@@ -533,7 +533,9 @@
     "my_rank": "Posição",
     "my_breakdown": "fechados: {{settled}} · exatos: {{exact}} · pendentes: {{pending}}",
     "top_predictors": "Melhores palpiteiros",
-    "exact_short": "exatos {{n}}"
+    "exact_short": "exatos {{n}}",
+    "all_leagues": "Todas as competições",
+    "empty_league": "Não há próximos jogos nesta competição."
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
@@ -557,7 +559,11 @@
     "soccer_uefa_europa_league": "Liga Europa",
     "soccer_uefa_nations_league": "Liga das Nações",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
-    "soccer_conmebol_copa_sudamericana": "Copa Sul-Americana"
+    "soccer_conmebol_copa_sudamericana": "Copa Sul-Americana",
+    "soccer_fifa_world_cup": "Copa do Mundo",
+    "soccer_fifa_world_cup_qualifiers_europe": "Eliminatórias da Copa (Europa)",
+    "soccer_uefa_european_championship": "Campeonato Europeu",
+    "soccer_uefa_euro_qualification": "Qualificação para o Europeu"
   },
   "fantasy": {
     "title": "Fantasy",

@@ -518,7 +518,9 @@
     "my_rank": "排名",
     "my_breakdown": "已结算：{{settled}} · 全中：{{exact}} · 待定：{{pending}}",
     "top_predictors": "预测排行榜",
-    "exact_short": "全中 {{n}}"
+    "exact_short": "全中 {{n}}",
+    "all_leagues": "全部赛事",
+    "empty_league": "该赛事暂无即将进行的比赛。"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",
@@ -542,7 +544,11 @@
     "soccer_uefa_europa_league": "欧罗巴联赛",
     "soccer_uefa_nations_league": "欧洲国家联赛",
     "soccer_conmebol_copa_libertadores": "南美解放者杯",
-    "soccer_conmebol_copa_sudamericana": "南美杯"
+    "soccer_conmebol_copa_sudamericana": "南美杯",
+    "soccer_fifa_world_cup": "世界杯",
+    "soccer_fifa_world_cup_qualifiers_europe": "世界杯预选赛（欧洲）",
+    "soccer_uefa_european_championship": "欧洲杯",
+    "soccer_uefa_euro_qualification": "欧洲杯预选赛"
   },
   "fantasy": {
     "title": "梦幻联赛",

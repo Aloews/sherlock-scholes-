@@ -567,7 +567,9 @@
     "my_rank": "Место",
     "my_breakdown": "закрыто: {{settled}} · в точку: {{exact}} · ждут: {{pending}}",
     "top_predictors": "Лучшие прогнозисты",
-    "exact_short": "в точку: {{n}}"
+    "exact_short": "в точку: {{n}}",
+    "all_leagues": "Все турниры",
+    "empty_league": "В этом турнире ближайших матчей нет."
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",
@@ -591,7 +593,11 @@
     "soccer_uefa_europa_league": "Лига Европы",
     "soccer_uefa_nations_league": "Лига наций",
     "soccer_conmebol_copa_libertadores": "Кубок Либертадорес",
-    "soccer_conmebol_copa_sudamericana": "Южноамериканский кубок"
+    "soccer_conmebol_copa_sudamericana": "Южноамериканский кубок",
+    "soccer_fifa_world_cup": "Чемпионат мира",
+    "soccer_fifa_world_cup_qualifiers_europe": "Отбор ЧМ (Европа)",
+    "soccer_uefa_european_championship": "Чемпионат Европы",
+    "soccer_uefa_euro_qualification": "Отбор Евро"
   },
   "fantasy": {
     "title": "Фэнтези",

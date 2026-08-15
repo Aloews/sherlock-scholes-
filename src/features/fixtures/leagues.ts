@@ -33,6 +33,14 @@ export const KNOWN_SPORT_KEYS = [
   'soccer_uefa_champs_league_qualification',
   'soccer_uefa_europa_league',
   'soccer_uefa_nations_league',
+  // Сборные раз в два-четыре года. Ключей нет в расписании прямо сейчас — и
+  // именно поэтому они здесь: провайдер отдаёт турнир, когда тот начинается,
+  // а без записи имя выпало бы в readableSportKey ровно в тот месяц, когда на
+  // экран смотрят чаще всего.
+  'soccer_fifa_world_cup',
+  'soccer_fifa_world_cup_qualifiers_europe',
+  'soccer_uefa_european_championship',
+  'soccer_uefa_euro_qualification',
   'soccer_conmebol_copa_libertadores',
   'soccer_conmebol_copa_sudamericana',
 ] as const;

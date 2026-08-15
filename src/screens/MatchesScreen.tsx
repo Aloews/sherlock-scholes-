@@ -7,8 +7,8 @@ import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { PredictionRow } from '@/features/fixtures/PredictionRow';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
 import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
-import { getRawInitData } from '@/shared/lib/telegram';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
+import { Chip } from '@/shared/ui/Chip';
 
 /**
  * What football is on next.
@@ -31,6 +31,10 @@ export function MatchesScreen() {
   const { t, i18n } = useTranslation();
   const [fixtures, setFixtures] = useState<Fixture[] | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  // null — «все турниры». Не пустое множество: пустое пришлось бы всюду
+  // читать как «ничего не выбрано, значит показать всё», и одна забытая
+  // проверка превратила бы фильтр в пустой экран.
+  const [league, setLeague] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +59,27 @@ export function MatchesScreen() {
     return map;
   }, [predictions]);
 
-  const days = useMemo(() => groupByDay(fixtures ?? []), [fixtures]);
+  /**
+   * Турниры — ИЗ САМОГО СПИСКА, а не из KNOWN_SPORT_KEYS.
+   *
+   * Провайдер заводит новый ключ каждый раз, когда начинается турнир, и
+   * фильтр по заранее написанному перечню молча потерял бы его. А чип для
+   * лиги, которой сегодня нет в расписании, — это кнопка, ведущая в пустоту.
+   *
+   * Порядок — по числу матчей: лига, которой сегодня много, стоит первой.
+   */
+  const leagues = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const f of fixtures ?? []) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [fixtures]);
+
+  const shown = useMemo(
+    () => (league === null ? fixtures ?? [] : (fixtures ?? []).filter((f) => f.sport_key === league)),
+    [fixtures, league],
+  );
+
+  const days = useMemo(() => groupByDay(shown), [shown]);
 
   // Built once per language rather than per row: a formatter is expensive and
   // a list of sixty matches would otherwise build sixty of them.
@@ -105,6 +129,31 @@ export function MatchesScreen() {
 
         <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
 
+        {/* ─── Турниры ───
+            Горизонтальная лента, а не сетка: турниров бывает двадцать, и
+            сеткой они съедают экран до первого матча. Считанное число матчей
+            стоит прямо на чипе — иначе выбор вслепую, и половина чипов ведёт
+            в список из одного матча. */}
+        {leagues.length > 1 && (
+          <div className="-mx-4 px-4 overflow-x-auto">
+            <div className="flex gap-1.5 w-max pb-0.5">
+              <Chip
+                label={t('matches.all_leagues')}
+                selected={league === null}
+                onClick={() => { hapticImpact('light'); setLeague(null); }}
+              />
+              {leagues.map(([key, n]) => (
+                <Chip
+                  key={key}
+                  label={`${t(leagueKey(key), { defaultValue: readableSportKey(key) })} · ${n}`}
+                  selected={league === key}
+                  onClick={() => { hapticImpact('light'); setLeague(league === key ? null : key); }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {fixtures === null && (
           <p className="text-brand-muted text-sm text-center py-8">{t('matches.loading')}</p>
         )}
@@ -114,6 +163,10 @@ export function MatchesScreen() {
             <IconBallFootball size={28} stroke={1.5} className="mx-auto text-brand-muted mb-2" />
             <p className="text-brand-muted text-sm">{t('matches.empty')}</p>
           </div>
+        )}
+
+        {fixtures !== null && fixtures.length > 0 && shown.length === 0 && (
+          <p className="text-brand-muted text-sm text-center py-8">{t('matches.empty_league')}</p>
         )}
 
         {days.map(({ day, fixtures: list }) => (

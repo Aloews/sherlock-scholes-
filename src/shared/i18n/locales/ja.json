@@ -518,7 +518,9 @@
     "my_rank": "順位",
     "my_breakdown": "確定: {{settled}} · 完全一致: {{exact}} · 待ち: {{pending}}",
     "top_predictors": "予想ランキング",
-    "exact_short": "完全一致 {{n}}"
+    "exact_short": "完全一致 {{n}}",
+    "all_leagues": "すべての大会",
+    "empty_league": "この大会に今後の試合はありません。"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",
@@ -542,7 +544,11 @@
     "soccer_uefa_europa_league": "ヨーロッパリーグ",
     "soccer_uefa_nations_league": "ネーションズリーグ",
     "soccer_conmebol_copa_libertadores": "コパ・リベルタドーレス",
-    "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ"
+    "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ",
+    "soccer_fifa_world_cup": "ワールドカップ",
+    "soccer_fifa_world_cup_qualifiers_europe": "ワールドカップ予選（欧州）",
+    "soccer_uefa_european_championship": "欧州選手権",
+    "soccer_uefa_euro_qualification": "欧州選手権予選"
   },
   "fantasy": {
     "title": "ファンタジー",

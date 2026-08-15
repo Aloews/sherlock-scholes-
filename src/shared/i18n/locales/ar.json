@@ -593,7 +593,9 @@
     "my_rank": "الترتيب",
     "my_breakdown": "مُحتسبة: {{settled}} · مضبوطة: {{exact}} · بالانتظار: {{pending}}",
     "top_predictors": "أفضل المتوقّعين",
-    "exact_short": "مضبوطة {{n}}"
+    "exact_short": "مضبوطة {{n}}",
+    "all_leagues": "كل البطولات",
+    "empty_league": "لا مباريات قادمة في هذه البطولة."
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",
@@ -617,7 +619,11 @@
     "soccer_uefa_europa_league": "الدوري الأوروبي",
     "soccer_uefa_nations_league": "دوري الأمم الأوروبية",
     "soccer_conmebol_copa_libertadores": "كأس ليبرتادوريس",
-    "soccer_conmebol_copa_sudamericana": "كأس سودأمريكانا"
+    "soccer_conmebol_copa_sudamericana": "كأس سودأمريكانا",
+    "soccer_fifa_world_cup": "كأس العالم",
+    "soccer_fifa_world_cup_qualifiers_europe": "تصفيات كأس العالم (أوروبا)",
+    "soccer_uefa_european_championship": "بطولة أوروبا",
+    "soccer_uefa_euro_qualification": "تصفيات بطولة أوروبا"
   },
   "fantasy": {
     "title": "فانتازي",
