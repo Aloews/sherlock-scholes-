@@ -635,6 +635,7 @@
   },
   "news": {
     "title": "Notícias do futebol",
-    "note": "Primeiro, o que todos publicaram ao mesmo tempo."
+    "note": "Primeiro, o que todos publicaram ao mesmo tempo.",
+    "failed": "Não foi possível carregar as notícias. Tente mais tarde."
   }
 }

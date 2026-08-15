@@ -635,6 +635,7 @@
   },
   "news": {
     "title": "Football news",
-    "note": "What every outlet ran with, first."
+    "note": "What every outlet ran with, first.",
+    "failed": "Could not load the news. Try again later."
   }
 }
