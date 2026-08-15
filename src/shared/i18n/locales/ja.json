@@ -588,6 +588,8 @@
     "loudness_other": "{{n}}媒体",
     "weekend": "週末のゴール",
     "weekend_note": "ゴールを先に、その後は再生数順です。",
+    "week": "今週のベスト",
+    "week_note": "節の合間のカップ戦と欧州の夜 — 週末に入らなかった分。",
     "moment": "名場面",
     "empty_weekend": "その週末の動画はありません。",
     "views_other": "{{n}}回再生"

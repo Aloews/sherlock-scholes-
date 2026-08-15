@@ -604,6 +604,8 @@
     "loudness_other": "{{n}} medios",
     "weekend": "Goles del fin de semana",
     "weekend_note": "Primero los goles, luego por visualizaciones.",
+    "week": "Lo mejor de la semana",
+    "week_note": "Copas y noches europeas entre jornadas: lo que no cabe en el fin de semana.",
     "moment": "momento",
     "empty_weekend": "No hay vídeos de ese fin de semana.",
     "views_one": "{{n}} visualización",

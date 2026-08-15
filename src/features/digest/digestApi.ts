@@ -45,11 +45,21 @@ export async function fetchNews(lang: string, limit = 30): Promise<NewsItem[]> {
  * Ролик выходных. То же, что GoalClip, плюс то, чего у дневного нет: настоящие
  * просмотры и признак «похоже на гол».
  */
-export interface WeekendGoal extends GoalClip {
+export interface RankedClip extends GoalClip {
   views: number;
   likes: number;
   /** Разбор заголовка, а не факт. Экран честно помечает остальное как момент. */
   is_goal: boolean;
+}
+
+/**
+ * Ролик выходных — то же плюс границы окна, которые показывает подпись.
+ *
+ * Отдельный тип от RankedClip, а не «то же с необязательными полями»:
+ * недельный список этих границ не возвращает вовсе, и опциональность здесь
+ * означала бы «иногда есть», хотя на деле — «есть ровно у одного из двух».
+ */
+export interface WeekendGoal extends RankedClip {
   weekend_start: string;
   weekend_end: string;
 }
@@ -67,6 +77,27 @@ export async function fetchWeekendGoals(limit = 12): Promise<WeekendGoal[]> {
     return [];
   }
   return (data as WeekendGoal[]) ?? [];
+}
+
+/**
+ * Лучшее за неделю МИМО ВЫХОДНЫХ.
+ *
+ * РАЗДЕЛ СУЩЕСТВУЕТ ИЗ-ЗА ДЫРЫ, В КОТОРУЮ ПРОВАЛИЛСЯ СУПЕРКУБОК. Ролик UEFA
+ * от пятницы был скачан вовремя и лежал в базе, но показать его было негде:
+ * в блок выходных (8–10 августа) он не попадает, а из суточного выпал через
+ * 24 часа. Так же исчезало всё, что играется с понедельника по пятницу —
+ * Лига чемпионов, кубки, отборочные.
+ *
+ * Границы вычитаются те же, что у блока выходных, поэтому один ролик не может
+ * оказаться в обоих списках.
+ */
+export async function fetchWeekGoals(limit = 12): Promise<RankedClip[]> {
+  const { data, error } = await supabase.rpc('digest_week_goals', { p_limit: limit });
+  if (error) {
+    console.error('[digest] digest_week_goals failed:', error.code, error.message);
+    return [];
+  }
+  return (data as RankedClip[]) ?? [];
 }
 
 export async function fetchGoals(limit = 20): Promise<GoalClip[]> {

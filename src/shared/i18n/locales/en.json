@@ -604,6 +604,8 @@
     "loudness_other": "{{n}} outlets",
     "weekend": "Goals of the weekend",
     "weekend_note": "Goals first, then by view count.",
+    "week": "Best of the week",
+    "week_note": "Cups and European nights between rounds — what the weekend missed.",
     "moment": "moment",
     "empty_weekend": "No clips from that weekend.",
     "views_one": "{{n}} view",
