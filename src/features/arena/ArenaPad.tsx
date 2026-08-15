@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { IconBallFootball } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import type { PlayerInput } from './physics';
 
@@ -115,45 +116,65 @@ export function ArenaPad({ side, input, onKickChange, label, kickLabel, color }:
     if (down) hapticImpact('light');
   };
 
-  // Кнопка удара — с внутренней стороны, джойстик с внешней: телефон держат
-  // вдвоём за края, и большой палец каждого приходит со своего края.
-  const stickFirst = side === 'left';
+  // Кнопка удара — у ВНЕШНЕГО края своей половины. Сначала обе стояли рядом в
+  // середине, и на экране это читалось как один пульт на двоих, а не как два.
+  // По углам они расходятся, и половины становятся видно.
+  const kickSide = side === 'left' ? 'left-3' : 'right-3';
 
   return (
-    <div className={`flex-1 flex items-stretch gap-2 ${stickFirst ? '' : 'flex-row-reverse'}`}>
-      <div
-        ref={zoneRef}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        // touch-none обязателен: без него браузер считает то же движение
-        // прокруткой и джойстик перестаёт получать события на середине жеста.
-        className="relative flex-1 min-h-[132px] rounded-2xl border border-brand-border bg-brand-surface/60 touch-none select-none overflow-hidden"
-        aria-label={label}
+    // ОДНА ОБЛАСТЬ НА ИГРОКА, а не «джойстик и кнопка рядом». Колонки в 74
+    // пикселя шириной и во всю высоту экрана — это не кнопка, а стена с
+    // кружком посередине; и четыре одинаковых столбца ничего не говорят о том,
+    // где чья половина. Здесь джойстик — вся площадка, а удар — круг у её
+    // угла, с понятным размером.
+    <div
+      ref={zoneRef}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      // touch-none обязателен: без него браузер считает то же движение
+      // прокруткой и джойстик перестаёт получать события на середине жеста.
+      className="relative flex-1 rounded-2xl border border-brand-border bg-brand-surface/60 touch-none select-none overflow-hidden"
+      aria-label={label}
+    >
+      <span
+        className="absolute inset-x-0 top-2 text-center text-[10px] uppercase tracking-wider pointer-events-none"
+        style={{ color }}
       >
-        <span className="absolute inset-x-0 top-2 text-center text-[10px] uppercase tracking-wider text-brand-muted pointer-events-none">
-          {label}
-        </span>
-        <div
-          ref={knobRef}
-          aria-hidden
-          className="absolute w-11 h-11 -ml-[22px] -mt-[22px] rounded-full pointer-events-none opacity-0 transition-opacity duration-100"
-          style={{ background: color, boxShadow: `0 0 0 2px ${color}` }}
-        />
-      </div>
+        {label}
+      </span>
+
+      <div
+        ref={knobRef}
+        aria-hidden
+        className="absolute w-11 h-11 -ml-[22px] -mt-[22px] rounded-full pointer-events-none opacity-0 transition-opacity duration-100"
+        style={{ background: color, boxShadow: `0 0 0 2px ${color}` }}
+      />
 
       <button
         type="button"
-        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setKick(true); }}
-        onPointerUp={() => setKick(false)}
-        onPointerCancel={() => setKick(false)}
+        // stopPropagation обязателен: кнопка лежит ВНУТРИ площадки джойстика,
+        // и без него одно нажатие начинало бы ещё и перетаскивание — игрок
+        // бил бы и одновременно бежал в случайную сторону.
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setKick(true);
+        }}
+        onPointerMove={(e) => e.stopPropagation()}
+        onPointerUp={(e) => { e.stopPropagation(); setKick(false); }}
+        onPointerCancel={(e) => { e.stopPropagation(); setKick(false); }}
         onContextMenu={(e) => e.preventDefault()}
-        className="w-[74px] shrink-0 rounded-2xl border border-brand-border bg-brand-surface/60 touch-none select-none flex flex-col items-center justify-center gap-1 active:bg-brand-surface"
-        style={{ color }}
+        className={`absolute bottom-3 ${kickSide} w-[78px] h-[78px] rounded-full touch-none select-none flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform`}
+        // Тень тем же цветом с прозрачностью: `rgb(var(--team-left) / 0.35)` —
+        // ради этого переменные и хранятся тройками без функции.
+        style={{ background: color, boxShadow: `0 6px 18px ${color.replace(')', ' / 0.35)')}` }}
       >
-        <span className="w-8 h-8 rounded-full" style={{ background: color }} aria-hidden />
-        <span className="text-[10px] uppercase tracking-wider text-brand-muted">{kickLabel}</span>
+        <IconBallFootball size={26} stroke={2} className="text-brand-bg" aria-hidden />
+        <span className="text-[10px] uppercase tracking-wider text-brand-bg font-bold">
+          {kickLabel}
+        </span>
       </button>
     </div>
   );

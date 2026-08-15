@@ -588,6 +588,8 @@
     "loudness_other": "{{n}}家媒体",
     "weekend": "周末进球",
     "weekend_note": "先看进球，其余按播放量排序。",
+    "week": "本周最佳",
+    "week_note": "轮次之间的杯赛与欧战之夜——周末没有收录的部分。",
     "moment": "瞬间",
     "empty_weekend": "那个周末没有视频。",
     "views_other": "{{n}}次播放"

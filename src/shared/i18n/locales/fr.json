@@ -604,6 +604,8 @@
     "loudness_other": "{{n}} médias",
     "weekend": "Buts du week-end",
     "weekend_note": "Les buts d’abord, puis par nombre de vues.",
+    "week": "Le meilleur de la semaine",
+    "week_note": "Coupes et soirées européennes entre les journées — ce que le week-end n’a pas pris.",
     "moment": "moment",
     "empty_weekend": "Aucune vidéo de ce week-end.",
     "views_one": "{{n}} vue",

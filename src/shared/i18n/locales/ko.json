@@ -588,6 +588,8 @@
     "loudness_other": "{{n}}개 매체",
     "weekend": "주말의 골",
     "weekend_note": "골을 먼저, 그다음은 조회수 순입니다.",
+    "week": "이번 주 베스트",
+    "week_note": "라운드 사이의 컵과 유럽 대항전 — 주말에 담기지 않은 것들.",
     "moment": "장면",
     "empty_weekend": "그 주말의 영상이 없습니다.",
     "views_other": "조회수 {{n}}회"
