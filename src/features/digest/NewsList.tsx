@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconFlame, IconExternalLink } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import { fetchNews, type NewsItem } from './digestApi';
+import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { feedLanguage } from './digestFormat';
 
 /**
@@ -23,7 +24,7 @@ import { feedLanguage } from './digestFormat';
  */
 export function NewsList({ limit = 60 }: { limit?: number }) {
   const { t, i18n } = useTranslation();
-  const [news, setNews] = useState<NewsItem[] | null>(null);
+  const [news, setNews] = useState<LoadState<NewsItem[]>>(LOADING);
   const lang = feedLanguage(i18n.language);
 
   useEffect(() => {
@@ -41,12 +42,27 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
 
   return (
     <section className="space-y-2">
-      {news === null && <p className="text-brand-muted text-sm py-4">{t('digest.loading')}</p>}
-      {news !== null && news.length === 0 && (
+      {news.status === 'loading' && (
+        <p className="text-brand-muted text-sm py-4">{t('digest.loading')}</p>
+      )}
+
+      {/* СЛОМАЛОСЬ — ЭТО НЕ ПУСТО, и теперь это видно. Раньше отказ RPC
+          показывался той же надписью «за сутки ничего не пришло»: человек
+          читал её как «новостей нет» и уходил, а на деле лента не отвечала.
+          Код ошибки на экране — чтобы о поломке можно было СКАЗАТЬ, не
+          открывая консоль, которую всё равно никто не открывает. */}
+      {news.status === 'error' && (
+        <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 text-center space-y-1">
+          <p className="text-brand-muted text-sm">{t('news.failed')}</p>
+          <p className="text-brand-muted/50 text-[10px] font-mono">{news.code}</p>
+        </div>
+      )}
+
+      {news.status === 'ok' && news.data.length === 0 && (
         <p className="text-brand-muted text-sm py-4">{t('digest.empty_news')}</p>
       )}
 
-      {news?.map((item) => (
+      {news.status === 'ok' && news.data.map((item) => (
         <button
           key={item.url}
           type="button"

@@ -635,6 +635,7 @@
   },
   "news": {
     "title": "Actualités du football",
-    "note": "D’abord ce que tous les médias ont repris."
+    "note": "D’abord ce que tous les médias ont repris.",
+    "failed": "Impossible de charger les actualités. Réessayez plus tard."
   }
 }

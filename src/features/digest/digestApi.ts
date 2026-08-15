@@ -5,6 +5,7 @@
 // писать не может (грант на запись есть только у service_role).
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 
 export interface NewsItem {
   title: string;
@@ -32,13 +33,17 @@ export interface GoalClip {
   thumb_url: string | null;
 }
 
-export async function fetchNews(lang: string, limit = 30): Promise<NewsItem[]> {
-  const { data, error } = await supabase.rpc('digest_news', { p_lang: lang, p_limit: limit });
-  if (error) {
-    console.error('[digest] digest_news failed:', error.code, error.message);
-    return [];
-  }
-  return (data as NewsItem[]) ?? [];
+/**
+ * Заголовки — С РАЗЛИЧЕНИЕМ «ПУСТО» И «СЛОМАЛОСЬ».
+ *
+ * Остальные обёртки в этом файле ещё возвращают пустой массив на ошибке, и это
+ * ровно то, из-за чего три поломки подряд выглядели как отсутствие данных.
+ * Лента переведена первой: она новая, на ней видно результат, и по ней можно
+ * переносить остальные.
+ */
+export async function fetchNews(lang: string, limit = 30): Promise<LoadState<NewsItem[]>> {
+  const res = await supabase.rpc('digest_news', { p_lang: lang, p_limit: limit });
+  return fromPostgrest<NewsItem[]>(res, 'digest_news');
 }
 
 /**
