@@ -97,6 +97,12 @@ export function GameScreen() {
   const master = useDesign() === 'master';
   const navigate = useNavigate();
   const { phase, countdown, teamScores, currentRound, room } = useGameStore();
+  // ОШИБКА ЖИЛА В СТОРЕ И НЕ ПОКАЗЫВАЛАСЬ ЗДЕСЬ НИ РАЗУ. gameStore.error
+  // заполняется на всём пути комнаты, главный экран его рисует, а игровой не
+  // упоминал вовсе — то есть отказ во время живого раунда просто не имел где
+  // проявиться. Сообщение уже переведено тем, кто его ставил, поэтому новых
+  // ключей не нужно: нужен был только экран, готовый его показать.
+  const error = useGameStore((s) => s.error);
   const { t } = useTranslation();
   const {
     activeCard,
@@ -199,6 +205,15 @@ export function GameScreen() {
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       {phase === 'countdown' && countdown > 0 && <CountdownOverlay n={countdown} />}
       {phase === 'round_summary' && <RoundSummaryOverlay />}
+
+      {/* Поверх счёта, а не под колодой: во время раунда смотрят на карточку,
+          и сообщение внизу экрана прочитали бы после того, как оно перестало
+          иметь значение. Оно уже переведено тем, кто его поставил. */}
+      {error && (
+        <div className="mx-4 mt-3 bg-red-500/10 border border-red-500/30 rounded-2xl p-3 text-center">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Score bar */}
       <div className={`flex items-center justify-between px-4 pt-6 pb-3 ${master ? '' : 'border-b border-brand-border'}`}>
