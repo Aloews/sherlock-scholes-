@@ -107,7 +107,8 @@
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
     "alias_link": "Alias do futebol",
-    "digest_link": "Gols e manchetes",
+    "digest_link": "Gols e lances",
+    "news_link": "Notícias",
     "top_goal": "Melhor gol do fim de semana",
     "top_moment": "Melhor lance do fim de semana",
     "fresh_clip": "Vídeo novo de hoje",
@@ -631,5 +632,9 @@
     "pitch_aria": "Campo da arena com dois jogadores e uma bola",
     "rules_one": "Ganha quem fizer {{n}} gol",
     "rules_other": "Ganha quem fizer {{n}} gols"
+  },
+  "news": {
+    "title": "Notícias do futebol",
+    "note": "Primeiro, o que todos publicaram ao mesmo tempo."
   }
 }

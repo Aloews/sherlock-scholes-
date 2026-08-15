@@ -107,7 +107,8 @@
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
     "alias_link": "Football Alias",
-    "digest_link": "Goals & headlines",
+    "digest_link": "Goals & moments",
+    "news_link": "News",
     "top_goal": "Top goal of the weekend",
     "top_moment": "Top moment of the weekend",
     "fresh_clip": "Today's new clip",
@@ -631,5 +632,9 @@
     "pitch_aria": "Arena pitch with two players and a ball",
     "rules_one": "First to {{n}} goal wins",
     "rules_other": "First to {{n}} goals wins"
+  },
+  "news": {
+    "title": "Football news",
+    "note": "What every outlet ran with, first."
   }
 }

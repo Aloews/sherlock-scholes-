@@ -105,7 +105,8 @@
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
     "alias_link": "축구 알리아스",
-    "digest_link": "골과 뉴스",
+    "digest_link": "골과 장면",
+    "news_link": "뉴스",
     "top_goal": "주말 베스트 골",
     "top_moment": "주말 베스트 장면",
     "fresh_clip": "오늘의 새 영상",
@@ -613,5 +614,9 @@
     "hint": "휴대폰을 사이에 두세요. 좌우가 각자의 조작입니다.",
     "pitch_aria": "두 명의 선수와 공이 있는 아레나 경기장",
     "rules_other": "{{n}}골 먼저 넣으면 승리"
+  },
+  "news": {
+    "title": "축구 뉴스",
+    "note": "여러 매체가 동시에 다룬 소식부터."
   }
 }
