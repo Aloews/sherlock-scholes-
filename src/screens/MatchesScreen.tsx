@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconBallFootball, IconDeviceTvOld } from '@tabler/icons-react';
 import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
+import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { PredictionRow } from '@/features/fixtures/PredictionRow';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
@@ -30,7 +31,7 @@ import { Chip } from '@/shared/ui/Chip';
 export function MatchesScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [fixtures, setFixtures] = useState<Fixture[] | null>(null);
+  const [fixtures, setFixtures] = useState<LoadState<Fixture[]>>(LOADING);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   // null — «все турниры». Не пустое множество: пустое пришлось бы всюду
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
@@ -81,12 +82,12 @@ export function MatchesScreen() {
    */
   const leagues = useMemo(() => {
     const count = new Map<string, number>();
-    for (const f of fixtures ?? []) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
+    for (const f of dataOr(fixtures, [])) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
     return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [fixtures]);
 
   const shown = useMemo(
-    () => (league === null ? fixtures ?? [] : (fixtures ?? []).filter((f) => f.sport_key === league)),
+    () => (league === null ? dataOr(fixtures, []) : dataOr(fixtures, []).filter((f) => f.sport_key === league)),
     [fixtures, league],
   );
 
@@ -165,18 +166,28 @@ export function MatchesScreen() {
           </div>
         )}
 
-        {fixtures === null && (
+        {fixtures.status === 'loading' && (
           <p className="text-brand-muted text-sm text-center py-8">{t('matches.loading')}</p>
         )}
 
-        {fixtures !== null && fixtures.length === 0 && (
+        {/* «Расписание пустое» успокаивает и тогда, когда всё сломалось, — а
+            здесь оно правдоподобно как нигде: межсезонье и пауза на сборные
+            выглядят точно так же. Поэтому отказ говорит о себе отдельно. */}
+        {fixtures.status === 'error' && (
+          <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-6 text-center space-y-1">
+            <p className="text-brand-muted text-sm">{t('matches.failed')}</p>
+            <p className="text-brand-muted/50 text-[10px] font-mono">{fixtures.code}</p>
+          </div>
+        )}
+
+        {fixtures.status === 'ok' && fixtures.data.length === 0 && (
           <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-6 text-center">
             <IconBallFootball size={28} stroke={1.5} className="mx-auto text-brand-muted mb-2" />
             <p className="text-brand-muted text-sm">{t('matches.empty')}</p>
           </div>
         )}
 
-        {fixtures !== null && fixtures.length > 0 && shown.length === 0 && (
+        {fixtures.status === 'ok' && fixtures.data.length > 0 && shown.length === 0 && (
           <p className="text-brand-muted text-sm text-center py-8">{t('matches.empty_league')}</p>
         )}
 

@@ -537,7 +537,8 @@
     "exact_short": "exacts {{n}}",
     "all_leagues": "Toutes les compétitions",
     "empty_league": "Aucun match à venir dans cette compétition.",
-    "where_to_watch": "Où regarder · {{source}}"
+    "where_to_watch": "Où regarder · {{source}}",
+    "failed": "Impossible de charger le calendrier. Réessayez plus tard."
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

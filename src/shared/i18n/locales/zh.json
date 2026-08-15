@@ -522,7 +522,8 @@
     "exact_short": "全中 {{n}}",
     "all_leagues": "全部赛事",
     "empty_league": "该赛事暂无即将进行的比赛。",
-    "where_to_watch": "观看方式 · {{source}}"
+    "where_to_watch": "观看方式 · {{source}}",
+    "failed": "赛程加载失败，请稍后再试。"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

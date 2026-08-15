@@ -597,7 +597,8 @@
     "exact_short": "مضبوطة {{n}}",
     "all_leagues": "كل البطولات",
     "empty_league": "لا مباريات قادمة في هذه البطولة.",
-    "where_to_watch": "أين تشاهد · {{source}}"
+    "where_to_watch": "أين تشاهد · {{source}}",
+    "failed": "تعذّر تحميل جدول المباريات. حاول لاحقًا."
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",
