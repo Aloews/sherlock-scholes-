@@ -12,6 +12,7 @@
 // rather than trusting this file to remember.
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 
 export interface Fixture {
   id: string;
@@ -41,19 +42,28 @@ export const UPCOMING_LIMIT = 60;
  * a phone with a wrong clock would otherwise hide today's football or show
  * yesterday's.
  */
-export async function fetchUpcomingFixtures(limit = UPCOMING_LIMIT): Promise<Fixture[]> {
-  const { data, error } = await supabase
+/**
+ * Ближайшие матчи — С РАЗЛИЧЕНИЕМ «ПУСТО» И «СЛОМАЛОСЬ».
+ *
+ * Раньше отказ возвращал пустой массив, и экран говорил «расписание пока
+ * пустое» — то есть успокаивал ровно тогда, когда всё сломалось. Здесь это
+ * особенно дорого: расписание бывает пустым по-настоящему (межсезонье,
+ * пауза на сборные), поэтому надпись не вызывает подозрений вообще никогда.
+ *
+ * ПОРЯДОК ЗАДАЁТ ЗАПРОС, и groupByDay ниже на это опирается — сортировать
+ * ещё раз на клиенте значит завести второе место, где решается порядок.
+ */
+export async function fetchUpcomingFixtures(
+  limit = UPCOMING_LIMIT,
+): Promise<LoadState<Fixture[]>> {
+  const res = await supabase
     .from('fixtures')
     .select('id,sport_key,commence_at,home_team,away_team,home_card_id,away_card_id,home_score,away_score,completed,scores_at')
     .gt('commence_at', new Date().toISOString())
     .order('commence_at', { ascending: true })
     .limit(limit);
 
-  if (error) {
-    console.error('[fixtures] upcoming failed:', error.code, error.message);
-    return [];
-  }
-  return (data as Fixture[]) ?? [];
+  return fromPostgrest<Fixture[]>(res, 'fixtures.upcoming');
 }
 
 /**
