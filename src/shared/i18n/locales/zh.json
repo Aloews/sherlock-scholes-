@@ -105,7 +105,8 @@
     "fantasy_link": "梦幻联赛",
     "quiz_link": "猜球员",
     "alias_link": "足球猜词",
-    "digest_link": "进球与头条",
+    "digest_link": "进球与瞬间",
+    "news_link": "新闻",
     "top_goal": "本周末最佳进球",
     "top_moment": "本周末最佳瞬间",
     "fresh_clip": "今日新视频",
@@ -518,7 +519,10 @@
     "my_rank": "排名",
     "my_breakdown": "已结算：{{settled}} · 全中：{{exact}} · 待定：{{pending}}",
     "top_predictors": "预测排行榜",
-    "exact_short": "全中 {{n}}"
+    "exact_short": "全中 {{n}}",
+    "all_leagues": "全部赛事",
+    "empty_league": "该赛事暂无即将进行的比赛。",
+    "where_to_watch": "观看方式 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",
@@ -542,7 +546,11 @@
     "soccer_uefa_europa_league": "欧罗巴联赛",
     "soccer_uefa_nations_league": "欧洲国家联赛",
     "soccer_conmebol_copa_libertadores": "南美解放者杯",
-    "soccer_conmebol_copa_sudamericana": "南美杯"
+    "soccer_conmebol_copa_sudamericana": "南美杯",
+    "soccer_fifa_world_cup": "世界杯",
+    "soccer_fifa_world_cup_qualifiers_europe": "世界杯预选赛（欧洲）",
+    "soccer_uefa_european_championship": "欧洲杯",
+    "soccer_uefa_euro_qualification": "欧洲杯预选赛"
   },
   "fantasy": {
     "title": "梦幻联赛",
@@ -606,5 +614,9 @@
     "hint": "把手机放在两人中间，左右各管自己的操作。",
     "pitch_aria": "竞技场球场，两名球员和一个球",
     "rules_other": "先进{{n}}球者获胜"
+  },
+  "news": {
+    "title": "足球新闻",
+    "note": "先看各家同时报道的话题。"
   }
 }

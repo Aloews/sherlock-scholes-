@@ -105,7 +105,8 @@
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
     "alias_link": "축구 알리아스",
-    "digest_link": "골과 뉴스",
+    "digest_link": "골과 장면",
+    "news_link": "뉴스",
     "top_goal": "주말 베스트 골",
     "top_moment": "주말 베스트 장면",
     "fresh_clip": "오늘의 새 영상",
@@ -518,7 +519,10 @@
     "my_rank": "순위",
     "my_breakdown": "확정: {{settled}} · 정확: {{exact}} · 대기: {{pending}}",
     "top_predictors": "예측 순위",
-    "exact_short": "정확 {{n}}"
+    "exact_short": "정확 {{n}}",
+    "all_leagues": "모든 대회",
+    "empty_league": "이 대회에 예정된 경기가 없습니다.",
+    "where_to_watch": "중계 안내 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
@@ -542,7 +546,11 @@
     "soccer_uefa_europa_league": "유로파리그",
     "soccer_uefa_nations_league": "네이션스리그",
     "soccer_conmebol_copa_libertadores": "코파 리베르타도레스",
-    "soccer_conmebol_copa_sudamericana": "코파 수다메리카나"
+    "soccer_conmebol_copa_sudamericana": "코파 수다메리카나",
+    "soccer_fifa_world_cup": "월드컵",
+    "soccer_fifa_world_cup_qualifiers_europe": "월드컵 예선 (유럽)",
+    "soccer_uefa_european_championship": "유럽 선수권",
+    "soccer_uefa_euro_qualification": "유럽 선수권 예선"
   },
   "fantasy": {
     "title": "판타지",
@@ -606,5 +614,9 @@
     "hint": "휴대폰을 사이에 두세요. 좌우가 각자의 조작입니다.",
     "pitch_aria": "두 명의 선수와 공이 있는 아레나 경기장",
     "rules_other": "{{n}}골 먼저 넣으면 승리"
+  },
+  "news": {
+    "title": "축구 뉴스",
+    "note": "여러 매체가 동시에 다룬 소식부터."
   }
 }

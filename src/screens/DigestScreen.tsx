@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconFlame, IconPlayerPlayFilled, IconExternalLink } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
-  fetchNews, fetchGoals, fetchWeekendGoals, fetchWeekGoals,
-  type NewsItem, type GoalClip, type WeekendGoal, type RankedClip,
+  fetchGoals, fetchWeekendGoals, fetchWeekGoals,
+  type GoalClip, type WeekendGoal, type RankedClip,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
 import { watchUrl, feedLanguage } from '@/features/digest/digestFormat';
@@ -40,7 +40,6 @@ export function DigestScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
-  const [news, setNews] = useState<NewsItem[] | null>(null);
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
   const [weekend, setWeekend] = useState<WeekendGoal[] | null>(null);
   const [week, setWeek] = useState<RankedClip[] | null>(null);
@@ -49,16 +48,23 @@ export function DigestScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const [n, g, w, wk] = await Promise.all([
-        fetchNews(lang), fetchGoals(), fetchWeekendGoals(), fetchWeekGoals(),
-      ]);
-      if (cancelled) return;
-      setNews(n);
-      setGoals(g);
-      setWeekend(w);
-      setWeek(wk);
-    })();
+    // КАЖДЫЙ РАЗДЕЛ ПОЯВЛЯЕТСЯ САМ, а не все сразу.
+    //
+    // Раньше здесь стоял Promise.all, и экран не показывал НИЧЕГО, пока не
+    // ответит самый медленный из четырёх запросов. Медленный — это заголовки:
+    // громкость считается при чтении и стоит около секунды, тогда как ролики
+    // приходят за треть. То есть три готовых раздела ждали четвёртый, и
+    // ожидание было ровно по худшему, а не по среднему.
+    //
+    // Отдельные промисы вместо одного: каждый setState рисует свой раздел, у
+    // всех уже есть состояние загрузки, и порядок разделов на экране от
+    // порядка ответов не зависит.
+    const run = <T,>(p: Promise<T>, set: (v: T) => void) => {
+      void p.then((v) => { if (!cancelled) set(v); });
+    };
+    run(fetchWeekendGoals(), setWeekend);
+    run(fetchWeekGoals(), setWeek);
+    run(fetchGoals(), setGoals);
     return () => { cancelled = true; };
   }, [lang]);
 
@@ -130,45 +136,6 @@ export function DigestScreen() {
             {week.map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
-
-        {/* ─── Заголовки ─── */}
-        <section className="space-y-2">
-          <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
-            {t('digest.headlines')}
-          </p>
-
-          {news === null && <p className="text-brand-muted text-sm py-4">{t('digest.loading')}</p>}
-          {news !== null && news.length === 0 && (
-            <p className="text-brand-muted text-sm py-4">{t('digest.empty_news')}</p>
-          )}
-
-          {news?.map((item) => (
-            <button
-              key={item.url}
-              type="button"
-              onClick={() => open(item.url)}
-              className="w-full ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 text-left hover:border-brand-accent/50 transition-colors"
-            >
-              <p className="text-white text-sm">{item.title}</p>
-              <p className="flex items-center gap-1.5 text-brand-muted text-[10.5px] mt-1.5">
-                <span>{item.source}</span>
-                <span>·</span>
-                <span>{timeFmt.format(new Date(item.published_at))}</span>
-                {/* Показывается только с двойки: единица — это «больше никто»,
-                    и для языка с одним изданием она стояла бы у каждой строки.
-                    Ключ во множественном числе: «2 издания» и «5 изданий» —
-                    разные формы, и русский с арабским этого не прощают. */}
-                {item.loudness > 1 && (
-                  <span className="flex items-center gap-0.5 text-brand-accent">
-                    <IconFlame size={11} stroke={2} />
-                    {t('digest.loudness', { count: item.loudness, n: item.loudness })}
-                  </span>
-                )}
-                <IconExternalLink size={11} stroke={2} className="ml-auto shrink-0" />
-              </p>
-            </button>
-          ))}
-        </section>
 
         {/* ─── Видео ─── */}
         <section className="space-y-2">

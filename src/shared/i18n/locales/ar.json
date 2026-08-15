@@ -110,7 +110,8 @@
     "fantasy_link": "دوري الفانتازي",
     "quiz_link": "خمّن اللاعب",
     "alias_link": "أليّاس كرة القدم",
-    "digest_link": "الأهداف والعناوين",
+    "digest_link": "الأهداف واللقطات",
+    "news_link": "الأخبار",
     "top_goal": "أفضل هدف في نهاية الأسبوع",
     "top_moment": "أفضل لقطة في نهاية الأسبوع",
     "fresh_clip": "مقطع اليوم الجديد",
@@ -593,7 +594,10 @@
     "my_rank": "الترتيب",
     "my_breakdown": "مُحتسبة: {{settled}} · مضبوطة: {{exact}} · بالانتظار: {{pending}}",
     "top_predictors": "أفضل المتوقّعين",
-    "exact_short": "مضبوطة {{n}}"
+    "exact_short": "مضبوطة {{n}}",
+    "all_leagues": "كل البطولات",
+    "empty_league": "لا مباريات قادمة في هذه البطولة.",
+    "where_to_watch": "أين تشاهد · {{source}}"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",
@@ -617,7 +621,11 @@
     "soccer_uefa_europa_league": "الدوري الأوروبي",
     "soccer_uefa_nations_league": "دوري الأمم الأوروبية",
     "soccer_conmebol_copa_libertadores": "كأس ليبرتادوريس",
-    "soccer_conmebol_copa_sudamericana": "كأس سودأمريكانا"
+    "soccer_conmebol_copa_sudamericana": "كأس سودأمريكانا",
+    "soccer_fifa_world_cup": "كأس العالم",
+    "soccer_fifa_world_cup_qualifiers_europe": "تصفيات كأس العالم (أوروبا)",
+    "soccer_uefa_european_championship": "بطولة أوروبا",
+    "soccer_uefa_euro_qualification": "تصفيات بطولة أوروبا"
   },
   "fantasy": {
     "title": "فانتازي",
@@ -693,5 +701,9 @@
     "rules_few": "الفوز بتسجيل {{n}} أهداف",
     "rules_many": "الفوز بتسجيل {{n}} هدفًا",
     "rules_other": "الفوز بتسجيل {{n}} هدف"
+  },
+  "news": {
+    "title": "أخبار كرة القدم",
+    "note": "أولًا ما نشرته كل الوسائل معًا."
   }
 }

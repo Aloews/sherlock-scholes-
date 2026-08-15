@@ -107,7 +107,8 @@
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivina el jugador",
     "alias_link": "Alias futbolero",
-    "digest_link": "Goles y titulares",
+    "digest_link": "Goles y jugadas",
+    "news_link": "Noticias",
     "top_goal": "Mejor gol del fin de semana",
     "top_moment": "Mejor jugada del fin de semana",
     "fresh_clip": "Vídeo nuevo de hoy",
@@ -533,7 +534,10 @@
     "my_rank": "Puesto",
     "my_breakdown": "cerrados: {{settled}} · exactos: {{exact}} · pendientes: {{pending}}",
     "top_predictors": "Mejores pronosticadores",
-    "exact_short": "exactos {{n}}"
+    "exact_short": "exactos {{n}}",
+    "all_leagues": "Todas las competiciones",
+    "empty_league": "No hay próximos partidos en esta competición.",
+    "where_to_watch": "Dónde verlo · {{source}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
@@ -557,7 +561,11 @@
     "soccer_uefa_europa_league": "Liga Europa",
     "soccer_uefa_nations_league": "Liga de Naciones",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
-    "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
+    "soccer_conmebol_copa_sudamericana": "Copa Sudamericana",
+    "soccer_fifa_world_cup": "Copa del Mundo",
+    "soccer_fifa_world_cup_qualifiers_europe": "Clasificación al Mundial (Europa)",
+    "soccer_uefa_european_championship": "Eurocopa",
+    "soccer_uefa_euro_qualification": "Clasificación a la Eurocopa"
   },
   "fantasy": {
     "title": "Fantasy",
@@ -624,5 +632,9 @@
     "pitch_aria": "Campo de la arena con dos jugadores y un balón",
     "rules_one": "Gana quien llegue a {{n}} gol",
     "rules_other": "Gana quien llegue a {{n}} goles"
+  },
+  "news": {
+    "title": "Noticias de fútbol",
+    "note": "Primero, lo que publican todos a la vez."
   }
 }

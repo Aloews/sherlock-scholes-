@@ -105,7 +105,8 @@
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
     "alias_link": "サッカー・アリアス",
-    "digest_link": "ゴールとニュース",
+    "digest_link": "ゴールと名場面",
+    "news_link": "ニュース",
     "top_goal": "週末のベストゴール",
     "top_moment": "週末のベストシーン",
     "fresh_clip": "今日の新着動画",
@@ -518,7 +519,10 @@
     "my_rank": "順位",
     "my_breakdown": "確定: {{settled}} · 完全一致: {{exact}} · 待ち: {{pending}}",
     "top_predictors": "予想ランキング",
-    "exact_short": "完全一致 {{n}}"
+    "exact_short": "完全一致 {{n}}",
+    "all_leagues": "すべての大会",
+    "empty_league": "この大会に今後の試合はありません。",
+    "where_to_watch": "放送予定 · {{source}}"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",
@@ -542,7 +546,11 @@
     "soccer_uefa_europa_league": "ヨーロッパリーグ",
     "soccer_uefa_nations_league": "ネーションズリーグ",
     "soccer_conmebol_copa_libertadores": "コパ・リベルタドーレス",
-    "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ"
+    "soccer_conmebol_copa_sudamericana": "コパ・スダメリカーナ",
+    "soccer_fifa_world_cup": "ワールドカップ",
+    "soccer_fifa_world_cup_qualifiers_europe": "ワールドカップ予選（欧州）",
+    "soccer_uefa_european_championship": "欧州選手権",
+    "soccer_uefa_euro_qualification": "欧州選手権予選"
   },
   "fantasy": {
     "title": "ファンタジー",
@@ -606,5 +614,9 @@
     "hint": "スマホを二人の間に置いてください。左右それぞれが自分の操作です。",
     "pitch_aria": "2人のプレーヤーとボールがいるアリーナのピッチ",
     "rules_other": "{{n}}点先取で勝ち"
+  },
+  "news": {
+    "title": "サッカーニュース",
+    "note": "各社がいっせいに報じた話題から。"
   }
 }

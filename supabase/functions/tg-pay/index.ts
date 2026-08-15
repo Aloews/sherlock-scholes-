@@ -151,6 +151,32 @@ async function handleStart(chatId: number, text: string, lang: string): Promise<
   });
 }
 
+/**
+ * Разбудить спящую базу, пока человек ещё смотрит на кнопку.
+ *
+ * ТА ЖЕ ЗАДАЧА, ЧТО У wakeSupabase НА ГЛАВНОМ ЭКРАНЕ, но на несколько секунд
+ * раньше. База на бесплатном тарифе засыпает, и первый запрос после сна стоит
+ * секунды — их платит тот, кто открыл приложение. А между «/start» и нажатием
+ * кнопки как раз проходит пара секунд: если разбудить здесь, к моменту
+ * открытия она уже горячая, и первый экран рисуется сразу.
+ *
+ * НЕ ЖДЁМ ОТВЕТА. Ответ Telegram должен уйти немедленно — иначе разбудить
+ * базу означало бы задержать сообщение ровно на то время, которое мы
+ * экономим. Промис отдаётся waitUntil, чтобы среда не убила его вместе с
+ * ответом; там, где waitUntil нет, он просто висит и гаснет сам.
+ *
+ * Запрос самый дешёвый из возможных: один id, без счётчика.
+ */
+function wakeDb(): void {
+  const p = fetch(`${SUPABASE_URL}/rest/v1/cards?select=id&limit=1`, {
+    headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` },
+  }).then(() => undefined).catch(() => undefined);
+
+  // EdgeRuntime есть в проде Supabase, но не в типах Deno.
+  const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  rt?.waitUntil?.(p);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -162,6 +188,11 @@ Deno.serve(async (req) => {
     if (!TG_WEBHOOK_SECRET || secretHeader !== TG_WEBHOOK_SECRET) {
       return new Response("forbidden", { status: 403 });
     }
+    // Заголовок совпал — обращение настоящее, и только теперь можно тратить
+    // на него работу. Прогрев ДО проверки секрета сделал бы из функции
+    // бесплатный способ нагружать базу кому угодно.
+    wakeDb();
+
     const update = await req.json().catch(() => null);
     if (!update) return new Response("ok"); // ignore garbage, ack to Telegram
 

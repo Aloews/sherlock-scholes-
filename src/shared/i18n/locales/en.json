@@ -107,7 +107,8 @@
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
     "alias_link": "Football Alias",
-    "digest_link": "Goals & headlines",
+    "digest_link": "Goals & moments",
+    "news_link": "News",
     "top_goal": "Top goal of the weekend",
     "top_moment": "Top moment of the weekend",
     "fresh_clip": "Today's new clip",
@@ -533,7 +534,10 @@
     "my_rank": "Rank",
     "my_breakdown": "settled: {{settled}} · exact: {{exact}} · pending: {{pending}}",
     "top_predictors": "Top predictors",
-    "exact_short": "exact {{n}}"
+    "exact_short": "exact {{n}}",
+    "all_leagues": "All competitions",
+    "empty_league": "No upcoming matches in this competition.",
+    "where_to_watch": "Where to watch · {{source}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
@@ -557,7 +561,11 @@
     "soccer_uefa_europa_league": "Europa League",
     "soccer_uefa_nations_league": "Nations League",
     "soccer_conmebol_copa_libertadores": "Copa Libertadores",
-    "soccer_conmebol_copa_sudamericana": "Copa Sudamericana"
+    "soccer_conmebol_copa_sudamericana": "Copa Sudamericana",
+    "soccer_fifa_world_cup": "World Cup",
+    "soccer_fifa_world_cup_qualifiers_europe": "World Cup qualifying (Europe)",
+    "soccer_uefa_european_championship": "European Championship",
+    "soccer_uefa_euro_qualification": "Euro qualifying"
   },
   "fantasy": {
     "title": "Fantasy",
@@ -624,5 +632,9 @@
     "pitch_aria": "Arena pitch with two players and a ball",
     "rules_one": "First to {{n}} goal wins",
     "rules_other": "First to {{n}} goals wins"
+  },
+  "news": {
+    "title": "Football news",
+    "note": "What every outlet ran with, first."
   }
 }
