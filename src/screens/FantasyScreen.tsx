@@ -40,6 +40,10 @@ export function FantasyScreen() {
   const [saved, setSaved] = useState(false);
 
   const [liveSquad, setLiveSquad] = useState<SquadMember[]>([]);
+  // Отдельный признак: форма заявки — это picked/captain, а не список. Если
+  // заявку не удалось прочитать, форма откроется пустой И БУДЕТ ВЫГЛЯДЕТЬ КАК
+  // «состав не собран». Игрок соберёт заново и перезапишет свой же выбор.
+  const [squadFailed, setSquadFailed] = useState(false);
   const [standings, setStandings] = useState<StandingRow[]>([]);
 
   useEffect(() => {
@@ -59,8 +63,15 @@ export function FantasyScreen() {
       setOptions(opts);
       // Уже заявленный состав — это состояние формы, а не отдельный экран:
       // менять заявку до закрытия можно, и она должна открываться заполненной.
-      setPicked(mine.map((m) => m.card_id));
-      setCaptain(mine.find((m) => m.is_captain)?.card_id ?? null);
+      //
+      // НО ТОЛЬКО ЕСЛИ ЕЁ ДЕЙСТВИТЕЛЬНО ПРОЧИТАЛИ. Заполнять форму данными из
+      // неудавшегося запроса нечем, а пустая форма здесь означает «состав не
+      // собран» — и игрок соберёт его заново поверх своего же.
+      setSquadFailed(mine.status === 'error');
+      if (mine.status === 'ok') {
+        setPicked(mine.data.map((m) => m.card_id));
+        setCaptain(mine.data.find((m) => m.is_captain)?.card_id ?? null);
+      }
 
       if (current) {
         const [squadNow, table] = await Promise.all([
@@ -68,7 +79,7 @@ export function FantasyScreen() {
           fetchStandings(getRawInitData(), current.id),
         ]);
         if (cancelled) return;
-        setLiveSquad(squadNow);
+        setLiveSquad(dataOr(squadNow, []));
         setStandings(table);
       }
     })();
@@ -303,6 +314,12 @@ export function FantasyScreen() {
         {/* Пустой состав правдоподобен: у тура может не быть матчей. Именно
             поэтому отказ, показанный тем же текстом, невозможно опознать — на
             этом и потерялся Челси. Теперь у поломки свой вид. */}
+        {/* Заявка не прочиталась — сказать об этом ДО того, как игрок начнёт
+            собирать состав заново поверх существующего. */}
+        {squadFailed && (
+          <p className="text-red-400/80 text-[10.5px] text-center pb-1">{t('fantasy.squad_failed')}</p>
+        )}
+
         {options.status === 'error' && (
           <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 text-center space-y-1">
             <p className="text-brand-muted text-sm">{t('fantasy.failed')}</p>

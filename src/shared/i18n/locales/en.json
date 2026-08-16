@@ -587,7 +587,8 @@
     "refused": "Not accepted: the round is closed, or the squad is invalid",
     "search": "Search a player or club",
     "standings": "League standings",
-    "failed": "Could not load the squad list. Try again later."
+    "failed": "Could not load the squad list. Try again later.",
+    "squad_failed": "Your squad did not load — do not re-pick, it may already be saved."
   },
   "quiz": {
     "title": "Guess the player",
