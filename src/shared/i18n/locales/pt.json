@@ -584,7 +584,8 @@
     "saved": "Escalação salva",
     "refused": "Não aceito: rodada fechada ou escalação inválida",
     "search": "Buscar jogador ou clube",
-    "standings": "Classificação"
+    "standings": "Classificação",
+    "failed": "Não foi possível carregar a lista de jogadores. Tente mais tarde."
   },
   "quiz": {
     "title": "Adivinhe o jogador",

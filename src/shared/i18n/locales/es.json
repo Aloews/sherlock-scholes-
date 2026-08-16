@@ -584,7 +584,8 @@
     "saved": "Plantilla guardada",
     "refused": "No aceptado: jornada cerrada o plantilla inválida",
     "search": "Buscar jugador o club",
-    "standings": "Clasificación"
+    "standings": "Clasificación",
+    "failed": "No se pudo cargar la lista de jugadores. Inténtalo más tarde."
   },
   "quiz": {
     "title": "Adivina el jugador",

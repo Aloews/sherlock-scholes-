@@ -10,6 +10,7 @@ import {
   fetchMySquad, setSquad, fetchStandings,
   type FantasyOption, type SquadMember, type StandingRow,
 } from '@/features/fantasy/fantasyApi';
+import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 
 /**
  * Фэнтези-лига: собери пятерых, назначь капитана, смотри таблицу.
@@ -30,7 +31,7 @@ export function FantasyScreen() {
 
   const [openRoundId, setOpenRoundId] = useState<number | null>(null);
   const [locksAt, setLocksAt] = useState<string | null>(null);
-  const [options, setOptions] = useState<FantasyOption[] | null>(null);
+  const [options, setOptions] = useState<LoadState<FantasyOption[]>>(LOADING);
   const [picked, setPicked] = useState<string[]>([]);
   const [captain, setCaptain] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -45,7 +46,7 @@ export function FantasyScreen() {
     let cancelled = false;
     void (async () => {
       const [open, current] = await Promise.all([fetchOpenRound(), fetchCurrentRound()]);
-      if (cancelled || !open) { setOptions([]); return; }
+      if (cancelled || !open) { setOptions(ok([])); return; }
       setOpenRoundId(open.id);
 
       const [lock, opts, mine] = await Promise.all([
@@ -77,7 +78,7 @@ export function FantasyScreen() {
   const locked = locksAt !== null && new Date(locksAt).getTime() <= Date.now();
 
   const shown = useMemo(() => {
-    const list = options ?? [];
+    const list = dataOr(options, []);
     const q = query.trim().toLowerCase();
     if (!q) return list.slice(0, 60);
     return list
@@ -183,7 +184,7 @@ export function FantasyScreen() {
           {picked.length > 0 && (
             <div className="space-y-1">
               {picked.map((id) => {
-                const option = options?.find((o) => o.card_id === id);
+                const option = dataOr(options, []).find((o) => o.card_id === id);
                 return (
                   <div key={id} className="flex items-center gap-2 text-xs">
                     <button
@@ -233,7 +234,7 @@ export function FantasyScreen() {
         </div>
 
         {/* Кого можно взять. */}
-        {!locked && (options?.length ?? 0) > 0 && (
+        {!locked && dataOr(options, []).length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-xl px-3 h-10">
               <IconSearch size={15} stroke={2} className="text-brand-muted shrink-0" />
@@ -299,7 +300,17 @@ export function FantasyScreen() {
           </div>
         )}
 
-        {options !== null && options.length === 0 && (
+        {/* Пустой состав правдоподобен: у тура может не быть матчей. Именно
+            поэтому отказ, показанный тем же текстом, невозможно опознать — на
+            этом и потерялся Челси. Теперь у поломки свой вид. */}
+        {options.status === 'error' && (
+          <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 text-center space-y-1">
+            <p className="text-brand-muted text-sm">{t('fantasy.failed')}</p>
+            <p className="text-brand-muted/50 text-[10px] font-mono">{options.code}</p>
+          </div>
+        )}
+
+        {options.status === 'ok' && options.data.length === 0 && (
           <p className="text-brand-muted text-sm text-center py-6">{t('fantasy.no_schedule')}</p>
         )}
       </div>
