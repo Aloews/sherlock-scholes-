@@ -52,6 +52,10 @@ const json = (body: unknown, status = 200) =>
  *
  * ДВА ИСТОЧНИКА ОТСЮДА УЖЕ УБРАНЫ, и оба по измеренной причине, а не по вкусу:
  *   • РИА Спорт — адрес отвечает 301, а цель редиректа 404. Лента переехала.
+ *   • Soccer.ru — отвечает 302 на страницу «Проверка безопасности» и отдаёт
+ *     ноль item'ов. Заменён на Спорт-Экспресс (499 записей, дата с настоящей
+ *     зоной и читается). Русских лент должно остаться две: громкость при
+ *     одном источнике тождественно равна единице.
  *   • Sky Sports — отвечает 200 и полон свежих заметок, но его pubDate написан
  *     как «Tue, 11 Aug 2026 11:46:00 BST», а `new Date()` такую зону не знает и
  *     возвращает Invalid Date. Разбор ниже отказывается выдумывать время, так
@@ -63,7 +67,7 @@ const FEEDS: { lang: string; source: string; url: string }[] = [
   { lang: "en", source: "BBC Sport", url: "https://feeds.bbci.co.uk/sport/football/rss.xml" },
   { lang: "en", source: "The Guardian", url: "https://www.theguardian.com/football/rss" },
   { lang: "ru", source: "Чемпионат", url: "https://www.championat.com/rss/news/football/" },
-  { lang: "ru", source: "Soccer.ru", url: "https://www.soccer.ru/rss" },
+  { lang: "ru", source: "Спорт-Экспресс", url: "https://www.sport-express.ru/services/materials/news/se/" },
   { lang: "es", source: "Marca", url: "https://e00-marca.uecdn.es/rss/futbol/primera-division.xml" },
   { lang: "es", source: "Mundo Deportivo", url: "https://www.mundodeportivo.com/feed/rss/futbol" },
   { lang: "pt", source: "Record", url: "https://www.record.pt/rss" },
@@ -136,6 +140,60 @@ const EXTRA_CHANNELS: { channel: string; id: string }[] = [
 const YT_KEY = Deno.env.get("YOUTUBE_API_KEY") ?? "";
 
 const CHANNELS = YT_KEY ? [...LEGACY_CHANNELS, ...EXTRA_CHANNELS] : LEGACY_CHANNELS;
+
+/**
+ * Новости ESPN — JSON, а не RSS, и потому отдельно.
+ *
+ * ЗАЧЕМ ЕЩЁ ОДИН АНГЛИЙСКИЙ ИСТОЧНИК. Свежесть: замер дал статью, вышедшую за
+ * семь минут до запроса, — RSS изданий столько не держит. Ключа не требует, а
+ * клиент к этому же API уже написан для статистики (football_scraper/
+ * scraper/espn.py), то есть новой зависимости не появляется.
+ *
+ * ⚠️ В ответе ESPN лежат КОЭФФИЦИЕНТЫ (`odds`, `pickcenter`) — на уровне
+ * матча, не новости. Здесь читаются только `articles`, и ничего производного
+ * от коэффициентов на экран попасть не может: они в этом проекте внутренние.
+ */
+const ESPN_NEWS_LEAGUES = ["eng.1", "esp.1", "ita.1", "ger.1", "fra.1", "uefa.champions"];
+
+interface EspnArticle {
+  headline?: string;
+  published?: string;
+  links?: { web?: { href?: string } };
+  images?: { url?: string }[];
+}
+
+async function fetchEspnNews(league: string): Promise<NewsRow[]> {
+  const text = await fetchText(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/news`,
+  );
+  if (!text) return [];
+  let articles: EspnArticle[];
+  try {
+    articles = (JSON.parse(text) as { articles?: EspnArticle[] }).articles ?? [];
+  } catch {
+    console.warn(`[digest] espn ${league}: not JSON`);
+    return [];
+  }
+  const out: NewsRow[] = [];
+  for (const a of articles) {
+    const url = a.links?.web?.href;
+    const title = a.headline;
+    if (!url || !title || !a.published) continue;
+    const when = new Date(a.published);
+    // Та же строгость, что и у RSS: выдуманное время встанет наверх ленты и
+    // останется там навсегда.
+    if (Number.isNaN(when.getTime())) continue;
+    out.push({
+      lang: "en",
+      source: "ESPN",
+      title: stripTags(title),
+      url,
+      published_at: when.toISOString(),
+      image_url: a.images?.[0]?.url ?? null,
+    });
+  }
+  return out;
+}
 
 /** Одна лента не должна валить прогон: неудача источника — это минус источник. */
 async function fetchText(url: string): Promise<string | null> {
@@ -439,7 +497,11 @@ async function run(): Promise<Response> {
     }),
   );
 
-  const newsRows = unique(fresh(news.flat()), (row) => row.url);
+  // ESPN идёт рядом с лентами, а не вместо: он про английский, а громкость
+  // считается внутри языка. Отдельным списком, потому что это JSON, а не RSS.
+  const espn = await Promise.all(ESPN_NEWS_LEAGUES.map(fetchEspnNews));
+
+  const newsRows = unique(fresh([...news.flat(), ...espn.flat()]), (row) => row.url);
   // РОЛИКИ БЕРУТСЯ ЦЕЛИКОМ, БЕЗ ОКНА В СУТКИ. Экран выходных смотрит на два
   // дня, которые к понедельнику уже позади, а фид отдаёт всего пятнадцать
   // записей на канал — выбрасывать из них всё старше суток значило бы не иметь
@@ -455,6 +517,9 @@ async function run(): Promise<Response> {
   // КТО именно перестал отвечать. Отличает «сегодня тихо» от «полгода назад
   // сменился адрес».
   report.feeds_silent = FEEDS.filter((_, i) => news[i].length === 0).map((f) => f.source);
+  // ESPN поимённо по лигам: молчит вся шестёрка — это отказ API, молчит одна —
+  // у той лиги просто нет новостей, и это разные поводы.
+  report.espn_silent = ESPN_NEWS_LEAGUES.filter((_, i) => espn[i].length === 0);
   // Каким путём шли ролики — иначе по отчёту не отличить «ключа нет» от
   // «ключ есть, но квота кончилась».
   report.clips_source = YT_KEY ? "api" : "atom";
