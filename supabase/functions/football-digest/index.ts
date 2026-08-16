@@ -206,10 +206,41 @@ async function fetchText(url: string): Promise<string | null> {
       console.warn(`[digest] ${r.status} ${url}`);
       return null;
     }
-    return await r.text();
+    return decodeBody(
+      new Uint8Array(await r.arrayBuffer()),
+      r.headers.get("content-type"),
+    );
   } catch (err) {
     console.warn(`[digest] ${url} threw: ${err}`);
     return null;
+  }
+}
+
+/**
+ * Байты в текст ПО ОБЪЯВЛЕННОЙ КОДИРОВКЕ.
+ *
+ * ⚠️ `Response.text()` НЕ СМОТРИТ НА CHARSET. По спецификации Fetch он всегда
+ * декодирует как UTF-8, и заголовок `charset=ISO-8859-1` не значит ничего.
+ * Record отдаёт именно ISO-8859-1 — и объявляет это дважды, в Content-Type и в
+ * XML-декларации, — поэтому «milhões» доезжал до базы как «milh?es». Симптом
+ * читался как «кривая лента», хотя лента как раз честная: врал разбор.
+ *
+ * Кодировка берётся из заголовка, а если его нет — из самой декларации XML,
+ * которую можно прочесть по ASCII в любой однобайтовой кодировке.
+ */
+function decodeBody(bytes: Uint8Array, contentType: string | null): string {
+  const fromHeader = /charset=["']?([\w-]+)/i.exec(contentType ?? "")?.[1];
+  // Первые двести байт декларации читаются как ASCII при любой из кодировок,
+  // которые тут вообще встречаются.
+  const head = new TextDecoder("ascii").decode(bytes.slice(0, 200));
+  const fromXml = /encoding=["']([\w-]+)["']/i.exec(head)?.[1];
+  const label = (fromHeader ?? fromXml ?? "utf-8").toLowerCase();
+  try {
+    return new TextDecoder(label).decode(bytes);
+  } catch {
+    // Незнакомая метка — не повод потерять ленту целиком.
+    console.warn(`[digest] unknown charset ${label}`);
+    return new TextDecoder("utf-8").decode(bytes);
   }
 }
 
@@ -231,8 +262,21 @@ function unescape(text: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/**
+ * Обёртка CDATA, ЗАЭКРАНИРОВАННАЯ САМОЙ ЛЕНТОЙ.
+ *
+ * ⚠️ Это не про настоящий CDATA — тот снимает `tag()`. Record кладёт в ленту
+ * `<title>&lt;![CDATA[ … ]]&gt;</title>`, то есть экранирует собственные
+ * скобки. Разбор достаёт текст честно, `unescape` возвращает `&lt;` в `<`, и
+ * обёртка становится видимой частью заголовка: читатель видит
+ * «<![CDATA[ Ferran Torres troca…». Снимать её надо ПОСЛЕ раскодирования
+ * сущностей, иначе снимать нечего.
+ */
+const ESCAPED_CDATA = /^<!\[CDATA\[([\s\S]*?)\]\]>$/;
+
 function stripTags(text: string): string {
-  return unescape(text.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  const plain = unescape(text.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  return (ESCAPED_CDATA.exec(plain)?.[1] ?? plain).trim();
 }
 
 interface NewsRow {
