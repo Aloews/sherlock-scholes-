@@ -23,7 +23,7 @@ export function FriendsScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { player } = useAuthStore();
-  const { friends, suggestions, loading, pending, add, remove } = useFriends(player?.id ?? null);
+  const { friends, suggestions, loading, failed, pending, add, remove } = useFriends(player?.id ?? null);
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -46,6 +46,13 @@ export function FriendsScreen() {
         <div className="max-w-sm mx-auto space-y-4">
           {loading && (
             <p className="text-brand-muted text-sm text-center py-8">{t('friends.loading')}</p>
+          )}
+
+          {/* «Пока никого» здесь никого не удивляет — у нового игрока друзей
+              правда нет. Поэтому отказ, показанный той же надписью, не
+              опознаётся вовсе, и у него теперь свой текст. */}
+          {!loading && failed && (
+            <p className="text-red-400/80 text-[10.5px] text-center pb-2">{t('friends.failed')}</p>
           )}
 
           {!loading && (

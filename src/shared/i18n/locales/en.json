@@ -515,7 +515,8 @@
     "add": "Add",
     "remove": "Remove friend",
     "level_and_games": "Level {{level}} · games: {{games}}",
-    "played_together": "Games together: {{games}}"
+    "played_together": "Games together: {{games}}",
+    "failed": "The friends list did not load — that does not mean you have none."
   },
   "matches": {
     "title": "Upcoming matches",

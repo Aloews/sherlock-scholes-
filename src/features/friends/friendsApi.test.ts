@@ -23,18 +23,28 @@ const fail = () => rpc.mockResolvedValue({ data: null, error: { code: '42501', m
 describe('fetchFriends', () => {
   it('passes the player id and returns the rows', async () => {
     ok([{ player_id: 1, first_name: 'Alex', xp: 100 }]);
-    await expect(fetchFriends(42)).resolves.toHaveLength(1);
+    await expect(fetchFriends(42)).resolves.toEqual({
+      status: 'ok',
+      data: [{ player_id: 1, first_name: 'Alex', xp: 100 }],
+    });
     expect(rpc).toHaveBeenCalledWith('friends_with_rating', { p_player_id: 42 });
   });
 
-  it('returns an empty list rather than throwing when the call fails', async () => {
+  it('reports a failure AS a failure, not as an empty list', async () => {
+    // Раньше здесь ожидался пустой массив, и это было верно для той формы:
+    // отказ и отсутствие друзей выглядели одинаково НАМЕРЕННО. Проверка
+    // изменена вместе с контрактом, потому что менялось именно это свойство —
+    // у нового игрока друзей правда нет, и «пока никого» никого не удивляет,
+    // так что отказ под той же надписью не опознавался вовсе.
     fail();
-    await expect(fetchFriends(42)).resolves.toEqual([]);
+    await expect(fetchFriends(42)).resolves.toEqual({ status: 'error', code: '42501' });
   });
 
-  it('survives a null payload', async () => {
+  it('пустой ответ остаётся успехом', async () => {
+    // Ноль друзей — законный ответ, а не поломка. Это половина различия, ради
+    // которого всё и затевалось.
     ok(null);
-    await expect(fetchFriends(42)).resolves.toEqual([]);
+    await expect(fetchFriends(42)).resolves.toEqual({ status: 'ok', data: [] });
   });
 });
 

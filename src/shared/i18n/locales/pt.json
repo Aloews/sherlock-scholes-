@@ -515,7 +515,8 @@
     "add": "Adicionar",
     "remove": "Remover dos amigos",
     "level_and_games": "Nível {{level}} · partidas: {{games}}",
-    "played_together": "Partidas juntos: {{games}}"
+    "played_together": "Partidas juntos: {{games}}",
+    "failed": "A lista de amigos não carregou — isso não quer dizer que você não tenha."
   },
   "matches": {
     "title": "Próximos jogos",

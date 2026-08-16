@@ -500,7 +500,8 @@
     "add": "添加",
     "remove": "移除好友",
     "level_and_games": "等级 {{level}} · 场次：{{games}}",
-    "played_together": "一起玩过：{{games}}"
+    "played_together": "一起玩过：{{games}}",
+    "failed": "好友列表加载失败，并不代表你没有好友。"
   },
   "matches": {
     "title": "近期比赛",

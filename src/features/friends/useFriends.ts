@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getRawInitData } from '@/shared/lib/telegram';
+import { dataOr } from '@/shared/lib/loadState';
 import {
   fetchFriends, fetchSuggestions, addFriend, removeFriend,
   type FriendRow, type SuggestionRow,
@@ -19,6 +20,11 @@ export function useFriends(playerId: number | null) {
   const [loading, setLoading] = useState(true);
   /** The player whose row is mid-flight, so its button can say so. */
   const [pending, setPending] = useState<number | null>(null);
+  // Отдельный признак, а не LoadState наружу: экран рисует друзей и подсказки
+  // одним списком, и переводить его целиком ради одной строки значило бы
+  // трогать всю разметку. Массив остаётся массивом, а «не загрузилось»
+  // перестаёт притворяться «никого нет».
+  const [failed, setFailed] = useState(false);
 
   const reload = useCallback(async () => {
     if (playerId === null) { setLoading(false); return; }
@@ -26,7 +32,8 @@ export function useFriends(playerId: number | null) {
       fetchFriends(playerId),
       fetchSuggestions(playerId),
     ]);
-    setFriends(list);
+    setFailed(list.status === 'error');
+    setFriends(dataOr(list, []));
     setSuggestions(suggested);
     setLoading(false);
   }, [playerId]);
@@ -51,5 +58,5 @@ export function useFriends(playerId: number | null) {
     return ok;
   }, [reload]);
 
-  return { friends, suggestions, loading, pending, add, remove, reload };
+  return { friends, suggestions, loading, failed, pending, add, remove, reload };
 }

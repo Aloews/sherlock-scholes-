@@ -500,7 +500,8 @@
     "add": "추가",
     "remove": "친구 삭제",
     "level_and_games": "레벨 {{level}} · 게임 수: {{games}}",
-    "played_together": "함께한 게임: {{games}}"
+    "played_together": "함께한 게임: {{games}}",
+    "failed": "친구 목록을 불러오지 못했습니다. 친구가 없다는 뜻은 아닙니다."
   },
   "matches": {
     "title": "예정된 경기",
