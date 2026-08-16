@@ -523,7 +523,8 @@
     "all_leagues": "모든 대회",
     "empty_league": "이 대회에 예정된 경기가 없습니다.",
     "where_to_watch": "중계 안내 · {{source}}",
-    "failed": "일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    "failed": "일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "predictions_failed": "예측을 불러오지 못했습니다. 경기가 예측하지 않은 것처럼 보일 수 있습니다."
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

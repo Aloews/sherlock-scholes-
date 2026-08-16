@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconBallFootball, IconDeviceTvOld } from '@tabler/icons-react';
 import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
-import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
+import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { PredictionRow } from '@/features/fixtures/PredictionRow';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
@@ -32,7 +32,7 @@ export function MatchesScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [fixtures, setFixtures] = useState<LoadState<Fixture[]>>(LOADING);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [predictions, setPredictions] = useState<LoadState<Prediction[]>>(LOADING);
   // null — «все турниры». Не пустое множество: пустое пришлось бы всюду
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
@@ -67,7 +67,7 @@ export function MatchesScreen() {
 
   const byFixture = useMemo(() => {
     const map = new Map<string, Prediction>();
-    for (const p of predictions) map.set(p.fixture_id, p);
+    for (const p of dataOr(predictions, [])) map.set(p.fixture_id, p);
     return map;
   }, [predictions]);
 
@@ -140,6 +140,14 @@ export function MatchesScreen() {
         <PredictorsPanel />
 
         <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
+
+        {/* НЕ БАННЕР ПОВЕРХ СПИСКА: расписание загрузилось и им можно
+            пользоваться. Проблема узкая — не видно СВОИХ прогнозов, и матчи
+            выглядят непредсказанными. Без этой строки игрок вводит счёт
+            заново, сервер отвечает «уже есть», и виноватым выглядит игрок. */}
+        {predictions.status === 'error' && (
+          <p className="text-red-400/80 text-[10.5px]">{t('matches.predictions_failed')}</p>
+        )}
 
         {/* ─── Турниры ───
             Горизонтальная лента, а не сетка: турниров бывает двадцать, и
@@ -251,10 +259,14 @@ export function MatchesScreen() {
                     fixture={fixture}
                     existing={byFixture.get(fixture.id)}
                     onSaved={(saved) => {
-                      setPredictions((prev) => [
+                      // Свой только что сохранённый прогноз — знание
+                      // достоверное, даже если загрузка остальных не удалась.
+                      // Поэтому список становится ok: игрок видит то, что
+                      // сделал прямо сейчас.
+                      setPredictions((prev) => ok([
                         saved,
-                        ...prev.filter((p) => p.fixture_id !== saved.fixture_id),
-                      ]);
+                        ...dataOr(prev, []).filter((p) => p.fixture_id !== saved.fixture_id),
+                      ]));
                     }}
                   />
                 </div>

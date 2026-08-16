@@ -523,7 +523,8 @@
     "all_leagues": "全部赛事",
     "empty_league": "该赛事暂无即将进行的比赛。",
     "where_to_watch": "观看方式 · {{source}}",
-    "failed": "赛程加载失败，请稍后再试。"
+    "failed": "赛程加载失败，请稍后再试。",
+    "predictions_failed": "你的预测未能加载，比赛可能显示为未预测。"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",
