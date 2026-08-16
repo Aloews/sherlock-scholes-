@@ -500,7 +500,8 @@
     "add": "追加",
     "remove": "フレンドから外す",
     "level_and_games": "レベル {{level}} · 対戦数: {{games}}",
-    "played_together": "一緒に遊んだ回数: {{games}}"
+    "played_together": "一緒に遊んだ回数: {{games}}",
+    "failed": "フレンド一覧を読み込めませんでした。いないという意味ではありません。"
   },
   "matches": {
     "title": "今後の試合",

@@ -6,6 +6,7 @@
 // nicely. See supabase/migrations/friends_and_rating.sql.
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 
 /** A player as they appear in a list — theirs, not ours. */
 export interface FriendRow {
@@ -36,13 +37,17 @@ export interface SuggestionRow {
 
 /** The viewer's friends, best-rated first. Empty on any failure — a list that
  * cannot load is an empty list, not a crash in the middle of the profile. */
-export async function fetchFriends(playerId: number): Promise<FriendRow[]> {
-  const { data, error } = await supabase.rpc('friends_with_rating', { p_player_id: playerId });
-  if (error) {
-    console.error('[friends] friends_with_rating failed:', error.code, error.message);
-    return [];
-  }
-  return (data as FriendRow[]) ?? [];
+/**
+ * Список друзей — С РАЗЛИЧЕНИЕМ «ПУСТО» И «СЛОМАЛОСЬ».
+ *
+ * Пустой список здесь правдоподобен как нигде: у нового игрока друзей правда
+ * нет, и «пока никого» — законный ответ, который никого не удивляет. Ровно
+ * поэтому отказ, показанный той же надписью, не опознаётся: человек решает,
+ * что список пуст, и уходит — а на самом деле не ответил сервер.
+ */
+export async function fetchFriends(playerId: number): Promise<LoadState<FriendRow[]>> {
+  const res = await supabase.rpc('friends_with_rating', { p_player_id: playerId });
+  return fromPostgrest<FriendRow[]>(res, 'friends_with_rating');
 }
 
 /**
