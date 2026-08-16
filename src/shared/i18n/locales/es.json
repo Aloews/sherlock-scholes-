@@ -587,7 +587,8 @@
     "refused": "No aceptado: jornada cerrada o plantilla inválida",
     "search": "Buscar jugador o club",
     "standings": "Clasificación",
-    "failed": "No se pudo cargar la lista de jugadores. Inténtalo más tarde."
+    "failed": "No se pudo cargar la lista de jugadores. Inténtalo más tarde.",
+    "squad_failed": "Tu alineación no se cargó: no la rehagas, puede estar guardada."
   },
   "quiz": {
     "title": "Adivina el jugador",

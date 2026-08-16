@@ -587,7 +587,8 @@
     "refused": "Refusé : journée close ou équipe invalide",
     "search": "Chercher un joueur ou un club",
     "standings": "Classement",
-    "failed": "Impossible de charger la liste des joueurs. Réessayez plus tard."
+    "failed": "Impossible de charger la liste des joueurs. Réessayez plus tard.",
+    "squad_failed": "Votre composition ne s’est pas chargée — ne la refaites pas, elle est peut-être enregistrée."
   },
   "quiz": {
     "title": "Devine le joueur",

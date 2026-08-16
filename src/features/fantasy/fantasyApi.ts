@@ -7,7 +7,7 @@
 // вовсе, единственный вход — эти функции.
 
 import { supabase } from '@/shared/lib/supabase';
-import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
+import { fromPostgrest, ok, type LoadState } from '@/shared/lib/loadState';
 
 export interface FantasyRound {
   id: number;
@@ -96,17 +96,14 @@ export async function fetchOptions(roundId: number): Promise<LoadState<FantasyOp
   return fromPostgrest<FantasyOption[]>(res, 'fantasy_options');
 }
 
-export async function fetchMySquad(initData: string, roundId: number): Promise<SquadMember[]> {
-  if (!initData) return [];
-  const { data, error } = await supabase.rpc('my_fantasy_squad', {
+export async function fetchMySquad(initData: string, roundId: number): Promise<LoadState<SquadMember[]>> {
+  // Вне Telegram заявки нет по-настоящему: это успех с пустотой, а не отказ.
+  if (!initData) return ok([]);
+  const res = await supabase.rpc('my_fantasy_squad', {
     p_init_data: initData,
     p_round_id: roundId,
   });
-  if (error) {
-    console.error('[fantasy] my_fantasy_squad failed:', error.code, error.message);
-    return [];
-  }
-  return (data as SquadMember[]) ?? [];
+  return fromPostgrest<SquadMember[]>(res, 'my_fantasy_squad');
 }
 
 /**
