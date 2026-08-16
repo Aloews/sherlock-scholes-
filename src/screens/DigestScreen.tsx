@@ -8,6 +8,7 @@ import {
   type GoalClip, type WeekendGoal, type RankedClip,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
+import { Chip } from '@/shared/ui/Chip';
 import { watchUrl, feedLanguage } from '@/features/digest/digestFormat';
 
 /**
@@ -43,6 +44,10 @@ export function DigestScreen() {
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
   const [weekend, setWeekend] = useState<WeekendGoal[] | null>(null);
   const [week, setWeek] = useState<RankedClip[] | null>(null);
+  // null — «все чемпионаты». Не пустое множество: пустое пришлось бы всюду
+  // читать как «ничего не выбрано, значит показать всё», и одна забытая
+  // проверка превратила бы фильтр в пустой экран.
+  const [league, setLeague] = useState<string | null>(null);
 
   const lang = feedLanguage(i18n.language);
 
@@ -75,6 +80,29 @@ export function DigestScreen() {
 
   const open = (url: string) => { hapticImpact('light'); openLink(url); };
 
+  /**
+   * Чемпионаты — ИЗ САМИХ РОЛИКОВ, а не из списка в коде.
+   *
+   * channel у клипа и есть чемпионат: конвейер берёт их с официальных каналов
+   * лиг, поэтому там ровно «Premier League», «LALIGA», «Serie A», «Ligue 1»,
+   * «UEFA». Заводить рядом второй перечень значило бы держать список лиг в
+   * двух местах и однажды их разойти.
+   *
+   * Фильтр общий на оба раздела: чемпионат — свойство ролика, а не раздела, и
+   * два отдельных фильтра означали бы, что «Серия А» вверху и внизу могут
+   * показывать разное.
+   */
+  const leagues = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const c of [...(weekend ?? []), ...(week ?? [])]) {
+      count.set(c.channel, (count.get(c.channel) ?? 0) + 1);
+    }
+    return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [weekend, week]);
+
+  const only = <T extends { channel: string }>(list: T[] | null): T[] =>
+    league === null ? list ?? [] : (list ?? []).filter((c) => c.channel === league);
+
   const dayFmt = useMemo(
     () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
     [i18n.language],
@@ -95,6 +123,29 @@ export function DigestScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
+        {/* Чемпионаты. Лента горизонтальная и общая на оба раздела: чемпионат
+            — свойство ролика, а не раздела. Число на чипе — чтобы выбор не был
+            вслепую, иначе половина ведёт в список из одного ролика. */}
+        {leagues.length > 1 && (
+          <div className="-mx-4 px-4 overflow-x-auto">
+            <div className="flex gap-1.5 w-max pb-0.5">
+              <Chip
+                label={t('matches.all_leagues')}
+                selected={league === null}
+                onClick={() => { hapticImpact('light'); setLeague(null); }}
+              />
+              {leagues.map(([name, n]) => (
+                <Chip
+                  key={name}
+                  label={`${name} · ${n}`}
+                  selected={league === name}
+                  onClick={() => { hapticImpact('light'); setLeague(league === name ? null : name); }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ─── Голы выходных ───
             Первой секцией намеренно: это то, ради чего экран открывают раз в
             неделю. Окно — последние ЗАВЕРШИВШИЕСЯ выходные, поэтому список не
@@ -118,7 +169,7 @@ export function DigestScreen() {
               <p className="text-brand-muted text-sm py-4">{t('digest.empty_weekend')}</p>
             )}
 
-            {weekend.map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
+            {only(weekend).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
 
@@ -133,7 +184,7 @@ export function DigestScreen() {
               {t('digest.week')}
             </p>
             <p className="text-brand-muted text-[10.5px]">{t('digest.week_note')}</p>
-            {week.map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
+            {only(week).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
 
