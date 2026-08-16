@@ -530,7 +530,20 @@
     "empty_league": "이 대회에 예정된 경기가 없습니다.",
     "where_to_watch": "중계 안내 · {{source}}",
     "failed": "일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-    "predictions_failed": "예측을 불러오지 못했습니다. 경기가 예측하지 않은 것처럼 보일 수 있습니다."
+    "predictions_failed": "예측을 불러오지 못했습니다. 경기가 예측하지 않은 것처럼 보일 수 있습니다.",
+    "mode_list": "목록",
+    "mode_calendar": "달력",
+    "month_prev": "이전 달",
+    "month_next": "다음 달",
+    "published_until": "일정은 {{date}}까지 확인됩니다. 그 이후는 제공처가 아직 공개하지 않았을 뿐, 경기가 없다는 뜻은 아닙니다.",
+    "day_none": "경기 없음",
+    "day_unknown": "아직 미공개",
+    "month_unknown": "이번 달은 아직 공개되지 않았습니다",
+    "empty_day": "이 날짜에는 선택한 대회의 경기가 없습니다.",
+    "final_score": "최종 스코어",
+    "score_age_unknown": "스코어 갱신 시각 불명",
+    "day_matches_other": "{{count}}경기",
+    "score_age_other": "{{count}}분 전 갱신"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

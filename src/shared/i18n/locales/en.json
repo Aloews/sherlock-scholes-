@@ -545,7 +545,22 @@
     "empty_league": "No upcoming matches in this competition.",
     "where_to_watch": "Where to watch · {{source}}",
     "failed": "Could not load the schedule. Try again later.",
-    "predictions_failed": "Your predictions did not load — matches may look un-predicted."
+    "predictions_failed": "Your predictions did not load — matches may look un-predicted.",
+    "mode_list": "List",
+    "mode_calendar": "Calendar",
+    "month_prev": "Previous month",
+    "month_next": "Next month",
+    "published_until": "Schedule is known through {{date}}. Beyond that the provider has not published yet — it does not mean there will be no football.",
+    "day_none": "No matches",
+    "day_unknown": "Not published yet",
+    "month_unknown": "This month is not published yet",
+    "empty_day": "No matches from the selected competition on this day.",
+    "final_score": "Final score",
+    "score_age_unknown": "Score freshness unknown",
+    "day_matches_one": "{{count}} match",
+    "day_matches_other": "{{count}} matches",
+    "score_age_one": "Score updated {{count}} minute ago",
+    "score_age_other": "Score updated {{count}} minutes ago"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",

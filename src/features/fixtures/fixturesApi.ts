@@ -13,6 +13,7 @@
 
 import { supabase } from '@/shared/lib/supabase';
 import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
+import { monthBounds, type Horizon } from './monthCalendar';
 
 export interface Fixture {
   id: string;
@@ -64,6 +65,65 @@ export async function fetchUpcomingFixtures(
     .limit(limit);
 
   return fromPostgrest<Fixture[]>(res, 'fixtures.upcoming');
+}
+
+/** Одна колонка `select` на оба чтения: расходиться им незачем. */
+const FIXTURE_COLUMNS =
+  'id,sport_key,commence_at,home_team,away_team,home_card_id,away_card_id,home_score,away_score,completed,scores_at';
+
+/**
+ * Матчи одного месяца — для календаря.
+ *
+ * ⚠️ БЕЗ `commence_at > now()`, И ЭТО ГЛАВНОЕ ОТЛИЧИЕ ОТ СПИСКА ВЫШЕ. Календарь
+ * показывает месяц целиком, вместе с уже сыгранными днями и их счётом; фильтр
+ * «только будущее» вырезал бы из августа половину августа.
+ *
+ * Границы месяца МЕСТНЫЕ (`monthBounds`): август в Мадриде и август в Токио —
+ * разные отрезки времени.
+ *
+ * ПОРЯДОК ЗАДАЁТ ЗАПРОС — как и у списка, и по той же причине: второе место,
+ * где решается порядок, однажды разойдётся с первым.
+ */
+export async function fetchFixturesInMonth(month: Date): Promise<LoadState<Fixture[]>> {
+  const { from, to } = monthBounds(month);
+  const res = await supabase
+    .from('fixtures')
+    .select(FIXTURE_COLUMNS)
+    .gte('commence_at', from)
+    .lt('commence_at', to)
+    .order('commence_at', { ascending: true });
+
+  return fromPostgrest<Fixture[]>(res, 'fixtures.month');
+}
+
+interface HorizonRow {
+  first_match: string | null;
+  last_match: string | null;
+  published_until: string | null;
+  matches: number;
+  scores_at: string | null;
+}
+
+/**
+ * Докуда вообще расписано.
+ *
+ * Нужно ровно затем, чтобы пустая клетка календаря не врала: см. заголовок
+ * `monthCalendar.ts` и `fixtures_horizon.sql`. Отдельным запросом, а не полем
+ * в списке матчей, потому что это свойство ВСЕЙ таблицы, а не выбранного
+ * месяца: сентябрь ничего не знает о том, что август расписан целиком.
+ */
+export async function fetchFixturesHorizon(): Promise<LoadState<Horizon>> {
+  const res = await supabase.rpc('fixtures_horizon');
+  const state = fromPostgrest<HorizonRow[]>(res, 'fixtures_horizon');
+  if (state.status !== 'ok') return state;
+  const row = state.data[0];
+  return {
+    status: 'ok',
+    data: {
+      first: row?.first_match ?? null,
+      publishedUntil: row?.published_until ?? null,
+    },
+  };
 }
 
 /**

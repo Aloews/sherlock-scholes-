@@ -530,7 +530,20 @@
     "empty_league": "この大会に今後の試合はありません。",
     "where_to_watch": "放送予定 · {{source}}",
     "failed": "日程を読み込めませんでした。時間をおいてお試しください。",
-    "predictions_failed": "予想を読み込めませんでした。試合が未予想に見える場合があります。"
+    "predictions_failed": "予想を読み込めませんでした。試合が未予想に見える場合があります。",
+    "mode_list": "リスト",
+    "mode_calendar": "カレンダー",
+    "month_prev": "前の月",
+    "month_next": "次の月",
+    "published_until": "日程がわかっているのは {{date}} まで。それ以降は提供元がまだ公開していないだけで、試合がないという意味ではありません。",
+    "day_none": "試合なし",
+    "day_unknown": "未発表",
+    "month_unknown": "この月はまだ発表されていません",
+    "empty_day": "この日には選択した大会の試合がありません。",
+    "final_score": "最終スコア",
+    "score_age_unknown": "スコアの更新時刻は不明",
+    "day_matches_other": "{{count}} 試合",
+    "score_age_other": "{{count}} 分前に更新"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

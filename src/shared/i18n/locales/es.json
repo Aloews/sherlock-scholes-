@@ -545,7 +545,22 @@
     "empty_league": "No hay próximos partidos en esta competición.",
     "where_to_watch": "Dónde verlo · {{source}}",
     "failed": "No se pudo cargar el calendario. Inténtalo más tarde.",
-    "predictions_failed": "Tus pronósticos no se cargaron: los partidos pueden parecer sin pronosticar."
+    "predictions_failed": "Tus pronósticos no se cargaron: los partidos pueden parecer sin pronosticar.",
+    "mode_list": "Lista",
+    "mode_calendar": "Calendario",
+    "month_prev": "Mes anterior",
+    "month_next": "Mes siguiente",
+    "published_until": "El calendario se conoce hasta el {{date}}. Más allá, el proveedor aún no lo ha publicado: no significa que no haya partidos.",
+    "day_none": "Sin partidos",
+    "day_unknown": "Aún sin publicar",
+    "month_unknown": "Este mes aún no está publicado",
+    "empty_day": "No hay partidos de la competición elegida este día.",
+    "final_score": "Resultado final",
+    "score_age_unknown": "No se sabe cuándo se actualizó",
+    "day_matches_one": "{{count}} partido",
+    "day_matches_other": "{{count}} partidos",
+    "score_age_one": "Resultado actualizado hace {{count}} minuto",
+    "score_age_other": "Resultado actualizado hace {{count}} minutos"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
