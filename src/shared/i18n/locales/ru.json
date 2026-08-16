@@ -117,7 +117,8 @@
     "top_moment": "Лучший момент выходных",
     "fresh_clip": "Свежее видео дня",
     "arena_link": "Арена на двоих",
-    "ratings_link": "Рейтинг футболистов"
+    "ratings_link": "Рейтинг футболистов",
+    "arena_online_link": "Арена по сети"
   },
   "design": {
     "master": "Новый дизайн",
@@ -677,7 +678,18 @@
     "rules_one": "Играют до {{n}} гола",
     "rules_few": "Играют до {{n}} голов",
     "rules_many": "Играют до {{n}} голов",
-    "rules_other": "Играют до {{n}} голов"
+    "rules_other": "Играют до {{n}} голов",
+    "online_title": "Онлайн-арена",
+    "online_intro": "Играйте с двух телефонов: один создаёт комнату, второй входит по коду.",
+    "online_create": "Создать комнату",
+    "online_join": "Войти",
+    "online_join_hint": "Или введите код соперника",
+    "online_code_placeholder": "КОД",
+    "online_waiting": "Ждём соперника",
+    "online_connecting": "Подключаемся…",
+    "online_left": "Соперник вышел",
+    "online_error": "Не удалось подключиться",
+    "online_share_code": "Передайте код: {{code}}"
   },
   "news": {
     "title": "Новости футбола",

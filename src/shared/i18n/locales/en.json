@@ -113,7 +113,8 @@
     "top_moment": "Top moment of the weekend",
     "fresh_clip": "Today's new clip",
     "arena_link": "Two-player arena",
-    "ratings_link": "Player ratings"
+    "ratings_link": "Player ratings",
+    "arena_online_link": "Arena over the net"
   },
   "design": {
     "master": "New design",
@@ -637,7 +638,18 @@
     "hint": "Put the phone between you — each side has its own controls.",
     "pitch_aria": "Arena pitch with two players and a ball",
     "rules_one": "First to {{n}} goal wins",
-    "rules_other": "First to {{n}} goals wins"
+    "rules_other": "First to {{n}} goals wins",
+    "online_title": "Online arena",
+    "online_intro": "Play from two phones: one creates the room, the other joins by code.",
+    "online_create": "Create a room",
+    "online_join": "Join",
+    "online_join_hint": "Or enter your opponent's code",
+    "online_code_placeholder": "CODE",
+    "online_waiting": "Waiting for an opponent",
+    "online_connecting": "Connecting…",
+    "online_left": "Your opponent left",
+    "online_error": "Could not connect",
+    "online_share_code": "Share the code: {{code}}"
   },
   "news": {
     "title": "Football news",

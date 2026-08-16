@@ -111,7 +111,8 @@
     "top_moment": "本周末最佳瞬间",
     "fresh_clip": "今日新视频",
     "arena_link": "双人竞技场",
-    "ratings_link": "球员榜"
+    "ratings_link": "球员榜",
+    "arena_online_link": "联机竞技场"
   },
   "design": {
     "master": "新设计",
@@ -619,7 +620,18 @@
     "kick": "射门",
     "hint": "把手机放在两人中间，左右各管自己的操作。",
     "pitch_aria": "竞技场球场，两名球员和一个球",
-    "rules_other": "先进{{n}}球者获胜"
+    "rules_other": "先进{{n}}球者获胜",
+    "online_title": "联机竞技场",
+    "online_intro": "用两部手机对战：一方创建房间，另一方输入房间码加入。",
+    "online_create": "创建房间",
+    "online_join": "加入",
+    "online_join_hint": "或输入对手的房间码",
+    "online_code_placeholder": "房间码",
+    "online_waiting": "等待对手",
+    "online_connecting": "连接中…",
+    "online_left": "对手已离开",
+    "online_error": "无法连接",
+    "online_share_code": "把房间码告诉对方：{{code}}"
   },
   "news": {
     "title": "足球新闻",

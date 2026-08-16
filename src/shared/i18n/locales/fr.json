@@ -113,7 +113,8 @@
     "top_moment": "Meilleure action du week-end",
     "fresh_clip": "Nouvelle vidéo du jour",
     "arena_link": "Arène à deux",
-    "ratings_link": "Classement des joueurs"
+    "ratings_link": "Classement des joueurs",
+    "arena_online_link": "Arène en réseau"
   },
   "design": {
     "master": "Nouveau design",
@@ -637,7 +638,18 @@
     "hint": "Posez le téléphone entre vous : chacun sa moitié de commandes.",
     "pitch_aria": "Terrain de l’arène avec deux joueurs et un ballon",
     "rules_one": "Le premier à {{n}} but gagne",
-    "rules_other": "Le premier à {{n}} buts gagne"
+    "rules_other": "Le premier à {{n}} buts gagne",
+    "online_title": "Arène en ligne",
+    "online_intro": "Jouez depuis deux téléphones : l’un crée le salon, l’autre le rejoint avec le code.",
+    "online_create": "Créer un salon",
+    "online_join": "Rejoindre",
+    "online_join_hint": "Ou saisissez le code de l’adversaire",
+    "online_code_placeholder": "CODE",
+    "online_waiting": "En attente d’un adversaire",
+    "online_connecting": "Connexion…",
+    "online_left": "L’adversaire est parti",
+    "online_error": "Connexion impossible",
+    "online_share_code": "Partagez le code : {{code}}"
   },
   "news": {
     "title": "Actualités du football",

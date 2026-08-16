@@ -74,15 +74,54 @@ const FEEDS: { lang: string; source: string; url: string }[] = [
  * Официальные каналы лиг на YouTube.
  *
  * Идентификаторы, а не @-имена: имя канала — это адрес, который владелец может
- * сменить, и тогда лента молча опустеет. Взяты со страниц самих каналов.
+ * сменить, и тогда лента молча опустеет. Взяты со страниц самих каналов и
+ * проверены методом, который сам сначала проверен: разбор `rel="canonical"`
+ * прогнан по двум каналам с заранее известными id (Premier League, LALIGA) и
+ * сошёлся на обоих. Без такой сверки первый же подход дал вместо
+ * «Бразилейрао» идентификатор LALIGA (он попадался в блоке рекомендаций), а
+ * `@spl` разрешился в канал про чистку бассейнов.
+ *
+ * ПЕРВЫЕ ПЯТЬ — LEGACY. Они ходят по Atom-фиду, а его YouTube в robots.txt
+ * закрывает прямо и поимённо: `Disallow: /feeds/videos.xml`. Это уже
+ * работающее поведение, и ломать его здесь не место; но РАСШИРЯТЬ закрытый
+ * путь нельзя, поэтому всё, что ниже пятёрки, включается только вместе с
+ * ключом официального API.
  */
-const CHANNELS: { channel: string; id: string }[] = [
+const LEGACY_CHANNELS: { channel: string; id: string }[] = [
   { channel: "Premier League", id: "UCG5qGWdu8nIRZqJ_GgDwQ-w" },
   { channel: "LALIGA", id: "UCTv-XvfzLX3i4IGWAm4sbmA" },
   { channel: "Serie A", id: "UCBJeMCIeLQos7wacox4hmLQ" },
   { channel: "Ligue 1", id: "UCQsH5XtIc9hONE1BQjucM0g" },
   { channel: "UEFA", id: "UCyGa1YEx9ST66rYrJTGIKOw" },
 ];
+
+/** Всё остальное, что играет, когда Европа отдыхает. */
+const EXTRA_CHANNELS: { channel: string; id: string }[] = [
+  { channel: "Bundesliga", id: "UC6UL29enLNe4mqwTfAyeNuw" },
+  { channel: "MLS", id: "UCSZbXT5TLLW_i-5W8FZpFsg" },
+  { channel: "Brasileirão", id: "UCrf4Fr6uTCoU9RkYa5CbzcA" },
+  { channel: "CONMEBOL", id: "UCzU8-lZlRfkV3nj0RzAZdrQ" },
+  { channel: "Liga MX", id: "UCq8BPLXtFeiSFOvmJrknWGg" },
+  { channel: "EFL", id: "UCkgm4b5n3QsMUgB9FjA8S2w" },
+];
+
+/**
+ * Ключ официального YouTube Data API v3 — бесплатный, квота 10 000 единиц в
+ * сутки.
+ *
+ * ЗАЧЕМ ОН, ЕСЛИ И ТАК РАБОТАЛО. Atom-фид закрыт в robots.txt YouTube
+ * (`Disallow: /feeds/videos.xml`), то есть ежечасный серверный обход по нему —
+ * это обход запрета. Официальный API — разрешённый путь к тем же данным, и он
+ * дешёв: список загрузок канала стоит 1 единицу, статистика полусотни роликов
+ * ещё 1. Одиннадцать каналов каждые двадцать минут — около 1600 единиц в
+ * сутки, шестая часть квоты.
+ *
+ * Без ключа поведение не меняется НИСКОЛЬКО: пять прежних каналов, прежний
+ * Atom, прежняя частота. Ключ включает и остальные лиги, и учащение.
+ */
+const YT_KEY = Deno.env.get("YOUTUBE_API_KEY") ?? "";
+
+const CHANNELS = YT_KEY ? [...LEGACY_CHANNELS, ...EXTRA_CHANNELS] : LEGACY_CHANNELS;
 
 /** Одна лента не должна валить прогон: неудача источника — это минус источник. */
 async function fetchText(url: string): Promise<string | null> {
@@ -202,6 +241,92 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
   return out;
 }
 
+interface PlaylistItem {
+  snippet?: {
+    title?: string;
+    publishedAt?: string;
+    resourceId?: { videoId?: string };
+    thumbnails?: Record<string, { url?: string } | undefined>;
+  };
+}
+
+interface VideoStats {
+  id: string;
+  statistics?: { viewCount?: string; likeCount?: string };
+}
+
+/**
+ * Ролики канала через официальный API.
+ *
+ * Плейлист загрузок канала — это его же идентификатор с `UC` → `UU`; так не
+ * нужен лишний вызов channels.list, чтобы узнать то, что и так известно.
+ *
+ * ДВА ЗАПРОСА, А НЕ ОДИН, И ВТОРОЙ ОБЯЗАТЕЛЕН. `playlistItems` отдаёт, что
+ * вышло, но не отдаёт просмотров — а «самые горячие» без просмотров пришлось
+ * бы выдумывать. Просмотры даёт `videos.list?part=statistics`, и он берёт до
+ * полусотни идентификаторов за раз, то есть стоит ещё одну единицу на канал.
+ */
+async function fetchClipsViaApi(channel: string, channelId: string): Promise<ClipRow[]> {
+  const uploads = "UU" + channelId.slice(2);
+  const listed = await fetchText(
+    `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet` +
+      `&playlistId=${uploads}&maxResults=20&key=${YT_KEY}`,
+  );
+  if (!listed) return [];
+
+  let items: PlaylistItem[];
+  try {
+    items = (JSON.parse(listed) as { items?: PlaylistItem[] }).items ?? [];
+  } catch {
+    console.warn(`[digest] ${channel}: playlistItems is not JSON`);
+    return [];
+  }
+
+  const rows = items
+    .map((item): ClipRow | null => {
+      const id = item.snippet?.resourceId?.videoId;
+      const published = item.snippet?.publishedAt;
+      if (!id || !published) return null;
+      const when = new Date(published);
+      if (Number.isNaN(when.getTime())) return null;
+      const thumbs = item.snippet?.thumbnails ?? {};
+      return {
+        video_id: id,
+        title: stripTags(item.snippet?.title ?? ""),
+        channel,
+        published_at: when.toISOString(),
+        thumb_url:
+          thumbs.high?.url ?? thumbs.medium?.url ?? thumbs.default?.url ?? null,
+        views: 0,
+        likes: 0,
+      };
+    })
+    .filter((row): row is ClipRow => row !== null);
+
+  if (rows.length === 0) return [];
+
+  const statsText = await fetchText(
+    `https://www.googleapis.com/youtube/v3/videos?part=statistics` +
+      `&id=${rows.map((r) => r.video_id).join(",")}&key=${YT_KEY}`,
+  );
+  if (statsText) {
+    try {
+      const stats = (JSON.parse(statsText) as { items?: VideoStats[] }).items ?? [];
+      const byId = new Map(stats.map((s) => [s.id, s.statistics]));
+      for (const row of rows) {
+        const s = byId.get(row.video_id);
+        row.views = Number(s?.viewCount ?? 0);
+        row.likes = Number(s?.likeCount ?? 0);
+      }
+    } catch {
+      // Ролик без статистики лучше, чем никакого: он попадёт в ленту по
+      // времени, просто не поборется за «самое горячее».
+      console.warn(`[digest] ${channel}: statistics is not JSON`);
+    }
+  }
+  return rows;
+}
+
 /**
  * Запись пачкой, с игнором дубликатов.
  *
@@ -282,8 +407,19 @@ async function run(): Promise<Response> {
       return xml ? parseRss(xml, feed.lang, feed.source) : [];
     }),
   );
+  // ⚠️ ЧАСТОТА РАСТЁТ ТОЛЬКО ТАМ, ГДЕ ЭТО РАЗРЕШЕНО. Расписание участилось до
+  // каждых двадцати минут ради новостей и ради лиг, которые играют, когда
+  // Европа спит. Но Atom-фид YouTube закрыт в robots.txt, и опрашивать его
+  // втрое чаще значило бы втрое увеличить обход запрета. Поэтому без ключа
+  // ролики берутся по-прежнему раз в час — на том же двадцатом минуте, что и
+  // раньше, — а с ключом идут через официальный API каждый прогон.
+  const hourlySlot = new Date().getUTCMinutes() < 20;
+  const wantClips = YT_KEY !== "" || hourlySlot;
+
   const clips = await Promise.all(
     CHANNELS.map(async (ch) => {
+      if (!wantClips) return [];
+      if (YT_KEY) return await fetchClipsViaApi(ch.channel, ch.id);
       const xml = await fetchText(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch.id}`);
       return xml ? parseAtom(xml, ch.channel) : [];
     }),
@@ -305,7 +441,17 @@ async function run(): Promise<Response> {
   // КТО именно перестал отвечать. Отличает «сегодня тихо» от «полгода назад
   // сменился адрес».
   report.feeds_silent = FEEDS.filter((_, i) => news[i].length === 0).map((f) => f.source);
-  report.channels_silent = CHANNELS.filter((_, i) => clips[i].length === 0).map((c) => c.channel);
+  // Каким путём шли ролики — иначе по отчёту не отличить «ключа нет» от
+  // «ключ есть, но квота кончилась».
+  report.clips_source = YT_KEY ? "api" : "atom";
+  // ⚠️ Пропущенный прогон — НЕ молчание. Без ключа ролики берутся раз в час, и
+  // в остальные два прогона все каналы вернули бы пустоту: поимённый список
+  // «молчат все одиннадцать» звучал бы как отказ источника и обесценил бы
+  // единственный сигнал, ради которого он заведён.
+  report.channels_silent = wantClips
+    ? CHANNELS.filter((_, i) => clips[i].length === 0).map((c) => c.channel)
+    : [];
+  report.clips_skipped = !wantClips;
 
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/prune_digest`, {
     method: "POST",

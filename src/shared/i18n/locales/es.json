@@ -113,7 +113,8 @@
     "top_moment": "Mejor jugada del fin de semana",
     "fresh_clip": "Vídeo nuevo de hoy",
     "arena_link": "Arena para dos",
-    "ratings_link": "Ranking de jugadores"
+    "ratings_link": "Ranking de jugadores",
+    "arena_online_link": "Arena en red"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -637,7 +638,18 @@
     "hint": "Pon el móvil entre los dos: cada lado tiene sus controles.",
     "pitch_aria": "Campo de la arena con dos jugadores y un balón",
     "rules_one": "Gana quien llegue a {{n}} gol",
-    "rules_other": "Gana quien llegue a {{n}} goles"
+    "rules_other": "Gana quien llegue a {{n}} goles",
+    "online_title": "Arena en línea",
+    "online_intro": "Jugad desde dos móviles: uno crea la sala, el otro entra con el código.",
+    "online_create": "Crear sala",
+    "online_join": "Entrar",
+    "online_join_hint": "O introduce el código del rival",
+    "online_code_placeholder": "CÓDIGO",
+    "online_waiting": "Esperando rival",
+    "online_connecting": "Conectando…",
+    "online_left": "El rival salió",
+    "online_error": "No se pudo conectar",
+    "online_share_code": "Comparte el código: {{code}}"
   },
   "news": {
     "title": "Noticias de fútbol",

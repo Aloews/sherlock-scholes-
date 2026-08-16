@@ -111,7 +111,8 @@
     "top_moment": "週末のベストシーン",
     "fresh_clip": "今日の新着動画",
     "arena_link": "2人対戦アリーナ",
-    "ratings_link": "選手ランキング"
+    "ratings_link": "選手ランキング",
+    "arena_online_link": "ネット対戦アリーナ"
   },
   "design": {
     "master": "新デザイン",
@@ -619,7 +620,18 @@
     "kick": "キック",
     "hint": "スマホを二人の間に置いてください。左右それぞれが自分の操作です。",
     "pitch_aria": "2人のプレーヤーとボールがいるアリーナのピッチ",
-    "rules_other": "{{n}}点先取で勝ち"
+    "rules_other": "{{n}}点先取で勝ち",
+    "online_title": "オンライン対戦",
+    "online_intro": "2台の端末で対戦します。片方が部屋を作り、もう片方がコードで入ります。",
+    "online_create": "部屋を作る",
+    "online_join": "参加する",
+    "online_join_hint": "または相手のコードを入力",
+    "online_code_placeholder": "コード",
+    "online_waiting": "対戦相手を待っています",
+    "online_connecting": "接続中…",
+    "online_left": "相手が退出しました",
+    "online_error": "接続できませんでした",
+    "online_share_code": "コードを共有：{{code}}"
   },
   "news": {
     "title": "サッカーニュース",

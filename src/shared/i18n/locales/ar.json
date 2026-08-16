@@ -116,7 +116,8 @@
     "top_moment": "أفضل لقطة في نهاية الأسبوع",
     "fresh_clip": "مقطع اليوم الجديد",
     "arena_link": "ساحة لاعبين",
-    "ratings_link": "تصنيف اللاعبين"
+    "ratings_link": "تصنيف اللاعبين",
+    "arena_online_link": "الساحة عبر الشبكة"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -706,7 +707,18 @@
     "rules_two": "الفوز بتسجيل هدفين",
     "rules_few": "الفوز بتسجيل {{n}} أهداف",
     "rules_many": "الفوز بتسجيل {{n}} هدفًا",
-    "rules_other": "الفوز بتسجيل {{n}} هدف"
+    "rules_other": "الفوز بتسجيل {{n}} هدف",
+    "online_title": "الساحة عبر الإنترنت",
+    "online_intro": "العبا من هاتفين: أحدهما ينشئ الغرفة والآخر ينضم بالرمز.",
+    "online_create": "إنشاء غرفة",
+    "online_join": "انضمام",
+    "online_join_hint": "أو أدخل رمز الخصم",
+    "online_code_placeholder": "الرمز",
+    "online_waiting": "في انتظار الخصم",
+    "online_connecting": "جارٍ الاتصال…",
+    "online_left": "غادر الخصم",
+    "online_error": "تعذّر الاتصال",
+    "online_share_code": "شارك الرمز: {{code}}"
   },
   "news": {
     "title": "أخبار كرة القدم",

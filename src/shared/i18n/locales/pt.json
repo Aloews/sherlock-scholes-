@@ -113,7 +113,8 @@
     "top_moment": "Melhor lance do fim de semana",
     "fresh_clip": "Vídeo novo de hoje",
     "arena_link": "Arena para dois",
-    "ratings_link": "Ranking de jogadores"
+    "ratings_link": "Ranking de jogadores",
+    "arena_online_link": "Arena em rede"
   },
   "design": {
     "master": "Novo design",
@@ -637,7 +638,18 @@
     "hint": "Coloque o celular entre vocês: cada lado tem os seus controles.",
     "pitch_aria": "Campo da arena com dois jogadores e uma bola",
     "rules_one": "Ganha quem fizer {{n}} gol",
-    "rules_other": "Ganha quem fizer {{n}} gols"
+    "rules_other": "Ganha quem fizer {{n}} gols",
+    "online_title": "Arena online",
+    "online_intro": "Joguem de dois telemóveis: um cria a sala, o outro entra com o código.",
+    "online_create": "Criar sala",
+    "online_join": "Entrar",
+    "online_join_hint": "Ou introduza o código do adversário",
+    "online_code_placeholder": "CÓDIGO",
+    "online_waiting": "À espera do adversário",
+    "online_connecting": "A ligar…",
+    "online_left": "O adversário saiu",
+    "online_error": "Não foi possível ligar",
+    "online_share_code": "Partilhe o código: {{code}}"
   },
   "news": {
     "title": "Notícias do futebol",
