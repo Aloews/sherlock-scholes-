@@ -584,7 +584,8 @@
     "saved": "Équipe validée",
     "refused": "Refusé : journée close ou équipe invalide",
     "search": "Chercher un joueur ou un club",
-    "standings": "Classement"
+    "standings": "Classement",
+    "failed": "Impossible de charger la liste des joueurs. Réessayez plus tard."
   },
   "quiz": {
     "title": "Devine le joueur",

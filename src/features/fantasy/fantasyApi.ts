@@ -7,6 +7,7 @@
 // вовсе, единственный вход — эти функции.
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 
 export interface FantasyRound {
   id: number;
@@ -81,13 +82,18 @@ export async function fetchLocksAt(roundId: number): Promise<string | null> {
   return (data as string | null) ?? null;
 }
 
-export async function fetchOptions(roundId: number): Promise<FantasyOption[]> {
-  const { data, error } = await supabase.rpc('fantasy_options', { p_round_id: roundId });
-  if (error) {
-    console.error('[fantasy] fantasy_options failed:', error.code, error.message);
-    return [];
-  }
-  return (data as FantasyOption[]) ?? [];
+/**
+ * Кого можно поставить в состав — С РАЗЛИЧЕНИЕМ «ПУСТО» И «СЛОМАЛОСЬ».
+ *
+ * ИМЕННО ЭТОТ ВЫЗОВ СТОИЛ РАССЛЕДОВАНИЯ. Жалоба звучала как «нет Челси в
+ * выборе», и пустой список выглядел данными: у тура правда может не быть
+ * матчей клуба. На деле граница тура резала игровую неделю, но узнать это
+ * получилось только запросом к боевой базе руками — экран сказать не мог,
+ * потому что отказ и пустота приходили сюда одной и той же формой.
+ */
+export async function fetchOptions(roundId: number): Promise<LoadState<FantasyOption[]>> {
+  const res = await supabase.rpc('fantasy_options', { p_round_id: roundId });
+  return fromPostgrest<FantasyOption[]>(res, 'fantasy_options');
 }
 
 export async function fetchMySquad(initData: string, roundId: number): Promise<SquadMember[]> {

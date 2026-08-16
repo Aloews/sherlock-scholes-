@@ -584,7 +584,8 @@
     "saved": "Squad submitted",
     "refused": "Not accepted: the round is closed, or the squad is invalid",
     "search": "Search a player or club",
-    "standings": "League standings"
+    "standings": "League standings",
+    "failed": "Could not load the squad list. Try again later."
   },
   "quiz": {
     "title": "Guess the player",
