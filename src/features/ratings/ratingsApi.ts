@@ -75,3 +75,31 @@ export async function fetchFreshness(): Promise<LoadState<RatingFreshness | null
   if (state.status !== 'ok') return state;
   return { status: 'ok', data: state.data[0] ?? null };
 }
+
+export interface CollectedTotals {
+  tournament: string;
+  matches: number;
+  /** null — минуты не знает ни один источник; см. RatingRow.minutes. */
+  minutes: number | null;
+  goals: number;
+  assists: number;
+  yellow: number;
+  red: number;
+  first_match: string;
+  last_match: string;
+}
+
+/**
+ * Свёртка собранных матчей по турнирам — для досье карточки.
+ *
+ * НОВОГО ИСТОЧНИКА ПОД ЭТО НЕ НУЖНО. Сезонные итоги выводятся из того, что
+ * уже лежит в `player_match_stats`: мелкое зерно всегда сворачивается в
+ * крупное. Обратное неверно — именно поэтому окно в 7 дней потребовало
+ * матчей, а не сезонных таблиц.
+ */
+export async function fetchCollectedTotals(
+  cardId: string,
+): Promise<LoadState<CollectedTotals[]>> {
+  const res = await supabase.rpc('player_collected_totals', { p_card_id: cardId });
+  return fromPostgrest<CollectedTotals[]>(res, 'player_collected_totals');
+}

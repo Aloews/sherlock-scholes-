@@ -157,7 +157,10 @@
     "attr_defense": "Défense",
     "attr_physical": "Physique",
     "ovr_aria": "Note globale {{value}}",
-    "tournaments": "Tournois"
+    "tournaments": "Tournois",
+    "collected": "Relevé sur les matchs",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD"
   },
   "profile": {
     "title": "Profil",

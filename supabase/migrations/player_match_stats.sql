@@ -191,6 +191,45 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 4а. Свёртка по турнирам — для досье карточки и любой аналитики.
+--
+-- НОВОГО ИСТОЧНИКА ПОД ЭТО НЕ НУЖНО, и это важнее самой функции. Сезонные
+-- итоги, ради которых напрашивались openligadb и football-data.org,
+-- выводятся из уже собранных матчей: мелкое зерно всегда сворачивается в
+-- крупное. Обратное неверно — потому окно в 7 дней и потребовало матчей.
+-- ---------------------------------------------------------------------------
+create or replace function public.player_collected_totals(p_card_id uuid)
+returns table (
+  tournament  text,
+  matches     integer,
+  minutes     integer,
+  goals       integer,
+  assists     integer,
+  yellow      integer,
+  red         integer,
+  first_match date,
+  last_match  date
+)
+language sql
+stable
+as $$
+  select
+    s.tournament,
+    count(*)::integer,
+    sum(s.minutes)::integer,
+    coalesce(sum(s.goals), 0)::integer,
+    coalesce(sum(s.assists), 0)::integer,
+    coalesce(sum(s.yellow), 0)::integer,
+    coalesce(sum(s.red), 0)::integer,
+    min(s.match_date),
+    max(s.match_date)
+  from public.player_match_stats s
+  where s.card_id = p_card_id
+  group by s.tournament
+  order by count(*) desc, max(s.match_date) desc;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 5. Rights.
 --
 -- ⚠️ A POLICY IS NOT A GRANT. Postgres checks the grant FIRST and answers
@@ -221,4 +260,6 @@ revoke all on public.sports_ru_player from anon, authenticated;
 grant execute on function public.player_ratings(integer, integer)
   to anon, authenticated, service_role;
 grant execute on function public.player_stats_freshness()
+  to anon, authenticated, service_role;
+grant execute on function public.player_collected_totals(uuid)
   to anon, authenticated, service_role;

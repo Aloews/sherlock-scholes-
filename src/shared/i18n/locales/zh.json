@@ -155,7 +155,10 @@
     "attr_defense": "防守",
     "attr_physical": "身体",
     "ovr_aria": "综合评分 {{value}}",
-    "tournaments": "参加的赛事"
+    "tournaments": "参加的赛事",
+    "collected": "按比赛统计",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
   },
   "profile": {
     "title": "个人资料",

@@ -155,7 +155,10 @@
     "attr_defense": "ディフェンス",
     "attr_physical": "フィジカル",
     "ovr_aria": "総合値 {{value}}",
-    "tournaments": "出場大会"
+    "tournaments": "出場大会",
+    "collected": "試合から集計",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト"
   },
   "profile": {
     "title": "プロフィール",

@@ -161,7 +161,10 @@
     "attr_defense": "Оборона",
     "attr_physical": "Физика",
     "ovr_aria": "Общий рейтинг {{value}}",
-    "tournaments": "Турниры"
+    "tournaments": "Турниры",
+    "collected": "Собрано по матчам",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п"
   },
   "profile": {
     "title": "Профиль",

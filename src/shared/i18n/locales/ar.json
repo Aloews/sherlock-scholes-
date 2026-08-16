@@ -160,7 +160,10 @@
     "attr_defense": "الدفاع",
     "attr_physical": "القوة البدنية",
     "ovr_aria": "التقييم العام {{value}}",
-    "tournaments": "البطولات"
+    "tournaments": "البطولات",
+    "collected": "مجمَّع من المباريات",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة"
   },
   "profile": {
     "title": "الملف الشخصي",

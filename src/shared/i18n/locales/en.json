@@ -157,7 +157,10 @@
     "attr_defense": "Defending",
     "attr_physical": "Physical",
     "ovr_aria": "Overall rating {{value}}",
-    "tournaments": "Tournaments"
+    "tournaments": "Tournaments",
+    "collected": "Collected from matches",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A"
   },
   "profile": {
     "title": "Profile",

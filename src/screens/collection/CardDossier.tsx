@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconChevronLeft, IconTrophy, IconShirt, IconFlag } from '@tabler/icons-react';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -10,6 +11,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
+import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
 
 // Full-screen card dossier, opened from the Collection grid. Follows the
 // prototype's `isPlayer` overlay: framed hero card, quick-fact tiles, OVR
@@ -45,6 +47,19 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const isRu = lang.startsWith('ru');
+
+  // Собранная статистика матчей — та же таблица, что кормит рейтинг. Грузится
+  // отдельно и молча: досье полно и без неё, а её отсутствие для легенды —
+  // норма, а не поломка (мы собираем только действующих игроков).
+  const [collected, setCollected] = useState<CollectedTotals[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setCollected([]);
+    void fetchCollectedTotals(card.id).then((r) => {
+      if (!cancelled && r.status === 'ok') setCollected(r.data);
+    });
+    return () => { cancelled = true; };
+  }, [card.id]);
 
   const name     = cardDisplayName(card, lang);
   const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
@@ -244,6 +259,40 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                   <IconShirt size={14} stroke={1.75} className="text-brand-muted mt-0.5 shrink-0" />
                   <span className="flex-1 text-[12.5px] text-white/90">{row.club}</span>
                   <span className="text-[11.5px] text-brand-muted">{row.meta}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Собранная статистика — то же, что кормит рейтинг футболистов.
+            Ставится ПОСЛЕ карьеры намеренно: карьера это история, а здесь
+            только то, что конвейер видел своими глазами, и период подписан
+            датами, чтобы блок не выдавал себя за полную карьеру. */}
+        {collected.length > 0 && (
+          <Section title={t('collection.collected')}>
+            <div>
+              {collected.map((row) => (
+                <div
+                  key={row.tournament}
+                  className="flex gap-3 py-2.5 border-b border-brand-border last:border-b-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12.5px] text-white/90 truncate">{row.tournament}</p>
+                    <p className="text-[11px] text-brand-muted">
+                      {t('collection.collected_period', {
+                        from: row.first_match,
+                        to: row.last_match,
+                      })}
+                    </p>
+                  </div>
+                  <span className="text-[11.5px] text-brand-muted tabular-nums shrink-0">
+                    {t('collection.collected_line', {
+                      matches: row.matches,
+                      goals: row.goals,
+                      assists: row.assists,
+                    })}
+                  </span>
                 </div>
               ))}
             </div>

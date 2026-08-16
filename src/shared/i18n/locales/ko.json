@@ -155,7 +155,10 @@
     "attr_defense": "수비",
     "attr_physical": "피지컬",
     "ovr_aria": "종합 능력치 {{value}}",
-    "tournaments": "출전 대회"
+    "tournaments": "출전 대회",
+    "collected": "경기에서 집계",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움"
   },
   "profile": {
     "title": "프로필",
