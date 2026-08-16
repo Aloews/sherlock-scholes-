@@ -538,7 +538,8 @@
     "all_leagues": "Todas as competições",
     "empty_league": "Não há próximos jogos nesta competição.",
     "where_to_watch": "Onde assistir · {{source}}",
-    "failed": "Não foi possível carregar a tabela. Tente mais tarde."
+    "failed": "Não foi possível carregar a tabela. Tente mais tarde.",
+    "predictions_failed": "Seus palpites não carregaram — os jogos podem parecer sem palpite."
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

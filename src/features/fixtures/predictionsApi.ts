@@ -10,6 +10,7 @@
 // there is no direct read either.
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, ok, type LoadState } from '@/shared/lib/loadState';
 
 export interface Prediction {
   fixture_id: string;
@@ -24,14 +25,20 @@ export interface Prediction {
 /** What the ladder pays, for showing the rule without reading SQL. */
 export const PREDICTION_POINTS = { exact: 5, difference: 3, outcome: 2 } as const;
 
-export async function fetchMyPredictions(initData: string): Promise<Prediction[]> {
-  if (!initData) return [];
-  const { data, error } = await supabase.rpc('my_predictions', { p_init_data: initData });
-  if (error) {
-    console.error('[predictions] my_predictions failed:', error.code, error.message);
-    return [];
-  }
-  return (data as Prediction[]) ?? [];
+/**
+ * Свои прогнозы — и здесь пустота ВРЁТ АКТИВНО, а не просто скрывает отказ.
+ *
+ * Остальные вызовы при неудаче показывали «ничего нет». Этот показывает, что
+ * НИ ОДИН матч не предсказан, — то есть утверждает про игрока то, чего не
+ * было. Человек видит пустые поля там, где вчера вводил счёт, и вводит его
+ * заново; сервер отвечает «уже есть», и виноватым выглядит игрок.
+ *
+ * Вне Telegram прогнозов нет по-настоящему: это ok с пустотой, а не отказ.
+ */
+export async function fetchMyPredictions(initData: string): Promise<LoadState<Prediction[]>> {
+  if (!initData) return ok([]);
+  const res = await supabase.rpc('my_predictions', { p_init_data: initData });
+  return fromPostgrest<Prediction[]>(res, 'my_predictions');
 }
 
 /**
