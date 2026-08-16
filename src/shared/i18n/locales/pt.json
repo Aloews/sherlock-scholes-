@@ -114,7 +114,8 @@
     "fresh_clip": "Vídeo novo de hoje",
     "arena_link": "Arena para dois",
     "ratings_link": "Ranking de jogadores",
-    "arena_online_link": "Arena em rede"
+    "arena_online_link": "Arena em rede",
+    "invites_failed": "Os convites não carregaram — se alguém te convidou, tente atualizar."
   },
   "design": {
     "master": "Novo design",

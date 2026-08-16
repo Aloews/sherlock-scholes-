@@ -114,7 +114,8 @@
     "fresh_clip": "Today's new clip",
     "arena_link": "Two-player arena",
     "ratings_link": "Player ratings",
-    "arena_online_link": "Arena over the net"
+    "arena_online_link": "Arena over the net",
+    "invites_failed": "Invitations did not load — if somebody invited you, try refreshing."
   },
   "design": {
     "master": "New design",

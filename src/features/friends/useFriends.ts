@@ -32,9 +32,14 @@ export function useFriends(playerId: number | null) {
       fetchFriends(playerId),
       fetchSuggestions(playerId),
     ]);
+    // Признак отказа — ПРО СПИСОК ДРУЗЕЙ, а не про подсказки, и смешивать их
+    // нельзя: надпись на экране говорит «друзья не загрузились», и зажечь её
+    // из-за подсказок значило бы соврать про другое. Подсказки безобидны —
+    // пустота в них ничего не утверждает: у нового игрока их и правда нет.
+    // Тип у обоих теперь один, а обращение разное, и это намеренно.
     setFailed(list.status === 'error');
     setFriends(dataOr(list, []));
-    setSuggestions(suggested);
+    setSuggestions(dataOr(suggested, []));
     setLoading(false);
   }, [playerId]);
 

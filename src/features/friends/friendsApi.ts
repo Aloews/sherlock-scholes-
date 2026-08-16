@@ -56,16 +56,15 @@ export async function fetchFriends(playerId: number): Promise<LoadState<FriendRo
  * Not "people you may know": every row is somebody who was in a room with
  * them, which is the only relationship this game can prove.
  */
-export async function fetchSuggestions(playerId: number, limit = 10): Promise<SuggestionRow[]> {
-  const { data, error } = await supabase.rpc('friend_suggestions', {
+export async function fetchSuggestions(
+  playerId: number,
+  limit = 10,
+): Promise<LoadState<SuggestionRow[]>> {
+  const res = await supabase.rpc('friend_suggestions', {
     p_player_id: playerId,
     p_limit: limit,
   });
-  if (error) {
-    console.error('[friends] friend_suggestions failed:', error.code, error.message);
-    return [];
-  }
-  return (data as SuggestionRow[]) ?? [];
+  return fromPostgrest<SuggestionRow[]>(res, 'friend_suggestions');
 }
 
 /** Returns whether the server accepted it — outside Telegram it never can. */

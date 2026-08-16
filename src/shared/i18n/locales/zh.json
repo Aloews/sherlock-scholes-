@@ -112,7 +112,8 @@
     "fresh_clip": "今日新视频",
     "arena_link": "双人竞技场",
     "ratings_link": "球员榜",
-    "arena_online_link": "联机竞技场"
+    "arena_online_link": "联机竞技场",
+    "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。"
   },
   "design": {
     "master": "新设计",

@@ -97,13 +97,9 @@ export interface MyPredictionStats {
   rank: number | null;
 }
 
-export async function fetchLeaderboard(limit = 20): Promise<PredictorRow[]> {
-  const { data, error } = await supabase.rpc('prediction_leaderboard', { p_limit: limit });
-  if (error) {
-    console.error('[predictions] leaderboard failed:', error.code, error.message);
-    return [];
-  }
-  return (data as PredictorRow[]) ?? [];
+export async function fetchLeaderboard(limit = 20): Promise<LoadState<PredictorRow[]>> {
+  const res = await supabase.rpc('prediction_leaderboard', { p_limit: limit });
+  return fromPostgrest<PredictorRow[]>(res, 'prediction_leaderboard');
 }
 
 export async function fetchMyStats(initData: string): Promise<MyPredictionStats | null> {

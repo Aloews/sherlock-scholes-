@@ -112,7 +112,8 @@
     "fresh_clip": "오늘의 새 영상",
     "arena_link": "2인 대전 아레나",
     "ratings_link": "선수 랭킹",
-    "arena_online_link": "네트워크 아레나"
+    "arena_online_link": "네트워크 아레나",
+    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요."
   },
   "design": {
     "master": "새 디자인",

@@ -112,7 +112,8 @@
     "fresh_clip": "今日の新着動画",
     "arena_link": "2人対戦アリーナ",
     "ratings_link": "選手ランキング",
-    "arena_online_link": "ネット対戦アリーナ"
+    "arena_online_link": "ネット対戦アリーナ",
+    "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。"
   },
   "design": {
     "master": "新デザイン",

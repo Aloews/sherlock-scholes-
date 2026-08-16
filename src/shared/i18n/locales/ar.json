@@ -117,7 +117,8 @@
     "fresh_clip": "مقطع اليوم الجديد",
     "arena_link": "ساحة لاعبين",
     "ratings_link": "تصنيف اللاعبين",
-    "arena_online_link": "الساحة عبر الشبكة"
+    "arena_online_link": "الساحة عبر الشبكة",
+    "invites_failed": "لم تُحمَّل الدعوات — إن دعاك أحد، جرّب التحديث."
   },
   "design": {
     "master": "التصميم الجديد",
