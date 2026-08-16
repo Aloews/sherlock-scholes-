@@ -14,6 +14,11 @@ import {
   clampMove, sideFor, toSnapshot, SNAPSHOT_HZ,
   type InputMessage, type Snapshot,
 } from '@/features/arena/net';
+import { matchOutcome, type RankedStatus } from '@/features/arena/ranked';
+import {
+  recordArenaResult, fetchArenaLeaderboard, type LeaderboardRow,
+} from '@/features/arena/arenaApi';
+import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { CODE_LENGTH, sanitizeCodeInput } from '@/features/lobby/invite';
 import {
   fitCanvas, readPalette, render, VIEW_ASPECT, type Palette,
@@ -42,6 +47,8 @@ export function ArenaOnlineScreen() {
   const design = useDesign();
 
   const [code, setCode] = useState<string | null>(null);
+  const [ranked, setRanked] = useState<RankedStatus | null>(null);
+  const [board, setBoard] = useState<LoadState<LeaderboardRow[]>>(LOADING);
   const [role, setRole] = useState<NetRole>('host');
   const [draft, setDraft] = useState('');
 
@@ -101,6 +108,25 @@ export function ArenaOnlineScreen() {
     }, 1000 / SNAPSHOT_HZ);
     return () => clearInterval(id);
   }, [isHost, net.status, net, host.stateRef]);
+
+  // Результат заявляют ОБЕ стороны, и проигравший тоже: сервер засчитывает
+  // матч только когда две половины сошлись зеркально. Отправляется один раз —
+  // защёлка стоит на самом состоянии, а не на счёте, иначе каждый кадр после
+  // финального гола слал бы заявку заново.
+  useEffect(() => {
+    if (!code || ranked !== null) return;
+    const outcome = matchOutcome(score, mySide);
+    if (!outcome) return;
+    setRanked('pending');
+    void recordArenaResult(code, outcome).then(setRanked);
+  }, [code, ranked, score, mySide]);
+
+  // Таблица грузится на экране входа — там её и читают, пока ждут соперника.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchArenaLeaderboard().then((r) => { if (!cancelled) setBoard(r); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     paletteRef.current = readPalette(document.documentElement);
@@ -171,6 +197,36 @@ export function ArenaOnlineScreen() {
               {t('arena.online_join')}
             </Button>
           </div>
+
+          {/* Таблица за месяц. Пустая — обычное дело для новой фичи, поэтому
+              она подписана «сыграйте первый матч», а не молчит: пустота без
+              подписи читается как поломка. */}
+          {board.status === 'ok' && (
+            <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-brand-muted">
+                {t('arena.ranked_title')}
+              </p>
+              {board.data.length === 0 && (
+                <p className="text-brand-muted text-xs">{t('arena.ranked_empty')}</p>
+              )}
+              {board.data.map((row, i) => (
+                <div key={row.telegram_id} className="flex items-center gap-3">
+                  <span className="text-brand-muted text-xs tabular-nums w-4 text-right">{i + 1}</span>
+                  <span className="flex-1 text-white text-[13px] truncate">
+                    {row.name ?? t('arena.ranked_anon')}
+                  </span>
+                  <span className="text-brand-muted text-[11px] tabular-nums">
+                    {t('arena.ranked_line', {
+                      played: row.played, won: row.won, points: row.points,
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {board.status === 'error' && (
+            <p className="text-brand-muted text-xs text-center">{t('arena.ranked_failed')}</p>
+          )}
         </div>
       </div>
     );
@@ -213,6 +269,18 @@ export function ArenaOnlineScreen() {
         {/* Состояние связи поверх поля. Молчание канала само по себе ничего
             не говорит: «соперник вышел» и «моргнула сеть» выглядят одинаково,
             и только presence отвечает, что именно случилось. */}
+        {/* Итог заявки. «Ждём соперника» здесь — не про связь, а про то, что
+            результат засчитают только когда подтвердит вторая сторона. */}
+        {ranked !== null && (
+          <div className="absolute inset-x-0 bottom-2 flex justify-center pointer-events-none">
+            <span className="ds-panel bg-brand-surface/90 border border-brand-border rounded-full px-3 py-1 text-[11px] text-brand-muted">
+              {ranked === 'confirmed' && t('arena.ranked_confirmed')}
+              {ranked === 'pending' && t('arena.ranked_pending')}
+              {ranked !== 'confirmed' && ranked !== 'pending' && t('arena.ranked_failed')}
+            </span>
+          </div>
+        )}
+
         {net.status !== 'playing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-brand-bg/80 rounded-2xl px-6 text-center">
             <p className="text-white text-sm">

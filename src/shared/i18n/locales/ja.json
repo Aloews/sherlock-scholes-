@@ -634,7 +634,14 @@
     "online_connecting": "接続中…",
     "online_left": "相手が退出しました",
     "online_error": "接続できませんでした",
-    "online_share_code": "コードを共有：{{code}}"
+    "online_share_code": "コードを共有：{{code}}",
+    "ranked_title": "今月の順位表",
+    "ranked_empty": "最初の試合を終えるとここに表示されます",
+    "ranked_anon": "プレイヤー",
+    "ranked_line": "{{played}} 試合 · {{won}} 勝 · {{points}} pt",
+    "ranked_confirmed": "試合が記録されました",
+    "ranked_pending": "相手の確認を待っています",
+    "ranked_failed": "結果を保存できませんでした"
   },
   "news": {
     "title": "サッカーニュース",

@@ -652,7 +652,14 @@
     "online_connecting": "A ligar…",
     "online_left": "O adversário saiu",
     "online_error": "Não foi possível ligar",
-    "online_share_code": "Partilhe o código: {{code}}"
+    "online_share_code": "Partilhe o código: {{code}}",
+    "ranked_title": "Classificação do mês",
+    "ranked_empty": "Joguem o primeiro jogo e ele aparecerá aqui",
+    "ranked_anon": "Jogador",
+    "ranked_line": "{{played}} J · {{won}} V · {{points}} pts",
+    "ranked_confirmed": "Jogo contabilizado",
+    "ranked_pending": "À espera da confirmação do adversário",
+    "ranked_failed": "O resultado não foi guardado"
   },
   "news": {
     "title": "Notícias do futebol",

@@ -721,7 +721,14 @@
     "online_connecting": "جارٍ الاتصال…",
     "online_left": "غادر الخصم",
     "online_error": "تعذّر الاتصال",
-    "online_share_code": "شارك الرمز: {{code}}"
+    "online_share_code": "شارك الرمز: {{code}}",
+    "ranked_title": "ترتيب الشهر",
+    "ranked_empty": "العبا أول مباراة وستظهر هنا",
+    "ranked_anon": "لاعب",
+    "ranked_line": "{{played}} مباراة · {{won}} فوز · {{points}} نقطة",
+    "ranked_confirmed": "احتُسبت المباراة",
+    "ranked_pending": "في انتظار تأكيد الخصم",
+    "ranked_failed": "لم تُحفظ النتيجة"
   },
   "news": {
     "title": "أخبار كرة القدم",

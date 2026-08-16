@@ -652,7 +652,14 @@
     "online_connecting": "Connexion…",
     "online_left": "L’adversaire est parti",
     "online_error": "Connexion impossible",
-    "online_share_code": "Partagez le code : {{code}}"
+    "online_share_code": "Partagez le code : {{code}}",
+    "ranked_title": "Classement du mois",
+    "ranked_empty": "Jouez votre premier match, il apparaîtra ici",
+    "ranked_anon": "Joueur",
+    "ranked_line": "{{played}} M · {{won}} V · {{points}} pts",
+    "ranked_confirmed": "Match comptabilisé",
+    "ranked_pending": "En attente de la confirmation de l’adversaire",
+    "ranked_failed": "Le résultat n’a pas été enregistré"
   },
   "news": {
     "title": "Actualités du football",

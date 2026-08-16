@@ -652,7 +652,14 @@
     "online_connecting": "Conectando…",
     "online_left": "El rival salió",
     "online_error": "No se pudo conectar",
-    "online_share_code": "Comparte el código: {{code}}"
+    "online_share_code": "Comparte el código: {{code}}",
+    "ranked_title": "Clasificación del mes",
+    "ranked_empty": "Jugad vuestro primer partido y aparecerá aquí",
+    "ranked_anon": "Jugador",
+    "ranked_line": "{{played}} P · {{won}} V · {{points}} pts",
+    "ranked_confirmed": "Partido contabilizado",
+    "ranked_pending": "Esperando la confirmación del rival",
+    "ranked_failed": "No se guardó el resultado"
   },
   "news": {
     "title": "Noticias de fútbol",

@@ -652,7 +652,14 @@
     "online_connecting": "Connecting…",
     "online_left": "Your opponent left",
     "online_error": "Could not connect",
-    "online_share_code": "Share the code: {{code}}"
+    "online_share_code": "Share the code: {{code}}",
+    "ranked_title": "Table for the month",
+    "ranked_empty": "Play your first match and it will show up here",
+    "ranked_anon": "Player",
+    "ranked_line": "{{played}} M · {{won}} W · {{points}} pts",
+    "ranked_confirmed": "Match counted",
+    "ranked_pending": "Waiting for your opponent to confirm",
+    "ranked_failed": "The result was not saved"
   },
   "news": {
     "title": "Football news",

@@ -634,7 +634,14 @@
     "online_connecting": "连接中…",
     "online_left": "对手已离开",
     "online_error": "无法连接",
-    "online_share_code": "把房间码告诉对方：{{code}}"
+    "online_share_code": "把房间码告诉对方：{{code}}",
+    "ranked_title": "本月积分榜",
+    "ranked_empty": "打完第一场比赛后就会出现在这里",
+    "ranked_anon": "玩家",
+    "ranked_line": "{{played}} 场 · {{won}} 胜 · {{points}} 分",
+    "ranked_confirmed": "比赛已计入",
+    "ranked_pending": "等待对手确认",
+    "ranked_failed": "结果未能保存"
   },
   "news": {
     "title": "足球新闻",

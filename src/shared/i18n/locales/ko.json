@@ -634,7 +634,14 @@
     "online_connecting": "연결 중…",
     "online_left": "상대가 나갔습니다",
     "online_error": "연결하지 못했습니다",
-    "online_share_code": "코드를 공유하세요: {{code}}"
+    "online_share_code": "코드를 공유하세요: {{code}}",
+    "ranked_title": "이번 달 순위",
+    "ranked_empty": "첫 경기를 치르면 여기에 표시됩니다",
+    "ranked_anon": "플레이어",
+    "ranked_line": "{{played}}경기 · {{won}}승 · {{points}}점",
+    "ranked_confirmed": "경기가 기록되었습니다",
+    "ranked_pending": "상대의 확인을 기다리는 중",
+    "ranked_failed": "결과를 저장하지 못했습니다"
   },
   "news": {
     "title": "축구 뉴스",

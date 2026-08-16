@@ -692,7 +692,14 @@
     "online_connecting": "Подключаемся…",
     "online_left": "Соперник вышел",
     "online_error": "Не удалось подключиться",
-    "online_share_code": "Передайте код: {{code}}"
+    "online_share_code": "Передайте код: {{code}}",
+    "ranked_title": "Таблица за месяц",
+    "ranked_empty": "Сыграйте первый матч — и он появится здесь",
+    "ranked_anon": "Игрок",
+    "ranked_line": "{{played}} м · {{won}} п · {{points}} очк.",
+    "ranked_confirmed": "Матч засчитан",
+    "ranked_pending": "Ждём подтверждения соперника",
+    "ranked_failed": "Результат не записан"
   },
   "news": {
     "title": "Новости футбола",
