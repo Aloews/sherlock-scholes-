@@ -70,9 +70,15 @@ create table if not exists public.player_match_stats (
   away_team   text,
   home_score  smallint,
   away_score  smallint,
-  -- An unused substitute is 0 minutes, not NULL: he was named and did not
-  -- play, which is a different fact from "we do not know".
-  minutes     smallint not null default 0,
+  -- ⚠️ NULL means UNKNOWN, and it is a real case, not laziness. sports.ru
+  -- prints minutes; ESPN does not have them at all — its `subbedIn` /
+  -- `subbedOut` are BOOLEANS, so the payload says a player came on and never
+  -- when. Writing 0 there would be a lie with consequences: the rating breaks
+  -- ties by "fewer minutes for the same return", so a fabricated 0 would put
+  -- those rows above players who actually earned the same points. An unused
+  -- substitute from a source that DOES report minutes is still 0 — he was
+  -- named and did not play, which is a different fact from "we do not know".
+  minutes     smallint,
   goals       smallint not null default 0,
   assists     smallint not null default 0,
   yellow      smallint not null default 0,
@@ -126,7 +132,10 @@ as $$
     c.country,
     cc.club,
     count(*)::integer                    as matches,
-    coalesce(sum(s.minutes), 0)::integer as minutes,
+    -- Not coalesced to 0: see the column comment. Postgres sums across NULLs,
+    -- so a player with one source that reports minutes and one that does not
+    -- shows the minutes actually known.
+    sum(s.minutes)::integer              as minutes,
     coalesce(sum(s.goals), 0)::integer   as goals,
     coalesce(sum(s.assists), 0)::integer as assists,
     (coalesce(sum(s.goals), 0) * 4 + coalesce(sum(s.assists), 0) * 3)::integer as points
@@ -137,7 +146,9 @@ as $$
   group by c.id, c.name, c.name_en, c.photo_url, c.country, cc.club
   -- A player who only warmed the bench all week is not a rating entry.
   having coalesce(sum(s.goals), 0) + coalesce(sum(s.assists), 0) > 0
-  order by points desc, goals desc, minutes asc, c.name asc
+  -- `nulls last`: unknown minutes must not win a tie-break they cannot
+  -- have earned.
+  order by points desc, goals desc, minutes asc nulls last, c.name asc
   limit greatest(1, least(coalesce(p_limit, 50), 200));
 $$;
 

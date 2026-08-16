@@ -61,7 +61,9 @@ jobs:
       # what must not reach the table.
       - name: Parser tests
         working-directory: football_scraper
-        run: python3 tests/test_sports_ru.py
+        run: |
+          python3 tests/test_sports_ru.py
+          python3 tests/test_espn.py
 
       - name: Collect
         working-directory: football_scraper
@@ -70,3 +72,13 @@ jobs:
           if [ "${{ inputs.resolve_only }}" = "true" ]; then args="$args --resolve"; fi
           if [ -n "${{ inputs.limit }}" ]; then args="$args --limit ${{ inputs.limit }}"; fi
           python3 sports_ru_stats.py $args
+
+      # Второй источник для той же таблицы. Отдельным шагом и с `if: always()`:
+      # источники независимы, и падение одного не должно уносить второй —
+      # иначе редкая поломка sports.ru тихо оставляла бы рейтинг без ESPN.
+      - name: Collect (ESPN)
+        if: always()
+        working-directory: football_scraper
+        # Двое суток, а не одни: матч, начавшийся в 23:30 UTC, заканчивается
+        # уже «завтра», и обход только за сегодня терял бы его каждый раз.
+        run: python3 espn_stats.py --days 2

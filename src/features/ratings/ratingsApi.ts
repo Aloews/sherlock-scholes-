@@ -29,7 +29,11 @@ export interface RatingRow {
    *  устаревшим и потому подписан «на дату», а не подан как факт. */
   club: string | null;
   matches: number;
-  minutes: number;
+  /** null — минуты неизвестны. ESPN их не отдаёт вовсе: его subbedIn/subbedOut
+   *  булевы, то есть «вышел» есть, а «когда» нет. Ноль на этом месте был бы
+   *  ложью с последствиями — рейтинг ломает ничью по «меньше минут при той же
+   *  отдаче». */
+  minutes: number | null;
   goals: number;
   assists: number;
   points: number;
