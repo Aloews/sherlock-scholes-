@@ -112,7 +112,8 @@
     "top_goal": "Mejor gol del fin de semana",
     "top_moment": "Mejor jugada del fin de semana",
     "fresh_clip": "Vídeo nuevo de hoy",
-    "arena_link": "Arena para dos"
+    "arena_link": "Arena para dos",
+    "ratings_link": "Ranking de jugadores"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -642,5 +643,21 @@
     "title": "Noticias de fútbol",
     "note": "Primero, lo que publican todos a la vez.",
     "failed": "No se pudieron cargar las noticias. Inténtalo más tarde."
+  },
+  "ratings": {
+    "title": "Ranking de jugadores",
+    "window_7": "Semana",
+    "window_30": "Mes",
+    "window_365": "Año",
+    "formula": "Puntos: gol — 4, asistencia — 3",
+    "partial": "Recopilado desde el {{date}}: aún faltan los partidos anteriores",
+    "loading": "Cargando…",
+    "failed": "No se pudo cargar el ranking",
+    "empty": "Nadie marcó ni asistió en este periodo",
+    "collected_one": "Recopilado hace {{count}} día",
+    "collected_other": "Recopilado hace {{count}} días",
+    "matches_one": "{{count}} partido",
+    "matches_other": "{{count}} partidos",
+    "goals_assists": "{{goals}} G · {{assists}} A"
   }
 }

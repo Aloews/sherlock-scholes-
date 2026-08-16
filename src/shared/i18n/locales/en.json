@@ -112,7 +112,8 @@
     "top_goal": "Top goal of the weekend",
     "top_moment": "Top moment of the weekend",
     "fresh_clip": "Today's new clip",
-    "arena_link": "Two-player arena"
+    "arena_link": "Two-player arena",
+    "ratings_link": "Player ratings"
   },
   "design": {
     "master": "New design",
@@ -642,5 +643,21 @@
     "title": "Football news",
     "note": "What every outlet ran with, first.",
     "failed": "Could not load the news. Try again later."
+  },
+  "ratings": {
+    "title": "Player ratings",
+    "window_7": "Week",
+    "window_30": "Month",
+    "window_365": "Year",
+    "formula": "Points: goal — 4, assist — 3",
+    "partial": "Collected since {{date}} — earlier matches are not in yet",
+    "loading": "Loading…",
+    "failed": "Could not load the ratings",
+    "empty": "Nobody scored or assisted in this window",
+    "collected_one": "Collected {{count}} day ago",
+    "collected_other": "Collected {{count}} days ago",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches",
+    "goals_assists": "{{goals}} G · {{assists}} A"
   }
 }

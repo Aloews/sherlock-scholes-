@@ -110,7 +110,8 @@
     "top_goal": "주말 베스트 골",
     "top_moment": "주말 베스트 장면",
     "fresh_clip": "오늘의 새 영상",
-    "arena_link": "2인 대전 아레나"
+    "arena_link": "2인 대전 아레나",
+    "ratings_link": "선수 랭킹"
   },
   "design": {
     "master": "새 디자인",
@@ -624,5 +625,19 @@
     "title": "축구 뉴스",
     "note": "여러 매체가 동시에 다룬 소식부터.",
     "failed": "뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+  },
+  "ratings": {
+    "title": "선수 랭킹",
+    "window_7": "1주",
+    "window_30": "1개월",
+    "window_365": "1년",
+    "formula": "점수: 골 4점, 도움 3점",
+    "partial": "{{date}}부터 수집한 자료입니다. 그 이전 경기는 아직 없습니다",
+    "loading": "불러오는 중…",
+    "failed": "랭킹을 불러오지 못했습니다",
+    "empty": "이 기간에 득점도 도움도 없습니다",
+    "collected_other": "{{count}}일 전 수집",
+    "matches_other": "{{count}}경기",
+    "goals_assists": "{{goals}}골 · {{assists}}도움"
   }
 }

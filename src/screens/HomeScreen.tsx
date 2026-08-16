@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUsersGroup, IconUser, IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay,
+  IconSoccerField, IconPlayerPlay, IconChartBar,
 } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -401,6 +401,11 @@ export function HomeScreen() {
               icon={<IconNews size={20} stroke={1.75} />}
               label={t('home.news_link')}
               onClick={() => navigate('/news')}
+            />
+            <HomeGameLink
+              icon={<IconChartBar size={20} stroke={1.75} />}
+              label={t('home.ratings_link')}
+              onClick={() => navigate('/ratings')}
             />
             <HomeGameLink
               icon={<IconSoccerField size={20} stroke={1.75} />}

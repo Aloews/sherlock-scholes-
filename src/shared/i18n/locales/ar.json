@@ -115,7 +115,8 @@
     "top_goal": "أفضل هدف في نهاية الأسبوع",
     "top_moment": "أفضل لقطة في نهاية الأسبوع",
     "fresh_clip": "مقطع اليوم الجديد",
-    "arena_link": "ساحة لاعبين"
+    "arena_link": "ساحة لاعبين",
+    "ratings_link": "تصنيف اللاعبين"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -711,5 +712,29 @@
     "title": "أخبار كرة القدم",
     "note": "أولًا ما نشرته كل الوسائل معًا.",
     "failed": "تعذّر تحميل الأخبار. حاول لاحقًا."
+  },
+  "ratings": {
+    "title": "تصنيف اللاعبين",
+    "window_7": "أسبوع",
+    "window_30": "شهر",
+    "window_365": "سنة",
+    "formula": "النقاط: هدف — ٤، تمريرة حاسمة — ٣",
+    "partial": "مجمَّع منذ {{date}} — المباريات الأقدم لم تُضَف بعد",
+    "loading": "جارٍ التحميل…",
+    "failed": "تعذّر تحميل التصنيف",
+    "empty": "لم يسجّل أحد ولم يصنع هدفًا في هذه الفترة",
+    "collected_zero": "مجمَّع اليوم",
+    "collected_one": "مجمَّع قبل يوم",
+    "collected_two": "مجمَّع قبل يومين",
+    "collected_few": "مجمَّع قبل {{count}} أيام",
+    "collected_many": "مجمَّع قبل {{count}} يومًا",
+    "collected_other": "مجمَّع قبل {{count}} يوم",
+    "matches_zero": "بلا مباريات",
+    "matches_one": "مباراة واحدة",
+    "matches_two": "مباراتان",
+    "matches_few": "{{count}} مباريات",
+    "matches_many": "{{count}} مباراة",
+    "matches_other": "{{count}} مباراة",
+    "goals_assists": "{{goals}} هدف · {{assists}} تمريرة"
   }
 }

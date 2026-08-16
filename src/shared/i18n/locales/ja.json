@@ -110,7 +110,8 @@
     "top_goal": "週末のベストゴール",
     "top_moment": "週末のベストシーン",
     "fresh_clip": "今日の新着動画",
-    "arena_link": "2人対戦アリーナ"
+    "arena_link": "2人対戦アリーナ",
+    "ratings_link": "選手ランキング"
   },
   "design": {
     "master": "新デザイン",
@@ -624,5 +625,19 @@
     "title": "サッカーニュース",
     "note": "各社がいっせいに報じた話題から。",
     "failed": "ニュースを読み込めませんでした。時間をおいてお試しください。"
+  },
+  "ratings": {
+    "title": "選手ランキング",
+    "window_7": "1週間",
+    "window_30": "1か月",
+    "window_365": "1年",
+    "formula": "ポイント：ゴール4、アシスト3",
+    "partial": "{{date}} 以降のデータです。それ以前の試合はまだ入っていません",
+    "loading": "読み込み中…",
+    "failed": "ランキングを読み込めませんでした",
+    "empty": "この期間に得点もアシストもありません",
+    "collected_other": "{{count}} 日前に取得",
+    "matches_other": "{{count}} 試合",
+    "goals_assists": "{{goals}} 得点 · {{assists}} アシスト"
   }
 }

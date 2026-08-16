@@ -110,7 +110,8 @@
     "top_goal": "本周末最佳进球",
     "top_moment": "本周末最佳瞬间",
     "fresh_clip": "今日新视频",
-    "arena_link": "双人竞技场"
+    "arena_link": "双人竞技场",
+    "ratings_link": "球员榜"
   },
   "design": {
     "master": "新设计",
@@ -624,5 +625,19 @@
     "title": "足球新闻",
     "note": "先看各家同时报道的话题。",
     "failed": "新闻加载失败，请稍后再试。"
+  },
+  "ratings": {
+    "title": "球员榜",
+    "window_7": "一周",
+    "window_30": "一个月",
+    "window_365": "一年",
+    "formula": "积分：进球 4 分，助攻 3 分",
+    "partial": "数据自 {{date}} 起收集，更早的比赛尚未收录",
+    "loading": "加载中…",
+    "failed": "无法加载球员榜",
+    "empty": "这段时间内无人进球或助攻",
+    "collected_other": "{{count}} 天前采集",
+    "matches_other": "{{count}} 场比赛",
+    "goals_assists": "{{goals}} 球 · {{assists}} 助攻"
   }
 }

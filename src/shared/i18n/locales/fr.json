@@ -112,7 +112,8 @@
     "top_goal": "Plus beau but du week-end",
     "top_moment": "Meilleure action du week-end",
     "fresh_clip": "Nouvelle vidéo du jour",
-    "arena_link": "Arène à deux"
+    "arena_link": "Arène à deux",
+    "ratings_link": "Classement des joueurs"
   },
   "design": {
     "master": "Nouveau design",
@@ -642,5 +643,21 @@
     "title": "Actualités du football",
     "note": "D’abord ce que tous les médias ont repris.",
     "failed": "Impossible de charger les actualités. Réessayez plus tard."
+  },
+  "ratings": {
+    "title": "Classement des joueurs",
+    "window_7": "Semaine",
+    "window_30": "Mois",
+    "window_365": "Année",
+    "formula": "Points : but — 4, passe — 3",
+    "partial": "Collecté depuis le {{date}} — les matchs antérieurs ne sont pas encore là",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger le classement",
+    "empty": "Personne n’a marqué ni donné de passe sur cette période",
+    "collected_one": "Collecté il y a {{count}} jour",
+    "collected_other": "Collecté il y a {{count}} jours",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matchs",
+    "goals_assists": "{{goals}} B · {{assists}} PD"
   }
 }
