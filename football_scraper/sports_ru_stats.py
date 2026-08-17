@@ -138,7 +138,19 @@ class Db:
     ⚠️ `merge-duplicates` emits ON CONFLICT DO UPDATE, so the key must hold
     UPDATE as well as INSERT. A writer with only INSERT writes nothing and
     still answers 200 — "285 read, 0 written", both numbers believable.
+
+    ⚠️ И ЧТЕНИЕ ТОЖЕ НЕ ОТДАЁТ ВСЁ, О ЧЁМ ЕГО ПОПРОСИЛИ. `?limit=5000` сервер
+    исполняет молча урезанным: PostgREST режет ответ по `db-max-rows`, и на
+    этом проекте это 1000. Приходит HTTP 200, ровно тысяча строк и ни одного
+    признака, что за ними есть ещё. Замер: `limit=5000` по `cards` вернул
+    1000, а `Content-Range` того же запроса — `0-999/2919`. То есть оба
+    сборщика видели ТРЕТЬ колоды и печатали «cards in deck: 1000» как
+    нормальное число.
     """
+
+    # Столько отдаёт PostgREST за раз (`db-max-rows` проекта). Просить больше
+    # можно, получить — нет.
+    PAGE_ROWS = 1000
 
     def __init__(self, url, key):
         self.url = url.rstrip("/") + "/rest/v1"
@@ -148,10 +160,36 @@ class Db:
              "Content-Type": "application/json"}
         )
 
-    def select(self, path):
-        r = self.session.get(self.url + path, timeout=60)
-        r.raise_for_status()
-        return r.json()
+    def select(self, path, cap=None):
+        """Все строки под `path`, страницами. `cap` — сколько хватит.
+
+        ⚠️ ПУТЬ ОБЯЗАН НЕСТИ `order=`, и это не стиль. Смещение без полного
+        порядка сортировки Postgres выполнять волен как угодно: между двумя
+        запросами строки могут переставиться, и тогда обход одну строку
+        покажет дважды, а другую не покажет вовсе. Хуже всего то, что
+        результат при этом правдоподобен — просто в нём кого-то нет.
+        """
+        assert "order=" in path, "select() paginates, so the path must order: " + path
+        rows, offset = [], 0
+        sep = "&" if "?" in path else "?"
+        while True:
+            want = self.PAGE_ROWS if cap is None else min(self.PAGE_ROWS, cap - len(rows))
+            if want <= 0:
+                break
+            r = self.session.get(
+                "{}{}{}limit={}&offset={}".format(self.url, path, sep, want, offset),
+                timeout=60,
+            )
+            r.raise_for_status()
+            batch = r.json()
+            rows.extend(batch)
+            # Короткая страница — последняя. Полная не доказывает, что есть
+            # следующая, поэтому лишний пустой запрос здесь допустим: он стоит
+            # одного round-trip, а его отсутствие стоило бы половины таблицы.
+            if len(batch) < want:
+                break
+            offset += len(batch)
+        return rows
 
     def upsert(self, table, rows, on_conflict):
         if not rows:
@@ -232,7 +270,7 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     requests per player and rests on a verified guess.
     """
     cards = db.select(
-        "/cards?select=id,name,name_en&active=eq.true&category=eq.player&limit=5000"
+        "/cards?select=id,name,name_en&active=eq.true&category=eq.player&order=id"
     )
     cards_by_key = {}
     for c in cards:
@@ -278,9 +316,9 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     # a current club, because a retired player has no matches to collect and
     # asking for his page every night is a request spent on a certainty.
     if guess:
-        current = db.select("/card_current_club?select=card_id&limit=5000")
+        current = db.select("/card_current_club?select=card_id&order=card_id")
         wanted = {c["card_id"] for c in current} - seen_cards
-        known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&limit=5000")}
+        known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&order=card_id")}
         todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
         print("guessing slugs for {} cards not on any squad page".format(len(todo)))
         guessed = 0
@@ -319,10 +357,13 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
     The order matters: a run cut short by the budget still advances instead of
     re-reading the same head of the list every night.
     """
-    path = "/sports_ru_player?select=card_id,slug,name_ru&order=checked_at.asc.nullsfirst"
-    if limit:
-        path += "&limit={}".format(int(limit))
-    players = db.select(path)
+    # `card_id` дописан в порядок вторым ключом не для красоты: `checked_at`
+    # у непрочитанных карточек одинаково пуст, а обход идёт страницами по
+    # смещению — при неполном порядке страницы могут перекрыться, и часть
+    # игроков не была бы прочитана ни разу.
+    path = ("/sports_ru_player?select=card_id,slug,name_ru"
+            "&order=checked_at.asc.nullsfirst,card_id.asc")
+    players = db.select(path, cap=int(limit) if limit else None)
     print("players to read: {}".format(len(players)))
 
     stats, checked, suspect = [], [], []

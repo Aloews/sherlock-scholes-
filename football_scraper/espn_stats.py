@@ -36,7 +36,7 @@ from scraper.espn import (  # noqa: E402
     parse_match_meta,
     parse_player_rows,
 )
-from sports_ru_stats import Db  # noqa: E402
+from sports_ru_stats import USER_AGENT, Db  # noqa: E402
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
@@ -87,11 +87,24 @@ def collect(days, dry_run=False):
 
     db = Db(url, key)
     session = requests.Session()
-    session.headers.update({"User-Agent": "SherlockScholesBot/1.0"})
+    # ⚠️ ТА ЖЕ СТРОКА, ЧТО У sports.ru, И ЭТО НЕ АККУРАТНОСТЬ, А УСЛОВИЕ
+    # РАБОТЫ. Здесь стоял голый «SherlockScholesBot/1.0», и ESPN отвечал на
+    # него 403 страницей Akamai «Access Denied» — все 28 запросов первого
+    # прогона, до единого. Замер по повторам, 3 из 3 на каждом варианте:
+    #
+    #   SherlockScholesBot/1.0                        -> 403
+    #   SherlockScholesBot/1.0 (+https://github.com/…) -> 200
+    #   curl/8.5.0                                     -> 200
+    #   python-requests/2.32.3                         -> 200
+    #
+    # То есть отклоняется не бот, назвавшийся ботом, — отклоняется КОРОТКИЙ
+    # безымянный токен без контактной части. Строка ниже называет проект и
+    # даёт адрес, куда писать: она честнее той, что блокировали, а не хитрее.
+    session.headers.update({"User-Agent": USER_AGENT})
 
     cards = db.select(
         "/cards?select=id,name,name_en&active=eq.true&category=eq.player"
-        "&name_en=not.is.null&limit=5000"
+        "&name_en=not.is.null&order=id"
     )
     # Ключ строится по ЛАТИНСКОМУ имени: ESPN пишет «Miguel Almirón», а не
     # «Мигель Альмирон», и сопоставлять надо в одном алфавите.
