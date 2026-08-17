@@ -544,7 +544,8 @@
     "final_score": "최종 스코어",
     "score_age_unknown": "스코어 갱신 시각 불명",
     "day_matches_other": "{{count}}경기",
-    "score_age_other": "{{count}}분 전 갱신"
+    "score_age_other": "{{count}}분 전 갱신",
+    "broadcaster": "중계 · {{name}}"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

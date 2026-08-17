@@ -5,11 +5,19 @@ import { leagueKey, readableSportKey } from './leagues';
 import { PredictionRow } from './PredictionRow';
 import type { Fixture } from './fixturesApi';
 import type { Broadcast } from './broadcastsApi';
+import type { BroadcastRight } from './broadcastRightsApi';
 import type { Prediction } from './predictionsApi';
 
 interface Props {
   fixture: Fixture;
   broadcast?: Broadcast;
+  /**
+   * Правообладатель для страны читателя. Отсутствие значит одно из двух —
+   * страна не объявлена или вещатель для неё не назван, — и различать их
+   * карточке незачем: обе ситуации показываются одинаково, ссылкой на
+   * страницу турнира.
+   */
+  rights?: BroadcastRight;
   prediction?: Prediction;
   onPredictionSaved: (saved: Prediction) => void;
   timeFmt: Intl.DateTimeFormat;
@@ -41,7 +49,7 @@ function ageMinutes(iso: string | null): number | null {
  * ни политики, так что прочитать их отсюда нельзя даже по ошибке.
  */
 export function FixtureCard({
-  fixture, broadcast, prediction, onPredictionSaved, timeFmt,
+  fixture, broadcast, rights, prediction, onPredictionSaved, timeFmt,
 }: Props) {
   const { t } = useTranslation();
   const hasScore = fixture.home_score !== null && fixture.away_score !== null;
@@ -97,7 +105,24 @@ export function FixtureCard({
           уверенным. Официальная страница верна всегда, потому что её ведёт
           правообладатель. Турнира нет в таблице — ссылки нет: обещать
           нерабочий адрес хуже, чем не обещать ничего. */}
-      {broadcast && (
+      {/* ПРАВООБЛАДАТЕЛЬ ВМЕСТО СТРАНИЦЫ ТУРНИРА — но только когда он назван
+          самим турниром И назван со сроком. Тогда ссылка ведёт туда же, а
+          подпись отвечает точнее: не «где узнать», а «кто показывает».
+          Сезон рядом с именем не украшение: он и есть то, что отличает эту
+          строку от таблицы, которую broadcasts.sql вести отказалась. */}
+      {rights ? (
+        <button
+          type="button"
+          onClick={() => { hapticImpact('light'); openLink(rights.source_url); }}
+          className="mt-2 ml-[3.75rem] inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
+        >
+          <IconDeviceTvOld size={13} stroke={1.75} />
+          <span>{t('matches.broadcaster', { name: rights.broadcaster })}</span>
+          {rights.season_from && (
+            <span className="opacity-60">{rights.season_from}</span>
+          )}
+        </button>
+      ) : broadcast && (
         <button
           type="button"
           onClick={() => { hapticImpact('light'); openLink(broadcast.url); }}
