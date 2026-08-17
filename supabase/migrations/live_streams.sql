@@ -100,8 +100,22 @@ grant select, insert, update, delete on public.live_streams to service_role;
  * «лучше не показать».
  *
  * Признак матча — «А против Б» словом, а не тире: тире стоит в каждом втором
- * заголовке YouTube как разделитель. Бразильское « x » входит с пробелами по
- * обе стороны — без них оно поймает «Max», «Box» и любой хэштег.
+ * заголовке YouTube как разделитель.
+ *
+ * ОДИНОЧНЫЕ « x » И « v » — С ПРОБЕЛАМИ И БУКВАМИ ПО ОБЕ СТОРОНЫ. Без этого
+ * они ловят «Max», «Box» и любой хэштег. С этим — берут два способа назвать
+ * матч, которыми пользуются сами лиги: бразильское «Flamengo x Palmeiras» и
+ * британское «Häcken v Hammarby». Второе я сначала отверг как рискованное, и
+ * это было ошибкой: обход вкладки трансляций УЕФА нашёл им же названный финал
+ * женского Кубка Европы, который предикат молча пропускал.
+ *
+ * ⚠️ ИЗВЕСТНЫЙ ПРЕДЕЛ « x », ИЗМЕРЕННЫЙ, А НЕ ПРЕДПОЛОЖЕННЫЙ. Тем же знаком
+ * подписывают совместные проекты: «Ligue 1 Uber Eats x EA» — не матч, а
+ * реклама. Отличить «бренд x бренд» от «клуб x клуб» разбором заголовка
+ * нельзя, и я не притворяюсь, что можно. Конкретный случай снят исключением
+ * ниже; общий остаётся, и цена ему — один ложный матч на двадцать восемь
+ * трансляций Ligue 1. Уберёте « x » — потеряете бразильские заголовки
+ * целиком; это размен, а не недосмотр.
  */
 create or replace function public.looks_like_match(p_title text)
 returns boolean language sql immutable as $$
@@ -111,6 +125,7 @@ returns boolean language sql immutable as $$
          || '|contre|gegen|contro'
          || ')([^[:alnum:]]|$)')
       or lower(p_title) ~ '[[:alnum:]] x [[:alnum:]]'
+      or lower(p_title) ~ '[[:alnum:]] v [[:alnum:]]'
 $$;
 
 create or replace function public.is_studio_talk(p_title text)
@@ -121,17 +136,36 @@ returns boolean language sql immutable as $$
       || '|pressekonferenz|conf[ée]rence de presse|coletiva'
       || '|пресс-конференц|기자회견|記者会見|新闻发布会|مؤتمر صحفي'
          -- Студия, превью, разбор — не матч, даже если названы двумя клубами.
-      || '|pre-?match|preview|post-?match|matchday live|watch ?along'
+         -- ⚠️ «previa» И «highlight» БЕЗ S — обе формы найдены обходом вкладок
+         -- трансляций, а не придуманы. Через список без них проходили
+         -- «🔴 RC DEPORTIVO vs ELCHE CF - PREVIA DEL PARTIDO» у Ла Лиги и
+         -- «[Highlight] … Jeju vs. Anyang» у K League: то есть 8 из 30 и 24 из
+         -- 72 заголовков соответственно объявлялись матчами.
+      || '|pre-?match|avant-?match|previews?|previa|prévia|post-?match'
+      || '|matchday live|watch ?along'
       || '|podcast|analysis|an[áa]lisis|reaction|обзор|превью|разбор'
          -- Жеребьёвка называет два клуба чаще любого матча.
       || '|draw show|sorteo|sorteggio|жеребьёвк|жеребьевк'
+         -- Совместные проекты и презентации: «Ligue 1 Uber Eats x EA»,
+         -- «REVEAL TEAM OF THE SEASON». Знак « x » между брендами не отличить
+         -- от « x » между клубами, поэтому отсекается сам формат.
+      || '|team of the season|ultimate team|fut \d|reveal'
          -- ⚠️ ПОВТОР В ПЕТЛЕ — НЕ ИДУЩИЙ МАТЧ, и здесь я сам сначала ошибся:
          -- «Match Highlights: Inter vs Milan» проходило как матч, потому что в
          -- заголовке два клуба и «vs». Но сюда попадают только каналы, которые
          -- УЖЕ в эфире, и «обзор» в эфире значит крутящуюся нарезку. Показать
          -- её под надписью «идёт сейчас» — то же враньё, что пресс-конференция.
-      || '|highlights|resumen|resumo|r[ée]sum[ée]|melhores momentos'
-      || '|match replay|full match replay|relive|classic match'
+         -- ⚠️ «ОБЗОР» НЕ ТОЛЬКО ЛАТИНИЦЕЙ. K League подписывает свои
+         -- трансляции «[30분 하이라이트] … 대구 vs 충남아산», и через список из
+         -- одной латиницы матчами объявлялись 22 заголовка из 72. Приложение
+         -- переведено на девять языков — список исключений тоже обязан быть.
+      || '|highlights?|하이라이트|ハイライト|集锦|精彩'
+      || '|resumen|resumo|r[ée]sum[ée]|melhores momentos'
+         -- Голое «replay», а не только «match replay»: Ligue 1 подписывает так
+         -- восемь из двадцати восьми своих трансляций — «Replay | Matchday 25
+         -- … PSG vs Monaco». Через список без этой формы все восемь шли
+         -- матчами.
+      || '|replay|relive|classic match'
   )
 $$;
 

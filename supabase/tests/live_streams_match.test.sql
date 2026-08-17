@@ -78,6 +78,41 @@ BEGIN
       format('B: «%s» — ожидали %s, получили %s', v_title, v_want, v_got);
   END LOOP;
 
+  -- ── B2. Заголовки, НА КОТОРЫХ ПРЕДИКАТ ЛОМАЛСЯ ────────────────────────
+  -- Каждый — из обхода вкладок трансляций десяти официальных каналов (308
+  -- заголовков). Все шесть форм ниже проходили НЕВЕРНО, пока их не измерили,
+  -- и каждая стоила отдельной правки. Выдумать их не получилось бы: три из
+  -- шести — не на латинице или не на английском.
+  FOR v_title, v_want IN
+    SELECT * FROM (VALUES
+      -- «previa» — испанское превью. Ла Лига подписывает так 8 из 30.
+      ('🔴 RC DEPORTIVO vs ELCHE CF - PREVIA DEL PARTIDO',                     false),
+      -- «avant-match» — французское. Плюс голое «replay», которым Ligue 1
+      -- подписывает почти все свои трансляции.
+      ('🏆 REPLAY | Avant-match : RC Lens 🆚 Paris Saint-Germain',              false),
+      ('Replay | Matchday 25 - Ligue 1 Pre-Sale Service | PSG vs Monaco',      false),
+      -- «highlight» без s. Через список с одним «highlights» проходило.
+      ('[Highlight] Hana Bank K League 1 2026 Round 23 Jeju vs. Anyang',       false),
+      -- «хайлайты» по-корейски: 22 заголовка из 72 у K League.
+      ('[30분 하이라이트] 하나은행 K리그2 2026 22R 대구 vs 충남아산',                    false),
+      -- « x » между БРЕНДАМИ, а не клубами. Известный предел, см. C.
+      ('REVEAL TEAM OF THE SEASON FUT 24 🎮🔥 I Ligue 1 Uber Eats x EA',        false),
+      -- И то, что предикат МОЛЧА ПРОПУСКАЛ: британское « v » как разделитель.
+      -- Отвергнуто мной как рискованное — и зря: так УЕФА называет финалы.
+      ('Häcken v Hammarby - 2026 UEFA Women''s Europa Cup Final - 2nd Leg',    true),
+      ('Wolves v Shanghai Shenhua FC | Premier League NEXTGEN Beijing Cup 2026', true),
+      -- Настоящие матчи с четырёх каналов, ради которых всё и заведено.
+      ('EN VIVO | ARGENTINA vs. BRASIL | CONMEBOL SUB17 FUTSAL 2026',          true),
+      ('EN VIVO | Pachuca vs. Chivas | Torneo Sub-14 2026 | Final | Partido Completo', true),
+      ('🔴 ATALANTA U19 vs JUVENTUS U19 | Full Match LIVE | Coppa Italia',      true),
+      ('Preseason Friendly | Cerezo Osaka vs. Borussia Dortmund | Full Game',  true)
+    ) AS t(title, want)
+  LOOP
+    v_got := public.looks_like_match(v_title) AND NOT public.is_studio_talk(v_title);
+    ASSERT v_got = v_want,
+      format('B2: «%s» — ожидали %s, получили %s', v_title, v_want, v_got);
+  END LOOP;
+
   -- ── C. Известные пределы, утверждаемые НАРОЧНО ─────────────────────────
   -- Одиночное « x » требует букв с обеих сторон и пробелов: без этого оно
   -- ловило бы «Max», «Box» и любой хэштег.
@@ -89,6 +124,14 @@ BEGIN
   -- матча значило бы объявить матчем всё подряд.
   ASSERT NOT public.looks_like_match('Arsenal - Chelsea'),
     'C: тире стало признаком матча — проверьте, не объявлен ли матчем каждый заголовок';
+
+  -- « x » между брендами от « x » между клубами разбором заголовка не
+  -- отличить, и предикат этого не умеет. Конкретный случай снят исключением
+  -- на формат («team of the season»), а САМ ПРЕДЕЛ остаётся и утверждается:
+  -- вымышленная коллаборация без такого маркера пройдёт как матч.
+  ASSERT public.looks_like_match('Nike x Adidas')
+     AND NOT public.is_studio_talk('Nike x Adidas'),
+    'C: предел « x » исчез — если он снят намеренно, обновите комментарий в live_streams.sql';
 
   -- ── D. Смещение в сторону «лучше не показать» ──────────────────────────
   -- Заголовок, в котором есть И признак матча, И признак студии, считается
