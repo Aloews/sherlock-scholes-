@@ -89,6 +89,22 @@ DELAY_SECONDS = 1.2
 MAX_RETRIES = 4
 PAGE_BUDGET = 2000
 
+# Сколько страниц бюджета НЕ отдаётся резолву слагов.
+#
+# Бюджет один на оба шага, а резолв идёт первым — и до тех пор, пока сборщик
+# видел тысячу карточек из 2919, это ничего не значило: догадываться было не о
+# ком. Постраничное чтение открыло настоящий список, и кандидатов на догадку
+# стало ~1130 (1248 карточек с клубом минус найденные в составах и уже
+# известные). При одной-двух страницах на догадку резолв съедает весь бюджет,
+# и на чтение статистики — то есть на ЕДИНСТВЕННЫЙ шаг, который наполняет
+# рейтинг, — не остаётся ничего.
+#
+# Резерв делает приоритет явным: слаги можно дорезолвить завтра, а сутки
+# матчей, не прочитанные сегодня, завтра уже не прочитаются — страница отдаёт
+# один сезон целиком, но `checked_at`-порядок вращает список, и пропущенный
+# игрок ждёт своей очереди.
+COLLECT_RESERVE = PAGE_BUDGET // 2
+
 
 class Fetcher:
     """Polite GET with a delay, retries and a hard page budget."""
@@ -100,6 +116,10 @@ class Fetcher:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self._last = 0.0
+
+    @property
+    def remaining(self):
+        return max(0, self.budget - self.count)
 
     def get(self, url):
         """Page text, or None. A 404 is a real answer (the slug moved), not an
@@ -323,6 +343,10 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
         print("guessing slugs for {} cards not on any squad page".format(len(todo)))
         guessed = 0
         for card in todo:
+            if fetcher.remaining <= COLLECT_RESERVE:
+                print("  reserve reached ({} pages left), leaving the rest for collect"
+                      .format(fetcher.remaining))
+                break
             try:
                 slug = resolve_by_name(fetcher, card)
             except RuntimeError:  # budget spent — keep what we have
@@ -368,7 +392,17 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
 
     stats, checked, suspect = [], [], []
     for p in players:
-        html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
+        try:
+            html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
+        except RuntimeError:
+            # Бюджет кончился посреди обхода. Выход, а не исключение: всё
+            # прочитанное лежит в `stats` и пишется ниже, а необработанный
+            # RuntimeError выбросил бы целую ночь чтения ради строки в логе.
+            # Ровно этого опасается комментарий про потолок в workflow —
+            # «закончиться бюджетом, а не обрывом посреди записи».
+            print("  budget spent after {} players, writing what was read"
+                  .format(len(checked)))
+            break
         if html is None:
             print("  !! {} ({}): page gone".format(p["name_ru"], p["slug"]))
             continue
