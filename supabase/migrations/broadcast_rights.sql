@@ -48,6 +48,18 @@ create table if not exists public.broadcast_rights (
   -- («Sub-Saharan Africa») — не «неизвестно», а «территория не страна».
   country     text,
 
+  -- ⚠️ ПРАВА НА ВЕСЬ МИР — ОТДЕЛЬНАЯ КАТЕГОРИЯ, а не «регион без кода».
+  -- Их мало, но они есть: MLS продала все матчи Apple одним пакетом без
+  -- деления по странам, и «MLS Season Pass» — единственный ответ читателю в
+  -- любой точке. Через `country` это не выразить: NULL там значит «территория
+  -- не страна», а не «подходит любой». Признак отдельной колонкой, потому что
+  -- строкой-меткой вроде territory='Worldwide' пришлось бы сравнивать текст, и
+  -- первая же опечатка выключила бы правило молча.
+  --
+  -- Конкретная строка важнее правила: если для страны есть СВОЙ вещатель, он
+  -- и показывается — сортировка ниже ставит мировые права последними.
+  worldwide   boolean not null default false,
+
   -- Срок, объявленный источником. Ради него всё и заведено.
   season_from text,
   season_to   text,
@@ -188,6 +200,38 @@ on conflict (sport_key, territory, broadcaster) do update
       source_url = excluded.source_url,
       checked_at = now();
 
+-- ─── MLS: один вещатель на весь мир ─────────────────────────────────────────
+--
+-- РЕДКИЙ СЛУЧАЙ, И ПОТОМУ ОН ЗДЕСЬ. MLS продала все матчи Apple одним
+-- пакетом, без деления по странам: «MLS Season Pass» — ответ читателю и в
+-- Москве, и в Мехико. Проверено двумя независимыми источниками, а не одним:
+-- страница лиги (`mlssoccer.com/how-to-watch`, объявляет сезон 2026) и
+-- TV-выдача TheSportsDB, где у матчей MLS стоит strChannel «MLS Season Pass»
+-- при strCountry «International» — то есть не по стране.
+--
+-- ОСТАЛЬНЫЕ ТУРНИРЫ СТРОК НЕ ПОЛУЧИЛИ, и это результат проверки, а не лень:
+--   * laliga.com — страница «где смотреть» ПОДСТРАИВАЕТСЯ под страну
+--     посетителя и таблицы не публикует. Раздел international-rights — про
+--     тендеры, а не про действующих вещателей. Для неё ссылка честнее
+--     таблицы, и ссылка уже есть в `broadcasts`.
+--   * ligue1.com/en/broadcasters отвечает 200 и называет beIN Sports и
+--     Ligue 1+, но без территорий и без срока — под условие не подходит.
+--   * legaseriea.it/en/serie-a/broadcasters — 307 на главную,
+--     bundesliga.com/en/bundesliga/tv-guide и laliga.com/en-GB/laliga-worldwide
+--     — 404. «Очевидный» адрес снова оказался неверным.
+insert into public.broadcast_rights
+  (sport_key, territory, broadcaster, country, worldwide,
+   season_from, season_to, source_url) values
+  ('soccer_usa_mls', 'Worldwide', 'MLS Season Pass on Apple TV', null, true,
+   '2026', '2026', 'https://www.mlssoccer.com/how-to-watch/')
+on conflict (sport_key, territory, broadcaster) do update
+  set country = excluded.country,
+      worldwide = excluded.worldwide,
+      season_from = excluded.season_from,
+      season_to = excluded.season_to,
+      source_url = excluded.source_url,
+      checked_at = now();
+
 -- ─── Чтение ─────────────────────────────────────────────────────────────────
 
 /**
@@ -219,8 +263,15 @@ as $$
          r.season_from, r.season_to, r.source_url, r.checked_at
   from public.broadcast_rights r
   where (p_sport_key is null or r.sport_key = p_sport_key)
-    and (p_country   is null or r.country   = upper(p_country))
-  order by r.sport_key, r.territory;
+    and (p_country   is null
+         or r.country = upper(p_country)
+         -- Мировые права подходят любой стране — но только когда страну
+         -- вообще спросили. При p_country is null отдаётся всё как есть.
+         or r.worldwide)
+  -- СНАЧАЛА СВОЙ ВЕЩАТЕЛЬ, ПОТОМ МИРОВОЙ. Читатель, у которого есть местный
+  -- правообладатель, должен увидеть его, а не глобальную подписку: она хоть и
+  -- верна, но не то, чем он смотрит.
+  order by r.sport_key, r.worldwide, r.territory;
 $$;
 
 -- ОБА АРГУМЕНТА НЕОБЯЗАТЕЛЬНЫ, и это ради одного пути чтения, а не ради
