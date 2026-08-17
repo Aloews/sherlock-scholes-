@@ -561,7 +561,8 @@
     "day_matches_one": "{{count}} jogo",
     "day_matches_other": "{{count}} jogos",
     "score_age_one": "Resultado atualizado há {{count}} minuto",
-    "score_age_other": "Resultado atualizado há {{count}} minutos"
+    "score_age_other": "Resultado atualizado há {{count}} minutos",
+    "broadcaster": "Transmite · {{name}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

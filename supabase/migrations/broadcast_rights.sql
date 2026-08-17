@@ -199,10 +199,11 @@ on conflict (sport_key, territory, broadcaster) do update
  * на этом месте читатель прочтёт как поломку.
  */
 create or replace function public.broadcast_rights_for(
-  p_sport_key text,
+  p_sport_key text default null,
   p_country   text default null
 )
 returns table (
+  sport_key   text,
   territory   text,
   broadcaster text,
   country     text,
@@ -214,14 +215,20 @@ returns table (
 language sql
 stable
 as $$
-  select r.territory, r.broadcaster, r.country, r.season_from, r.season_to,
-         r.source_url, r.checked_at
+  select r.sport_key, r.territory, r.broadcaster, r.country,
+         r.season_from, r.season_to, r.source_url, r.checked_at
   from public.broadcast_rights r
-  where r.sport_key = p_sport_key
-    and (p_country is null or r.country = upper(p_country))
-  order by r.territory;
+  where (p_sport_key is null or r.sport_key = p_sport_key)
+    and (p_country   is null or r.country   = upper(p_country))
+  order by r.sport_key, r.territory;
 $$;
 
+-- ОБА АРГУМЕНТА НЕОБЯЗАТЕЛЬНЫ, и это ради одного пути чтения, а не ради
+-- удобства. Экран расписания спрашивает «моя страна, все турниры» — шестьдесят
+-- матчей на экране, но стран у читателя одна; карточка турнира спросила бы
+-- «этот турнир, все страны». Две разные выборки означали бы два места, где
+-- решается, что такое «правообладатель для страны», и однажды они разойдутся —
+-- ровно та беда, от которой в проекте заведён один `cards_matching`.
 grant execute on function public.broadcast_rights_for(text, text)
   to anon, authenticated, service_role;
 
