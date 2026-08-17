@@ -469,6 +469,8 @@ cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
 
 # Серверная логика — руками, базы в CI нет:
 psql "$DATABASE_URL" -f supabase/tests/sweep_stale_rooms.test.sql
+psql "$DATABASE_URL" -f supabase/tests/collection_page.test.sql
+psql "$DATABASE_URL" -f supabase/tests/player_ratings_dedup.test.sql
 ```
 
 `supabase/tests/*.test.sql` — фикстуры и проверки внутри одной транзакции с
