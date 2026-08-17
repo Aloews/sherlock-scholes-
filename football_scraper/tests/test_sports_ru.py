@@ -16,6 +16,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.sports_ru import (  # noqa: E402
+    fold_latin,
     parse_club_slugs,
     parse_match_rows,
     parse_ru_date,
@@ -218,13 +219,49 @@ def main():
 
     # ---- guessed slugs, and the check that makes guessing safe ------------
     ok &= check("full name first", slug_candidates("Cristiano Ronaldo"),
-                ["cristiano-ronaldo", "ronaldo"])
+                ["cristiano-ronaldo", "ronaldo", "cristiano"])
     ok &= check("diacritics folded", slug_candidates("Kylian Mbappé"),
-                ["kylian-mbappe", "mbappe"])
+                ["kylian-mbappe", "mbappe", "kylian"])
     ok &= check("three parts keep the tail", slug_candidates("Virgil van Dijk"),
-                ["virgil-van-dijk", "van-dijk", "dijk"])
+                ["virgil-van-dijk", "van-dijk", "dijk", "virgil"])
     ok &= check("single name", slug_candidates("Neymar"), ["neymar"])
     ok &= check("nothing to guess from", slug_candidates(""), [])
+
+    # ---- буквы, которые рукописная таблица СЪЕДАЛА ------------------------
+    #
+    # Каждая строка — измеренный промах, а не выдуманный случай. Прежняя
+    # таблица на 31 символ не знала этих букв, `translate` их не трогал, а
+    # `re.split(r"[^a-z0-9]+")` ВЫБРАСЫВАЛ: «Modrić» давал `luka-modri`, слаг,
+    # которого нет, и страница отвечала 404 — снаружи неотличимо от «у игрока
+    # нет матчей». Дыра в 513 карточек содержала 52 таких, то есть каждую
+    # десятую: ć×32, ı×8, č×4, ō×4, ğ×3, ū×2, ń×2, ț, ř, ş, ě, ș, ă.
+    #
+    # `luka-modric`, `kenan-yildiz`, `hakan-calhanoglu`, `adam-marusic` и
+    # `piotr-zielinski` проверены живыми запросами: все отвечают 200 и своим
+    # игроком.
+    ok &= check("ć не теряется", slug_candidates("Luka Modrić")[0], "luka-modric")
+    ok &= check("ı без точки", slug_candidates("Kenan Yıldız")[0], "kenan-yildiz")
+    ok &= check("ç и ğ вместе", slug_candidates("Hakan Çalhanoğlu")[0], "hakan-calhanoglu")
+    ok &= check("š", slug_candidates("Adam Marušić")[0], "adam-marusic")
+    ok &= check("ń", slug_candidates("Piotr Zieliński")[0], "piotr-zielinski")
+    ok &= check("ō долгая", slug_candidates("Hiroki Itō")[0], "hiroki-ito")
+    ok &= check("ț с запятой", slug_candidates("Ionuț Radu")[0], "ionut-radu")
+
+    # Буквы, у которых штрих — часть самой буквы: NFKD их не разбирает, и они
+    # держатся на маленькой таблице. Список этих букв КОНЕЧЕН, в отличие от
+    # списка «буква со знаком».
+    ok &= check("ø", slug_candidates("Alexander Sørloth")[0], "alexander-sorloth")
+    ok &= check("ł", slug_candidates("Łukasz Skorupski")[0], "lukasz-skorupski")
+    ok &= check("đ", slug_candidates("Jan Đapo")[0], "jan-dapo")
+    ok &= check("fold_latin отдельно", fold_latin("Håland Æ ß œ"), "Haland Ae ss oe")
+
+    # ПЕРВОЕ ИМЯ В ОДИНОЧКУ — форма, которой в списке не было вовсе. У
+    # бразильцев играющее имя это имя: «Vinícius Júnior» живёт на
+    # `/football/person/vinicius/` (проверено, 200 и «Винисиус Жуниор»), а
+    # прежний список перебирал `vinicius-junior` и `junior` — обе 404.
+    ok &= check("первое имя последним кандидатом",
+                slug_candidates("Vinícius Júnior"),
+                ["vinicius-junior", "junior", "vinicius"])
 
     header = (
         "<h1>Эрлинг Холанд</h1>"
