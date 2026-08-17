@@ -60,7 +60,11 @@ grant select on public.broadcasts to anon, authenticated;
 grant select, insert, update, delete on public.broadcasts to service_role;
 
 insert into public.broadcasts (sport_key, name, url) values
-  ('soccer_epl',                        'Premier League',        'https://www.premierleague.com/broadcast-schedules'),
+  -- Канонический адрес, а не первый работающий. `/broadcast-schedules` тоже
+  -- открывается, но двумя переходами: 301 на `/en/broadcasting`, оттуда 302
+  -- сюда. Ссылка, которая работает через редиректы, ломается тихо — переезд
+  -- отменяют, и остаётся 404 в таблице, которую никто не перечитывает.
+  ('soccer_epl',                        'Premier League',        'https://www.premierleague.com/en/media/broadcasters'),
   ('soccer_spain_la_liga',              'LaLiga',                'https://www.laliga.com'),
   ('soccer_italy_serie_a',              'Lega Serie A',          'https://www.legaseriea.it/en/serie-a'),
   ('soccer_germany_bundesliga',         'Bundesliga',            'https://www.bundesliga.com/en/bundesliga'),
