@@ -24,13 +24,14 @@ import argparse
 import os
 import sys
 import time
+import unicodedata
 from datetime import date, timedelta
 
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from scraper.dedup import _similarity, canonical_key  # noqa: E402
+from scraper.dedup import canonical_key  # noqa: E402
 from scraper.espn import (  # noqa: E402
     completed_event_ids,
     parse_match_meta,
@@ -46,12 +47,24 @@ LEAGUES = (
     "ned.1", "por.1", "mex.1", "arg.1", "ksa.1", "uefa.champions",
 )
 
-# Имена здесь латинские с обеих сторон (ESPN и cards.name_en), поэтому порог
-# выше, чем у русского сопоставления: расхождения тут — диакритика и
-# сокращённое имя, а не разные системы транслитерации.
-NAME_MATCH_RATIO = 0.90
-
 DELAY_SECONDS = 0.4
+
+
+def fold_diacritics(name):
+    """«Jukić» -> «Jukic». Разложить и выбросить надстрочные знаки.
+
+    Единственная вольность, которую здесь можно себе позволить при
+    сопоставлении имён, — и она безопасна ровно потому, что ничего не
+    угадывает: две записи одного имени в разной типографике становятся ОДНИМ
+    ключом, а два разных имени остаются разными.
+    """
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c)
+    )
+
+
+def card_key(name):
+    return canonical_key(fold_diacritics(name))
 
 
 def fetch_json(session, url):
@@ -68,15 +81,36 @@ def fetch_json(session, url):
 
 
 def match_card(name, cards_by_key):
-    key = canonical_key(name)
-    if key in cards_by_key:
-        return cards_by_key[key]
-    best, best_score = None, 0.0
-    for other, card in cards_by_key.items():
-        score = _similarity(key, other)
-        if score > best_score:
-            best, best_score = card, score
-    return best if best_score >= NAME_MATCH_RATIO else None
+    """Карточка с ТЕМ ЖЕ именем, или None. Похожих здесь не бывает.
+
+    ⚠️ ЗДЕСЬ СТОЯЛ НЕЧЁТКИЙ ПЕРЕБОР С ПОРОГОМ 0.90, И ОН ПРИПИСЫВАЛ ГОЛЫ НЕ
+    ТЕМ. Замер по живому ответу ESPN за двое суток на полной колоде: 234
+    точных совпадения и 41 нечёткое, а среди нечётких примерно каждое пятое —
+    другой человек:
+        Marco Pellegrino -> Mark Pellegrino   0.966
+        Lucas Romero     -> Luka Romero       0.952
+        Josef Martínez   -> Josep Martínez    0.923   (форвард и вратарь)
+        Ronald           -> Ronaldo           0.923
+        Murilo           -> Murillo           0.923
+    Порогом это не чинится, и в этом всё дело: ошибки стоят ВЫШЕ правильных
+    совпадений, так что любая планка, пропускающая настоящие пары, пропустит
+    и эти. Раньше промах был редок, потому что сборщик по недосмотру видел
+    тысячу карточек из 2919; на полной колоде он стал обычным делом.
+    Ошибиться дороже, чем не найти: пропущенный игрок просто не попадёт в
+    рейтинг, а приписанный гол — это чужая фамилия в списке бомбардиров.
+
+    Осталось единственное послабление — свёртка диакритики, и она не
+    угадывает: «Jukić» и «Jukic» это одна запись в разной типографике. На тех
+    же данных она переводит в ТОЧНЫЕ 13 из 22 проверенных пар и не пропускает
+    ни одной из ложных выше.
+
+    Транслитерационные расхождения («Yevgeni» против «Evgeny») теперь мимо, и
+    это осознанная цена: почти все они — российская лига, а её и держит
+    sports.ru, который ключуется слагом, а не именем. Вернуть их можно
+    проверкой по клубу — у ESPN он в составе, у карточки в
+    `card_current_club`; без второго признака отличить однофамильца нельзя.
+    """
+    return cards_by_key.get(card_key(name))
 
 
 def collect(days, dry_run=False):
@@ -110,7 +144,7 @@ def collect(days, dry_run=False):
     # «Мигель Альмирон», и сопоставлять надо в одном алфавите.
     cards_by_key = {}
     for c in cards:
-        cards_by_key.setdefault(canonical_key(c["name_en"]), c)
+        cards_by_key.setdefault(card_key(c["name_en"]), c)
     print("cards with a latin name: {}".format(len(cards_by_key)))
 
     today = date.today()
