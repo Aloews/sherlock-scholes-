@@ -61,9 +61,21 @@ describe('fetchSuggestions', () => {
     expect(rpc).toHaveBeenCalledWith('friend_suggestions', { p_player_id: 42, p_limit: 10 });
   });
 
-  it('returns an empty list when the call fails', async () => {
+  it('отказ отличим от пустоты — как и у списка друзей', async () => {
+    // Подсказки безобидны: пустота в них ничего не утверждает, у нового
+    // игрока их и правда нет. Но форма ответа у всех чтений одна, и решать,
+    // показывать ли отказ, должен экран — а не помнить, какая из обёрток
+    // глотает ошибку молча.
     fail();
-    await expect(fetchSuggestions(42)).resolves.toEqual([]);
+    // Код сохраняется: 42501 (нет прав) и PGRST202 (нет функции) — разные
+    // поломки, и слить их в одно «не получилось» значит снова потерять то,
+    // ради чего LoadState заведён.
+    await expect(fetchSuggestions(42)).resolves.toEqual({ status: 'error', code: '42501' });
+  });
+
+  it('успех без строк — это ok с пустотой', async () => {
+    ok(null);
+    await expect(fetchSuggestions(42)).resolves.toEqual({ status: 'ok', data: [] });
   });
 });
 

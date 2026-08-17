@@ -23,7 +23,9 @@ const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => 
 const QuizScreen     = lazy(() => import('@/screens/QuizScreen').then((m) => ({ default: m.QuizScreen })));
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
+const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
+const ArenaOnlineScreen = lazy(() => import('@/screens/ArenaOnlineScreen').then((m) => ({ default: m.ArenaOnlineScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
@@ -121,6 +123,10 @@ export function Router() {
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
       <Route path="/news"      element={<PageTransition><NewsScreen /></PageTransition>} />
+      <Route path="/ratings"   element={<PageTransition><RatingsScreen /></PageTransition>} />
+      {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
+          родителя, и первые кадры холста уезжали бы вместе с ним. */}
+      <Route path="/arena/online" element={<ArenaOnlineScreen />} />
       <Route path="/arena"     element={<ArenaScreen />} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />

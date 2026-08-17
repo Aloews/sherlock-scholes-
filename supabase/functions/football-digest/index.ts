@@ -1,11 +1,15 @@
 // ============================================================================
 // football-digest — заголовки дня и видео дня.
 //
-// Ходит по открытым RSS/Atom-лентам, складывает результат в news_items и
-// goal_clips. Ключей не требует вовсе, и это не удача, а критерий отбора:
-// каждый источник ниже проверен запросом. Reddit (r/soccer) и Scorebat, которые
-// были очевидными кандидатами на «лучшие голы», отвечают 403 всем, кто не
-// платит — поэтому их здесь нет, а не потому, что о них не подумали.
+// Ходит по открытым RSS/Atom-лентам и по новостному API ESPN, складывает
+// результат в news_items и goal_clips.
+//
+// ⚠️ СПИСКА ИСТОЧНИКОВ ЗДЕСЬ БОЛЬШЕ НЕТ. Он живёт в таблице `digest_source`
+// (supabase/migrations/digest_sources.sql), и это единственное, что в этой
+// функции менялось часто. Пока список был здесь, добавление одной ленты стоило
+// полного переноса исходника в прод — а перенос делает агент, перепечатывая
+// файл, и однажды уже превратил `ё` в `ᑑ`. Теперь добавить ленту — это INSERT,
+// снять — `enabled = false`, и деплой для этого не нужен.
 //
 // ЧТО ЭТА ФУНКЦИЯ НЕ ДЕЛАЕТ. Она не ранжирует. Громкость заголовка считается
 // при чтении, в digest_news() — сюжет становится громким постепенно, и число,
@@ -38,51 +42,64 @@ const json = (body: unknown, status = 200) =>
   });
 
 /**
- * Ленты изданий, по языку.
+ * Ключ официального YouTube Data API v3 — бесплатный, квота 10 000 единиц в
+ * сутки.
  *
- * ДВА ИСТОЧНИКА НА ЯЗЫК — ЭТО МИНИМУМ, НИЖЕ КОТОРОГО ГРОМКОСТЬ НЕ РАБОТАЕТ.
- * Громкость считается как «сколько разных изданий вышло с тем же сюжетом», так
- * что при одном источнике она тождественно равна единице и лента вырождается в
- * хронологию. Русский, английский и испанский её имеют; португальский и
- * французский — нет, и там это честная хронология, а не сломанный рейтинг.
+ * ЗАЧЕМ ОН, ЕСЛИ И ТАК РАБОТАЛО. Atom-фид закрыт в robots.txt YouTube
+ * (`Disallow: /feeds/videos.xml`), то есть ежечасный серверный обход по нему —
+ * это обход запрета. Официальный API — разрешённый путь к тем же данным, и он
+ * дёшев: список загрузок канала стоит 1 единицу, статистика полусотни роликов
+ * ещё 1. Девять каналов каждые двадцать минут — около 1300 единиц в сутки,
+ * седьмая часть квоты.
  *
- * Языков без проверенной ленты (ar, ja, ko, zh) здесь нет намеренно: пустая
- * строка в таблице выглядела бы как поддержка, которой не существует.
- * digest_news() отдаёт таким читателям английский.
- *
- * ДВА ИСТОЧНИКА ОТСЮДА УЖЕ УБРАНЫ, и оба по измеренной причине, а не по вкусу:
- *   • РИА Спорт — адрес отвечает 301, а цель редиректа 404. Лента переехала.
- *   • Sky Sports — отвечает 200 и полон свежих заметок, но его pubDate написан
- *     как «Tue, 11 Aug 2026 11:46:00 BST», а `new Date()` такую зону не знает и
- *     возвращает Invalid Date. Разбор ниже отказывается выдумывать время, так
- *     что источник отдавал двадцать заметок и ноль строк. Это не «сломанный
- *     парсер»: строка с придуманной датой встала бы наверх ленты навсегда.
- * Обоих поймал `feeds_silent` в отчёте — ради этого он и поимённый.
+ * Без ключа поведение не меняется НИСКОЛЬКО: работают только те каналы, у
+ * которых `needs_key = false`, прежним Atom-путём и прежний раз в час.
  */
-const FEEDS: { lang: string; source: string; url: string }[] = [
-  { lang: "en", source: "BBC Sport", url: "https://feeds.bbci.co.uk/sport/football/rss.xml" },
-  { lang: "en", source: "The Guardian", url: "https://www.theguardian.com/football/rss" },
-  { lang: "ru", source: "Чемпионат", url: "https://www.championat.com/rss/news/football/" },
-  { lang: "ru", source: "Soccer.ru", url: "https://www.soccer.ru/rss" },
-  { lang: "es", source: "Marca", url: "https://e00-marca.uecdn.es/rss/futbol/primera-division.xml" },
-  { lang: "es", source: "Mundo Deportivo", url: "https://www.mundodeportivo.com/feed/rss/futbol" },
-  { lang: "pt", source: "Record", url: "https://www.record.pt/rss" },
-  { lang: "fr", source: "Foot Mercato", url: "https://www.footmercato.net/flux-rss" },
-];
+const YT_KEY = Deno.env.get("YOUTUBE_API_KEY") ?? "";
+
+interface Source {
+  kind: "feed" | "channel" | "espn_news";
+  name: string;
+  ref: string;
+  lang: string | null;
+  needs_key: boolean;
+}
 
 /**
- * Официальные каналы лиг на YouTube.
+ * Список источников из базы.
  *
- * Идентификаторы, а не @-имена: имя канала — это адрес, который владелец может
- * сменить, и тогда лента молча опустеет. Взяты со страниц самих каналов.
+ * ⚠️ ПУСТОЙ СПИСОК — ЭТО ОТКАЗ, А НЕ «СЕГОДНЯ ТИХО», и отличить одно от
+ * другого по отчёту иначе невозможно. Все поимённые списки молчания строятся
+ * ПО ЭТОМУ ЖЕ СПИСКУ: если источников ноль, то и `feeds_silent`, и
+ * `channels_silent`, и `espn_silent` окажутся пустыми — то есть отчёт о
+ * прогоне, не сходившем никуда, выглядит ровно как отчёт об идеальном прогоне.
+ * Поэтому пустота здесь обрывает прогон с ошибкой, а не идёт дальше.
  */
-const CHANNELS: { channel: string; id: string }[] = [
-  { channel: "Premier League", id: "UCG5qGWdu8nIRZqJ_GgDwQ-w" },
-  { channel: "LALIGA", id: "UCTv-XvfzLX3i4IGWAm4sbmA" },
-  { channel: "Serie A", id: "UCBJeMCIeLQos7wacox4hmLQ" },
-  { channel: "Ligue 1", id: "UCQsH5XtIc9hONE1BQjucM0g" },
-  { channel: "UEFA", id: "UCyGa1YEx9ST66rYrJTGIKOw" },
-];
+async function loadSources(): Promise<Source[] | null> {
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/digest_source` +
+      `?select=kind,name,ref,lang,needs_key&enabled=is.true&order=kind,id`,
+    {
+      headers: {
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+      },
+    },
+  ).catch((err) => {
+    console.error(`[digest] sources threw: ${err}`);
+    return null;
+  });
+  if (!r || !r.ok) {
+    console.error(`[digest] sources: ${r ? r.status : "no response"}`);
+    return null;
+  }
+  const rows = (await r.json().catch(() => null)) as Source[] | null;
+  if (!rows || rows.length === 0) {
+    console.error("[digest] sources: empty");
+    return null;
+  }
+  return rows;
+}
 
 /** Одна лента не должна валить прогон: неудача источника — это минус источник. */
 async function fetchText(url: string): Promise<string | null> {
@@ -95,11 +112,98 @@ async function fetchText(url: string): Promise<string | null> {
       console.warn(`[digest] ${r.status} ${url}`);
       return null;
     }
-    return await r.text();
+    return decodeBody(
+      new Uint8Array(await r.arrayBuffer()),
+      r.headers.get("content-type"),
+    );
   } catch (err) {
     console.warn(`[digest] ${url} threw: ${err}`);
     return null;
   }
+}
+
+/**
+ * Байты в текст ПО ОБЪЯВЛЕННОЙ КОДИРОВКЕ.
+ *
+ * ⚠️ `Response.text()` НЕ СМОТРИТ НА CHARSET. По спецификации Fetch он всегда
+ * декодирует как UTF-8, и заголовок `charset=ISO-8859-1` не значит ничего.
+ * Record отдаёт именно ISO-8859-1 — и объявляет это дважды, в Content-Type и в
+ * XML-декларации, — поэтому «milhões» доезжал до базы как «milh?es». Симптом
+ * читался как «кривая лента», хотя лента как раз честная: врал разбор.
+ *
+ * Кодировка берётся из заголовка, а если его нет — из самой декларации XML,
+ * которую можно прочесть по ASCII в любой однобайтовой кодировке.
+ */
+function decodeBody(bytes: Uint8Array, contentType: string | null): string {
+  const fromHeader = /charset=["']?([\w-]+)/i.exec(contentType ?? "")?.[1];
+  // Первые двести байт декларации читаются как ASCII при любой из кодировок,
+  // которые тут вообще встречаются.
+  const head = new TextDecoder("ascii").decode(bytes.slice(0, 200));
+  const fromXml = /encoding=["']([\w-]+)["']/i.exec(head)?.[1];
+  const label = (fromHeader ?? fromXml ?? "utf-8").toLowerCase();
+  try {
+    return new TextDecoder(label).decode(bytes);
+  } catch {
+    // Незнакомая метка — не повод потерять ленту целиком.
+    console.warn(`[digest] unknown charset ${label}`);
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+}
+
+/**
+ * Буквенные зоны, которых движок НЕ ЗНАЕТ.
+ *
+ * ⚠️ Список ровно такой, потому что он измерен, а не выведен из логики. RFC
+ * 2822 перечисляет американские сокращения, и движок разбирает `EST`, `EDT`,
+ * `CST`, `PST` и прочие сам; `GMT`, `UTC`, `UT` и `Z` он тоже знает. А `BST`,
+ * `CET`, `CEST` и остальные европейские возвращают Invalid Date — при том что
+ * выглядят так же законно.
+ *
+ * Именно на этом молча умирал Sky Sports: HTTP 200, двадцать свежих заметок,
+ * «Sun, 16 Aug 2026 19:27:00 BST» — и ноль строк в базе.
+ *
+ * `IST` здесь НЕТ намеренно: это одновременно Индия (+05:30) и ирландское
+ * летнее время (+01:00). Угадать нельзя, а угаданная на пять часов дата
+ * встанет наверх ленты — пусть лучше заметка будет пропущена.
+ */
+const NAMED_ZONES: Record<string, string> = {
+  BST: "+0100",
+  WET: "+0000",
+  WEST: "+0100",
+  CET: "+0100",
+  CEST: "+0200",
+  EET: "+0200",
+  EEST: "+0300",
+  MSK: "+0300",
+  BRT: "-0300",
+  JST: "+0900",
+  AEST: "+1000",
+  AEDT: "+1100",
+};
+
+/**
+ * Дата из ленты — или null, если прочитать не удалось.
+ *
+ * ⚠️ NULL, А НЕ «СЕЙЧАС». Строка с выдуманным временем встанет наверх ленты и
+ * останется там навсегда: экран сортирует по времени выхода, а не по времени
+ * записи. Пропустить заметку — потеря одной заметки; выдумать ей время —
+ * порча ленты до тех пор, пока строку не удалят руками.
+ */
+function parseDate(raw: string): Date | null {
+  const direct = new Date(raw);
+  if (!Number.isNaN(direct.getTime())) return direct;
+
+  // Замена только на конце и только целого слова: «BST» внутри названия
+  // месяца или города поменять было бы нечего, но искать его где попало —
+  // значит однажды поменять.
+  const patched = raw.trim().replace(/\s+([A-Z]{2,4})$/, (whole, zone: string) => {
+    const offset = NAMED_ZONES[zone];
+    return offset ? ` ${offset}` : whole;
+  });
+  if (patched === raw.trim()) return null;
+
+  const retry = new Date(patched);
+  return Number.isNaN(retry.getTime()) ? null : retry;
 }
 
 function tag(block: string, name: string): string | null {
@@ -120,8 +224,21 @@ function unescape(text: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/**
+ * Обёртка CDATA, ЗАЭКРАНИРОВАННАЯ САМОЙ ЛЕНТОЙ.
+ *
+ * ⚠️ Это не про настоящий CDATA — тот снимает `tag()`. Record кладёт в ленту
+ * `<title>&lt;![CDATA[ … ]]&gt;</title>`, то есть экранирует собственные
+ * скобки. Разбор достаёт текст честно, `unescape` возвращает `&lt;` в `<`, и
+ * обёртка становится видимой частью заголовка: читатель видит
+ * «<![CDATA[ Ferran Torres troca…». Снимать её надо ПОСЛЕ раскодирования
+ * сущностей, иначе снимать нечего.
+ */
+const ESCAPED_CDATA = /^<!\[CDATA\[([\s\S]*?)\]\]>$/;
+
 function stripTags(text: string): string {
-  return unescape(text.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  const plain = unescape(text.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  return (ESCAPED_CDATA.exec(plain)?.[1] ?? plain).trim();
 }
 
 interface NewsRow {
@@ -142,10 +259,8 @@ function parseRss(xml: string, lang: string, source: string): NewsRow[] {
     const date = tag(block, "pubDate") ?? tag(block, "dc:date");
     if (!title || !link) continue;
 
-    const when = date ? new Date(date) : new Date();
-    // Дата, которую не удалось прочитать, — это не «сейчас»: строка с
-    // выдуманным временем встанет наверх ленты и останется там навсегда.
-    if (Number.isNaN(when.getTime())) continue;
+    const when = date ? parseDate(date) : new Date();
+    if (!when) continue;
 
     const image =
       /<enclosure[^>]+url="([^"]+)"/i.exec(block)?.[1] ??
@@ -159,6 +274,55 @@ function parseRss(xml: string, lang: string, source: string): NewsRow[] {
       url: unescape(link),
       published_at: when.toISOString(),
       image_url: image ? unescape(image) : null,
+    });
+  }
+  return out;
+}
+
+interface EspnArticle {
+  headline?: string;
+  published?: string;
+  links?: { web?: { href?: string } };
+  images?: { url?: string }[];
+}
+
+/**
+ * Новости ESPN — JSON, а не RSS, и потому отдельно.
+ *
+ * Свежесть: замер дал статью, вышедшую за семь минут до запроса, — RSS изданий
+ * столько не держит. Ключа не требует, а клиент к этому же API уже написан для
+ * статистики (football_scraper/scraper/espn.py).
+ *
+ * ⚠️ В ответе ESPN лежат КОЭФФИЦИЕНТЫ (`odds`, `pickcenter`) — на уровне
+ * матча, не новости. Здесь читаются только `articles`, и ничего производного
+ * от коэффициентов на экран попасть не может: они в этом проекте внутренние.
+ */
+async function fetchEspnNews(source: Source): Promise<NewsRow[]> {
+  const text = await fetchText(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${source.ref}/news`,
+  );
+  if (!text) return [];
+  let articles: EspnArticle[];
+  try {
+    articles = (JSON.parse(text) as { articles?: EspnArticle[] }).articles ?? [];
+  } catch {
+    console.warn(`[digest] espn ${source.ref}: not JSON`);
+    return [];
+  }
+  const out: NewsRow[] = [];
+  for (const a of articles) {
+    const url = a.links?.web?.href;
+    const title = a.headline;
+    if (!url || !title || !a.published) continue;
+    const when = parseDate(a.published);
+    if (!when) continue;
+    out.push({
+      lang: source.lang ?? "en",
+      source: source.name,
+      title: stripTags(title),
+      url,
+      published_at: when.toISOString(),
+      image_url: a.images?.[0]?.url ?? null,
     });
   }
   return out;
@@ -183,8 +347,8 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
     const title = tag(block, "title");
     const published = tag(block, "published");
     if (!id || !title || !published) continue;
-    const when = new Date(published);
-    if (Number.isNaN(when.getTime())) continue;
+    const when = parseDate(published);
+    if (!when) continue;
 
     out.push({
       video_id: id,
@@ -202,18 +366,106 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
   return out;
 }
 
+interface PlaylistItem {
+  snippet?: {
+    title?: string;
+    publishedAt?: string;
+    resourceId?: { videoId?: string };
+    thumbnails?: Record<string, { url?: string } | undefined>;
+  };
+}
+
+interface VideoStats {
+  id: string;
+  statistics?: { viewCount?: string; likeCount?: string };
+}
+
+/**
+ * Ролики канала через официальный API.
+ *
+ * Плейлист загрузок канала — это его же идентификатор с `UC` → `UU`; так не
+ * нужен лишний вызов channels.list, чтобы узнать то, что и так известно.
+ *
+ * ДВА ЗАПРОСА, А НЕ ОДИН, И ВТОРОЙ ОБЯЗАТЕЛЕН. `playlistItems` отдаёт, что
+ * вышло, но не отдаёт просмотров — а «самые горячие» без просмотров пришлось
+ * бы выдумывать. Просмотры даёт `videos.list?part=statistics`, и он берёт до
+ * полусотни идентификаторов за раз, то есть стоит ещё одну единицу на канал.
+ */
+async function fetchClipsViaApi(channel: string, channelId: string): Promise<ClipRow[]> {
+  const uploads = "UU" + channelId.slice(2);
+  const listed = await fetchText(
+    `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet` +
+      `&playlistId=${uploads}&maxResults=20&key=${YT_KEY}`,
+  );
+  if (!listed) return [];
+
+  let items: PlaylistItem[];
+  try {
+    items = (JSON.parse(listed) as { items?: PlaylistItem[] }).items ?? [];
+  } catch {
+    console.warn(`[digest] ${channel}: playlistItems is not JSON`);
+    return [];
+  }
+
+  const rows = items
+    .map((item): ClipRow | null => {
+      const id = item.snippet?.resourceId?.videoId;
+      const published = item.snippet?.publishedAt;
+      if (!id || !published) return null;
+      const when = parseDate(published);
+      if (!when) return null;
+      const thumbs = item.snippet?.thumbnails ?? {};
+      return {
+        video_id: id,
+        title: stripTags(item.snippet?.title ?? ""),
+        channel,
+        published_at: when.toISOString(),
+        thumb_url:
+          thumbs.high?.url ?? thumbs.medium?.url ?? thumbs.default?.url ?? null,
+        views: 0,
+        likes: 0,
+      };
+    })
+    .filter((row): row is ClipRow => row !== null);
+
+  if (rows.length === 0) return [];
+
+  const statsText = await fetchText(
+    `https://www.googleapis.com/youtube/v3/videos?part=statistics` +
+      `&id=${rows.map((r) => r.video_id).join(",")}&key=${YT_KEY}`,
+  );
+  if (statsText) {
+    try {
+      const stats = (JSON.parse(statsText) as { items?: VideoStats[] }).items ?? [];
+      const byId = new Map(stats.map((s) => [s.id, s.statistics]));
+      for (const row of rows) {
+        const s = byId.get(row.video_id);
+        row.views = Number(s?.viewCount ?? 0);
+        row.likes = Number(s?.likeCount ?? 0);
+      }
+    } catch {
+      // Ролик без статистики лучше, чем никакого: он попадёт в ленту по
+      // времени, просто не поборется за «самое горячее».
+      console.warn(`[digest] ${channel}: statistics is not JSON`);
+    }
+  }
+  return rows;
+}
+
 /**
  * Запись пачкой, с игнором дубликатов.
- *
- * `resolution=ignore-duplicates`, а не merge: заголовок, однажды взятый из
- * ленты, не меняется, а издание вполне может переписать его через час — и
- * тогда читатель, уже открывший новость, увидит в ленте другой текст.
  *
  * `on_conflict` ОБЯЗАТЕЛЕН, и его отсутствие стоило первого прогона: без него
  * PostgREST целится в первичный ключ, а он здесь bigserial и не передаётся,
  * так что конфликта по нему не бывает никогда. Настоящий конфликт — по url
  * (и по video_id), и он приходил как 409 на всю пачку: 285 прочитанных
  * заголовков, ноль записанных, и оба числа в отчёте выглядели правдоподобно.
+ *
+ * ⚠️ ПОЧИНКА РАЗБОРА НЕ ЧИНИТ УЖЕ ЗАПИСАННОЕ. `ignore-duplicates` существующую
+ * строку не переписывает никогда, поэтому исправленный парсер действует только
+ * на то, что придёт впервые. Однажды это стоило суток показа мусора: разбор
+ * CDATA починили, раскатали, а 411 испорченных заголовков остались лежать и
+ * показываться. Чинить записанное надо отдельным запросом.
  */
 async function insert(
   table: string,
@@ -271,25 +523,58 @@ function unique<T>(rows: T[], key: (row: T) => string): T[] {
   });
 }
 
+/** Кто из источников не принёс ничего — поимённо, а не числом. */
+function silent(sources: Source[], got: unknown[][]): string[] {
+  return sources.filter((_, i) => got[i].length === 0).map((s) => s.name);
+}
+
 async function run(): Promise<Response> {
   const report: Record<string, unknown> = {};
+
+  const sources = await loadSources();
+  if (!sources) {
+    // См. loadSources: молча продолжить нельзя — отчёт о прогоне, не сходившем
+    // никуда, неотличим от отчёта об идеальном прогоне.
+    return json({ error: "no_sources" }, 503);
+  }
+
+  const feeds = sources.filter((s) => s.kind === "feed");
+  const espnLeagues = sources.filter((s) => s.kind === "espn_news");
+  // Каналы, требующие ключа, без ключа не опрашиваются вовсе: расширять
+  // закрытый в robots.txt Atom-путь нельзя.
+  const channels = sources.filter((s) => s.kind === "channel" && (YT_KEY !== "" || !s.needs_key));
 
   // Все ленты параллельно: их около полутора десятков, и последовательный
   // обход упирается в таймаут функции на первой же медленной.
   const news = await Promise.all(
-    FEEDS.map(async (feed) => {
-      const xml = await fetchText(feed.url);
-      return xml ? parseRss(xml, feed.lang, feed.source) : [];
+    feeds.map(async (feed) => {
+      const xml = await fetchText(feed.ref);
+      return xml ? parseRss(xml, feed.lang ?? "en", feed.name) : [];
     }),
   );
+  // ⚠️ ЧАСТОТА РАСТЁТ ТОЛЬКО ТАМ, ГДЕ ЭТО РАЗРЕШЕНО. Расписание участилось до
+  // каждых двадцати минут ради новостей и ради лиг, которые играют, когда
+  // Европа спит. Но Atom-фид YouTube закрыт в robots.txt, и опрашивать его
+  // втрое чаще значило бы втрое увеличить обход запрета. Поэтому без ключа
+  // ролики берутся по-прежнему раз в час — на том же двадцатом минуте, что и
+  // раньше, — а с ключом идут через официальный API каждый прогон.
+  const hourlySlot = new Date().getUTCMinutes() < 20;
+  const wantClips = YT_KEY !== "" || hourlySlot;
+
   const clips = await Promise.all(
-    CHANNELS.map(async (ch) => {
-      const xml = await fetchText(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch.id}`);
-      return xml ? parseAtom(xml, ch.channel) : [];
+    channels.map(async (ch) => {
+      if (!wantClips) return [];
+      if (YT_KEY) return await fetchClipsViaApi(ch.name, ch.ref);
+      const xml = await fetchText(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch.ref}`);
+      return xml ? parseAtom(xml, ch.name) : [];
     }),
   );
 
-  const newsRows = unique(fresh(news.flat()), (row) => row.url);
+  // ESPN идёт рядом с лентами, а не вместо: он про английский, а громкость
+  // считается внутри языка. Отдельным списком, потому что это JSON, а не RSS.
+  const espn = await Promise.all(espnLeagues.map(fetchEspnNews));
+
+  const newsRows = unique(fresh([...news.flat(), ...espn.flat()]), (row) => row.url);
   // РОЛИКИ БЕРУТСЯ ЦЕЛИКОМ, БЕЗ ОКНА В СУТКИ. Экран выходных смотрит на два
   // дня, которые к понедельнику уже позади, а фид отдаёт всего пятнадцать
   // записей на канал — выбрасывать из них всё старше суток значило бы не иметь
@@ -300,12 +585,26 @@ async function run(): Promise<Response> {
   report.news_new = await insert("news_items", "url", newsRows);
   report.clips_seen = clipRows.length;
   report.clips_new = await insert("goal_clips", "video_id", clipRows, true);
+  // Сколько источников вообще было взято — иначе «молчащих нет» может значить
+  // и «все ответили», и «спрашивать было некого».
+  report.sources = { feeds: feeds.length, channels: channels.length, espn: espnLeagues.length };
   // ПОИМЁННО, а не числом. «Молчит 2 источника» не даёт ничего сделать; лента
   // переезжает и умирает молча, и единственный способ это заметить — увидеть,
   // КТО именно перестал отвечать. Отличает «сегодня тихо» от «полгода назад
   // сменился адрес».
-  report.feeds_silent = FEEDS.filter((_, i) => news[i].length === 0).map((f) => f.source);
-  report.channels_silent = CHANNELS.filter((_, i) => clips[i].length === 0).map((c) => c.channel);
+  report.feeds_silent = silent(feeds, news);
+  // ESPN поимённо по лигам: молчит вся шестёрка — это отказ API, молчит одна —
+  // у той лиги просто нет новостей, и это разные поводы.
+  report.espn_silent = espnLeagues.filter((_, i) => espn[i].length === 0).map((s) => s.ref);
+  // Каким путём шли ролики — иначе по отчёту не отличить «ключа нет» от
+  // «ключ есть, но квота кончилась».
+  report.clips_source = YT_KEY ? "api" : "atom";
+  // ⚠️ Пропущенный прогон — НЕ молчание. Без ключа ролики берутся раз в час, и
+  // в остальные два прогона все каналы вернули бы пустоту: поимённый список
+  // «молчат все девять» звучал бы как отказ источника и обесценил бы
+  // единственный сигнал, ради которого он заведён.
+  report.channels_silent = wantClips ? silent(channels, clips) : [];
+  report.clips_skipped = !wantClips;
 
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/prune_digest`, {
     method: "POST",

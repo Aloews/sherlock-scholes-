@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconBallFootball, IconDeviceTvOld } from '@tabler/icons-react';
-import { fetchUpcomingFixtures, groupByDay, type Fixture } from '@/features/fixtures/fixturesApi';
+import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
+import {
+  fetchUpcomingFixtures,
+  fetchFixturesInMonth,
+  fetchFixturesHorizon,
+  groupByDay,
+  type Fixture,
+} from '@/features/fixtures/fixturesApi';
 import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
-import { PredictionRow } from '@/features/fixtures/PredictionRow';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
 import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
+import { FixtureCard } from '@/features/fixtures/FixtureCard';
+import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
+import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
 import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
-import { getRawInitData, hapticImpact, openLink } from '@/shared/lib/telegram';
+import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 
 /**
  * What football is on next.
- *
- * The data has been in `fixtures` for a while with nothing reading it; this is
- * the screen it was collected for. Everything shown here comes from the free
- * `/events` endpoint — schedule only.
  *
  * NO ODDS, AND NOTHING DERIVED FROM THEM. Not "favourite", not a highlighted
  * side, not an ordering that encodes one. `fixture_odds` has no grant and no
@@ -27,24 +31,36 @@ import { Chip } from '@/shared/ui/Chip';
  * KICK-OFF TIMES ARE THE VIEWER'S. The provider stores UTC; a 22:00 UTC match
  * is tonight in Madrid and tomorrow morning in Tokyo, and grouping by day has
  * to happen where the viewer is standing.
+ *
+ * ДВА РЕЖИМА, И ОНИ ОТВЕЧАЮТ НА РАЗНЫЕ ВОПРОСЫ. Список — «что дальше»:
+ * ближайшие матчи подряд, начиная с сейчас. Календарь — «что в этом месяце»,
+ * и он включает уже сыгранные дни со счётом, которых в списке нет и быть не
+ * должно. Поэтому и запросы разные: список отсекает прошлое, календарь берёт
+ * месяц целиком.
  */
 export function MatchesScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [fixtures, setFixtures] = useState<LoadState<Fixture[]>>(LOADING);
+  const [mode, setMode] = useState<'list' | 'calendar'>('list');
+
+  const [upcoming, setUpcoming] = useState<LoadState<Fixture[]>>(LOADING);
   const [predictions, setPredictions] = useState<LoadState<Prediction[]>>(LOADING);
+  const [broadcasts, setBroadcasts] = useState<Map<string, Broadcast>>(new Map());
+
+  // Календарь: свой месяц, свои матчи и горизонт.
+  const [month, setMonth] = useState<Date>(() => monthStart(new Date()));
+  const [monthRows, setMonthRows] = useState<LoadState<Fixture[]>>(LOADING);
+  const [horizon, setHorizon] = useState<Horizon>({ first: null, publishedUntil: null });
+  const [day, setDay] = useState<string | null>(null);
+
   // null — «все турниры». Не пустое множество: пустое пришлось бы всюду
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
   const [league, setLeague] = useState<string | null>(null);
-  const [broadcasts, setBroadcasts] = useState<Map<string, Broadcast>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Together: a fixture list without the player's own predictions would
-      // render every match as un-predicted for a moment, and then rewrite
-      // itself. One flash of wrong is worse than one moment of nothing.
       // Расписание и свои прогнозы — ВМЕСТЕ, и это не лень: список без
       // прогнозов на мгновение нарисовал бы каждый матч как несыгранный и
       // тут же переписал себя. Одна вспышка неправды хуже мгновения пустоты.
@@ -59,17 +75,44 @@ export function MatchesScreen() {
         fetchMyPredictions(getRawInitData()),
       ]);
       if (cancelled) return;
-      setFixtures(rows);
+      setUpcoming(rows);
       setPredictions(mine);
     })();
     return () => { cancelled = true; };
   }, []);
+
+  /**
+   * Месяц грузится только когда календарь открыт.
+   *
+   * Горизонт — ВСЕЙ таблицы, а не месяца, поэтому он и не зависит от `month`:
+   * сентябрь сам по себе не знает, что август расписан целиком. Ошибку
+   * горизонта экран переживает: клетки просто станут «не знаем», и это
+   * честнее, чем объявить их пустыми.
+   */
+  useEffect(() => {
+    if (mode !== 'calendar') return;
+    let cancelled = false;
+    setMonthRows(LOADING);
+    void (async () => {
+      const [rows, edge] = await Promise.all([
+        fetchFixturesInMonth(month),
+        fetchFixturesHorizon(),
+      ]);
+      if (cancelled) return;
+      setMonthRows(rows);
+      if (edge.status === 'ok') setHorizon(edge.data);
+    })();
+    return () => { cancelled = true; };
+  }, [mode, month]);
 
   const byFixture = useMemo(() => {
     const map = new Map<string, Prediction>();
     for (const p of dataOr(predictions, [])) map.set(p.fixture_id, p);
     return map;
   }, [predictions]);
+
+  /** Что вообще показывает экран в текущем режиме — до фильтров. */
+  const source = mode === 'list' ? upcoming : monthRows;
 
   /**
    * Турниры — ИЗ САМОГО СПИСКА, а не из KNOWN_SPORT_KEYS.
@@ -82,14 +125,20 @@ export function MatchesScreen() {
    */
   const leagues = useMemo(() => {
     const count = new Map<string, number>();
-    for (const f of dataOr(fixtures, [])) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
+    for (const f of dataOr(source, [])) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
     return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [fixtures]);
+  }, [source]);
 
-  const shown = useMemo(
-    () => (league === null ? dataOr(fixtures, []) : dataOr(fixtures, []).filter((f) => f.sport_key === league)),
-    [fixtures, league],
-  );
+  const shown = useMemo(() => {
+    let rows = dataOr(source, []);
+    if (league !== null) rows = rows.filter((f) => f.sport_key === league);
+    // Выбранный день сужает месяц. Ключ считается ровно так же, как в сетке —
+    // одной и той же функцией, иначе граница дня в двух местах разойдётся.
+    if (mode === 'calendar' && day !== null) {
+      rows = rows.filter((f) => localDayKey(new Date(f.commence_at)) === day);
+    }
+    return rows;
+  }, [source, league, mode, day]);
 
   const days = useMemo(() => groupByDay(shown), [shown]);
 
@@ -104,8 +153,8 @@ export function MatchesScreen() {
     [i18n.language],
   );
 
-  const dayLabel = (day: string): string => {
-    const [y, m, d] = day.split('-').map(Number);
+  const dayLabel = (key: string): string => {
+    const [y, m, d] = key.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     const today = new Date();
     const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
@@ -113,6 +162,16 @@ export function MatchesScreen() {
     if (daysApart === 0) return t('matches.today');
     if (daysApart === 1) return t('matches.tomorrow');
     return dayFmt.format(date);
+  };
+
+  const savePrediction = (saved: Prediction) => {
+    // Свой только что сохранённый прогноз — знание достоверное, даже если
+    // загрузка остальных не удалась. Поэтому список становится ok: игрок
+    // видит то, что сделал прямо сейчас.
+    setPredictions((prev) => ok([
+      saved,
+      ...dataOr(prev, []).filter((p) => p.fixture_id !== saved.fixture_id),
+    ]));
   };
 
   return (
@@ -130,10 +189,6 @@ export function MatchesScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
-        {/* Three states, and they are genuinely different: still asking,
-            asked and there is nothing, asked and here it is. Collapsing the
-            first two would show "no matches" to somebody whose list is one
-            round trip away. */}
         {/* Счётчик и рейтинг считает сервер: на этом экране лежат только
             ближайшие матчи, а очки заработаны и на давно сыгранных. Локальная
             сумма показывала бы меньше и молча. */}
@@ -147,6 +202,34 @@ export function MatchesScreen() {
             заново, сервер отвечает «уже есть», и виноватым выглядит игрок. */}
         {predictions.status === 'error' && (
           <p className="text-red-400/80 text-[10.5px]">{t('matches.predictions_failed')}</p>
+        )}
+
+        {/* ─── Режим ───
+            Выбор режима сбрасывает выбранный день: он существует только в
+            календаре, и остаться в списке с невидимым фильтром «только 16-е»
+            значит показать полупустой список без единого объяснения. */}
+        <div className="flex gap-1.5">
+          <Chip
+            label={t('matches.mode_list')}
+            selected={mode === 'list'}
+            onClick={() => { hapticImpact('light'); setMode('list'); setDay(null); }}
+          />
+          <Chip
+            label={t('matches.mode_calendar')}
+            selected={mode === 'calendar'}
+            onClick={() => { hapticImpact('light'); setMode('calendar'); setDay(null); }}
+          />
+        </div>
+
+        {mode === 'calendar' && (
+          <MonthCalendar
+            month={month}
+            onMonthChange={(next) => { setMonth(next); setDay(null); }}
+            fixtures={dataOr(monthRows, [])}
+            horizon={horizon}
+            selected={day}
+            onSelect={setDay}
+          />
         )}
 
         {/* ─── Турниры ───
@@ -174,103 +257,56 @@ export function MatchesScreen() {
           </div>
         )}
 
-        {fixtures.status === 'loading' && (
+        {/* Три состояния, и они правда разные: ещё спрашиваем; спросили и
+            ничего нет; спросили и вот оно. Схлопнуть первые два значит
+            показать «матчей нет» тому, у кого список в одном запросе. */}
+        {source.status === 'loading' && (
           <p className="text-brand-muted text-sm text-center py-8">{t('matches.loading')}</p>
         )}
 
         {/* «Расписание пустое» успокаивает и тогда, когда всё сломалось, — а
             здесь оно правдоподобно как нигде: межсезонье и пауза на сборные
             выглядят точно так же. Поэтому отказ говорит о себе отдельно. */}
-        {fixtures.status === 'error' && (
+        {source.status === 'error' && (
           <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-6 text-center space-y-1">
             <p className="text-brand-muted text-sm">{t('matches.failed')}</p>
-            <p className="text-brand-muted/50 text-[10px] font-mono">{fixtures.code}</p>
+            <p className="text-brand-muted/50 text-[10px] font-mono">{source.code}</p>
           </div>
         )}
 
-        {fixtures.status === 'ok' && fixtures.data.length === 0 && (
+        {/* Пустой месяц и пустое расписание — разные утверждения, поэтому и
+            надписи разные. Месяц за горизонтом публикации не «пуст»: про него
+            просто ещё ничего не известно, и сказать иначе значит объявить,
+            что футбола не будет. */}
+        {source.status === 'ok' && source.data.length === 0 && (
           <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-6 text-center">
             <IconBallFootball size={28} stroke={1.5} className="mx-auto text-brand-muted mb-2" />
-            <p className="text-brand-muted text-sm">{t('matches.empty')}</p>
+            <p className="text-brand-muted text-sm">
+              {mode === 'calendar' ? t('matches.month_unknown') : t('matches.empty')}
+            </p>
           </div>
         )}
 
-        {fixtures.status === 'ok' && fixtures.data.length > 0 && shown.length === 0 && (
-          <p className="text-brand-muted text-sm text-center py-8">{t('matches.empty_league')}</p>
+        {source.status === 'ok' && source.data.length > 0 && shown.length === 0 && (
+          <p className="text-brand-muted text-sm text-center py-8">
+            {mode === 'calendar' && day !== null
+              ? t('matches.empty_day')
+              : t('matches.empty_league')}
+          </p>
         )}
 
-        {days.map(({ day, fixtures: list }) => (
-          <div key={day} className="space-y-2">
-            <p className="text-brand-muted text-xs uppercase tracking-wider">{dayLabel(day)}</p>
-
+        {days.map(({ day: key, fixtures: list }) => (
+          <div key={key} className="space-y-2">
+            <p className="text-brand-muted text-xs uppercase tracking-wider">{dayLabel(key)}</p>
             {list.map((fixture) => (
-              <div
+              <FixtureCard
                 key={fixture.id}
-                className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3"
-              >
-                <div className="flex items-center gap-3">
-                <span className="ds-display text-white text-sm font-bold tabular-nums shrink-0 w-12">
-                  {timeFmt.format(new Date(fixture.commence_at))}
-                </span>
-
-                <div className="flex-1 min-w-0">
-                  {/* The provider's spelling, in English. Translating club
-                      names here would need a mapping we do not have for most
-                      of these clubs, and a half-translated list reads worse
-                      than a consistent one. */}
-                  <p className="text-white text-sm truncate">{fixture.home_team}</p>
-                  <p className="text-white text-sm truncate">{fixture.away_team}</p>
-                </div>
-
-                <span className="text-brand-muted text-[10.5px] text-right shrink-0 max-w-[35%]">
-                  {t(leagueKey(fixture.sport_key), {
-                    defaultValue: readableSportKey(fixture.sport_key),
-                  })}
-                </span>
-                </div>
-
-                {/* «Где смотреть» — страница САМОГО турнира, а не канал.
-                    Права перепродаются каждый сезон, и строка «в вашей стране
-                    это такой-то канал» устаревает молча: человек уходит не
-                    туда, а экран выглядит уверенным. Официальная страница
-                    верна всегда, потому что её ведёт правообладатель.
-                    Турнира нет в таблице — ссылки нет: обещать нерабочий
-                    адрес хуже, чем не обещать ничего. */}
-                {broadcasts.get(fixture.sport_key) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hapticImpact('light');
-                      openLink(broadcasts.get(fixture.sport_key)!.url);
-                    }}
-                    className="mt-2 ml-[3.75rem] inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
-                  >
-                    <IconDeviceTvOld size={13} stroke={1.75} />
-                    <span>
-                      {t('matches.where_to_watch', {
-                        source: broadcasts.get(fixture.sport_key)!.name,
-                      })}
-                    </span>
-                  </button>
-                )}
-
-                <div className="mt-2 pl-[3.75rem]">
-                  <PredictionRow
-                    fixture={fixture}
-                    existing={byFixture.get(fixture.id)}
-                    onSaved={(saved) => {
-                      // Свой только что сохранённый прогноз — знание
-                      // достоверное, даже если загрузка остальных не удалась.
-                      // Поэтому список становится ok: игрок видит то, что
-                      // сделал прямо сейчас.
-                      setPredictions((prev) => ok([
-                        saved,
-                        ...dataOr(prev, []).filter((p) => p.fixture_id !== saved.fixture_id),
-                      ]));
-                    }}
-                  />
-                </div>
-              </div>
+                fixture={fixture}
+                broadcast={broadcasts.get(fixture.sport_key)}
+                prediction={byFixture.get(fixture.id)}
+                onPredictionSaved={savePrediction}
+                timeFmt={timeFmt}
+              />
             ))}
           </div>
         ))}

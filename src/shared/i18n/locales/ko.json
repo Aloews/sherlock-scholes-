@@ -110,7 +110,10 @@
     "top_goal": "주말 베스트 골",
     "top_moment": "주말 베스트 장면",
     "fresh_clip": "오늘의 새 영상",
-    "arena_link": "2인 대전 아레나"
+    "arena_link": "2인 대전 아레나",
+    "ratings_link": "선수 랭킹",
+    "arena_online_link": "네트워크 아레나",
+    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요."
   },
   "design": {
     "master": "새 디자인",
@@ -153,7 +156,10 @@
     "attr_defense": "수비",
     "attr_physical": "피지컬",
     "ovr_aria": "종합 능력치 {{value}}",
-    "tournaments": "출전 대회"
+    "tournaments": "출전 대회",
+    "collected": "경기에서 집계",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움"
   },
   "profile": {
     "title": "프로필",
@@ -525,7 +531,20 @@
     "empty_league": "이 대회에 예정된 경기가 없습니다.",
     "where_to_watch": "중계 안내 · {{source}}",
     "failed": "일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-    "predictions_failed": "예측을 불러오지 못했습니다. 경기가 예측하지 않은 것처럼 보일 수 있습니다."
+    "predictions_failed": "예측을 불러오지 못했습니다. 경기가 예측하지 않은 것처럼 보일 수 있습니다.",
+    "mode_list": "목록",
+    "mode_calendar": "달력",
+    "month_prev": "이전 달",
+    "month_next": "다음 달",
+    "published_until": "일정은 {{date}}까지 확인됩니다. 그 이후는 제공처가 아직 공개하지 않았을 뿐, 경기가 없다는 뜻은 아닙니다.",
+    "day_none": "경기 없음",
+    "day_unknown": "아직 미공개",
+    "month_unknown": "이번 달은 아직 공개되지 않았습니다",
+    "empty_day": "이 날짜에는 선택한 대회의 경기가 없습니다.",
+    "final_score": "최종 스코어",
+    "score_age_unknown": "스코어 갱신 시각 불명",
+    "day_matches_other": "{{count}}경기",
+    "score_age_other": "{{count}}분 전 갱신"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
@@ -618,11 +637,43 @@
     "kick": "슛",
     "hint": "휴대폰을 사이에 두세요. 좌우가 각자의 조작입니다.",
     "pitch_aria": "두 명의 선수와 공이 있는 아레나 경기장",
-    "rules_other": "{{n}}골 먼저 넣으면 승리"
+    "rules_other": "{{n}}골 먼저 넣으면 승리",
+    "online_title": "온라인 아레나",
+    "online_intro": "두 대의 휴대폰으로 대결하세요. 한쪽이 방을 만들고 다른 쪽이 코드로 들어옵니다.",
+    "online_create": "방 만들기",
+    "online_join": "입장",
+    "online_join_hint": "또는 상대의 코드를 입력하세요",
+    "online_code_placeholder": "코드",
+    "online_waiting": "상대를 기다리는 중",
+    "online_connecting": "연결 중…",
+    "online_left": "상대가 나갔습니다",
+    "online_error": "연결하지 못했습니다",
+    "online_share_code": "코드를 공유하세요: {{code}}",
+    "ranked_title": "이번 달 순위",
+    "ranked_empty": "첫 경기를 치르면 여기에 표시됩니다",
+    "ranked_anon": "플레이어",
+    "ranked_line": "{{played}}경기 · {{won}}승 · {{points}}점",
+    "ranked_confirmed": "경기가 기록되었습니다",
+    "ranked_pending": "상대의 확인을 기다리는 중",
+    "ranked_failed": "결과를 저장하지 못했습니다"
   },
   "news": {
     "title": "축구 뉴스",
     "note": "여러 매체가 동시에 다룬 소식부터.",
     "failed": "뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+  },
+  "ratings": {
+    "title": "선수 랭킹",
+    "window_7": "1주",
+    "window_30": "1개월",
+    "window_365": "1년",
+    "formula": "점수: 골 4점, 도움 3점",
+    "partial": "{{date}}부터 수집한 자료입니다. 그 이전 경기는 아직 없습니다",
+    "loading": "불러오는 중…",
+    "failed": "랭킹을 불러오지 못했습니다",
+    "empty": "이 기간에 득점도 도움도 없습니다",
+    "collected_other": "{{count}}일 전 수집",
+    "matches_other": "{{count}}경기",
+    "goals_assists": "{{goals}}골 · {{assists}}도움"
   }
 }

@@ -40,12 +40,12 @@ export const BALL_R = 10;
  * за секунду и прокатывается около 95 пикселей при ширине поля 640; мяч на
  * той же скорости успевает пересечь поле.
  */
-const PLAYER_DAMPING = 0.086;
+export const PLAYER_DAMPING = 0.086;
 const BALL_DAMPING = 0.55;
 
 /** Ускорение игрока от джойстика и потолок скорости. */
-const PLAYER_ACCEL = 1400;
-const PLAYER_MAX_V = 260;
+export const PLAYER_ACCEL = 1400;
+export const PLAYER_MAX_V = 260;
 
 /** Упругость столкновений. 1 — идеально упругое, 0 — слипание. */
 const RESTITUTION = 0.75;

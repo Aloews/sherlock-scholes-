@@ -4,6 +4,7 @@ import { IconX } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
+import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { declineInvite, fetchPendingInvites, type PendingInvite } from './inviteApi';
 
 /**
@@ -23,7 +24,7 @@ import { declineInvite, fetchPendingInvites, type PendingInvite } from './invite
  */
 export function PendingInvitesPanel({ onJoin }: { onJoin: (code: string) => void }) {
   const { t } = useTranslation();
-  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [invites, setInvites] = useState<LoadState<PendingInvite[]>>(LOADING);
 
   const load = useCallback(async () => {
     setInvites(await fetchPendingInvites(getRawInitData()));
@@ -35,15 +36,40 @@ export function PendingInvitesPanel({ onJoin }: { onJoin: (code: string) => void
     hapticImpact('light');
     // Dropped from the list first: the row is gone either way, and waiting for
     // the round trip leaves a button that looks broken on a slow connection.
-    setInvites((prev) => prev.filter((i) => i.room_id !== roomId));
+    //
+    // Список после отказа остаётся `ok`: то, что человек только что убрал
+    // приглашение, — знание достоверное, даже если исходная загрузка не
+    // удалась.
+    setInvites((prev) => ok(dataOr(prev, []).filter((i) => i.room_id !== roomId)));
     await declineInvite(getRawInitData(), roomId);
   };
 
-  if (invites.length === 0) return null;
+  const waiting = dataOr(invites, []);
+
+  /**
+   * Отказ говорит о себе одной строкой — но не панелью.
+   *
+   * ⚠️ ЗДЕСЬ ПУСТОТА ВСЁ-ТАКИ КОЕ-ЧТО УТВЕРЖДАЕТ, хотя и молча: смысл этой
+   * панели в том, что приглашённый игрок НЕ ВИДИТ кода комнаты вообще — за
+   * него всё делает одна кнопка. Если запрос не удался, человек, которого
+   * позвали, просто не узнает об этом и решит, что его не позвали. Поэтому
+   * строка есть.
+   *
+   * И поэтому же она строка, а не рамка с крестиком: приглашений чаще всего
+   * нет, панель необязательная, и коробка с ошибкой на главном экране жила бы
+   * там дольше, чем сама поломка.
+   */
+  if (invites.status === 'error') {
+    return (
+      <p className="w-full text-brand-muted/70 text-[10.5px]">{t('home.invites_failed')}</p>
+    );
+  }
+
+  if (waiting.length === 0) return null;
 
   return (
     <div className="w-full space-y-2 animate-fade-in">
-      {invites.map((invite) => {
+      {waiting.map((invite) => {
         const name = `${invite.first_name} ${invite.last_name ?? ''}`.trim();
         return (
           <div

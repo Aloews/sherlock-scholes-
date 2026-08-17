@@ -112,7 +112,10 @@
     "top_goal": "Top goal of the weekend",
     "top_moment": "Top moment of the weekend",
     "fresh_clip": "Today's new clip",
-    "arena_link": "Two-player arena"
+    "arena_link": "Two-player arena",
+    "ratings_link": "Player ratings",
+    "arena_online_link": "Arena over the net",
+    "invites_failed": "Invitations did not load — if somebody invited you, try refreshing."
   },
   "design": {
     "master": "New design",
@@ -155,7 +158,10 @@
     "attr_defense": "Defending",
     "attr_physical": "Physical",
     "ovr_aria": "Overall rating {{value}}",
-    "tournaments": "Tournaments"
+    "tournaments": "Tournaments",
+    "collected": "Collected from matches",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A"
   },
   "profile": {
     "title": "Profile",
@@ -540,7 +546,22 @@
     "empty_league": "No upcoming matches in this competition.",
     "where_to_watch": "Where to watch · {{source}}",
     "failed": "Could not load the schedule. Try again later.",
-    "predictions_failed": "Your predictions did not load — matches may look un-predicted."
+    "predictions_failed": "Your predictions did not load — matches may look un-predicted.",
+    "mode_list": "List",
+    "mode_calendar": "Calendar",
+    "month_prev": "Previous month",
+    "month_next": "Next month",
+    "published_until": "Schedule is known through {{date}}. Beyond that the provider has not published yet — it does not mean there will be no football.",
+    "day_none": "No matches",
+    "day_unknown": "Not published yet",
+    "month_unknown": "This month is not published yet",
+    "empty_day": "No matches from the selected competition on this day.",
+    "final_score": "Final score",
+    "score_age_unknown": "Score freshness unknown",
+    "day_matches_one": "{{count}} match",
+    "day_matches_other": "{{count}} matches",
+    "score_age_one": "Score updated {{count}} minute ago",
+    "score_age_other": "Score updated {{count}} minutes ago"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
@@ -636,11 +657,45 @@
     "hint": "Put the phone between you — each side has its own controls.",
     "pitch_aria": "Arena pitch with two players and a ball",
     "rules_one": "First to {{n}} goal wins",
-    "rules_other": "First to {{n}} goals wins"
+    "rules_other": "First to {{n}} goals wins",
+    "online_title": "Online arena",
+    "online_intro": "Play from two phones: one creates the room, the other joins by code.",
+    "online_create": "Create a room",
+    "online_join": "Join",
+    "online_join_hint": "Or enter your opponent's code",
+    "online_code_placeholder": "CODE",
+    "online_waiting": "Waiting for an opponent",
+    "online_connecting": "Connecting…",
+    "online_left": "Your opponent left",
+    "online_error": "Could not connect",
+    "online_share_code": "Share the code: {{code}}",
+    "ranked_title": "Table for the month",
+    "ranked_empty": "Play your first match and it will show up here",
+    "ranked_anon": "Player",
+    "ranked_line": "{{played}} M · {{won}} W · {{points}} pts",
+    "ranked_confirmed": "Match counted",
+    "ranked_pending": "Waiting for your opponent to confirm",
+    "ranked_failed": "The result was not saved"
   },
   "news": {
     "title": "Football news",
     "note": "What every outlet ran with, first.",
     "failed": "Could not load the news. Try again later."
+  },
+  "ratings": {
+    "title": "Player ratings",
+    "window_7": "Week",
+    "window_30": "Month",
+    "window_365": "Year",
+    "formula": "Points: goal — 4, assist — 3",
+    "partial": "Collected since {{date}} — earlier matches are not in yet",
+    "loading": "Loading…",
+    "failed": "Could not load the ratings",
+    "empty": "Nobody scored or assisted in this window",
+    "collected_one": "Collected {{count}} day ago",
+    "collected_other": "Collected {{count}} days ago",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches",
+    "goals_assists": "{{goals}} G · {{assists}} A"
   }
 }

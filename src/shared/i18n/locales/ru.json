@@ -116,7 +116,10 @@
     "top_goal": "Лучший гол выходных",
     "top_moment": "Лучший момент выходных",
     "fresh_clip": "Свежее видео дня",
-    "arena_link": "Арена на двоих"
+    "arena_link": "Арена на двоих",
+    "ratings_link": "Рейтинг футболистов",
+    "arena_online_link": "Арена по сети",
+    "invites_failed": "Приглашения не загрузились — если вас звали, попробуйте обновить."
   },
   "design": {
     "master": "Новый дизайн",
@@ -159,7 +162,10 @@
     "attr_defense": "Оборона",
     "attr_physical": "Физика",
     "ovr_aria": "Общий рейтинг {{value}}",
-    "tournaments": "Турниры"
+    "tournaments": "Турниры",
+    "collected": "Собрано по матчам",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п"
   },
   "profile": {
     "title": "Профиль",
@@ -574,7 +580,26 @@
     "empty_league": "В этом турнире ближайших матчей нет.",
     "where_to_watch": "Где смотреть · {{source}}",
     "failed": "Не удалось загрузить расписание. Попробуйте позже.",
-    "predictions_failed": "Ваши прогнозы не загрузились — матчи могут выглядеть непредсказанными."
+    "predictions_failed": "Ваши прогнозы не загрузились — матчи могут выглядеть непредсказанными.",
+    "mode_list": "Списком",
+    "mode_calendar": "Календарь",
+    "month_prev": "Предыдущий месяц",
+    "month_next": "Следующий месяц",
+    "published_until": "Расписание известно по {{date}}. Дальше провайдер его ещё не публиковал — это не значит, что матчей не будет.",
+    "day_none": "Матчей нет",
+    "day_unknown": "Пока не расписано",
+    "month_unknown": "Этот месяц ещё не расписан",
+    "empty_day": "В этот день матчей выбранного турнира нет.",
+    "final_score": "Итоговый счёт",
+    "score_age_unknown": "Когда обновлялся счёт — неизвестно",
+    "day_matches_one": "{{count}} матч",
+    "day_matches_few": "{{count}} матча",
+    "day_matches_many": "{{count}} матчей",
+    "day_matches_other": "{{count}} матчей",
+    "score_age_one": "Счёт обновлён {{count}} минуту назад",
+    "score_age_few": "Счёт обновлён {{count}} минуты назад",
+    "score_age_many": "Счёт обновлён {{count}} минут назад",
+    "score_age_other": "Счёт обновлён {{count}} минут назад"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",
@@ -676,11 +701,49 @@
     "rules_one": "Играют до {{n}} гола",
     "rules_few": "Играют до {{n}} голов",
     "rules_many": "Играют до {{n}} голов",
-    "rules_other": "Играют до {{n}} голов"
+    "rules_other": "Играют до {{n}} голов",
+    "online_title": "Онлайн-арена",
+    "online_intro": "Играйте с двух телефонов: один создаёт комнату, второй входит по коду.",
+    "online_create": "Создать комнату",
+    "online_join": "Войти",
+    "online_join_hint": "Или введите код соперника",
+    "online_code_placeholder": "КОД",
+    "online_waiting": "Ждём соперника",
+    "online_connecting": "Подключаемся…",
+    "online_left": "Соперник вышел",
+    "online_error": "Не удалось подключиться",
+    "online_share_code": "Передайте код: {{code}}",
+    "ranked_title": "Таблица за месяц",
+    "ranked_empty": "Сыграйте первый матч — и он появится здесь",
+    "ranked_anon": "Игрок",
+    "ranked_line": "{{played}} м · {{won}} п · {{points}} очк.",
+    "ranked_confirmed": "Матч засчитан",
+    "ranked_pending": "Ждём подтверждения соперника",
+    "ranked_failed": "Результат не записан"
   },
   "news": {
     "title": "Новости футбола",
     "note": "Сначала то, о чём пишут все сразу.",
     "failed": "Не удалось загрузить новости. Попробуйте позже."
+  },
+  "ratings": {
+    "title": "Рейтинг футболистов",
+    "window_7": "Неделя",
+    "window_30": "Месяц",
+    "window_365": "Год",
+    "formula": "Очки: гол — 4, пас — 3",
+    "partial": "Собрано с {{date}} — за более ранние матчи данных пока нет",
+    "loading": "Загружаем…",
+    "failed": "Не удалось загрузить рейтинг",
+    "empty": "За это время никто не забил и не отдал",
+    "collected_one": "Данные собраны {{count}} день назад",
+    "collected_few": "Данные собраны {{count}} дня назад",
+    "collected_many": "Данные собраны {{count}} дней назад",
+    "collected_other": "Данные собраны {{count}} дней назад",
+    "matches_one": "{{count}} матч",
+    "matches_few": "{{count}} матча",
+    "matches_many": "{{count}} матчей",
+    "matches_other": "{{count}} матчей",
+    "goals_assists": "{{goals}} г · {{assists}} п"
   }
 }

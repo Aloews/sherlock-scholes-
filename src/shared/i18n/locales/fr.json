@@ -112,7 +112,10 @@
     "top_goal": "Plus beau but du week-end",
     "top_moment": "Meilleure action du week-end",
     "fresh_clip": "Nouvelle vidéo du jour",
-    "arena_link": "Arène à deux"
+    "arena_link": "Arène à deux",
+    "ratings_link": "Classement des joueurs",
+    "arena_online_link": "Arène en réseau",
+    "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser."
   },
   "design": {
     "master": "Nouveau design",
@@ -155,7 +158,10 @@
     "attr_defense": "Défense",
     "attr_physical": "Physique",
     "ovr_aria": "Note globale {{value}}",
-    "tournaments": "Tournois"
+    "tournaments": "Tournois",
+    "collected": "Relevé sur les matchs",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD"
   },
   "profile": {
     "title": "Profil",
@@ -540,7 +546,22 @@
     "empty_league": "Aucun match à venir dans cette compétition.",
     "where_to_watch": "Où regarder · {{source}}",
     "failed": "Impossible de charger le calendrier. Réessayez plus tard.",
-    "predictions_failed": "Vos pronostics ne se sont pas chargés — les matchs peuvent sembler sans pronostic."
+    "predictions_failed": "Vos pronostics ne se sont pas chargés — les matchs peuvent sembler sans pronostic.",
+    "mode_list": "Liste",
+    "mode_calendar": "Calendrier",
+    "month_prev": "Mois précédent",
+    "month_next": "Mois suivant",
+    "published_until": "Le calendrier est connu jusqu’au {{date}}. Au-delà, le fournisseur ne l’a pas encore publié — cela ne veut pas dire qu’il n’y aura pas de matchs.",
+    "day_none": "Aucun match",
+    "day_unknown": "Pas encore publié",
+    "month_unknown": "Ce mois n’est pas encore publié",
+    "empty_day": "Aucun match de la compétition choisie ce jour-là.",
+    "final_score": "Score final",
+    "score_age_unknown": "Fraîcheur du score inconnue",
+    "day_matches_one": "{{count}} match",
+    "day_matches_other": "{{count}} matchs",
+    "score_age_one": "Score mis à jour il y a {{count}} minute",
+    "score_age_other": "Score mis à jour il y a {{count}} minutes"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",
@@ -636,11 +657,45 @@
     "hint": "Posez le téléphone entre vous : chacun sa moitié de commandes.",
     "pitch_aria": "Terrain de l’arène avec deux joueurs et un ballon",
     "rules_one": "Le premier à {{n}} but gagne",
-    "rules_other": "Le premier à {{n}} buts gagne"
+    "rules_other": "Le premier à {{n}} buts gagne",
+    "online_title": "Arène en ligne",
+    "online_intro": "Jouez depuis deux téléphones : l’un crée le salon, l’autre le rejoint avec le code.",
+    "online_create": "Créer un salon",
+    "online_join": "Rejoindre",
+    "online_join_hint": "Ou saisissez le code de l’adversaire",
+    "online_code_placeholder": "CODE",
+    "online_waiting": "En attente d’un adversaire",
+    "online_connecting": "Connexion…",
+    "online_left": "L’adversaire est parti",
+    "online_error": "Connexion impossible",
+    "online_share_code": "Partagez le code : {{code}}",
+    "ranked_title": "Classement du mois",
+    "ranked_empty": "Jouez votre premier match, il apparaîtra ici",
+    "ranked_anon": "Joueur",
+    "ranked_line": "{{played}} M · {{won}} V · {{points}} pts",
+    "ranked_confirmed": "Match comptabilisé",
+    "ranked_pending": "En attente de la confirmation de l’adversaire",
+    "ranked_failed": "Le résultat n’a pas été enregistré"
   },
   "news": {
     "title": "Actualités du football",
     "note": "D’abord ce que tous les médias ont repris.",
     "failed": "Impossible de charger les actualités. Réessayez plus tard."
+  },
+  "ratings": {
+    "title": "Classement des joueurs",
+    "window_7": "Semaine",
+    "window_30": "Mois",
+    "window_365": "Année",
+    "formula": "Points : but — 4, passe — 3",
+    "partial": "Collecté depuis le {{date}} — les matchs antérieurs ne sont pas encore là",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger le classement",
+    "empty": "Personne n’a marqué ni donné de passe sur cette période",
+    "collected_one": "Collecté il y a {{count}} jour",
+    "collected_other": "Collecté il y a {{count}} jours",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matchs",
+    "goals_assists": "{{goals}} B · {{assists}} PD"
   }
 }

@@ -110,7 +110,10 @@
     "top_goal": "週末のベストゴール",
     "top_moment": "週末のベストシーン",
     "fresh_clip": "今日の新着動画",
-    "arena_link": "2人対戦アリーナ"
+    "arena_link": "2人対戦アリーナ",
+    "ratings_link": "選手ランキング",
+    "arena_online_link": "ネット対戦アリーナ",
+    "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。"
   },
   "design": {
     "master": "新デザイン",
@@ -153,7 +156,10 @@
     "attr_defense": "ディフェンス",
     "attr_physical": "フィジカル",
     "ovr_aria": "総合値 {{value}}",
-    "tournaments": "出場大会"
+    "tournaments": "出場大会",
+    "collected": "試合から集計",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト"
   },
   "profile": {
     "title": "プロフィール",
@@ -525,7 +531,20 @@
     "empty_league": "この大会に今後の試合はありません。",
     "where_to_watch": "放送予定 · {{source}}",
     "failed": "日程を読み込めませんでした。時間をおいてお試しください。",
-    "predictions_failed": "予想を読み込めませんでした。試合が未予想に見える場合があります。"
+    "predictions_failed": "予想を読み込めませんでした。試合が未予想に見える場合があります。",
+    "mode_list": "リスト",
+    "mode_calendar": "カレンダー",
+    "month_prev": "前の月",
+    "month_next": "次の月",
+    "published_until": "日程がわかっているのは {{date}} まで。それ以降は提供元がまだ公開していないだけで、試合がないという意味ではありません。",
+    "day_none": "試合なし",
+    "day_unknown": "未発表",
+    "month_unknown": "この月はまだ発表されていません",
+    "empty_day": "この日には選択した大会の試合がありません。",
+    "final_score": "最終スコア",
+    "score_age_unknown": "スコアの更新時刻は不明",
+    "day_matches_other": "{{count}} 試合",
+    "score_age_other": "{{count}} 分前に更新"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",
@@ -618,11 +637,43 @@
     "kick": "キック",
     "hint": "スマホを二人の間に置いてください。左右それぞれが自分の操作です。",
     "pitch_aria": "2人のプレーヤーとボールがいるアリーナのピッチ",
-    "rules_other": "{{n}}点先取で勝ち"
+    "rules_other": "{{n}}点先取で勝ち",
+    "online_title": "オンライン対戦",
+    "online_intro": "2台の端末で対戦します。片方が部屋を作り、もう片方がコードで入ります。",
+    "online_create": "部屋を作る",
+    "online_join": "参加する",
+    "online_join_hint": "または相手のコードを入力",
+    "online_code_placeholder": "コード",
+    "online_waiting": "対戦相手を待っています",
+    "online_connecting": "接続中…",
+    "online_left": "相手が退出しました",
+    "online_error": "接続できませんでした",
+    "online_share_code": "コードを共有：{{code}}",
+    "ranked_title": "今月の順位表",
+    "ranked_empty": "最初の試合を終えるとここに表示されます",
+    "ranked_anon": "プレイヤー",
+    "ranked_line": "{{played}} 試合 · {{won}} 勝 · {{points}} pt",
+    "ranked_confirmed": "試合が記録されました",
+    "ranked_pending": "相手の確認を待っています",
+    "ranked_failed": "結果を保存できませんでした"
   },
   "news": {
     "title": "サッカーニュース",
     "note": "各社がいっせいに報じた話題から。",
     "failed": "ニュースを読み込めませんでした。時間をおいてお試しください。"
+  },
+  "ratings": {
+    "title": "選手ランキング",
+    "window_7": "1週間",
+    "window_30": "1か月",
+    "window_365": "1年",
+    "formula": "ポイント：ゴール4、アシスト3",
+    "partial": "{{date}} 以降のデータです。それ以前の試合はまだ入っていません",
+    "loading": "読み込み中…",
+    "failed": "ランキングを読み込めませんでした",
+    "empty": "この期間に得点もアシストもありません",
+    "collected_other": "{{count}} 日前に取得",
+    "matches_other": "{{count}} 試合",
+    "goals_assists": "{{goals}} 得点 · {{assists}} アシスト"
   }
 }

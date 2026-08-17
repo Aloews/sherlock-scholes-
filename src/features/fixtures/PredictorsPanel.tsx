@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconTrophy } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { getRawInitData } from '@/shared/lib/telegram';
+import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import {
   fetchLeaderboard, fetchMyStats,
   type MyPredictionStats, type PredictorRow,
@@ -25,28 +26,35 @@ const TOP_N = 20;
  */
 export function PredictorsPanel() {
   const { t } = useTranslation();
-  const [top, setTop] = useState<PredictorRow[] | null>(null);
+  const [top, setTop] = useState<LoadState<PredictorRow[]>>(LOADING);
   const [mine, setMine] = useState<MyPredictionStats | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [rows, stats] = await Promise.all([
+      const [board, stats] = await Promise.all([
         fetchLeaderboard(TOP_N),
         fetchMyStats(getRawInitData()),
       ]);
       if (cancelled) return;
-      setTop(rows);
+      setTop(board);
       setMine(stats);
     })();
     return () => { cancelled = true; };
   }, []);
 
   // Ещё грузится — ничего, чтобы не мигнуть «пока никого» тому, у кого список
-  // в одном запросе отсюда.
-  if (top === null) return null;
+  // в одном запросе отсюда. Раньше это состояние изображал `null`, и оно же
+  // означало отказ; теперь их два, и отличить их можно, не читая код.
+  if (top.status === 'loading') return null;
 
-  const nothingYet = top.length === 0 && (mine === null || mine.settled + mine.pending === 0);
+  const rows = dataOr(top, []);
+  // ОТКАЗ ЗДЕСЬ НЕ ПОКАЗЫВАЕТСЯ ОТДЕЛЬНОЙ НАДПИСЬЮ, и это выбор, а не забывчивость.
+  // Панель необязательная: свой счёт человек видит выше, а таблица лучших —
+  // приятное дополнение. Красная строка на экране расписания из-за неё
+  // отвлекала бы от того, ради чего экран открыт. Отказ виден в консоли с
+  // кодом (fromPostgrest) — этого хватает, чтобы его расследовать.
+  const nothingYet = rows.length === 0 && (mine === null || mine.settled + mine.pending === 0);
   if (nothingYet) return null;
 
   return (
@@ -80,14 +88,14 @@ export function PredictorsPanel() {
         </div>
       )}
 
-      {top.length > 0 && (
+      {rows.length > 0 && (
         <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 space-y-2">
           <p className="text-brand-muted text-[10.5px] uppercase tracking-wider flex items-center gap-1">
             <IconTrophy size={13} stroke={2} />
             {t('matches.top_predictors')}
           </p>
 
-          {top.map((row, index) => {
+          {rows.map((row, index) => {
             const name = `${row.first_name} ${row.last_name ?? ''}`.trim();
             return (
               <div key={row.player_id} className="flex items-center gap-2">

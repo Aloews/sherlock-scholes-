@@ -5,11 +5,13 @@
 // could read who is inviting whom, or drop an invitation into a stranger's
 // list. See supabase/migrations/room_invites.sql.
 //
-// Failures return an empty list or false rather than throwing, for the same
-// reason friendsApi does: a list that cannot load is an empty list, not a
-// crash in the middle of the lobby.
+// ЗАПИСИ возвращают false при отказе, и это не болезнь: вызывающий видит
+// отказ и говорит игроку. А ЧТЕНИЕ возвращает LoadState — пустой список и
+// несостоявшийся запрос не должны выглядеть одинаково даже там, где разница
+// безобидна: разбирается это по типу, а не по памяти читающего.
 
 import { supabase } from '@/shared/lib/supabase';
+import { fromPostgrest, ok, type LoadState } from '@/shared/lib/loadState';
 
 /** An invitation waiting for the viewer. Carries the code so joining reuses
  *  the ordinary join path — no second way into a room. */
@@ -26,14 +28,19 @@ export interface PendingInvite {
   created_at: string;
 }
 
-export async function fetchPendingInvites(initData: string): Promise<PendingInvite[]> {
-  if (!initData) return [];
-  const { data, error } = await supabase.rpc('pending_room_invites', { p_init_data: initData });
-  if (error) {
-    console.error('[invites] pending_room_invites failed:', error.code, error.message);
-    return [];
-  }
-  return (data as PendingInvite[]) ?? [];
+/**
+ * Приглашения, ждущие зрителя.
+ *
+ * Отсутствие подписи — это `ok([])`, а НЕ отказ: вне Telegram приглашений
+ * действительно нет, потому что нет и того, кому их адресовать. Назвать это
+ * ошибкой значило бы показать «не загрузилось» там, где всё в порядке.
+ */
+export async function fetchPendingInvites(
+  initData: string,
+): Promise<LoadState<PendingInvite[]>> {
+  if (!initData) return ok([]);
+  const res = await supabase.rpc('pending_room_invites', { p_init_data: initData });
+  return fromPostgrest<PendingInvite[]>(res, 'pending_room_invites');
 }
 
 /**

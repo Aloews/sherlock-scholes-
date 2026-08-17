@@ -112,7 +112,10 @@
     "top_goal": "Melhor gol do fim de semana",
     "top_moment": "Melhor lance do fim de semana",
     "fresh_clip": "Vídeo novo de hoje",
-    "arena_link": "Arena para dois"
+    "arena_link": "Arena para dois",
+    "ratings_link": "Ranking de jogadores",
+    "arena_online_link": "Arena em rede",
+    "invites_failed": "Os convites não carregaram — se alguém te convidou, tente atualizar."
   },
   "design": {
     "master": "Novo design",
@@ -155,7 +158,10 @@
     "attr_defense": "Defesa",
     "attr_physical": "Físico",
     "ovr_aria": "Avaliação geral {{value}}",
-    "tournaments": "Torneios"
+    "tournaments": "Torneios",
+    "collected": "Recolhido dos jogos",
+    "collected_period": "{{from}} — {{to}}",
+    "collected_line": "{{matches}} J · {{goals}} G · {{assists}} A"
   },
   "profile": {
     "title": "Perfil",
@@ -540,7 +546,22 @@
     "empty_league": "Não há próximos jogos nesta competição.",
     "where_to_watch": "Onde assistir · {{source}}",
     "failed": "Não foi possível carregar a tabela. Tente mais tarde.",
-    "predictions_failed": "Seus palpites não carregaram — os jogos podem parecer sem palpite."
+    "predictions_failed": "Seus palpites não carregaram — os jogos podem parecer sem palpite.",
+    "mode_list": "Lista",
+    "mode_calendar": "Calendário",
+    "month_prev": "Mês anterior",
+    "month_next": "Próximo mês",
+    "published_until": "O calendário é conhecido até {{date}}. Depois disso o fornecedor ainda não publicou — não significa que não haverá jogos.",
+    "day_none": "Sem jogos",
+    "day_unknown": "Ainda não publicado",
+    "month_unknown": "Este mês ainda não foi publicado",
+    "empty_day": "Não há jogos da competição escolhida neste dia.",
+    "final_score": "Resultado final",
+    "score_age_unknown": "Não se sabe quando foi atualizado",
+    "day_matches_one": "{{count}} jogo",
+    "day_matches_other": "{{count}} jogos",
+    "score_age_one": "Resultado atualizado há {{count}} minuto",
+    "score_age_other": "Resultado atualizado há {{count}} minutos"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
@@ -636,11 +657,45 @@
     "hint": "Coloque o celular entre vocês: cada lado tem os seus controles.",
     "pitch_aria": "Campo da arena com dois jogadores e uma bola",
     "rules_one": "Ganha quem fizer {{n}} gol",
-    "rules_other": "Ganha quem fizer {{n}} gols"
+    "rules_other": "Ganha quem fizer {{n}} gols",
+    "online_title": "Arena online",
+    "online_intro": "Joguem de dois telemóveis: um cria a sala, o outro entra com o código.",
+    "online_create": "Criar sala",
+    "online_join": "Entrar",
+    "online_join_hint": "Ou introduza o código do adversário",
+    "online_code_placeholder": "CÓDIGO",
+    "online_waiting": "À espera do adversário",
+    "online_connecting": "A ligar…",
+    "online_left": "O adversário saiu",
+    "online_error": "Não foi possível ligar",
+    "online_share_code": "Partilhe o código: {{code}}",
+    "ranked_title": "Classificação do mês",
+    "ranked_empty": "Joguem o primeiro jogo e ele aparecerá aqui",
+    "ranked_anon": "Jogador",
+    "ranked_line": "{{played}} J · {{won}} V · {{points}} pts",
+    "ranked_confirmed": "Jogo contabilizado",
+    "ranked_pending": "À espera da confirmação do adversário",
+    "ranked_failed": "O resultado não foi guardado"
   },
   "news": {
     "title": "Notícias do futebol",
     "note": "Primeiro, o que todos publicaram ao mesmo tempo.",
     "failed": "Não foi possível carregar as notícias. Tente mais tarde."
+  },
+  "ratings": {
+    "title": "Ranking de jogadores",
+    "window_7": "Semana",
+    "window_30": "Mês",
+    "window_365": "Ano",
+    "formula": "Pontos: gol — 4, assistência — 3",
+    "partial": "Coletado desde {{date}} — os jogos anteriores ainda não entraram",
+    "loading": "Carregando…",
+    "failed": "Não foi possível carregar o ranking",
+    "empty": "Ninguém marcou nem deu assistência neste período",
+    "collected_one": "Coletado há {{count}} dia",
+    "collected_other": "Coletado há {{count}} dias",
+    "matches_one": "{{count}} jogo",
+    "matches_other": "{{count}} jogos",
+    "goals_assists": "{{goals}} G · {{assists}} A"
   }
 }
