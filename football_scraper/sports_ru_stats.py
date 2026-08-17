@@ -375,6 +375,61 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     return db.upsert("sports_ru_player", deduped, "card_id")
 
 
+def collapse_duplicate_keys(rows):
+    """Одна строка на (карточка, дата, турнир) — иначе пачку отвергнут целиком.
+
+    ⚠️ ЭТО НЕ ПЕРЕСТРАХОВКА, А ПОЧИНКА ПАДЕНИЯ. Прогон 17.08 прочитал 632
+    страницы, собрал 16908 строк и умер на записи:
+
+        ON CONFLICT DO UPDATE command cannot affect row a second time
+
+    Postgres не даёт одному оператору дважды тронуть одну строку, и PostgREST
+    отвергает при этом ВСЮ пачку. Часть пачек до отказа успела записаться, то
+    есть прогон закончился наполовину применённым — худший из возможных
+    исходов.
+
+    ОТКУДА БЕРУТСЯ ДУБЛИ. Ключ — (card_id, match_date, tournament), а турнир
+    пишется как `row["tournament"] or "—"`. Прочерк — не название, а признак
+    «не разобрали»: два матча одного дня с неразобранным турниром получают
+    ОДИН ключ, хотя это разные турниры. Запасное значение само изготавливает
+    коллизию. Настоящий турнир в двух матчах одного дня совпасть не может.
+
+    ПОЧЕМУ ВЫБИРАЕМ, А НЕ СУММИРУЕМ. Сумма была бы верна, если дубль — два
+    РАЗНЫХ матча, и врала бы вдвое, если это один матч, разобранный дважды.
+    Причину прогон не сообщает, а между «недосчитать» и «выдумать гол» этот
+    проект всегда выбирает первое. Выигрывает строка, которая знает больше:
+    сначала с минутами, потом с большей отдачей, потом первая по порядку —
+    чтобы ответ не менялся от прогона к прогону.
+
+    Схлопнутое печатается: коллизия должна оставаться видимой, иначе
+    прочерк-турнир будет тихо съедать по матчу и дальше.
+    """
+    best = {}
+    order = []
+    collapsed = []
+    for r in rows:
+        key = (r["card_id"], r["match_date"], r["tournament"])
+        prev = best.get(key)
+        if prev is None:
+            best[key] = r
+            order.append(key)
+            continue
+        rank = lambda x: (x["minutes"] is not None, x["goals"] + x["assists"])
+        collapsed.append((key, prev, r))
+        if rank(r) > rank(prev):
+            best[key] = r
+
+    if collapsed:
+        print("collapsed {} duplicate keys (same card+date+tournament):"
+              .format(len(collapsed)))
+        for key, a, b in collapsed[:5]:
+            print("     {} {} «{}»: {}–{} vs {}–{}".format(
+                key[0][:8], key[1], key[2],
+                a.get("home_team"), a.get("away_team"),
+                b.get("home_team"), b.get("away_team")))
+    return [best[k] for k in order]
+
+
 def collect_stats(fetcher, db, limit=None, dry_run=False):
     """Read stat pages least-recently-checked first and write the matches.
 
@@ -442,6 +497,8 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
         print("!! {} players disagreed with their own page total:".format(len(suspect)))
         for name, gap in suspect[:10]:
             print("     {}: {}".format(name, gap))
+
+    stats = collapse_duplicate_keys(stats)
 
     if dry_run:
         for s in stats[:10]:
