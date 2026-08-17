@@ -105,6 +105,35 @@ export async function fetchWeekGoals(limit = 12): Promise<RankedClip[]> {
   return (data as RankedClip[]) ?? [];
 }
 
+/**
+ * Эфир, который правообладатель открыл САМ.
+ *
+ * Схема и оба предиката — supabase/migrations/live_streams.sql. Здесь важно
+ * одно: РАЗДЕЛ ПОЧТИ ВСЕГДА ПУСТ, и это норма, а не поломка. Матчи верхних
+ * дивизионов проданы эксклюзивно и бесплатного эфира у лиги не имеют;
+ * открывают резервные лиги, молодёжь, женский футбол. Экран поэтому не
+ * показывает ни заголовка, ни «сейчас ничего не идёт» — раздела просто нет,
+ * пока нечего показать.
+ */
+export interface LiveMatch {
+  video_id: string;
+  channel: string;
+  title: string;
+  /** Разрешил ли автор встраивание. Сейчас на это опирается только запись. */
+  embeddable: boolean;
+  /** Когда конвейер в последний раз видел эфир живым, не «начало матча». */
+  seen_at: string;
+}
+
+export async function fetchLiveMatches(limit = 8): Promise<LiveMatch[]> {
+  const { data, error } = await supabase.rpc('digest_live_matches', { p_limit: limit });
+  if (error) {
+    console.error('[digest] digest_live_matches failed:', error.code, error.message);
+    return [];
+  }
+  return (data as LiveMatch[]) ?? [];
+}
+
 export async function fetchGoals(limit = 20): Promise<GoalClip[]> {
   const { data, error } = await supabase.rpc('digest_goals', { p_limit: limit });
   if (error) {
