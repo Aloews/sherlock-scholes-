@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from scraper.dedup import _similarity, canonical_key  # noqa: E402
 from scraper.sports_ru import (  # noqa: E402
+    fold_latin,
     parse_club_slugs,
     parse_match_rows,
     parse_person_names,
@@ -265,18 +266,37 @@ def resolve_by_name(fetcher, card):
     real page — a different player with a similar name — is rejected here
     rather than being written in as that player's goals. Measured on the 40
     most famous cards: 34 resolved, 2 pages rejected by the name check.
+
+    ⚠️ СВЕРЯЮТСЯ ОБА НАПИСАНИЯ, И РАНЬШЕ ВТОРОЕ ВЫБРАСЫВАЛОСЬ. Заголовок
+    страницы печатает и русское имя, и латинское, а код брал только русское и
+    ронял латинское в `_`. Из-за этого верная страница отвергалась на
+    расхождении ТРАНСЛИТЕРАЦИИ, а не игрока: карточка «Уго Экитике», страница
+    «Юго Экитике» — 0.70 при пороге 0.80, отказ. Латинское написание на той же
+    странице — «Hugo Ekitike», то есть ровно `name_en` карточки, 1.00.
+
+    Порог НЕ снижен: он и есть защита от чужого игрока. Добавлено второе
+    независимое свидетельство, и достаточно любого из двух. Циркулярности тут
+    нет: слаг предлагается из имени, но сверяется ПОЛНОЕ имя со страницы, так
+    что догадка `fernandez`, попавшая на другого Фернандеса, даёт низкую
+    похожесть по обоим написаниям и отвергается по-прежнему.
     """
     name_en = (card.get("name_en") or "").strip()
     if not name_en:
         return None
+    card_ru = canonical_key(card["name"])
+    card_en = canonical_key(fold_latin(name_en))
     for candidate in slug_candidates(name_en):
         html = fetcher.get("{}/football/person/{}/".format(BASE, candidate))
         if html is None:
             continue
-        page_name, _ = parse_person_names(html)
-        if not page_name:
+        page_ru, page_en = parse_person_names(html)
+        if not page_ru and not page_en:
             continue
-        score = _similarity(canonical_key(card["name"]), canonical_key(page_name))
+        score = 0.0
+        if page_ru:
+            score = max(score, _similarity(card_ru, canonical_key(page_ru)))
+        if page_en:
+            score = max(score, _similarity(card_en, canonical_key(fold_latin(page_en))))
         if score >= SLUG_VERIFY_RATIO:
             return candidate
     return None

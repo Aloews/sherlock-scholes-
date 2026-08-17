@@ -25,6 +25,7 @@ which is why nothing here calls a JSON endpoint and why slugs are crawled
 rather than searched.
 """
 import re
+import unicodedata
 from datetime import date
 
 # Row of the per-match table. The four stat cells are positional in the
@@ -169,10 +170,40 @@ def parse_squad(html):
 _H1 = re.compile(r"<h1[^>]*>(.*?)</h1>", re.S)
 _ALT_NAME = re.compile(r'tag-name-alt-name[^>]*>(.*?)</', re.S)
 
-_TRANSLIT_TIDY = str.maketrans(
-    "áàâäãåéèêëíìîïóòôöõúùûüýÿñçšžłøđ",
-    "aaaaaaeeeeiiiiooooouuuuyyncszlod",
-)
+# Буквы, которые НЕ раскладываются по NFKD: у них нет отдельного диакритического
+# знака, штрих — часть самой буквы. Их всего горстка, и список кончается —
+# в отличие от списка «буква с чёрточкой», который бесконечен.
+_NON_DECOMPOSING = str.maketrans({
+    "ø": "o", "Ø": "O", "đ": "d", "Đ": "D", "ł": "l", "Ł": "L",
+    "ı": "i", "İ": "I", "ŀ": "l", "ß": "ss",
+    "þ": "th", "Þ": "Th", "ð": "d", "Ð": "D",
+    "æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe",
+})
+
+
+def fold_latin(text):
+    """Латиница без диакритики — тем же способом, каким её убирает сам сайт.
+
+    ⚠️ ЗДЕСЬ БЫЛА РУКОПИСНАЯ ТАБЛИЦА НА 31 СИМВОЛ, И ОНА МОЛЧА ЕЛА БУКВЫ.
+    Символа, которого в ней нет, `translate` не трогает, а следующий за ним
+    `re.split(r"[^a-z0-9]+")` его ВЫБРАСЫВАЕТ. То есть «Luka Modrić»
+    превращался не в `luka-modric`, а в `luka-modri` — слаг, которого не
+    существует, и страница отвечала 404. Снаружи это неотличимо от «у игрока
+    нет матчей»: обе ветки дают пустую статистику и ни одной ошибки.
+
+    Замер на живой дыре (513 карточек с клубом и без слага): 52 из них, то
+    есть каждая десятая, теряли символ. Что именно терялось:
+        ć×32  ı×8  č×4  ō×4  ğ×3  ū×2  ń×2  ț ř ş ě ș ă
+    `luka-modric` проверен запросом — отвечает 200 и «Лука Модрич».
+
+    Поэтому список заменён ВЫВОДОМ: NFKD раскладывает букву со знаком на букву
+    и знак, знаки выбрасываются как «объединяющие», и правило перестаёт
+    зависеть от того, вспомнил ли кто-то про хорватскую ć. Таблица осталась
+    только для букв, которые не раскладываются вовсе.
+    """
+    decomposed = unicodedata.normalize("NFKD", text or "")
+    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return stripped.translate(_NON_DECOMPOSING)
 
 
 def parse_person_names(html):
@@ -203,14 +234,26 @@ def slug_candidates(name_latin):
     `neymar`, `salah`). Both are cheap to try and both are VERIFIED against the
     page header before use, so a wrong guess costs one request and nothing
     else. Diacritics are folded because the site's slugs are plain ASCII.
+
+    ⚠️ ПЕРВОЕ ИМЯ В ОДИНОЧКУ — ТОЖЕ ФОРМА, и её здесь не было. У бразильцев
+    играющее имя это имя, а не фамилия: «Vinícius Júnior» живёт на
+    `/football/person/vinicius/` — проверено запросом, отвечает 200 и
+    «Винисиус Жуниор». Прежний список давал `vinicius-junior` (404) и `junior`
+    (404), то есть перебирал обе неверные формы и ни одной верной.
+
+    Стоит эта форма одного запроса и только для карточек, которые не
+    разрешились ничем другим, — а неверная догадка по-прежнему отсекается
+    сверкой с заголовком страницы, а не попадает в рейтинг.
     """
-    cleaned = (name_latin or "").lower().translate(_TRANSLIT_TIDY)
+    cleaned = fold_latin(name_latin or "").lower()
     parts = [p for p in re.split(r"[^a-z0-9]+", cleaned) if p]
     if not parts:
         return []
     out = ["-".join(parts)]
     if len(parts) > 1:
-        for tail in ("-".join(parts[1:]), parts[-1]):
+        # Порядок — от самого вероятного к самому редкому: полное имя, хвост
+        # после первого слова, голая фамилия и только потом голое имя.
+        for tail in ("-".join(parts[1:]), parts[-1], parts[0]):
             if tail not in out:
                 out.append(tail)
     return out
