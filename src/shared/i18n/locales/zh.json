@@ -624,7 +624,15 @@
     "week_note": "轮次之间的杯赛与欧战之夜——周末没有收录的部分。",
     "moment": "瞬间",
     "empty_weekend": "那个周末没有视频。",
-    "views_other": "{{n}}次播放"
+    "views_other": "{{n}}次播放",
+    "summary": "要点速览",
+    "summary_note": "由语言模型概括当天的热门话题。",
+    "summary_make": "生成摘要",
+    "summary_retry": "重试",
+    "summary_loading": "正在生成摘要…",
+    "summary_failed": "摘要生成失败，请重试。",
+    "summary_quiet": "今天没有形成话题，暂无内容可概括。",
+    "summary_refused": "模型未对这些话题进行概括。"
   },
   "arena": {
     "title": "竞技场",

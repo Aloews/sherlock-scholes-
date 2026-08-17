@@ -5,7 +5,7 @@
 // писать не может (грант на запись есть только у service_role).
 
 import { supabase } from '@/shared/lib/supabase';
-import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
+import { failed, fromPostgrest, ok, type LoadState } from '@/shared/lib/loadState';
 
 export interface NewsItem {
   title: string;
@@ -112,4 +112,42 @@ export async function fetchGoals(limit = 20): Promise<GoalClip[]> {
     return [];
   }
   return (data as GoalClip[]) ?? [];
+}
+
+/**
+ * Сводка по горячим темам — то, что пишет языковая модель.
+ *
+ * ⚠️ ЭТО ВЫЗОВ ПО КНОПКЕ, И ИМЕННО ПОЭТОМУ ОН ЗДЕСЬ, А НЕ В `useEffect`.
+ * Генерация стоит денег, и частоту задаёт игрок. Расход при этом ограничен не
+ * здесь, а на сервере: ключ кэша — отпечаток НАБОРА ТЕМ, так что все нажатия
+ * на одних и тех же новостях отвечают одной записью. Клиенту остаётся не
+ * дёргать функцию сам.
+ *
+ * Четыре исхода, и они РАЗНЫЕ на экране: готовый текст, «сегодня тихо» (тем
+ * нет вовсе), «модель отказалась» и поломка. Свести их в «не получилось»
+ * значило бы повторить ровно ту ошибку, ради которой заведён LoadState.
+ */
+export type DigestSummary =
+  | { status: 'ok'; summary: string; cached: boolean; generatedAt: string }
+  | { status: 'no_topics' }
+  | { status: 'refused' };
+
+export async function fetchDigestSummary(lang: string): Promise<LoadState<DigestSummary>> {
+  const { data, error } = await supabase.functions.invoke('digest-summary', {
+    body: { lang },
+  });
+  if (error) {
+    console.error('[digest] digest-summary failed:', error.message);
+    return failed('invoke_failed');
+  }
+  if (data?.status === 'no_topics') return ok({ status: 'no_topics' });
+  if (data?.status === 'refused') return ok({ status: 'refused' });
+  if (typeof data?.summary !== 'string' || !data.summary) return failed('malformed');
+
+  return ok({
+    status: 'ok',
+    summary: data.summary as string,
+    cached: Boolean(data.cached),
+    generatedAt: (data.generated_at as string) ?? new Date().toISOString(),
+  });
 }
