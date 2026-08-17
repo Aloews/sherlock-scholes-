@@ -184,6 +184,10 @@ as $$
     from news_items n
     where n.published_at > now() - interval '24 hours'
       and n.lang in (p_lang, 'en')
+      -- Гольф и крикет из общеспортивных лент — см. digest_football_only.sql.
+      -- Отсев здесь же, а не только в темах: громкость считается по этому
+      -- набору, и чужой вид спорта иначе поднимал бы соседей.
+      and not non_football_url(n.url)
   ),
   scored as (
     select

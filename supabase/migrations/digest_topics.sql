@@ -54,6 +54,12 @@ as $$
            public.digest_tokens(n.title) as toks
     from public.news_items n
     where n.published_at > now() - make_interval(hours => greatest(1, least(coalesce(p_hours, 24), 168)))
+      -- Чужой вид спорта отсеивается ДО кластеризации, иначе он не просто
+      -- занимает строку, а стягивает к себе футбольные заголовки: крикетное
+      -- «claim title with last-gasp win» имеет с футбольным отчётом больше
+      -- трёх общих основ, и тема получает имя по крикету. См.
+      -- digest_football_only.sql.
+      and not public.non_football_url(n.url)
   ),
   tok as (
     select r.id, t from recent r, unnest(r.toks) as t
