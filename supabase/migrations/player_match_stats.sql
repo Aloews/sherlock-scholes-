@@ -55,12 +55,28 @@ create index if not exists sports_ru_player_checked_idx
   on public.sports_ru_player (checked_at nulls first);
 
 -- ---------------------------------------------------------------------------
--- 2. One row per player per match.
+-- 2. One row per player per match, PER SOURCE.
 --
 -- The primary key is (card_id, match_date, tournament). A player cannot play
 -- two matches in the same tournament on the same day, and re-reading a page
 -- must UPDATE rather than duplicate — the scraper writes with
 -- `resolution=merge-duplicates`, which needs a real conflict target.
+--
+-- ⚠️ ЭТОТ КЛЮЧ НЕ СКЛЕИВАЕТ ДВА ИСТОЧНИКА, И ЭТО НАМЕРЕННО. `tournament`
+-- пишется словарём источника: sports.ru печатает «США. МЛС», ESPN — «MLS»
+-- (`header.league.name`). Строки не конфликтуют, и один реальный матч лежит
+-- здесь ДВУМЯ строками, по одной от каждого источника.
+--
+-- Так и задумано: две независимые записи одного матча — единственное, чем
+-- ловится тихая поломка разбора. Сдвиг колонок на sports.ru однажды выдал 62
+-- гола вместо 59, и оба числа выглядели правдоподобно; строка ESPN о том же
+-- матче — то, с чем это можно сравнить. Схлопывание при записи стёрло бы
+-- ровно ту улику, ради которой заведён второй источник.
+--
+-- ⚠️ ПОЭТОМУ СЧИТАТЬ ПО ЭТОЙ ТАБЛИЦЕ НАПРЯМУЮ НЕЛЬЗЯ: `sum(goals)` по двум
+-- строкам одного матча даёт удвоенный гол, а `count(*)` — «2 матча» за один
+-- сыгранный. Обе функции ниже сначала сворачивают строки к одной на
+-- игрока-и-день; новый читатель обязан делать то же.
 -- ---------------------------------------------------------------------------
 create table if not exists public.player_match_stats (
   card_id     uuid not null references public.cards(id) on delete cascade,
@@ -103,6 +119,12 @@ create index if not exists player_match_stats_window_idx
 -- Ordered by points, then goals, then minutes ASC — fewer minutes for the same
 -- return is the better performance, and it makes the order total so paging is
 -- stable.
+--
+-- ⚠️ СНАЧАЛА СВЁРТКА ПО ДНЮ, ПОТОМ АРИФМЕТИКА. Один матч лежит в таблице
+-- двумя строками, если его принесли оба источника (см. §2), и без `distinct
+-- on` гол считался бы дважды: 4 очка превращались бы в 8, а «1 матч» — в «2».
+-- Ошибка была бы невидима на экране, потому что удвоенное число выглядит
+-- ровно так же правдоподобно, как настоящее.
 -- ---------------------------------------------------------------------------
 create or replace function public.player_ratings(
   p_days  integer default 7,
@@ -124,6 +146,20 @@ returns table (
 language sql
 stable
 as $$
+  with per_day as (
+    -- Одна строка на игрока и день. Окно отсекается ДО свёртки: оно режет по
+    -- `match_date`, то есть день попадает в него целиком или не попадает
+    -- вовсе, и на выбор победителя внутри дня повлиять не может.
+    select distinct on (s.card_id, s.match_date)
+      s.card_id, s.match_date, s.minutes, s.goals, s.assists
+    from public.player_match_stats s
+    where s.match_date > current_date - greatest(1, least(coalesce(p_days, 7), 3650))
+    -- Выигрывает строка, которая ЗНАЕТ БОЛЬШЕ, а не та, что пришла первой:
+    -- минуты есть у sports.ru и отсутствуют у ESPN, и запись с минутами
+    -- сохраняет тай-брейк рейтинга. Имя источника дописано, чтобы порядок был
+    -- полным: иначе ответ мог бы меняться от прогона к прогону.
+    order by s.card_id, s.match_date, (s.minutes is not null) desc, s.source
+  )
   select
     c.id,
     c.name,
@@ -139,10 +175,9 @@ as $$
     coalesce(sum(s.goals), 0)::integer   as goals,
     coalesce(sum(s.assists), 0)::integer as assists,
     (coalesce(sum(s.goals), 0) * 4 + coalesce(sum(s.assists), 0) * 3)::integer as points
-  from public.player_match_stats s
+  from per_day s
   join public.cards c on c.id = s.card_id and c.active
   left join public.card_current_club cc on cc.card_id = c.id
-  where s.match_date > current_date - greatest(1, least(coalesce(p_days, 7), 3650))
   group by c.id, c.name, c.name_en, c.photo_url, c.country, cc.club
   -- A player who only warmed the bench all week is not a rating entry.
   having coalesce(sum(s.goals), 0) + coalesce(sum(s.assists), 0) > 0
@@ -213,9 +248,24 @@ returns table (
 language sql
 stable
 as $$
+  with per_day as (
+    -- Та же свёртка, что и в рейтинге, и по той же причине: иначе один матч,
+    -- принесённый обоими источниками, разошёлся бы в досье по ДВУМ строкам
+    -- разных турниров — «MLS: 1 матч» рядом с «США. МЛС: 1 матч», — и сложить
+    -- их читатель уже не смог бы.
+    select distinct on (s.match_date)
+      s.match_date, s.tournament, s.minutes, s.goals, s.assists, s.yellow, s.red
+    from public.player_match_stats s
+    where s.card_id = p_card_id
+    -- Победитель тот же, поэтому и название турнира берётся из одного словаря,
+    -- а не смешивается через строку.
+    order by s.match_date, (s.minutes is not null) desc, s.source
+  )
   select
     s.tournament,
     count(*)::integer,
+    -- NULL, а не 0, когда минут не знает ни один источник: см. комментарий к
+    -- колонке в player_match_stats.sql.
     sum(s.minutes)::integer,
     coalesce(sum(s.goals), 0)::integer,
     coalesce(sum(s.assists), 0)::integer,
@@ -223,8 +273,7 @@ as $$
     coalesce(sum(s.red), 0)::integer,
     min(s.match_date),
     max(s.match_date)
-  from public.player_match_stats s
-  where s.card_id = p_card_id
+  from per_day s
   group by s.tournament
   order by count(*) desc, max(s.match_date) desc;
 $$;

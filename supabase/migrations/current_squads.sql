@@ -252,6 +252,24 @@ create policy card_current_club_read on public.card_current_club
 -- commit, or the deck stops.
 grant select on public.card_current_club to anon, authenticated;
 
+-- ⚠️ И `service_role` — ОТДЕЛЬНОЙ СТРОКОЙ, потому что про него забыли ровно
+-- здесь. Строка выше была написана вместе с комментарием про обязательность
+-- гранта и всё равно перечислила только игроков; выглядела она законченной
+-- именно потому, что политика выше говорит «читать может любой», а
+-- `service_role` в слово «любой» на глаз попадает.
+--
+-- Postgres так не считает. `sports_ru_stats.py` ходит сервис-ключом и читает
+-- эту таблицу в `resolve_slugs`, чтобы понять, у каких карточек вообще есть
+-- клуб, — и первый же ночной прогон (17.08, вручную после того, как крон не
+-- зарегистрировался) упал на ней с `403 Forbidden` ПОСЛЕ того, как обошёл
+-- 178 страниц клубов и собрал 87 карточек. То есть вся полезная работа
+-- прогона была сделана и выброшена на последнем шаге, а рейтинг остался на
+-- посеве.
+--
+-- Симптом того же класса, что и падение колоды выше, но с другой стороны
+-- гранта: там не пускало игрока, здесь — конвейер.
+grant select on public.card_current_club to service_role;
+
 revoke all on function public.rebuild_card_current_clubs() from public, anon, authenticated;
 grant execute on function public.rebuild_card_current_clubs() to service_role;
 grant execute on function public.deck_squads(integer)  to anon, authenticated, service_role;

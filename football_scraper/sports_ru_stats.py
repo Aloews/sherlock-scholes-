@@ -89,6 +89,22 @@ DELAY_SECONDS = 1.2
 MAX_RETRIES = 4
 PAGE_BUDGET = 2000
 
+# Сколько страниц бюджета НЕ отдаётся резолву слагов.
+#
+# Бюджет один на оба шага, а резолв идёт первым — и до тех пор, пока сборщик
+# видел тысячу карточек из 2919, это ничего не значило: догадываться было не о
+# ком. Постраничное чтение открыло настоящий список, и кандидатов на догадку
+# стало ~1130 (1248 карточек с клубом минус найденные в составах и уже
+# известные). При одной-двух страницах на догадку резолв съедает весь бюджет,
+# и на чтение статистики — то есть на ЕДИНСТВЕННЫЙ шаг, который наполняет
+# рейтинг, — не остаётся ничего.
+#
+# Резерв делает приоритет явным: слаги можно дорезолвить завтра, а сутки
+# матчей, не прочитанные сегодня, завтра уже не прочитаются — страница отдаёт
+# один сезон целиком, но `checked_at`-порядок вращает список, и пропущенный
+# игрок ждёт своей очереди.
+COLLECT_RESERVE = PAGE_BUDGET // 2
+
 
 class Fetcher:
     """Polite GET with a delay, retries and a hard page budget."""
@@ -100,6 +116,10 @@ class Fetcher:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self._last = 0.0
+
+    @property
+    def remaining(self):
+        return max(0, self.budget - self.count)
 
     def get(self, url):
         """Page text, or None. A 404 is a real answer (the slug moved), not an
@@ -138,7 +158,19 @@ class Db:
     ⚠️ `merge-duplicates` emits ON CONFLICT DO UPDATE, so the key must hold
     UPDATE as well as INSERT. A writer with only INSERT writes nothing and
     still answers 200 — "285 read, 0 written", both numbers believable.
+
+    ⚠️ И ЧТЕНИЕ ТОЖЕ НЕ ОТДАЁТ ВСЁ, О ЧЁМ ЕГО ПОПРОСИЛИ. `?limit=5000` сервер
+    исполняет молча урезанным: PostgREST режет ответ по `db-max-rows`, и на
+    этом проекте это 1000. Приходит HTTP 200, ровно тысяча строк и ни одного
+    признака, что за ними есть ещё. Замер: `limit=5000` по `cards` вернул
+    1000, а `Content-Range` того же запроса — `0-999/2919`. То есть оба
+    сборщика видели ТРЕТЬ колоды и печатали «cards in deck: 1000» как
+    нормальное число.
     """
+
+    # Столько отдаёт PostgREST за раз (`db-max-rows` проекта). Просить больше
+    # можно, получить — нет.
+    PAGE_ROWS = 1000
 
     def __init__(self, url, key):
         self.url = url.rstrip("/") + "/rest/v1"
@@ -148,10 +180,36 @@ class Db:
              "Content-Type": "application/json"}
         )
 
-    def select(self, path):
-        r = self.session.get(self.url + path, timeout=60)
-        r.raise_for_status()
-        return r.json()
+    def select(self, path, cap=None):
+        """Все строки под `path`, страницами. `cap` — сколько хватит.
+
+        ⚠️ ПУТЬ ОБЯЗАН НЕСТИ `order=`, и это не стиль. Смещение без полного
+        порядка сортировки Postgres выполнять волен как угодно: между двумя
+        запросами строки могут переставиться, и тогда обход одну строку
+        покажет дважды, а другую не покажет вовсе. Хуже всего то, что
+        результат при этом правдоподобен — просто в нём кого-то нет.
+        """
+        assert "order=" in path, "select() paginates, so the path must order: " + path
+        rows, offset = [], 0
+        sep = "&" if "?" in path else "?"
+        while True:
+            want = self.PAGE_ROWS if cap is None else min(self.PAGE_ROWS, cap - len(rows))
+            if want <= 0:
+                break
+            r = self.session.get(
+                "{}{}{}limit={}&offset={}".format(self.url, path, sep, want, offset),
+                timeout=60,
+            )
+            r.raise_for_status()
+            batch = r.json()
+            rows.extend(batch)
+            # Короткая страница — последняя. Полная не доказывает, что есть
+            # следующая, поэтому лишний пустой запрос здесь допустим: он стоит
+            # одного round-trip, а его отсутствие стоило бы половины таблицы.
+            if len(batch) < want:
+                break
+            offset += len(batch)
+        return rows
 
     def upsert(self, table, rows, on_conflict):
         if not rows:
@@ -232,7 +290,7 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     requests per player and rests on a verified guess.
     """
     cards = db.select(
-        "/cards?select=id,name,name_en&active=eq.true&category=eq.player&limit=5000"
+        "/cards?select=id,name,name_en&active=eq.true&category=eq.player&order=id"
     )
     cards_by_key = {}
     for c in cards:
@@ -278,13 +336,17 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     # a current club, because a retired player has no matches to collect and
     # asking for his page every night is a request spent on a certainty.
     if guess:
-        current = db.select("/card_current_club?select=card_id&limit=5000")
+        current = db.select("/card_current_club?select=card_id&order=card_id")
         wanted = {c["card_id"] for c in current} - seen_cards
-        known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&limit=5000")}
+        known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&order=card_id")}
         todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
         print("guessing slugs for {} cards not on any squad page".format(len(todo)))
         guessed = 0
         for card in todo:
+            if fetcher.remaining <= COLLECT_RESERVE:
+                print("  reserve reached ({} pages left), leaving the rest for collect"
+                      .format(fetcher.remaining))
+                break
             try:
                 slug = resolve_by_name(fetcher, card)
             except RuntimeError:  # budget spent — keep what we have
@@ -313,21 +375,89 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     return db.upsert("sports_ru_player", deduped, "card_id")
 
 
+def collapse_duplicate_keys(rows):
+    """Одна строка на (карточка, дата, турнир) — иначе пачку отвергнут целиком.
+
+    ⚠️ ЭТО НЕ ПЕРЕСТРАХОВКА, А ПОЧИНКА ПАДЕНИЯ. Прогон 17.08 прочитал 632
+    страницы, собрал 16908 строк и умер на записи:
+
+        ON CONFLICT DO UPDATE command cannot affect row a second time
+
+    Postgres не даёт одному оператору дважды тронуть одну строку, и PostgREST
+    отвергает при этом ВСЮ пачку. Часть пачек до отказа успела записаться, то
+    есть прогон закончился наполовину применённым — худший из возможных
+    исходов.
+
+    ОТКУДА БЕРУТСЯ ДУБЛИ. Ключ — (card_id, match_date, tournament), а турнир
+    пишется как `row["tournament"] or "—"`. Прочерк — не название, а признак
+    «не разобрали»: два матча одного дня с неразобранным турниром получают
+    ОДИН ключ, хотя это разные турниры. Запасное значение само изготавливает
+    коллизию. Настоящий турнир в двух матчах одного дня совпасть не может.
+
+    ПОЧЕМУ ВЫБИРАЕМ, А НЕ СУММИРУЕМ. Сумма была бы верна, если дубль — два
+    РАЗНЫХ матча, и врала бы вдвое, если это один матч, разобранный дважды.
+    Причину прогон не сообщает, а между «недосчитать» и «выдумать гол» этот
+    проект всегда выбирает первое. Выигрывает строка, которая знает больше:
+    сначала с минутами, потом с большей отдачей, потом первая по порядку —
+    чтобы ответ не менялся от прогона к прогону.
+
+    Схлопнутое печатается: коллизия должна оставаться видимой, иначе
+    прочерк-турнир будет тихо съедать по матчу и дальше.
+    """
+    best = {}
+    order = []
+    collapsed = []
+    for r in rows:
+        key = (r["card_id"], r["match_date"], r["tournament"])
+        prev = best.get(key)
+        if prev is None:
+            best[key] = r
+            order.append(key)
+            continue
+        rank = lambda x: (x["minutes"] is not None, x["goals"] + x["assists"])
+        collapsed.append((key, prev, r))
+        if rank(r) > rank(prev):
+            best[key] = r
+
+    if collapsed:
+        print("collapsed {} duplicate keys (same card+date+tournament):"
+              .format(len(collapsed)))
+        for key, a, b in collapsed[:5]:
+            print("     {} {} «{}»: {}–{} vs {}–{}".format(
+                key[0][:8], key[1], key[2],
+                a.get("home_team"), a.get("away_team"),
+                b.get("home_team"), b.get("away_team")))
+    return [best[k] for k in order]
+
+
 def collect_stats(fetcher, db, limit=None, dry_run=False):
     """Read stat pages least-recently-checked first and write the matches.
 
     The order matters: a run cut short by the budget still advances instead of
     re-reading the same head of the list every night.
     """
-    path = "/sports_ru_player?select=card_id,slug,name_ru&order=checked_at.asc.nullsfirst"
-    if limit:
-        path += "&limit={}".format(int(limit))
-    players = db.select(path)
+    # `card_id` дописан в порядок вторым ключом не для красоты: `checked_at`
+    # у непрочитанных карточек одинаково пуст, а обход идёт страницами по
+    # смещению — при неполном порядке страницы могут перекрыться, и часть
+    # игроков не была бы прочитана ни разу.
+    path = ("/sports_ru_player?select=card_id,slug,name_ru"
+            "&order=checked_at.asc.nullsfirst,card_id.asc")
+    players = db.select(path, cap=int(limit) if limit else None)
     print("players to read: {}".format(len(players)))
 
     stats, checked, suspect = [], [], []
     for p in players:
-        html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
+        try:
+            html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
+        except RuntimeError:
+            # Бюджет кончился посреди обхода. Выход, а не исключение: всё
+            # прочитанное лежит в `stats` и пишется ниже, а необработанный
+            # RuntimeError выбросил бы целую ночь чтения ради строки в логе.
+            # Ровно этого опасается комментарий про потолок в workflow —
+            # «закончиться бюджетом, а не обрывом посреди записи».
+            print("  budget spent after {} players, writing what was read"
+                  .format(len(checked)))
+            break
         if html is None:
             print("  !! {} ({}): page gone".format(p["name_ru"], p["slug"]))
             continue
@@ -367,6 +497,8 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
         print("!! {} players disagreed with their own page total:".format(len(suspect)))
         for name, gap in suspect[:10]:
             print("     {}: {}".format(name, gap))
+
+    stats = collapse_duplicate_keys(stats)
 
     if dry_run:
         for s in stats[:10]:
