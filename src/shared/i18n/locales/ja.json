@@ -624,7 +624,15 @@
     "week_note": "節の合間のカップ戦と欧州の夜 — 週末に入らなかった分。",
     "moment": "名場面",
     "empty_weekend": "その週末の動画はありません。",
-    "views_other": "{{n}}回再生"
+    "views_other": "{{n}}回再生",
+    "summary": "要点",
+    "summary_note": "その日の話題を言語モデルが要約します。",
+    "summary_make": "要約を作る",
+    "summary_retry": "もう一度試す",
+    "summary_loading": "要約を作成中…",
+    "summary_failed": "要約を作成できませんでした。もう一度お試しください。",
+    "summary_quiet": "今日は話題がまとまりませんでした。要約するものがありません。",
+    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。"
   },
   "arena": {
     "title": "アリーナ",

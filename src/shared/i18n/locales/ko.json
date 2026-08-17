@@ -624,7 +624,15 @@
     "week_note": "라운드 사이의 컵과 유럽 대항전 — 주말에 담기지 않은 것들.",
     "moment": "장면",
     "empty_weekend": "그 주말의 영상이 없습니다.",
-    "views_other": "조회수 {{n}}회"
+    "views_other": "조회수 {{n}}회",
+    "summary": "핵심 요약",
+    "summary_note": "오늘의 화제를 언어 모델이 요약합니다.",
+    "summary_make": "요약 만들기",
+    "summary_retry": "다시 시도",
+    "summary_loading": "요약을 작성하는 중…",
+    "summary_failed": "요약을 만들지 못했습니다. 다시 시도해 주세요.",
+    "summary_quiet": "오늘은 모인 화제가 없어 요약할 내용이 없습니다.",
+    "summary_refused": "모델이 이 화제들의 요약을 거절했습니다."
   },
   "arena": {
     "title": "아레나",

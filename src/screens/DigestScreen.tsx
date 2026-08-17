@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
-  fetchGoals, fetchWeekendGoals, fetchWeekGoals,
-  type GoalClip, type WeekendGoal, type RankedClip,
+  fetchDigestSummary, fetchGoals, fetchWeekendGoals, fetchWeekGoals,
+  type DigestSummary, type GoalClip, type WeekendGoal, type RankedClip,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
+import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
+import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { watchUrl, feedLanguage } from '@/features/digest/digestFormat';
 
 /**
@@ -48,8 +50,26 @@ export function DigestScreen() {
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
   const [league, setLeague] = useState<string | null>(null);
+  // `null` — кнопку ещё не нажимали. Это не «пусто» и не «грузится»: секция
+  // до первого нажатия показывает кнопку, а не результат.
+  const [summary, setSummary] = useState<LoadState<DigestSummary> | null>(null);
 
   const lang = feedLanguage(i18n.language);
+
+  /**
+   * Сводка собирается ТОЛЬКО отсюда, по нажатию.
+   *
+   * Не в useEffect — потому что это единственная секция экрана, которая стоит
+   * денег: текст пишет языковая модель. Расход при этом ограничен на сервере
+   * отпечатком набора тем, а не здесь; задача экрана — не звать функцию
+   * самому и не давать нажать второй раз, пока идёт первый.
+   */
+  const makeSummary = async () => {
+    if (summary?.status === 'loading') return;
+    hapticImpact('light');
+    setSummary(LOADING);
+    setSummary(await fetchDigestSummary(lang));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +165,54 @@ export function DigestScreen() {
             </div>
           </div>
         )}
+
+        {/* ─── Краткая суть ───
+            По кнопке, а не при открытии экрана: текст пишет языковая модель.
+            Четыре исхода показываются РАЗНО — готовый текст, «сегодня тихо»
+            (тем нет вовсе), отказ модели и поломка. Свести их в одну надпись
+            значило бы повторить ошибку, ради которой в проекте заведён
+            LoadState: «тихо» и «сломалось» выглядели бы одинаково. */}
+        <section className="space-y-2">
+          <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+            {t('digest.summary')}
+          </p>
+
+          {summary === null && (
+            <>
+              <p className="text-brand-muted text-[10.5px]">{t('digest.summary_note')}</p>
+              <Button variant="secondary" size="sm" fullWidth onClick={makeSummary}>
+                {t('digest.summary_make')}
+              </Button>
+            </>
+          )}
+
+          {summary?.status === 'loading' && (
+            <p className="text-brand-muted text-sm py-4">{t('digest.summary_loading')}</p>
+          )}
+
+          {summary?.status === 'error' && (
+            <>
+              <p className="text-red-400 text-sm py-2">{t('digest.summary_failed')}</p>
+              <Button variant="secondary" size="sm" fullWidth onClick={makeSummary}>
+                {t('digest.summary_retry')}
+              </Button>
+            </>
+          )}
+
+          {summary?.status === 'ok' && summary.data.status === 'no_topics' && (
+            <p className="text-brand-muted text-sm py-2">{t('digest.summary_quiet')}</p>
+          )}
+
+          {summary?.status === 'ok' && summary.data.status === 'refused' && (
+            <p className="text-brand-muted text-sm py-2">{t('digest.summary_refused')}</p>
+          )}
+
+          {summary?.status === 'ok' && summary.data.status === 'ok' && (
+            <p className="text-white text-sm leading-relaxed whitespace-pre-line">
+              {summary.data.summary}
+            </p>
+          )}
+        </section>
 
         {/* ─── Голы выходных ───
             Первой секцией намеренно: это то, ради чего экран открывают раз в

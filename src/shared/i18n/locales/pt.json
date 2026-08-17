@@ -643,7 +643,15 @@
     "moment": "momento",
     "empty_weekend": "Não há vídeos desse fim de semana.",
     "views_one": "{{n}} visualização",
-    "views_other": "{{n}} visualizações"
+    "views_other": "{{n}} visualizações",
+    "summary": "Em resumo",
+    "summary_note": "Um resumo dos temas quentes do dia, escrito por um modelo de linguagem.",
+    "summary_make": "Criar resumo",
+    "summary_retry": "Tentar de novo",
+    "summary_loading": "A escrever o resumo…",
+    "summary_failed": "O resumo não saiu. Tente de novo.",
+    "summary_quiet": "Hoje não se formou nenhum tema — não há nada a resumir.",
+    "summary_refused": "O modelo não quis resumir estes temas."
   },
   "arena": {
     "title": "Arena",

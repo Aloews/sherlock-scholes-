@@ -643,7 +643,15 @@
     "moment": "moment",
     "empty_weekend": "Aucune vidéo de ce week-end.",
     "views_one": "{{n}} vue",
-    "views_other": "{{n}} vues"
+    "views_other": "{{n}} vues",
+    "summary": "L'essentiel",
+    "summary_note": "Un résumé des sujets chauds du jour, écrit par un modèle de langage.",
+    "summary_make": "Rédiger le résumé",
+    "summary_retry": "Réessayer",
+    "summary_loading": "Rédaction du résumé…",
+    "summary_failed": "Le résumé n'a pas abouti. Réessayez.",
+    "summary_quiet": "Aucun sujet ne s'est dégagé aujourd'hui : rien à résumer.",
+    "summary_refused": "Le modèle n'a pas voulu résumer ces sujets."
   },
   "arena": {
     "title": "Arène",

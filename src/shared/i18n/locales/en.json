@@ -643,7 +643,15 @@
     "moment": "moment",
     "empty_weekend": "No clips from that weekend.",
     "views_one": "{{n}} view",
-    "views_other": "{{n}} views"
+    "views_other": "{{n}} views",
+    "summary": "The short of it",
+    "summary_note": "A recap of the day's hot topics, written by a language model.",
+    "summary_make": "Write a recap",
+    "summary_retry": "Try again",
+    "summary_loading": "Writing the recap…",
+    "summary_failed": "The recap didn't come together. Try again.",
+    "summary_quiet": "No topics came together today — there's nothing to recap.",
+    "summary_refused": "The model declined to recap these topics."
   },
   "arena": {
     "title": "Arena",
