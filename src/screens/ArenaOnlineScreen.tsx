@@ -15,6 +15,7 @@ import {
   type InputMessage, type Snapshot,
 } from '@/features/arena/net';
 import { matchOutcome, type RankedStatus } from '@/features/arena/ranked';
+import { clearRoom, readRoom, writeRoom } from '@/features/arena/arenaSession';
 import {
   recordArenaResult, fetchArenaLeaderboard, type LeaderboardRow,
 } from '@/features/arena/arenaApi';
@@ -46,11 +47,36 @@ export function ArenaOnlineScreen() {
   const { t } = useTranslation();
   const design = useDesign();
 
-  const [code, setCode] = useState<string | null>(null);
+  // Комната читается из хранилища ОДИН раз, лениво, до первого рендера:
+  // решение «поле или экран ввода» принимается сразу, и восстановление через
+  // useEffect показало бы экран ввода кадром раньше — то есть мигание «комната
+  // потеряна» ровно в тот момент, ради которого всё это и написано.
+  const [restored] = useState(() => readRoom());
+  const [code, setCode] = useState<string | null>(restored?.code ?? null);
   const [ranked, setRanked] = useState<RankedStatus | null>(null);
   const [board, setBoard] = useState<LoadState<LeaderboardRow[]>>(LOADING);
-  const [role, setRole] = useState<NetRole>('host');
+  const [role, setRole] = useState<NetRole>(restored?.role ?? 'host');
   const [draft, setDraft] = useState('');
+
+  /** Войти в комнату и запомнить её — иначе перезапуск отдаст код навсегда. */
+  const enterRoom = useCallback((next: string, as: NetRole) => {
+    hapticImpact('light');
+    setRole(as);
+    setCode(next);
+    writeRoom({ code: next, role: as });
+  }, []);
+
+  /**
+   * Уйти самому.
+   *
+   * Забыть комнату здесь — это вся разница между «связь оборвалась» и «я
+   * вышел». Без этого кнопка «назад» возвращала бы в ту же комнату при
+   * следующем открытии экрана, и выйти стало бы невозможно.
+   */
+  const leaveRoom = useCallback(() => {
+    clearRoom();
+    navigate(-1);
+  }, [navigate]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const paletteRef = useRef<Palette | null>(null);
@@ -98,6 +124,15 @@ export function ArenaOnlineScreen() {
     };
     guestPushRef.current = guest.pushSnapshot;
   }, [host.inputsRef, guest.pushSnapshot]);
+
+  // Пока идёт игра, отметка времени комнаты обновляется. Срок в четверть часа
+  // отмеряется от ПОСЛЕДНЕЙ игры, а не от входа: иначе долгий матч истёк бы
+  // прямо под руками, и перезапуск на исходе такого матча вернул бы на экран
+  // ввода — ровно то, от чего это и написано.
+  useEffect(() => {
+    if (!code || net.status !== 'playing') return;
+    writeRoom({ code, role });
+  }, [code, role, net.status]);
 
   // Хост рассылает снимки. Двадцать раз в секунду, а не шестьдесят: между
   // снимками гость интерполирует, и разницы не видно, а трафика втрое меньше.
@@ -170,9 +205,7 @@ export function ArenaOnlineScreen() {
 
           <p className="text-brand-muted text-sm">{t('arena.online_intro')}</p>
 
-          <Button
-            onClick={() => { hapticImpact('light'); setRole('host'); setCode(newCode()); }}
-          >
+          <Button onClick={() => enterRoom(newCode(), 'host')}>
             {t('arena.online_create')}
           </Button>
 
@@ -192,7 +225,7 @@ export function ArenaOnlineScreen() {
             />
             <Button
               disabled={draft.length < CODE_LENGTH}
-              onClick={() => { hapticImpact('light'); setRole('guest'); setCode(draft); }}
+              onClick={() => enterRoom(draft, 'guest')}
             >
               {t('arena.online_join')}
             </Button>
@@ -236,7 +269,7 @@ export function ArenaOnlineScreen() {
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
       <div className="flex items-center gap-3 px-4 py-3">
         <button
-          onClick={() => navigate(-1)}
+          onClick={leaveRoom}
           className="text-brand-muted hover:text-white transition-colors"
           aria-label={t('home.back')}
         >

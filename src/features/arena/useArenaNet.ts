@@ -100,7 +100,19 @@ export function useArenaNet({ code, role, onInput, onSnapshot }: Options): Arena
       })
       .subscribe((state) => {
         if (state === 'SUBSCRIBED') {
-          setStatus((prev) => (prev === 'connecting' ? 'waiting' : prev));
+          // ⚠️ `error` ОБЯЗАН СБРАСЫВАТЬСЯ ЗДЕСЬ, и раньше не сбрасывался.
+          // Условие было `prev === 'connecting'`, а после обрыва prev равен
+          // `error`: supabase-js сам переподнимает канал и снова зовёт этот
+          // колбэк с SUBSCRIBED, но статус оставался `error` — канал живой, а
+          // экран показывает «ошибка связи». Presence обычно поправлял это
+          // следующим sync'ом, но «обычно» здесь недостаточно: sync приходит
+          // не мгновенно, и игрок успевает прочитать надпись о поломке,
+          // которой нет.
+          //
+          // `playing` не трогаем: соперник уже был в канале, и объявлять
+          // ожидание из-за собственного переподключения значило бы гасить
+          // поле у того, у кого связь как раз в порядке.
+          setStatus((prev) => (prev === 'playing' ? prev : 'waiting'));
           void channel.track({ role, at: Date.now() });
         } else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
           setStatus('error');
