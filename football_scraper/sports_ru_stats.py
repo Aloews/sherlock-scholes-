@@ -213,21 +213,49 @@ class Db:
         return rows
 
     def upsert(self, table, rows, on_conflict):
+        """Записать пачками, пережив одиночный обрыв связи.
+
+        ⚠️ ПОВТОР ТОЛЬКО ПО СЕТИ, И ЭТО РАЗНИЦА ПО СУЩЕСТВУ. Таймаут и обрыв
+        означают «ответ не дошёл» — повтор осмыслен, потому что запись
+        идемпотентна (merge-duplicates по одному ключу). А код 4xx означает
+        «пачку рассмотрели и отвергли»: 409 на дубликате slug повторится
+        столько же раз, сколько его послать. Такое падает сразу.
+
+        ПОЧЕМУ ЭТО ПОЯВИЛОСЬ. Ночной прогон 18.08.2026 упал ровно здесь:
+        `ReadTimeout ... (read timeout=90)` на одной пачке `sports_ru_player`.
+        Пачки уже были по 500, то есть дело не в размере — Supabase просто не
+        ответил. Одна такая заминка уносила весь сбор за сутки.
+        """
         if not rows:
             return 0
         written = 0
         for i in range(0, len(rows), 500):
             batch = rows[i:i + 500]
-            r = self.session.post(
-                "{}/{}?on_conflict={}".format(self.url, table, on_conflict),
-                json=batch,
-                headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
-                timeout=90,
-            )
-            if r.status_code >= 300:
-                raise RuntimeError(
-                    "{} upsert {}: {}".format(table, r.status_code, r.text[:400])
-                )
+            for attempt in range(3):
+                try:
+                    r = self.session.post(
+                        "{}/{}?on_conflict={}".format(self.url, table, on_conflict),
+                        json=batch,
+                        headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
+                        timeout=90,
+                    )
+                except (requests.Timeout, requests.ConnectionError) as exc:
+                    if attempt == 2:
+                        raise
+                    wait = 2 ** (attempt + 1)
+                    print(
+                        "   {} upsert: {} — повтор через {} с".format(
+                            table, type(exc).__name__, wait
+                        ),
+                        file=sys.stderr,
+                    )
+                    time.sleep(wait)
+                    continue
+                if r.status_code >= 300:
+                    raise RuntimeError(
+                        "{} upsert {}: {}".format(table, r.status_code, r.text[:400])
+                    )
+                break
             written += len(batch)
         return written
 
@@ -557,15 +585,41 @@ def main():
     do_collect = args.collect or not args.resolve
 
     print("=== sports.ru player stats, {} ===".format(date.today().isoformat()))
+
+    # ⚠️ КАРТА СЛАГОВ НЕ ДОЛЖНА УНОСИТЬ СБОР, и это тот же принцип, по которому
+    # в player-stats.yml у шага ESPN стоит `if: always()`: два независимых дела
+    # в одном прогоне, и падение первого не отменяет второе.
+    #
+    # Цена ошибки здесь несимметрична. Карта слагов — ОБНОВЛЕНИЕ справочника:
+    # не собралась сегодня — соберётся завтра, вчерашняя на месте. Сбор
+    # статистики — сам продукт: пропущенные сутки не догоняются, потому что
+    # страница матча показывает последние туры, а не архив.
+    #
+    # Ровно так это и стоило: 18.08.2026 таймаут одной пачки в resolve_slugs
+    # уронил процесс, и сбор за сутки не случился вовсе — в таблице остались
+    # позавчерашние 23971 строка.
+    failed = None
     if do_resolve:
         print("-- resolve --")
-        print("slug map rows: {}".format(resolve_slugs(fetcher, db, args.dry_run)))
+        try:
+            print("slug map rows: {}".format(resolve_slugs(fetcher, db, args.dry_run)))
+        except Exception as exc:  # noqa: BLE001 — причина печатается целиком
+            failed = exc
+            print("resolve FAILED: {}: {}".format(type(exc).__name__, exc), file=sys.stderr)
+            print("   продолжаем сбор: справочник переживёт сутки, статистика нет",
+                  file=sys.stderr)
+
     if do_collect:
         print("-- collect --")
         print("match rows written: {}".format(
             collect_stats(fetcher, db, args.limit, args.dry_run)))
+
     print("pages fetched: {}".format(fetcher.count))
-    return 0
+
+    # Прогон всё равно КРАСНЫЙ, если что-то упало: молчаливая половинчатая
+    # работа — это то, ради чего в этом репозитории заведены все проверки.
+    # Но упавшая половина уже не мешает целой.
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
