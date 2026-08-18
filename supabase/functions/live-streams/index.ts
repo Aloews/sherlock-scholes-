@@ -61,7 +61,6 @@ interface Found {
   channel_id: string;
   channel: string;
   title: string;
-  embeddable: boolean;
 }
 
 async function get(url: string): Promise<string | null> {
@@ -97,15 +96,16 @@ function liveVideoId(html: string): string | null {
 }
 
 /**
- * Заголовок и разрешение на встраивание — публичным oEmbed, без ключа.
+ * Заголовок эфира — публичным oEmbed, без ключа.
  *
- * Не-200 значит «встраивать нельзя»: так отвечает YouTube на ролик, у
- * которого автор снял разрешение. Но заголовка тогда тоже нет, а строка без
- * заголовка бесполезна — предикат в базе разбирает именно его. Поэтому такой
- * эфир не записывается вовсе: показать «идёт матч» без названия матча значит
- * показать пустую карточку.
+ * ⚠️ ЗДЕСЬ КОГДА-ТО ВОЗВРАЩАЛСЯ ЕЩЁ И ПРИЗНАК «МОЖНО ВСТРАИВАТЬ», и это была
+ * ошибка: не-200 от oEmbed значит и «встраивать нельзя», и «ролика нет», а
+ * различить их отсюда невозможно. При этом без заголовка строка всё равно не
+ * пишется — предикат в базе разбирает именно его. То есть признак мог принять
+ * ровно одно значение, и колонка под него была ложным обещанием. Убрано вместе
+ * с колонкой; подробности в шапке миграции.
  */
-async function describe(videoId: string): Promise<{ title: string; embeddable: boolean } | null> {
+async function describe(videoId: string): Promise<{ title: string } | null> {
   const url =
     "https://www.youtube.com/oembed?url=" +
     encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`) +
@@ -115,7 +115,7 @@ async function describe(videoId: string): Promise<{ title: string; embeddable: b
   try {
     const j = JSON.parse(body);
     if (typeof j?.title !== "string" || !j.title) return null;
-    return { title: j.title as string, embeddable: true };
+    return { title: j.title as string };
   } catch {
     return null;
   }
@@ -163,7 +163,6 @@ Deno.serve(async (req) => {
       channel_id: ch.ref,
       channel: ch.name,
       title: meta.title,
-      embeddable: meta.embeddable,
     });
   }
 

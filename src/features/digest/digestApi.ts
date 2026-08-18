@@ -119,8 +119,6 @@ export interface LiveMatch {
   video_id: string;
   channel: string;
   title: string;
-  /** Разрешил ли автор встраивание. Сейчас на это опирается только запись. */
-  embeddable: boolean;
   /** Когда конвейер в последний раз видел эфир живым, не «начало матча». */
   seen_at: string;
 }
