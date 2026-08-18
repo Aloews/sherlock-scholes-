@@ -153,7 +153,8 @@ returns boolean language sql immutable as $$
       || '|matchday live|watch ?along'
       || '|podcast|analysis|an[áa]lisis|reaction|обзор|превью|разбор'
          -- Жеребьёвка называет два клуба чаще любого матча.
-      || '|draw show|sorteo|sorteggio|жеребьёвк|жеребьевк'
+      || '|draw show|stage draw|group draw|draw ceremony'
+      || '|sorteo|sorteggio|жеребьёвк|жеребьевк'
          -- Совместные проекты и презентации: «Ligue 1 Uber Eats x EA»,
          -- «REVEAL TEAM OF THE SEASON». Знак « x » между брендами не отличить
          -- от « x » между клубами, поэтому отсекается сам формат.

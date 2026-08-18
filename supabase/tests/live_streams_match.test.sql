@@ -129,6 +129,12 @@ BEGIN
       -- в тех же заголовках написано, что сам матч идёт на Canal+Sport 3.
       ('LIVE IRL | O Kuchta! Legia Warszawa vs Radomiak Radom | Mecz w Canal+Sport 3', false),
       ('Rozgrzewka przed ceremonią! | LECH vs WISŁA | LIVE IRL',               false),
+      -- ЖЕРЕБЬЁВКА. Отсекалась ОТСУТСТВИЕМ признака матча, а не правилом —
+      -- «Group A vs Group B» проскочило бы. Найдена первым же прогоном после
+      -- добавления канала АФК.
+      ('Live | AFC Champions League Two 2026/27™ Group Stage Draw',            false),
+      ('Group Stage Draw: Group A vs Group B',                                 false),
+      ('Champions League Draw Ceremony',                                       false),
       -- Настоящие матчи с каналов, заведённых после этой проверки.
       ('L.A. Firpo vs LD Alajuelense | Copa Centroamericana Concacaf 2026',    true),
       ('Mount Pleasant vs Cibao FC | 2026 Concacaf Caribbean Cup',             true),
@@ -168,6 +174,18 @@ BEGIN
     'C: «irl» сработало внутри слова — проверьте границы \\m…\\M';
   ASSERT NOT public.is_studio_talk('Swirl Cup: Milan vs Inter'),
     'C: «irl» сработало внутри слова';
+
+  -- «Ничья» в отчёте о матче — не церемония жеребьёвки. Отсекать надо форму
+  -- («stage draw», «draw ceremony»), а не само слово: голое `draw` выбросило бы
+  -- каждый отчёт о матче, закончившемся вничью.
+  ASSERT public.looks_like_match('Arsenal vs Chelsea — thrilling 2-2 draw at the Emirates')
+     AND NOT public.is_studio_talk('Arsenal vs Chelsea — thrilling 2-2 draw at the Emirates'),
+    'C: слово draw стало исключением само по себе — ничейные матчи теперь не показываются';
+
+  -- «irl» внутри слова страницей не является: границы слова обязаны стоять.
+  ASSERT public.looks_like_match('Girls Cup Final: Ajax vs PSV')
+     AND NOT public.is_studio_talk('Girls Cup Final: Ajax vs PSV'),
+    'C: «irl» ловится внутри слов — проверьте границы \\m…\\M';
 
   -- ── D. Смещение в сторону «лучше не показать» ──────────────────────────
   -- Заголовок, в котором есть И признак матча, И признак студии, считается
