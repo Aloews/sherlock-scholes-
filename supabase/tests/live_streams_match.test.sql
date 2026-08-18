@@ -113,6 +113,34 @@ BEGIN
       format('B2: «%s» — ожидали %s, получили %s', v_title, v_want, v_got);
   END LOOP;
 
+  -- ── B3. Не матч, хотя выглядит как матч ───────────────────────────────
+  -- Два класса, найденные обходом каналов-кандидатов. Ни один из признаков
+  -- выше их не ловил, и оба прошли бы как идущие матчи.
+  FOR v_title, v_want IN
+    SELECT * FROM (VALUES
+      -- КИБЕРФУТБОЛ. Официальный канал Indian Super League ведёт 29
+      -- трансляций из 30 под именем «eISL»: настоящие клубы, настоящее «vs»,
+      -- играют в видеоигру.
+      ('[LIVE] eISL Season 2 Playoffs - Semi Final 2 Leg 2 | North East United FC vs Kerala Blasters FC', false),
+      ('[LIVE] eISL Season 2 League - Match 4 | FC Goa vs Kerala Blasters FC', false),
+      ('eFootball Championship: Real Madrid vs Barcelona',                     false),
+      ('EA SPORTS FC Pro: Ajax vs PSV',                                        false),
+      -- СОПРОВОДИТЕЛЬНЫЙ СТРИМ. Экстракляса ведёт их под меткой «LIVE IRL», и
+      -- в тех же заголовках написано, что сам матч идёт на Canal+Sport 3.
+      ('LIVE IRL | O Kuchta! Legia Warszawa vs Radomiak Radom | Mecz w Canal+Sport 3', false),
+      ('Rozgrzewka przed ceremonią! | LECH vs WISŁA | LIVE IRL',               false),
+      -- Настоящие матчи с каналов, заведённых после этой проверки.
+      ('L.A. Firpo vs LD Alajuelense | Copa Centroamericana Concacaf 2026',    true),
+      ('Mount Pleasant vs Cibao FC | 2026 Concacaf Caribbean Cup',             true),
+      ('Isuzu UTE A-League 2026 Grand Final - Auckland FC v Sydney FC',        true),
+      ('Tokyo Verdy Beleza vs Naegohyang Women''s FC | Full Match | FINAL',    true)
+    ) AS t(title, want)
+  LOOP
+    v_got := public.looks_like_match(v_title) AND NOT public.is_studio_talk(v_title);
+    ASSERT v_got = v_want,
+      format('B3: «%s» — ожидали %s, получили %s', v_title, v_want, v_got);
+  END LOOP;
+
   -- ── C. Известные пределы, утверждаемые НАРОЧНО ─────────────────────────
   -- Одиночное « x » требует букв с обеих сторон и пробелов: без этого оно
   -- ловило бы «Max», «Box» и любой хэштег.
@@ -132,6 +160,14 @@ BEGIN
   ASSERT public.looks_like_match('Nike x Adidas')
      AND NOT public.is_studio_talk('Nike x Adidas'),
     'C: предел « x » исчез — если он снят намеренно, обновите комментарий в live_streams.sql';
+
+  -- Метка «IRL» отсекает сопроводительные стримы, но обязана быть ОТДЕЛЬНЫМ
+  -- словом: без границ она сидит внутри «girl» и «swirl» и выключила бы
+  -- женский футбол целиком.
+  ASSERT NOT public.is_studio_talk('Girls Cup Final: Chelsea vs Arsenal'),
+    'C: «irl» сработало внутри слова — проверьте границы \\m…\\M';
+  ASSERT NOT public.is_studio_talk('Swirl Cup: Milan vs Inter'),
+    'C: «irl» сработало внутри слова';
 
   -- ── D. Смещение в сторону «лучше не показать» ──────────────────────────
   -- Заголовок, в котором есть И признак матча, И признак студии, считается

@@ -158,6 +158,19 @@ returns boolean language sql immutable as $$
          -- «REVEAL TEAM OF THE SEASON». Знак « x » между брендами не отличить
          -- от « x » между клубами, поэтому отсекается сам формат.
       || '|team of the season|ultimate team|fut \d|reveal'
+         -- ⚠️ КИБЕРФУТБОЛ — НАСТОЯЩИЙ МАТЧ НЕ НАСТОЯЩИХ КОМАНД. Официальный
+         -- канал Indian Super League ведёт 29 трансляций из 30 под именем
+         -- «eISL»: реальные клубы, реальное «vs», играют в видеоигру. Ни один
+         -- признак выше это не ловит, а показать киберматч под надписью
+         -- «идёт сейчас» в футбольном приложении — то же враньё.
+      || '|\meisl\M|\me-?sports?\M|\me-?football\M|\me-?league\M'
+      || '|ea sports fc|ea fc \d|fifa \d\d|konami'
+         -- ⚠️ СОПРОВОДИТЕЛЬНЫЙ СТРИМ — НЕ МАТЧ. Экстракляса ведёт их под
+         -- меткой «LIVE IRL», и в тех же заголовках прямо написано «Mecz w
+         -- Canal+Sport 3» — то есть сам матч идёт на платном ТВ, а на YouTube
+         -- человек его комментирует. Предикат отсекал их случайно, по тире;
+         -- случайность — не основание.
+      || '|\mirl\M|fan ?cam|reakcja|komentarz'
          -- ⚠️ ПОВТОР В ПЕТЛЕ — НЕ ИДУЩИЙ МАТЧ, и здесь я сам сначала ошибся:
          -- «Match Highlights: Inter vs Milan» проходило как матч, потому что в
          -- заголовке два клуба и «vs». Но сюда попадают только каналы, которые
@@ -222,3 +235,49 @@ returns void language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.prune_live_streams() from public;
 grant execute on function public.prune_live_streams() to service_role;
+
+-- ---------------------------------------------------------------------------
+-- Каналы, которые НЕ идут в дайджест голов, но идут в эфиры.
+--
+-- ЗАЧЕМ ОТДЕЛЬНЫЙ `kind`. football-digest фильтрует `kind = 'channel'`, а
+-- live-streams читает `kind in ('channel','live')`. Значит строка с 'live'
+-- видна только эфирам: лента голов не расширяется чужими турнирами, и квота
+-- YouTube API не тратится — эфирам ключ вообще не нужен.
+--
+-- КАЖДЫЙ КАНАЛ ПРОВЕРЕН ОБХОДОМ ВКЛАДКИ `/streams`, а не взят по названию.
+-- Проверка окупилась дважды:
+--
+--   @theafc                12 трансляций, 0 матчей — это ВООБЩЕ НЕ Азиатская
+--                          конфедерация: «AFC GB Rehearsal vid», «Revolution
+--                          Praise @ Momentum 2011». Тёзка по аббревиатуре.
+--   @IndianSuperLeague     29 из 30 — «eISL», то есть КИБЕРФУТБОЛ. Настоящие
+--                          клубы, настоящее «vs», играют в видеоигру.
+--   @Ekstraklasa           29 трансляций, все «LIVE IRL», и в тех же
+--                          заголовках написано «Mecz w Canal+Sport 3» — матч
+--                          идёт на платном ТВ, а на YouTube его комментируют.
+--
+-- Ни один из трёх не заведён. Первые два случая заодно добавили исключений в
+-- `is_studio_talk` — предикат их не ловил.
+--
+-- Заведены только те, у кого вкладка трансляций состоит из матчей:
+--   Concacaf     30 из 30 — Copa Centroamericana
+--   A-Leagues    30 из 30 — австралийская лига, включая финал
+--   AFC Asian Cup 19 из 30 — женская Лига чемпионов АФК, полные матчи
+-- ---------------------------------------------------------------------------
+-- ⚠️ СНАЧАЛА РАСШИРИТЬ CHECK, и это поймала база, а не я. Колонка `kind`
+-- ограничена списком ('feed','channel','espn_news'), в котором 'live' не было
+-- — то есть ветка `kind in ('channel','live')` в live-streams была МЁРТВОЙ с
+-- первого дня: строк с таким видом завести было нельзя. Функция при этом
+-- работала, потому что каналы брались из 'channel'.
+alter table public.digest_source drop constraint if exists digest_source_kind_check;
+alter table public.digest_source add constraint digest_source_kind_check
+  check (kind in ('feed', 'channel', 'espn_news', 'live'));
+
+insert into public.digest_source (kind, name, ref, needs_key, enabled, note) values
+  ('live', 'Concacaf',      'UCqn7r-so0mBLaJTtTms9dAQ', false, true,
+   'Обход /streams 18.08.2026: 30 трансляций, 30 матчей. Copa Centroamericana.'),
+  ('live', 'A-Leagues',     'UCzRogd_oK3bzKvAW-4aLuPQ', false, true,
+   'Обход /streams 18.08.2026: 30 трансляций, 30 матчей, включая финал лиги.'),
+  ('live', 'AFC Asian Cup', 'UCnj0TjaM0wyxkAWW_nz8_1g', false, true,
+   'Обход /streams 18.08.2026: 30 трансляций, 19 матчей. Женская ЛЧ АФК, полные матчи.')
+on conflict do nothing;
