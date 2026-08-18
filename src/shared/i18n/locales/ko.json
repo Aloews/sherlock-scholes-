@@ -632,7 +632,10 @@
     "summary_loading": "요약을 작성하는 중…",
     "summary_failed": "요약을 만들지 못했습니다. 다시 시도해 주세요.",
     "summary_quiet": "오늘은 모인 화제가 없어 요약할 내용이 없습니다.",
-    "summary_refused": "모델이 이 화제들의 요약을 거절했습니다."
+    "summary_refused": "모델이 이 화제들의 요약을 거절했습니다.",
+    "live": "지금 중계 중",
+    "live_note": "리그 공식 채널의 무료 중계입니다.",
+    "live_official": "공식 채널"
   },
   "arena": {
     "title": "아레나",
