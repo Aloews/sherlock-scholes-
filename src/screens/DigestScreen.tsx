@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
-  fetchDigestSummary, fetchGoals, fetchWeekendGoals, fetchWeekGoals,
-  type DigestSummary, type GoalClip, type WeekendGoal, type RankedClip,
+  fetchDigestSummary, fetchGoals, fetchWeekendGoals, fetchWeekGoals, fetchLiveMatches,
+  type DigestSummary, type GoalClip, type WeekendGoal, type RankedClip, type LiveMatch,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
+import { LiveNow } from '@/features/digest/LiveNow';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
@@ -46,6 +47,10 @@ export function DigestScreen() {
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
   const [weekend, setWeekend] = useState<WeekendGoal[] | null>(null);
   const [week, setWeek] = useState<RankedClip[] | null>(null);
+  // Пустой массив — начальное значение, а не `null`: раздела «идёт сейчас» при
+  // пустом списке не бывает вовсе, поэтому различать «ещё не пришло» и «ничего
+  // не идёт» здесь нечем и незачем — оба показываются одинаково: никак.
+  const [live, setLive] = useState<LiveMatch[]>([]);
   // null — «все чемпионаты». Не пустое множество: пустое пришлось бы всюду
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
@@ -90,6 +95,7 @@ export function DigestScreen() {
     run(fetchWeekendGoals(), setWeekend);
     run(fetchWeekGoals(), setWeek);
     run(fetchGoals(), setGoals);
+    run(fetchLiveMatches(), setLive);
     return () => { cancelled = true; };
   }, [lang]);
 
@@ -165,6 +171,12 @@ export function DigestScreen() {
             </div>
           </div>
         )}
+
+        {/* ─── Идёт сейчас ───
+            Первым, потому что это единственный раздел, который перестанет быть
+            верным, пока читатель листает. Сам раздел исчезает, когда показывать
+            нечего, — а нечего будет чаще, чем есть: см. LiveNow.tsx. */}
+        <LiveNow matches={live} />
 
         {/* ─── Краткая суть ───
             По кнопке, а не при открытии экрана: текст пишет языковая модель.

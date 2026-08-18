@@ -632,7 +632,10 @@
     "summary_loading": "正在生成摘要…",
     "summary_failed": "摘要生成失败，请重试。",
     "summary_quiet": "今天没有形成话题，暂无内容可概括。",
-    "summary_refused": "模型未对这些话题进行概括。"
+    "summary_refused": "模型未对这些话题进行概括。",
+    "live": "正在直播",
+    "live_note": "联赛官方频道的公开直播。",
+    "live_official": "官方频道"
   },
   "arena": {
     "title": "竞技场",
