@@ -6,8 +6,14 @@
 -- Deactivation, not DELETE: round_cards.card_id references cards(id).
 -- Keep-rule: more pageviews, then higher fame, then the older card.
 --
--- NOT EXECUTED. Read it, then run it in the Supabase SQL editor.
-
+-- ⚠️ APPLIED 2026-08-23 — all 76 groups below, confirmed against prod by
+-- direct query (77/77 target ids already active=false) before this comment
+-- was corrected. The "NOT EXECUTED" note above had gone stale silently: this
+-- file is a one-time operational script, not a migration, so nothing forced
+-- its header to track what had actually been run — read `active` on the
+-- table, not this comment, if you need to know current state. Re-running is
+-- harmless (`SET active = false` on an already-false row is a no-op).
+--
 -- !! AFTER APPLYING, RECOMPUTE FAME !!
 --    python docs/cards_fame_refresh.py
 -- fame is a percentile, and a duplicate SPLITS one player's attention
@@ -15,7 +21,7 @@
 -- for the same man. Both are understated until the scale is rebuilt, which
 -- is also why the two halves of a pair can wear different rarity frames.
 
--- ============ CERTAIN: 76 groups ============
+-- ============ CERTAIN: 76 groups — APPLIED ============
 -- Aaron Ramsey: keep «Аарон Рэмзи» [player | pv=39252 | fame=91] — same photo
 UPDATE cards SET active = false WHERE id = '97f04f25-14e4-46b1-87df-626d35a1d8a1';  -- «Аарон Рэмси» (fame=91)
 -- Aleksandr Golovin: keep «Александр Сергеевич Головин» [player | pv=273016 | fame=76] — same photo
@@ -170,8 +176,10 @@ UPDATE cards SET active = false WHERE id = '418cf25a-ecf6-4355-a54a-0429ab7e0857
 -- Yehor Yarmolyuk: keep «Егор Романович Ярмолюк» [player | pv=22258 | fame=47] — same photo, same pageviews
 UPDATE cards SET active = false WHERE id = '4d2d6597-a0c2-49e9-9683-8bf222fdc122';  -- «Егор Ярмолюк» (fame=47)
 
--- ============ REVIEW: 11 groups — same name_en, nothing else agrees ============
+-- ============ REVIEW: 11 groups, 2 applied — same name_en, nothing else agrees ============
 -- Different people can share a name. Uncomment only what you confirm.
+-- The 2 UEFA pairs below are no longer commented out — they were confirmed
+-- and applied 2026-08-23. The remaining 9 are still open.
 --   Arthur
 --     «Артур» [player | pv=14826 | fame=48 | photo=y] 76864cb4-7821-482d-bf7f-481f47097296
 --     «Артур Де Матос Соарес» [player | pv=9103 | fame=24 | photo=y] bbc5145a-83c8-4cb8-80c6-d79b6ed4f709
@@ -198,12 +206,13 @@ UPDATE cards SET active = false WHERE id = '4d2d6597-a0c2-49e9-9683-8bf222fdc122
 --   Rodri
 --     «Родриго Эрнандес» [player | pv=75742 | fame=94 | photo=y] 3cd0a996-483d-442a-88db-6a3efed61dac
 --     «Родриго Санчес Родригес» [player | pv=3193 | fame=34 | photo=n] b31c84f8-7a40-45e1-a3db-3e17eda9c770
---   UEFA Champions League  [CROSS-CATEGORY]
---     «Лига чемпионов УЕФА» [trophy | pv=773949 | fame=100 | photo=y] cf275ec1-5e0b-45d5-93bc-427fb0dbef90
---     «Лига Чемпионов» [term | pv=115 | fame=31 | photo=n] d404d700-3835-4ef2-ba30-52b401784dcc
---   UEFA Europa League  [CROSS-CATEGORY]
---     «Лига Европы УЕФА» [trophy | pv=265599 | fame=98 | photo=n] 942f5bb0-ef8f-4dc2-bb98-c10b26b4aaae
---     «Лига Европы» [term | pv=1335 | fame=49 | photo=n] a0296414-ebd0-4743-b9c0-db7c84f1881c
+--   UEFA Champions League  [CROSS-CATEGORY] — ✅ APPLIED 2026-08-23, confirmed
+--   same tournament, not a judgement call despite the cross-category flag
+--     «Лига чемпионов УЕФА» [trophy | pv=773949 | fame=100 | photo=y] cf275ec1-5e0b-45d5-93bc-427fb0dbef90 — KEPT
+UPDATE cards SET active = false WHERE id = 'd404d700-3835-4ef2-ba30-52b401784dcc';  -- «Лига Чемпионов» [term | pv=115]
+--   UEFA Europa League  [CROSS-CATEGORY] — ✅ APPLIED 2026-08-23, same reasoning
+--     «Лига Европы УЕФА» [trophy | pv=265599 | fame=98 | photo=n] 942f5bb0-ef8f-4dc2-bb98-c10b26b4aaae — KEPT
+UPDATE cards SET active = false WHERE id = 'a0296414-ebd0-4743-b9c0-db7c84f1881c';  -- «Лига Европы» [term | pv=1335]
 --   Vitinha
 --     «Витор Феррейра» [player | pv=27767 | fame=81 | photo=y] 69589606-8c6b-46a5-bc83-592f4210abf8
 --     «Витор Мануэл Карвалью Оливейра» [player | pv=3314 | fame=10 | photo=y] dd5a304f-e8ad-48c6-82ac-3e2bf7ec1084
