@@ -212,7 +212,7 @@ flowchart TD
 | `cards_matching`, `pick_random_cards`, `count_deck` | `deck_rpc.sql` | колода |
 | `fame_tier`, `refresh_card_fame` | `deck_fame.sql` | известность (перцентиль) и производные |
 | `collection_views`, `collection_page` | `collection_page_by_lang.sql` | коллекция: страница каталога в порядке языка зрителя. **Не путь колоды** — карточку не раздаёт |
-| `increment_player_stats` | `player_progression_xp.sql`, `weekly_quests.sql` | статистика + XP + прогресс заданий, `SECURITY DEFINER` |
+| `increment_player_stats`, `current_play_date` | `player_progression_xp.sql`, `weekly_quests.sql`, `player_streak.sql` | статистика + XP + прогресс заданий + игровая серия (дней подряд с игрой, по UTC-дню), `SECURITY DEFINER` |
 | `get_weekly_quests`, `claim_weekly_task`, `weekly_task_codes`, `current_week_start` | `weekly_quests.sql` | задания недели |
 | `get_user_status`, `tg_is_pro` | `pro_users.sql`, `pro_onboarding.sql` | Pro и проверка `initData` по HMAC |
 | `create_team_room` | `create_team_room.sql` | создание комнаты |

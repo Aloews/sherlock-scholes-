@@ -166,7 +166,11 @@
   "profile": {
     "title": "Profil",
     "level": "Niveau {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP avant le niveau suivant"
+    "xp_progress": "{{into}} / {{total}} XP avant le niveau suivant",
+    "streak_one": "Série : {{count}} jour",
+    "streak_other": "Série : {{count}} jours",
+    "streak_best_one": "record : {{count}} jour",
+    "streak_best_other": "record : {{count}} jours"
   },
   "level": {
     "title_1": "Stagiaire",

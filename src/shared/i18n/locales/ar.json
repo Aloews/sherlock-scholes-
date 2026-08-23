@@ -169,7 +169,19 @@
   "profile": {
     "title": "الملف الشخصي",
     "level": "المستوى {{n}}",
-    "xp_progress": "{{into}} / {{total}} نقطة خبرة للمستوى التالي"
+    "xp_progress": "{{into}} / {{total}} نقطة خبرة للمستوى التالي",
+    "streak_zero": "لا سلسلة أيام بعد",
+    "streak_one": "سلسلة: يوم واحد",
+    "streak_two": "سلسلة: يومان",
+    "streak_few": "سلسلة: {{count}} أيام",
+    "streak_many": "سلسلة: {{count}} يومًا",
+    "streak_other": "سلسلة: {{count}} يوم",
+    "streak_best_zero": "لا رقم قياسي بعد",
+    "streak_best_one": "الأفضل: يوم واحد",
+    "streak_best_two": "الأفضل: يومان",
+    "streak_best_few": "الأفضل: {{count}} أيام",
+    "streak_best_many": "الأفضل: {{count}} يومًا",
+    "streak_best_other": "الأفضل: {{count}} يوم"
   },
   "level": {
     "title_1": "مبتدئ",

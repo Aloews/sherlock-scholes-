@@ -164,7 +164,9 @@
   "profile": {
     "title": "프로필",
     "level": "레벨 {{n}}",
-    "xp_progress": "다음 레벨까지 {{into}} / {{total}} XP"
+    "xp_progress": "다음 레벨까지 {{into}} / {{total}} XP",
+    "streak_other": "{{count}}일 연속",
+    "streak_best_other": "최고 기록 {{count}}일"
   },
   "level": {
     "title_1": "수습생",

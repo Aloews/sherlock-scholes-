@@ -166,7 +166,11 @@
   "profile": {
     "title": "Perfil",
     "level": "Nivel {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP para el siguiente nivel"
+    "xp_progress": "{{into}} / {{total}} XP para el siguiente nivel",
+    "streak_one": "Racha: {{count}} día",
+    "streak_other": "Racha: {{count}} días",
+    "streak_best_one": "mejor: {{count}} día",
+    "streak_best_other": "mejor: {{count}} días"
   },
   "level": {
     "title_1": "Novato",

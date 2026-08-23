@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconX, IconUsers, IconChevronRight } from '@tabler/icons-react';
+import { IconX, IconUsers, IconChevronRight, IconFlame } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { useAuthStore } from '@/shared/store/authStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
@@ -22,6 +22,11 @@ export function ProfileScreen() {
 
   const name = player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : '';
   const progress = levelProgress(stats?.xp ?? 0);
+  // 0 means "never played" as much as "streak broken today" — either way
+  // there is nothing honest to show yet, so the row stays hidden rather
+  // than asserting a streak that does not exist (docs/MAP.md §8а).
+  const streak     = stats?.current_streak ?? 0;
+  const bestStreak = stats?.longest_streak ?? 0;
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -71,6 +76,17 @@ export function ProfileScreen() {
                   <p className="text-[10.5px] text-brand-muted/80 mt-1.5">
                     {t('profile.xp_progress', { into: progress.xpIntoLevel, total: progress.xpForNextLevel })}
                   </p>
+                  {streak > 0 && (
+                    <p className="flex items-center gap-1 text-[10.5px] text-brand-accent mt-1">
+                      <IconFlame size={12} stroke={2} />
+                      {t('profile.streak', { count: streak })}
+                      {bestStreak > streak && (
+                        <span className="text-brand-muted/70">
+                          · {t('profile.streak_best', { count: bestStreak })}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </>
             )}
