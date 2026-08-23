@@ -104,6 +104,7 @@
     "matches_link": "예정된 경기",
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
+    "famous_link": "누가 더 유명할까",
     "alias_link": "축구 알리아스",
     "digest_link": "골과 장면",
     "news_link": "뉴스",
@@ -609,6 +610,13 @@
     "fact_national": "대표팀: {{value}}",
     "fact_caps": "A매치: {{value}}",
     "fact_tournaments": "참가 대회: {{value}}"
+  },
+  "famous": {
+    "title": "누가 더 유명할까",
+    "subtitle": "위키백과 조회수 기준",
+    "loading": "선수 두 명을 찾는 중…",
+    "empty": "아직 비교할 선수가 없습니다",
+    "next": "다음"
   },
   "digest": {
     "title": "오늘의 다이제스트",

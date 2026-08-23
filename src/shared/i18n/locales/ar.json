@@ -109,6 +109,7 @@
     "matches_link": "المباريات القادمة",
     "fantasy_link": "دوري الفانتازي",
     "quiz_link": "خمّن اللاعب",
+    "famous_link": "من الأشهر",
     "alias_link": "أليّاس كرة القدم",
     "digest_link": "الأهداف واللقطات",
     "news_link": "الأخبار",
@@ -694,6 +695,13 @@
     "fact_national": "المنتخب: {{value}}",
     "fact_caps": "مباريات دولية: {{value}}",
     "fact_tournaments": "البطولات: {{value}}"
+  },
+  "famous": {
+    "title": "من الأشهر",
+    "subtitle": "حسب مشاهدات ويكيبيديا",
+    "loading": "جارٍ البحث عن لاعبين…",
+    "empty": "لا يوجد من نقارنه بعد",
+    "next": "التالي"
   },
   "digest": {
     "title": "موجز اليوم",

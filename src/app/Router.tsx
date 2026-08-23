@@ -21,6 +21,7 @@ const FriendsScreen  = lazy(() => import('@/screens/FriendsScreen').then((m) => 
 const MatchesScreen  = lazy(() => import('@/screens/MatchesScreen').then((m) => ({ default: m.MatchesScreen })));
 const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => ({ default: m.FantasyScreen })));
 const QuizScreen     = lazy(() => import('@/screens/QuizScreen').then((m) => ({ default: m.QuizScreen })));
+const FamousScreen   = lazy(() => import('@/screens/FamousScreen').then((m) => ({ default: m.FamousScreen })));
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
 const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
@@ -119,6 +120,7 @@ export function Router() {
       <Route path="/matches"   element={<PageTransition><MatchesScreen /></PageTransition>} />
       <Route path="/fantasy"   element={<PageTransition><FantasyScreen /></PageTransition>} />
       <Route path="/quiz"      element={<PageTransition><QuizScreen /></PageTransition>} />
+      <Route path="/famous"    element={<PageTransition><FamousScreen /></PageTransition>} />
       <Route path="/digest"    element={<PageTransition><DigestScreen /></PageTransition>} />
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}

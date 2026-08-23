@@ -106,6 +106,7 @@
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
+    "famous_link": "Who's more famous",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
     "news_link": "News",
@@ -626,6 +627,13 @@
     "fact_national": "National team: {{value}}",
     "fact_caps": "Caps: {{value}}",
     "fact_tournaments": "Tournaments: {{value}}"
+  },
+  "famous": {
+    "title": "Who's more famous",
+    "subtitle": "By Wikipedia attention",
+    "loading": "Finding two players…",
+    "empty": "Nobody to compare yet",
+    "next": "Next"
   },
   "digest": {
     "title": "Daily digest",
