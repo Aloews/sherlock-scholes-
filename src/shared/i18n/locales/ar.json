@@ -631,6 +631,7 @@
     "score_age_few": "حُدّثت النتيجة قبل {{count}} دقائق",
     "score_age_many": "حُدّثت النتيجة قبل {{count}} دقيقة",
     "score_age_other": "حُدّثت النتيجة قبل {{count}} دقيقة",
+    "broadcaster": "الناقل · {{name}}",
     "prediction_history": "سجل التوقعات",
     "history_loading": "جارٍ التحميل…",
     "history_pending": "بانتظار النتيجة"
@@ -729,7 +730,10 @@
     "summary_loading": "جارٍ كتابة الملخّص…",
     "summary_failed": "تعذّر إعداد الملخّص. حاول مرة أخرى.",
     "summary_quiet": "لم تتشكّل أي موضوعات اليوم — لا شيء لتلخيصه.",
-    "summary_refused": "رفض النموذج تلخيص هذه الموضوعات."
+    "summary_refused": "رفض النموذج تلخيص هذه الموضوعات.",
+    "live": "يُبث الآن",
+    "live_note": "بث مفتوح على القناة الرسمية للدوري.",
+    "live_official": "القناة الرسمية"
   },
   "arena": {
     "title": "الساحة",

@@ -563,6 +563,7 @@
     "day_matches_other": "{{count}} jogos",
     "score_age_one": "Resultado atualizado há {{count}} minuto",
     "score_age_other": "Resultado atualizado há {{count}} minutos",
+    "broadcaster": "Transmite · {{name}}",
     "prediction_history": "Histórico de palpites",
     "history_loading": "Carregando…",
     "history_pending": "aguardando resultado"
@@ -655,7 +656,10 @@
     "summary_loading": "A escrever o resumo…",
     "summary_failed": "O resumo não saiu. Tente de novo.",
     "summary_quiet": "Hoje não se formou nenhum tema — não há nada a resumir.",
-    "summary_refused": "O modelo não quis resumir estes temas."
+    "summary_refused": "O modelo não quis resumir estes temas.",
+    "live": "Ao vivo agora",
+    "live_note": "Transmissão aberta no canal oficial da liga.",
+    "live_official": "canal oficial"
   },
   "arena": {
     "title": "Arena",
