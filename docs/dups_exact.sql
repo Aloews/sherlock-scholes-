@@ -6,13 +6,18 @@
 -- Deactivation, not DELETE: round_cards.card_id references cards(id).
 -- Keep-rule: more pageviews, then higher fame, then the older card.
 --
--- ⚠️ APPLIED 2026-08-23 — all 76 groups below, confirmed against prod by
--- direct query (77/77 target ids already active=false) before this comment
--- was corrected. The "NOT EXECUTED" note above had gone stale silently: this
--- file is a one-time operational script, not a migration, so nothing forced
--- its header to track what had actually been run — read `active` on the
--- table, not this comment, if you need to know current state. Re-running is
--- harmless (`SET active = false` on an already-false row is a no-op).
+-- ⚠️ FULLY RESOLVED 2026-08-23 — CERTAIN (76 groups) confirmed against prod
+-- by direct query (77/77 target ids already active=false) before this
+-- comment was corrected — it used to say "NOT EXECUTED" and had gone stale
+-- silently. REVIEW (11 groups) is now resolved too, every group either
+-- applied or explicitly closed as not-a-duplicate — see its own header
+-- below for how each was decided. This file is a one-time operational
+-- script, not a migration, so nothing forces its header to track what was
+-- actually run — read `active` on the table, not this comment, if you need
+-- current state. Re-running CERTAIN is harmless (`SET active = false` on an
+-- already-false row is a no-op); re-running REVIEW is a no-op for the same
+-- reason on the groups already applied, and does nothing on the closed ones
+-- because they were never uncommented.
 --
 -- !! AFTER APPLYING, RECOMPUTE FAME !!
 --    python docs/cards_fame_refresh.py
@@ -176,43 +181,84 @@ UPDATE cards SET active = false WHERE id = '418cf25a-ecf6-4355-a54a-0429ab7e0857
 -- Yehor Yarmolyuk: keep «Егор Романович Ярмолюк» [player | pv=22258 | fame=47] — same photo, same pageviews
 UPDATE cards SET active = false WHERE id = '4d2d6597-a0c2-49e9-9683-8bf222fdc122';  -- «Егор Ярмолюк» (fame=47)
 
--- ============ REVIEW: 11 groups, 2 applied — same name_en, nothing else agrees ============
--- Different people can share a name. Uncomment only what you confirm.
--- The 2 UEFA pairs below are no longer commented out — they were confirmed
--- and applied 2026-08-23. The remaining 9 are still open.
---   Arthur
---     «Артур» [player | pv=14826 | fame=48 | photo=y] 76864cb4-7821-482d-bf7f-481f47097296
---     «Артур Де Матос Соарес» [player | pv=9103 | fame=24 | photo=y] bbc5145a-83c8-4cb8-80c6-d79b6ed4f709
---   Club América
---     «Клуб Америка» [club | pv=62220 | fame=91 | photo=n] 4d8da532-22b8-4bba-af5b-70cf8cc77b4a
---     «Америка (Мехико)» [club | pv=2 | fame=12 | photo=n] 64e66edc-8ca4-456a-abd2-1c508738658d
---   Dante
---     «Данте Бонфин Коста Сантос» [player | pv=17886 | fame=69 | photo=y] ea03a9ed-a54d-49d5-a136-a14bf280336b
---     «Данте» [player | pv=10118 | fame=95 | photo=y] 48a09b0c-d42f-4104-b521-62523a3db684
---   Defender
---     «Защитник» [position | pv=4049 | fame=56 | photo=n] c8cce11d-5fab-4b0d-a56e-0dcd1970098b
---     «Латераль» [position | pv=1327 | fame=49 | photo=n] 8eec7fda-e980-44a4-ac91-ddcbae31b037
---   Forward
---     «Ложная девятка» [position | pv=857 | fame=46 | photo=n] 579266e7-25d6-4239-a2d9-a91af32d9bdc
---     «Нападающий» [position | pv=148 | fame=33 | photo=n] 7836121a-e3f6-4d12-80ce-3c3aa9b052bd
---   Free kick
---     «Свободный удар» [term | pv=581 | fame=43 | photo=n] 9fec2b90-24e8-4604-8973-36f9682f43dd
---     «Штрафной удар» [term | pv=493 | fame=42 | photo=n] 63540638-bb13-4859-9fe4-2a499884e143
---   Midfielder
---     «Вингер» [position | pv=10580 | fame=68 | photo=n] 84a53b7d-f352-455d-ab2f-818859c91c7e
---     «Плеймейкер» [position | pv=1249 | fame=49 | photo=n] 62cd44f5-9498-46dc-9456-940e82cf811c
---     «Полузащитник» [position | pv=1058 | fame=47 | photo=n] 0b85b484-35e2-4c31-a324-9d419ded8306
---     «Хавбек» [position | pv=84 | fame=29 | photo=n] f25885df-e3b8-4b8c-8b53-805fa3d1ad51
---   Rodri
---     «Родриго Эрнандес» [player | pv=75742 | fame=94 | photo=y] 3cd0a996-483d-442a-88db-6a3efed61dac
---     «Родриго Санчес Родригес» [player | pv=3193 | fame=34 | photo=n] b31c84f8-7a40-45e1-a3db-3e17eda9c770
---   UEFA Champions League  [CROSS-CATEGORY] — ✅ APPLIED 2026-08-23, confirmed
---   same tournament, not a judgement call despite the cross-category flag
+-- ============ REVIEW: 11 groups — ALL RESOLVED, none by name alone ============
+-- Different people can share a name, so the same name_en decides nothing by
+-- itself here. Every group below was resolved against `country`/`top_club`/
+-- `top_league`/`facts->>'position'` — the fields a REAL duplicate import
+-- leaves either matching (same person, two records) or absent (a thin stub
+-- next to a full record), and a same-named DIFFERENT person leaves
+-- genuinely disagreeing. 6 groups turned out to be duplicates and are
+-- applied; 5 turned out to be real distinct people or real distinct
+-- concepts and are closed without touching `active` — re-opening any of the
+-- 5 needs a reason beyond "same name_en", because that reason was already
+-- checked and rejected once.
+--
+--   Arthur — ✋ NOT A DUPLICATE, closed 2026-08-23. Different clubs
+--   (Zenit vs Bayer 04) AND different positions (forward vs defender) —
+--   two different Brazilian players who happen to share a common name.
+--     «Артур» [player | pv=14826 | photo=y] 76864cb4-7821-482d-bf7f-481f47097296 — Zenit, forward
+--     «Артур Де Матос Соарес» [player | pv=9103 | photo=y] bbc5145a-83c8-4cb8-80c6-d79b6ed4f709 — Bayer 04, defender
+--
+--   Club América — ✅ APPLIED 2026-08-23. Same name_en, same real club;
+--   the losing record has no country, no club data, pv=2 — a stub import,
+--   not a second real entity.
+UPDATE cards SET active = false WHERE id = '64e66edc-8ca4-456a-abd2-1c508738658d';  -- «Америка (Мехико)» [club | pv=2] — stub, no country
+--     «Клуб Америка» [club | pv=62220 | photo=n] 4d8da532-22b8-4bba-af5b-70cf8cc77b4a — KEPT, country=MX
+--
+--   Dante — ✅ APPLIED 2026-08-23. «Данте» carries no country/club/league/
+--   position at all despite decent pageviews — a thin duplicate, not a
+--   second player. The fuller record's club (Nice) and position (defender)
+--   match the real Dante Bonfim Costa Santos exactly.
+UPDATE cards SET active = false WHERE id = '48a09b0c-d42f-4104-b521-62523a3db684';  -- «Данте» [player | pv=10118] — no distinguishing fields at all
+--     «Данте Бонфин Коста Сантос» [player | pv=17886 | photo=y] ea03a9ed-a54d-49d5-a136-a14bf280336b — KEPT, Ницца, defender
+--
+--   Defender — ✋ NOT A DUPLICATE, closed 2026-08-23. «Латераль» (fullback)
+--   is a SPECIFIC role under the general position, not a synonym for it —
+--   same relationship as Winger/Playmaker under Midfielder below.
+--     «Защитник» [position | pv=4049 | photo=n] c8cce11d-5fab-4b0d-a56e-0dcd1970098b — general term
+--     «Латераль» [position | pv=1327 | photo=n] 8eec7fda-e980-44a4-ac91-ddcbae31b037 — specific role (fullback)
+--
+--   Forward — ✋ NOT A DUPLICATE, closed 2026-08-23. Same relationship as
+--   Defender above: «Ложная девятка» (false nine) is a specific tactical
+--   role, not a synonym for the general position.
+--     «Ложная девятка» [position | pv=857 | photo=n] 579266e7-25d6-4239-a2d9-a91af32d9bdc — specific role (false nine)
+--     «Нападающий» [position | pv=148 | photo=n] 7836121a-e3f6-4d12-80ce-3c3aa9b052bd — general term
+--
+--   Free kick — ✅ APPLIED 2026-08-23. Not two concepts — «свободный
+--   удар» and «штрафной удар» are the formal-vs-colloquial Russian names
+--   for the same rule, unlike the position pairs above.
+UPDATE cards SET active = false WHERE id = '63540638-bb13-4859-9fe4-2a499884e143';  -- «Штрафной удар» [term | pv=493] — colloquial synonym
+--     «Свободный удар» [term | pv=581 | photo=n] 9fec2b90-24e8-4604-8973-36f9682f43dd — KEPT (higher pageviews, per keep-rule)
+--
+--   Midfielder — SPLIT DECISION, 2026-08-23. Four cards, not a pair.
+--   «Хавбек» is a dated loanword synonym for the general position — merged.
+--   «Вингер» and «Плеймейкер» are specific tactical roles, same relationship
+--   as Defender/Forward above — NOT touched, stay distinct from the general
+--   term and from each other.
+--     «Вингер» [position | pv=10580 | photo=n] 84a53b7d-f352-455d-ab2f-818859c91c7e — specific role (winger), not a duplicate
+--     «Плеймейкер» [position | pv=1249 | photo=n] 62cd44f5-9498-46dc-9456-940e82cf811c — specific role (playmaker), not a duplicate
+UPDATE cards SET active = false WHERE id = 'f25885df-e3b8-4b8c-8b53-805fa3d1ad51';  -- «Хавбек» [position | pv=84] — dated synonym for the general term
+--     «Полузащитник» [position | pv=1058 | photo=n] 0b85b484-35e2-4c31-a324-9d419ded8306 — KEPT, general term
+--
+--   Rodri — ✋ NOT A DUPLICATE, closed 2026-08-23. Different clubs
+--   (Man City vs Real Betis) and the surnames don't match the same real
+--   person (Hernández Cascante vs Sánchez Rodríguez) — two different
+--   Spanish players who both go by "Rodri".
+--     «Родриго Эрнандес» [player | pv=75742 | photo=y] 3cd0a996-483d-442a-88db-6a3efed61dac — Manchester City
+--     «Родриго Санчес Родригес» [player | pv=3193 | photo=n] b31c84f8-7a40-45e1-a3db-3e17eda9c770 — Real Betis
+--
+--   UEFA Champions League  [CROSS-CATEGORY] — ✅ APPLIED 2026-08-23,
+--   confirmed same tournament, not a judgement call despite the
+--   cross-category flag
 --     «Лига чемпионов УЕФА» [trophy | pv=773949 | fame=100 | photo=y] cf275ec1-5e0b-45d5-93bc-427fb0dbef90 — KEPT
 UPDATE cards SET active = false WHERE id = 'd404d700-3835-4ef2-ba30-52b401784dcc';  -- «Лига Чемпионов» [term | pv=115]
 --   UEFA Europa League  [CROSS-CATEGORY] — ✅ APPLIED 2026-08-23, same reasoning
 --     «Лига Европы УЕФА» [trophy | pv=265599 | fame=98 | photo=n] 942f5bb0-ef8f-4dc2-bb98-c10b26b4aaae — KEPT
 UPDATE cards SET active = false WHERE id = 'a0296414-ebd0-4743-b9c0-db7c84f1881c';  -- «Лига Европы» [term | pv=1335]
---   Vitinha
---     «Витор Феррейра» [player | pv=27767 | fame=81 | photo=y] 69589606-8c6b-46a5-bc83-592f4210abf8
---     «Витор Мануэл Карвалью Оливейра» [player | pv=3314 | fame=10 | photo=y] dd5a304f-e8ad-48c6-82ac-3e2bf7ec1084
+--
+--   Vitinha — ✋ NOT A DUPLICATE, closed 2026-08-23. Different clubs (PSG
+--   vs Marseille), different positions (midfielder vs forward), and the
+--   fuller name doesn't match PSG's Vitinha (Vítor Machado Ferreira) —
+--   two different Portuguese players who both go by "Vitinha".
+--     «Витор Феррейра» [player | pv=27767 | photo=y] 69589606-8c6b-46a5-bc83-592f4210abf8 — PSG, midfielder
+--     «Витор Мануэл Карвалью Оливейра» [player | pv=3314 | photo=y] dd5a304f-e8ad-48c6-82ac-3e2bf7ec1084 — Марсель, forward
