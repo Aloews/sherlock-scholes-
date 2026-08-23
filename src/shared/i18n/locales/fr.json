@@ -652,7 +652,10 @@
     "summary_loading": "Rédaction du résumé…",
     "summary_failed": "Le résumé n'a pas abouti. Réessayez.",
     "summary_quiet": "Aucun sujet ne s'est dégagé aujourd'hui : rien à résumer.",
-    "summary_refused": "Le modèle n'a pas voulu résumer ces sujets."
+    "summary_refused": "Le modèle n'a pas voulu résumer ces sujets.",
+    "live": "En direct",
+    "live_note": "Diffusion ouverte sur la chaîne officielle de la ligue.",
+    "live_official": "chaîne officielle"
   },
   "arena": {
     "title": "Arène",

@@ -633,7 +633,10 @@
     "summary_loading": "要約を作成中…",
     "summary_failed": "要約を作成できませんでした。もう一度お試しください。",
     "summary_quiet": "今日は話題がまとまりませんでした。要約するものがありません。",
-    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。"
+    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。",
+    "live": "配信中",
+    "live_note": "リーグ公式チャンネルの無料配信です。",
+    "live_official": "公式チャンネル"
   },
   "arena": {
     "title": "アリーナ",

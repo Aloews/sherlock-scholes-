@@ -652,7 +652,10 @@
     "summary_loading": "Writing the recap…",
     "summary_failed": "The recap didn't come together. Try again.",
     "summary_quiet": "No topics came together today — there's nothing to recap.",
-    "summary_refused": "The model declined to recap these topics."
+    "summary_refused": "The model declined to recap these topics.",
+    "live": "On now",
+    "live_note": "A free stream on the league’s own channel.",
+    "live_official": "official channel"
   },
   "arena": {
     "title": "Arena",

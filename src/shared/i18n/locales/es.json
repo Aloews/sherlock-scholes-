@@ -652,7 +652,10 @@
     "summary_loading": "Escribiendo el resumen…",
     "summary_failed": "No se pudo crear el resumen. Inténtalo de nuevo.",
     "summary_quiet": "Hoy no se formó ningún tema: no hay nada que resumir.",
-    "summary_refused": "El modelo no quiso resumir estos temas."
+    "summary_refused": "El modelo no quiso resumir estos temas.",
+    "live": "En directo",
+    "live_note": "Emisión abierta en el canal oficial de la liga.",
+    "live_official": "canal oficial"
   },
   "arena": {
     "title": "Arena",
