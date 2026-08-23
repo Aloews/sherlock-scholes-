@@ -106,6 +106,7 @@
     "matches_link": "Próximos jogos",
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
+    "squad_link": "De quem é o elenco",
     "alias_link": "Alias do futebol",
     "digest_link": "Gols e lances",
     "news_link": "Notícias",
@@ -626,6 +627,12 @@
     "fact_national": "Seleção: {{value}}",
     "fact_caps": "Jogos pela seleção: {{value}}",
     "fact_tournaments": "Torneios: {{value}}"
+  },
+  "squad": {
+    "title": "De quem é o elenco",
+    "loading": "Montando um elenco…",
+    "empty": "Ainda não há o que montar",
+    "next": "Próximo"
   },
   "digest": {
     "title": "Resumo do dia",

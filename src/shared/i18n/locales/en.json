@@ -106,6 +106,7 @@
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
+    "squad_link": "Whose squad",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
     "news_link": "News",
@@ -626,6 +627,12 @@
     "fact_national": "National team: {{value}}",
     "fact_caps": "Caps: {{value}}",
     "fact_tournaments": "Tournaments: {{value}}"
+  },
+  "squad": {
+    "title": "Whose squad",
+    "loading": "Gathering a squad…",
+    "empty": "Nobody to gather yet",
+    "next": "Next"
   },
   "digest": {
     "title": "Daily digest",

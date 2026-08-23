@@ -110,6 +110,7 @@
     "matches_link": "Ближайшие матчи",
     "fantasy_link": "Фэнтези-лига",
     "quiz_link": "Угадай игрока",
+    "squad_link": "Чей состав",
     "alias_link": "Футбольный Элиас",
     "digest_link": "Голы и моменты",
     "news_link": "Новости",
@@ -664,6 +665,12 @@
     "fact_national": "Сборная: {{value}}",
     "fact_caps": "Матчей за сборную: {{value}}",
     "fact_tournaments": "Турниры: {{value}}"
+  },
+  "squad": {
+    "title": "Чей состав",
+    "loading": "Собираем состав…",
+    "empty": "Пока нечего собрать",
+    "next": "Дальше"
   },
   "digest": {
     "title": "Дайджест дня",

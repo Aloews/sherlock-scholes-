@@ -47,6 +47,7 @@ flowchart LR
 | `/profile` | `ProfileScreen` → `profile/WeeklyQuests` | уровень, XP, задания недели |
 | `/friends` | `FriendsScreen` | рейтинг друзей по XP и кого добавить |
 | `/fantasy` | `FantasyScreen` | фэнтези: состав из пяти, капитан, таблица лиг. **Два разных тура на экране** — заявка на ближайший открытый, таблица по текущему |
+| `/squad` | `SquadScreen` | мини-игра «чей состав» — 5 игроков клуба (`card_current_club`), угадать клуб из четырёх (`whose_squad.sql`). Второй кандидат из §7 `docs/FANTASY_AND_MINIGAMES.md` после «Кто известнее» |
 | `/digest` | `DigestScreen` | заголовки суток из открытых RSS-лент и видео с официальных каналов лиг. **Два разных порядка**: заголовки по «громкости» (сколько РАЗНЫХ изданий вышло с тем же сюжетом — просмотров RSS не отдаёт), ролики по времени (Atom-фид YouTube не отдаёт ни просмотров, ни лайков, и рейтинга там нет) |
 | `/arena` | `ArenaScreen` | футбол на двоих **на одном телефоне**: canvas, физика 60 Гц, две площадки управления. Без `PageTransition` — обёртка анимирует transform родителя, и первые кадры уезжали бы вместе с ним. Игра на двух телефонах — соседним роутом, см. §4 |
 | `/arena/online` | `ArenaOnlineScreen` | та же арена **на двух телефонах**: хост считает физику, гость шлёт ввод и рисует снимки с интерполяцией. Без `PageTransition` по той же причине, что и локальная. Подробности — §4 |
@@ -230,6 +231,7 @@ flowchart TD
 | `fetch_live_streams` | `schedule_live_streams.sql` | pg_cron каждые 10 минут → Edge `live-streams`. Десять минут против часового окна чтения: эфир успевает подтвердиться шесть раз |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
+| `whose_squad_round` | `whose_squad.sql` | раунд мини-игры «чей состав»: 5 игроков клуба поверх `card_current_club`/`deck_squads(5)`, имя резолвится под `p_lang`. `fetched_at` в ответе — состав не живой, экран обязан показать дату |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
 | `fixtures_horizon` | `fixtures_horizon.sql` | докуда расписание известно. `published_until` — последний день ПЕРЕД разрывом длиннее недели, а не `max(commence_at)`: один далёкий матч не делает известным месяц вокруг себя. Этим красится календарь, и только благодаря этому пустая клетка не заявляет «матчей не будет» |
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |

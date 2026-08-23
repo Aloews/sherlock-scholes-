@@ -109,6 +109,7 @@
     "matches_link": "المباريات القادمة",
     "fantasy_link": "دوري الفانتازي",
     "quiz_link": "خمّن اللاعب",
+    "squad_link": "فريق مَن",
     "alias_link": "أليّاس كرة القدم",
     "digest_link": "الأهداف واللقطات",
     "news_link": "الأخبار",
@@ -694,6 +695,12 @@
     "fact_national": "المنتخب: {{value}}",
     "fact_caps": "مباريات دولية: {{value}}",
     "fact_tournaments": "البطولات: {{value}}"
+  },
+  "squad": {
+    "title": "فريق مَن",
+    "loading": "جارٍ تجميع الفريق…",
+    "empty": "لا يوجد فريق بعد",
+    "next": "التالي"
   },
   "digest": {
     "title": "موجز اليوم",

@@ -106,6 +106,7 @@
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
+    "squad_link": "L'équipe de qui",
     "alias_link": "Alias du football",
     "digest_link": "Buts et actions",
     "news_link": "Actualités",
@@ -626,6 +627,12 @@
     "fact_national": "Sélection : {{value}}",
     "fact_caps": "Sélections : {{value}}",
     "fact_tournaments": "Tournois : {{value}}"
+  },
+  "squad": {
+    "title": "L'équipe de qui",
+    "loading": "Rassemblement d'une équipe…",
+    "empty": "Rien à rassembler pour l'instant",
+    "next": "Suivant"
   },
   "digest": {
     "title": "Résumé du jour",
