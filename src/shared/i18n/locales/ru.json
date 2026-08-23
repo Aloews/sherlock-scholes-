@@ -110,6 +110,7 @@
     "matches_link": "Ближайшие матчи",
     "fantasy_link": "Фэнтези-лига",
     "quiz_link": "Угадай игрока",
+    "famous_link": "Кто известнее",
     "squad_link": "Чей состав",
     "alias_link": "Футбольный Элиас",
     "digest_link": "Голы и моменты",
@@ -166,12 +167,21 @@
     "tournaments": "Турниры",
     "collected": "Собрано по матчам",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п"
+    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п",
+    "news_and_video": "Новости и видео"
   },
   "profile": {
     "title": "Профиль",
     "level": "Уровень {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP до следующего уровня"
+    "xp_progress": "{{into}} / {{total}} XP до следующего уровня",
+    "streak_one": "Серия: {{count}} день",
+    "streak_few": "Серия: {{count}} дня",
+    "streak_many": "Серия: {{count}} дней",
+    "streak_other": "Серия: {{count}} дня",
+    "streak_best_one": "рекорд {{count}} день",
+    "streak_best_few": "рекорд {{count}} дня",
+    "streak_best_many": "рекорд {{count}} дней",
+    "streak_best_other": "рекорд {{count}} дня"
   },
   "level": {
     "title_1": "Стажёр",
@@ -453,7 +463,15 @@
     "error": "Слишком много репортов. Попробуйте позже."
   },
   "share": {
-    "button": "Поделиться"
+    "button": "Поделиться",
+    "invite_1": "Сыграй со мной в Шерлок Скоулс — угадай легенду футбола! ⚽",
+    "invite_2": "Думаешь, знаешь футбол? Проверь в Шерлок Скоулс ⚽",
+    "invite_3": "Объясни футболиста, не называя имени. Слабо? Шерлок Скоулс ⚽",
+    "invite_4": "Лучшая игра для футбольной компании — Шерлок Скоулс ⚽",
+    "invite_5": "Кто из нас знает футбол лучше? Зацени Шерлок Скоулс ⚽",
+    "invite_6": "Угадай легенду по подсказкам — Шерлок Скоулс ⚽",
+    "invite_7": "Собери друзей и проверьте, кто настоящий знаток футбола ⚽",
+    "invite_8": "Один объясняет — другой угадывает. Футбольный Alias: Шерлок Скоулс ⚽"
   },
   "sound": {
     "mute": "Выключить звук",
@@ -577,6 +595,8 @@
     "my_breakdown": "закрыто: {{settled}} · в точку: {{exact}} · ждут: {{pending}}",
     "top_predictors": "Лучшие прогнозисты",
     "exact_short": "в точку: {{n}}",
+    "scope_all": "Все",
+    "scope_friends": "Друзья",
     "all_leagues": "Все турниры",
     "empty_league": "В этом турнире ближайших матчей нет.",
     "where_to_watch": "Где смотреть · {{source}}",
@@ -601,7 +621,10 @@
     "score_age_few": "Счёт обновлён {{count}} минуты назад",
     "score_age_many": "Счёт обновлён {{count}} минут назад",
     "score_age_other": "Счёт обновлён {{count}} минут назад",
-    "broadcaster": "Показывает · {{name}}"
+    "broadcaster": "Показывает · {{name}}",
+    "prediction_history": "История прогнозов",
+    "history_loading": "Загрузка…",
+    "history_pending": "ждём счёт"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",
@@ -665,6 +688,13 @@
     "fact_national": "Сборная: {{value}}",
     "fact_caps": "Матчей за сборную: {{value}}",
     "fact_tournaments": "Турниры: {{value}}"
+  },
+  "famous": {
+    "title": "Кто известнее",
+    "subtitle": "По просмотрам в Википедии",
+    "loading": "Ищем двух игроков…",
+    "empty": "Пока не с кем сравнивать",
+    "next": "Дальше"
   },
   "squad": {
     "title": "Чей состав",

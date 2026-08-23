@@ -106,6 +106,7 @@
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
+    "famous_link": "Who's more famous",
     "squad_link": "Whose squad",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
@@ -162,12 +163,17 @@
     "tournaments": "Tournaments",
     "collected": "Collected from matches",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A",
+    "news_and_video": "News & video"
   },
   "profile": {
     "title": "Profile",
     "level": "Level {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP to next level"
+    "xp_progress": "{{into}} / {{total}} XP to next level",
+    "streak_one": "Streak: {{count}} day",
+    "streak_other": "Streak: {{count}} days",
+    "streak_best_one": "best {{count}} day",
+    "streak_best_other": "best {{count}} days"
   },
   "level": {
     "title_1": "Rookie",
@@ -431,7 +437,15 @@
     "error": "Too many reports. Try again later."
   },
   "share": {
-    "button": "Share"
+    "button": "Share",
+    "invite_1": "Play Sherlock Scholes with me — guess the football legend! ⚽",
+    "invite_2": "Think you know football? Prove it in Sherlock Scholes ⚽",
+    "invite_3": "Describe a player without saying their name. Think you can? Sherlock Scholes ⚽",
+    "invite_4": "The best game for football fans hanging out — Sherlock Scholes ⚽",
+    "invite_5": "Who knows football better, you or me? Check out Sherlock Scholes ⚽",
+    "invite_6": "Guess the legend from the clues — Sherlock Scholes ⚽",
+    "invite_7": "Get your friends together and find out who really knows football ⚽",
+    "invite_8": "One explains, the other guesses — football-flavored Alias. Sherlock Scholes ⚽"
   },
   "sound": {
     "mute": "Mute sounds",
@@ -543,6 +557,8 @@
     "my_breakdown": "settled: {{settled}} · exact: {{exact}} · pending: {{pending}}",
     "top_predictors": "Top predictors",
     "exact_short": "exact {{n}}",
+    "scope_all": "All",
+    "scope_friends": "Friends",
     "all_leagues": "All competitions",
     "empty_league": "No upcoming matches in this competition.",
     "where_to_watch": "Where to watch · {{source}}",
@@ -563,7 +579,10 @@
     "day_matches_other": "{{count}} matches",
     "score_age_one": "Score updated {{count}} minute ago",
     "score_age_other": "Score updated {{count}} minutes ago",
-    "broadcaster": "Broadcaster · {{name}}"
+    "broadcaster": "Broadcaster · {{name}}",
+    "prediction_history": "Prediction history",
+    "history_loading": "Loading…",
+    "history_pending": "awaiting score"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
@@ -627,6 +646,13 @@
     "fact_national": "National team: {{value}}",
     "fact_caps": "Caps: {{value}}",
     "fact_tournaments": "Tournaments: {{value}}"
+  },
+  "famous": {
+    "title": "Who's more famous",
+    "subtitle": "By Wikipedia attention",
+    "loading": "Finding two players…",
+    "empty": "Nobody to compare yet",
+    "next": "Next"
   },
   "squad": {
     "title": "Whose squad",

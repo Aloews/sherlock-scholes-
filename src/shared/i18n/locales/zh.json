@@ -104,6 +104,7 @@
     "matches_link": "近期比赛",
     "fantasy_link": "梦幻联赛",
     "quiz_link": "猜球员",
+    "famous_link": "谁更有名",
     "squad_link": "谁的阵容",
     "alias_link": "足球猜词",
     "digest_link": "进球与瞬间",
@@ -160,12 +161,15 @@
     "tournaments": "参加的赛事",
     "collected": "按比赛统计",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
+    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
+    "news_and_video": "新闻与视频"
   },
   "profile": {
     "title": "个人资料",
     "level": "等级 {{n}}",
-    "xp_progress": "距下一等级还需 {{into}} / {{total}} XP"
+    "xp_progress": "距下一等级还需 {{into}} / {{total}} XP",
+    "streak_other": "连续 {{count}} 天",
+    "streak_best_other": "最佳 {{count}} 天"
   },
   "level": {
     "title_1": "见习生",
@@ -420,7 +424,15 @@
     "error": "报告太多，请稍后再试。"
   },
   "share": {
-    "button": "分享"
+    "button": "分享",
+    "invite_1": "和我一起玩夏洛克·斯科尔斯——猜出足球传奇球星！⚽",
+    "invite_2": "自认为很懂足球？来夏洛克·斯科尔斯证明一下吧 ⚽",
+    "invite_3": "不说出名字，描述一位球员。你敢试试吗？夏洛克·斯科尔斯 ⚽",
+    "invite_4": "足球迷聚会必玩游戏——夏洛克·斯科尔斯 ⚽",
+    "invite_5": "咱俩谁更懂足球？来玩玩夏洛克·斯科尔斯 ⚽",
+    "invite_6": "根据提示猜出传奇球星——夏洛克·斯科尔斯 ⚽",
+    "invite_7": "召集朋友们，看看谁才是真正的足球达人 ⚽",
+    "invite_8": "一人描述，一人竞猜——足球版Alias，夏洛克·斯科尔斯 ⚽"
   },
   "sound": {
     "mute": "关闭声音",
@@ -528,6 +540,8 @@
     "my_breakdown": "已结算：{{settled}} · 全中：{{exact}} · 待定：{{pending}}",
     "top_predictors": "预测排行榜",
     "exact_short": "全中 {{n}}",
+    "scope_all": "全部",
+    "scope_friends": "好友",
     "all_leagues": "全部赛事",
     "empty_league": "该赛事暂无即将进行的比赛。",
     "where_to_watch": "观看方式 · {{source}}",
@@ -546,7 +560,10 @@
     "score_age_unknown": "比分更新时间未知",
     "day_matches_other": "{{count}} 场比赛",
     "score_age_other": "{{count}} 分钟前更新",
-    "broadcaster": "转播 · {{name}}"
+    "broadcaster": "转播 · {{name}}",
+    "prediction_history": "预测历史",
+    "history_loading": "加载中…",
+    "history_pending": "等待比分"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",
@@ -610,6 +627,13 @@
     "fact_national": "国家队：{{value}}",
     "fact_caps": "国家队出场：{{value}}",
     "fact_tournaments": "参加赛事：{{value}}"
+  },
+  "famous": {
+    "title": "谁更有名",
+    "subtitle": "按维基百科浏览量",
+    "loading": "正在寻找两名球员…",
+    "empty": "暂时没有可比较的球员",
+    "next": "下一题"
   },
   "squad": {
     "title": "谁的阵容",

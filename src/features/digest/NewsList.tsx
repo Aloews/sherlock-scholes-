@@ -5,6 +5,7 @@ import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import { fetchNews, type NewsItem } from './digestApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { feedLanguage } from './digestFormat';
+import { timeFormat } from '@/shared/lib/dateFormat';
 
 /**
  * Лента заголовков.
@@ -33,10 +34,7 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
     return () => { cancelled = true; };
   }, [lang, limit]);
 
-  const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }),
-    [i18n.language],
-  );
+  const timeFmt = useMemo(() => timeFormat(i18n.language), [i18n.language]);
 
   const open = (url: string) => { hapticImpact('light'); openLink(url); };
 
@@ -70,6 +68,12 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
           className="w-full ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 text-left hover:border-brand-accent/50 transition-colors"
         >
           <p className="text-white text-sm">{item.title}</p>
+          {/* Только если писать было из чего — description в ленте нашёлся,
+              модель ответила. Отсутствие строки здесь не читается как
+              поломка: заголовка для этого достаточно. */}
+          {item.summary_short && (
+            <p className="text-brand-muted text-xs mt-1 leading-snug">{item.summary_short}</p>
+          )}
           <p className="flex items-center gap-1.5 text-brand-muted text-[10.5px] mt-1.5">
             <span>{item.source}</span>
             <span>·</span>

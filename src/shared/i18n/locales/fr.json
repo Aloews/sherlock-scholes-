@@ -106,6 +106,7 @@
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
+    "famous_link": "Qui est le plus célèbre",
     "squad_link": "L'équipe de qui",
     "alias_link": "Alias du football",
     "digest_link": "Buts et actions",
@@ -162,12 +163,17 @@
     "tournaments": "Tournois",
     "collected": "Relevé sur les matchs",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD"
+    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD",
+    "news_and_video": "Actus et vidéos"
   },
   "profile": {
     "title": "Profil",
     "level": "Niveau {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP avant le niveau suivant"
+    "xp_progress": "{{into}} / {{total}} XP avant le niveau suivant",
+    "streak_one": "Série : {{count}} jour",
+    "streak_other": "Série : {{count}} jours",
+    "streak_best_one": "record : {{count}} jour",
+    "streak_best_other": "record : {{count}} jours"
   },
   "level": {
     "title_1": "Stagiaire",
@@ -431,7 +437,15 @@
     "error": "Trop de signalements. Réessayez plus tard."
   },
   "share": {
-    "button": "Partager"
+    "button": "Partager",
+    "invite_1": "Joue avec moi à Sherlock Scholes — devine la légende du foot ! ⚽",
+    "invite_2": "Tu crois t'y connaître en foot ? Prouve-le sur Sherlock Scholes ⚽",
+    "invite_3": "Décris un footballeur sans dire son nom. Chiche ? Sherlock Scholes ⚽",
+    "invite_4": "Le meilleur jeu entre potes fans de foot — Sherlock Scholes ⚽",
+    "invite_5": "Qui s'y connaît le mieux en foot ? Découvre Sherlock Scholes ⚽",
+    "invite_6": "Devine la légende à partir des indices — Sherlock Scholes ⚽",
+    "invite_7": "Réunis tes potes et découvrez qui s'y connaît vraiment en foot ⚽",
+    "invite_8": "L'un explique, l'autre devine — l'Alias version foot. Sherlock Scholes ⚽"
   },
   "sound": {
     "mute": "Couper les sons",
@@ -543,6 +557,8 @@
     "my_breakdown": "réglés : {{settled}} · exacts : {{exact}} · en attente : {{pending}}",
     "top_predictors": "Meilleurs pronostiqueurs",
     "exact_short": "exacts {{n}}",
+    "scope_all": "Tous",
+    "scope_friends": "Amis",
     "all_leagues": "Toutes les compétitions",
     "empty_league": "Aucun match à venir dans cette compétition.",
     "where_to_watch": "Où regarder · {{source}}",
@@ -563,7 +579,10 @@
     "day_matches_other": "{{count}} matchs",
     "score_age_one": "Score mis à jour il y a {{count}} minute",
     "score_age_other": "Score mis à jour il y a {{count}} minutes",
-    "broadcaster": "Diffuseur · {{name}}"
+    "broadcaster": "Diffuseur · {{name}}",
+    "prediction_history": "Historique des pronostics",
+    "history_loading": "Chargement…",
+    "history_pending": "en attente du score"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",
@@ -627,6 +646,13 @@
     "fact_national": "Sélection : {{value}}",
     "fact_caps": "Sélections : {{value}}",
     "fact_tournaments": "Tournois : {{value}}"
+  },
+  "famous": {
+    "title": "Qui est le plus célèbre",
+    "subtitle": "Selon Wikipédia",
+    "loading": "Recherche de deux joueurs…",
+    "empty": "Personne à comparer pour l’instant",
+    "next": "Suivant"
   },
   "squad": {
     "title": "L'équipe de qui",

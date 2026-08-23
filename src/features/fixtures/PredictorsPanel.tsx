@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconTrophy } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
-import { getRawInitData } from '@/shared/lib/telegram';
+import { Chip } from '@/shared/ui/Chip';
+import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import {
-  fetchLeaderboard, fetchMyStats,
+  fetchLeaderboard, fetchFriendLeaderboard, fetchMyStats,
   type MyPredictionStats, type PredictorRow,
 } from './predictionsApi';
+
+type Scope = 'all' | 'friends';
 
 /** Больше двадцати имён на телефоне никто не листает. */
 const TOP_N = 20;
@@ -26,36 +29,56 @@ const TOP_N = 20;
  */
 export function PredictorsPanel() {
   const { t } = useTranslation();
+  const initData = getRawInitData();
   const [top, setTop] = useState<LoadState<PredictorRow[]>>(LOADING);
+  const [friends, setFriends] = useState<LoadState<PredictorRow[]>>(LOADING);
   const [mine, setMine] = useState<MyPredictionStats | null>(null);
+  // Друзья видны только в Telegram: без initData нельзя узнать, кто они, и
+  // переключатель на пустую вкладку, которая никогда ничего не покажет, хуже
+  // отсутствующего переключателя.
+  const [scope, setScope] = useState<Scope>('all');
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [board, stats] = await Promise.all([
+      const [board, friendBoard, stats] = await Promise.all([
         fetchLeaderboard(TOP_N),
-        fetchMyStats(getRawInitData()),
+        fetchFriendLeaderboard(initData, TOP_N),
+        fetchMyStats(initData),
       ]);
       if (cancelled) return;
       setTop(board);
+      setFriends(friendBoard);
       setMine(stats);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [initData]);
 
   // Ещё грузится — ничего, чтобы не мигнуть «пока никого» тому, у кого список
   // в одном запросе отсюда. Раньше это состояние изображал `null`, и оно же
   // означало отказ; теперь их два, и отличить их можно, не читая код.
   if (top.status === 'loading') return null;
 
-  const rows = dataOr(top, []);
+  const topRows = dataOr(top, []);
+  const friendRows = dataOr(friends, []);
+  const rows = scope === 'friends' ? friendRows : topRows;
   // ОТКАЗ ЗДЕСЬ НЕ ПОКАЗЫВАЕТСЯ ОТДЕЛЬНОЙ НАДПИСЬЮ, и это выбор, а не забывчивость.
   // Панель необязательная: свой счёт человек видит выше, а таблица лучших —
   // приятное дополнение. Красная строка на экране расписания из-за неё
   // отвлекала бы от того, ради чего экран открыт. Отказ виден в консоли с
-  // кодом (fromPostgrest) — этого хватает, чтобы его расследовать.
-  const nothingYet = rows.length === 0 && (mine === null || mine.settled + mine.pending === 0);
-  if (nothingYet) return null;
+  // кодом (fromPostgrest) — этого хватает, чтобы его расследовать. Та же
+  // тишина и у вкладки «Друзья»: пустой её список означает не «друзей нет» —
+  // вызывающий входит в friend_prediction_leaderboard() всегда, своей же
+  // строкой, — а неудавшийся запрос, то есть тот же класс отказа, что и у
+  // всей панели, и лечится тем же — молчанием здесь и логом в консоли.
+  //
+  // Гейт панели целиком — по ГЛОБАЛЬНОЙ таблице и своей сводке, не по друзьям:
+  // у нового игрока друзей может не быть никогда, и это не повод прятать
+  // весь блок, а переключатель на пустую вкладку по крайней мере покажет
+  // самого игрока — friend_prediction_leaderboard() включает вызывающего.
+  const nothingAtAll = topRows.length === 0 && (mine === null || mine.settled + mine.pending === 0);
+  if (nothingAtAll) return null;
+  const showFriendsTab = !!initData;
 
   return (
     <div className="space-y-3">
@@ -88,12 +111,28 @@ export function PredictorsPanel() {
         </div>
       )}
 
-      {rows.length > 0 && (
+      {(showFriendsTab || topRows.length > 0) && (
         <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 space-y-2">
-          <p className="text-brand-muted text-[10.5px] uppercase tracking-wider flex items-center gap-1">
-            <IconTrophy size={13} stroke={2} />
-            {t('matches.top_predictors')}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-brand-muted text-[10.5px] uppercase tracking-wider flex items-center gap-1">
+              <IconTrophy size={13} stroke={2} />
+              {t('matches.top_predictors')}
+            </p>
+            {showFriendsTab && (
+              <div className="flex gap-1.5 shrink-0">
+                <Chip
+                  label={t('matches.scope_all')}
+                  selected={scope === 'all'}
+                  onClick={() => { hapticImpact('light'); setScope('all'); }}
+                />
+                <Chip
+                  label={t('matches.scope_friends')}
+                  selected={scope === 'friends'}
+                  onClick={() => { hapticImpact('light'); setScope('friends'); }}
+                />
+              </div>
+            )}
+          </div>
 
           {rows.map((row, index) => {
             const name = `${row.first_name} ${row.last_name ?? ''}`.trim();

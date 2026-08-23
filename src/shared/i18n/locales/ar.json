@@ -109,6 +109,7 @@
     "matches_link": "المباريات القادمة",
     "fantasy_link": "دوري الفانتازي",
     "quiz_link": "خمّن اللاعب",
+    "famous_link": "من الأشهر",
     "squad_link": "فريق مَن",
     "alias_link": "أليّاس كرة القدم",
     "digest_link": "الأهداف واللقطات",
@@ -165,12 +166,25 @@
     "tournaments": "البطولات",
     "collected": "مجمَّع من المباريات",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة"
+    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة",
+    "news_and_video": "أخبار وفيديو"
   },
   "profile": {
     "title": "الملف الشخصي",
     "level": "المستوى {{n}}",
-    "xp_progress": "{{into}} / {{total}} نقطة خبرة للمستوى التالي"
+    "xp_progress": "{{into}} / {{total}} نقطة خبرة للمستوى التالي",
+    "streak_zero": "لا سلسلة أيام بعد",
+    "streak_one": "سلسلة: يوم واحد",
+    "streak_two": "سلسلة: يومان",
+    "streak_few": "سلسلة: {{count}} أيام",
+    "streak_many": "سلسلة: {{count}} يومًا",
+    "streak_other": "سلسلة: {{count}} يوم",
+    "streak_best_zero": "لا رقم قياسي بعد",
+    "streak_best_one": "الأفضل: يوم واحد",
+    "streak_best_two": "الأفضل: يومان",
+    "streak_best_few": "الأفضل: {{count}} أيام",
+    "streak_best_many": "الأفضل: {{count}} يومًا",
+    "streak_best_other": "الأفضل: {{count}} يوم"
   },
   "level": {
     "title_1": "مبتدئ",
@@ -467,7 +481,15 @@
     "error": "بلاغات كثيرة جدًا. حاول لاحقًا."
   },
   "share": {
-    "button": "مشاركة"
+    "button": "مشاركة",
+    "invite_1": "العب معي شيرلوك سكولز — خمّن أسطورة كرة القدم! ⚽",
+    "invite_2": "تظن أنك تعرف كرة القدم؟ أثبت ذلك في شيرلوك سكولز ⚽",
+    "invite_3": "صف لاعبًا من دون ذكر اسمه. تقدر؟ شيرلوك سكولز ⚽",
+    "invite_4": "أفضل لعبة لجلسة أصدقاء يعشقون كرة القدم — شيرلوك سكولز ⚽",
+    "invite_5": "من منا يعرف كرة القدم أكثر؟ جرّب شيرلوك سكولز ⚽",
+    "invite_6": "خمّن الأسطورة من التلميحات — شيرلوك سكولز ⚽",
+    "invite_7": "اجمع أصدقاءك واكتشفوا من الخبير الحقيقي بكرة القدم ⚽",
+    "invite_8": "واحد يشرح والآخر يخمّن — لعبة Alias بنكهة كرة القدم: شيرلوك سكولز ⚽"
   },
   "sound": {
     "mute": "كتم الأصوات",
@@ -603,6 +625,8 @@
     "my_breakdown": "مُحتسبة: {{settled}} · مضبوطة: {{exact}} · بالانتظار: {{pending}}",
     "top_predictors": "أفضل المتوقّعين",
     "exact_short": "مضبوطة {{n}}",
+    "scope_all": "الكل",
+    "scope_friends": "الأصدقاء",
     "all_leagues": "كل البطولات",
     "empty_league": "لا مباريات قادمة في هذه البطولة.",
     "where_to_watch": "أين تشاهد · {{source}}",
@@ -631,7 +655,10 @@
     "score_age_few": "حُدّثت النتيجة قبل {{count}} دقائق",
     "score_age_many": "حُدّثت النتيجة قبل {{count}} دقيقة",
     "score_age_other": "حُدّثت النتيجة قبل {{count}} دقيقة",
-    "broadcaster": "الناقل · {{name}}"
+    "broadcaster": "الناقل · {{name}}",
+    "prediction_history": "سجل التوقعات",
+    "history_loading": "جارٍ التحميل…",
+    "history_pending": "بانتظار النتيجة"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",
@@ -695,6 +722,13 @@
     "fact_national": "المنتخب: {{value}}",
     "fact_caps": "مباريات دولية: {{value}}",
     "fact_tournaments": "البطولات: {{value}}"
+  },
+  "famous": {
+    "title": "من الأشهر",
+    "subtitle": "حسب مشاهدات ويكيبيديا",
+    "loading": "جارٍ البحث عن لاعبين…",
+    "empty": "لا يوجد من نقارنه بعد",
+    "next": "التالي"
   },
   "squad": {
     "title": "فريق مَن",

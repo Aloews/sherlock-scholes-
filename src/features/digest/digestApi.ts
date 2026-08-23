@@ -23,6 +23,14 @@ export interface NewsItem {
    * только начиная с двух.
    */
   loudness: number;
+  /**
+   * Краткая суть моделью, на языке заметки — или null, если писать было не
+   * из чего (в RSS не было description) или провайдер ещё не настроен.
+   * `digest_news()` уже возвращает `nullif(…, '')`, так что здесь либо
+   * настоящий текст, либо ничего — «пробовали и не вышло» экрану не видно и
+   * не должно быть видно, для читателя это то же самое, что «не пробовали».
+   */
+  summary_short: string | null;
 }
 
 export interface GoalClip {
@@ -31,6 +39,8 @@ export interface GoalClip {
   channel: string;
   published_at: string;
   thumb_url: string | null;
+  /** Очищенный моделью заголовок — или null, см. summary_short выше. */
+  title_generated: string | null;
 }
 
 /**

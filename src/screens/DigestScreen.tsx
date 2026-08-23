@@ -13,6 +13,7 @@ import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { watchUrl, feedLanguage } from '@/features/digest/digestFormat';
+import { timeFormat, shortDateFormat } from '@/shared/lib/dateFormat';
 
 /**
  * Дайджест: голы выходных, заголовки суток и ролики суток.
@@ -99,10 +100,7 @@ export function DigestScreen() {
     return () => { cancelled = true; };
   }, [lang]);
 
-  const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }),
-    [i18n.language],
-  );
+  const timeFmt = useMemo(() => timeFormat(i18n.language), [i18n.language]);
 
   const open = (url: string) => { hapticImpact('light'); openLink(url); };
 
@@ -129,10 +127,7 @@ export function DigestScreen() {
   const only = <T extends { channel: string }>(list: T[] | null): T[] =>
     league === null ? list ?? [] : (list ?? []).filter((c) => c.channel === league);
 
-  const dayFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
-    [i18n.language],
-  );
+  const dayFmt = useMemo(() => shortDateFormat(i18n.language), [i18n.language]);
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -305,7 +300,7 @@ export function DigestScreen() {
                 </span>
               )}
               <span className="block p-3">
-                <span className="block text-white text-sm">{clip.title}</span>
+                <span className="block text-white text-sm">{clip.title_generated ?? clip.title}</span>
                 <span className="block text-brand-muted text-[10.5px] mt-1.5">
                   {clip.channel} · {timeFmt.format(new Date(clip.published_at))}
                 </span>

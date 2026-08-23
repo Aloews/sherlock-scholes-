@@ -13,6 +13,7 @@ import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
 import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
+import { PredictionHistory } from '@/features/fixtures/PredictionHistory';
 import { FixtureCard } from '@/features/fixtures/FixtureCard';
 import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
 import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
@@ -21,6 +22,7 @@ import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/b
 import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
+import { timeFormat, weekdayDateFormat } from '@/shared/lib/dateFormat';
 
 /**
  * What football is on next.
@@ -156,14 +158,8 @@ export function MatchesScreen() {
 
   // Built once per language rather than per row: a formatter is expensive and
   // a list of sixty matches would otherwise build sixty of them.
-  const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }),
-    [i18n.language],
-  );
-  const dayFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }),
-    [i18n.language],
-  );
+  const timeFmt = useMemo(() => timeFormat(i18n.language), [i18n.language]);
+  const dayFmt = useMemo(() => weekdayDateFormat(i18n.language), [i18n.language]);
 
   const dayLabel = (key: string): string => {
     const [y, m, d] = key.split('-').map(Number);
@@ -205,6 +201,11 @@ export function MatchesScreen() {
             ближайшие матчи, а очки заработаны и на давно сыгранных. Локальная
             сумма показывала бы меньше и молча. */}
         <PredictorsPanel />
+
+        {/* Закрыта по умолчанию — раскрывать список из полусотни строк на
+            каждое открытие экрана значило бы платить сетевым запросом за
+            того, кто её не откроет. */}
+        <PredictionHistory />
 
         <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
 

@@ -14,6 +14,33 @@ Checks (all over active cards):
   * career_stats MARKUP      '<ref' / '{{' / 'http' leaked into career_stats  [FATAL]
   * tier=common @ high pv    a very-viewed player stuck at 'common' (tier bug)
   * canonical_key dups       multiple active cards that fold to the same key
+  * implausible birth_year   namesake collision: resolution landed on someone
+                             else's Wikipedia article under the same name —
+                             see IMPOSSIBLE_AGE / ABSURD_BIRTH_YEAR below
+
+NAMESAKE COLLISIONS, what they look like and why one check catches two bugs.
+Two different pipelines resolve a card to a Wikipedia/Wikidata article by
+name (cards_career_build.py for career_stats; the newcomers/facts enrichment
+for facts.birth_year), and neither has a reliable way to tell two real
+humans apart when they share a name or common nickname — "James Garner" is
+also a Hollywood actor (b. 1928, d. 2014), "Adam Smith" is also the
+economist (b. 1723), "Kaká"/"Роналдо" are common enough Portuguese
+nicknames that a DIFFERENT current footballer answers to them too. Measured
+on production with a plain "birth_year < 1935" sweep: it caught both real
+early legends (Yashin b.1929, Puskás b.1927, Di Stéfano b.1926 — correctly
+ancient, and correctly never touched by player_match_stats, which only
+tracks currently-crawled club squads) and definite collisions (James
+Garner: 1928 birth_year, a live match on the very day this audit was
+measured) mixed in the same bucket, indistinguishable without a human
+reading every row. The two checks below split that bucket by exactly the
+signal that tells them apart:
+
+  * IMPOSSIBLE_AGE cross-references player_match_stats — a card old enough
+    to be someone else, PROVEN by an unrelated pipeline to be a currently
+    active professional, is a contradiction, not a judgement call.
+  * ABSURD_BIRTH_YEAR needs no cross-reference at all: nobody born before
+    1850 is a footballer under any reading, tracked or not (Adam Smith,
+    1723; "76", apparently Hadrian).
 
 Run from anywhere:  python docs/cards_audit.py
 Report file:        $AUDIT_REPORT or <repo>/cards_audit_report.md
@@ -37,14 +64,27 @@ HIGH_PV = 19000
 MARKERS = ("<ref", "{{", "http")
 REPORT = os.environ.get("AUDIT_REPORT", os.path.join(ROOT, "cards_audit_report.md"))
 
+NOW = 2026
+# No human plays tracked professional football at 70 — Kazuyoshi Miura, the
+# oldest active pro on record, is the extreme outlier and still short of it.
+# Combined with a player_match_stats row (a pipeline that only ever tracks
+# currently-crawled club squads), this is a contradiction, not a guess.
+IMPOSSIBLE_AGE = 70
+# Below this, the birth year is not a football-plausibility judgement call —
+# Adam Smith (1723) and "76" (Hadrian, apparently) are not footballers under
+# any reading, tracked or not; no cross-reference needed.
+ABSURD_BIRTH_YEAR = 1850
 
-def fetch_all(url, key, table, select):
+
+def fetch_all(url, key, table, select, order="id.asc", extra=None):
     rows, off = [], 0
+    params = {"select": select, "order": order, "limit": 1000}
+    if extra:
+        params.update(extra)
     while True:
         r = requests.get(url.rstrip("/") + "/rest/v1/" + table,
                          headers={"apikey": key, "Authorization": "Bearer " + key},
-                         params={"select": select, "order": "id.asc",
-                                 "limit": 1000, "offset": off}, timeout=60)
+                         params=dict(params, offset=off), timeout=60)
         r.raise_for_status()
         b = r.json()
         rows += b
@@ -66,7 +106,7 @@ def main():
     url, key = os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"]
     cards = fetch_all(url, key, "cards",
                       "id,name,name_en,category,active,facts,photo_url,"
-                      "continent,tier,pageviews,career_stats")
+                      "continent,tier,pageviews,career_stats,fame")
     active = [c for c in cards if c.get("active")]
     players = [c for c in active if c.get("category") == "player"]
 
@@ -77,6 +117,29 @@ def main():
     markup = [c for c in cards if has_markup(c.get("career_stats"))]
     common_high_pv = [c for c in players
                       if c.get("tier") == "common" and (c.get("pageviews") or 0) >= HIGH_PV]
+
+    # Independent proof of "currently tracked as a professional" — see the
+    # module docstring for why this, not facts.birth_year alone, is what
+    # tells a real early legend apart from a namesake collision.
+    stats_rows = fetch_all(url, key, "player_match_stats", "card_id",
+                           order="card_id.asc",
+                           extra={"match_date": "gte.%d-01-01" % (NOW - 1)})
+    tracked_as_pro = {r["card_id"] for r in stats_rows}
+
+    def birth_year(c):
+        by = (c.get("facts") or {}).get("birth_year")
+        try:
+            return int(by)
+        except (TypeError, ValueError):
+            return None
+
+    absurd_birth = [c for c in players
+                    if (birth_year(c) or 9999) < ABSURD_BIRTH_YEAR]
+    impossible_age = [c for c in players
+                      if c["id"] in tracked_as_pro
+                      and birth_year(c) is not None
+                      and NOW - birth_year(c) >= IMPOSSIBLE_AGE
+                      and birth_year(c) >= ABSURD_BIRTH_YEAR]  # no double count
 
     # canonical_key dups among active cards (the dedup signal).
     by_key = {}
@@ -103,6 +166,10 @@ def main():
     out("| **career_stats MARKUP (FATAL)** | **%d** |" % len(markup))
     out("| tier=common @ pageviews>=%d | %d |" % (HIGH_PV, len(common_high_pv)))
     out("| canonical_key dup groups | %d |" % len(dups))
+    out("| **birth_year impossible for a tracked pro (age>=%d)** | **%d** |"
+        % (IMPOSSIBLE_AGE, len(impossible_age)))
+    out("| birth_year < %d (namesake collision, unverified) | %d |"
+        % (ABSURD_BIRTH_YEAR, len(absurd_birth)))
     out("")
 
     def sample(title, rows, fmt):
@@ -121,6 +188,12 @@ def main():
                                           json.dumps(c.get("career_stats"), ensure_ascii=False)[:160]))
     sample("tier=common at high pageviews", common_high_pv,
            lambda c: "#%s %s (pv=%s)" % (c["id"], c.get("name"), c.get("pageviews")))
+    sample("birth_year impossible for a tracked pro", impossible_age,
+           lambda c: "#%s %s / %s — born %s, has a match_stats row within the last year"
+                     % (c["id"], c.get("name"), c.get("name_en"), birth_year(c)))
+    sample("birth_year < %d (review — early legends live here too)" % ABSURD_BIRTH_YEAR, absurd_birth,
+           lambda c: "#%s %s / %s — born %s, fame=%s"
+                     % (c["id"], c.get("name"), c.get("name_en"), birth_year(c), c.get("fame")))
     if dups:
         out("## canonical_key duplicate groups (%d)" % len(dups))
         for k, v in list(dups.items())[:30]:
