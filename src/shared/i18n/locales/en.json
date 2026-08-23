@@ -542,6 +542,8 @@
     "my_breakdown": "settled: {{settled}} · exact: {{exact}} · pending: {{pending}}",
     "top_predictors": "Top predictors",
     "exact_short": "exact {{n}}",
+    "scope_all": "All",
+    "scope_friends": "Friends",
     "all_leagues": "All competitions",
     "empty_league": "No upcoming matches in this competition.",
     "where_to_watch": "Where to watch · {{source}}",

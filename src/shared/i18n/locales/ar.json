@@ -602,6 +602,8 @@
     "my_breakdown": "مُحتسبة: {{settled}} · مضبوطة: {{exact}} · بالانتظار: {{pending}}",
     "top_predictors": "أفضل المتوقّعين",
     "exact_short": "مضبوطة {{n}}",
+    "scope_all": "الكل",
+    "scope_friends": "الأصدقاء",
     "all_leagues": "كل البطولات",
     "empty_league": "لا مباريات قادمة في هذه البطولة.",
     "where_to_watch": "أين تشاهد · {{source}}",

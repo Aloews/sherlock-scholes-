@@ -542,6 +542,8 @@
     "my_breakdown": "cerrados: {{settled}} · exactos: {{exact}} · pendientes: {{pending}}",
     "top_predictors": "Mejores pronosticadores",
     "exact_short": "exactos {{n}}",
+    "scope_all": "Todos",
+    "scope_friends": "Amigos",
     "all_leagues": "Todas las competiciones",
     "empty_league": "No hay próximos partidos en esta competición.",
     "where_to_watch": "Dónde verlo · {{source}}",

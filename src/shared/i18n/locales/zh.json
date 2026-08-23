@@ -527,6 +527,8 @@
     "my_breakdown": "已结算：{{settled}} · 全中：{{exact}} · 待定：{{pending}}",
     "top_predictors": "预测排行榜",
     "exact_short": "全中 {{n}}",
+    "scope_all": "全部",
+    "scope_friends": "好友",
     "all_leagues": "全部赛事",
     "empty_league": "该赛事暂无即将进行的比赛。",
     "where_to_watch": "观看方式 · {{source}}",

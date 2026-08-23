@@ -542,6 +542,8 @@
     "my_breakdown": "réglés : {{settled}} · exacts : {{exact}} · en attente : {{pending}}",
     "top_predictors": "Meilleurs pronostiqueurs",
     "exact_short": "exacts {{n}}",
+    "scope_all": "Tous",
+    "scope_friends": "Amis",
     "all_leagues": "Toutes les compétitions",
     "empty_league": "Aucun match à venir dans cette compétition.",
     "where_to_watch": "Où regarder · {{source}}",

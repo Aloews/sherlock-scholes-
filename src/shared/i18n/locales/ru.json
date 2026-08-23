@@ -576,6 +576,8 @@
     "my_breakdown": "закрыто: {{settled}} · в точку: {{exact}} · ждут: {{pending}}",
     "top_predictors": "Лучшие прогнозисты",
     "exact_short": "в точку: {{n}}",
+    "scope_all": "Все",
+    "scope_friends": "Друзья",
     "all_leagues": "Все турниры",
     "empty_league": "В этом турнире ближайших матчей нет.",
     "where_to_watch": "Где смотреть · {{source}}",
