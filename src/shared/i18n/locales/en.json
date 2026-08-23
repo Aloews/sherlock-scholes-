@@ -107,6 +107,7 @@
     "fantasy_link": "Fantasy league",
     "quiz_link": "Guess the player",
     "famous_link": "Who's more famous",
+    "squad_link": "Whose squad",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
     "news_link": "News",
@@ -651,6 +652,12 @@
     "subtitle": "By Wikipedia attention",
     "loading": "Finding two players…",
     "empty": "Nobody to compare yet",
+    "next": "Next"
+  },
+  "squad": {
+    "title": "Whose squad",
+    "loading": "Gathering a squad…",
+    "empty": "Nobody to gather yet",
     "next": "Next"
   },
   "digest": {

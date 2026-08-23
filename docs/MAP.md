@@ -49,6 +49,7 @@ flowchart LR
 | `/fantasy` | `FantasyScreen` | фэнтези: состав из пяти, капитан, таблица лиг. **Два разных тура на экране** — заявка на ближайший открытый, таблица по текущему |
 | `/quiz` | `QuizScreen` | мини-игра «угадай игрока по фактам», раскрываемым по одному (`quiz_guess_player.sql`) |
 | `/famous` | `FamousScreen` | мини-игра «кто известнее» — две карточки, тапнуть более известную по `cards.fame` (`whos_more_famous.sql`). Первая из списка §7 `docs/FANTASY_AND_MINIGAMES.md`, не требующих нового источника |
+| `/squad` | `SquadScreen` | мини-игра «чей состав» — 5 игроков клуба (`card_current_club`), угадать клуб из четырёх (`whose_squad.sql`). Второй кандидат из того же списка |
 | `/digest` | `DigestScreen` | заголовки суток из открытых RSS-лент и видео с официальных каналов лиг. **Два разных порядка**: заголовки по «громкости» (сколько РАЗНЫХ изданий вышло с тем же сюжетом — просмотров RSS не отдаёт), ролики по времени (Atom-фид YouTube не отдаёт ни просмотров, ни лайков, и рейтинга там нет) |
 | `/news` | `NewsScreen` | лента заголовков отдельно от роликов — вынесена из дайджеста, см. `features/digest/NewsList.tsx` |
 | `/arena` | `ArenaScreen` | футбол на двоих **на одном телефоне**: canvas, физика 60 Гц, две площадки управления. Без `PageTransition` — обёртка анимирует transform родителя, и первые кадры уезжали бы вместе с ним. Игра на двух телефонах — соседним роутом, см. §4 |
@@ -238,6 +239,7 @@ flowchart TD
 | `fetch_live_streams` | `schedule_live_streams.sql` | pg_cron каждые 10 минут → Edge `live-streams`. Десять минут против часового окна чтения: эфир успевает подтвердиться шесть раз |
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
+| `whose_squad_round` | `whose_squad.sql` | раунд мини-игры «чей состав»: 5 игроков клуба поверх `card_current_club`/`deck_squads(5)`, имя резолвится под `p_lang`. `fetched_at` в ответе — состав не живой, экран обязан показать дату |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
 | `fetch_fixtures_list` | `schedule_fetch_fixtures.sql` | pg_cron раз в 6 часов (`:35`) → Edge `football-fixtures` без действия — заводит НОВЫЕ матчи. ⚠️ До 23.08.2026 этого задания не было вовсе: только счета обновлялись по расписанию (`fetch_match_scores`), а расписание турниров — только вручную. РПЛ из-за этого держала ноль строк при верной настройке |
 | `fetch_match_scores` | `schedule_fetch_scores.sql` | pg_cron каждые 6 часов (`:05`) → Edge `football-fixtures` с `{"action":"scores"}` — обновляет счета у УЖЕ существующих матчей, новых не заводит |

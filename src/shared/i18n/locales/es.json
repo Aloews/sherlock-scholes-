@@ -107,6 +107,7 @@
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivina el jugador",
     "famous_link": "Quién es más famoso",
+    "squad_link": "De quién es el equipo",
     "alias_link": "Alias futbolero",
     "digest_link": "Goles y jugadas",
     "news_link": "Noticias",
@@ -651,6 +652,12 @@
     "subtitle": "Según Wikipedia",
     "loading": "Buscando a dos jugadores…",
     "empty": "Aún no hay a quién comparar",
+    "next": "Siguiente"
+  },
+  "squad": {
+    "title": "De quién es el equipo",
+    "loading": "Reuniendo una plantilla…",
+    "empty": "Aún no hay nada que reunir",
     "next": "Siguiente"
   },
   "digest": {

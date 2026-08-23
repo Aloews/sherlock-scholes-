@@ -105,6 +105,7 @@
     "fantasy_link": "판타지 리그",
     "quiz_link": "선수 맞히기",
     "famous_link": "누가 더 유명할까",
+    "squad_link": "어느 클럽일까",
     "alias_link": "축구 알리아스",
     "digest_link": "골과 장면",
     "news_link": "뉴스",
@@ -632,6 +633,12 @@
     "subtitle": "위키백과 조회수 기준",
     "loading": "선수 두 명을 찾는 중…",
     "empty": "아직 비교할 선수가 없습니다",
+    "next": "다음"
+  },
+  "squad": {
+    "title": "어느 클럽일까",
+    "loading": "선수단을 모으는 중…",
+    "empty": "아직 모을 선수가 없습니다",
     "next": "다음"
   },
   "digest": {

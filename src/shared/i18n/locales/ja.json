@@ -105,6 +105,7 @@
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
     "famous_link": "どっちが有名",
+    "squad_link": "どのクラブ",
     "alias_link": "サッカー・アリアス",
     "digest_link": "ゴールと名場面",
     "news_link": "ニュース",
@@ -632,6 +633,12 @@
     "subtitle": "Wikipediaの閲覧数から",
     "loading": "選手を探しています…",
     "empty": "まだ比較できません",
+    "next": "次へ"
+  },
+  "squad": {
+    "title": "どのクラブ",
+    "loading": "チームを集めています…",
+    "empty": "まだ出題できません",
     "next": "次へ"
   },
   "digest": {

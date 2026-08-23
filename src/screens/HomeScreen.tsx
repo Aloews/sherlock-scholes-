@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar, IconWifi, IconSwords,
+  IconSoccerField, IconPlayerPlay, IconChartBar, IconWifi, IconSwords, IconShirtSport,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -316,6 +316,11 @@ export function HomeScreen() {
               icon={<IconSwords size={20} stroke={1.75} />}
               label={t('home.famous_link')}
               onClick={() => navigate('/famous')}
+            />
+            <HomeGameLink
+              icon={<IconShirtSport size={20} stroke={1.75} />}
+              label={t('home.squad_link')}
+              onClick={() => navigate('/squad')}
             />
             {/* Classic has no tab bar, so the collection would otherwise have
                 no way in at all once the button stack moved. */}
