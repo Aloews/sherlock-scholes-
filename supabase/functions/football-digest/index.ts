@@ -29,7 +29,7 @@
 // Расписание: supabase/migrations/schedule_football_digest.sql (pg_cron + pg_net).
 // ============================================================================
 
-import OpenAI from "npm:openai";
+import Anthropic from "npm:@anthropic-ai/sdk";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -63,8 +63,12 @@ const json = (body: unknown, status = 200) =>
 const YT_KEY = Deno.env.get("YOUTUBE_API_KEY") ?? "";
 
 /**
- * Суть новости и очищенный заголовок ролика — отдельный провайдер, НЕ
- * ANTHROPIC_API_KEY. Обоснование — supabase/migrations/digest_llm_content.sql.
+ * Суть новости и очищенный заголовок ролика — отдельный провайдер и отдельный
+ * аккаунт, НЕ ANTHROPIC_API_KEY assistant-bot/digest-summary. Протокол тот же
+ * (Anthropic Messages API — измерено напрямую, base_url отвечает на /v1/messages
+ * и 404 на /chat/completions), но ключ и бюджет свои: здесь автоматический
+ * разбор КАЖДОЙ новой заметки и КАЖДОГО нового ролика, там — пересказ восьми
+ * тем по кнопке. Обоснование — supabase/migrations/digest_llm_content.sql.
  *
  * Без всех трёх секретов конвейер работает как раньше: колонки просто не
  * заполняются, ничего не падает.
@@ -481,7 +485,7 @@ async function fetchClipsViaApi(channel: string, channelId: string): Promise<Cli
 }
 
 const llmClient = NEWS_LLM_KEY && NEWS_LLM_BASE_URL
-  ? new OpenAI({ apiKey: NEWS_LLM_KEY, baseURL: NEWS_LLM_BASE_URL })
+  ? new Anthropic({ apiKey: NEWS_LLM_KEY, baseURL: NEWS_LLM_BASE_URL })
   : null;
 
 const LLM_LANGS: Record<string, string> = {
@@ -504,16 +508,19 @@ const LLM_LANGS: Record<string, string> = {
 async function generateText(system: string, user: string): Promise<string | null> {
   if (!llmClient || !NEWS_LLM_MODEL) return null;
   try {
-    const completion = await llmClient.chat.completions.create({
+    // Anthropic Messages API: system — отдельный параметр верхнего уровня, а
+    // не сообщение с role: "system", как у OpenAI. Перепутать легко именно
+    // потому, что оба SDK называют поле одинаково — оно просто в разных
+    // местах вызова.
+    const message = await llmClient.messages.create({
       model: NEWS_LLM_MODEL,
       max_tokens: 300,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      system,
+      messages: [{ role: "user", content: user }],
     });
-    const text = completion.choices[0]?.message?.content?.trim();
-    return text && text.length > 0 ? text : null;
+    const block = message.content.find((b) => b.type === "text");
+    const text = block && block.type === "text" ? block.text.trim() : "";
+    return text.length > 0 ? text : null;
   } catch (err) {
     console.warn(`[digest] llm call failed: ${err}`);
     return null;
