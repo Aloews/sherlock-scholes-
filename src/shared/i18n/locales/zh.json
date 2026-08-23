@@ -159,7 +159,8 @@
     "tournaments": "参加的赛事",
     "collected": "按比赛统计",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
+    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
+    "news_and_video": "新闻与视频"
   },
   "profile": {
     "title": "个人资料",

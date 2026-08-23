@@ -164,7 +164,8 @@
     "tournaments": "البطولات",
     "collected": "مجمَّع من المباريات",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة"
+    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة",
+    "news_and_video": "أخبار وفيديو"
   },
   "profile": {
     "title": "الملف الشخصي",

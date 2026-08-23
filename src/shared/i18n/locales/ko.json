@@ -159,7 +159,8 @@
     "tournaments": "출전 대회",
     "collected": "경기에서 집계",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움"
+    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움",
+    "news_and_video": "뉴스 및 영상"
   },
   "profile": {
     "title": "프로필",

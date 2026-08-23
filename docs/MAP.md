@@ -238,6 +238,7 @@ flowchart TD
 | `sweep_stale_rooms` | `sweep_stale_rooms.sql` | серверная развёртка брошенных игр, `pg_cron` каждые 5 минут |
 | `record_room_encounters`, `friends_with_rating`, `friend_suggestions`, `add_friend`, `remove_friend` | `friends_and_rating.sql` | кто с кем играл, рейтинг друзей и рекомендации |
 | `player_ratings`, `player_stats_freshness` | `player_match_stats.sql` | рейтинг футболистов по окну в днях и свежесть собранного. Свежесть — отдельной функцией намеренно: без неё «за неделю никто не забил» звучит одинаково при паузе на сборные и при сломанном сборе |
+| `player_news`, `player_clips`, `player_surname_stem` | `player_news_and_clips.sql` | новости и видео ПРО ИГРОКА на досье — связка с дайджестом по фамилии через `digest_tokens`, ту же токенизацию, что клеит темы через алфавиты. ⚠️ Однофамильцы — известный предел, не баг: «Silva» носят десятки профессионалов |
 
 ⚠️ **`grant_pro` в репозитории нет.** `tg-pay` зовёт её по предполагаемой
 сигнатуре `grant_pro(p_secret text, p_telegram_id bigint)`, а определение

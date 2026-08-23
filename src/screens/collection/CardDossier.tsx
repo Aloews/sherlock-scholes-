@@ -7,11 +7,14 @@ import { cardDisplayName } from '@/shared/lib/cardName';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
 import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
+import {
+  fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
+} from '@/features/collection/playerMediaApi';
 
 // Full-screen card dossier, opened from the Collection grid. Follows the
 // prototype's `isPlayer` overlay: framed hero card, quick-fact tiles, OVR
@@ -58,6 +61,20 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     void fetchCollectedTotals(card.id).then((r) => {
       if (!cancelled && r.status === 'ok') setCollected(r.data);
     });
+    return () => { cancelled = true; };
+  }, [card.id]);
+
+  // Новости и видео — по фамилии, через ту же токенизацию, что клеит темы
+  // дайджеста через алфавиты. Пусто трое суток подряд — норма: `news_items`
+  // столько и живёт, а не каждый день про игрока пишут.
+  const [news, setNews] = useState<PlayerNewsItem[]>([]);
+  const [clips, setClips] = useState<PlayerClip[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setNews([]);
+    setClips([]);
+    void fetchPlayerNews(card.id).then((r) => { if (!cancelled) setNews(r); });
+    void fetchPlayerClips(card.id).then((r) => { if (!cancelled) setClips(r); });
     return () => { cancelled = true; };
   }, [card.id]);
 
@@ -295,6 +312,66 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                   </span>
                 </div>
               ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Новости и видео — по фамилии из тех же лент, что кормят дайджест.
+            Ставится ПОСЛЕ карьеры и собранной статистики: это самое свежее и
+            самое необязательное — редкий инфоповод не должен быть первым,
+            что видит человек, открывший досье легенды. */}
+        {(news.length > 0 || clips.length > 0) && (
+          <Section title={t('collection.news_and_video')}>
+            <div className="space-y-3">
+              {clips.length > 0 && (
+                <div className="-mx-4 px-4 overflow-x-auto">
+                  <div className="flex gap-2 w-max pb-0.5">
+                    {clips.map((clip) => (
+                      <button
+                        key={clip.video_id}
+                        type="button"
+                        onClick={() => {
+                          hapticImpact('light');
+                          openLink(`https://www.youtube.com/watch?v=${clip.video_id}`);
+                        }}
+                        className="w-32 shrink-0 text-left"
+                      >
+                        {clip.thumb_url && (
+                          <img
+                            src={clip.thumb_url}
+                            alt=""
+                            loading="lazy"
+                            className="w-32 aspect-video object-cover rounded-lg border border-brand-border"
+                          />
+                        )}
+                        <p className="text-white text-[11px] mt-1 line-clamp-2 leading-tight">
+                          {clip.title}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {news.length > 0 && (
+                <div className="space-y-2">
+                  {news.map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => { hapticImpact('light'); openLink(item.url); }}
+                      className="w-full flex items-start gap-2 text-left"
+                    >
+                      <span className="flex-1 min-w-0 text-[12.5px] text-white/90 leading-snug">
+                        {item.title}
+                      </span>
+                      <span className="shrink-0 text-[10.5px] text-brand-muted mt-0.5">
+                        {item.source}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </Section>
         )}

@@ -161,7 +161,8 @@
     "tournaments": "Tournaments",
     "collected": "Collected from matches",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A",
+    "news_and_video": "News & video"
   },
   "profile": {
     "title": "Profile",

@@ -159,7 +159,8 @@
     "tournaments": "出場大会",
     "collected": "試合から集計",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト"
+    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト",
+    "news_and_video": "ニュースと動画"
   },
   "profile": {
     "title": "プロフィール",

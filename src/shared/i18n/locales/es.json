@@ -161,7 +161,8 @@
     "tournaments": "Torneos",
     "collected": "Recopilado de los partidos",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} P · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} P · {{goals}} G · {{assists}} A",
+    "news_and_video": "Noticias y vídeo"
   },
   "profile": {
     "title": "Perfil",
