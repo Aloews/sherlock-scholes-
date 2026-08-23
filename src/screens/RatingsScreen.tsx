@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
 import {
   fetchRatings,
@@ -16,6 +17,7 @@ import {
 } from '@/features/ratings/freshness';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { photoFitCircleClass } from '@/shared/lib/photoFit';
 import { Chip } from '@/shared/ui/Chip';
 
 /**
@@ -145,7 +147,10 @@ export function RatingsScreen() {
                 src={row.photo_url}
                 alt=""
                 loading="lazy"
-                className="w-9 h-9 rounded-full object-cover shrink-0 bg-brand-bg"
+                className={clsx(
+                  'w-9 h-9 rounded-full shrink-0 bg-brand-bg',
+                  photoFitCircleClass('player'),
+                )}
               />
             ) : (
               <span className="w-9 h-9 rounded-full bg-brand-bg shrink-0" />
