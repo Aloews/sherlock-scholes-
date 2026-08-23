@@ -166,7 +166,9 @@
   "profile": {
     "title": "プロフィール",
     "level": "レベル {{n}}",
-    "xp_progress": "次のレベルまで {{into}} / {{total}} XP"
+    "xp_progress": "次のレベルまで {{into}} / {{total}} XP",
+    "streak_other": "連続{{count}}日",
+    "streak_best_other": "自己ベスト{{count}}日"
   },
   "level": {
     "title_1": "見習い",

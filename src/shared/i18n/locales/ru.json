@@ -172,7 +172,15 @@
   "profile": {
     "title": "Профиль",
     "level": "Уровень {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP до следующего уровня"
+    "xp_progress": "{{into}} / {{total}} XP до следующего уровня",
+    "streak_one": "Серия: {{count}} день",
+    "streak_few": "Серия: {{count}} дня",
+    "streak_many": "Серия: {{count}} дней",
+    "streak_other": "Серия: {{count}} дня",
+    "streak_best_one": "рекорд {{count}} день",
+    "streak_best_few": "рекорд {{count}} дня",
+    "streak_best_many": "рекорд {{count}} дней",
+    "streak_best_other": "рекорд {{count}} дня"
   },
   "level": {
     "title_1": "Стажёр",

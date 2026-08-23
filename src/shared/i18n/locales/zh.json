@@ -166,7 +166,9 @@
   "profile": {
     "title": "个人资料",
     "level": "等级 {{n}}",
-    "xp_progress": "距下一等级还需 {{into}} / {{total}} XP"
+    "xp_progress": "距下一等级还需 {{into}} / {{total}} XP",
+    "streak_other": "连续 {{count}} 天",
+    "streak_best_other": "最佳 {{count}} 天"
   },
   "level": {
     "title_1": "见习生",

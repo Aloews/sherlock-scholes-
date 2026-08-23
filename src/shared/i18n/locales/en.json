@@ -168,7 +168,11 @@
   "profile": {
     "title": "Profile",
     "level": "Level {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP to next level"
+    "xp_progress": "{{into}} / {{total}} XP to next level",
+    "streak_one": "Streak: {{count}} day",
+    "streak_other": "Streak: {{count}} days",
+    "streak_best_one": "best {{count}} day",
+    "streak_best_other": "best {{count}} days"
   },
   "level": {
     "title_1": "Rookie",
