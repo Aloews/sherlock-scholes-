@@ -16,6 +16,7 @@ import {
 } from '@/features/ratings/freshness';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { photoFitCircleClass } from '@/shared/lib/photoFit';
 import { Chip } from '@/shared/ui/Chip';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 
@@ -143,7 +144,12 @@ export function RatingsScreen() {
                 src={row.photo_url}
                 alt=""
                 loading="lazy"
-                className="w-9 h-9 rounded-full object-cover shrink-0 bg-brand-bg"
+                // Every row here is a player (player_ratings() only ever
+                // joins player_match_stats), so the fit is fixed rather than
+                // threaded through as a prop — same crop rule TrainingScreen's
+                // HistoryAvatar uses: crop from the top, not the centre, or a
+                // headshot loses its face (photoFit.ts).
+                className={`w-9 h-9 rounded-full shrink-0 bg-brand-bg ${photoFitCircleClass('player')}`}
               />
             ) : (
               <span className="w-9 h-9 rounded-full bg-brand-bg shrink-0" />
