@@ -106,6 +106,7 @@
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
     "quiz_link": "Devine le joueur",
+    "famous_link": "Qui est le plus célèbre",
     "alias_link": "Alias du football",
     "digest_link": "Buts et actions",
     "news_link": "Actualités",
@@ -638,6 +639,13 @@
     "fact_national": "Sélection : {{value}}",
     "fact_caps": "Sélections : {{value}}",
     "fact_tournaments": "Tournois : {{value}}"
+  },
+  "famous": {
+    "title": "Qui est le plus célèbre",
+    "subtitle": "Selon Wikipédia",
+    "loading": "Recherche de deux joueurs…",
+    "empty": "Personne à comparer pour l’instant",
+    "next": "Suivant"
   },
   "digest": {
     "title": "Résumé du jour",

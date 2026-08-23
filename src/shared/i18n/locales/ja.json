@@ -104,6 +104,7 @@
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
+    "famous_link": "どっちが有名",
     "alias_link": "サッカー・アリアス",
     "digest_link": "ゴールと名場面",
     "news_link": "ニュース",
@@ -621,6 +622,13 @@
     "fact_national": "代表: {{value}}",
     "fact_caps": "代表出場: {{value}}",
     "fact_tournaments": "出場大会: {{value}}"
+  },
+  "famous": {
+    "title": "どっちが有名",
+    "subtitle": "Wikipediaの閲覧数から",
+    "loading": "選手を探しています…",
+    "empty": "まだ比較できません",
+    "next": "次へ"
   },
   "digest": {
     "title": "今日のダイジェスト",
