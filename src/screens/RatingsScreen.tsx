@@ -17,6 +17,7 @@ import {
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
+import { longDateFormat } from '@/shared/lib/dateFormat';
 
 /**
  * Рейтинг футболистов за неделю, месяц и год.
@@ -56,10 +57,7 @@ export function RatingsScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const dateFmt = new Intl.DateTimeFormat(i18n.language, {
-    day: 'numeric',
-    month: 'long',
-  });
+  const dateFmt = longDateFormat(i18n.language);
 
   const freshness = fresh.status === 'ok' ? fresh.data : null;
   const collectedAge = ageInDays(freshness?.collected_at ?? null);

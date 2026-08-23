@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
+import { longDateWithYearFormat } from '@/shared/lib/dateFormat';
 
 /**
  * The clubs whose current squad is big enough to play with.
@@ -38,9 +39,7 @@ export const MIN_SQUAD = 8;
 export function formatSquadAsOf(iso: string | null, lang: string): string {
   if (!iso) return '—';
   const when = new Date(iso);
-  return Number.isNaN(when.getTime())
-    ? '—'
-    : when.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+  return Number.isNaN(when.getTime()) ? '—' : longDateWithYearFormat(lang).format(when);
 }
 
 export async function fetchSquads(min = MIN_SQUAD): Promise<Squad[]> {

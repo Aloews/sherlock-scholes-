@@ -11,6 +11,7 @@ import {
   type FantasyOption, type SquadMember, type StandingRow,
 } from '@/features/fantasy/fantasyApi';
 import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
+import { dateTimeFormat } from '@/shared/lib/dateFormat';
 
 /**
  * Фэнтези-лига: собери пятерых, назначь капитана, смотри таблицу.
@@ -124,12 +125,7 @@ export function FantasyScreen() {
     hapticImpact('medium');
   };
 
-  const lockFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, {
-      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-    }),
-    [i18n.language],
-  );
+  const lockFmt = useMemo(() => dateTimeFormat(i18n.language), [i18n.language]);
 
   const livePoints = liveSquad.reduce((sum, m) => sum + m.points, 0);
 
