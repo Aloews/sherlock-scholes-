@@ -229,6 +229,8 @@ flowchart TD
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
+| `fetch_fixtures_list` | `schedule_fetch_fixtures.sql` | pg_cron раз в 6 часов (`:35`) → Edge `football-fixtures` без действия — заводит НОВЫЕ матчи. ⚠️ До 23.08.2026 этого задания не было вовсе: только счета обновлялись по расписанию (`fetch_match_scores`), а расписание турниров — только вручную. РПЛ из-за этого держала ноль строк при верной настройке |
+| `fetch_match_scores` | `schedule_fetch_scores.sql` | pg_cron каждые 6 часов (`:05`) → Edge `football-fixtures` с `{"action":"scores"}` — обновляет счета у УЖЕ существующих матчей, новых не заводит |
 | `fixtures_horizon` | `fixtures_horizon.sql` | докуда расписание известно. `published_until` — последний день ПЕРЕД разрывом длиннее недели, а не `max(commence_at)`: один далёкий матч не делает известным месяц вокруг себя. Этим красится календарь, и только благодаря этому пустая клетка не заявляет «матчей не будет» |
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
 | `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
@@ -593,6 +595,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 
 | Грабли | Где написано |
 |---|---|
+| Турнир настроен верно (в `SPORT_KEYS`, в девяти локалях, в `broadcasts`) и провайдер его несёт, а на экране матчей нет. Причина не в настройке: `fetch_match_scores` **обновляет счета уже существующих строк**, а НОВЫЕ фикстуры заводить некому было вовсе — до 23.08.2026 это делалось только вручную. Проверять `select * from cron.job`, а не файл миграции: применённое в проде и закоммиченное могут разойтись | `schedule_fetch_fixtures.sql` |
+| `pg_net` с коротким таймаутом отдал пустой ответ — это НЕ значит, что вызов провалился. Edge Function не привязана к тому, дождался ли её вызывающий, и дорабатывает на сервере: контрольный вызов `football-fixtures` дал пустой `net._http_response` при таймауте 30 с и записал 11 строк РПЛ минуту спустя. Смотреть на `updated_at` в целевой таблице, а не на пустую строку ответа | `schedule_fetch_fixtures.sql` |
 | Строка добавлена не во все 9 локалей | `CLAUDE.md` |
 | Формы множественного числа выдуманы для языка, где их нет | `CLAUDE.md` |
 | Новый способ выбирать карточки в обход `cards_matching` | §3 |
