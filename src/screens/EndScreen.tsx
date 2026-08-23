@@ -10,17 +10,6 @@ import type { TeamScore } from '@/shared/types/database';
 import { GradientText } from '@/shared/ui/GradientText';
 import { useDesign } from '@/shared/design/useDesign';
 
-const INVITES = [
-  'Сыграй со мной в Шерлок Скоулс — угадай легенду футбола! ⚽',
-  'Думаешь, знаешь футбол? Проверь в Шерлок Скоулс ⚽',
-  'Объясни футболиста, не называя имени. Слабо? Шерлок Скоулс ⚽',
-  'Лучшая игра для футбольной компании — Шерлок Скоулс ⚽',
-  'Кто из нас знает футбол лучше? Зацени Шерлок Скоулс ⚽',
-  'Угадай легенду по подсказкам — Шерлок Скоулс ⚽',
-  'Собери друзей и проверьте, кто настоящий знаток футбола ⚽',
-  'Один объясняет — другой угадывает. Футбольный Alias: Шерлок Скоулс ⚽',
-];
-
 const BOT_LINK = 'https://t.me/sherlock_scholes_bot';
 
 /** Animated running score (rises from 0 with ease-out). */
@@ -143,7 +132,11 @@ export function EndScreen() {
 
   const handleShare = () => {
     hapticImpact('medium');
-    const text = INVITES[Math.floor(Math.random() * INVITES.length)];
+    // 8 варианта — то же, что и invite_text у комнаты: реальные переводы,
+    // а не одна русская строка для всех языков (CLAUDE.md, «каждая строка —
+    // на всех девяти»).
+    const invites = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => t(`share.invite_${n}`));
+    const text = invites[Math.floor(Math.random() * invites.length)];
     const url  = `https://t.me/share/url?url=${encodeURIComponent(BOT_LINK)}&text=${encodeURIComponent(text)}`;
 
     if (window.Telegram?.WebApp) {

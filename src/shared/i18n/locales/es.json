@@ -430,7 +430,15 @@
     "error": "Demasiados reportes. Inténtalo más tarde."
   },
   "share": {
-    "button": "Compartir"
+    "button": "Compartir",
+    "invite_1": "Juega conmigo a Sherlock Scholes — ¡adivina la leyenda del fútbol! ⚽",
+    "invite_2": "¿Crees que sabes de fútbol? Demuéstralo en Sherlock Scholes ⚽",
+    "invite_3": "Describe a un futbolista sin decir su nombre. ¿Te atreves? Sherlock Scholes ⚽",
+    "invite_4": "El mejor juego para una peña futbolera — Sherlock Scholes ⚽",
+    "invite_5": "¿Quién sabe más de fútbol, tú o yo? Prueba Sherlock Scholes ⚽",
+    "invite_6": "Adivina la leyenda por las pistas — Sherlock Scholes ⚽",
+    "invite_7": "Reúne a tus amigos y descubran quién sabe más de fútbol ⚽",
+    "invite_8": "Uno explica, el otro adivina — el Alias del fútbol. Sherlock Scholes ⚽"
   },
   "sound": {
     "mute": "Silenciar sonidos",

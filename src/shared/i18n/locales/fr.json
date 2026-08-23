@@ -430,7 +430,15 @@
     "error": "Trop de signalements. Réessayez plus tard."
   },
   "share": {
-    "button": "Partager"
+    "button": "Partager",
+    "invite_1": "Joue avec moi à Sherlock Scholes — devine la légende du foot ! ⚽",
+    "invite_2": "Tu crois t'y connaître en foot ? Prouve-le sur Sherlock Scholes ⚽",
+    "invite_3": "Décris un footballeur sans dire son nom. Chiche ? Sherlock Scholes ⚽",
+    "invite_4": "Le meilleur jeu entre potes fans de foot — Sherlock Scholes ⚽",
+    "invite_5": "Qui s'y connaît le mieux en foot ? Découvre Sherlock Scholes ⚽",
+    "invite_6": "Devine la légende à partir des indices — Sherlock Scholes ⚽",
+    "invite_7": "Réunis tes potes et découvrez qui s'y connaît vraiment en foot ⚽",
+    "invite_8": "L'un explique, l'autre devine — l'Alias version foot. Sherlock Scholes ⚽"
   },
   "sound": {
     "mute": "Couper les sons",

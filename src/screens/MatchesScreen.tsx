@@ -21,6 +21,7 @@ import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/b
 import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
+import { timeFormat, weekdayDateFormat } from '@/shared/lib/dateFormat';
 
 /**
  * What football is on next.
@@ -156,14 +157,8 @@ export function MatchesScreen() {
 
   // Built once per language rather than per row: a formatter is expensive and
   // a list of sixty matches would otherwise build sixty of them.
-  const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }),
-    [i18n.language],
-  );
-  const dayFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }),
-    [i18n.language],
-  );
+  const timeFmt = useMemo(() => timeFormat(i18n.language), [i18n.language]);
+  const dayFmt = useMemo(() => weekdayDateFormat(i18n.language), [i18n.language]);
 
   const dayLabel = (key: string): string => {
     const [y, m, d] = key.split('-').map(Number);
