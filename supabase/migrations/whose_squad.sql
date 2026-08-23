@@ -47,8 +47,13 @@ declare
   v_lang   text := lower(left(coalesce(p_lang, 'en'), 2));
   v_answer record;
 begin
-  select club_key, club, fetched_at into v_answer
-    from deck_squads(5)
+  -- Колонки deck_squads() квалифицированы алиасом намеренно: без него
+  -- fetched_at неоднозначен между этим столбцом и OUT-параметром этой же
+  -- функции с тем же именем (RETURNS TABLE заводит его переменной в
+  -- области видимости) — plpgsql отвечает 42702 на каждый вызов, живьём
+  -- проверено при накатке.
+  select ds.club_key, ds.club, ds.fetched_at into v_answer
+    from deck_squads(5) ds
    order by random()
    limit 1;
 
