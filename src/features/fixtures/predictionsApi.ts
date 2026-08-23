@@ -130,3 +130,49 @@ export async function fetchMyStats(initData: string): Promise<MyPredictionStats 
   const rows = (data as MyPredictionStats[]) ?? [];
   return rows[0] ?? null;
 }
+
+// ── История ─────────────────────────────────────────────────────────────
+
+/**
+ * Один прогноз с именами команд и настоящим счётом — то, чего у `Prediction`
+ * нет и не может быть: `fixtures` не хранит переводов имён, подбирать их у
+ * клиента нечем, а join делает сервер один раз на всех.
+ */
+export interface PredictionHistoryEntry {
+  fixture_id: string;
+  sport_key: string;
+  home_team: string;
+  away_team: string;
+  commence_at: string;
+  pred_home: number;
+  pred_away: number;
+  /** NULL значит «матч не сыгран или счёт ещё не забрали» — не 0:0. */
+  actual_home: number | null;
+  actual_away: number | null;
+  points: number | null;
+  settled_at: string | null;
+}
+
+/**
+ * Прогнозы, для которых fixture ещё существует — по имени команды, не по id.
+ *
+ * `fixtures` хранит только текущий сезон: у старого прогноза fixture рано
+ * или поздно исчезает вместе со строкой, на которую он ссылается по
+ * внешнему ключу с CASCADE — тогда исчезает и сам прогноз. Пустой список
+ * поэтому значит «прогнозов не было» ровно так же надёжно, как и раньше.
+ */
+export async function fetchPredictionHistory(
+  initData: string,
+  limit = 50,
+): Promise<PredictionHistoryEntry[]> {
+  if (!initData) return [];
+  const { data, error } = await supabase.rpc('my_prediction_history', {
+    p_init_data: initData,
+    p_limit: limit,
+  });
+  if (error) {
+    console.error('[predictions] my_prediction_history failed:', error.code, error.message);
+    return [];
+  }
+  return (data as PredictionHistoryEntry[]) ?? [];
+}

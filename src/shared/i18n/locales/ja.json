@@ -104,6 +104,7 @@
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
     "quiz_link": "選手を当てる",
+    "famous_link": "どっちが有名",
     "alias_link": "サッカー・アリアス",
     "digest_link": "ゴールと名場面",
     "news_link": "ニュース",
@@ -159,12 +160,15 @@
     "tournaments": "出場大会",
     "collected": "試合から集計",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト"
+    "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト",
+    "news_and_video": "ニュースと動画"
   },
   "profile": {
     "title": "プロフィール",
     "level": "レベル {{n}}",
-    "xp_progress": "次のレベルまで {{into}} / {{total}} XP"
+    "xp_progress": "次のレベルまで {{into}} / {{total}} XP",
+    "streak_other": "連続{{count}}日",
+    "streak_best_other": "自己ベスト{{count}}日"
   },
   "level": {
     "title_1": "見習い",
@@ -419,7 +423,15 @@
     "error": "報告が多すぎます。後でもう一度お試しください。"
   },
   "share": {
-    "button": "シェア"
+    "button": "シェア",
+    "invite_1": "シャーロック・スコールズを一緒にやろう — サッカーの伝説を当ててみて！⚽",
+    "invite_2": "サッカー通のつもり？シャーロック・スコールズで証明してみて ⚽",
+    "invite_3": "名前を言わずに選手を説明してみて。できる？シャーロック・スコールズ ⚽",
+    "invite_4": "サッカー好きが集まったらこれ — シャーロック・スコールズ ⚽",
+    "invite_5": "サッカー通なのはどっち？シャーロック・スコールズをチェック ⚽",
+    "invite_6": "ヒントからレジェンドを当てよう — シャーロック・スコールズ ⚽",
+    "invite_7": "友達を集めて、本物のサッカー通は誰か確かめよう ⚽",
+    "invite_8": "一人が説明し、もう一人が当てる — サッカー版Alias。シャーロック・スコールズ ⚽"
   },
   "sound": {
     "mute": "サウンドをミュート",
@@ -547,7 +559,10 @@
     "score_age_unknown": "スコアの更新時刻は不明",
     "day_matches_other": "{{count}} 試合",
     "score_age_other": "{{count}} 分前に更新",
-    "broadcaster": "放送 · {{name}}"
+    "broadcaster": "放送 · {{name}}",
+    "prediction_history": "予想の履歴",
+    "history_loading": "読み込み中…",
+    "history_pending": "結果待ち"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",
@@ -611,6 +626,13 @@
     "fact_national": "代表: {{value}}",
     "fact_caps": "代表出場: {{value}}",
     "fact_tournaments": "出場大会: {{value}}"
+  },
+  "famous": {
+    "title": "どっちが有名",
+    "subtitle": "Wikipediaの閲覧数から",
+    "loading": "選手を探しています…",
+    "empty": "まだ比較できません",
+    "next": "次へ"
   },
   "digest": {
     "title": "今日のダイジェスト",

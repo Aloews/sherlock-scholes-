@@ -5,6 +5,7 @@ import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import { fetchNews, type NewsItem } from './digestApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { feedLanguage } from './digestFormat';
+import { timeFormat } from '@/shared/lib/dateFormat';
 
 /**
  * Лента заголовков.
@@ -33,10 +34,7 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
     return () => { cancelled = true; };
   }, [lang, limit]);
 
-  const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }),
-    [i18n.language],
-  );
+  const timeFmt = useMemo(() => timeFormat(i18n.language), [i18n.language]);
 
   const open = (url: string) => { hapticImpact('light'); openLink(url); };
 

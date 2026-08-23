@@ -400,6 +400,9 @@ export interface PlayerStats {
   cards_guessed: number;
   total_score: number;
   xp: number;
+  current_streak: number;
+  longest_streak: number;
+  last_played_date: string | null;
   updated_at: string;
 }
 

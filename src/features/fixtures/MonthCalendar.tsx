@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { localDayKey, monthGrid, shiftMonth, type Horizon } from './monthCalendar';
+import { monthYearFormat, weekdayShortFormat, longDateFormat } from '@/shared/lib/dateFormat';
 
 interface Props {
   month: Date;
@@ -46,18 +47,9 @@ export function MonthCalendar({
 
   // Форматтеры дороги, а клеток сорок две — строить их на клетку значило бы
   // строить сорок два.
-  const monthFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { month: 'long', year: 'numeric' }),
-    [i18n.language],
-  );
-  const weekdayFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }),
-    [i18n.language],
-  );
-  const dayFmt = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'long' }),
-    [i18n.language],
-  );
+  const monthFmt = useMemo(() => monthYearFormat(i18n.language), [i18n.language]);
+  const weekdayFmt = useMemo(() => weekdayShortFormat(i18n.language), [i18n.language]);
+  const dayFmt = useMemo(() => longDateFormat(i18n.language), [i18n.language]);
 
   // Подписи столбцов берутся из ПЕРВОЙ НЕДЕЛИ САМОЙ СЕТКИ, а не из отдельного
   // списка: иначе появляется второе место, где решается, с какого дня

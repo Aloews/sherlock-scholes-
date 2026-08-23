@@ -106,6 +106,7 @@
     "matches_link": "Próximos jogos",
     "fantasy_link": "Liga fantasy",
     "quiz_link": "Adivinhe o jogador",
+    "famous_link": "Quem é mais famoso",
     "alias_link": "Alias do futebol",
     "digest_link": "Gols e lances",
     "news_link": "Notícias",
@@ -161,12 +162,17 @@
     "tournaments": "Torneios",
     "collected": "Recolhido dos jogos",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} J · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} J · {{goals}} G · {{assists}} A",
+    "news_and_video": "Notícias e vídeo"
   },
   "profile": {
     "title": "Perfil",
     "level": "Nível {{n}}",
-    "xp_progress": "{{into}} / {{total}} XP para o próximo nível"
+    "xp_progress": "{{into}} / {{total}} XP para o próximo nível",
+    "streak_one": "Sequência: {{count}} dia",
+    "streak_other": "Sequência: {{count}} dias",
+    "streak_best_one": "recorde: {{count}} dia",
+    "streak_best_other": "recorde: {{count}} dias"
   },
   "level": {
     "title_1": "Novato",
@@ -430,7 +436,15 @@
     "error": "Muitos reportes. Tente mais tarde."
   },
   "share": {
-    "button": "Compartilhar"
+    "button": "Compartilhar",
+    "invite_1": "Joga Sherlock Scholes comigo — adivinhe a lenda do futebol! ⚽",
+    "invite_2": "Acha que entende de futebol? Prove em Sherlock Scholes ⚽",
+    "invite_3": "Descreva um jogador sem dizer o nome. Topa o desafio? Sherlock Scholes ⚽",
+    "invite_4": "O melhor jogo para a galera do futebol — Sherlock Scholes ⚽",
+    "invite_5": "Quem entende mais de futebol, eu ou você? Confira Sherlock Scholes ⚽",
+    "invite_6": "Adivinhe a lenda pelas dicas — Sherlock Scholes ⚽",
+    "invite_7": "Chame os amigos e descubram quem realmente entende de futebol ⚽",
+    "invite_8": "Um explica, o outro adivinha — o Alias do futebol. Sherlock Scholes ⚽"
   },
   "sound": {
     "mute": "Silenciar sons",
@@ -564,7 +578,10 @@
     "day_matches_other": "{{count}} jogos",
     "score_age_one": "Resultado atualizado há {{count}} minuto",
     "score_age_other": "Resultado atualizado há {{count}} minutos",
-    "broadcaster": "Transmite · {{name}}"
+    "broadcaster": "Transmite · {{name}}",
+    "prediction_history": "Histórico de palpites",
+    "history_loading": "Carregando…",
+    "history_pending": "aguardando resultado"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",
@@ -628,6 +645,13 @@
     "fact_national": "Seleção: {{value}}",
     "fact_caps": "Jogos pela seleção: {{value}}",
     "fact_tournaments": "Torneios: {{value}}"
+  },
+  "famous": {
+    "title": "Quem é mais famoso",
+    "subtitle": "Segundo a Wikipédia",
+    "loading": "Procurando dois jogadores…",
+    "empty": "Ainda não há quem comparar",
+    "next": "Próximo"
   },
   "digest": {
     "title": "Resumo do dia",
