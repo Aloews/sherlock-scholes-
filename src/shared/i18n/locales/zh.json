@@ -159,7 +159,8 @@
     "tournaments": "参加的赛事",
     "collected": "按比赛统计",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
+    "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
+    "news_and_video": "新闻与视频"
   },
   "profile": {
     "title": "个人资料",
@@ -553,7 +554,10 @@
     "score_age_unknown": "比分更新时间未知",
     "day_matches_other": "{{count}} 场比赛",
     "score_age_other": "{{count}} 分钟前更新",
-    "broadcaster": "转播 · {{name}}"
+    "broadcaster": "转播 · {{name}}",
+    "prediction_history": "预测历史",
+    "history_loading": "加载中…",
+    "history_pending": "等待比分"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

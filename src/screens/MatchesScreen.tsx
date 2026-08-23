@@ -13,6 +13,7 @@ import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
 import { PredictorsPanel } from '@/features/fixtures/PredictorsPanel';
+import { PredictionHistory } from '@/features/fixtures/PredictionHistory';
 import { FixtureCard } from '@/features/fixtures/FixtureCard';
 import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
 import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
@@ -200,6 +201,11 @@ export function MatchesScreen() {
             ближайшие матчи, а очки заработаны и на давно сыгранных. Локальная
             сумма показывала бы меньше и молча. */}
         <PredictorsPanel />
+
+        {/* Закрыта по умолчанию — раскрывать список из полусотни строк на
+            каждое открытие экрана значило бы платить сетевым запросом за
+            того, кто её не откроет. */}
+        <PredictionHistory />
 
         <p className="text-brand-muted text-[10.5px]">{t('matches.rules')}</p>
 

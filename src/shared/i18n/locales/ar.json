@@ -164,7 +164,8 @@
     "tournaments": "البطولات",
     "collected": "مجمَّع من المباريات",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة"
+    "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة",
+    "news_and_video": "أخبار وفيديو"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -638,7 +639,10 @@
     "score_age_few": "حُدّثت النتيجة قبل {{count}} دقائق",
     "score_age_many": "حُدّثت النتيجة قبل {{count}} دقيقة",
     "score_age_other": "حُدّثت النتيجة قبل {{count}} دقيقة",
-    "broadcaster": "الناقل · {{name}}"
+    "broadcaster": "الناقل · {{name}}",
+    "prediction_history": "سجل التوقعات",
+    "history_loading": "جارٍ التحميل…",
+    "history_pending": "بانتظار النتيجة"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

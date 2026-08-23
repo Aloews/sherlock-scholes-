@@ -161,7 +161,8 @@
     "tournaments": "Torneos",
     "collected": "Recopilado de los partidos",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} P · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} P · {{goals}} G · {{assists}} A",
+    "news_and_video": "Noticias y vídeo"
   },
   "profile": {
     "title": "Perfil",
@@ -570,7 +571,10 @@
     "day_matches_other": "{{count}} partidos",
     "score_age_one": "Resultado actualizado hace {{count}} minuto",
     "score_age_other": "Resultado actualizado hace {{count}} minutos",
-    "broadcaster": "Emite · {{name}}"
+    "broadcaster": "Emite · {{name}}",
+    "prediction_history": "Historial de pronósticos",
+    "history_loading": "Cargando…",
+    "history_pending": "esperando resultado"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

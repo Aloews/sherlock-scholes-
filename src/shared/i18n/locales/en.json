@@ -161,7 +161,8 @@
     "tournaments": "Tournaments",
     "collected": "Collected from matches",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A"
+    "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A",
+    "news_and_video": "News & video"
   },
   "profile": {
     "title": "Profile",
@@ -570,7 +571,10 @@
     "day_matches_other": "{{count}} matches",
     "score_age_one": "Score updated {{count}} minute ago",
     "score_age_other": "Score updated {{count}} minutes ago",
-    "broadcaster": "Broadcaster · {{name}}"
+    "broadcaster": "Broadcaster · {{name}}",
+    "prediction_history": "Prediction history",
+    "history_loading": "Loading…",
+    "history_pending": "awaiting score"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",

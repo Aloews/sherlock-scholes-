@@ -161,7 +161,8 @@
     "tournaments": "Tournois",
     "collected": "Relevé sur les matchs",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD"
+    "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD",
+    "news_and_video": "Actus et vidéos"
   },
   "profile": {
     "title": "Profil",
@@ -570,7 +571,10 @@
     "day_matches_other": "{{count}} matchs",
     "score_age_one": "Score mis à jour il y a {{count}} minute",
     "score_age_other": "Score mis à jour il y a {{count}} minutes",
-    "broadcaster": "Diffuseur · {{name}}"
+    "broadcaster": "Diffuseur · {{name}}",
+    "prediction_history": "Historique des pronostics",
+    "history_loading": "Chargement…",
+    "history_pending": "en attente du score"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

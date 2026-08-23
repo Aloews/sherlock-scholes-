@@ -165,7 +165,8 @@
     "tournaments": "Турниры",
     "collected": "Собрано по матчам",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п"
+    "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п",
+    "news_and_video": "Новости и видео"
   },
   "profile": {
     "title": "Профиль",
@@ -608,7 +609,10 @@
     "score_age_few": "Счёт обновлён {{count}} минуты назад",
     "score_age_many": "Счёт обновлён {{count}} минут назад",
     "score_age_other": "Счёт обновлён {{count}} минут назад",
-    "broadcaster": "Показывает · {{name}}"
+    "broadcaster": "Показывает · {{name}}",
+    "prediction_history": "История прогнозов",
+    "history_loading": "Загрузка…",
+    "history_pending": "ждём счёт"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",

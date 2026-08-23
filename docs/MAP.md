@@ -218,6 +218,7 @@ flowchart TD
 | `create_team_room` | `create_team_room.sql` | создание комнаты |
 | `set_room_deck_filter` | `room_deck_filter.sql` | хост выбирает колоду комнаты; пишет `settings.deck` и зеркалит `settings.categories`. Только хост, только пока `waiting` — `rooms` пишут все, политика `USING (true)` |
 | `predict_match`, `my_predictions`, `prediction_points`, `settle_predictions`, `sports_awaiting_scores`, `upsert_fixture_scores` | `match_predictions.sql` | прогноз счёта игроком. **Не букмекерский** — коэффициенты вне экрана по §4 `LIVE_FOOTBALL_HANDOFF.md`. Приём закрывается по `now()` на сервере. Начисляют и пишут счёт только `service_role` |
+| `my_prediction_history` | `prediction_history.sql` | история прогнозов с именами команд и настоящим счётом — `my_predictions` их не даёт, `fixtures` не хранит переводов. Join на сервере, а не два запроса с клиента: `fixture_id` — внешний ключ на `fixtures.id`, разойтись с источником нечем |
 | `invite_to_room`, `pending_room_invites`, `decline_room_invite`, `room_invite_ttl` | `room_invites.sql` | позвать друга в комнату без кода. Обе стороны выводятся из подписанного `initData`: приглашение называет двоих, и клиенту нельзя дать назваться любым из них. Срок жизни выводится из статуса комнаты, а не из cron |
 | `pause_round`, `resume_round`, `max_round_pause_ms` | `pause_round_on_voice_drop.sql` | пауза таймера, пока у объясняющего нет голоса; потолок — 2 минуты |
 | `digest_weekend_goals`, `weekend_bounds`, `looks_like_goal` | `weekend_goals.sql` | голы последних **завершившихся** выходных; порядок — сначала голы, внутри по настоящим просмотрам из фида YouTube. ⚠️ «Гол» включает ОБЗОР МАТЧА (`highlights`, `resumen`, `resumo`): голы выходных лежат именно там, и без этого раздел показывал 9 роликов по 21 тыс. просмотров вместо 56 по 69 тыс. |
@@ -231,6 +232,8 @@ flowchart TD
 | `claim_room_voice_provider`, `move_room_voice_provider` | `room_voice_provider.sql` | голосовой сервис комнаты: захват и перевод всей комнаты на живой |
 | `deck_squads`, `rebuild_card_current_clubs`, `club_match_key` | `current_squads.sql` | актуальные составы клубов для фильтра `clubs`. Пересобирается `pg_cron` в 06:10 UTC — `schedule_squad_rebuild.sql` |
 | `spend_odds_credits`, `odds_credits_left`, `upsert_fixtures`, `club_card_by_name` | `fixtures_and_odds.sql` | расписание матчей и бюджет the-odds-api (500 кредитов в месяц) |
+| `fetch_fixtures_list` | `schedule_fetch_fixtures.sql` | pg_cron раз в 6 часов (`:35`) → Edge `football-fixtures` без действия — заводит НОВЫЕ матчи. ⚠️ До 23.08.2026 этого задания не было вовсе: только счета обновлялись по расписанию (`fetch_match_scores`), а расписание турниров — только вручную. РПЛ из-за этого держала ноль строк при верной настройке |
+| `fetch_match_scores` | `schedule_fetch_scores.sql` | pg_cron каждые 6 часов (`:05`) → Edge `football-fixtures` с `{"action":"scores"}` — обновляет счета у УЖЕ существующих матчей, новых не заводит |
 | `fixtures_horizon` | `fixtures_horizon.sql` | докуда расписание известно. `published_until` — последний день ПЕРЕД разрывом длиннее недели, а не `max(commence_at)`: один далёкий матч не делает известным месяц вокруг себя. Этим красится календарь, и только благодаря этому пустая клетка не заявляет «матчей не будет» |
 | `end_round` | `end_round_rpc.sql` | захват раунда, подсчёт и запись очков — **одной транзакцией** |
 | `award_room_stats`, `on_room_finished` | `award_stats_on_finish.sql` | начисление статистики при переходе комнаты в `finished` |
@@ -239,6 +242,7 @@ flowchart TD
 | `player_ratings`, `player_stats_freshness` | `player_match_stats.sql` | рейтинг футболистов по окну в днях и свежесть собранного. Свежесть — отдельной функцией намеренно: без неё «за неделю никто не забил» звучит одинаково при паузе на сборные и при сломанном сборе |
 | таблица `broadcasts` | `broadcasts.sql` | «где смотреть» — официальная страница ТУРНИРА по `sport_key`. Не список стримов и не «канал в вашей стране»: адреса перепроверяются по `checked_at`, а не по памяти |
 | таблица `broadcast_rights`, `broadcast_rights_for` | `broadcast_rights.sql` | вещатели по территориям **со сроком от самого источника** (`season_from`/`season_to`) — этим и отличается от того, что `broadcasts` вести отказалась. Территория текстом дословно (`Sub-Saharan Africa`, `Ships and planes` — не страны), код страны отдельной колонкой и только для однозначных. **Оба аргумента функции необязательны** — один путь чтения на оба вопроса («моя страна, все турниры» и «этот турнир, все страны»). Флаг `worldwide` — отдельная категория прав, а не «регион без кода»: MLS продана Apple одним пакетом на весь мир, и такая строка подходит любой стране, но идёт ПОСЛЕ местной. Читают `broadcastRightsApi.ts` → `FixtureCard`. ⚠️ Пустой ответ значит «не заявлен», а не «неизвестно». Данные пока по двум турнирам: АПЛ (84 территории) и MLS (мировые) |
+| `player_news`, `player_clips`, `player_surname_stem` | `player_news_and_clips.sql` | новости и видео ПРО ИГРОКА на досье — связка с дайджестом по фамилии через `digest_tokens`, ту же токенизацию, что клеит темы через алфавиты. ⚠️ Однофамильцы — известный предел, не баг: «Silva» носят десятки профессионалов |
 
 ⚠️ **`grant_pro` в репозитории нет.** `tg-pay` зовёт её по предполагаемой
 сигнатуре `grant_pro(p_secret text, p_telegram_id bigint)`, а определение
@@ -664,6 +668,8 @@ Vercel — запусти `ci.yml` через `workflow_dispatch`.
 
 | Грабли | Где написано |
 |---|---|
+| Турнир настроен верно (в `SPORT_KEYS`, в девяти локалях, в `broadcasts`) и провайдер его несёт, а на экране матчей нет. Причина не в настройке: `fetch_match_scores` **обновляет счета уже существующих строк**, а НОВЫЕ фикстуры заводить некому было вовсе — до 23.08.2026 это делалось только вручную. Проверять `select * from cron.job`, а не файл миграции: применённое в проде и закоммиченное могут разойтись | `schedule_fetch_fixtures.sql` |
+| `pg_net` с коротким таймаутом отдал пустой ответ — это НЕ значит, что вызов провалился. Edge Function не привязана к тому, дождался ли её вызывающий, и дорабатывает на сервере: контрольный вызов `football-fixtures` дал пустой `net._http_response` при таймауте 30 с и записал 11 строк РПЛ минуту спустя. Смотреть на `updated_at` в целевой таблице, а не на пустую строку ответа | `schedule_fetch_fixtures.sql` |
 | Строка добавлена не во все 9 локалей | `CLAUDE.md` |
 | Формы множественного числа выдуманы для языка, где их нет | `CLAUDE.md` |
 | Новый способ выбирать карточки в обход `cards_matching` | §3 |

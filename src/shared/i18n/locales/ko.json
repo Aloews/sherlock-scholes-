@@ -159,7 +159,8 @@
     "tournaments": "출전 대회",
     "collected": "경기에서 집계",
     "collected_period": "{{from}} — {{to}}",
-    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움"
+    "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움",
+    "news_and_video": "뉴스 및 영상"
   },
   "profile": {
     "title": "프로필",
@@ -553,7 +554,10 @@
     "score_age_unknown": "스코어 갱신 시각 불명",
     "day_matches_other": "{{count}}경기",
     "score_age_other": "{{count}}분 전 갱신",
-    "broadcaster": "중계 · {{name}}"
+    "broadcaster": "중계 · {{name}}",
+    "prediction_history": "예측 기록",
+    "history_loading": "불러오는 중…",
+    "history_pending": "결과 대기"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
