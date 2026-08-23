@@ -561,7 +561,8 @@
     "day_matches_one": "{{count}} match",
     "day_matches_other": "{{count}} matches",
     "score_age_one": "Score updated {{count}} minute ago",
-    "score_age_other": "Score updated {{count}} minutes ago"
+    "score_age_other": "Score updated {{count}} minutes ago",
+    "broadcaster": "Broadcaster · {{name}}"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",

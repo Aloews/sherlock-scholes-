@@ -544,7 +544,8 @@
     "final_score": "最终比分",
     "score_age_unknown": "比分更新时间未知",
     "day_matches_other": "{{count}} 场比赛",
-    "score_age_other": "{{count}} 分钟前更新"
+    "score_age_other": "{{count}} 分钟前更新",
+    "broadcaster": "转播 · {{name}}"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

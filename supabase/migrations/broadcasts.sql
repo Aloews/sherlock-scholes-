@@ -18,6 +18,25 @@
 -- tff.org и cbf.com.br из этой сети не открылись, а записывать непроверенное
 -- значит обещать ссылку, которая не работает. Экран просто не покажет ссылку
 -- там, где её нет.
+--
+-- ⚠️ «НЕ ОТКРЫЛИСЬ» УТОЧНЕНО, И УТОЧНЕНИЕ ВАЖНО: сайты живы, режет их дорога
+-- отсюда. Замер: прямое TLS-рукопожатие с www.cbf.com.br и www.tff.org
+-- проходит и сертификат валиден (TLSv1.3), а `http://www.tff.org` отдаёт 200 и
+-- собственный заголовок «Türkiye Futbol Federasyonu Resmi İnternet Sitesi».
+-- И только запрос ЧЕРЕЗ исходящий прокси этой среды не проходит — и в urllib,
+-- и в curl, тогда как thecfa.cn и uefa.com тем же путём отвечают 200.
+--
+-- Из этого следует не «сайты мёртвые», а «проверять надо не отсюда». Если бы
+-- здесь осталось прежнее «не открылись», следующий добросовестно вычеркнул бы
+-- Бразилию и Турцию как безнадёжные — а их достаточно один раз проверить из
+-- другой сети и дописать.
+--
+-- ⚠️ brasileirao.com.br отвечает 200 и выглядит готовым ответом для Бразилии —
+-- НЕ БЕРИТЕ ЕГО. Заголовок страницы «Brasileirão — Tudo sobre futebol nacional
+-- e internacional»: это новостной сайт про футбол, а не собственная страница
+-- турнира. Вся ценность этой таблицы в том, что по ссылке ведёт правообладатель
+-- и потому она не устаревает; новостник даёт ровно ту же ссылку, что и любой
+-- поиск, и стареет так же молча, как список каналов.
 
 create table if not exists public.broadcasts (
   sport_key   text primary key,
@@ -41,7 +60,11 @@ grant select on public.broadcasts to anon, authenticated;
 grant select, insert, update, delete on public.broadcasts to service_role;
 
 insert into public.broadcasts (sport_key, name, url) values
-  ('soccer_epl',                        'Premier League',        'https://www.premierleague.com/broadcast-schedules'),
+  -- Канонический адрес, а не первый работающий. `/broadcast-schedules` тоже
+  -- открывается, но двумя переходами: 301 на `/en/broadcasting`, оттуда 302
+  -- сюда. Ссылка, которая работает через редиректы, ломается тихо — переезд
+  -- отменяют, и остаётся 404 в таблице, которую никто не перечитывает.
+  ('soccer_epl',                        'Premier League',        'https://www.premierleague.com/en/media/broadcasters'),
   ('soccer_spain_la_liga',              'LaLiga',                'https://www.laliga.com'),
   ('soccer_italy_serie_a',              'Lega Serie A',          'https://www.legaseriea.it/en/serie-a'),
   ('soccer_germany_bundesliga',         'Bundesliga',            'https://www.bundesliga.com/en/bundesliga'),
@@ -60,6 +83,19 @@ insert into public.broadcasts (sport_key, name, url) values
   ('soccer_uefa_european_championship', 'UEFA EURO',             'https://www.uefa.com/uefaeuro/'),
   ('soccer_fifa_world_cup',             'FIFA World Cup',        'https://www.fifa.com/en/tournaments/mens/worldcup'),
   ('soccer_conmebol_copa_libertadores', 'CONMEBOL',              'https://www.conmebol.com'),
-  ('soccer_conmebol_copa_sudamericana', 'CONMEBOL',              'https://www.conmebol.com')
+  ('soccer_conmebol_copa_sudamericana', 'CONMEBOL',              'https://www.conmebol.com'),
+
+  -- Добавлены после замера дыры: в расписании были матчи, а ссылки под ними
+  -- не было вовсе. Четыре турнира не имели строки; закрыты два, по которым
+  -- адрес удалось ПРОВЕРИТЬ отсюда (17 матчей из 36).
+  --
+  -- Квалификация — та же страница, что и основной турнир, и это не небрежность:
+  -- УЕФА ведёт её одним разделом, отдельной страницы у квалификации нет.
+  ('soccer_uefa_champs_league_qualification', 'UEFA Champions League', 'https://www.uefa.com/uefachampionsleague'),
+
+  -- Федерация, а не лига — как у AFA и CONMEBOL выше. Собственный раздел лиги
+  -- (`/csl/`) отвечает 200 и говорит «页面升级维护», то есть «страница на
+  -- обслуживании»: вести туда значит вести на заглушку.
+  ('soccer_china_superleague',           'CFA',                   'https://www.thecfa.cn')
 on conflict (sport_key) do update
   set name = excluded.name, url = excluded.url, checked_at = now();
