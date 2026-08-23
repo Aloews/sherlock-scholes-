@@ -37,7 +37,7 @@ export function ClipCard({ clip }: { clip: RankedClip }) {
         </span>
       )}
       <span className="block p-3">
-        <span className="block text-white text-sm">{clip.title}</span>
+        <span className="block text-white text-sm">{clip.title_generated ?? clip.title}</span>
         <span className="flex items-center gap-1.5 text-brand-muted text-[10.5px] mt-1.5">
           <span>{clip.channel}</span>
           <span>·</span>
