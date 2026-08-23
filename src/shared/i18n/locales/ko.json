@@ -539,6 +539,8 @@
     "my_breakdown": "확정: {{settled}} · 정확: {{exact}} · 대기: {{pending}}",
     "top_predictors": "예측 순위",
     "exact_short": "정확 {{n}}",
+    "scope_all": "전체",
+    "scope_friends": "친구",
     "all_leagues": "모든 대회",
     "empty_league": "이 대회에 예정된 경기가 없습니다.",
     "where_to_watch": "중계 안내 · {{source}}",

@@ -102,6 +102,23 @@ export async function fetchLeaderboard(limit = 20): Promise<LoadState<PredictorR
   return fromPostgrest<PredictorRow[]>(res, 'prediction_leaderboard');
 }
 
+/**
+ * То же самое, но вызывающий и его друзья — весь состав, даже те, кто ещё
+ * ни разу не прогнозировал (friend_prediction_leaderboard.sql). Пусто вне
+ * Telegram: initData нет, а без него нельзя узнать, кто твои друзья.
+ */
+export async function fetchFriendLeaderboard(
+  initData: string,
+  limit = 20,
+): Promise<LoadState<PredictorRow[]>> {
+  if (!initData) return ok([]);
+  const res = await supabase.rpc('friend_prediction_leaderboard', {
+    p_init_data: initData,
+    p_limit: limit,
+  });
+  return fromPostgrest<PredictorRow[]>(res, 'friend_prediction_leaderboard');
+}
+
 export async function fetchMyStats(initData: string): Promise<MyPredictionStats | null> {
   if (!initData) return null;
   const { data, error } = await supabase.rpc('my_prediction_stats', { p_init_data: initData });
