@@ -300,7 +300,7 @@ export function DigestScreen() {
                 </span>
               )}
               <span className="block p-3">
-                <span className="block text-white text-sm">{clip.title}</span>
+                <span className="block text-white text-sm">{clip.title_generated ?? clip.title}</span>
                 <span className="block text-brand-muted text-[10.5px] mt-1.5">
                   {clip.channel} · {timeFmt.format(new Date(clip.published_at))}
                 </span>
