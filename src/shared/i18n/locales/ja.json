@@ -544,7 +544,8 @@
     "final_score": "最終スコア",
     "score_age_unknown": "スコアの更新時刻は不明",
     "day_matches_other": "{{count}} 試合",
-    "score_age_other": "{{count}} 分前に更新"
+    "score_age_other": "{{count}} 分前に更新",
+    "broadcaster": "放送 · {{name}}"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",
