@@ -561,7 +561,10 @@
     "day_matches_one": "{{count}} partido",
     "day_matches_other": "{{count}} partidos",
     "score_age_one": "Resultado actualizado hace {{count}} minuto",
-    "score_age_other": "Resultado actualizado hace {{count}} minutos"
+    "score_age_other": "Resultado actualizado hace {{count}} minutos",
+    "prediction_history": "Historial de pronósticos",
+    "history_loading": "Cargando…",
+    "history_pending": "esperando resultado"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

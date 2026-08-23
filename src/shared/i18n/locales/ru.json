@@ -599,7 +599,10 @@
     "score_age_one": "Счёт обновлён {{count}} минуту назад",
     "score_age_few": "Счёт обновлён {{count}} минуты назад",
     "score_age_many": "Счёт обновлён {{count}} минут назад",
-    "score_age_other": "Счёт обновлён {{count}} минут назад"
+    "score_age_other": "Счёт обновлён {{count}} минут назад",
+    "prediction_history": "История прогнозов",
+    "history_loading": "Загрузка…",
+    "history_pending": "ждём счёт"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",

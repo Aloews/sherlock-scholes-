@@ -629,7 +629,10 @@
     "score_age_two": "حُدّثت النتيجة قبل دقيقتين",
     "score_age_few": "حُدّثت النتيجة قبل {{count}} دقائق",
     "score_age_many": "حُدّثت النتيجة قبل {{count}} دقيقة",
-    "score_age_other": "حُدّثت النتيجة قبل {{count}} دقيقة"
+    "score_age_other": "حُدّثت النتيجة قبل {{count}} دقيقة",
+    "prediction_history": "سجل التوقعات",
+    "history_loading": "جارٍ التحميل…",
+    "history_pending": "بانتظار النتيجة"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

@@ -544,7 +544,10 @@
     "final_score": "최종 스코어",
     "score_age_unknown": "스코어 갱신 시각 불명",
     "day_matches_other": "{{count}}경기",
-    "score_age_other": "{{count}}분 전 갱신"
+    "score_age_other": "{{count}}분 전 갱신",
+    "prediction_history": "예측 기록",
+    "history_loading": "불러오는 중…",
+    "history_pending": "결과 대기"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
