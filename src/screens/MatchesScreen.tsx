@@ -17,6 +17,8 @@ import { FixtureCard } from '@/features/fixtures/FixtureCard';
 import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
 import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
 import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
+import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/broadcastRightsApi';
+import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 
@@ -46,6 +48,11 @@ export function MatchesScreen() {
   const [upcoming, setUpcoming] = useState<LoadState<Fixture[]>>(LOADING);
   const [predictions, setPredictions] = useState<LoadState<Prediction[]>>(LOADING);
   const [broadcasts, setBroadcasts] = useState<Map<string, Broadcast>>(new Map());
+  // Правообладатель для страны читателя. Пустая карта — нормальное состояние:
+  // страна может быть не объявлена, а для объявленной вещателя может не быть
+  // вовсе (у Премьер-лиги для России его нет). В обоих случаях карточка
+  // покажет ссылку на страницу турнира, как показывала до сих пор.
+  const [rights, setRights] = useState<Map<string, BroadcastRight>>(new Map());
 
   // Календарь: свой месяц, свои матчи и горизонт.
   const [month, setMonth] = useState<Date>(() => monthStart(new Date()));
@@ -69,6 +76,11 @@ export function MatchesScreen() {
       // ничего не переписывают. Держать из-за них весь экран значит ждать по
       // самому медленному запросу там, где можно ждать по самому быстрому.
       void fetchBroadcasts().then((tv) => { if (!cancelled) setBroadcasts(tv); });
+      // Страна берётся из ОБЪЯВЛЕННОГО региона локали, а не выводится из
+      // языка: испанский — это и Испания, и Мексика, и Аргентина. Нет
+      // региона — нет запроса, см. viewerCountry.ts.
+      void fetchBroadcastRights(viewerCountry(i18n.language, systemLanguages()))
+        .then((r) => { if (!cancelled) setRights(r); });
 
       const [rows, mine] = await Promise.all([
         fetchUpcomingFixtures(),
@@ -303,6 +315,7 @@ export function MatchesScreen() {
                 key={fixture.id}
                 fixture={fixture}
                 broadcast={broadcasts.get(fixture.sport_key)}
+                rights={rights.get(fixture.sport_key)}
                 prediction={byFixture.get(fixture.id)}
                 onPredictionSaved={savePrediction}
                 timeFmt={timeFmt}
