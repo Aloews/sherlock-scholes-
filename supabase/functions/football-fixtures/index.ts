@@ -25,6 +25,14 @@
 // that has plausibly finished (`sports_awaiting_scores`), so a month with no
 // predictions costs nothing. Asking all twenty every day would be 600 credits
 // against a ceiling of 500 — the schedule alone would exhaust the budget.
+//
+// `include_recent: true` ADDS a second, independent source of competitions:
+// `sports_needing_recent_scores` (recent_scores.sql) — anything with a match
+// that plausibly finished in the last 48h and isn't marked completed yet,
+// prediction or not. Calendar/history screens showed no score at all for most
+// matches, because nobody had predicted on them; this is what closes that gap.
+// Only the once-daily cron passes it (schedule_fetch_scores.sql) — the
+// 6-hourly prediction path does not, so its near-zero cost is unaffected.
 // ============================================================================
 
 const ODDS_API_KEY = Deno.env.get("ODDS_API_KEY") ?? "";
@@ -181,12 +189,17 @@ Deno.serve(async (req) => {
   // carries, instead of fetching anything. /sports is free too, and this is
   // the only way to choose SPORT_KEYS from fact rather than from guesswork —
   // a key that does not exist fails silently as an empty fixture list.
-  const body = await req.json().catch(() => ({})) as { list?: boolean; action?: string };
+  const body = await req.json().catch(() => ({})) as {
+    list?: boolean;
+    action?: string;
+    include_recent?: boolean;
+  };
 
   // Scores, and the settlement that depends on them. Separate action because
   // it SPENDS: one credit per competition, and only for competitions that have
-  // somebody's prediction waiting on them.
-  if (body?.action === "scores") return await runScores();
+  // somebody's prediction waiting on them — plus, when include_recent is set,
+  // competitions with any recently-finished match at all (see the header).
+  if (body?.action === "scores") return await runScores(body.include_recent === true);
 
   if (body?.list === true) {
     const r = await fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${ODDS_API_KEY}`);
@@ -257,18 +270,37 @@ Deno.serve(async (req) => {
  * would let a failure spend nothing and a success spend nothing either, which
  * is how a 500-credit ceiling turns out to have been decorative.
  */
-async function runScores(): Promise<Response> {
+async function runScores(includeRecent: boolean): Promise<Response> {
   const waiting = await rpc("sports_awaiting_scores", {});
   if (!waiting.ok) {
     console.error(`sports_awaiting_scores failed: ${waiting.status}`);
     return json({ error: "awaiting_failed" }, 503);
   }
-  const sports = ((await waiting.json()) as { sport_key?: string }[])
+  const predictionSports = ((await waiting.json()) as { sport_key?: string }[])
     .map((row) => row.sport_key)
     .filter((key): key is string => typeof key === "string");
 
+  // Only the once-daily cron sets this — see the header and
+  // recent_scores.sql. A second, independent reason to ask about a
+  // competition, deduped against the prediction-driven set below rather than
+  // spending twice on the same sport_key in one run.
+  let recentSports: string[] = [];
+  if (includeRecent) {
+    const recent = await rpc("sports_needing_recent_scores", {});
+    if (!recent.ok) {
+      console.error(`sports_needing_recent_scores failed: ${recent.status}`);
+    } else {
+      recentSports = ((await recent.json()) as { sport_key?: string }[])
+        .map((row) => row.sport_key)
+        .filter((key): key is string => typeof key === "string");
+    }
+  }
+
+  const sports = [...new Set([...predictionSports, ...recentSports])];
+
   // Nothing is waiting, so nothing is spent. This is the normal answer, not an
-  // error: most days nobody has an unsettled prediction on a finished match.
+  // error: most days nobody has an unsettled prediction on a finished match,
+  // and (outside the once-daily run) include_recent is not even asked.
   if (sports.length === 0) {
     return json({ sports: 0, scored: 0, settled: 0, credits_left: await creditsLeft() });
   }
@@ -314,6 +346,8 @@ async function runScores(): Promise<Response> {
 
   return json({
     sports: sports.length,
+    sports_from_predictions: predictionSports.length,
+    sports_from_recent: recentSports.length,
     credits_spent: spent,
     scored: written,
     settled,

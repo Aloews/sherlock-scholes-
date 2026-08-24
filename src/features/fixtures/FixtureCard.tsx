@@ -71,16 +71,19 @@ export function FixtureCard({
           <p className="text-white text-sm truncate">{fixture.away_team}</p>
         </div>
 
-        {hasScore && (
-          <div className="shrink-0 text-right">
-            <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
-              {fixture.home_score}
-            </p>
-            <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
-              {fixture.away_score}
-            </p>
-          </div>
-        )}
+        {/* Reserved even without a score: most matches never get one (score
+            fetching is demand-driven, see match_predictions.sql), and a
+            column that appears only sometimes shifts the team-name width on
+            every other row — the score "jumping" while scrolling a list that
+            mixes scored and unscored matches. */}
+        <div className="shrink-0 w-6 text-right">
+          <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
+            {hasScore ? fixture.home_score : <span className="text-brand-muted/30">—</span>}
+          </p>
+          <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
+            {hasScore ? fixture.away_score : <span className="text-brand-muted/30">—</span>}
+          </p>
+        </div>
 
         <span className="text-brand-muted text-[10.5px] text-right shrink-0 max-w-[35%]">
           {t(leagueKey(fixture.sport_key), {
