@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { tacticFits, DEFAULT_TACTIC, type Tactic, type PositionKey } from './fantasyApi';
+import { tacticFits, DEFAULT_TACTIC, type Tactic, type PositionKey } from './tactics';
 
 /**
  * `tacticFits` — клиентское зеркало серверного `fantasy_tactic_fits`.
+ *
+ * ⚠️ ИМПОРТ ИЗ `./tactics`, А НЕ ИЗ `./fantasyApi`, И ЭТО НЕ ВКУСОВЩИНА. Первая
+ * версия теста импортировала из `fantasyApi`, и в CI он не выполнил НИ ОДНОЙ
+ * проверки: `shared/lib/supabase.ts` бросает на загрузке модуля без
+ * `VITE_SUPABASE_*`, а `fantasyApi` тянет его первой строкой. Локально `.env`
+ * есть — тест был зелёным; в CI переменных нет — и файл падал целиком, на
+ * клиенте базы, который чистой функции не нужен вовсе.
  *
  * ЗАЧЕМ ЕГО ТЕСТИРОВАТЬ, если сервер всё равно проверит. Затем, что расхождение
  * этих двух проверок не видно ни с одной стороны: кнопка разрешит отправку,

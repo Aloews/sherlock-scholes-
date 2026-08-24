@@ -16,15 +16,21 @@ export interface FantasyRound {
   settled_at: string | null;
 }
 
-/**
- * Линия игрока — 'gk' | 'def' | 'mid' | 'fwd', или null.
- *
- * NULL — это «мы не знаем», а не «универсал»: позиция приходит из обогащения, и
- * её отсутствие говорит о наших данных, а не об игроке. Такая карточка считается
- * по старому, позиционно-слепому правилу и не идёт в зачёт требований схемы —
- * см. шапку supabase/migrations/fantasy_tactics.sql.
- */
-export type PositionKey = 'gk' | 'def' | 'mid' | 'fwd';
+// Чистое правило схемы живёт в ./tactics — БЕЗ импорта клиента базы. Здесь
+// только реэкспорт, чтобы у экрана остался один вход: сам `supabase.ts`
+// бросает на загрузке модуля без VITE_SUPABASE_*, и тест чистой функции,
+// пришедший сюда, падал в CI на клиенте, который ему не нужен. Подробности —
+// в шапке ./tactics.
+export {
+  DEFAULT_TACTIC,
+  tacticFits,
+  type PositionKey,
+  type Tactic,
+  type TacticKey,
+} from './tactics';
+
+import { DEFAULT_TACTIC } from './tactics';
+import type { PositionKey, Tactic, TacticKey } from './tactics';
 
 export interface FantasyOption {
   card_id: string;
@@ -45,43 +51,6 @@ export interface SquadMember {
   points: number;
   position_key: PositionKey | null;
   tactic: TacticKey;
-}
-
-export type TacticKey = 'defensive' | 'balanced' | 'attacking';
-
-/**
- * Схема и её цена. Правило приходит С СЕРВЕРА, а не лежит второй копией здесь:
- * веса и требования хранятся в таблице `fantasy_tactic`, потому что их
- * показывают игроку, а показанное и применённое обязаны быть одним числом.
- */
-export interface Tactic {
-  key: TacticKey;
-  /** Множитель на сухарь. 0 — «Атака» за сухари не платит вовсе. */
-  clean_sheet_x: number;
-  /** Множитель на голы клуба. 0 — «Оборона» за голы не платит вовсе. */
-  goal_x: number;
-  /** Сколько вратарей+защитников обязано быть в пятёрке. null — без требования. */
-  min_defence: number | null;
-  min_forwards: number | null;
-}
-
-/** Схема по умолчанию: единственная без требований к составу. */
-export const DEFAULT_TACTIC: TacticKey = 'balanced';
-
-/**
- * Подходит ли пятёрка под схему — ТА ЖЕ проверка, что на сервере.
- *
- * Копия правила здесь не потому, что серверу не доверяют, а потому, что кнопка
- * обязана отказывать ДО отправки и объяснять, чего не хватает. Сервер всё равно
- * проверяет заново (`fantasy_tactic_fits` в set_fantasy_squad) — эта функция
- * ничего не разрешает, только предсказывает отказ.
- *
- * Карточка без позиции не закрывает ни одно требование: см. PositionKey.
- */
-export function tacticFits(positions: (PositionKey | null)[], tactic: Tactic): boolean {
-  const defence = positions.filter((p) => p === 'gk' || p === 'def').length;
-  const forwards = positions.filter((p) => p === 'fwd').length;
-  return defence >= (tactic.min_defence ?? 0) && forwards >= (tactic.min_forwards ?? 0);
 }
 
 export interface StandingRow {
