@@ -34,11 +34,17 @@
 --
 -- Ключ публикуемый — тот же, что едет в браузерный бандл, прав он не даёт,
 -- только проходит verify_jwt. Но и такому месту не в git.
+--
+-- ВТОРОЕ ЗАДАНИЕ, РАЗ В СУТКИ: история матчей, а не только прогнозы —
+-- см. recent_scores.sql. Раздельные задания, а не общее правило внутри
+-- fetch_match_scores(), потому что у них разная цена частоты: прогнозный путь
+-- почти всегда бесплатен (спрашивает 0–1 турнир), а путь истории трогает
+-- потенциально дюжину турниров разом — на его частоте и держится бюджет.
 -- ============================================================================
 
 create extension if not exists pg_net with schema extensions;
 
-create or replace function public.fetch_match_scores()
+create or replace function public.fetch_match_scores(p_include_recent boolean default false)
 returns bigint
 language plpgsql
 security definer
@@ -66,7 +72,7 @@ begin
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_key
     ),
-    body := jsonb_build_object('action', 'scores'),
+    body := jsonb_build_object('action', 'scores', 'include_recent', p_include_recent),
     timeout_milliseconds := 25000
   ) into v_id;
 
@@ -76,8 +82,8 @@ $$;
 
 -- Только service_role: функция тратит деньги, и вызывать её из клиента нельзя
 -- даже без вреда для данных.
-revoke all on function public.fetch_match_scores() from public, anon, authenticated;
-grant execute on function public.fetch_match_scores() to service_role;
+revoke all on function public.fetch_match_scores(boolean) from public, anon, authenticated;
+grant execute on function public.fetch_match_scores(boolean) to service_role;
 
 select cron.schedule(
   'fetch-match-scores',
@@ -85,7 +91,20 @@ select cron.schedule(
   $$select public.fetch_match_scores()$$
 );
 
+-- Раз в сутки, не каждые шесть часов — та же причина, по которой
+-- recent_scores.sql не расширяет sports_awaiting_scores(): дюжина турниров
+-- четыре раза в день — это тот же порядок счёта, которым заголовок
+-- functions/football-fixtures/index.ts уже отверг «спрашивать все двадцать
+-- ежедневно» (600 кредитов против потолка в 500). Раз в сутки держит расход
+-- в разы дешевле бюджета даже в максимально насыщенный игровой день.
+select cron.schedule(
+  'fetch-recent-scores',
+  '20 5 * * *',
+  $$select public.fetch_match_scores(true)$$
+);
+
 -- Ответ прошлого вызова:
 --   select status_code, content::text from net._http_response order by id desc limit 1;
 -- Снять с расписания:
 --   select cron.unschedule('fetch-match-scores');
+--   select cron.unschedule('fetch-recent-scores');
