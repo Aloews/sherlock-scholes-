@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { photoFitClass } from '@/shared/lib/photoFit';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 
 /**
  * The card's own photo, ghosted beside its name — a hint for the explainer
@@ -39,10 +39,11 @@ export function CardWatermark({ src, category, className }: {
           a replaced element in a flex line, and it came out a tall rectangle,
           which is the exact failure this is fixing. 128px is the size the
           quick-game card used before the watermark was centred. */}
-      <img
+      <PlayerPhoto
         src={src}
-        alt=""
-        className={clsx('w-32 h-32 opacity-[0.13]', photoFitClass(category))}
+        category={category}
+        shape="free"
+        className="w-32 h-32 opacity-[0.13]"
       />
     </div>
   );

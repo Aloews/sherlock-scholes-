@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
-import { photoFitCircleClass } from '@/shared/lib/photoFit';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import {
   staffVerify, adminSearchCards, adminSaveCard, adminDeleteCard, adminGetCard,
   modListReports, modResolveReports, modFlagCandidate,
@@ -218,7 +217,7 @@ function ReportsPanel({ password, onOpenCard }: {
           className="ds-panel bg-brand-surface border border-brand-border rounded-xl p-3 space-y-2">
           <div className="flex items-start gap-2.5">
             {r.photo_url
-              ? <img src={r.photo_url} alt="" className={clsx('w-9 h-9 rounded-full shrink-0', photoFitCircleClass(r.category))} />
+              ? <PlayerPhoto src={r.photo_url} category={r.category} className="w-9 h-9 rounded-full shrink-0" />
               : <span className="w-9 h-9 rounded-full bg-brand-border inline-block shrink-0" />}
             <div className="flex-1 min-w-0">
               <p className="text-sm truncate">
@@ -369,7 +368,7 @@ function CardsPanel({ password, isAdmin, form, setForm }: {
               className="w-full flex items-center gap-2 text-left bg-brand-surface border border-brand-border rounded-lg px-2 py-1.5 hover:border-brand-accent"
               onClick={() => setForm(toInput(c))}>
               {c.photo_url
-                ? <img src={c.photo_url} alt="" className={clsx('w-7 h-7 rounded-full', photoFitCircleClass(c.category))} />
+                ? <PlayerPhoto src={c.photo_url} category={c.category} className="w-7 h-7 rounded-full" />
                 : <span className="w-7 h-7 rounded-full bg-brand-border inline-block" />}
               <span className="flex-1 min-w-0 truncate text-sm">
                 {c.name} <span className="text-brand-muted">/ {c.name_en ?? '—'}</span>
@@ -422,7 +421,7 @@ function CardsPanel({ password, isAdmin, form, setForm }: {
             <div className="flex gap-2 items-center">
               <input className={inputCls} value={form.photo_url ?? ''} onChange={(e) => set('photo_url', e.target.value)} />
               {form.photo_url
-                ? <img src={form.photo_url} alt="" className={clsx('w-10 h-10 rounded-full shrink-0', photoFitCircleClass(form.category))} />
+                ? <PlayerPhoto src={form.photo_url} category={form.category} className="w-10 h-10 rounded-full shrink-0" />
                 : null}
             </div>
           </div>
