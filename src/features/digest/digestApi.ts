@@ -84,8 +84,15 @@ export interface WeekendGoal extends RankedClip {
  *
  * Порядок задаёт сервер: сначала голы, внутри — по просмотрам. Клиент его не
  * пересортировывает, иначе «лучшее» стало бы значить разное в двух местах.
+ *
+ * 40, а не 12 — тот же потолок, что и у самой функции (`least(p_limit, 40)`,
+ * weekend_goals.sql). При 12 глобальный топ по просмотрам иногда отдавался
+ * одной-двум лигам с самым громким матчем выходных целиком, а `leagues` на
+ * DigestScreen считается ИЗ ЭТОГО ЖЕ списка — так что менее просматриваемая
+ * лига не получала даже чипа фильтра, хотя её голы были в базе. Измерено на
+ * выходных 22–24.08.2026: см. digest_goals_limit.sql.
  */
-export async function fetchWeekendGoals(limit = 12): Promise<WeekendGoal[]> {
+export async function fetchWeekendGoals(limit = 40): Promise<WeekendGoal[]> {
   const { data, error } = await supabase.rpc('digest_weekend_goals', { p_limit: limit });
   if (error) {
     console.error('[digest] digest_weekend_goals failed:', error.code, error.message);
@@ -105,8 +112,11 @@ export async function fetchWeekendGoals(limit = 12): Promise<WeekendGoal[]> {
  *
  * Границы вычитаются те же, что у блока выходных, поэтому один ролик не может
  * оказаться в обоих списках.
+ *
+ * 40, а не 12 — см. комментарий у fetchWeekendGoals выше, тот же барьер и та
+ * же причина здесь.
  */
-export async function fetchWeekGoals(limit = 12): Promise<RankedClip[]> {
+export async function fetchWeekGoals(limit = 40): Promise<RankedClip[]> {
   const { data, error } = await supabase.rpc('digest_week_goals', { p_limit: limit });
   if (error) {
     console.error('[digest] digest_week_goals failed:', error.code, error.message);
