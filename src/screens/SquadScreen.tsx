@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCheck, IconX } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { hapticImpact, hapticError } from '@/shared/lib/telegram';
 import { fetchSquadRound, type SquadRound } from '@/features/squad/squadApi';
 
@@ -72,9 +73,21 @@ export function SquadScreen() {
 
         {!loading && round && (
           <>
-            <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 space-y-2">
-              {round.players.map((name) => (
-                <p key={name} className="text-white text-sm">{name}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {round.players.map((player) => (
+                <div
+                  key={player.card_id}
+                  className="ds-panel bg-brand-surface border border-brand-border rounded-xl overflow-hidden"
+                >
+                  <div className="aspect-square w-full bg-brand-border/40">
+                    {player.photo_url && (
+                      <PlayerPhoto src={player.photo_url} className="w-full h-full" />
+                    )}
+                  </div>
+                  <p className="px-1.5 py-1.5 text-white text-[11px] text-center leading-tight truncate">
+                    {player.name}
+                  </p>
+                </div>
               ))}
             </div>
 

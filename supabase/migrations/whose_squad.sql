@@ -22,6 +22,12 @@
 -- резолвится под язык зрителя, тем же порядком, что и в cardName.ts —
 -- версия с фамилиями осталась бы нечестной ради красивой формулировки.
 --
+-- ИГРОКИ НЕСУТ card_id И photo_url, А НЕ ТОЛЬКО ИМЯ. Экран рисует их
+-- карточками с фото (PlayerPhoto, shared/ui) — тем же полем cards.photo_url,
+-- что и везде (см. shared/lib/photoFit.ts), второй базы под фото по-прежнему
+-- нет. card_id — ключ строки на клиенте: имя не гарантированно уникально
+-- внутри пятёрки (однофамильцы редки, но случаются), а card_id — да.
+--
 -- ОТВЕТ ПРИХОДИТ ВМЕСТЕ С РАУНДОМ, тот же приём, что у quiz_player_round и
 -- whos_more_famous_round: игра одиночная, XP не начисляет.
 --
@@ -64,6 +70,8 @@ begin
   return query
     with names as (
       select
+        c.id as card_id,
+        c.photo_url,
         case
           when v_lang = 'ru' then c.name
           when v_lang = 'en' then coalesce(nullif(c.name_en, ''), c.name)
@@ -94,7 +102,9 @@ begin
     )
     select
       v_answer.club_key,
-      (select jsonb_agg(n.display_name) from names n),
+      (select jsonb_agg(jsonb_build_object(
+                 'card_id', n.card_id, 'name', n.display_name, 'photo_url', n.photo_url))
+         from names n),
       (select jsonb_agg(jsonb_build_object('key', o.key, 'name', o.name) order by random())
          from all_options o),
       v_answer.fetched_at;
@@ -105,6 +115,7 @@ revoke all on function public.whose_squad_round(text) from public;
 grant execute on function public.whose_squad_round(text) to anon, authenticated, service_role;
 
 comment on function public.whose_squad_round(text) is
-  'Раунд «Чей состав»: 5 игроков одного клуба (card_current_club) и 4 клуба '
-  'на выбор (deck_squads(5)), имена резолвятся под p_lang. fetched_at — для '
-  'честного «состав на дату» на экране, состав не живой.';
+  'Раунд «Чей состав»: 5 игроков одного клуба (card_current_club, с card_id/'
+  'photo_url для карточек с фото) и 4 клуба на выбор (deck_squads(5)), имена '
+  'резолвятся под p_lang. fetched_at — для честного «состав на дату» на '
+  'экране, состав не живой.';
