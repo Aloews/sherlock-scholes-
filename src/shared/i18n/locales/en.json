@@ -117,7 +117,8 @@
     "arena_link": "Two-player arena",
     "ratings_link": "Player ratings",
     "arena_online_link": "Arena over the net",
-    "invites_failed": "Invitations did not load — if somebody invited you, try refreshing."
+    "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
+    "stream_link": "Live TV"
   },
   "design": {
     "master": "New design",
@@ -742,5 +743,12 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches",
     "goals_assists": "{{goals}} G · {{assists}} A"
+  },
+  "stream": {
+    "title": "Live TV",
+    "note": "A live channel playlist — background noise, not part of the game.",
+    "loading": "Loading the stream…",
+    "error": "Couldn't play the stream. Try again later.",
+    "not_configured": "Live TV isn't set up yet."
   }
 }

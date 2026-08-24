@@ -5,6 +5,7 @@ import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
   IconSoccerField, IconPlayerPlay, IconChartBar, IconWifi, IconSwords, IconShirtSport,
+  IconDeviceTv,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -321,6 +322,13 @@ export function HomeScreen() {
               icon={<IconShirtSport size={20} stroke={1.75} />}
               label={t('home.squad_link')}
               onClick={() => navigate('/squad')}
+            />
+            {/* Live TV — unrelated to the Alias gameplay, its own link like
+                every other non-core screen below. See docs/ADR/0004. */}
+            <HomeGameLink
+              icon={<IconDeviceTv size={20} stroke={1.75} />}
+              label={t('home.stream_link')}
+              onClick={() => navigate('/stream')}
             />
             {/* Classic has no tab bar, so the collection would otherwise have
                 no way in at all once the button stack moved. */}

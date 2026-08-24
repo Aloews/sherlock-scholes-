@@ -28,3 +28,4 @@ consequences. ADRs are how this project's standards evolve — see the
 | [0001](./0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](./0002-adopt-engineering-constitution.md) | Adopt the Engineering Constitution | Accepted |
 | [0003](./0003-bootstrap-testing-strategy.md) | Bootstrap testing: Vitest/Stryker + pytest/mutmut, gates, defect locks | Accepted |
+| [0004](./0004-live-tv-playlist-relay.md) | Add a Live TV (m3u/HLS) screen, unrelated to the Alias gameplay | Proposed |

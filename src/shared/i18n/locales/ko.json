@@ -115,7 +115,8 @@
     "arena_link": "2인 대전 아레나",
     "ratings_link": "선수 랭킹",
     "arena_online_link": "네트워크 아레나",
-    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요."
+    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
+    "stream_link": "실시간 TV"
   },
   "design": {
     "master": "새 디자인",
@@ -718,5 +719,12 @@
     "collected_other": "{{count}}일 전 수집",
     "matches_other": "{{count}}경기",
     "goals_assists": "{{goals}}골 · {{assists}}도움"
+  },
+  "stream": {
+    "title": "실시간 TV",
+    "note": "실시간 채널 재생목록입니다. 게임과는 관련이 없습니다.",
+    "loading": "스트림을 불러오는 중…",
+    "error": "스트림을 재생할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "not_configured": "실시간 TV가 아직 설정되지 않았습니다."
   }
 }

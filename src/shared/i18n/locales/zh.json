@@ -115,7 +115,8 @@
     "arena_link": "双人竞技场",
     "ratings_link": "球员榜",
     "arena_online_link": "联机竞技场",
-    "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。"
+    "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
+    "stream_link": "直播电视"
   },
   "design": {
     "master": "新设计",
@@ -718,5 +719,12 @@
     "collected_other": "{{count}} 天前采集",
     "matches_other": "{{count}} 场比赛",
     "goals_assists": "{{goals}} 球 · {{assists}} 助攻"
+  },
+  "stream": {
+    "title": "直播电视",
+    "note": "一个直播频道列表——只是背景内容，与游戏无关。",
+    "loading": "正在加载直播…",
+    "error": "无法播放直播，请稍后再试。",
+    "not_configured": "直播电视尚未配置。"
   }
 }
