@@ -749,6 +749,9 @@
     "note": "Une liste de chaînes en direct — juste en fond, sans lien avec le jeu.",
     "loading": "Chargement du flux…",
     "error": "Impossible de lire le flux. Réessayez plus tard.",
-    "not_configured": "La TV en direct n'est pas encore configurée."
+    "not_configured": "La TV en direct n'est pas encore configurée.",
+    "report_link": "Signaler au titulaire des droits",
+    "report_subject": "Plainte concernant le flux Live TV",
+    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande."
   }
 }

@@ -749,6 +749,9 @@
     "note": "Uma lista de canais ao vivo — só de fundo, sem relação com o jogo.",
     "loading": "Carregando a transmissão…",
     "error": "Não foi possível reproduzir a transmissão. Tente mais tarde.",
-    "not_configured": "A TV ao vivo ainda não foi configurada."
+    "not_configured": "A TV ao vivo ainda não foi configurada.",
+    "report_link": "Denunciar ao detentor dos direitos",
+    "report_subject": "Reclamação sobre a transmissão Live TV",
+    "report_body": "Descreva o conteúdo e inclua prova dos seus direitos. Vamos analisar e agir rapidamente."
   }
 }

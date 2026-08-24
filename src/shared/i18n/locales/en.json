@@ -749,6 +749,9 @@
     "note": "A live channel playlist — background noise, not part of the game.",
     "loading": "Loading the stream…",
     "error": "Couldn't play the stream. Try again later.",
-    "not_configured": "Live TV isn't set up yet."
+    "not_configured": "Live TV isn't set up yet.",
+    "report_link": "Report to the rights holder",
+    "report_subject": "Complaint about the Live TV stream",
+    "report_body": "Please describe the content and include proof of your rights. We will review and act promptly."
   }
 }

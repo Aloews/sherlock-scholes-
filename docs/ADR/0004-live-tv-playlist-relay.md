@@ -35,8 +35,10 @@ misconfiguration is visible instead of silently absent.
   specifically to surface it inside the existing game, and a second Mini App
   is more infra for an unrelated side feature the owner wants iterated on
   quickly.
-- **Hide it behind `/admin`.** Rejected by the owner explicitly — the ask was
-  a home-screen entry, not an admin-only tool.
+- **Hide it behind `/admin` by default.** Rejected by the owner explicitly for
+  the normal case — the ask was a home-screen entry, not an admin-only tool.
+  (It's still the designated fallback for a verified complaint — see
+  Takedown process below — just not the starting state.)
 - **Hardcode the relay URL in code instead of an env var.** Rejected: ties a
   shipped build to one specific ephemeral Railway domain forever; an env var
   lets it move without a redeploy of this app.
@@ -63,6 +65,25 @@ misconfiguration is visible instead of silently absent.
 - **Follow-ups:** if this becomes a real, kept feature, revisit whether it
   belongs in `docs/ROADMAP.md` and whether the playlist source needs a
   licensing review.
+
+## Takedown process
+
+Because the licensing question above is real and unresolved, the screen ships
+with a response path from day one, not as a follow-up:
+
+- A **"Report to the rights holder"** link renders under the player whenever
+  `VITE_STREAM_ABUSE_CONTACT` is set — a plain `mailto:` with a pre-filled
+  subject/body (`buildReportMailto`, unit-tested), no new backend, no DB
+  write. Unset, the link doesn't render (no dead `mailto:undefined`).
+- On a **verified** complaint, the owner has two options, deliberately not
+  automated behind the report link itself (a single click must not be able to
+  take the feature down for everyone — that's a denial-of-service vector):
+  1. **Remove it** — delete the files listed under Compliance below.
+  2. **Restrict it to admin-only** — set `VITE_STREAM_HIDDEN=true` and
+     redeploy. `isStreamHidden()` (`features/stream/config.ts`, unit-tested)
+     pulls the home-screen entry; the `/stream` route stays reachable
+     directly, the same "not linked from the game menu" treatment `/admin`
+     already gets elsewhere in this file.
 
 ## Compliance
 
