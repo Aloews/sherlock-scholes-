@@ -113,6 +113,33 @@ def match_card(name, cards_by_key):
     return cards_by_key.get(card_key(name))
 
 
+def active_cards_by_key(cards, current_club_ids):
+    """Карточки, годные для сопоставления по имени ESPN, ключ — card_key().
+
+    Тот же барьер, что и active_cards_by_key в sports_ru_stats.py, и по той же
+    причине: ESPN тоже достаёт игрока по имени, а не по ID, а состав матча —
+    это РЕАЛЬНЫЕ, СЕЙЧАС ИГРАЮЩИЕ футболисты. Карточка легенды с голым именем
+    (без строки в card_current_club) не обязана участвовать в этом
+    сопоставлении только потому, что ключ совпал с чьим-то ещё.
+
+    ИЗМЕРЕНО, А НЕ ГИПОТЕТИЧНО: Роналдо (р.1976, закончил ~2011, имя карточки
+    — голое «Роналдо») получил чужие голы и с этой стороны тоже — две строки
+    от ныне играющего бразильца из Серии A, найдено на боевой базе 24.08.2026
+    рядом с той же коллизией у sports.ru (docs/namesake_fixes.sql). Барьер для
+    sports.ru уже стоит; это — та же защита для второго источника.
+
+    Пропущенный матч активного игрока, чей card_current_club ещё не подъехал,
+    — безопасное направление ошибки; приписать голы чужого человека карточке
+    легенды — нет. Тот же выбор, что и в sports_ru_stats.py.
+    """
+    by_key = {}
+    for c in cards:
+        if c["id"] not in current_club_ids:
+            continue
+        by_key.setdefault(card_key(c["name_en"]), c)
+    return by_key
+
+
 def collect(days, dry_run=False):
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
@@ -140,12 +167,14 @@ def collect(days, dry_run=False):
         "/cards?select=id,name,name_en&active=eq.true&category=eq.player"
         "&name_en=not.is.null&order=id"
     )
+    current_club_ids = {
+        c["card_id"] for c in db.select("/card_current_club?select=card_id&order=card_id")
+    }
     # Ключ строится по ЛАТИНСКОМУ имени: ESPN пишет «Miguel Almirón», а не
-    # «Мигель Альмирон», и сопоставлять надо в одном алфавите.
-    cards_by_key = {}
-    for c in cards:
-        cards_by_key.setdefault(card_key(c["name_en"]), c)
-    print("cards with a latin name: {}".format(len(cards_by_key)))
+    # «Мигель Альмирон», и сопоставлять надо в одном алфавите. Только карточки
+    # с известным текущим клубом — active_cards_by_key выше объясняет, зачем.
+    cards_by_key = active_cards_by_key(cards, current_club_ids)
+    print("cards with a latin name and a current club: {}".format(len(cards_by_key)))
 
     today = date.today()
     dates = [(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(days)]

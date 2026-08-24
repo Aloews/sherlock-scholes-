@@ -431,8 +431,14 @@ flowchart LR
 
 | Сборщик | Разбор | Тесты | Что берёт |
 |---|---|---|---|
-| `sports_ru_stats.py` | `scraper/sports_ru.py` | `tests/test_sports_ru.py` | матчи игрока, **с минутами** |
-| `espn_stats.py` | `scraper/espn.py` | `tests/test_espn.py` | матчи лиги, **без минут** |
+| `sports_ru_stats.py` | `scraper/sports_ru.py` | `tests/test_sports_ru.py`, `tests/test_sports_ru_stats.py` | матчи игрока, **с минутами** |
+| `espn_stats.py` | `scraper/espn.py` | `tests/test_espn.py`, `tests/test_espn_stats.py` | матчи лиги, **без минут** |
+
+Второй тестовый файл в каждой строке — не разбор, а сопоставление имени с
+карточкой (`active_cards_by_key`): обе колонки исключают карточку без
+`card_current_club` из сопоставления по имени, иначе голое имя легенды
+(«Роналдо») ловит матчи однофамильца, который сейчас реально играет —
+см. `docs/namesake_fixes.sql`.
 
 Шаги в workflow разделены и второй стоит с `if: always()`: источники
 независимы, и падение одного не должно уносить второй.
