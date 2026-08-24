@@ -10,9 +10,15 @@ export interface SquadOption {
   name: string;
 }
 
+export interface SquadPlayer {
+  card_id: string;
+  name: string;
+  photo_url: string | null;
+}
+
 export interface SquadRound {
   answer_key: string;
-  players: string[];
+  players: SquadPlayer[];
   options: SquadOption[];
   /** Состав не живой — клуб, который игрок не покидал на момент последнего
    *  чтения его статьи (current_squads.sql). Экран обязан показать эту
