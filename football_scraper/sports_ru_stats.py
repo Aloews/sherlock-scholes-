@@ -330,6 +330,36 @@ def resolve_by_name(fetcher, card):
     return None
 
 
+def active_cards_by_key(cards, current_club_ids):
+    """Cards eligible for squad-page name matching, keyed by canonical_key.
+
+    Excludes any card with no card_current_club row — the same "no current
+    club, nothing to collect" signal the guess pass below already applies,
+    just applied here too. A squad page lists REAL, CURRENTLY FIELDED
+    players, and matching purely by canonical_key breaks the moment a
+    retired legend's bare-name card (no surname to disambiguate) shares that
+    name with whoever a club just fielded.
+
+    MEASURED, NOT HYPOTHETICAL. Ronaldo (b.1976, retired ~2011, card name is
+    the bare "Роналдо" — the world knows him by nothing else) picked up a
+    currently-active FC Rostov player's match_stats this way: same
+    canonical_key, different human, and the squad pass had no way to tell.
+    Found on the boevaya baza 24.08.2026 — seven sports.ru rows plus two ESPN
+    rows, all real matches played by someone who is not this card.
+
+    A missed match for an active player whose card_current_club hasn't
+    caught up yet is the safe direction to fail in; attributing a stranger's
+    goals to a retired legend's card is not — the same rule this project
+    already applies everywhere else a guess can be wrong in either direction.
+    """
+    by_key = {}
+    for c in cards:
+        if c["id"] not in current_club_ids:
+            continue
+        by_key.setdefault(canonical_key(c["name"]), c)
+    return by_key
+
+
 def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     """Crawl league tables and squads, map squad names onto cards.
 
@@ -340,10 +370,11 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     cards = db.select(
         "/cards?select=id,name,name_en&active=eq.true&category=eq.player&order=id"
     )
-    cards_by_key = {}
-    for c in cards:
-        cards_by_key.setdefault(canonical_key(c["name"]), c)
-    print("cards in deck: {}".format(len(cards)))
+    current_club_ids = {
+        c["card_id"] for c in db.select("/card_current_club?select=card_id&order=card_id")
+    }
+    cards_by_key = active_cards_by_key(cards, current_club_ids)
+    print("cards in deck: {}, with a current club: {}".format(len(cards), len(current_club_ids)))
 
     club_slugs = []
     for seed in SEED_CLUBS:
@@ -384,8 +415,7 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     # a current club, because a retired player has no matches to collect and
     # asking for his page every night is a request spent on a certainty.
     if guess:
-        current = db.select("/card_current_club?select=card_id&order=card_id")
-        wanted = {c["card_id"] for c in current} - seen_cards
+        wanted = current_club_ids - seen_cards
         known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&order=card_id")}
         todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
         print("guessing slugs for {} cards not on any squad page".format(len(todo)))
