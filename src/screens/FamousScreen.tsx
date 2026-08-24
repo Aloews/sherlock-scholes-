@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCheck, IconX } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { hapticImpact, hapticError } from '@/shared/lib/telegram';
 import { fetchFamousRound, type FamousRound } from '@/features/famous/famousApi';
 
@@ -97,7 +98,7 @@ export function FamousScreen() {
                   >
                     <div className="aspect-square w-full bg-brand-border/40">
                       {option.photo_url && (
-                        <img src={option.photo_url} alt="" className="w-full h-full object-cover" />
+                        <PlayerPhoto src={option.photo_url} className="w-full h-full" />
                       )}
                     </div>
                     <div className="px-2.5 py-2 flex items-center gap-1.5">

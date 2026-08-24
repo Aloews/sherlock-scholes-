@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { clsx } from 'clsx';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -22,7 +21,7 @@ import { countryName, positionName } from '@/shared/lib/countryName';
 import { playSound } from '@/shared/lib/sounds';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
-import { photoFitCircleClass } from '@/shared/lib/photoFit';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { CardWatermark } from '@/shared/ui/CardWatermark';
 import { useDesign } from '@/shared/design/useDesign';
 import type { CardCategory } from '@/shared/types/database';
@@ -122,15 +121,12 @@ function HistoryAvatar({ photoUrl, category, alt, tier, onOpen }: {
     );
   }
   const img = (
-    <img
+    <PlayerPhoto
       src={src}
+      category={category}
       alt={alt}
-      loading="lazy"
       onError={() => setFailed(true)}
-      // Portraits crop from the top: football photos have the face in the
-      // upper third, so centre-cropping cuts the head off. Crests and scenes
-      // are shown whole instead — see photoFit.ts.
-      className={clsx('w-8 h-8 shrink-0 rounded-full', photoFitCircleClass(category))}
+      className="w-8 h-8 shrink-0 rounded-full"
     />
   );
   // With a real photo, tap opens the full-size lightbox.

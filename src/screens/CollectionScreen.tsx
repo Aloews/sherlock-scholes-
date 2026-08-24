@@ -5,10 +5,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle } from '@/shared/lib/tier';
-import { photoFitClass } from '@/shared/lib/photoFit';
-import { clsx } from 'clsx';
 import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -62,12 +61,12 @@ function CollectionCell({ card, onOpen }: {
           carry the cell on their own. A category glyph blown up to fill the
           middle read as artwork the card does not have. */}
       {card.photo_url && (
-        <img
+        <PlayerPhoto
           src={card.photo_url}
-          alt=""
-          loading="lazy"
+          category={card.category}
+          shape="free"
           aria-hidden
-          className={clsx('absolute inset-0 w-full h-full', photoFitClass(card.category))}
+          className="absolute inset-0 w-full h-full"
         />
       )}
 
