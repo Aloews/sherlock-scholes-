@@ -74,6 +74,7 @@ node scripts/check-i18n.mjs
 npm test                  # vitest: unit + property + data-integrity
 node scripts/check-limits.mjs   # лимиты, в которые проект уже упирался
 node scripts/check-prod.mjs     # ПРОД без моков, с отрицательными контролями
+node scripts/check-tests.mjs    # способна ли каждая проверка ВООБЩЕ упасть
 ```
 
 ⚠️ **`check-prod` — единственная проверка, которая может упасть по той
