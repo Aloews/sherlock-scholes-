@@ -1,8 +1,6 @@
-"""Build cards.descriptions (JSONB) for NON-PLAYER cards from Wikipedia.
+"""Build cards.descriptions (JSONB) from Wikipedia.
 
-WHY: player cards carry their career in facts / career_stats / legend_career,
-so the end-of-game history shows them properly. Non-player cards have NO such
-source — «Барселона», «Олд Траффорд», «Пьерлуиджи Коллина» render as a bare
+WHY: non-player cards have no other source — «Барселона», «Олд Траффорд», «Пьерлуиджи Коллина» render as a bare
 name with nothing under it. The `descriptions` column + its frontend renderer
 (TrainingScreen: interface language -> en -> ru) already exist and are used by
 the `term` / `position` cards; this script fills the remaining categories.
@@ -75,13 +73,38 @@ APPLY = os.environ.get("APPLY") == "1"
 # `term` and `position` are already filled by hand — the "no descriptions yet"
 # guard drops them anyway, they are listed so --categories can target them.
 TARGET_CATEGORIES = (
+    "player",
     "club", "coach", "referee", "commentator", "stadium",
     "derby", "trophy", "club_nickname", "era",
 )
-# Player cards are NOT in scope: their data lives in facts/career_stats and a
-# wiki lead would duplicate it (and player mononyms resolve badly — «Данте»
-# lands on the poet). Enforced, not just documented.
-EXCLUDED_CATEGORIES = ("player", "woman")
+
+# ⚠️ ИГРОКИ БЫЛИ ИСКЛЮЧЕНЫ, И ТЕПЕРЬ ВКЛЮЧЕНЫ — вот на каком основании.
+#
+# Прежний довод был двойным: (1) карьера игрока и так лежит в
+# facts/career_stats, (2) однословные имена резолвятся плохо — «Данте»
+# приводит к поэту.
+#
+# Первое верно и не отменяется: карьера остаётся в своих колонках. Но карьера
+# — это ТАБЛИЦА КЛУБОВ И МИНУТ, а не фраза о том, кто этот человек. Замер
+# 25.08.2026: у 2918 активных карточек игроков descriptions заполнены у НУЛЯ,
+# тогда как у клубов 92%, у тренеров 97%. Экран показывает имя, фото и
+# столбик минут — и ни строки о том, кем игрок был.
+#
+# Второе к этому моменту уже решено, причём не здесь: `pageviews_i18n`
+# заполнены у 2692 игроков из 2918 (92%), то есть конвейер УЖЕ сопоставил их
+# со статьями по каждому языку — на этих же статьях считаются просмотры и
+# `fame`. Резолв, которого боялись, давно работает.
+#
+# А «Данте»-случай держат два гарда, оба уже написанные и покрытые тестами:
+# P31 обязывает сущность быть человеком, а FOOTBALL GUARD — чтобы её статья
+# говорила о футболе. Поэт проходит первый и проваливает второй; тест на это
+# ровно так и называется («английский поэт не проходит EN-гард»).
+#
+# `woman` оставлена исключённой НАРОЧНО: женские карточки резолвятся своим
+# путём (football_scraper/women_leagues_probe.py), и включать их вслепую,
+# не проверив на боевых данных, — не тот риск, который стоит брать в правке
+# про мужские карточки.
+EXCLUDED_CATEGORIES = ("woman",)
 
 MAX_CHARS = 180          # blurb cap; the frontend renders it as one small line
 MIN_CHARS = 20           # shorter than this is not a description, skip
@@ -98,6 +121,9 @@ DESC_P31_ALLOW = {
     "club":          run.CLUB_P31_ALLOW,
     "club_nickname": run.CLUB_P31_ALLOW,
     "stadium":       run.STADIUM_P31_ALLOW,
+    # Игрок — человек, ровно как тренер и судья. Тот же набор, и это не
+    # совпадение: гард отвечает на вопрос «это вообще человек», а не «кто он».
+    "player":        HUMAN_P31_ALLOW,
     "coach":         HUMAN_P31_ALLOW,
     "referee":       HUMAN_P31_ALLOW,
     "commentator":   HUMAN_P31_ALLOW,

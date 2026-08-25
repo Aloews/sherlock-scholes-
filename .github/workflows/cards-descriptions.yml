@@ -1,7 +1,13 @@
 name: cards-descriptions
 
 # Manual, controlled batches of cards.descriptions (docs/cards_descriptions_build.py):
-# non-player cards get a short blurb from their Wikipedia lead.
+# a card gets a short blurb from its Wikipedia lead.
+#
+# ⚠️ ИГРОКИ ТЕПЕРЬ ВХОДЯТ В ОБЛАСТЬ ДЕЙСТВИЯ, и их много: 2918 активных
+# карточек с НУЛЁМ описаний против 92–100% у остальных категорий. Гонять их
+# одной пачкой не стоит — бюджет Wikimedia общий с ночным daily-enrich.
+# Разумный порядок: сначала dry-run с limit=20 и categories=player, глазами
+# посмотреть таблицу BEFORE/AFTER в логе, и только потом apply=true.
 #
 # DRY-RUN BY DEFAULT — the run prints a BEFORE/AFTER table and writes nothing,
 # so a batch can be reviewed in the log before it lands. Re-run with
@@ -20,7 +26,7 @@ on:
         required: true
         default: '5'
       categories:
-        description: 'Comma-separated categories (empty = all non-player)'
+        description: 'Comma-separated categories (empty = all in scope, players included)'
         required: false
         default: ''
       apply:

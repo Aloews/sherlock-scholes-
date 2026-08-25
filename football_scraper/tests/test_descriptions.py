@@ -160,10 +160,31 @@ check_true("EN-блёрб сворачивается так же, как рус�
 # --------------------------------------------------------------------------
 # scope + P31 guard wiring
 # --------------------------------------------------------------------------
-check_false("игроки вне области действия скрипта",
-            "player" in cdb.TARGET_CATEGORIES)
+# ⚠️ ИГРОКИ ТЕПЕРЬ В ОБЛАСТИ ДЕЙСТВИЯ. Раньше здесь стояло обратное: боялись,
+# что однословные имена уведут не туда («Данте» → поэт). Держат это два гарда
+# ниже, и оба уже проверены выше в этом же файле.
+check_true("игроки в области действия скрипта",
+           "player" in cdb.TARGET_CATEGORIES)
+check_false("игроки больше не исключены",
+            "player" in cdb.EXCLUDED_CATEGORIES)
+check_true("игрок обязан быть человеком по P31",
+           cdb.DESC_P31_ALLOW["player"] is cdb.HUMAN_P31_ALLOW)
+# Тот самый случай, ради которого игроков исключали: поэт — человек и P31
+# проходит, а футбольный гард его отсекает. Проверяем связку целиком.
+check_true("поэт проходит P31 (он человек) — и это НЕ повод его пропустить",
+           "Q5" in cdb.DESC_P31_ALLOW["player"])
+check_false("...но футбольный гард его отсекает", cdb.lead_is_football(
+    "Dante Alighieri was an Italian poet, writer, and philosopher.", "en"))
+check_true("настоящий футболист гард проходит", cdb.lead_is_football(
+    "Dante Bonfim Costa Santos is a Brazilian former professional "
+    "footballer who played as a centre-back.", "en"))
+
+# Женские карточки резолвятся своим путём (women_leagues_probe.py) и остаются
+# исключёнными нарочно — включать их вслепую в правке про мужские нельзя.
 check_false("женщины-игроки вне области действия",
             "woman" in cdb.TARGET_CATEGORIES)
+check_true("женщины-игроки по-прежнему исключены",
+           "woman" in cdb.EXCLUDED_CATEGORIES)
 check_true("клубы используют P31-набор клубов",
            cdb.DESC_P31_ALLOW["club"] is cdb.run.CLUB_P31_ALLOW)
 check_true("стадионы используют P31-набор стадионов",
