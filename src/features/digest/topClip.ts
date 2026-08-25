@@ -1,4 +1,4 @@
-import { fetchWeekendGoals, fetchGoals, type WeekendGoal, type GoalClip } from './digestApi';
+import { fetchRecentGoals, fetchGoals, type RecentGoal, type GoalClip } from './digestApi';
 
 /**
  * Один ролик для главного экрана — и то, ЧТО именно про него можно обещать.
@@ -33,7 +33,7 @@ export interface TopClip {
   kind: TopClipKind;
 }
 
-const fromWeekend = (clip: WeekendGoal): TopClip => ({
+const fromRecent = (clip: RecentGoal): TopClip => ({
   video_id: clip.video_id,
   title: clip.title,
   channel: clip.channel,
@@ -52,19 +52,21 @@ const fromDaily = (clip: GoalClip): TopClip => ({
 });
 
 /**
- * Лучший ролик последних завершившихся выходных, а если их нет — свежий.
+ * Лучший ролик последних дней, а если их нет — свежий.
  *
  * ПОРЯДОК ЗАДАЁТ СЕРВЕР, клиент берёт первую строку. Пересортировать здесь
  * значило бы, что «лучшее» на главной и «лучшее» в дайджесте — разные вещи, и
- * расхождение проявилось бы только на глаз.
+ * расхождение проявилось бы только на глаз. С переходом на скользящее окно это
+ * стало важнее, а не менее важно: сервер теперь чередует дни, и клиент,
+ * решивший «отсортирую по просмотрам», молча вернул бы главной позавчерашнее.
  *
- * Откат на суточные ролики нужен для двух настоящих случаев: понедельник до
- * первого прогона конвейера и первые дни жизни базы. Пустой блок на главной
- * выглядел бы как поломка, а «свежее видео» — это правда.
+ * Откат на суточные ролики нужен для двух настоящих случаев: пауза на сборные
+ * и первые дни жизни базы. Пустой блок на главной выглядел бы как поломка, а
+ * «свежее видео» — это правда.
  */
 export async function fetchTopClip(): Promise<TopClip | null> {
-  const weekend = await fetchWeekendGoals(1);
-  if (weekend.length > 0) return fromWeekend(weekend[0]);
+  const recent = await fetchRecentGoals(1);
+  if (recent.length > 0) return fromRecent(recent[0]);
 
   const daily = await fetchGoals(1);
   if (daily.length > 0) return fromDaily(daily[0]);

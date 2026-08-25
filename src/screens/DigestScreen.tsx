@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
-  fetchDigestSummary, fetchGoals, fetchWeekendGoals, fetchWeekGoals, fetchLiveMatches,
-  type DigestSummary, type GoalClip, type WeekendGoal, type RankedClip, type LiveMatch,
+  fetchDigestSummary, fetchGoals, fetchRecentGoals, fetchEarlierGoals, fetchLiveMatches,
+  type DigestSummary, type GoalClip, type RecentGoal, type RankedClip, type LiveMatch,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
 import { LiveNow } from '@/features/digest/LiveNow';
@@ -46,8 +46,8 @@ export function DigestScreen() {
   const { t, i18n } = useTranslation();
 
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
-  const [weekend, setWeekend] = useState<WeekendGoal[] | null>(null);
-  const [week, setWeek] = useState<RankedClip[] | null>(null);
+  const [recent, setRecent] = useState<RecentGoal[] | null>(null);
+  const [earlier, setEarlier] = useState<RankedClip[] | null>(null);
   // Пустой массив — начальное значение, а не `null`: раздела «идёт сейчас» при
   // пустом списке не бывает вовсе, поэтому различать «ещё не пришло» и «ничего
   // не идёт» здесь нечем и незачем — оба показываются одинаково: никак.
@@ -93,8 +93,8 @@ export function DigestScreen() {
     const run = <T,>(p: Promise<T>, set: (v: T) => void) => {
       void p.then((v) => { if (!cancelled) set(v); });
     };
-    run(fetchWeekendGoals(), setWeekend);
-    run(fetchWeekGoals(), setWeek);
+    run(fetchRecentGoals(), setRecent);
+    run(fetchEarlierGoals(), setEarlier);
     run(fetchGoals(), setGoals);
     run(fetchLiveMatches(), setLive);
     return () => { cancelled = true; };
@@ -118,11 +118,11 @@ export function DigestScreen() {
    */
   const leagues = useMemo(() => {
     const count = new Map<string, number>();
-    for (const c of [...(weekend ?? []), ...(week ?? [])]) {
+    for (const c of [...(recent ?? []), ...(earlier ?? [])]) {
       count.set(c.channel, (count.get(c.channel) ?? 0) + 1);
     }
     return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [weekend, week]);
+  }, [recent, earlier]);
 
   const only = <T extends { channel: string }>(list: T[] | null): T[] =>
     league === null ? list ?? [] : (list ?? []).filter((c) => c.channel === league);
@@ -220,43 +220,44 @@ export function DigestScreen() {
           )}
         </section>
 
-        {/* ─── Голы выходных ───
-            Первой секцией намеренно: это то, ради чего экран открывают раз в
-            неделю. Окно — последние ЗАВЕРШИВШИЕСЯ выходные, поэтому список не
-            растёт на глазах и не выдаёт половину субботы за итог. */}
-        {weekend !== null && (
+        {/* ─── Лучшее за последние дни ───
+            Первой секцией намеренно. ОКНО СКОЛЬЗЯЩЕЕ, а не «прошедшие
+            выходные»: с выходными этот блок во вторник открывался субботой, а
+            понедельничные кубки и вторничная ЛЧ лежали ниже вторым блоком.
+            Порядок внутри — по одному лучшему ролику от каждого дня, потом по
+            второму (digest_recent_window.sql). */}
+        {recent !== null && (
           <section className="space-y-2">
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
-              {t('digest.weekend')}
-              {weekend.length > 0 && (
+              {t('digest.recent')}
+              {recent.length > 0 && (
                 <span className="normal-case">
                   {' · '}
-                  {dayFmt.format(new Date(weekend[0].weekend_start))}
+                  {dayFmt.format(new Date(recent[0].window_start))}
                   {' – '}
-                  {dayFmt.format(new Date(new Date(weekend[0].weekend_end).getTime() - 1))}
+                  {dayFmt.format(new Date(new Date(recent[0].window_end).getTime() - 1))}
                 </span>
               )}
             </p>
 
-            {weekend.length === 0 && (
-              <p className="text-brand-muted text-sm py-4">{t('digest.empty_weekend')}</p>
+            {recent.length === 0 && (
+              <p className="text-brand-muted text-sm py-4">{t('digest.empty_recent')}</p>
             )}
 
-            {only(weekend).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
+            {only(recent).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
 
-        {/* ─── Лучшее за неделю мимо выходных ───
+        {/* ─── Остаток недели мимо главного окна ───
             РАЗДЕЛ ПОЯВИЛСЯ ИЗ-ЗА ДЫРЫ. Суперкубок Европы был скачан вовремя и
             лежал в базе, но показать его было негде: в блок выходных пятница
-            не попадает, а из суточного он выпал через 24 часа. Так исчезало
-            всё, что играется с понедельника по пятницу. */}
-        {week !== null && week.length > 0 && (
+            не попадала, а из суточного он выпал через 24 часа. */}
+        {earlier !== null && earlier.length > 0 && (
           <section className="space-y-2">
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
-              {t('digest.week')}
+              {t('digest.earlier')}
             </p>
-            {only(week).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
+            {only(earlier).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
 
