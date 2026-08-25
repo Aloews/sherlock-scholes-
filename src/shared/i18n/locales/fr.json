@@ -712,22 +712,18 @@
     "title": "Résumé du jour",
     "headlines": "Le plus commenté en 24 heures",
     "goals": "Buts et moments",
-    "goals_note": "Ce que les chaînes officielles des ligues ont publié en 24 heures.",
     "loading": "Chargement…",
     "empty_news": "Rien n’est arrivé aujourd’hui.",
     "empty_goals": "Aucune vidéo en 24 heures.",
     "loudness_one": "{{n}} média",
     "loudness_other": "{{n}} médias",
     "weekend": "Buts du week-end",
-    "weekend_note": "Les buts d’abord, puis par nombre de vues.",
     "week": "Le meilleur de la semaine",
-    "week_note": "Coupes et soirées européennes entre les journées — ce que le week-end n’a pas pris.",
     "moment": "moment",
     "empty_weekend": "Aucune vidéo de ce week-end.",
     "views_one": "{{n}} vue",
     "views_other": "{{n}} vues",
     "summary": "L'essentiel",
-    "summary_note": "Un résumé des sujets chauds du jour, écrit par un modèle de langage.",
     "summary_make": "Rédiger le résumé",
     "summary_retry": "Réessayer",
     "summary_loading": "Rédaction du résumé…",
@@ -735,7 +731,6 @@
     "summary_quiet": "Aucun sujet ne s'est dégagé aujourd'hui : rien à résumer.",
     "summary_refused": "Le modèle n'a pas voulu résumer ces sujets.",
     "live": "En direct",
-    "live_note": "Diffusion ouverte sur la chaîne officielle de la ligue.",
     "live_official": "chaîne officielle"
   },
   "arena": {
@@ -777,7 +772,6 @@
   },
   "news": {
     "title": "Actualités du football",
-    "note": "D’abord ce que tous les médias ont repris.",
     "failed": "Impossible de charger les actualités. Réessayez plus tard."
   },
   "ratings": {
@@ -798,7 +792,6 @@
   },
   "stream": {
     "title": "TV en direct",
-    "note": "Une liste de chaînes en direct — juste en fond, sans lien avec le jeu.",
     "loading": "Chargement du flux…",
     "error": "Impossible de lire le flux. Réessayez plus tard.",
     "not_configured": "La TV en direct n'est pas encore configurée.",

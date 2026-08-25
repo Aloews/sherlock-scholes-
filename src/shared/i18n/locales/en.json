@@ -712,22 +712,18 @@
     "title": "Daily digest",
     "headlines": "Loudest in the last 24 hours",
     "goals": "Goals and moments",
-    "goals_note": "What the leagues’ own channels posted in the last 24 hours.",
     "loading": "Loading…",
     "empty_news": "Nothing came in today.",
     "empty_goals": "No clips in the last 24 hours.",
     "loudness_one": "{{n}} outlet",
     "loudness_other": "{{n}} outlets",
     "weekend": "Goals of the weekend",
-    "weekend_note": "Goals first, then by view count.",
     "week": "Best of the week",
-    "week_note": "Cups and European nights between rounds — what the weekend missed.",
     "moment": "moment",
     "empty_weekend": "No clips from that weekend.",
     "views_one": "{{n}} view",
     "views_other": "{{n}} views",
     "summary": "The short of it",
-    "summary_note": "A recap of the day's hot topics, written by a language model.",
     "summary_make": "Write a recap",
     "summary_retry": "Try again",
     "summary_loading": "Writing the recap…",
@@ -735,7 +731,6 @@
     "summary_quiet": "No topics came together today — there's nothing to recap.",
     "summary_refused": "The model declined to recap these topics.",
     "live": "On now",
-    "live_note": "A free stream on the league’s own channel.",
     "live_official": "official channel"
   },
   "arena": {
@@ -777,7 +772,6 @@
   },
   "news": {
     "title": "Football news",
-    "note": "What every outlet ran with, first.",
     "failed": "Could not load the news. Try again later."
   },
   "ratings": {
@@ -798,7 +792,6 @@
   },
   "stream": {
     "title": "Live TV",
-    "note": "A live channel playlist — background noise, not part of the game.",
     "loading": "Loading the stream…",
     "error": "Couldn't play the stream. Try again later.",
     "not_configured": "Live TV isn't set up yet.",

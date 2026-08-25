@@ -693,20 +693,16 @@
     "title": "今日速览",
     "headlines": "24小时内最热",
     "goals": "进球与瞬间",
-    "goals_note": "各联赛官方频道在24小时内发布的内容。",
     "loading": "加载中…",
     "empty_news": "今天没有新内容。",
     "empty_goals": "24小时内没有视频。",
     "loudness_other": "{{n}}家媒体",
     "weekend": "周末进球",
-    "weekend_note": "先看进球，其余按播放量排序。",
     "week": "本周最佳",
-    "week_note": "轮次之间的杯赛与欧战之夜——周末没有收录的部分。",
     "moment": "瞬间",
     "empty_weekend": "那个周末没有视频。",
     "views_other": "{{n}}次播放",
     "summary": "要点速览",
-    "summary_note": "由语言模型概括当天的热门话题。",
     "summary_make": "生成摘要",
     "summary_retry": "重试",
     "summary_loading": "正在生成摘要…",
@@ -714,7 +710,6 @@
     "summary_quiet": "今天没有形成话题，暂无内容可概括。",
     "summary_refused": "模型未对这些话题进行概括。",
     "live": "正在直播",
-    "live_note": "联赛官方频道的公开直播。",
     "live_official": "官方频道"
   },
   "arena": {
@@ -755,7 +750,6 @@
   },
   "news": {
     "title": "足球新闻",
-    "note": "先看各家同时报道的话题。",
     "failed": "新闻加载失败，请稍后再试。"
   },
   "ratings": {
@@ -774,7 +768,6 @@
   },
   "stream": {
     "title": "直播电视",
-    "note": "一个直播频道列表——只是背景内容，与游戏无关。",
     "loading": "正在加载直播…",
     "error": "无法播放直播，请稍后再试。",
     "not_configured": "直播电视尚未配置。",

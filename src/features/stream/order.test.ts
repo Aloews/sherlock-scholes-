@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { orderChannels, nextAlive, PINNED } from './order';
-import type { Channel } from './playlist';
+import { orderChannels, nextAlive } from './order';
+import { PINNED, isPinned, type Channel } from './playlist';
 
 const ch = (name: string, url = name): Channel => ({ name, group: 'SPORT 🏆', logo: null, url });
 
@@ -39,10 +39,33 @@ describe('orderChannels', () => {
 
   // Замер 25.08.2026: канал отдаёт 404. Поднять его наверх значит вернуть тот
   // самый баг — первый канал играет сам, и мёртвый первый ломает весь экран.
+  // ⚠️ «Матч! ПЛАНЕТА» мертва, а «Матч! ПРЕМЬЕР» жива и закреплена первой:
+  // проверка обязана их различать, иначе она бессмысленна.
   it('does not pin the channels that measured dead', () => {
-    expect(PINNED.some((p) => 'матч! планета'.includes(p))).toBe(false);
-    expect(PINNED.some((p) => 'khl'.includes(p))).toBe(false);
-    expect(PINNED.some((p) => 'futbol uz'.includes(p))).toBe(false);
+    expect(isPinned(ch('Матч! Планета'))).toBe(false);
+    expect(isPinned(ch('KHL'))).toBe(false);
+    expect(isPinned(ch('FUTBOL UZ'))).toBe(false);
+    expect(isPinned(ch('Матч! Премьер'))).toBe(true);
+  });
+
+  // Названные игроком каналы. Большинство сегодня отдаётся по http и до экрана
+  // не доходит — но список обязан их знать, чтобы они появились сами, когда
+  // ретранслятор отдаст их по https.
+  it('knows every channel that was asked for by name', () => {
+    for (const name of ['Матч! Премьер', 'Матч Премьер', 'Беларусь 5',
+                        'Матч! Футбол 1', 'sport Футбол 2 HD', 'sport Футбол 3',
+                        'Setanta Sports UA', 'Setanta Sports 1 HD']) {
+      expect(isPinned(ch(name)), name).toBe(true);
+    }
+  });
+
+  it('puts Матч! Премьер above the rest — it is the one that plays today', () => {
+    const out = orderChannels([ch('Divi Sport'), ch('Setanta Sports 1 HD'), ch('Матч! Премьер')]);
+    expect(out[0].name).toBe('Матч! Премьер');
+  });
+
+  it('leaves PINNED as a plain list of lowercase needles', () => {
+    expect(PINNED.every((n) => n === n.toLowerCase())).toBe(true);
   });
 });
 

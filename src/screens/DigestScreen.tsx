@@ -186,7 +186,6 @@ export function DigestScreen() {
 
           {summary === null && (
             <>
-              <p className="text-brand-muted text-[10.5px]">{t('digest.summary_note')}</p>
               <Button variant="secondary" size="sm" fullWidth onClick={makeSummary}>
                 {t('digest.summary_make')}
               </Button>
@@ -238,7 +237,6 @@ export function DigestScreen() {
                 </span>
               )}
             </p>
-            <p className="text-brand-muted text-[10.5px]">{t('digest.weekend_note')}</p>
 
             {weekend.length === 0 && (
               <p className="text-brand-muted text-sm py-4">{t('digest.empty_weekend')}</p>
@@ -258,7 +256,6 @@ export function DigestScreen() {
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
               {t('digest.week')}
             </p>
-            <p className="text-brand-muted text-[10.5px]">{t('digest.week_note')}</p>
             {only(week).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
           </section>
         )}
@@ -270,7 +267,6 @@ export function DigestScreen() {
           </p>
           {/* Обещание ровно того, что есть: подборка каналов лиг за сутки, а
               не рейтинг. Порядок по времени здесь осознанный — см. шапку. */}
-          <p className="text-brand-muted text-[10.5px]">{t('digest.goals_note')}</p>
 
           {goals === null && <p className="text-brand-muted text-sm py-4">{t('digest.loading')}</p>}
           {goals !== null && goals.length === 0 && (
