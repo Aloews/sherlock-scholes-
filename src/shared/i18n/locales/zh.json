@@ -773,6 +773,10 @@
     "not_configured": "直播电视尚未配置。",
     "report_link": "作为权利人举报",
     "report_subject": "关于直播电视的投诉",
-    "report_body": "请描述相关内容并附上权利证明，我们会尽快审核处理。"
+    "report_body": "请描述相关内容并附上权利证明，我们会尽快审核处理。",
+    "channels_title": "频道",
+    "channels_loading": "正在加载频道列表…",
+    "channels_failed": "无法加载频道列表。",
+    "channels_empty": "目前没有可观看的体育频道。"
   }
 }

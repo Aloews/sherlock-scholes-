@@ -797,6 +797,10 @@
     "not_configured": "La TV en vivo aún no está configurada.",
     "report_link": "Reportar al titular de los derechos",
     "report_subject": "Queja sobre la transmisión de Live TV",
-    "report_body": "Describe el contenido e incluye prueba de tus derechos. Lo revisaremos y actuaremos con rapidez."
+    "report_body": "Describe el contenido e incluye prueba de tus derechos. Lo revisaremos y actuaremos con rapidez.",
+    "channels_title": "Canales",
+    "channels_loading": "Cargando la lista de canales…",
+    "channels_failed": "No se pudo cargar la lista de canales.",
+    "channels_empty": "Ahora mismo no hay canales deportivos disponibles."
   }
 }
