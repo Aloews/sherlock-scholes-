@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconStar, IconStarFilled, IconSearch } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
+import { Chip } from '@/shared/ui/Chip';
 import { Avatar } from '@/shared/ui/Avatar';
 import { getRawInitData, hapticImpact, hapticError } from '@/shared/lib/telegram';
 import {
-  SQUAD_SIZE, fetchOpenRound, fetchCurrentRound, fetchLocksAt, fetchOptions,
-  fetchMySquad, setSquad, fetchStandings,
-  type FantasyOption, type SquadMember, type StandingRow,
+  SQUAD_SIZE, DEFAULT_TACTIC, fetchOpenRound, fetchCurrentRound, fetchLocksAt, fetchOptions,
+  fetchMySquad, setSquad, fetchStandings, fetchTactics, tacticFits,
+  type FantasyOption, type SquadMember, type StandingRow, type Tactic, type TacticKey,
 } from '@/features/fantasy/fantasyApi';
 import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { dateTimeFormat } from '@/shared/lib/dateFormat';
@@ -25,6 +26,14 @@ import { dateTimeFormat } from '@/shared/lib/dateFormat';
  * ОЧКИ КАРТОЧКИ — ЗА РЕЗУЛЬТАТ ЕЁ КЛУБА, не за её действия: постатейной
  * статистики игроков нет. Правило написано на экране, чтобы это не выяснялось
  * опытным путём. Подробности — docs/FANTASY_AND_MINIGAMES.md.
+ *
+ * СХЕМА — ЕДИНСТВЕННОЕ НАСТОЯЩЕЕ РЕШЕНИЕ НА ЭТОМ ЭКРАНЕ. Пока её не было,
+ * состав собирался по одному признаку — у чьего клуба соперник полегче, — и
+ * пятёрка нападающих ничем не отличалась от пятёрки вратарей тех же клубов.
+ * Схема даёт ставку: «Оборона» живёт сухарями и за голы не получает НИЧЕГО,
+ * «Атака» наоборот, «Баланс» получает всегда и понемногу. Веса и требования
+ * приходят с сервера (`fantasy_tactics`), а не лежат здесь второй копией —
+ * показанное игроку правило и применённое обязаны быть одним числом.
  */
 export function FantasyScreen() {
   const navigate = useNavigate();
@@ -40,6 +49,9 @@ export function FantasyScreen() {
   const [refused, setRefused] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [tactics, setTactics] = useState<Tactic[]>([]);
+  const [tactic, setTactic] = useState<TacticKey>(DEFAULT_TACTIC);
+
   const [liveSquad, setLiveSquad] = useState<SquadMember[]>([]);
   // Отдельный признак: форма заявки — это picked/captain, а не список. Если
   // заявку не удалось прочитать, форма откроется пустой И БУДЕТ ВЫГЛЯДЕТЬ КАК
@@ -54,14 +66,16 @@ export function FantasyScreen() {
       if (cancelled || !open) { setOptions(ok([])); return; }
       setOpenRoundId(open.id);
 
-      const [lock, opts, mine] = await Promise.all([
+      const [lock, opts, mine, schemes] = await Promise.all([
         fetchLocksAt(open.id),
         fetchOptions(open.id),
         fetchMySquad(getRawInitData(), open.id),
+        fetchTactics(),
       ]);
       if (cancelled) return;
       setLocksAt(lock);
       setOptions(opts);
+      setTactics(schemes);
       // Уже заявленный состав — это состояние формы, а не отдельный экран:
       // менять заявку до закрытия можно, и она должна открываться заполненной.
       //
@@ -72,6 +86,10 @@ export function FantasyScreen() {
       if (mine.status === 'ok') {
         setPicked(mine.data.map((m) => m.card_id));
         setCaptain(mine.data.find((m) => m.is_captain)?.card_id ?? null);
+        // Схема — часть заявки, и открываться форма обязана с той, что уже
+        // заявлена. Иначе игрок, зашедший поправить одного игрока, молча
+        // перезаписал бы свою «Оборону» «Балансом».
+        if (mine.data.length > 0) setTactic(mine.data[0].tactic);
       }
 
       if (current) {
@@ -101,6 +119,25 @@ export function FantasyScreen() {
       .slice(0, 60);
   }, [options, query]);
 
+  /** Позиции выбранной пятёрки — по ним и проверяется требование схемы. */
+  const pickedPositions = useMemo(() => {
+    const list = dataOr(options, []);
+    return picked.map((id) => list.find((o) => o.card_id === id)?.position_key ?? null);
+  }, [options, picked]);
+
+  const chosen = tactics.find((s) => s.key === tactic) ?? null;
+
+  /**
+   * Годится ли состав под схему.
+   *
+   * Пока состав не набран, требование считать НЕ НАДО: недобор из трёх человек
+   * не подходит ни под что, и красная подсказка висела бы с первого тапа, ничего
+   * не сообщая. Отвечаем на вопрос только тогда, когда он задан.
+   */
+  const fits = chosen === null || picked.length < SQUAD_SIZE
+    ? true
+    : tacticFits(pickedPositions, chosen);
+
   const toggle = (cardId: string) => {
     hapticImpact('light');
     setSaved(false);
@@ -115,9 +152,9 @@ export function FantasyScreen() {
   };
 
   const save = async () => {
-    if (openRoundId === null || picked.length !== SQUAD_SIZE || !captain) return;
+    if (openRoundId === null || picked.length !== SQUAD_SIZE || !captain || !fits) return;
     setSaving(true);
-    const ok = await setSquad(getRawInitData(), openRoundId, picked, captain);
+    const ok = await setSquad(getRawInitData(), openRoundId, picked, captain, tactic);
     setSaving(false);
     if (!ok) { setRefused(true); hapticError(); return; }
     setRefused(false);
@@ -184,6 +221,40 @@ export function FantasyScreen() {
             </p>
           </div>
 
+          {/* Схема. Стоит НАД составом, а не под ним: она задаёт, кого вообще
+              имеет смысл брать, и увиденная после сборки пятёрки означала бы
+              пересобирать её заново. */}
+          {tactics.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+                {t('fantasy.tactic')}
+              </p>
+              <div className="-mx-1 px-1 overflow-x-auto">
+                <div className="flex gap-1.5 w-max">
+                  {tactics.map((scheme) => (
+                    <Chip
+                      key={scheme.key}
+                      label={t(`fantasy.tactic_${scheme.key}`)}
+                      selected={tactic === scheme.key}
+                      disabled={locked}
+                      onClick={() => {
+                        hapticImpact('light');
+                        setTactic(scheme.key);
+                        setSaved(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              {/* Цена схемы — словами и с сервера, а не «×2» без пояснения. */}
+              {chosen && (
+                <p className="text-brand-muted text-[10.5px]">
+                  {t(`fantasy.tactic_${chosen.key}_hint`)}
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-white text-sm">
             {t('fantasy.picked_of', { n: picked.length, total: SQUAD_SIZE })}
           </p>
@@ -206,6 +277,14 @@ export function FantasyScreen() {
                         : <IconStar size={14} />}
                     </button>
                     <span className="flex-1 min-w-0 truncate text-white">{option?.name ?? id}</span>
+                    {/* Линия — рядом с именем: без неё требование схемы
+                        проверить глазами нечем, а отказ выглядел бы
+                        необъяснимым. */}
+                    {option?.position_key && (
+                      <span className="text-brand-muted/70 shrink-0">
+                        {t(`fantasy.pos_${option.position_key}`)}
+                      </span>
+                    )}
                     <span className="text-brand-muted truncate max-w-[35%]">{option?.club}</span>
                     <button
                       type="button"
@@ -225,12 +304,23 @@ export function FantasyScreen() {
             </div>
           )}
 
+          {/* Состав не подходит под схему — сказать ЧЕГО не хватает, до
+              отправки. Сервер откажет всё равно, но его отказ одинаков для
+              шести разных причин и не подсказывает, что чинить. */}
+          {!fits && chosen && (
+            <p className="text-brand-muted text-[10.5px]">
+              {chosen.min_defence
+                ? t('fantasy.tactic_needs_defence', { n: chosen.min_defence })
+                : t('fantasy.tactic_needs_forwards', { n: chosen.min_forwards ?? 0 })}
+            </p>
+          )}
+
           {!locked && (
             <Button
               fullWidth
               size="sm"
               loading={saving}
-              disabled={picked.length !== SQUAD_SIZE || !captain}
+              disabled={picked.length !== SQUAD_SIZE || !captain || !fits}
               onClick={() => { void save(); }}
             >
               {saved ? t('fantasy.saved') : t('fantasy.save')}
@@ -269,7 +359,11 @@ export function FantasyScreen() {
                   <Avatar name={option.name} size="sm" />
                   <span className="flex-1 min-w-0">
                     <span className="block truncate text-white text-sm">{option.name}</span>
-                    <span className="block truncate text-brand-muted text-[10.5px]">{option.club}</span>
+                    <span className="block truncate text-brand-muted text-[10.5px]">
+                      {option.position_key
+                        ? `${t(`fantasy.pos_${option.position_key}`)} · ${option.club}`
+                        : option.club}
+                    </span>
                   </span>
                   {/* Два матча в туре — вдвое больше поводов взять именно его. */}
                   {option.match_count > 1 && (
