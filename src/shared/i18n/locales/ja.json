@@ -116,7 +116,8 @@
     "arena_link": "2人対戦アリーナ",
     "ratings_link": "選手ランキング",
     "arena_online_link": "ネット対戦アリーナ",
-    "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。"
+    "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。",
+    "stream_link": "ライブTV"
   },
   "design": {
     "master": "新デザイン",
@@ -596,7 +597,20 @@
   },
   "fantasy": {
     "title": "ファンタジー",
-    "rules": "カードはクラブの結果で加点：勝ち3、引き分け1、無失点+2、得点+1、大敗−1。キャプテンは2倍。",
+    "rules": "カードはクラブの結果で加点：勝ち3、引き分け1、大敗−1。無失点とクラブの得点は選手のポジションと選んだ戦術で決まります。キャプテンは2倍。",
+    "tactic": "戦術",
+    "tactic_defensive": "守備的",
+    "tactic_balanced": "バランス",
+    "tactic_attacking": "攻撃的",
+    "tactic_defensive_hint": "無失点は2倍、クラブの得点は加点なし。最終ラインに3人以上が必要。",
+    "tactic_balanced_hint": "無失点も得点もそのまま。スカッドの条件なし。",
+    "tactic_attacking_hint": "得点は2倍、無失点は加点なし。FWが2人以上必要。",
+    "tactic_needs_defence": "守備が足りません：GKまたはDFが{{n}}人以上必要です。",
+    "tactic_needs_forwards": "攻撃が足りません：FWが{{n}}人以上必要です。",
+    "pos_gk": "GK",
+    "pos_def": "DF",
+    "pos_mid": "MF",
+    "pos_fwd": "FW",
     "this_round": "今節",
     "next_round": "次節",
     "locks_at": "締切 {{when}}",
@@ -750,5 +764,15 @@
     "collected_other": "{{count}} 日前に取得",
     "matches_other": "{{count}} 試合",
     "goals_assists": "{{goals}} 得点 · {{assists}} アシスト"
+  },
+  "stream": {
+    "title": "ライブTV",
+    "note": "ライブチャンネルの再生リストです。ゲームとは関係ありません。",
+    "loading": "配信を読み込み中…",
+    "error": "配信を再生できませんでした。時間をおいてお試しください。",
+    "not_configured": "ライブTVはまだ設定されていません。",
+    "report_link": "権利者として通報する",
+    "report_subject": "ライブTV配信に関する申し立て",
+    "report_body": "コンテンツの内容と権利を証明する情報をご記入ください。速やかに確認し対応いたします。"
   }
 }

@@ -118,7 +118,8 @@
     "arena_link": "Arène à deux",
     "ratings_link": "Classement des joueurs",
     "arena_online_link": "Arène en réseau",
-    "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser."
+    "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
+    "stream_link": "TV en direct"
   },
   "design": {
     "master": "Nouveau design",
@@ -615,7 +616,20 @@
   },
   "fantasy": {
     "title": "Fantasy",
-    "rules": "Une carte marque grâce à son club : victoire 3, nul 1, clean sheet +2, but +1, lourde défaite −1. Capitaine doublé.",
+    "rules": "Une carte marque grâce à son club : victoire 3, nul 1, lourde défaite −1. Les clean sheets et les buts du club comptent selon la ligne du joueur et votre schéma. Capitaine doublé.",
+    "tactic": "Schéma",
+    "tactic_defensive": "Défensif",
+    "tactic_balanced": "Équilibré",
+    "tactic_attacking": "Offensif",
+    "tactic_defensive_hint": "Le clean sheet compte double, les buts ne rapportent rien. Minimum 3 derrière.",
+    "tactic_balanced_hint": "Clean sheets et buts tels quels. Aucune exigence d’effectif.",
+    "tactic_attacking_hint": "Les buts comptent double, le clean sheet ne rapporte rien. Minimum 2 attaquants.",
+    "tactic_needs_defence": "Défense insuffisante : au moins {{n}} gardiens ou défenseurs requis.",
+    "tactic_needs_forwards": "Attaque insuffisante : au moins {{n}} attaquants requis.",
+    "pos_gk": "GB",
+    "pos_def": "DÉF",
+    "pos_mid": "MIL",
+    "pos_fwd": "ATT",
     "this_round": "Journée en cours",
     "next_round": "Prochaine journée",
     "locks_at": "Clôture {{when}}",
@@ -774,5 +788,15 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matchs",
     "goals_assists": "{{goals}} B · {{assists}} PD"
+  },
+  "stream": {
+    "title": "TV en direct",
+    "note": "Une liste de chaînes en direct — juste en fond, sans lien avec le jeu.",
+    "loading": "Chargement du flux…",
+    "error": "Impossible de lire le flux. Réessayez plus tard.",
+    "not_configured": "La TV en direct n'est pas encore configurée.",
+    "report_link": "Signaler au titulaire des droits",
+    "report_subject": "Plainte concernant le flux Live TV",
+    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande."
   }
 }

@@ -116,7 +116,8 @@
     "arena_link": "2인 대전 아레나",
     "ratings_link": "선수 랭킹",
     "arena_online_link": "네트워크 아레나",
-    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요."
+    "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
+    "stream_link": "실시간 TV"
   },
   "design": {
     "master": "새 디자인",
@@ -596,7 +597,20 @@
   },
   "fantasy": {
     "title": "판타지",
-    "rules": "카드는 소속 클럽 결과로 득점: 승 3, 무 1, 무실점 +2, 득점 +1, 대패 −1. 주장은 2배.",
+    "rules": "카드는 소속 클럽 결과로 득점: 승 3, 무 1, 대패 −1. 무실점과 클럽 득점은 선수 라인과 선택한 전술에 따라 계산됩니다. 주장은 2배.",
+    "tactic": "전술",
+    "tactic_defensive": "수비적",
+    "tactic_balanced": "균형",
+    "tactic_attacking": "공격적",
+    "tactic_defensive_hint": "무실점은 2배, 클럽 득점은 점수 없음. 최소 3명이 수비에 필요.",
+    "tactic_balanced_hint": "무실점과 득점 그대로. 스쿼드 조건 없음.",
+    "tactic_attacking_hint": "득점은 2배, 무실점은 점수 없음. 공격수 최소 2명 필요.",
+    "tactic_needs_defence": "수비가 부족합니다: 골키퍼 또는 수비수가 최소 {{n}}명 필요합니다.",
+    "tactic_needs_forwards": "공격이 부족합니다: 공격수가 최소 {{n}}명 필요합니다.",
+    "pos_gk": "GK",
+    "pos_def": "DF",
+    "pos_mid": "MF",
+    "pos_fwd": "FW",
     "this_round": "이번 라운드",
     "next_round": "다음 라운드",
     "locks_at": "마감 {{when}}",
@@ -750,5 +764,15 @@
     "collected_other": "{{count}}일 전 수집",
     "matches_other": "{{count}}경기",
     "goals_assists": "{{goals}}골 · {{assists}}도움"
+  },
+  "stream": {
+    "title": "실시간 TV",
+    "note": "실시간 채널 재생목록입니다. 게임과는 관련이 없습니다.",
+    "loading": "스트림을 불러오는 중…",
+    "error": "스트림을 재생할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "not_configured": "실시간 TV가 아직 설정되지 않았습니다.",
+    "report_link": "저작권자로서 신고하기",
+    "report_subject": "실시간 TV 스트림에 대한 신고",
+    "report_body": "콘텐츠 내용과 권리 증빙을 함께 알려주세요. 신속히 검토 후 조치하겠습니다."
   }
 }

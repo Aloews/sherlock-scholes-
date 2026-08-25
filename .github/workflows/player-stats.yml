@@ -58,12 +58,18 @@ jobs:
       # The parsers are pure and their tests need no network and no secrets, so
       # they run BEFORE the crawl. A markup change that shifts the stat columns
       # produces believable numbers, and believable wrong numbers are exactly
-      # what must not reach the table.
+      # what must not reach the table. The _stats tests cover the same risk on
+      # the matching side — active_cards_by_key is what stops a retired
+      # legend's bare-name card from absorbing a namesake's real matches (see
+      # docs/namesake_fixes.sql); a regression there is exactly the kind of
+      # believable-wrong-number bug this step exists to catch before the run.
       - name: Parser tests
         working-directory: football_scraper
         run: |
           python3 tests/test_sports_ru.py
           python3 tests/test_espn.py
+          python3 tests/test_sports_ru_stats.py
+          python3 tests/test_espn_stats.py
 
       - name: Collect
         working-directory: football_scraper
