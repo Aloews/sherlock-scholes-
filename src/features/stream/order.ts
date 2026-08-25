@@ -26,6 +26,7 @@
 // `playlist.ts` и `fantasy/tactics.ts`.
 
 import { pinRank, type Channel } from './playlist';
+import type { Health } from './channelCache';
 
 /**
  * Кого поднять наверх.
@@ -53,8 +54,26 @@ import { pinRank, type Channel } from './playlist';
  * порядок плейлиста между ними обязан сохраниться. Иначе список перетасовывался
  * бы на ровном месте при каждой загрузке.
  */
-export function orderChannels(channels: readonly Channel[]): Channel[] {
-  return [...channels].sort((a, b) => pinRank(a) - pinRank(b));
+export function orderChannels(
+  channels: readonly Channel[],
+  health: Readonly<Record<string, Health>> = {},
+): Channel[] {
+  // ⚠️ ЗДОРОВЬЕ ВАЖНЕЕ ЗАКРЕПЛЁННОСТИ, и это исправление моей же ошибки.
+  // PINNED я составил по названиям, ни разу не проверив, играют ли каналы.
+  // Замер прода 25.08.2026 по полной цепочке HLS: «Матч! Премьер», «Setanta
+  // Sports 1 HD» и «Setanta Sports 2 HD» — все три МЕРТВЫ ниже первого
+  // манифеста, и все три стояли первыми. Игрок упирался в три отказа подряд.
+  //
+  // PINNED по-прежнему решает, КАКИЕ каналы показывать и в каком порядке
+  // среди равных. Но если канал уже отказал на этом устройстве — он уходит
+  // вниз, каким бы закреплённым ни был, а игравший поднимается наверх.
+  const bucket = (c: Channel) => {
+    const h = health[c.url];
+    if (h === 'played') return 0;
+    if (h === 'failed') return 2;
+    return 1;
+  };
+  return [...channels].sort((a, b) => bucket(a) - bucket(b) || pinRank(a) - pinRank(b));
 }
 
 /**

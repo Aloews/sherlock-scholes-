@@ -110,3 +110,46 @@ describe('nextAlive', () => {
     expect(nextAlive(list, 'A', new Set(['B', 'C']))).toBe('A');
   });
 });
+
+describe('порядок по измеренному здоровью', () => {
+  // ⚠️ ЭТО ИСПРАВЛЕНИЕ МОЕЙ ЖЕ ОШИБКИ. PINNED составлен по названиям, без
+  // единой проверки, играет ли канал. Замер прода 25.08.2026 по ПОЛНОЙ
+  // цепочке HLS: «Матч! Премьер», «Setanta Sports 1 HD», «Setanta Sports 2 HD»
+  // мертвы ниже первого манифеста — и все три стояли первыми.
+  it('отправляет отказавший канал вниз, каким бы закреплённым он ни был', () => {
+    const list = [ch('Матч! Премьер', 'u1'), ch('Divi Sport', 'u2')];
+    const out = orderChannels(list, { u1: 'failed' });
+    expect(out.map((c) => c.name)).toEqual(['Divi Sport', 'Матч! Премьер']);
+  });
+
+  it('поднимает игравший канал выше незакреплённого неизвестного', () => {
+    const list = [ch('Divi Sport', 'u1'), ch('AYM HD', 'u2')];
+    expect(orderChannels(list, { u2: 'played' })[0].name).toBe('AYM HD');
+  });
+
+  it('игравший канал обгоняет даже закреплённого, о котором ничего не известно', () => {
+    const list = [ch('Setanta Sports 1 HD', 'u1'), ch('Divi Sport', 'u2')];
+    expect(orderChannels(list, { u2: 'played' })[0].name).toBe('Divi Sport');
+  });
+
+  // Внутри одной корзины порядок по-прежнему решает PINNED.
+  it('среди равных по здоровью работает прежний порядок закреплённых', () => {
+    const list = [ch('Divi Sport', 'u1'), ch('Setanta Sports 1 HD', 'u2')];
+    expect(orderChannels(list, {})[0].name).toBe('Setanta Sports 1 HD');
+  });
+
+  it('без сведений о здоровье ведёт себя ровно как раньше', () => {
+    const list = [ch('Divi Sport', 'u1'), ch('Матч! Премьер', 'u2')];
+    expect(orderChannels(list).map((c) => c.name))
+      .toEqual(orderChannels(list, {}).map((c) => c.name));
+  });
+
+  it('три мёртвых закреплённых уступают одному живому незакреплённому', () => {
+    const list = [
+      ch('Матч! Премьер', 'd1'), ch('Setanta Sports 1 HD', 'd2'),
+      ch('Setanta Sports 2 HD', 'd3'), ch('Viasat Sport', 'ok1'),
+    ];
+    const out = orderChannels(list, { d1: 'failed', d2: 'failed', d3: 'failed', ok1: 'played' });
+    expect(out[0].name).toBe('Viasat Sport');
+  });
+});

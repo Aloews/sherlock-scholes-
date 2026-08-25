@@ -30,7 +30,8 @@ const KEY = 'ss_tv_channels';
  * старая запись тогда отбрасывается, а не читается как своя. Без этого правка
  * фильтров показывала бы вчерашний список тем, у кого он уже лежит.
  */
-const VERSION = 1;
+export const CACHE_VERSION = 2;
+const VERSION = CACHE_VERSION;
 
 /** Сколько живёт запись. Сутки: каталог правят руками и не каждый день. */
 export const TTL_MS = 24 * 60 * 60 * 1000;
@@ -97,10 +98,88 @@ export function writeCache(src: string, channels: Channel[], now = Date.now()): 
   }
 }
 
+// ---------------------------------------------------------------------------
+// ЗДОРОВЬЕ КАНАЛОВ
+//
+// ⚠️ ЗАКРЕПЛЯТЬ КАНАЛЫ ВСЛЕПУЮ ОКАЗАЛОСЬ ОШИБКОЙ, и вот её цена. Замер прода
+// 25.08.2026, проход по ПОЛНОЙ цепочке HLS до байтов видео:
+//
+//   Матч! Премьер        master ok -> variant ok -> media 404   МЁРТВ
+//   Setanta Sports 1 HD  master ok -> variant 404               МЁРТВ
+//   Setanta Sports 2 HD  master ok -> variant 404               МЁРТВ
+//   Viasat Sport         -> 2826 КБ видео                       ЖИВ
+//   Viasat Sports        -> 1977 КБ видео                       ЖИВ
+//
+// Все три мёртвых стояли ПЕРВЫМИ, потому что я поставил их в список вручную —
+// по названию, ни разу не спросив, играют ли они. Верхний манифест у всех
+// отвечает 200, и проверка, которая на нём останавливается, называет их
+// живыми. Игрок открывал экран и упирался в три отказа подряд.
+//
+// Причём «Матч! Премьер» за десять минут до замера отдавал сегмент на 1.3 МБ.
+// Он мигает — а значит СТАТИЧЕСКИЙ список правильным не будет никогда, каким
+// бы тщательным ни был. Правильный порядок знает только то, что реально
+// проигралось на этом устройстве.
+//
+// Поэтому здесь помнится исход каждого канала, и порядок строится по нему:
+// игравшие — вперёд, неизвестные — следом, отказавшие — в конец. Это не
+// заменяет `PINNED` (он решает, КАКИЕ каналы показывать), а поправляет его
+// там, где он ошибся: КАКОЙ показать первым.
+
+const HEALTH_KEY = 'ss_tv_health';
+
+/** Сколько помнить исход. Сутки: канал чинят и ломают чаще, чем раз в неделю. */
+export const HEALTH_TTL_MS = 24 * 60 * 60 * 1000;
+
+export type Health = 'played' | 'failed';
+
+interface HealthEntry { v: number; at: number; urls: Record<string, Health> }
+
+function readHealthRaw(now: number): Record<string, Health> {
+  try {
+    const raw = localStorage.getItem(HEALTH_KEY);
+    if (!raw) return {};
+    const e = JSON.parse(raw) as Partial<HealthEntry>;
+    if (e.v !== VERSION) return {};
+    if (typeof e.at !== 'number' || now - e.at > HEALTH_TTL_MS) return {};
+    if (!e.urls || typeof e.urls !== 'object') return {};
+    const out: Record<string, Health> = {};
+    for (const [k, v] of Object.entries(e.urls)) {
+      if (v === 'played' || v === 'failed') out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Что известно об исходах. Пустой объект — «ничего», и это не ошибка. */
+export function readHealth(now = Date.now()): Record<string, Health> {
+  return readHealthRaw(now);
+}
+
+/**
+ * Запомнить исход одного канала.
+ *
+ * ⚠️ УСПЕХ ПЕРЕБИВАЕТ ОТКАЗ, но не наоборот в пределах одной записи: канал,
+ * который сегодня заиграл, важнее вчерашнего отказа. Обратное правило
+ * похоронило бы канал навсегда из-за одной сетевой икоты.
+ */
+export function markHealth(url: string, health: Health, now = Date.now()): void {
+  try {
+    const urls = readHealthRaw(now);
+    urls[url] = health;
+    const entry: HealthEntry = { v: VERSION, at: now, urls };
+    localStorage.setItem(HEALTH_KEY, JSON.stringify(entry));
+  } catch {
+    // см. writeCache — кэш это ускорение, а не условие работы
+  }
+}
+
 /** Забыть запись. Нужна экрану, когда каталог перестал отвечать совсем. */
 export function clearCache(): void {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(HEALTH_KEY);
   } catch {
     // см. writeCache
   }

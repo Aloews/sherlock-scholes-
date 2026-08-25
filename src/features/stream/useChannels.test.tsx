@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { useChannels } from './useChannels';
+import { CACHE_VERSION } from './channelCache';
 
 const PLAYLIST = [
   '#EXTM3U',
@@ -123,8 +124,12 @@ describe('useChannels', () => {
 
 describe('кэш списка каналов', () => {
   const CACHED = [{ name: 'Вчерашний', group: 'SPORT 🏆', logo: null, url: 'https://cdn/a.m3u8' }];
+  // ⚠️ ВЕРСИЯ ФОРМАТА ДОЛЖНА СОВПАДАТЬ С ТЕКУЩЕЙ. Когда формат вырос до 2,
+  // эти два теста честно упали: `readCache` отбрасывает чужую версию, и
+  // фикстура с `v: 1` перестала читаться. Ровно то поведение, ради которого
+  // версия и заведена, — поэтому здесь стоит константа, а не число.
   const put = () => localStorage.setItem('ss_tv_channels', JSON.stringify({
-    v: 1, at: Date.now(), src: 'https://relay/playlist.m3u8', channels: CACHED,
+    v: CACHE_VERSION, at: Date.now(), src: 'https://relay/playlist.m3u8', channels: CACHED,
   }));
 
   // Ради этого всё и сделано: каталог весит 870 КБ и не сжимается, на 3G это

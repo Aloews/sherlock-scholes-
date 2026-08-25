@@ -10,12 +10,14 @@ interface StreamPlayerProps {
    * плеер превращал это в «ТВ не работает». Экран на это уходит к следующему.
    */
   onFailed?: (url: string) => void;
+  /** Канал заиграл. Экран это запоминает и в следующий раз ставит его первым. */
+  onPlaying?: (url: string) => void;
 }
 
 // Dumb-ish feature component: owns the hls.js lifecycle via useHlsPlayer,
 // renders loading/error states over the <video> per REACT_STANDARD §6
 // ("every async view renders loading/error/empty/success explicitly").
-export function StreamPlayer({ url, onFailed }: StreamPlayerProps) {
+export function StreamPlayer({ url, onFailed, onPlaying }: StreamPlayerProps) {
   const { t } = useTranslation();
   const { videoRef, status } = useHlsPlayer(url);
 
@@ -24,7 +26,8 @@ export function StreamPlayer({ url, onFailed }: StreamPlayerProps) {
   // hls.js ни прислал по одному и тому же потоку.
   useEffect(() => {
     if (status === 'error') onFailed?.(url);
-  }, [status, url, onFailed]);
+    if (status === 'ready') onPlaying?.(url);
+  }, [status, url, onFailed, onPlaying]);
 
   return (
     <div className="w-full max-w-sm rounded-2xl overflow-hidden bg-black relative aspect-video">

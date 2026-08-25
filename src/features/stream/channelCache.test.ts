@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { readCache, writeCache, clearCache, TTL_MS } from './channelCache';
+import { readCache, writeCache, clearCache, TTL_MS,
+         readHealth, markHealth, HEALTH_TTL_MS } from './channelCache';
 import type { Channel } from './playlist';
 
 const SRC = 'https://relay.test/playlist.m3u8';
@@ -99,5 +100,67 @@ describe('channelCache', () => {
       throw new DOMException('SecurityError');
     });
     expect(readCache(SRC)).toBeNull();
+  });
+});
+
+describe('память об исходах каналов', () => {
+  it('ничего не знает до первой записи', () => {
+    expect(readHealth()).toEqual({});
+  });
+
+  it('помнит, что канал заиграл и что отказал', () => {
+    markHealth('https://a/1.m3u8', 'played');
+    markHealth('https://a/2.m3u8', 'failed');
+    expect(readHealth()).toEqual({
+      'https://a/1.m3u8': 'played',
+      'https://a/2.m3u8': 'failed',
+    });
+  });
+
+  // Канал, заигравший сегодня, важнее вчерашнего отказа: обратное правило
+  // хоронило бы его навсегда из-за одной сетевой икоты.
+  it('успех перебивает прежний отказ', () => {
+    markHealth('https://a/1.m3u8', 'failed');
+    markHealth('https://a/1.m3u8', 'played');
+    expect(readHealth()['https://a/1.m3u8']).toBe('played');
+  });
+
+  it('забывает всё старше суток', () => {
+    const t0 = 1_000_000;
+    markHealth('https://a/1.m3u8', 'played', t0);
+    expect(readHealth(t0 + HEALTH_TTL_MS - 1)).not.toEqual({});
+    expect(readHealth(t0 + HEALTH_TTL_MS + 1)).toEqual({});
+  });
+
+  it('отбрасывает запись прежней версии формата', () => {
+    localStorage.setItem('ss_tv_health', JSON.stringify({
+      v: 0, at: Date.now(), urls: { 'https://a/1.m3u8': 'played' },
+    }));
+    expect(readHealth()).toEqual({});
+  });
+
+  it('отбрасывает значения, которых не бывает', () => {
+    localStorage.setItem('ss_tv_health', JSON.stringify({
+      v: 2, at: Date.now(), urls: { good: 'played', junk: 'что-то ещё' },
+    }));
+    expect(readHealth()).toEqual({ good: 'played' });
+  });
+
+  it('переживает мусор в хранилище', () => {
+    localStorage.setItem('ss_tv_health', 'не json');
+    expect(readHealth()).toEqual({});
+  });
+
+  it('молчит, когда localStorage бросает', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    expect(() => markHealth('https://a/1.m3u8', 'played')).not.toThrow();
+  });
+
+  it('clearCache стирает и исходы тоже', () => {
+    markHealth('https://a/1.m3u8', 'played');
+    clearCache();
+    expect(readHealth()).toEqual({});
   });
 });
