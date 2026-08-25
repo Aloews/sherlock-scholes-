@@ -57,7 +57,12 @@ import type { Health } from './channelCache';
 export function orderChannels(
   channels: readonly Channel[],
   health: Readonly<Record<string, Health>> = {},
+  favourites: readonly string[] = [],
 ): Channel[] {
+  // ⚠️ ИЗБРАННОЕ ВЫШЕ ЗДОРОВЬЯ. Здоровье — это то, что приложение УЗНАЛО;
+  // избранное — то, что игрок СКАЗАЛ. Ставить догадку выше прямого указания
+  // значит спорить с ним о том, что ему смотреть.
+  const fav = new Set(favourites);
   // ⚠️ ЗДОРОВЬЕ ВАЖНЕЕ ЗАКРЕПЛЁННОСТИ, и это исправление моей же ошибки.
   // PINNED я составил по названиям, ни разу не проверив, играют ли каналы.
   // Замер прода 25.08.2026 по полной цепочке HLS: «Матч! Премьер», «Setanta
@@ -73,7 +78,10 @@ export function orderChannels(
     if (h === 'failed') return 2;
     return 1;
   };
-  return [...channels].sort((a, b) => bucket(a) - bucket(b) || pinRank(a) - pinRank(b));
+  return [...channels].sort((a, b) =>
+    Number(fav.has(b.url)) - Number(fav.has(a.url))
+    || bucket(a) - bucket(b)
+    || pinRank(a) - pinRank(b));
 }
 
 /**
@@ -101,4 +109,30 @@ export function nextAlive(
     if (!dead.has(candidate.url)) return candidate.url;
   }
   return null;
+}
+
+/**
+ * Отбор для списка: поиск по названию и «только избранное».
+ *
+ * Поиск по ВХОЖДЕНИЮ и без учёта регистра: игрок печатает «сет», а канал
+ * называется «Setanta Sports 1 HD». Требовать совпадения с начала значило бы
+ * заставлять его знать, как именно записан канал в чужом плейлисте.
+ *
+ * Порядок НЕ трогается: сортировка уже сделана `orderChannels`, и
+ * пересортировать результат поиска значило бы показать избранное и рабочее
+ * не там, где игрок их только что видел.
+ */
+export function filterChannels(
+  channels: readonly Channel[],
+  query: string,
+  favouritesOnly: boolean,
+  favourites: readonly string[] = [],
+): Channel[] {
+  const q = query.trim().toLowerCase();
+  const fav = new Set(favourites);
+  return channels.filter((c) => {
+    if (favouritesOnly && !fav.has(c.url)) return false;
+    if (!q) return true;
+    return c.name.toLowerCase().includes(q);
+  });
 }

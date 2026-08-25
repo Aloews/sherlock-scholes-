@@ -777,7 +777,12 @@
     "channels_failed": "无法加载频道列表。",
     "channels_empty": "目前没有可观看的体育频道。",
     "channel_failed": "频道不可用",
-    "all_failed": "今天没有频道响应。请稍后再试。"
+    "all_failed": "今天没有频道响应。请稍后再试。",
+    "search": "搜索频道",
+    "favourites": "收藏",
+    "favourite": "加入收藏",
+    "unfavourite": "取消收藏",
+    "nothing_found": "没有找到"
   },
   "minigames": {
     "title": "小游戏",

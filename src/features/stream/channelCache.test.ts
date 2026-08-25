@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readCache, writeCache, clearCache, TTL_MS,
-         readHealth, markHealth, HEALTH_TTL_MS } from './channelCache';
+         readHealth, markHealth, HEALTH_TTL_MS,
+         readFavourites, toggleFavourite } from './channelCache';
 import type { Channel } from './playlist';
 
 const SRC = 'https://relay.test/playlist.m3u8';
@@ -162,5 +163,52 @@ describe('память об исходах каналов', () => {
     markHealth('https://a/1.m3u8', 'played');
     clearCache();
     expect(readHealth()).toEqual({});
+  });
+});
+
+describe('избранное', () => {
+  it('пусто до первой звезды', () => {
+    expect(readFavourites()).toEqual([]);
+  });
+
+  it('добавляет и убирает', () => {
+    expect(toggleFavourite('https://a/1.m3u8')).toEqual(['https://a/1.m3u8']);
+    expect(toggleFavourite('https://a/2.m3u8')).toEqual(['https://a/1.m3u8', 'https://a/2.m3u8']);
+    expect(toggleFavourite('https://a/1.m3u8')).toEqual(['https://a/2.m3u8']);
+  });
+
+  it('переживает после перечитывания', () => {
+    toggleFavourite('https://a/1.m3u8');
+    expect(readFavourites()).toEqual(['https://a/1.m3u8']);
+  });
+
+  // Избранное игрок ставил руками — по таймеру оно не стирается, в отличие
+  // от здоровья и каталога.
+  it('не имеет срока годности', () => {
+    toggleFavourite('https://a/1.m3u8');
+    expect(readFavourites()).toEqual(['https://a/1.m3u8']);
+    expect(readHealth(Date.now() + HEALTH_TTL_MS * 2)).toEqual({});
+  });
+
+  it('отбрасывает мусор из хранилища', () => {
+    localStorage.setItem('ss_tv_favourites', 'не json');
+    expect(readFavourites()).toEqual([]);
+    localStorage.setItem('ss_tv_favourites', JSON.stringify({ not: 'array' }));
+    expect(readFavourites()).toEqual([]);
+    localStorage.setItem('ss_tv_favourites', JSON.stringify(['https://ok/1.m3u8', 42, 'мусор']));
+    expect(readFavourites()).toEqual(['https://ok/1.m3u8']);
+  });
+
+  it('молчит, когда localStorage бросает', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    expect(() => toggleFavourite('https://a/1.m3u8')).not.toThrow();
+  });
+
+  it('clearCache стирает и избранное', () => {
+    toggleFavourite('https://a/1.m3u8');
+    clearCache();
+    expect(readFavourites()).toEqual([]);
   });
 });

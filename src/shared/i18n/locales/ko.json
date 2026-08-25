@@ -777,7 +777,12 @@
     "channels_failed": "채널 목록을 불러오지 못했습니다.",
     "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다.",
     "channel_failed": "채널을 이용할 수 없습니다",
-    "all_failed": "오늘은 응답하는 채널이 없습니다. 나중에 다시 시도해 주세요."
+    "all_failed": "오늘은 응답하는 채널이 없습니다. 나중에 다시 시도해 주세요.",
+    "search": "채널 검색",
+    "favourites": "즐겨찾기",
+    "favourite": "즐겨찾기에 추가",
+    "unfavourite": "즐겨찾기에서 제거",
+    "nothing_found": "검색 결과가 없습니다"
   },
   "minigames": {
     "title": "미니게임",

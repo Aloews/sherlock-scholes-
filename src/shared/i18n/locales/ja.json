@@ -777,7 +777,12 @@
     "channels_failed": "チャンネル一覧を読み込めませんでした。",
     "channels_empty": "現在、視聴できるスポーツチャンネルはありません。",
     "channel_failed": "チャンネルを利用できません",
-    "all_failed": "本日はどのチャンネルも応答しません。後でもう一度お試しください。"
+    "all_failed": "本日はどのチャンネルも応答しません。後でもう一度お試しください。",
+    "search": "チャンネルを検索",
+    "favourites": "お気に入り",
+    "favourite": "お気に入りに追加",
+    "unfavourite": "お気に入りから削除",
+    "nothing_found": "見つかりませんでした"
   },
   "minigames": {
     "title": "ミニゲーム",

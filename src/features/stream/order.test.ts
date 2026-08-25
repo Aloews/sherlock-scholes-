@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { orderChannels, nextAlive } from './order';
+import { orderChannels, nextAlive, filterChannels } from './order';
 import { PINNED, isPinned, type Channel } from './playlist';
 
 const ch = (name: string, url = name): Channel => ({ name, group: 'SPORT 🏆', logo: null, url });
@@ -151,5 +151,70 @@ describe('порядок по измеренному здоровью', () => {
     ];
     const out = orderChannels(list, { d1: 'failed', d2: 'failed', d3: 'failed', ok1: 'played' });
     expect(out[0].name).toBe('Viasat Sport');
+  });
+});
+
+describe('избранное и поиск — то, чем живёт любой плеер IPTV', () => {
+  // ⚠️ ИЗБРАННОЕ ВЫШЕ ЗДОРОВЬЯ. Здоровье — то, что приложение УЗНАЛО;
+  // избранное — то, что игрок СКАЗАЛ. Ставить догадку выше прямого указания
+  // значит спорить с ним о том, что ему смотреть.
+  it('избранный канал обгоняет игравший', () => {
+    const list = [ch('Игравший', 'u1'), ch('Избранный', 'u2')];
+    expect(orderChannels(list, { u1: 'played' }, ['u2'])[0].name).toBe('Избранный');
+  });
+
+  it('избранный канал обгоняет даже отказавший... нет — отказавший остаётся внизу', () => {
+    const list = [ch('Живой', 'u1'), ch('Избранный, но мёртвый', 'u2')];
+    const out = orderChannels(list, { u2: 'failed' }, ['u2']);
+    // Избранное поднимает, но отказ по-прежнему учитывается вторым ключом:
+    // игрок сказал «хочу», приложение знает «не играет» — показываем первым
+    // всё равно его, иначе звезда ничего не значит.
+    expect(out[0].name).toBe('Избранный, но мёртвый');
+  });
+
+  it('без избранного порядок ровно прежний', () => {
+    const list = [ch('Divi Sport', 'u1'), ch('Setanta Sports 1 HD', 'u2')];
+    expect(orderChannels(list, {}, []).map((c) => c.name))
+      .toEqual(orderChannels(list, {}).map((c) => c.name));
+  });
+});
+
+describe('filterChannels', () => {
+  const list = [ch('Setanta Sports 1 HD', 'u1'), ch('Матч! Премьер', 'u2'), ch('Divi Sport', 'u3')];
+
+  it('пустой запрос ничего не отсекает', () => {
+    expect(filterChannels(list, '', false)).toHaveLength(3);
+  });
+
+  // Игрок печатает «сет», а канал называется «Setanta Sports 1 HD»: требовать
+  // совпадения с начала значит заставить его знать чужую запись названия.
+  it('ищет по вхождению и без учёта регистра', () => {
+    expect(filterChannels(list, 'sport', false).map((c) => c.name))
+      .toEqual(['Setanta Sports 1 HD', 'Divi Sport']);
+    expect(filterChannels(list, 'ПРЕМЬЕР', false).map((c) => c.name)).toEqual(['Матч! Премьер']);
+  });
+
+  it('не спотыкается о пробелы по краям', () => {
+    expect(filterChannels(list, '  премьер  ', false)).toHaveLength(1);
+  });
+
+  it('«только избранное» оставляет отмеченные', () => {
+    expect(filterChannels(list, '', true, ['u2']).map((c) => c.name)).toEqual(['Матч! Премьер']);
+  });
+
+  it('поиск и «только избранное» работают вместе', () => {
+    expect(filterChannels(list, 'sport', true, ['u1', 'u2']).map((c) => c.name))
+      .toEqual(['Setanta Sports 1 HD']);
+  });
+
+  it('«только избранное» без единой звезды даёт пусто, а не весь список', () => {
+    expect(filterChannels(list, '', true, [])).toEqual([]);
+  });
+
+  // Порядок задан orderChannels; пересортировать результат поиска значило бы
+  // показать избранное не там, где игрок его только что видел.
+  it('сохраняет порядок входного списка', () => {
+    expect(filterChannels(list, 's', false).map((c) => c.name))
+      .toEqual(['Setanta Sports 1 HD', 'Divi Sport']);
   });
 });

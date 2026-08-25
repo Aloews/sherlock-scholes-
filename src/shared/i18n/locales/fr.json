@@ -801,7 +801,12 @@
     "channels_failed": "Impossible de charger la liste des chaînes.",
     "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment.",
     "channel_failed": "Chaîne indisponible",
-    "all_failed": "Aucune chaîne ne répond aujourd’hui. Réessayez plus tard."
+    "all_failed": "Aucune chaîne ne répond aujourd’hui. Réessayez plus tard.",
+    "search": "Rechercher une chaîne",
+    "favourites": "Favoris",
+    "favourite": "Ajouter aux favoris",
+    "unfavourite": "Retirer des favoris",
+    "nothing_found": "Aucun résultat"
   },
   "minigames": {
     "title": "Mini-jeux",
