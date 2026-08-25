@@ -23,6 +23,7 @@ const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => 
 const QuizScreen     = lazy(() => import('@/screens/QuizScreen').then((m) => ({ default: m.QuizScreen })));
 const FamousScreen   = lazy(() => import('@/screens/FamousScreen').then((m) => ({ default: m.FamousScreen })));
 const SquadScreen    = lazy(() => import('@/screens/SquadScreen').then((m) => ({ default: m.SquadScreen })));
+const ChessScreen    = lazy(() => import('@/screens/ChessScreen').then((m) => ({ default: m.ChessScreen })));
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
 const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
@@ -124,6 +125,10 @@ export function Router() {
       <Route path="/quiz"      element={<PageTransition><QuizScreen /></PageTransition>} />
       <Route path="/famous"    element={<PageTransition><FamousScreen /></PageTransition>} />
       <Route path="/squad"     element={<PageTransition><SquadScreen /></PageTransition>} />
+      {/* Без PageTransition, как и арена: обёртка анимирует transform родителя,
+          и первые касания уезжали бы вместе с ним — а здесь каждое касание
+          попадает в конкретную клетку доски. */}
+      <Route path="/chess"     element={<ChessScreen />} />
       <Route path="/digest"    element={<PageTransition><DigestScreen /></PageTransition>} />
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
