@@ -582,7 +582,10 @@
     "broadcaster": "Diffuseur · {{name}}",
     "prediction_history": "Historique des pronostics",
     "history_loading": "Chargement…",
-    "history_pending": "en attente du score"
+    "history_pending": "en attente du score",
+    "squad_level": "Niveau de l'effectif",
+    "squad_depth_one": "sur {{count}} joueur",
+    "squad_depth_other": "sur {{count}} joueurs"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

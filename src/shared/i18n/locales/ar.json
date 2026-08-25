@@ -658,7 +658,13 @@
     "broadcaster": "الناقل · {{name}}",
     "prediction_history": "سجل التوقعات",
     "history_loading": "جارٍ التحميل…",
-    "history_pending": "بانتظار النتيجة"
+    "history_pending": "بانتظار النتيجة",
+    "squad_level": "مستوى التشكيلة",
+    "squad_depth_one": "حسب لاعب واحد",
+    "squad_depth_two": "حسب لاعبين",
+    "squad_depth_few": "حسب {{count}} لاعبين",
+    "squad_depth_many": "حسب {{count}} لاعبًا",
+    "squad_depth_other": "حسب {{count}} لاعب"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

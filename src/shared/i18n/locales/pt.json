@@ -582,7 +582,10 @@
     "broadcaster": "Transmite · {{name}}",
     "prediction_history": "Histórico de palpites",
     "history_loading": "Carregando…",
-    "history_pending": "aguardando resultado"
+    "history_pending": "aguardando resultado",
+    "squad_level": "Nível do plantel",
+    "squad_depth_one": "por {{count}} jogador",
+    "squad_depth_other": "por {{count}} jogadores"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

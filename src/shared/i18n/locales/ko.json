@@ -563,7 +563,9 @@
     "broadcaster": "중계 · {{name}}",
     "prediction_history": "예측 기록",
     "history_loading": "불러오는 중…",
-    "history_pending": "결과 대기"
+    "history_pending": "결과 대기",
+    "squad_level": "스쿼드 수준",
+    "squad_depth_other": "상위 {{count}}명 기준"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
