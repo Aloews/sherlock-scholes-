@@ -4,6 +4,21 @@ import Hls from 'hls.js';
 export type StreamPlayerStatus = 'loading' | 'ready' | 'error';
 
 /**
+ * Сколько ждать первого кадра, прежде чем считать канал неигравшим.
+ *
+ * ⚠️ БЕЗ ЭТОГО ЭКРАН ЗАВИСАЛ НАСМЕРТЬ. Отказ канала экран узнаёт только из
+ * события ошибки — но поток может не ответить ВОВСЕ: хост принимает соединение
+ * и молчит, hls.js ждёт манифест и не считает это ошибкой, `video.src` на
+ * нативном пути тоже молчит. Ошибки нет, готовности нет, и «Загружаем…» стоит
+ * до конца света, хотя рядом в списке есть рабочие каналы.
+ *
+ * Пятнадцать секунд: живой канал на медленном 3G отдаёт манифест за одну-две,
+ * так что запас десятикратный, а игрок не сидит перед чёрным прямоугольником
+ * дольше, чем готов ждать.
+ */
+export const READY_TIMEOUT_MS = 15_000;
+
+/**
  * Attaches an HLS/m3u8 source to a <video> element: native playback where the
  * browser engine supports it (Safari / iOS WebView), hls.js everywhere else
  * (Chrome-based Telegram WebView on Android). Tears down cleanly on unmount
@@ -20,13 +35,26 @@ export function useHlsPlayer(url: string | undefined) {
 
     setStatus('loading');
 
+    // Молчащий поток: см. READY_TIMEOUT_MS. Таймер общий для обоих путей и
+    // снимается, как только канал заговорил — хоть готовностью, хоть отказом.
+    let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      timer = null;
+      setStatus('error');
+    }, READY_TIMEOUT_MS);
+    const settle = (next: StreamPlayerStatus) => {
+      if (timer !== null) { clearTimeout(timer); timer = null; }
+      setStatus(next);
+    };
+    const stopTimer = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = url;
-      const onReady = () => setStatus('ready');
-      const onError = () => setStatus('error');
+      const onReady = () => settle('ready');
+      const onError = () => settle('error');
       video.addEventListener('loadedmetadata', onReady);
       video.addEventListener('error', onError);
       return () => {
+        stopTimer();
         video.removeEventListener('loadedmetadata', onReady);
         video.removeEventListener('error', onError);
         video.removeAttribute('src');
@@ -35,12 +63,12 @@ export function useHlsPlayer(url: string | undefined) {
     }
 
     if (!Hls.isSupported()) {
-      setStatus('error');
+      settle('error');
       return;
     }
 
     const hls = new Hls();
-    hls.on(Hls.Events.MANIFEST_PARSED, () => setStatus('ready'));
+    hls.on(Hls.Events.MANIFEST_PARSED, () => settle('ready'));
 
     // ⚠️ НЕ ВСЯКАЯ ФАТАЛЬНАЯ ОШИБКА ЗНАЧИТ «КАНАЛ МЁРТВ», и раньше здесь стояло
     // именно это: `if (data.fatal) setStatus('error')`. Экран на такой отказ
@@ -64,13 +92,13 @@ export function useHlsPlayer(url: string | undefined) {
         hls.recoverMediaError();
         return;
       }
-      setStatus('error');
+      settle('error');
     });
 
     hls.loadSource(url);
     hls.attachMedia(video);
 
-    return () => hls.destroy();
+    return () => { stopTimer(); hls.destroy(); };
   }, [url]);
 
   return { videoRef, status };

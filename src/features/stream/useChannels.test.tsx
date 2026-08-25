@@ -28,6 +28,10 @@ function Harness({ url }: { url?: string }) {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  // ⚠️ КЭШ ЖИВЁТ МЕЖДУ ТЕСТАМИ, если его не чистить: удачная загрузка в одном
+  // тесте делала следующий «отказ» неотличимым от успеха, потому что хук по
+  // замыслу оставляет показанный список вместо ошибки.
+  localStorage.clear();
   fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -114,5 +118,55 @@ describe('useChannels', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][0]).toBe('https://relay/b.m3u8');
+  });
+});
+
+describe('кэш списка каналов', () => {
+  const CACHED = [{ name: 'Вчерашний', group: 'SPORT 🏆', logo: null, url: 'https://cdn/a.m3u8' }];
+  const put = () => localStorage.setItem('ss_tv_channels', JSON.stringify({
+    v: 1, at: Date.now(), src: 'https://relay/playlist.m3u8', channels: CACHED,
+  }));
+
+  // Ради этого всё и сделано: каталог весит 870 КБ и не сжимается, на 3G это
+  // семнадцать секунд молчания — и игрок решает, что ТВ не работает.
+  it('shows the cached list immediately, before the network answers', async () => {
+    put();
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+    render(<Harness url="https://relay/playlist.m3u8" />);
+    await settle();
+
+    expect(screen.getByTestId('status').textContent).toBe('ok');
+    expect(screen.getByTestId('names').textContent).toBe('Вчерашний');
+  });
+
+  it('replaces the cached list once the network answers', async () => {
+    put();
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => PLAYLIST });
+    render(<Harness url="https://relay/playlist.m3u8" />);
+    await settle();
+
+    expect(screen.getByTestId('names').textContent).toBe('Red Bull TV');
+  });
+
+  // Каналы есть, играть можно — просто обновиться не вышло. Показать поверх
+  // рабочего списка «не удалось загрузить» значит соврать.
+  it('keeps the cached list when the refresh fails', async () => {
+    put();
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    render(<Harness url="https://relay/playlist.m3u8" />);
+    await settle();
+
+    expect(screen.getByTestId('status').textContent).toBe('ok');
+    expect(screen.getByTestId('names').textContent).toBe('Вчерашний');
+  });
+
+  it('writes what it parsed, so the next visit is instant', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => PLAYLIST });
+    render(<Harness url="https://relay/playlist.m3u8" />);
+    await settle();
+
+    const raw = localStorage.getItem('ss_tv_channels');
+    expect(raw).toBeTruthy();
+    expect(JSON.parse(raw!).channels.map((c: { name: string }) => c.name)).toEqual(['Red Bull TV']);
   });
 });
