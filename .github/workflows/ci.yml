@@ -60,7 +60,17 @@ jobs:
       - name: Translations complete in all nine locales
         run: node scripts/check-i18n.mjs
 
+  # ⚠️ МУТАЦИОННЫЕ ТЕСТЫ НЕ ГОНЯЮТСЯ НА ЧЕРНОВИКАХ, и это не ослабление
+  # ворот. Джоб живёт до двадцати минут и делает свой `npm ci`; на стопке из
+  # четырёх промежуточных веток он отрабатывал четыре раза подряд по коду,
+  # который автор ещё сам не считает готовым. Ворота остаются там, где они
+  # что-то решают: на PR, снятом с черновика, и на каждом push в main.
+  #
+  # Условие написано через `!= 'pull_request'`, а не через `== false`: у
+  # push-события поля `draft` нет вовсе, и проверка «не черновик» на нём дала
+  # бы ложь — то есть молча выключила бы мутации на main.
   mutation:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
