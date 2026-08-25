@@ -105,9 +105,6 @@
     "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
-    "quiz_link": "Guess the player",
-    "famous_link": "Who's more famous",
-    "squad_link": "Whose squad",
     "chess_link": "Football chess",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
@@ -119,7 +116,8 @@
     "ratings_link": "Player ratings",
     "arena_online_link": "Arena over the net",
     "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
-    "stream_link": "Live TV"
+    "stream_link": "Live TV",
+    "minigames_link": "Mini-games"
   },
   "design": {
     "master": "New design",
@@ -804,5 +802,11 @@
     "channels_empty": "No sports channels are available right now.",
     "channel_failed": "Channel unavailable",
     "all_failed": "No channel is responding today. Try again later."
+  },
+  "minigames": {
+    "title": "Mini-games",
+    "quiz_hint": "Facts one by one — name the player",
+    "famous_hint": "Two cards — who is better known",
+    "squad_hint": "Five from a club — name the club"
   }
 }

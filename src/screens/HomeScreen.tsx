@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar, IconSwords, IconShirtSport,
+  IconSoccerField, IconPlayerPlay, IconChartBar,
   IconGridDots, IconDeviceTv,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -306,18 +306,8 @@ export function HomeScreen() {
             />
             <HomeGameLink
               icon={<IconHelp size={20} stroke={1.75} />}
-              label={t('home.quiz_link')}
-              onClick={() => navigate('/quiz')}
-            />
-            <HomeGameLink
-              icon={<IconSwords size={20} stroke={1.75} />}
-              label={t('home.famous_link')}
-              onClick={() => navigate('/famous')}
-            />
-            <HomeGameLink
-              icon={<IconShirtSport size={20} stroke={1.75} />}
-              label={t('home.squad_link')}
-              onClick={() => navigate('/squad')}
+              label={t('home.minigames_link')}
+              onClick={() => navigate('/minigames')}
             />
             <HomeGameLink
               icon={<IconGridDots size={20} stroke={1.75} />}

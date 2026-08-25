@@ -103,9 +103,6 @@
     "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
     "matches_link": "예정된 경기",
     "fantasy_link": "판타지 리그",
-    "quiz_link": "선수 맞히기",
-    "famous_link": "누가 더 유명할까",
-    "squad_link": "어느 클럽일까",
     "chess_link": "축구 체스",
     "alias_link": "축구 알리아스",
     "digest_link": "골과 장면",
@@ -117,7 +114,8 @@
     "ratings_link": "선수 랭킹",
     "arena_online_link": "네트워크 아레나",
     "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
-    "stream_link": "실시간 TV"
+    "stream_link": "실시간 TV",
+    "minigames_link": "미니게임"
   },
   "design": {
     "master": "새 디자인",
@@ -780,5 +778,11 @@
     "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다.",
     "channel_failed": "채널을 이용할 수 없습니다",
     "all_failed": "오늘은 응답하는 채널이 없습니다. 나중에 다시 시도해 주세요."
+  },
+  "minigames": {
+    "title": "미니게임",
+    "quiz_hint": "힌트를 하나씩 — 선수를 맞혀 보세요",
+    "famous_hint": "카드 두 장 — 누가 더 유명할까",
+    "squad_hint": "한 클럽의 다섯 명 — 클럽을 맞혀 보세요"
   }
 }

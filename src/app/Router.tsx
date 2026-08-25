@@ -20,9 +20,7 @@ const ProfileScreen  = lazy(() => import('@/screens/ProfileScreen').then((m) => 
 const FriendsScreen  = lazy(() => import('@/screens/FriendsScreen').then((m) => ({ default: m.FriendsScreen })));
 const MatchesScreen  = lazy(() => import('@/screens/MatchesScreen').then((m) => ({ default: m.MatchesScreen })));
 const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => ({ default: m.FantasyScreen })));
-const QuizScreen     = lazy(() => import('@/screens/QuizScreen').then((m) => ({ default: m.QuizScreen })));
-const FamousScreen   = lazy(() => import('@/screens/FamousScreen').then((m) => ({ default: m.FamousScreen })));
-const SquadScreen    = lazy(() => import('@/screens/SquadScreen').then((m) => ({ default: m.SquadScreen })));
+const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then((m) => ({ default: m.MinigamesScreen })));
 const ChessScreen    = lazy(() => import('@/screens/ChessScreen').then((m) => ({ default: m.ChessScreen })));
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
@@ -121,9 +119,6 @@ export function Router() {
       <Route path="/friends"   element={<PageTransition><FriendsScreen /></PageTransition>} />
       <Route path="/matches"   element={<PageTransition><MatchesScreen /></PageTransition>} />
       <Route path="/fantasy"   element={<PageTransition><FantasyScreen /></PageTransition>} />
-      <Route path="/quiz"      element={<PageTransition><QuizScreen /></PageTransition>} />
-      <Route path="/famous"    element={<PageTransition><FamousScreen /></PageTransition>} />
-      <Route path="/squad"     element={<PageTransition><SquadScreen /></PageTransition>} />
       {/* Без PageTransition, как и арена: обёртка анимирует transform родителя,
           и первые касания уезжали бы вместе с ним — а здесь каждое касание
           попадает в конкретную клетку доски. */}
@@ -138,6 +133,13 @@ export function Router() {
       {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже
           разосланные игрокам, и просто удалить его значит их сломать. Экран
           теперь один и сам выбирает режим — см. шапку ArenaScreen. */}
+      <Route path="/minigames" element={<MinigamesScreen />} />
+      {/* Старые адреса мини-игр: ведут в тот же экран, но сразу в свою игру
+          (см. `?game=` в шапке MinigamesScreen). Не удалены — на них ведут
+          ссылки, уже разосланные игрокам. */}
+      <Route path="/quiz"   element={<Navigate to="/minigames?game=quiz" replace />} />
+      <Route path="/famous" element={<Navigate to="/minigames?game=famous" replace />} />
+      <Route path="/squad"  element={<Navigate to="/minigames?game=squad" replace />} />
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
       <Route path="/arena"     element={<ArenaScreen />} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
