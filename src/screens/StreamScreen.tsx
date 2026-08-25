@@ -7,6 +7,7 @@ import { OptionRow } from '@/shared/ui/OptionRow';
 import { StreamPlayer } from '@/features/stream/StreamPlayer';
 import { useChannels } from '@/features/stream/useChannels';
 import { orderChannels, nextAlive } from '@/features/stream/order';
+import { readHealth, markHealth } from '@/features/stream/channelCache';
 import { buildReportMailto } from '@/features/stream/reportMailto';
 
 // Public by nature, same as VITE_LIVEKIT_URL: the browser has to know where
@@ -40,8 +41,11 @@ export function StreamScreen() {
   // на Android — статический перечень врал бы половине. Подробности в ./order.ts.
   const [dead, setDead] = useState<ReadonlySet<string>>(() => new Set());
 
+  // Исходы прошлых заходов читаются ОДИН раз: пересортировать список под
+  // ногами у игрока, пока он читает, — худшее, что можно сделать.
+  const [health] = useState(() => readHealth());
   const raw = channels.status === 'ok' ? channels.data : [];
-  const list = useMemo(() => orderChannels(raw), [raw]);
+  const list = useMemo(() => orderChannels(raw, health), [raw, health]);
   // Группа под названием только когда она РАЗЛИЧАЕТ: сегодня плейлист отдаёт
   // все 31 канал из одной `SPORT 🏆`, и подпись превращается в 31 одинаковую
   // строку шума. Появится вторая группа — подпись вернётся сама.
@@ -56,6 +60,7 @@ export function StreamScreen() {
   // Отказ канала: помечаем и уходим к следующему живому. Ровно это и чинит
   // «ТВ не работает» — раньше экран замирал на ошибке первого же мёртвого.
   const handleFailed = useCallback((failedUrl: string) => {
+    markHealth(failedUrl, 'failed');
     setDead((prev) => {
       if (prev.has(failedUrl)) return prev;
       const next = new Set(prev);
@@ -64,6 +69,9 @@ export function StreamScreen() {
     });
     setSelected(nextAlive(list, failedUrl, new Set([...dead, failedUrl])));
   }, [list, dead]);
+
+  // Канал заиграл — запоминаем, чтобы в следующий раз он был первым.
+  const handlePlaying = useCallback((url: string) => markHealth(url, 'played'), []);
 
   // Живых не осталось — это НЕ «каналов нет», и сказать надо разное.
   const allDead = list.length > 0 && playing === null;
@@ -89,7 +97,12 @@ export function StreamScreen() {
         ) : (
           <>
             {playing && (
-              <StreamPlayer key={playing} url={playing} onFailed={handleFailed} />
+              <StreamPlayer
+                key={playing}
+                url={playing}
+                onFailed={handleFailed}
+                onPlaying={handlePlaying}
+              />
             )}
 
             {allDead && (
