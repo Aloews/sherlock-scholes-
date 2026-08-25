@@ -117,7 +117,8 @@
     "arena_link": "Arena para dos",
     "ratings_link": "Ranking de jugadores",
     "arena_online_link": "Arena en red",
-    "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar."
+    "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar.",
+    "stream_link": "TV en vivo"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -742,5 +743,15 @@
     "matches_one": "{{count}} partido",
     "matches_other": "{{count}} partidos",
     "goals_assists": "{{goals}} G · {{assists}} A"
+  },
+  "stream": {
+    "title": "TV en vivo",
+    "note": "Una lista de canales en directo — solo de fondo, no es parte del juego.",
+    "loading": "Cargando la transmisión…",
+    "error": "No se pudo reproducir la transmisión. Inténtalo más tarde.",
+    "not_configured": "La TV en vivo aún no está configurada.",
+    "report_link": "Reportar al titular de los derechos",
+    "report_subject": "Queja sobre la transmisión de Live TV",
+    "report_body": "Describe el contenido e incluye prueba de tus derechos. Lo revisaremos y actuaremos con rapidez."
   }
 }

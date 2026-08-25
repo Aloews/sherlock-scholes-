@@ -117,7 +117,8 @@
     "arena_link": "Arène à deux",
     "ratings_link": "Classement des joueurs",
     "arena_online_link": "Arène en réseau",
-    "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser."
+    "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
+    "stream_link": "TV en direct"
   },
   "design": {
     "master": "Nouveau design",
@@ -742,5 +743,15 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matchs",
     "goals_assists": "{{goals}} B · {{assists}} PD"
+  },
+  "stream": {
+    "title": "TV en direct",
+    "note": "Une liste de chaînes en direct — juste en fond, sans lien avec le jeu.",
+    "loading": "Chargement du flux…",
+    "error": "Impossible de lire le flux. Réessayez plus tard.",
+    "not_configured": "La TV en direct n'est pas encore configurée.",
+    "report_link": "Signaler au titulaire des droits",
+    "report_subject": "Plainte concernant le flux Live TV",
+    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande."
   }
 }
