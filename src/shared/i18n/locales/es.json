@@ -801,7 +801,12 @@
     "channels_failed": "No se pudo cargar la lista de canales.",
     "channels_empty": "Ahora mismo no hay canales deportivos disponibles.",
     "channel_failed": "Canal no disponible",
-    "all_failed": "Hoy no responde ningún canal. Inténtalo más tarde."
+    "all_failed": "Hoy no responde ningún canal. Inténtalo más tarde.",
+    "search": "Buscar canal",
+    "favourites": "Favoritos",
+    "favourite": "Añadir a favoritos",
+    "unfavourite": "Quitar de favoritos",
+    "nothing_found": "No se encontró nada"
   },
   "minigames": {
     "title": "Minijuegos",

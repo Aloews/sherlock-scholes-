@@ -175,11 +175,55 @@ export function markHealth(url: string, health: Health, now = Date.now()): void 
   }
 }
 
+// ---------------------------------------------------------------------------
+// ИЗБРАННОЕ
+//
+// ⚠️ ЭТО НЕ УКРАШЕНИЕ, А ОТВЕТ НА ИЗМЕРЕННОЕ. Замер прода 25.08.2026: из
+// первых пяти каналов играют два, и какие именно — у каждого устройства своё
+// (три канала отдают манифест без CORS, то есть живут на iOS и мертвы на
+// Android). Порядок по здоровью это чинит сам, но только после того, как
+// игрок дождался отказа. Звезда даёт ему сказать это заранее и один раз.
+//
+// Хранится ОТДЕЛЬНО от здоровья и от каталога: здоровье протухает за сутки,
+// каталог — тоже, а избранное игрок ставил руками, и стирать его по таймеру
+// нельзя.
+
+const FAV_KEY = 'ss_tv_favourites';
+
+/** Адреса избранных каналов. Пустой массив — «не выбрано», а не ошибка. */
+export function readFavourites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    if (!raw) return [];
+    const e = JSON.parse(raw) as unknown;
+    if (!Array.isArray(e)) return [];
+    // Читаем недоверчиво: в хранилище лежит то, что туда положили, включая
+    // мусор от прежней версии.
+    return e.filter((x): x is string => typeof x === 'string' && x.startsWith('http'));
+  } catch {
+    return [];
+  }
+}
+
+/** Добавить или убрать. Возвращает новый список — экран держит его в состоянии. */
+export function toggleFavourite(url: string): string[] {
+  const now = readFavourites();
+  const next = now.includes(url) ? now.filter((u) => u !== url) : [...now, url];
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify(next));
+  } catch {
+    // см. writeCache
+  }
+  return next;
+}
+
 /** Забыть запись. Нужна экрану, когда каталог перестал отвечать совсем. */
 export function clearCache(): void {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(HEALTH_KEY);
+    // Избранное игрок ставил руками — его чистка тоже полная и намеренная.
+    localStorage.removeItem(FAV_KEY);
   } catch {
     // см. writeCache
   }
