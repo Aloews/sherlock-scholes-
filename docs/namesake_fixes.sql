@@ -38,8 +38,10 @@ UPDATE cards SET facts = facts - 'birth_year'
 -- sports_ru_player: the structural fix is in sports_ru_stats.py
 -- (active_cards_by_key) — a retired legend's bare-name card no longer enters
 -- squad-page matching at all, so this mapping will not reappear. ESPN's own
--- name-based matcher (scraper/espn.py) has no equivalent guard yet; today's
--- rows are gone, but a recurrence there is possible until it does.
+-- name-based matcher (espn_stats.py — scraper/espn.py is pure parsing and
+-- does no matching itself) now carries the same guard, added 24.08.2026: its
+-- cards_by_key is built by the sibling active_cards_by_key in espn_stats.py,
+-- so a bare-name legend with no card_current_club row is excluded there too.
 DELETE FROM player_match_stats WHERE card_id = '1670defe-f8ff-4b96-8fa9-8064ca2c4c79';
 DELETE FROM sports_ru_player   WHERE card_id = '1670defe-f8ff-4b96-8fa9-8064ca2c4c79';
 
