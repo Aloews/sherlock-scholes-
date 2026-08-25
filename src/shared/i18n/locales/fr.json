@@ -645,7 +645,9 @@
     "search": "Chercher un joueur ou un club",
     "standings": "Classement",
     "failed": "Impossible de charger la liste des joueurs. Réessayez plus tard.",
-    "squad_failed": "Votre composition ne s’est pas chargée — ne la refaites pas, elle est peut-être enregistrée."
+    "squad_failed": "Votre composition ne s’est pas chargée — ne la refaites pas, elle est peut-être enregistrée.",
+    "ratings": "Qui marque des points",
+    "ratings_all": "classement complet"
   },
   "quiz": {
     "title": "Devine le joueur",
@@ -766,7 +768,12 @@
     "ranked_line": "{{played}} M · {{won}} V · {{points}} pts",
     "ranked_confirmed": "Match comptabilisé",
     "ranked_pending": "En attente de la confirmation de l’adversaire",
-    "ranked_failed": "Le résultat n’a pas été enregistré"
+    "ranked_failed": "Le résultat n’a pas été enregistré",
+    "mode_hint": "Un jeu, deux façons d’y jouer.",
+    "mode_local": "Sur un téléphone",
+    "mode_local_hint": "À deux sur un écran : une moitié chacun",
+    "mode_online": "Sur deux téléphones",
+    "mode_online_hint": "Par code de salon, avec classement"
   },
   "news": {
     "title": "Actualités du football",
@@ -801,6 +808,8 @@
     "channels_title": "Chaînes",
     "channels_loading": "Chargement de la liste des chaînes…",
     "channels_failed": "Impossible de charger la liste des chaînes.",
-    "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment."
+    "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment.",
+    "channel_failed": "Chaîne indisponible",
+    "all_failed": "Aucune chaîne ne répond aujourd’hui. Réessayez plus tard."
   }
 }

@@ -645,7 +645,9 @@
     "search": "Buscar jugador o club",
     "standings": "Clasificación",
     "failed": "No se pudo cargar la lista de jugadores. Inténtalo más tarde.",
-    "squad_failed": "Tu alineación no se cargó: no la rehagas, puede estar guardada."
+    "squad_failed": "Tu alineación no se cargó: no la rehagas, puede estar guardada.",
+    "ratings": "Quién suma puntos",
+    "ratings_all": "clasificación completa"
   },
   "quiz": {
     "title": "Adivina el jugador",
@@ -766,7 +768,12 @@
     "ranked_line": "{{played}} P · {{won}} V · {{points}} pts",
     "ranked_confirmed": "Partido contabilizado",
     "ranked_pending": "Esperando la confirmación del rival",
-    "ranked_failed": "No se guardó el resultado"
+    "ranked_failed": "No se guardó el resultado",
+    "mode_hint": "Un juego, dos formas de jugar.",
+    "mode_local": "En un móvil",
+    "mode_local_hint": "Dos jugadores, una pantalla: media para cada uno",
+    "mode_online": "En dos móviles",
+    "mode_online_hint": "Con código de sala y clasificación"
   },
   "news": {
     "title": "Noticias de fútbol",
@@ -801,6 +808,8 @@
     "channels_title": "Canales",
     "channels_loading": "Cargando la lista de canales…",
     "channels_failed": "No se pudo cargar la lista de canales.",
-    "channels_empty": "Ahora mismo no hay canales deportivos disponibles."
+    "channels_empty": "Ahora mismo no hay canales deportivos disponibles.",
+    "channel_failed": "Canal no disponible",
+    "all_failed": "Hoy no responde ningún canal. Inténtalo más tarde."
   }
 }

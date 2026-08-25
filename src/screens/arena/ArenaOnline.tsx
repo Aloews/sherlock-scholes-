@@ -42,7 +42,7 @@ import type { ArenaState } from '@/features/arena/physics';
  * которого уже есть свои, — это тот самый маршрутизатор внутри
  * маршрутизатора, на который проект жалуется в §8а карты.
  */
-export function ArenaOnlineScreen() {
+export function ArenaOnline({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const design = useDesign();
@@ -194,7 +194,7 @@ export function ArenaOnlineScreen() {
         <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => onBack()}
               className="text-brand-muted hover:text-white transition-colors"
               aria-label={t('home.back')}
             >

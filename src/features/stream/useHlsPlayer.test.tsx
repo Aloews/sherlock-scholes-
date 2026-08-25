@@ -16,6 +16,7 @@ const hls = vi.hoisted(() => ({
 interface FakeHlsInstance {
   handlers: Record<string, (...args: unknown[]) => void>;
   destroyed: boolean;
+  recovered: number;
   emit(event: string, data?: unknown): void;
 }
 
@@ -24,6 +25,10 @@ vi.mock('hls.js', () => {
     handlers: Record<string, (...args: unknown[]) => void> = {};
     destroyed = false;
     static Events = { MANIFEST_PARSED: 'hlsManifestParsed', ERROR: 'hlsError' };
+    // Те же строки, что в настоящем hls.js — хук сравнивает с ними тип ошибки.
+    static ErrorTypes = { NETWORK_ERROR: 'networkError', MEDIA_ERROR: 'mediaError' };
+    recovered = 0;
+    recoverMediaError() { this.recovered += 1; }
     static isSupported() { return hls.state.isSupported; }
     on(event: string, cb: (...args: unknown[]) => void) { this.handlers[event] = cb; }
     loadSource(_url: string) { /* no-op: state driven by emit() in tests */ }
@@ -77,9 +82,45 @@ describe('useHlsPlayer', () => {
     expect(currentStatus()).toBe('ready');
   });
 
-  it('reports error on a fatal hls.js error', () => {
+  // Сетевая ошибка — это и есть «канал мёртв»: 404, отсутствующий CORS,
+  // мёртвый хост. hls.js уже отретраил своё, прежде чем объявить её фатальной.
+  it('reports error on a fatal network error, without trying to recover', () => {
+    render(<Harness url="https://example.com/playlist.m3u8" />);
+    act(() => hls.state.instances[0].emit('hlsError', { fatal: true, type: 'networkError' }));
+    expect(currentStatus()).toBe('error');
+    expect(hls.state.instances[0].recovered).toBe(0);
+  });
+
+  // ⚠️ РАДИ ЭТОГО ВСЁ И ПЕРЕПИСАНО. Экран помечает отказавший канал недоступным
+  // НАВСЕГДА и уходит к следующему, поэтому один споткнувшийся сегмент раньше
+  // выбрасывал живой канал из списка до конца сеанса.
+  it('recovers from a fatal media error instead of declaring the channel dead', () => {
+    render(<Harness url="https://example.com/playlist.m3u8" />);
+    act(() => hls.state.instances[0].emit('hlsError', { fatal: true, type: 'mediaError' }));
+    expect(hls.state.instances[0].recovered).toBe(1);
+    expect(currentStatus()).not.toBe('error');
+  });
+
+  // Ровно один раз: вечный цикл восстановления хуже честного отказа.
+  it('gives up after the second fatal media error', () => {
+    render(<Harness url="https://example.com/playlist.m3u8" />);
+    act(() => hls.state.instances[0].emit('hlsError', { fatal: true, type: 'mediaError' }));
+    act(() => hls.state.instances[0].emit('hlsError', { fatal: true, type: 'mediaError' }));
+    expect(hls.state.instances[0].recovered).toBe(1);
+    expect(currentStatus()).toBe('error');
+  });
+
+  it('reports error on a fatal error of any other type', () => {
+    render(<Harness url="https://example.com/playlist.m3u8" />);
+    act(() => hls.state.instances[0].emit('hlsError', { fatal: true, type: 'otherError' }));
+    expect(currentStatus()).toBe('error');
+  });
+
+  // Событие без типа не должно совпасть с `undefined` и уйти в восстановление.
+  it('treats a fatal error with no type as a failure, not something to recover', () => {
     render(<Harness url="https://example.com/playlist.m3u8" />);
     act(() => hls.state.instances[0].emit('hlsError', { fatal: true }));
+    expect(hls.state.instances[0].recovered).toBe(0);
     expect(currentStatus()).toBe('error');
   });
 

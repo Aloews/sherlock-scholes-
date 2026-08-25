@@ -626,7 +626,9 @@
     "search": "選手・クラブを検索",
     "standings": "リーグ順位",
     "failed": "選手リストを読み込めませんでした。時間をおいてお試しください。",
-    "squad_failed": "登録済みの布陣を読み込めませんでした。保存済みの可能性があるため、組み直さないでください。"
+    "squad_failed": "登録済みの布陣を読み込めませんでした。保存済みの可能性があるため、組み直さないでください。",
+    "ratings": "ポイントを稼いでいる選手",
+    "ratings_all": "ランキング全体"
   },
   "quiz": {
     "title": "選手を当てる",
@@ -744,7 +746,12 @@
     "ranked_line": "{{played}} 試合 · {{won}} 勝 · {{points}} pt",
     "ranked_confirmed": "試合が記録されました",
     "ranked_pending": "相手の確認を待っています",
-    "ranked_failed": "結果を保存できませんでした"
+    "ranked_failed": "結果を保存できませんでした",
+    "mode_hint": "同じゲームを、2つの遊び方で。",
+    "mode_local": "1台のスマホで",
+    "mode_local_hint": "1画面を半分ずつ使って2人で",
+    "mode_online": "2台のスマホで",
+    "mode_online_hint": "ルームコードで対戦、ランキングつき"
   },
   "news": {
     "title": "サッカーニュース",
@@ -777,6 +784,8 @@
     "channels_title": "チャンネル",
     "channels_loading": "チャンネル一覧を読み込んでいます…",
     "channels_failed": "チャンネル一覧を読み込めませんでした。",
-    "channels_empty": "現在、視聴できるスポーツチャンネルはありません。"
+    "channels_empty": "現在、視聴できるスポーツチャンネルはありません。",
+    "channel_failed": "チャンネルを利用できません",
+    "all_failed": "本日はどのチャンネルも応答しません。後でもう一度お試しください。"
   }
 }

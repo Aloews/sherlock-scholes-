@@ -28,7 +28,6 @@ const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => (
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
 const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
-const ArenaOnlineScreen = lazy(() => import('@/screens/ArenaOnlineScreen').then((m) => ({ default: m.ArenaOnlineScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 const StreamScreen   = lazy(() => import('@/screens/StreamScreen').then((m) => ({ default: m.StreamScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
@@ -136,7 +135,10 @@ export function Router() {
       <Route path="/ratings"   element={<PageTransition><RatingsScreen /></PageTransition>} />
       {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
           родителя, и первые кадры холста уезжали бы вместе с ним. */}
-      <Route path="/arena/online" element={<ArenaOnlineScreen />} />
+      {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже
+          разосланные игрокам, и просто удалить его значит их сломать. Экран
+          теперь один и сам выбирает режим — см. шапку ArenaScreen. */}
+      <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
       <Route path="/arena"     element={<ArenaScreen />} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/stream"    element={<PageTransition><StreamScreen /></PageTransition>} />

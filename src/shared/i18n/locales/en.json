@@ -645,7 +645,9 @@
     "search": "Search a player or club",
     "standings": "League standings",
     "failed": "Could not load the squad list. Try again later.",
-    "squad_failed": "Your squad did not load — do not re-pick, it may already be saved."
+    "squad_failed": "Your squad did not load — do not re-pick, it may already be saved.",
+    "ratings": "Who is scoring points",
+    "ratings_all": "full ranking"
   },
   "quiz": {
     "title": "Guess the player",
@@ -766,7 +768,12 @@
     "ranked_line": "{{played}} M · {{won}} W · {{points}} pts",
     "ranked_confirmed": "Match counted",
     "ranked_pending": "Waiting for your opponent to confirm",
-    "ranked_failed": "The result was not saved"
+    "ranked_failed": "The result was not saved",
+    "mode_hint": "One game, two ways to play.",
+    "mode_local": "On one phone",
+    "mode_local_hint": "Two players, one screen — half each",
+    "mode_online": "On two phones",
+    "mode_online_hint": "By room code, with a leaderboard"
   },
   "news": {
     "title": "Football news",
@@ -801,6 +808,8 @@
     "channels_title": "Channels",
     "channels_loading": "Loading the channel list…",
     "channels_failed": "Could not load the channel list.",
-    "channels_empty": "No sports channels are available right now."
+    "channels_empty": "No sports channels are available right now.",
+    "channel_failed": "Channel unavailable",
+    "all_failed": "No channel is responding today. Try again later."
   }
 }
