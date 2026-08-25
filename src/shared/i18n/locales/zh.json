@@ -626,7 +626,9 @@
     "search": "搜索球员或俱乐部",
     "standings": "联赛排名",
     "failed": "球员名单加载失败，请稍后再试。",
-    "squad_failed": "你的阵容未能加载，可能已保存，请不要重新选择。"
+    "squad_failed": "你的阵容未能加载，可能已保存，请不要重新选择。",
+    "ratings": "谁在拿分",
+    "ratings_all": "完整排行"
   },
   "quiz": {
     "title": "猜球员",
@@ -744,7 +746,12 @@
     "ranked_line": "{{played}} 场 · {{won}} 胜 · {{points}} 分",
     "ranked_confirmed": "比赛已计入",
     "ranked_pending": "等待对手确认",
-    "ranked_failed": "结果未能保存"
+    "ranked_failed": "结果未能保存",
+    "mode_hint": "同一个游戏，两种玩法。",
+    "mode_local": "在一部手机上",
+    "mode_local_hint": "两人共用一块屏幕，各占一半",
+    "mode_online": "在两部手机上",
+    "mode_online_hint": "用房间码对战，带排行榜"
   },
   "news": {
     "title": "足球新闻",
@@ -777,6 +784,8 @@
     "channels_title": "频道",
     "channels_loading": "正在加载频道列表…",
     "channels_failed": "无法加载频道列表。",
-    "channels_empty": "目前没有可观看的体育频道。"
+    "channels_empty": "目前没有可观看的体育频道。",
+    "channel_failed": "频道不可用",
+    "all_failed": "今天没有频道响应。请稍后再试。"
   }
 }

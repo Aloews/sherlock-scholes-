@@ -5,6 +5,7 @@ import { IconArrowLeft, IconStar, IconStarFilled, IconSearch } from '@tabler/ico
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { Avatar } from '@/shared/ui/Avatar';
+import { RatingsList } from '@/features/ratings/RatingsList';
 import { getRawInitData, hapticImpact, hapticError } from '@/shared/lib/telegram';
 import {
   SQUAD_SIZE, DEFAULT_TACTIC, fetchOpenRound, fetchCurrentRound, fetchLocksAt, fetchOptions,
@@ -105,7 +106,18 @@ export function FantasyScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const locked = locksAt !== null && new Date(locksAt).getTime() <= Date.now();
+  // ⚠️ ДАТУ РАЗБИРАЕМ ОДИН РАЗ И ПРОВЕРЯЕМ. `fantasy_locks_at` типизирована как
+  // `string | null`, но это обещание клиента, а не гарантия: приходит она из
+  // RPC, и любой другой ответ давал `new Date(...)` → Invalid Date, а
+  // `Intl.DateTimeFormat.format` на нём БРОСАЕТ RangeError. Роняло это не
+  // строчку с датой, а весь экран целиком — белый лист вместо фэнтези.
+  // Непрочитанная дата теперь значит «расписания нет», как и её отсутствие.
+  const lockTime = useMemo(() => {
+    if (locksAt === null) return null;
+    const ms = new Date(locksAt).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }, [locksAt]);
+  const locked = lockTime !== null && lockTime <= Date.now();
 
   const shown = useMemo(() => {
     const list = dataOr(options, []);
@@ -212,12 +224,12 @@ export function FantasyScreen() {
               {t('fantasy.next_round')}
             </p>
             <p className="text-brand-muted text-xs mt-1">
-              {locksAt === null
+              {lockTime === null
                 // Пустая неделя — не закрытая: расписание до неё не дошло.
                 ? t('fantasy.no_schedule')
                 : locked
                   ? t('fantasy.locked')
-                  : t('fantasy.locks_at', { when: lockFmt.format(new Date(locksAt)) })}
+                  : t('fantasy.locks_at', { when: lockFmt.format(lockTime) })}
             </p>
           </div>
 
@@ -400,6 +412,32 @@ export function FantasyScreen() {
             })}
           </div>
         )}
+
+        {/* ⚠️ РЕЙТИНГ ФУТБОЛИСТОВ ЗДЕСЬ — НЕ УКРАШЕНИЕ, А ТА ЖЕ ШКАЛА.
+            Очки в рейтинге считаются как `гол*4 + пас*3` — ровно то, за что
+            платит фэнтези. Игрок собирает пятёрку и тут же видит, кто эти очки
+            приносит, вместо того чтобы уходить на отдельный экран и держать
+            числа в голове. Компонент один и тот же (`features/ratings/
+            RatingsList`), поэтому число под футболистом и число в составе
+            разойтись не могут.
+
+            Десять строк, а не весь список: это подсказка к выбору состава, а
+            не сам рейтинг — за полным есть свой экран. */}
+        <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 space-y-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+              {t('fantasy.ratings')}
+            </p>
+            <button
+              type="button"
+              onClick={() => { hapticImpact('light'); navigate('/ratings'); }}
+              className="text-brand-muted text-[10.5px] underline underline-offset-2 hover:text-white transition-colors"
+            >
+              {t('fantasy.ratings_all')}
+            </button>
+          </div>
+          <RatingsList limit={10} />
+        </div>
 
         {/* Пустой состав правдоподобен: у тура может не быть матчей. Именно
             поэтому отказ, показанный тем же текстом, невозможно опознать — на

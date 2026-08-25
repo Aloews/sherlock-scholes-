@@ -645,7 +645,9 @@
     "search": "Buscar jogador ou clube",
     "standings": "Classificação",
     "failed": "Não foi possível carregar a lista de jogadores. Tente mais tarde.",
-    "squad_failed": "Sua escalação não carregou — não refaça, ela pode estar salva."
+    "squad_failed": "Sua escalação não carregou — não refaça, ela pode estar salva.",
+    "ratings": "Quem está pontuando",
+    "ratings_all": "classificação completa"
   },
   "quiz": {
     "title": "Adivinhe o jogador",
@@ -766,7 +768,12 @@
     "ranked_line": "{{played}} J · {{won}} V · {{points}} pts",
     "ranked_confirmed": "Jogo contabilizado",
     "ranked_pending": "À espera da confirmação do adversário",
-    "ranked_failed": "O resultado não foi guardado"
+    "ranked_failed": "O resultado não foi guardado",
+    "mode_hint": "Um jogo, duas formas de jogar.",
+    "mode_local": "Num celular",
+    "mode_local_hint": "Dois jogadores, uma tela — metade para cada",
+    "mode_online": "Em dois celulares",
+    "mode_online_hint": "Por código de sala, com classificação"
   },
   "news": {
     "title": "Notícias do futebol",
@@ -801,6 +808,8 @@
     "channels_title": "Canais",
     "channels_loading": "Carregando a lista de canais…",
     "channels_failed": "Não foi possível carregar a lista de canais.",
-    "channels_empty": "Não há canais de esporte disponíveis agora."
+    "channels_empty": "Não há canais de esporte disponíveis agora.",
+    "channel_failed": "Canal indisponível",
+    "all_failed": "Nenhum canal está respondendo hoje. Tente mais tarde."
   }
 }

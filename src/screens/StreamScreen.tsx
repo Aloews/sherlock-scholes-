@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconFlag } from '@tabler/icons-react';
@@ -6,6 +6,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import { OptionRow } from '@/shared/ui/OptionRow';
 import { StreamPlayer } from '@/features/stream/StreamPlayer';
 import { useChannels } from '@/features/stream/useChannels';
+import { orderChannels, nextAlive } from '@/features/stream/order';
 import { buildReportMailto } from '@/features/stream/reportMailto';
 
 // Public by nature, same as VITE_LIVEKIT_URL: the browser has to know where
@@ -34,15 +35,38 @@ export function StreamScreen() {
   const { t } = useTranslation();
   const channels = useChannels(PLAYLIST_URL);
   const [selected, setSelected] = useState<string | null>(null);
+  // Каналы, отказавшие в ЭТОМ сеансе. Список не зашит в код нарочно: три из
+  // семи сломанных отдают манифест без CORS, то есть играют на iOS и не играют
+  // на Android — статический перечень врал бы половине. Подробности в ./order.ts.
+  const [dead, setDead] = useState<ReadonlySet<string>>(() => new Set());
 
-  const list = channels.status === 'ok' ? channels.data : [];
+  const raw = channels.status === 'ok' ? channels.data : [];
+  const list = useMemo(() => orderChannels(raw), [raw]);
   // Группа под названием только когда она РАЗЛИЧАЕТ: сегодня плейлист отдаёт
   // все 31 канал из одной `SPORT 🏆`, и подпись превращается в 31 одинаковую
   // строку шума. Появится вторая группа — подпись вернётся сама.
   const showGroup = new Set(list.map((c) => c.group)).size > 1;
-  // Первый канал играет сам: экран, который открывается чёрным прямоугольником
-  // и ждёт выбора, читается как сломанный.
-  const playing = selected ?? list[0]?.url ?? null;
+  // Первый ЖИВОЙ канал играет сам: экран, который открывается чёрным
+  // прямоугольником и ждёт выбора, читается как сломанный — а первым в
+  // плейлисте вполне может стоять мёртвый.
+  const playing = selected && !dead.has(selected)
+    ? selected
+    : nextAlive(list, null, dead);
+
+  // Отказ канала: помечаем и уходим к следующему живому. Ровно это и чинит
+  // «ТВ не работает» — раньше экран замирал на ошибке первого же мёртвого.
+  const handleFailed = useCallback((failedUrl: string) => {
+    setDead((prev) => {
+      if (prev.has(failedUrl)) return prev;
+      const next = new Set(prev);
+      next.add(failedUrl);
+      return next;
+    });
+    setSelected(nextAlive(list, failedUrl, new Set([...dead, failedUrl])));
+  }, [list, dead]);
+
+  // Живых не осталось — это НЕ «каналов нет», и сказать надо разное.
+  const allDead = list.length > 0 && playing === null;
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -65,7 +89,13 @@ export function StreamScreen() {
           <p className="text-brand-muted text-[12px] text-center pt-8">{t('stream.not_configured')}</p>
         ) : (
           <>
-            {playing && <StreamPlayer url={playing} />}
+            {playing && (
+              <StreamPlayer key={playing} url={playing} onFailed={handleFailed} />
+            )}
+
+            {allDead && (
+              <p className="text-brand-muted text-[12px] text-center pt-8">{t('stream.all_failed')}</p>
+            )}
 
             {channels.status === 'loading' && (
               <p className="text-brand-muted text-[12px] text-center pt-8">{t('stream.channels_loading')}</p>
@@ -87,15 +117,26 @@ export function StreamScreen() {
                 </p>
                 {/* OptionRow, а не своя строка: «выбранное» в этом проекте
                     выражают только OptionRow и Chip — см. CLAUDE.md. */}
-                {list.map((channel) => (
-                  <OptionRow
-                    key={channel.url}
-                    title={channel.name}
-                    description={showGroup ? channel.group || undefined : undefined}
-                    selected={channel.url === playing}
-                    onClick={() => { hapticImpact('light'); setSelected(channel.url); }}
-                  />
-                ))}
+                {list.map((channel) => {
+                  const failed = dead.has(channel.url);
+                  return (
+                    <OptionRow
+                      key={channel.url}
+                      title={channel.name}
+                      // Отказавший канал не прячется, а честно подписывается:
+                      // исчезнувшая из списка строка читается как баг, а «канал
+                      // недоступен» объясняет, почему по ней больше не нажать.
+                      description={
+                        failed
+                          ? t('stream.channel_failed')
+                          : showGroup ? channel.group || undefined : undefined
+                      }
+                      selected={channel.url === playing}
+                      disabled={failed}
+                      onClick={() => { hapticImpact('light'); setSelected(channel.url); }}
+                    />
+                  );
+                })}
               </div>
             )}
 

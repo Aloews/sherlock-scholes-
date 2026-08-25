@@ -626,7 +626,9 @@
     "search": "선수 또는 클럽 검색",
     "standings": "리그 순위",
     "failed": "선수 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-    "squad_failed": "등록한 라인업을 불러오지 못했습니다. 저장되어 있을 수 있으니 다시 고르지 마세요."
+    "squad_failed": "등록한 라인업을 불러오지 못했습니다. 저장되어 있을 수 있으니 다시 고르지 마세요.",
+    "ratings": "포인트를 쌓고 있는 선수",
+    "ratings_all": "전체 순위"
   },
   "quiz": {
     "title": "선수 맞히기",
@@ -744,7 +746,12 @@
     "ranked_line": "{{played}}경기 · {{won}}승 · {{points}}점",
     "ranked_confirmed": "경기가 기록되었습니다",
     "ranked_pending": "상대의 확인을 기다리는 중",
-    "ranked_failed": "결과를 저장하지 못했습니다"
+    "ranked_failed": "결과를 저장하지 못했습니다",
+    "mode_hint": "같은 게임, 두 가지 방식.",
+    "mode_local": "한 대의 휴대폰으로",
+    "mode_local_hint": "한 화면을 절반씩 나눠 둘이서",
+    "mode_online": "두 대의 휴대폰으로",
+    "mode_online_hint": "방 코드로 대전, 순위표 포함"
   },
   "news": {
     "title": "축구 뉴스",
@@ -777,6 +784,8 @@
     "channels_title": "채널",
     "channels_loading": "채널 목록을 불러오는 중…",
     "channels_failed": "채널 목록을 불러오지 못했습니다.",
-    "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다."
+    "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다.",
+    "channel_failed": "채널을 이용할 수 없습니다",
+    "all_failed": "오늘은 응답하는 채널이 없습니다. 나중에 다시 시도해 주세요."
   }
 }
