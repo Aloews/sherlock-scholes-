@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCheck, IconX } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
@@ -20,8 +19,7 @@ import { fetchFamousRound, type FamousRound } from '@/features/famous/famousApi'
  * «неверно» и не говорит, как было на самом деле), красная у выбранной
  * неверной.
  */
-export function FamousScreen() {
-  const navigate = useNavigate();
+export function FamousGame({ onBack }: { onBack: () => void }) {
   const { t, i18n } = useTranslation();
 
   const [round, setRound] = useState<FamousRound | null>(null);
@@ -51,7 +49,7 @@ export function FamousScreen() {
       <div className="flex items-center gap-3 px-4 py-4">
         <button
           type="button"
-          onClick={() => { hapticImpact('light'); navigate('/'); }}
+          onClick={() => { hapticImpact('light'); onBack(); }}
           className="text-brand-muted hover:text-white transition-colors"
           aria-label={t('home.back')}
         >

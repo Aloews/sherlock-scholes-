@@ -105,9 +105,6 @@
     "squad_as_of": "Effectif au {{date}} — d’après les articles des joueurs, pas en direct",
     "matches_link": "Prochains matchs",
     "fantasy_link": "Ligue fantasy",
-    "quiz_link": "Devine le joueur",
-    "famous_link": "Qui est le plus célèbre",
-    "squad_link": "L'équipe de qui",
     "chess_link": "Échecs du football",
     "alias_link": "Alias du football",
     "digest_link": "Buts et actions",
@@ -119,7 +116,8 @@
     "ratings_link": "Classement des joueurs",
     "arena_online_link": "Arène en réseau",
     "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
-    "stream_link": "TV en direct"
+    "stream_link": "TV en direct",
+    "minigames_link": "Mini-jeux"
   },
   "design": {
     "master": "Nouveau design",
@@ -804,5 +802,11 @@
     "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment.",
     "channel_failed": "Chaîne indisponible",
     "all_failed": "Aucune chaîne ne répond aujourd’hui. Réessayez plus tard."
+  },
+  "minigames": {
+    "title": "Mini-jeux",
+    "quiz_hint": "Des indices un à un : devine le joueur",
+    "famous_hint": "Deux cartes : qui est le plus connu",
+    "squad_hint": "Cinq d’un club : devine le club"
   }
 }

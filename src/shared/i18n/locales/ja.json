@@ -103,9 +103,6 @@
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
-    "quiz_link": "選手を当てる",
-    "famous_link": "どっちが有名",
-    "squad_link": "どのクラブ",
     "chess_link": "サッカーチェス",
     "alias_link": "サッカー・アリアス",
     "digest_link": "ゴールと名場面",
@@ -117,7 +114,8 @@
     "ratings_link": "選手ランキング",
     "arena_online_link": "ネット対戦アリーナ",
     "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。",
-    "stream_link": "ライブTV"
+    "stream_link": "ライブTV",
+    "minigames_link": "ミニゲーム"
   },
   "design": {
     "master": "新デザイン",
@@ -780,5 +778,11 @@
     "channels_empty": "現在、視聴できるスポーツチャンネルはありません。",
     "channel_failed": "チャンネルを利用できません",
     "all_failed": "本日はどのチャンネルも応答しません。後でもう一度お試しください。"
+  },
+  "minigames": {
+    "title": "ミニゲーム",
+    "quiz_hint": "ヒントを一つずつ — 選手を当てよう",
+    "famous_hint": "2枚のカード — どちらが有名か",
+    "squad_hint": "クラブの5人 — クラブを当てよう"
   }
 }
