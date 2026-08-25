@@ -797,6 +797,10 @@
     "not_configured": "La TV en direct n'est pas encore configurée.",
     "report_link": "Signaler au titulaire des droits",
     "report_subject": "Plainte concernant le flux Live TV",
-    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande."
+    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande.",
+    "channels_title": "Chaînes",
+    "channels_loading": "Chargement de la liste des chaînes…",
+    "channels_failed": "Impossible de charger la liste des chaînes.",
+    "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment."
   }
 }

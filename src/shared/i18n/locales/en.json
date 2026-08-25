@@ -797,6 +797,10 @@
     "not_configured": "Live TV isn't set up yet.",
     "report_link": "Report to the rights holder",
     "report_subject": "Complaint about the Live TV stream",
-    "report_body": "Please describe the content and include proof of your rights. We will review and act promptly."
+    "report_body": "Please describe the content and include proof of your rights. We will review and act promptly.",
+    "channels_title": "Channels",
+    "channels_loading": "Loading the channel list…",
+    "channels_failed": "Could not load the channel list.",
+    "channels_empty": "No sports channels are available right now."
   }
 }

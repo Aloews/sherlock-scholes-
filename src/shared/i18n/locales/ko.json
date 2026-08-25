@@ -773,6 +773,10 @@
     "not_configured": "실시간 TV가 아직 설정되지 않았습니다.",
     "report_link": "저작권자로서 신고하기",
     "report_subject": "실시간 TV 스트림에 대한 신고",
-    "report_body": "콘텐츠 내용과 권리 증빙을 함께 알려주세요. 신속히 검토 후 조치하겠습니다."
+    "report_body": "콘텐츠 내용과 권리 증빙을 함께 알려주세요. 신속히 검토 후 조치하겠습니다.",
+    "channels_title": "채널",
+    "channels_loading": "채널 목록을 불러오는 중…",
+    "channels_failed": "채널 목록을 불러오지 못했습니다.",
+    "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다."
   }
 }
