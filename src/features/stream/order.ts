@@ -25,7 +25,7 @@
 // Живёт это отдельным файлом без импортов из приложения — тем же приёмом, что
 // `playlist.ts` и `fantasy/tactics.ts`.
 
-import type { Channel } from './playlist';
+import { pinRank, type Channel } from './playlist';
 
 /**
  * Кого поднять наверх.
@@ -41,23 +41,9 @@ import type { Channel } from './playlist';
  * мёртвый канал наверх — ровно тот баг, из-за которого «ТВ не работает»:
  * первый канал играет сам, и если он мёртв, сломанным выглядит всё.
  */
-export const PINNED: readonly string[] = [
-  'setanta',      // Setanta Sports 1/2 HD — русская студия, топ-лиги
-  'viasat sport',
-  'eurosport',
-  'real madrid',
-  'barca',
-  'arena sport',  // сербские, показывают АПЛ и Серию А
-  'diema sport',
-  'nova sport',
-];
-
-/** Индекс канала в PINNED, или `PINNED.length` для всех остальных. */
-function rank(channel: Channel): number {
-  const name = channel.name.toLowerCase();
-  const i = PINNED.findIndex((needle) => name.includes(needle));
-  return i === -1 ? PINNED.length : i;
-}
+// Список закреплённых и `pinRank` живут в ./playlist: там же, где отбор.
+// Один список решает и «показывать ли канал», и «каким по счёту» —
+// два разошлись бы, и канал оказался бы закреплён, но невидим.
 
 /**
  * Отсортировать: закреплённые в порядке PINNED, остальные — как в плейлисте.
@@ -68,7 +54,7 @@ function rank(channel: Channel): number {
  * бы на ровном месте при каждой загрузке.
  */
 export function orderChannels(channels: readonly Channel[]): Channel[] {
-  return [...channels].sort((a, b) => rank(a) - rank(b));
+  return [...channels].sort((a, b) => pinRank(a) - pinRank(b));
 }
 
 /**

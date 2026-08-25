@@ -33,7 +33,6 @@ export function NewsScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-brand-muted text-[10.5px] pb-2">{t('news.note')}</p>
         <NewsList />
       </div>
     </div>

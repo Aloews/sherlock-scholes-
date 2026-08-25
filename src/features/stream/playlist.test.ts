@@ -166,3 +166,42 @@ describe('sportChannels', () => {
     expect(sportChannels('<html>404 Not Found</html>')).toEqual([]);
   });
 });
+
+describe('pinned channels bypass the group filter', () => {
+  // ⚠️ ЭТО И ЕСТЬ ПРИЧИНА, ПО КОТОРОЙ ОТБОР ЗНАЕТ ПРО PINNED. «Матч! Премьер»
+  // лежит в группе `Оргтехсервис 🎯VPN`, а не в `SPORT 🏆`, и требование
+  // «правильной» группы молча выбрасывало бы названный игроком канал.
+  it('keeps a pinned channel that sits in a non-sport group', () => {
+    const text = [
+      '#EXTINF:-1 group-title="Оргтехсервис 🎯VPN",Матч! Премьер',
+      'https://flussonic.example/tv-x/video.m3u8',
+    ].join('\n');
+    expect(sportChannels(text).map((c) => c.name)).toEqual(['Матч! Премьер']);
+  });
+
+  it('keeps a pinned channel out of TEST-1 too', () => {
+    const text = [
+      '#EXTINF:-1 group-title="TEST-1",Беларусь 5',
+      'https://example.test/by5.m3u8',
+    ].join('\n');
+    expect(sportChannels(text)).toHaveLength(1);
+  });
+
+  // Пропуск мимо группы НЕ значит пропуск мимо https: смешанное содержимое не
+  // загрузится ничем, и показывать такую строку — показывать заведомо мёртвое.
+  it('still drops a pinned channel served over http', () => {
+    const text = [
+      '#EXTINF:-1 group-title="TEST-1",Беларусь 5',
+      'http://example.test/by5.m3u8',
+    ].join('\n');
+    expect(sportChannels(text)).toEqual([]);
+  });
+
+  it('does not let an unpinned non-sport channel through', () => {
+    const text = [
+      '#EXTINF:-1 group-title="KINO ZAL",Анаконда 2025',
+      'https://example.test/film.m3u8',
+    ].join('\n');
+    expect(sportChannels(text)).toEqual([]);
+  });
+});

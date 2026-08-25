@@ -712,22 +712,18 @@
     "title": "Resumen del día",
     "headlines": "Lo más sonado en 24 horas",
     "goals": "Goles y momentos",
-    "goals_note": "Lo que publicaron los canales oficiales de las ligas en 24 horas.",
     "loading": "Cargando…",
     "empty_news": "Hoy no ha llegado nada.",
     "empty_goals": "No hubo vídeos en 24 horas.",
     "loudness_one": "{{n}} medio",
     "loudness_other": "{{n}} medios",
     "weekend": "Goles del fin de semana",
-    "weekend_note": "Primero los goles, luego por visualizaciones.",
     "week": "Lo mejor de la semana",
-    "week_note": "Copas y noches europeas entre jornadas: lo que no cabe en el fin de semana.",
     "moment": "momento",
     "empty_weekend": "No hay vídeos de ese fin de semana.",
     "views_one": "{{n}} visualización",
     "views_other": "{{n}} visualizaciones",
     "summary": "En resumen",
-    "summary_note": "Un resumen de los temas del día, escrito por un modelo de lenguaje.",
     "summary_make": "Crear resumen",
     "summary_retry": "Intentar de nuevo",
     "summary_loading": "Escribiendo el resumen…",
@@ -735,7 +731,6 @@
     "summary_quiet": "Hoy no se formó ningún tema: no hay nada que resumir.",
     "summary_refused": "El modelo no quiso resumir estos temas.",
     "live": "En directo",
-    "live_note": "Emisión abierta en el canal oficial de la liga.",
     "live_official": "canal oficial"
   },
   "arena": {
@@ -777,7 +772,6 @@
   },
   "news": {
     "title": "Noticias de fútbol",
-    "note": "Primero, lo que publican todos a la vez.",
     "failed": "No se pudieron cargar las noticias. Inténtalo más tarde."
   },
   "ratings": {
@@ -798,7 +792,6 @@
   },
   "stream": {
     "title": "TV en vivo",
-    "note": "Una lista de canales en directo — solo de fondo, no es parte del juego.",
     "loading": "Cargando la transmisión…",
     "error": "No se pudo reproducir la transmisión. Inténtalo más tarde.",
     "not_configured": "La TV en vivo aún no está configurada.",

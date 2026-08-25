@@ -111,6 +111,63 @@ export function isSport(channel: Channel): boolean {
 }
 
 /**
+ * Каналы, которые игрок назвал сам. Порядок ВНУТРИ списка значим — он станет
+ * порядком в начале экрана.
+ *
+ * Совпадение по вхождению в название без учёта регистра: стабильного
+ * идентификатора у канала в этом плейлисте нет вовсе. `tvg-id` проставлен у 166
+ * записей из 4082 и ни одной спортивной, а числа в адресах принадлежат
+ * конкретному ретранслятору и меняются вместе с ним.
+ *
+ * ⚠️ ЗАКРЕПЛЁННЫЙ КАНАЛ ПРОХОДИТ МИМО ФИЛЬТРА ПО ГРУППЕ. «Матч! Премьер» лежит
+ * в группе `Оргтехсервис 🎯VPN`, «Беларусь 5» и «Setanta Sports UA» — в
+ * `TEST-1`: группы здесь правят руками, и требовать от названного канала ещё и
+ * правильной группы значит молча его потерять.
+ *
+ * ⚠️ НО ФИЛЬТР ПО `https` ОН НЕ ПРОХОДИТ, И ЭТО НЕ ОБСУЖДАЕТСЯ — см. isPlayable.
+ * Замер 25.08.2026 по боевому плейлисту: из названных играет РОВНО ОДИН —
+ * «Матч! Премьер» (200, `access-control-allow-origin: *`). «Беларусь 5»,
+ * «Матч Премьер», «Матч! Футбол 1–3», «sport Футбол 1–3 (HD)», «Setanta Sports
+ * UA» отдаются по `http://` и в https-странице не загрузятся ничем. Они
+ * оставлены здесь НАРОЧНО: список — это «показать, когда сможем», и в тот день,
+ * когда ретранслятор отдаст их по https, они появятся сами, без правки кода.
+ */
+export const PINNED: readonly string[] = [
+  'матч! премьер',   // ЕДИНСТВЕННЫЙ из названных, который сейчас играет
+  'матч премьер',
+  'беларусь 5',
+  'матч! футбол',
+  'футбол 1',
+  'футбол 2',
+  'футбол 3',
+  'setanta sports ua',
+  'setanta',         // Setanta Sports 1/2 HD — играют
+  'viasat sport',
+  'eurosport',
+  'real madrid',
+  'barca',
+  'arena sport',     // сербские: АПЛ и Серия А
+  'diema sport',
+  'nova sport',
+];
+
+/** Назван ли канал в PINNED. */
+export function isPinned(channel: Channel): boolean {
+  const name = channel.name.toLowerCase();
+  return PINNED.some((needle) => name.includes(needle));
+}
+
+/**
+ * Место канала в PINNED, или `PINNED.length` для всех прочих.
+ * Живёт рядом со списком, чтобы порядок и отбор читались по одному источнику.
+ */
+export function pinRank(channel: Channel): number {
+  const name = channel.name.toLowerCase();
+  const i = PINNED.findIndex((needle) => name.includes(needle));
+  return i === -1 ? PINNED.length : i;
+}
+
+/**
  * Что показать на экране: спорт, играбельное, без повторов.
  *
  * ⚠️ ПОЧЕМУ ТОЛЬКО СПОРТ, А НЕ ВЕСЬ КАТАЛОГ. Приложение про футбол, а в
@@ -126,7 +183,9 @@ export function sportChannels(text: string): Channel[] {
   const seen = new Set<string>();
   const out: Channel[] = [];
   for (const channel of parseM3u(text)) {
-    if (!isSport(channel) || !isPlayable(channel)) continue;
+    // Спортивная группа ИЛИ названный канал: см. шапку PINNED — группы в этом
+    // плейлисте правят руками, и «Матч! Премьер» лежит не в спортивной.
+    if (!(isSport(channel) || isPinned(channel)) || !isPlayable(channel)) continue;
     if (seen.has(channel.url)) continue;
     seen.add(channel.url);
     out.push(channel);

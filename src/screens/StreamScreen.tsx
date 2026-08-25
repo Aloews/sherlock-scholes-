@@ -83,7 +83,6 @@ export function StreamScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col items-center gap-3">
-        <p className="text-brand-muted text-[10.5px] pb-2 self-start">{t('stream.note')}</p>
 
         {!PLAYLIST_URL ? (
           <p className="text-brand-muted text-[12px] text-center pt-8">{t('stream.not_configured')}</p>

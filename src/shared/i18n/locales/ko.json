@@ -693,20 +693,16 @@
     "title": "오늘의 다이제스트",
     "headlines": "24시간 동안 가장 화제",
     "goals": "골과 장면",
-    "goals_note": "리그 공식 채널이 24시간 안에 올린 영상입니다.",
     "loading": "불러오는 중…",
     "empty_news": "오늘은 들어온 소식이 없습니다.",
     "empty_goals": "24시간 내 영상이 없습니다.",
     "loudness_other": "{{n}}개 매체",
     "weekend": "주말의 골",
-    "weekend_note": "골을 먼저, 그다음은 조회수 순입니다.",
     "week": "이번 주 베스트",
-    "week_note": "라운드 사이의 컵과 유럽 대항전 — 주말에 담기지 않은 것들.",
     "moment": "장면",
     "empty_weekend": "그 주말의 영상이 없습니다.",
     "views_other": "조회수 {{n}}회",
     "summary": "핵심 요약",
-    "summary_note": "오늘의 화제를 언어 모델이 요약합니다.",
     "summary_make": "요약 만들기",
     "summary_retry": "다시 시도",
     "summary_loading": "요약을 작성하는 중…",
@@ -714,7 +710,6 @@
     "summary_quiet": "오늘은 모인 화제가 없어 요약할 내용이 없습니다.",
     "summary_refused": "모델이 이 화제들의 요약을 거절했습니다.",
     "live": "지금 중계 중",
-    "live_note": "리그 공식 채널의 무료 중계입니다.",
     "live_official": "공식 채널"
   },
   "arena": {
@@ -755,7 +750,6 @@
   },
   "news": {
     "title": "축구 뉴스",
-    "note": "여러 매체가 동시에 다룬 소식부터.",
     "failed": "뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
   },
   "ratings": {
@@ -774,7 +768,6 @@
   },
   "stream": {
     "title": "실시간 TV",
-    "note": "실시간 채널 재생목록입니다. 게임과는 관련이 없습니다.",
     "loading": "스트림을 불러오는 중…",
     "error": "스트림을 재생할 수 없습니다. 잠시 후 다시 시도해 주세요.",
     "not_configured": "실시간 TV가 아직 설정되지 않았습니다.",

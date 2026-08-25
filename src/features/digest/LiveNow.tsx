@@ -32,7 +32,6 @@ export function LiveNow({ matches }: { matches: LiveMatch[] }) {
         </span>
         {t('digest.live')}
       </h2>
-      <p className="text-brand-muted text-[10.5px]">{t('digest.live_note')}</p>
 
       {matches.map((m) => (
         <button
