@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
-import { useHlsPlayer } from './useHlsPlayer';
+import { useHlsPlayer, READY_TIMEOUT_MS } from './useHlsPlayer';
 
 // hls.js is mocked wholesale: this test is about our own state machine
 // (loading -> ready/error, cleanup on unmount/url change), not hls.js's
@@ -162,5 +162,53 @@ describe('useHlsPlayer', () => {
     const video = screen.getByTestId('video');
     act(() => video.dispatchEvent(new Event('error')));
     expect(currentStatus()).toBe('error');
+  });
+});
+
+describe('a stream that never answers', () => {
+  // ⚠️ РАДИ ЭТОГО ВСЁ И ЗАВЕДЕНО. Хост принимает соединение и молчит: ошибки
+  // нет, готовности нет. Экран узнаёт об отказе ТОЛЬКО из события ошибки,
+  // поэтому «Загружаем…» стояло бы вечно при рабочих каналах рядом в списке.
+  it('gives up after the timeout instead of loading forever', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Harness url="https://example.com/silent.m3u8" />);
+      expect(currentStatus()).toBe('loading');
+
+      act(() => { vi.advanceTimersByTime(READY_TIMEOUT_MS - 1); });
+      expect(currentStatus()).toBe('loading');
+
+      act(() => { vi.advanceTimersByTime(2); });
+      expect(currentStatus()).toBe('error');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not fire the timeout once the manifest parsed', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Harness url="https://example.com/playlist.m3u8" />);
+      act(() => hls.state.instances[0].emit('hlsManifestParsed'));
+      expect(currentStatus()).toBe('ready');
+
+      act(() => { vi.advanceTimersByTime(READY_TIMEOUT_MS * 2); });
+      expect(currentStatus()).toBe('ready');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not leave a timer running after unmount', () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(<Harness url="https://example.com/silent.m3u8" />);
+      unmount();
+      // Сработавший после размонтирования таймер писал бы состояние в мёртвый
+      // компонент; здесь важно, что он снят, а не что «ничего не упало».
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

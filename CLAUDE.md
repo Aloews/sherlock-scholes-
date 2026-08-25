@@ -72,7 +72,15 @@ npx tsc --noEmit          # noUnusedLocals is on
 npm run build
 node scripts/check-i18n.mjs
 npm test                  # vitest: unit + property + data-integrity
+node scripts/check-limits.mjs   # лимиты, в которые проект уже упирался
 ```
+
+`check-limits` ничего не заваливает — он печатает числа. Смотреть его стоит
+**до** пуша, потому что каждая его строка однажды что-то сломала: усечение
+ответа PostgREST по `db-max-rows` (в таблице 3809 карточек, отдаётся 1000),
+каталог ТВ на 850 КБ без сжатия (~17 с на медленном 3G), исчерпанный лимит
+GitHub API, вес первого захода. Порог, при котором стоит подождать, у каждого
+свой — решение остаётся за человеком.
 
 The scraper's tests are standalone scripts, not a pytest suite — pytest
 collects nothing from them. Run them directly:
