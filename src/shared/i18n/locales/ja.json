@@ -791,5 +791,17 @@
     "quiz_hint": "ヒントを一つずつ — 選手を当てよう",
     "famous_hint": "2枚のカード — どちらが有名か",
     "squad_hint": "クラブの5人 — クラブを当てよう"
+  },
+  "social": {
+    "online_title": "オンライン中",
+    "online_loading": "オンラインの人を確認中…",
+    "online_failed": "リストを読み込めませんでした",
+    "online_empty": "今はだれもいません",
+    "is_friend": "フレンド",
+    "invite": "招待",
+    "invite_needs_room": "招待するにはまずルームを作成してください",
+    "hide_me": "リストから自分を隠す",
+    "show_me": "リストに自分を表示する",
+    "hidden_note": "ほかの人からは見えません。リストは引き続き見えます。"
   }
 }

@@ -816,5 +816,17 @@
     "quiz_hint": "Pistas una a una: adivina al jugador",
     "famous_hint": "Dos cartas: quién es más conocido",
     "squad_hint": "Cinco de un club: adivina el club"
+  },
+  "social": {
+    "online_title": "En línea ahora",
+    "online_loading": "Viendo quién está en línea…",
+    "online_failed": "No se pudo cargar la lista",
+    "online_empty": "Ahora no hay nadie",
+    "is_friend": "Amigo",
+    "invite": "Invitar",
+    "invite_needs_room": "Crea una sala primero para invitar",
+    "hide_me": "Ocultarme de la lista",
+    "show_me": "Mostrarme en la lista",
+    "hidden_note": "Estás oculto para los demás. Tú sigues viendo la lista."
   }
 }

@@ -7,6 +7,7 @@ import { useFriends } from '@/features/friends/useFriends';
 import { displayName, type FriendRow, type SuggestionRow } from '@/features/friends/friendsApi';
 import { hapticImpact, hapticSuccess, hapticError } from '@/shared/lib/telegram';
 import { levelFromXp } from '@/shared/lib/level';
+import { OnlinePanel } from '@/features/social/OnlinePanel';
 
 /**
  * Friends, ranked, and who to add next.
@@ -57,6 +58,10 @@ export function FriendsScreen() {
 
           {!loading && (
             <>
+              {/* Кто сейчас в приложении — ПЕРВЫМ блоком: звать идут живых, а
+                  не тех, кто последний раз заходил на прошлой неделе. */}
+              <OnlinePanel />
+
               <section className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 space-y-3">
                 <p className="text-brand-muted text-xs uppercase tracking-wider">
                   {t('friends.list_title')}

@@ -816,5 +816,17 @@
     "quiz_hint": "Des indices un à un : devine le joueur",
     "famous_hint": "Deux cartes : qui est le plus connu",
     "squad_hint": "Cinq d’un club : devine le club"
+  },
+  "social": {
+    "online_title": "En ligne maintenant",
+    "online_loading": "On regarde qui est en ligne…",
+    "online_failed": "Impossible de charger la liste",
+    "online_empty": "Personne n’est en ligne",
+    "is_friend": "Ami",
+    "invite": "Inviter",
+    "invite_needs_room": "Créez d’abord un salon pour inviter",
+    "hide_me": "Me masquer de la liste",
+    "show_me": "M’afficher dans la liste",
+    "hidden_note": "Vous êtes masqué pour les autres. Vous voyez toujours la liste."
   }
 }

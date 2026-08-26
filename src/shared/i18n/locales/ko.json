@@ -791,5 +791,17 @@
     "quiz_hint": "힌트를 하나씩 — 선수를 맞혀 보세요",
     "famous_hint": "카드 두 장 — 누가 더 유명할까",
     "squad_hint": "한 클럽의 다섯 명 — 클럽을 맞혀 보세요"
+  },
+  "social": {
+    "online_title": "지금 접속 중",
+    "online_loading": "접속 중인 사람을 확인하는 중…",
+    "online_failed": "목록을 불러오지 못했습니다",
+    "online_empty": "지금은 아무도 없습니다",
+    "is_friend": "친구",
+    "invite": "초대",
+    "invite_needs_room": "초대하려면 먼저 방을 만드세요",
+    "hide_me": "목록에서 나를 숨기기",
+    "show_me": "목록에 나를 표시하기",
+    "hidden_note": "다른 사람에게는 보이지 않습니다. 목록은 계속 볼 수 있습니다."
   }
 }
