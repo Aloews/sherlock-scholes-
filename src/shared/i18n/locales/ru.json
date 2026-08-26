@@ -624,7 +624,12 @@
     "broadcaster": "Показывает · {{name}}",
     "prediction_history": "История прогнозов",
     "history_loading": "Загрузка…",
-    "history_pending": "ждём счёт"
+    "history_pending": "ждём счёт",
+    "squad_level": "Уровень состава",
+    "squad_depth_one": "по {{count}} игроку",
+    "squad_depth_few": "по {{count}} игрокам",
+    "squad_depth_many": "по {{count}} игрокам",
+    "squad_depth_other": "по {{count}} игрокам"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",

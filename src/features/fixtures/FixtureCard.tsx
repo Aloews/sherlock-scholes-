@@ -7,6 +7,8 @@ import type { Fixture } from './fixturesApi';
 import type { Broadcast } from './broadcastsApi';
 import type { BroadcastRight } from './broadcastRightsApi';
 import type { Prediction } from './predictionsApi';
+import { SquadStrength } from './SquadStrength';
+import type { SquadStrength as Strength } from './squadStrengthApi';
 
 interface Props {
   fixture: Fixture;
@@ -19,6 +21,12 @@ interface Props {
    */
   rights?: BroadcastRight;
   prediction?: Prediction;
+  /**
+   * Уровень состава обеих команд по известности их игроков. Есть далеко не у
+   * каждого матча — оцифрованы не все клубы, — и отсутствие показывается
+   * НИКАК: «состав 0» читалось бы как «слабый», хотя значит «мы не знаем».
+   */
+  strength?: Strength;
   onPredictionSaved: (saved: Prediction) => void;
   timeFmt: Intl.DateTimeFormat;
 }
@@ -47,9 +55,22 @@ function ageMinutes(iso: string | null): number | null {
  * НИКАКИХ КОЭФФИЦИЕНТОВ И НИЧЕГО ПРОИЗВОДНОГО. Ни «фаворита», ни выделенной
  * стороны, ни порядка, который её кодирует. `fixture_odds` не имеет ни гранта,
  * ни политики, так что прочитать их отсюда нельзя даже по ошибке.
+ *
+ * ⚠️ УРОВЕНЬ СОСТАВА — ИСКЛЮЧЕНИЕ ПО ПРОИСХОЖДЕНИЮ, НО НЕ ПО ПРАВИЛУ ВЫШЕ, и
+ * разницу стоит записать, потому что она неочевидна. Запрет касается
+ * букмекерских котировок: их нельзя ни показать, ни вывести из них что-либо.
+ * `SquadStrength` считается из СВОИХ ЖЕ карточек (известность игроков клуба) и
+ * к котировкам отношения не имеет.
+ *
+ * Само правило при этом соблюдается ПО СУТИ: обе стороны нарисованы
+ * одинаково, порядок всегда «хозяева, потом гости» и никогда не
+ * переставляется по величине, значка фаворита нет, вероятностей нет. Число
+ * подписано тем, что оно есть, — известностью состава, а не силой и не
+ * прогнозом. Появилось взамен истории противостояний, которую строить не из
+ * чего: 0 из 266 предстоящих матчей имеют прошлую встречу.
  */
 export function FixtureCard({
-  fixture, broadcast, rights, prediction, onPredictionSaved, timeFmt,
+  fixture, broadcast, rights, prediction, strength, onPredictionSaved, timeFmt,
 }: Props) {
   const { t } = useTranslation();
   const hasScore = fixture.home_score !== null && fixture.away_score !== null;
@@ -134,6 +155,16 @@ export function FixtureCard({
           <IconDeviceTvOld size={13} stroke={1.75} />
           <span>{t('matches.where_to_watch', { source: broadcast.name })}</span>
         </button>
+      )}
+
+      {strength && (
+        <div className="pl-[3.75rem]">
+          <SquadStrength
+            strength={strength}
+            homeTeam={fixture.home_team}
+            awayTeam={fixture.away_team}
+          />
+        </div>
       )}
 
       <div className="mt-2 pl-[3.75rem]">

@@ -19,6 +19,7 @@ import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
 import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
 import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
 import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/broadcastRightsApi';
+import { fetchSquadStrength, type SquadStrength } from '@/features/fixtures/squadStrengthApi';
 import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
@@ -50,6 +51,10 @@ export function MatchesScreen() {
   const [upcoming, setUpcoming] = useState<LoadState<Fixture[]>>(LOADING);
   const [predictions, setPredictions] = useState<LoadState<Prediction[]>>(LOADING);
   const [broadcasts, setBroadcasts] = useState<Map<string, Broadcast>>(new Map());
+  // Пустая карта — начальное значение, а не `null`: уровень состава есть далеко
+  // не у каждого матча, и «ещё не пришло» с «у этого матча нет» экран
+  // показывает одинаково — никак.
+  const [strength, setStrength] = useState<Map<string, SquadStrength>>(new Map());
   // Правообладатель для страны читателя. Пустая карта — нормальное состояние:
   // страна может быть не объявлена, а для объявленной вещателя может не быть
   // вовсе (у Премьер-лиги для России его нет). В обоих случаях карточка
@@ -78,6 +83,11 @@ export function MatchesScreen() {
       // ничего не переписывают. Держать из-за них весь экран значит ждать по
       // самому медленному запросу там, где можно ждать по самому быстрому.
       void fetchBroadcasts().then((tv) => { if (!cancelled) setBroadcasts(tv); });
+      // Уровень состава — тоже отдельно и по той же причине: он добавляет
+      // блок под матчем и ничего не переписывает. Плюс есть далеко не у
+      // каждого матча (оцифрованы не все клубы), так что ждать его — значит
+      // задержать весь список ради строки, которой у большинства не будет.
+      void fetchSquadStrength().then((m) => { if (!cancelled) setStrength(m); });
       // Страна берётся из ОБЪЯВЛЕННОГО региона локали, а не выводится из
       // языка: испанский — это и Испания, и Мексика, и Аргентина. Нет
       // региона — нет запроса, см. viewerCountry.ts.
@@ -318,6 +328,7 @@ export function MatchesScreen() {
                 broadcast={broadcasts.get(fixture.sport_key)}
                 rights={rights.get(fixture.sport_key)}
                 prediction={byFixture.get(fixture.id)}
+                strength={strength.get(fixture.id)}
                 onPredictionSaved={savePrediction}
                 timeFmt={timeFmt}
               />

@@ -582,7 +582,10 @@
     "broadcaster": "Emite · {{name}}",
     "prediction_history": "Historial de pronósticos",
     "history_loading": "Cargando…",
-    "history_pending": "esperando resultado"
+    "history_pending": "esperando resultado",
+    "squad_level": "Nivel de la plantilla",
+    "squad_depth_one": "por {{count}} jugador",
+    "squad_depth_other": "por {{count}} jugadores"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

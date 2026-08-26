@@ -582,7 +582,10 @@
     "broadcaster": "Broadcaster · {{name}}",
     "prediction_history": "Prediction history",
     "history_loading": "Loading…",
-    "history_pending": "awaiting score"
+    "history_pending": "awaiting score",
+    "squad_level": "Squad level",
+    "squad_depth_one": "by {{count}} player",
+    "squad_depth_other": "by {{count}} players"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
