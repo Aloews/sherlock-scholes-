@@ -827,6 +827,17 @@
     "invite_needs_room": "Create a room first to invite",
     "hide_me": "Hide me from the list",
     "show_me": "Show me in the list",
-    "hidden_note": "You are hidden from others. You still see the list."
+    "hidden_note": "You are hidden from others. You still see the list.",
+    "fan_clubs_title": "Fan clubs",
+    "fan_clubs_empty": "You are not in a fan club yet",
+    "join_club": "Join",
+    "leave_club": "Leave",
+    "cancel": "Cancel",
+    "search_club": "Find a club",
+    "no_clubs_found": "No such club",
+    "members_one": "{{n}} fan",
+    "members_other": "{{n}} fans",
+    "ours_online_one": "{{n}} online",
+    "ours_online_other": "{{n}} online"
   }
 }

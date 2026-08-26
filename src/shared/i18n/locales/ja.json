@@ -802,6 +802,15 @@
     "invite_needs_room": "招待するにはまずルームを作成してください",
     "hide_me": "リストから自分を隠す",
     "show_me": "リストに自分を表示する",
-    "hidden_note": "ほかの人からは見えません。リストは引き続き見えます。"
+    "hidden_note": "ほかの人からは見えません。リストは引き続き見えます。",
+    "fan_clubs_title": "ファンクラブ",
+    "fan_clubs_empty": "まだどのファンクラブにも入っていません",
+    "join_club": "参加",
+    "leave_club": "退会",
+    "cancel": "キャンセル",
+    "search_club": "クラブを探す",
+    "no_clubs_found": "そのクラブは見つかりません",
+    "members_other": "サポーター{{n}}人",
+    "ours_online_other": "{{n}}人オンライン"
   }
 }

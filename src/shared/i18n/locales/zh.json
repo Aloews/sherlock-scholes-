@@ -802,6 +802,15 @@
     "invite_needs_room": "请先创建房间再邀请",
     "hide_me": "在列表中隐藏我",
     "show_me": "在列表中显示我",
-    "hidden_note": "其他人看不到你。你仍然可以看到列表。"
+    "hidden_note": "其他人看不到你。你仍然可以看到列表。",
+    "fan_clubs_title": "球迷会",
+    "fan_clubs_empty": "你还没有加入任何球迷会",
+    "join_club": "加入",
+    "leave_club": "退出",
+    "cancel": "取消",
+    "search_club": "查找俱乐部",
+    "no_clubs_found": "未找到该俱乐部",
+    "members_other": "{{n}} 名球迷",
+    "ours_online_other": "{{n}} 人在线"
   }
 }

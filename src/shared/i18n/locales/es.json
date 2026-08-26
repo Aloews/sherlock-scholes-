@@ -827,6 +827,17 @@
     "invite_needs_room": "Crea una sala primero para invitar",
     "hide_me": "Ocultarme de la lista",
     "show_me": "Mostrarme en la lista",
-    "hidden_note": "Estás oculto para los demás. Tú sigues viendo la lista."
+    "hidden_note": "Estás oculto para los demás. Tú sigues viendo la lista.",
+    "fan_clubs_title": "Peñas",
+    "fan_clubs_empty": "Aún no estás en ninguna peña",
+    "join_club": "Unirse",
+    "leave_club": "Salir",
+    "cancel": "Cancelar",
+    "search_club": "Buscar un club",
+    "no_clubs_found": "No se encontró ese club",
+    "members_one": "{{n}} aficionado",
+    "members_other": "{{n}} aficionados",
+    "ours_online_one": "{{n}} en línea",
+    "ours_online_other": "{{n}} en línea"
   }
 }

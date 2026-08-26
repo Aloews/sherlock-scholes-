@@ -827,6 +827,17 @@
     "invite_needs_room": "Cria uma sala primeiro para convidar",
     "hide_me": "Ocultar-me da lista",
     "show_me": "Mostrar-me na lista",
-    "hidden_note": "Estás oculto para os outros. Continuas a ver a lista."
+    "hidden_note": "Estás oculto para os outros. Continuas a ver a lista.",
+    "fan_clubs_title": "Clubes de adeptos",
+    "fan_clubs_empty": "Ainda não estás em nenhum clube de adeptos",
+    "join_club": "Entrar",
+    "leave_club": "Sair",
+    "cancel": "Cancelar",
+    "search_club": "Procurar um clube",
+    "no_clubs_found": "Clube não encontrado",
+    "members_one": "{{n}} adepto",
+    "members_other": "{{n}} adeptos",
+    "ours_online_one": "{{n}} online",
+    "ours_online_other": "{{n}} online"
   }
 }

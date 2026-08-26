@@ -827,6 +827,17 @@
     "invite_needs_room": "Créez d’abord un salon pour inviter",
     "hide_me": "Me masquer de la liste",
     "show_me": "M’afficher dans la liste",
-    "hidden_note": "Vous êtes masqué pour les autres. Vous voyez toujours la liste."
+    "hidden_note": "Vous êtes masqué pour les autres. Vous voyez toujours la liste.",
+    "fan_clubs_title": "Clubs de supporters",
+    "fan_clubs_empty": "Vous n’êtes dans aucun club de supporters",
+    "join_club": "Rejoindre",
+    "leave_club": "Quitter",
+    "cancel": "Annuler",
+    "search_club": "Chercher un club",
+    "no_clubs_found": "Aucun club trouvé",
+    "members_one": "{{n}} supporter",
+    "members_other": "{{n}} supporters",
+    "ours_online_one": "{{n}} en ligne",
+    "ours_online_other": "{{n}} en ligne"
   }
 }

@@ -8,6 +8,7 @@ import { displayName, type FriendRow, type SuggestionRow } from '@/features/frie
 import { hapticImpact, hapticSuccess, hapticError } from '@/shared/lib/telegram';
 import { levelFromXp } from '@/shared/lib/level';
 import { OnlinePanel } from '@/features/social/OnlinePanel';
+import { FanClubsPanel } from '@/features/social/FanClubsPanel';
 
 /**
  * Friends, ranked, and who to add next.
@@ -61,6 +62,10 @@ export function FriendsScreen() {
               {/* Кто сейчас в приложении — ПЕРВЫМ блоком: звать идут живых, а
                   не тех, кто последний раз заходил на прошлой неделе. */}
               <OnlinePanel />
+
+              {/* Фан-клубы сразу под присутствием: «наших онлайн трое» имеет
+                  смысл ровно рядом со списком тех, кто онлайн. */}
+              <FanClubsPanel />
 
               <section className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-4 space-y-3">
                 <p className="text-brand-muted text-xs uppercase tracking-wider">
