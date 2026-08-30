@@ -168,27 +168,87 @@ export function pinRank(channel: Channel): number {
 }
 
 /**
- * Что показать на экране: спорт, играбельное, без повторов.
+ * Показывается ли канал ИГРОКУ. ЕДИНСТВЕННОЕ место, где это решается.
+ *
+ * ⚠️ ПРЕДИКАТ ОДИН НА ДВА СПИСКА. Экран `/stream` показывает отобранное,
+ * админский каталог — всё с пометкой «в плеере / не в плеере». Опиши отбор
+ * дважды — и однажды они разойдутся: оператор увидит «канал показывается», а
+ * игрок его не найдёт, и искать причину будет негде. Тот же приём, которым в
+ * этом проекте живёт колода: один `cards_matching` под кнопкой и под раздачей
+ * (см. CLAUDE.md, «The deck»).
  *
  * ⚠️ ПОЧЕМУ ТОЛЬКО СПОРТ, А НЕ ВЕСЬ КАТАЛОГ. Приложение про футбол, а в
  * каталоге 4081 запись, из которых больше 1400 — фильмы, и есть группа
  * `♥18+` на 126 записей. Вываливать это в игру нельзя ни по смыслу, ни по
- * рискам, которые `docs/ADR/0004` и так называет нерешёнными. Спортивная
- * группа — единственная, которой здесь место.
+ * рискам, которые `docs/ADR/0004` и так называет нерешёнными.
+ */
+export function isShown(channel: Channel): boolean {
+  // Спортивная группа ИЛИ названный канал: см. шапку PINNED — группы в этом
+  // плейлисте правят руками, и «Матч! Премьер» лежит не в спортивной.
+  return (isSport(channel) || isPinned(channel)) && isPlayable(channel);
+}
+
+/**
+ * Каталог без повторов, в порядке плейлиста.
  *
  * Повторы убираются по адресу: один и тот же канал лежит в плейлисте по два
  * и три раза («Матч ТВ» встречается трижды), и в списке это выглядит багом.
  */
-export function sportChannels(text: string): Channel[] {
+function dedupe(text: string): Channel[] {
   const seen = new Set<string>();
   const out: Channel[] = [];
   for (const channel of parseM3u(text)) {
-    // Спортивная группа ИЛИ названный канал: см. шапку PINNED — группы в этом
-    // плейлисте правят руками, и «Матч! Премьер» лежит не в спортивной.
-    if (!(isSport(channel) || isPinned(channel)) || !isPlayable(channel)) continue;
     if (seen.has(channel.url)) continue;
     seen.add(channel.url);
     out.push(channel);
   }
   return out;
+}
+
+/** Что показать на экране игрока: спорт, играбельное, без повторов. */
+export function sportChannels(text: string): Channel[] {
+  return dedupe(text).filter(isShown);
+}
+
+/**
+ * Запись каталога С ПРИЧИНОЙ, по которой её нет в плеере. Ради `sport` и
+ * `playable` по отдельности: «не спорт» и «не откроется по https» — разные
+ * поводы, и оператору нужно видеть, какой именно.
+ */
+export interface CatalogueChannel extends Channel {
+  sport: boolean;
+  playable: boolean;
+  /** Ровно `isShown` — то, что игрок увидит на `/stream`. */
+  shown: boolean;
+}
+
+/**
+ * ВЕСЬ каталог, для админского кабинета.
+ *
+ * ⚠️ ЭТО НЕ ВТОРОЙ ЭКРАН ТВ, А ОКНО В ИСХОДНЫЙ ФАЙЛ. Игроку по-прежнему
+ * достаётся `sportChannels`; здесь видно всё вместе с ответом на
+ * единственный вопрос, который тут задают: «почему этого канала нет в
+ * приложении». Живёт за паролем `staffVerify` — там же, где редактор
+ * карточек, и по той же причине: в каталоге есть группа `♥18+`.
+ */
+export function catalogue(text: string): CatalogueChannel[] {
+  return dedupe(text).map((channel) => ({
+    ...channel,
+    sport: isSport(channel),
+    playable: isPlayable(channel),
+    shown: isShown(channel),
+  }));
+}
+
+/** Группы каталога по убыванию размера — с чего оператор начинает смотреть. */
+export function groupCounts(channels: readonly CatalogueChannel[]): { group: string; total: number; shown: number }[] {
+  const by = new Map<string, { group: string; total: number; shown: number }>();
+  for (const c of channels) {
+    const key = c.group || '—';
+    const row = by.get(key) ?? { group: key, total: 0, shown: 0 };
+    row.total += 1;
+    if (c.shown) row.shown += 1;
+    by.set(key, row);
+  }
+  return [...by.values()].sort((a, b) => b.total - a.total || a.group.localeCompare(b.group));
 }

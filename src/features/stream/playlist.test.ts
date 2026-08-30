@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseM3u, isPlayable, isSport, sportChannels, type Channel } from './playlist';
+import {
+  parseM3u, isPlayable, isSport, isShown, sportChannels, catalogue, groupCounts,
+  type Channel,
+} from './playlist';
 
 // Строки взяты из БОЕВОГО ответа VITE_STREAM_URL, а не придуманы: именно его
 // форма и сломала экран, поэтому проверять надо её, а не удобный образец.
@@ -203,5 +206,69 @@ describe('pinned channels bypass the group filter', () => {
       'https://example.test/film.m3u8',
     ].join('\n');
     expect(sportChannels(text)).toEqual([]);
+  });
+});
+
+// ── Каталог для админки ──────────────────────────────────────
+//
+// Смысл этих проверок один: игроку и оператору отбор считает ОДИН предикат.
+// Разойдутся — оператор увидит «показывается», игрок канала не найдёт, и
+// объяснить расхождение будет нечем.
+describe('catalogue', () => {
+  it('keeps everything the player never sees', () => {
+    const all = catalogue(REAL);
+    expect(all.map((c) => c.name)).toContain('Анаконда 2025 США|екшн|пригоди|комедія');
+    // Каталог ШИРЕ списка игрока — иначе окно в исходный файл бессмысленно.
+    expect(all.length).toBeGreaterThan(sportChannels(REAL).length);
+  });
+
+  it('marks WHY a channel is out — group and https are different reasons', () => {
+    const by = new Map(catalogue(REAL).map((c) => [c.name, c]));
+
+    const film = by.get('Анаконда 2025 США|екшн|пригоди|комедія');
+    expect(film).toMatchObject({ sport: false, playable: true, shown: false });
+
+    // «Матч ТВ» — спортивный и всё равно не в плеере: он по http.
+    const matchTv = by.get('Матч ТВ');
+    expect(matchTv).toMatchObject({ sport: true, playable: false, shown: false });
+
+    const setanta = by.get('Setanta Sports 1 HD');
+    expect(setanta).toMatchObject({ sport: true, playable: true, shown: true });
+  });
+
+  // ⚠️ ЭТИ ДВЕ ПРОВЕРКИ НЕ ЛОВЯТ ПОЛОМКУ САМОГО ОТБОРА, и это не упущение:
+  // сломай `isShown` — обе стороны сломаются одинаково и останутся согласны
+  // (проверено: при `isShown = () => true` падают шесть тестов выше, а эти
+  // две нет). Они ловят РАСХОЖДЕНИЕ — тот день, когда кто-нибудь опишет
+  // отбор второй раз рядом. Именно от него и защищаемся.
+  it('agrees with the player list channel for channel', () => {
+    const shownInCatalogue = catalogue(REAL).filter((c) => c.shown).map((c) => c.url);
+    expect(shownInCatalogue).toEqual(sportChannels(REAL).map((c) => c.url));
+  });
+
+  it('dedupes by url, same as the player list', () => {
+    const twice = [
+      '#EXTINF:-1 group-title="KINO ZAL",Анаконда',
+      'https://example.test/film.m3u8',
+      '#EXTINF:-1 group-title="KINO ZAL",Анаконда (повтор)',
+      'https://example.test/film.m3u8',
+    ].join('\n');
+    expect(catalogue(twice)).toHaveLength(1);
+  });
+
+  it('isShown is exactly what sportChannels applies', () => {
+    for (const c of parseM3u(REAL)) {
+      const inPlayer = sportChannels(REAL).some((s) => s.url === c.url);
+      expect(isShown(c)).toBe(inPlayer);
+    }
+  });
+});
+
+describe('groupCounts', () => {
+  it('orders groups by size and counts what the player gets', () => {
+    const rows = groupCounts(catalogue(REAL));
+    expect(rows[0]).toMatchObject({ group: 'SPORT 🏆', total: 3, shown: 2 });
+    // Запись без group-title не теряется — у неё своя строка.
+    expect(rows.some((r) => r.group === '—')).toBe(true);
   });
 });
