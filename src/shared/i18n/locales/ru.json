@@ -870,5 +870,32 @@
     "quiz_hint": "Факты по одному — угадай футболиста",
     "famous_hint": "Две карточки — кто известнее",
     "squad_hint": "Пятеро из клуба — угадай клуб"
+  },
+  "social": {
+    "online_title": "Сейчас в игре",
+    "online_loading": "Смотрим, кто в игре…",
+    "online_failed": "Список не загрузился",
+    "online_empty": "Сейчас никого нет",
+    "is_friend": "Друг",
+    "invite": "Позвать",
+    "invite_needs_room": "Чтобы позвать, сначала создайте комнату",
+    "hide_me": "Скрыться из списка",
+    "show_me": "Показываться в списке",
+    "hidden_note": "Вас не видно другим. Список вы видите по-прежнему.",
+    "fan_clubs_title": "Фан-клубы",
+    "fan_clubs_empty": "Вы пока ни в одном фан-клубе",
+    "join_club": "Вступить",
+    "leave_club": "Выйти",
+    "cancel": "Отмена",
+    "search_club": "Найти клуб",
+    "no_clubs_found": "Такой клуб не нашёлся",
+    "members_one": "{{n}} болельщик",
+    "members_few": "{{n}} болельщика",
+    "members_many": "{{n}} болельщиков",
+    "members_other": "{{n}} болельщиков",
+    "ours_online_one": "{{n}} свой онлайн",
+    "ours_online_few": "{{n}} своих онлайн",
+    "ours_online_many": "{{n}} своих онлайн",
+    "ours_online_other": "{{n}} своих онлайн"
   }
 }

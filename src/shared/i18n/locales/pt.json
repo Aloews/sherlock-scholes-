@@ -816,5 +816,28 @@
     "quiz_hint": "Pistas uma a uma: adivinhe o jogador",
     "famous_hint": "Duas cartas: quem é mais conhecido",
     "squad_hint": "Cinco de um clube: adivinhe o clube"
+  },
+  "social": {
+    "online_title": "Online agora",
+    "online_loading": "A ver quem está online…",
+    "online_failed": "Não foi possível carregar a lista",
+    "online_empty": "Ninguém está online agora",
+    "is_friend": "Amigo",
+    "invite": "Convidar",
+    "invite_needs_room": "Cria uma sala primeiro para convidar",
+    "hide_me": "Ocultar-me da lista",
+    "show_me": "Mostrar-me na lista",
+    "hidden_note": "Estás oculto para os outros. Continuas a ver a lista.",
+    "fan_clubs_title": "Clubes de adeptos",
+    "fan_clubs_empty": "Ainda não estás em nenhum clube de adeptos",
+    "join_club": "Entrar",
+    "leave_club": "Sair",
+    "cancel": "Cancelar",
+    "search_club": "Procurar um clube",
+    "no_clubs_found": "Clube não encontrado",
+    "members_one": "{{n}} adepto",
+    "members_other": "{{n}} adeptos",
+    "ours_online_one": "{{n}} online",
+    "ours_online_other": "{{n}} online"
   }
 }

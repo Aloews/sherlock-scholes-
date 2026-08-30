@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
+import { usePresence } from '@/features/social/usePresence';
 import { VoiceProvider } from '@/features/voice/VoiceProvider';
 import { useDesign } from '@/shared/design/useDesign';
 import { TabBar, TAB_ROUTES } from '@/app/TabBar';
@@ -72,6 +73,12 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 export function Router() {
   useSessionRestore();
+  // ⚠️ Удар сердца ЖИВЁТ НА РОУТЕРЕ, а не на экране друзей. Присутствие значит
+  // «человек в приложении», а не «человек смотрит список друзей»: повесить его
+  // на экран значило бы, что онлайн видны только те, кто прямо сейчас открыл
+  // именно этот экран, то есть почти никто. Стучится только при видимой
+  // вкладке — см. usePresence.
+  usePresence();
   const { pathname } = useLocation();
   // The tab bar belongs to the master app shell, and only to its root routes —
   // never over a live game, lobby or results, where leaving mid-round by a
