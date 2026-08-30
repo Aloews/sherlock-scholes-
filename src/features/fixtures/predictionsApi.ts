@@ -85,6 +85,15 @@ export interface PredictorRow {
   settled: number;
   /** Сколько раз счёт угадан в точку. Отличает везение от чутья. */
   exact: number;
+  /** Сколько раз угадан ИСХОД — точный счёт, верная разница или верный
+   *  победитель (points >= 2). Это другой вопрос, чем «в точку»: угадать
+   *  победителя двадцати матчей и не угадать ни одного счёта — умение, за
+   *  которое до сих пор ничего не показывалось. */
+  outcomes: number;
+  /** Доля исходов, целыми процентами. null до пяти закрытых прогнозов: один
+   *  угаданный матч иначе даёт 100%% и ставит новичка выше того, кто
+   *  угадывает вторую сотню. Считает Postgres — не делить на клиенте. */
+  outcome_rate: number | null;
 }
 
 /** Личная сводка. `rank` равен null, когда закрытых прогнозов ещё нет —
@@ -93,6 +102,8 @@ export interface MyPredictionStats {
   points: number;
   settled: number;
   exact: number;
+  outcomes: number;
+  outcome_rate: number | null;
   pending: number;
   rank: number | null;
 }

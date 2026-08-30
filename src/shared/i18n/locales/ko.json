@@ -567,7 +567,9 @@
     "history_loading": "불러오는 중…",
     "history_pending": "결과 대기",
     "squad_level": "스쿼드 수준",
-    "squad_depth_other": "상위 {{count}}명 기준"
+    "squad_depth_other": "상위 {{count}}명 기준",
+    "outcome_short": "승부 {{n}}%",
+    "my_outcomes": "승부 적중: {{rate}}% ({{settled}}건 중 {{outcomes}}건)"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",

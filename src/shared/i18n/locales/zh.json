@@ -567,7 +567,9 @@
     "history_loading": "加载中…",
     "history_pending": "等待比分",
     "squad_level": "阵容水平",
-    "squad_depth_other": "按前{{count}}名球员"
+    "squad_depth_other": "按前{{count}}名球员",
+    "outcome_short": "胜负 {{n}}%",
+    "my_outcomes": "胜负命中：{{rate}}%（{{settled}} 场中 {{outcomes}} 场）"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

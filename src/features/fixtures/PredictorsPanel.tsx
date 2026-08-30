@@ -98,6 +98,17 @@ export function PredictorsPanel() {
                 pending: mine.pending,
               })}
             </p>
+            {/* Своя доля исходов — отдельной строкой, а не в общей сводке:
+                она отвечает на другой вопрос, чем очки. */}
+            {mine.outcome_rate != null && (
+              <p className="text-brand-muted text-[10.5px] tabular-nums">
+                {t('matches.my_outcomes', {
+                  rate: mine.outcome_rate,
+                  outcomes: mine.outcomes,
+                  settled: mine.settled,
+                })}
+              </p>
+            )}
           </div>
 
           <div className="text-right shrink-0">
@@ -143,8 +154,17 @@ export function PredictorsPanel() {
                 </span>
                 <Avatar name={name} src={row.avatar_url ?? undefined} size="sm" />
                 <p className="flex-1 min-w-0 truncate text-white text-sm">{name}</p>
-                {/* Точные попадания рядом с очками: они отличают чутьё от
-                    объёма, а очки одни этого не показывают. */}
+                {/* ДВА РАЗНЫХ УМЕНИЯ, И ОБА РЯДОМ С ОЧКАМИ. «В точку» —
+                    угаданный счёт; доля исходов — как часто угадан хотя бы
+                    победитель. Угадать исход двадцати матчей и не угадать ни
+                    одного счёта это умение, за которое до сих пор ничего не
+                    показывалось. Прочерк, а не 0%, пока прогнозов меньше
+                    пяти: считает сервер и он же решает, когда доля осмысленна. */}
+                {row.outcome_rate != null && (
+                  <span className="text-brand-muted text-[10.5px] shrink-0 tabular-nums">
+                    {t('matches.outcome_short', { n: row.outcome_rate })}
+                  </span>
+                )}
                 <span className="text-brand-muted text-[10.5px] shrink-0">
                   {t('matches.exact_short', { n: row.exact })}
                 </span>

@@ -631,7 +631,9 @@
     "squad_depth_one": "по {{count}} игроку",
     "squad_depth_few": "по {{count}} игрокам",
     "squad_depth_many": "по {{count}} игрокам",
-    "squad_depth_other": "по {{count}} игрокам"
+    "squad_depth_other": "по {{count}} игрокам",
+    "outcome_short": "{{n}}% исх.",
+    "my_outcomes": "Исходы: {{rate}}% ({{outcomes}} из {{settled}})"
   },
   "leagues": {
     "soccer_epl": "Премьер-лига (Англия)",

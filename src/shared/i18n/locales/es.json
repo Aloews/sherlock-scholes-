@@ -587,7 +587,9 @@
     "history_pending": "esperando resultado",
     "squad_level": "Nivel de la plantilla",
     "squad_depth_one": "por {{count}} jugador",
-    "squad_depth_other": "por {{count}} jugadores"
+    "squad_depth_other": "por {{count}} jugadores",
+    "outcome_short": "{{n}}% res.",
+    "my_outcomes": "Resultados: {{rate}}% ({{outcomes}} de {{settled}})"
   },
   "leagues": {
     "soccer_epl": "Premier League (Inglaterra)",

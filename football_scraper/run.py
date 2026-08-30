@@ -68,6 +68,8 @@ from scraper.dedup import (
     find_duplicate_pairs,
     normalize_display_name,
     strip_patronymic,
+    tokens,
+    translit_latin_to_cyrillic,
 )
 from scraper.pageviews import (
     PROJECT_EN,
@@ -1032,21 +1034,74 @@ def _search_qualifier_ok(title, category):
                 or SEARCH_YEAR_QUALIFIER_RE.match(qualifier))
 
 
+def _name_is_subset(card_name, title_name):
+    """True when every word of the card name is also a word of the title.
+
+    ВТОРАЯ СЕТЬ ПОСЛЕ normalize_display_name, и ловит она то, что первая не
+    ловит: ЛИШНЮЮ ФАМИЛИЮ. «Кристофер Мартинс» против «Мартинс Перейра,
+    Кристофер» — отчества там нет, снимать нечего, а difflib даёт 0.821 и
+    отбрасывает верную статью.
+
+    Подмножество безопаснее снижения порога: лишние слова допускаются только у
+    СТАТЬИ, и каждое слово карточки обязано найтись целиком. «Иван Комаров» не
+    подойдёт к «Комаров, Пётр», сколько бы общих букв там ни было.
+
+    ⚠️ ДВУХ СЛОВ МИНИМУМ. Односложная карточка («Нино», «Халк», «Оскар»)
+    подошла бы к любому однофамильцу и к любой статье, где это слово вообще
+    есть, — а таких у бразильцев в колоде десятки.
+    """
+    card_words = {translit_latin_to_cyrillic(t) for t in tokens(card_name)}
+    if len(card_words) < 2:
+        return False
+    title_words = {translit_latin_to_cyrillic(t) for t in tokens(title_name)}
+    return card_words.issubset(title_words)
+
+
 def search_close_titles(resolver, name, category=None, limit=SEARCH_LIMIT):
-    """Titles from the wiki's full-text search whose canonical_key is close
-    to the card name's (difflib ratio >= SEARCH_MATCH_RATIO). Relevance order
-    is preserved; a title's '(...)' qualifier is ignored for the comparison
-    but, for people categories, must pass _search_qualifier_ok. One
-    cached/budgeted search request per name."""
+    """Titles from the wiki's full-text search that are close to the card name.
+
+    ⚠️ ПОЧЕМУ ЗДЕСЬ ТРИ СРАВНЕНИЯ, А НЕ ОДНО. Ру-вики называет людей «Фамилия,
+    Имя Отчество», в колоде лежит «Имя Фамилия», и порог 0.85 отбрасывал
+    ПРАВИЛЬНЫЕ статьи. Замер на боевых карточках:
+
+        «Александр Зотов»   → «Зотов, Александр Владимирович»  0.700
+        «Нобель Арустамян»  → «Арустамян, Нобель Эдуардович»   0.750
+        «Иван Комаров»      → «Комаров, Иван Сергеевич»        0.710
+        «Владислав Яковлев» → «Яковлев, Владислав Геннадьевич» 0.744
+        «Кристофер Мартинс» → «Мартинс Перейра, Кристофер»     0.821
+
+    Все пять статей верные, и все пять отбрасывались. Хуже: у каждого рядом
+    стоял голый вариант («Зотов, Александр») с ratio 1.000, он порог проходил
+    и оказывался СТРАНИЦЕЙ НЕОДНОЗНАЧНОСТИ. То есть резолвер отбрасывал
+    верную статью и упирался в дизамбиг — а наружу это выходило одним
+    сообщением «статья не найдена ИЛИ отбракована P31-гардом», в которое
+    падало 297 карточек из 330.
+
+    Сравнения, по порядку:
+      1. как есть — самый строгий и самый частый случай;
+      2. после normalize_display_name — она уже умеет «Фамилия, Имя» → «Имя
+         Фамилия» и снимает отчество, и она покрыта тестами; заводить рядом
+         второе такое же правило значило бы завести место, где они разойдутся;
+      3. подмножество слов — лишняя фамилия, см. _name_is_subset.
+
+    Порог при этом НЕ СНИЖЕН: он и есть защита от чужого человека.
+    """
     key = canonical_key(name)
     if not key:
         return []
     out = []
     for title in resolver.search_titles(name, limit):
-        title_key = canonical_key(strip_title_parenthetical(title))
+        bare = strip_title_parenthetical(title)
+        title_key = canonical_key(bare)
         if not title_key:
             continue
-        if SequenceMatcher(None, key, title_key).ratio() < SEARCH_MATCH_RATIO:
+        close = SequenceMatcher(None, key, title_key).ratio() >= SEARCH_MATCH_RATIO
+        if not close:
+            normalized = normalize_display_name(bare)
+            close = (SequenceMatcher(None, key, canonical_key(normalized)).ratio()
+                     >= SEARCH_MATCH_RATIO
+                     or _name_is_subset(name, bare))
+        if not close:
             continue
         if not _search_qualifier_ok(title, category):
             continue
@@ -1054,7 +1109,16 @@ def search_close_titles(resolver, name, category=None, limit=SEARCH_LIMIT):
     return out
 
 
-def resolve_card_qid(resolver, card, titles, validate=None):
+# Почему резолв не удался. Существует потому, что ОДНО сообщение на три
+# разные причины ничего не сообщает: в отчёте о наполнении описаний 297
+# карточек из 330 падали в строку «статья не найдена (или отбракована
+# P31-гардом)», и понять по ней, чинить резолв или чинить гард, было нельзя.
+FAIL_NO_ARTICLE = "no_article"      # ни один вариант названия не открылся
+FAIL_DISAMBIG   = "disambig"        # открылась страница неоднозначности
+FAIL_P31        = "p31"             # статья есть, но сущность не того рода
+
+
+def resolve_card_qid(resolver, card, titles, validate=None, reasons=None):
     """(qid, title, via_search) for a card: the known title variants first,
     then the last-resort full-text search (close titles only) — so a card
     with an alternative Russian spelling still finds its article instead of
@@ -1062,21 +1126,40 @@ def resolve_card_qid(resolver, card, titles, validate=None):
     every step, and a `validate(qid)` callback (when given) must accept the
     QID — the stadium P31 guard rejects the person/city namesake and the
     next candidate is tried. Returns (None, None, False) when nothing fits.
+
+    `reasons`, when a list is passed, collects WHY each candidate was dropped
+    (FAIL_* above). The caller can then say which of the three happened
+    instead of merging them into one unusable message — see
+    docs/cards_descriptions_build.py.
     """
+    def note(reason):
+        if reasons is not None:
+            reasons.append(reason)
+
     for title in titles:
         info = resolver.qid_for_title(title)
-        if info.get("disambig") or not info.get("qid"):
+        if info.get("disambig"):
+            note(FAIL_DISAMBIG)
+            continue
+        if not info.get("qid"):
+            note(FAIL_NO_ARTICLE)
             continue
         if validate is not None and not validate(info["qid"]):
+            note(FAIL_P31)
             continue
         return info["qid"], title, False
     for title in search_close_titles(resolver,
                                      (card.get("name") or "").strip(),
                                      card.get("category")):
         info = resolver.qid_for_title(title)
-        if info.get("disambig") or not info.get("qid"):
+        if info.get("disambig"):
+            note(FAIL_DISAMBIG)
+            continue
+        if not info.get("qid"):
+            note(FAIL_NO_ARTICLE)
             continue
         if validate is not None and not validate(info["qid"]):
+            note(FAIL_P31)
             continue
         return info["qid"], title, True
     return None, None, False

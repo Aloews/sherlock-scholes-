@@ -666,7 +666,9 @@
     "squad_depth_two": "حسب لاعبين",
     "squad_depth_few": "حسب {{count}} لاعبين",
     "squad_depth_many": "حسب {{count}} لاعبًا",
-    "squad_depth_other": "حسب {{count}} لاعب"
+    "squad_depth_other": "حسب {{count}} لاعب",
+    "outcome_short": "{{n}}٪ نتيجة",
+    "my_outcomes": "النتائج: {{rate}}٪ ({{outcomes}} من {{settled}})"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

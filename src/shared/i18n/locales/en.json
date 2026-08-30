@@ -587,7 +587,9 @@
     "history_pending": "awaiting score",
     "squad_level": "Squad level",
     "squad_depth_one": "by {{count}} player",
-    "squad_depth_other": "by {{count}} players"
+    "squad_depth_other": "by {{count}} players",
+    "outcome_short": "{{n}}% outc.",
+    "my_outcomes": "Outcomes: {{rate}}% ({{outcomes}} of {{settled}})"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
