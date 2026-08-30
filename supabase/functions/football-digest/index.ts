@@ -795,12 +795,14 @@ async function run(): Promise<Response> {
   const clipRows = unique(clips.flat(), (row) => row.video_id);
 
   report.news_seen = newsRows.length;
-  // `description` не колонка news_items — снимаем перед вставкой, она нужна
-  // была только до этой строки, чтобы решить, кому писать суть.
-  const insertedNews = await insert(
-    "news_items", "url",
-    newsRows.map(({ description: _description, ...row }) => row),
-  );
+  // ⚠️ `description` ТЕПЕРЬ КОЛОНКА, И ЕЁ НАДО ПИСАТЬ. Раньше текст заметки
+  // снимался прямо здесь и выбрасывался: он нужен был только чтобы решить,
+  // кому заказывать пересказ. В итоге при ненастроенной модели (а она не
+  // настроена: NEWS_LLM_MODEL пуст, суть есть у 0 заметок из 881) на экран не
+  // доезжало НИЧЕГО, кроме заголовка — хотя первые две строки самой статьи
+  // RSS отдаёт даром и на всех языках сразу. См.
+  // supabase/migrations/news_items_description_and_lead_text.sql.
+  const insertedNews = await insert("news_items", "url", newsRows);
   report.news_new = insertedNews.length;
   report.clips_seen = clipRows.length;
   const upsertedClips = await insert("goal_clips", "video_id", clipRows, true);
@@ -810,8 +812,8 @@ async function run(): Promise<Response> {
   // условие того, что строка попадёт на экран: без провайдера или при ошибке
   // модели строка остаётся с сырым заголовком, как работало всегда.
   //
-  // `insertedNews` — уже БЕЗ description (см. выше), поэтому кандидатов на
-  // суть берём из newsRows по тем же url: там description ещё на месте.
+  // Кандидаты берутся из newsRows, а не из insertedNews: форма строки теперь
+  // одна и та же, но newsRows — источник, и брать из него честнее.
   const insertedUrls = new Set(insertedNews.map((r) => r.url));
   const summaries = await generateNewsSummaries(newsRows.filter((r) => insertedUrls.has(r.url)));
   await Promise.all(
