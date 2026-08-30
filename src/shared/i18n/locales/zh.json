@@ -115,7 +115,8 @@
     "arena_online_link": "联机竞技场",
     "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
     "stream_link": "直播电视",
-    "minigames_link": "小游戏"
+    "minigames_link": "小游戏",
+    "clubs_link": "俱乐部与数据"
   },
   "design": {
     "master": "新设计",
@@ -162,7 +163,8 @@
     "collected": "按比赛统计",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
-    "news_and_video": "新闻与视频"
+    "news_and_video": "新闻与视频",
+    "f_club": "俱乐部"
   },
   "profile": {
     "title": "个人资料",
@@ -628,7 +630,8 @@
     "failed": "球员名单加载失败，请稍后再试。",
     "squad_failed": "你的阵容未能加载，可能已保存，请不要重新选择。",
     "ratings": "谁在拿分",
-    "ratings_all": "完整排行"
+    "ratings_all": "完整排行",
+    "open_card": "打开卡片"
   },
   "quiz": {
     "title": "猜球员",
@@ -791,5 +794,50 @@
     "quiz_hint": "线索逐条揭晓，猜出球员",
     "famous_hint": "两张卡片，谁更有名",
     "squad_hint": "同一俱乐部的五人，猜出俱乐部"
+  },
+  "club": {
+    "title": "俱乐部",
+    "loading": "加载中…",
+    "failed": "无法加载俱乐部",
+    "not_found": "名录中没有该俱乐部",
+    "league_unknown": "联赛未知",
+    "window_90": "90 天",
+    "window_365": "365 天",
+    "squad": "阵容",
+    "squad_empty": "尚未收集到阵容",
+    "squad_size_other": "{{count}} 名球员",
+    "stat_record": "胜平负",
+    "stat_goals": "进失球",
+    "stat_diff": "净胜球",
+    "stat_points": "积分",
+    "stat_winrate": "胜率",
+    "stat_gpm": "场均进球",
+    "form": "近期战绩",
+    "outcome_w": "胜",
+    "outcome_d": "平",
+    "outcome_l": "负",
+    "based_on_other": "基于 {{count}} 场比赛",
+    "since": "自 {{date}}",
+    "no_matches": "该时间段内没有比赛",
+    "recent": "近期比赛",
+    "upcoming": "即将进行的比赛",
+    "vs_home": "对阵 {{team}}（主场）",
+    "vs_away": "对阵 {{team}}（客场）",
+    "col_player": "球员",
+    "col_matches": "场",
+    "col_minutes": "分钟",
+    "col_goals": "进球",
+    "col_assists": "助攻",
+    "col_cards": "黄/红",
+    "col_points": "积分"
+  },
+  "clubs": {
+    "title": "俱乐部",
+    "search": "搜索俱乐部",
+    "loading": "加载中…",
+    "failed": "无法加载俱乐部列表",
+    "empty": "没有找到",
+    "players_other": "{{count}} 名球员",
+    "matches_other": "{{count}} 场比赛"
   }
 }

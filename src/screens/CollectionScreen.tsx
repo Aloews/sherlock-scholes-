@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
@@ -142,6 +142,35 @@ export function CollectionScreen() {
   // fetched display columns. `openId` drives the fetch; `openCard` holds it.
   const [openId,   setOpenId]   = useState<string | null>(null);
   const [openCard, setOpenCard] = useState<Card | null>(null);
+
+  // ⚠️ ДОСЬЕ ОТКРЫВАЕТСЯ ПО АДРЕСУ, И ЭТО ЕДИНСТВЕННЫЙ СПОСОБ ПРИЙТИ СЮДА
+  // ИЗВНЕ. Рейтинг, фэнтези и состав команды показывают тех же футболистов,
+  // что лежат в коллекции, и до сих пор ни одна из этих строк никуда не
+  // вела: игрок видел имя и не мог узнать о нём ничего. Заводить на каждом
+  // экране свою копию досье значило бы завести три места, где оно однажды
+  // разойдётся.
+  //
+  // ⚠️ И ЭТА ДВЕРЬ НЕ ЗА PRO-ЗАМКОМ, намеренно. Pro закрывает КАТАЛОГ —
+  // 2.1 тыс. карточек, тяжёлое чтение, и просмотр всей колоды это и есть та
+  // глубина, за которую платят. Одна карточка, на которую пришли по ссылке из
+  // рейтинга, — это одна строка и не просмотр каталога; упереть строку
+  // рейтинга в предложение купить подписку значит наказать за интерес.
+  const [params, setParams] = useSearchParams();
+  const cardParam = params.get('card');
+
+  useEffect(() => {
+    if (cardParam) setOpenId(cardParam);
+  }, [cardParam]);
+
+  /** Закрыть досье и убрать его из адреса, чтобы «назад» не открыло снова. */
+  const closeDossier = () => {
+    setOpenId(null);
+    if (cardParam) {
+      const next = new URLSearchParams(params);
+      next.delete('card');
+      setParams(next, { replace: true });
+    }
+  };
 
   useEffect(() => {
     if (!openId) { setOpenCard(null); return; }
@@ -358,7 +387,7 @@ export function CollectionScreen() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            <CardDossier card={openCard} onClose={() => setOpenId(null)} />
+            <CardDossier card={openCard} onClose={closeDossier} />
           </motion.div>
         )}
       </AnimatePresence>

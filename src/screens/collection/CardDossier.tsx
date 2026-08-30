@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconChevronLeft, IconTrophy, IconShirt, IconFlag } from '@tabler/icons-react';
 import { PlayerCard } from '@/shared/ui/PlayerCard';
@@ -12,6 +13,7 @@ import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
 import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
+import { fetchClubOfCard, type CardClub } from '@/features/clubs/clubsApi';
 import {
   fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
 } from '@/features/collection/playerMediaApi';
@@ -48,8 +50,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function CardDossier({ card, onClose }: { card: Card; onClose: () => void }) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const lang = i18n.language;
   const isRu = lang.startsWith('ru');
+
+  // Текущий клуб — ссылка на экран команды. Грузится молча и отдельно: у
+  // легенды его нет и не должно быть, и это норма, а не поломка.
+  const [club, setClub] = useState<CardClub | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setClub(null);
+    void fetchClubOfCard(card.id, lang).then((r) => {
+      if (!cancelled && r.status === 'ok') setClub(r.data);
+    });
+    return () => { cancelled = true; };
+  }, [card.id, lang]);
 
   // Собранная статистика матчей — та же таблица, что кормит рейтинг. Грузится
   // отдельно и молча: досье полно и без неё, а её отсутствие для легенды —
@@ -263,6 +278,32 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
               ))}
             </div>
           </Section>
+        )}
+
+        {/* Клуб — ЖИВАЯ ССЫЛКА, и стоит она перед карьерой намеренно: карьера
+            это история, а это то, где он сейчас. Раньше клуб на досье был
+            просто текстом, и путь «игрок → его команда → остальной состав»
+            обрывался на первом шаге. */}
+        {club && (
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate(`/club/${encodeURIComponent(club.club_key)}`); }}
+            className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5
+                       flex items-center gap-3 text-left active:opacity-70 transition-opacity"
+          >
+            {club.crest_url ? (
+              <img src={club.crest_url} alt="" className="w-8 h-8 rounded-lg object-contain bg-brand-bg shrink-0" loading="lazy" />
+            ) : (
+              <IconShirt size={16} stroke={1.75} className="text-brand-muted shrink-0" />
+            )}
+            <span className="flex-1 min-w-0">
+              <span className="block text-brand-muted text-[10px] uppercase tracking-wide">
+                {t('collection.f_club')}
+              </span>
+              <span className="block truncate text-[12.5px] text-white">{club.name}</span>
+            </span>
+            <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
+          </button>
         )}
 
         {career.length > 0 && (

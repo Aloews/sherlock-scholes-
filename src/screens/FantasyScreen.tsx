@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconStar, IconStarFilled, IconSearch } from '@tabler/icons-react';
+import { IconArrowLeft, IconStar, IconStarFilled, IconSearch, IconInfoCircle } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -358,32 +358,50 @@ export function FantasyScreen() {
             {shown.map((option) => {
               const isPicked = picked.includes(option.card_id);
               return (
-                <button
-                  key={option.card_id}
-                  type="button"
-                  onClick={() => toggle(option.card_id)}
-                  className={`w-full ds-panel border rounded-xl p-2 flex items-center gap-2 text-left transition-colors ${
-                    isPicked
-                      ? 'bg-brand-accent/10 border-brand-accent/50'
-                      : 'bg-brand-surface border-brand-border'
-                  }`}
-                >
-                  <Avatar name={option.name} size="sm" />
-                  <span className="flex-1 min-w-0">
-                    <span className="block truncate text-white text-sm">{option.name}</span>
-                    <span className="block truncate text-brand-muted text-[10.5px]">
-                      {option.position_key
-                        ? `${t(`fantasy.pos_${option.position_key}`)} · ${option.club}`
-                        : option.club}
+                /* ⚠️ ДВЕ КНОПКИ РЯДОМ, А НЕ ОДНА ВЛОЖЕННАЯ В ДРУГУЮ. У строки
+                   два разных действия — взять в состав и посмотреть досье, — а
+                   кнопка внутри кнопки невалидна в HTML и ведёт себя на разных
+                   телефонах по-разному. Основное действие занимает всю ширину,
+                   какая осталась; досье — узкая кнопка справа. */
+                <div key={option.card_id} className="flex items-stretch gap-1">
+                  <button
+                    type="button"
+                    onClick={() => toggle(option.card_id)}
+                    className={`flex-1 min-w-0 ds-panel border rounded-xl p-2 flex items-center gap-2 text-left transition-colors ${
+                      isPicked
+                        ? 'bg-brand-accent/10 border-brand-accent/50'
+                        : 'bg-brand-surface border-brand-border'
+                    }`}
+                  >
+                    <Avatar name={option.name} size="sm" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate text-white text-sm">{option.name}</span>
+                      <span className="block truncate text-brand-muted text-[10.5px]">
+                        {option.position_key
+                          ? `${t(`fantasy.pos_${option.position_key}`)} · ${option.club}`
+                          : option.club}
+                      </span>
                     </span>
-                  </span>
-                  {/* Два матча в туре — вдвое больше поводов взять именно его. */}
-                  {option.match_count > 1 && (
-                    <span className="text-brand-accent text-[10.5px] shrink-0">
-                      ×{option.match_count}
-                    </span>
-                  )}
-                </button>
+                    {/* Два матча в туре — вдвое больше поводов взять именно его. */}
+                    {option.match_count > 1 && (
+                      <span className="text-brand-accent text-[10.5px] shrink-0">
+                        ×{option.match_count}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t('fantasy.open_card')}
+                    onClick={() => {
+                      hapticImpact('light');
+                      navigate(`/collection?card=${option.card_id}`);
+                    }}
+                    className="shrink-0 w-9 ds-panel bg-brand-surface border border-brand-border rounded-xl
+                               grid place-items-center text-brand-muted active:opacity-70 transition-opacity"
+                  >
+                    <IconInfoCircle size={16} stroke={1.5} />
+                  </button>
+                </div>
               );
             })}
           </div>

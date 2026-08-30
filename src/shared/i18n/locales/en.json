@@ -117,7 +117,8 @@
     "arena_online_link": "Arena over the net",
     "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
     "stream_link": "Live TV",
-    "minigames_link": "Mini-games"
+    "minigames_link": "Mini-games",
+    "clubs_link": "Clubs and stats"
   },
   "design": {
     "master": "New design",
@@ -164,7 +165,8 @@
     "collected": "Collected from matches",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A",
-    "news_and_video": "News & video"
+    "news_and_video": "News & video",
+    "f_club": "Club"
   },
   "profile": {
     "title": "Profile",
@@ -648,7 +650,8 @@
     "failed": "Could not load the squad list. Try again later.",
     "squad_failed": "Your squad did not load — do not re-pick, it may already be saved.",
     "ratings": "Who is scoring points",
-    "ratings_all": "full ranking"
+    "ratings_all": "full ranking",
+    "open_card": "Open card"
   },
   "quiz": {
     "title": "Guess the player",
@@ -816,5 +819,54 @@
     "quiz_hint": "Facts one by one — name the player",
     "famous_hint": "Two cards — who is better known",
     "squad_hint": "Five from a club — name the club"
+  },
+  "club": {
+    "title": "Club",
+    "loading": "Loading…",
+    "failed": "Could not load the club",
+    "not_found": "No such club in the directory",
+    "league_unknown": "League unknown",
+    "window_90": "90 days",
+    "window_365": "365 days",
+    "squad": "Squad",
+    "squad_empty": "No squad collected yet",
+    "squad_size_one": "{{count}} player",
+    "squad_size_other": "{{count}} players",
+    "stat_record": "W-D-L",
+    "stat_goals": "Goals",
+    "stat_diff": "Diff",
+    "stat_points": "Points",
+    "stat_winrate": "Win rate",
+    "stat_gpm": "Goals per match",
+    "form": "Form",
+    "outcome_w": "W",
+    "outcome_d": "D",
+    "outcome_l": "L",
+    "based_on_one": "From {{count}} match",
+    "based_on_other": "From {{count}} matches",
+    "since": "since {{date}}",
+    "no_matches": "No matches collected for this period",
+    "recent": "Recent matches",
+    "upcoming": "Upcoming matches",
+    "vs_home": "vs {{team}} (home)",
+    "vs_away": "vs {{team}} (away)",
+    "col_player": "Player",
+    "col_matches": "M",
+    "col_minutes": "Min",
+    "col_goals": "G",
+    "col_assists": "A",
+    "col_cards": "Y/R",
+    "col_points": "Pts"
+  },
+  "clubs": {
+    "title": "Clubs",
+    "search": "Find a club",
+    "loading": "Loading…",
+    "failed": "Could not load the club list",
+    "empty": "Nothing found",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches"
   }
 }

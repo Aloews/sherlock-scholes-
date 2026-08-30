@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar,
+  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf,
   IconGridDots, IconDeviceTv,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -293,6 +293,13 @@ export function HomeScreen() {
               icon={<IconChartBar size={20} stroke={1.75} />}
               label={t('home.ratings_link')}
               onClick={() => navigate('/ratings')}
+            />
+            {/* Команды стоят рядом с рейтингом футболистов намеренно: это два
+                среза одних и тех же собранных матчей — по игроку и по клубу. */}
+            <HomeGameLink
+              icon={<IconShieldHalf size={20} stroke={1.75} />}
+              label={t('home.clubs_link')}
+              onClick={() => navigate('/clubs')}
             />
             <HomeGameLink
               icon={<IconSoccerField size={20} stroke={1.75} />}

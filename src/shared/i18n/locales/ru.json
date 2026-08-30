@@ -121,7 +121,8 @@
     "arena_online_link": "Арена по сети",
     "invites_failed": "Приглашения не загрузились — если вас звали, попробуйте обновить.",
     "stream_link": "Прямой эфир",
-    "minigames_link": "Мини-игры"
+    "minigames_link": "Мини-игры",
+    "clubs_link": "Команды и статистика"
   },
   "design": {
     "master": "Новый дизайн",
@@ -168,7 +169,8 @@
     "collected": "Собрано по матчам",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п",
-    "news_and_video": "Новости и видео"
+    "news_and_video": "Новости и видео",
+    "f_club": "Клуб"
   },
   "profile": {
     "title": "Профиль",
@@ -692,7 +694,8 @@
     "failed": "Не удалось загрузить состав. Попробуйте позже.",
     "squad_failed": "Ваша заявка не загрузилась — не собирайте состав заново, он мог сохраниться.",
     "ratings": "Кто набирает очки",
-    "ratings_all": "весь рейтинг"
+    "ratings_all": "весь рейтинг",
+    "open_card": "Открыть карточку"
   },
   "quiz": {
     "title": "Угадай игрока",
@@ -870,5 +873,62 @@
     "quiz_hint": "Факты по одному — угадай футболиста",
     "famous_hint": "Две карточки — кто известнее",
     "squad_hint": "Пятеро из клуба — угадай клуб"
+  },
+  "club": {
+    "title": "Команда",
+    "loading": "Загружаем…",
+    "failed": "Не удалось загрузить команду",
+    "not_found": "Такой команды в справочнике нет",
+    "league_unknown": "Лига неизвестна",
+    "window_90": "90 дней",
+    "window_365": "365 дней",
+    "squad": "Состав",
+    "squad_empty": "Состав пока не собран",
+    "squad_size_one": "{{count}} игрок",
+    "squad_size_few": "{{count}} игрока",
+    "squad_size_many": "{{count}} игроков",
+    "squad_size_other": "{{count}} игроков",
+    "stat_record": "В-Н-П",
+    "stat_goals": "Мячи",
+    "stat_diff": "Разница",
+    "stat_points": "Очки",
+    "stat_winrate": "Побед",
+    "stat_gpm": "Голов за матч",
+    "form": "Форма",
+    "outcome_w": "В",
+    "outcome_d": "Н",
+    "outcome_l": "П",
+    "based_on_one": "По {{count}} матчу",
+    "based_on_few": "По {{count}} матчам",
+    "based_on_many": "По {{count}} матчам",
+    "based_on_other": "По {{count}} матчам",
+    "since": "с {{date}}",
+    "no_matches": "Матчей за это время не собрано",
+    "recent": "Последние матчи",
+    "upcoming": "Ближайшие матчи",
+    "vs_home": "с {{team}} (дома)",
+    "vs_away": "с {{team}} (в гостях)",
+    "col_player": "Игрок",
+    "col_matches": "М",
+    "col_minutes": "Мин",
+    "col_goals": "Г",
+    "col_assists": "П",
+    "col_cards": "ЖК/КК",
+    "col_points": "Очки"
+  },
+  "clubs": {
+    "title": "Команды",
+    "search": "Найти команду",
+    "loading": "Загружаем…",
+    "failed": "Не удалось загрузить список команд",
+    "empty": "Ничего не нашлось",
+    "players_one": "{{count}} игрок",
+    "players_few": "{{count}} игрока",
+    "players_many": "{{count}} игроков",
+    "players_other": "{{count}} игроков",
+    "matches_one": "{{count}} матч",
+    "matches_few": "{{count}} матча",
+    "matches_many": "{{count}} матчей",
+    "matches_other": "{{count}} матчей"
   }
 }

@@ -120,7 +120,8 @@
     "arena_online_link": "الساحة عبر الشبكة",
     "invites_failed": "لم تُحمَّل الدعوات — إن دعاك أحد، جرّب التحديث.",
     "stream_link": "بث مباشر",
-    "minigames_link": "ألعاب مصغّرة"
+    "minigames_link": "ألعاب مصغّرة",
+    "clubs_link": "الأندية والإحصاءات"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -167,7 +168,8 @@
     "collected": "مجمَّع من المباريات",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة",
-    "news_and_video": "أخبار وفيديو"
+    "news_and_video": "أخبار وفيديو",
+    "f_club": "النادي"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -727,7 +729,8 @@
     "failed": "تعذّر تحميل قائمة اللاعبين. حاول لاحقًا.",
     "squad_failed": "لم تُحمَّل تشكيلتك — لا تُعِد اختيارها، فقد تكون محفوظة.",
     "ratings": "من يحصد النقاط",
-    "ratings_all": "التصنيف الكامل"
+    "ratings_all": "التصنيف الكامل",
+    "open_card": "افتح البطاقة"
   },
   "quiz": {
     "title": "خمّن اللاعب",
@@ -912,5 +915,70 @@
     "quiz_hint": "معلومات واحدة تلو الأخرى — خمّن اللاعب",
     "famous_hint": "بطاقتان — من الأشهر",
     "squad_hint": "خمسة من نادٍ — خمّن النادي"
+  },
+  "club": {
+    "title": "النادي",
+    "loading": "جارٍ التحميل…",
+    "failed": "تعذّر تحميل النادي",
+    "not_found": "هذا النادي غير موجود في الدليل",
+    "league_unknown": "الدوري غير معروف",
+    "window_90": "٩٠ يومًا",
+    "window_365": "٣٦٥ يومًا",
+    "squad": "التشكيلة",
+    "squad_empty": "لم تُجمع التشكيلة بعد",
+    "squad_size_zero": "لا لاعبين",
+    "squad_size_one": "لاعب واحد",
+    "squad_size_two": "لاعبان",
+    "squad_size_few": "{{count}} لاعبين",
+    "squad_size_many": "{{count}} لاعبًا",
+    "squad_size_other": "{{count}} لاعب",
+    "stat_record": "ف-ت-خ",
+    "stat_goals": "الأهداف",
+    "stat_diff": "الفارق",
+    "stat_points": "النقاط",
+    "stat_winrate": "نسبة الفوز",
+    "stat_gpm": "أهداف لكل مباراة",
+    "form": "الأداء",
+    "outcome_w": "ف",
+    "outcome_d": "ت",
+    "outcome_l": "خ",
+    "based_on_zero": "من دون مباريات",
+    "based_on_one": "من مباراة واحدة",
+    "based_on_two": "من مباراتين",
+    "based_on_few": "من {{count}} مباريات",
+    "based_on_many": "من {{count}} مباراة",
+    "based_on_other": "من {{count}} مباراة",
+    "since": "منذ {{date}}",
+    "no_matches": "لا مباريات في هذه الفترة",
+    "recent": "آخر المباريات",
+    "upcoming": "المباريات القادمة",
+    "vs_home": "ضد {{team}} (على أرضه)",
+    "vs_away": "ضد {{team}} (خارج أرضه)",
+    "col_player": "اللاعب",
+    "col_matches": "م",
+    "col_minutes": "دق",
+    "col_goals": "أ",
+    "col_assists": "ص",
+    "col_cards": "ص/ح",
+    "col_points": "نقاط"
+  },
+  "clubs": {
+    "title": "الأندية",
+    "search": "ابحث عن نادٍ",
+    "loading": "جارٍ التحميل…",
+    "failed": "تعذّر تحميل قائمة الأندية",
+    "empty": "لا نتائج",
+    "players_zero": "لا لاعبين",
+    "players_one": "لاعب واحد",
+    "players_two": "لاعبان",
+    "players_few": "{{count}} لاعبين",
+    "players_many": "{{count}} لاعبًا",
+    "players_other": "{{count}} لاعب",
+    "matches_zero": "لا مباريات",
+    "matches_one": "مباراة واحدة",
+    "matches_two": "مباراتان",
+    "matches_few": "{{count}} مباريات",
+    "matches_many": "{{count}} مباراة",
+    "matches_other": "{{count}} مباراة"
   }
 }

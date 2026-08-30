@@ -115,7 +115,8 @@
     "arena_online_link": "ネット対戦アリーナ",
     "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。",
     "stream_link": "ライブTV",
-    "minigames_link": "ミニゲーム"
+    "minigames_link": "ミニゲーム",
+    "clubs_link": "クラブと統計"
   },
   "design": {
     "master": "新デザイン",
@@ -162,7 +163,8 @@
     "collected": "試合から集計",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト",
-    "news_and_video": "ニュースと動画"
+    "news_and_video": "ニュースと動画",
+    "f_club": "クラブ"
   },
   "profile": {
     "title": "プロフィール",
@@ -628,7 +630,8 @@
     "failed": "選手リストを読み込めませんでした。時間をおいてお試しください。",
     "squad_failed": "登録済みの布陣を読み込めませんでした。保存済みの可能性があるため、組み直さないでください。",
     "ratings": "ポイントを稼いでいる選手",
-    "ratings_all": "ランキング全体"
+    "ratings_all": "ランキング全体",
+    "open_card": "カードを開く"
   },
   "quiz": {
     "title": "選手を当てる",
@@ -791,5 +794,50 @@
     "quiz_hint": "ヒントを一つずつ — 選手を当てよう",
     "famous_hint": "2枚のカード — どちらが有名か",
     "squad_hint": "クラブの5人 — クラブを当てよう"
+  },
+  "club": {
+    "title": "クラブ",
+    "loading": "読み込み中…",
+    "failed": "クラブを読み込めませんでした",
+    "not_found": "そのクラブは登録されていません",
+    "league_unknown": "リーグ不明",
+    "window_90": "90日",
+    "window_365": "365日",
+    "squad": "スカッド",
+    "squad_empty": "スカッドはまだ集まっていません",
+    "squad_size_other": "{{count}}人",
+    "stat_record": "勝分敗",
+    "stat_goals": "得失点",
+    "stat_diff": "得失差",
+    "stat_points": "勝点",
+    "stat_winrate": "勝率",
+    "stat_gpm": "1試合平均得点",
+    "form": "直近",
+    "outcome_w": "勝",
+    "outcome_d": "分",
+    "outcome_l": "敗",
+    "based_on_other": "{{count}}試合から",
+    "since": "{{date}}から",
+    "no_matches": "この期間の試合はありません",
+    "recent": "最近の試合",
+    "upcoming": "今後の試合",
+    "vs_home": "{{team}} 戦（ホーム）",
+    "vs_away": "{{team}} 戦（アウェイ）",
+    "col_player": "選手",
+    "col_matches": "試",
+    "col_minutes": "分",
+    "col_goals": "得",
+    "col_assists": "助",
+    "col_cards": "警/退",
+    "col_points": "点"
+  },
+  "clubs": {
+    "title": "クラブ",
+    "search": "クラブを検索",
+    "loading": "読み込み中…",
+    "failed": "クラブ一覧を読み込めませんでした",
+    "empty": "見つかりません",
+    "players_other": "{{count}}人",
+    "matches_other": "{{count}}試合"
   }
 }

@@ -28,6 +28,8 @@ const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => 
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 const StreamScreen   = lazy(() => import('@/screens/StreamScreen').then((m) => ({ default: m.StreamScreen })));
+const ClubsScreen    = lazy(() => import('@/screens/ClubsScreen').then((m) => ({ default: m.ClubsScreen })));
+const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
@@ -128,6 +130,10 @@ export function Router() {
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
       <Route path="/news"      element={<PageTransition><NewsScreen /></PageTransition>} />
       <Route path="/ratings"   element={<PageTransition><RatingsScreen /></PageTransition>} />
+      <Route path="/clubs"     element={<PageTransition><ClubsScreen /></PageTransition>} />
+      {/* Ключ клуба едет в адресе и содержит пробелы («zenit st petersburg»),
+          поэтому он закодирован на стороне ссылки, а useParams его раскодирует. */}
+      <Route path="/club/:key" element={<PageTransition><ClubScreen /></PageTransition>} />
       {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
           родителя, и первые кадры холста уезжали бы вместе с ним. */}
       {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже

@@ -117,7 +117,8 @@
     "arena_online_link": "Arena en red",
     "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar.",
     "stream_link": "TV en vivo",
-    "minigames_link": "Minijuegos"
+    "minigames_link": "Minijuegos",
+    "clubs_link": "Clubes y estadísticas"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -164,7 +165,8 @@
     "collected": "Recopilado de los partidos",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} P · {{goals}} G · {{assists}} A",
-    "news_and_video": "Noticias y vídeo"
+    "news_and_video": "Noticias y vídeo",
+    "f_club": "Club"
   },
   "profile": {
     "title": "Perfil",
@@ -648,7 +650,8 @@
     "failed": "No se pudo cargar la lista de jugadores. Inténtalo más tarde.",
     "squad_failed": "Tu alineación no se cargó: no la rehagas, puede estar guardada.",
     "ratings": "Quién suma puntos",
-    "ratings_all": "clasificación completa"
+    "ratings_all": "clasificación completa",
+    "open_card": "Abrir ficha"
   },
   "quiz": {
     "title": "Adivina el jugador",
@@ -816,5 +819,54 @@
     "quiz_hint": "Pistas una a una: adivina al jugador",
     "famous_hint": "Dos cartas: quién es más conocido",
     "squad_hint": "Cinco de un club: adivina el club"
+  },
+  "club": {
+    "title": "Club",
+    "loading": "Cargando…",
+    "failed": "No se pudo cargar el club",
+    "not_found": "Ese club no está en el directorio",
+    "league_unknown": "Liga desconocida",
+    "window_90": "90 días",
+    "window_365": "365 días",
+    "squad": "Plantilla",
+    "squad_empty": "Aún no hay plantilla",
+    "squad_size_one": "{{count}} jugador",
+    "squad_size_other": "{{count}} jugadores",
+    "stat_record": "G-E-P",
+    "stat_goals": "Goles",
+    "stat_diff": "Dif.",
+    "stat_points": "Puntos",
+    "stat_winrate": "Victorias",
+    "stat_gpm": "Goles por partido",
+    "form": "Forma",
+    "outcome_w": "G",
+    "outcome_d": "E",
+    "outcome_l": "P",
+    "based_on_one": "De {{count}} partido",
+    "based_on_other": "De {{count}} partidos",
+    "since": "desde {{date}}",
+    "no_matches": "No hay partidos en este periodo",
+    "recent": "Últimos partidos",
+    "upcoming": "Próximos partidos",
+    "vs_home": "vs {{team}} (casa)",
+    "vs_away": "vs {{team}} (fuera)",
+    "col_player": "Jugador",
+    "col_matches": "PJ",
+    "col_minutes": "Min",
+    "col_goals": "G",
+    "col_assists": "A",
+    "col_cards": "A/R",
+    "col_points": "Pts"
+  },
+  "clubs": {
+    "title": "Clubes",
+    "search": "Buscar club",
+    "loading": "Cargando…",
+    "failed": "No se pudo cargar la lista de clubes",
+    "empty": "No se encontró nada",
+    "players_one": "{{count}} jugador",
+    "players_other": "{{count}} jugadores",
+    "matches_one": "{{count}} partido",
+    "matches_other": "{{count}} partidos"
   }
 }
