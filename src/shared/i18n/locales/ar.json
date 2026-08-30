@@ -169,7 +169,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} مباراة · {{goals}} هدف · {{assists}} تمريرة",
     "news_and_video": "أخبار وفيديو",
-    "f_club": "النادي"
+    "f_club": "النادي",
+    "level": "المستوى",
+    "level_basis_fame": "حسب الشهرة — المباريات قليلة",
+    "level_basis_fame_form": "حسب الشهرة والأداء",
+    "level_basis_icon": "أيقونة كرة القدم"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -890,7 +894,8 @@
     "matches_few": "{{count}} مباريات",
     "matches_many": "{{count}} مباراة",
     "matches_other": "{{count}} مباراة",
-    "goals_assists": "{{goals}} هدف · {{assists}} تمريرة"
+    "goals_assists": "{{goals}} هدف · {{assists}} تمريرة",
+    "level": "مست"
   },
   "stream": {
     "title": "بث مباشر",

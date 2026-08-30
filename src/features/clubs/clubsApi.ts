@@ -172,3 +172,32 @@ export async function fetchClubOfCard(
   if (state.status !== 'ok') return state;
   return { status: 'ok', data: state.data[0] ?? null };
 }
+
+export interface PlayerLevel {
+  card_id: string;
+  level: number;
+  fame_part: number | null;
+  form_part: number | null;
+  matches: number;
+  /** 'fame' | 'fame+form' | 'icon' — ЧЕМ построено число. Подпись обязательна:
+   *  при 'fame' оно про просмотры википедии, а не про игру, и показать его без
+   *  оговорки значило бы выдать известность за мастерство. */
+  basis: string;
+}
+
+/** Уровень игрока. null — уровня нет: ни известности, ни матчей, ни признания.
+ *  Ноль на этом месте читался бы как «слабый». */
+export async function fetchPlayerLevel(
+  cardId: string,
+): Promise<LoadState<PlayerLevel | null>> {
+  const res = await supabase
+    .from('player_level')
+    .select('card_id,level,fame_part,form_part,matches,basis')
+    .eq('card_id', cardId)
+    .maybeSingle();
+  if (res.error) {
+    console.error('[player_level]', res.error.code ?? '', res.error.message);
+    return { status: 'error', code: res.error.code ?? 'unknown' };
+  }
+  return { status: 'ok', data: (res.data as PlayerLevel | null) ?? null };
+}

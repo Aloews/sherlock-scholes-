@@ -166,7 +166,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} J · {{goals}} G · {{assists}} A",
     "news_and_video": "Notícias e vídeo",
-    "f_club": "Clube"
+    "f_club": "Clube",
+    "level": "Nível",
+    "level_basis_fame": "por fama — poucos jogos",
+    "level_basis_fame_form": "por fama e desempenho",
+    "level_basis_icon": "ícone do futebol"
   },
   "profile": {
     "title": "Perfil",
@@ -794,7 +798,8 @@
     "collected_other": "Coletado há {{count}} dias",
     "matches_one": "{{count}} jogo",
     "matches_other": "{{count}} jogos",
-    "goals_assists": "{{goals}} G · {{assists}} A"
+    "goals_assists": "{{goals}} G · {{assists}} A",
+    "level": "Nív"
   },
   "stream": {
     "title": "TV ao vivo",

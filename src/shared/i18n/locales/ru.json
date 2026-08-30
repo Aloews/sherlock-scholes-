@@ -170,7 +170,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} м · {{goals}} г · {{assists}} п",
     "news_and_video": "Новости и видео",
-    "f_club": "Клуб"
+    "f_club": "Клуб",
+    "level": "Уровень",
+    "level_basis_fame": "по известности — матчей мало",
+    "level_basis_fame_form": "по известности и игре",
+    "level_basis_icon": "икона футбола"
   },
   "profile": {
     "title": "Профиль",
@@ -848,7 +852,8 @@
     "matches_few": "{{count}} матча",
     "matches_many": "{{count}} матчей",
     "matches_other": "{{count}} матчей",
-    "goals_assists": "{{goals}} г · {{assists}} п"
+    "goals_assists": "{{goals}} г · {{assists}} п",
+    "level": "Ур"
   },
   "stream": {
     "title": "Прямой эфир",

@@ -164,7 +164,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움",
     "news_and_video": "뉴스 및 영상",
-    "f_club": "클럽"
+    "f_club": "클럽",
+    "level": "레벨",
+    "level_basis_fame": "인지도 기준 — 경기 수 부족",
+    "level_basis_fame_form": "인지도와 성적 기준",
+    "level_basis_icon": "축구의 아이콘"
   },
   "profile": {
     "title": "프로필",
@@ -769,7 +773,8 @@
     "empty": "이 기간에 득점도 도움도 없습니다",
     "collected_other": "{{count}}일 전 수집",
     "matches_other": "{{count}}경기",
-    "goals_assists": "{{goals}}골 · {{assists}}도움"
+    "goals_assists": "{{goals}}골 · {{assists}}도움",
+    "level": "LV"
   },
   "stream": {
     "title": "실시간 TV",

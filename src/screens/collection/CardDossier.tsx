@@ -13,7 +13,7 @@ import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
 import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
-import { fetchClubOfCard, type CardClub } from '@/features/clubs/clubsApi';
+import { fetchClubOfCard, fetchPlayerLevel, type CardClub, type PlayerLevel } from '@/features/clubs/clubsApi';
 import {
   fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
 } from '@/features/collection/playerMediaApi';
@@ -100,6 +100,18 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   const tierLabel = card.tier
     ? (isRu ? TIER_LABEL_RU : TIER_LABEL_EN)[card.tier]
     : null;
+
+  // Уровень — ТО ЖЕ ЧИСЛО, что показывает рейтинг футболистов. Грузится
+  // молча: у неигровой карточки его нет и не должно быть.
+  const [level, setLevel] = useState<PlayerLevel | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setLevel(null);
+    void fetchPlayerLevel(card.id).then((r) => {
+      if (!cancelled && r.status === 'ok') setLevel(r.data);
+    });
+    return () => { cancelled = true; };
+  }, [card.id]);
 
   // Quick facts — only the tiles that actually have a value.
   const flag = isoToFlag(card.country);
@@ -284,6 +296,28 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             это история, а это то, где он сейчас. Раньше клуб на досье был
             просто текстом, и путь «игрок → его команда → остальной состав»
             обрывался на первом шаге. */}
+        {/* УРОВЕНЬ. Ставится перед клубом и карьерой, потому что это ответ на
+            первый вопрос про футболиста — «насколько он хорош». Подпись
+            обязательна: при basis = 'fame' число построено на просмотрах
+            википедии и про игру не говорит НИЧЕГО, и показать его без
+            оговорки значило бы выдать известность за мастерство. */}
+        {level && (
+          <div className="ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5
+                          flex items-center gap-3">
+            <span className="ds-display text-brand-accent text-2xl font-black tabular-nums leading-none">
+              {level.level}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-brand-muted text-[10px] uppercase tracking-wide">
+                {t('collection.level')}
+              </span>
+              <span className="block text-[11.5px] text-white/80">
+                {t(`collection.level_basis_${level.basis.replace('+', '_')}`)}
+              </span>
+            </span>
+          </div>
+        )}
+
         {club && (
           <button
             type="button"

@@ -164,7 +164,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} 試合 · {{goals}} 得点 · {{assists}} アシスト",
     "news_and_video": "ニュースと動画",
-    "f_club": "クラブ"
+    "f_club": "クラブ",
+    "level": "レベル",
+    "level_basis_fame": "知名度による — 試合数が少ない",
+    "level_basis_fame_form": "知名度と成績による",
+    "level_basis_icon": "サッカーのアイコン"
   },
   "profile": {
     "title": "プロフィール",
@@ -769,7 +773,8 @@
     "empty": "この期間に得点もアシストもありません",
     "collected_other": "{{count}} 日前に取得",
     "matches_other": "{{count}} 試合",
-    "goals_assists": "{{goals}} 得点 · {{assists}} アシスト"
+    "goals_assists": "{{goals}} 得点 · {{assists}} アシスト",
+    "level": "LV"
   },
   "stream": {
     "title": "ライブTV",

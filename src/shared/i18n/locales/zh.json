@@ -164,7 +164,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
     "news_and_video": "新闻与视频",
-    "f_club": "俱乐部"
+    "f_club": "俱乐部",
+    "level": "等级",
+    "level_basis_fame": "依知名度 — 比赛太少",
+    "level_basis_fame_form": "依知名度与表现",
+    "level_basis_icon": "足球偶像"
   },
   "profile": {
     "title": "个人资料",
@@ -769,7 +773,8 @@
     "empty": "这段时间内无人进球或助攻",
     "collected_other": "{{count}} 天前采集",
     "matches_other": "{{count}} 场比赛",
-    "goals_assists": "{{goals}} 球 · {{assists}} 助攻"
+    "goals_assists": "{{goals}} 球 · {{assists}} 助攻",
+    "level": "等级"
   },
   "stream": {
     "title": "直播电视",

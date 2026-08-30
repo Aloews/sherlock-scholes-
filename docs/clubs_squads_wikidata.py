@@ -30,12 +30,33 @@ docs/MAP.md §7а.
 страны. Флаг существует, чтобы это было решением человека, а не побочным
 эффектом сбора.
 
+⚠️ ЧТО ПРОВЕРЕНО, А ЧТО НЕТ — ЧИТАТЬ ДО ЗАПУСКА.
+
+ПРОВЕРЕНО: сам источник. Запрос P54 по «Реалу» (Q8682) отдал 17 действующих
+игроков — Беллингем, Мбаппе, Гюлер, Эндрик, Хёйсен, Александер-Арнольд,
+Мастантуоно. Механизм работает и данные настоящие.
+
+ПРОВЕРЕНО: резолв по ярлыку НЕ ГОДИТСЯ. Замер в docstring
+resolve_club_qids_by_label — «FC Barcelona» уезжал в Q5424838, «Зенит» в
+Q29108. Поэтому боевой путь идёт через статью и конвейерный run.resolve_card_qid.
+
+НЕ ПРОВЕРЕНО: прогон целиком. 30.08.2026 Wikimedia начала отвечать 429 на весь
+этот адрес — сначала WDQS («Aggressively rate-limiting to 1 req / min - this
+rule was created during active wdqs outage»), затем и ru.wikipedia.org. При
+1 запросе в минуту полторы тысячи клубов — это больше суток, так что ни
+сквозного прогона, ни проверки резолва через статью сделано не было.
+
+Значит: ПЕРВЫЙ ЗАПУСК — ТОЛЬКО СУХОЙ, и глазами посмотреть, в какие клубы
+попали игроки. Не «сколько процентов сопоставилось», а именно глазами: чужой
+состав приезжает молча и на экране выглядит нормально.
+
 Запуск:
     python docs/clubs_squads_wikidata.py --limit 20            # сухой прогон
     python docs/clubs_squads_wikidata.py --limit 20 --apply
     python docs/clubs_squads_wikidata.py --apply --create-cards
 """
 import argparse
+import importlib.util
 import json
 import os
 import sys
@@ -43,6 +64,21 @@ import time
 import unicodedata
 import urllib.parse
 import urllib.request
+
+SCRAPER = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "..", "football_scraper")
+sys.path.insert(0, SCRAPER)
+
+# run.py грузится модулем — тот же приём, что во всех docs/cards_*.py, — чтобы
+# резолв «карточка → статья» был КОНВЕЙЕРНЫМ, а не второй реализацией.
+_spec = importlib.util.spec_from_file_location("run", os.path.join(SCRAPER, "run.py"))
+run = importlib.util.module_from_spec(_spec)
+sys.modules["run"] = run
+_spec.loader.exec_module(run)
+
+from scraper.cache import FileCache                                  # noqa: E402
+from scraper.pageviews import WikimediaBudget, WikiPagePropsClient   # noqa: E402
+from scraper.wikidata import WikidataEnricher                        # noqa: E402
 
 SPARQL = "https://query.wikidata.org/sparql"
 UA = "SherlockScholesBot/1.0 (https://github.com/Aloews/sherlock-scholes-)"
@@ -99,25 +135,24 @@ def canon(name):
     return "".join(parts)
 
 
-def resolve_club_qids(names):
-    """{имя → QID} по точному ярлыку, из одноимённых — самый известный.
+def resolve_club_qids_by_label(names):
+    """{имя → QID} по точному ярлыку. ⚠️ НЕНАДЁЖНО — оставлено как замер.
 
-    Точное совпадение, а не поиск: поиск по названию клуба выдаёт город, реку
-    и одноимённую команду из другого вида спорта, и отличить их по
-    релевантности нельзя. P31-гард отсекает всё, что не футбольный клуб.
+    Первая версия сборщика резолвила клубы так, и это НЕ РАБОТАЕТ, хотя
+    выглядит работающим. Замер 30.08.2026:
 
-    ⚠️ НО ОДНОГО ГАРДА МАЛО, И ЭТО ЗАМЕРЕНО. Футбольных клубов с ярлыком
-    «Зенит» в Викиданных десятки — от питерского до любительских, — и первый
-    попавшийся оказывался не тем: первая версия этой функции вернула
-    Q115254557 вместо Q131371 для «Зенита» и Q5424838 вместо Q7156 для
-    «FC Barcelona». Обе подстановки выглядели бы совершенно нормально: состав
-    бы приехал, просто чужой.
+        «FC Barcelona» → Q5424838   (сама «Барселона» — Q7156)
+        «Зенит»        → Q29108     (питерский «Зенит» — Q131371)
+        «Arsenal F.C.» → Q9617      верно
+        «Liverpool F.C.» → Q1130849 верно
 
-    Различает их `wikibase:sitelinks` — на скольких языковых вики о клубе
-    написана статья. У питерского «Зенита» их под сотню, у одноимённого
-    любительского — одна. Это та же мысль, что и `fame` в колоде: известность
-    как способ выбрать из тёзок, — и здесь она работает даже лучше, потому что
-    речь о клубах, а не о людях.
+    Сортировка по числу языковых версий (`wikibase:sitelinks`) улучшила
+    картину, но не вылечила: у клуба в Викиданных нередко ДВЕ сущности —
+    многоспортивный клуб и футбольная команда внутри него, — и у обеих ярлык
+    один. Состав при этом приедет, просто не тот и не весь, а на экране это
+    будет выглядеть совершенно нормально.
+
+    Поэтому боевой путь — resolve_club_qids_by_article() ниже.
     """
     out = {}
     for i in range(0, len(names), CLUB_BATCH):
@@ -134,12 +169,35 @@ SELECT ?club ?label ?links WHERE {
   ?club wikibase:sitelinks ?links .
 }
 ORDER BY DESC(?links)""" % (values, CLUB_CLASS))
-        # ORDER BY уже поставил известнейшего первым, setdefault оставляет его.
         for r in rows:
-            label = r["label"]["value"]
-            qid = r["club"]["value"].rsplit("/", 1)[-1]
-            out.setdefault(label, qid)
+            out.setdefault(r["label"]["value"], r["club"]["value"].rsplit("/", 1)[-1])
         time.sleep(SLEEP)
+    return out
+
+
+def resolve_club_qids_by_article(cards_by_key, resolver, wikidata_validate=None):
+    """{club_key → QID} через СТАТЬЮ, а не через ярлык.
+
+    Статья ру-вики соответствует ровно одной сущности Викиданных
+    (`pageprops.wikibase_item`), поэтому «Барселона (футбольный клуб)» не
+    может разойтись надвое так, как расходится голый ярлык «FC Barcelona».
+
+    Резолв статьи делает НЕ ЭТОТ ФАЙЛ, а run.resolve_card_qid — тот самый,
+    которым в проекте уже достаются фотографии и описания. Он перебирает
+    варианты названия, пропускает страницы неоднозначности и держит P31-гард
+    «это футбольный клуб». Заводить рядом второй такой же резолвер значило бы
+    завести место, где они разойдутся, — а он и так однажды разошёлся
+    (docs/MAP.md §7а про «Зенит» и «Факел»).
+    """
+    out = {}
+    for club_key, card in cards_by_key.items():
+        titles = run.cards_photos_candidates(card)
+        if not titles:
+            continue
+        qid, _title, _via = run.resolve_card_qid(
+            resolver, card, titles, wikidata_validate)
+        if qid:
+            out[club_key] = qid
     return out
 
 
@@ -232,12 +290,30 @@ def main():
                 by_name[n] = c
                 names.append(n)
 
-    qid_by_name = resolve_club_qids(names)
-    club_qid = {}
-    for n, q in qid_by_name.items():
-        c = by_name.get(n)
-        if c:
-            club_qid.setdefault(c["club_key"], q)
+    # Клубы резолвятся ЧЕРЕЗ СТАТЬЮ (см. resolve_club_qids_by_article): ярлык
+    # для этого не годится, замер в docstring той функции. Собирается всё тем
+    # же способом, что в docs/cards_descriptions_build.py, — один кэш, один
+    # дневной бюджет Wikimedia на все скрипты.
+    cfg = json.load(open(os.path.join(SCRAPER, "config.json"), encoding="utf-8"))
+    pv = cfg["pageviews"]
+    cache = FileCache(os.path.join(SCRAPER, cfg["cache"]["dir"]),
+                      cfg["cache"]["enabled"])
+    budget = WikimediaBudget(
+        cfg.get("photos", {}).get("daily_request_budget", 5000),
+        os.path.join(SCRAPER, cfg["cache"]["dir"], "photos_budget.json"))
+    wikidata = WikidataEnricher(cfg["wikidata"], cache)
+    resolver = WikiPagePropsClient(
+        pv["user_agent"], cache, pv.get("min_pause_seconds", 1.0), budget)
+
+    def is_club(qid):
+        return bool(set(wikidata.instance_of_qids(qid)) & run.CLUB_P31_ALLOW)
+
+    cards_by_key = {
+        c["club_key"]: {"name": c.get("name"), "name_en": c.get("name_en"),
+                        "category": "club"}
+        for c in clubs
+    }
+    club_qid = resolve_club_qids_by_article(cards_by_key, resolver, is_club)
     print("Клубов найдено в Викиданных : %d из %d" % (len(club_qid), len(clubs)))
 
     qid_to_key = {q: k for k, q in club_qid.items()}

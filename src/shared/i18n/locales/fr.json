@@ -166,7 +166,11 @@
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD",
     "news_and_video": "Actus et vidéos",
-    "f_club": "Club"
+    "f_club": "Club",
+    "level": "Niveau",
+    "level_basis_fame": "sur la notoriété — trop peu de matchs",
+    "level_basis_fame_form": "sur la notoriété et la forme",
+    "level_basis_icon": "icône du football"
   },
   "profile": {
     "title": "Profil",
@@ -794,7 +798,8 @@
     "collected_other": "Collecté il y a {{count}} jours",
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matchs",
-    "goals_assists": "{{goals}} B · {{assists}} PD"
+    "goals_assists": "{{goals}} B · {{assists}} PD",
+    "level": "Niv"
   },
   "stream": {
     "title": "TV en direct",

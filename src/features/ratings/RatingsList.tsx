@@ -158,14 +158,30 @@ export function RatingsList({ limit }: RatingsListProps) {
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm truncate">{row.name}</p>
             <p className="text-brand-muted text-[11px] truncate">
-              {/* Клуб выводится из открытых лет в карьере и бывает
-                  устаревшим, поэтому рядом всегда стоит число матчей окна —
-                  оно из этого же окна и не может разойтись с ним. */}
+              {/* Клуб собран из свидетельств и бывает устаревшим, поэтому
+                  рядом всегда стоит число матчей окна — оно из этого же окна
+                  и не может разойтись с ним. */}
               {[row.club, t('ratings.matches', { count: row.matches })]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
+
+          {/* УРОВЕНЬ — ТО ЖЕ ЧИСЛО, ЧТО В КОЛЛЕКЦИИ. Раньше их было два: тир
+              по известности в коллекции и очки по голам здесь, и игрок,
+              стоящий первым в рейтинге, мог оставаться common. Показывается
+              только когда он построен и на игре тоже: 'fame' значит «матчей
+              мало», и такое число про футбол ничего не говорит. */}
+          {row.level != null && row.basis === 'fame+form' && (
+            <div className="text-right shrink-0 w-8">
+              <p className="ds-display text-brand-accent text-sm font-bold tabular-nums">
+                {row.level}
+              </p>
+              <p className="text-brand-muted/70 text-[9px] uppercase tracking-wide">
+                {t('ratings.level')}
+              </p>
+            </div>
+          )}
 
           <div className="text-right shrink-0">
             <p className="ds-display text-white text-sm font-bold tabular-nums">{row.points}</p>
