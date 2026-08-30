@@ -90,6 +90,21 @@ export interface PredictorRow {
   /** `outcome_hits` в процентах от закрытых, уже округлённые. */
   accuracy: number;
   /**
+   * ТО ЖЕ ЧИСЛО, ЧТО `outcome_hits` — колонка параллельной сессии, оставленная
+   * нарочно: её читает другой клиент, и убрать её значило бы стереть у него
+   * процент с экрана. История столкновения — в
+   * supabase/migrations/prediction_accuracy_keep_outcome_rate.sql.
+   */
+  outcomes: number;
+  /**
+   * Процент исходов, но `null` до пяти закрытых прогнозов.
+   *
+   * ⚠️ ПОКАЗЫВАТЬ НАДО ЭТО, А НЕ `accuracy`. Оба числа верны, но 50% по двум
+   * прогнозам — шум, а не оценка, и прочерк на его месте честнее круглого
+   * числа. `accuracy` остаётся для тех мест, где прочерк рисовать негде.
+   */
+  outcome_rate: number | null;
+  /**
    * ЧЕМ ОТСОРТИРОВАН СПИСОК. Средние очки за прогноз, стянутые к среднему по
    * полю, ×100 — «очки за сто прогнозов такого качества». Считает сервер
    * (prediction_accuracy.sql), и повторять эту арифметику здесь нельзя: две
@@ -114,6 +129,9 @@ export interface MyPredictionStats {
   rating: number;
   pending: number;
   rank: number | null;
+  outcomes: number;
+  /** Процент исходов, `null` до пяти закрытых прогнозов — см. PredictorRow. */
+  outcome_rate: number | null;
 }
 
 export async function fetchLeaderboard(limit = 20): Promise<LoadState<PredictorRow[]>> {

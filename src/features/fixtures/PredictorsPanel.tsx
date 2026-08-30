@@ -103,13 +103,18 @@ export function PredictorsPanel() {
           {/* Точность — то, чем теперь считается место. Стоит РЯДОМ с очками,
               а не вместо них: очки остаются наградой за объём, место больше от
               него не зависит, и видеть надо оба числа сразу, иначе разъехавшиеся
-              «много очков» и «низкое место» читаются как поломка. */}
+              «много очков» и «низкое место» читаются как поломка.
+
+              ⚠️ ПРОЧЕРК ДО ПЯТИ ЗАКРЫТЫХ ПРОГНОЗОВ, и это `outcome_rate`, а не
+              `accuracy`: 50% по двум прогнозам — шум, а не оценка, и круглое
+              число на его месте врёт увереннее, чем прочерк. Число закрытых
+              стоит строкой ниже, так что прочерк объяснён. */}
           <div className="text-right shrink-0">
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
               {t('matches.my_accuracy')}
             </p>
             <p className="ds-display text-white text-2xl font-black leading-none mt-1 tabular-nums">
-              {mine.settled === 0 ? '—' : `${mine.accuracy}%`}
+              {mine.outcome_rate === null ? '—' : `${mine.outcome_rate}%`}
             </p>
             <p className="text-brand-muted text-[10.5px] mt-1 tabular-nums">
               {t('matches.my_outcomes', { hits: mine.outcome_hits, settled: mine.settled })}
@@ -175,7 +180,7 @@ export function PredictorsPanel() {
                       рейтинг, и без разбора он ничем не подкреплён. */}
                   <p className="truncate text-brand-muted text-[10px] tabular-nums">
                     {t('matches.row_breakdown', {
-                      accuracy: row.accuracy,
+                      accuracy: row.outcome_rate === null ? '—' : row.outcome_rate,
                       exact: row.exact,
                       points: row.points,
                     })}
