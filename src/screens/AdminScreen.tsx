@@ -10,6 +10,7 @@ import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
+import { ChannelsPanel } from '@/features/stream/ChannelsPanel';
 
 // Min characters before the search auto-fires, and the debounce pause after the
 // last keystroke — keeps us off "a query per letter" on a 3000+ row ilike.
@@ -121,7 +122,11 @@ export function AdminScreen() {
   );
 }
 
-type Tab = 'cards' | 'reports';
+type Tab = 'cards' | 'reports' | 'channels';
+
+const TAB_LABEL: Record<Tab, string> = {
+  reports: 'Репорты', cards: 'Карточки', channels: 'Каналы',
+};
 
 function StaffCabinet({ password, role, onLogout }: {
   password: string; role: StaffRole; onLogout: () => void;
@@ -156,10 +161,10 @@ function StaffCabinet({ password, role, onLogout }: {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['reports', 'cards'] as Tab[]).map((tb) => (
+        {(['reports', 'cards', 'channels'] as Tab[]).map((tb) => (
           <Chip
             key={tb}
-            label={tb === 'reports' ? 'Репорты' : 'Карточки'}
+            label={TAB_LABEL[tb]}
             selected={tab === tb}
             onClick={() => setTab(tb)}
           />
@@ -168,9 +173,15 @@ function StaffCabinet({ password, role, onLogout }: {
 
       {msg && <p className="text-xs text-brand-accent">{msg}</p>}
 
-      {tab === 'reports'
-        ? <ReportsPanel password={password} onOpenCard={openCard} />
-        : <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />}
+      {tab === 'reports' && <ReportsPanel password={password} onOpenCard={openCard} />}
+      {tab === 'cards' && (
+        <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
+      )}
+      {/* Полный каталог ТВ — «остальное», которого нет в плеере игрока.
+          Почему именно здесь, а не на отдельном роуте: в каталоге есть
+          группа `♥18+`, и единственная настоящая дверь в приложении —
+          пароль этого кабинета. Подробности в шапке ChannelsPanel. */}
+      {tab === 'channels' && <ChannelsPanel />}
     </div>
   );
 }

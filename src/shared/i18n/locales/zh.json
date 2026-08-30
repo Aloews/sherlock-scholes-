@@ -802,6 +802,27 @@
     "famous_hint": "两张卡片，谁更有名",
     "squad_hint": "同一俱乐部的五人，猜出俱乐部"
   },
+  "social": {
+    "online_title": "当前在线",
+    "online_loading": "正在查看谁在线…",
+    "online_failed": "列表加载失败",
+    "online_empty": "现在没有人在线",
+    "is_friend": "好友",
+    "invite": "邀请",
+    "invite_needs_room": "请先创建房间再邀请",
+    "hide_me": "在列表中隐藏我",
+    "show_me": "在列表中显示我",
+    "hidden_note": "其他人看不到你。你仍然可以看到列表。",
+    "fan_clubs_title": "球迷会",
+    "fan_clubs_empty": "你还没有加入任何球迷会",
+    "join_club": "加入",
+    "leave_club": "退出",
+    "cancel": "取消",
+    "search_club": "查找俱乐部",
+    "no_clubs_found": "未找到该俱乐部",
+    "members_other": "{{n}} 名球迷",
+    "ours_online_other": "{{n}} 人在线"
+  },
   "club": {
     "title": "俱乐部",
     "loading": "加载中…",

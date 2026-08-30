@@ -37,8 +37,12 @@ at a time:
 | Reusable checklists | [`CHECKLISTS/`](./CHECKLISTS/) |
 | Agent/task prompts | [`PROMPTS/`](./PROMPTS/) |
 
-`CLAUDE.md` / `AGENTS.md` at the repo root are the **agent entrypoints**: short
-pointers into this constitution.
+`CLAUDE.md` / `AGENTS.md` at the repo root are the **agent entrypoints**.
+`CLAUDE.md` carries the hands-on working rules for the app (i18n, design system,
+the deck, local checks) and is kept current as the code changes; it links here
+for the long-form standards. Read `CLAUDE.md` first, then the relevant standard
+below. Where `CLAUDE.md` and this constitution disagree about the app itself,
+`CLAUDE.md` wins; on the engineering standards, this document wins.
 
 ---
 
