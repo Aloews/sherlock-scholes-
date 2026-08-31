@@ -93,11 +93,13 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
           <div className="flex gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-white text-sm">{lead.title}</p>
-              {/* Только если писать было из чего — description в ленте нашёлся,
-                  модель ответила. Отсутствие строки здесь не читается как
-                  поломка: заголовка для этого достаточно. */}
-              {lead.summary_short && (
-                <p className="text-brand-muted text-xs mt-1 leading-snug">{lead.summary_short}</p>
+              {/* `lead_text`, а не `summary_short`: суть — это пересказ модели,
+                  а если его нет, то начало самой статьи. Выбор делает сервер
+                  (digest_news), чтобы экраны не разошлись в том, что считать
+                  сутью. Отсутствие строки не читается как поломка: заголовка
+                  для этого достаточно. */}
+              {lead.lead_text && (
+                <p className="text-brand-muted text-xs mt-1 leading-snug">{lead.lead_text}</p>
               )}
             </div>
 
