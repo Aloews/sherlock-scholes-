@@ -116,7 +116,6 @@
     "ratings_link": "Ranking de jugadores",
     "arena_online_link": "Arena en red",
     "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar.",
-    "stream_link": "TV en vivo",
     "minigames_link": "Minijuegos"
   },
   "design": {
@@ -794,26 +793,6 @@
     "matches_one": "{{count}} partido",
     "matches_other": "{{count}} partidos",
     "goals_assists": "{{goals}} G · {{assists}} A"
-  },
-  "stream": {
-    "title": "TV en vivo",
-    "loading": "Cargando la transmisión…",
-    "error": "No se pudo reproducir la transmisión. Inténtalo más tarde.",
-    "not_configured": "La TV en vivo aún no está configurada.",
-    "report_link": "Reportar al titular de los derechos",
-    "report_subject": "Queja sobre la transmisión de Live TV",
-    "report_body": "Describe el contenido e incluye prueba de tus derechos. Lo revisaremos y actuaremos con rapidez.",
-    "channels_title": "Canales",
-    "channels_loading": "Cargando la lista de canales…",
-    "channels_failed": "No se pudo cargar la lista de canales.",
-    "channels_empty": "Ahora mismo no hay canales deportivos disponibles.",
-    "channel_failed": "Canal no disponible",
-    "all_failed": "Hoy no responde ningún canal. Inténtalo más tarde.",
-    "search": "Buscar canal",
-    "favourites": "Favoritos",
-    "favourite": "Añadir a favoritos",
-    "unfavourite": "Quitar de favoritos",
-    "nothing_found": "No se encontró nada"
   },
   "minigames": {
     "title": "Minijuegos",

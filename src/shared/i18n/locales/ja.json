@@ -114,7 +114,6 @@
     "ratings_link": "選手ランキング",
     "arena_online_link": "ネット対戦アリーナ",
     "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。",
-    "stream_link": "ライブTV",
     "minigames_link": "ミニゲーム"
   },
   "design": {
@@ -769,26 +768,6 @@
     "collected_other": "{{count}} 日前に取得",
     "matches_other": "{{count}} 試合",
     "goals_assists": "{{goals}} 得点 · {{assists}} アシスト"
-  },
-  "stream": {
-    "title": "ライブTV",
-    "loading": "配信を読み込み中…",
-    "error": "配信を再生できませんでした。時間をおいてお試しください。",
-    "not_configured": "ライブTVはまだ設定されていません。",
-    "report_link": "権利者として通報する",
-    "report_subject": "ライブTV配信に関する申し立て",
-    "report_body": "コンテンツの内容と権利を証明する情報をご記入ください。速やかに確認し対応いたします。",
-    "channels_title": "チャンネル",
-    "channels_loading": "チャンネル一覧を読み込んでいます…",
-    "channels_failed": "チャンネル一覧を読み込めませんでした。",
-    "channels_empty": "現在、視聴できるスポーツチャンネルはありません。",
-    "channel_failed": "チャンネルを利用できません",
-    "all_failed": "本日はどのチャンネルも応答しません。後でもう一度お試しください。",
-    "search": "チャンネルを検索",
-    "favourites": "お気に入り",
-    "favourite": "お気に入りに追加",
-    "unfavourite": "お気に入りから削除",
-    "nothing_found": "見つかりませんでした"
   },
   "minigames": {
     "title": "ミニゲーム",

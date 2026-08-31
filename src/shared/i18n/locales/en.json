@@ -116,7 +116,6 @@
     "ratings_link": "Player ratings",
     "arena_online_link": "Arena over the net",
     "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
-    "stream_link": "Live TV",
     "minigames_link": "Mini-games"
   },
   "design": {
@@ -794,26 +793,6 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches",
     "goals_assists": "{{goals}} G · {{assists}} A"
-  },
-  "stream": {
-    "title": "Live TV",
-    "loading": "Loading the stream…",
-    "error": "Couldn't play the stream. Try again later.",
-    "not_configured": "Live TV isn't set up yet.",
-    "report_link": "Report to the rights holder",
-    "report_subject": "Complaint about the Live TV stream",
-    "report_body": "Please describe the content and include proof of your rights. We will review and act promptly.",
-    "channels_title": "Channels",
-    "channels_loading": "Loading the channel list…",
-    "channels_failed": "Could not load the channel list.",
-    "channels_empty": "No sports channels are available right now.",
-    "channel_failed": "Channel unavailable",
-    "all_failed": "No channel is responding today. Try again later.",
-    "search": "Search channels",
-    "favourites": "Favourites",
-    "favourite": "Add to favourites",
-    "unfavourite": "Remove from favourites",
-    "nothing_found": "Nothing found"
   },
   "minigames": {
     "title": "Mini-games",

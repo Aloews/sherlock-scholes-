@@ -10,7 +10,6 @@ import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
-import { ChannelsPanel } from '@/features/stream/ChannelsPanel';
 
 // Min characters before the search auto-fires, and the debounce pause after the
 // last keystroke — keeps us off "a query per letter" on a 3000+ row ilike.
@@ -122,10 +121,10 @@ export function AdminScreen() {
   );
 }
 
-type Tab = 'cards' | 'reports' | 'channels';
+type Tab = 'cards' | 'reports';
 
 const TAB_LABEL: Record<Tab, string> = {
-  reports: 'Репорты', cards: 'Карточки', channels: 'Каналы',
+  reports: 'Репорты', cards: 'Карточки',
 };
 
 function StaffCabinet({ password, role, onLogout }: {
@@ -161,7 +160,7 @@ function StaffCabinet({ password, role, onLogout }: {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['reports', 'cards', 'channels'] as Tab[]).map((tb) => (
+        {(['reports', 'cards'] as Tab[]).map((tb) => (
           <Chip
             key={tb}
             label={TAB_LABEL[tb]}
@@ -177,11 +176,7 @@ function StaffCabinet({ password, role, onLogout }: {
       {tab === 'cards' && (
         <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
       )}
-      {/* Полный каталог ТВ — «остальное», которого нет в плеере игрока.
-          Почему именно здесь, а не на отдельном роуте: в каталоге есть
-          группа `♥18+`, и единственная настоящая дверь в приложении —
-          пароль этого кабинета. Подробности в шапке ChannelsPanel. */}
-      {tab === 'channels' && <ChannelsPanel />}
+
     </div>
   );
 }

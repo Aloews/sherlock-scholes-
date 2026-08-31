@@ -114,7 +114,6 @@
     "ratings_link": "球员榜",
     "arena_online_link": "联机竞技场",
     "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
-    "stream_link": "直播电视",
     "minigames_link": "小游戏"
   },
   "design": {
@@ -769,26 +768,6 @@
     "collected_other": "{{count}} 天前采集",
     "matches_other": "{{count}} 场比赛",
     "goals_assists": "{{goals}} 球 · {{assists}} 助攻"
-  },
-  "stream": {
-    "title": "直播电视",
-    "loading": "正在加载直播…",
-    "error": "无法播放直播，请稍后再试。",
-    "not_configured": "直播电视尚未配置。",
-    "report_link": "作为权利人举报",
-    "report_subject": "关于直播电视的投诉",
-    "report_body": "请描述相关内容并附上权利证明，我们会尽快审核处理。",
-    "channels_title": "频道",
-    "channels_loading": "正在加载频道列表…",
-    "channels_failed": "无法加载频道列表。",
-    "channels_empty": "目前没有可观看的体育频道。",
-    "channel_failed": "频道不可用",
-    "all_failed": "今天没有频道响应。请稍后再试。",
-    "search": "搜索频道",
-    "favourites": "收藏",
-    "favourite": "加入收藏",
-    "unfavourite": "取消收藏",
-    "nothing_found": "没有找到"
   },
   "minigames": {
     "title": "小游戏",
