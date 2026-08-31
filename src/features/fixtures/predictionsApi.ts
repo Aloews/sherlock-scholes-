@@ -85,6 +85,37 @@ export interface PredictorRow {
   settled: number;
   /** Сколько раз счёт угадан в точку. Отличает везение от чутья. */
   exact: number;
+  /** Сколько раз угадан ИСХОД — победа, ничья, поражение. */
+  outcome_hits: number;
+  /** `outcome_hits` в процентах от закрытых, уже округлённые. */
+  accuracy: number;
+  /**
+   * ТО ЖЕ ЧИСЛО, ЧТО `outcome_hits` — колонка параллельной сессии, оставленная
+   * нарочно: её читает другой клиент, и убрать её значило бы стереть у него
+   * процент с экрана. История столкновения — в
+   * supabase/migrations/prediction_accuracy_keep_outcome_rate.sql.
+   */
+  outcomes: number;
+  /**
+   * Процент исходов, но `null` до пяти закрытых прогнозов.
+   *
+   * ⚠️ ПОКАЗЫВАТЬ НАДО ЭТО, А НЕ `accuracy`. Оба числа верны, но 50% по двум
+   * прогнозам — шум, а не оценка, и прочерк на его месте честнее круглого
+   * числа. `accuracy` остаётся для тех мест, где прочерк рисовать негде.
+   */
+  outcome_rate: number | null;
+  /**
+   * ЧЕМ ОТСОРТИРОВАН СПИСОК. Средние очки за прогноз, стянутые к среднему по
+   * полю, ×100 — «очки за сто прогнозов такого качества». Считает сервер
+   * (prediction_accuracy.sql), и повторять эту арифметику здесь нельзя: две
+   * копии формулы однажды разойдутся, и место в таблице перестанет
+   * соответствовать числу рядом с ним.
+   *
+   * ⚠️ ИМЕННО ЭТО ЧИСЛО НАДО ПОКАЗЫВАТЬ В СТРОКЕ, А НЕ `points`. Список
+   * упорядочен по рейтингу; нарисовать справа очки значит показать 5 над 81 и
+   * выдать это за ошибку сортировки.
+   */
+  rating: number;
 }
 
 /** Личная сводка. `rank` равен null, когда закрытых прогнозов ещё нет —
@@ -93,8 +124,14 @@ export interface MyPredictionStats {
   points: number;
   settled: number;
   exact: number;
+  outcome_hits: number;
+  accuracy: number;
+  rating: number;
   pending: number;
   rank: number | null;
+  outcomes: number;
+  /** Процент исходов, `null` до пяти закрытых прогнозов — см. PredictorRow. */
+  outcome_rate: number | null;
 }
 
 export async function fetchLeaderboard(limit = 20): Promise<LoadState<PredictorRow[]>> {

@@ -83,7 +83,7 @@ export function PredictorsPanel() {
   return (
     <div className="space-y-3">
       {mine && (
-        <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 flex items-center gap-3">
+        <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
               {t('matches.my_score')}
@@ -100,12 +100,36 @@ export function PredictorsPanel() {
             </p>
           </div>
 
+          {/* Точность — то, чем теперь считается место. Стоит РЯДОМ с очками,
+              а не вместо них: очки остаются наградой за объём, место больше от
+              него не зависит, и видеть надо оба числа сразу, иначе разъехавшиеся
+              «много очков» и «низкое место» читаются как поломка.
+
+              ⚠️ ПРОЧЕРК ДО ПЯТИ ЗАКРЫТЫХ ПРОГНОЗОВ, и это `outcome_rate`, а не
+              `accuracy`: 50% по двум прогнозам — шум, а не оценка, и круглое
+              число на его месте врёт увереннее, чем прочерк. Число закрытых
+              стоит строкой ниже, так что прочерк объяснён. */}
+          <div className="text-right shrink-0">
+            <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+              {t('matches.my_accuracy')}
+            </p>
+            <p className="ds-display text-white text-2xl font-black leading-none mt-1 tabular-nums">
+              {mine.outcome_rate === null ? '—' : `${mine.outcome_rate}%`}
+            </p>
+            <p className="text-brand-muted text-[10.5px] mt-1 tabular-nums">
+              {t('matches.my_outcomes', { hits: mine.outcome_hits, settled: mine.settled })}
+            </p>
+          </div>
+
           <div className="text-right shrink-0">
             <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
               {t('matches.my_rank')}
             </p>
             <p className="ds-display text-white text-2xl font-black leading-none mt-1">
               {mine.rank === null ? '—' : `#${mine.rank}`}
+            </p>
+            <p className="text-brand-muted text-[10.5px] mt-1 tabular-nums">
+              {t('matches.my_rating', { n: mine.rating })}
             </p>
           </div>
         </div>
@@ -134,6 +158,13 @@ export function PredictorsPanel() {
             )}
           </div>
 
+          {/* Новое число надо назвать. Рейтинг без объяснения — это просто
+              цифра, из-за которой человек с 81 очком стоит ниже человека с
+              пятью, и молчание тут читается как баг. */}
+          <p className="text-brand-muted text-[10px] leading-snug">
+            {t('matches.rating_explained')}
+          </p>
+
           {rows.map((row, index) => {
             const name = `${row.first_name} ${row.last_name ?? ''}`.trim();
             return (
@@ -142,14 +173,23 @@ export function PredictorsPanel() {
                   {index + 1}
                 </span>
                 <Avatar name={name} src={row.avatar_url ?? undefined} size="sm" />
-                <p className="flex-1 min-w-0 truncate text-white text-sm">{name}</p>
-                {/* Точные попадания рядом с очками: они отличают чутьё от
-                    объёма, а очки одни этого не показывают. */}
-                <span className="text-brand-muted text-[10.5px] shrink-0">
-                  {t('matches.exact_short', { n: row.exact })}
-                </span>
-                <span className="ds-display text-white text-sm font-bold tabular-nums shrink-0 w-8 text-right">
-                  {row.points}
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-white text-sm leading-tight">{name}</p>
+                  {/* Из чего сложился рейтинг — процент исходов, точные счета и
+                      очки. Все три под именем, потому что справа теперь стоит
+                      рейтинг, и без разбора он ничем не подкреплён. */}
+                  <p className="truncate text-brand-muted text-[10px] tabular-nums">
+                    {t('matches.row_breakdown', {
+                      accuracy: row.outcome_rate === null ? '—' : row.outcome_rate,
+                      exact: row.exact,
+                      points: row.points,
+                    })}
+                  </p>
+                </div>
+                {/* РЕЙТИНГ, А НЕ ОЧКИ: список отсортирован по нему, и очки
+                    справа выглядели бы сбитой сортировкой. */}
+                <span className="ds-display text-white text-sm font-bold tabular-nums shrink-0 w-10 text-right">
+                  {row.rating}
                 </span>
               </div>
             );
