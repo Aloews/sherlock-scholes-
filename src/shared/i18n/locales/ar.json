@@ -119,7 +119,6 @@
     "ratings_link": "تصنيف اللاعبين",
     "arena_online_link": "الساحة عبر الشبكة",
     "invites_failed": "لم تُحمَّل الدعوات — إن دعاك أحد، جرّب التحديث.",
-    "stream_link": "بث مباشر",
     "minigames_link": "ألعاب مصغّرة"
   },
   "design": {
@@ -890,26 +889,6 @@
     "matches_many": "{{count}} مباراة",
     "matches_other": "{{count}} مباراة",
     "goals_assists": "{{goals}} هدف · {{assists}} تمريرة"
-  },
-  "stream": {
-    "title": "بث مباشر",
-    "loading": "جارٍ تحميل البث…",
-    "error": "تعذّر تشغيل البث. حاول لاحقًا.",
-    "not_configured": "البث المباشر غير مُعد بعد.",
-    "report_link": "الإبلاغ كصاحب حقوق",
-    "report_subject": "شكوى بشأن بث Live TV",
-    "report_body": "يرجى وصف المحتوى وإرفاق ما يثبت حقوقك. سنراجع البلاغ ونتصرف بسرعة.",
-    "channels_title": "القنوات",
-    "channels_loading": "جارٍ تحميل قائمة القنوات…",
-    "channels_failed": "تعذّر تحميل قائمة القنوات.",
-    "channels_empty": "لا توجد قنوات رياضية متاحة حالياً.",
-    "channel_failed": "القناة غير متاحة",
-    "all_failed": "لا تستجيب أي قناة اليوم. حاول لاحقاً.",
-    "search": "ابحث عن قناة",
-    "favourites": "المفضّلة",
-    "favourite": "أضف إلى المفضّلة",
-    "unfavourite": "أزل من المفضّلة",
-    "nothing_found": "لم يُعثر على شيء"
   },
   "minigames": {
     "title": "ألعاب مصغّرة",
