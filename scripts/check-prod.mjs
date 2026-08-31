@@ -173,16 +173,21 @@ async function checkBundle() {
     const main = /\/assets\/index-[^"]+\.js/.exec(html)?.[0];
     if (!main) { record('Прод: бандл', false, 'не найден index-*.js', 'н/д'); return; }
     const js = await (await get(APP + main)).text();
-    const chunk = /StreamScreen-[A-Za-z0-9_-]+\.js/.exec(js)?.[0];
-    if (!chunk) { record('Прод: бандл', false, 'нет чанка ТВ', 'н/д'); return; }
-    const stream = await (await get(`${APP}/assets/${chunk}`)).text();
+    // ⚠️ МИШЕНЬ СМЕНИЛАСЬ ВМЕСТЕ С ПЕРЕЕЗДОМ ТВ. Раньше здесь искался чанк
+    // `StreamScreen-*.js` и ключ кэша каталога `ss_tv_channels`; экран уехал в
+    // Aloews/sherlock-tv, и проверка стала бы падать на «нет чанка ТВ» — то
+    // есть краснеть на исправном проде. Теперь она смотрит на кабинет: он
+    // ленивый чанк, как и был ТВ, и его ключ пароля так же однозначен.
+    const chunk = /AdminScreen-[A-Za-z0-9_-]+\.js/.exec(js)?.[0];
+    if (!chunk) { record('Прод: бандл', false, 'нет чанка кабинета', 'н/д'); return; }
+    const lazy = await (await get(`${APP}/assets/${chunk}`)).text();
 
     // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: строки, которой в бандле быть НЕ МОЖЕТ,
-    // findMarker обязан не найти. Иначе он «находит» что угодно.
-    const has = (s) => stream.includes(s);
+    // поиск обязан не найти. Иначе он «находит» что угодно.
+    const has = (s) => lazy.includes(s);
     const controlWorks = !has('заведомо-отсутствующая-строка-контроля');
 
-    record('Прод: кэш каталога выкачен', has('ss_tv_channels'), chunk,
+    record('Прод: ленивые чанки выкачены', has('ss_admin_pw'), chunk,
            controlWorks ? 'контроль не нашёл несуществующее' : '⚠ КОНТРОЛЬ НАШЁЛ ЧУШЬ');
   } catch (e) {
     record('Прод: бандл', false, String(e).slice(0, 50), 'н/д');
