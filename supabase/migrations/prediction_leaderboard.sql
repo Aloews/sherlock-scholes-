@@ -14,15 +14,49 @@
 -- точку» отличает чутьё от количества поставленных прогнозов.
 -- ============================================================================
 
+-- ============================================================================
+-- ДОЛЯ УГАДАННЫХ ИСХОДОВ — второе умение, за которое до сих пор ничего не
+-- показывалось.
+--
+-- Очки уже награждают и объём, и точность, но одним числом; «в точку» отвечает
+-- на вопрос про счёт. А угадать ПОБЕДИТЕЛЯ двадцати матчей и не угадать ни
+-- одного счёта — отдельное умение, и в таблице оно было невидимо.
+--
+-- Считать заново нечего: шкала prediction_points уже это кодирует —
+--   5 точный счёт, 3 верная разница, 2 верный победитель, 0 мимо,
+-- то есть «исход угадан» это ровно `points >= 2`. Второе определение того же
+-- самого однажды разошлось бы с первым.
+--
+-- ⚠️ ПОРОГ В ПЯТЬ ЗАКРЫТЫХ ПРОГНОЗОВ, И ОН НЕ ПРИДИРКА. Один угаданный матч
+-- даёт 100%, и без порога новичок с единственным прогнозом стоял бы выше
+-- того, кто угадывает вторую сотню, — причём выглядело бы это убедительно.
+-- Ниже порога отдаётся NULL, а не ноль: «мало данных» и «ничего не угадал» —
+-- разные вещи, и экран рисует прочерк.
+--
+-- ⚠️ ДОЛЯ ВХОДИТ В ПОРЯДОК, НО НЕ ПЕРЕБИВАЕТ ОБЪЁМ. Сортировка: очки → доля
+-- исходов → точные счета. Сделать долю главной значило бы поднять наверх
+-- того, кто поставил пять прогнозов и угадал их, над тем, кто поставил
+-- двести.
+--
+-- ⚠️ DROP ПЕРЕД CREATE — потому что меняется тип возврата, а `create or
+-- replace` его менять не умеет (42P13). Обе команды в одной миграции, то есть
+-- в одной транзакции: окна, в котором функции нет, не возникает.
+-- ============================================================================
+
+drop function if exists public.prediction_leaderboard(integer);
+drop function if exists public.my_prediction_stats(text);
+
 create or replace function public.prediction_leaderboard(p_limit integer default 20)
 returns table (
   player_id   bigint,
   first_name  text,
   last_name   text,
   avatar_url  text,
-  points      integer,
-  settled     integer,
-  exact       integer
+  points       integer,
+  settled      integer,
+  exact        integer,
+  outcomes     integer,
+  outcome_rate integer
 )
 language sql stable
 security definer
@@ -31,27 +65,41 @@ as $$
   select pl.id, pl.first_name, pl.last_name, pl.avatar_url,
          coalesce(sum(mp.points), 0)::int,
          count(*)::int,
-         count(*) filter (where mp.points = 5)::int
+         count(*) filter (where mp.points = 5)::int,
+         count(*) filter (where mp.points >= 2)::int,
+         case when count(*) >= 5
+              then round(100.0 * count(*) filter (where mp.points >= 2) / count(*))::int
+         end
     from match_predictions mp
     join players pl on pl.id = mp.player_id
    where mp.settled_at is not null
    group by pl.id, pl.first_name, pl.last_name, pl.avatar_url
    order by coalesce(sum(mp.points), 0) desc,
+            case when count(*) >= 5
+                 then round(100.0 * count(*) filter (where mp.points >= 2) / count(*))
+                 else -1 end desc,
             count(*) filter (where mp.points = 5) desc,
             pl.first_name
    limit greatest(coalesce(p_limit, 20), 1);
 $$;
+
+comment on function public.prediction_leaderboard(integer) is
+  'Таблица лидеров прогнозов. outcome_rate — доля УГАДАННЫХ ИСХОДОВ '
+  '(points >= 2: точный счёт, верная разница или верный победитель), целыми '
+  'процентами. NULL до пяти закрытых прогнозов.';
 
 -- Всегда возвращает РОВНО ОДНУ строку, даже когда прогнозов нет вовсе: экран
 -- показывает счётчик с нуля, чтобы поставивший первый прогноз видел, что он
 -- посчитан. Отсюда `from (select 1)` и левые соединения.
 create or replace function public.my_prediction_stats(p_init_data text)
 returns table (
-  points   integer,
-  settled  integer,
-  exact    integer,
-  pending  integer,
-  rank     integer
+  points       integer,
+  settled      integer,
+  exact        integer,
+  outcomes     integer,
+  outcome_rate integer,
+  pending      integer,
+  rank         integer
 )
 language plpgsql
 security definer
@@ -69,6 +117,7 @@ begin
              coalesce(sum(mp.points) filter (where mp.settled_at is not null), 0)::int as pts,
              count(*) filter (where mp.settled_at is not null)::int as settled_n,
              count(*) filter (where mp.points = 5)::int as exact_n,
+             count(*) filter (where mp.settled_at is not null and mp.points >= 2)::int as outcome_n,
              count(*) filter (where mp.settled_at is null)::int as pending_n
         from match_predictions mp
        group by mp.player_id
@@ -83,6 +132,12 @@ begin
     select coalesce(r.pts, t.pts, 0),
            coalesce(r.settled_n, t.settled_n, 0),
            coalesce(r.exact_n, t.exact_n, 0),
+           coalesce(r.outcome_n, t.outcome_n, 0),
+           -- Знаменатель под coalesce с единицей: до пяти прогнозов ветка всё
+           -- равно отдаёт NULL, но деления на ноль не случится и в ней.
+           case when coalesce(r.settled_n, t.settled_n, 0) >= 5
+                then round(100.0 * coalesce(r.outcome_n, t.outcome_n, 0)
+                                 / coalesce(r.settled_n, t.settled_n, 1))::int end,
            coalesce(r.pending_n, t.pending_n, 0),
            -- NULL, а не ноль: «места пока нет» и «последнее место» — разное,
            -- и экран рисует прочерк, а не номер, которого человек не заслужил.

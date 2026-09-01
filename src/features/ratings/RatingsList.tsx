@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconBallFootball } from '@tabler/icons-react';
 import {
@@ -48,6 +49,10 @@ interface RatingsListProps {
  */
 export function RatingsList({ limit }: RatingsListProps) {
   const { t, i18n } = useTranslation();
+  // Строка рейтинга ведёт в досье того же футболиста. До этого она не вела
+  // никуда: игрок видел имя и число и не мог узнать о человеке ничего, хотя
+  // карточка с описанием, фотографией и историей матчей уже лежала рядом.
+  const navigate = useNavigate();
   const [days, setDays] = useState<RatingWindow>(7);
   const [rows, setRows] = useState<LoadState<RatingRow[]>>(LOADING);
   const [fresh, setFresh] = useState<LoadState<RatingFreshness | null>>(LOADING);
@@ -129,9 +134,11 @@ export function RatingsList({ limit }: RatingsListProps) {
       )}
 
       {shown.map((row, i) => (
-        <div
+        <button
           key={row.card_id}
-          className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 flex items-center gap-3"
+          type="button"
+          onClick={() => { hapticImpact('light'); navigate(`/collection?card=${row.card_id}`); }}
+          className="w-full text-left ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3 flex items-center gap-3 active:opacity-70 transition-opacity"
         >
           <span className="ds-display text-brand-muted text-sm font-bold tabular-nums w-6 text-right shrink-0">
             {i + 1}
@@ -151,14 +158,30 @@ export function RatingsList({ limit }: RatingsListProps) {
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm truncate">{row.name}</p>
             <p className="text-brand-muted text-[11px] truncate">
-              {/* Клуб выводится из открытых лет в карьере и бывает
-                  устаревшим, поэтому рядом всегда стоит число матчей окна —
-                  оно из этого же окна и не может разойтись с ним. */}
+              {/* Клуб собран из свидетельств и бывает устаревшим, поэтому
+                  рядом всегда стоит число матчей окна — оно из этого же окна
+                  и не может разойтись с ним. */}
               {[row.club, t('ratings.matches', { count: row.matches })]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
+
+          {/* УРОВЕНЬ — ТО ЖЕ ЧИСЛО, ЧТО В КОЛЛЕКЦИИ. Раньше их было два: тир
+              по известности в коллекции и очки по голам здесь, и игрок,
+              стоящий первым в рейтинге, мог оставаться common. Показывается
+              только когда он построен и на игре тоже: 'fame' значит «матчей
+              мало», и такое число про футбол ничего не говорит. */}
+          {row.level != null && row.basis === 'fame+form' && (
+            <div className="text-right shrink-0 w-8">
+              <p className="ds-display text-brand-accent text-sm font-bold tabular-nums">
+                {row.level}
+              </p>
+              <p className="text-brand-muted/70 text-[9px] uppercase tracking-wide">
+                {t('ratings.level')}
+              </p>
+            </div>
+          )}
 
           <div className="text-right shrink-0">
             <p className="ds-display text-white text-sm font-bold tabular-nums">{row.points}</p>
@@ -166,7 +189,7 @@ export function RatingsList({ limit }: RatingsListProps) {
               {t('ratings.goals_assists', { goals: row.goals, assists: row.assists })}
             </p>
           </div>
-        </div>
+        </button>
       ))}
 
       {/* Подпись под списком, а не над ним: пока список читают, она не

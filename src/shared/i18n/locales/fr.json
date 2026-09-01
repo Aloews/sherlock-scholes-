@@ -116,7 +116,9 @@
     "ratings_link": "Classement des joueurs",
     "arena_online_link": "Arène en réseau",
     "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
-    "minigames_link": "Mini-jeux"
+    "minigames_link": "Mini-jeux",
+    "stream_link": "TV en direct",
+    "clubs_link": "Clubs et statistiques"
   },
   "design": {
     "master": "Nouveau design",
@@ -163,7 +165,12 @@
     "collected": "Relevé sur les matchs",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} M · {{goals}} B · {{assists}} PD",
-    "news_and_video": "Actus et vidéos"
+    "news_and_video": "Actus et vidéos",
+    "f_club": "Club",
+    "level": "Niveau",
+    "level_basis_fame": "sur la notoriété — trop peu de matchs",
+    "level_basis_fame_form": "sur la notoriété et la forme",
+    "level_basis_icon": "icône du football"
   },
   "profile": {
     "title": "Profil",
@@ -588,7 +595,10 @@
     "history_pending": "en attente du score",
     "squad_level": "Niveau de l'effectif",
     "squad_depth_one": "sur {{count}} joueur",
-    "squad_depth_other": "sur {{count}} joueurs"
+    "squad_depth_other": "sur {{count}} joueurs",
+    "exact_short": "exacts {{n}}",
+    "team_rating": "Cote des équipes",
+    "rating_squad_only": "effectif seul"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",
@@ -651,7 +661,8 @@
     "failed": "Impossible de charger la liste des joueurs. Réessayez plus tard.",
     "squad_failed": "Votre composition ne s’est pas chargée — ne la refaites pas, elle est peut-être enregistrée.",
     "ratings": "Qui marque des points",
-    "ratings_all": "classement complet"
+    "ratings_all": "classement complet",
+    "open_card": "Ouvrir la fiche"
   },
   "quiz": {
     "title": "Devine le joueur",
@@ -792,7 +803,8 @@
     "collected_other": "Collecté il y a {{count}} jours",
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matchs",
-    "goals_assists": "{{goals}} B · {{assists}} PD"
+    "goals_assists": "{{goals}} B · {{assists}} PD",
+    "level": "Niv"
   },
   "minigames": {
     "title": "Mini-jeux",
@@ -822,5 +834,94 @@
     "members_other": "{{n}} supporters",
     "ours_online_one": "{{n}} en ligne",
     "ours_online_other": "{{n}} en ligne"
+  },
+  "stream": {
+    "title": "TV en direct",
+    "loading": "Chargement du flux…",
+    "error": "Impossible de lire le flux. Réessayez plus tard.",
+    "not_configured": "La TV en direct n'est pas encore configurée.",
+    "report_link": "Signaler au titulaire des droits",
+    "report_subject": "Plainte concernant le flux Live TV",
+    "report_body": "Décrivez le contenu et joignez une preuve de vos droits. Nous examinerons rapidement votre demande.",
+    "channels_title": "Chaînes",
+    "channels_loading": "Chargement de la liste des chaînes…",
+    "channels_failed": "Impossible de charger la liste des chaînes.",
+    "channels_empty": "Aucune chaîne de sport n’est disponible pour le moment.",
+    "channel_failed": "Chaîne indisponible",
+    "all_failed": "Aucune chaîne ne répond aujourd’hui. Réessayez plus tard.",
+    "search": "Rechercher une chaîne",
+    "favourites": "Favoris",
+    "favourite": "Ajouter aux favoris",
+    "unfavourite": "Retirer des favoris",
+    "nothing_found": "Aucun résultat"
+  },
+  "club": {
+    "title": "Club",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger le club",
+    "not_found": "Ce club n'est pas dans l'annuaire",
+    "league_unknown": "Championnat inconnu",
+    "window_90": "90 jours",
+    "window_365": "365 jours",
+    "squad": "Effectif",
+    "squad_empty": "Effectif pas encore collecté",
+    "squad_size_one": "{{count}} joueur",
+    "squad_size_other": "{{count}} joueurs",
+    "stat_record": "V-N-D",
+    "stat_goals": "Buts",
+    "stat_diff": "Diff.",
+    "stat_points": "Points",
+    "stat_winrate": "Victoires",
+    "stat_gpm": "Buts par match",
+    "form": "Forme",
+    "outcome_w": "V",
+    "outcome_d": "N",
+    "outcome_l": "D",
+    "based_on_one": "Sur {{count}} match",
+    "based_on_other": "Sur {{count}} matchs",
+    "since": "depuis le {{date}}",
+    "no_matches": "Aucun match sur cette période",
+    "recent": "Derniers matchs",
+    "upcoming": "Prochains matchs",
+    "vs_home": "contre {{team}} (domicile)",
+    "vs_away": "contre {{team}} (extérieur)",
+    "col_player": "Joueur",
+    "col_matches": "M",
+    "col_minutes": "Min",
+    "col_goals": "B",
+    "col_assists": "PD",
+    "col_cards": "J/R",
+    "col_points": "Pts",
+    "rating": "Cote",
+    "place": "{{n}}e place",
+    "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%"
+  },
+  "clubs": {
+    "title": "Clubs",
+    "search": "Chercher un club",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger la liste des clubs",
+    "empty": "Aucun résultat",
+    "players_one": "{{count}} joueur",
+    "players_other": "{{count}} joueurs",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matchs"
+  },
+  "table": {
+    "title": "Classement",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger le classement",
+    "empty": "Aucun match collecté pour cette saison",
+    "col_club": "Club",
+    "col_played": "J",
+    "col_w": "V",
+    "col_d": "N",
+    "col_l": "D",
+    "col_goals": "Buts",
+    "col_diff": "Diff",
+    "col_points": "Pts",
+    "col_form": "Forme",
+    "since": "Saison depuis le {{date}}",
+    "source_note": "établi sur les matchs collectés — voyez la colonne J"
   }
 }

@@ -32,3 +32,26 @@ select cron.schedule(
 -- upsert-by-name, so the line above is already idempotent; this is the undo:
 --
 --   select cron.unschedule('rebuild-card-current-clubs');
+
+-- ============================================================================
+-- И весь конвейер клубов — в 06:25 UTC, ПОСЛЕ пересборки card_current_clubs
+-- в 06:10.
+--
+-- ПОЧЕМУ ПОСЛЕ, А НЕ ВМЕСТО. rebuild_club_squads() читает card_current_club
+-- как самое достоверное свидетельство состава. Запустить их одновременно
+-- значит собирать составы по вчерашнему снимку — та же несвежесть, только с
+-- лишним шагом. Пятнадцати минут хватает: пересборка card_current_clubs
+-- укладывается в секунды.
+--
+-- ПОЧЕМУ ОДИН ВЫЗОВ, А НЕ ПЯТЬ ЗАДАНИЙ. Шаги зависят друг от друга по
+-- порядку (см. rebuild_clubs_all в football_clubs.sql), а пять отдельных
+-- заданий cron не дают никаких гарантий, что второе начнётся после первого.
+-- ============================================================================
+
+select cron.schedule(
+  'rebuild-football-clubs',
+  '25 6 * * *',
+  $$select public.rebuild_clubs_all()$$
+);
+
+--   select cron.unschedule('rebuild-football-clubs');

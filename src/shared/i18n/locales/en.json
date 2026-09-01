@@ -116,7 +116,9 @@
     "ratings_link": "Player ratings",
     "arena_online_link": "Arena over the net",
     "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
-    "minigames_link": "Mini-games"
+    "minigames_link": "Mini-games",
+    "stream_link": "Live TV",
+    "clubs_link": "Clubs and stats"
   },
   "design": {
     "master": "New design",
@@ -163,7 +165,12 @@
     "collected": "Collected from matches",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} M · {{goals}} G · {{assists}} A",
-    "news_and_video": "News & video"
+    "news_and_video": "News & video",
+    "f_club": "Club",
+    "level": "Level",
+    "level_basis_fame": "from fame — too few matches",
+    "level_basis_fame_form": "from fame and form",
+    "level_basis_icon": "football icon"
   },
   "profile": {
     "title": "Profile",
@@ -588,7 +595,10 @@
     "history_pending": "awaiting score",
     "squad_level": "Squad level",
     "squad_depth_one": "by {{count}} player",
-    "squad_depth_other": "by {{count}} players"
+    "squad_depth_other": "by {{count}} players",
+    "exact_short": "exact {{n}}",
+    "team_rating": "Team rating",
+    "rating_squad_only": "squad only"
   },
   "leagues": {
     "soccer_epl": "Premier League (England)",
@@ -651,7 +661,8 @@
     "failed": "Could not load the squad list. Try again later.",
     "squad_failed": "Your squad did not load — do not re-pick, it may already be saved.",
     "ratings": "Who is scoring points",
-    "ratings_all": "full ranking"
+    "ratings_all": "full ranking",
+    "open_card": "Open card"
   },
   "quiz": {
     "title": "Guess the player",
@@ -792,7 +803,8 @@
     "collected_other": "Collected {{count}} days ago",
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches",
-    "goals_assists": "{{goals}} G · {{assists}} A"
+    "goals_assists": "{{goals}} G · {{assists}} A",
+    "level": "Lvl"
   },
   "minigames": {
     "title": "Mini-games",
@@ -822,5 +834,94 @@
     "members_other": "{{n}} fans",
     "ours_online_one": "{{n}} online",
     "ours_online_other": "{{n}} online"
+  },
+  "stream": {
+    "title": "Live TV",
+    "loading": "Loading the stream…",
+    "error": "Couldn't play the stream. Try again later.",
+    "not_configured": "Live TV isn't set up yet.",
+    "report_link": "Report to the rights holder",
+    "report_subject": "Complaint about the Live TV stream",
+    "report_body": "Please describe the content and include proof of your rights. We will review and act promptly.",
+    "channels_title": "Channels",
+    "channels_loading": "Loading the channel list…",
+    "channels_failed": "Could not load the channel list.",
+    "channels_empty": "No sports channels are available right now.",
+    "channel_failed": "Channel unavailable",
+    "all_failed": "No channel is responding today. Try again later.",
+    "search": "Search channels",
+    "favourites": "Favourites",
+    "favourite": "Add to favourites",
+    "unfavourite": "Remove from favourites",
+    "nothing_found": "Nothing found"
+  },
+  "club": {
+    "title": "Club",
+    "loading": "Loading…",
+    "failed": "Could not load the club",
+    "not_found": "No such club in the directory",
+    "league_unknown": "League unknown",
+    "window_90": "90 days",
+    "window_365": "365 days",
+    "squad": "Squad",
+    "squad_empty": "No squad collected yet",
+    "squad_size_one": "{{count}} player",
+    "squad_size_other": "{{count}} players",
+    "stat_record": "W-D-L",
+    "stat_goals": "Goals",
+    "stat_diff": "Diff",
+    "stat_points": "Points",
+    "stat_winrate": "Win rate",
+    "stat_gpm": "Goals per match",
+    "form": "Form",
+    "outcome_w": "W",
+    "outcome_d": "D",
+    "outcome_l": "L",
+    "based_on_one": "From {{count}} match",
+    "based_on_other": "From {{count}} matches",
+    "since": "since {{date}}",
+    "no_matches": "No matches collected for this period",
+    "recent": "Recent matches",
+    "upcoming": "Upcoming matches",
+    "vs_home": "vs {{team}} (home)",
+    "vs_away": "vs {{team}} (away)",
+    "col_player": "Player",
+    "col_matches": "M",
+    "col_minutes": "Min",
+    "col_goals": "G",
+    "col_assists": "A",
+    "col_cards": "Y/R",
+    "col_points": "Pts",
+    "rating": "Rating",
+    "place": "{{n}}th place",
+    "league_isolated": "This league rarely plays others — level comparable across leagues at {{pct}}%"
+  },
+  "clubs": {
+    "title": "Clubs",
+    "search": "Find a club",
+    "loading": "Loading…",
+    "failed": "Could not load the club list",
+    "empty": "Nothing found",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches"
+  },
+  "table": {
+    "title": "Tables",
+    "loading": "Loading…",
+    "failed": "Could not load the table",
+    "empty": "No matches collected for this season yet",
+    "col_club": "Club",
+    "col_played": "P",
+    "col_w": "W",
+    "col_d": "D",
+    "col_l": "L",
+    "col_goals": "Goals",
+    "col_diff": "GD",
+    "col_points": "Pts",
+    "col_form": "Form",
+    "since": "Season from {{date}}",
+    "source_note": "built from collected matches — check the P column"
   }
 }

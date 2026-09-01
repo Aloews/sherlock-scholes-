@@ -59,3 +59,65 @@ export async function fetchSquadStrength(): Promise<Map<string, SquadStrength>> 
   for (const row of (data as SquadStrength[]) ?? []) map.set(row.fixture_id, row);
   return map;
 }
+
+// ---------------------------------------------------------------------------
+// РЕЙТИНГ КОМАНДЫ ИЗ УРОВНЕЙ ЕЁ ИГРОКОВ.
+//
+// ⚠️ ЭТО ЗАМЕНА `SquadStrength` ВЫШЕ, А НЕ ДОБАВКА К НЕЙ. Старая считала
+// среднюю ИЗВЕСТНОСТЬ (`cards.fame`) и искала клуб старым ключом
+// `club_match_key`, который не проходит через словарь псевдонимов — «Зенит» с
+// ним не находил собственного состава. Новая берёт `player_level` (половина
+// известности, половина отдачи за матч) и `resolve_club_key`.
+//
+// Замер замены на боевых данных: обе команды известны у 102 предстоящих
+// матчей вместо 76, глубина 5 набирается у 37 вместо 23, глубина 11 — у 16.
+//
+// ⚠️ СТАРАЯ RPC НЕ УДАЛЕНА, и это не забывчивость: `fixture_squad_strength`
+// зовёт выкаченный фронтенд, а удаление функции, которую зовёт прод, один раз
+// уже роняло это приложение (см. легаси-шим `pick_random_cards`). Убрать её
+// можно после того, как новая сборка разойдётся везде.
+// ---------------------------------------------------------------------------
+
+export interface TeamRating {
+  fixture_id: string;
+  /** Средний УРОВЕНЬ игроков (0..100) по `depth` лучшим с каждой стороны. */
+  home_squad_level: number;
+  away_squad_level: number;
+  /** Форма по результатам матчей (Эло, приведённое к 0..100). null — матчей мало. */
+  home_form_level: number | null;
+  away_form_level: number | null;
+  /** Состав и форма поровну; при отсутствии формы — только состав. */
+  home_rating: number;
+  away_rating: number;
+  /** 'squad' | 'squad+form' — из чего собрано. Экран обязан различать. */
+  basis: string;
+  /** По скольким игрокам с КАЖДОЙ стороны. Равная глубина — см. выше. */
+  depth: number;
+  home_squad: number;
+  away_squad: number;
+  /**
+   * Худший из двух коэффициентов доверия к уровню лиги. Меньше 0.8 значит,
+   * что хотя бы одна команда из лиги, почти не играющей с другими, и
+   * сравнивать её форму с чужой лигой можно лишь настолько.
+   */
+  min_league_weight: number;
+}
+
+/**
+ * ⚠️ ВОЗВРАЩАЕТ ДАЛЕКО НЕ ПО ВСЕМ МАТЧАМ, и это нормально, а не поломка.
+ * Экран обязан молчать там, где числа нет: «рейтинг 0» читается как «слабая
+ * команда», хотя значит «мы не знаем».
+ *
+ * Отказ возвращает пустую карту, а не бросает: раздел необязательный, и
+ * ронять из-за него список матчей нельзя.
+ */
+export async function fetchTeamRating(): Promise<Map<string, TeamRating>> {
+  const { data, error } = await supabase.rpc('fixture_team_rating', { p_min_depth: 5 });
+  if (error) {
+    console.error('[fixtures] fixture_team_rating failed:', error.code, error.message);
+    return new Map();
+  }
+  const map = new Map<string, TeamRating>();
+  for (const row of (data as TeamRating[]) ?? []) map.set(row.fixture_id, row);
+  return map;
+}

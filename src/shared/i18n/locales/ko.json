@@ -114,7 +114,9 @@
     "ratings_link": "선수 랭킹",
     "arena_online_link": "네트워크 아레나",
     "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
-    "minigames_link": "미니게임"
+    "minigames_link": "미니게임",
+    "stream_link": "실시간 TV",
+    "clubs_link": "클럽과 통계"
   },
   "design": {
     "master": "새 디자인",
@@ -161,7 +163,12 @@
     "collected": "경기에서 집계",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}}경기 · {{goals}}골 · {{assists}}도움",
-    "news_and_video": "뉴스 및 영상"
+    "news_and_video": "뉴스 및 영상",
+    "f_club": "클럽",
+    "level": "레벨",
+    "level_basis_fame": "인지도 기준 — 경기 수 부족",
+    "level_basis_fame_form": "인지도와 성적 기준",
+    "level_basis_icon": "축구의 아이콘"
   },
   "profile": {
     "title": "프로필",
@@ -568,7 +575,10 @@
     "history_loading": "불러오는 중…",
     "history_pending": "결과 대기",
     "squad_level": "스쿼드 수준",
-    "squad_depth_other": "상위 {{count}}명 기준"
+    "squad_depth_other": "상위 {{count}}명 기준",
+    "exact_short": "정확 {{n}}",
+    "team_rating": "팀 평가",
+    "rating_squad_only": "스쿼드만"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
@@ -631,7 +641,8 @@
     "failed": "선수 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
     "squad_failed": "등록한 라인업을 불러오지 못했습니다. 저장되어 있을 수 있으니 다시 고르지 마세요.",
     "ratings": "포인트를 쌓고 있는 선수",
-    "ratings_all": "전체 순위"
+    "ratings_all": "전체 순위",
+    "open_card": "카드 열기"
   },
   "quiz": {
     "title": "선수 맞히기",
@@ -767,7 +778,8 @@
     "empty": "이 기간에 득점도 도움도 없습니다",
     "collected_other": "{{count}}일 전 수집",
     "matches_other": "{{count}}경기",
-    "goals_assists": "{{goals}}골 · {{assists}}도움"
+    "goals_assists": "{{goals}}골 · {{assists}}도움",
+    "level": "LV"
   },
   "minigames": {
     "title": "미니게임",
@@ -795,5 +807,90 @@
     "no_clubs_found": "해당 클럽을 찾을 수 없습니다",
     "members_other": "팬 {{n}}명",
     "ours_online_other": "{{n}}명 접속 중"
+  },
+  "stream": {
+    "title": "실시간 TV",
+    "loading": "스트림을 불러오는 중…",
+    "error": "스트림을 재생할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "not_configured": "실시간 TV가 아직 설정되지 않았습니다.",
+    "report_link": "저작권자로서 신고하기",
+    "report_subject": "실시간 TV 스트림에 대한 신고",
+    "report_body": "콘텐츠 내용과 권리 증빙을 함께 알려주세요. 신속히 검토 후 조치하겠습니다.",
+    "channels_title": "채널",
+    "channels_loading": "채널 목록을 불러오는 중…",
+    "channels_failed": "채널 목록을 불러오지 못했습니다.",
+    "channels_empty": "지금은 이용할 수 있는 스포츠 채널이 없습니다.",
+    "channel_failed": "채널을 이용할 수 없습니다",
+    "all_failed": "오늘은 응답하는 채널이 없습니다. 나중에 다시 시도해 주세요.",
+    "search": "채널 검색",
+    "favourites": "즐겨찾기",
+    "favourite": "즐겨찾기에 추가",
+    "unfavourite": "즐겨찾기에서 제거",
+    "nothing_found": "검색 결과가 없습니다"
+  },
+  "club": {
+    "title": "클럽",
+    "loading": "불러오는 중…",
+    "failed": "클럽을 불러오지 못했습니다",
+    "not_found": "해당 클럽이 목록에 없습니다",
+    "league_unknown": "리그 정보 없음",
+    "window_90": "90일",
+    "window_365": "365일",
+    "squad": "스쿼드",
+    "squad_empty": "아직 스쿼드가 없습니다",
+    "squad_size_other": "{{count}}명",
+    "stat_record": "승무패",
+    "stat_goals": "득실점",
+    "stat_diff": "득실차",
+    "stat_points": "승점",
+    "stat_winrate": "승률",
+    "stat_gpm": "경기당 득점",
+    "form": "최근 경기",
+    "outcome_w": "승",
+    "outcome_d": "무",
+    "outcome_l": "패",
+    "based_on_other": "{{count}}경기 기준",
+    "since": "{{date}}부터",
+    "no_matches": "이 기간의 경기가 없습니다",
+    "recent": "최근 경기",
+    "upcoming": "다가오는 경기",
+    "vs_home": "{{team}} 전 (홈)",
+    "vs_away": "{{team}} 전 (원정)",
+    "col_player": "선수",
+    "col_matches": "경기",
+    "col_minutes": "분",
+    "col_goals": "골",
+    "col_assists": "도움",
+    "col_cards": "경/퇴",
+    "col_points": "점수",
+    "rating": "레이팅",
+    "place": "{{n}}위",
+    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%"
+  },
+  "clubs": {
+    "title": "클럽",
+    "search": "클럽 검색",
+    "loading": "불러오는 중…",
+    "failed": "클럽 목록을 불러오지 못했습니다",
+    "empty": "결과 없음",
+    "players_other": "{{count}}명",
+    "matches_other": "{{count}}경기"
+  },
+  "table": {
+    "title": "순위표",
+    "loading": "불러오는 중…",
+    "failed": "순위표를 불러오지 못했습니다",
+    "empty": "이번 시즌 경기가 아직 없습니다",
+    "col_club": "클럽",
+    "col_played": "경기",
+    "col_w": "승",
+    "col_d": "무",
+    "col_l": "패",
+    "col_goals": "득실점",
+    "col_diff": "득실차",
+    "col_points": "승점",
+    "col_form": "최근",
+    "since": "{{date}}부터의 시즌",
+    "source_note": "수집된 경기로 계산 — 「경기」 열을 보세요"
   }
 }

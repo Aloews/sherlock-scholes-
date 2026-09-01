@@ -356,9 +356,25 @@ def build_for_card(card, resolver, en_resolver, wikidata, cache, budget):
         return None, "нет названия"
 
     validate = make_validator(card, wikidata, cache, budget)
-    qid, title, via_search = run.resolve_card_qid(resolver, card, titles, validate)
+    # ⚠️ ПРИЧИНА ОТКАЗА СОБИРАЕТСЯ, А НЕ УГАДЫВАЕТСЯ. Раньше здесь стояло одно
+    # сообщение на три разные поломки — «не найдена ИЛИ отбракована гардом», —
+    # и в него падало 297 карточек из 330. По такому отчёту нельзя решить даже
+    # первого: чинить резолв названия, ослаблять гард или заводить карточке
+    # правильное имя. Теперь каждая причина названа своим словом.
+    reasons = []
+    qid, title, via_search = run.resolve_card_qid(
+        resolver, card, titles, validate, reasons)
     if not qid:
-        return None, "статья ruwiki не найдена (или отбракована P31-гардом)"
+        if run.FAIL_P31 in reasons:
+            # Статья нашлась, но сущность не того рода. Для карточки-игрока
+            # это чаще всего ТЁЗКА-НЕ-ФУТБОЛИСТ, и гард отработал верно.
+            return None, "статья есть, но это не {} — P31-гард отбраковал".format(
+                card.get("category_ru") or card.get("category"))
+        if run.FAIL_DISAMBIG in reasons:
+            # Дизамбиг — не «нет статьи», а «их несколько». Лечится не гардом,
+            # а уточнением названия карточки.
+            return None, "ruwiki отдала страницу неоднозначности"
+        return None, "статья ruwiki не найдена ни по одному варианту названия"
 
     existing = card.get("descriptions") or {}
 

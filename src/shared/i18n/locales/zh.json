@@ -114,7 +114,9 @@
     "ratings_link": "球员榜",
     "arena_online_link": "联机竞技场",
     "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
-    "minigames_link": "小游戏"
+    "minigames_link": "小游戏",
+    "stream_link": "直播电视",
+    "clubs_link": "俱乐部与数据"
   },
   "design": {
     "master": "新设计",
@@ -161,7 +163,12 @@
     "collected": "按比赛统计",
     "collected_period": "{{from}} — {{to}}",
     "collected_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
-    "news_and_video": "新闻与视频"
+    "news_and_video": "新闻与视频",
+    "f_club": "俱乐部",
+    "level": "等级",
+    "level_basis_fame": "依知名度 — 比赛太少",
+    "level_basis_fame_form": "依知名度与表现",
+    "level_basis_icon": "足球偶像"
   },
   "profile": {
     "title": "个人资料",
@@ -568,7 +575,10 @@
     "history_loading": "加载中…",
     "history_pending": "等待比分",
     "squad_level": "阵容水平",
-    "squad_depth_other": "按前{{count}}名球员"
+    "squad_depth_other": "按前{{count}}名球员",
+    "exact_short": "全中 {{n}}",
+    "team_rating": "球队评分",
+    "rating_squad_only": "仅阵容"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",
@@ -631,7 +641,8 @@
     "failed": "球员名单加载失败，请稍后再试。",
     "squad_failed": "你的阵容未能加载，可能已保存，请不要重新选择。",
     "ratings": "谁在拿分",
-    "ratings_all": "完整排行"
+    "ratings_all": "完整排行",
+    "open_card": "打开卡片"
   },
   "quiz": {
     "title": "猜球员",
@@ -767,7 +778,8 @@
     "empty": "这段时间内无人进球或助攻",
     "collected_other": "{{count}} 天前采集",
     "matches_other": "{{count}} 场比赛",
-    "goals_assists": "{{goals}} 球 · {{assists}} 助攻"
+    "goals_assists": "{{goals}} 球 · {{assists}} 助攻",
+    "level": "等级"
   },
   "minigames": {
     "title": "小游戏",
@@ -795,5 +807,90 @@
     "no_clubs_found": "未找到该俱乐部",
     "members_other": "{{n}} 名球迷",
     "ours_online_other": "{{n}} 人在线"
+  },
+  "stream": {
+    "title": "直播电视",
+    "loading": "正在加载直播…",
+    "error": "无法播放直播，请稍后再试。",
+    "not_configured": "直播电视尚未配置。",
+    "report_link": "作为权利人举报",
+    "report_subject": "关于直播电视的投诉",
+    "report_body": "请描述相关内容并附上权利证明，我们会尽快审核处理。",
+    "channels_title": "频道",
+    "channels_loading": "正在加载频道列表…",
+    "channels_failed": "无法加载频道列表。",
+    "channels_empty": "目前没有可观看的体育频道。",
+    "channel_failed": "频道不可用",
+    "all_failed": "今天没有频道响应。请稍后再试。",
+    "search": "搜索频道",
+    "favourites": "收藏",
+    "favourite": "加入收藏",
+    "unfavourite": "取消收藏",
+    "nothing_found": "没有找到"
+  },
+  "club": {
+    "title": "俱乐部",
+    "loading": "加载中…",
+    "failed": "无法加载俱乐部",
+    "not_found": "名录中没有该俱乐部",
+    "league_unknown": "联赛未知",
+    "window_90": "90 天",
+    "window_365": "365 天",
+    "squad": "阵容",
+    "squad_empty": "尚未收集到阵容",
+    "squad_size_other": "{{count}} 名球员",
+    "stat_record": "胜平负",
+    "stat_goals": "进失球",
+    "stat_diff": "净胜球",
+    "stat_points": "积分",
+    "stat_winrate": "胜率",
+    "stat_gpm": "场均进球",
+    "form": "近期战绩",
+    "outcome_w": "胜",
+    "outcome_d": "平",
+    "outcome_l": "负",
+    "based_on_other": "基于 {{count}} 场比赛",
+    "since": "自 {{date}}",
+    "no_matches": "该时间段内没有比赛",
+    "recent": "近期比赛",
+    "upcoming": "即将进行的比赛",
+    "vs_home": "对阵 {{team}}（主场）",
+    "vs_away": "对阵 {{team}}（客场）",
+    "col_player": "球员",
+    "col_matches": "场",
+    "col_minutes": "分钟",
+    "col_goals": "进球",
+    "col_assists": "助攻",
+    "col_cards": "黄/红",
+    "col_points": "积分",
+    "rating": "评分",
+    "place": "第 {{n}} 名",
+    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%"
+  },
+  "clubs": {
+    "title": "俱乐部",
+    "search": "搜索俱乐部",
+    "loading": "加载中…",
+    "failed": "无法加载俱乐部列表",
+    "empty": "没有找到",
+    "players_other": "{{count}} 名球员",
+    "matches_other": "{{count}} 场比赛"
+  },
+  "table": {
+    "title": "积分榜",
+    "loading": "加载中…",
+    "failed": "无法加载积分榜",
+    "empty": "本赛季尚未收集到比赛",
+    "col_club": "俱乐部",
+    "col_played": "场",
+    "col_w": "胜",
+    "col_d": "平",
+    "col_l": "负",
+    "col_goals": "进失球",
+    "col_diff": "净胜",
+    "col_points": "积分",
+    "col_form": "近况",
+    "since": "自 {{date}} 的赛季",
+    "source_note": "基于已收集的比赛 — 请看「场」列"
   }
 }
