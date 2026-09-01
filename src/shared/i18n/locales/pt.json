@@ -923,5 +923,9 @@
     "col_form": "Forma",
     "since": "Época desde {{date}}",
     "source_note": "a partir dos jogos recolhidos — veja a coluna J"
+  },
+  "transfers": {
+    "title": "Transferências",
+    "failed": "Não foi possível carregar as transferências"
   }
 }

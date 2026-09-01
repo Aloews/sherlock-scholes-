@@ -57,6 +57,7 @@ rule was created during active wdqs outage»), затем и ru.wikipedia.org. �
 """
 import argparse
 import importlib.util
+import io
 import json
 import os
 import sys
@@ -204,8 +205,15 @@ def resolve_club_qids_by_article(cards_by_key, resolver, wikidata_validate=None)
     завести место, где они разойдутся, — а он и так однажды разошёлся
     (docs/MAP.md §7а про «Зенит» и «Факел»).
     """
+    # ⚠️ ПРОГРЕСС ОБЯЗАТЕЛЕН. Резолв идёт ~секунду на запрос, и на четырёх
+    # сотнях клубов молчание длится часами — а молчащий процесс неотличим от
+    # зависшего. Один раз я так и не смог сказать, работает прогон или встал.
     out = {}
-    for club_key, card in cards_by_key.items():
+    total = len(cards_by_key)
+    for i, (club_key, card) in enumerate(cards_by_key.items(), 1):
+        if i % 25 == 0 or i == total:
+            print("  резолв клубов: %d/%d, найдено %d" % (i, total, len(out)),
+                  flush=True)
         titles = run.cards_photos_candidates(card)
         if not titles:
             continue
@@ -220,6 +228,9 @@ def fetch_squads(qids, since_year):
     """{QID → [{qid,name_ru,name_en,start,number,position}]}."""
     out = {}
     for i in range(0, len(qids), CLUB_BATCH):
+        print("  составы: пачка %d из %d"
+              % (i // CLUB_BATCH + 1, (len(qids) + CLUB_BATCH - 1) // CLUB_BATCH),
+              flush=True)
         chunk = qids[i:i + CLUB_BATCH]
         values = " ".join("wd:" + q for q in chunk)
         rows = sparql("""
@@ -341,6 +352,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько клубов (0 — все)")
+    ap.add_argument("--clubs-file", default=None,
+                    help="файл со списком club_key (по одному в строке) — "
+                         "обрабатывать только их. Бюджет Wikimedia конечен, и "
+                         "тратить его стоит на клубы, чьи матчи игрок увидит.")
     ap.add_argument("--since", type=int, default=2022,
                     help="нижняя граница даты начала (год)")
     ap.add_argument("--apply", action="store_true", help="писать, а не показывать")
@@ -375,6 +390,18 @@ def main():
         c["squad"] = d.get("squad") or 0
     # Матчи вперёд состава: «сколько его видно», а не «сколько уже собрано».
     # Клуб с матчами и пустым составом — это и есть дыра, ради которой всё.
+    if args.clubs_file:
+        want = {ln.strip() for ln in io.open(args.clubs_file, encoding="utf-8")
+                if ln.strip()}
+        before = len(clubs)
+        clubs = [c for c in clubs if c["club_key"] in want]
+        print("Отбор по списку   : %d из %d (в списке %d ключей)"
+              % (len(clubs), before, len(want)))
+        missing = want - {c["club_key"] for c in clubs}
+        if missing:
+            # Молча пропущенный ключ выглядит как «у клуба нет состава».
+            print("  ⚠️ нет в справочнике: %d — %s"
+                  % (len(missing), ", ".join(sorted(missing)[:5])))
     clubs.sort(key=lambda c: (-c["matches"], c["squad"], c["name"] or ""))
     if args.limit:
         clubs = clubs[:args.limit]

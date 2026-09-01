@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { NewsList } from '@/features/digest/NewsList';
+import { TransfersStrip } from '@/features/transfers/TransfersStrip';
 
 /**
  * Новости — свой экран, а не раздел дайджеста.
@@ -33,6 +34,9 @@ export function NewsScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+        {/* Переходы идут НАД лентой и только в трансферное окно: вне его блок
+            исчезает целиком, а не показывает пустой заголовок. */}
+        <TransfersStrip />
         <NewsList />
       </div>
     </div>
