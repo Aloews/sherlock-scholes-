@@ -5,7 +5,7 @@ import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
   IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf,
-  IconGridDots, IconDeviceTv,
+  IconGridDots,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -19,7 +19,6 @@ import { HomeDuelSettings } from '@/screens/home/HomeDuelSettings';
 import { HomeJoinForm } from '@/screens/home/HomeJoinForm';
 import { HomeJoining } from '@/screens/home/HomeJoining';
 import { HomeGoalPreview } from '@/features/digest/HomeGoalPreview';
-import { isStreamHidden } from '@/features/stream/config';
 import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
@@ -321,18 +320,6 @@ export function HomeScreen() {
               label={t('home.chess_link')}
               onClick={() => navigate('/chess')}
             />
-            {/* Live TV — unrelated to the Alias gameplay, its own link like
-                every other non-core screen below. See docs/ADR/0004.
-                VITE_STREAM_HIDDEN pulls this entry on a rights-holder
-                complaint without a code change; the route stays reachable
-                directly, same treatment as /admin below. */}
-            {!isStreamHidden() && (
-              <HomeGameLink
-                icon={<IconDeviceTv size={20} stroke={1.75} />}
-                label={t('home.stream_link')}
-                onClick={() => navigate('/stream')}
-              />
-            )}
             {/* Classic has no tab bar, so the collection would otherwise have
                 no way in at all once the button stack moved. */}
             {!master && (

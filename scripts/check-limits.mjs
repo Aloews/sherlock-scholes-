@@ -12,7 +12,7 @@
 //   вес каталога ТВ    870 КБ без сжатия: ~17 с молчания на медленном 3G,
 //                      и игрок решает, что ТВ не работает
 //   бюджет pg_cron     считался руками в шапке schedule_football_digest.sql
-//   localStorage       кэш каналов кладётся туда, и каталог целиком туда не лёг бы
+//   localStorage       лимит ~5 МБ на весь домен, и данные туда класть нельзя
 //
 // ⚠️ ЭТО ЗАМЕР, А НЕ ПРОВЕРКА. Скрипт ничего не заваливает и ничего не
 // запрещает: он печатает числа и говорит, сколько осталось. Решение «пушить
@@ -126,33 +126,6 @@ async function supabase() {
   }
 }
 
-// ------------------------------------------------------------- релей ТВ -----
-async function relay() {
-  const url = env('VITE_STREAM_URL');
-  if (!url || !url.startsWith('http')) {
-    row('Каталог ТВ', 'не измерено', 'нет VITE_STREAM_URL', 'skip');
-    return;
-  }
-  try {
-    const started = Date.now();
-    const r = await get(url, { 'Accept-Encoding': 'gzip, deflate, br' });
-    const body = await r.arrayBuffer();
-    const ms = Date.now() - started;
-    const kb = Math.round(body.byteLength / 1024);
-    const enc = r.headers.get('content-encoding');
-    const cache = r.headers.get('cache-control') ?? '—';
-    // 400 кбит/с — медленный 3G; именно на нём экран молчит достаточно долго,
-    // чтобы игрок ушёл.
-    const slow3g = (body.byteLength * 8) / 1000 / 400;
-    row('Каталог ТВ', `${kb} КБ за ${ms} мс`,
-        enc ? `сжат (${enc}), cache ${cache}`
-            : `⚠ БЕЗ СЖАТИЯ, cache ${cache} → ~${slow3g.toFixed(0)} с на 3G`,
-        enc ? 'ok' : 'warn');
-  } catch (e) {
-    row('Каталог ТВ', 'ошибка', String(e).slice(0, 60), 'warn');
-  }
-}
-
 // ------------------------------------------------------------- бандлы -------
 function bundles() {
   const dir = 'dist/assets';
@@ -171,8 +144,12 @@ function bundles() {
       kb > 800 ? 'warn' : 'ok');
 
   const cache = 5 * 1024; // localStorage, КБ
+  // Самый крупный жилец отсюда уехал вместе с ТВ (там кэшировался РЕЗУЛЬТАТ
+  // разбора каталога, а не сам каталог на 870 КБ — он занял бы почти весь
+  // лимит). Строка остаётся: следующий, кто задумает положить сюда данные, а
+  // не настройку, должен увидеть, сколько здесь на самом деле места.
   row('localStorage', `лимит ~${cache} КБ`,
-      'кэш каналов кладёт результат разбора (единицы КБ), а не каталог', 'ok');
+      'настройки и мелкие ключи; крупных данных здесь быть не должно', 'ok');
 }
 
 // ------------------------------------------------------------- печать -------
@@ -180,7 +157,6 @@ const MARK = { ok: '  ', warn: '⚠ ', skip: '· ' };
 
 await github();
 await supabase();
-await relay();
 bundles();
 
 const w1 = Math.max(...rows.map((r) => r.name.length));

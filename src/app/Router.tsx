@@ -28,7 +28,6 @@ const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ 
 const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
-const StreamScreen   = lazy(() => import('@/screens/StreamScreen').then((m) => ({ default: m.StreamScreen })));
 const ClubsScreen    = lazy(() => import('@/screens/ClubsScreen').then((m) => ({ default: m.ClubsScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
@@ -161,7 +160,6 @@ export function Router() {
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
       <Route path="/arena"     element={<ArenaScreen />} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
-      <Route path="/stream"    element={<PageTransition><StreamScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

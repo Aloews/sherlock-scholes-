@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // Проверка проверок: способна ли каждая из них ВООБЩЕ упасть.
 //
-// ⚠️ ЗАЧЕМ. В проекте 863 юнит-теста, и они были зелёными ровно тогда, когда
-// владелец пятый раз писал «ТВ не работает». Зелёная проверка, не способная
-// покраснеть, хуже отсутствия проверки: отсутствие видно, а ложная зелень
-// внушает уверенность.
+// ⚠️ ЗАЧЕМ. В проекте восемь сотен юнит-тестов, и они были зелёными ровно
+// тогда, когда владелец пятый раз писал «ТВ не работает». Зелёная проверка, не
+// способная покраснеть, хуже отсутствия проверки: отсутствие видно, а ложная
+// зелень внушает уверенность.
+//
+// (Сам экран ТВ с тех пор уехал в Aloews/sherlock-tv вместе со своими
+// проверками — но повод, по которому этот скрипт написан, никуда не делся.)
 //
 // Этот скрипт НАРОЧНО ЛОМАЕТ по одной вещи за раз и требует, чтобы
 // соответствующая проверка это заметила. Не заметила — она пустая, и скрипт
@@ -61,39 +64,45 @@ testcase(
     () => !passes('node scripts/check-i18n.mjs')),
 );
 
+// ⚠️ ТРИ СЛУЧАЯ НИЖЕ РАНЬШЕ ЛОМАЛИ `features/stream`. Экран ТВ уехал в
+// отдельный репозиторий (Aloews/sherlock-tv), и вместе с ним уехали его
+// проверки — а эти три пришлось перенацелить на код, который у игры ОСТАЛСЯ.
+// Мишени выбраны не наугад: каждая — правило, на котором проект уже ломался, и
+// каждая проверена вручную на то, что подмена действительно краснеет.
+
 testcase(
   'tsc замечает несуществующее поле',
   'строгий режим — единственное, что ловит опечатку в имени поля до прода',
-  () => withBroken('src/features/stream/playlist.ts',
-    (s) => s.replace('return channel.url.startsWith', 'return channel.nosuchfield.startsWith'),
+  () => withBroken('src/features/digest/groupStories.ts',
+    (s) => s.replace('storyTokens(n.title)', 'storyTokens(n.nosuchfield)'),
     () => !passes('npx tsc --noEmit')),
 );
 
 testcase(
-  'vitest замечает сломанное правило отбора',
-  'если перевернуть проверку https на обратную, тесты ОБЯЗАНЫ покраснеть — ' +
-  'иначе они не проверяют то, ради чего написаны',
-  () => withBroken('src/features/stream/playlist.ts',
-    (s) => s.replace("return channel.url.startsWith('https://');",
-                     "return !channel.url.startsWith('https://');"),
-    () => !passes('npx vitest run src/features/stream/playlist.test.ts')),
+  'vitest замечает сломанную транслитерацию',
+  'на ней «Ноттингем» встречается с «Nottingham» и склеивается в один сюжет; ' +
+  'сломай её — лента снова печатает один трансфер пятью строками',
+  () => withBroken('src/features/digest/storyTokens.ts',
+    (s) => s.replace("w = w.replace(/ж/g, 'zh')", "w = w.replace(/ж/g, 'j')"),
+    () => !passes('npx vitest run src/features/digest/storyTokens.test.ts')),
 );
 
 testcase(
-  'vitest замечает сломанный порядок каналов',
-  'порядок по здоровью — та самая правка, из-за которой мёртвые каналы стояли ' +
-  'первыми; тест на неё обязан ловить откат',
-  () => withBroken('src/features/stream/order.ts',
-    (s) => s.replace('if (h === \'played\') return 0;', 'if (h === \'played\') return 2;'),
-    () => !passes('npx vitest run src/features/stream/order.test.ts')),
+  'vitest замечает сломанную склейку сюжетов',
+  'относительный порог — та самая правка, без которой объединение по общим ' +
+  'словам слило 20 заметок из 60 в одну карточку через пять разных матчей',
+  () => withBroken('src/features/digest/groupStories.ts',
+    (s) => s.replace('export const SAME_STORY_FRACTION = 0.45;',
+                     'export const SAME_STORY_FRACTION = 0;'),
+    () => !passes('npx vitest run src/features/digest/groupStories.test.ts')),
 );
 
 testcase(
   'check-prod замечает мёртвый адрес',
   'проверка прода — единственная, способная упасть по той причине, по которой ' +
   'ломается приложение; если она зелёная на несуществующем хосте, она пустая',
-  () => !passes('VITE_STREAM_URL=https://no-such-host.invalid/playlist.m3u8 '
-                + 'PROD_APP_URL=https://no-such-host.invalid node scripts/check-prod.mjs', 120_000),
+  () => !passes('PROD_APP_URL=https://no-such-host.invalid node scripts/check-prod.mjs',
+                120_000),
 );
 
 testcase(

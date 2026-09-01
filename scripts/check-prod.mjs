@@ -123,84 +123,6 @@ function record(name, ok, detail, control) {
   results.push({ name, ok, detail, control });
 }
 
-// ------------------------------------------------------------------ ТВ -----
-async function checkTv() {
-  const relay = env('VITE_STREAM_URL')
-    ?? 'https://stream-service-production-1616.up.railway.app/playlist.m3u8';
-
-  let text;
-  try {
-    const r = await get(relay);
-    if (!r.ok) { record('ТВ: каталог', false, `HTTP ${r.status}`, 'н/д'); return; }
-    text = await r.text();
-  } catch (e) {
-    record('ТВ: каталог', false, String(e).slice(0, 50), 'н/д');
-    return;
-  }
-
-  // Тот же отбор, что у приложения: спортивные группы + закреплённые, только https.
-  const PIN = ['матч! премьер', 'матч премьер', 'беларусь 5', 'матч! футбол',
-    'футбол 1', 'футбол 2', 'футбол 3', 'setanta sports ua', 'setanta',
-    'viasat sport', 'eurosport', 'real madrid', 'barca', 'arena sport',
-    'diema sport', 'nova sport'];
-  const rank = (n) => {
-    const low = n.toLowerCase();
-    const i = PIN.findIndex((p) => low.includes(p));
-    return i === -1 ? PIN.length : i;
-  };
-
-  const lines = text.split('\n');
-  const seen = new Set();
-  const chans = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    const l = lines[i].trim();
-    if (!l.startsWith('#EXTINF')) continue;
-    const comma = l.indexOf(',');
-    if (comma === -1) continue;
-    const name = l.slice(comma + 1).trim();
-    const group = /group-title="([^"]*)"/.exec(l)?.[1] ?? '';
-    let url = '';
-    for (let j = i + 1; j < lines.length; j += 1) {
-      const c = lines[j].trim();
-      if (!c) continue;
-      if (c.startsWith('#EXTINF')) break;
-      if (c.startsWith('#')) continue;
-      url = c; i = j; break;
-    }
-    if (!url || !url.startsWith('https://') || seen.has(url)) continue;
-    if (!/sport|спорт|футбол|futbol/i.test(group) && rank(name) === PIN.length) continue;
-    seen.add(url);
-    chans.push({ name, url });
-  }
-  chans.sort((a, b) => rank(a.name) - rank(b.name));
-
-  record('ТВ: каталог', chans.length > 0,
-         `${chans.length} каналов к показу`, 'н/д');
-  if (chans.length === 0) return;
-
-  // Первые пять — те, что игрок увидит сверху и на которые нажмёт.
-  const top = chans.slice(0, 5);
-  const checked = [];
-  for (const c of top) {
-    const r = await playableBytes(c.url);
-    checked.push({ ...c, ...r });
-    console.log(`   ${r.ok ? '✓' : '✗'} ${c.name.slice(0, 28).padEnd(28)} ${r.why}`);
-  }
-  const alive = checked.filter((c) => c.ok);
-
-  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Та же playableBytes на заведомо мёртвом адресе
-  // ОБЯЗАНА сказать «не ок». Если скажет «ок» — проверка выше ничего не стоит.
-  const neg = await playableBytes('https://stream-service-production-1616.up.railway.app/no-such.m3u8');
-  const controlWorks = !neg.ok;
-
-  record('ТВ: верхний канал играет', checked[0]?.ok === true,
-         checked[0] ? `${checked[0].name}: ${checked[0].why}` : 'нет каналов',
-         controlWorks ? 'контроль упал как должен' : '⚠ КОНТРОЛЬ НЕ УПАЛ — проверка пустая');
-  record('ТВ: живых среди первых пяти', alive.length > 0,
-         `${alive.length} из ${checked.length}`,
-         controlWorks ? 'контроль упал как должен' : '⚠ КОНТРОЛЬ НЕ УПАЛ — проверка пустая');
-}
-
 // -------------------------------------------------------------- дайджест ---
 async function checkDigest() {
   const url = env('VITE_SUPABASE_URL');
@@ -251,16 +173,21 @@ async function checkBundle() {
     const main = /\/assets\/index-[^"]+\.js/.exec(html)?.[0];
     if (!main) { record('Прод: бандл', false, 'не найден index-*.js', 'н/д'); return; }
     const js = await (await get(APP + main)).text();
-    const chunk = /StreamScreen-[A-Za-z0-9_-]+\.js/.exec(js)?.[0];
-    if (!chunk) { record('Прод: бандл', false, 'нет чанка ТВ', 'н/д'); return; }
-    const stream = await (await get(`${APP}/assets/${chunk}`)).text();
+    // ⚠️ МИШЕНЬ СМЕНИЛАСЬ ВМЕСТЕ С ПЕРЕЕЗДОМ ТВ. Раньше здесь искался чанк
+    // `StreamScreen-*.js` и ключ кэша каталога `ss_tv_channels`; экран уехал в
+    // Aloews/sherlock-tv, и проверка стала бы падать на «нет чанка ТВ» — то
+    // есть краснеть на исправном проде. Теперь она смотрит на кабинет: он
+    // ленивый чанк, как и был ТВ, и его ключ пароля так же однозначен.
+    const chunk = /AdminScreen-[A-Za-z0-9_-]+\.js/.exec(js)?.[0];
+    if (!chunk) { record('Прод: бандл', false, 'нет чанка кабинета', 'н/д'); return; }
+    const lazy = await (await get(`${APP}/assets/${chunk}`)).text();
 
     // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: строки, которой в бандле быть НЕ МОЖЕТ,
-    // findMarker обязан не найти. Иначе он «находит» что угодно.
-    const has = (s) => stream.includes(s);
+    // поиск обязан не найти. Иначе он «находит» что угодно.
+    const has = (s) => lazy.includes(s);
     const controlWorks = !has('заведомо-отсутствующая-строка-контроля');
 
-    record('Прод: кэш каталога выкачен', has('ss_tv_channels'), chunk,
+    record('Прод: ленивые чанки выкачены', has('ss_admin_pw'), chunk,
            controlWorks ? 'контроль не нашёл несуществующее' : '⚠ КОНТРОЛЬ НАШЁЛ ЧУШЬ');
   } catch (e) {
     record('Прод: бандл', false, String(e).slice(0, 50), 'н/д');
@@ -269,7 +196,6 @@ async function checkBundle() {
 
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
-await checkTv();
 await checkDigest();
 await checkBundle();
 

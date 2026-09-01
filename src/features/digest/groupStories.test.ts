@@ -9,6 +9,7 @@ const note = (over: Partial<NewsItem> & { title: string; source: string }): News
   image_url: null,
   loudness: 1,
   summary_short: null,
+  lead_text: null,
   ...over,
 });
 
