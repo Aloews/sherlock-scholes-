@@ -677,7 +677,8 @@
     "squad_depth_other": "حسب {{count}} لاعب",
     "exact_short": "مضبوطة {{n}}",
     "team_rating": "تقييم الفريقين",
-    "rating_squad_only": "التشكيلة فقط"
+    "rating_squad_only": "التشكيلة فقط",
+    "show_squads": "عرض التشكيلتين"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

@@ -121,3 +121,40 @@ export async function fetchTeamRating(): Promise<Map<string, TeamRating>> {
   for (const row of (data as TeamRating[]) ?? []) map.set(row.fixture_id, row);
   return map;
 }
+
+// ---------------------------------------------------------------------------
+// ИЗ КОГО складывается рейтинг. Клиентская половина
+// supabase/migrations/fixture_squads.sql.
+//
+// ⚠️ ГРУЗИТСЯ ТОЛЬКО ПО ТРЕБОВАНИЮ, по одному матчу. В списке их до трёхсот, и
+// тянуть составы всех сразу значило бы уронить первый заход ради строки,
+// которую почти никто не раскроет: вес первого захода — та самая цифра, что
+// стоит первой строкой в check-limits.
+// ---------------------------------------------------------------------------
+export interface SquadMember {
+  side: 'home' | 'away';
+  club_key: string;
+  club: string | null;
+  card_id: string;
+  name: string;
+  level: number;
+  /** 'form' | 'fame' | 'fame+form' | 'icon' — откуда взялся уровень. */
+  basis: string;
+  /** Вошёл ли в расчёт рейтинга: глубина равная с обеих сторон. */
+  in_rating: boolean;
+}
+
+export async function fetchFixtureSquads(
+  fixtureId: string,
+  lang: string,
+): Promise<SquadMember[]> {
+  const { data, error } = await supabase.rpc('fixture_squads', {
+    p_fixture_id: fixtureId,
+    p_lang: lang,
+  });
+  if (error) {
+    console.error('[fixture_squads]', error.code ?? '', error.message);
+    return [];
+  }
+  return (data as SquadMember[]) ?? [];
+}

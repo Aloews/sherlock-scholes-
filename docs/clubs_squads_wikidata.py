@@ -78,6 +78,7 @@ sys.modules["run"] = run
 _spec.loader.exec_module(run)
 
 from scraper.cache import FileCache                                  # noqa: E402
+from scraper.dedup import normalize_display_name                    # noqa: E402
 from scraper.pageviews import WikimediaBudget, WikiPagePropsClient   # noqa: E402
 from scraper.wikidata import WikidataEnricher                        # noqa: E402
 
@@ -261,6 +262,36 @@ SELECT ?club ?p ?ru ?en ?start ?num ?pos WHERE {
     return out
 
 
+def drop_shared_cards(rows):
+    """Одна карточка — один клуб. Строки карточки, которую требуют РАЗНЫЕ
+    клубы, выбрасываются целиком.
+
+    ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО keep_latest_club. Та разбирает ОДНОГО человека с
+    двумя открытыми записями. Здесь наоборот: РАЗНЫЕ люди (разные QID в
+    Викиданных) сведены в одну нашу карточку, потому что сопоставление идёт
+    по имени.
+
+    Замер: «Матеус Кунья» — форвард «Манчестер Юнайтед» и вратарь «Крузейро»,
+    два разных человека и ОДНА карточка на двоих. То же у «Маркиньоса»,
+    на смешанную карточку которого жаловался владелец.
+
+    Выбрать из двух наугад значит поставить чужого; выбрать «того, у кого
+    позже дата» — тоже, потому что даты здесь принадлежат РАЗНЫМ людям и
+    сравнивать их бессмысленно. Различить тёзок можно только заведя им разные
+    карточки, а это работа дедупликатора, не сборщика составов.
+
+    Без этого гарда вставка упирается в частичный уникальный индекс по
+    card_id where left_at is null и падает ВСЕЙ ПАЧКОЙ.
+
+    Возвращает (строки, сколько карточек выброшено).
+    """
+    clubs = {}
+    for r in rows:
+        clubs.setdefault(r["card_id"], set()).add(r["club_key"])
+    shared = {cid for cid, ks in clubs.items() if len(ks) > 1}
+    return [r for r in rows if r["card_id"] not in shared], len(shared)
+
+
 def keep_latest_club(squads):
     """Игрок числится в ОДНОМ клубе — том, где начало ПОЗЖЕ.
 
@@ -359,6 +390,11 @@ def main():
     ap.add_argument("--since", type=int, default=2022,
                     help="нижняя граница даты начала (год)")
     ap.add_argument("--apply", action="store_true", help="писать, а не показывать")
+    ap.add_argument("--sql-out", default=None,
+                    help="выписать изменения как SQL вместо записи через "
+                         "PostgREST. Нужен там, где служебного ключа нет, а "
+                         "миграции применяются отдельно — и заодно даёт "
+                         "прочитать глазами то, что будет выполнено.")
     ap.add_argument("--create-cards", action="store_true",
                     help="заводить карточки найденным игрокам без карточки")
     args = ap.parse_args()
@@ -490,8 +526,13 @@ def main():
                 "source": "wikidata",
             })
 
+    rows, shared = drop_shared_cards(rows)
+
     print("-" * 70)
     print("Сопоставлено с карточкой   : %d" % len(rows))
+    if shared:
+        print("⚠️ Карточек на ДВА клуба   : %d — выброшены целиком. Это тёзки в "
+              "одной карточке (см. drop_shared_cards), а не переход." % shared)
     print("Без карточки               : %d" % len(missing))
     if not args.apply:
         # ⚠️ Печатать club_key и UUID бесполезно: глазами по ним не проверишь
@@ -530,6 +571,41 @@ def main():
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с --apply.")
         return
 
+    if args.sql_out:
+        # ⚠️ Порядок тот же, что и у записи через PostgREST, и он существенен:
+        # прежние открытые строки закрываются ДО вставки, иначе вставка упрётся
+        # в частичный уникальный индекс по card_id where left_at is null.
+        ids = sorted({r["card_id"] for r in rows})
+        out = ["-- Составы из Викиданных. Строк: %d, карточек: %d."
+               % (len(rows), len(ids)),
+               "-- Сгенерировано docs/clubs_squads_wikidata.py --sql-out.",
+               "begin;",
+               "update club_squad set left_at = current_date",
+               " where left_at is null and card_id in (%s);"
+               % ", ".join("'%s'" % i for i in ids)]
+        out.append("insert into club_squad "
+                   "(club_key, card_id, shirt_number, position, joined_at, "
+                   "left_at, source) values")
+        vals = []
+        for r in rows:
+            def q(v):
+                return "null" if v is None else "'" + str(v).replace("'", "''") + "'"
+            vals.append("  (%s, %s, %s, %s, %s, null, 'wikidata')" % (
+                q(r["club_key"]), q(r["card_id"]),
+                "null" if r["shirt_number"] is None else str(r["shirt_number"]),
+                q(r["position"]), q(r["joined_at"])))
+        out.append(",\n".join(vals))
+        out.append("on conflict (club_key, card_id) do update set")
+        out.append("  shirt_number = excluded.shirt_number,")
+        out.append("  position     = excluded.position,")
+        out.append("  joined_at    = excluded.joined_at,")
+        out.append("  left_at      = null,")
+        out.append("  source       = 'wikidata';")
+        out.append("commit;")
+        io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
+        print("SQL выписан в %s (%d строк состава)" % (args.sql_out, len(rows)))
+        return
+
     # ⚠️ Игрок может числиться в ОДНОМ текущем составе: на club_squad стоит
     # частичный уникальный индекс по card_id where left_at is null. Поэтому
     # прошлые «текущие» строки этого игрока закрываются ДО вставки, иначе
@@ -562,12 +638,19 @@ def main():
         new = []
         seen = set()
         for _club_key, m in missing:
-            name = m["name_ru"] or m["name_en"]
+            # ⚠️ ИМЯ ИЗ ВИКИДАННЫХ — НЕ ФОРМАТ КОЛОДЫ. Ру-вики пишет «Фамилия,
+            # Имя Отчество», и карточка завелась бы как «Де Томас, Рауль» —
+            # в игре про объяснение слов это читается как ошибка, а не как
+            # игрок. Приводится тем же normalize_display_name, которым
+            # пользуется сам скрапер при вставке: своя копия правила разошлась
+            # бы с ним незаметно.
+            name = normalize_display_name(m["name_ru"] or m["name_en"])
             k = canon(name)
             if not name or k in seen or k in by_key:
                 continue
             seen.add(k)
-            new.append({"name": name, "name_en": m["name_en"],
+            new.append({"name": name,
+                        "name_en": normalize_display_name(m["name_en"]),
                         "category": "player", "category_ru": "игроки"})
         for i in range(0, len(new), 200):
             rest(url, key, "cards", method="POST", body=new[i:i + 200],

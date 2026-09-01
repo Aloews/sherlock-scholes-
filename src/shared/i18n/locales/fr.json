@@ -598,7 +598,8 @@
     "squad_depth_other": "sur {{count}} joueurs",
     "exact_short": "exacts {{n}}",
     "team_rating": "Cote des équipes",
-    "rating_squad_only": "effectif seul"
+    "rating_squad_only": "effectif seul",
+    "show_squads": "Voir les effectifs"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

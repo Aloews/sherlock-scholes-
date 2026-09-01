@@ -578,7 +578,8 @@
     "squad_depth_other": "상위 {{count}}명 기준",
     "exact_short": "정확 {{n}}",
     "team_rating": "팀 평가",
-    "rating_squad_only": "스쿼드만"
+    "rating_squad_only": "스쿼드만",
+    "show_squads": "선수단 보기"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
