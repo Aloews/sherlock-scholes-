@@ -923,5 +923,9 @@
     "col_form": "Form",
     "since": "Season from {{date}}",
     "source_note": "built from collected matches — check the P column"
+  },
+  "transfers": {
+    "title": "Transfers",
+    "failed": "Couldn’t load transfers"
   }
 }

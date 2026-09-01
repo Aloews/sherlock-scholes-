@@ -892,5 +892,9 @@
     "col_form": "近况",
     "since": "自 {{date}} 的赛季",
     "source_note": "基于已收集的比赛 — 请看「场」列"
+  },
+  "transfers": {
+    "title": "转会",
+    "failed": "无法加载转会信息"
   }
 }

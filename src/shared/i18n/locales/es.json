@@ -923,5 +923,9 @@
     "col_form": "Forma",
     "since": "Temporada desde {{date}}",
     "source_note": "a partir de los partidos recogidos — mire la columna PJ"
+  },
+  "transfers": {
+    "title": "Fichajes",
+    "failed": "No se pudieron cargar los fichajes"
   }
 }

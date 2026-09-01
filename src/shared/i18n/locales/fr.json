@@ -923,5 +923,9 @@
     "col_form": "Forme",
     "since": "Saison depuis le {{date}}",
     "source_note": "établi sur les matchs collectés — voyez la colonne J"
+  },
+  "transfers": {
+    "title": "Transferts",
+    "failed": "Impossible de charger les transferts"
   }
 }

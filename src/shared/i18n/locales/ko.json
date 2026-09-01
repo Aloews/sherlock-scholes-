@@ -892,5 +892,9 @@
     "col_form": "최근",
     "since": "{{date}}부터의 시즌",
     "source_note": "수집된 경기로 계산 — 「경기」 열을 보세요"
+  },
+  "transfers": {
+    "title": "이적",
+    "failed": "이적 정보를 불러오지 못했습니다"
   }
 }
