@@ -547,6 +547,44 @@ def main():
         print("⚠️ Карточек на ДВА клуба   : %d — выброшены целиком. Это тёзки в "
               "одной карточке (см. drop_shared_cards), а не переход." % shared)
     print("Без карточки               : %d" % len(missing))
+    # ⚠️ ПРОВЕРЯЕТСЯ РАНЬШЕ СУХОГО ПРОГОНА. Выписка SQL — это и есть
+    # вывод, а не показ: стоя ниже, она никогда не выполнялась, потому
+    # что ветка `not args.apply` возвращается первой.
+    if args.sql_out:
+        # ⚠️ Порядок тот же, что и у записи через PostgREST, и он существенен:
+        # прежние открытые строки закрываются ДО вставки, иначе вставка упрётся
+        # в частичный уникальный индекс по card_id where left_at is null.
+        ids = sorted({r["card_id"] for r in rows})
+        out = ["-- Составы из Викиданных. Строк: %d, карточек: %d."
+               % (len(rows), len(ids)),
+               "-- Сгенерировано docs/clubs_squads_wikidata.py --sql-out.",
+               "begin;",
+               "update club_squad set left_at = current_date",
+               " where left_at is null and card_id in (%s);"
+               % ", ".join("'%s'" % i for i in ids)]
+        out.append("insert into club_squad "
+                   "(club_key, card_id, shirt_number, position, joined_at, "
+                   "left_at, source) values")
+        vals = []
+        for r in rows:
+            def q(v):
+                return "null" if v is None else "'" + str(v).replace("'", "''") + "'"
+            vals.append("  (%s, %s, %s, %s, %s, null, 'wikidata')" % (
+                q(r["club_key"]), q(r["card_id"]),
+                "null" if r["shirt_number"] is None else str(r["shirt_number"]),
+                q(r["position"]), q(r["joined_at"])))
+        out.append(",\n".join(vals))
+        out.append("on conflict (club_key, card_id) do update set")
+        out.append("  shirt_number = excluded.shirt_number,")
+        out.append("  position     = excluded.position,")
+        out.append("  joined_at    = excluded.joined_at,")
+        out.append("  left_at      = null,")
+        out.append("  source       = 'wikidata';")
+        out.append("commit;")
+        io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
+        print("SQL выписан в %s (%d строк состава)" % (args.sql_out, len(rows)))
+        return
+
     if not args.apply:
         # ⚠️ Печатать club_key и UUID бесполезно: глазами по ним не проверишь
         # НИЧЕГО, а именно глазами этот прогон и проверяется — чужой состав
@@ -582,41 +620,6 @@ def main():
             for club_key, m in missing[:15]:
                 print("    %-26s %s" % (club_key, m["name_ru"] or m["name_en"]))
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с --apply.")
-        return
-
-    if args.sql_out:
-        # ⚠️ Порядок тот же, что и у записи через PostgREST, и он существенен:
-        # прежние открытые строки закрываются ДО вставки, иначе вставка упрётся
-        # в частичный уникальный индекс по card_id where left_at is null.
-        ids = sorted({r["card_id"] for r in rows})
-        out = ["-- Составы из Викиданных. Строк: %d, карточек: %d."
-               % (len(rows), len(ids)),
-               "-- Сгенерировано docs/clubs_squads_wikidata.py --sql-out.",
-               "begin;",
-               "update club_squad set left_at = current_date",
-               " where left_at is null and card_id in (%s);"
-               % ", ".join("'%s'" % i for i in ids)]
-        out.append("insert into club_squad "
-                   "(club_key, card_id, shirt_number, position, joined_at, "
-                   "left_at, source) values")
-        vals = []
-        for r in rows:
-            def q(v):
-                return "null" if v is None else "'" + str(v).replace("'", "''") + "'"
-            vals.append("  (%s, %s, %s, %s, %s, null, 'wikidata')" % (
-                q(r["club_key"]), q(r["card_id"]),
-                "null" if r["shirt_number"] is None else str(r["shirt_number"]),
-                q(r["position"]), q(r["joined_at"])))
-        out.append(",\n".join(vals))
-        out.append("on conflict (club_key, card_id) do update set")
-        out.append("  shirt_number = excluded.shirt_number,")
-        out.append("  position     = excluded.position,")
-        out.append("  joined_at    = excluded.joined_at,")
-        out.append("  left_at      = null,")
-        out.append("  source       = 'wikidata';")
-        out.append("commit;")
-        io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
-        print("SQL выписан в %s (%d строк состава)" % (args.sql_out, len(rows)))
         return
 
     # ⚠️ Игрок может числиться в ОДНОМ текущем составе: на club_squad стоит
