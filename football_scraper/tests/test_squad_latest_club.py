@@ -100,6 +100,34 @@ squads, _m, _a = csw.keep_latest_club({
 check("опустевший клуб исчезает, а не висит пустым списком",
       "Q1" in squads, False)
 
+
+# --- 7. Тёзки в ОДНОЙ карточке: выбрасываются целиком. -------------------
+# «Матеус Кунья» — форвард МЮ и вратарь «Крузейро», два человека и одна
+# карточка. Выбрать наугад значит поставить чужого; сравнивать их даты
+# бессмысленно — даты принадлежат разным людям.
+def row(card_id, club_key):
+    return {"card_id": card_id, "club_key": club_key}
+
+
+rows, shared = csw.drop_shared_cards([
+    row("cunha", "manchester united"),
+    row("cunha", "cruzeiro"),
+    row("garnacho", "aston villa"),
+])
+check("карточка на два клуба выброшена целиком",
+      sorted((r["card_id"], r["club_key"]) for r in rows),
+      [("garnacho", "aston villa")])
+check("выброшенная посчитана", shared, 1)
+
+rows, shared = csw.drop_shared_cards([
+    row("solo", "arsenal"), row("solo", "arsenal"), row("other", "chelsea"),
+])
+check("одна карточка ДВАЖДЫ в ОДНОМ клубе — не тёзки, остаётся",
+      len(rows), 3)
+check("повтор в одном клубе не считается общим", shared, 0)
+
+check("пустой список не падает", csw.drop_shared_cards([]), ([], 0))
+
 if FAILURES:
     print("ПРОВАЛЕНО: %d" % len(FAILURES))
     for f in FAILURES:
