@@ -96,8 +96,18 @@ CLUB_BATCH = 12
 SLEEP = 1.0
 
 
+# ⚠️ Пачка, которую WDQS не отдал, возвращается пустым списком — и «запрос не
+# прошёл» становится неотличимо от «в этих клубах нет игроков». Молча это
+# кончается тем, что состав не появился, а прогон отчитался нормально. Поэтому
+# потери СЧИТАЮТСЯ и печатаются в итоге.
+SPARQL_FAILED = []
+# WDQS во время лимитирования прямо пишет «1 req / min». Откат в 4 и 8 секунд
+# сжигал все три попытки за двенадцать — то есть не ждал вообще.
+RATE_LIMIT_PAUSE = 65.0
+
+
 def sparql(query, retries=3):
-    """Ответ WDQS в виде списка словарей. 429 — ждать и повторить."""
+    """Ответ WDQS в виде списка словарей. 429 — ждать МИНУТУ и повторить."""
     url = SPARQL + "?" + urllib.parse.urlencode({"query": query, "format": "json"})
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "application/sparql-results+json"})
@@ -109,11 +119,16 @@ def sparql(query, retries=3):
         except Exception as exc:                      # noqa: BLE001
             code = getattr(exc, "code", None)
             if attempt == retries - 1:
+                SPARQL_FAILED.append(str(exc))
                 print("  WDQS не ответил: %s" % exc, file=sys.stderr)
                 return []
-            # 429 и 5xx — подождать подольше; остальное повторить разок.
-            time.sleep(SLEEP * (4 if code in (429, 500, 502, 503) else 1)
-                       * (attempt + 1))
+            if code == 429:
+                print("  WDQS лимитирует, ждём %ds (попытка %d из %d)"
+                      % (RATE_LIMIT_PAUSE, attempt + 2, retries), flush=True)
+                time.sleep(RATE_LIMIT_PAUSE)
+            else:
+                time.sleep(SLEEP * (4 if code in (500, 502, 503) else 1)
+                           * (attempt + 1))
     return []
 
 
@@ -235,6 +250,49 @@ SELECT ?club ?p ?ru ?en ?start ?num ?pos WHERE {
     return out
 
 
+def keep_latest_club(squads):
+    """Игрок числится в ОДНОМ клубе — том, где начало ПОЗЖЕ.
+
+    ⚠️ «Нет даты конца» не значит «играет здесь». Викиданные закрывают
+    прошлую строку не сразу, и переход выглядит как две открытые записи.
+    Замер: у Гарначо «Челси» с 30.08.2025 и «Астон Вилла» с 23.07.2026, обе
+    без даты конца, — сухой прогон поставил его в оба состава сразу.
+
+    Молча это не поймать: чужой игрок в таблице выглядит совершенно нормально,
+    а база примет ровно одного (частичный уникальный индекс по card_id where
+    left_at is null) — то есть в приложение приехал бы АРБИТРАРНЫЙ из двух.
+
+    Ничья по дате — игрок выбрасывается целиком: выбрать наугад значит
+    поставить чужого. Пропущенный игрок виден как пустое место и чинится;
+    чужой не виден никак. Возвращает (составы, переходов, ничьих).
+    """
+    where = {}
+    for club, members in squads.items():
+        for m in members:
+            where.setdefault(m["qid"], []).append((m.get("start") or "", club, m))
+
+    moved = ambiguous = 0
+    drop = set()
+    for pid, rows in where.items():
+        if len(rows) < 2:
+            continue
+        best = max(r[0] for r in rows)
+        top = [r for r in rows if r[0] == best]
+        if len(top) > 1 or not best:
+            ambiguous += 1
+            drop.update((r[1], pid) for r in rows)
+            continue
+        moved += 1
+        drop.update((r[1], pid) for r in rows if r[0] != best)
+
+    out = {}
+    for club, members in squads.items():
+        kept = [m for m in members if (club, m["qid"]) not in drop]
+        if kept:
+            out[club] = kept
+    return out, moved, ambiguous
+
+
 # --------------------------------------------------------------------------
 # Supabase (PostgREST). Тот же способ, что у остальных скриптов рядом.
 # --------------------------------------------------------------------------
@@ -255,6 +313,30 @@ def rest(url, key, path, method="GET", params=None, body=None, prefer=None):
     return json.loads(raw) if raw else []
 
 
+# PostgREST режет ЛЮБОЙ ответ по db-max-rows (здесь 1000) и отдаёт ровно
+# тысячу строк с кодом 200 — без единого признака, что есть ещё. Это уже
+# записано в docs/MAP.md, и этот скрипт в ту же яму и упал: он спрашивал
+# `limit=5000` у cards, получал 1000 из 2907 и объявлял «без карточки» две
+# трети игроков, у которых карточка есть. С --create-cards это завело бы им
+# ВТОРЫЕ карточки — молча и правдоподобно.
+PAGE = 1000
+
+
+def rest_all(url, key, path, params, order):
+    """Всё, что найдётся, страницами. `order` обязателен и не имеет значения
+    по умолчанию: без устойчивого порядка смещение на следующей странице
+    отдаёт другую выборку — часть строк придёт дважды, часть не придёт вовсе.
+    """
+    out, offset = [], 0
+    while True:
+        page = rest(url, key, path,
+                    params=dict(params, order=order, limit=PAGE, offset=offset))
+        out.extend(page)
+        if len(page) < PAGE:
+            return out
+        offset += PAGE
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -273,14 +355,32 @@ def main():
 
     # Клубы, у которых есть что показывать, — сверху. Клуб без матчей и без
     # состава подождёт: бюджет запросов не бесконечный.
-    clubs = rest(url, key, "football_club", params={
-        "select": "club_key,name,name_en",
-        "kind": "eq.club",
-        "order": "name",
-    })
+    #
+    # ⚠️ Порядок берётся из club_directory, а НЕ из алфавита. Раньше здесь
+    # стоял order=name при этом самом комментарии, и с --limit прогон уходил
+    # на «Абердин» и «Авангард» — клубы, которых игрок в приложении не видит,
+    # — пока у «Рейнджерс» с 61 матчем состав оставался пустым. Справочник
+    # такого порядка не хранит (счётчиков в football_club нет), а PostgREST не
+    # умеет сортировать по подзапросу; club_directory эти два числа уже
+    # считает и открыта анониму, поэтому она и спрошена.
+    clubs = rest_all(url, key, "football_club",
+                     {"select": "club_key,name,name_en", "kind": "eq.club"},
+                     order="club_key")
+    stats = {d["club_key"]: d for d in
+             rest(url, key, "rpc/club_directory", method="POST",
+                  body={"p_lang": "ru", "p_query": None, "p_limit": 10000})}
+    for c in clubs:
+        d = stats.get(c["club_key"]) or {}
+        c["matches"] = d.get("matches") or 0
+        c["squad"] = d.get("squad") or 0
+    # Матчи вперёд состава: «сколько его видно», а не «сколько уже собрано».
+    # Клуб с матчами и пустым составом — это и есть дыра, ради которой всё.
+    clubs.sort(key=lambda c: (-c["matches"], c["squad"], c["name"] or ""))
     if args.limit:
         clubs = clubs[:args.limit]
+    gap = sum(1 for c in clubs if c["matches"] >= 5 and c["squad"] < 11)
     print("Клубов в обработке : %d" % len(clubs))
+    print("Из них с дырой     : %d (матчей >= 5, в составе < 11)" % gap)
 
     names = []
     by_name = {}
@@ -318,18 +418,27 @@ def main():
 
     qid_to_key = {q: k for k, q in club_qid.items()}
     squads = fetch_squads(sorted(qid_to_key), args.since)
+    raw_total = sum(len(v) for v in squads.values())
+    squads, moved, ambiguous = keep_latest_club(squads)
     total = sum(len(v) for v in squads.values())
-    print("Игроков в составах         : %d" % total)
+    print("Игроков в составах         : %d (из %d строк)" % (total, raw_total))
+    if SPARQL_FAILED:
+        print("⚠️ ПАЧЕК ПОТЕРЯНО            : %d — столько клубов осталось БЕЗ "
+              "ответа источника. Их пустой состав здесь ничего не значит."
+              % len(SPARQL_FAILED))
+    if moved or ambiguous:
+        print("  переходов разрешено по дате: %d" % moved)
+        print("  выброшено как неразличимые : %d" % ambiguous)
 
     # Карточки игроков — для сопоставления по имени.
-    cards = rest(url, key, "cards", params={
-        "select": "id,name,name_en",
-        "category": "eq.player",
-        "active": "is.true",
-        "limit": "5000",
-    })
+    cards = rest_all(url, key, "cards",
+                     {"select": "id,name,name_en", "category": "eq.player",
+                      "active": "is.true"},
+                     order="id")
     by_key = {}
+    card_name = {}
     for c in cards:
+        card_name[c["id"]] = c.get("name") or c.get("name_en") or c["id"]
         for n in (c.get("name"), c.get("name_en")):
             k = canon(n)
             if k:
@@ -358,8 +467,39 @@ def main():
     print("Сопоставлено с карточкой   : %d" % len(rows))
     print("Без карточки               : %d" % len(missing))
     if not args.apply:
-        for r in rows[:25]:
-            print("  %-28s %s" % (r["club_key"], r["card_id"]))
+        # ⚠️ Печатать club_key и UUID бесполезно: глазами по ним не проверишь
+        # НИЧЕГО, а именно глазами этот прогон и проверяется — чужой состав
+        # приезжает молча и в таблице выглядит совершенно нормально. Поэтому
+        # здесь имена игроков и то, что состав СТАНЕТ, против того, что есть.
+        # ⚠️ Печатать «станет N» по числу предложенных строк — врать. --apply
+        # закрывает прежние строки ТОЛЬКО у сопоставленных игроков, остальные
+        # в составе остаются: клуб с 24 игроками и 20 предложениями не
+        # усохнет до двадцати. Поэтому здесь считается ПРИБАВКА — те, кого в
+        # текущем составе ещё нет.
+        was = {c["club_key"]: c["squad"] for c in clubs}
+        have = set()
+        for r in rest_all(url, key, "club_squad",
+                          {"select": "club_key,card_id", "left_at": "is.null"},
+                          order="club_key,card_id"):
+            have.add((r["club_key"], r["card_id"]))
+        names, fresh = {}, {}
+        for r in rows:
+            nm = card_name.get(r["card_id"], r["card_id"])
+            names.setdefault(r["club_key"], []).append(nm)
+            if (r["club_key"], r["card_id"]) not in have:
+                fresh.setdefault(r["club_key"], []).append(nm)
+        for key in sorted(names, key=lambda k: -len(fresh.get(k, []))):
+            add = sorted(fresh.get(key, []))
+            print("  %-26s в составе %2d, предложено %2d, из них НОВЫХ %2d%s"
+                  % (key, was.get(key, 0), len(names[key]), len(add),
+                     ("  " + ", ".join(add[:5]) + (" ..." if len(add) > 5 else ""))
+                     if add else ""))
+        print("\n  ИТОГО новых строк состава  : %d"
+              % sum(len(v) for v in fresh.values()))
+        if missing:
+            print("\n  Без карточки (первые 15) — им нужен --create-cards:")
+            for club_key, m in missing[:15]:
+                print("    %-26s %s" % (club_key, m["name_ru"] or m["name_en"]))
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с --apply.")
         return
 
