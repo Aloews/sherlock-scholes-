@@ -31,6 +31,7 @@ const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ d
 const StreamScreen   = lazy(() => import('@/screens/StreamScreen').then((m) => ({ default: m.StreamScreen })));
 const ClubsScreen    = lazy(() => import('@/screens/ClubsScreen').then((m) => ({ default: m.ClubsScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
+const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
@@ -141,6 +142,10 @@ export function Router() {
       {/* Ключ клуба едет в адресе и содержит пробелы («zenit st petersburg»),
           поэтому он закодирован на стороне ссылки, а useParams его раскодирует. */}
       <Route path="/club/:key" element={<PageTransition><ClubScreen /></PageTransition>} />
+      {/* Таблица: без турнира в адресе открывается самая полная — экран со
+          списком лиг и пустотой под ним требовал бы лишнего касания. */}
+      <Route path="/table"  element={<PageTransition><LeagueTableScreen /></PageTransition>} />
+      <Route path="/table/:tournament" element={<PageTransition><LeagueTableScreen /></PageTransition>} />
       {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
           родителя, и первые кадры холста уезжали бы вместе с ним. */}
       {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже

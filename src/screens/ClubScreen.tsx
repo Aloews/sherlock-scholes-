@@ -126,7 +126,7 @@ export function ClubScreen() {
                   <IconShieldHalf size={26} stroke={1.5} className="text-brand-muted" />
                 </span>
               )}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-white font-medium truncate">{p.name}</p>
                 <p className="text-brand-muted text-[11px] truncate">
                   {[p.country, p.league].filter(Boolean).join(' · ') || t('club.league_unknown')}
@@ -137,6 +137,37 @@ export function ClubScreen() {
                   </p>
                 )}
               </div>
+
+              {/* УРОВЕНЬ КОМАНДЫ — та же шкала 0–100, что у игрока. До этого у
+                  клуба числа не было вовсе, и сравнить команду с футболистом
+                  было нечем. Место в лиге рядом, потому что это РАЗНЫЕ ответы:
+                  таблица говорит «как идут дела в этом сезоне», рейтинг —
+                  «насколько команда сильна вообще», и первое место в слабой
+                  лиге со средним рейтингом не противоречие. */}
+              {p.level != null && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!p.league) return;
+                    hapticImpact('light');
+                    navigate(`/table/${encodeURIComponent(p.league)}`);
+                  }}
+                  disabled={!p.league}
+                  className="text-right shrink-0 disabled:opacity-100"
+                >
+                  <p className="ds-display text-brand-accent text-2xl font-black tabular-nums leading-none">
+                    {p.level}
+                  </p>
+                  <p className="text-brand-muted/70 text-[9.5px] uppercase tracking-wide">
+                    {t('club.rating')}
+                  </p>
+                  {p.league_place != null && (
+                    <p className="text-brand-muted text-[10.5px] tabular-nums">
+                      {t('club.place', { n: p.league_place })}
+                    </p>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="-mx-4 px-4 overflow-x-auto">
@@ -195,6 +226,17 @@ export function ClubScreen() {
                   {t('club.based_on', { count: p.matches })}
                   {p.first_match && ` · ${t('club.since', { date: dateFmt.format(new Date(p.first_match)) })}`}
                 </p>
+
+                {/* ⚠️ ОГОВОРКА ПРО ЛИГУ-ОСТРОВ, и она не косметическая. Рейтинг
+                    сравним между лигами ровно настолько, насколько лиги играют
+                    друг с другом: у саудовской 13 межлиговых матчей из 222.
+                    Без этой строки её середняк стоит рядом с ПСЖ и выглядит
+                    совершенно нормально. */}
+                {p.league_weight != null && p.league_weight < 0.8 && (
+                  <p className="text-brand-muted/70 text-[11px]">
+                    {t('club.league_isolated', { pct: Math.round(p.league_weight * 100) })}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-brand-muted text-sm">{t('club.no_matches')}</p>

@@ -996,7 +996,10 @@
     "col_goals": "أ",
     "col_assists": "ص",
     "col_cards": "ص/ح",
-    "col_points": "نقاط"
+    "col_points": "نقاط",
+    "rating": "التقييم",
+    "place": "المركز {{n}}",
+    "league_isolated": "هذا الدوري نادرًا ما يلاقي غيره — المستوى قابل للمقارنة بنسبة {{pct}}٪"
   },
   "clubs": {
     "title": "الأندية",
@@ -1016,5 +1019,22 @@
     "matches_few": "{{count}} مباريات",
     "matches_many": "{{count}} مباراة",
     "matches_other": "{{count}} مباراة"
+  },
+  "table": {
+    "title": "الترتيب",
+    "loading": "جارٍ التحميل…",
+    "failed": "تعذّر تحميل الترتيب",
+    "empty": "لا مباريات مجمّعة لهذا الموسم بعد",
+    "col_club": "النادي",
+    "col_played": "ل",
+    "col_w": "ف",
+    "col_d": "ت",
+    "col_l": "خ",
+    "col_goals": "الأهداف",
+    "col_diff": "الفارق",
+    "col_points": "ن",
+    "col_form": "الأداء",
+    "since": "الموسم من {{date}}",
+    "source_note": "محسوب من المباريات المجمّعة — انظر عمود «ل»"
   }
 }

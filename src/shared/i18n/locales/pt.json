@@ -886,7 +886,10 @@
     "col_goals": "G",
     "col_assists": "A",
     "col_cards": "A/V",
-    "col_points": "Pts"
+    "col_points": "Pts",
+    "rating": "Classificação",
+    "place": "{{n}}º lugar",
+    "league_isolated": "Esta liga joga pouco com outras — nível comparável a {{pct}}%"
   },
   "clubs": {
     "title": "Clubes",
@@ -898,5 +901,22 @@
     "players_other": "{{count}} jogadores",
     "matches_one": "{{count}} jogo",
     "matches_other": "{{count}} jogos"
+  },
+  "table": {
+    "title": "Classificação",
+    "loading": "A carregar…",
+    "failed": "Não foi possível carregar a classificação",
+    "empty": "Ainda não há jogos desta época",
+    "col_club": "Clube",
+    "col_played": "J",
+    "col_w": "V",
+    "col_d": "E",
+    "col_l": "D",
+    "col_goals": "Golos",
+    "col_diff": "DG",
+    "col_points": "Pts",
+    "col_form": "Forma",
+    "since": "Época desde {{date}}",
+    "source_note": "a partir dos jogos recolhidos — veja a coluna J"
   }
 }

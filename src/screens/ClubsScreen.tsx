@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconSearch, IconShieldHalf } from '@tabler/icons-react';
+import { IconArrowLeft, IconSearch, IconShieldHalf, IconTable } from '@tabler/icons-react';
 import { fetchClubDirectory, type ClubDirectoryRow } from '@/features/clubs/clubsApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 
@@ -54,6 +54,19 @@ export function ClubsScreen() {
           </button>
           <h1 className="ds-display text-white text-lg font-bold">{t('clubs.title')}</h1>
         </div>
+
+        {/* Таблицы — рядом со списком команд: это два взгляда на одно и то же
+            собранное, по клубу и по лиге. */}
+        <button
+          type="button"
+          onClick={() => navigate('/table')}
+          className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl px-4 py-3
+                     flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
+        >
+          <IconTable size={18} stroke={1.75} className="text-brand-muted shrink-0" />
+          <span className="flex-1 text-white text-sm">{t('table.title')}</span>
+          <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
+        </button>
 
         <div className="relative">
           <IconSearch

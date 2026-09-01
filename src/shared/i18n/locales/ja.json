@@ -857,7 +857,10 @@
     "col_goals": "得",
     "col_assists": "助",
     "col_cards": "警/退",
-    "col_points": "点"
+    "col_points": "点",
+    "rating": "レーティング",
+    "place": "{{n}}位",
+    "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%"
   },
   "clubs": {
     "title": "クラブ",
@@ -867,5 +870,22 @@
     "empty": "見つかりません",
     "players_other": "{{count}}人",
     "matches_other": "{{count}}試合"
+  },
+  "table": {
+    "title": "順位表",
+    "loading": "読み込み中…",
+    "failed": "順位表を読み込めませんでした",
+    "empty": "今季の試合はまだ集まっていません",
+    "col_club": "クラブ",
+    "col_played": "試",
+    "col_w": "勝",
+    "col_d": "分",
+    "col_l": "敗",
+    "col_goals": "得失点",
+    "col_diff": "差",
+    "col_points": "点",
+    "col_form": "直近",
+    "since": "{{date}}からの今季",
+    "source_note": "集めた試合から算出 — 「試」の列を見てください"
   }
 }

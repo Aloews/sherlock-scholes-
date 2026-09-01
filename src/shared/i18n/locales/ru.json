@@ -948,7 +948,10 @@
     "col_goals": "Г",
     "col_assists": "П",
     "col_cards": "ЖК/КК",
-    "col_points": "Очки"
+    "col_points": "Очки",
+    "rating": "Рейтинг",
+    "place": "{{n}}-е место",
+    "league_isolated": "Лига мало играет с другими — уровень сравним с чужими лигами на {{pct}}%"
   },
   "clubs": {
     "title": "Команды",
@@ -964,5 +967,22 @@
     "matches_few": "{{count}} матча",
     "matches_many": "{{count}} матчей",
     "matches_other": "{{count}} матчей"
+  },
+  "table": {
+    "title": "Таблицы",
+    "loading": "Загружаем…",
+    "failed": "Не удалось загрузить таблицу",
+    "empty": "За этот сезон матчей ещё не собрано",
+    "col_club": "Команда",
+    "col_played": "И",
+    "col_w": "В",
+    "col_d": "Н",
+    "col_l": "П",
+    "col_goals": "Мячи",
+    "col_diff": "РМ",
+    "col_points": "О",
+    "col_form": "Форма",
+    "since": "Сезон с {{date}}",
+    "source_note": "считается по собранным матчам — смотрите колонку «И»"
   }
 }

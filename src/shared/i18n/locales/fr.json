@@ -886,7 +886,10 @@
     "col_goals": "B",
     "col_assists": "PD",
     "col_cards": "J/R",
-    "col_points": "Pts"
+    "col_points": "Pts",
+    "rating": "Cote",
+    "place": "{{n}}e place",
+    "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%"
   },
   "clubs": {
     "title": "Clubs",
@@ -898,5 +901,22 @@
     "players_other": "{{count}} joueurs",
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matchs"
+  },
+  "table": {
+    "title": "Classement",
+    "loading": "Chargement…",
+    "failed": "Impossible de charger le classement",
+    "empty": "Aucun match collecté pour cette saison",
+    "col_club": "Club",
+    "col_played": "J",
+    "col_w": "V",
+    "col_d": "N",
+    "col_l": "D",
+    "col_goals": "Buts",
+    "col_diff": "Diff",
+    "col_points": "Pts",
+    "col_form": "Forme",
+    "since": "Saison depuis le {{date}}",
+    "source_note": "établi sur les matchs collectés — voyez la colonne J"
   }
 }

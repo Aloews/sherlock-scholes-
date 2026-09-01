@@ -39,6 +39,19 @@ export interface ClubProfile {
   first_match: string | null;
   last_match: string | null;
   fetched_at: string;
+  /** Эло — сила команды по результатам. Сравнимо между лигами ровно настолько,
+   *  насколько лиги играют друг с другом, — см. league_weight. */
+  elo: number | null;
+  /** Эло, приведённое к 0–100 — ТОЙ ЖЕ шкале, что уровень игрока. Ради этого
+   *  всё и делалось: до сих пор у клуба числа не было вовсе. */
+  level: number | null;
+  /** Насколько можно верить УРОВНЮ ЛИГИ этого клуба: 1 — лига достаточно
+   *  играет с другими, 0.63 — почти остров (саудовская: 13 межлиговых матчей
+   *  из 222). Экран обязан это показывать, иначе середняк лиги-острова встаёт
+   *  рядом с ПСЖ и выглядит нормально. */
+  league_weight: number | null;
+  /** Место в таблице своей лиги. null — лиги нет или таблица не строится. */
+  league_place: number | null;
 }
 
 export interface ClubSquadRow {
@@ -200,4 +213,60 @@ export async function fetchPlayerLevel(
     return { status: 'error', code: res.error.code ?? 'unknown' };
   }
   return { status: 'ok', data: (res.data as PlayerLevel | null) ?? null };
+}
+
+// ---------------------------------------------------------------------------
+// Турнирные таблицы и рейтинг команд.
+//
+// ⚠️ ЭТО ДВА РАЗНЫХ ОТВЕТА НА ДВА РАЗНЫХ ВОПРОСА, и путать их нельзя.
+// Таблица говорит «как идут дела В ЭТОМ СЕЗОНЕ, в своей лиге» — очки, и
+// ничего кроме очков. Рейтинг (Эло) говорит «насколько команда сильна вообще»
+// и сравнивает через лиги: он учитывает, КОГО обыграли, а не сколько раз.
+// Команда может быть первой в слабой лиге и иметь средний рейтинг — это не
+// противоречие, это и есть разница между ними.
+// ---------------------------------------------------------------------------
+
+export interface LeagueRow {
+  tournament: string;
+  country: string | null;
+  teams: number;
+  matches: number;
+  season_start: string;
+}
+
+export interface LeagueTableRow {
+  /** Не `position`: в RETURNS TABLE это зарезервированное слово. */
+  place: number;
+  club_key: string;
+  name: string;
+  crest_url: string | null;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  goal_diff: number;
+  points: number;
+  /** До пяти исходов, свежий слева: 'w' | 'd' | 'l'. */
+  form: string | null;
+}
+
+/** Турниры, для которых таблица осмысленна: лига, а не кубок и не сборные. */
+export async function fetchLeagues(
+  lang: string,
+  limit = 30,
+): Promise<LoadState<LeagueRow[]>> {
+  const res = await supabase.rpc('league_list', { p_lang: lang, p_limit: limit });
+  return fromPostgrest<LeagueRow[]>(res, 'league_list');
+}
+
+export async function fetchLeagueTable(
+  tournament: string,
+  lang: string,
+): Promise<LoadState<LeagueTableRow[]>> {
+  const res = await supabase.rpc('league_table', {
+    p_tournament: tournament, p_lang: lang,
+  });
+  return fromPostgrest<LeagueTableRow[]>(res, `league_table(${tournament})`);
 }

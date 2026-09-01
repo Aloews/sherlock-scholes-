@@ -857,7 +857,10 @@
     "col_goals": "골",
     "col_assists": "도움",
     "col_cards": "경/퇴",
-    "col_points": "점수"
+    "col_points": "점수",
+    "rating": "레이팅",
+    "place": "{{n}}위",
+    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%"
   },
   "clubs": {
     "title": "클럽",
@@ -867,5 +870,22 @@
     "empty": "결과 없음",
     "players_other": "{{count}}명",
     "matches_other": "{{count}}경기"
+  },
+  "table": {
+    "title": "순위표",
+    "loading": "불러오는 중…",
+    "failed": "순위표를 불러오지 못했습니다",
+    "empty": "이번 시즌 경기가 아직 없습니다",
+    "col_club": "클럽",
+    "col_played": "경기",
+    "col_w": "승",
+    "col_d": "무",
+    "col_l": "패",
+    "col_goals": "득실점",
+    "col_diff": "득실차",
+    "col_points": "승점",
+    "col_form": "최근",
+    "since": "{{date}}부터의 시즌",
+    "source_note": "수집된 경기로 계산 — 「경기」 열을 보세요"
   }
 }

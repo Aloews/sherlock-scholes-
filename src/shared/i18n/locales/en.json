@@ -886,7 +886,10 @@
     "col_goals": "G",
     "col_assists": "A",
     "col_cards": "Y/R",
-    "col_points": "Pts"
+    "col_points": "Pts",
+    "rating": "Rating",
+    "place": "{{n}}th place",
+    "league_isolated": "This league rarely plays others — level comparable across leagues at {{pct}}%"
   },
   "clubs": {
     "title": "Clubs",
@@ -898,5 +901,22 @@
     "players_other": "{{count}} players",
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches"
+  },
+  "table": {
+    "title": "Tables",
+    "loading": "Loading…",
+    "failed": "Could not load the table",
+    "empty": "No matches collected for this season yet",
+    "col_club": "Club",
+    "col_played": "P",
+    "col_w": "W",
+    "col_d": "D",
+    "col_l": "L",
+    "col_goals": "Goals",
+    "col_diff": "GD",
+    "col_points": "Pts",
+    "col_form": "Form",
+    "since": "Season from {{date}}",
+    "source_note": "built from collected matches — check the P column"
   }
 }

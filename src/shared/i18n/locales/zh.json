@@ -857,7 +857,10 @@
     "col_goals": "进球",
     "col_assists": "助攻",
     "col_cards": "黄/红",
-    "col_points": "积分"
+    "col_points": "积分",
+    "rating": "评分",
+    "place": "第 {{n}} 名",
+    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%"
   },
   "clubs": {
     "title": "俱乐部",
@@ -867,5 +870,22 @@
     "empty": "没有找到",
     "players_other": "{{count}} 名球员",
     "matches_other": "{{count}} 场比赛"
+  },
+  "table": {
+    "title": "积分榜",
+    "loading": "加载中…",
+    "failed": "无法加载积分榜",
+    "empty": "本赛季尚未收集到比赛",
+    "col_club": "俱乐部",
+    "col_played": "场",
+    "col_w": "胜",
+    "col_d": "平",
+    "col_l": "负",
+    "col_goals": "进失球",
+    "col_diff": "净胜",
+    "col_points": "积分",
+    "col_form": "近况",
+    "since": "自 {{date}} 的赛季",
+    "source_note": "基于已收集的比赛 — 请看「场」列"
   }
 }
