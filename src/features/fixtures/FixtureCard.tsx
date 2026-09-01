@@ -8,7 +8,7 @@ import type { Broadcast } from './broadcastsApi';
 import type { BroadcastRight } from './broadcastRightsApi';
 import type { Prediction } from './predictionsApi';
 import { SquadStrength } from './SquadStrength';
-import type { SquadStrength as Strength } from './squadStrengthApi';
+import type { TeamRating } from './squadStrengthApi';
 
 interface Props {
   fixture: Fixture;
@@ -26,7 +26,7 @@ interface Props {
    * каждого матча — оцифрованы не все клубы, — и отсутствие показывается
    * НИКАК: «состав 0» читалось бы как «слабый», хотя значит «мы не знаем».
    */
-  strength?: Strength;
+  rating?: TeamRating;
   onPredictionSaved: (saved: Prediction) => void;
   timeFmt: Intl.DateTimeFormat;
 }
@@ -59,7 +59,7 @@ function ageMinutes(iso: string | null): number | null {
  * ⚠️ УРОВЕНЬ СОСТАВА — ИСКЛЮЧЕНИЕ ПО ПРОИСХОЖДЕНИЮ, НО НЕ ПО ПРАВИЛУ ВЫШЕ, и
  * разницу стоит записать, потому что она неочевидна. Запрет касается
  * букмекерских котировок: их нельзя ни показать, ни вывести из них что-либо.
- * `SquadStrength` считается из СВОИХ ЖЕ карточек (известность игроков клуба) и
+ * `SquadStrength` считается из СВОИХ ЖЕ карточек (уровни игроков клуба) и
  * к котировкам отношения не имеет.
  *
  * Само правило при этом соблюдается ПО СУТИ: обе стороны нарисованы
@@ -70,7 +70,7 @@ function ageMinutes(iso: string | null): number | null {
  * чего: 0 из 266 предстоящих матчей имеют прошлую встречу.
  */
 export function FixtureCard({
-  fixture, broadcast, rights, prediction, strength, onPredictionSaved, timeFmt,
+  fixture, broadcast, rights, prediction, rating, onPredictionSaved, timeFmt,
 }: Props) {
   const { t } = useTranslation();
   const hasScore = fixture.home_score !== null && fixture.away_score !== null;
@@ -157,10 +157,10 @@ export function FixtureCard({
         </button>
       )}
 
-      {strength && (
+      {rating && (
         <div className="pl-[3.75rem]">
           <SquadStrength
-            strength={strength}
+            rating={rating}
             homeTeam={fixture.home_team}
             awayTeam={fixture.away_team}
           />

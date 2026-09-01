@@ -19,7 +19,7 @@ import { MonthCalendar } from '@/features/fixtures/MonthCalendar';
 import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/monthCalendar';
 import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
 import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/broadcastRightsApi';
-import { fetchSquadStrength, type SquadStrength } from '@/features/fixtures/squadStrengthApi';
+import { fetchTeamRating, type TeamRating } from '@/features/fixtures/squadStrengthApi';
 import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
@@ -54,7 +54,7 @@ export function MatchesScreen() {
   // Пустая карта — начальное значение, а не `null`: уровень состава есть далеко
   // не у каждого матча, и «ещё не пришло» с «у этого матча нет» экран
   // показывает одинаково — никак.
-  const [strength, setStrength] = useState<Map<string, SquadStrength>>(new Map());
+  const [rating, setRating] = useState<Map<string, TeamRating>>(new Map());
   // Правообладатель для страны читателя. Пустая карта — нормальное состояние:
   // страна может быть не объявлена, а для объявленной вещателя может не быть
   // вовсе (у Премьер-лиги для России его нет). В обоих случаях карточка
@@ -87,7 +87,7 @@ export function MatchesScreen() {
       // блок под матчем и ничего не переписывает. Плюс есть далеко не у
       // каждого матча (оцифрованы не все клубы), так что ждать его — значит
       // задержать весь список ради строки, которой у большинства не будет.
-      void fetchSquadStrength().then((m) => { if (!cancelled) setStrength(m); });
+      void fetchTeamRating().then((m) => { if (!cancelled) setRating(m); });
       // Страна берётся из ОБЪЯВЛЕННОГО региона локали, а не выводится из
       // языка: испанский — это и Испания, и Мексика, и Аргентина. Нет
       // региона — нет запроса, см. viewerCountry.ts.
@@ -328,7 +328,7 @@ export function MatchesScreen() {
                 broadcast={broadcasts.get(fixture.sport_key)}
                 rights={rights.get(fixture.sport_key)}
                 prediction={byFixture.get(fixture.id)}
-                strength={strength.get(fixture.id)}
+                rating={rating.get(fixture.id)}
                 onPredictionSaved={savePrediction}
                 timeFmt={timeFmt}
               />

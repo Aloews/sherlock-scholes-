@@ -573,7 +573,9 @@
     "squad_level": "スカッドのレベル",
     "squad_depth_other": "上位{{count}}人で算出",
     "outcome_short": "的中{{n}}%",
-    "my_outcomes": "勝敗的中: {{rate}}%（{{settled}}件中{{outcomes}}件）"
+    "my_outcomes": "勝敗的中: {{rate}}%（{{settled}}件中{{outcomes}}件）",
+    "team_rating": "チーム評価",
+    "rating_squad_only": "スカッドのみ"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

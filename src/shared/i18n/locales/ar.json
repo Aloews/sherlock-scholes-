@@ -672,7 +672,9 @@
     "squad_depth_many": "حسب {{count}} لاعبًا",
     "squad_depth_other": "حسب {{count}} لاعب",
     "outcome_short": "{{n}}٪ نتيجة",
-    "my_outcomes": "النتائج: {{rate}}٪ ({{outcomes}} من {{settled}})"
+    "my_outcomes": "النتائج: {{rate}}٪ ({{outcomes}} من {{settled}})",
+    "team_rating": "تقييم الفريقين",
+    "rating_squad_only": "التشكيلة فقط"
   },
   "leagues": {
     "soccer_epl": "الدوري الإنجليزي الممتاز",

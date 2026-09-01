@@ -593,7 +593,9 @@
     "squad_depth_one": "sur {{count}} joueur",
     "squad_depth_other": "sur {{count}} joueurs",
     "outcome_short": "{{n}}% iss.",
-    "my_outcomes": "Issues : {{rate}}% ({{outcomes}} sur {{settled}})"
+    "my_outcomes": "Issues : {{rate}}% ({{outcomes}} sur {{settled}})",
+    "team_rating": "Cote des équipes",
+    "rating_squad_only": "effectif seul"
   },
   "leagues": {
     "soccer_epl": "Premier League (Angleterre)",

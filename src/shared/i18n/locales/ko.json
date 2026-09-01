@@ -573,7 +573,9 @@
     "squad_level": "스쿼드 수준",
     "squad_depth_other": "상위 {{count}}명 기준",
     "outcome_short": "승부 {{n}}%",
-    "my_outcomes": "승부 적중: {{rate}}% ({{settled}}건 중 {{outcomes}}건)"
+    "my_outcomes": "승부 적중: {{rate}}% ({{settled}}건 중 {{outcomes}}건)",
+    "team_rating": "팀 평가",
+    "rating_squad_only": "스쿼드만"
   },
   "leagues": {
     "soccer_epl": "프리미어리그 (잉글랜드)",
