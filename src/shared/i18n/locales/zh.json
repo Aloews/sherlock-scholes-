@@ -578,7 +578,8 @@
     "squad_depth_other": "按前{{count}}名球员",
     "exact_short": "全中 {{n}}",
     "team_rating": "球队评分",
-    "rating_squad_only": "仅阵容"
+    "rating_squad_only": "仅阵容",
+    "show_squads": "查看阵容"
   },
   "leagues": {
     "soccer_epl": "英格兰超级联赛",

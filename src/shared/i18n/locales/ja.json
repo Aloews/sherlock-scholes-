@@ -578,7 +578,8 @@
     "squad_depth_other": "上位{{count}}人で算出",
     "exact_short": "完全一致 {{n}}",
     "team_rating": "チーム評価",
-    "rating_squad_only": "スカッドのみ"
+    "rating_squad_only": "スカッドのみ",
+    "show_squads": "メンバーを表示"
   },
   "leagues": {
     "soccer_epl": "プレミアリーグ（イングランド）",

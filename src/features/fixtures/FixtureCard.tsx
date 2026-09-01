@@ -161,6 +161,7 @@ export function FixtureCard({
         <div className="pl-[3.75rem]">
           <SquadStrength
             rating={rating}
+            fixtureId={fixture.id}
             homeTeam={fixture.home_team}
             awayTeam={fixture.away_team}
           />
