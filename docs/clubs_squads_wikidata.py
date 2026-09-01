@@ -78,6 +78,7 @@ sys.modules["run"] = run
 _spec.loader.exec_module(run)
 
 from scraper.cache import FileCache                                  # noqa: E402
+from scraper.dedup import normalize_display_name                    # noqa: E402
 from scraper.pageviews import WikimediaBudget, WikiPagePropsClient   # noqa: E402
 from scraper.wikidata import WikidataEnricher                        # noqa: E402
 
@@ -637,12 +638,19 @@ def main():
         new = []
         seen = set()
         for _club_key, m in missing:
-            name = m["name_ru"] or m["name_en"]
+            # ⚠️ ИМЯ ИЗ ВИКИДАННЫХ — НЕ ФОРМАТ КОЛОДЫ. Ру-вики пишет «Фамилия,
+            # Имя Отчество», и карточка завелась бы как «Де Томас, Рауль» —
+            # в игре про объяснение слов это читается как ошибка, а не как
+            # игрок. Приводится тем же normalize_display_name, которым
+            # пользуется сам скрапер при вставке: своя копия правила разошлась
+            # бы с ним незаметно.
+            name = normalize_display_name(m["name_ru"] or m["name_en"])
             k = canon(name)
             if not name or k in seen or k in by_key:
                 continue
             seen.add(k)
-            new.append({"name": name, "name_en": m["name_en"],
+            new.append({"name": name,
+                        "name_en": normalize_display_name(m["name_en"]),
                         "category": "player", "category_ru": "игроки"})
         for i in range(0, len(new), 200):
             rest(url, key, "cards", method="POST", body=new[i:i + 200],
