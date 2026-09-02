@@ -194,9 +194,105 @@ async function checkBundle() {
   }
 }
 
+// --------------------------------------------------------------- гербы ---
+/**
+ * Герб клуба — до БАЙТОВ КАРТИНКИ, а не до кода 200.
+ *
+ * ⚠️ Это та же ошибка, что была с ТВ, только в другом месте. Прежние «гербы»
+ * отдавали 200 и `image/jpeg` — и были фотографиями: портрет Робби Сэвиджа у
+ * «Барнсли», раздевалка «Эмирейтс» у «Арсенала», мемориальная доска в
+ * шведском Аннедале у «Абердина». Поле заполнено, картинка приходит, код 200
+ * — сломано только то, ЧТО на ней. Отличить эмблему от фотографии программно
+ * нельзя, поэтому проверяется ИСТОЧНИК: викимедийных адресов в `crest_url`
+ * быть не должно ни одного, они все оттуда.
+ */
+function looksLikeImage(bytes) {
+  const b = new Uint8Array(bytes);
+  if (b.length < 64) return false;
+  const png = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+  const jpeg = b[0] === 0xff && b[1] === 0xd8;
+  const gif = b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46;
+  const webp = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46;
+  const head = new TextDecoder('utf-8', { fatal: false }).decode(b.slice(0, 300)).trimStart();
+  const svg = head.startsWith('<svg') || (head.startsWith('<?xml') && head.includes('<svg'));
+  return png || jpeg || gif || webp || svg;
+}
+
+async function imageBytes(url) {
+  let res;
+  try {
+    res = await get(url);
+  } catch (e) {
+    return { ok: false, why: String(e).slice(0, 40) };
+  }
+  if (!res.ok) return { ok: false, why: `HTTP ${res.status}` };
+  const body = await res.arrayBuffer();
+  if (!looksLikeImage(body)) return { ok: false, why: `${body.byteLength} байт, но не картинка` };
+  return { ok: true, why: `${Math.round(body.byteLength / 1024)} КБ` };
+}
+
+async function checkCrests() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Гербы', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  let rows;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/club_directory`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_lang: 'ru', p_query: null, p_limit: 5000 }),
+    });
+    if (!r.ok) { record('Гербы: справочник', false, `HTTP ${r.status}`, 'н/д'); return; }
+    rows = await r.json();
+  } catch (e) {
+    record('Гербы: справочник', false, String(e).slice(0, 50), 'н/д');
+    return;
+  }
+
+  // ⚠️ PostgREST режет ответ по `db-max-rows` (1000), а клубов 1519. Доля
+  // считается по тому, что ПРИШЛО, и подписывается страницей — иначе «582 из
+  // 1000» читается как охват, которого нет.
+  const withCrest = rows.filter((c) => c.crest_url);
+  const wiki = withCrest.filter((c) => /wikimedia\.org/.test(c.crest_url));
+  const page = rows.length >= 1000 ? ' (первая страница PostgREST)' : '';
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ для поиска викимедиа: тот же фильтр, наведённый
+  // на заведомо викимедийную строку, обязан её найти.
+  const filterWorks =
+    [{ crest_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/X.jpg' }]
+      .filter((c) => /wikimedia\.org/.test(c.crest_url)).length === 1;
+  record('Гербы: фотографий из вики нет', wiki.length === 0,
+         `${withCrest.length} из ${rows.length}${page} с гербом, викимедийных ${wiki.length}`,
+         filterWorks ? 'контроль нашёл подложенный викимедийный адрес' : '⚠ КОНТРОЛЬ СЛЕП');
+
+  // Выборка адресов — из РАЗНЫХ источников, иначе упавший ESPN спрячется за
+  // живым TheSportsDB.
+  const pick = (re, n) => withCrest.filter((c) => re.test(c.crest_url)).slice(0, n);
+  const sample = [...pick(/espncdn/, 4), ...pick(/thesportsdb/, 4)];
+  if (!sample.length) {
+    record('Гербы: картинки отдаются', false, 'нечего проверять', 'н/д');
+    return;
+  }
+  const checked = await Promise.all(sample.map((c) => imageBytes(c.crest_url)));
+  const dead = checked.filter((r) => !r.ok);
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: та же проверка на заведомо сломанном адресе
+  // ОБЯЗАНА упасть. Берётся живой хост и несуществующий путь — так ловится и
+  // случай «сервер вернул 200 с HTML-страницей ошибки».
+  const control = await imageBytes('https://a.espncdn.com/i/teamlogos/soccer/500/нет-такого.png');
+  record('Гербы: картинки отдаются', dead.length === 0,
+         `${sample.length - dead.length} из ${sample.length}` +
+           (dead.length ? ` — ${dead.map((d) => d.why).join(', ')}` : ` (${checked[0].why})`),
+         control.ok ? '⚠ КОНТРОЛЬ ПРИНЯЛ НЕСУЩЕСТВУЮЩИЙ ГЕРБ' : 'контроль упал на битом адресе');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
+await checkCrests();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
