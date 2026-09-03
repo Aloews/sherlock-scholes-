@@ -117,6 +117,19 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_pageviews_refix.py
 
+      # Эмблемы клубам из ESPN. Клуб без карточки не получал герб НИКОГДА:
+      # crest_url копировался только из cards.photo_url. Замер 03.09.2026 —
+      # 587 клубов из 1521 без эмблемы, а 707 из 934 уже с ESPN, то есть
+      # источник у проекта один и он этот. Пишется только туда, где эмблемы
+      # не было: ручной герб не перетирается, повтор — no-op.
+      #
+      # ⚠️ Сопоставляет БАЗА (apply_espn_crests), а не скрипт: club_match_key
+      # и club_alias серверные, и вторая копия правила разошлась бы с ними
+      # молча, выдав клубу чужой герб.
+      - name: Club crests from ESPN
+        if: always()
+        run: APPLY=1 python docs/clubs_crests_espn.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.

@@ -33,9 +33,14 @@ P154 («логотип») нашлось у 3 клубов из 25, а ссыл�
 `club_alias`. Вторая копия правила сопоставления в питоне разошлась бы с
 серверной молча, и клуб получил бы чужой герб.
 
-ЗАПУСК (сеть только на чтение; записи нет — на выходе SQL):
-    python docs/clubs_crests_espn.py --sql-out crests.sql
-    python docs/clubs_crests_espn.py --leagues 5      # быстрая проба
+ЗАПУСК:
+    python docs/clubs_crests_espn.py --leagues 5          # проба, только показ
+    python docs/clubs_crests_espn.py --sql-out crests.sql # выписать SQL
+    APPLY=1 python docs/clubs_crests_espn.py              # записать (нужен
+                                                          # SUPABASE_KEY)
+
+Ночью шаг стоит в .github/workflows/daily-enrich.yml — там служебный ключ уже
+есть, и 587 клубов без эмблемы закрываются сами, без ручного переноса данных.
 """
 import argparse
 import io
@@ -107,6 +112,7 @@ def main():
     ap.add_argument("--leagues", type=int, default=0, help="сколько лиг (0 — все)")
     ap.add_argument("--sql-out", default=None, help="куда выписать UPDATE")
     args = ap.parse_args()
+    apply = os.environ.get("APPLY") == "1"
 
     slugs = league_slugs(args.leagues)
     print("Лиг у ESPN: %d" % len(slugs), flush=True)
@@ -156,6 +162,22 @@ def main():
         ]
         io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
         print("SQL выписан в %s" % args.sql_out)
+
+    if apply and pairs:
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        if not (url and key):
+            raise SystemExit("APPLY=1, но SUPABASE_URL / SUPABASE_KEY не заданы")
+        # Сопоставление и запись делает RPC: правило одно и оно серверное.
+        body = json.dumps({"p_rows": [{"espn_name": n, "logo": u}
+                                      for n, u in sorted(pairs.items())]}).encode()
+        req = urllib.request.Request(
+            url.rstrip("/") + "/rest/v1/rpc/apply_espn_crests", data=body,
+            headers={"apikey": key, "Authorization": "Bearer " + key,
+                     "Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=180) as fh:
+            written = json.load(fh)
+        print("Эмблем записано: %s" % written)
 
 
 if __name__ == "__main__":
