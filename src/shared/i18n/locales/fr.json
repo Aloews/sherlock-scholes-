@@ -895,7 +895,7 @@
     "col_cards": "J/R",
     "col_points": "Pts",
     "rating": "Cote",
-    "place": "{{n}}e place",
+    "place": "{{n}}e sur {{total}}",
     "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%"
   },
   "clubs": {

@@ -866,7 +866,7 @@
     "col_cards": "警/退",
     "col_points": "点",
     "rating": "レーティング",
-    "place": "{{n}}位",
+    "place": "{{total}}チーム中{{n}}位",
     "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%"
   },
   "clubs": {

@@ -895,7 +895,7 @@
     "col_cards": "A/V",
     "col_points": "Pts",
     "rating": "Classificação",
-    "place": "{{n}}º lugar",
+    "place": "{{n}}.º de {{total}}",
     "league_isolated": "Esta liga joga pouco com outras — nível comparável a {{pct}}%"
   },
   "clubs": {

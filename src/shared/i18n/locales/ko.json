@@ -866,7 +866,7 @@
     "col_cards": "경/퇴",
     "col_points": "점수",
     "rating": "레이팅",
-    "place": "{{n}}위",
+    "place": "{{total}}팀 중 {{n}}위",
     "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%"
   },
   "clubs": {

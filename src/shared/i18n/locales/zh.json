@@ -866,7 +866,7 @@
     "col_cards": "黄/红",
     "col_points": "积分",
     "rating": "评分",
-    "place": "第 {{n}} 名",
+    "place": "{{total}}队中第{{n}}名",
     "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%"
   },
   "clubs": {

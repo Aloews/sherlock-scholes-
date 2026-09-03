@@ -895,7 +895,7 @@
     "col_cards": "Y/R",
     "col_points": "Pts",
     "rating": "Rating",
-    "place": "{{n}}th place",
+    "place": "{{n}} of {{total}}",
     "league_isolated": "This league rarely plays others — level comparable across leagues at {{pct}}%"
   },
   "clubs": {

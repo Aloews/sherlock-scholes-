@@ -161,9 +161,14 @@ export function ClubScreen() {
                   <p className="text-brand-muted/70 text-[9.5px] uppercase tracking-wide">
                     {t('club.rating')}
                   </p>
-                  {p.league_place != null && (
+                  {/* ⚠️ МЕСТО РИСУЕТСЯ ТОЛЬКО СО ЗНАМЕНАТЕЛЕМ. Лиг в
+                      справочнике 62, значит первых мест ровно 62 — по одному
+                      на лигу, и «1-е место» у клуба из таблицы на три команды
+                      читается как титул. «1-е из 3» ничего не прячет и ничего
+                      не обещает. Нет размера таблицы — нет и строки. */}
+                  {p.league_place != null && p.league_size != null && (
                     <p className="text-brand-muted text-[10.5px] tabular-nums">
-                      {t('club.place', { n: p.league_place })}
+                      {t('club.place', { n: p.league_place, total: p.league_size })}
                     </p>
                   )}
                 </button>
