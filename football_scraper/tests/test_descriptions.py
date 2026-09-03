@@ -220,6 +220,112 @@ check_true("валидатор создан для клуба",
            cdb.make_validator({"category": "club"}, None, None, None) is not None)
 
 # --------------------------------------------------------------------------
+# ENWIKI КАК ВТОРОЙ ИСТОЧНИК.
+#
+# Владелец: «для игроков не из РФ используй не ruwiki, а все мировые
+# источники». До этого вся цепочка висела на русской Википедии: QID брался из
+# ruwiki, а enwiki — только по этому QID. Нет русской статьи → нет QID →
+# английскую даже не пробовали.
+#
+# Замер на боевых данных (девять женских карточек, у которых ruwiki не нашлась
+# ни по одному варианту названия): ruwiki-путь дал 0 из 9, с enwiki-фолбэком
+# 9 из 9. Пятеро при этом получили и РУССКОЕ описание — через канонический
+# sitelink проверенного QID: «Chloe Kelly» → Q… → «Келли, Хлоя», чего перебор
+# вариантов названия угадать не мог.
+#
+# Здесь это закреплено ОФЛАЙН, на поддельных резолверах: тест обязан падать,
+# если фолбэк убрать, и не обязан ходить в сеть.
+RU_LEAD = ("Лия Кэтрин Уильямсон — английская футболистка, "
+           "выступающая на позиции полузащитника в клубе «Арсенал».")
+EN_LEAD = ("Leah Cathrine Williamson is an English professional footballer "
+           "who plays for Women's Super League club Arsenal.")
+
+
+class FakeResolver:
+    """Отдаёт статью только для названий из `pages`; остальное — пусто."""
+
+    def __init__(self, pages):
+        self.pages = pages          # title -> (qid, lead)
+
+    def qid_for_title(self, title):
+        hit = self.pages.get(title)
+        return {"qid": hit[0], "disambig": False} if hit else {"qid": None}
+
+    def extract_for_title(self, title):
+        hit = self.pages.get(title)
+        return hit[1] if hit else None
+
+    def search_titles(self, name, limit):
+        return []                   # полнотекстовый поиск здесь не изучаем
+
+
+class FakeWikidata:
+    def __init__(self, sitelinks):
+        self.sitelinks = sitelinks
+
+    def titles_for_qid(self, qid):
+        return self.sitelinks.get(qid, {})
+
+    def instance_of_qids(self, qid):
+        return ["Q5"]               # человек — проходит P31-гард игрока
+
+
+class FakeCache:
+    def get(self, *_a, **_kw):
+        return None
+
+
+class FakeBudget:
+    def consume(self):
+        pass
+
+
+CARD_EN_ONLY = {
+    "name": "Леа Уильямсон",
+    "name_en": "Leah Williamson",
+    "category": "woman",
+    "category_ru": "футболистка",
+}
+
+# ruwiki не знает НИ ОДНОГО варианта названия карточки — ровно боевой случай.
+ru_blind = FakeResolver({"Уильямсон, Лия": ("Q18129271", RU_LEAD)})
+en_knows = FakeResolver({"Leah Williamson": ("Q18129271", EN_LEAD)})
+wd = FakeWikidata({"Q18129271": {"ruwiki": "Уильямсон, Лия",
+                                 "enwiki": "Leah Williamson"}})
+
+got, note = cdb.build_for_card(
+    CARD_EN_ONLY, ru_blind, en_knows, wd, FakeCache(), FakeBudget())
+
+check_true("enwiki поднимает карточку, которую ruwiki не нашла", got is not None)
+check_true("английское описание построено", bool(got and got.get("en")))
+# Вот ради чего фолбэк идёт через QID, а не «возьмём английскую вместо
+# русской»: sitelink даёт КАНОНИЧЕСКОЕ русское название, и русское описание
+# появляется тоже — хотя перебор вариантов эту статью не находил.
+check_true("русское описание найдено через sitelink QID",
+           bool(got and got.get("ru")))
+check_true("в отчёте назван источник enwiki", "enwiki" in (note or ""))
+
+# ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Тот же вызов, но статьи нет НИГДЕ: результат обязан
+# быть отказом. Без него проверка выше прошла бы и на функции, которая просто
+# всегда что-то возвращает.
+none_knows = FakeResolver({})
+got_none, note_none = cdb.build_for_card(
+    CARD_EN_ONLY, ru_blind, none_knows, wd, FakeCache(), FakeBudget())
+check("нет статьи нигде — отказ", got_none, None)
+check_true("отказ назван своими словами",
+           "ruwiki" in (note_none or "") and "enwiki" in (note_none or ""))
+
+# Вторая половина того же контроля: без name_en спрашивать второй источник
+# НЕЧЕМ, и причина обязана отличаться от «не нашлось».
+CARD_NO_EN = dict(CARD_EN_ONLY)
+CARD_NO_EN["name_en"] = ""
+got_noen, note_noen = cdb.build_for_card(
+    CARD_NO_EN, ru_blind, en_knows, wd, FakeCache(), FakeBudget())
+check("без name_en enwiki спросить нечем", got_noen, None)
+check_true("причина названа отдельно, а не слита с «не нашлось»",
+           "name_en" in (note_noen or ""))
+
+# --------------------------------------------------------------------------
 print("-" * 60)
 if FAILURES:
     print("ПРОВАЛЕНО {} проверок:".format(len(FAILURES)))

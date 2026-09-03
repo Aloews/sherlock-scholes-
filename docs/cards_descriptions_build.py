@@ -395,8 +395,38 @@ def build_for_card(card, resolver, en_resolver, wikidata, cache, budget):
     # первого: чинить резолв названия, ослаблять гард или заводить карточке
     # правильное имя. Теперь каждая причина названа своим словом.
     reasons = []
-    qid, title, via_search = run.resolve_card_qid(
+    qid, ru_hit, via_search = run.resolve_card_qid(
         resolver, card, titles, validate, reasons)
+
+    # ⚠️ ENWIKI — ВТОРОЙ ИСТОЧНИК, А НЕ УКРАШЕНИЕ. ВСЯ ЦЕПОЧКА БЫЛА ПРИВЯЗАНА
+    # К РУССКОЙ ВИКИПЕДИИ: QID брался из ruwiki, а enwiki — только по этому
+    # QID. Нет русской статьи — нет QID — английскую даже не пробовали, и
+    # карточка уходила в отказ целиком.
+    #
+    # Владелец назвал это ровно: «для игроков не из РФ используй не ruwiki, а
+    # все мировые источники». Замер подтверждает: из 200 активных карточек без
+    # описания НИ ОДНОЙ российской, а name_en есть у 172. То есть отказ бил
+    # именно по нероссийским, у которых английская статья заведомо есть.
+    #
+    # ⚠️ И ЭТО НЕ ПРОСТО «ВОЗЬМЁМ АНГЛИЙСКУЮ ВМЕСТО РУССКОЙ». QID, найденный
+    # через enwiki, отдаёт КАНОНИЧЕСКИЙ sitelink на ruwiki — то самое название,
+    # которое перебор вариантов угадать не мог. «Leah Williamson» перебором не
+    # находится (карточка зовётся «Леа Уильямсон», статья — «Уильямсон, Лия»),
+    # а через sitelink находится точно. Так чинится и русское описание тоже.
+    #
+    # P31-гард тот же самый: он проверяет QID в Викиданных, а не язык статьи,
+    # поэтому тёзка-не-футболист отбраковывается здесь ровно так же.
+    via_en = False
+    if not qid:
+        en_titles = run.cards_photos_en_candidates(card)
+        if en_titles:
+            en_reasons = []
+            qid, _en_hit, _en_search = run.resolve_card_qid(
+                en_resolver, card, en_titles, validate, en_reasons)
+            via_en = bool(qid)
+            if not qid:
+                reasons.extend(en_reasons)
+
     if not qid:
         if run.FAIL_P31 in reasons:
             # Статья нашлась, но сущность не того рода. Для карточки-игрока
@@ -406,38 +436,69 @@ def build_for_card(card, resolver, en_resolver, wikidata, cache, budget):
         if run.FAIL_DISAMBIG in reasons:
             # Дизамбиг — не «нет статьи», а «их несколько». Лечится не гардом,
             # а уточнением названия карточки.
-            return None, "ruwiki отдала страницу неоднозначности"
-        return None, "статья ruwiki не найдена ни по одному варианту названия"
+            return None, "отдана страница неоднозначности"
+        if not run.cards_photos_en_candidates(card):
+            # Отдельная причина, а не общая: у карточки нет name_en, то есть
+            # второй источник спросить было НЕЧЕМ. Лечится заполнением
+            # name_en (`run.py --cards-name-en`), а не резолвом.
+            return None, "нет статьи в ruwiki, а name_en у карточки пуст"
+        return None, "статья не найдена ни в ruwiki, ни в enwiki"
+
+    # Оба названия — из sitelink'ов ОДНОГО проверенного QID, поэтому они не
+    # могут разъехаться по разным людям.
+    sitelinks = wikidata.titles_for_qid(qid) or {}
+    ru_title = sitelinks.get("ruwiki") if via_en else ru_hit
+    en_title = sitelinks.get("enwiki")
 
     existing = card.get("descriptions") or {}
-
     descriptions = dict(existing)
-    if not existing.get("ru"):
-        lead = resolver.extract_for_title(title)
+    ru_skip = None
+
+    if not existing.get("ru") and ru_title:
+        lead = resolver.extract_for_title(ru_title)
         if not lead:
-            return None, "пустая преамбула ruwiki: " + title
-        if not lead_is_football(lead, "ru"):
-            return None, "преамбула не про футбол — чужая статья: " + title
-        ru = blurb_from_lead(lead)
-        if not ru:
-            return None, "преамбула не сворачивается в описание: " + title
-        descriptions["ru"] = ru
+            ru_skip = "пустая преамбула ruwiki: " + ru_title
+        elif not lead_is_football(lead, "ru"):
+            # ⚠️ РАЗНЫЙ СМЫСЛ У ОДНОГО И ТОГО ЖЕ ОТКАЗА, И ОТ ЭТОГО ЗАВИСИТ,
+            # ВЫБРАСЫВАТЬ ЛИ КАРТОЧКУ ЦЕЛИКОМ.
+            #
+            # Пришли через ruwiki — статью нашёл перебор названий, и «не про
+            # футбол» значит ЧУЖАЯ СТАТЬЯ: резолв промахнулся, доверять
+            # нечему, карточка уходит целиком (так было и раньше).
+            #
+            # Пришли через enwiki — ru-название взято sitelink'ом уже
+            # проверенного QID, то есть сущность ТА САМАЯ по построению.
+            # «Не про футбол» тут значит слабую или короткую русскую статью, а
+            # не чужую. Выбрасывать из-за неё готовое английское описание
+            # незачем.
+            if not via_en:
+                return None, "преамбула не про футбол — чужая статья: " + ru_title
+            ru_skip = "русская преамбула не прошла футбольный гард: " + ru_title
+        else:
+            ru = blurb_from_lead(lead)
+            if ru:
+                descriptions["ru"] = ru
+            else:
+                ru_skip = "преамбула не сворачивается в описание: " + ru_title
 
     # English blurb — best effort, never a reason to skip a card that already
     # has a Russian one.
-    if not existing.get("en"):
-        en_title = (wikidata.titles_for_qid(qid) or {}).get("enwiki")
-        if en_title:
-            en_lead = en_resolver.extract_for_title(en_title)
-            if en_lead and lead_is_football(en_lead, "en"):
-                en = blurb_from_lead(en_lead)
-                if en:
-                    descriptions["en"] = en
+    if not existing.get("en") and en_title:
+        en_lead = en_resolver.extract_for_title(en_title)
+        if en_lead and lead_is_football(en_lead, "en"):
+            en = blurb_from_lead(en_lead)
+            if en:
+                descriptions["en"] = en
 
     if descriptions == existing:
-        return None, "нечего добавить (enwiki нет или не прошла гард)"
+        return None, ru_skip or "нечего добавить: ни ruwiki, ни enwiki не дали преамбулы"
 
-    note = "ruwiki: {}{}".format(title, " (через поиск)" if via_search else "")
+    if via_en:
+        note = "enwiki: {}{}".format(
+            en_title or "?",
+            " + ruwiki: " + ru_title if ru_title and "ru" in descriptions else "")
+    else:
+        note = "ruwiki: {}{}".format(ru_hit, " (через поиск)" if via_search else "")
     return descriptions, note
 
 

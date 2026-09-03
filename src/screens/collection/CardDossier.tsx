@@ -153,7 +153,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     }))
     ?? [];
 
-  const blurb = card.descriptions?.[lang.slice(0, 2)] ?? card.descriptions?.ru ?? null;
+  // Язык интерфейса, затем en, затем ru — тот же порядок, что в
+  // TrainingScreen. Здесь `en` пропускали, и это стало видно, когда описания
+  // поехали через enwiki: у карточки без русской статьи (Debinha, Temwa
+  // Chawinga, Sophia Wilson — в ruwiki их нет вовсе) есть только английское
+  // описание, и досье показывало пустоту при непустых данных.
+  const blurb = card.descriptions?.[lang.slice(0, 2)]
+    ?? card.descriptions?.en
+    ?? card.descriptions?.ru
+    ?? null;
 
   const attributeRows = card.attributes
     ? ATTRIBUTE_ROWS
