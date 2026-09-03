@@ -32,6 +32,7 @@ export const KNOWN_SPORT_KEYS = [
   'soccer_uefa_champs_league',
   'soccer_uefa_champs_league_qualification',
   'soccer_uefa_europa_league',
+  'soccer_uefa_europa_conference_league',
   'soccer_uefa_nations_league',
   // Сборные раз в два-четыре года. Ключей нет в расписании прямо сейчас — и
   // именно поэтому они здесь: провайдер отдаёт турнир, когда тот начинается,

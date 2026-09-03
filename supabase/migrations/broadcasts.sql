@@ -79,6 +79,12 @@ insert into public.broadcasts (sport_key, name, url) values
   ('soccer_korea_kleague1',             'K League',              'https://www.kleague.com'),
   ('soccer_uefa_champs_league',         'UEFA Champions League', 'https://www.uefa.com/uefachampionsleague'),
   ('soccer_uefa_europa_league',         'UEFA Europa League',    'https://www.uefa.com/uefaeuropaleague/'),
+  -- ⚠️ Адрес ПРОВЕРИТЬ ОТСЮДА НЕ УДАЛОСЬ: uefa.com отдаёт 403 на защите от
+  -- ботов. Тот же 403 приходит и на уже выкаченный uefaeuropaleague/ строкой
+  -- выше, а корень uefa.com отвечает 200 — то есть это защита, а не битая
+  -- ссылка. Форма адреса ровно та же, что у двух соседей. Перепроверить
+  -- глазами из браузера.
+  ('soccer_uefa_europa_conference_league', 'UEFA Conference League', 'https://www.uefa.com/uefaconferenceleague/'),
   ('soccer_uefa_nations_league',        'UEFA Nations League',   'https://www.uefa.com/uefanationsleague/'),
   ('soccer_uefa_european_championship', 'UEFA EURO',             'https://www.uefa.com/uefaeuro/'),
   ('soccer_fifa_world_cup',             'FIFA World Cup',        'https://www.fifa.com/en/tournaments/mens/worldcup'),

@@ -81,6 +81,27 @@ const SPORT_KEYS = [
   "soccer_argentina_primera_division",
 
   // Continental club football.
+  //
+  // ⚠️ THE THREE UEFA CLUB COMPETITIONS WERE MISSING, AND THE REASON IS IN THE
+  // COMMENT ABOVE THIS LIST: every key here was copied from the provider's own
+  // /sports answer on 10 August 2026. On that date the league phases had not
+  // started, so the provider listed only the QUALIFICATION — and that is the
+  // only one that got written down. The owner found it the way it shows:
+  // "в календарь не добавились матчи ЛЧ".
+  //
+  // Nothing else was wrong. The Champions League and the Europa League were
+  // already carried end to end — nine locales, KNOWN_SPORT_KEYS, a broadcasts
+  // row — and the collector simply never asked for them. That is why the fix
+  // is one line each and not a feature.
+  //
+  // Re-read on 3 September 2026 with {"list": true}: the provider now carries
+  // soccer_uefa_champs_league, soccer_uefa_europa_league and
+  // soccer_uefa_europa_conference_league. A list snapped once goes stale every
+  // time a competition starts, so re-read it at the turn of a season rather
+  // than trusting this comment.
+  "soccer_uefa_champs_league",
+  "soccer_uefa_europa_league",
+  "soccer_uefa_europa_conference_league",
   "soccer_uefa_champs_league_qualification",
   "soccer_conmebol_copa_libertadores",
   "soccer_conmebol_copa_sudamericana",
@@ -213,13 +234,31 @@ Deno.serve(async (req) => {
     });
   }
 
-  const rows: Record<string, unknown>[] = [];
+  // ⚠️ ONE WRITE PER COMPETITION, NOT ONE AT THE END — AND THAT IS A FIX, NOT A
+  // STYLE CHOICE. This loop used to collect every competition into one array
+  // and write once after the last one. Adding the three UEFA competitions made
+  // the worker exceed its limit (WORKER_RESOURCE_LIMIT), and because the only
+  // write came after the loop, TWENTY-THREE competitions were lost rather than
+  // the one that overran. Flushing per competition makes an overrun cost the
+  // tail of the list instead of everything.
+  //
+  // ⚠️ NO clubCard() CALLS HERE ANY MORE. This loop used to await
+  // club_card_by_name over HTTP for every team of every event — about 1400
+  // sequential round trips in a single invocation, which is what pushed the
+  // worker over. upsert_fixtures now resolves the cards in SQL over DISTINCT
+  // names (see upsert_fixtures_resolves_cards_in_sql). Measured: 400 names in
+  // 236 ms — but only with the functional index on club_match_key(name_en);
+  // without it the same query takes 15 650 ms, so moving the work into SQL
+  // alone would have been WORSE. `clubCard` is kept below, unused by this
+  // path, because the scores path and any manual call still have it.
   const failures: { sport: string; reason: string }[] = [];
+  let total = 0;
+  let written = 0;
 
   for (const sport of SPORT_KEYS) {
+    const rows: Record<string, unknown>[] = [];
     try {
-      const events = await fetchEvents(sport);
-      for (const event of events) {
+      for (const event of await fetchEvents(sport)) {
         if (!event.id || !event.commence_time || !event.home_team || !event.away_team) continue;
         rows.push({
           id: event.id,
@@ -227,36 +266,37 @@ Deno.serve(async (req) => {
           commence_at: event.commence_time,
           home_team: event.home_team,
           away_team: event.away_team,
-          // Resolved in the database, where club_match_key already lives and
-          // already reconciles "Arsenal F.C." with "Arsenal". Doing it here
-          // would mean shipping every club name to this function and keeping
-          // a second copy of the rule.
-          home_card_id: await clubCard(event.home_team),
-          away_card_id: await clubCard(event.away_team),
         });
       }
     } catch (err) {
-      // One competition failing must not lose the other five. The answer says
+      // One competition failing must not lose the others. The answer says
       // which, so a persistent failure is visible rather than a quiet gap.
       console.error(`events failed for ${sport}: ${err}`);
       failures.push({ sport, reason: String(err).slice(0, 200) });
+      continue;
     }
+
+    if (rows.length === 0) continue;
+    total += rows.length;
+
+    const res = await rpc("upsert_fixtures", { p_rows: rows });
+    if (!res.ok) {
+      // Also per competition: a write that fails for one must not be reported
+      // as a total failure while the other twenty-two landed.
+      console.error(`upsert_fixtures failed for ${sport}: ${res.status}`);
+      failures.push({ sport, reason: `write_failed ${res.status}` });
+      continue;
+    }
+    written += rows.length;
   }
 
-  if (rows.length === 0) {
+  if (total === 0) {
     return json({ error: "no_events", failures }, failures.length > 0 ? 503 : 200);
   }
 
-  const written = await rpc("upsert_fixtures", { p_rows: rows });
-  if (!written.ok) {
-    console.error(`upsert_fixtures failed: ${written.status}`);
-    return json({ error: "write_failed" }, 503);
-  }
-
-  const matched = rows.filter((r) => r.home_card_id || r.away_card_id).length;
   return json({
-    fixtures: rows.length,
-    matched_to_cards: matched,
+    fixtures: total,
+    written,
     sports: SPORT_KEYS.length - failures.length,
     failures,
     credits_left: await creditsLeft(),
@@ -395,6 +435,10 @@ async function fetchEvents(sport: string): Promise<OddsApiEvent[]> {
   return Array.isArray(body) ? body as OddsApiEvent[] : [];
 }
 
+// Оставлена намеренно: этим путём больше не зовётся (резолв уехал в
+// upsert_fixtures), но остаётся единственным способом сопоставить клуб по
+// имени из этой функции, если понадобится разовый разбор.
+// deno-lint-ignore no-unused-vars
 async function clubCard(name: string): Promise<string | null> {
   try {
     const r = await rpc("club_card_by_name", { p_name: name });
