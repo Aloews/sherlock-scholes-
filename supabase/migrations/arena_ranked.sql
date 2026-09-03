@@ -127,6 +127,20 @@ returns table (
 )
 language sql
 stable
+-- ⚠️ SECURITY DEFINER ОБЯЗАТЕЛЕН, И ЕГО ЗДЕСЬ ЗАБЫЛИ. Ниже в этом же файле
+-- arena_result намеренно заперт: `revoke all ... from anon, authenticated`.
+-- Грант на ВЫЗОВ функции есть, а сама она шла от имени вызывающего — то есть
+-- лезла в запертую таблицу правами anon и падала:
+--   42501 permission denied for table arena_result
+-- Таблица лидеров арены не открывалась НИ РАЗУ, у всех. Соседняя
+-- record_arena_result в этом же файле definer'ом объявлена, читающую пропустили.
+--
+-- Открывать таблицу грантом (как советует подсказка Postgres) НЕЛЬЗЯ: рядом
+-- лежат players с личными данными. Правильный путь ровно этот — читать под
+-- definer'ом и отдавать только сводку. Так сделаны и все прочие таблицы
+-- лидеров проекта: prediction_leaderboard, fantasy_standings, league_table.
+security definer
+set search_path = public
 as $$
   select
     r.telegram_id,
