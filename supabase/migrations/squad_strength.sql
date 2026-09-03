@@ -160,7 +160,21 @@ language sql stable security definer set search_path = public as $$
      where q.left_at is null
   ),
   sz as (select p.club_key, count(*)::int as n from p group by p.club_key),
-  fx as (
+  -- ⚠️ MATERIALIZED ОБЯЗАТЕЛЕН, И ЭТО НЕ УКРАШЕНИЕ. Без него планировщик
+  -- встраивает fx в оба join'а ниже и зовёт resolve_club_key ПОСТРОЧНО, а не
+  -- 700 раз по числу команд в матчах. Замерено на бою: 4745 мс против 408 мс.
+  --
+  -- Тремя секундами позже приходит анонимный statement_timeout — то есть
+  -- рейтинг состава НЕ ОТДАВАЛСЯ В ПРОДЕ ВООБЩЕ, каждому пользователю, всегда
+  -- (57014 «canceling statement due to statement timeout»). Через MCP-админа
+  -- функция при этом возвращала 41 строку: у него лимит другой. Так поломка и
+  -- пряталась — в psql всё работает, в приложении не работает никогда.
+  --
+  -- Соседняя fixture_squad_strength той же формы живёт: она зовёт лёгкую
+  -- club_match_key. Дорогая здесь именно resolve_club_key (кириллица + алиасы).
+  -- ALTER FUNCTION ... COST 5000 пробован и НЕ ПОМОГ (4238 мс) — планировщик
+  -- выбирает встраивание не по стоимости; откачено обратно на 100.
+  fx as materialized (
     select f.id,
            resolve_club_key(f.home_team, null) as hk,
            resolve_club_key(f.away_team, null) as ak

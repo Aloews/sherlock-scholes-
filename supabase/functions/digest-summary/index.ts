@@ -19,6 +19,25 @@
 // блока — материал для пересказа, а не инструкции. Без этого достаточно ленты
 // с заголовком «ignore previous instructions», чтобы сводка поехала.
 //
+// ⚠️ СЧЁТ ПОДАЁТСЯ ОТДЕЛЬНЫМ БЛОКОМ <results> ИЗ НАШЕЙ ЖЕ ТАБЛИЦЫ, И ЗАПРЕТ
+// НА ВЫДУМКУ ОТ ЭТОГО НЕ ОСЛАБЕВАЕТ. До этого модель видела только заголовки,
+// и подсказка справедливо запрещала называть счёт: взяться ему было неоткуда.
+//
+// ПЕРВАЯ ВЕРСИЯ БЛОКА ЗАПРЕТ ОСЛАБИЛА, и это видно на боевом прогоне. Модель
+// правильно взяла два счёта из блока — и тут же дописала третий, «Челси обыграл
+// Реал Сосьедад 1:0», которого в блоке не было вовсе: она вывела его из
+// заголовка. Формулировка «исключение: счёт из <results> — наш» прочиталась как
+// «счёт теперь вообще можно».
+//
+// Поэтому запрет сформулирован ЗАКРЫТО: <results> — единственный источник
+// счёта, чего в нём нет, того модель не знает, и о таком матче пишется без
+// счёта. Перепроверено после правки: три счёта в тексте, все три из блока,
+// выдуманных нет.
+//
+// ⚠️ ПОМЕТКА [УЕФА] В БЛОКЕ — тоже по замеру. Без неё «Мито Холлихок 4:2
+// Касима Антлерс» открывал сводку наравне с Лигой чемпионов: свежесть модель
+// видит, а важность — нет.
+//
 // ⚠️ ДВА ПРОВАЙДЕРА, И ПОРЯДОК МЕЖДУ НИМИ — ЭТО ПОЧИНКА, А НЕ ГИБКОСТЬ.
 // Функция ходила ровно одним путём — прямым `ANTHROPIC_API_KEY`, общим с
 // assistant-bot, — и с 23.08.2026 отвечала игроку «Сводка не собралась» на
@@ -113,6 +132,52 @@ interface Topic {
   sources: string[];
 }
 
+/**
+ * Сыгранный матч со счётом — из `digest_results` (digest_results.sql).
+ *
+ * ⚠️ ЭТО НАШИ ДАННЫЕ, А НЕ ЧУЖОЙ ТЕКСТ, и в этом вся разница с Topic.
+ * Заголовки лент пишет кто угодно, поэтому они идут как материал для
+ * осторожного пересказа. Счёт мы взяли из своей же таблицы `fixtures`, и
+ * модель может назвать его точно — до этой правки счёта в сводке не бывало
+ * вовсе, потому что подсказка (справедливо) запрещала выдумывать то, чего в
+ * заголовках нет.
+ */
+interface MatchResult {
+  sport_key: string;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+  is_uefa: boolean;
+}
+
+/**
+ * Имя турнира для подсказки.
+ *
+ * Только те, что реально приходят наверху выдачи `digest_results`: она
+ * ставит турниры УЕФА первыми, остальное — по известности клубов. Незнакомый
+ * ключ отдаётся читаемым, а не пустым: та же договорённость, что в
+ * `leagues.ts` на фронте — уродливо и честно, а не пусто и аккуратно.
+ */
+const TOURNAMENTS: Record<string, string> = {
+  soccer_uefa_champs_league: "Лига чемпионов",
+  soccer_uefa_champs_league_qualification: "Лига чемпионов, квалификация",
+  soccer_uefa_europa_league: "Лига Европы",
+  soccer_uefa_europa_conference_league: "Лига конференций",
+  soccer_uefa_nations_league: "Лига наций",
+  soccer_epl: "Премьер-лига (Англия)",
+  soccer_spain_la_liga: "Ла Лига",
+  soccer_italy_serie_a: "Серия A",
+  soccer_germany_bundesliga: "Бундеслига",
+  soccer_france_ligue_one: "Лига 1",
+  soccer_russia_premier_league: "РПЛ",
+};
+
+function tournamentName(key: string): string {
+  return TOURNAMENTS[key] ??
+    key.replace(/^soccer_/, "").replace(/_/g, " ");
+}
+
 interface Provider {
   client: Anthropic;
   model: string;
@@ -178,10 +243,28 @@ function systemPrompt(langName: string): string {
     "— начни с того, что произошло, а не с того, что это важно;",
     "— заверши одной фразой о том, что из этого следует или чего ждать дальше.",
     "",
+    "Отдельно тебе дают блок <results> — СЫГРАННЫЕ МАТЧИ СО СЧЁТОМ. Это наши",
+    "собственные данные из расписания, а не чужой текст.",
+    "",
+    "⚠️ СЧЁТ МОЖНО НАЗЫВАТЬ ТОЛЬКО ТОТ, ЧТО СТОИТ В <results>, И ТОЛЬКО У ТОГО",
+    "матча, у которого он там стоит. Заголовок, упомянувший матч, счётом не",
+    "является: если матча нет в <results>, пиши о нём БЕЗ СЧЁТА — «обыграл»,",
+    "«прошёл дальше», «уступил». Приписать счёт по заголовку — это выдумка,",
+    "даже если она выглядит правдоподобно, и читатель проверить её не сможет.",
+    "",
+    "Матчи из <results>, помеченные [УЕФА] — Лига чемпионов, Лига Европы, Лига",
+    "конференций, — главное, что произошло: с них начинай. Остальные результаты",
+    "(внутренние туры) — обычная часть сводки: ставь их там, где они уместны, и",
+    "не выноси в первое предложение только потому, что они свежие. Блока может",
+    "не быть вовсе, и тогда пиши сводку по одним темам, без единого счёта.",
+    "",
     "Чего не делать:",
     "— не выдумывай подробностей, которых нет в заголовках: счёт, суммы, даты,",
     "  имена. Ты видишь только заголовки, читатель проверить не сможет и просто",
-    "  поверит — поэтому лучше сказать меньше и точно;",
+    "  поверит — поэтому лучше сказать меньше и точно. Единственный источник",
+    "  счёта — блок <results>, и он закрыт: чего в нём нет, того ты не знаешь;",
+    "— не приписывай матчу из <results> ничего сверх счёта: ни голов, ни имён,",
+    "  ни удалений. В блоке ровно две команды и два числа;",
     "— не перечисляй темы подряд: свяжи те, что связаны, остальные упомяни",
     "  коротко или опусти;",
     "— не обращайся к читателю и не предлагай ничего открыть.",
@@ -193,17 +276,39 @@ function systemPrompt(langName: string): string {
   ].join("\n");
 }
 
-function userPrompt(topics: Topic[]): string {
+function userPrompt(topics: Topic[], results: MatchResult[]): string {
   const lines = topics.map((t, i) => {
     const outlets = `${t.outlets} изданий, ${t.headlines} заголовков`;
     return `${i + 1}. [${outlets}] ${t.topic}`;
   });
+
+  // Блок результатов идёт ПЕРВЫМ: в нём факты, которые модели разрешено
+  // называть точно, и с них же просят начинать. Пустой блок не печатается
+  // вовсе — пустые теги читались бы как «матчей не было», а их могло просто
+  // не быть в окне.
+  const head = results.length === 0 ? [] : [
+    "<results>",
+    ...results.map((r) =>
+      // Пометка [УЕФА] — то, по чему модель отличает главное от рядового тура.
+      // Без неё «Мито Холлихок 4:2 Касима Антлерс» открывал сводку наравне с
+      // Лигой чемпионов: свежесть модель видит, а важность — нет.
+      `${r.is_uefa ? "[УЕФА] " : ""}${tournamentName(r.sport_key)}: ` +
+      `${r.home_team} ${r.home_score}:${r.away_score} ${r.away_team}`
+    ),
+    "</results>",
+    "",
+  ];
+
   return [
+    ...head,
     "<headlines>",
     ...lines,
     "</headlines>",
     "",
-    "Напиши сводку по этим темам.",
+    results.length === 0
+      ? "Напиши сводку по этим темам."
+      : "Напиши сводку. Счёт бери ТОЛЬКО из <results>; о матчах, которых там "
+        + "нет, пиши без счёта.",
   ].join("\n");
 }
 
@@ -248,9 +353,9 @@ interface RawAnswer {
  * тот же замер показал: отказ НЕПОСТОЯНЕН — en отказал и со второго раза
  * выдал текст. Это вероятностное срабатывание, и повтор бьёт ровно в него.
  */
-async function ask(provider: Provider, lang: string, topics: Topic[]): Promise<Answer> {
+async function ask(provider: Provider, lang: string, topics: Topic[], results: MatchResult[]): Promise<Answer> {
   const system = systemPrompt(LANGS[lang]);
-  const user = userPrompt(topics);
+  const user = userPrompt(topics, results);
 
   let raw: RawAnswer;
   if (provider.firstParty) {
@@ -325,10 +430,10 @@ async function ask(provider: Provider, lang: string, topics: Topic[]): Promise<A
  * серверный фолбэк), но и не вредит: сюда он попадает, только если отказала
  * ВСЯ цепочка вместе с запасной моделью.
  */
-async function askWithRetry(provider: Provider, lang: string, topics: Topic[]): Promise<Answer> {
-  const first = await ask(provider, lang, topics);
+async function askWithRetry(provider: Provider, lang: string, topics: Topic[], results: MatchResult[]): Promise<Answer> {
+  const first = await ask(provider, lang, topics, results);
   if (first !== "refused") return first;
-  return await ask(provider, lang, topics);
+  return await ask(provider, lang, topics, results);
 }
 
 Deno.serve(async (req) => {
@@ -365,13 +470,37 @@ Deno.serve(async (req) => {
   // «сегодня тихо» и «сводка не собралась».
   if (!topicsKey) return json({ status: "no_topics" });
 
+  // Счёт берём ДО проверки кэша, потому что он входит в ключ.
+  //
+  // ⚠️ БЕЗ ЭТОГО СВОДКА ЗАСТЫЛА БЫ СО СТАРЫМ СЧЁТОМ. Ключ кэша был отпечатком
+  // одних ТЕМ. Матч заканчивается и счёт появляется, а темы за те же сутки
+  // остаются прежними — и экран продолжал бы отдавать вчерашнюю сводку,
+  // написанную до матча. Отдельно неприятно тем, что выглядело бы это как
+  // работающая свежая сводка, а не как ошибка.
+  //
+  // Расход это поднимает ровно на столько, на сколько появляется НОВЫЙ ФАКТ:
+  // счёт падает пачками в игровые дни, а не на каждое нажатие. Правило файла
+  // «платим за новость, а не за нажатие» тем и соблюдено — счёт и есть новость.
+  const resultsRes = await db.rpc("digest_results", { p_hours: 48, p_limit: 6 });
+  if (resultsRes.error) {
+    // Не 500: сводка по одним темам — это ровно то, что было до этой правки,
+    // и она лучше экрана с ошибкой из-за необязательного блока.
+    console.error("digest_results failed:", resultsRes.error);
+  }
+  const results = (resultsRes.data ?? []) as MatchResult[];
+
+  const resultsKey = results
+    .map((r) => `${r.sport_key}:${r.home_team}${r.home_score}-${r.away_score}${r.away_team}`)
+    .join("|");
+  const cacheKey = `${topicsKey}#${resultsKey}`;
+
   const cached = await db
     .from("digest_summary")
     .select("summary, model, generated_at, topics_key")
     .eq("lang", lang)
     .maybeSingle();
 
-  if (cached.data && cached.data.topics_key === topicsKey) {
+  if (cached.data && cached.data.topics_key === cacheKey) {
     return json({
       status: "ok",
       cached: true,
@@ -393,7 +522,7 @@ Deno.serve(async (req) => {
   // Один заход плюс повтор на отказе — вся логика в askWithRetry выше.
   let answer: Answer;
   try {
-    answer = await askWithRetry(provider, lang, topics);
+    answer = await askWithRetry(provider, lang, topics, results);
   } catch (err) {
     // Сюда попадает и исчерпанный баланс (400 invalid_request_error), и
     // недоступный шлюз, и таймаут. Игроку все три — одно и то же «не
@@ -416,7 +545,7 @@ Deno.serve(async (req) => {
     .upsert(
       {
         lang,
-        topics_key: topicsKey,
+        topics_key: cacheKey,
         summary: text,
         model: servedBy,
         generated_at: new Date().toISOString(),

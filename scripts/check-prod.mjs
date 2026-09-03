@@ -165,6 +165,75 @@ async function checkDigest() {
   }
 }
 
+// --------------------------------------------------- RPC анонимным ключом ---
+// ⚠️ ЭТОЙ ПРОВЕРКИ ЗДЕСЬ НЕ БЫЛО, И ИМЕННО ПОЭТОМУ ДВЕ ПОЛОМКИ ЖИЛИ В ПРОДЕ.
+//
+// Обе не видны ниоткуда, кроме анонимного ключа — того самого, что зашит в
+// бандл и которым ходит браузер игрока (замер 03.09.2026):
+//
+//   fixture_team_rating   через админа 41 строка за 4.7 с, через anon — 57014
+//                         «canceling statement due to statement timeout».
+//                         У anon лимит 3 с. Рейтинг состава не отдавался
+//                         НИ РАЗУ, никому. Лечится MATERIALIZED в CTE.
+//   arena_leaderboard     42501 «permission denied for table arena_result».
+//                         Таблица заперта нарочно, грант на вызов есть, а сама
+//                         функция шла от вызывающего: забыли SECURITY DEFINER.
+//
+// В обоих случаях psql, MCP и любая проверка «под сервисным ключом» показывают
+// зелень. Поэтому ходить надо ИМЕННО anon-ключом и ИМЕННО до строк.
+const RPCS = [
+  ['fixture_team_rating',    { p_min_depth: 5 },              'рейтинг состава в прогнозах'],
+  ['fixture_squad_strength', { p_min_depth: 5 },              'известность состава'],
+  ['recent_transfers',       { p_days: 45, p_lang: 'ru' },    'лента трансферов'],
+  ['arena_leaderboard',      { p_days: 30, p_limit: 20 },     'таблица рекордов арены'],
+  ['digest_news',            {},                              'лента новостей'],
+];
+
+async function checkAnonRpc() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('RPC под anon', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  for (const [fn, args, label] of RPCS) {
+    try {
+      const t0 = Date.now();
+      const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+        method: 'POST', headers: auth, body: JSON.stringify(args),
+      });
+      const ms = Date.now() - t0;
+      const body = await r.json().catch(() => null);
+      // arena_leaderboard законно пуста, когда за окно не было матчей, поэтому
+      // здесь мерим НЕ количество строк, а «вернулся массив, а не код ошибки».
+      const ok = r.ok && Array.isArray(body);
+      const why = ok ? `${body.length} строк, ${ms} мс`
+                     : `${body?.code ?? 'HTTP ' + r.status} ${body?.message ?? ''}`.trim().slice(0, 60);
+      record(`RPC anon: ${label}`, ok, why, 'ключ anon, не сервисный; ошибка читается из тела');
+    } catch (e) {
+      record(`RPC anon: ${label}`, false, String(e).slice(0, 50), 'н/д');
+    }
+  }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Ровно тот же запрос к заведомо запертой таблице:
+  // он ОБЯЗАН получить отказ. Если и он проходит — значит anon-ключ на этом
+  // проекте видит всё подряд, и вся проверка выше ничего не стоит.
+  let denied = false;
+  try {
+    const r = await fetch(`${url}/rest/v1/arena_result?select=*&limit=1`, { headers: auth });
+    denied = r.status === 401 || r.status === 403 || r.status === 404;
+    if (!denied) {
+      const b = await r.json().catch(() => null);
+      denied = b?.code === '42501';
+    }
+  } catch { denied = false; }
+  record('RPC anon: контроль запертой таблицы', denied,
+         denied ? 'arena_result закрыта, как и должна' : 'arena_result ОТКРЫТА anon-ключу',
+         denied ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- бандл --------
 async function checkBundle() {
   try {
@@ -197,6 +266,7 @@ async function checkBundle() {
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
+await checkAnonRpc();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
