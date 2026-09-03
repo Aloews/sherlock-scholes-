@@ -66,19 +66,44 @@ def cards_from_sql(path):
     return out
 
 
+def cards_from_tsv(path):
+    """[(card_id, name, qid)] из таблицы card_id\tname_ru\tname_en\tqid.
+
+    Второй вход существует не для удобства: выписка сборщика живёт во временной
+    папке прогона и до следующей сессии не доживает, а карточки в базе — да.
+    Без сохранённого QID им пришлось бы искать статью резолвом по имени, а он
+    промахивается молча.
+    """
+    out = []
+    for line in io.open(path, encoding="utf-8"):
+        line = line.rstrip("\n")
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 4 and parts[3].startswith("Q"):
+            out.append((parts[0], parts[1], parts[3]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--from-sql", required=True,
+    ap.add_argument("--from-sql", default=None,
                     help="файл, выписанный clubs_squads_wikidata --sql-out "
                          "--create-cards: QID берётся из комментария в конце "
                          "строки вставки")
+    ap.add_argument("--from-tsv", default=None,
+                    help="таблица card_id\tname_ru\tname_en\tqid — тем, у кого "
+                         "выписки уже нет под рукой (см. docs/data/)")
     ap.add_argument("--sql-out", default=None,
                     help="куда выписать UPDATE'ы (без него — только показ)")
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
     args = ap.parse_args()
 
-    cards = cards_from_sql(args.from_sql)
+    if not (args.from_sql or args.from_tsv):
+        raise SystemExit("нужен --from-sql или --from-tsv")
+    cards = (cards_from_tsv(args.from_tsv) if args.from_tsv
+             else cards_from_sql(args.from_sql))
     if args.limit:
         cards = cards[:args.limit]
     if not cards:
