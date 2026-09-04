@@ -97,16 +97,6 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_wikidata_ids.py --from-db --limit 800
 
-      # Рыночная стоимость по этому идентификатору. ИСТОЧНИК — TRANSFERMARKT,
-      # и он назван и в COMMENT колонки, и на экране рядом с числом: владелец
-      # знает про ToS и принял это решение, а маскировать происхождение
-      # данных нельзя. robots.txt сайта открыт (`User-agent: * / Allow: /`),
-      # ходим своим UA с контактом. Оценка старше 30 дней переспрашивается,
-      # свежая — нет.
-      - name: Player market value (Transfermarkt)
-        if: always()
-        run: APPLY=1 python docs/cards_market_value_tm.py --limit 500
-
       # Русские имена клубов для career_stats (и латинские для legend_career):
       # summary-экран показывает названия на языке интерфейса. Резолвы
       # кешируются, поэтому после первой ночи шаг почти мгновенный.

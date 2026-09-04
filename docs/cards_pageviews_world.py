@@ -212,12 +212,23 @@ def main():
     if apply_ and need:
         ids = [{"card_id": c["id"], "qid": c["wikidata_qid"]}
                for c in need if c.get("wikidata_qid")]
-        saved = 0
+        saved, clashes = 0, 0
         for i in range(0, len(ids), RPC_BATCH):
             r = _rpc(url, key, "apply_card_wikidata_ids",
                      {"p_rows": ids[i:i + RPC_BATCH]})
-            saved += (r[0] if isinstance(r, list) else r)["written"]
+            r0 = r[0] if isinstance(r, list) else r
+            saved += r0["written"]
+            clashes += r0.get("conflicts") or 0
         print("QID сохранено в базу    : %d" % saved, flush=True)
+        if clashes:
+            # ⚠️ Это НЕ помеха сбору, а находка: один QID у двух карточек —
+            # дубль в колоде. Печатается поимённо, иначе число ни о чём.
+            print("⚠️ ОДИН QID У ДВУХ КАРТОЧЕК: %d — это дубли в колоде, "
+                  "проверить глазами:" % clashes, flush=True)
+            for row in _rpc(url, key, "card_qid_conflicts", {"p_rows": ids})[:20]:
+                print("    %-11s %-26s ← уже у %-26s (active=%s)"
+                      % (row["qid"], (row["card_name"] or "")[:25],
+                         (row["holder_name"] or "")[:25], row["holder_active"]))
 
     links = all_sitelinks([c["wikidata_qid"] for c in resolved], wikis)
     depth = [len(links.get(c["wikidata_qid"]) or {}) for c in resolved]

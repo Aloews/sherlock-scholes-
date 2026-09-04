@@ -67,8 +67,16 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
-TM_UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-         "Chrome/124.0 Safari/537.36")
+# ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
+# «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
+# запроса, а не вежливость, и она противоречит тому, ради чего источник
+# вообще называется в шапке. Проверено 04.09.2026: тот же профиль отвечает
+# **200** на UA с контактом, так что притворяться было и незачем.
+# robots.txt сайта на ту же дату: `User-agent: * / Allow: /`.
+# Тот же вывод уже записан в docs/MAP.md про ESPN: строка с контактом честнее
+# той, что блокировали, а не хитрее.
+TM_UA = ("SherlockScholesBot/1.0 "
+         "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
 TM_PAUSE = 1.5
 UNITS = {"bn": 1_000_000_000, "m": 1_000_000, "k": 1_000}
 
@@ -149,6 +157,20 @@ def sb_get(url, key, path, params):
     req = urllib.request.Request(
         full, headers={"apikey": key, "Authorization": "Bearer " + key})
     with urllib.request.urlopen(req, timeout=60) as fh:
+        return json.load(fh)
+
+
+MV_BATCH = 100        # обрыв теряет не больше сотни оценок
+
+
+def sb_rpc(url, key, name, body):
+    """Вызов серверной функции. Пачка — одна транзакция, повтор — no-op."""
+    req = urllib.request.Request(
+        url.rstrip("/") + "/rest/v1/rpc/" + name,
+        data=json.dumps(body).encode(),
+        headers={"apikey": key, "Authorization": "Bearer " + key,
+                 "Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=180) as fh:
         return json.load(fh)
 
 
@@ -300,13 +322,31 @@ def main():
         print("SQL выписан в %s" % args.sql_out)
 
     if apply and found:
-        for f in found:
-            body = {"market_value_eur": f["eur"], "wikidata_qid": f["qid"],
-                    "transfermarkt_id": f["tm_id"]}
-            if f["at"]:
-                body["market_value_at"] = f["at"]
-            sb_patch(url, write_key, "cards", {"id": "eq." + f["id"]}, body)
-        print("Записано: %d" % len(found))
+        # ⚠️ ПАЧКОЙ, А НЕ ПО СТРОКЕ. Здесь стоял PATCH на каждого игрока: это
+        # четыреста HTTP-запросов, каждый — своя транзакция, и обрыв посреди
+        # оставляет половину состава оценённой, а половину нет. Владелец
+        # просил прямо: пачка применяется одной транзакцией или идемпотентна
+        # целиком. apply_card_market_values — один оператор на пачку, и он
+        # отбрасывает оценку СТАРШЕ уже лежащей, иначе повтор со старым кешем
+        # откатил бы цену назад и выглядел бы как «источник переоценил».
+        rows = [{"card_id": f["id"], "value_eur": f["eur"], "valued_at": f["at"]}
+                for f in found]
+        written = 0
+        for i in range(0, len(rows), MV_BATCH):
+            res = sb_rpc(url, write_key, "apply_card_market_values",
+                         {"p_rows": rows[i:i + MV_BATCH]})
+            r0 = res[0] if isinstance(res, list) else res
+            written += r0["written"]
+            print("  стоимость: записано %d из %d" % (r0["written"], r0["seen"]),
+                  flush=True)
+        # QID и id на TM — отдельной пачкой той же формы: они не «стоимость»,
+        # и переписывать уже стоящее значение им нельзя (coalesce внутри RPC).
+        ids = [{"card_id": f["id"], "qid": f["qid"], "transfermarkt_id": f["tm_id"]}
+               for f in found]
+        for i in range(0, len(ids), MV_BATCH):
+            sb_rpc(url, write_key, "apply_card_wikidata_ids",
+                   {"p_rows": ids[i:i + MV_BATCH]})
+        print("Записано: %d" % written)
     elif found:
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с APPLY=1.")
 

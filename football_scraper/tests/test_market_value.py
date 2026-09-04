@@ -14,6 +14,7 @@
     python3 tests/test_market_value.py
 """
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -143,6 +144,57 @@ check("повтор даёт тот же ответ", again, got)
 wd2 = FakeWikidata(FakeCache(), {"Q%d" % i: entity(str(i)) for i in range(120)})
 wd2.external_ids_for_qids(["Q%d" % i for i in range(120)], "P2446", chunk=50)
 check("120 QID укладываются в 3 запроса", len(wd2.calls), 3)
+
+
+# --- чужая валюта ---------------------------------------------------------
+# Цена в фунтах, записанная в колонку евро, — тихая ошибка в пятнадцать
+# процентов, и выглядит она совершенно правдоподобно. Знак валюты стоит В
+# САМОЙ регулярке, поэтому фунтовая страница не разбирается вовсе; проверка
+# существует затем, чтобы это свойство не потерялось при следующей правке.
+POUNDS = (
+    '<a class="data-header__market-value-wrapper">'
+    '<span class="waehrung">£</span>25.00'
+    '<span class="waehrung">m</span></a>')
+check("страница в фунтах не даёт числа в колонку евро",
+      mv.parse_market_value(POUNDS), (None, None))
+
+# --- источник называется, а не притворяется -------------------------------
+# ⚠️ Здесь стоял поддельный браузерный UA («Mozilla/5.0 … Chrome/124.0»).
+# Это маскировка происхождения запроса, и она противоречит тому, ради чего
+# источник вообще назван в шапке. Проверено 04.09.2026: тот же профиль
+# отвечает 200 на UA с контактом — притворяться было незачем.
+check("UA называет проект и контакт, а не браузер",
+      ("SherlockScholes" in mv.TM_UA) and ("@" in mv.TM_UA)
+      and ("Mozilla" not in mv.TM_UA) and ("Chrome" not in mv.TM_UA), True)
+
+# --- ОТРИЦАТЕЛЬНЫЕ КОНТРОЛИ ------------------------------------------------
+# Проверка, которая не умеет краснеть, хуже отсутствующей: она врёт с
+# уверенностью. Ломаем проверяемое и убеждаемся, что разбор перестаёт сходиться.
+_units = dict(mv.UNITS)
+try:
+    mv.UNITS["k"] = 1
+    check("контроль: со сломанными единицами 900k перестаёт быть 900 000",
+          mv.parse_market_value(wrapper("900", "k"))[0] != 900000, True)
+finally:
+    mv.UNITS.clear()
+    mv.UNITS.update(_units)
+
+_updated = mv.UPDATED_RE
+try:
+    mv.UPDATED_RE = re.compile(r"НИКОГДА_НЕ_СОВПАДЁТ")
+    check("контроль: без чтения Last update дата пропадает",
+          mv.parse_market_value(wrapper("15.00", "m"))[1], None)
+finally:
+    mv.UPDATED_RE = _updated
+
+_meta = mv.META_RE
+try:
+    mv.META_RE = re.compile(r"НИКОГДА_НЕ_СОВПАДЁТ")
+    check("контроль: без запасного пути мета-описание перестаёт давать число",
+          mv.parse_market_value(
+              "Market value: \u20ac15.00m")[0], None)
+finally:
+    mv.META_RE = _meta
 
 
 if FAILURES:

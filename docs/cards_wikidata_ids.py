@@ -232,7 +232,7 @@ def main():
 
     url = os.environ["SUPABASE_URL"].rstrip("/")
     key = os.environ["SUPABASE_KEY"]
-    written = seen = 0
+    written = seen = clashes = 0
     for i in range(0, len(rows), RPC_BATCH):
         body = json.dumps({"p_rows": rows[i:i + RPC_BATCH]}).encode()
         req = urllib.request.Request(
@@ -244,9 +244,23 @@ def main():
         r0 = res[0] if isinstance(res, list) else res
         written += r0["written"]
         seen += r0["seen"]
+        clashes += r0.get("conflicts") or 0
         print("  записано %d из %d (пачка %d)" % (r0["written"], r0["seen"],
                                                   i // RPC_BATCH + 1), flush=True)
     print("ИТОГО записано: %d из %d прочитанных" % (written, seen))
+    if clashes:
+        # ⚠️ Находка, а не помеха: один QID у двух карточек — дубль в колоде.
+        print("⚠️ ОДИН QID У ДВУХ КАРТОЧЕК: %d — проверить глазами:" % clashes)
+        body = json.dumps({"p_rows": rows}).encode()
+        req = urllib.request.Request(
+            url + "/rest/v1/rpc/card_qid_conflicts", data=body,
+            headers={"apikey": key, "Authorization": "Bearer " + key,
+                     "Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=180) as fh:
+            for row in json.load(fh)[:20]:
+                print("    %-11s %-26s ← уже у %-26s (active=%s)"
+                      % (row["qid"], (row["card_name"] or "")[:25],
+                         (row["holder_name"] or "")[:25], row["holder_active"]))
 
 
 if __name__ == "__main__":
