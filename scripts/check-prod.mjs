@@ -314,11 +314,94 @@ async function checkBundle() {
   }
 }
 
+// ------------------------------------------------------- эмблемы клубов ---
+// ⚠️ ССЫЛКА НА ГЕРБ — ЭТО ЕЩЁ НЕ ГЕРБ, и здесь это уже стоило владельцу
+// скриншота. В справочнике у «Зенита» лежал верный герб с ESPN, а в карточке —
+// диаграмма астрономического зенита: два хранилища одного факта разошлись
+// молча, и запрос к справочнику отвечал 200 над сломанной колодой. Ровно тот
+// же силуэт ошибки, что у ТВ, где мастер-манифест отвечал 200, а вариант 404.
+//
+// Поэтому проверка идёт до БАЙТОВ картинки: код 200 над `text/html` в один
+// байт — это ровно то, чем ESPN отвечает на несуществующий id.
+const IMG_MAGIC = [
+  ['89504e47', 'PNG'], ['ffd8ff', 'JPEG'], ['47494638', 'GIF'], ['52494646', 'WEBP'],
+];
+
+async function realImage(url) {
+  let res;
+  try {
+    res = await get(url);
+  } catch (e) {
+    return { ok: false, why: String(e).slice(0, 40) };
+  }
+  if (!res.ok) return { ok: false, why: `HTTP ${res.status}` };
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const head = [...buf.slice(0, 4)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const kind = IMG_MAGIC.find(([m]) => head.startsWith(m))?.[1]
+    ?? (new TextDecoder().decode(buf.slice(0, 200)).includes('<svg') ? 'SVG' : null);
+  if (!kind) return { ok: false, why: `не картинка: ${head} (${buf.byteLength} б)` };
+  // Пустая заглушка в пару сотен байт гербом не является.
+  if (buf.byteLength < 2_000) return { ok: false, why: `${kind}, но всего ${buf.byteLength} б` };
+  return { ok: true, why: `${kind}, ${Math.round(buf.byteLength / 1024)} КБ` };
+}
+
+async function checkClubCrests() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Эмблемы клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  let rows = null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/club_directory`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ p_lang: 'ru', p_query: null, p_limit: 60 }),
+    });
+    rows = await r.json().catch(() => null);
+    if (!r.ok || !Array.isArray(rows)) {
+      record('Эмблемы клубов', false,
+             `${rows?.code ?? 'HTTP ' + r.status} ${rows?.message ?? ''}`.trim().slice(0, 60), 'н/д');
+      return;
+    }
+  } catch (e) {
+    record('Эмблемы клубов', false, String(e).slice(0, 50), 'н/д');
+    return;
+  }
+
+  const withCrest = rows.filter((c) => c.crest_url);
+  const espn = withCrest.filter((c) => c.crest_url.includes('espncdn')).length;
+  record('Эмблемы: справочник отдаёт гербы', withCrest.length > 0,
+         `${withCrest.length} из ${rows.length} клубов, с ESPN ${espn}`,
+         'пустой список уронил бы проверку');
+
+  // До байтов, а не до кода 200 — и у первых клубов экрана, а не у выбранных.
+  let bad = null;
+  for (const club of withCrest.slice(0, 6)) {
+    const img = await realImage(club.crest_url);
+    if (!img.ok) { bad = `${club.name}: ${img.why}`; break; }
+  }
+  record('Эмблемы: картинка выкачивается', !bad,
+         bad ?? `${Math.min(withCrest.length, 6)} гербов — настоящие картинки`,
+         'скачиваются байты, а не проверяется код ответа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Тот же `realImage` на заведомо несуществующий
+  // id ESPN ОБЯЗАН отказать: замер 04.09.2026 — 404, `text/html`, один байт.
+  // Если и это сойдёт за герб, проверка выше не значит ничего.
+  const control = await realImage('https://a.espncdn.com/i/teamlogos/soccer/500/999999999.png');
+  record('Эмблемы: контроль битой ссылки', !control.ok,
+         control.ok ? 'битая ссылка ПРИНЯТА за картинку' : `отвергнута: ${control.why}`,
+         control.ok ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
+await checkClubCrests();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
