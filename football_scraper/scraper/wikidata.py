@@ -49,6 +49,14 @@ class WikidataEnricher:
         self.cache = cache
         self.session = requests.Session()
         self._last = 0.0
+        # ⚠️ ПОТЕРИ СЧИТАЮТСЯ, А НЕ МОЛЧАТ. Пачка, на которую источник не
+        # ответил, — это НЕ «у этих сущностей нет свойства»: прогон, не
+        # собравший ничего, обязан отчитаться потерей, иначе он отчитается
+        # нормально. См. external_ids_for_qids.
+        self.extid_lost = []
+        # Лимит источника считается МИНУТАМИ, а не секундами: откат короче
+        # заявленного лимита — это отсутствие отката (см. docs/MAP.md).
+        self.extid_retry_pause = 35.0
 
     def _wait(self):
         now = time.monotonic()
@@ -352,12 +360,45 @@ class WikidataEnricher:
 
         for i in range(0, len(todo), max(int(chunk), 1)):
             batch = todo[i:i + max(int(chunk), 1)]
-            entities = (self._api({
-                "action": "wbgetentities",
-                "ids": "|".join(batch),
-                "props": "claims",
-            }) or {}).get("entities", {}) or {}
+
+            # ⚠️ «ИСТОЧНИК НЕ ОТВЕТИЛ» И «У ИГРОКА НЕТ ID» — РАЗНЫЕ ОТВЕТЫ, И
+            # РАНЬШЕ ОНИ БЫЛИ ОДНИМ. _api() при 429 отступает на 2, 4 и 8
+            # секунд и после третьей попытки МОЛЧА возвращает {}. Пустой
+            # словарь читался тут как «в этих сущностях нет P2446», и для
+            # каждого QID пачки писался отрицательный кэш {"id": None} — а
+            # кэш скрапера БЕЗ TTL и переезжает между прогонами. Один
+            # неудачный запрос глушил игрока навсегда.
+            #
+            # Замер 04.09.2026: при параллельной нагрузке на wikidata.org шаг
+            # отчитался «P2446: id есть у 0 из 7 QID» — и это выглядело как
+            # «ни у кого нет», хотя тот же QID через минуту отдал 574671.
+            #
+            # Поэтому: пустой ответ на НЕПУСТУЮ пачку — потеря. Её ждут
+            # дольше (лимит источника считается минутами, а не секундами),
+            # а если не дождались — не кэшируют вовсе и считают в LOST.
+            entities = {}
+            for attempt in range(3):
+                entities = (self._api({
+                    "action": "wbgetentities",
+                    "ids": "|".join(batch),
+                    "props": "claims",
+                }) or {}).get("entities", {}) or {}
+                if entities:
+                    break
+                if attempt < 2:
+                    # Атрибут, а не литерал: тест обязан уметь прогнать эту
+                    # ветку, не ожидая двух минут, — иначе её никто не
+                    # проверит и «потеря» останется непроверенной.
+                    time.sleep(self.extid_retry_pause * (attempt + 1))
+            if not entities:
+                self.extid_lost.append(list(batch))
+                continue
+
             for qid in batch:
+                if qid not in entities:
+                    # Сущность не пришла — тоже не ответ, а пропуск.
+                    self.extid_lost.append([qid])
+                    continue
                 value = None
                 for claim in ((entities.get(qid, {}) or {})
                               .get("claims", {}) or {}).get(prop, []):

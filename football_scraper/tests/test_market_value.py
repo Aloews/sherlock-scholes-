@@ -107,6 +107,8 @@ class FakeWikidata(WikidataEnricher):
         self.cache = cache
         self.entities = entities
         self.calls = []
+        self.extid_lost = []
+        self.extid_retry_pause = 0.0     # тест не ждёт двух минут
 
     def _api(self, params):
         self.calls.append(params)
@@ -195,6 +197,43 @@ try:
               "Market value: \u20ac15.00m")[0], None)
 finally:
     mv.META_RE = _meta
+
+
+# --- «источник не ответил» ≠ «у игрока нет id» -----------------------------
+# ⚠️ Ровно та поломка, из-за которой шаг печатал «P2446: id есть у 0 из 7».
+# _api() при 429 отступает на 2, 4 и 8 секунд и после третьей попытки МОЛЧА
+# отдаёт {}. Пустой ответ читался как «в этих сущностях нет P2446», и на
+# каждый QID писался отрицательный кэш {"id": None} — а кэш скрапера БЕЗ TTL
+# и переезжает между прогонами: один неудачный запрос глушил игрока навсегда.
+class SilentWikidata(FakeWikidata):
+    """Источник, который отвечает пустотой, — как _api после трёх отказов."""
+
+    def _api(self, params):
+        self.calls.append(params)
+        return {}
+
+
+silent_cache = FakeCache()
+silent = SilentWikidata(silent_cache, {"Q1": entity("28003")})
+res = silent.external_ids_for_qids(["Q1", "Q2"], "P2446")
+
+check("пустой ответ не выдаёт себя за «id нет»", res, {})
+check("пустая пачка засчитана в потери",
+      sum(len(b) for b in silent.extid_lost), 2)
+check("отрицательный кэш на потерянной пачке НЕ пишется",
+      silent_cache.get("wikidata_extid_p2446", "Q1"), None)
+check("пустой ответ переспрашивается (3 попытки), а не принимается с первой",
+      len(silent.calls), 3)
+
+# И наоборот: сущность ПРИШЛА и P2446 в ней нет — вот это «id нет», и оно
+# кэшируется, иначе такие игроки переспрашивались бы каждую ночь.
+empty_cache = FakeCache()
+present = FakeWikidata(empty_cache, {"Q9": {"claims": {}}})
+check("сущность без P2446 — это «id нет»",
+      present.external_ids_for_qids(["Q9"], "P2446"), {})
+check("и она кэшируется отрицательно",
+      empty_cache.get("wikidata_extid_p2446", "Q9"), {"id": None})
+check("и потерей не считается", present.extid_lost, [])
 
 
 if FAILURES:

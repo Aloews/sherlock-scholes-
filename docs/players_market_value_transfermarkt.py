@@ -174,15 +174,41 @@ def sb_rpc(url, key, name, body):
         return json.load(fh)
 
 
-def sb_patch(url, key, path, params, body):
-    full = url.rstrip("/") + "/rest/v1/" + path + "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(
-        full, data=json.dumps(body).encode(),
-        headers={"apikey": key, "Authorization": "Bearer " + key,
-                 "Content-Type": "application/json", "Prefer": "return=minimal"},
-        method="PATCH")
-    with urllib.request.urlopen(req, timeout=60) as fh:
-        fh.read()
+def write_batch(url, key, rows):
+    """Пачка карточек — ОДНА транзакция, и записывается она ПО ХОДУ цикла.
+
+    ⚠️ Два требования, и оба обязательны. Писать надо по ходу: прогон по всем
+    составам идёт часами, и «собрать в массив, записать в конце» уже стоило
+    этому проекту всех 23 турниров разом (см. docs/MAP.md, football-fixtures),
+    а обрыв сессии 04.09.2026 убил три прогона, не записавших ни строки. И
+    писать надо пачкой: PATCH на каждого игрока — это четыреста транзакций,
+    а владелец просил прямо — пачка применяется одной транзакцией или
+    идемпотентна целиком.
+
+    ⚠️ ДВЕ РАЗНЫЕ ФУНКЦИИ, А НЕ ОДНА. Стоимость ПЕРЕЗАПИСЫВАЕТСЯ (она
+    меняется, и защита у неё — дата оценки), а QID и id на TM пишутся только
+    в пустое: `coalesce` внутри apply_card_wikidata_ids. Прямой PATCH обоими
+    сразу ещё и падал бы 409 на дублях колоды — уникальный индекс по
+    wikidata_qid ловит два QID у одного человека, и это НЕ повод ронять
+    прогон (см. conflicts в той же функции).
+
+    Возвращает, сколько строк со стоимостью реально изменилось.
+    """
+    if not rows:
+        return 0
+    res = sb_rpc(url, key, "apply_card_market_values",
+                 {"p_rows": [{"card_id": r["id"], "value_eur": r["eur"],
+                              "valued_at": r["at"]} for r in rows]})
+    r0 = res[0] if isinstance(res, list) else res
+    ids = sb_rpc(url, key, "apply_card_wikidata_ids",
+                 {"p_rows": [{"card_id": r["id"], "qid": r["qid"],
+                              "transfermarkt_id": r["tm_id"]} for r in rows]})
+    i0 = ids[0] if isinstance(ids, list) else ids
+    if (i0.get("conflicts") or 0):
+        # Находка, а не помеха: один QID у двух карточек — дубль в колоде.
+        print("    ⚠️ один QID у двух карточек: %d — см. card_qid_conflicts()"
+              % i0["conflicts"], flush=True)
+    return r0["written"]
 
 
 def squad_players(url, key):
@@ -276,9 +302,17 @@ def main():
     tm_of_qid = wikidata.external_ids_for_qids(list(qid_of.values()), "P2446")
     print("Шаг 2 — P2446: id есть у %d из %d QID" % (len(tm_of_qid), len(qid_of)),
           flush=True)
+    lost = sum(len(b) for b in getattr(wikidata, "extid_lost", []))
+    if lost:
+        # ⚠️ «Ни у кого нет id» и «источник не ответил» выглядят одинаково —
+        # нулём. Замер 04.09.2026: при параллельной нагрузке шаг напечатал
+        # «id есть у 0 из 7», хотя тот же QID через минуту отдал 574671.
+        print("⚠️ ОТВЕТОВ ПОТЕРЯНО: %d QID — их пустота здесь НИЧЕГО не "
+              "значит, повторить прогон" % lost, flush=True)
 
     # --- шаг 3: id → стоимость ------------------------------------------
     found, no_value, no_id = [], 0, 0
+    pending, written = [], 0
     for i, card in enumerate(players, 1):
         qid = qid_of.get(card["id"])
         tm_id = tm_of_qid.get(qid) if qid else None
@@ -287,8 +321,17 @@ def main():
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
         if euros:
-            found.append({"id": card["id"], "name": card.get("name"),
-                          "qid": qid, "tm_id": tm_id, "eur": euros, "at": at})
+            row = {"id": card["id"], "name": card.get("name"),
+                   "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
+            found.append(row)
+            pending.append(row)
+            # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
+            # пачка, а не вся ночь; и каждая пачка — одна транзакция.
+            if apply and len(pending) >= MV_BATCH:
+                written += write_batch(url, write_key, pending)
+                print("    записано %d (всего %d)" % (len(pending), written),
+                      flush=True)
+                pending = []
         else:
             no_value += 1
         time.sleep(TM_PAUSE)
@@ -321,32 +364,11 @@ def main():
         io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
         print("SQL выписан в %s" % args.sql_out)
 
-    if apply and found:
-        # ⚠️ ПАЧКОЙ, А НЕ ПО СТРОКЕ. Здесь стоял PATCH на каждого игрока: это
-        # четыреста HTTP-запросов, каждый — своя транзакция, и обрыв посреди
-        # оставляет половину состава оценённой, а половину нет. Владелец
-        # просил прямо: пачка применяется одной транзакцией или идемпотентна
-        # целиком. apply_card_market_values — один оператор на пачку, и он
-        # отбрасывает оценку СТАРШЕ уже лежащей, иначе повтор со старым кешем
-        # откатил бы цену назад и выглядел бы как «источник переоценил».
-        rows = [{"card_id": f["id"], "value_eur": f["eur"], "valued_at": f["at"]}
-                for f in found]
-        written = 0
-        for i in range(0, len(rows), MV_BATCH):
-            res = sb_rpc(url, write_key, "apply_card_market_values",
-                         {"p_rows": rows[i:i + MV_BATCH]})
-            r0 = res[0] if isinstance(res, list) else res
-            written += r0["written"]
-            print("  стоимость: записано %d из %d" % (r0["written"], r0["seen"]),
-                  flush=True)
-        # QID и id на TM — отдельной пачкой той же формы: они не «стоимость»,
-        # и переписывать уже стоящее значение им нельзя (coalesce внутри RPC).
-        ids = [{"card_id": f["id"], "qid": f["qid"], "transfermarkt_id": f["tm_id"]}
-               for f in found]
-        for i in range(0, len(ids), MV_BATCH):
-            sb_rpc(url, write_key, "apply_card_wikidata_ids",
-                   {"p_rows": ids[i:i + MV_BATCH]})
-        print("Записано: %d" % written)
+    if apply:
+        written += write_batch(url, write_key, pending)
+        pending = []
+        # «Прогон прошёл» без числа ничего не значит.
+        print("Записано по ходу прогона: %d из %d снятых" % (written, len(found)))
     elif found:
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с APPLY=1.")
 
