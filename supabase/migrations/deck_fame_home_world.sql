@@ -58,6 +58,32 @@
 -- там, где языков больше. Максимум выбирает тот раздел, который эту страну
 -- и представляет, — выбирает не список, а сами просмотры.
 --
+-- ⚠️ И ПЕРЦЕНТИЛЬ СЧИТАЕТСЯ ВНУТРИ ЯЗЫКА, А НЕ ПО ВСЕЙ КОЛОДЕ. Первая версия
+-- ранжировала домашний счёт против ВСЕХ игроков — и мерила не известность
+-- дома, а РАЗМЕР ВИКИПЕДИИ СТРАНЫ. Замер средних домашних просмотров:
+--
+--     en 400 681 · ja 215 264 · fr 145 947 · es 120 874 · pt 87 993 · ko 9 022
+--
+-- Англичанин соревновался с корейцем сорокакратной разницей в аудитории, и
+-- выдача читалась как чепуха: «герои дома» — сплошь англоязычные страны, а
+-- Тьяго Алькантара с испанской статьёй получал «дома 7».
+-- Теперь окно — (семья, домашний язык), и это сразу дало осмысленное:
+-- Головин дома 100 при 71 в мире, Гойло 92 против 24, Лисакович 97 против 30
+-- — игроки РПЛ, которых знают в России и не знают нигде. Ровно то сравнение,
+-- ради которого ось и заводилась.
+--
+-- ⚠️ КОГОРТА МЕНЬШЕ ДЕСЯТИ — ЭТО NULL, А НЕ ЧИСЛО. На двух соотечественниках
+-- перцентиль выдаёт 0 и 100, и оба выглядят осмысленно. Языки наполняются
+-- ночным шагом, и до наполнения честнее молчать.
+--
+-- ⚠️ ДЛЯ ru ДОМАШНИЙ СЧЁТ БЕРЁТСЯ ИЗ cards.pageviews, И ЭТО НЕ МЕЛОЧЬ.
+-- `pageviews_i18n->>'ru'` у русских карточек снят с ЧУЖОЙ статьи — замер
+-- 04.09.2026: у Головина `cards.pageviews` = 273 016, а в jsonb 382, на три
+-- порядка меньше; у Довбни 39 032 против 376, у Васютина 15 649 против 34.
+-- Хуже того, у 264 из 329 русских ключа `ru` в jsonb НЕТ ВОВСЕ, хотя ру-счёт
+-- у них есть: ранжировать их было не по чему, и в домашнюю ось попадали 47.
+-- После правки — 307 из 329, а всего ранжированных дома 1744 из 2918.
+--
 -- DROP перед CREATE обязателен: у функции меняется список колонок
 -- RETURNS TABLE, а `create or replace` этого не умеет (42P13).
 -- ===========================================================================
@@ -79,6 +105,10 @@ create function public.refresh_card_fame()
 returns table (family text, n_cards bigint, no_data bigint,
                no_home bigint, no_world bigint)
 language plpgsql as $$
+DECLARE
+  -- Меньше десяти соотечественников — перцентиль не считается: на двоих он
+  -- выдаёт 0 и 100, и оба числа выглядят осмысленно.
+  min_cohort constant integer := 10;
 BEGIN
   WITH metric AS (
     SELECT
@@ -88,8 +118,7 @@ BEGIN
       GREATEST(COALESCE(c.pageviews, 0), COALESCE(pv.mx, 0))     AS v_max,
       -- «Общая»: сумма по всем разделам, какие собраны.
       GREATEST(COALESCE(c.pageviews, 0), COALESCE(pv.total, 0))  AS v_world,
-      -- «Дома»: максимум среди языков своей страны. Ноль значит «не знаем»,
-      -- а не «неизвестен»: раздел мог быть просто не собран.
+      hm.lang                                                    AS home_lang,
       COALESCE(hm.mx, 0)                                         AS v_home
     FROM cards c
     LEFT JOIN LATERAL (
@@ -97,26 +126,47 @@ BEGIN
         FROM jsonb_each_text(COALESCE(c.pageviews_i18n, '{}'::jsonb)) AS e(k, v)
     ) pv ON true
     LEFT JOIN LATERAL (
-      SELECT max(e.v::bigint) AS mx
-        FROM jsonb_each_text(COALESCE(c.pageviews_i18n, '{}'::jsonb)) AS e(k, v)
-        JOIN country_wiki_lang w
-          ON w.lang = e.k AND w.country_code = c.country
+      -- ⚠️ ДВА ИСТОЧНИКА ДОМАШНЕГО СЧЁТА, И ВТОРОЙ ОБЯЗАТЕЛЕН — см. шапку:
+      -- у русских карточек jsonb-ключ 'ru' либо снят с чужой статьи, либо
+      -- отсутствует, а cards.pageviews — это и есть ру-вики.
+      SELECT s.lang, max(s.views) AS mx
+        FROM (
+          SELECT w.lang, e.v::bigint AS views
+            FROM jsonb_each_text(COALESCE(c.pageviews_i18n, '{}'::jsonb)) AS e(k, v)
+            JOIN country_wiki_lang w
+              ON w.lang = e.k AND w.country_code = c.country
+          UNION ALL
+          SELECT 'ru', COALESCE(c.pageviews, 0)
+           WHERE COALESCE(c.pageviews, 0) > 0
+             AND EXISTS (SELECT 1 FROM country_wiki_lang w
+                          WHERE w.country_code = c.country AND w.lang = 'ru')
+        ) s
+       GROUP BY s.lang
+       ORDER BY 2 DESC
+       LIMIT 1
     ) hm ON true
     WHERE c.active
+  ), cohort AS (
+    SELECT home_lang, count(*) AS n
+      FROM metric WHERE v_home > 0 GROUP BY home_lang
   ), ranked AS (
     -- ⚠️ PARTITION BY … , (v > 0) — вот чем чинится окно. Карточки без данных
     -- уезжают в СВОЮ группу и перцентиль остальным больше не двигают.
-    SELECT id,
-           CASE WHEN v_max = 0 THEN NULL ELSE
+    SELECT m.id,
+           CASE WHEN m.v_max = 0 THEN NULL ELSE
              round(100 * percent_rank() OVER (
-               PARTITION BY fam, (v_max > 0) ORDER BY v_max))::smallint END AS fame,
-           CASE WHEN v_world = 0 THEN NULL ELSE
+               PARTITION BY m.fam, (m.v_max > 0) ORDER BY m.v_max))::smallint END AS fame,
+           CASE WHEN m.v_world = 0 THEN NULL ELSE
              round(100 * percent_rank() OVER (
-               PARTITION BY fam, (v_world > 0) ORDER BY v_world))::smallint END AS fame_world,
-           CASE WHEN v_home = 0 THEN NULL ELSE
+               PARTITION BY m.fam, (m.v_world > 0) ORDER BY m.v_world))::smallint END AS fame_world,
+           -- Окно домашней оси — (семья, ЯЗЫК): иначе меряется размер
+           -- Википедии страны, а не известность игрока дома.
+           CASE WHEN m.v_home = 0 OR co.n IS NULL OR co.n < min_cohort THEN NULL ELSE
              round(100 * percent_rank() OVER (
-               PARTITION BY fam, (v_home > 0) ORDER BY v_home))::smallint END AS fame_home
-      FROM metric
+               PARTITION BY m.fam, m.home_lang, (m.v_home > 0)
+               ORDER BY m.v_home))::smallint END AS fame_home
+      FROM metric m
+      LEFT JOIN cohort co ON co.home_lang = m.home_lang
   )
   UPDATE cards c
      SET fame       = r.fame,
@@ -137,8 +187,6 @@ BEGIN
   UPDATE cards c SET tier = fame_tier(c.fame)
    WHERE c.tier IS DISTINCT FROM fame_tier(c.fame);
 
-  -- 'star' убран: это был второй список славы. 'legend' (пресет Pro) — это
-  -- ровно верх оси, поэтому замок и подпись не расходятся.
   UPDATE cards
      SET tags = (SELECT array_agg(t) FROM unnest(tags) t WHERE t <> 'star')
    WHERE tags && ARRAY['star'];

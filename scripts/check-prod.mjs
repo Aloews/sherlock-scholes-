@@ -429,23 +429,36 @@ async function checkFameAxes() {
   const auth = { apikey: key, Authorization: `Bearer ${key}` };
   const inList = `(${HOME_ONLY_COUNTRIES.join(',')})`;
 
+  // ⚠️ СПРАШИВАЕТСЯ СБОР, А НЕ РАНГ. Это две разные вещи, и путать их нельзя:
+  // ранг «дома» считается ВНУТРИ языка и требует когорты (меньше десяти
+  // соотечественников — перцентиль не считается, на двоих он выдаёт 0 и 100).
+  // А вот собраны ли просмотры на языке страны — ровно то, что закрывает
+  // ночной шаг, и ровно то, чего не было: до 04.09.2026 в pageviews_i18n не
+  // существовало ни одного ключа `tr`, `pl`, `sv`, `da`, `uk`, `cs`.
   const t0 = Date.now();
-  const measured = await cardsWhere(url, auth,
-    `select=id,name,country,fame,fame_home,fame_world&category=eq.player`
-    + `&active=is.true&country=in.${inList}&fame_home=not.is.null&limit=5`);
-  const ms = Date.now() - t0;
-
-  if (!measured.ok || measured.rows === null) {
-    record('Известность дома и в мире', false,
-           `anon: HTTP ${measured.status}`, 'ключ anon, не сервисный');
-    return;
+  const langsByCountry = {
+    TR: 'tr', PL: 'pl', RS: 'sr', UA: 'uk', GR: 'el',
+    SE: 'sv', NO: 'no', DK: 'da', NL: 'nl', CZ: 'cs',
+  };
+  const collected = [];
+  for (const [cc, lang] of Object.entries(langsByCountry)) {
+    const r = await cardsWhere(url, auth,
+      `select=name,country&category=eq.player&active=is.true`
+      + `&country=eq.${cc}&pageviews_i18n=cs.{"${lang}":null}&limit=1`);
+    // PostgREST не умеет «ключ существует» напрямую; спрашиваем через ->>
+    const r2 = r.rows === null || r.rows.length === 0
+      ? await cardsWhere(url, auth,
+          `select=name,country&category=eq.player&active=is.true`
+          + `&country=eq.${cc}&pageviews_i18n->>${lang}=not.is.null&limit=1`)
+      : r;
+    if (r2.rows && r2.rows.length) collected.push(`${cc}/${lang}`);
   }
-  record('Известность дома: страны вне девяти локалей', measured.rows.length > 0,
-         measured.rows.length
-           ? `${measured.rows.length} игрока, напр. ${measured.rows[0].name} (${measured.rows[0].country}) `
-             + `дома ${measured.rows[0].fame_home}, в мире ${measured.rows[0].fame_world}, ${ms} мс`
-           : 'НИ ОДНОГО — сбор не дошёл до языков этих стран, фича мертва',
-         'колонки есть всегда; здесь спрашиваются ЗНАЧЕНИЯ');
+  const ms = Date.now() - t0;
+  record('Известность дома: собраны языки вне девяти локалей', collected.length > 0,
+         collected.length
+           ? `${collected.length} из 10 стран уже с домашним языком: ${collected.join(' ')}, ${ms} мс`
+           : 'НИ ОДНОЙ — сбор не дошёл до этих языков, и мерить дома нечем',
+         'спрашивается СБОР, а не ранг: ранг требует когорты в 10 соотечественников');
 
   // Две оси, которые всегда совпадают, — это одна ось под двумя именами.
   const apart = await cardsWhere(url, auth,
