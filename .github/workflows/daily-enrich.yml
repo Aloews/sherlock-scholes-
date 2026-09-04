@@ -180,6 +180,26 @@ jobs:
         if: always()
         run: APPLY=1 python docs/players_market_value_transfermarkt.py --limit 400
 
+      # ПОЛНЫЕ составы клубов со стоимостью — одной страницей на клуб.
+      # Составы из Викиданных неполны (1362 строки на 294 клуба, полная
+      # заявка у 42), а страница клуба на Transfermarkt отдаёт весь состав с
+      # ценами сразу.
+      #
+      # ⚠️ Мост «клуб → id на TM» строится ГОЛОСОВАНИЕМ игроков, а не по
+      # одному: состав в club_squad местами устарел, и у «Байерна» игрок,
+      # ушедший в «Аугсбург», привёл мост на чужой клуб — 28 игроков, 27 с
+      # ценой, 177.8 млн €, числа правдоподобные. Клуб принимается, только
+      # если минимум двое игроков указали на один и тот же verein.
+      #
+      # ⚠️ Пустой разбор НЕ стирает состав: ростер заменяется целиком, и
+      # сломавшийся на смене вёрстки разбор иначе очистил бы все клубы.
+      #
+      # Мост кэшируется в football_club.transfermarkt_id, поэтому со второй
+      # ночи шаг стоит один запрос на клуб.
+      - name: Full club rosters with values (Transfermarkt)
+        if: always()
+        run: APPLY=1 python docs/clubs_roster_transfermarkt.py --limit 200
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
