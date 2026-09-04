@@ -163,6 +163,17 @@ def sb_patch(url, key, path, params, body):
         fh.read()
 
 
+def write_one(url, key, row):
+    """Одна карточка — одна запись. QID и id на TM проставляются через
+    `coalesce` на стороне запроса не выйдет, поэтому пишем их прямо: они
+    получены здесь же и не могут разойтись со стоимостью."""
+    body = {"market_value_eur": row["eur"], "wikidata_qid": row["qid"],
+            "transfermarkt_id": row["tm_id"]}
+    if row["at"]:
+        body["market_value_at"] = row["at"]
+    sb_patch(url, key, "cards", {"id": "eq." + row["id"]}, body)
+
+
 def squad_players(url, key):
     """Карточки игроков, стоящие сейчас хоть в одном составе.
 
@@ -265,8 +276,16 @@ def main():
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
         if euros:
-            found.append({"id": card["id"], "name": card.get("name"),
-                          "qid": qid, "tm_id": tm_id, "eur": euros, "at": at})
+            row = {"id": card["id"], "name": card.get("name"),
+                   "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
+            found.append(row)
+            # ⚠️ ПИШЕМ СРАЗУ, А НЕ ПАЧКОЙ ПОСЛЕ ЦИКЛА. Прогон по всем составам
+            # идёт часами, и «собрать в массив, записать в конце» уже стоило
+            # этому проекту всех 23 турниров разом, когда воркер упёрся в
+            # лимит (см. docs/MAP.md, football-fixtures). Оборвётся здесь —
+            # потеряется один игрок, а не вся ночь.
+            if apply:
+                write_one(url, write_key, row)
         else:
             no_value += 1
         time.sleep(TM_PAUSE)
@@ -299,14 +318,10 @@ def main():
         io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
         print("SQL выписан в %s" % args.sql_out)
 
-    if apply and found:
-        for f in found:
-            body = {"market_value_eur": f["eur"], "wikidata_qid": f["qid"],
-                    "transfermarkt_id": f["tm_id"]}
-            if f["at"]:
-                body["market_value_at"] = f["at"]
-            sb_patch(url, write_key, "cards", {"id": "eq." + f["id"]}, body)
-        print("Записано: %d" % len(found))
+    if apply:
+        # Записано уже по ходу цикла — здесь только итог, чтобы «прогон
+        # прошёл» не читалось без числа.
+        print("Записано по ходу прогона: %d" % len(found))
     elif found:
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с APPLY=1.")
 
