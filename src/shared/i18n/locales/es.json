@@ -904,7 +904,8 @@
     "place": "{{n}}.º de {{total}}",
     "league_isolated": "Esta liga juega poco con otras — nivel comparable al {{pct}}%",
     "market_value": "Valor de la plantilla",
-    "market_value_of": "{{priced}} de {{squad}} tasados"
+    "market_value_of": "{{priced}} de {{squad}} tasados",
+    "roster_source": "Plantilla y valores — {{source}}"
   },
   "clubs": {
     "title": "Clubes",

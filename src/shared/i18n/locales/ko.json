@@ -875,7 +875,8 @@
     "place": "{{total}}팀 중 {{n}}위",
     "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%",
     "market_value": "스쿼드 가치",
-    "market_value_of": "{{squad}}명 중 {{priced}}명 평가"
+    "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
+    "roster_source": "스쿼드와 시장 가치 — {{source}}"
   },
   "clubs": {
     "title": "클럽",

@@ -966,7 +966,8 @@
     "place": "{{n}}-е из {{total}}",
     "league_isolated": "Лига мало играет с другими — уровень сравним с чужими лигами на {{pct}}%",
     "market_value": "Стоимость состава",
-    "market_value_of": "по {{priced}} из {{squad}}"
+    "market_value_of": "по {{priced}} из {{squad}}",
+    "roster_source": "Состав и стоимости — {{source}}"
   },
   "clubs": {
     "title": "Команды",

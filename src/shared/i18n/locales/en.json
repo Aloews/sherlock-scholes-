@@ -904,7 +904,8 @@
     "place": "{{n}} of {{total}}",
     "league_isolated": "This league rarely plays others — level comparable across leagues at {{pct}}%",
     "market_value": "Squad value",
-    "market_value_of": "{{priced}} of {{squad}} priced"
+    "market_value_of": "{{priced}} of {{squad}} priced",
+    "roster_source": "Squad and values — {{source}}"
   },
   "clubs": {
     "title": "Clubs",

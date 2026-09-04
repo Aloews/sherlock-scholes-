@@ -904,7 +904,8 @@
     "place": "{{n}}e sur {{total}}",
     "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%",
     "market_value": "Valeur de l'effectif",
-    "market_value_of": "{{priced}} sur {{squad}} estimés"
+    "market_value_of": "{{priced}} sur {{squad}} estimés",
+    "roster_source": "Effectif et valeurs — {{source}}"
   },
   "clubs": {
     "title": "Clubs",

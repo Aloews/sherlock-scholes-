@@ -145,6 +145,39 @@ export async function fetchClubProfile(
  * сорок человек, и обрезанный состав отвечает на вопрос «кто основной»,
  * которого никто не задавал.
  */
+/** Строка ПОЛНОГО состава: все игроки клуба, со стоимостью.
+ *
+ *  ⚠️ Это НЕ ClubSquadRow. Тот — состав в терминах КОЛОДЫ: только те, у кого
+ *  есть карточка, зато с матчами и минутами. Здесь состав в терминах МИРА:
+ *  у «Реала» 27 игроков, а карточек из них меньше половины, и заводить
+ *  недостающим голые карточки нельзя — колода уже портилась так. Поэтому
+ *  таблицы две, и card_id тут может быть null.
+ *
+ *  ИСТОЧНИК СОСТАВА И СТОИМОСТИ — TRANSFERMARKT, и он назван на экране рядом
+ *  с числом. Эмблема клуба к нему отношения не имеет: она с ESPN. */
+export interface ClubRosterRow {
+  tm_player_id: string;
+  name: string;
+  shirt_number: number | null;
+  /** Не `position`: в RETURNS TABLE это зарезервированное слово. */
+  player_position: string | null;
+  born_on: string | null;
+  nationality: string | null;
+  /** Евро. null — у источника прочерк, а не «стоит ноль». */
+  market_value_eur: number | null;
+  /** null — этого игрока в колоде нет. Строка всё равно показывается. */
+  card_id: string | null;
+  photo_url: string | null;
+  fame: number | null;
+}
+
+export async function fetchClubRoster(
+  clubKey: string,
+): Promise<LoadState<ClubRosterRow[]>> {
+  const res = await supabase.rpc('club_roster_list', { p_club_key: clubKey });
+  return fromPostgrest<ClubRosterRow[]>(res, `club_roster_list(${clubKey})`);
+}
+
 export async function fetchClubSquad(
   clubKey: string,
   lang: string,

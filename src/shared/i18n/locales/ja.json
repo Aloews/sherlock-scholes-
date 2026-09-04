@@ -875,7 +875,8 @@
     "place": "{{total}}チーム中{{n}}位",
     "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%",
     "market_value": "スカッド総額",
-    "market_value_of": "{{squad}} 人中 {{priced}} 人を評価"
+    "market_value_of": "{{squad}} 人中 {{priced}} 人を評価",
+    "roster_source": "スカッドと市場価値 — {{source}}"
   },
   "clubs": {
     "title": "クラブ",

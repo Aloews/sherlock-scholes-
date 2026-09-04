@@ -1014,7 +1014,8 @@
     "place": "{{n}} من {{total}}",
     "league_isolated": "هذا الدوري نادرًا ما يلاقي غيره — المستوى قابل للمقارنة بنسبة {{pct}}٪",
     "market_value": "قيمة التشكيلة",
-    "market_value_of": "{{priced}} من {{squad}} مقيَّمين"
+    "market_value_of": "{{priced}} من {{squad}} مقيَّمين",
+    "roster_source": "التشكيلة والقيم — {{source}}"
   },
   "clubs": {
     "title": "الأندية",

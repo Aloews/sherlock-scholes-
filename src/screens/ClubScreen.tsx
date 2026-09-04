@@ -3,14 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconShieldHalf } from '@tabler/icons-react';
 import {
-  fetchClubProfile, fetchClubSquad, fetchClubMatches, fetchClubFixtures,
+  fetchClubProfile, fetchClubSquad, fetchClubRoster, fetchClubMatches, fetchClubFixtures,
   CLUB_WINDOWS, type ClubWindow,
-  type ClubProfile, type ClubSquadRow, type ClubMatchRow, type ClubFixtureRow,
+  type ClubProfile, type ClubSquadRow, type ClubRosterRow, type ClubMatchRow,
+  type ClubFixtureRow,
 } from '@/features/clubs/clubsApi';
 import {
   formFrom, goalDiff, pointsFrom, winRate, perMatch, hasEnoughForRates,
 } from '@/features/clubs/clubStats';
 import { ClubSquadTable } from '@/features/clubs/ClubSquadTable';
+import { ClubRosterTable } from '@/features/clubs/ClubRosterTable';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
@@ -43,6 +45,7 @@ export function ClubScreen() {
   const [days, setDays] = useState<ClubWindow>(365);
   const [profile, setProfile] = useState<LoadState<ClubProfile | null>>(LOADING);
   const [squad, setSquad] = useState<LoadState<ClubSquadRow[]>>(LOADING);
+  const [roster, setRoster] = useState<LoadState<ClubRosterRow[]>>(LOADING);
   const [matches, setMatches] = useState<LoadState<ClubMatchRow[]>>(LOADING);
   const [fixtures, setFixtures] = useState<LoadState<ClubFixtureRow[]>>(LOADING);
 
@@ -54,6 +57,16 @@ export function ClubScreen() {
     void fetchClubSquad(key, lang, days).then((r) => { if (!cancelled) setSquad(r); });
     return () => { cancelled = true; };
   }, [key, lang, days]);
+
+  // Полный состав от окна и языка НЕ зависит: это заявка клуба, а не выборка
+  // за период. Отдельным запросом, а не внутри Promise.all с остальными:
+  // экран, ждущий по самому медленному, этот проект уже чинил в дайджесте.
+  useEffect(() => {
+    let cancelled = false;
+    setRoster(LOADING);
+    void fetchClubRoster(key).then((r) => { if (!cancelled) setRoster(r); });
+    return () => { cancelled = true; };
+  }, [key]);
 
   // Матчи и расписание от окна не зависят: список последних матчей — это
   // список последних матчей, а не выборка за период.
@@ -279,12 +292,22 @@ export function ClubScreen() {
               {squad.status === 'error' && (
                 <p className="text-brand-muted text-sm py-4">{t('club.failed')}</p>
               )}
-              {squad.status === 'ok' && (
+              {/* ⚠️ ПОЛНЫЙ СОСТАВ ВЫТЕСНЯЕТ НЕПОЛНЫЙ, А НЕ ДОПОЛНЯЕТ ЕГО.
+                  Два списка игроков на одном экране — это два ответа на один
+                  вопрос: у «Реала» в колоде 25 карточек, а в клубе 27 человек.
+                  Показываем ростер там, где он собран, и прежний список —
+                  там, где нет. */}
+              {roster.status === 'ok' && roster.data.length > 0 ? (
+                <ClubRosterTable
+                  rows={roster.data}
+                  onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
+                />
+              ) : squad.status === 'ok' ? (
                 <ClubSquadTable
                   rows={squad.data}
                   onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
                 />
-              )}
+              ) : null}
             </section>
 
             {/* Последние матчи */}

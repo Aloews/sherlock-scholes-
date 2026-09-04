@@ -875,7 +875,8 @@
     "place": "{{total}}队中第{{n}}名",
     "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%",
     "market_value": "阵容总身价",
-    "market_value_of": "{{squad}} 人中 {{priced}} 人已估值"
+    "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
+    "roster_source": "阵容与身价 — {{source}}"
   },
   "clubs": {
     "title": "俱乐部",
