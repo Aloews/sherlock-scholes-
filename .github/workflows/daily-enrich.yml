@@ -130,6 +130,24 @@ jobs:
         if: always()
         run: APPLY=1 python docs/clubs_crests_espn.py
 
+      # Рыночная стоимость игроков составов. ИСТОЧНИК — TRANSFERMARKT, через
+      # P2446 в Викиданных; происхождение записано и в шапке скрипта, и в
+      # комментариях колонок cards.market_value_eur / market_value_at.
+      #
+      # Замер 04.09.2026: игроков в открытых составах 1362, стоимость была у
+      # НУЛЯ из них. Уровень игрока до сих пор считался из просмотров статьи —
+      # это известность, а не футбольная сила.
+      #
+      # ⚠️ Шаг идёт ПОСЛЕ ревизии name_en: резолв карточки в QID берёт имя
+      # оттуда, и на исправленном имени он попадает в цель чаще.
+      #
+      # Дозой, а не всем скопом: у шага общий с фотографиями бюджет Wikimedia,
+      # а у Transfermarkt — своя вежливая пауза. Кто уже с ценой, того шаг
+      # пропускает, поэтому за несколько ночей состав закрывается целиком.
+      - name: Player market value from Transfermarkt
+        if: always()
+        run: APPLY=1 python docs/players_market_value_transfermarkt.py --limit 400
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
