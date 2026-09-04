@@ -106,6 +106,9 @@ def main():
     ap.add_argument("--all-names", action="store_true",
                     help="не только однословные. Риск подмены там ниже, а "
                          "бюджет Wikimedia общий — по умолчанию только они.")
+    ap.add_argument("--tsv-out", default=None,
+                    help="выписать замены таблицей — их читают глазами, а "
+                         "лог прогона до следующей сессии не доживает")
     args = ap.parse_args()
     apply = os.environ.get("APPLY") == "1"
 
@@ -164,8 +167,21 @@ def main():
     print("-" * 74)
     print("FIX  (нашлась клубная сущность с другим изображением): %d" % len(fixes))
     print("KEEP (замены нет — карточка не тронута)              : %d" % keep)
-    for f in fixes[:25]:
+    # ⚠️ ПЕЧАТАЮТСЯ ВСЕ, А НЕ ПЕРВЫЕ ДВАДЦАТЬ ПЯТЬ. Этот прогон читают ГЛАЗАМИ
+    # — так он и задуман, — и обрезка списка означала, что часть замен
+    # применяется непрочитанной. Разница между «прочитал 25 из 30» и
+    # «прочитал 30» — это ровно та карточка, где резолв ошибся.
+    for f in fixes:
         print("  %-22s %-44s → %s" % (f["name"][:22], f["was"], f["now"]))
+    if args.tsv_out:
+        rows = ["# Замены фото у карточек клубов, найденные "
+                "docs/cards_club_photo_audit.py.",
+                "# Читать ГЛАЗАМИ до применения: резолв ошибается молча.",
+                "# id\tимя\tбыло\tстанет"]
+        rows += ["%s\t%s\t%s\t%s" % (f["id"], f["name"], f["was"], f["now"])
+                 for f in fixes]
+        io.open(args.tsv_out, "w", encoding="utf-8").write("\n".join(rows) + "\n")
+        print("Таблица замен выписана в %s" % args.tsv_out)
 
     if apply and fixes:
         for f in fixes:
