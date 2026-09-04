@@ -174,7 +174,13 @@
     "level": "Уровень",
     "level_basis_fame": "по известности — матчей мало",
     "level_basis_fame_form": "по известности и игре",
-    "level_basis_icon": "икона футбола"
+    "level_basis_icon": "икона футбола",
+    "reach": "Известность",
+    "fame_home": "Дома",
+    "fame_world": "В мире",
+    "value": "Стоимость",
+    "value_source": "Источник: {{source}}",
+    "value_source_at": "{{source}}, оценка от {{date}}"
   },
   "profile": {
     "title": "Профиль",
@@ -958,7 +964,9 @@
     "col_points": "Очки",
     "rating": "Рейтинг",
     "place": "{{n}}-е из {{total}}",
-    "league_isolated": "Лига мало играет с другими — уровень сравним с чужими лигами на {{pct}}%"
+    "league_isolated": "Лига мало играет с другими — уровень сравним с чужими лигами на {{pct}}%",
+    "market_value": "Стоимость состава",
+    "market_value_of": "по {{priced}} из {{squad}}"
   },
   "clubs": {
     "title": "Команды",

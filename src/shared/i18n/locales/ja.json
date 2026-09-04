@@ -168,7 +168,13 @@
     "level": "レベル",
     "level_basis_fame": "知名度による — 試合数が少ない",
     "level_basis_fame_form": "知名度と成績による",
-    "level_basis_icon": "サッカーのアイコン"
+    "level_basis_icon": "サッカーのアイコン",
+    "reach": "知名度",
+    "fame_home": "母国",
+    "fame_world": "世界",
+    "value": "市場価値",
+    "value_source": "出典: {{source}}",
+    "value_source_at": "{{source}}、{{date}} 時点の評価"
   },
   "profile": {
     "title": "プロフィール",
@@ -867,7 +873,9 @@
     "col_points": "点",
     "rating": "レーティング",
     "place": "{{total}}チーム中{{n}}位",
-    "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%"
+    "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%",
+    "market_value": "スカッド総額",
+    "market_value_of": "{{squad}} 人中 {{priced}} 人を評価"
   },
   "clubs": {
     "title": "クラブ",

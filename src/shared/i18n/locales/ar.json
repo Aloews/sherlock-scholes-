@@ -173,7 +173,13 @@
     "level": "المستوى",
     "level_basis_fame": "حسب الشهرة — المباريات قليلة",
     "level_basis_fame_form": "حسب الشهرة والأداء",
-    "level_basis_icon": "أيقونة كرة القدم"
+    "level_basis_icon": "أيقونة كرة القدم",
+    "reach": "الشهرة",
+    "fame_home": "في بلده",
+    "fame_world": "حول العالم",
+    "value": "القيمة السوقية",
+    "value_source": "المصدر: {{source}}",
+    "value_source_at": "{{source}}، تقييم {{date}}"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -1006,7 +1012,9 @@
     "col_points": "نقاط",
     "rating": "التقييم",
     "place": "{{n}} من {{total}}",
-    "league_isolated": "هذا الدوري نادرًا ما يلاقي غيره — المستوى قابل للمقارنة بنسبة {{pct}}٪"
+    "league_isolated": "هذا الدوري نادرًا ما يلاقي غيره — المستوى قابل للمقارنة بنسبة {{pct}}٪",
+    "market_value": "قيمة التشكيلة",
+    "market_value_of": "{{priced}} من {{squad}} مقيَّمين"
   },
   "clubs": {
     "title": "الأندية",

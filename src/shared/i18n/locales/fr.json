@@ -170,7 +170,13 @@
     "level": "Niveau",
     "level_basis_fame": "sur la notoriété — trop peu de matchs",
     "level_basis_fame_form": "sur la notoriété et la forme",
-    "level_basis_icon": "icône du football"
+    "level_basis_icon": "icône du football",
+    "reach": "Notoriété",
+    "fame_home": "Dans son pays",
+    "fame_world": "Dans le monde",
+    "value": "Valeur marchande",
+    "value_source": "Source : {{source}}",
+    "value_source_at": "{{source}}, estimation de {{date}}"
   },
   "profile": {
     "title": "Profil",
@@ -896,7 +902,9 @@
     "col_points": "Pts",
     "rating": "Cote",
     "place": "{{n}}e sur {{total}}",
-    "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%"
+    "league_isolated": "Ce championnat joue peu avec les autres — niveau comparable à {{pct}}%",
+    "market_value": "Valeur de l'effectif",
+    "market_value_of": "{{priced}} sur {{squad}} estimés"
   },
   "clubs": {
     "title": "Clubs",

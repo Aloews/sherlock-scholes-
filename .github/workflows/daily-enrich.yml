@@ -68,12 +68,44 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_pageviews_i18n.py --limit 600
 
-      # cards.fame is a PERCENTILE, so the pageviews_i18n step just above moves
+      # ⚠️ ПРОСМОТРЫ НА ЯЗЫКЕ СВОЕЙ СТРАНЫ. Шаг выше собирает ДЕВЯТЬ локалей
+      # интерфейса, и это не девять языков, на которых читают про футболистов:
+      # замер 04.09.2026 — у 1452 активных игроков из 2918 (49.8 %) не было ни
+      # одного просмотра на языке своей страны. Турок мерился по-русски,
+      # поляк по-арабски. Здесь языки берутся ИЗ САМОЙ СТАТЬИ (sitelinks) и
+      # спрашиваются те, что читают на родине игрока (country_wiki_lang).
+      # Уже собранный язык не переспрашивается, запись — СЛИЯНИЕ.
+      - name: Collect home-country pageviews
+        if: always()
+        run: APPLY=1 python docs/cards_pageviews_world.py --home --limit 600
+
+      # cards.fame is a PERCENTILE, so the pageviews steps just above move
       # the scale it's computed from — recompute it (and the tier/'legend' tag
       # derived from it) again here, after the last thing that changes it.
-      - name: Refresh card fame (after pageviews_i18n)
+      # Здесь же считаются fame_home и fame_world.
+      - name: Refresh card fame (after pageviews)
         if: always()
         run: python docs/cards_fame_refresh.py
+
+      # Внешние идентификаторы карточек: QID -> P2446 (Transfermarkt) и P27 ->
+      # страна. Без QID карточку не обогатить, а резолв по ИМЕНИ промахивается
+      # молча («Гарри Невилл» в ру-вики — «Невилл, Гари»).
+      # ⚠️ P2446 берётся через wbgetentities, НЕ через SPARQL: WDQS при
+      # лимитировании режет до одного запроса в минуту, и замер той же выборки
+      # дал SPARQL — ноль ответов, wbgetentities — 799 из 846.
+      - name: External ids from Wikidata (Transfermarkt, country)
+        if: always()
+        run: APPLY=1 python docs/cards_wikidata_ids.py --from-db --limit 800
+
+      # Рыночная стоимость по этому идентификатору. ИСТОЧНИК — TRANSFERMARKT,
+      # и он назван и в COMMENT колонки, и на экране рядом с числом: владелец
+      # знает про ToS и принял это решение, а маскировать происхождение
+      # данных нельзя. robots.txt сайта открыт (`User-agent: * / Allow: /`),
+      # ходим своим UA с контактом. Оценка старше 30 дней переспрашивается,
+      # свежая — нет.
+      - name: Player market value (Transfermarkt)
+        if: always()
+        run: APPLY=1 python docs/cards_market_value_tm.py --limit 500
 
       # Русские имена клубов для career_stats (и латинские для legend_career):
       # summary-экран показывает названия на языке интерфейса. Резолвы
@@ -118,14 +150,24 @@ jobs:
         run: APPLY=1 python docs/cards_pageviews_refix.py
 
       # Эмблемы клубам из ESPN. Клуб без карточки не получал герб НИКОГДА:
-      # crest_url копировался только из cards.photo_url. Замер 03.09.2026 —
-      # 587 клубов из 1521 без эмблемы, а 707 из 934 уже с ESPN, то есть
-      # источник у проекта один и он этот. Пишется только туда, где эмблемы
-      # не было: ручной герб не перетирается, повтор — no-op.
+      # crest_url копировался только из cards.photo_url. Пишется только туда,
+      # где эмблемы не было: ручной герб не перетирается, повтор — no-op.
       #
       # ⚠️ Сопоставляет БАЗА (apply_espn_crests), а не скрипт: club_match_key
       # и club_alias серверные, и вторая копия правила разошлась бы с ними
       # молча, выдав клубу чужой герб.
+      #
+      # ⚠️ ЭТОТ ШАГ ПАДАЛ БЫ КАЖДУЮ НОЧЬ, пока не применён
+      # supabase/migrations/espn_crests_match_once.sql. Прежняя функция
+      # звала нормализатор на каждую пару «клуб × имя ESPN» — три миллиона
+      # вызовов — и отвечала 57014 statement timeout уже на 200 именах
+      # (замер 04.09.2026). После починки: 1.5 с на все 1814.
+      #
+      # ⚠️ И ЗАКРЫВАЕТ ОН НЕ 587 КЛУБОВ, А 30. Замер после боевого прогона:
+      # из 610 клубов без эмблемы совпали 30, а у 514 из оставшихся 580 нет
+      # ЛАТИНСКОГО имени вообще — только русское, и обратно оно не
+      # транслитерируется («Аль-Айн» → al ayn против ESPN al ain). Их
+      # закроет не другой источник эмблем, а name_en.
       - name: Club crests from ESPN
         if: always()
         run: APPLY=1 python docs/clubs_crests_espn.py

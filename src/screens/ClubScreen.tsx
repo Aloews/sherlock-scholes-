@@ -15,6 +15,7 @@ import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { longDateFormat } from '@/shared/lib/dateFormat';
+import { formatEur } from '@/shared/lib/money';
 
 /**
  * Экран команды: кто это, как идут дела, кто играет и что дальше.
@@ -69,6 +70,7 @@ export function ClubScreen() {
   const p = profile.status === 'ok' ? profile.data : null;
   const matchRows = matches.status === 'ok' ? matches.data : [];
   const form = formFrom(matchRows);
+  const squadValue = formatEur(p?.market_value_eur, lang);
 
   const outcomeClass = (o: string) =>
     o === 'w' ? 'bg-brand-accent text-black'
@@ -174,6 +176,27 @@ export function ClubScreen() {
                 </button>
               )}
             </div>
+
+            {/* СТОИМОСТЬ СОСТАВА — сумма по тем, кого удалось оценить, и
+                рядом видно, скольких. Показывается с пяти оценённых: тот же
+                порог, что у уровня состава в прогнозах. Ниже пяти сумма —
+                не про клуб, а про то, кого мы успели собрать, и читалась бы
+                как «команда дешёвая». Источник назван: данные Transfermarkt,
+                и маскировать это нельзя. */}
+            {squadValue && p.market_value_priced != null && p.market_value_priced >= 5 && (
+              <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-3 py-2.5 flex items-baseline justify-between gap-2">
+                <div>
+                  <p className="text-[11px] text-brand-muted">{t('club.market_value')}</p>
+                  <p className="text-[9.5px] text-brand-muted/70">
+                    {t('club.market_value_of', { priced: p.market_value_priced, squad: p.squad })}
+                    {' · Transfermarkt'}
+                  </p>
+                </div>
+                <span className="ds-display text-[16px] font-extrabold text-white tabular-nums">
+                  {squadValue}
+                </span>
+              </div>
+            )}
 
             <div className="-mx-4 px-4 overflow-x-auto">
               <div className="flex gap-1.5 w-max pb-0.5">
