@@ -76,6 +76,13 @@ _spec.loader.exec_module(pvi)
 SITEMATRIX = ("https://meta.wikimedia.org/w/api.php?action=sitematrix"
               "&format=json&smtype=language&smlangprop=code|site")
 PAGE = 1000          # PostgREST режет по db-max-rows; читать надо страницами
+
+# ⚠️ ПАУЗА В СЕКУНДУ, А НЕ 0.15. Замер 04.09.2026: на 0.15 с (унаследованной у
+# cards_pageviews_by_qid) wikimedia.org отвечал 429 тринадцать раз за первые
+# 25 карточек, а каждый отказ стоит минуты ожидания — то есть быстрая пауза
+# оказалась ВДВОЕ МЕДЛЕННЕЕ медленной. Секунда — тот же контракт вежливости,
+# что у всего остального конвейера (min_pause_seconds в config.json).
+PV_PAUSE = 1.0
 WD_BATCH = 50
 RPC_BATCH = 200
 
@@ -143,7 +150,7 @@ def country_langs():
         offset += PAGE
 
 
-def pick_cards(limit, only_missing_home, cmap):
+def pick_cards(limit, only_missing_home, cmap, countries=None):
     """Карточки игроков, которым сбор нужнее всего.
 
     Порядок — по славе вниз: бюджет тратится на тех, кого игрок увидит.
@@ -156,6 +163,8 @@ def pick_cards(limit, only_missing_home, cmap):
             "order": "fame.desc.nullslast,id",
             "limit": str(PAGE), "offset": str(offset)}).json()
         for c in page:
+            if countries and (c.get("country") or "") not in countries:
+                continue
             have = set((c.get("pageviews_i18n") or {}).keys())
             want = set(cmap.get(c.get("country") or "", []))
             if only_missing_home and want and want <= have:
@@ -175,6 +184,10 @@ def main():
     g.add_argument("--all", dest="all_langs", action="store_true",
                    help="все разделы, где статья есть")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--countries", default=None,
+                    help="только эти страны через запятую (TR,PL,RS…). Бюджет "
+                         "конечен, и тратить его стоит сначала на те, чей язык "
+                         "в девятку локалей не входит вовсе")
     ap.add_argument("--sql-out", default=None)
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
@@ -184,7 +197,10 @@ def main():
     cmap = country_langs()
     print("Стран в карте языков    : %d" % len(cmap))
 
-    cards = pick_cards(args.limit, not args.all_langs, cmap)
+    only = {c.strip().upper() for c in (args.countries or "").split(",") if c.strip()}
+    if only:
+        print("Отбор по странам        : %s" % ", ".join(sorted(only)))
+    cards = pick_cards(args.limit, not args.all_langs, cmap, only or None)
     print("Карточек в работе       : %d" % len(cards))
     if not cards:
         print("Дома измерены все — собирать нечего.")
@@ -277,7 +293,7 @@ def main():
             if v is not None:
                 views[lang] = v
                 got += 1
-            time.sleep(pvi.PV_PAUSE)
+            time.sleep(PV_PAUSE)
         if views:
             rows.append({"card_id": c["id"], "views": views})
             pending.append({"card_id": c["id"], "views": views})

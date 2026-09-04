@@ -396,12 +396,126 @@ async function checkClubCrests() {
          control.ok ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
 }
 
+// -------------------------------------------- известность дома и в мире ---
+// ⚠️ ЧТО ЗДЕСЬ ИДЁТ ДО КОНЦА ЦЕПОЧКИ. Наличие колонок `fame_home`/`fame_world`
+// не значит ничего: они появились пустыми и такими бы и остались, если бы
+// сбор просмотров не дошёл до языков, которых НЕТ среди девяти локалей
+// интерфейса. Ради этого всё и делалось — замер 04.09.2026: у 1452 активных
+// игроков из 2918 (49.8 %) не было ни одного просмотра на языке своей страны.
+//
+// Поэтому проверка спрашивает не «есть ли колонка», а «есть ли ДОМАШНЯЯ
+// известность у игроков, чья страна читает НЕ на одном из девяти»: Турция,
+// Польша, Сербия, Украина, Греция, Швеция, Норвегия, Дания, Нидерланды,
+// Чехия. Ноль здесь — это ровно тот отказ, при котором фича мертва, а
+// колонки на месте.
+//
+// И ходим боевым anon-ключом: у него лимит запроса 3 с, и две функции этого
+// проекта уже работали под админом и падали у всех игроков.
+const HOME_ONLY_COUNTRIES = ['TR', 'PL', 'RS', 'UA', 'GR', 'SE', 'NO', 'DK', 'NL', 'CZ'];
+
+async function cardsWhere(url, auth, query) {
+  const r = await fetch(`${url}/rest/v1/cards?${query}`, { headers: auth });
+  const body = await r.json().catch(() => null);
+  return { ok: r.ok, rows: Array.isArray(body) ? body : null, status: r.status };
+}
+
+async function checkFameAxes() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Известность дома и в мире', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const inList = `(${HOME_ONLY_COUNTRIES.join(',')})`;
+
+  const t0 = Date.now();
+  const measured = await cardsWhere(url, auth,
+    `select=id,name,country,fame,fame_home,fame_world&category=eq.player`
+    + `&active=is.true&country=in.${inList}&fame_home=not.is.null&limit=5`);
+  const ms = Date.now() - t0;
+
+  if (!measured.ok || measured.rows === null) {
+    record('Известность дома и в мире', false,
+           `anon: HTTP ${measured.status}`, 'ключ anon, не сервисный');
+    return;
+  }
+  record('Известность дома: страны вне девяти локалей', measured.rows.length > 0,
+         measured.rows.length
+           ? `${measured.rows.length} игрока, напр. ${measured.rows[0].name} (${measured.rows[0].country}) `
+             + `дома ${measured.rows[0].fame_home}, в мире ${measured.rows[0].fame_world}, ${ms} мс`
+           : 'НИ ОДНОГО — сбор не дошёл до языков этих стран, фича мертва',
+         'колонки есть всегда; здесь спрашиваются ЗНАЧЕНИЯ');
+
+  // Две оси, которые всегда совпадают, — это одна ось под двумя именами.
+  const apart = await cardsWhere(url, auth,
+    `select=id,name,fame_home,fame_world&category=eq.player&active=is.true`
+    + `&fame_home=not.is.null&fame_world=not.is.null&limit=200`);
+  const differ = (apart.rows ?? []).filter(
+    (c) => Math.abs((c.fame_home ?? 0) - (c.fame_world ?? 0)) >= 10).length;
+  record('Известность: дома и в мире — РАЗНЫЕ величины', differ > 0,
+         differ ? `${differ} из ${(apart.rows ?? []).length} расходятся на 10+ пунктов`
+                : 'НИ ОДНОГО расхождения — значит это одна ось под двумя именами',
+         'две одинаковые оси хуже одной: они обещают различение');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Тот же запрос по заведомо несуществующей
+  // стране ОБЯЗАН вернуть пусто. Вернёт строки — фильтр не работает, и
+  // проверка выше не значит ничего.
+  const control = await cardsWhere(url, auth,
+    `select=id&category=eq.player&active=is.true&country=eq.ZZ`
+    + `&fame_home=not.is.null&limit=1`);
+  const empty = control.ok && (control.rows ?? []).length === 0;
+  record('Известность: контроль несуществующей страны', empty,
+         empty ? 'по стране ZZ пусто, как и должно' : 'фильтр по стране НЕ работает',
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------------------- стоимость состава ------
+// ⚠️ ЗАБЫТАЯ КОЛОНКА ПРИЕЗЖАЕТ КАК `undefined`, А `undefined !== null` ИСТИННО.
+// Этот проект уже рисовал «undefined%» ровно так: колонку добавили в одну
+// функцию из пары, которые клиент читает одним типом. Поэтому спрашивается не
+// значение, а НАЛИЧИЕ ПОЛЯ в ответе club_profile.
+async function checkClubValue() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Стоимость состава', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const t0 = Date.now();
+  let row = null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ p_club_key: 'real madrid', p_lang: 'ru' }),
+    });
+    const body = await r.json().catch(() => null);
+    row = Array.isArray(body) ? body[0] : null;
+  } catch (e) {
+    record('Стоимость состава', false, String(e).slice(0, 50), 'н/д');
+    return;
+  }
+  const ms = Date.now() - t0;
+  const hasFields = row !== null
+    && 'market_value_eur' in row && 'market_value_priced' in row;
+  record('Стоимость состава: поля есть в ответе', hasFields,
+         hasFields
+           ? `priced ${row.market_value_priced} из ${row.squad}, ${ms} мс (anon)`
+           : 'club_profile НЕ отдаёт market_value_* — колонка приедет undefined',
+         'спрашивается наличие поля, а не значение');
+  record('Стоимость состава: anon укладывается в 3 с', ms < 3000,
+         `${ms} мс`, 'у anon лимит запроса 3 с; сервисный ключ этого не покажет');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
 await checkClubCrests();
+await checkFameAxes();
+await checkClubValue();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
