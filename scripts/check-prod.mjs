@@ -521,6 +521,67 @@ async function checkClubValue() {
          `${ms} мс`, 'у anon лимит запроса 3 с; сервисный ключ этого не покажет');
 }
 
+// ------------------------------------------------- полный состав клуба ----
+// ⚠️ ЗДЕСЬ ПРОВЕРЯЕТСЯ ПОЛНОТА, А НЕ НАЛИЧИЕ. «Состав есть» зеленело бы и на
+// четырёх игроках из двадцати семи — а собирали мы его ровно затем, что
+// прежний, из Викиданных, был неполным: 1362 строки на 294 клуба, полный
+// состав у 42. Поэтому спрашивается число игроков и доля с ценой.
+//
+// И ходим боевым anon-ключом: у него лимит запроса 3 с.
+async function checkClubRoster() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Полный состав клуба', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const call = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return Array.isArray(j) ? j : null;
+  };
+
+  const t0 = Date.now();
+  const rows = await call('club_roster_list', { p_club_key: 'real madrid' });
+  const ms = Date.now() - t0;
+  if (rows === null) {
+    record('Полный состав клуба', false, 'club_roster_list не отвечает', 'ключ anon');
+    return;
+  }
+  const priced = rows.filter((r) => r.market_value_eur != null).length;
+  // Двадцать — заведомо ниже любой настоящей заявки (у «Реала» 27) и заведомо
+  // выше того, что давал прежний путь.
+  record('Полный состав: заявка целиком', rows.length >= 20,
+         `${rows.length} игроков, ${priced} с ценой, ${ms} мс (anon)`,
+         'спрашивается ЧИСЛО игроков: «состав есть» зеленело бы и на четырёх');
+
+  // ⚠️ В ростере есть люди, которых в колоде НЕТ — ради этого таблица и
+  // отдельная. Если карточка нашлась у всех, значит ростер собран из колоды,
+  // а не из источника, и полнота мнимая.
+  const noCard = rows.filter((r) => r.card_id == null).length;
+  record('Полный состав: есть игроки без карточки', noCard > 0,
+         noCard ? `${noCard} из ${rows.length} — состав шире колоды`
+                : 'у ВСЕХ есть карточка: похоже, ростер собран из колоды',
+         'иначе полнота мнимая');
+
+  const val = await call('club_roster_value', { p_club_key: 'real madrid' });
+  const v = (val && val[0]) || {};
+  record('Полный состав: сумма едет с покрытием', 'priced' in v && 'squad' in v,
+         'priced' in v ? `${v.priced} из ${v.squad}, ${Math.round((v.total_eur ?? 0) / 1e6)} млн €`
+                       : 'club_roster_value не отдаёт покрытие',
+         'сумма без знаменателя читается как «столько стоит клуб»');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у несуществующего клуба состава быть не может.
+  const ghost = await call('club_roster_list', { p_club_key: 'клуб-которого-нет' });
+  const empty = ghost !== null && ghost.length === 0;
+  record('Полный состав: контроль несуществующего клуба', empty,
+         empty ? 'пусто, как и должно' : 'состав нашёлся у выдуманного клуба',
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -529,6 +590,7 @@ await checkNoScores();
 await checkClubCrests();
 await checkFameAxes();
 await checkClubValue();
+await checkClubRoster();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
