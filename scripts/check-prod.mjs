@@ -581,6 +581,44 @@ async function checkClubRoster() {
                        : 'club_roster_value не отдаёт покрытие',
          'сумма без знаменателя читается как «столько стоит клуб»');
 
+  // ⚠️ ИГРОК НЕ МОЖЕТ БЫТЬ В ДВУХ ЗАЯВКАХ СРАЗУ, и это единственное, что
+  // поймало «Страсбур → verein/631». Мост клуба строится голосованием
+  // игроков, у «Страсбура» и «Челси» общий владелец, двое голосовавших уже
+  // числились в «Челси» — и «Страсбур» получил заявку «Челси» целиком. 28
+  // игроков, у всех цена, состав правдоподобный: ни одна проверка «есть ли
+  // состав», «сходится ли сумма», «связан ли он с колодой» этого не видит.
+  // Видно только пересечение: Палмер и Эстевао в двух клубах сразу.
+  const keys = ['real madrid', 'chelsea', 'barcelona', 'bayern munich',
+                'arsenal', 'liverpool'];
+  const squads = {};
+  for (const k of keys) {
+    const r = await call('club_roster_list', { p_club_key: k });
+    if (r && r.length) squads[k] = new Set(r.map((x) => x.tm_player_id));
+  }
+  const overlaps = [];
+  const names = Object.keys(squads);
+  for (let i = 0; i < names.length; i += 1) {
+    for (let j = i + 1; j < names.length; j += 1) {
+      const a = squads[names[i]];
+      const b = squads[names[j]];
+      const both = [...a].filter((x) => b.has(x));
+      if (both.length) overlaps.push(`${names[i]} ∩ ${names[j]}: ${both.length}`);
+    }
+  }
+  record('Полный состав: игрок не в двух заявках', overlaps.length === 0,
+         overlaps.length ? overlaps.join('; ')
+                         : `${names.length} заявок, пересечений нет`,
+         'ловит мост, уехавший на чужой клуб; сумма и связь с колодой на нём зелены');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ к ней: заявка, пересечённая сама с собой,
+  // обязана дать пересечение. Не дала — проверка сравнивает пустоту.
+  const self = squads[names[0]] ? [...squads[names[0]]].filter(
+    (x) => squads[names[0]].has(x)).length : 0;
+  record('Полный состав: контроль пересечения', self > 0,
+         self > 0 ? `заявка «${names[0] ?? '—'}» пересекается с собой на ${self}`
+                  : 'сравнение не находит даже самого себя',
+         self > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у несуществующего клуба состава быть не может.
   const ghost = await call('club_roster_list', { p_club_key: 'клуб-которого-нет' });
   const empty = ghost !== null && ghost.length === 0;

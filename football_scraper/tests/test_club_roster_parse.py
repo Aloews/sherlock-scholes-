@@ -124,6 +124,45 @@ check("после контролей разбор снова верен",
       {r["tm_player_id"]: r["name"] for r in tm.parse_roster(PAGE)}.get("935245"),
       "Raúl Asencio")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Мост «клуб → verein»: занятый идентификатор — отказ.
+#
+# ⚠️ ЭТО ЕДИНСТВЕННАЯ УЛИКА, ЛОВЯЩАЯ «СТРАСБУР → verein/631». Голосование там
+# отработало по написанному: двое из пяти указали на один клуб — но оба уже
+# играли за «Челси» (клубы одного владельца). Вторая улика, roster_confirms,
+# на таком мосту подтверждает сама себя, и ниже это ПОКАЗАНО, а не заявлено.
+TAKEN = {"631": "chelsea", "418": "real madrid"}
+
+check("свободный verein — мост берётся",
+      tm.bridge_owner("27", "bayern munich", TAKEN), None)
+check("verein «Челси» под «Страсбуром» — отказ с именем владельца",
+      tm.bridge_owner("631", "strasbourg alsace", TAKEN), "chelsea")
+check("свой же мост не считается чужим (повторный прогон)",
+      tm.bridge_owner("631", "chelsea", TAKEN), None)
+check("пустой справочник никого не отвергает",
+      tm.bridge_owner("631", "strasbourg alsace", {}), None)
+
+# ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ №1: показать, что roster_confirms этот мост
+# ПРОПУСКАЕТ. Голосовавшие за verein/631 — игроки «Челси», и в заявке «Челси»
+# они, разумеется, есть. Проверка, подтверждающая сама себя, зеленеет.
+_chelsea_rows = [{"tm_player_id": "568177"}, {"tm_player_id": "581678"}]
+_votes = {"631": ["568177", "568177"]}
+check("контроль: roster_confirms чужой мост ПРОПУСКАЕТ — потому и нужен индекс",
+      tm.roster_confirms(_chelsea_rows, _votes, "631"), True)
+
+# ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ №2: сломать само правило — проверка обязана
+# покраснеть. Если она этого не заметит, она пустая.
+_real = tm.bridge_owner
+try:
+    tm.bridge_owner = lambda tm_id, club_key, taken: None
+    check("контроль: со снятым правилом «Страсбур» забирает verein «Челси»",
+          tm.bridge_owner("631", "strasbourg alsace", TAKEN) is None, True)
+finally:
+    tm.bridge_owner = _real
+
+check("после контролей правило снова отвергает чужой мост",
+      tm.bridge_owner("631", "strasbourg alsace", TAKEN), "chelsea")
+
 if FAILURES:
     print("ПРОВАЛЕНО: %d" % len(FAILURES))
     for f in FAILURES:

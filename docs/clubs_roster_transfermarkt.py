@@ -224,6 +224,23 @@ def club_tm_id(club_key, known):
     return None, "не найден", votes
 
 
+def bridge_owner(tm_id, club_key, taken):
+    """Кому уже принадлежит этот verein — или None, если он свободен.
+
+    ⚠️ ОДИН verein — ОДИН КЛУБ, и это единственная улика, которая ловит
+    «Страсбур → verein/631». Голосование там сработало ровно так, как
+    написано: двое из пяти указали на один клуб. Просто оба уже играли за
+    «Челси» — клубы одного владельца, игроки ходят между ними. Вторая улика
+    (`roster_confirms`) на таком мосту подтверждает саму себя: голосовавшие
+    в заявке «Челси», разумеется, есть.
+
+    Имена здесь не сравниваются вовсе. Сопоставление имён живёт в SQL, а
+    занятость идентификатора — это не сопоставление.
+    """
+    owner = taken.get(tm_id)
+    return owner if owner and owner != club_key else None
+
+
 def roster_confirms(rows, votes, tm_id):
     """Проверка моста ростером: те, кто за него голосовал, обязаны в нём быть.
 
@@ -248,15 +265,36 @@ def main():
     clubs = clubs_to_do(args.limit)
     if args.club:
         clubs = [c for c in clubs if c["club_key"] == args.club]
+
+    # ⚠️ ЧЕЙ ЭТО verein УЖЕ. Голосование задумано против ОДНОГО устаревшего
+    # игрока, и против него работает. Оно не работает, когда игроки ходят
+    # между двумя клубами ОДНОГО ВЛАДЕЛЬЦА: у «Страсбура» двое из пяти
+    # голосовавших уже числились в «Челси», двух голосов хватило, и «Страсбур»
+    # получил verein/631 — заявку «Челси» целиком. Снаружи безупречно: 28
+    # игроков, у всех цена. Поймалось тем, что Палмер и Эстевао оказались в
+    # ДВУХ заявках сразу.
+    #
+    # Имена в сравнении по-прежнему не участвуют: один verein — один клуб.
+    taken = {c["transfermarkt_id"]: c["club_key"]
+             for c in read_all("football_club",
+                               {"select": "club_key,transfermarkt_id",
+                                "transfermarkt_id": "not.is.null",
+                                "order": "club_key"})}
     print("Клубов в работе: %d  (APPLY=%s)"
           % (len(clubs), "да" if apply_ else "нет — сухой прогон"), flush=True)
 
-    bridged = players = priced = lost = no_id = rejected = 0
+    bridged = players = priced = lost = no_id = rejected = stolen = 0
     for i, c in enumerate(clubs, 1):
         tm_id, how, votes = club_tm_id(c["club_key"], c.get("transfermarkt_id"))
         if not tm_id:
             no_id += 1
             print("  %-24s моста нет (%s)" % (c["club_key"][:24], how), flush=True)
+            continue
+        owner = bridge_owner(tm_id, c["club_key"], taken)
+        if owner:
+            stolen += 1
+            print("  %-24s verein/%-7s ОТВЕРГНУТ: это мост клуба «%s»"
+                  % (c["club_key"][:24], tm_id, owner), flush=True)
             continue
         page = get(CLUB_PAGE % tm_id)
         time.sleep(PAUSE)
@@ -269,7 +307,8 @@ def main():
             continue
         if not c.get("transfermarkt_id"):
             bridged += 1
-            if apply_:
+            taken[tm_id] = c["club_key"]     # иначе следующий клуб этого же
+            if apply_:                       # прогона возьмёт тот же verein
                 sb("football_club", method="PATCH",
                    params={"club_key": "eq." + c["club_key"]},
                    body={"transfermarkt_id": tm_id})
@@ -304,6 +343,9 @@ def main():
     if rejected:
         print("Мостов отвергнуто ростером        : %d — голоса сошлись, а в "
               "составе тех игроков не оказалось" % rejected)
+    if stolen:
+        print("Мостов отвергнуто как чужие       : %d — verein уже принадлежит "
+              "другому клубу" % stolen)
     if lost:
         print("⚠️ СОСТАВОВ НЕ РАЗОБРАНО          : %d — их пустота НИЧЕГО не "
               "значит, повторить прогон" % lost)

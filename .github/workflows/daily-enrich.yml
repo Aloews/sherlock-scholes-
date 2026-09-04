@@ -200,6 +200,22 @@ jobs:
         if: always()
         run: APPLY=1 python docs/clubs_roster_transfermarkt.py --limit 200
 
+      # ⚠️ БЕЗ ЭТОГО ШАГА ПРЕДЫДУЩИЙ КАЖДУЮ НОЧЬ ОТРАЩИВАЕТ ДЫРУ ЗАНОВО.
+      # `apply_club_roster` связывает строку с карточкой только по
+      # `cards.transfermarkt_id`; у карточки его обычно нет, и строка ложится
+      # с `card_id = null`. Так Беллингем и «пропал» из состава «Реала» на
+      # экране, оставаясь в колоде активной карточкой. Мост строится здесь:
+      # id на Transfermarkt → (P2446, обратно) → QID → карточка, затем точное
+      # имя в пределах клуба. Неоднозначное не связывается и печатается числом.
+      #
+      # Вторым делом шаг дописывает верный QID тем карточкам, у которых он был
+      # снят как НЕ ЧЕЛОВЕЧЕСКИЙ (страница фамилии, персонаж Marvel): ночной
+      # резолв идёт по имени и ту же страницу теперь отвергает, то есть сам
+      # такую карточку не починит НИКОГДА.
+      - name: Link rosters to deck cards
+        if: always()
+        run: APPLY=1 python docs/roster_link_cards.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
