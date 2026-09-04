@@ -140,6 +140,47 @@ def all_sitelinks(qids, wikis):
     return out
 
 
+HUMAN_QID = "Q5"
+
+
+def humans_among(qids):
+    """{QID} тех, кто ЧЕЛОВЕК (P31 = Q5). Батчами по 50, одним свойством.
+
+    ⚠️ БЕЗ ЭТОГО ГАРДА РЕЗОЛВ ПО ИМЕНИ ПИШЕТ КАРТОЧКЕ ЧУЖУЮ СУЩНОСТЬ, И ЭТО
+    ЗАМЕРЕНО. Титул ру-вики у монононима — это страница ФАМИЛИИ, а не игрока:
+    «Беллингем» → Q16479897 «Bellingham (surname)» вместо Q66241169 «Jude
+    Bellingham»; «Халк» → Q188760, персонаж Marvel. Проверка P31=Q5 по всем
+    2884 QID карточек игроков нашла 120 таких, 110 активных, и «Халк» с
+    чужой славой 90 стоял в «знаменитых».
+
+    Тот же класс уже записан в карте про `run.search_close_titles` («Халк» →
+    «Халк (персонаж)») — гард там есть, а на этом пути его не было.
+    """
+    out = set()
+    qids = sorted({q for q in qids if q})
+    for i in range(0, len(qids), WD_BATCH):
+        chunk = qids[i:i + WD_BATCH]
+        time.sleep(pvi.WD_BATCH_PAUSE)
+        r = pvi.get_with_retry(pvi.WD_API, params={
+            "action": "wbgetentities", "format": "json",
+            "ids": "|".join(chunk), "props": "claims", "maxlag": "5"})
+        r.raise_for_status()
+        ents = (r.json().get("entities") or {})
+        if not ents:
+            # ⚠️ Пустой ответ — отказ источника, а не «никто не человек».
+            # Принять его за отказ значило бы выбросить всю пачку молча.
+            print("  ⚠️ P31: пачка без ответа (%d QID) — они пропущены, "
+                  "повторить прогон" % len(chunk), flush=True)
+            continue
+        for qid, ent in ents.items():
+            for c in ((ent.get("claims") or {}).get("P31") or []):
+                v = (c.get("mainsnak") or {}).get("datavalue", {}).get("value", {})
+                if isinstance(v, dict) and v.get("id") == HUMAN_QID:
+                    out.add(qid)
+                    break
+    return out
+
+
 def country_langs():
     """{страна: [языки]} из БАЗЫ — правило одно и оно серверное."""
     out, offset = collections.defaultdict(list), 0
@@ -219,6 +260,24 @@ def main():
         for c in chunk:
             c["wikidata_qid"] = by_title.get(c["name"])
         print("  qid: %d/%d" % (min(i + WD_BATCH, len(need)), len(need)), flush=True)
+
+    # ⚠️ ГАРД P31 НА СВЕЖЕРЕЗОЛВЛЕННЫЕ QID. Резолв по имени приводит мононима
+    # на страницу фамилии, и без проверки эта чужая сущность уезжает в
+    # cards.wikidata_qid — замер: 120 карточек, 110 активных, «Халк» с
+    # QID персонажа Marvel и славой 90. Уже стоявшие в базе QID не
+    # перепроверяются здесь: это отдельная ревизия, не дело сборщика.
+    fresh = [c["wikidata_qid"] for c in need if c.get("wikidata_qid")]
+    if fresh:
+        ok = humans_among(fresh)
+        dropped = 0
+        for c in need:
+            q = c.get("wikidata_qid")
+            if q and q not in ok:
+                c["wikidata_qid"] = None
+                dropped += 1
+        if dropped:
+            print("Отбраковано гардом P31  : %d — резолв привёл не на человека"
+                  % dropped, flush=True)
 
     resolved = [c for c in cards if c.get("wikidata_qid")]
     print("С QID                   : %d из %d" % (len(resolved), len(cards)))
