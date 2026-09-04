@@ -280,25 +280,31 @@ class WikidataEnricher:
         self.cache.set(namespace, qid, {"ids": ids})
         return ids
 
-    def instance_of_qids(self, qid):
-        """P31 (instance of) class QIDs of an entity, as a list (may be
-        empty). The stadium-card guard: a bare stadium name often resolves
-        to the PERSON/city the stadium is named after ("Сантьяго Бернабеу"),
-        and P31 tells them apart (Q5 = human vs stadium/venue classes).
-        Cached per QID (namespace wikidata_p31), the empty result included;
-        same polite wbgetclaims call as media_filename_for_qid."""
-        if not qid:
+    def claim_qids(self, qid, prop, cache_ns=None):
+        """QID values of any QID-valued property, as a list (may be empty).
+
+        P31 asks "what kind of thing is this", P17 "which country" — the two
+        guards a bare club name needs: P31 separates «Вердер» the club from
+        «Вердер» the river, and P17 separates «Атлетико» in Spain from
+        «Атлетико Паранаэнсе» in Brazil, which P31 cannot (both are clubs).
+
+        `cache_ns` exists so P31 keeps its historical namespace: renaming it
+        would silently re-fetch every entity already cached, and the budget
+        this scraper shares with pageviews is not free.
+        """
+        if not qid or not prop:
             return []
 
-        cached = self.cache.get("wikidata_p31", qid)
+        ns = cache_ns or ("wikidata_claim_" + str(prop).lower())
+        cached = self.cache.get(ns, qid)
         if cached is not None:
             return list(cached.get("classes") or [])
 
         data = self._api(
-            {"action": "wbgetclaims", "entity": qid, "property": "P31"}
+            {"action": "wbgetclaims", "entity": qid, "property": prop}
         )
         classes = []
-        for claim in (data or {}).get("claims", {}).get("P31", []):
+        for claim in (data or {}).get("claims", {}).get(prop, []):
             try:
                 value = claim["mainsnak"]["datavalue"]["value"]["id"]
             except (KeyError, TypeError):
@@ -306,8 +312,69 @@ class WikidataEnricher:
             if value:
                 classes.append(value)
 
-        self.cache.set("wikidata_p31", qid, {"classes": classes})
+        self.cache.set(ns, qid, {"classes": classes})
         return classes
+
+    def instance_of_qids(self, qid):
+        """P31 (instance of) class QIDs of an entity, as a list (may be
+        empty). The stadium-card guard: a bare stadium name often resolves
+        to the PERSON/city the stadium is named after ("Сантьяго Бернабеу"),
+        and P31 tells them apart (Q5 = human vs stadium/venue classes).
+        Cached per QID (namespace wikidata_p31), the empty result included;
+        same polite wbgetclaims call as media_filename_for_qid."""
+        return self.claim_qids(qid, "P31", cache_ns="wikidata_p31")
+
+    def external_ids_for_qids(self, qids, prop, chunk=50):
+        """{QID: внешний идентификатор} для СТРОКОВОГО свойства — P2446
+        (Transfermarkt), P3538 (Sofascore) и прочих внешних ключей.
+
+        ⚠️ ЭТО НЕ claim_qids. Там значение — сущность («экземпляр чего»), а
+        здесь строка: id на чужом сайте. Читать её как `value["id"]` значит
+        получить None у всех до единого.
+
+        ⚠️ ПАЧКАМИ, А НЕ ПО ОДНОМУ. wbgetentities принимает до 50 сущностей за
+        запрос: 1362 игрока — это 28 обращений вместо 1362. Бюджет Wikimedia
+        общий с постраничными просмотрами и фотографиями, и разница между 28 и
+        1362 — это разница между «шаг в ночной сборке» и «съел весь бюджет».
+
+        Кэш пер-QID (namespace wikidata_extid_<prop>), включая ОТРИЦАТЕЛЬНЫЙ
+        результат: у игрока без Transfermarkt id повторный прогон не должен
+        спрашивать снова — таких заметная доля, и без этого пачки не сходятся.
+        """
+        out, todo = {}, []
+        for qid in list(dict.fromkeys(q for q in (qids or []) if q)):
+            cached = self.cache.get("wikidata_extid_" + str(prop).lower(), qid)
+            if cached is not None:
+                if cached.get("id"):
+                    out[qid] = cached["id"]
+            else:
+                todo.append(qid)
+
+        for i in range(0, len(todo), max(int(chunk), 1)):
+            batch = todo[i:i + max(int(chunk), 1)]
+            entities = (self._api({
+                "action": "wbgetentities",
+                "ids": "|".join(batch),
+                "props": "claims",
+            }) or {}).get("entities", {}) or {}
+            for qid in batch:
+                value = None
+                for claim in ((entities.get(qid, {}) or {})
+                              .get("claims", {}) or {}).get(prop, []):
+                    try:
+                        raw = claim["mainsnak"]["datavalue"]["value"]
+                    except (KeyError, TypeError):
+                        continue
+                    # Внешний id приходит строкой; на всякий случай терпим и
+                    # словарь, чтобы смена формата не роняла весь прогон.
+                    if isinstance(raw, str) and raw.strip():
+                        value = raw.strip()
+                        break
+                self.cache.set("wikidata_extid_" + str(prop).lower(), qid,
+                               {"id": value})
+                if value:
+                    out[qid] = value
+        return out
 
     def image_filename_for_qid(self, qid):
         """P18 (image) file name for a QID, or None — see

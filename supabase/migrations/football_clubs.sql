@@ -517,7 +517,21 @@ begin
     name_en    = excluded.name_en,
     card_id    = excluded.card_id,
     country    = coalesce(excluded.country, football_club.country),
-    crest_url  = coalesce(excluded.crest_url, football_club.crest_url),
+    -- ⚠️ ФОТО КАРТОЧКИ НЕ ЗАТИРАЕТ ГЕРБ С ESPN. `excluded.crest_url` — это
+    -- `cards.photo_url`, а там у клубов лежали трибуна «Эмирейтс», Стэмфорд
+    -- Бридж, фасад «Сантьяго Бернабеу» и кадр с матча в Киеве: однословное имя
+    -- клуба в вики почти всегда занято не клубом. Прежний `coalesce` отдавал
+    -- первенство этому фото, и замер 03.09.2026 показал 190 верных гербов
+    -- ESPN в одном ночном прогоне от замены на фотографию стадиона.
+    -- Владелец: «эмблемы клубов бери с ESPN и его сделай основным» — вот здесь
+    -- он и становится основным. Пустой `excluded.crest_url` даёт NULL в обоих
+    -- сравнениях, ветка уходит в else, и прежнее значение сохраняется.
+    crest_url  = case
+                   when football_club.crest_url like '%espncdn%'
+                    and excluded.crest_url not like '%espncdn%'
+                   then football_club.crest_url
+                   else coalesce(excluded.crest_url, football_club.crest_url)
+                 end,
     fetched_at = now();
 
   perform build_club_aliases();

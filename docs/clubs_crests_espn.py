@@ -33,6 +33,12 @@ P154 («логотип») нашлось у 3 клубов из 25, а ссыл�
 `club_alias`. Вторая копия правила сопоставления в питоне разошлась бы с
 серверной молча, и клуб получил бы чужой герб.
 
+⚠️ ЗАПИСЬ В ДВА ШАГА, И ВТОРОЙ НЕ ФАКУЛЬТАТИВЕН. `apply_espn_crests` кладёт
+герб в справочник, `sync_club_card_crests` — оттуда в `cards.photo_url`. Это
+разные хранилища: справочник кормит экран «команды и статистика», карточка —
+колоду. Замер 04.09.2026: гербов ESPN в справочнике 291, в карточках 0, и
+владелец видел в коллекции диаграмму астрономического зенита вместо «Зенита».
+
 ЗАПУСК:
     python docs/clubs_crests_espn.py --leagues 5          # проба, только показ
     python docs/clubs_crests_espn.py --sql-out crests.sql # выписать SQL
@@ -177,7 +183,20 @@ def main():
                      "Content-Type": "application/json"}, method="POST")
         with urllib.request.urlopen(req, timeout=180) as fh:
             written = json.load(fh)
-        print("Эмблем записано: %s" % written)
+        print("Эмблем записано в справочник: %s" % written)
+
+        # ⚠️ ВТОРОЙ ВЫЗОВ ОБЯЗАТЕЛЕН, ИНАЧЕ ГЕРБА НЕ УВИДЯТ. Справочник кормит
+        # экран «команды и статистика», а колоду — `cards.photo_url`, и это
+        # РАЗНЫЕ хранилища одного факта. Пока герб лежал только в справочнике,
+        # в карточке «Зенита» оставалась диаграмма астрономического зенита —
+        # именно её владелец и прислал скриншотом.
+        req = urllib.request.Request(
+            url.rstrip("/") + "/rest/v1/rpc/sync_club_card_crests", data=b"{}",
+            headers={"apikey": key, "Authorization": "Bearer " + key,
+                     "Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=180) as fh:
+            synced = json.load(fh)
+        print("Эмблем перенесено в карточки: %s" % synced)
 
 
 if __name__ == "__main__":
