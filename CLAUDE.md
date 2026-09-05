@@ -99,12 +99,21 @@ node scripts/check-tests.mjs    # способна ли каждая прове�
 исчерпанный лимит GitHub API, вес первого захода. Порог, при котором стоит подождать, у каждого
 свой — решение остаётся за человеком.
 
-The scraper's tests are standalone scripts, not a pytest suite — pytest
-collects nothing from them. Run them directly:
+Почти все тесты скрапера — самостоятельные скрипты, а не pytest-набор.
+**`pytest` собирает лишь три файла** (`test_property_canonical.py`,
+`test_sports_ru_stats.py`, `test_espn_stats.py`); остальных он не видит
+вовсе, поэтому зелёный `pytest -q` про них НИЧЕГО не говорит.
+
+Гоняйте циклом — он один покрывает и те три, и все прочие:
 
 ```bash
 cd football_scraper && for f in tests/test_*.py; do python3 "$f"; done
 ```
+
+⚠️ Не выписывайте, СКОЛЬКО их, ни сюда, ни в напоминания, ни в Routine:
+число устаревает молча, а следом по нему пропускают файлы. Так и вышло —
+напоминание про «остальные семь» пережило рост до полутора десятков, и
+восемь файлов ночной обход не запускал.
 
 GitHub Actions in this repo **regularly loses the `pull_request` event**, so
 a push can end up with no check run at all — which reads as "still running",
