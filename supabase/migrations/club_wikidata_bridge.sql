@@ -109,10 +109,15 @@ grant execute on function public.apply_club_transfermarkt_ids(jsonb) to service_
 -- штатным `resolve_club_key` (у него словарь псевдонимов), и второй копии
 -- этого правила в питоне быть не должно.
 --
--- Замер 05.09.2026: 437 разных команд в `fixtures`, ВСЕ 437 разрешаются.
--- Сырое сравнение имён давало «195 неизвестных» — там были «Arsenal»,
--- «Barcelona» и «Real Madrid», состав которого у нас уже собран. Неизвестных
--- клубов нет; не хватает у известных моста, состава и стоимости.
+-- ⚠️ СОЕДИНЕНИЕ СО СПРАВОЧНИКОМ ОБЯЗАТЕЛЬНО. `resolve_club_key` ТОТАЛЬНЫЙ:
+-- он нормализует любое имя, существует такой клуб или нет. Поэтому «ключ
+-- получен» ещё не значит «клуб есть», и без join эта функция возвращала бы
+-- призраков.
+--
+-- Замер 05.09.2026: 437 разных команд в `fixtures`, и у всех 437 ключей ЕСТЬ
+-- строка справочника. Сырое сравнение имён давало «195 неизвестных» — там были
+-- «Arsenal», «Barcelona» и «Real Madrid», состав которого уже собран.
+-- Неизвестных клубов нет; не хватает у известных моста, состава и стоимости.
 create or replace function public.clubs_in_fixtures()
 returns table(club_key text)
 language sql
@@ -120,16 +125,19 @@ stable
 security definer
 set search_path = public
 as $function$
-  select distinct resolve_club_key(t.team, null) as club_key
+  select distinct fc.club_key
     from (select home_team as team from fixtures
           union all
           select away_team from fixtures) t
-   where resolve_club_key(t.team, null) is not null;
+    join football_club fc
+      on fc.club_key = resolve_club_key(t.team, null)
+     and fc.kind = 'club';
 $function$;
 
 comment on function public.clubs_in_fixtures() is
-  'Клубы, встречающиеся в расписании матчей, сведённые к club_key штатным '
-  'резолвером. Приоритет для сборщиков: сперва те, чьи матчи игрок видит.';
+  'Клубы из расписания, У КОТОРЫХ ЕСТЬ строка справочника. Соединение '
+  'обязательно: resolve_club_key тотальный и нормализует любое имя, поэтому '
+  'сам по себе ключ ещё не значит, что клуб существует.';
 
 revoke all on function public.clubs_in_fixtures() from public;
 grant execute on function public.clubs_in_fixtures() to service_role;
