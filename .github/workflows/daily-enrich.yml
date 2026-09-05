@@ -196,6 +196,18 @@ jobs:
       #
       # Мост кэшируется в football_club.transfermarkt_id, поэтому со второй
       # ночи шаг стоит один запрос на клуб.
+      # ⚠️ БЕЗ ЭТОГО ШАГА СЛЕДУЮЩИЙ НЕ ВИДИТ НОВЫХ КЛУБОВ ВООБЩЕ. Мост
+      # «клуб → verein» там строится ГОЛОСОВАНИЕМ игроков состава — а у клуба,
+      # впервые появившегося в расписании, состава нет, и голосовать некем.
+      # Замер 05.09.2026: в расписании 435 клубов, мост был у 76.
+      #
+      # P7223 в Викиданных даёт тот же идентификатор без единого голоса
+      # (проверено: «Челси» Q9616 → 631, ровно наш verein/631). Неоднозначное
+      # не берётся: у «Анже» есть и вторая команда «Angers SCO II».
+      - name: Club bridge to Transfermarkt (Wikidata P7223)
+        if: always()
+        run: APPLY=1 python docs/clubs_transfermarkt_id_wikidata.py --playing
+
       - name: Full club rosters with values (Transfermarkt)
         if: always()
         run: APPLY=1 python docs/clubs_roster_transfermarkt.py --limit 200

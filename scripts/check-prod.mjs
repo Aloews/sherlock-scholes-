@@ -37,6 +37,8 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const APP = process.env.PROD_APP_URL ?? 'https://sherlock-scholes.vercel.app';
 const TIMEOUT_MS = 25_000;
+// UA с контактом, а не подделка под браузер: источник вправе знать, кто ходит.
+const UA = 'sherlock-scholes-bot/1.0 (+https://github.com/Aloews/sherlock-scholes-)';
 
 // Ключи берём из окружения, а при его отсутствии — из .env. Без этого
 // проверка дайджеста молча превращалась в «не измерено», то есть в ту самую
@@ -627,6 +629,76 @@ async function checkClubRoster() {
          empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ---------------------------------------------------------------------------
+// Счёт из ESPN: источник жив, и цепочка доходит ДО БАЗЫ, а не до кода 200.
+//
+// ⚠️ Этот путь бесплатен, и потому идёт раз в два часа. Платный (`/scores` у
+// the-odds-api) стоит кредит за турнир при потолке 500 в месяц: там каждые
+// два часа не «дороже», а невозможно — пять турниров по четыре захода в день
+// дают 600 в месяц. Если ESPN отвалится, счёт молча перестанет обновляться, и
+// увидеть это можно только отсюда.
+// ---------------------------------------------------------------------------
+async function checkEspnScores() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Счёт из ESPN', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+
+  // 1. ИСТОЧНИК. Настоящий адрес, до разбора счёта, а не до кода 200.
+  const board = (slug) =>
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`;
+  let games = 0;
+  let scored = 0;
+  try {
+    const r = await fetch(board('eng.1'), { headers: { 'User-Agent': UA } });
+    const d = await r.json();
+    for (const ev of d.events ?? []) {
+      const comp = (ev.competitions ?? [])[0];
+      if (!comp) continue;
+      games += 1;
+      const nums = (comp.competitors ?? []).map((c) => Number(c.score));
+      if (nums.length === 2 && nums.every((n) => Number.isFinite(n))) scored += 1;
+    }
+  } catch {
+    games = 0;
+  }
+  record('Счёт ESPN: источник отдаёт числа', scored > 0,
+         `${scored} матчей со счётом из ${games} (eng.1)`,
+         'спрашивается СЧЁТ, а не код ответа: 200 над пустым телом ничего не значит');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманной лиги счёта быть не может.
+  let ghostOk = false;
+  try {
+    const r = await fetch(board('zz.9'), { headers: { 'User-Agent': UA } });
+    const d = await r.json().catch(() => ({}));
+    ghostOk = !r.ok || !(d.events ?? []).length;
+  } catch {
+    ghostOk = true;
+  }
+  record('Счёт ESPN: контроль выдуманной лиги', ghostOk,
+         ghostOk ? 'по лиге zz.9 пусто, как и должно' : 'выдуманная лига отдала матчи',
+         ghostOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 2. КОНЕЦ ЦЕПОЧКИ. Матч, отмеченный завершённым, ОБЯЗАН иметь счёт.
+  //    Это и ловит запись «completed без счёта»: `completed` снимается только
+  //    вручную, потому что по нему уже мог пройти разбор прогнозов.
+  const since = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+  const q = `${url}/rest/v1/fixtures?select=home_score,away_score,completed`
+          + `&completed=is.true&commence_at=gte.${since}&limit=1000`;
+  const rr = await fetch(q, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const rows = await rr.json().catch(() => null);
+  if (!Array.isArray(rows)) {
+    record('Счёт ESPN: завершённый матч со счётом', false, 'fixtures не читаются под anon', 'ключ anon');
+    return;
+  }
+  const blank = rows.filter((r) => r.home_score === null || r.away_score === null).length;
+  record('Счёт ESPN: завершённый матч со счётом', rows.length > 0 && blank === 0,
+         `${rows.length - blank} из ${rows.length} завершённых за 3 дня со счётом`,
+         'ловит «completed без счёта» — снять completed нельзя, по нему считают очки');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -636,6 +708,7 @@ await checkClubCrests();
 await checkFameAxes();
 await checkClubValue();
 await checkClubRoster();
+await checkEspnScores();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
