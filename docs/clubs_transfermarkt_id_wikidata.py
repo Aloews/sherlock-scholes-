@@ -38,9 +38,11 @@ Transfermarkt, по определению. Это тот же урок, что 
 import argparse
 import json
 import os
+import random
 import time
 import urllib.parse
 import urllib.request
+from datetime import date
 
 UA = ("sherlock-scholes-bot/1.0 "
       "(https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
@@ -97,42 +99,66 @@ def wd(params):
 def pick(name, candidates):
     """Кандидат или (None, причина). ЧИСТАЯ ФУНКЦИЯ — её проверяет тест.
 
-    candidates: [(qid, английский ярлык, id на Transfermarkt)], уже отобранные
-    по наличию P7223.
+    candidates: [(qid, ярлык, id на Transfermarkt, производная ли команда)],
+    уже отобранные по наличию P7223.
+
+    ⚠️ ПРОИЗВОДНЫЕ КОМАНДЫ ОТСЕИВАЮТСЯ СТРУКТУРНО, А НЕ ПО НАЗВАНИЮ. У
+    молодёжки и резерва стоит P361 («часть чего»), указывающий на родительский
+    клуб, а у основной команды его нет вовсе — замерено: «Шахтёр» Q172969 без
+    P361 против «Шахтёр (до 19 лет)» Q131388941 с P361; то же у «Динамо Киев»
+    и у «Angers SCO II». Ловить их по «U-19», «II», «B» значило бы завести
+    список суффиксов на всех языках, который всё равно бы отстал.
     """
     if not candidates:
         return None, "нет кандидата с " + TM_PROP
+    main = [c for c in candidates if not c[3]]
+    note = ""
+    if main and len(main) < len(candidates):
+        note = " (отсеяно производных: %d)" % (len(candidates) - len(main))
+        candidates = main
     if len(candidates) == 1:
-        return candidates[0], "один кандидат"
+        return candidates[0], "один кандидат" + note
     exact = [c for c in candidates
              if (c[1] or "").strip().lower() == (name or "").strip().lower()]
     if len(exact) == 1:
-        return exact[0], "ничья решена точным ярлыком (%d)" % len(candidates)
-    return None, "ОТКАЗ: кандидатов %d, точных %d" % (len(candidates), len(exact))
+        return exact[0], "ничья решена точным ярлыком (%d)%s" % (len(candidates), note)
+    return None, "ОТКАЗ: кандидатов %d, точных %d%s" % (len(candidates), len(exact), note)
 
 
-def resolve(name):
-    """(qid, tm_id, причина). Потеря источника отличается от отсутствия ответа."""
+PARENT_PROP = "P361"      # «часть чего» — стоит у молодёжки и резерва
+
+
+def resolve(name, lang="en"):
+    """(qid, tm_id, причина). Потеря источника отличается от отсутствия ответа.
+
+    ⚠️ ЯЗЫК ПОИСКА — НЕ МЕЛОЧЬ. У 1128 клубов из 1545 нет латинского имени
+    вообще, и по-английски они не ищутся вовсе. Русское название ищется с
+    `language=ru` и находит их: «Спартак Москва» → Q29112 → verein/232,
+    «Црвена Звезда» → Q173009 → verein/159. Сравнивается при этом ярлык НА
+    ТОМ ЖЕ языке, что и запрос, иначе точное равенство не сработает никогда.
+    """
     r = wd({"action": "wbsearchentities", "search": name,
-            "language": "en", "type": "item", "limit": SEARCH_LIMIT})
+            "language": lang, "type": "item", "limit": SEARCH_LIMIT})
     if r is None:
         return None, None, "ПОТЕРЯ: поиск не ответил"
     ids = [h["id"] for h in r.get("search", [])]
     if not ids:
         return None, None, "в Викиданных не найден"
     e = wd({"action": "wbgetentities", "ids": "|".join(ids),
-            "props": "claims|labels", "languages": "en"})
+            "props": "claims|labels", "languages": lang})
     if e is None:
         return None, None, "ПОТЕРЯ: сущности не ответили"
     cands = []
     for qid, ent in (e.get("entities") or {}).items():
+        claims = ent.get("claims", {})
         tm = [c["mainsnak"]["datavalue"]["value"]
-              for c in ent.get("claims", {}).get(TM_PROP, [])
+              for c in claims.get(TM_PROP, [])
               if c.get("mainsnak", {}).get("datavalue")
               and c.get("rank") != "deprecated"]
         if tm:
-            label = (ent.get("labels", {}).get("en", {}) or {}).get("value", "")
-            cands.append((qid, label, str(tm[0])))
+            label = (ent.get("labels", {}).get(lang, {}) or {}).get("value", "")
+            derived = bool(claims.get(PARENT_PROP))
+            cands.append((qid, label, str(tm[0]), derived))
     hit, why = pick(name, cands)
     if not hit:
         return None, None, why
@@ -141,14 +167,30 @@ def resolve(name):
 
 def clubs_to_do(playing_only, limit):
     """Клубы без моста. Сперва те, чьи матчи игрок реально видит."""
+    # ⚠️ БЕЗ `name_en not.is.null`, И ЭТО СНИМАЕТ ГЛАВНОЕ ОГРАНИЧЕНИЕ. У 1128
+    # клубов из 1545 латинского имени нет вообще; с прежним условием сборщик
+    # их не пробовал ВОВСЕ, то есть состава им не досталось бы никогда.
+    # Русское имя ищется по-русски — см. resolve(lang).
     rows = read_all("football_club", {
         "select": "club_key,name,name_en,country,league,crest_url",
         "kind": "eq.club", "transfermarkt_id": "is.null",
-        "name_en": "not.is.null", "order": "club_key"})
+        "order": "club_key"})
     if playing_only:
         playing = {r["club_key"] for r in sb("rpc/clubs_in_fixtures", method="POST", body={})}
         rows = [r for r in rows if r["club_key"] in playing]
-    return rows[:limit] if limit else rows
+    if not limit:
+        return rows
+    # ⚠️ БЕЗ ПЕРЕМЕШИВАНИЯ НОЧНОЙ ШАГ ТОПЧЕТСЯ НА МЕСТЕ. Отказавшие клубы
+    # остаются без моста, значит завтра они снова в начале того же списка —
+    # и с `--limit` шаг каждую ночь перебирал бы ОДНИ И ТЕ ЖЕ первые N,
+    # никогда не доходя до хвоста.
+    #
+    # Порядок случайный, но с семенем от даты: внутри суток прогон
+    # воспроизводим (повтор после обрыва берёт тот же срез), а назавтра срез
+    # другой. Отказавшие при этом периодически пробуются заново — Викиданные
+    # пополняются, и вчерашний отказ завтра может стать мостом.
+    random.Random(date.today().isoformat()).shuffle(rows)
+    return rows[:limit]
 
 
 def main():
@@ -180,7 +222,18 @@ def main():
         batch = []
 
     for club in clubs:
-        qid, tm_id, why = resolve(club["name_en"])
+        # Латиница точнее (ярлыки Викиданных по умолчанию английские), поэтому
+        # она первой; русское имя — запасной путь, а для 1128 клубов
+        # единственный. Второй запрос уходит ТОЛЬКО если первого не хватило:
+        # вежливость к источнику важнее полноты за один проход.
+        qid = tm_id = None
+        why = "имени нет"
+        if club.get("name_en"):
+            qid, tm_id, why = resolve(club["name_en"], "en")
+        if not tm_id and club.get("name") and not why.startswith("ПОТЕРЯ"):
+            time.sleep(PAUSE)
+            qid, tm_id, why_ru = resolve(club["name"], "ru")
+            why = why_ru + (" [по-русски]" if tm_id else " [и по-русски]")
         if tm_id:
             found += 1
             batch.append({"club_key": club["club_key"],
@@ -190,7 +243,8 @@ def main():
         else:
             refused += 1
         print("  %-26s %-30s %-16s %s"
-              % (club["club_key"][:26], (club["name_en"] or "")[:30],
+              % (club["club_key"][:26],
+                 (club.get("name_en") or club.get("name") or "")[:30],
                  ("verein/" + tm_id) if tm_id else "—", why), flush=True)
         if len(batch) >= RPC_BATCH:
             flush()

@@ -204,9 +204,15 @@ jobs:
       # P7223 в Викиданных даёт тот же идентификатор без единого голоса
       # (проверено: «Челси» Q9616 → 631, ровно наш verein/631). Неоднозначное
       # не берётся: у «Анже» есть и вторая команда «Angers SCO II».
+      #
+      # НЕ `--playing`: клубов 1545, латинского имени нет у 1128, и русское имя
+      # ищется по-русски — ограничивать выборку расписанием значит оставить
+      # без состава всех остальных. Срез за ночь ограничен числом, а не
+      # признаком, и перемешан семенем от даты: иначе шаг каждую ночь
+      # перебирал бы одни и те же первые 400.
       - name: Club bridge to Transfermarkt (Wikidata P7223)
         if: always()
-        run: APPLY=1 python docs/clubs_transfermarkt_id_wikidata.py --playing
+        run: APPLY=1 python docs/clubs_transfermarkt_id_wikidata.py --limit 400
 
       - name: Full club rosters with values (Transfermarkt)
         if: always()
