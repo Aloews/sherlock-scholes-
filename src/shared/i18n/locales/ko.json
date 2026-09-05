@@ -168,7 +168,13 @@
     "level": "레벨",
     "level_basis_fame": "인지도 기준 — 경기 수 부족",
     "level_basis_fame_form": "인지도와 성적 기준",
-    "level_basis_icon": "축구의 아이콘"
+    "level_basis_icon": "축구의 아이콘",
+    "reach": "인지도",
+    "fame_home": "본국",
+    "fame_world": "전 세계",
+    "value": "시장 가치",
+    "value_source": "출처: {{source}}",
+    "value_source_at": "{{source}}, {{date}} 평가"
   },
   "profile": {
     "title": "프로필",
@@ -866,8 +872,11 @@
     "col_cards": "경/퇴",
     "col_points": "점수",
     "rating": "레이팅",
-    "place": "{{n}}위",
-    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%"
+    "place": "{{total}}팀 중 {{n}}위",
+    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%",
+    "market_value": "스쿼드 가치",
+    "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
+    "roster_source": "스쿼드와 시장 가치 — {{source}}"
   },
   "clubs": {
     "title": "클럽",

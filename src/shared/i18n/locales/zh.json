@@ -168,7 +168,13 @@
     "level": "等级",
     "level_basis_fame": "依知名度 — 比赛太少",
     "level_basis_fame_form": "依知名度与表现",
-    "level_basis_icon": "足球偶像"
+    "level_basis_icon": "足球偶像",
+    "reach": "知名度",
+    "fame_home": "本国",
+    "fame_world": "全球",
+    "value": "身价",
+    "value_source": "来源：{{source}}",
+    "value_source_at": "{{source}}，{{date}} 估值"
   },
   "profile": {
     "title": "个人资料",
@@ -866,8 +872,11 @@
     "col_cards": "黄/红",
     "col_points": "积分",
     "rating": "评分",
-    "place": "第 {{n}} 名",
-    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%"
+    "place": "{{total}}队中第{{n}}名",
+    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%",
+    "market_value": "阵容总身价",
+    "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
+    "roster_source": "阵容与身价 — {{source}}"
   },
   "clubs": {
     "title": "俱乐部",

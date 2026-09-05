@@ -8,6 +8,7 @@ import { cardDisplayName } from '@/shared/lib/cardName';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
+import { formatEur } from '@/shared/lib/money';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
@@ -169,6 +170,37 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         .filter((row): row is { label: string; value: number } => row.value != null)
     : [];
 
+  // ИЗВЕСТНОСТЬ ДОМА И В МИРЕ — две разные величины, и показывать их надо
+  // рядом. До 04.09.2026 просмотры собирались по ДЕВЯТИ локалям интерфейса, и
+  // половина активных игроков (1452 из 2918) не имела ни одного просмотра на
+  // языке своей страны: турка мерили по-русски, поляка по-арабски. Теперь
+  // языки берутся из самой статьи, а «дома» — из языков страны игрока.
+  //
+  // ⚠️ Строка не рисуется, если величины нет. Ноль читался бы как «его никто
+  // не знает», а значит он «мы не измерили» — это разные утверждения.
+  const reachRows = [
+    card.fame_home != null && { label: t('collection.fame_home'), value: card.fame_home },
+    card.fame_world != null && { label: t('collection.fame_world'), value: card.fame_world },
+  ].filter(Boolean) as { label: string; value: number }[];
+
+  // ⚠️ ИСТОЧНИК СТОИМОСТИ НАЗЫВАЕТСЯ РЯДОМ С ЧИСЛОМ. Данные принадлежат
+  // Transfermarkt; маскировать происхождение нельзя, и дата оценки идёт с
+  // числом — источник переоценивает раз в несколько месяцев, а без даты
+  // число читается как «сейчас».
+  const marketValue = formatEur(card.market_value_eur, lang);
+  const valuedAt = (() => {
+    if (!card.market_value_at) return null;
+    const d = new Date(card.market_value_at);
+    // Intl бросает RangeError на непрочитанной дате и роняет ВЕСЬ экран в
+    // белый лист — так уже было в FantasyScreen.
+    if (Number.isNaN(d.getTime())) return null;
+    try {
+      return new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long' }).format(d);
+    } catch {
+      return card.market_value_at;
+    }
+  })();
+
   return (
     <div className="fixed inset-0 z-50 bg-brand-bg ds-screen overflow-y-auto animate-slide-up">
       {/* Sticky header */}
@@ -264,6 +296,40 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                   </div>
                 </div>
               ))}
+            </div>
+          </Section>
+        )}
+
+        {(reachRows.length > 0 || marketValue) && (
+          <Section title={t('collection.reach')}>
+            <div className="flex flex-col gap-2.5">
+              {reachRows.map((row) => (
+                <div key={row.label}>
+                  <div className="flex justify-between text-[11.5px] mb-1">
+                    <span className="text-brand-muted">{row.label}</span>
+                    <span className="font-bold text-white">{row.value}</span>
+                  </div>
+                  <div className="h-[5px] rounded-full bg-brand-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${row.value}%`, background: 'var(--accent-gradient)' }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {marketValue && (
+                <div className="ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11.5px] text-brand-muted">{t('collection.value')}</span>
+                    <span className="ds-display text-[15px] font-extrabold text-white">{marketValue}</span>
+                  </div>
+                  <p className="text-[9.5px] text-brand-muted mt-1 leading-snug">
+                    {valuedAt
+                      ? t('collection.value_source_at', { source: 'Transfermarkt', date: valuedAt })
+                      : t('collection.value_source', { source: 'Transfermarkt' })}
+                  </p>
+                </div>
+              )}
             </div>
           </Section>
         )}

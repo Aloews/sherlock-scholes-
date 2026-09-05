@@ -37,6 +37,8 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const APP = process.env.PROD_APP_URL ?? 'https://sherlock-scholes.vercel.app';
 const TIMEOUT_MS = 25_000;
+// UA с контактом, а не подделка под браузер: источник вправе знать, кто ходит.
+const UA = 'sherlock-scholes-bot/1.0 (+https://github.com/Aloews/sherlock-scholes-)';
 
 // Ключи берём из окружения, а при его отсутствии — из .env. Без этого
 // проверка дайджеста молча превращалась в «не измерено», то есть в ту самую
@@ -314,11 +316,399 @@ async function checkBundle() {
   }
 }
 
+// ------------------------------------------------------- эмблемы клубов ---
+// ⚠️ ССЫЛКА НА ГЕРБ — ЭТО ЕЩЁ НЕ ГЕРБ, и здесь это уже стоило владельцу
+// скриншота. В справочнике у «Зенита» лежал верный герб с ESPN, а в карточке —
+// диаграмма астрономического зенита: два хранилища одного факта разошлись
+// молча, и запрос к справочнику отвечал 200 над сломанной колодой. Ровно тот
+// же силуэт ошибки, что у ТВ, где мастер-манифест отвечал 200, а вариант 404.
+//
+// Поэтому проверка идёт до БАЙТОВ картинки: код 200 над `text/html` в один
+// байт — это ровно то, чем ESPN отвечает на несуществующий id.
+const IMG_MAGIC = [
+  ['89504e47', 'PNG'], ['ffd8ff', 'JPEG'], ['47494638', 'GIF'], ['52494646', 'WEBP'],
+];
+
+async function realImage(url) {
+  let res;
+  try {
+    res = await get(url);
+  } catch (e) {
+    return { ok: false, why: String(e).slice(0, 40) };
+  }
+  if (!res.ok) return { ok: false, why: `HTTP ${res.status}` };
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const head = [...buf.slice(0, 4)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const kind = IMG_MAGIC.find(([m]) => head.startsWith(m))?.[1]
+    ?? (new TextDecoder().decode(buf.slice(0, 200)).includes('<svg') ? 'SVG' : null);
+  if (!kind) return { ok: false, why: `не картинка: ${head} (${buf.byteLength} б)` };
+  // Пустая заглушка в пару сотен байт гербом не является.
+  if (buf.byteLength < 2_000) return { ok: false, why: `${kind}, но всего ${buf.byteLength} б` };
+  return { ok: true, why: `${kind}, ${Math.round(buf.byteLength / 1024)} КБ` };
+}
+
+async function checkClubCrests() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Эмблемы клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  let rows = null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/club_directory`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ p_lang: 'ru', p_query: null, p_limit: 60 }),
+    });
+    rows = await r.json().catch(() => null);
+    if (!r.ok || !Array.isArray(rows)) {
+      record('Эмблемы клубов', false,
+             `${rows?.code ?? 'HTTP ' + r.status} ${rows?.message ?? ''}`.trim().slice(0, 60), 'н/д');
+      return;
+    }
+  } catch (e) {
+    record('Эмблемы клубов', false, String(e).slice(0, 50), 'н/д');
+    return;
+  }
+
+  const withCrest = rows.filter((c) => c.crest_url);
+  const espn = withCrest.filter((c) => c.crest_url.includes('espncdn')).length;
+  record('Эмблемы: справочник отдаёт гербы', withCrest.length > 0,
+         `${withCrest.length} из ${rows.length} клубов, с ESPN ${espn}`,
+         'пустой список уронил бы проверку');
+
+  // До байтов, а не до кода 200 — и у первых клубов экрана, а не у выбранных.
+  let bad = null;
+  for (const club of withCrest.slice(0, 6)) {
+    const img = await realImage(club.crest_url);
+    if (!img.ok) { bad = `${club.name}: ${img.why}`; break; }
+  }
+  record('Эмблемы: картинка выкачивается', !bad,
+         bad ?? `${Math.min(withCrest.length, 6)} гербов — настоящие картинки`,
+         'скачиваются байты, а не проверяется код ответа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Тот же `realImage` на заведомо несуществующий
+  // id ESPN ОБЯЗАН отказать: замер 04.09.2026 — 404, `text/html`, один байт.
+  // Если и это сойдёт за герб, проверка выше не значит ничего.
+  const control = await realImage('https://a.espncdn.com/i/teamlogos/soccer/500/999999999.png');
+  record('Эмблемы: контроль битой ссылки', !control.ok,
+         control.ok ? 'битая ссылка ПРИНЯТА за картинку' : `отвергнута: ${control.why}`,
+         control.ok ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
+// -------------------------------------------- известность дома и в мире ---
+// ⚠️ ЧТО ЗДЕСЬ ИДЁТ ДО КОНЦА ЦЕПОЧКИ. Наличие колонок `fame_home`/`fame_world`
+// не значит ничего: они появились пустыми и такими бы и остались, если бы
+// сбор просмотров не дошёл до языков, которых НЕТ среди девяти локалей
+// интерфейса. Ради этого всё и делалось — замер 04.09.2026: у 1452 активных
+// игроков из 2918 (49.8 %) не было ни одного просмотра на языке своей страны.
+//
+// Поэтому проверка спрашивает не «есть ли колонка», а «есть ли ДОМАШНЯЯ
+// известность у игроков, чья страна читает НЕ на одном из девяти»: Турция,
+// Польша, Сербия, Украина, Греция, Швеция, Норвегия, Дания, Нидерланды,
+// Чехия. Ноль здесь — это ровно тот отказ, при котором фича мертва, а
+// колонки на месте.
+//
+// И ходим боевым anon-ключом: у него лимит запроса 3 с, и две функции этого
+// проекта уже работали под админом и падали у всех игроков.
+const HOME_ONLY_COUNTRIES = ['TR', 'PL', 'RS', 'UA', 'GR', 'SE', 'NO', 'DK', 'NL', 'CZ'];
+
+async function cardsWhere(url, auth, query) {
+  const r = await fetch(`${url}/rest/v1/cards?${query}`, { headers: auth });
+  const body = await r.json().catch(() => null);
+  return { ok: r.ok, rows: Array.isArray(body) ? body : null, status: r.status };
+}
+
+async function checkFameAxes() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Известность дома и в мире', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const inList = `(${HOME_ONLY_COUNTRIES.join(',')})`;
+
+  // ⚠️ СПРАШИВАЕТСЯ СБОР, А НЕ РАНГ. Это две разные вещи, и путать их нельзя:
+  // ранг «дома» считается ВНУТРИ языка и требует когорты (меньше десяти
+  // соотечественников — перцентиль не считается, на двоих он выдаёт 0 и 100).
+  // А вот собраны ли просмотры на языке страны — ровно то, что закрывает
+  // ночной шаг, и ровно то, чего не было: до 04.09.2026 в pageviews_i18n не
+  // существовало ни одного ключа `tr`, `pl`, `sv`, `da`, `uk`, `cs`.
+  const t0 = Date.now();
+  const langsByCountry = {
+    TR: 'tr', PL: 'pl', RS: 'sr', UA: 'uk', GR: 'el',
+    SE: 'sv', NO: 'no', DK: 'da', NL: 'nl', CZ: 'cs',
+  };
+  const collected = [];
+  for (const [cc, lang] of Object.entries(langsByCountry)) {
+    const r = await cardsWhere(url, auth,
+      `select=name,country&category=eq.player&active=is.true`
+      + `&country=eq.${cc}&pageviews_i18n=cs.{"${lang}":null}&limit=1`);
+    // PostgREST не умеет «ключ существует» напрямую; спрашиваем через ->>
+    const r2 = r.rows === null || r.rows.length === 0
+      ? await cardsWhere(url, auth,
+          `select=name,country&category=eq.player&active=is.true`
+          + `&country=eq.${cc}&pageviews_i18n->>${lang}=not.is.null&limit=1`)
+      : r;
+    if (r2.rows && r2.rows.length) collected.push(`${cc}/${lang}`);
+  }
+  const ms = Date.now() - t0;
+  record('Известность дома: собраны языки вне девяти локалей', collected.length > 0,
+         collected.length
+           ? `${collected.length} из 10 стран уже с домашним языком: ${collected.join(' ')}, ${ms} мс`
+           : 'НИ ОДНОЙ — сбор не дошёл до этих языков, и мерить дома нечем',
+         'спрашивается СБОР, а не ранг: ранг требует когорты в 10 соотечественников');
+
+  // Две оси, которые всегда совпадают, — это одна ось под двумя именами.
+  const apart = await cardsWhere(url, auth,
+    `select=id,name,fame_home,fame_world&category=eq.player&active=is.true`
+    + `&fame_home=not.is.null&fame_world=not.is.null&limit=200`);
+  const differ = (apart.rows ?? []).filter(
+    (c) => Math.abs((c.fame_home ?? 0) - (c.fame_world ?? 0)) >= 10).length;
+  record('Известность: дома и в мире — РАЗНЫЕ величины', differ > 0,
+         differ ? `${differ} из ${(apart.rows ?? []).length} расходятся на 10+ пунктов`
+                : 'НИ ОДНОГО расхождения — значит это одна ось под двумя именами',
+         'две одинаковые оси хуже одной: они обещают различение');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Тот же запрос по заведомо несуществующей
+  // стране ОБЯЗАН вернуть пусто. Вернёт строки — фильтр не работает, и
+  // проверка выше не значит ничего.
+  const control = await cardsWhere(url, auth,
+    `select=id&category=eq.player&active=is.true&country=eq.ZZ`
+    + `&fame_home=not.is.null&limit=1`);
+  const empty = control.ok && (control.rows ?? []).length === 0;
+  record('Известность: контроль несуществующей страны', empty,
+         empty ? 'по стране ZZ пусто, как и должно' : 'фильтр по стране НЕ работает',
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------------------- стоимость состава ------
+// ⚠️ ЗАБЫТАЯ КОЛОНКА ПРИЕЗЖАЕТ КАК `undefined`, А `undefined !== null` ИСТИННО.
+// Этот проект уже рисовал «undefined%» ровно так: колонку добавили в одну
+// функцию из пары, которые клиент читает одним типом. Поэтому спрашивается не
+// значение, а НАЛИЧИЕ ПОЛЯ в ответе club_profile.
+async function checkClubValue() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Стоимость состава', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const t0 = Date.now();
+  let row = null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ p_club_key: 'real madrid', p_lang: 'ru' }),
+    });
+    const body = await r.json().catch(() => null);
+    row = Array.isArray(body) ? body[0] : null;
+  } catch (e) {
+    record('Стоимость состава', false, String(e).slice(0, 50), 'н/д');
+    return;
+  }
+  const ms = Date.now() - t0;
+  const hasFields = row !== null
+    && 'market_value_eur' in row && 'market_value_priced' in row;
+  record('Стоимость состава: поля есть в ответе', hasFields,
+         hasFields
+           ? `priced ${row.market_value_priced} из ${row.squad}, ${ms} мс (anon)`
+           : 'club_profile НЕ отдаёт market_value_* — колонка приедет undefined',
+         'спрашивается наличие поля, а не значение');
+  record('Стоимость состава: anon укладывается в 3 с', ms < 3000,
+         `${ms} мс`, 'у anon лимит запроса 3 с; сервисный ключ этого не покажет');
+}
+
+// ------------------------------------------------- полный состав клуба ----
+// ⚠️ ЗДЕСЬ ПРОВЕРЯЕТСЯ ПОЛНОТА, А НЕ НАЛИЧИЕ. «Состав есть» зеленело бы и на
+// четырёх игроках из двадцати семи — а собирали мы его ровно затем, что
+// прежний, из Викиданных, был неполным: 1362 строки на 294 клуба, полный
+// состав у 42. Поэтому спрашивается число игроков и доля с ценой.
+//
+// И ходим боевым anon-ключом: у него лимит запроса 3 с.
+async function checkClubRoster() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Полный состав клуба', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const call = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return Array.isArray(j) ? j : null;
+  };
+
+  const t0 = Date.now();
+  const rows = await call('club_roster_list', { p_club_key: 'real madrid' });
+  const ms = Date.now() - t0;
+  if (rows === null) {
+    record('Полный состав клуба', false, 'club_roster_list не отвечает', 'ключ anon');
+    return;
+  }
+  const priced = rows.filter((r) => r.market_value_eur != null).length;
+  // Двадцать — заведомо ниже любой настоящей заявки (у «Реала» 27) и заведомо
+  // выше того, что давал прежний путь.
+  record('Полный состав: заявка целиком', rows.length >= 20,
+         `${rows.length} игроков, ${priced} с ценой, ${ms} мс (anon)`,
+         'спрашивается ЧИСЛО игроков: «состав есть» зеленело бы и на четырёх');
+
+  // ⚠️ ЗДЕСЬ СТОЯЛА НЕВЕРНАЯ ПРОВЕРКА, И ОНА ЗЕЛЕНЕЛА НА ПОЛОМКЕ. Было
+  // «есть игроки без карточки → состав шире колоды»: 4 из 27 у «Реала» —
+  // выглядело подтверждением. На деле это была ДЫРА В СВЯЗЫВАНИИ: карточка
+  // Беллингема есть, активная, с фото, он стоит в card_current_club у
+  // «Реала» и, значит, в фэнтези, — просто ростер связывался только по
+  // cards.transfermarkt_id, а его не было у 1783 активных карточек.
+  // Проверка, которая радуется отсутствию связи, охраняет поломку.
+  //
+  // Спрашивать надо обратное: у клуба, оцифрованного полностью, состав
+  // должен быть СВЯЗАН с колодой. Несвязанные там — настоящая молодёжь.
+  const linked = rows.filter((r) => r.card_id != null).length;
+  const share = rows.length ? linked / rows.length : 0;
+  record('Полный состав: связан с колодой', share >= 0.8,
+         `${linked} из ${rows.length} строк ведут на карточку`,
+         'проверка ловит дыру в связывании, а не радуется ей');
+
+  const val = await call('club_roster_value', { p_club_key: 'real madrid' });
+  const v = (val && val[0]) || {};
+  record('Полный состав: сумма едет с покрытием', 'priced' in v && 'squad' in v,
+         'priced' in v ? `${v.priced} из ${v.squad}, ${Math.round((v.total_eur ?? 0) / 1e6)} млн €`
+                       : 'club_roster_value не отдаёт покрытие',
+         'сумма без знаменателя читается как «столько стоит клуб»');
+
+  // ⚠️ ИГРОК НЕ МОЖЕТ БЫТЬ В ДВУХ ЗАЯВКАХ СРАЗУ, и это единственное, что
+  // поймало «Страсбур → verein/631». Мост клуба строится голосованием
+  // игроков, у «Страсбура» и «Челси» общий владелец, двое голосовавших уже
+  // числились в «Челси» — и «Страсбур» получил заявку «Челси» целиком. 28
+  // игроков, у всех цена, состав правдоподобный: ни одна проверка «есть ли
+  // состав», «сходится ли сумма», «связан ли он с колодой» этого не видит.
+  // Видно только пересечение: Палмер и Эстевао в двух клубах сразу.
+  const keys = ['real madrid', 'chelsea', 'barcelona', 'bayern munich',
+                'arsenal', 'liverpool'];
+  const squads = {};
+  for (const k of keys) {
+    const r = await call('club_roster_list', { p_club_key: k });
+    if (r && r.length) squads[k] = new Set(r.map((x) => x.tm_player_id));
+  }
+  const overlaps = [];
+  const names = Object.keys(squads);
+  for (let i = 0; i < names.length; i += 1) {
+    for (let j = i + 1; j < names.length; j += 1) {
+      const a = squads[names[i]];
+      const b = squads[names[j]];
+      const both = [...a].filter((x) => b.has(x));
+      if (both.length) overlaps.push(`${names[i]} ∩ ${names[j]}: ${both.length}`);
+    }
+  }
+  record('Полный состав: игрок не в двух заявках', overlaps.length === 0,
+         overlaps.length ? overlaps.join('; ')
+                         : `${names.length} заявок, пересечений нет`,
+         'ловит мост, уехавший на чужой клуб; сумма и связь с колодой на нём зелены');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ к ней: заявка, пересечённая сама с собой,
+  // обязана дать пересечение. Не дала — проверка сравнивает пустоту.
+  const self = squads[names[0]] ? [...squads[names[0]]].filter(
+    (x) => squads[names[0]].has(x)).length : 0;
+  record('Полный состав: контроль пересечения', self > 0,
+         self > 0 ? `заявка «${names[0] ?? '—'}» пересекается с собой на ${self}`
+                  : 'сравнение не находит даже самого себя',
+         self > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у несуществующего клуба состава быть не может.
+  const ghost = await call('club_roster_list', { p_club_key: 'клуб-которого-нет' });
+  const empty = ghost !== null && ghost.length === 0;
+  record('Полный состав: контроль несуществующего клуба', empty,
+         empty ? 'пусто, как и должно' : 'состав нашёлся у выдуманного клуба',
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ---------------------------------------------------------------------------
+// Счёт из ESPN: источник жив, и цепочка доходит ДО БАЗЫ, а не до кода 200.
+//
+// ⚠️ Этот путь бесплатен, и потому идёт раз в два часа. Платный (`/scores` у
+// the-odds-api) стоит кредит за турнир при потолке 500 в месяц: там каждые
+// два часа не «дороже», а невозможно — пять турниров по четыре захода в день
+// дают 600 в месяц. Если ESPN отвалится, счёт молча перестанет обновляться, и
+// увидеть это можно только отсюда.
+// ---------------------------------------------------------------------------
+async function checkEspnScores() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Счёт из ESPN', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+
+  // 1. ИСТОЧНИК. Настоящий адрес, до разбора счёта, а не до кода 200.
+  const board = (slug) =>
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`;
+  let games = 0;
+  let scored = 0;
+  try {
+    const r = await fetch(board('eng.1'), { headers: { 'User-Agent': UA } });
+    const d = await r.json();
+    for (const ev of d.events ?? []) {
+      const comp = (ev.competitions ?? [])[0];
+      if (!comp) continue;
+      games += 1;
+      const nums = (comp.competitors ?? []).map((c) => Number(c.score));
+      if (nums.length === 2 && nums.every((n) => Number.isFinite(n))) scored += 1;
+    }
+  } catch {
+    games = 0;
+  }
+  record('Счёт ESPN: источник отдаёт числа', scored > 0,
+         `${scored} матчей со счётом из ${games} (eng.1)`,
+         'спрашивается СЧЁТ, а не код ответа: 200 над пустым телом ничего не значит');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманной лиги счёта быть не может.
+  let ghostOk = false;
+  try {
+    const r = await fetch(board('zz.9'), { headers: { 'User-Agent': UA } });
+    const d = await r.json().catch(() => ({}));
+    ghostOk = !r.ok || !(d.events ?? []).length;
+  } catch {
+    ghostOk = true;
+  }
+  record('Счёт ESPN: контроль выдуманной лиги', ghostOk,
+         ghostOk ? 'по лиге zz.9 пусто, как и должно' : 'выдуманная лига отдала матчи',
+         ghostOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 2. КОНЕЦ ЦЕПОЧКИ. Матч, отмеченный завершённым, ОБЯЗАН иметь счёт.
+  //    Это и ловит запись «completed без счёта»: `completed` снимается только
+  //    вручную, потому что по нему уже мог пройти разбор прогнозов.
+  const since = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+  const q = `${url}/rest/v1/fixtures?select=home_score,away_score,completed`
+          + `&completed=is.true&commence_at=gte.${since}&limit=1000`;
+  const rr = await fetch(q, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const rows = await rr.json().catch(() => null);
+  if (!Array.isArray(rows)) {
+    record('Счёт ESPN: завершённый матч со счётом', false, 'fixtures не читаются под anon', 'ключ anon');
+    return;
+  }
+  const blank = rows.filter((r) => r.home_score === null || r.away_score === null).length;
+  record('Счёт ESPN: завершённый матч со счётом', rows.length > 0 && blank === 0,
+         `${rows.length - blank} из ${rows.length} завершённых за 3 дня со счётом`,
+         'ловит «completed без счёта» — снять completed нельзя, по нему считают очки');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
+await checkClubCrests();
+await checkFameAxes();
+await checkClubValue();
+await checkClubRoster();
+await checkEspnScores();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

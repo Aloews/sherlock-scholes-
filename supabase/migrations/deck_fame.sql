@@ -37,6 +37,14 @@
 -- floor is set. Guessing a fame for them would be a lie.
 --
 -- Idempotent: rerun refresh_card_fame() after every data import.
+--
+-- ⚠️ ЭТОТ ФАЙЛ БОЛЬШЕ НЕ ИСТОЧНИК ПРАВДЫ ДЛЯ refresh_card_fame().
+-- Действующее определение живёт в supabase/migrations/deck_fame_home_world.sql:
+-- там к оси `fame` добавлены `fame_world` (сумма по всем языкам) и
+-- `fame_home` (максимум среди языков страны игрока), и там же починено окно
+-- перцентиля — карточка без просмотров в него больше не входит.
+-- Применить ЭТОТ файл поверх значит молча откатить прод на две колонки
+-- назад. Так этот проект уже терял четыре колонки в club_profile.
 -- ============================================================
 
 ALTER TABLE cards ADD COLUMN IF NOT EXISTS fame smallint;

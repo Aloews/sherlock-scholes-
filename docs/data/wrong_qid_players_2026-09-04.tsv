@@ -1,0 +1,134 @@
+# Карточки игроков, у которых wikidata_qid указывает НЕ НА ЧЕЛОВЕКА.
+# Найдено 04.09.2026 запросом P31=Q5 по всем 2884 QID карточек игроков.
+#
+# ПРИЧИНА — МОЯ. docs/cards_pageviews_world.py резолвил QID по титулу
+# ру-вики (pvi.qids_for_ru_titles) БЕЗ P31-гарда, а у мононима статья с
+# его именем — это страница ФАМИЛИИ: «Беллингем» → Q16479897
+# «Bellingham (surname)» вместо Q66241169 «Jude Bellingham».
+#
+# Тем же промахом испорчены и просмотры: они сняты со страницы фамилии.
+# У «Андерсона» en=24325 — это фамилия, а не игрок.
+#
+# Всего: 120 карточек, из них активных 110.
+#
+# id	имя	name_en	qid	fame	pageviews	языки
+b55959a9-5d80-4324-9026-8be3141da28d	Халк	Hulk	Q188760	90	93070	ar,en,es,fr,ja,ko,zh
+7247c4d7-5b84-4273-91a2-7d01eec819c9	Александр Зинченко	Oleksandr Zinchenko	Q18242443	77	242299	en
+c63486cc-d6e0-43ca-87ef-58dcd918ed89	Крис	Kris	Q331220	70	25526	ar,en,es,fr,ja,ko,pt,zh
+06859d69-cfed-444f-8b61-997282698919	Александар Митрович	Aleksandar Mitrović	Q3609461	54	77306	en,fr,pt,zh
+76864cb4-7821-482d-bf7f-481f47097296	Артур	Arthur	Q1778168	51	14826	ar,en,fr,zh
+bba4bb22-04a3-4903-8ce0-fdab65b8f8bd	Майкл Доусон	Michael Dawson	Q51316	48	17989	ar,en,es,fr,ko,pt,zh
+0e078cbf-a617-4b81-89ba-c5703c74277a	Ришарлисон	Richarlison	Q109083786	44	40839	ru
+38eb2b9e-63cd-464f-9ee4-7452345b1fd5	Андерсон	Anderson	Q1848748	36	4575	en
+480461da-be44-4c6d-86bd-4a450a83faf7	Родриго Рикельме	Rodrigo Riquelme	Q97705042	35	22156	en
+99e9ec02-f756-47bd-ad96-c4d9520ca838	Алекс	Aleks	Q226308	35	21076	ar,en,fr,ja,ko,pt,zh
+515a03bd-8396-42c6-9ce4-18dcd15e2438	Милан Гайич	Milan Gajić	Q1934216	34	19346	en,fr,ja
+1e97cc72-420a-40d0-80ac-ff17b24f3819	Максвелл	Maksvell	Q219153	33	2284	ar,en,es,fr,ja,ko,pt,zh
+b2d1ce97-0099-4548-8dea-5e11699560eb	Артём Тимофеев	Artem Timofeev	Q16253698	32	16543	en
+07e7d795-a010-4bb0-b1e4-a5e9f7c98a09	Родриган	Rodrigão	Q10363993	31	14923	en
+629e4d5b-ca36-4504-b5b8-df04f83a0cd4	Хоакин	Joaquín	Q6204496	31	1389	en,es,ko
+bc9c1558-31a2-4731-9bad-8bb47706b907	Нуну Мендеш	Nuno Mendes	Q1037795	31	15003	ar,en,fr
+c9c984f9-6683-4437-9240-82af45ac6d2f	Фред	Fred	Q3350191	30	813	en,fr,ja,ko,pt
+2008c103-ffc5-44f6-a3d5-cd319bbde85b	Оскар	Oscar (footballer, born 1991)	Q1178739	26	10019	en
+3e9805b3-991b-4368-9725-aa087f7af05f	Георгий Арутюнян	Georgi Harutyunyan	Q124763005	26	9737	ru
+bad1eb0a-d8c8-4c82-bd0f-671dcd193681	Эмерсон	Emerson	Q224022	25	1008	ar,en,es,fr,ja,ko
+db301b6c-eba4-4863-a0a2-a5c059c14e49	Нино	Nino	Q8140440	25	8910	en,es,fr,pt
+e6b24dd0-0cec-4f7a-86f7-00da53a1b328	Иван Комаров	Ivan Komarov	Q4229284	25	9293	en
+6e99f7de-b4d8-4bff-8c45-27f3f262534b	Владислав Яковлев	Vladislav Yakovlev	Q18995341	23	7187	en,ko
+c5344eef-9e34-45d1-9c0c-955a8eb82dc1	Диего Карлос	Diego Carlos	Q109082992	23	7912	ru
+4cfe1855-80f9-4e91-96c5-a32745a2312e	Майкон	Maykon	Q1885185	22	593	en,es,fr,ja,ko,pt
+8800de0e-8b9f-404d-82bb-610bd5005262	Гильерме	Gilerme	Q1310869	22	448	en
+b778bc9f-4b7a-43d2-b081-cdb8fee6543b	Михаил Щетинин	Mikhail Shchetinin	Q4529009	22	6595	en
+01a67917-e07d-45e5-a2c9-19b2a3638906	Рауль	Raúl (footballer)	Q5195925	20	5838	es
+0ba8b77a-7d66-4bc5-933d-692dd2997700	Мамаду Майга	Mamadou Maiga	Q21509426	18	5328	en,ko
+2331c1f2-cad4-4e11-b2b5-3d1a32c5fdd2	Залимхан Юсупов	Zalimkhan Yusupov	Q124762145	18	5212	en
+717567ec-30de-4832-8078-b56bc4958e9d	Марсело	Marcelo (footballer, born 1988)	Q2372965	18	1507	en
+f1a599c7-d8d5-4542-8e95-ff94a68ccbb9	Никита Глушков	Nikita Glushkov	Q28309527	18	5209	en
+cfeb84fb-8a16-420d-9c62-38271a7d82d9	Висенте	Visente	Q1178922	17	269	en,es,fr,ja,pt
+6e7918aa-4659-4362-bff8-0d218a93f3bb	Жуниньо	Zhunino	Q569193	16	696	ar,en,es,fr,ja,ko,pt
+a474cb3f-98d1-453f-b36a-14e38c263671	Хулио Сесар Энсисо	Julio Enciso	Q87301049	16	4604	en,ja
+e83475da-70ec-490d-971c-fe8d87588190	Педро	Pedro	Q2066425	14	3924	en,es,fr,ja,ko,pt
+ee020603-064c-4800-979a-4325f874ebc7	Юрий Журавлёв	Yuri Zhuravlev	Q16652478	14	3860	en
+e8fd84e0-ed2c-4949-aea0-85a734951aac	Эстеван	Estevan	Q1018271	13	619	ar,es,fr,pt
+968f6699-09fd-4c97-a717-bef1e2a9dbc2	Крис Вуд	Chris Wood	Q18913420	12	125	ar,en,fr,ja,ko,zh
+1c3c0c3d-ac35-469c-b3b7-a63d9ac393c6	Эдер	Eder	Q356879	10	795	en,fr
+973132b8-383e-4283-895c-f8529e57a9af	Жуан	Zhuan	Q290155	10	1444	fr,ja,ko
+71df46c4-51af-4a00-a194-f24a1ef20910	Рамирес	Ramires	Q1173656	9	1301	en,ja,ko
+a2b555eb-c41b-4d67-a636-8374a1f4e62b	Савин	Savin	Q1241213	8	1815	en,fr
+e8650c81-c7f1-44f6-8078-0679503efc9a	Ли Сяопэн	Li Xiaopeng	Q262672	8	431	en,fr,ja,ko,ru,zh
+25b8cb25-81d3-433f-84ca-7776a06ac308	Малком	Malcom	Q737806	7	1495	es,fr
+3a641835-bd5c-4573-b987-e15b2e3b715f	Беллингем	Jude Bellingham	Q16479897	7	1519	en
+91f642d1-526d-4d8c-8f38-5994464e3086	Диего Рейес	Diego Reyes	Q5274784	7	7	en,es,ru
+88acd059-a1e4-44aa-b6f0-4ab0916af812	Робсон	Robson	Q2160130	6	628	en,es,fr,ja,pt
+a5e97b63-8e3b-496d-886f-7e629b12edf9	Хуанфран	Juanfran	Q1710719	6	150	en,es,fr,ja,ko,zh
+bb37879d-5040-4596-89c2-fcee78b6bf43	Талиска	Talisca	Q2392477	6	1226	en,fr,pt
+ef173da8-b75c-487a-a599-6860923e2243	Роландо		Q352239	6	162	en,es,fr,ja
+712681a6-a197-45cd-b0df-d7c61f16bcb8	Андрей Тихонов	Andrey Tikhonov	Q502589	5	849	ko
+8c3ee942-701c-4dd9-92cb-23046b0feed7	Данило	Danilo Alvim	Q4154624	5	644	en,ja
+a34ba3c6-6174-4210-863f-514ade592f13	Паулиньо	Paulino	Q4347187	5	953	ru
+b7e0cf37-d82a-4d99-9fa5-b862ec5b9b4a	Рикардо Родригес	Ricardo Rodriguez	Q409348	5	5	ar,es,fr,ja,pt,zh
+032cd763-38c2-4abc-bc35-8b6d5f4bda33	Кайо	Caio Ribeiro	Q2933207	4	630	fr
+08ccfacf-4412-4ce8-bbb9-ff27fb1b6464	Пол Робинсон	Paul Robinson	Q539277	4	11	ar,fr,ja,ko,zh
+1293e114-2162-4848-b3ef-7a0f304b34f2	Владимир Вайсс	Vladimír Weiss	Q225128	4	14	ar,en,es,fr,ja,ko,pt,zh
+60ce1153-ee78-4c26-adfd-378fa666395f	Владимир Ильин	Vladimir Ilin	Q4199548	4	401	ar,en,fr
+9a744cc2-7add-4985-9f28-70b07b19dedc	Энтони Робинсон	Antonee Robinson	Q4773369	4	3	en
+f2cd130b-adbc-4af1-ad3c-14889000f0ad	Валентин Иванов	Valentin Ivanov	Q346873	4	610	ar,en,fr,ko,pt,zh
+f50abe36-355c-440b-8537-db7f92fc4a34	Эдди Льюис	Eddie Lewis	Q410770	4	5	ar,en,es,ru,zh
+f6b804aa-f9a4-4b73-8af3-be27d460f30b	Сесар Монтес	César Montes	Q118144170	4	454	ru
+0017899b-ad2b-4696-b392-9c1637b8aa2c	Сергей Рыжиков	Sergey Ryzhikov	Q7454088	3	85	en,es,ja,zh
+0d523da6-1cfb-40ef-acc7-6372c6382e5f	Георге Попеску	Gheorghe Popescu	Q1521603	3	292	en,fr
+0ead0f77-ae3d-4bfa-a96c-2cc0c87779dc	Артур Юсупов	Artur Yusupov	Q16722849	3	98	en,ko
+16e88535-565a-449e-88dc-1142a846192c	Андреас Бек	Andreas Beck	Q401235	3	2	ar,en,es
+3c1b2377-c1b5-4546-a15c-9879f26005a6	Вендел	Wendel	Q109071654	3	373	ru
+416bd303-bf4e-410c-a774-59084a929caa	Брайан Макбрайд	Brian McBride	Q4964646	3	1	en,ru
+51d63dce-d5c7-4d32-922c-2d8a57070c2e	Евгений Савин	Evgeniy Savin	Q4403908	3	173	ru
+53d1921a-5249-4ac0-8c21-859fd41b054e	Александр Руденко	Aleksandr Rudenko	Q16692828	3	24	en
+5c3ec23a-c443-4d85-b67e-15ba1213d3a6	Александр Бубнов	Aleksandr Bubnov	Q4097638	3	94	ru
+5e8f7a9e-7c16-4c85-a57b-d6de48e00c99	Сергей Петров	Sergey Petrov	Q7217854	3	153	en,zh
+615d08e2-2e22-4046-8b72-ef4277131b1d	Евгений Марков	Evgeniy Markov	Q4282035	3	62	en,zh
+7bae3a05-3ac9-41c6-8df4-89cb8809d04e	Варела	Varela	Q414217	3	189	en,es,fr,ja
+9ec15412-86a6-49a7-b69f-081c436c032d	Клаудиньо	Claudinho	Q109094782	3	332	ru
+a771e421-137e-4931-b233-ab138f12aeb3	Владимир Федотов	Vladimir Fedotov	Q4482192	3	175	ru
+b1a65cdb-5219-41cb-8c03-142420dce50c	Ван Цян	Wang Qiang	Q1401523	3	66	en
+d6f52352-3631-47c1-9184-f277e0f9f687	Дмитрий Парфенов	Dmitriy Parfenov	Q4346202	3	106	ru
+eb28517b-d214-43e1-af9b-fbedc76fbb00	Дуду	Dudu	Q4170307	3	315	ru
+022bf996-3b4a-43d5-b360-cca02f3d7e1e	Георги Миланов	Georgi Milanov	Q20815614	2	6	en,ko
+1114e27d-180a-4028-bc90-695dd2ce2ff4	Юрий Никифоров	Yuriy Nikiforov	Q16680815	2	128	ru
+191b7f06-c68d-4289-b545-67d0b46b8983	Сантьяго Хименес	Santiago Giménez	Q98103144	2	41	ru
+21ecf926-b0ec-4873-8c06-8f04f2edfd26	Марк Овермарс	Marc Overmars	Q4330670	2	12	ru
+4ad5800f-9d88-4298-afef-8e82c2701690	Игорь Денисов	Igor Denisov	Q4157986	2	196	ko
+7263d762-5444-46d4-9b21-e00c45a2631a	Василий Баранов	Vasiliy Baranov	Q4077724	2	68	ru
+72796774-9e38-440b-89e1-640dc07629a9	Пицци	Pizzi	Q1777435	2	153	fr,ja
+833f55ca-6b73-41ab-83b7-7e3095fa6655	Александр Павленко	Aleksandr Pavlenko	Q4341334	2	51	en
+88267aa2-d0a7-4832-b0d0-ec9d8fb0aada	Александр Панов	Aleksandr Panov	Q4344157	2	118	en
+91204aec-d38e-489e-8c65-a8c33bdbbd32	Николай Рассказов	Nikolay Rasskazov	Q7295227	2	35	en
+979d3184-4278-4fcc-812c-7643fc8e1e98	Кристиан Ледесма	Cristian Ledesma	Q1140293	2	2	en
+99fee4f7-e66f-4c7e-b2af-d08ccb18064d	Ян Хао	Yang Hao	Q280145	2	38	ar,en,es,fr,ko,ru
+b7d6dfd1-48fb-41f8-b1e2-22831185df3e	Александр Горшков	Aleksandr Gorshkov	Q238834	2	123	en,fr
+e249f5e4-0c80-4207-9f29-2fdbeb06be71	Сергей Овчинников	Sergey Ovchinnikov	Q1216572	2	158	en,ja,ko
+e3a11a82-f358-406d-ac4c-675feea027aa	Рауль Хименес	Raúl Jiménez	Q4497653	2	16	ru
+00a84c04-2eba-46f4-8403-3056b4b5bdb2	Валерий Кичин	Valery Kichin	Q16663773	1	38	ru
+013fae7d-0568-4a6d-a8b4-a4a979e491d0	Алексей Ионов	Aleksei Ionov	Q4202787	1	50	ru
+03d1689a-8fb2-4376-828f-fcdbffaa1960	Симао	Simão Sabrosa	Q4419500	1	37	ru
+05cea5d3-1562-4152-936b-69375ae173f8	Владимир Кулик	Vladimir Kulik	Q4113053	1	35	ru
+0bcfc303-4f9c-4668-a56d-77a8bd1cab7f	Дмитрий Воробьёв	Dmitriy Vorobyov	Q4125164	1	32	en
+1a61bb0c-e1da-45b9-b1ba-809cd94abdc0	Александр Черников	Aleksandr Chernikov	Q16717901	1	29	en
+8a441200-600c-4a6c-8633-e005b50c0fe4	Куим	Kuim	Q237441	1	87	ru
+8f910f00-86d3-4818-942f-145e14963260	Виталий Денисов	Vitaliy Denisov	Q4157973	1	61	ko
+9423b254-18d2-440f-973e-dde890754a1a	Александр Филимонов	Aleksandr Filimonov	Q4483880	1	113	en
+d34568da-2512-486b-9e52-a9b3b927f7c3	Александр Максименко	Aleksandr Maksimenko	Q21855357	1	25	en
+d39d6e60-f84f-420f-8340-b8504cebdae8	Евгений Ловчев	Evgeniy Lovchev	Q16671866	1	64	ko
+d81d1ccd-af53-473e-8f89-57b47856cb15	Луизао	Luisão	Q4268360	1	45	ru
+f2f673f9-efe2-48e8-96bc-1c6d822e07b3	Николай Комличенко	Nikolay Komlichenko	Q16229613	1	24	en
+fbdc1000-85ed-4ec1-9191-9c1bf7cda1c1	Павел Яковлев	Pavel Yakovlev	Q4536937	1	101	en
+08b4b567-cbde-4954-8312-d73fd1a46f78	Александр Головин	Aleksandr Golovin	Q1902144	None	547	en
+113a9ad4-5013-4186-ae2b-6c450e0fc434	Виктор Коваленко	Viktor Kovalenko	Q20704860	None	27944	en,ko
+170e1aec-f62f-4b0e-8466-31404f7178d6	Тьяго Силва	Thiago Silva	Q1269426	None	188	ar,en,es,fr,ja,ko,pt
+1bf7d470-1055-42ec-97cd-e22a9ac0464f	Рикардо Кларк	Ricardo Clark	Q39168363	0	1	ru
+2506d513-516e-4b98-b2a6-c0347ad50101	Роман Яремчук	Roman Yaremchuk	Q97315274	None	62623	
+28e9d109-5944-4954-bb9f-03b3ed385d40	Холанд	Erling Haaland	Q1624254	None	265	ar,en,fr
+441ce586-1dda-4bb4-b665-1c75bcede544	Варди	Jamie Vardy	Q7915569	None	268	en,fr
+afd71c0f-16b2-4e71-a8a8-1e0a45fe18c4	Родриго	Rodrigo	Q7135459	None	2474	en,es,fr,ja,ko,pt,zh
+da4c511b-67f7-41fc-a3bc-08b9e9b0b674	Аллан	Allan	Q406781	None	619	es,fr,ja
+eaf9ca1b-6f4a-44d3-85c3-f03febb373b5	Луис Суарес	Luis Suárez	Q398140	None	202	ar,en,es,fr,ja,ko,pt,zh
+ef2b6ba2-a701-474f-9734-4b83e9799d60	Нето	Neto	Q4317922	None	109	
