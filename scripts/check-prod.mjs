@@ -707,6 +707,51 @@ async function checkEspnScores() {
 // 116 — двадцать восемь пропадало молча. Список при этом непустой, экран не
 // падает, и увидеть это может только тот, кто пересчитает.
 // ---------------------------------------------------------------------------
+/**
+ * КЛУБ У КАРТОЧКИ ПЕРЕЖИВАЕТ НОЧНУЮ ПЕРЕСБОРКУ.
+ *
+ * ⚠️ ЗАВЕДЕНА ПО СЛУЧИВШЕЙСЯ ПОЛОМКЕ, А НЕ ПО ОПАСЕНИЮ.
+ * `rebuild_card_current_clubs()` (крон 06:10 UTC) заканчивался DELETE без
+ * оглядки на `source` и каждую ночь стирал ВСЁ, что собрано из заявок клубов:
+ * утром 12 491 клуб, к полудню 27. Снаружи это выглядело как «в коллекциях ни
+ * один клуб не заполнен», и владелец так и написал.
+ *
+ * Проверяется ИМЕННО ДОЛЯ ЗАЯВОК, а не общее число: общее оставалось
+ * ненулевым (клубы из статей никто не трогал), поэтому «клубы есть» зеленело
+ * на полностью сломанном.
+ */
+async function checkCurrentClubSources() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Клуб карточки', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const count = async (query) => {
+    const r = await fetch(`${url}/rest/v1/card_current_club?${query}`, {
+      headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+    });
+    const range = r.headers.get('content-range') || '';
+    const total = Number(range.split('/')[1]);
+    return Number.isFinite(total) ? total : -1;
+  };
+
+  const fromRoster = await count('select=card_id&source=eq.club_roster');
+  const total = await count('select=card_id');
+
+  record('Клуб карточки: заявки не стёрты ночью', fromRoster > 1000,
+         `${fromRoster} из ${total} клубов собраны из заявок`,
+         'ловит DELETE ночной пересборки, который сносил всё, кроме статей');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: несуществующий источник обязан дать ноль.
+  const bogus = await count('select=card_id&source=eq.no_such_source_zz');
+  record('Клуб карточки: контроль источника', bogus === 0,
+         bogus === 0 ? 'по выдуманному источнику пусто, как и должно'
+                     : `выдуманный источник вернул ${bogus} — фильтр не работает`,
+         bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 async function checkDeckCountries() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -754,6 +799,7 @@ await checkFameAxes();
 await checkClubValue();
 await checkClubRoster();
 await checkEspnScores();
+await checkCurrentClubSources();
 await checkDeckCountries();
 await checkBundle();
 
