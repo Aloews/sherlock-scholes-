@@ -240,11 +240,26 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                 headshots to full-body shots, and a fixed-height crop was cutting
                 a lot of them off. Showing the whole photo (letterboxed if needed)
                 never loses the subject, at the cost of some empty space beside
-                narrow ones. */}
+                narrow ones.
+
+                ⚠️ ПУСТОТУ ПО БОКАМ ЗАКРЫВАЕТ РАЗМЫТАЯ КОПИЯ ТОГО ЖЕ СНИМКА, а
+                не обрезка. Обрезка вернула бы ровно то, из-за чего здесь и
+                появился object-contain — отрезанные головы; размытая подложка
+                заполняет кадр, не трогая сам портрет. Картинка одна и та же,
+                браузер берёт её из кэша: второго запроса в сеть нет.
+
+                aria-hidden и alt="" — подложка декоративна, читалке экрана её
+                объявлять нечего: подпись несёт снимок сверху. */}
+            <img
+              src={card.photo_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40"
+            />
             <img
               src={card.photo_url}
               alt={name}
-              className="max-w-full max-h-full object-contain"
+              className="relative max-w-full max-h-full object-contain"
             />
             {card.ovr != null && (
               <div
