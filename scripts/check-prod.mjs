@@ -699,6 +699,51 @@ async function checkEspnScores() {
          'ловит «completed без счёта» — снять completed нельзя, по нему считают очки');
 }
 
+// ---------------------------------------------------------------------------
+// Список стран в подборе колоды — ПОЛНЫЙ, а не первая тысяча строк.
+//
+// ⚠️ Экран читал все активные карточки и собирал set() в браузере. PostgREST
+// режет ответ по db-max-rows = 1000: замер 06.09.2026 дал 88 стран вместо
+// 116 — двадцать восемь пропадало молча. Список при этом непустой, экран не
+// падает, и увидеть это может только тот, кто пересчитает.
+// ---------------------------------------------------------------------------
+async function checkDeckCountries() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Страны колоды', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  const r = await fetch(`${url}/rest/v1/rpc/deck_countries`, {
+    method: 'POST', headers: auth, body: '{}',
+  });
+  const rows = await r.json().catch(() => null);
+  const viaRpc = Array.isArray(rows) ? rows.length : 0;
+
+  // ⚠️ ТОТ САМЫЙ УСЕЧЁННЫЙ ПУТЬ, которым экран ходил раньше. Он и есть
+  // отрицательный контроль: если он вдруг вернёт СТОЛЬКО ЖЕ, значит колода
+  // снова меньше тысячи и проверка перестала что-либо доказывать.
+  const raw = await fetch(
+    `${url}/rest/v1/cards?select=country&active=is.true&category=eq.player&country=not.is.null`,
+    { headers: auth },
+  );
+  const rawRows = await raw.json().catch(() => []);
+  const viaRows = Array.isArray(rawRows)
+    ? new Set(rawRows.map((x) => x.country).filter(Boolean)).size : 0;
+
+  record('Страны колоды: список полный', viaRpc > 0 && viaRpc > viaRows,
+         `${viaRpc} стран запросом против ${viaRows} чтением строк`,
+         'ловит усечение по db-max-rows: список остаётся непустым и экран не падает');
+
+  record('Страны колоды: контроль усечения', viaRows > 0 && viaRows < viaRpc,
+         viaRows < viaRpc
+           ? `старый путь и правда теряет ${viaRpc - viaRows}`
+           : 'старый путь ничего не теряет — колода снова меньше 1000?',
+         viaRows < viaRpc ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -709,6 +754,7 @@ await checkFameAxes();
 await checkClubValue();
 await checkClubRoster();
 await checkEspnScores();
+await checkDeckCountries();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
