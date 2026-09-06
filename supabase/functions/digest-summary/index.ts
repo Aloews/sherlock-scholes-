@@ -61,6 +61,11 @@
 // сломанной ровно до тех пор, пока кто-нибудь не заметит и не уберёт мёртвый
 // секрет: пустого баланса от рабочего ключа снаружи не отличить.
 //
+// ⚠️ ДО 06.09.2026 ЭТО БЫЛО ТОЛЬКО НАПИСАНО, НО НЕ СДЕЛАНО: `pickProvider()`
+// возвращал ОДИН провайдер, и «запасной» не пробовался никогда. Обнаружилось
+// ровно тем отказом, ради которого второй путь и заводили, — у ключа шлюза
+// кончился лимит токенов (402), и сводка легла целиком.
+//
 // ⚠️ НА ШЛЮЗЕ ЗАПРОС ПРОЩЕ, И ЭТО НЕ НЕБРЕЖНОСТЬ. Сторонний шлюз реализует
 // Messages API, а не фирменные беты Anthropic: `betas`, `fallbacks`,
 // `thinking` и `output_config` — это первопартийные возможности, и слать их
@@ -191,29 +196,32 @@ interface Provider {
 }
 
 /**
- * Кто будет отвечать. Шлюз вперёд, прямой ключ запасным — см. шапку файла.
+ * Кто будет отвечать, ПО ПОРЯДКУ. Шлюз вперёд, прямой ключ запасным — см.
+ * шапку файла. Возвращается СПИСОК, а не один: раньше здесь выбирался один
+ * провайдер, и «запасной» не пробовался никогда.
  *
- * null — не настроен НИ ОДИН, и это единственный случай, когда функция честно
- * отвечает 503: сводку писать некому и написать её нечем.
+ * Пустой список — не настроен НИ ОДИН, и это единственный случай, когда
+ * функция честно отвечает 503: сводку писать некому и написать её нечем.
  */
-function pickProvider(): Provider | null {
+function pickProviders(): Provider[] {
+  const out: Provider[] = [];
   if (GATEWAY_KEY) {
-    return {
+    out.push({
       client: new Anthropic({ apiKey: GATEWAY_KEY, baseURL: GATEWAY_BASE_URL }),
       model: GATEWAY_MODEL,
       firstParty: false,
       name: "gateway",
-    };
+    });
   }
   if (ANTHROPIC_KEY) {
-    return {
+    out.push({
       client: new Anthropic({ apiKey: ANTHROPIC_KEY }),
       model: MODEL,
       firstParty: true,
       name: "anthropic",
-    };
+    });
   }
-  return null;
+  return out;
 }
 
 /**
@@ -492,8 +500,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  const provider = pickProvider();
-  if (!provider) return json({ error: "no_model_key" }, 503);
+  const providers = pickProviders();
+  if (providers.length === 0) return json({ error: "no_model_key" }, 503);
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ error: "no_db" }, 503);
 
   let lang = "ru";
@@ -571,16 +579,37 @@ Deno.serve(async (req) => {
   const topics = (topicsRes.data ?? []) as Topic[];
   if (topics.length === 0) return json({ status: "no_topics" });
 
-  // Один заход плюс повтор на отказе — вся логика в askWithRetry выше.
-  let answer: Answer;
-  try {
-    answer = await askWithRetry(provider, lang, topics, results);
-  } catch (err) {
-    // Сюда попадает и исчерпанный баланс (400 invalid_request_error), и
-    // недоступный шлюз, и таймаут. Игроку все три — одно и то же «не
-    // получилось, попробуйте ещё»; различать их должен тот, кто читает логи.
-    console.error(`model call failed (${provider.name}):`, err);
-    return json({ error: "model_failed" }, 502);
+  // ⚠️ ПРОВАЙДЕРЫ ПЕРЕБИРАЮТСЯ ПО ОЧЕРЕДИ, И ЭТО ПОЧИНКА, А НЕ УЛУЧШЕНИЕ.
+  // В шапке файла написано «шлюз идёт ПЕРВЫМ, прямой ключ — запасным», но
+  // запасного пути в коде НЕ БЫЛО: pickProvider() возвращал ОДИН провайдер и
+  // на этом останавливался. 06.09.2026 у ключа шлюза кончился лимит токенов —
+  //
+  //   402 insufficient_balance_error: API key token allowance exhausted
+  //
+  // — и фича легла целиком, хотя прямой ключ мог быть настроен и жив. Ровно
+  // тот отказ, ради которого второй путь и заводили.
+  //
+  // Один заход плюс повтор на отказе — внутри askWithRetry; здесь переход к
+  // СЛЕДУЮЩЕМУ провайдеру, когда предыдущий бросил.
+  let answer: Answer | null = null;
+  const failures: string[] = [];
+  for (const provider of providers) {
+    try {
+      answer = await askWithRetry(provider, lang, topics, results);
+      break;
+    } catch (err) {
+      // Сюда попадает и исчерпанный баланс, и недоступный шлюз, и таймаут.
+      // Игроку все три — одно и то же «не получилось»; различать их должен
+      // тот, кто читает логи, поэтому провайдер назван.
+      console.error(`model call failed (${provider.name}):`, err);
+      failures.push(provider.name);
+    }
+  }
+  if (answer === null) {
+    // Названы ВСЕ, кто отказал: «model_failed» без списка не отличает
+    // «единственный ключ мёртв» от «мёртвы оба».
+    console.error(`all providers failed: ${failures.join(", ")}`);
+    return json({ error: "model_failed", tried: failures }, 502);
   }
 
   if (answer === "refused") return json({ status: "refused" });
