@@ -542,6 +542,9 @@ const llmClient = NEWS_LLM_KEY && NEWS_LLM_BASE_URL
   ? new Anthropic({ apiKey: NEWS_LLM_KEY, baseURL: NEWS_LLM_BASE_URL })
   : null;
 
+/** Сколько запросов в модель за ОДИН запуск. См. generateNewsSummaries. */
+const LLM_BATCH_MAX = 25;
+
 const LLM_LANGS: Record<string, string> = {
   ru: "русском", en: "английском", es: "испанском", pt: "португальском",
   fr: "французском", ar: "арабском", ja: "японском", ko: "корейском", zh: "китайском",
@@ -559,8 +562,49 @@ const LLM_LANGS: Record<string, string> = {
  * любой ошибке вызова: один упавший запрос не должен ронять весь прогон
  * конвейера, только эту одну строку.
  */
+/**
+ * ⚠️ ПОТОЛОК РЕЗЕРВИРУЕТСЯ ДО ВЫЗОВА, А НЕ СЧИТАЕТСЯ ПОСЛЕ. Ровно так же
+ * устроен `spend_odds_credits` для the-odds-api, и ровно этого здесь не было:
+ * функция ходила в модель ПО КАЖДОЙ новости, параллельно, без предела на
+ * пачку. Замер: 863 новости с сутью за сутки, 2436 за неделю — а крон,
+ * поймав разом сотню свежих новостей, выпускал сотню запросов в одну минуту.
+ * Владелец увидел «90% токенов за десять минут» и решил, что украли ключ.
+ * Ключ не крали, потолка не было.
+ *
+ * false — звонить НЕЛЬЗЯ. Не исключение: одна не написанная суть не должна
+ * ронять весь прогон, она просто останется на следующий раз.
+ */
+async function reserveLlmCall(): Promise<boolean> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/spend_llm_calls`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_calls: 1 }),
+    });
+    if (!r.ok) {
+      // ⚠️ Отказ УЧЁТА — это не разрешение тратить. Недоступная база не должна
+      // открывать шлюз настежь: именно так «временная ошибка» превращается в
+      // выжженный за ночь бюджет.
+      console.warn(`[digest] budget check failed: ${r.status}`);
+      return false;
+    }
+    return await r.json() === true;
+  } catch (err) {
+    console.warn(`[digest] budget check failed: ${err}`);
+    return false;
+  }
+}
+
 async function generateText(system: string, user: string): Promise<string | null> {
   if (!llmClient || !NEWS_LLM_MODEL) return null;
+  if (!await reserveLlmCall()) {
+    console.warn("[digest] daily llm budget exhausted — skipping call");
+    return null;
+  }
   try {
     // Anthropic Messages API: system — отдельный параметр верхнего уровня, а
     // не сообщение с role: "system", как у OpenAI. Перепутать легко именно
@@ -613,7 +657,13 @@ async function generateNewsSummaries(rows: NewsRow[]): Promise<Map<string, strin
   // же заметки ушли бы в базу с '' — «пробовали, не вышло» — хотя на деле их
   // никто не пробовал, и уже настроенная модель их бы больше не увидела.
   if (!llmClient || !NEWS_LLM_MODEL) return out;
-  const candidates = rows.filter((r) => (r.description?.length ?? 0) >= 40);
+  // ⚠️ ПРЕДЕЛ НА ПАЧКУ, ОТДЕЛЬНО ОТ СУТОЧНОГО ПОТОЛКА. Даже уложившись в
+  // сутки, сотня параллельных запросов в одну минуту — это выброс: он и
+  // выглядел в панели шлюза как «90% за десять минут». Остаток заметок
+  // получит суть на следующем запуске через десять минут, и это ничего не
+  // стоит: `summary_short` у них останется NULL, а не ''.
+  const candidates = rows.filter((r) => (r.description?.length ?? 0) >= 40)
+    .slice(0, LLM_BATCH_MAX);
   await Promise.all(candidates.map(async (row) => {
     const lang = LLM_LANGS[row.lang] ?? LLM_LANGS.en;
     const user = `<article>\n${row.title}\n\n${row.description}\n</article>`;
@@ -640,7 +690,7 @@ async function generateClipTitles(
   const out = new Map<string, string>();
   // См. generateNewsSummaries — та же причина проверять обе переменные.
   if (!llmClient || !NEWS_LLM_MODEL) return out;
-  await Promise.all(candidates.map(async (c) => {
+  await Promise.all(candidates.slice(0, LLM_BATCH_MAX).map(async (c) => {
     const user = `<video>\nКанал: ${c.channel}\nЗаголовок: ${c.title}\n</video>`;
     const text = await generateText(CLIP_TITLE_SYSTEM_PROMPT, user);
     out.set(c.video_id, text ?? "");
