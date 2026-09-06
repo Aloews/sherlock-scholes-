@@ -412,6 +412,8 @@
     "wins": "{{name}} 获胜！",
     "points_other": "{{count}} 分",
     "round_breakdown": "回合明细",
+    "team_totals": "合计",
+    "totals_line": "{{rounds}}轮 · {{points}}分 · {{scored}}得分",
     "players": "玩家",
     "player_default": "玩家",
     "play_again": "再来一局",

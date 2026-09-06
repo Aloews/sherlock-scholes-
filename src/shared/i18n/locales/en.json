@@ -425,6 +425,8 @@
     "points_one": "{{count}} point",
     "points_other": "{{count}} points",
     "round_breakdown": "Round breakdown",
+    "team_totals": "Total",
+    "totals_line": "{{rounds}} r · {{points}} pts · {{scored}} scored",
     "players": "Players",
     "player_default": "Player",
     "play_again": "Play Again",

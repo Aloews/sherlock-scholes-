@@ -412,6 +412,8 @@
     "wins": "{{name}} 승리!",
     "points_other": "{{count}}점",
     "round_breakdown": "라운드별 상세",
+    "team_totals": "합계",
+    "totals_line": "{{rounds}}라운드 · {{points}}점 · {{scored}}성공",
     "players": "플레이어",
     "player_default": "플레이어",
     "play_again": "다시 플레이",

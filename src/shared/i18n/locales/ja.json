@@ -412,6 +412,8 @@
     "wins": "{{name}} の勝ち！",
     "points_other": "{{count}} 点",
     "round_breakdown": "ラウンド別内訳",
+    "team_totals": "合計",
+    "totals_line": "{{rounds}}ラウンド · {{points}}点 · {{scored}}成功",
     "players": "プレイヤー",
     "player_default": "プレイヤー",
     "play_again": "もう一度プレイ",

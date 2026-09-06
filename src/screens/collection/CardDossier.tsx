@@ -6,6 +6,7 @@ import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { byLatestFirst } from '@/shared/lib/careerOrder';
+import { StatLine } from '@/shared/ui/StatLine';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
@@ -519,27 +520,19 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
           <Section title={t('collection.collected')}>
             <div>
               {collected.map((row) => (
-                <div
+                <StatLine
                   key={row.tournament}
-                  className="flex gap-3 py-2.5 border-b border-brand-border last:border-b-0"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12.5px] text-white/90 truncate">{row.tournament}</p>
-                    <p className="text-[11px] text-brand-muted">
-                      {t('collection.collected_period', {
-                        from: row.first_match,
-                        to: row.last_match,
-                      })}
-                    </p>
-                  </div>
-                  <span className="text-[11.5px] text-brand-muted tabular-nums shrink-0">
-                    {t('collection.collected_line', {
-                      matches: row.matches,
-                      goals: row.goals,
-                      assists: row.assists,
-                    })}
-                  </span>
-                </div>
+                  label={row.tournament}
+                  sub={t('collection.collected_period', {
+                    from: row.first_match,
+                    to: row.last_match,
+                  })}
+                  value={t('collection.collected_line', {
+                    matches: row.matches,
+                    goals: row.goals,
+                    assists: row.assists,
+                  })}
+                />
               ))}
             </div>
           </Section>

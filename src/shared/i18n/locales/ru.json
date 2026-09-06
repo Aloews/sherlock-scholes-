@@ -451,6 +451,8 @@
     "points_many": "{{count}} очков",
     "points_other": "{{count}} очков",
     "round_breakdown": "По раундам",
+    "team_totals": "Итого",
+    "totals_line": "{{rounds}} р · {{points}} оч · {{scored}} зач",
     "players": "Игроки",
     "player_default": "Игрок",
     "play_again": "Сыграть ещё",

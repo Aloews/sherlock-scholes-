@@ -469,6 +469,8 @@
     "points_many": "{{count}} نقطة",
     "points_other": "{{count}} نقطة",
     "round_breakdown": "تفصيل الجولات",
+    "team_totals": "الإجمالي",
+    "totals_line": "{{rounds}} ج · {{points}} ن · {{scored}} محتسبة",
     "players": "اللاعبون",
     "player_default": "لاعب",
     "play_again": "العب مجددًا",

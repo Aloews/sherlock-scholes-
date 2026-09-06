@@ -425,6 +425,8 @@
     "points_one": "{{count}} point",
     "points_other": "{{count}} points",
     "round_breakdown": "Détail par manche",
+    "team_totals": "Total",
+    "totals_line": "{{rounds}} m · {{points}} pts · {{scored}} réussis",
     "players": "Joueurs",
     "player_default": "Joueur",
     "play_again": "Rejouer",
