@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
@@ -247,7 +248,7 @@ export function CollectionScreen() {
         <div className="max-w-sm mx-auto flex items-center gap-3">
           <button
             type="button"
-            onClick={() => { hapticImpact('light'); navigate('/'); }}
+            onClick={() => { hapticImpact('light'); goBack(navigate); }}
             aria-label={t('home.back')}
             className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl bg-brand-surface
                        border border-brand-border text-brand-muted hover:text-white transition-colors"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
 import {
@@ -197,7 +198,7 @@ export function MatchesScreen() {
       <div className="flex items-center gap-3 px-4 py-4">
         <button
           type="button"
-          onClick={() => { hapticImpact('light'); navigate('/'); }}
+          onClick={() => { hapticImpact('light'); goBack(navigate); }}
           className="text-brand-muted hover:text-white transition-colors"
           aria-label={t('home.back')}
         >

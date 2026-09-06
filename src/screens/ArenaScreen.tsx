@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -44,7 +45,7 @@ export function ArenaScreen() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => { hapticImpact('light'); navigate('/'); }}
+            onClick={() => { hapticImpact('light'); goBack(navigate); }}
             className="text-brand-muted hover:text-white transition-colors"
             aria-label={t('home.back')}
           >

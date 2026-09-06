@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { IconArrowLeft } from '@tabler/icons-react';
+import { goBack } from '@/shared/lib/goBack';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import {
   staffVerify, adminSearchCards, adminSaveCard, adminDeleteCard, adminGetCard,
@@ -130,6 +132,7 @@ const TAB_LABEL: Record<Tab, string> = {
 function StaffCabinet({ password, role, onLogout }: {
   password: string; role: StaffRole; onLogout: () => void;
 }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('reports');
   const [form, setForm] = useState<CardInput | null>(null);
   const [msg, setMsg] = useState('');
@@ -148,7 +151,18 @@ function StaffCabinet({ password, role, onLogout }: {
   return (
     <div className="min-h-screen bg-brand-bg ds-screen text-white p-4 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-medium">
+        <h1 className="text-lg font-medium flex items-center gap-2">
+          {/* ⚠️ «Назад» здесь ведёт по истории, а не на главную: в кабинет
+              заходят с разных экранов, и жёсткий адрес уводил бы не туда.
+              Это единственный НЕигровой экран, где кнопки не было вовсе. */}
+          <button
+            type="button"
+            onClick={() => goBack(navigate)}
+            aria-label="Назад"
+            className="text-brand-muted hover:text-white transition-colors"
+          >
+            <IconArrowLeft size={20} stroke={2} />
+          </button>
           Кабинет
           <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
             isAdmin ? 'bg-brand-accent/20 text-brand-accent' : 'bg-brand-border text-brand-muted'}`}>
