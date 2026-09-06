@@ -4,7 +4,8 @@ For an English player name we:
   1. wbsearchentities (en) -> candidate QIDs.
   2. wbgetentities (claims|sitelinks) for those candidates.
   3. keep the first candidate whose occupation P106 == Q937857 (footballer).
-  4. read sitelinks.ruwiki.title as name_ru.
+  4. read sitelinks.ruwiki.title as name_ru (display name for RU users only —
+     titles_for_qid returns EVERY edition, see its docstring).
 
 Results are cached per English name. Wikidata calls are polite: a contact
 User-Agent and a >=1s pause between requests (do not weaken).
@@ -13,6 +14,11 @@ Confidence rules (per methodology):
   * footballer match WITH a ruwiki article -> name_ru set, source=wikidata, high
   * no russian article (or no footballer match) -> name_ru=null, source=none, low
     (we do NOT transliterate at the pilot stage, only flag it)
+
+  ⚠️ THE ABSENCE OF A RUSSIAN ARTICLE IS NO LONGER A REASON TO SKIP A PLAYER.
+  It only means there is no Russian display name; the card is created from the
+  general Wikipedia all the same (docs/cards_from_roster.py). "Russian" is a
+  property of the READER, not of the footballer.
 """
 import time
 from urllib.parse import quote
@@ -37,6 +43,16 @@ def commons_filepath_url(filename, width=256, base=COMMONS_FILEPATH_BASE):
         return None
     encoded = quote(name.replace(" ", "_"), safe="")
     return "{}/{}?width={}".format(base.rstrip("/"), encoded, int(width))
+
+
+# Sitelink keys that end in "wiki" but are not language editions of
+# Wikipedia. Everything here was seen in a real answer or is a well-known
+# Wikimedia project; a language edition never collides with these names.
+NOT_A_LANGUAGE_EDITION = frozenset({
+    "commonswiki", "specieswiki", "metawiki", "sourceswiki", "mediawikiwiki",
+    "wikidatawiki", "outreachwiki", "incubatorwiki", "abstractwiki",
+    "foundationwiki", "testwiki",
+})
 
 
 class WikidataEnricher:
@@ -87,17 +103,29 @@ class WikidataEnricher:
         return {}
 
     def titles_for_qid(self, qid):
-        """Return {'ruwiki': title|None, 'enwiki': title|None} for a QID.
+        """Return {'<lang>wiki': title} for EVERY Wikipedia edition of a QID.
 
-        Used by the pageviews step to find the Wikipedia article name to query
-        when a player has a wikidata_qid but no stored name_ru. Reuses the
-        polite _api() call and is cached per QID (namespace wikidata_sitelinks).
+        ⚠️ THIS USED TO RETURN RU AND EN ONLY, and that was the whole problem.
+        A player is written about in the languages of the places he plays and
+        comes from, not in the two this project happened to start with: the
+        deck measured Ukrainians, Turks and Swedes through a Russian article
+        or through nothing at all. Every edition is returned now, and callers
+        pick what they need.
+
+        `ruwiki` and `enwiki` are still present as keys whenever those
+        editions exist, so the existing callers keep working unchanged — they
+        all read `.get("ruwiki")` / `.get("enwiki")`.
+
+        ⚠️ THE CACHE NAMESPACE CHANGED WITH THE SHAPE, and that is not
+        cosmetic. `FileCache` has NO TTL: an entry written by the old
+        two-language version would keep answering "this player has no Swedish
+        article" forever, and the widening would silently do nothing. A new
+        shape needs a new namespace.
         """
-        default = {"ruwiki": None, "enwiki": None}
         if not qid:
-            return dict(default)
+            return {}
 
-        cached = self.cache.get("wikidata_sitelinks", qid)
+        cached = self.cache.get("wikidata_sitelinks_all", qid)
         if cached is not None:
             return cached
 
@@ -106,11 +134,20 @@ class WikidataEnricher:
         ).get("entities", {})
         sitelinks = (entities.get(qid, {}) or {}).get("sitelinks", {}) or {}
 
-        result = {
-            "ruwiki": sitelinks.get("ruwiki", {}).get("title"),
-            "enwiki": sitelinks.get("enwiki", {}).get("title"),
-        }
-        self.cache.set("wikidata_sitelinks", qid, result)
+        # Only Wikipedia LANGUAGE editions. Sitelinks also carry wikiquote,
+        # wikisource and the Wikimedia projects below, none of which is an
+        # article anyone reads about a footballer. `abstractwiki` is the one
+        # that actually turned up in a live answer (Messi), so this list is
+        # measured, not imagined.
+        result = {}
+        for site, link in sitelinks.items():
+            if not site.endswith("wiki") or site in NOT_A_LANGUAGE_EDITION:
+                continue
+            title = (link or {}).get("title")
+            if title:
+                result[site] = title
+
+        self.cache.set("wikidata_sitelinks_all", qid, result)
         return result
 
     def label_en_for_qid(self, qid):
