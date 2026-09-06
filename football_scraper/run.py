@@ -482,10 +482,20 @@ CARDS_PV_VARIANTS = {
 }
 
 # --cards-pageviews enwiki fallback: a card without a ruwiki article but with
-# a name_en gets its ENGLISH pageviews, multiplied by this discount — the
-# en audience is roughly 10x the ru one, so raw enwiki numbers would be
-# incomparable with the rest of the deck.
-EN_PAGEVIEWS_DISCOUNT = 0.1
+# a name_en gets its ENGLISH pageviews — RAW, without any discount.
+#
+# ⚠️ СКИДКИ 0.1 ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО ПОЧИНКА, А НЕ УПРОЩЕНИЕ. Владелец:
+# «нужно снять ограничение у парсера на enwiki * 0.1». Она была написана для
+# КОЛОДЫ ИЗ РУССКИХ СТАТЕЙ: английская аудитория примерно вдесятеро больше, и
+# сырое число рядом с русскими выглядело бы завышенным. С тех пор колода стала
+# мировой — активных игроков 19 115, и у большинства русской статьи нет вовсе,
+# — то есть скидка стала делать ровно обратное задуманному: занижать тех, кого
+# читают, в пользу тех, о ком есть русская статья.
+#
+# Разница языков теперь считается ТАМ, ГДЕ ЕЙ МЕСТО, и это уже сделано:
+# `fame_home` — перцентиль ВНУТРИ своего языка, `fame_world` — по сумме всех
+# разделов (см. docs/MAP.md). Домножать сырое число на константу «на глаз»
+# значило бы решать ту же задачу второй раз и хуже.
 
 
 def run_cards_pageviews(cfg, dry_run):
@@ -498,9 +508,9 @@ def run_cards_pageviews(cfg, dry_run):
     same Wikimedia per-article API as --pageviews (a 404 = "no such article /
     no data"). If the exact title misses, category-specific disambiguation
     variants are tried (CARDS_PV_VARIANTS); if those miss too and the card
-    has a name_en, the ENGLISH article's views are taken instead, multiplied
-    by EN_PAGEVIEWS_DISCOUNT (0.1) and rounded — raw enwiki numbers would be
-    incomparable with the ru deck. A card with neither stays NULL and is
+    has a name_en, the ENGLISH article's views are taken instead, RAW — the
+    0.1 discount is gone on purpose, see the constant block above. A card with
+    neither stays NULL and is
     logged. Same politeness contract as --pageviews: 1s
     pause, per-(article, window) on-disk cache (404s cached too), shared
     Wikimedia daily budget. Each hit is PATCHed immediately, so an interrupted
@@ -578,8 +588,7 @@ def run_cards_pageviews(cfg, dry_run):
           "'(футболист)' и т.п. + enwiki)".format(
               len(cards) - cached_exact, worst_requests))
     print("  точных имён в кеше: {} (бесплатно)".format(cached_exact))
-    print("  с name_en (шанс через enwiki x{}): {}".format(
-        EN_PAGEVIEWS_DISCOUNT, with_name_en))
+    print("  с name_en (шанс через enwiki, без скидки): {}".format(with_name_en))
     print("Бюджет Wikimedia : {}/{} (UTC {}) — общий с --pageviews".format(
         budget.used, budget.limit, budget.date))
     print("Пауза            : >={}s между запросами".format(
@@ -674,13 +683,12 @@ def run_cards_pageviews(cfg, dry_run):
                     idx, n_cards, label, exc), flush=True)
             else:
                 if result["found"]:
-                    views = int(round(result["views"] * EN_PAGEVIEWS_DISCOUNT))
+                    views = int(result["views"])
                     cards_client.set_card_pageviews(card["id"], views)
                     wrote = True
                     found_enwiki += 1
-                    print("[{}/{}] {} — {} просмотров (enwiki x{}, статья "
-                          "«{}»)".format(idx, n_cards, label, views,
-                                         EN_PAGEVIEWS_DISCOUNT, name_en),
+                    print("[{}/{}] {} — {} просмотров (enwiki, статья "
+                          "«{}»)".format(idx, n_cards, label, views, name_en),
                           flush=True)
         if not wrote and not failed:
             not_found += 1
@@ -692,8 +700,7 @@ def run_cards_pageviews(cfg, dry_run):
     print("  written (exact)   : {}".format(found_exact))
     print("  written (variant) : {}".format(found_variant))
     print("  written (search)  : {}".format(found_search))
-    print("  written (enwiki x{}): {}".format(
-        EN_PAGEVIEWS_DISCOUNT, found_enwiki))
+    print("  written (enwiki, raw): {}".format(found_enwiki))
     print("  no article (NULL) : {}".format(not_found))
     print("  errors skipped    : {}".format(errors))
     print("  budget used       : {}/{} (UTC {})".format(
