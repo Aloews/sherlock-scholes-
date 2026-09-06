@@ -9,6 +9,7 @@ import {
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
 import { LiveNow } from '@/features/digest/LiveNow';
+import { LoudestStory } from '@/features/digest/LoudestStory';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
@@ -218,6 +219,20 @@ export function DigestScreen() {
               {summary.data.summary}
             </p>
           )}
+
+          {/* Раскрытие главной новости — ПО ТОМУ ЖЕ НАЖАТИЮ.
+              «только у самой обсуждаемой новости и только по нажатию на кнопку
+              „краткая суть“»: `summary !== null` и значит «кнопку нажали».
+
+              ⚠️ УСЛОВИЕ — НАЖАТИЕ, А НЕ УСПЕХ СВОДКИ, и это выбор, а не
+              недосмотр. Сводку пишет языковая модель, и она отказывает по
+              своим причинам (кончился баланс шлюза — как сегодня, кончился
+              суточный лимит вызовов, не набралось тем). Раскрытие же не стоит
+              ничего: те же заметки, тот же ответ ленты, ни одного вызова
+              модели. Привязать его к успеху сводки значило бы гасить
+              работающее вместе со сломанным — человек нажал и не получил
+              НИЧЕГО, хотя показать было что. */}
+          {summary !== null && <LoudestStory />}
         </section>
 
         {/* ─── Лучшее за последние дни ───

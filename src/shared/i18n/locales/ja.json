@@ -719,6 +719,8 @@
     "empty_news": "今日は何も届いていません。",
     "empty_goals": "24時間以内の動画はありません。",
     "loudness_other": "{{n}}媒体",
+    "loudest": "最も報じられた話題",
+    "loudest_more": "他メディアが伝えたこと",
     "recent": "最近数日のゴール",
     "earlier": "今週のそれ以前",
     "moment": "名場面",

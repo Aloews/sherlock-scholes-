@@ -740,6 +740,8 @@
     "empty_goals": "Aucune vidéo en 24 heures.",
     "loudness_one": "{{n}} média",
     "loudness_other": "{{n}} médias",
+    "loudest": "Le plus commenté",
+    "loudest_more": "Ce qu’ont ajouté les autres médias",
     "recent": "Buts des derniers jours",
     "earlier": "Plus tôt cette semaine",
     "moment": "moment",

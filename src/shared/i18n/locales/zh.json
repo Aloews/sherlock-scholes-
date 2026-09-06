@@ -719,6 +719,8 @@
     "empty_news": "今天没有新内容。",
     "empty_goals": "24小时内没有视频。",
     "loudness_other": "{{n}}家媒体",
+    "loudest": "讨论最多的新闻",
+    "loudest_more": "其他媒体补充的内容",
     "recent": "近日进球",
     "earlier": "本周早些时候",
     "moment": "瞬间",

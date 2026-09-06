@@ -740,6 +740,8 @@
     "empty_goals": "No clips in the last 24 hours.",
     "loudness_one": "{{n}} outlet",
     "loudness_other": "{{n}} outlets",
+    "loudest": "Most talked about",
+    "loudest_more": "What other outlets added",
     "recent": "Goals of recent days",
     "earlier": "Earlier this week",
     "moment": "moment",

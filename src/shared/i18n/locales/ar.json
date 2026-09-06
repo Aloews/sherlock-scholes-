@@ -822,6 +822,8 @@
     "loudness_few": "{{n}} وسائل",
     "loudness_many": "{{n}} وسيلة",
     "loudness_other": "{{n}} وسيلة",
+    "loudest": "الأكثر تداولاً",
+    "loudest_more": "ما أضافته الوسائل الأخرى",
     "recent": "أهداف الأيام الأخيرة",
     "earlier": "سابقًا هذا الأسبوع",
     "moment": "لقطة",

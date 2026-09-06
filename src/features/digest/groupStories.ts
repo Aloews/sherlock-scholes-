@@ -11,6 +11,17 @@ export interface Story {
   alsoSources: string[];
   /** Сколько ВСЕГО изданий в сюжете, включая ведущее. */
   sourceCount: number;
+  /**
+   * Все заметки сюжета, включая ведущую, в порядке ленты.
+   *
+   * ⚠️ НУЖНЫ ИМЕННО ЗАМЕТКИ, А НЕ НАЗВАНИЯ ИЗДАНИЙ. Раскрытие сюжета
+   * (`storyReveal`) читает их тексты: одно издание пишет счёт, другое — сумму
+   * трансфера, и вместе они говорят больше, чем любое по отдельности.
+   * Собрать их у себя экран не может — по названию издания заметку не
+   * найти, у одного издания их в ленте десятки. Склейка живёт здесь одна на
+   * всех, поэтому и состав сюжета отдаётся отсюда.
+   */
+  items: NewsItem[];
 }
 
 /**
@@ -104,7 +115,7 @@ export function groupStories(items: readonly NewsItem[], lang: string): Story[] 
       seen.add(n.source);
       alsoSources.push(n.source);
     }
-    out.push({ lead, alsoSources, sourceCount: seen.size });
+    out.push({ lead, alsoSources, sourceCount: seen.size, items: group });
   }
 
   return out;

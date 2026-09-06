@@ -719,6 +719,8 @@
     "empty_news": "오늘은 들어온 소식이 없습니다.",
     "empty_goals": "24시간 내 영상이 없습니다.",
     "loudness_other": "{{n}}개 매체",
+    "loudest": "가장 많이 다뤄진 소식",
+    "loudest_more": "다른 매체가 덧붙인 내용",
     "recent": "최근 며칠의 골",
     "earlier": "이번 주 그 전",
     "moment": "장면",

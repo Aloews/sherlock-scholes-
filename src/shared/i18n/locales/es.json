@@ -740,6 +740,8 @@
     "empty_goals": "No hubo vídeos en 24 horas.",
     "loudness_one": "{{n}} medio",
     "loudness_other": "{{n}} medios",
+    "loudest": "Lo más comentado",
+    "loudest_more": "Lo que añadieron otros medios",
     "recent": "Goles de los últimos días",
     "earlier": "Antes esta semana",
     "moment": "momento",
