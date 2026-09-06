@@ -240,6 +240,25 @@ def squad_players(url, key):
     return out
 
 
+def read_all_cards(url, key):
+    """Карточки игроков с id на Transfermarkt — постранично.
+
+    ⚠️ СТРАНИЦАМИ: PostgREST режет ответ по `db-max-rows` = 1000, а карточек
+    25 509. Без страниц хвост теряется молча.
+    """
+    out, offset = [], 0
+    while True:
+        page = sb_get(url, key, "cards", {
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur",
+            "category": "eq.player", "active": "is.true",
+            "transfermarkt_id": "not.is.null",
+            "order": "id", "limit": 1000, "offset": offset})
+        out.extend(page)
+        if len(page) < 1000:
+            return out
+        offset += 1000
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -247,6 +266,8 @@ def main():
     ap.add_argument("--sql-out", default=None, help="куда выписать UPDATE")
     ap.add_argument("--refresh", action="store_true",
                     help="перезапросить и тех, у кого стоимость уже стоит")
+    ap.add_argument("--from-cards", action="store_true",
+                    help="брать карточки с готовым transfermarkt_id, минуя Викиданные")
     args = ap.parse_args()
     apply = os.environ.get("APPLY") == "1"
 
@@ -258,7 +279,16 @@ def main():
     if apply and not write_key:
         raise SystemExit("APPLY=1, но SUPABASE_KEY не задан — писать нечем")
 
-    players = squad_players(url, read_key)
+    if args.from_cards:
+        # ⚠️ КОРОТКИЙ ПУТЬ, И ОН ЖЕ ЕДИНСТВЕННЫЙ РАБОЧИЙ ДЛЯ БОЛЬШИНСТВА.
+        # Прежний ход «карточка → QID → P2446 → id» упирается в Викиданные, а
+        # их у большинства футболистов мира нет: замер 06.09.2026 — на 3000
+        # проверенных QID нашёлся у 50. Но id на Transfermarkt у карточки уже
+        # СТОИТ: он приехал вместе с заявкой клуба. Замер: 3142 карточки без
+        # стоимости, у которых id есть. Тогда шаги 1 и 2 не нужны вовсе.
+        players = read_all_cards(url, read_key)
+    else:
+        players = squad_players(url, read_key)
     if not args.refresh:
         players = [p for p in players if p.get("market_value_eur") is None]
     players.sort(key=lambda p: (p.get("name") or ""))
@@ -280,8 +310,17 @@ def main():
         pv["user_agent"], cache, pv.get("min_pause_seconds", 1.0), budget)
 
     # --- шаг 1: карточка → QID ------------------------------------------
+    direct_tm = {}
+    if args.from_cards:
+        # ⚠️ ШАГИ 1 И 2 ПРОПУСКАЮТСЯ ЦЕЛИКОМ: id уже на карточке.
+        direct_tm = {c["id"]: c["transfermarkt_id"] for c in players
+                     if c.get("transfermarkt_id")}
+        print("Короткий путь: id на карточке у %d игроков, Викиданные не "
+              "запрашиваются" % len(direct_tm), flush=True)
     qid_of, no_qid = {}, 0
     for i, card in enumerate(players, 1):
+        if args.from_cards:
+            break
         have = card.get("wikidata_qid")
         if have:
             qid_of[card["id"]] = have
@@ -299,7 +338,8 @@ def main():
     print("Шаг 1 — QID: найдено %d, не найдено %d" % (len(qid_of), no_qid), flush=True)
 
     # --- шаг 2: QID → transfermarkt id ----------------------------------
-    tm_of_qid = wikidata.external_ids_for_qids(list(qid_of.values()), "P2446")
+    tm_of_qid = ({} if args.from_cards
+                 else wikidata.external_ids_for_qids(list(qid_of.values()), "P2446"))
     print("Шаг 2 — P2446: id есть у %d из %d QID" % (len(tm_of_qid), len(qid_of)),
           flush=True)
     lost = sum(len(b) for b in getattr(wikidata, "extid_lost", []))
@@ -315,7 +355,7 @@ def main():
     pending, written = [], 0
     for i, card in enumerate(players, 1):
         qid = qid_of.get(card["id"])
-        tm_id = tm_of_qid.get(qid) if qid else None
+        tm_id = direct_tm.get(card["id"]) or (tm_of_qid.get(qid) if qid else None)
         if not tm_id:
             no_id += 1
             continue
