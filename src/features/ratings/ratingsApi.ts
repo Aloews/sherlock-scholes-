@@ -74,8 +74,18 @@ export const RATING_LIMIT = 50;
 export async function fetchRatings(
   days: RatingWindow,
   limit = RATING_LIMIT,
+  filter?: { clubKey?: string | null; league?: string | null; country?: string | null },
 ): Promise<LoadState<RatingRow[]>> {
-  const res = await supabase.rpc('player_ratings', { p_days: days, p_limit: limit });
+  // ⚠️ ОТБОР УХОДИТ В БАЗУ. На клиенте он резал бы уже готовую полусотню:
+  // «Барселона» в рейтинге дала бы двух игроков вместо шести, потому что
+  // остальные не попали в исходный лимит.
+  const res = await supabase.rpc('player_ratings', {
+    p_days: days,
+    p_limit: limit,
+    p_club_key: filter?.clubKey || null,
+    p_league: filter?.league || null,
+    p_country: filter?.country || null,
+  });
   return fromPostgrest<RatingRow[]>(res, `player_ratings(${days})`);
 }
 

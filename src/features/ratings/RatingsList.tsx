@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ScopeFilter } from '@/shared/ui/ScopeFilter';
+import type { CollectionFilter } from '@/features/collection/collectionApi';
 import { useTranslation } from 'react-i18next';
 import { IconBallFootball } from '@tabler/icons-react';
 import {
@@ -54,15 +56,18 @@ export function RatingsList({ limit }: RatingsListProps) {
   // карточка с описанием, фотографией и историей матчей уже лежала рядом.
   const navigate = useNavigate();
   const [days, setDays] = useState<RatingWindow>(7);
+  // Клуб, лига, страна — тот же отбор, что в коллекции, и тем же
+  // компонентом: две копии разъехались бы в наборе значений.
+  const [filter, setFilter] = useState<CollectionFilter>({});
   const [rows, setRows] = useState<LoadState<RatingRow[]>>(LOADING);
   const [fresh, setFresh] = useState<LoadState<RatingFreshness | null>>(LOADING);
 
   useEffect(() => {
     let cancelled = false;
     setRows(LOADING);
-    void fetchRatings(days).then((r) => { if (!cancelled) setRows(r); });
+    void fetchRatings(days, undefined, filter).then((r) => { if (!cancelled) setRows(r); });
     return () => { cancelled = true; };
-  }, [days]);
+  }, [days, filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +86,8 @@ export function RatingsList({ limit }: RatingsListProps) {
 
   return (
     <div className="space-y-4">
+      <ScopeFilter value={filter} onChange={setFilter} />
+
       {/* Окна — то, что просили: неделя, месяц, год. */}
       <div className="-mx-4 px-4 overflow-x-auto">
         <div className="flex gap-1.5 w-max pb-0.5">
