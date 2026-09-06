@@ -720,6 +720,64 @@ async function checkEspnScores() {
  * ненулевым (клубы из статей никто не трогал), поэтому «клубы есть» зеленело
  * на полностью сломанном.
  */
+/**
+ * КАРТОЧКА НЕ ДОЛЖНА ПОКАЗЫВАТЬ КЛУБ, В КОТОРОМ ИГРОК НЕ ИГРАЕТ.
+ *
+ * ⚠️ ЗАВЕДЕНА ПО ЖАЛОБЕ ИЗ ПРОДА. Леон Классен показывался в «Спартаке», хотя
+ * два года как в другом клубе, — и это увидели проверяющие люди, а не мы.
+ * Попал он так и в ПРОГНОЗЫ: сила состава считалась по клубу из карточки.
+ *
+ * Причина класса: открытый период карьеры из статьи («2022–») не умеет
+ * устаревать — у него нет способа сказать «он больше здесь не играет». А
+ * заявка клуба снята со страницы клуба на дату и связана идентификатором.
+ *
+ * Проверяется НЕ отсутствие расхождений (их всегда будет сколько-то: статьи
+ * отстают), а то, что клуб В ПРОГНОЗАХ берётся из собранного источника, а не
+ * из статьи. Замер 06.09.2026: расхождений 618, и до починки у ВСЕХ из них в
+ * прогнозах стоял клуб из статьи.
+ */
+async function checkCardConflicts() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Расхождения карточек', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  const r = await fetch(`${url}/rest/v1/rpc/card_club_conflicts`, {
+    method: 'POST', headers: auth, body: '{}',
+  });
+  const rows = await r.json().catch(() => null);
+  const conflicts = Array.isArray(rows) ? rows.length : -1;
+
+  // Сколько из спорных карточек всё ещё берут клуб ИЗ СТАТЬИ. Это и есть
+  // поломка: сам факт расхождения — норма, статьи отстают.
+  const ids = Array.isArray(rows) ? rows.slice(0, 200).map((x) => x.card_id) : [];
+  let fromArticle = -1;
+  if (ids.length > 0) {
+    const q = `card_id=in.(${ids.join(',')})&source=in.(career_stats,legend_career)&select=card_id`;
+    const c = await fetch(`${url}/rest/v1/card_current_club?${q}`, {
+      headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+    });
+    const range = c.headers.get('content-range') || '';
+    fromArticle = Number(range.split('/')[1]);
+  } else if (conflicts === 0) {
+    fromArticle = 0;
+  }
+
+  record('Расхождения карточек: клуб берётся из собранного', fromArticle === 0,
+         `расхождений ${conflicts}, из статьи в прогнозах ${fromArticle}`,
+         'ловит возврат приоритета статьи над заявкой');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: сам отчёт обязан что-то находить. Пустой отчёт
+  // прошёл бы и у функции, которая не сравнивает ничего.
+  record('Расхождения карточек: отчёт не пуст', conflicts > 0,
+         conflicts > 0 ? `отчёт находит ${conflicts} карточек`
+                       : 'отчёт пуст — он вообще сравнивает?',
+         conflicts > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 async function checkCurrentClubSources() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -799,6 +857,7 @@ await checkFameAxes();
 await checkClubValue();
 await checkClubRoster();
 await checkEspnScores();
+await checkCardConflicts();
 await checkCurrentClubSources();
 await checkDeckCountries();
 await checkBundle();
