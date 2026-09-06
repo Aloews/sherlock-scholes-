@@ -12,7 +12,10 @@ import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { useProStore } from '@/shared/store/proStore';
-import { fetchCollection, fetchCard, type CollectionCard } from '@/features/collection/collectionApi';
+import {
+  fetchCollection, fetchCard, fetchCollectionFacets,
+  type CollectionCard, type CollectionFacet, type CollectionFilter,
+} from '@/features/collection/collectionApi';
 import { CardDossier } from '@/screens/collection/CardDossier';
 import type { Card } from '@/shared/types/database';
 import {
@@ -133,6 +136,10 @@ export function CollectionScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [catFilter,   setCatFilter]   = useState<Filter>('all');
+  // Клуб, лига и страна — отбор на СТОРОНЕ БАЗЫ. См. collectionApi:
+  // на клиенте он работал бы по первой тысяче из 25 509 карточек.
+  const [filter, setFilter] = useState<CollectionFilter>({});
+  const [facets, setFacets] = useState<CollectionFacet[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   // Debounced mirror of searchQuery — the value the query actually runs with.
   const [term, setTerm] = useState('');
@@ -186,6 +193,14 @@ export function CollectionScreen() {
     return () => clearTimeout(id);
   }, [searchQuery]);
 
+  // Списки для выбора — один раз на категорию: они меняются не чаще, чем
+  // приезжают новые составы.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCollectionFacets(catFilter).then((f) => { if (!cancelled) setFacets(f); });
+    return () => { cancelled = true; };
+  }, [catFilter]);
+
   // First page — re-runs whenever the filter, the debounced term or the retry
   // key changes. Later pages are appended by loadMore().
   useEffect(() => {
@@ -193,7 +208,7 @@ export function CollectionScreen() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchCollection({ category: catFilter, query: term, offset: 0, lang: i18n.language })
+    fetchCollection({ category: catFilter, query: term, offset: 0, lang: i18n.language, filter })
       .then(({ cards: page, hasMore: more }) => {
         if (cancelled) return;
         setCards(page);
@@ -207,19 +222,22 @@ export function CollectionScreen() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catFilter, term, reloadKey, i18n.language, isPro]);
+  }, [catFilter, term, reloadKey, i18n.language, isPro, filter]);
 
   const loadMore = useCallback(() => {
     if (paging) return;
     setPaging(true);
-    fetchCollection({ category: catFilter, query: term, offset: cards.length, lang: i18n.language })
+    fetchCollection({
+      category: catFilter, query: term, offset: cards.length,
+      lang: i18n.language, filter,
+    })
       .then(({ cards: page, hasMore: more }) => {
         setCards((prev) => [...prev, ...page]);
         setHasMore(more);
       })
       .catch(() => setHasMore(false))
       .finally(() => setPaging(false));
-  }, [paging, catFilter, term, cards.length, i18n.language]);
+  }, [paging, catFilter, term, cards.length, i18n.language, filter]);
 
   const pickCategory = (next: Filter) => {
     hapticImpact('light');
@@ -315,6 +333,39 @@ export function CollectionScreen() {
               );
             })}
           </div>
+
+          {/* Клуб, лига, страна — отбор на стороне базы.
+              ⚠️ Списки приходят из `collection_facets`, а не собираются из
+              загруженных карточек: на экране их 48, а в базе 25 509. */}
+          {facets.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-4 px-4">
+              {(['club', 'league', 'country'] as const).map((kind) => {
+                const list = facets.filter((f) => f.kind === kind);
+                if (list.length === 0) return null;
+                const key = kind === 'club' ? 'clubKey' : kind;
+                const value = (filter as Record<string, string | null | undefined>)[key] ?? '';
+                return (
+                  <select
+                    key={kind}
+                    value={value}
+                    onChange={(e) => setFilter((f) => ({ ...f, [key]: e.target.value || null }))}
+                    className={`shrink-0 h-9 max-w-[46vw] rounded-full border px-3 text-[11.5px]
+                                bg-brand-surface focus:outline-none transition-colors ${
+                      value ? 'border-brand-accent/50 text-brand-accent'
+                            : 'border-brand-border text-brand-muted'
+                    }`}
+                  >
+                    <option value="">{t(`collection.any_${kind}`)}</option>
+                    {list.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label} · {f.n}
+                      </option>
+                    ))}
+                  </select>
+                );
+              })}
+            </div>
+          )}
 
           {/* Body: loading → error → empty → grid */}
           {loading ? (
