@@ -236,3 +236,40 @@ export async function fetchDigestSummary(lang: string): Promise<LoadState<Digest
     generatedAt: (data.generated_at as string) ?? new Date().toISOString(),
   });
 }
+
+/**
+ * Главное событие недели — заголовок, который вышел у БОЛЬШЕГО ЧИСЛА изданий.
+ *
+ * Приходит из `weekly_digest(p_lang)`: итог складывается раз в неделю и
+ * ХРАНИТСЯ, а не считается при открытии. Причина замерена: громкость
+ * считается перебором пар токенов, и на суточном окне это уже около секунды,
+ * а недельное окно втрое больше заметок — на главном экране такому не место.
+ * Вторая причина важнее: `news_items` это ЛЕНТА, а не архив, и посчитать
+ * «итог недели» задним числом просто не из чего.
+ */
+export interface WeeklyStory {
+  title: string;
+  url: string;
+  source: string;
+  /** Сколько РАЗНЫХ изданий вышло с тем же сюжетом. */
+  loudness: number;
+  /** Понедельник той недели, к которой относится итог. */
+  week_start: string;
+}
+
+/**
+ * Итог недели на языке читателя.
+ *
+ * Пустой массив на ошибке — намеренно, и это ЕДИНСТВЕННОЕ место, где такое
+ * уместно: блок стоит на главном экране под роликом и при пустоте просто не
+ * рисуется. Надпись «не удалось загрузить итог недели» на первом экране игры
+ * про алиас сообщала бы о поломке тому, кто пришёл играть.
+ */
+export async function fetchWeeklyDigest(lang: string): Promise<WeeklyStory[]> {
+  const { data, error } = await supabase.rpc('weekly_digest', { p_lang: lang });
+  if (error) {
+    console.error('[digest] weekly_digest failed:', error.message);
+    return [];
+  }
+  return (data as WeeklyStory[]) ?? [];
+}

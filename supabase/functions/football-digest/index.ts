@@ -649,8 +649,15 @@ function summarySystemPrompt(langName: string): string {
  * digest_llm_content.sql. Заметки без описания в карту не попадают вовсе:
  * для них она останется NULL и на следующий текст, что и требуется.
  */
-async function generateNewsSummaries(rows: NewsRow[]): Promise<Map<string, string>> {
+async function generateNewsSummaries(
+  rows: NewsRow[],
+  useLlm: boolean,
+): Promise<Map<string, string>> {
   const out = new Map<string, string>();
+  // ⚠️ ПО УМОЛЧАНИЮ МОДЕЛЬ НЕ ЗОВЁТСЯ ВОВСЕ — см. шапку run(). Возврат ПУСТОЙ
+  // карты, а не карты с '': '' значит «пробовали и не вышло», и такая заметка
+  // больше никогда не получит сути. Здесь мы не пробовали.
+  if (!useLlm) return out;
   // ⚠️ Оба условия, не только клиент. Модель может быть ещё не настроена
   // (ключ и base_url уже есть, NEWS_LLM_MODEL — нет), и тогда generateText
   // всё равно вернёт null для каждого кандидата. Без этой проверки здесь те
@@ -686,8 +693,11 @@ const CLIP_TITLE_SYSTEM_PROMPT = [
 /** Та же логика '' vs NULL, что у новостей — см. generateNewsSummaries. */
 async function generateClipTitles(
   candidates: { video_id: string; title: string; channel: string }[],
+  useLlm: boolean,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
+  // См. generateNewsSummaries: пустая карта, а не карта с ''.
+  if (!useLlm) return out;
   // См. generateNewsSummaries — та же причина проверять обе переменные.
   if (!llmClient || !NEWS_LLM_MODEL) return out;
   await Promise.all(candidates.slice(0, LLM_BATCH_MAX).map(async (c) => {
@@ -804,7 +814,28 @@ function silent(sources: Source[], got: unknown[][]): string[] {
   return sources.filter((_, i) => got[i].length === 0).map((s) => s.name);
 }
 
-async function run(): Promise<Response> {
+/**
+ * ⚠️ МОДЕЛЬ ВЫКЛЮЧЕНА ПО УМОЛЧАНИЮ, И ЭТО ГЛАВНОЕ ПРАВИЛО ЭТОЙ ФУНКЦИИ.
+ *
+ * Владелец: «я добавил токены, автоматически больше их не трать. только по
+ * вызову кнопки краткая суть и автоматически раз в неделю».
+ *
+ * Конвейер ходит по лентам каждые десять минут — 144 раза в сутки, — и до
+ * этой правки КАЖДЫЙ прогон заказывал модели пересказ каждой новой заметки и
+ * заголовок каждого нового ролика. Замер, из-за которого всё и всплыло: 863
+ * заметки с сутью за сутки, 2436 за неделю; в панели шлюза это выглядело как
+ * «90% токенов за десять минут», и владелец решил, что украли ключ. Ключ не
+ * крали — тратил конвейер.
+ *
+ * ⚠️ И ЛЕНТА ОТ ЭТОГО НЕ ПУСТЕЕТ. Под заголовком показывается `lead_text`, а
+ * это `coalesce(summary_short, news_lead(description))` — то есть при
+ * выключенной модели читатель видит НАЧАЛО САМОЙ СТАТЬИ из RSS, бесплатно и
+ * на языке заметки. Пересказ был удобством, а не условием работы.
+ *
+ * Включается только явно, телом запроса `{"llm": true}` — так его зовёт
+ * недельная сборка. Крон раз в десять минут тела не шлёт и модель не трогает.
+ */
+async function run(useLlm: boolean): Promise<Response> {
   const report: Record<string, unknown> = {};
 
   const sources = await loadSources();
@@ -897,7 +928,8 @@ async function run(): Promise<Response> {
   // Кандидаты берутся из newsRows, а не из insertedNews: форма строки теперь
   // одна и та же, но newsRows — источник, и брать из него честнее.
   const insertedUrls = new Set(insertedNews.map((r) => r.url));
-  const summaries = await generateNewsSummaries(newsRows.filter((r) => insertedUrls.has(r.url)));
+  const summaries = await generateNewsSummaries(
+    newsRows.filter((r) => insertedUrls.has(r.url)), useLlm);
   await Promise.all(
     [...summaries].map(([url, summary]) => patchByKey("news_items", "url", url, { summary_short: summary })),
   );
@@ -918,13 +950,17 @@ async function run(): Promise<Response> {
   )
     .then(async (r): Promise<TitleCandidate[]> => (r.ok ? await r.json() : []))
     .catch(() => [] as TitleCandidate[]);
-  const titles = await generateClipTitles(titleCandidates);
+  const titles = await generateClipTitles(titleCandidates, useLlm);
   await Promise.all(
     [...titles].map(([videoId, title]) =>
       patchByKey("goal_clips", "video_id", videoId, { title_generated: title })),
   );
   report.titles_generated = [...titles.values()].filter((v) => v !== "").length;
   report.llm_configured = llmClient !== null && NEWS_LLM_MODEL !== "";
+  // ⚠️ «Настроена» и «звали» — РАЗНЫЕ вещи, и по одному числу их не
+  // различить. Именно так расход и оставался незамеченным: отчёт говорил
+  // «модель настроена», а сколько раз её позвали, не говорил никто.
+  report.llm_used = useLlm;
   // Сколько источников вообще было взято — иначе «молчащих нет» может значить
   // и «все ответили», и «спрашивать было некого».
   report.sources = { feeds: feeds.length, channels: channels.length, espn: espnLeagues.length };
@@ -964,7 +1000,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   try {
-    return await run();
+    // Тело необязательно и обычно пустое: крон шлёт «{}» либо ничего. Любой
+    // сбой разбора читается как «модель не звать» — умолчание обязано быть
+    // дешёвым, а не дорогим.
+    const body = await req.json().catch(() => ({})) as { llm?: unknown };
+    return await run(body?.llm === true);
   } catch (err) {
     console.error("[digest] failed", err);
     return json({ error: String(err) }, 500);

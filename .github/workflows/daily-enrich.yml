@@ -248,6 +248,19 @@ jobs:
         if: always()
         run: APPLY=1 python docs/cards_from_roster.py --limit 3000
 
+      # ⚠️ БЕЗ ЭТОГО ШАГА ПРЕДЫДУЩИЙ ЗАВОДИЛ ПУСТЫЕ КАРТОЧКИ. Данные лежали
+      # рядом, в `club_roster`, снятые с той же страницы клуба: позиция,
+      # гражданство, стоимость, номер. Ночью их никто не переносил, и досье у
+      # новичка открывалось пустым — владелец это и увидел в проде. Разовый
+      # вызов тех же двух функций руками дал 9218 позиций, 8656 стоимостей и
+      # 12 491 текущий клуб (06.09.2026).
+      #
+      # Строго ПОСЛЕ заведения карточек: заполнение идёт по
+      # `club_roster.card_id`, до заведения ему нечего делать.
+      - name: Fill new cards from rosters (position, value, country, club)
+        if: always()
+        run: python docs/roster_fill_cards.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.

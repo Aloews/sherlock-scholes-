@@ -5,6 +5,7 @@ import { IconChevronLeft, IconTrophy, IconShirt, IconFlag } from '@tabler/icons-
 import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
+import { byLatestFirst } from '@/shared/lib/careerOrder';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
@@ -14,7 +15,10 @@ import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
 import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
-import { fetchClubOfCard, fetchPlayerLevel, type CardClub, type PlayerLevel } from '@/features/clubs/clubsApi';
+import {
+  fetchClubOfCard, fetchPlayerLevel, fetchClubsByNames,
+  type CardClub, type PlayerLevel, type ClubByName,
+} from '@/features/clubs/clubsApi';
 import {
   fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
 } from '@/features/collection/playerMediaApi';
@@ -58,6 +62,8 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   // Текущий клуб — ссылка на экран команды. Грузится молча и отдельно: у
   // легенды его нет и не должно быть, и это норма, а не поломка.
   const [club, setClub] = useState<CardClub | null>(null);
+  // Клубы карьеры, разрешённые в ключи и карточки коллекции.
+  const [careerClubs, setCareerClubs] = useState<Map<string, ClubByName>>(new Map());
   useEffect(() => {
     let cancelled = false;
     setClub(null);
@@ -143,7 +149,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   });
 
   // Career: legends carry clubs+years, veterans carry clubs+apps/goals.
-  const career: { club: string; meta: string }[] =
+  //
+  // ⚠️ ПОРЯДОК — ОТ ПОСЛЕДНЕГО КЛУБА К ПЕРВОМУ, и он задаётся здесь, а не
+  // приходит из базы. Владелец: «сортировку клубной карьеры нужно изменить,
+  // не по количеству проведенных матчей, а по годам, от последнего клуба к
+  // первому». Порядок из базы значил РАЗНОЕ у разных карточек: `career_stats`
+  // собран по числу матчей, `legend_career` — как перечислено в статье. На
+  // одном экране стояли две сортировки, и ни одна не отвечала на вопрос «где
+  // он играет сейчас», ради которого карьеру и открывают.
+  const career: { club: string; meta: string }[] = byLatestFirst(
     card.legend_career?.clubs?.map((c) => ({
       club: (!isRu && c.club_en) ? c.club_en : c.club,
       meta: c.years,
@@ -152,7 +166,27 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
       club: (isRu && c.club_ru) ? c.club_ru : c.club,
       meta: c.years,
     }))
-    ?? [];
+    ?? [],
+  );
+
+  // Клубы карьеры → ключи и карточки коллекции, ОДНИМ запросом на карточку.
+  //
+  // ⚠️ Хук стоит здесь, а не рядом с остальными наверху, потому что ему нужен
+  // уже посчитанный `career`: список имён — это его вход. Порядок хуков от
+  // этого не плавает, он один и тот же на каждый рендер.
+  const careerNames = career.map((r) => r.club).join('\u0000');
+  useEffect(() => {
+    const names = careerNames ? careerNames.split('\u0000') : [];
+    if (names.length === 0) { setCareerClubs(new Map()); return; }
+    let cancelled = false;
+    void fetchClubsByNames(names).then((rows) => {
+      if (cancelled) return;
+      setCareerClubs(new Map(rows.map((r) => [r.name, r])));
+    });
+    return () => { cancelled = true; };
+    // Строка, а не массив: массив у React — новая ссылка на каждый рендер, и
+    // запрос уходил бы бесконечно.
+  }, [careerNames]);
 
   // Язык интерфейса, затем en, затем ru — тот же порядок, что в
   // TrainingScreen. Здесь `en` пропускали, и это стало видно, когда описания
@@ -432,16 +466,47 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         {career.length > 0 && (
           <Section title={t('collection.career')}>
             <div>
-              {career.map((row, i) => (
-                <div
-                  key={`${row.club}-${i}`}
-                  className="flex gap-3 py-2.5 border-b border-brand-border last:border-b-0"
-                >
-                  <IconShirt size={14} stroke={1.75} className="text-brand-muted mt-0.5 shrink-0" />
-                  <span className="flex-1 text-[12.5px] text-white/90">{row.club}</span>
-                  <span className="text-[11.5px] text-brand-muted">{row.meta}</span>
-                </div>
-              ))}
+              {career.map((row, i) => {
+                const found = careerClubs.get(row.club);
+                // ⚠️ ССЫЛКА ТОЛЬКО ТУДА, ГДЕ ЕСТЬ ЧТО ПОКАЗАТЬ. Клуб, которого
+                // нет в справочнике, остаётся обычной строкой: ссылка в пустую
+                // карточку хуже её отсутствия — читатель нажимает и получает
+                // пустоту, а понять, что клуба у нас просто нет, ему нечем.
+                const body = (
+                  <>
+                    {found?.crest_url ? (
+                      <img
+                        src={found.crest_url}
+                        alt=""
+                        loading="lazy"
+                        className="w-4 h-4 mt-0.5 shrink-0 object-contain"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <IconShirt size={14} stroke={1.75} className="text-brand-muted mt-0.5 shrink-0" />
+                    )}
+                    <span className="flex-1 text-[12.5px] text-white/90">{row.club}</span>
+                    <span className="text-[11.5px] text-brand-muted">{row.meta}</span>
+                  </>
+                );
+                const cls = 'w-full flex gap-3 py-2.5 border-b border-brand-border last:border-b-0 text-left';
+                return found?.card_id ? (
+                  <button
+                    key={`${row.club}-${i}`}
+                    type="button"
+                    onClick={() => {
+                      hapticImpact('light');
+                      navigate(`/collection?card=${found.card_id}`);
+                    }}
+                    className={`${cls} hover:text-brand-accent transition-colors`}
+                  >
+                    {body}
+                    <span aria-hidden="true" className="text-brand-muted leading-none">›</span>
+                  </button>
+                ) : (
+                  <div key={`${row.club}-${i}`} className={cls}>{body}</div>
+                );
+              })}
             </div>
           </Section>
         )}

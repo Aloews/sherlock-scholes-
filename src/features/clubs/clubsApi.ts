@@ -239,6 +239,38 @@ export async function fetchClubOfCard(
   return { status: 'ok', data: state.data[0] ?? null };
 }
 
+/**
+ * Клуб из строки карьеры — с ключом и карточкой коллекции.
+ *
+ * `card_id` может быть null, и это НЕ ошибка: клуба, о котором в справочнике
+ * ничего нет, в коллекции тоже нет. Замер 06.09.2026: «Дармштадт 98» из живой
+ * карточки не находится вовсе. Строка карьеры такого клуба показывается без
+ * ссылки — не исчезает и не ведёт в никуда.
+ */
+export interface ClubByName {
+  name: string;
+  club_key: string | null;
+  card_id: string | null;
+  crest_url: string | null;
+}
+
+/**
+ * Разрешить названия клубов карьеры пачкой — ОДИН запрос на карточку.
+ *
+ * Пачкой, а не по одному: у ветерана в карьере бывает десяток клубов, и
+ * десяток запросов из досье — это десяток раундов по сети на открытие
+ * карточки.
+ */
+export async function fetchClubsByNames(names: string[]): Promise<ClubByName[]> {
+  if (names.length === 0) return [];
+  const { data, error } = await supabase.rpc('clubs_by_names', { p_names: names });
+  if (error) {
+    console.error('[clubs] clubs_by_names failed:', error.message);
+    return [];
+  }
+  return (data as ClubByName[]) ?? [];
+}
+
 export interface PlayerLevel {
   card_id: string;
   level: number;
