@@ -3,18 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconShieldHalf } from '@tabler/icons-react';
 import {
-  fetchClubProfile, fetchClubSquad, fetchClubMatches, fetchClubFixtures,
+  fetchClubProfile, fetchClubSquad, fetchClubRoster, fetchClubMatches, fetchClubFixtures,
   CLUB_WINDOWS, type ClubWindow,
-  type ClubProfile, type ClubSquadRow, type ClubMatchRow, type ClubFixtureRow,
+  type ClubProfile, type ClubSquadRow, type ClubRosterRow, type ClubMatchRow,
+  type ClubFixtureRow,
 } from '@/features/clubs/clubsApi';
 import {
   formFrom, goalDiff, pointsFrom, winRate, perMatch, hasEnoughForRates,
 } from '@/features/clubs/clubStats';
 import { ClubSquadTable } from '@/features/clubs/ClubSquadTable';
+import { ClubRosterTable } from '@/features/clubs/ClubRosterTable';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { longDateFormat } from '@/shared/lib/dateFormat';
+import { formatEur } from '@/shared/lib/money';
 
 /**
  * Экран команды: кто это, как идут дела, кто играет и что дальше.
@@ -42,6 +45,7 @@ export function ClubScreen() {
   const [days, setDays] = useState<ClubWindow>(365);
   const [profile, setProfile] = useState<LoadState<ClubProfile | null>>(LOADING);
   const [squad, setSquad] = useState<LoadState<ClubSquadRow[]>>(LOADING);
+  const [roster, setRoster] = useState<LoadState<ClubRosterRow[]>>(LOADING);
   const [matches, setMatches] = useState<LoadState<ClubMatchRow[]>>(LOADING);
   const [fixtures, setFixtures] = useState<LoadState<ClubFixtureRow[]>>(LOADING);
 
@@ -53,6 +57,16 @@ export function ClubScreen() {
     void fetchClubSquad(key, lang, days).then((r) => { if (!cancelled) setSquad(r); });
     return () => { cancelled = true; };
   }, [key, lang, days]);
+
+  // Полный состав от окна и языка НЕ зависит: это заявка клуба, а не выборка
+  // за период. Отдельным запросом, а не внутри Promise.all с остальными:
+  // экран, ждущий по самому медленному, этот проект уже чинил в дайджесте.
+  useEffect(() => {
+    let cancelled = false;
+    setRoster(LOADING);
+    void fetchClubRoster(key).then((r) => { if (!cancelled) setRoster(r); });
+    return () => { cancelled = true; };
+  }, [key]);
 
   // Матчи и расписание от окна не зависят: список последних матчей — это
   // список последних матчей, а не выборка за период.
@@ -69,6 +83,7 @@ export function ClubScreen() {
   const p = profile.status === 'ok' ? profile.data : null;
   const matchRows = matches.status === 'ok' ? matches.data : [];
   const form = formFrom(matchRows);
+  const squadValue = formatEur(p?.market_value_eur, lang);
 
   const outcomeClass = (o: string) =>
     o === 'w' ? 'bg-brand-accent text-black'
@@ -161,14 +176,40 @@ export function ClubScreen() {
                   <p className="text-brand-muted/70 text-[9.5px] uppercase tracking-wide">
                     {t('club.rating')}
                   </p>
-                  {p.league_place != null && (
+                  {/* ⚠️ МЕСТО РИСУЕТСЯ ТОЛЬКО СО ЗНАМЕНАТЕЛЕМ. Лиг в
+                      справочнике 62, значит первых мест ровно 62 — по одному
+                      на лигу, и «1-е место» у клуба из таблицы на три команды
+                      читается как титул. «1-е из 3» ничего не прячет и ничего
+                      не обещает. Нет размера таблицы — нет и строки. */}
+                  {p.league_place != null && p.league_size != null && (
                     <p className="text-brand-muted text-[10.5px] tabular-nums">
-                      {t('club.place', { n: p.league_place })}
+                      {t('club.place', { n: p.league_place, total: p.league_size })}
                     </p>
                   )}
                 </button>
               )}
             </div>
+
+            {/* СТОИМОСТЬ СОСТАВА — сумма по тем, кого удалось оценить, и
+                рядом видно, скольких. Показывается с пяти оценённых: тот же
+                порог, что у уровня состава в прогнозах. Ниже пяти сумма —
+                не про клуб, а про то, кого мы успели собрать, и читалась бы
+                как «команда дешёвая». Источник назван: данные Transfermarkt,
+                и маскировать это нельзя. */}
+            {squadValue && p.market_value_priced != null && p.market_value_priced >= 5 && (
+              <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-3 py-2.5 flex items-baseline justify-between gap-2">
+                <div>
+                  <p className="text-[11px] text-brand-muted">{t('club.market_value')}</p>
+                  <p className="text-[9.5px] text-brand-muted/70">
+                    {t('club.market_value_of', { priced: p.market_value_priced, squad: p.squad })}
+                    {' · Transfermarkt'}
+                  </p>
+                </div>
+                <span className="ds-display text-[16px] font-extrabold text-white tabular-nums">
+                  {squadValue}
+                </span>
+              </div>
+            )}
 
             <div className="-mx-4 px-4 overflow-x-auto">
               <div className="flex gap-1.5 w-max pb-0.5">
@@ -251,12 +292,22 @@ export function ClubScreen() {
               {squad.status === 'error' && (
                 <p className="text-brand-muted text-sm py-4">{t('club.failed')}</p>
               )}
-              {squad.status === 'ok' && (
+              {/* ⚠️ ПОЛНЫЙ СОСТАВ ВЫТЕСНЯЕТ НЕПОЛНЫЙ, А НЕ ДОПОЛНЯЕТ ЕГО.
+                  Два списка игроков на одном экране — это два ответа на один
+                  вопрос: у «Реала» в колоде 25 карточек, а в клубе 27 человек.
+                  Показываем ростер там, где он собран, и прежний список —
+                  там, где нет. */}
+              {roster.status === 'ok' && roster.data.length > 0 ? (
+                <ClubRosterTable
+                  rows={roster.data}
+                  onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
+                />
+              ) : squad.status === 'ok' ? (
                 <ClubSquadTable
                   rows={squad.data}
                   onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
                 />
-              )}
+              ) : null}
             </section>
 
             {/* Последние матчи */}

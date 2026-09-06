@@ -110,6 +110,7 @@
     "digest_link": "Gols e lances",
     "news_link": "Notícias",
     "top_goal": "Melhor gol do fim de semana",
+    "week_events": "Os destaques da semana",
     "top_moment": "Melhor lance do fim de semana",
     "fresh_clip": "Vídeo novo de hoje",
     "arena_link": "Arena para dois",
@@ -170,7 +171,13 @@
     "level": "Nível",
     "level_basis_fame": "por fama — poucos jogos",
     "level_basis_fame_form": "por fama e desempenho",
-    "level_basis_icon": "ícone do futebol"
+    "level_basis_icon": "ícone do futebol",
+    "reach": "Notoriedade",
+    "fame_home": "No seu país",
+    "fame_world": "No mundo",
+    "value": "Valor de mercado",
+    "value_source": "Fonte: {{source}}",
+    "value_source_at": "{{source}}, avaliação de {{date}}"
   },
   "profile": {
     "title": "Perfil",
@@ -734,6 +741,8 @@
     "empty_goals": "Não houve vídeos em 24 horas.",
     "loudness_one": "{{n}} meio",
     "loudness_other": "{{n}} meios",
+    "loudest": "O mais comentado",
+    "loudest_more": "O que outros veículos acrescentaram",
     "recent": "Golos dos últimos dias",
     "earlier": "Antes esta semana",
     "moment": "momento",
@@ -895,8 +904,11 @@
     "col_cards": "A/V",
     "col_points": "Pts",
     "rating": "Classificação",
-    "place": "{{n}}º lugar",
-    "league_isolated": "Esta liga joga pouco com outras — nível comparável a {{pct}}%"
+    "place": "{{n}}.º de {{total}}",
+    "league_isolated": "Esta liga joga pouco com outras — nível comparável a {{pct}}%",
+    "market_value": "Valor do plantel",
+    "market_value_of": "{{priced}} de {{squad}} avaliados",
+    "roster_source": "Plantel e valores — {{source}}"
   },
   "clubs": {
     "title": "Clubes",

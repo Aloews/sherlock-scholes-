@@ -206,8 +206,11 @@ def pageviews_for(pv_client, card, start, end):
     if name_en:
         res = pv_client.views_for_window(run.PROJECT_EN, name_en, start, end)
         if res["found"]:
-            return (int(round(res["views"] * run.EN_PAGEVIEWS_DISCOUNT)),
-                    "enwiki x{} «{}»".format(run.EN_PAGEVIEWS_DISCOUNT, name_en))
+            # ⚠️ БЕЗ СКИДКИ. Прежде здесь стояло `* 0.1` — правило для колоды
+            # из русских статей, которое на мировой колоде занижало ровно тех,
+            # кого читают. Снято по решению владельца; разницу языков считают
+            # `fame_home` и `fame_world`. См. football_scraper/run.py.
+            return (int(res["views"]), "enwiki «{}»".format(name_en))
     return None, None
 
 

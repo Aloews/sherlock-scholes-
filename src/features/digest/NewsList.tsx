@@ -5,7 +5,8 @@ import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import { fetchNews, type NewsItem } from './digestApi';
 import { groupStories } from './groupStories';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
-import { feedLanguage } from './digestFormat';
+import { feedLanguage, plainText } from './digestFormat';
+import { leadAddsDetail } from './leadNovelty';
 import { timeFormat } from '@/shared/lib/dateFormat';
 
 /**
@@ -97,9 +98,19 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
                   а если его нет, то начало самой статьи. Выбор делает сервер
                   (digest_news), чтобы экраны не разошлись в том, что считать
                   сутью. Отсутствие строки не читается как поломка: заголовка
-                  для этого достаточно. */}
-              {lead.lead_text && (
-                <p className="text-brand-muted text-xs mt-1 leading-snug">{lead.lead_text}</p>
+                  для этого достаточно.
+
+                  ⚠️ И РОВНО ПОЭТОМУ ПЕРЕСКАЗ ЗАГОЛОВКА НЕ РИСУЕТСЯ ВОВСЕ. У
+                  русских лент description в RSS сам повторяет заголовок, и
+                  модель честно пересказывает пересказ: «Мостовой перешёл в
+                  „Локомотив“ на правах аренды» → то же самое с точкой. Строка
+                  без строки лучше строки, которая ничего не сообщила.
+
+                  ⚠️ И РАЗМЕТКА СНИМАЕТСЯ. У The Guardian в RSS лежит кусок
+                  статьи с абзацем, и читатель видел «<p>True redemption…»
+                  вместе с тегом: 27 заметок из 540 на замере 06.09.2026. */}
+              {leadAddsDetail(lead.title, lead.lead_text) && (
+                <p className="text-brand-muted text-xs mt-1 leading-snug">{plainText(lead.lead_text)}</p>
               )}
             </div>
 

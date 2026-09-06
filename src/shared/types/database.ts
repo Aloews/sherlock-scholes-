@@ -323,6 +323,27 @@ export interface Card {
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
   tags?: string[] | null;               // player traits (SpecialTag) + the Pro 'legend' marker
   fame?: number | null;                 // 0..100 recognizability percentile; null = no pageviews data
+  /** Известность ДОМА: перцентиль по языкам страны игрока (country_wiki_lang).
+   *  Заведена потому, что pageviews_i18n собирался ДЕВЯТЬЮ локалями интерфейса,
+   *  и половина активных игроков (1452 из 2918, замер 04.09.2026) не имела ни
+   *  одного просмотра на языке своей страны — турок, поляк, серб, иранец.
+   *  null = страны нет, языка нет в собранных, или просмотров ноль. */
+  fame_home?: number | null;
+  /** Известность В МИРЕ: перцентиль по СУММЕ просмотров по всем языковым
+   *  разделам. Пара к fame_home: высокая дома при низкой в мире — герой своей
+   *  страны; наоборот — легионер, известный везде, кроме родины. */
+  fame_world?: number | null;
+  /** Рыночная стоимость в ЕВРО. ИСТОЧНИК — TRANSFERMARKT, и он называется
+   *  рядом с числом на экране: маскировать происхождение нельзя. */
+  market_value_eur?: number | null;
+  /** Дата оценки, как её печатает источник. Без неё число читается как
+   *  «сейчас», а Transfermarkt переоценивает раз в несколько месяцев. */
+  market_value_at?: string | null;
+  /** QID Викиданных — по нему карточку обогащают. Резолв ПО ИМЕНИ промахивается
+   *  молча: «Гарри Невилл» в ру-вики называется «Невилл, Гари». */
+  wikidata_qid?: string | null;
+  /** Идентификатор на transfermarkt.com из Викиданных (P2446). */
+  transfermarkt_id?: string | null;
   tier?: Tier | null;                   // cosmetic frame, derived from fame
   descriptions?: Record<string, string> | null; // short per-language blurbs for non-player cards (terms, positions…); absent until the descriptions column ships
   ovr?: number | null;                  // overall rating 0–100 (FIFA-style); absent until cards_attributes_column.sql runs and is backfilled

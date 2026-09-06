@@ -108,6 +108,7 @@
     "digest_link": "골과 장면",
     "news_link": "뉴스",
     "top_goal": "주말 베스트 골",
+    "week_events": "이번 주 주요 소식",
     "top_moment": "주말 베스트 장면",
     "fresh_clip": "오늘의 새 영상",
     "arena_link": "2인 대전 아레나",
@@ -168,7 +169,13 @@
     "level": "레벨",
     "level_basis_fame": "인지도 기준 — 경기 수 부족",
     "level_basis_fame_form": "인지도와 성적 기준",
-    "level_basis_icon": "축구의 아이콘"
+    "level_basis_icon": "축구의 아이콘",
+    "reach": "인지도",
+    "fame_home": "본국",
+    "fame_world": "전 세계",
+    "value": "시장 가치",
+    "value_source": "출처: {{source}}",
+    "value_source_at": "{{source}}, {{date}} 평가"
   },
   "profile": {
     "title": "프로필",
@@ -713,6 +720,8 @@
     "empty_news": "오늘은 들어온 소식이 없습니다.",
     "empty_goals": "24시간 내 영상이 없습니다.",
     "loudness_other": "{{n}}개 매체",
+    "loudest": "가장 많이 다뤄진 소식",
+    "loudest_more": "다른 매체가 덧붙인 내용",
     "recent": "최근 며칠의 골",
     "earlier": "이번 주 그 전",
     "moment": "장면",
@@ -866,8 +875,11 @@
     "col_cards": "경/퇴",
     "col_points": "점수",
     "rating": "레이팅",
-    "place": "{{n}}위",
-    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%"
+    "place": "{{total}}팀 중 {{n}}위",
+    "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%",
+    "market_value": "스쿼드 가치",
+    "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
+    "roster_source": "스쿼드와 시장 가치 — {{source}}"
   },
   "clubs": {
     "title": "클럽",

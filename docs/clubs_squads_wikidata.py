@@ -30,6 +30,22 @@ docs/MAP.md §7а.
 страны. Флаг существует, чтобы это было решением человека, а не побочным
 эффектом сбора.
 
+⚠️ ГОЛАЯ КАРТОЧКА СОСТАВ НЕ РАСТИТ — не сразу. `fixture_squad_strength`
+считает только тех, у кого есть `cards.fame`, а слава берётся из просмотров
+википедии, которых у новичка ещё нет. То есть --create-cards заводит игрока в
+состав, но уровень состава в прогнозах вырастет лишь ПОСЛЕ того, как новичку
+измерят просмотры и пересчитают славу (daily-enrich.yml). Ждать этого молча
+нельзя: между заведением и обогащением карточки уже раздаются в колоде без
+картинки.
+
+⚠️ СЛАВА — ПЕРЦЕНТИЛЬ, и новые карточки двигают ВСЮ шкалу. Замер до
+заведения: у 2918 активных игроков ровно 12 без просмотров. Ещё 853 без
+просмотров подняли бы перцентиль каждого существующего игрока примерно на 11
+пунктов (медиана 50 → 61), пока обогащение не измерит новичков. Это не
+поломка, а свойство перцентиля — но пороги «знаменитые» (90) и Pro-«легенды»
+(99) на нём стоят, поэтому refresh_card_fame зовут ПОСЛЕ просмотров, а не
+между.
+
 ⚠️ ЧТО ПРОВЕРЕНО, А ЧТО НЕТ — ЧИТАТЬ ДО ЗАПУСКА.
 
 ПРОВЕРЕНО: сам источник. Запрос P54 по «Реалу» (Q8682) отдал 17 действующих
@@ -64,6 +80,7 @@ import sys
 import time
 import unicodedata
 import urllib.parse
+import uuid
 import urllib.request
 
 SCRAPER = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -236,14 +253,39 @@ def resolve_club_qids_by_article(cards_by_key, resolver, wikidata_validate=None)
     return out
 
 
-def fetch_squads(qids, since_year):
-    """{QID → [{qid,name_ru,name_en,start,number,position}]}."""
+def fetch_squads(qids, since_year, cache=None, today=None):
+    """{QID → [{qid,name_ru,name_en,start,number,position}]}.
+
+    ⚠️ ОТВЕТ ПАЧКИ КЛАДЁТСЯ В КЕШ НА СУТКИ, и это не экономия, а сходимость.
+    WDQS сейчас режет по одному запросу в минуту («Aggressively rate-limiting
+    ... during active wdqs outage»), и пачка, у которой кончились пять попыток,
+    теряется целиком — в прогоне 03.09 так пропала одна из шести. Без кеша
+    ПОВТОРНЫЙ прогон снова спрашивает всё, снова получает 429 и снова теряет
+    пачку — только другую: два прогона дают два РАЗНЫХ неполных ответа, и ни
+    один не полный.
+
+    Дата в ключе обязательна. Состав меняется трансферами, и вечный кеш
+    заморозил бы заявку на день сбора — ровно та ложь, против которой в шапке
+    файла написано «это НЕ живая заявка». Суток хватает, чтобы повтор добрал
+    потерянное, и мало, чтобы что-то устарело.
+
+    Пустой ответ FileCache не сохраняет (см. _carries_nothing), поэтому
+    потерянная пачка в кеш не попадает и повтор её действительно переспросит.
+    """
     out = {}
+    day = today or time.strftime("%Y-%m-%d")
     for i in range(0, len(qids), CLUB_BATCH):
         print("  составы: пачка %d из %d"
               % (i // CLUB_BATCH + 1, (len(qids) + CLUB_BATCH - 1) // CLUB_BATCH),
               flush=True)
         chunk = qids[i:i + CLUB_BATCH]
+        ckey = "%s|%d|%s" % (day, since_year, ",".join(sorted(chunk)))
+        cached = cache.get("wdqs_squads", ckey) if cache else None
+        if cached is not None:
+            print("    из кеша", flush=True)
+            for club, members in cached.items():
+                out.setdefault(club, []).extend(members)
+            continue
         values = " ".join("wd:" + q for q in chunk)
         rows = sparql("""
 SELECT ?club ?p ?ru ?en ?start ?num ?pos WHERE {
@@ -259,9 +301,10 @@ SELECT ?club ?p ?ru ?en ?start ?num ?pos WHERE {
   OPTIONAL { ?p rdfs:label ?en FILTER(lang(?en)="en") }
   FILTER(BOUND(?start) && ?start >= "%d-01-01T00:00:00Z"^^xsd:dateTime)
 }""" % (values, FOOTBALLER, since_year))
+        batch = {}
         for r in rows:
             club = r["club"]["value"].rsplit("/", 1)[-1]
-            out.setdefault(club, []).append({
+            batch.setdefault(club, []).append({
                 "qid":      r["p"]["value"].rsplit("/", 1)[-1],
                 "name_ru":  r.get("ru", {}).get("value"),
                 "name_en":  r.get("en", {}).get("value"),
@@ -269,6 +312,10 @@ SELECT ?club ?p ?ru ?en ?start ?num ?pos WHERE {
                 "number":   r.get("num", {}).get("value"),
                 "position": r.get("pos", {}).get("value"),
             })
+        if cache and batch:
+            cache.set("wdqs_squads", ckey, batch)
+        for club, members in batch.items():
+            out.setdefault(club, []).extend(members)
         # Пауза между пачками: обычная, пока лимита нет, и полная минута после
         # первого же 429 — см. RATE_LIMITED.
         time.sleep(RATE_LIMIT_PAUSE if RATE_LIMITED[0] else SLEEP)
@@ -303,6 +350,118 @@ def drop_shared_cards(rows):
         clubs.setdefault(r["card_id"], set()).add(r["club_key"])
     shared = {cid for cid, ks in clubs.items() if len(ks) > 1}
     return [r for r in rows if r["card_id"] not in shared], len(shared)
+
+
+def dedup_rows(rows):
+    """Одна строка на пару (клуб, карточка). Возвращает (строки, сколько снято).
+
+    ⚠️ ЭТО НЕ ДУБЛИКАТ drop_shared_cards, а защита от другого падения. Та
+    решает, ЧЬЯ карточка; эта — что одну и ту же пару нельзя подать во вставку
+    дважды. `on conflict (club_key, card_id) do update` на повторе внутри
+    ОДНОЙ пачки отвечает «ON CONFLICT DO UPDATE command cannot affect row a
+    second time» и валит ВСЮ вставку, а не одну строку.
+
+    Повтор берётся оттуда же, откуда тёзки: два разных QID сводятся к одной
+    карточке по имени. Если они в РАЗНЫХ клубах — карточку выбросит
+    drop_shared_cards; если в ОДНОМ — она остаётся (так и решено в
+    test_squad_latest_club), и вот тогда пара приходит дважды.
+
+    Оставляется ПЕРВАЯ: выбор между двумя строками одной карточки всё равно
+    произволен, а порядок здесь устойчив (составы идут клуб за клубом).
+    """
+    seen, out = set(), []
+    for r in rows:
+        k = (r["club_key"], r["card_id"])
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(r)
+    return out, len(rows) - len(out)
+
+
+def mint_cards(missing, by_key):
+    """Карточки тем, у кого её нет. Возвращает (карточки, строки-заготовки).
+
+    id придумывается ЗДЕСЬ, а не базой, ровно затем, чтобы строка состава
+    сослалась на новую карточку в ТОЙ ЖЕ транзакции. Иначе нужен второй
+    прогон, а между прогонами карточка уже лежит в колоде голой и ни в одном
+    составе — то есть худшее из двух состояний.
+
+    ⚠️ ТЁЗКИ НЕ ЗАВОДЯТСЯ ВОВСЕ. Имя, за которым стоит больше одного QID, —
+    это разные люди (после keep_latest_club один QID живёт в одном клубе).
+    Завести им ОДНУ карточку значит своими руками сделать ту самую смешанную
+    карточку «Маркиньос», на которую жаловался владелец: два человека, одно
+    лицо, один состав. Пропущенный игрок виден как пустое место и чинится;
+    смешанный не виден никак.
+
+    Имя приводится normalize_display_name — тем же, которым пользуется
+    скрапер при вставке: ру-вики пишет «Фамилия, Имя», и карточка завелась бы
+    как «Де Томас, Рауль».
+    """
+    qids = {}
+    for _club_key, m in missing:
+        name = normalize_display_name(m["name_ru"] or m["name_en"])
+        if name:
+            qids.setdefault(canon(name), set()).add(m["qid"])
+
+    cards, rows, minted = [], [], {}
+    for club_key, m in missing:
+        name = normalize_display_name(m["name_ru"] or m["name_en"])
+        k = canon(name)
+        if not name or k in by_key or len(qids.get(k, ())) > 1:
+            continue
+        card_id = minted.get(k)
+        if card_id is None:
+            card_id = str(uuid.uuid4())
+            minted[k] = card_id
+            cards.append({"id": card_id, "name": name,
+                          "name_en": normalize_display_name(m["name_en"]),
+                          "qid": m["qid"]})
+        rows.append({
+            "club_key": club_key,
+            "card_id": card_id,
+            "shirt_number": int(m["number"]) if (m["number"] or "").isdigit() else None,
+            "position": m["position"],
+            "joined_at": m["start"],
+            "left_at": None,
+            "source": "wikidata",
+        })
+    return cards, rows
+
+
+def sql_str(v):
+    return "null" if v in (None, "") else "'" + str(v).replace("'", "''") + "'"
+
+
+def cards_insert_sql(new_cards):
+    """Строки SQL, заводящие новые карточки. Отдельной функцией — чтобы её
+    можно было прогнать в тесте.
+
+    ⚠️ ЗАПЯТАЯ-РАЗДЕЛИТЕЛЬ СТОИТ ДО КОММЕНТАРИЯ. Первая версия собиралась
+    через ",\n".join(...), и запятая оказывалась ПОСЛЕ «-- Q12345», то есть
+    внутри комментария: разделители исчезали, и весь VALUES переставал
+    разбираться. Глазами в файле на восемьсот строк это не видно.
+
+    QID выписан рядом с карточкой намеренно: docs/cards_pageviews_by_qid.py
+    берёт просмотры по нему, не угадывая статью по имени.
+    """
+    return [
+        "",
+        "-- %d НОВЫХ КАРТОЧЕК. Они ГОЛЫЕ: без фото, страны, описания и"
+        % len(new_cards),
+        "-- славы (cards.fame). Пока славы нет, игрок НЕ считается в",
+        "-- уровень состава (fixture_squad_strength требует fame is not",
+        "-- null), но в колоде уже раздаётся — без картинки.",
+        "-- QID в конце строки — тот, откуда взято имя.",
+        "insert into cards (id, name, name_en, category, category_ru) values",
+        "\n".join(
+            "  (%s, %s, %s, 'player', 'игроки')%s  -- %s"
+            % (sql_str(c["id"]), sql_str(c["name"]), sql_str(c["name_en"]),
+               "," if i + 1 < len(new_cards) else "", c["qid"])
+            for i, c in enumerate(new_cards))
+        + "\non conflict (id) do nothing;",
+        "",
+    ]
 
 
 def keep_latest_club(squads):
@@ -409,7 +568,11 @@ def main():
                          "миграции применяются отдельно — и заодно даёт "
                          "прочитать глазами то, что будет выполнено.")
     ap.add_argument("--create-cards", action="store_true",
-                    help="заводить карточки найденным игрокам без карточки")
+                    help="заводить карточки найденным игрокам без карточки. "
+                         "id придумывается на месте, поэтому карточка и её "
+                         "строка состава едут ОДНОЙ транзакцией: без этого "
+                         "нужен второй прогон, а между прогонами карточка "
+                         "лежит в колоде голой и ни в одном составе.")
     args = ap.parse_args()
 
     url = os.environ.get("SUPABASE_URL")
@@ -493,7 +656,7 @@ def main():
     print("Клубов найдено в Викиданных : %d из %d" % (len(club_qid), len(clubs)))
 
     qid_to_key = {q: k for k, q in club_qid.items()}
-    squads = fetch_squads(sorted(qid_to_key), args.since)
+    squads = fetch_squads(sorted(qid_to_key), args.since, cache)
     raw_total = sum(len(v) for v in squads.values())
     squads, moved, ambiguous = keep_latest_club(squads)
     total = sum(len(v) for v in squads.values())
@@ -507,9 +670,17 @@ def main():
         print("  выброшено как неразличимые : %d" % ambiguous)
 
     # Карточки игроков — для сопоставления по имени.
+    #
+    # ⚠️ ПОГАШЕННЫЕ КАРТОЧКИ ЧИТАЮТСЯ НАРАВНЕ С АКТИВНЫМИ. Отбор
+    # `active = true` выглядит безобидно — «в колоде только активные», — но
+    # сопоставление отвечает не на вопрос «раздаётся ли карточка», а на
+    # «есть ли у этого человека карточка вообще». 846 карточек, заведённых
+    # 03.09.2026, лежат с active = false до обогащения, и при отборе по
+    # active следующий прогон --create-cards завёл бы их ВТОРОЙ РАЗ: имя
+    # не найдено — значит новая. Дубль в колоде тише некуда: обе карточки
+    # выглядят правильными, а состав получает ту, которой нет на экране.
     cards = rest_all(url, key, "cards",
-                     {"select": "id,name,name_en", "category": "eq.player",
-                      "active": "is.true"},
+                     {"select": "id,name,name_en", "category": "eq.player"},
                      order="id")
     by_key = {}
     card_name = {}
@@ -539,14 +710,40 @@ def main():
                 "source": "wikidata",
             })
 
+    matched = len(rows)
+    # Заготовки новых карточек идут в общую кучу ДО гардов: тёзка, сведённый в
+    # одну карточку с уже существующей, должен выбрасываться тем же правилом,
+    # а не отдельным — иначе правил станет два и они разойдутся.
+    new_cards = []
+    if args.create_cards:
+        new_cards, new_rows = mint_cards(missing, by_key)
+        rows.extend(new_rows)
+
     rows, shared = drop_shared_cards(rows)
+    rows, repeats = dedup_rows(rows)
+    # Карточка, чьи строки гарды выбросили, не заводится: голая карточка ни в
+    # одном составе — это только мусор в колоде.
+    if new_cards:
+        used = {r["card_id"] for r in rows}
+        new_cards = [c for c in new_cards if c["id"] in used]
+        # Сухой прогон читают ГЛАЗАМИ, а без этой строки новая карточка
+        # печатается там своим UUID — то есть не проверяется никак.
+        card_name.update({c["id"]: c["name"] for c in new_cards})
 
     print("-" * 70)
-    print("Сопоставлено с карточкой   : %d" % len(rows))
+    print("Сопоставлено с карточкой   : %d" % matched)
     if shared:
         print("⚠️ Карточек на ДВА клуба   : %d — выброшены целиком. Это тёзки в "
               "одной карточке (см. drop_shared_cards), а не переход." % shared)
+    if repeats:
+        print("⚠️ Повторов (клуб, карточка): %d — сняты, иначе вставка падает "
+              "ВСЕЙ пачкой (см. dedup_rows)." % repeats)
     print("Без карточки               : %d" % len(missing))
+    if args.create_cards:
+        fresh = {c["id"] for c in new_cards}
+        print("Заводится новых карточек   : %d (строк состава с ними: %d)"
+              % (len(new_cards),
+                 sum(1 for r in rows if r["card_id"] in fresh)))
     # ⚠️ ПРОВЕРЯЕТСЯ РАНЬШЕ СУХОГО ПРОГОНА. Выписка SQL — это и есть
     # вывод, а не показ: стоя ниже, она никогда не выполнялась, потому
     # что ветка `not args.apply` возвращается первой.
@@ -558,8 +755,10 @@ def main():
         out = ["-- Составы из Викиданных. Строк: %d, карточек: %d."
                % (len(rows), len(ids)),
                "-- Сгенерировано docs/clubs_squads_wikidata.py --sql-out.",
-               "begin;",
-               "update club_squad set left_at = current_date",
+               "begin;"]
+        if new_cards:
+            out += cards_insert_sql(new_cards)
+        out += ["update club_squad set left_at = current_date",
                " where left_at is null and card_id in (%s);"
                % ", ".join("'%s'" % i for i in ids)]
         out.append("insert into club_squad "
@@ -615,12 +814,32 @@ def main():
                      if add else ""))
         print("\n  ИТОГО новых строк состава  : %d"
               % sum(len(v) for v in fresh.values()))
-        if missing:
+        if missing and not args.create_cards:
             print("\n  Без карточки (первые 15) — им нужен --create-cards:")
             for club_key, m in missing[:15]:
                 print("    %-26s %s" % (club_key, m["name_ru"] or m["name_en"]))
+        elif new_cards:
+            print("\n  Заводятся карточки (первые 15) — ГОЛЫЕ, без фото и славы:")
+            for c in new_cards[:15]:
+                print("    %-28s %s" % (c["name"], c["qid"]))
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с --apply.")
         return
+
+    # ⚠️ КАРТОЧКИ ПЕРВЫМИ. Строки состава уже ссылаются на их id (mint_cards
+    # придумал его заранее), поэтому вставить состав раньше карточки — это
+    # нарушение внешнего ключа и падение всей пачки.
+    if new_cards:
+        for i in range(0, len(new_cards), 200):
+            rest(url, key, "cards", method="POST", prefer="return=minimal",
+                 body=[{"id": c["id"], "name": c["name"],
+                        "name_en": c["name_en"] or None,
+                        "category": "player", "category_ru": "игроки"}
+                       for c in new_cards[i:i + 200]])
+        print("Заведено карточек          : %d" % len(new_cards))
+        print("⚠️ Они ГОЛЫЕ: без фото, страны, описания и славы. Ночное "
+              "обогащение (daily-enrich.yml) их подхватит, но ДО ТЕХ ПОР они "
+              "выпадают в колоде без картинки и НЕ считаются в уровень "
+              "состава — fixture_squad_strength требует fame is not null.")
 
     # ⚠️ Игрок может числиться в ОДНОМ текущем составе: на club_squad стоит
     # частичный уникальный индекс по card_id where left_at is null. Поэтому
@@ -650,31 +869,6 @@ def main():
               % len(missing))
         for club_key, m in missing[:15]:
             print("  %-28s %s" % (club_key, m["name_ru"] or m["name_en"]))
-    elif missing:
-        new = []
-        seen = set()
-        for _club_key, m in missing:
-            # ⚠️ ИМЯ ИЗ ВИКИДАННЫХ — НЕ ФОРМАТ КОЛОДЫ. Ру-вики пишет «Фамилия,
-            # Имя Отчество», и карточка завелась бы как «Де Томас, Рауль» —
-            # в игре про объяснение слов это читается как ошибка, а не как
-            # игрок. Приводится тем же normalize_display_name, которым
-            # пользуется сам скрапер при вставке: своя копия правила разошлась
-            # бы с ним незаметно.
-            name = normalize_display_name(m["name_ru"] or m["name_en"])
-            k = canon(name)
-            if not name or k in seen or k in by_key:
-                continue
-            seen.add(k)
-            new.append({"name": name,
-                        "name_en": normalize_display_name(m["name_en"]),
-                        "category": "player", "category_ru": "игроки"})
-        for i in range(0, len(new), 200):
-            rest(url, key, "cards", method="POST", body=new[i:i + 200],
-                 prefer="return=minimal")
-        print("Заведено карточек          : %d" % len(new))
-        print("⚠️ Они ГОЛЫЕ: без фото, страны и описания. Ночное обогащение "
-              "(daily-enrich.yml) их подхватит, но до тех пор они будут "
-              "выпадать в колоде — проверьте это до того, как раздавать.")
 
 
 if __name__ == "__main__":

@@ -108,6 +108,7 @@
     "digest_link": "ゴールと名場面",
     "news_link": "ニュース",
     "top_goal": "週末のベストゴール",
+    "week_events": "今週の主な出来事",
     "top_moment": "週末のベストシーン",
     "fresh_clip": "今日の新着動画",
     "arena_link": "2人対戦アリーナ",
@@ -168,7 +169,13 @@
     "level": "レベル",
     "level_basis_fame": "知名度による — 試合数が少ない",
     "level_basis_fame_form": "知名度と成績による",
-    "level_basis_icon": "サッカーのアイコン"
+    "level_basis_icon": "サッカーのアイコン",
+    "reach": "知名度",
+    "fame_home": "母国",
+    "fame_world": "世界",
+    "value": "市場価値",
+    "value_source": "出典: {{source}}",
+    "value_source_at": "{{source}}、{{date}} 時点の評価"
   },
   "profile": {
     "title": "プロフィール",
@@ -713,6 +720,8 @@
     "empty_news": "今日は何も届いていません。",
     "empty_goals": "24時間以内の動画はありません。",
     "loudness_other": "{{n}}媒体",
+    "loudest": "最も報じられた話題",
+    "loudest_more": "他メディアが伝えたこと",
     "recent": "最近数日のゴール",
     "earlier": "今週のそれ以前",
     "moment": "名場面",
@@ -866,8 +875,11 @@
     "col_cards": "警/退",
     "col_points": "点",
     "rating": "レーティング",
-    "place": "{{n}}位",
-    "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%"
+    "place": "{{total}}チーム中{{n}}位",
+    "league_isolated": "このリーグは他とほとんど対戦しません — 比較可能性 {{pct}}%",
+    "market_value": "スカッド総額",
+    "market_value_of": "{{squad}} 人中 {{priced}} 人を評価",
+    "roster_source": "スカッドと市場価値 — {{source}}"
   },
   "clubs": {
     "title": "クラブ",

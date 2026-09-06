@@ -108,6 +108,7 @@
     "digest_link": "进球与瞬间",
     "news_link": "新闻",
     "top_goal": "本周末最佳进球",
+    "week_events": "本周焦点",
     "top_moment": "本周末最佳瞬间",
     "fresh_clip": "今日新视频",
     "arena_link": "双人竞技场",
@@ -168,7 +169,13 @@
     "level": "等级",
     "level_basis_fame": "依知名度 — 比赛太少",
     "level_basis_fame_form": "依知名度与表现",
-    "level_basis_icon": "足球偶像"
+    "level_basis_icon": "足球偶像",
+    "reach": "知名度",
+    "fame_home": "本国",
+    "fame_world": "全球",
+    "value": "身价",
+    "value_source": "来源：{{source}}",
+    "value_source_at": "{{source}}，{{date}} 估值"
   },
   "profile": {
     "title": "个人资料",
@@ -713,6 +720,8 @@
     "empty_news": "今天没有新内容。",
     "empty_goals": "24小时内没有视频。",
     "loudness_other": "{{n}}家媒体",
+    "loudest": "讨论最多的新闻",
+    "loudest_more": "其他媒体补充的内容",
     "recent": "近日进球",
     "earlier": "本周早些时候",
     "moment": "瞬间",
@@ -866,8 +875,11 @@
     "col_cards": "黄/红",
     "col_points": "积分",
     "rating": "评分",
-    "place": "第 {{n}} 名",
-    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%"
+    "place": "{{total}}队中第{{n}}名",
+    "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%",
+    "market_value": "阵容总身价",
+    "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
+    "roster_source": "阵容与身价 — {{source}}"
   },
   "clubs": {
     "title": "俱乐部",

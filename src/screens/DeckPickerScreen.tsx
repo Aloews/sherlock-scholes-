@@ -172,10 +172,14 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
     if (countryOpts) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from('cards').select('country')
-        .eq('active', true).eq('category', 'player').not('country', 'is', null);
+      // ⚠️ ЧИТАТЬ ВСЕ КАРТОЧКИ РАДИ set() НЕЛЬЗЯ: PostgREST режет ответ по
+      // db-max-rows = 1000, и список показывал страны из ПЕРВОЙ ТЫСЯЧИ строк.
+      // Замер 06.09.2026: 88 стран вместо 116 — двадцать восемь пропадало, и
+      // ни одна проверка этого не видела (список непустой, экран не падает).
+      // `distinct` делает база: строк ровно столько, сколько стран.
+      const { data } = await supabase.rpc('deck_countries');
       if (cancelled || !data) return;
-      setCountryOpts([...new Set(data.map((r) => r.country).filter(Boolean) as string[])]);
+      setCountryOpts((data as { country: string }[]).map((r) => r.country).filter(Boolean));
     })().catch(() => { if (!cancelled) setCountryOpts([]); });
     return () => { cancelled = true; };
   }, [countryOpts]);

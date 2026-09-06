@@ -1,0 +1,858 @@
+# 846 карточек игроков, заведённых 03.09.2026 сборщиком составов
+# (docs/clubs_squads_wikidata.py --create-cards). В проде они лежат
+# с active = false: голые, без фото, страны, описания и славы.
+#
+# ⚠️ QID ХРАНИТСЯ ЗДЕСЬ, ПОТОМУ ЧТО В cards ЕГО КОЛОНКИ НЕТ. Без него
+# просмотры этим карточкам придётся искать резолвом по имени, а он
+# промахивается молча: замер на первых четырёх карточках очереди —
+# «Гарри Невилл», «Хын Мин Сон», «Расмус Хёйлунн», «Скотт МакТоминэй»
+# — 4 из 4 не найдены. Отсюда и файл: угадывать нечего, имя ВЗЯТО
+# из Викиданных, и вот сущность, откуда оно взято.
+#
+# card_id	name_ru	name_en	qid
+bfad64d7-ad3a-4fdb-b1f8-1291fd610b42	Страхиня Павлович	Strahinja Pavlović	Q61899299
+ea1ee467-068d-4c16-b27c-e9f7683f0f69	Лоренцо Торриани	Lorenzo Torriani	Q130316144
+b69b138b-9352-4f06-942e-16145df4207a	Кони Де Винтер	Koni De Winter	Q108200391
+e479b29c-4a49-40ce-b380-aae24af49605	Чевейо Мюл-Балентьен	Cheveyo Balentien	Q136002157
+fc290641-92b5-4635-830a-4eb43f7f16d8	Марио Хила	Mario Gila	Q109255453
+e5e7b625-7716-48b5-bac1-c124c6dd0d5e	Эмерсон Лейте ди Соуза Жуниор	Emerson Royal	Q30123152
+cd9b5bdd-1673-4200-b84a-10ee376a16d0	Андреас Юнгдаль	Andreas Jungdal	Q113572629
+9685ac8c-4618-4385-a60c-862ad15528e7	Явайро Дилросун	Javairô Dilrosun	Q56440679
+e55d5f9e-0fad-4bd0-8b61-003fd0ad2e44	Хави Лопес	Javi López	Q96483893
+f171706a-63c0-4f60-b7b1-481074a46b5e	Гауссу Диарра	Gaoussou Diarra	Q130244995
+cea9baf1-e770-43f0-966d-587786544107	Зепиквено Редмонд	Zépiqueno Redmond	Q131139641
+7517b41c-50f4-4e5f-8001-401922743604	Барт Ньивкоп	Bart Nieuwkoop	Q21084019
+0383f0d8-90f7-437a-a39f-690591847d03	Steven Benda	Steven Benda	Q70276774
+bba7f332-bdba-435e-bdad-e2298bd881f6	Djomar Giersthove	Djomar Giersthove	Q134128969
+479966fa-6cc8-4150-8141-35a89d4a0fac	Ян Плюг	Jan Plug	Q134470771
+624a23a2-a525-46c5-8661-e2813d29ab50	Илай Гротфам	Ilai Grootfaam	Q139556476
+3d1b43d3-919b-4314-83ce-8fb9609f9730	Джордан Бос	Jordan Bos	Q109768459
+b6f8a072-3f32-4dda-ae30-c744bce69c8a	Цуёси Ватанабэ	Tsuyoshi Watanabe	Q56253139
+346c04ea-c07c-4c69-b271-683247d6a4c5	Уго Буэно	Hugo Bueno	Q113578056
+7fa68165-8dc4-4412-afeb-41df1521e7b6	Камиль Грабара	Kamil Grabara	Q56441182
+f4ec3928-7566-4bbf-a644-72da765de2c9	Джефф Эхатор	Jeff Ekhator	Q128895710
+55a474f4-8c7d-4ecc-8f08-65407455bef5	Керим Алайбегович	Kerim Alajbegović	Q130741313
+d45fe379-c0c4-418b-bd1a-1121fdc511f4	Джон Лукуми	Jhon Lucumí	Q21573188
+5ffde173-f2e5-4bbe-8bed-9b8fa73b7ac5	Николас Гонсалес	Nicolás González	Q43381082
+c8a4ffe0-edab-4e39-9599-d082becf33e1	Коба Куандреди	Koba Leïn Koindredi	Q104587845
+94f1eebf-38a2-480c-a4a7-aea3914fa220	Садик Умар	Sadiq Umar	Q21584736
+c881c947-2660-4fb3-a30f-070d3adc341c	Арно Груневелд	Arnaut Danjuma	Q22001795
+5081a213-2016-432b-95b4-6ae550658f25	Серхи Каньос	Sergi Canós	Q20977918
+ea33645d-d2a4-4059-8fcb-a9beca9476fa	Диего Лопес	Diego López Noguerol	Q113648535
+4f2def75-4f39-4c3a-bee1-ba55ba5119f9	Ayodele Thomas	Ayodele Thomas	Q130459793
+74dd6df5-cac9-4052-b6c5-1e162f95a10f	Гус Тил	Guus Til	Q26385193
+fc992043-db76-4913-a326-6bc203d784c3	Tess van der Vliet	Tess van der Vliet	Q136802762
+c48d2bdd-0f61-4235-9c40-c39f3de41729	Brent Jonkers	Brent Jonkers	Q140288733
+13f4ccb0-09af-464f-a07f-019e5b886ced	Адамо Нагало	Adamo Nagalo	Q109096490
+57a0360d-ef9b-4bba-9094-07e81887b345	Ник Олей	Nick Olij	Q3339778
+6a5fa9da-0f71-473f-9e7e-dbceff4f9d37	Эсмир Байрактаревич	Esmir Bajraktarević	Q108518721
+39292d61-5d63-4480-a970-342be6951f31	Деннис Ман	Dennis Man	Q26821326
+44b992dd-bdb3-4d97-ab74-8b732b465196	Лютсарел Гертрёйда	Lutsharel Geertruida	Q42328360
+f2ee4af1-1b49-49b1-a6e1-b67648731e22	Адриа Педроса	Adrià Pedrosa	Q58174944
+d6960cc6-5f69-45bb-b49a-cd318c333468	Аднан Янузай	Adnan Januzaj	Q14558450
+5385dce6-0485-447b-b312-67f107a76321	Федерико Гаттони	Federico Gattoni	Q73633914
+97af7c05-33f8-4e62-9f5a-ed86ae178e5b	Хон Гуриди	Jon Guridi	Q28966437
+54680865-8fca-4d3c-af92-618f78ebd229	Маттиас Гинтер	Matthias Ginter	Q129109
+19ceaca6-b87a-45f9-aa57-96b526d28ad8	Nicole Ojukwu	Nicole Ojukwu	Q123669847
+c109a844-4e0f-47ee-af68-665d3f624c29	Ян-Никлас Бесте	Jan-Niklas Beste	Q36391177
+0f470167-f8b7-4aa4-9b33-4de27df57af2	Борха Сайнс	Borja Sainz	Q66741038
+a32fa311-cf0f-4c41-adf5-1b889725526c	Саму Омородион	Samu Aghehowa	Q116923606
+0f20943d-0d5d-4d86-bbe5-e79f11937049	Трофим Мельниченко	Trafim Mieĺničenka	Q124954284
+cb91ddf4-cc08-448f-8fbf-977ce8d3a5ac	Люк де Йонг	Luuk de Jong	Q313911
+1fe280f2-c04e-4321-92a6-3620d79d624d	Габриэл Верон	Gabriel Veron	Q75059692
+d063e379-e02c-4ef4-b3ac-ea657125d273	Мауро Сарате	Mauro Zárate	Q80132
+026462e8-d58a-4f33-8e14-1acb94275324	Висенте Таборда	Vicente Taborda	Q108006207
+2fe17bf6-8bf1-4367-9aae-a96e88e520fe	Хуан Гауто	Juan Gauto	Q114133037
+cd978b5c-31cc-4d96-8f11-55808cc6c5cd	Samya Hassani	Samya Hassani	Q66714150
+e4036afa-8591-4232-861c-82d9c1f584f4	Guus Offerhaus	Guus Offerhaus	Q130424922
+8e3e5270-afe3-4893-8de8-51c832c48405	Mei Wei Rispens	Mei Wei Rispens	Q69531072
+9704d432-33a0-4c59-8c5f-9ebcd0f58cc3	Nigel Ogidi Nwankwo	Nigel Ogidi Nwankwo	Q135394547
+a610e04c-7ae8-4bd5-9525-ee20f3c60b68	Роджерно Аудстен	Rojendro Oudsten	Q135880981
+0d76ea50-7004-41f5-993c-c5c9077d069d	Джелани Зеедорф	Jelani Seedorf	Q138007148
+026ca0b2-d090-428d-be78-ef2cf3ed45dd	Akari Takeshige	Akari Takeshige	Q108573057
+fef976e0-2808-4fdb-80b9-f6684340d598	Тайрик Бодак	Tyrick Bodak	Q108858343
+152b694f-aea2-4cc6-9e35-9b0bc0c088af	Джейден Даннс	Jayden Danns	Q118724922
+38c28d23-461b-4419-9177-bae69e2f91d4	Трей Ньони	Trey Nyoni	Q123367931
+df321459-b3d7-410a-b408-f72aede120ca	Жереми Жаке	Jérémy Jacquet	Q124283398
+c4ae5fbc-77b3-4f79-9fca-8b370027fc00	Рио Нгумоа	Rio Ngumoha	Q131466230
+644ae538-6ed5-452b-af4b-19ba638a2238	Бобби Кларк	Bobby Clark	Q113632482
+5de9589d-08b9-4c00-9c79-6dac61ff0ea4	Asier Osambela	Asier Osambela	Q122417337
+622af950-27bf-4454-891e-2f9acc5ead20	Mauro Echegoyen Berrozpe	Mauro Echegoyen Berrozpe	Q123680744
+6ac6d69a-cf48-49e8-b2bc-a4e62dedb7d7	Айтор Фернандес Абарискета	Aitor Fernández Abarisketa	Q3754541
+a6e5b11d-7177-4262-a9ba-59703fa74761	Ромен Дель Кастийо	Romain Del Castillo	Q21584345
+bec0746b-c436-4afc-96cd-2e1739e8bb8f	Икер Муньос	Iker Muñoz	Q116603156
+2030ad9d-5857-4795-be87-7d097a2eec07	Алехандро Катена	Alejandro Catena Marugán	Q55640535
+68643c0f-e8c4-4527-9dce-5da33c521051	Рауль Станчу	Raul Stanciu	Q122425579
+0ecc0b25-9bc0-4a73-a0d8-83d6eed10696	Филип Мархвиньский	Filip Marchwiński	Q59812045
+70deaa6f-1487-441f-a5f9-d3fcc0147bde	Медон Бериша	Medon Berisha	Q124633002
+02650acc-97eb-4f9e-8925-72a7e8933f02	Валид Шеддира	Walid Cheddira	Q69580745
+be9db841-8f2d-44e2-9058-c7591f33a210	Рареш Бурнете	Rareș Burnete	Q112624634
+e96fe4a2-6cc7-4cbc-be10-b094656256bf	Омри Гандельман	Omri Gandelman	Q101246957
+c8196dab-e1ce-4dee-a022-5ae70597a11c	Юэль Вёлькерлинг-Перссон	Joel Voelkerling Persson	Q113575312
+c9b0c506-2b5c-449b-938c-507431538698	Конрад Хардер	Conrad Harder	Q122618590
+763d1aed-fe27-4fd5-a0b7-590a92b1dd0d	Джасим Ясин	Gessime Yassine	Q126436400
+02ec2992-7df4-4218-95f3-15b0ee446007	Рафаэл Луиш	Rafael Luís	Q134993871
+21ddae0d-3a11-4b3e-a783-d80a5acb55a1	Самир Эль-Мурабет	Samir El Mourabet	Q135616172
+4b2784f9-6c44-4e3d-81bb-f313fa958826	Дариу Эссугу	Dário Essugo	Q106091717
+e33a4595-42bf-46ae-9508-2bf99538bf76	Карим Кулибали	Karim Coulibaly	Q135968088
+084fe20d-5998-4e99-95f3-8de4a594b5bf	Noel Caliskan	Noel Caliskan	Q118777923
+2259029d-d359-4370-99fd-8b1263966e97	Камал Миллер	Kamal Miller	Q61959630
+0e91fd7e-a2bf-48be-b626-8de9e0d0165d	Эрик Миллер	Eric Miller	Q16225123
+6f11c142-b9fe-4847-a598-2229febded47	Давид Айяла	David Ayala	Q78651410
+a0fd7c17-1b66-4ab2-bc39-67565a5522a4	Джеймс Пантемис	James Pantemis	Q24452198
+f32c6718-86ce-40c4-b50f-e5caaf3e4f63	Финн Серман	Finn Surman	Q109968695
+bc528827-0416-48ff-938c-7a85e9674122	Хон Мартин	Jon Martín	Q118876123
+3591331b-a396-4303-a10c-b32e489ffeaa	Хон Горрочатеги	Jon Gorrotxategi	Q119591333
+e4c3ba90-6c07-4253-9490-12ed54e37d88	Даниэль Диас Гандара	Dani Díaz	Q128140004
+86f7d58a-c398-4fe4-852c-5caa51b49663	Luken Beitia Aguirregomezcorta	Luken Beitia Aguirregomezcorta	Q124218201
+55e2f790-69e7-42e9-8fc6-b1c5a54a7bfd	Iñaki Rupérez	Iñaki Rupérez	Q124623840
+c5f3d57f-1773-4a31-b5a6-05d58ad94c2a	Аркаиц Мариэскуррена	Arkaitz Mariezkurrena	Q131295995
+d4304afe-1162-466d-8e15-0d5b6e1fafae	Gorka Carrera	Gorka Carrera	Q135521917
+377ea6aa-ffda-4bee-8c5b-f09510ce2a2f	Мамаду Сарр	Mamadou Sarr	Q108187024
+f83b0b37-7c58-4ae0-9810-4108fcf8e26d	Mikel Goti	Mikel Goti	Q107297844
+4b99ad5e-0c23-4020-a305-e79e43426310	Lander Astiazaran	Lander Astiazaran	Q135676761
+bca2329a-eba2-4a1d-8ef5-2a1ee53511a8	Ибай Агирре	Ibai Aguirre	Q136763194
+e7058a4a-818c-4960-b71e-0de99bf47025	Unai Marrero	Unai Marrero	Q108861032
+7401d9f7-8df1-4835-a8bd-d99d98f71279	Хон Микель Арамбуру Мехиас	Jon Aramburu	Q113400106
+db20ff9f-0832-4e4c-a6f7-05f2f328c0bb	Орри Оскарссон	Orri Óskarsson	Q111488644
+37f6db7d-f2cc-4b20-a3c7-f24299f7e583	Пабло Марин	Pablo Marín	Q110652731
+ca941703-a0e6-41e2-8cb0-e27e56e9c0c2	Юсуф Кабадайы	Yusuf Kabadayı	Q121133821
+c93e613a-4e63-4306-a393-ce4610533fe4	Мерт Кёмюр	Mert Kömür	Q125472882
+e53d7595-01a8-44c9-9386-941210429b28	Фабиан Ридер	Fabian Rieder	Q101033685
+e1d1dbe4-be39-4b57-afd8-f4709f2bdeaa	Ученна Огунду	Uchenna Ogundu	Q133849194
+a2677d88-8709-45e6-9208-df77da7075c4	Янник Кайтель	Yannik Keitel	Q86740704
+a11c8289-bd26-4ba7-8dfc-dd17487d13f1	Рауль Де Томас	Raúl de Tomás	Q641387
+78ae440b-bf98-4ba8-8631-9293b32bd146	Андрей Рациу	Andrei Rațiu	Q63226171
+e0d52c9a-896f-45f3-b171-01817c5da40a	Унаи Лопес	Unai López	Q17627796
+1764c54d-6ca6-45b9-a0ee-1ef5ba17b65e	Andrea Fernanda Tovar	Andrea Fernanda Tovar	Q24634770
+6ecc9293-09da-4502-a44b-c9d59aa00d50	Нейтан Салиба	Nathan Saliba	Q116908746
+fb391412-c9e0-4db8-b8b1-bf86213351e7	Серхи Кардона Бермудес	Sergi Cardona	Q64747242
+cbfda02c-c158-4101-aabe-4a2e5ccda84a	Diego Conde	Diego Conde	Q99508995
+2cf4ea4f-89a6-4dbb-a8dd-99a3269368ed	Тани Олувасейи	Tani Oluwaseyi	Q113564288
+1a1699b6-cc4f-425d-bc01-c842cad595f7	Вийи Камбвала	Willy Kambwala	Q116821409
+4048a83f-1834-4562-ae6b-a1ee0b1bee20	Мэтт Фриз	Matt Freese	Q62036070
+b0dbf6b7-ee0a-4631-be74-a82c98fb11ef	Максимо Каррисо	Maximo Carrizo	Q113510190
+f7a4fed3-5397-4521-bda6-6e10bda3470c	Кай Труин	Kai Trewin	Q87400019
+c433e84b-f988-401a-a18b-cc49d48f0023	Luis Milla Manzanares	Luis Milla Manzanares	Q47477260
+58368f3f-92cf-4fdb-a9e7-dfffc17789ae	Бамо Мейте	Bamo Meïté	Q116838606
+54dda7f8-9de7-42cf-a792-e8017e027308	Франсуа Муге	François Régis Mughe	Q116952830
+162382d4-fcdf-4778-b7b6-7d13b02d1a66	Дерек Корнильюс	Derek Cornelius	Q29901014
+155da073-aa9d-40e9-8514-7b7ff400058f	Исмаэль Коне	Ismaël Koné	Q111009946
+39e33552-1773-410b-b139-301181bf13fa	Фарис Мумбанья	Faris Pemi Moumbagna	Q55820199
+62e8ac46-cff9-4861-ac41-5b7b797f4e47	Илья Васин	Ilya Vasin	Q131316623
+5409c206-622b-4b53-849c-7ecb1235abb8	Антон Ковалёв	Anton Kavalioŭ	Q77711148
+8628fdc4-f733-4230-af6b-9bf0069fa37d	Raúl Blanco Juncal	Raúl Blanco Juncal	Q130331696
+f49c7074-052d-4577-a314-ce0314101af4	Юки Сома	Yūki Sōma	Q56349145
+509c1881-34a3-4d11-800b-a637d7f90512	Arda Kemal Gülmez	Arda Kemal Gülmez	Q136297336
+860e6f8e-2cdd-4b51-826f-1a70a5d33a2f	Enes İlik	Enes İlik	Q136297337
+483e1848-8c0d-45c4-b354-f0aa9fe9042e	Ayaz Arslan	Ayaz Arslan	Q136297616
+5c1b92fe-cc45-41ec-a0ae-fcd956901521	Yunus Tarhan	Yunus Tarhan	Q136297620
+8436b3b2-fe9f-4fbc-9acc-65544d05e7a9	Berat Perçin	Berat Perçin	Q138003299
+feb2ff7e-34ee-4069-8441-6a9ae1a55879	Hüseyin Ülgüt	Hüseyin Ülgüt	Q138003300
+192f409f-acda-4695-b14a-26317e6b043c	Muhammed Yusuf Araz	Muhammed Yusuf Araz	Q138030887
+ea739d0d-f2b7-4c9a-865e-80a69157a3a0	Урош Джюрджевич	Uroš Đurđević	Q13563769
+99100759-6c90-4480-8cbd-3588585bb378	Рагнар Ахе	Ragnar Ache	Q29441774
+18329345-c969-4be3-b94c-1f082aa898e9	Alina Kerschbaumer	Alina Kerschbaumer	Q140073898
+c8fcd178-81ff-4a5e-82f9-cd08313a8be3	Эльес Схири	Ellyes Skhiri	Q20641500
+2f7688c6-2982-42a1-9d26-ba191a5d212c	Рон-Роберт Цилер		Q155049
+0a36469d-bc45-4e14-a2a9-7c68463f7538	Антон Штах	Anton Stach	Q66712655
+8504af60-7cd8-4541-861d-5cdeb4a2c22b	Карл Дарлоу	Karl Darlow	Q1730695
+244b522e-f4c0-4257-973b-bfa6200b05cf	Ао Танака	Ao Tanaka	Q27920148
+391857f7-3c19-409e-a1f5-314094dbef82	Федерико Редондо	Federico Redondo	Q113027711
+0ebdbb6a-e68e-4cf9-b6ac-5dbb3418770f	Рафаэль Нуньес	Rafael Núñez	Q107481656
+d7b38c87-261a-4ee5-9669-2e7683eac9e1	Маркос Сенеси	Marcos Senesi	Q23413053
+22b27978-b259-4b4d-a8b2-84a298428333	Ashley Phillips	Ashley Phillips	Q113547044
+2f7a78ba-10be-470c-ad7a-a99cb25b21c9	Антонин Кинский	Antonín Kinský	Q124647398
+e47bf0e2-c421-41e1-bfb5-22343d7e87fb	Drew Spence	Drew Spence	Q21519848
+2d586599-f87f-4bec-92cd-8793552f2aae	Онест Аанор	Honest Ahanor	Q129796620
+e106e205-dbf8-4d32-a156-d3b48b5ca4a0	Оскар Мингеса	Óscar Mingueza	Q102292155
+ab6c4a96-06aa-4adb-81b4-4dac841ddc80	Анан Халили	Anan Khalaili	Q118206666
+881fbdd3-0836-483f-886a-e2d5d9ea4966	Квинтен Тимбер	Quinten Timber	Q53996595
+0d4068fb-7549-45a9-a63c-e0723811da6e	Гонсало Лухан	Gonzalo Luján	Q109937760
+1d0ea0d6-5a81-4ab4-a196-fd142076960a	Рокко Риос Ново	Rocco Ríos Novo	Q83753402
+0de1c4ba-e828-493b-8513-b2479e4c1d87	Исраэль Боутрайт	Israel Boatwright	Q119985116
+497c6037-ff8d-4c1c-aaad-a39d055474b4	Бенхамин Кремаски	Benjamin Cremaschi	Q116980096
+c70aa9d4-5cf3-4297-86fd-cf33c6ccab69	Дейн Сент-Клэр	Dayne St. Clair	Q60583915
+c49159ae-e8a3-43f9-99d3-bd300bc63d23	Сеад Колашинац	Sead Kolašinac	Q127914
+0c57ab74-ca9f-4208-a596-fb3e042d5bdd	Джонатан Роу	Jonathan Rowe	Q110320890
+95366cc2-15cd-466d-91af-7c5206e1d856	Мустафа Сиссе	Moustapha Cissé	Q111311250
+604995b0-acd2-4612-adcf-af27da1e7be5	Митчел Баккер	Mitchel Bakker	Q47015496
+59543adc-210d-43c3-9713-fa719f953bc1	Arda Öztürk	Arda Öztürk	Q136089826
+d5ba352c-aebb-40f2-91b3-7fd0bc45c4f1	Арсений Батагов	Arseniy Batahov	Q74681891
+bf814910-72ed-42d8-80ee-767df0fe1ac1	Симон Банза	Simon Banza	Q23887828
+00164ebb-bc52-4f08-ad54-78e40d10a12f	Денис Дрэгуш	Denis Drăguș	Q40126643
+f8632e04-bd8d-48cf-b77d-f37c0303896a	Джихан Чанак	Cihan Çanak	Q110278175
+68f16e35-58d2-4d3a-8852-afff0c3ed21b	Diana Msewa	Diana Msewa	Q85986996
+3ee34640-b0b7-4a66-a5d7-9114b2548dcc	Тим Жаболь-Фолькарелли	Tim Jabol-Folcarelli	Q121494430
+a127bd9b-d552-4d59-8e99-3958507b9efd	Франкулину Джу	Franculino Djú	Q121549217
+e5aa8269-0a00-4b0e-8a98-6eef754e94df	Самет Акайдын	Samet Akaydın	Q69512938
+90ada87e-f8ed-4f4f-a34a-455a3428357e	Сенне Ламменс	Senne Lammens	Q98100512
+42ecbcd7-0a40-460d-8679-5919908214dc	Godwill Kukonki	Godwill Kukonki	Q131395534
+389e8f4c-4cb8-44f8-8a22-ebb5f24848f8	Карлос Балеба	Carlos Baleba	Q113472432
+6e0a9c2a-cac8-4272-9029-16081a934d45	Чидо Оби-Мартин	Chido Obi	Q123485961
+e010b5de-ce7e-4a83-bafe-13d75bf5af3a	Эванн Гессан	Evann Guessand	Q98593672
+0fbb8c62-1d2f-44ff-9663-1233fabd1c1f	Маттео Руджери	Matteo Ruggeri	Q97365426
+67ca302b-0d58-47cb-a23a-a60210f570b8	Флетчер Бойд	Fletcher Boyd	Q125918322
+8b957f59-efb4-4c91-ade9-5b983ddaee02	Ибраим Мбайе	Ibrahim Mbaye	Q129088593
+e9d91213-7014-45a8-8561-c64ba4c570ab	Артюр Теате	Arthur Theate	Q97724521
+e7bb1b38-0b43-48b9-8c1d-fe22c86e3364	Мартин Витик	Martin Vitík	Q100740623
+98c53445-3c82-4b28-9be4-505857744c60	Уссама Эль-Аззузи	Oussama El Azzouzi	Q108024285
+8c5a13e6-8c97-44a8-bc15-0957767ed880	Виктор Кристиансен	Victor Kristiansen	Q104773462
+587f8833-fcd1-4533-bdf1-43a74040cc85	Сэмюэль Мбангюла	Samuel Mbangula	Q105955422
+ac2644d9-88ad-4d61-808e-c9a3a424223d	Артём Довбик	Artem Dovbyk	Q20066885
+84444702-cbd4-4251-9f15-cb647346a8a9	Megan Borthwick	Megan Borthwick	Q97758147
+008774bc-6966-49b8-999e-d4454e76b81b	Тимоте Пембеле	Timothée Pembélé	Q74047936
+b9e9170c-0cfd-456a-bbc0-13f074d63dce	Малик Фофана	Malick Fofana	Q113133054
+1027b69e-0ee6-4a52-bc10-2a1e3f76305b	Робин Руфс	Robin Roefs	Q122789696
+77bc508d-4ee8-4594-a094-f890839c857a	Том Уотсон	Tom Watson	Q122878833
+5d842cb5-7dfe-4fe9-b199-e0a1cf0f48f2	Брайан Броббей	Brian Brobbey	Q57456997
+861c5258-4be3-41eb-af4b-e32d828d5bac	Амир Хаджиахметович	Amir Hadžiahmetović	Q22833412
+c126a699-073e-440f-8a7e-582d5e4562ed	Абдулкадир Омюр	Abdülkadir Ömür	Q27832286
+b39db130-02e7-4e5b-98b5-f9e7e59f81a5	Брук Нортон-Каффи	Brooke Norton-Cuffy	Q110654763
+a1061edb-5455-4e4f-a385-36410f0e19ca	Тим Айрогбунам	Tim Iroegbunam	Q111027477
+5f6464d8-27ed-46df-9ca4-4fbeebe8f488	Нобель Менди	Nobel Mendy	Q116053269
+80f920ca-1e34-407b-96c0-d4bec2b0c4ff	Хидэмаса Морита	Hidemasa Morita	Q56254739
+a9417a87-3d53-49a9-8689-7c6548f466c8	Джейден Филоджин	Jaden Philogene	Q106916429
+e23c3203-78e2-432f-9e53-a094a156e5b9	Жуан Педро Жералдино	João Pedro Galvao	Q2626107
+41d79a12-7f51-4684-a839-97a3395975f4	Мэтт Таргетт	Matt Targett	Q18128628
+04a3ab71-396d-4811-8416-c70290d5e686	Линкольн Энрике Оливейра дос Сантос	Lincoln Henrique	Q19822751
+44d2e5ca-63c6-4a62-a18d-19eef9139cf4	Сайрус Кристи	Cyrus Christie	Q5201080
+8e24a8a6-bb5a-4f89-8d32-19602ee9747b	Айртон Лукас	Ayrton Lucas	Q23638974
+cec237c3-ec08-472c-b922-a5a4ca1d5136	Gabi Barbieri	Gabi Barbieri	Q116450248
+6f1bf815-5bca-461c-a955-4e5d8d33d743	Жуниньо Олавио	Olávio Vieira dos Santos Júnior	Q50841898
+70303bcc-bf3d-4842-a65a-cb0d88fcdd36	Лео Ортис	Leonardo Rech Ortiz	Q55816003
+9c7550c0-d94d-46d7-bd46-3b3a133db6c4	Сауль Ньигес	Saúl Ñíguez	Q912172
+ea7cc082-20b1-4a92-9e5f-cba4b9ef1047	Николас Де Ла Крус	Nicolás de la Cruz	Q20994037
+b829fc2d-a2e1-475e-9202-96a84a65eda9	Дениз Офли	Deniz Emre Ofli	Q137435615
+2c5096a3-7600-4dc1-aa75-4956db561886	Габриэл Видович	Gabriel Vidović	Q110611871
+6ca67718-01fd-4bd3-b0e4-89f96cf1dfe4	Noah Codjo-Evora	Noah Codjo-Evora	Q127946020
+1b39e03b-2832-4134-b61e-b01828084208	Адам Азну	Adam Aznou	Q117288501
+7bc1d838-204f-427c-b8ce-c07504c54ada	Алара Шехитлер	Alara Şehitler	Q121260651
+b57ccaa6-066f-4ceb-82d0-6f32af57e4ad	Сергей Сердюков	Sergei Serdyukov	Q4417284
+d08d6b7c-061b-4f99-9a60-fe82924123b3	Jasmine McQuade	Jasmine McQuade	Q134961488
+d40c73f3-1a82-446c-b92b-104ada081f70	Grace Boyes	Grace Boyes	Q134961593
+13d35343-549d-4f81-99de-4c8a7e3b7db2	Аладжи Бамба	Aladji Bamba	Q135891358
+ef30b3ca-2ad5-4d7c-9140-67c8b5d3a080	Антонио Кордеро	Antonio José Cordero Campillo	Q129257493
+ffb09184-2273-49c6-828a-ccfb697431c4	Шон Стёр	Sean Steur	Q129887028
+eafda071-4742-46c4-84e9-572cf2d2c3fe	Лукаш Горничек	Lukáš Horníček	Q100271491
+fa70a660-d735-4bd6-8134-7899c7467e28	Уильям Осула	William Osula	Q111464601
+85440045-1419-40af-b345-7e005f1ec453	Базумана Туре	Bazoumana Touré	Q125805788
+a5c31554-6597-433d-9545-0146618fb7fc	Льюис Майли	Lewis Miley	Q118780753
+837bf190-562d-41d1-8895-9437a7f611fd	Алекс Мерфи	Alex Murphy	Q120868357
+bcb0373f-7153-46dd-be21-29b5f343cb1b	Свен Ботман	Sven Norman Botman	Q56183905
+ae1bd3fd-1160-4eaf-a878-3e84545fb9e7	Матиас Фернандес Пардо	Matias Fernandez-Pardo	Q117041294
+c1f80779-f58d-4c90-9354-f3ca8c024b90	Амар Дедич	Amar Dedić	Q65948595
+809edcc5-7ce1-45dd-848a-fbd45e2a44dd	Умарали Рахмоналиев	Umarali Rakhmonaliev	Q116008479
+8124e0fc-b735-4c47-9fbd-775c2a75db56	Брандон Агилера	Brandon Aguilera	Q96116141
+67c4ed1f-d81d-47f5-82f7-82870e727d3d	Тайлер Биндон	Tyler Bindon	Q121353909
+dea96754-046f-4c75-b4dd-75ceb369ca9b	Даниэль Муньос Мехия	Daniel Muñoz	Q56703599
+3d435a8f-4634-4eaf-9d99-2423d4891f97	Игор Жезус	Igor Jesus	Q65030995
+b0125a77-b6b6-4a5c-8a01-c898fb5634f1	Franco Jaroszewicz	Franco Jaroszewicz	Q139979298
+845ac62f-acca-4e82-9d5e-612712dd9970	Érica Lonigro	Érica Lonigro	Q76761350
+df698e64-1b80-416a-97b0-49ca4c4cd531	Сантьяго Ленсина	Santiago Lencina	Q128460374
+ff5bbd05-8e5b-43de-808c-ab229d34427d	Мауро Арамбарри	Mauro Arambarri	Q17124713
+6a70c4c9-3d22-4ddb-b14c-cbb1c9a60d6f	Kevin Carlos	Kevin Carlos	Q110114075
+c8cd6235-04c3-45f7-a231-451add872a53	Моиз Бомбито	Moïse Bombito	Q116146104
+ccff3a7a-d3ff-48c9-86fe-e8ee06de95a9	Мохамед Эль Амин Амура	Mohamed Amoura	Q107285723
+7f7138d7-87e9-4323-8c6a-27a753c9dbc4	Али Абди	Ali Abdi	Q17350507
+327599e4-73ef-4cff-9d13-80437b0aa6af	Морган Сансон	Morgan Sanson	Q6911830
+1c8cd24a-0519-4c02-aa51-4456fb787046	Нидал Челик	Nidal Čelik	Q131149776
+982a9cba-20bf-4afe-be48-ffcb8ba5edca	Габен Капуано	Gabin Capuano	Q131755994
+27f6931f-a3c6-416e-8c9c-d61e3e5b6039	Сиди Бане	Sidi Bane	Q112166574
+de4e6f69-43aa-4cff-bcff-20980196c6b2	Робен Риссер	Robin Risser	Q124745247
+500415dd-c38a-490e-833e-464a2af8e840	Mamadou Camara	Mamadou Camara	Q116950343
+973c676d-0172-448f-bfc2-5fc12af223ef	Aude Gbédjissi	Aude Gbédjissi	Q127695639
+ebfc6997-343f-4828-8ab8-840dfdedfe27	Сауд Абдулхамид	Saud Abdulhamid	Q60407856
+29cec7fe-12aa-41d6-9eae-ac24b78e195b	Михал Скурась	Michał Skóraś	Q64167368
+a906d81a-718a-4200-9c30-097f62cdad0b	Салис Абдул Самед	Salis Abdul Samed	Q68110291
+fddc05d9-4885-4199-8d58-4fac4e2101b4	Матео Мендия	Mateo Mendía	Q132459265
+59977282-4e10-40a3-9309-56a19a2cba50	Iker Zufiaurre	Iker Zufiaurre	Q133818545
+866b3fa0-7083-4302-9651-f269d8f1f8ab	Walter Molas	Walter Molas	Q133819988
+add1b843-d825-42bd-99b2-30c058d67130	Факундо Ронкалья	Facundo Roncaglia	Q430802
+d0fc8890-0fe0-4938-82f2-3b2f70d2f094	Кевин Сенон	Kevin Zenón	Q101001007
+c42e35af-c31b-49c0-ba4e-2555f67b038a	Лаутаро Ди Лольо	Lautaro Di Lollo	Q116196701
+d82baf67-7deb-406e-a8d4-55b6816202e8	Леандро Брей	Leandro Brey	Q106687895
+969a1ed1-b18d-4910-8fc0-5a9b28e94a70	Эннер Валенсия	Enner Valencia	Q2843080
+987466a1-6aab-4837-81ce-23ca96105f4a	Лукас Хансон	Lucas Pibe Janson	Q9024628
+be22adb2-3bda-4369-a638-845a0979aa43	Николас Фигаль	Nicolás Figal	Q17635436
+f437eece-0cb4-4df2-9e26-4ce795b86765	Кристиан Лема	Cristian Lema	Q5186215
+832ca28c-850b-49f0-a887-533c4eff253a	Элайджа Дейкстра	Elijah Dijkstra	Q133857440
+17ecc0ed-e200-42aa-958b-b993e42e177c	Каспер Богард	Kasper Boogaard	Q134292818
+7a5e1330-668b-4afa-bdcc-338acf0e93bb	Рио Роббемонд	Rio Robbemond	Q138635581
+a2c834f5-0d8a-4148-b2ca-2808f003352c	Матейс Меню	Mathijs Menu	Q139547602
+4f647584-8ddb-4205-bb6d-c22e17735bc6	Hessel de Wit	Hessel de Wit	Q141005784
+bf01893a-03c7-4596-98ac-ccf13d0bab1e	Аюб Уфкир	Ayoub Oufkir	Q130899492
+5cef7aa8-0b9c-40ff-bc5d-9e35cf2bc52a	Свен Мейнанс	Sven Mijnans	Q99600149
+e1f4f7cf-ec57-42cb-add6-be2f7dfb54a1	Йерун Зут	Jeroen Zoet	Q721572
+03718d61-efa6-4bb6-993d-93d25c5e962c	Кирилл Чебураков	Kirill Cheburakov	Q134725394
+3f202223-f320-4c86-bbaf-6889065f080c	Batuhan Yavuz	Batuhan Yavuz	Q136035961
+30154e30-312c-47e1-8311-6963fc49ee78	Hüseyin Şen	Hüseyin Şen	Q136565471
+1a79405c-9106-4126-bc7c-438502c2dad8	Cihan Memik	Cihan Memik	Q138106849
+aee0f8a3-92f2-4426-a274-886655da4d75	Mahmut Can Kara	Mahmut Can Kara	Q138296476
+7259e188-1c68-4665-a03e-53edd1e244c1	Умит Акдаг	Ümit Akdağ	Q123182314
+f7573073-3430-4163-9749-be7bac05a599	Янис Хаджи	Ianis Hagi	Q17045723
+019f67c6-45a5-4c93-9483-d98d645ceb30	Юре Балковец		Q3811381
+d7c97e08-7698-4d1a-9ec3-256f7e183fb5	Park Eui-jeong	Park Eui-jeong	Q130324117
+0c2eab87-0f29-4bdf-964b-7d99e86200af	Haruto Matsumoto	Haruto Matsumoto	Q130461638
+f7715c5b-a1d0-4071-9313-67360c32d66b	Mihiro Sato	Mihiro Sato	Q130461948
+bcbe96ab-4228-445d-9aa5-a7e73a9c2569	Yugo Okawa	Yugo Okawa	Q130462999
+d13e9ebf-e6ca-45eb-abd0-9efbaffd119d	Minato Yoshida	Minato Yoshida	Q130463059
+81078e40-9d66-42c6-89ec-49baaf135577	Kimito Nono	Kimito Nono	Q124883102
+f8c4d9a4-c5f1-4499-9c82-0fe2e6fa7c45	Shu Morooka	Shu Morooka	Q118696442
+58d97396-70a9-49ae-9a1e-b01e9924fa61	Keisuke Tsukui	Keisuke Tsukui	Q116936771
+117218da-186f-41ca-86d2-8366b03ade3c	Yoshihiro Shimoda	Yoshihiro Shimoda	Q116937033
+3745015e-f184-42d8-b775-e4a388c42056	Homare Tokuda	Homare Tokuda	Q126895081
+491cff9a-8145-41c8-a3b8-f88d296d3101	Наомити Уэда	Naomichi Ueda	Q10860995
+2841d379-81fb-4b0b-b17c-121576e0586c	Джордан Тезе	Jordan Teze	Q42299353
+bfa93118-4c99-48bf-b3f3-7749a1357f59	Али Аль-Моатасембелла	Almoatasembellah Mohamed	Q16727312
+ef2f2a62-3479-48e4-8410-f1d8ee12917d	Денис Закария	Denis Zakaria	Q21066260
+74f3ac60-dcee-4a88-8b57-6a4258d971c3	Camila Gomes	Camila Gomes	Q110253575
+f0f486de-44b6-4e61-8583-e0f6363a25f6	Уэсли Гассова	Wesley Gassova	Q112620020
+e36a4661-0c44-4a06-9874-77c5bd98ed3f	Касио Рамос	Cássio Bramitos	Q920039
+28e2a875-843e-463a-9e6b-4aa81db82a06	Фагнер Консерва Лемос	Fagner	Q932827
+641efed0-4fa8-439c-bcaa-88cd124e7e67	Фабрисио Перальта	Fabrizio Peralta	Q124838357
+a44a2e29-d707-41a6-8d30-9d64fcf8d1b5	Янник Боласи	Yannick Bolasie	Q4022527
+d03da55e-e2e6-419f-b6bd-b6b7d57a5ba2	Матеус Перерейра	Matheus Pereira	Q15831118
+7f1f41cf-8b7c-4383-b4af-8e33b725ca57	Lucas Villalba	Lucas Villalba	Q5981950
+1daf3079-c891-4697-bccf-9711fd409a52	Саба Лобжанидзе	Saba Lobzhanidze	Q29575639
+2ec6fcb1-a337-4b71-a462-3fe4640c9cca	Сесар Паласиос	César Palacios	Q117661592
+d78ef42d-ab5d-4d73-a57c-a958b45765ce	Люк Де Фужроль	Luc de Fougerolles	Q121829403
+a6acbc0d-b650-4e7a-976e-8ebf0affb9ce	Давид Аффенгрубер	David Affengruber	Q65948590
+692425df-c086-4242-bb99-4a1387bd8bab	Юкинари Сугавара	Yukinari Sugawara	Q50073536
+22455fa3-2481-4ebf-b84f-f5e3b26982cd	Элиа Каприле	Elia Caprile	Q59914213
+ccb9e7ae-fa14-471e-9d4e-250d183c7630	Мишель Адопо	Michel Adopo	Q59914804
+4caee85f-f9a5-4cb9-ac00-87ac82511283	Роберто Пикколи	Roberto Piccoli	Q63244084
+7c8a6e6d-51d7-4ba9-a10d-ff0ef11d7e93	Gennaro Borrelli	Gennaro Borrelli	Q69997215
+cce8cab6-6eb8-44cb-90f1-fa22c49353bf	Майкл Фолоруншо	Michael Folorunsho	Q65553869
+c2a2ceca-0455-4f3e-a582-b1803989800d	Матеуш Ветеска	Mateusz Wieteska	Q18357913
+f1f70550-b073-410f-98c4-290640176778	Джанлука Гаэтано	Gianluca Gaetano	Q60607725
+deb389ad-5490-4608-ad75-97fe61ec1510	Kai Klefisch	Kai Klefisch	Q57608817
+43e5ca6e-82bc-430c-8dac-52bf823ae11a	Норберто Берсике Гомеш Бетуншал	Norberto Bercique Gomes Betuncal	Q66363735
+79280c22-226f-4213-b929-0e44a0974a80	Якопо Фаццини	Jacopo Fazzini	Q110624351
+04f7c63a-70d8-409b-91ea-0c66f494404f	Джино Инфантино	Gino Infantino	Q101579946
+313ff73f-f3c4-4519-af5a-819daeaa02d0	Николас Валентини	Nicolás Valentini	Q106768944
+b15cd440-49e5-4739-96cf-8871f135bc3e	Марина Георгиева	Marina Georgieva	Q28334387
+b4441a86-77a9-4e50-9cec-7dae8bfc6ffb	Антонин Барак	Antonín Barák	Q21293144
+49af4490-1321-4a9d-b7c4-c2df3155eea9	Stine Ballisager Pedersen	Stine Ballisager Pedersen	Q33083334
+56ed7472-b11b-46f5-862a-3e222ac3df9c	Додо	Domilson Cordeiro dos Santos	Q24084221
+801ef4f3-a459-46b1-b30c-aa57bd7e0375	Эденилсон Андраде дос Сантос	Edenilson	Q1707749
+6245a147-0573-4ae4-a9f4-da74f93da3da	Мартин Брейтуэйт	Martin Braithwaite	Q2440999
+45a8ce5e-2186-4c43-b64b-2b426a89ccba	Лукас Камило	Lucas Camilo	Q123422089
+c50d37dd-662d-4b14-ac64-6118dd95ac7e	Кристиан Павон	Cristian Pavón	Q16553648
+585d355e-f63d-4692-af85-5d07e48dd050	Бернард Анисио Калдейра Дуарте	Bernard	Q137242
+6aea5a16-3b5f-4fc7-8127-278bcf67b364	Родриго Батталья	Rodrigo Battaglia	Q3940027
+a07333de-5d9a-4dff-8261-1d4eebc1bfd4	Игор Силвейра Гомис	Igor Silveira Gomes	Q59207905
+964a4abb-2e31-415f-a840-3b989d80ee63	Фернандо Муслера	Fernando Muslera	Q203749
+7d40688e-0575-4c4f-af01-ba18ea16b616	Хосе Эрнесто Соса	José Sosa	Q314241
+ae82ba53-ec14-4aba-8754-7672db3decf0	Ciro Spalletta	Ciro Spalletta	Q135441675
+3ab97c6c-45a8-4db1-8db2-57a616ee4a5f	Алексис Маньома	Alexis Manyoma	Q116255506
+3ea87b1f-ca7e-417a-ae1f-1f302ac28848	Gastón Benedetti	Gastón Benedetti	Q118256235
+73ce14dd-175f-4219-b4b6-db1261bf485b	Аксель Атум	Axel Atum	Q118256236
+18ef1a5f-35f2-4439-9ae9-6b4b88560137	Мауро Мендес	Mauro Méndez	Q88094584
+896f9e82-c5fb-46b8-bd77-0fba6a63a772	Фабрисио Алексис Перес	Fabricio Pérez Escudero	Q130600471
+f7f14c42-ff24-4895-8bcf-fce53edf0e37	Бальтасар Гальего	Baltasar Rodríguez	Q119395834
+ab0b0775-25d7-4e21-9cde-009ec6315fad	Матео Пельегрино	Mateo Pellegrino	Q106308522
+1ad49404-e6b2-4b00-b85a-0ed4458c23b9	Juan Pablo Zozaya	Juan Pablo Zozaya	Q124375940
+d47773b3-bbe9-4ad3-93af-93ae6ebee288	Nicolás Andrés Fernández	Nicolás Andrés Fernández	Q125246628
+abfcd57f-9e4d-483f-ae17-a822015a8eb3	Gonzalo Piñeiro	Gonzalo Piñeiro	Q125449275
+c8de0842-6918-4ea1-8560-02b0234267fe	Matías Julián Contrera	Matías Julián Contrera	Q130443553
+fb2c98c4-7943-4198-9bd1-9901065a88ad	Román Agustín Gómez	Román Agustín Gómez	Q130452980
+6bbabb81-cb2d-44ac-aa6d-566ad4fdfae3	Alexis Castro	Alexis Castro	Q20027940
+46541e5e-1652-4271-9c51-c6eb82f436a7	Аясэ Уэда	Ayase Ueda	Q62085431
+3a7a63ad-b753-4578-9650-35f457411045	Натан Нгой	Nathan Ngoy	Q107094087
+4f41c1d2-fec3-4005-a635-38032ec7eaa4	Мохамед Байо	Mohamed Bayo	Q55819463
+a5971119-c672-4f65-b17e-18391606d521	Бафоде Диаките	Bafodé Diakité	Q59528545
+2e00d17f-c90b-4f94-bb31-1e978407934d	Daniele Sommariva	Daniele Sommariva	Q64009408
+839db744-a41a-4eb0-a0e0-9db6b83c9911	Franz Stolz	Franz Stolz	Q64224732
+29bd7f75-4efd-4a16-85d8-d41dc33e9619	Лоренцо Коломбо	Lorenzo Colombo	Q64896366
+1a4028cf-b94b-4f6f-aab6-40fe099bc1de	Alexsandro Amorim de Freitas Filho	Alexsandro Amorim de Freitas Filho	Q135395465
+61168693-9c98-47ad-94c4-b6d53e75ccee	Alessandro Debenedetti	Alessandro Debenedetti	Q135422413
+bfd3fc86-5794-4033-bde3-c69c6978e785	Ethan Meichtry	Ethan Meichtry	Q138328477
+09e4390c-84f2-477b-83af-50b4b9649e2c	Samuel Wiafe	Samuel Wiafe	Q139244033
+d93cff15-cfec-47a1-9e06-2cb4c924a851	Микаэль Эгиль Эллертссон	Mikael Egill Ellertsson	Q108297713
+0044546c-437c-47bb-9c32-02ebb511623b	Federico Accornero	Federico Accornero	Q117026746
+853c8c42-2afb-4853-b7c0-d4aab4040380	Робсон Жуниор	Robinho Júnior	Q131693296
+80d84684-e48a-49b5-abfc-c904bbc42284	Элиас Гавел	Elias Havel	Q105591986
+74d6f996-7936-4df3-acb5-059ce3f22420	David Puczka	David Puczka	Q118347581
+a65d6c1d-4b6c-4e22-b8a2-594d7dd595a2	Коуди Драме	Cody Drameh	Q98815258
+c212ebf8-5bfc-415d-a4bf-8d67b8aeef63	Гастон Перейро	Gastón Pereiro	Q6438734
+55c87f2b-6839-4bb0-bab1-c903b7eab528	Мортен Френдруп	Morten Frendrup	Q52158000
+ded95363-047a-4050-92df-ed3d999ffa9d	Милутин Осмайич	Milutin Osmajić	Q57315517
+f489fe4a-0366-4c2e-b2f1-4cfc980b3a1e	Филиппо Мелегони	Filippo Melegoni	Q28595310
+2fd06cf1-0a44-444d-b1a5-6f25d94299f4	Леандре Куавита	Léandre Kuavita	Q113510256
+f8cb2744-a9c4-45e6-a468-b541eba82430	Себастиан Отоа	Sebastian Otoa	Q114390965
+2f5b5585-007c-46ef-8883-7846ac6ecdb8	Mattia Aramu	Mattia Aramu	Q18016160
+20ad0869-c4b9-44e0-b6d1-67ffac856009	Уго Куэнка	Hugo Cuenca	Q121820432
+b91c3230-3536-48a6-afcf-6cdef4d154b6	Сейду Фини	Seydou Fini	Q123176679
+8b229eaf-bbac-4e14-ae36-3236b3920c2c	Лео Эстигор	Leo Østigård	Q30330390
+8d63cd23-e6d8-485c-b183-54857ee8115b	Джастин Бейло	Justin Bijlow	Q36318897
+484419e8-8aa4-4805-9e0b-bcc59ab3f2e2	Хаукон Вальдимарссон	Hákon Valdimarsson	Q107863326
+5ccc5286-9e47-4ee0-8116-4980780ae990	Игор Тиаго Насименто Родригес	Igor Thiago	Q83639138
+294cf216-0637-4b15-887e-f0771e84d189	Малик Диуф	El Hadji Malick Diouf	Q123479947
+88571b61-f0b3-4ecb-a67e-c213820d2250	Юнус Эмре Конак	Yunus Emre Konak	Q122972260
+49a8149f-cb65-4a64-9f21-c454b0498853	Isaiah Parente	Isaiah Parente	Q106515728
+41ad5f51-1e7c-48be-a2a9-55a4c4982771	Гастон Бругман	Gastón Brugman	Q5526896
+8005e6d2-a1f2-4a32-8f44-b8e5874be2c5	Эрик Завалета	Eriq Zavaleta	Q10551338
+8016bbc5-e6e4-4756-810b-c8aa81aacbaf	Марк Дельгадо	Mark Delgado	Q6757520
+1af8b3a9-79c1-4609-a693-df61d27af6df	Наоки Маэда	Naoki Maeda	Q251506
+5b69ea59-bc2e-4444-a88e-4d8bfdf27323	Кота Мидзунума	Kota Mizunuma	Q763894
+37024c17-89e1-461a-b06c-67bd7e0387f8	Sota Matsunaga	Sota Matsunaga	Q138418845
+4da411b6-aa46-42db-8883-77a295082253	Hayate Ueki	Hayate Ueki	Q138602721
+b7180d3c-b6bd-4046-9c29-9e9f76d1144b	Rei Kihara	Rei Kihara	Q110403506
+a1427618-fd70-4970-8645-a16962651fdf	Shintaro Abe	Shintaro Abe	Q130463337
+c42ab156-0c14-4b48-a72e-c2fb6b784131	Junei Tohoda	Junei Tohoda	Q130463499
+aa67ee40-daad-4385-a1bd-9464c0a45353	Atsuro Takahashi	Atsuro Takahashi	Q130463692
+957c42c3-6855-4792-83bf-f6776664fec0	Masanobu Yoshida	Masanobu Yoshida	Q130463769
+76ab45a5-6b4a-412f-b8a9-c41b9de5fa3d	Ёта Хориути	Yota Horiuchi	Q118696217
+c601e30f-85b6-44c5-bf55-7ac158798517	Kotaro Hayashi	Kotaro Hayashi	Q118697233
+d4401e8d-cc94-4f9b-abe6-c68898ac329b	Сион Хомма	Shion Honma	Q39126822
+d6184129-60f0-4676-97e0-821e88432a0c	Koki Fukui	Koki Fukui	Q51574516
+953bd1e3-400e-4f21-a988-71614036d743	Haruki Komori	Haruki Komori	Q124633792
+c011b9d3-5a27-4fa1-9e2e-69b8bdd98743	Kenta Nemoto	Kenta Nemoto	Q127844182
+9a7bb49a-5205-40c3-933d-292ed4983573	Хийро Комори	Hiiro Komori	Q114755667
+6cd50407-095b-4022-bd03-163b3d587262	Рёма Ватанабэ	Ryōma Watanabe	Q21703213
+5579a64b-1266-4381-93ee-b63200dba087	Toshikazu Teruuchi	Toshikazu Teruuchi	Q130453592
+861c35ce-cbcb-4eab-a883-f3ff6c229c32	Sean Dulic	Sean Dulic	Q131983290
+3ec72388-a200-4efc-856d-9b7f489aa4f0	Харис Табакович	Haris Tabaković	Q15257381
+5815d37e-eac0-465a-86a7-2ef7a4bbf8b5	Валентин Гендрей	Valentin Gendrey	Q60050172
+06423f30-7aab-4342-9a2d-b3ad4d2afa72	Коки Матида	Kōki Machida	Q22910803
+9934b12d-bb50-4895-8f93-0f6cf671fcc5	Суффиан Эль-Каруани	Souffian El Karouani	Q66360728
+204c8e95-7a01-498b-90e9-cef49bf131c6	Фердинанд Поль	Ferdinand Pohl	Q140472062
+9567ba94-7385-450b-b4cc-f6ac065bac27	Ivar Jenner	Ivar Jenner	Q111896413
+a0614f92-42ba-4f87-a01c-feaa648809ff	Себастьян Берхалтер	Sebastian Berhalter	Q86301356
+c8917034-0c05-4f58-99b5-e5dcb09b8a89	Джей Хердман	Jay Herdman	Q111512710
+c9eef4d6-ebe9-4238-b88c-d80636983554	Дамир Крайлах		Q3499871
+68bbdb13-9fd6-4d93-a5b1-719c5f411eb1	Эвертон Аугусто де Баррос Рибейро	Everton Ribeiro	Q4025436
+aa49cc6f-e8c3-4ca4-9443-25b6d9ad6a3f	Алекс Полсен	Alex Paulsen	Q107558242
+b55a98ef-1cca-4cc1-a45d-20d18cb06b1a	Даррен Рэндолф	Darren Randolph	Q3016542
+651e045e-15fc-4a4a-9a54-3507a1f577c4	Хуанлу Санчес	Juanlu Sánchez	Q110164175
+3e7f450e-16b0-4c2a-987f-7260f70c06fa	Хулио Солер	Julio Soler	Q121142176
+1e467f38-c81d-48ab-9bcb-60eef05eda71	Микеле Ди Грегорио	Michele Di Gregorio	Q42317168
+607d8a0b-1943-41ea-9d85-cfdc09a2ee0c	Давид Нерес	David Neres	Q27801691
+df502e50-714d-481e-b50d-784a1ab96e32	Симоне Скуффет	Simone Scuffet	Q15707405
+adefa021-303c-478e-b408-b9b820aaed72	Алессандро Буонджорно	Alessandro Buongiorno	Q51389133
+486f6e70-8746-48ae-a382-1fff649c2dd9	Ноа Ланг	Noa Lang	Q29441778
+4f9ea6b1-6719-473d-a242-c87d5c614348	Фисайо Деле-Баширу	Fisayo Dele-Bashiru	Q98959093
+0b1a6432-3177-4e17-9f79-70882732527a	Густав Танг Исаксен	Gustav Isaksen	Q70007561
+abdd6508-6442-439a-9a37-c6a4ceae4ce4	Кеннет Тейлор	Kenneth Taylor	Q57457130
+27483f68-bd92-4d1c-96c0-0541ea0c77bd	Андреа Пинамонти	Andrea Pinamonti	Q27981508
+37d331e0-3ee6-4f88-8c27-c07cb685c65c	Валентин Кастельянос	Taty Castellanos	Q51133356
+cdc0991b-535b-4ff3-89c9-74aef608837d	Альберт Гюдмюндссон	Albert Guðmundsson	Q21171299
+dc9e1f56-1258-438f-9d5a-5aab901a96ca	Булай Диа	Boulaye Dia	Q57603663
+2af65ec1-4b65-4d92-8fcc-8872ea783988	Lander Pinillos	Lander Pinillos	Q135635713
+d4dedd75-0330-4a58-a37f-a69fa2ca69a7	Сантьяго Моуриньо	Santiago Mouriño	Q116863669
+1dbe3e67-ee86-4193-9531-65fe083cd1df	Mikel Rodríguez	Mikel Rodríguez	Q131295855
+dcf67d9c-7c30-4f91-a594-5e6ddf5bbdcc	Egoitz Muñoz	Egoitz Muñoz	Q123467183
+ba5870cd-a04c-4e0b-8972-8c43fbafafa6	Xanet Olaiz	Xanet Olaiz	Q124288297
+43097b2b-edc3-4c6c-a185-08b29fc66627	Eneko Ortiz	Eneko Ortiz	Q126122230
+d5588e8c-62b2-4bc0-8480-012f874721da	Абде Реббах	Abde Rebbach	Q112805598
+aae4b0db-9fb3-4190-8c5e-5b63b54ef048	Лукас Бойе	Lucas Boyé	Q16297897
+0f5ac5db-a81b-4f22-9e00-c65956d675fd	Андер Гевара	Ander Guevara	Q42383726
+0ae3e5f7-566f-4623-b630-e5e2254ee07d	Иван Гулько	Ivan Gulko	Q135831217
+a75769b7-3e39-49ca-8384-1454af758a0a	Максим Сивис	Maxime Sivis	Q108655270
+cbb4b292-07e5-4efe-af2a-a1295045c073	Владан Бубанья	Vladan Bubanja	Q116732250
+3d0886af-e304-415f-986f-61c9ee56e7cb	Тимофей Мартынов	Cimafiej Martynaŭ	Q111549972
+49706fdd-496c-438b-b28a-2b200e418609	Jismerai Dillema	Jismerai Dillema	Q136192723
+4d32b0dd-0fcf-4764-b152-9b7d1194e163	Nils Eggens	Nils Eggens	Q137259381
+6a966718-21aa-4c65-b635-fb936791572c	Райан Мету	Ryan Metu	Q139769564
+e41a6ecb-5669-49ee-8784-8fee8c4cb651	Том Ван Берген	Thom van Bergen	Q116136785
+5a09db03-13e0-4535-b0f9-e34186b016fe	Нордин Мусампа	Nordin Musampa	Q55104868
+b1dbcc79-acca-4d4b-a13c-37b53cac42b0	Теймен Блокзейл	Thijmen Blokzijl	Q112193624
+a1faff3d-5760-42ea-87f8-41921b4bc51d	Юнес Таха	Younes Taha	Q113463914
+8d4b9f82-ffd7-40cc-8eee-d8c64fd664e7	Тика Де Йонге	Tika de Jonge	Q123140675
+27a3d93f-0b4c-4f61-bd9d-296fc6857ab3	Wouter Prins	Wouter Prins	Q123140685
+6bea505c-cf27-450b-aabe-e9be73614e2b	Ловро Штубляр		Q115564801
+848c7d70-198b-45f4-b927-ef80629e5bc1	Алимхан Зайнивов	Alimkhan Zaynivov	Q140368378
+d22ba3a0-e466-4f5d-ab26-3a2aa5cb65fd	Эрбол Атабаев	Erbol Atabayev	Q110937359
+987d18c0-3065-452a-9d81-b74d82563875	Шамиль Гаджиев	Shamil Gadzhiyev	Q133284852
+b7625776-fed2-4a66-a7b3-47c73bce57a1	Адемар Чавес	Ademar Chávez	Q140369106
+551ab0b1-80b4-4794-9be5-fa517e0eca41	Малик Пинто	Malik Pinto	Q117383702
+a7137409-1f59-4732-84f6-ef357e975aa1	Роуман Селентано	Roman Celentano	Q110733715
+763f9a69-bb8a-4807-bdc1-0eab56a2a120	Nick Markanich	Nick Markanich	Q111022839
+f287754e-0f6e-40d6-8b72-dc676f94c41a	Хильберто Флорес	Gilberto Flores	Q124821648
+c32978ff-e663-4b3e-b86e-9995cac80754	Сержио Сантос	Sergio Santos Gomes	Q19844277
+79c95383-0ebf-4aaa-9b12-b878dc63626d	Shungo Sugiura	Shungo Sugiura	Q130486440
+1ef1069a-bf7a-4cfb-9638-e7c1f448301a	Avelete Yves	Avelete Yves	Q130486595
+267e99d2-f09a-443c-8084-c9a2ad787c4b	Кёта Сакакибара	Kyota Sakakibara	Q118697199
+d9e1f2a9-07ba-470b-830d-6d22a4edf83c	Эи Гётоку	Ei Gyotoku	Q121354688
+dd8d0e86-6cef-4838-8980-658e346b3342	Алекс Пизано	Alex Kouto Horio Pisano	Q125042604
+102966bb-eec3-4d0c-bfd3-b92fd4594dbc	Томоя Коямацу	Tomoya Koyamatsu	Q17158345
+7503848d-1f49-46e1-ae7a-937d7d6e7257	Tsukasa Morishima	Tsukasa Morishima	Q24875979
+59f07c64-b685-4223-889b-7c4a4d2247f2	Мандела Кейта	Mandela Keita	Q106095219
+2426c233-9d81-4f9b-b56d-0d13cfc11a58	Jack Rudoni	Jack Rudoni	Q78488478
+24a627ee-f7b0-4991-8a62-17ce6f57527a	Сидики Шериф	Sidiki Cherif	Q124219755
+6242609f-604d-4a58-9335-f172984f213b	Джоэл Латибодиер	Joel Latibeaudiere	Q30729099
+3830af25-ef4d-44e7-8359-3856e7579719	Джейсен Расселл-Роу	Jacen Russell-Rowe	Q78637933
+b52ee78d-e1e2-432d-aef5-7888bf6b4871	Томас Йёргенсен	Thomas Jørgensen	Q127260116
+a697fb83-9882-4e3d-ac55-66462bfbb7c7	Тейс Даллинга	Thijs Dallinga	Q46351665
+2f581ea1-9f7c-42e1-92dc-a981177e8fa1	Венсан Сьерро	Vincent Sierro	Q23707676
+76dd2f13-a656-4d95-9e8f-34ed1f7bb8ac	Заим Диванович	Zaim Divanović	Q112652989
+215103df-0ae5-456a-8210-2237a3449b46	Милош Шатара	Miloš Šatara	Q20745280
+a10d916a-b2fa-4e1a-9891-3ce99098f009	Luca Podlech	Luca Podlech	Q140811986
+acbfb683-8203-47b6-b762-4c4929041988	Мартин Васински	Martin Wasinski	Q105955082
+4603338a-1aa9-440e-9b85-e8cab71cb28d	Никола Катич	Nikola Katić	Q27957334
+ec28ccf5-121f-4cd9-8b68-0e09356e70a3	Siraçhan Nas	Siraçhan Nas	Q121361554
+0f25602e-95ac-4ca2-8e10-f662cf5e584c	Дениз Гюль	Deniz Gül	Q123174990
+06bdaba5-082d-46a8-bdd1-235862ede179	Эфе Акман	Efe Akman	Q123182232
+3b2e3055-def3-4654-ba4b-42e6aa9bd863	Yusuf Dağhan Kahraman	Yusuf Dağhan Kahraman	Q136706059
+787179d3-3f28-48e5-be32-fd8e32185534	Cihan Akgün	Cihan Akgün	Q138003290
+e8fa4082-9ca2-493a-8440-b24bf27aae34	Eyüp Can Karasu	Eyüp Can Karasu	Q138003291
+2dd31884-6890-40b1-b180-1524a54c3a10	Necati Oğulcan Yançel	Necati Oğulcan Yançel	Q138003293
+b02334a0-aa53-486d-a91d-49de59d28553	Arda Tagay	Arda Tagay	Q138866974
+0dc7f05c-70d4-4526-8443-2e219c252b61	Сержиу Оливейра	Sérgio Oliveira	Q2071136
+833e9288-e4e7-4a26-8f1c-67188e73f11c	Фредрик Мидтшо	Fredrik Midtsjø	Q3379641
+f5366726-72b6-4719-aa69-8fd6d9ade921	Эль-Шадай Битшиабу	El Chadaille Bitshiabu	Q110211916
+3ad28fef-6454-461a-9876-47a7ef3a199e	Гюнай Гювенч	Günay Güvenç	Q1560186
+320b1577-0c92-4879-b4a9-470d4dbf70bc	Лукас Торрейра	Lucas Torreira	Q16302330
+16380fe3-9ab9-46de-9d0a-59275c2a16f7	Лерой Сане	Leroy Sané	Q16499882
+2ee593a1-9bff-4a2b-ab34-ca5b95950676	Пшемыслав Франковский	Przemysław Frankowski	Q15043990
+f0189a61-f351-46f7-9f8a-1233896aa72b	Роланд Шаллаи	Roland Sallai	Q18217954
+0983374c-d1fd-4d0f-a208-fea9ea262948	Виктор Осимхен	Victor Osimhen	Q25253293
+a581fbb5-4804-4835-88fb-ec9a5c0c7735	Джонатан Буркардт	Jonathan Burkardt	Q56635612
+ac9bf3e4-c150-430e-9cee-d4941a31c6c8	Лилиан Брасье	Lilian Brassier	Q66095792
+c46c5b28-3c7c-4c7c-ac6f-53751c270d22	Ансгар Кнауфф	Ansgar Knauff	Q104035264
+ccfb8fdd-4c43-4bb7-a1e7-263be321e3db	Гильермо Абаскаль	Guillermo Abascal	Q51844726
+fbdbf104-17cd-4b99-9518-fe15edc3a8a4	Антон Рощин	Anton Roshchin	Q125549470
+170bba85-89ea-4cf1-92c3-ea20acf7229b	Пабло Солари	Pablo Solari	Q102157529
+0d36a741-1dee-456c-b088-ac6061adb530	Павел Мелёшин	Pavel Melyoshin	Q113655298
+76bf56e1-b6b9-4a01-890a-59e5d7d3e169	Александер Джику	Alexander Djiku	Q17385842
+2dc50daa-a76a-4fac-8d64-23ad613e52f5	Юрген Эккеленкамп	Jurgen Ekkelenkamp	Q51796228
+4df9c467-6de4-4715-b9c6-87b141f143e6	Ойер Саррага	Oier Zarraga	Q99231391
+5d5c24b2-d9eb-4a4e-a1e8-0bb3b8e637f7	Кристиан Кабаселе	Christian Kabasele	Q2057994
+094da752-695c-4358-82df-cbf8596b2b06	Bartosz Mrozek	Bartosz Mrozek	Q113170833
+3ae16298-efec-49b2-94ac-a11079566448	Мергим Войвода	Mërgim Vojvoda	Q18589243
+8ebb800b-7104-4841-81ea-e0d40eb55d4e	Адам Мазина	Adam Masina	Q20718823
+35493a00-fa69-4cc3-aea7-a5d2d4e61e89	Филип Бенкович	Filip Benković	Q21005039
+b049492f-d376-4133-b445-268990e69e60	Якуб Пётровский	Jakub Piotrowski	Q28059306
+ed1fbb65-75f6-4647-9814-c9c3a033459a	Закария Лабьяд	Zakaria Labyad	Q144616
+16b471d3-6e38-4d7c-90d3-0fc473b010fd	Хосе Андрес Мартинес	José Andrés Martínez	Q79634899
+c1ddb5cc-19c8-4eaf-9aa4-6ec60557bdcb	Густаво Энрике Вернес	Gustavo Henrique	Q5621422
+8e7e0b18-f64f-48d2-af55-05d5b3504a3d	Андре Каррильо	André Carrillo	Q1155889
+1f82f4cf-a780-4e5e-8973-b23d832c67c1	Феликс Торрес	Félix Torres	Q30916190
+6da74317-eded-4b55-9160-bef230362669	Джоуэл Уотерман	Joel Waterman	Q63700064
+f3f996bf-9e52-4630-9fc4-ea65344810dc	Анзор Меквабишвили	Anzor Mekvabishvili	Q112228977
+6d7c1f69-2f0c-4f5d-940d-b00aa39c61b9	Сергио Орехель	Sergio Oregel	Q116181733
+0c6132b1-8cd6-4b90-b851-0676ffa8e42d	Джек Эллиотт	Jack Elliott	Q29415000
+838a9284-fdbf-4926-87fd-963517c1409e	Jaden Heskey	Jaden Heskey	Q123184220
+f70c397b-fe77-4cd0-8ca7-38b3525a6bd3	Эллиот Андерсон	Elliot Anderson	Q104762954
+e020a828-c48f-4260-a6fc-24d999b49c23	Макс Аллейн	Max Alleyne	Q123789134
+777bbf69-d56c-4dfe-a66a-9e3665ff9e4c	Хосе Сифуэнтес	José Cifuentes	Q60842113
+29dc4438-6faa-478e-aeec-0f36a52578d7	Nate Edwards	Nate Edwards	Q127361330
+bbd75e55-1c68-42f7-81fd-b4af583d0957	Франко Исраэль	Franco Israel	Q60842316
+87063dce-25a2-4ef5-9ba7-9bae68577d45	Закария Абухляль	Zakaria Aboukhlal	Q56257819
+77796d04-2d14-43bf-8c40-2d625bb1007c	Эмирхан Илькхан	Emirhan İlkhan	Q110486415
+8c93b734-42ab-4cc1-838a-25ca14143d29	Ардиан Исмайли	Ardian Ismajli	Q26251753
+7f5b8160-c041-43d1-b4db-1cf33756a54a	David Miculescu	David Miculescu	Q85525678
+2fa418ed-b05c-4a6d-baad-79291c2db32b	Даниэль Свенссон	Daniel Svensson	Q106967174
+466a9ac5-fc1f-45bf-b810-48489f3a92ba	Яннис Константелиас	Giannis Konstantelias	Q104870781
+851eb9d0-42da-490a-8577-b96d16b0ae57	Джоуб Беллингем	Johan Bellingham	Q110483835
+4f5d0978-b291-4055-bcad-aeddc9082508	Джоуи Верман	Joey Veerman	Q27518278
+470bb60f-959c-4d1a-b132-b188cc1c3bb1	Патрик Древес	Patrick Drewes	Q21923379
+d8d35df3-9890-4e48-9943-eff4de8cb662	Кики	Shwendesky Joseph	Q118219922
+915f6c1b-9cc1-402d-85b4-fce2f240bb00	Ноа Дарвих	Noah Darvich	Q118465124
+d022d7fd-7fcc-42dd-ade8-7d1992e4982b	Лео Сауэр	Leo Sauer	Q118515513
+4b5342f0-e92d-41ae-8acc-a585198dbbcb	Амен Аль-Дахил	Ameen Al-Dakhil	Q98546080
+8dfcfaf1-72b7-44d3-8074-26197000cb23	Юстин Диль	Justin Diehl	Q116294228
+cc9c609a-8d06-4859-8a3a-2659abc078a3	Джефф Шабо	Jeff Chabot	Q39082971
+49e79b39-a871-49bd-a0bd-9255122b35d6	Мохаммед Хамони	Mohamed Hamony	Q118611620
+1b8a7eb1-216a-409a-a040-dc79fd7bf9af	Andy Elysée Logbo	Andy Elysée Logbo	Q118696035
+3c077674-6704-4a57-9a72-ce4a946c2bde	Маамаду Диавара	Mahamadou Diawara	Q123126188
+997b0d1f-dff4-4d63-9abf-5fb5d99c7e10	Амир Ричардсон	Amir Richardson	Q106860340
+0299c61c-206b-479d-9c9b-01c2b8e40fdd	Софьян Буфаль	Sofiane Boufal	Q18637185
+e3648852-fcbb-420b-ac53-5d78f85b8974	Акор Адамс	Akor Adams	Q62059870
+c38f3096-b412-4b95-abaf-13a6f2b28138	Жуан Жезус	Juan Jesus	Q454910
+e98acfe9-ebd7-47b8-a19a-2fadab8964c9	Ethan Kohler	Ethan Kohler	Q120359865
+55b7be49-45ce-419f-9184-7c6dfd0531d5	Лука Лангони	Luca Langoni	Q113256510
+1e4c8a08-3715-4ebf-baf9-c7b15b21bb37	Lucas Lavallée	Lucas Lavallée	Q120970447
+cd9fd66f-4779-42dd-80fa-818c63f43f34	Алессандро Лонгони	Alessandro Longoni	Q126325871
+dce2d0d2-2dcf-4d20-8345-21a757e6d2fc	Ренато Марин	Renato Marin	Q130545775
+3493ab93-bc6c-4a38-9dd4-3d903670ee2a	Науфель аль-Ханнаш	Naoufel El Hannach	Q131717489
+7a1a368a-654b-48c9-9944-9726f98b2a8c	Халил Айяри	Khalil Ayari	Q134711363
+de301e2b-ea69-48f6-9e79-809a9497f867	Кентен Нджанту	Quentin Ndjantou	Q136388359
+1a841478-7118-41d6-8566-856d36c7e669	Джейди Гассама	Djeidi Gassama	Q112033023
+33d08506-1ea3-4ba3-8af6-1ef9234a2eb3	Мика Годтс	Mika Godts	Q113515004
+25f64dfc-c4bb-4cbb-9705-3271b1b06701	Дро Фернандес		Q135482672
+88850e3b-3f80-4c83-b0b6-af3d602cabbe	Анасс Салах-Эддине	Anass Salah-Eddine	Q65131685
+799bd069-ba36-4a4d-a5fd-44b87122edcb	Сантьяго Кастро	Santiago Castro	Q108114747
+f714795c-aa7d-4242-80fc-d3bab9bee8b3	Serignesaliou Diop	Serignesaliou Diop	Q123376800
+8714dbe3-15d4-4084-920e-33dac5afe243	Rio Tadokoro	Rio Tadokoro	Q133042960
+d5fe556f-d222-45b4-b9b7-b74a43b4ec8b	Kaito Matsuzawa	Kaito Matsuzawa	Q123405516
+566109ac-d8d8-4814-b8fd-60f0a2c9ff98	Malcolmtsuyoshi Moyo	Malcolmtsuyoshi Moyo	Q124624626
+8342d615-e5c0-477c-8c33-bab8787766db	Маркос Гильерме Де Алмейда Сантос Матос	Marcos Guilherme	Q16731977
+37af1594-9f6d-4820-9f92-ec25a904cd41	Дмитрий Радиковский	Dmitriy Radikovskiy	Q125066371
+65786f50-e8de-47dc-926c-d21a7d449d5b	Богдан Цыбров	Bogdan Tsybrov	Q138781658
+601c63ae-1855-46b9-b119-e013b655d0a3	Александр Французов	Aliaksandr Francuzaŭ	Q111316253
+1810ab12-f34f-4268-93de-9d94d0ac2583	Арсений Агеев	Arsienij Ahiejeŭ	Q123460891
+1fa2c353-c4da-4f7f-a728-4773d8b4a11e	Хуан Сфорса	Juan Sforza	Q71735316
+a3548a6d-4df7-45bd-bd7a-d8e03943c080	Нуну Морейра	Nuno Moreira	Q108532924
+4cb3fbd8-b90a-4284-9547-b0439bdabf7a	Бенхамин Гарре	Benjamín Garré	Q42227698
+03715b61-3345-403b-82a1-189338be4ad6	Николас Гарсия	Omar Govea	Q18224481
+b1d6113c-2c4c-458a-94ed-3f14f47e9ab3	Eyüp Değirmenci	Eyüp Değirmenci	Q136089822
+b6182318-b269-4906-9c8a-a6181a633041	Kerem Fidan	Kerem Fidan	Q136089823
+b3b5deeb-efaf-4197-b203-0757d75803ec	Efe Yiğit Üstün	Efe Yiğit Üstün	Q136089821
+e1fa447f-4256-43c8-ab40-5cf44d9fbfc6	Tahsin Bülbül	Tahsin Bülbül	Q136089824
+96f4ec98-72c0-42ef-a3bd-ad6c4c1af389	Muhammet Talha Akyüz	Muhammet Talha Akyüz	Q136306443
+3206a4cc-c928-4603-adc9-272c920506d3	Ali Badra Diabate	Ali Badra Diabate	Q137705439
+a2637c28-f5f5-41b8-96fb-040a80c5c62e	Saikuba Jarju	Saikuba Jarju	Q137705440
+0d4569d9-b8f2-4c22-89fe-e071448cd96c	Любомир Сатка	Ľubomír Šatka	Q17505907
+12832f11-5d49-45fb-b69d-9ac84ccda26e	Лорис Муйоколо	Loris Mouyokolo	Q104214604
+37fc49a4-1f6e-41b5-9bea-bfa479dab090	Ивон Мвого	Yvon Mvogo	Q16236380
+cf8f4d83-2e42-4dd1-b212-d356eaeb02a4	Dembo Sylla	Dembo Sylla	Q115677993
+982de3db-b5c9-4d62-8fbf-fbf6a395bd2e	Монтассар Тальби	Montassar Talbi	Q30118244
+08df4bd4-e5f7-4f5c-ba64-92921205d4ff	Адем Сипич	Adem Sipić	Q125029058
+420bea40-9055-4e94-81ed-49a2010fee30	Энди Нахар	Andy Najar	Q526854
+ed7145fb-49e3-4e77-8dd1-bf44d7d90fbe	Шак Мур	Shaq Moore	Q20902179
+43a4ad2c-abfe-4118-b4c1-a1f6f50d6eac	Зейвиер Вальдес	Xavier Valdez	Q111893313
+27f8f109-cc21-43c3-b100-6ef0fed6d8ab	Antonio Carlos	Antonio Carlos	Q4776503
+2a030024-6f83-4952-ab03-aea1a73b23fb	Дэниел Стерес	Daniel Steres	Q15043216
+164b9303-ed1e-4566-8d0d-677508b11d91	Эндрю Тарбелл	Andrew Tarbell	Q26405233
+2bcb1385-c074-41e3-b4cd-96a4b8369b03	Джек Макглинн	Jack McGlynn	Q87365909
+6c185618-ca81-4a86-bed7-c8598f7c3d65	Spreen	Spreen	Q112135922
+ddf2891f-6fbf-4893-bc2e-f777677b5e17	Армандо Иццо	Armando Izzo	Q16234654
+c1211791-0588-475e-b772-87552e532bef	Андреа Кольпани	Andrea Colpani	Q64031831
+f46f4d58-c469-4258-af81-fd38e3cd5529	Маттео Пессина	Matteo Pessina	Q21622362
+c9f9af5b-8717-42b5-94a3-6fca26d294ad	Эдуардо Сальвио	Eduardo Salvio	Q367644
+a96d9421-489b-4464-ba7c-993c910d632c	Виллиан Аран	Willian Arão	Q2035459
+3a296ae2-c284-4ae5-a77d-a0fb4d82d798	Аске Адельгор	Aske Adelgaard	Q113710068
+75854649-0c38-48b6-9673-c48b4b3c60b4	Эрик Флатакер	Erik Hovden Flataker	Q112123592
+c7e8eea1-04f4-43b1-b810-8b6d1b5788a9	Tino Jukić	Tino Jukić	Q139268857
+44478b2e-fb46-405f-b564-43cea9f78160	Роббин Вейенберг	Robbin Weijenberg	Q129644996
+a6714163-3a62-473f-b29f-7b4b6fbb05de	Дин Джеймс	Dean James	Q101458735
+d8479507-fdda-4c73-bb0b-5ad63a342928	Виллюм Тор Виллюмсон	Willum Þór Willumsson	Q57243164
+96500ece-2131-40f4-b0ac-5aadf4c82d30	Хоан Гарсия	Joan Garcia	Q110258306
+86235756-2322-4c31-832c-7cc019500d3a	Андрес Куэнка	Andrés Cuenca	Q123186203
+40217cb9-19a6-4fc4-aaa9-510c4867ecc8	Хави Эспарт	Xavi Espart	Q136221128
+b9e2d162-f658-4f0b-8508-2f90ec385f6e	Тони Фернандес	Toni Fernández	Q128214524
+93733d0c-ae04-46d5-b8ed-aa86f3bceae3	Доминик Ливакович	Dominik Livaković	Q18207229
+4729731b-d845-4106-8520-07dbea2509ac	Руни Барджи	Roony Bardghji	Q109659531
+de4054a4-d100-4c11-9d88-487585ace55d	Катарина Макариу	Catarina Macario	Q60452465
+dfb27819-0efe-4d2f-a000-6553b00e8d3e	Ромуло Кардозо	Rômulo José Cardoso da Cruz	Q110970778
+06c0b0c6-c273-44ff-9564-3bdb5e65a14e	Patrik Tørset Johnsen	Patrik Tørset Johnsen	Q135792471
+f853e0d4-4e48-42cb-b0b8-0cccbf957a52	Орьян Ниланд	Ørjan Nyland	Q869214
+75db6ca0-615e-4900-b990-4d98b48f52ea	Кристофер Ленц	Christopher Lenz	Q27663045
+5f27de77-acc4-43bb-a0d3-53fd2117bdb3	Нейл Эль-Айнауи	Neil El Aynaoui	Q107745867
+af09cd18-ed28-4352-aae7-f32d3382e120	Николас Зайвальд	Nicolas Seiwald	Q64010197
+8930f081-6150-4821-8db3-9f87afedc896	Джейк О’Брайен	Jake O'Brien	Q110565461
+42cde87b-fb63-4baa-81bc-93ed193acbb8	Ноам Камара	Noham Kamara	Q134311556
+e9edb0e9-a621-4af4-8844-09dc5c0e0b57	Алехандро Гомес Родригес	Alejandro Gomes	Q130218534
+0f3920d2-79cf-4290-b68a-aa8ca08cc6bd	Павел Шульц	Pavel Sulc	Q60791524
+237be908-935d-4f9d-a290-aeea96e900a0	Таннер Тессманн	Tanner Tessmann	Q64009852
+eae17524-8c76-4496-b7c2-7e11e200e226	Фернандо Франсиско Режес	Fernando Reges	Q973416
+837f7d04-f579-45da-bb8f-5269c1cb35f8	Антонио Санабрия	Antonio Sanabria	Q10856523
+12ca1013-83c9-4419-8c82-9fc9ce475bfc	Весли Мораэс Феррейра да Силва	Wesley	Q20716703
+f4c3f868-8b1d-4287-8cd3-db3f84b08b71	Anthony Markanich	Anthony Markanich	Q112117689
+a435229b-d72a-4588-a807-6eb95999f327	Лукас Херрингтон	Lucas Herrington	Q133105064
+553c1e5a-ba6a-4b07-b494-b7c8d01538bf	Теодор Ку-Дипьетро	Theodore Ku-DiPietro	Q65922865
+2a0e092b-6630-446d-b501-eaccedf835a7	Мигель Наварро	Miguel Navarro	Q60841905
+de9932e0-57cd-4587-ae0d-9721f0a2ff8b	Абубакар Кейта	Aboubacar Keita	Q63190478
+9f6b9acc-7645-4d65-b95b-8278a7848dcd	Кайл Хиберт	Kyle Hiebert	Q113416429
+a3ca12d5-b095-462a-8ec4-a98d9b41a989	Дэниел Эделмен	Daniel Edelman	Q97585866
+4344aa13-5a58-4bf2-ba5d-95f86e3d76f6	Эйзиел Джексон	Aziel Jackson	Q108527714
+6694f08d-e4e0-4e71-a402-2b94154899e6	Reiju Tsuruno	Reiju Tsuruno	Q118696510
+187e025e-61b6-438b-8aa0-9e25617f4024	Masato Shigemi	Masato Shigemi	Q118696704
+cf02a2ae-81dd-4c6a-a51e-080730f3f479	Shosei Usui	Shosei Usui	Q123504448
+ce9079a2-18ae-4405-b7a6-31d33a7a5a70	Kazuaki Suganuma	Kazuaki Suganuma	Q123516788
+9b53d402-8216-4230-8af4-7940f458b166	Yu Hashimoto	Yu Hashimoto	Q125770475
+f5c522ab-c1f1-47a6-b5e1-77e2053c34d9	Ёсукэ Идэгути	Yōsuke Ideguchi	Q16264162
+8c5faa32-6067-4da0-9af9-5a82ade28f01	Натан Гассама	Nathan Gassama	Q121630521
+88904eef-4e9d-4bca-85c7-53792ba5bef2	Алекс Фернандес	Alex Nascimento Fernandes	Q116621512
+a15acf87-7a29-4b4a-b515-f6a81d5019ab	Максим Артемчук	Maksim Artemchuk	Q33313466
+b5f41d17-dbbf-4d34-9934-66aac22cc6b5	Йере Уронен	Jere Uronen	Q378667
+03cd4a24-1d62-4bdc-a4b5-63f686d8baf6	Брехт Деягере	Brecht Dejaegere	Q1858098
+89138594-c49b-48da-a534-677cd6b2216f	Родольфо Алоко	Rodolfo Aloko	Q136108709
+cc424739-7ed8-40af-951c-311c679f81ee	Билл Туилома	Bill Tuiloma	Q5728588
+4d80cc0e-df51-4fd7-baf6-5ff2a3e417ff	Хосеф Мора	Joseph Mora	Q20744389
+f9a2fa4c-0a4c-4d91-a411-4e94c9303d02	Ryuta Takahashi	Ryuta Takahashi	Q117746373
+108fd3de-4211-4dd2-8b2e-1f6bff5b1f52	Aolin Zhang	Aolin Zhang	Q124433766
+3e4160b7-28bd-4161-918b-efb23de43c75	Rin Mito	Rin Mito	Q124656604
+4251a2d4-b13a-4ffb-bd1c-ee91f8c71466	Мусаси Судзуки	Musashi Suzuki	Q6940160
+563c27f9-177a-4530-9352-6dbeaab54c93	Иссам Джебали	Issam Jebali	Q2375716
+5a21265f-deb7-4bf9-857b-15d890581b1f	Квон Гён Вон	Kwon Kyung-won	Q15622824
+b0b23628-2ed4-4fd2-8d45-e930be5db70d	Тахиэль Хименес	Tahiel Jiménez	Q123438489
+7e768f82-eadc-4134-9e89-39df065b1bd6	Стефано Каррильо	Stephano Carrillo	Q123458331
+f4af0ed0-b380-4c5a-adc1-e4ff8c164e5b	Бруно Амионе	Bruno Amione	Q65154083
+e4c00ef1-3ff1-4697-b3f4-f8b849f7e3ac	Shea Pita	Shea Pita	Q132797313
+cd6115f7-d237-4369-96e1-3e7f2513e548	Тьерно Барри	Thierno Barry	Q116860945
+58111eaa-5afc-440e-ade2-383b612fc402	Mohammad Mahmoud	Mohammad Mahmoud	Q134547208
+4ac67dfc-28b0-4064-a1b4-4bc1494098bd	Luca Sirch	Luca Sirch	Q107035469
+0da84151-ce70-49ad-a68d-5aaaa9aecbf6	Томас Маркес	Tommy Marqués	Q135101604
+a01c02e4-b6cc-4cfb-be69-735f8581f6be	Bartłomiej Wdowik	Bartłomiej Wdowik	Q87457865
+7a07ab02-9ead-4061-b489-17cc43891bbb	Исмаэль Гарби	Ismaël Gharbi	Q107746612
+27e389a9-22cf-451c-a4b0-3f09a45283c8	Sergio Hernández	Sergio Hernández	Q135470514
+7033c3e5-0122-47d7-84aa-99e42ce64e11	Хавьер Эдуардо Лопес	Javier Eduardo López	Q20641131
+94a9ac4a-62d2-49d1-8551-354d0eef8acc	Сергей Макаров	Sergei Makarov	Q15071497
+7edb538a-d64a-4bb2-85db-d4abd7f646d7	Неманья Чович	Nemanja Čović	Q6990966
+0f83e9ad-6c68-4ad0-a712-81588ef9289a	Терем Моффи	Terem Moffi	Q65261290
+f2d1c8c1-2140-4128-aee6-900b2ac1507b	Марио Вушкович	Mario Vušković	Q73400559
+9957624d-d142-474a-a86e-15562a31b82b	Альберт Грёнбэк	Albert Grønbæk	Q98479427
+963c0d69-da20-46db-b1df-bfd5de1b7ec4	Миро Мухайм	Miro Muheim	Q49167084
+bf984b43-1790-4331-8fc6-1ed1fe926bb7	Сандер Тангвик	Sander Tangvik	Q105754161
+aa66a1dd-36e2-403a-a77c-5c24a5e8cc93	Андерсон Хулио	Anderson Julio	Q50808672
+97a53747-3c1f-4a02-88ad-10817c100f59	Бернард Камунго	Bernard Kamungo	Q106616389
+d009389c-0053-40ba-afeb-60912c3d1adb	Мартен Пас	Maarten Paes	Q56257847
+9a673e79-cdaa-4110-9798-648da7720f0c	Энес Сали	Enes Sali	Q108045832
+9bae73cc-73ac-4a3f-a5a0-7f87aca190c4	Philomon Baffour	Philomon Baffour	Q105550905
+319aef5b-428b-4db4-8e1d-69222bdb2153	Федерико Виньяс	Federico Viñas	Q62594816
+0eb21888-ee38-404a-a0e2-d57f287eb5a6	Miguel Ángel Rubio Lestán	Miguel Ángel Rubio Lestán	Q52735804
+8e9bc6f5-5184-4b68-8745-7c64bc0d8308	Pablo Ramón Parra	Pablo Ramón Parra	Q58100368
+5989d044-ae56-4cdc-a4b0-14a1c9f4ccd0	Хосе Грагера	José Gragera Amado	Q64748380
+c451e004-067b-4a02-b408-addcad3b2618	Roger Hinojo	Roger Hinojo	Q134285398
+b8b1ee23-7fb7-4c53-9bd4-3e89a892327e	Marcos Fernández	Marcos Fernández	Q135089855
+3523b254-886f-49ba-ad4a-7572158d0a3a	Хосе Салинас	José Salinas	Q104889354
+84ce3de8-d60c-414c-b4b3-3ed416328c47	Omar Sadik	Omar Sadik	Q123699497
+6cec15da-79d9-4aec-a53f-3d5960bb63c0	Клеменс Ридель	Clemens Riedel	Q107633850
+e8bbc3b0-42af-4f9f-9164-5e166c6225de	Роберто Фернандес	Roberto Fernández Jaén	Q108120357
+f4a68178-6d43-4e44-a909-3b688ce12986	Рубен Санчес	Rubén Sánchez	Q109282703
+99927a46-8ce6-4de9-bb62-2653654571c6	Рамон Терратс	Ramón Terrats	Q101156112
+4331ba62-df65-4566-8920-c4065422c3db	Francisco Javier Hernández Coarasa	Francisco Javier Hernández Coarasa	Q130235399
+1dbedffe-6abd-4b80-b02a-6f445d267e12	Габриэл Москардо	Gabriel Moscardo	Q120681423
+e50a8eae-1aca-4258-835e-870e81c0205c	Карлос Ромеро	Carlos Romero	Q113653321
+9d5be246-96bd-4ab8-b242-e0549c6f640e	Justin Smith	Justin Smith	Q113429986
+2b88d1e6-af3a-4f4a-9bee-be3de5e3d119	Hugo Pérez	Hugo Pérez	Q114645552
+b1e43697-c5a3-42ed-ab81-e205854e8763	Пере Милья Пенья	Pere Milla Peña	Q19664487
+68d4945a-4a92-43d6-a4c0-918414582755	Лука Колеошо	Luca Koleosho	Q112130343
+79c9ddbb-8327-45ab-90e8-a6e3bbdf1d02	Шарль Пикель	Charles Pickel	Q24256738
+66013bd8-261a-41a0-bc54-47627c6800b2	Tyrhys Dolan	Tyrhys Dolan	Q98754851
+6b7aaf41-14ce-4677-bc07-aefa0dc13085	Ian Forns	Ian Forns	Q124215668
+1c3ab18f-77a0-4bad-b7a6-cbdb6a622516	Rafel Bauzà	Rafel Bauzà	Q125930120
+bc501c21-c23f-43cf-8397-a7df823add3f	Энрике Гарсия Мартинес	Enrique García Martínez	Q1748315
+2aa03b62-67f4-49a8-973c-0ac77c6f09ce	Antoniu Roca	Antoniu Roca	Q122426118
+5239ca83-16c0-459a-a00d-c5a5758a2be6	Унаи Нуньес	Unai Núñez	Q37506695
+5c2d8411-d04e-497b-b3ac-7ff909650b8b	Андони Горосабель	Andoni Gorosabel	Q40958022
+666bfc94-137d-4581-90bf-188204cb0598	Эду Экспосито	Edu Expósito	Q29855603
+4b9968d2-385f-4446-876c-0a2f5ab38d1c	Джек Портер	Jack Porter	Q130407434
+5176ae4c-5dfb-40fa-b8f7-1c3654201838	Макс Дауман	Max Dowman	Q130442747
+aa50e41d-464e-4ce3-9411-5dbb79db3116	Тарик Мухаремович	Tarik Muharemović	Q106620882
+153a80ac-341f-4ead-aaf9-296b72076fcb	Лейф Дэвис	Leif Davis	Q60194671
+5e258cec-a524-44c6-ab3c-844eb434fa65	Синнре Валле Эгели	Sindre Walle Egeli	Q116464263
+0a9b76c1-10ef-4afd-a6c4-1233c4d92956	Anis Mehmeti	Anis Mehmeti	Q101310788
+bcc8d984-0c2d-46c8-becf-fe7b891499c7	Дейн Скарлетт	Dane Scarlett	Q102362241
+b0bd378a-f250-4d25-9c64-d0ce4af80e4e	Али Аль-Хамади	Ali Al-Hamadi	Q80661874
+88ba29ee-8bc7-4ad5-92e8-f26c0999e180	Дайдзэн Маэда	Daizen Maeda	Q27990906
+6eff4ceb-bacd-43ce-a752-c9005bdac3f5	Генесис Антви	Genesis Antwi	Q133273246
+703adcb4-5a59-4f2b-9ae3-3870e2637c2f	Марко Палестра	Marco Palestra	Q123825412
+37fc40d8-e5e1-4edb-b175-f3e681a0a137	Кейлеб Уайли	Caleb Wiley	Q97158493
+5d316bb0-0be3-4211-8eaa-1dd8633220e6	Майк Пендерс	Mike Penders	Q113515002
+740c64a0-7b57-48b6-87ac-216c3a9092dd	Пеп Чаваррия	Pep Chavarría	Q96040600
+cf76d8d4-0324-4eb6-bbb9-f089bd2de681	Райан Кавума-Маккуин	Ryan Kavuma-McQueen	Q136678018
+47078895-12c2-449b-bc6f-f4d1e02e1da9	Дэви Классен	Davy Klaassen	Q129101
+f1db5e48-1b88-494a-8aa8-4abb94061e93	Хофре Торрентс	Jofre Torrents	Q133876886
+583748ad-d3ca-4815-a85c-eb6c4b87b62c	Рауль Моро	Raúl Moro	Q97573236
+7ec57d8d-518b-4c6d-80a8-6b84526d8036	Каспер Дольберг	Kasper Dolberg	Q19973862
+fdbea60b-a235-4634-8586-23d5a6bee723	Виктор Цыганков	Viktor Tsyhankov	Q26267167
+8ff91d46-779a-4a2c-b867-cf29566c2e2e	Мичел	Miguel Ángel Sánchez Muñoz	Q2637295
+cfb035ef-c3f6-4b73-9821-7457ad5d9e21	Маркос Леонардо	Marcos Leonardo	Q98534760
+ab719f69-e59a-47e4-bfe8-2a2ce9561c48	Максимилиан Ибрагимович	Maximilian Ibrahimović	Q127607065
+fb41e69f-892a-4e5b-8734-33d497933e91	Джей Пи Галван	JP Galvão	Q116432772
+7bd156f3-cf64-479b-a5cf-a63c62263805	Медина Кристиан	Cristian Medina	Q85713528
+0ab9f137-9048-4921-b8ae-a929cfbb53a4	Йони Гонсалес	Yony González	Q19968627
+1071a667-1ecf-45ab-97fa-ecd977edf726	Лусиано Акоста	Luciano Acosta	Q15696665
+dfaab245-e1cd-4721-b8cb-894812652d1d	Рубен Лескано	Rubén Lezcano	Q124805566
+1b75db2e-d3a7-4ad3-adb4-962d39e9e13a	Чади Риад	Chadi Riad	Q104784108
+b2983968-b497-4fb0-9adb-92b8deb9ee49	Фран Вьейтес	Fran Vieites	Q98998042
+b4930ae2-1a6b-457e-bf52-2d3a3729edec	Натан Бернардо де Соуза	Natan Bernardo de Souza	Q99738875
+11c4258d-6d79-45d3-a1cc-7aa642e6c334	Хесус Родригес Карабальо	Jesús Rodríguez Caraballo	Q128809546
+51140671-3227-4a31-86cb-a3817a10e31f	Икер Лосада	Iker Losada	Q66499365
+f102f1f1-7ad6-4a50-b345-0f43543a911e	Алекс Сола	Alex Sola	Q61746657
+0a3faa5a-fe8b-4579-ae12-90e8cf4805d1	Борха Майораль	Borja Mayoral	Q18649709
+ff9de1fe-554f-4a1a-b520-af9ca6dfbf1a	Бертуг Йылдырым	Bertuğ Yıldırım	Q108304158
+d58139e0-21fb-4e02-b1c2-da142ad08612	Велько Бирманчевич	Veljko Birmančević	Q23762817
+c9329845-1594-4bef-90b3-70e9e843444e	Франсиско Фемения	Kiko Femenía	Q2269948
+56a5612f-108a-4867-bb86-8151eaaf88da	Кевин Леонардо Мьер	Kevin Mier	Q60617604
+5628246d-14e4-42f3-9c96-5a6530f3690c	Альваро Нуньес	Álvaro Núñez	Q106878319
+e7155dd1-8a88-41ba-ab1b-851cde46f83c	Мигель Родригес Видаль	Miguel Rodríguez Vidal	Q100144493
+02b6a99e-27f3-4dd7-bc0b-2d9331757453	Матиас Весино	Matías Vecino	Q2053358
+273582cd-96b9-4148-86fd-09288853b51d	Карлес Перес	Carles Pérez	Q22082452
+440e7c6f-0bdf-423b-9590-ad66eef53bc8	Жаилсон Маркес Сикейра	Jailson	Q28145562
+ee8412dd-5fb7-46cc-8b9b-0f22472432f7	Alejandro Cichero Terrero	Alejandro Cichero Terrero	Q123436877
+c96fb042-c861-422a-92b1-663c386ded0c	Роберто Инсинье	Roberto Insigne	Q861549
+38037eb6-5c31-4ab4-a5a3-67ce08ebbcef	Patrizio Masini	Patrizio Masini	Q108691113
+4761fc04-daa0-442c-b9ff-3715c7f46141	Даниэл Бырлиджа	Daniel Bîrligea	Q106542058
+8f24d8b4-483e-4e5f-aa2e-1c455ea397e2	Gabriele Calvani	Gabriele Calvani	Q137598926
+005d0d3d-6c84-4003-872d-413431c543db	Романо Шмид	Romano Schmid	Q30080273
+4c7266c7-f8d4-402b-9fd6-167a75615f7a	Мароан Саннади	Maroan Sannadi	Q123439972
+3f4064ee-17e1-4548-ae99-34f16a80f887	Роберт Наварро	Robert Navarro	Q60050053
+af886fe7-f408-4e62-b7f5-c4d46fb2b077	Elijah Gift	Elijah Gift	Q118724991
+67adee02-8b60-4012-a09b-ba6f0d8e22ef	Хесус Аресо	Jesús Areso	Q64006699
+8b8dec9a-aad4-4c66-b45a-9d44ee101522	Eder García	Eder García	Q132462781
+7e0f6049-1992-4eea-a0ef-943e79bb7ce7	Hugo Rincón	Hugo Rincón	Q107297831
+de6ac4c2-f502-47e9-afd1-3f926cc74a14	Igor Oyono	Igor Oyono	Q123463830
+051c9424-aa6f-43d5-85c2-0c7145df2d82	Микель Хаурегисар Альбонига	Mikel Jauregizar	Q123698330
+20e2507c-4b41-49a6-9e3e-327a3ea49949	Асьер Йерро	Asier Hierro	Q123738735
+9d095803-23b4-4435-8153-54daa8b60e3c	Пейо Каналес	Peio Canales	Q123825008
+3034a8dd-a63f-4d2a-9ad5-5966237de95e	Айтор Паредес	Aitor Paredes	Q100386793
+e45a5f43-1881-48e6-907a-6f95ca0e9745	Беньят Прадос	Beñat Prados	Q106694910
+294a24de-0208-41a3-9dd4-8acd0c8da4fb	Иньиго Руис де Галаррета	Iñigo Ruiz de Galarreta	Q3751255
+9efe3a68-d1c8-4cec-b2dc-69c5ac8c7376	Ander Ezpeleta	Ander Ezpeleta	Q129655662
+c808c737-3102-4293-9021-80561e2dd1cb	Айнгеру Олабаррьета	Aingeru Olabarrieta	Q121364134
+9cf7f866-cb3d-43e7-9040-fa20bf89b581	Йоханеко Луи-Жан	Johaneko Louis-Jean	Q110395360
+c8ee3d84-031d-40b5-90b4-3efd8e32cd18	Альваро Джало	Álvaro Djaló	Q113688253
+f203bb6b-1b82-41ca-b042-77795a60360f	Unai Egiluz	Unai Egiluz	Q114627806
+9e564c43-1427-4605-aa59-f41e28f36217	Beñat Gerenabarrena	Beñat Gerenabarrena	Q112159292
+cf3bfd7e-f342-461c-9cad-c5dd8c9decc7	Алехандро Рего	Alejandro Rego	Q114628070
+0065eb7b-b689-48f8-9efd-d8b33b2bb7ba	Горка Гурусета	Gorka Guruzeta	Q22004701
+5bc75048-a3da-4caa-b763-65934044cbbc	Ane Elexpuru Añorga	Ane Elexpuru Añorga	Q98091167
+1607a589-caed-4e6a-9583-cdd1fc5a8640	Christian Imga	Christian Imga	Q136481124
+55707535-de77-4df2-b996-9f0f7c9ea136	Селтон Санчес	Selton Sánchez	Q136718467
+653865d2-d68f-4c3a-b22f-ae558fb58ad5	Teppei Oka	Teppei Oka	Q64747468
+0cc6c140-d5fa-4920-8558-a8f1a953225e	Soma Anzai	Soma Anzai	Q118696949
+e07cff7f-0f47-473a-b25b-632c854bc0d2	Hisatoshi Nishido	Hisatoshi Nishido	Q116936300
+a9e9cfc8-2e20-4697-a1e2-9184bf1c1338	Wataru Goto	Wataru Goto	Q123469630
+141fb10a-d15e-4656-bc03-d2c97e8a6e8f	Jája Silva	Jája Silva	Q108121720
+8594e0e7-ebef-4e9b-b0e2-afa46ea74afc	Baek In-hwan	Baek In-hwan	Q130332960
+a25aa14e-4cab-4106-94bd-fef05f0967c0	Shuto Nagano	Shuto Nagano	Q130469975
+c7d3bc58-2ff0-42a9-9ada-bc233d21158a	Taiyo Yamaguchi	Taiyo Yamaguchi	Q130470196
+8734f52d-0fae-494b-bbb0-9fce07f92645	Тэрухито Накагава	Teruhito Nakagawa	Q21177147
+866eba96-f23e-40b4-b299-258951cc7d84	Masataka Kobayashi	Masataka Kobayashi	Q124391138
+9af7877a-e907-4ef5-af72-ab4474ba9440	Kaede Suzuki	Kaede Suzuki	Q137741581
+f0698d15-c00c-4705-94c4-559e9fc46503	Джон Адольфо Ариас	Jhon Arias	Q65378670
+c63e2e39-fb6f-4fe0-a822-f4317f1828c3	Рикельме Филлипи	Riquelme Fillipi	Q119152074
+3e5ded37-f849-4c6a-b84b-86e93ad695f5	Duda Santos	Duda Santos	Q97737798
+aa860206-de37-48e6-9ee1-a8898902db51	Рамон Соса	Ramón Sosa	Q110160871
+859befee-60d1-4ec2-9148-4eecdf95e8f7	Juzo Ura	Juzo Ura	Q118696738
+20226621-c2d6-43a5-86af-07e2bf5a7f6b	Shogo Terasaka	Shogo Terasaka	Q118697229
+e5a4cfd5-acaa-4698-a6e9-567227f7d081	Сюто Адати	Shuto Adachi	Q118696737
+a19008d1-a93a-4e86-a786-27b579f94395	Richard Monday Ubong	Richard Monday Ubong	Q132432528
+19902aaa-0d83-4cfb-a1b8-f702784aa425	Сёхэи Такахаси	Shohei Takahashi	Q7500123
+b568c97b-b789-437e-810f-74ae3e35fd38	Shioki Takayama	Shioki Takayama	Q124434115
+40619e8e-d2b2-4f22-a30f-57539115688c	Юто Мацунаганэ	Yuto Matsunagane	Q118697240
+91b1b90e-f239-4d84-951d-0bf487b3e943	Тоя Мёган	Toya Myogan	Q118697241
+33a63d44-d8ab-4343-9fc9-2f405c2be029	Hinata Yamauchi	Hinata Yamauchi	Q123566941
+9112f9c3-07f2-4a88-ad83-9a2c961b4d8c	Чанатхип Сонгкрасин	Chanathip Songkrasin	Q3196760
+ceb11cd3-5130-40e2-9ece-190e0e50ccac	Lee Keun-hyeong	Lee Keun-hyeong	Q130333046
+32d96e73-bfe0-4f45-9356-d73bbd60648c	Юто Одзэки	Yuto Ozeki	Q121355233
+609af287-91f5-4b45-976e-be305bf31a34	Ryota Kamihashi	Ryota Kamihashi	Q136337329
+94b176a6-c598-48bc-9503-a4a3b0a8fc8d	Синносукэ Киносита	Shinnosuke Kinoshita	Q118696291
+261d1fc6-4c22-43b6-b7f3-d2b6128d1f50	Kaito Konomi	Kaito Konomi	Q131010445
+5f793127-a651-4df0-b1c0-31f2db044200	Eiji Kubo	Eiji Kubo	Q128032078
+fb55e496-765c-4d04-a779-742e00941186	Манато Ёсида	Manato Yoshida	Q118696701
+8cf46986-60a2-4ee0-a785-f25c0084c82c	Сэнди Уолш	Sandy Walsh	Q129878
+e3eecd23-4408-4e0a-8a8e-50be73c42b9d	Reno Noguchi	Reno Noguchi	Q130476281
+034d0617-85cf-49a7-abe7-3b173289f2be	Keigo Sakakibara	Keigo Sakakibara	Q97031611
+e6ef5f12-9d00-4490-b119-5d4ea8c1f480	Kohei Mochizuki	Kohei Mochizuki	Q120248300
+35240b5f-7ec3-4118-908e-02b3721b0734	Томас Денг	Thomas Deng	Q21621159
+f39f0887-7bf2-46f9-b9a3-537a7e39bb86	Кэнъю Сугимото	Kenyu Sugimoto	Q2093536
+0501d118-6124-4fb5-bb5f-8b9686219027	Kosei Suwama	Kosei Suwama	Q125450219
+d14e08b9-fc6e-427a-ad4c-e3449bab582f	Kanta Sekitomi	Kanta Sekitomi	Q137908356
+1d0c8324-8076-48e9-bd20-9ab8e141a0cc	Син Миидэра	Shin Miidera	Q140937305
+d81b4617-2bd1-4376-af26-851719b2632d	Тьяго Питарч	Thiago Pitarch	Q135682148
+3dca91c7-fc22-4923-a38e-110cd6b1e21f	Альваро Фернандес	Álvaro Fernández	Q110001765
+dde72e61-80e1-4d10-a9ec-c9ef0b4a61f5	Диего Агуадо	Diego Aguado	Q131416396
+dece7616-53a5-4d6f-ba17-48e8466bdc2f	Рауль Асенсио	Raúl Asencio	Q122583363
+b0ce925d-3bca-4a1f-b12e-3ee9ccc61a9a	Юлен Лобете	Julen Lobete	Q106930365
+ba199bc8-4036-4cfe-b399-b23f99873da3	David Ferreiro	David Ferreiro	Q5233624
+85f54caa-edc3-48d3-9f75-471d8411f55a	Eneko Jauregi	Eneko Jauregi	Q25475867
+2bed7156-fc2c-4b64-8492-d2d00dd8e6bd	Маноло Рейна	Manuel Reina Rodríguez	Q2413592
+f81e1b87-51a2-469b-9032-b025a0213568	Фернандо Калеро	Fernando Calero Villa	Q38681499
+f6290a40-a989-4731-b3ba-53fa75095b15	Лумор Агбеньену	Lumor Agbenyenu	Q28648822
+4b62dd3d-f54b-40f2-bf47-96fe1ac09560	Хон Андер Оласагасти	Jon Ander Olasagasti	Q107035459
+ee9d642f-bf2d-4500-8419-11528c56802a	Мэттью Райан	Mathew Ryan	Q1587689
+8f0940d8-cd98-41c6-8b0c-a199d751a3c6	Петар Ратков	Petar Ratkov	Q110157458
+8e75f9fc-e65a-4f93-b2f9-110925869db3	Георгий Абурджания	Giorgi Aburjania	Q3779845
+fa58a7f7-d22c-4a97-960a-3f3b09ff1404	Хесус Кастильо	Jesús Castillo	Q110321491
+4ab9d5b1-8968-41f5-ae08-56c3855a0019	Jorge Aguirre	Jorge Aguirre	Q110415811
+d2f578a7-0047-4db8-8b96-5fc53be2987f	Luka Tunjić	Luka Tunjić	Q131928248
+e8e5864f-af3c-4e55-98c7-e3e7af4e4159	Гани Бююкхан	Gâni Büyükhan	Q140302938
+f7e6db52-6880-43e6-92bb-7f560cb46a1c	Амин Эль-Уаззани	Amine El Ouazzani	Q108639388
+2e201ac8-2e82-42ca-9adf-7b0756bd49c5	Амин Сбаи	Amine Sbaï	Q114841915
+c0a332c0-99c6-4879-abed-75aa39ef2990	Бранко Ван ден Бомен	Branco van den Boomen	Q2923698

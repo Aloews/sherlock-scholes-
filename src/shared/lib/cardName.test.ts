@@ -67,3 +67,45 @@ describe('the translation fetch can be narrowed safely', () => {
     expect(cardDisplayName(card, 'de')).toBe('Zinedine Zidane');
   });
 });
+
+/**
+ * ИМЯ ИГРОКА — ЛАТИНИЦЕЙ НА ЛЮБОМ ЯЗЫКЕ.
+ *
+ * Пример живой: владелец принял две карточки за дубль, потому что один и тот
+ * же экран показывал «Алексис Вега» и «Alexis Vega». Это РАЗНЫЕ люди
+ * (Викиданные: аргентинец 1993 и мексиканец 1997), и различить их глазами
+ * можно только в одном алфавите.
+ */
+describe('cardDisplayName: игрок пишется латиницей', () => {
+  const vega = { name: 'Алексис Вега', name_en: 'Alexis Vega', category: 'player' };
+
+  it('на русском тоже латиницей', () => {
+    expect(cardDisplayName(vega, 'ru')).toBe('Alexis Vega');
+  });
+
+  it('и на языке с переводами карточек — тоже', () => {
+    const withTr = {
+      ...vega,
+      card_translations: [{ lang: 'es', name: 'Alexis Vega (es)' } as never],
+    };
+    expect(cardDisplayName(withTr, 'es')).toBe('Alexis Vega');
+  });
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: правило обязано бить ТОЛЬКО по игрокам.
+  // Переименовать «Спартак» в «Spartak» на русском экране — не то, о чём
+  // просили, и проверка «игрок латиницей» прошла бы и у такой поломки.
+  it('клуб на русском остаётся русским', () => {
+    const club = { name: 'Спартак', name_en: 'Spartak', category: 'club' };
+    expect(cardDisplayName(club, 'ru')).toBe('Спартак');
+  });
+
+  it('без категории правило молчит — работает прежняя цепочка', () => {
+    expect(cardDisplayName({ name: 'Алексис Вега', name_en: 'Alexis Vega' }, 'ru'))
+      .toBe('Алексис Вега');
+  });
+
+  it('игрок без name_en показывается как есть, а не пустотой', () => {
+    expect(cardDisplayName({ name: 'Алексис Вега', category: 'player' }, 'ru'))
+      .toBe('Алексис Вега');
+  });
+});
