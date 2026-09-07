@@ -1121,7 +1121,32 @@
     "parts_one": "{{count}} опора",
     "parts_few": "{{count}} опоры",
     "parts_many": "{{count}} опор",
-    "parts_other": "{{count}} опоры"
+    "parts_other": "{{count}} опоры",
+    "sort_growth": "Рост стоимости",
+    "sort_caps": "Матчи за сборную",
+    "sort_countries": "В скольких странах играл",
+    "sort_cards": "Жёлтые и красные",
+    "sort_young": "Самые молодые",
+    "continent_all": "Все континенты",
+    "continent": {
+      "europe": "Европа",
+      "south_america": "Южная Америка",
+      "north_america": "Северная Америка",
+      "africa": "Африка",
+      "asia": "Азия"
+    },
+    "caps_one": "{{count}} матч",
+    "caps_few": "{{count}} матча",
+    "caps_many": "{{count}} матчей",
+    "caps_other": "{{count}} матча",
+    "countries_n_one": "{{count}} страна",
+    "countries_n_few": "{{count}} страны",
+    "countries_n_many": "{{count}} стран",
+    "countries_n_other": "{{count}} страны",
+    "cards_n_one": "{{count}} карточка",
+    "cards_n_few": "{{count}} карточки",
+    "cards_n_many": "{{count}} карточек",
+    "cards_n_other": "{{count}} карточки"
   },
   "fixtures": {
     "top_title": "Ближайшие большие матчи"

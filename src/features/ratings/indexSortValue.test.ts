@@ -41,4 +41,27 @@ describe('formatSortValue', () => {
     expect(formatSortValue('index', 90, 'en', t)).toBe('90');
     expect(formatSortValue('rating', 78, 'en', t)).toBe('78');
   });
+
+  // ⚠️ РОСТ — «ВО СКОЛЬКО РАЗ», А НЕ ЕВРО. Без знака умножения «1,8» читается
+  // как сумма, а значит «подорожал в 1,8 раза».
+  it('рост показан множителем', () => {
+    expect(formatSortValue('growth', 1.8, 'en', t)).toBe('×1.8');
+  });
+
+  // ⚠️ «МОЛОДЫЕ» ПРИХОДЯТ ЧИСЛОМ СЕКУНД: сортировать надо по дате, а показывать
+  // секунды нельзя — под «самыми молодыми» человек ждёт год рождения.
+  it('молодые показаны годом рождения, а не числом секунд', () => {
+    const epoch = Date.UTC(2007, 4, 12) / 1000;
+    expect(formatSortValue('young', epoch, 'en', t)).toBe('2007');
+  });
+
+  it('непрочитанная дата — прочерк, а не «1970»', () => {
+    expect(formatSortValue('young', Number.NaN, 'en', t)).toBe('—');
+  });
+
+  it('матчи за сборную, страны и карточки названы своими словами', () => {
+    expect(formatSortValue('caps', 246, 'ru', t)).toBe('index.caps:246');
+    expect(formatSortValue('countries', 8, 'ru', t)).toBe('index.countries_n:8');
+    expect(formatSortValue('cards', 219, 'ru', t)).toBe('index.cards_n:219');
+  });
 });

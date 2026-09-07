@@ -1047,7 +1047,26 @@
     "mentions_one": "{{count}} menção",
     "mentions_other": "{{count}} menções",
     "parts_one": "{{count}} pilar",
-    "parts_other": "{{count}} pilares"
+    "parts_other": "{{count}} pilares",
+    "sort_growth": "Crescimento do valor",
+    "sort_caps": "Jogos pela seleção",
+    "sort_countries": "Países onde jogou",
+    "sort_cards": "Amarelos e vermelhos",
+    "sort_young": "Mais jovens",
+    "continent_all": "Todos os continentes",
+    "continent": {
+      "europe": "Europa",
+      "south_america": "América do Sul",
+      "north_america": "América do Norte",
+      "africa": "África",
+      "asia": "Ásia"
+    },
+    "caps_one": "{{count}} jogo",
+    "caps_other": "{{count}} jogos",
+    "countries_n_one": "{{count}} país",
+    "countries_n_other": "{{count}} países",
+    "cards_n_one": "{{count}} cartão",
+    "cards_n_other": "{{count}} cartões"
   },
   "fixtures": {
     "top_title": "Grandes jogos a seguir"

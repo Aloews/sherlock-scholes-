@@ -1047,7 +1047,26 @@
     "mentions_one": "{{count}} mención",
     "mentions_other": "{{count}} menciones",
     "parts_one": "{{count}} pilar",
-    "parts_other": "{{count}} pilares"
+    "parts_other": "{{count}} pilares",
+    "sort_growth": "Crecimiento del valor",
+    "sort_caps": "Partidos internacionales",
+    "sort_countries": "Países donde jugó",
+    "sort_cards": "Amarillas y rojas",
+    "sort_young": "Los más jóvenes",
+    "continent_all": "Todos los continentes",
+    "continent": {
+      "europe": "Europa",
+      "south_america": "Sudamérica",
+      "north_america": "Norteamérica",
+      "africa": "África",
+      "asia": "Asia"
+    },
+    "caps_one": "{{count}} partido",
+    "caps_other": "{{count}} partidos",
+    "countries_n_one": "{{count}} país",
+    "countries_n_other": "{{count}} países",
+    "cards_n_one": "{{count}} tarjeta",
+    "cards_n_other": "{{count}} tarjetas"
   },
   "fixtures": {
     "top_title": "Próximos grandes partidos"

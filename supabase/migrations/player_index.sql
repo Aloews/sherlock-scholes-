@@ -341,3 +341,40 @@ $$;
 revoke all on function public.player_index_count(text, text, text, text) from public;
 grant execute on function public.player_index_count(text, text, text, text)
   to anon, authenticated, service_role;
+
+
+-- ===========================================================================
+-- ПЯТЬ НОВЫХ ПОКАЗАТЕЛЕЙ И ОТБОР ПО КОНТИНЕНТУ (применено к бою следом).
+--
+-- Владелец: «добавь все новые категории стоимости, просмотры странички в
+-- Википедии и другие новые, не менее важные 5 шт.»; «разбей всё по
+-- континентам, странам, лигам».
+--
+--   growth     — во сколько раз подорожал за 90 дней
+--   caps       — матчи за ГЛАВНУЮ сборную (не сумму по всем: сумма давала
+--                Роналду 259 вместо 246 — юношеские попадали в неё)
+--   countries  — в скольких странах играл (Сёрлот — 8)
+--   cards      — жёлтые и красные за карьеру (Неймар 225, Джака 219)
+--   young      — самые молодые
+--
+-- ⚠️ ВСЕ ПЯТЬ СЧИТАЮТСЯ НОЧЬЮ И ЛЕЖАТ КОЛОНКАМИ в player_level. Чтобы
+-- упорядочить 25 509 карточек по росту стоимости, надо знать рост КАЖДОЙ —
+-- два поиска по истории на карточку при каждом открытии экрана. Ночью это
+-- одна операция, днём — пятьдесят тысяч.
+--
+-- ⚠️ `value_growth` СЕГОДНЯ ПУСТ У ВСЕХ, и это не поломка: история показателей
+-- заведена 06.09.2026, а рост считается за 90 дней. Первые числа появятся,
+-- когда истории станет три месяца. Пустое поле честнее выдуманного.
+-- ===========================================================================
+alter table public.player_level
+  add column if not exists value_growth numeric,
+  add column if not exists caps         integer,
+  add column if not exists countries    integer,
+  add column if not exists foul_cards   integer;
+
+create index if not exists player_level_growth_idx
+  on public.player_level (value_growth desc nulls last);
+
+-- Определения rebuild_player_levels(), player_index() и player_index_count()
+-- в их окончательном виде выгружены из прода отдельным файлом, чтобы этот не
+-- разросся до нечитаемого: см. supabase/migrations/player_index_v2.sql.

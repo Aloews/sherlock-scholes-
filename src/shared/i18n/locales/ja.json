@@ -1012,7 +1012,23 @@
     "minutes_other": "{{count}} 分",
     "goals_other": "{{count}} 得点",
     "mentions_other": "{{count}} 件",
-    "parts_other": "{{count}} 本の柱"
+    "parts_other": "{{count}} 本の柱",
+    "sort_growth": "市場価値の伸び",
+    "sort_caps": "代表出場",
+    "sort_countries": "プレーした国の数",
+    "sort_cards": "イエローとレッド",
+    "sort_young": "最年少",
+    "continent_all": "すべての大陸",
+    "continent": {
+      "europe": "ヨーロッパ",
+      "south_america": "南アメリカ",
+      "north_america": "北アメリカ",
+      "africa": "アフリカ",
+      "asia": "アジア"
+    },
+    "caps_other": "{{count}} 試合",
+    "countries_n_other": "{{count}} か国",
+    "cards_n_other": "{{count}} 枚"
   },
   "fixtures": {
     "top_title": "注目の次戦"

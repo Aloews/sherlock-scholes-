@@ -1047,7 +1047,26 @@
     "mentions_one": "{{count}} mention",
     "mentions_other": "{{count}} mentions",
     "parts_one": "{{count}} pilier",
-    "parts_other": "{{count}} piliers"
+    "parts_other": "{{count}} piliers",
+    "sort_growth": "Progression de la valeur",
+    "sort_caps": "Sélections",
+    "sort_countries": "Pays où il a joué",
+    "sort_cards": "Jaunes et rouges",
+    "sort_young": "Les plus jeunes",
+    "continent_all": "Tous les continents",
+    "continent": {
+      "europe": "Europe",
+      "south_america": "Amérique du Sud",
+      "north_america": "Amérique du Nord",
+      "africa": "Afrique",
+      "asia": "Asie"
+    },
+    "caps_one": "{{count}} sélection",
+    "caps_other": "{{count}} sélections",
+    "countries_n_one": "{{count}} pays",
+    "countries_n_other": "{{count}} pays",
+    "cards_n_one": "{{count}} carton",
+    "cards_n_other": "{{count}} cartons"
   },
   "fixtures": {
     "top_title": "Grands matchs à venir"

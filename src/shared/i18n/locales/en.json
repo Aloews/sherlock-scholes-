@@ -1047,7 +1047,26 @@
     "mentions_one": "{{count}} mention",
     "mentions_other": "{{count}} mentions",
     "parts_one": "{{count}} pillar",
-    "parts_other": "{{count}} pillars"
+    "parts_other": "{{count}} pillars",
+    "sort_growth": "Value growth",
+    "sort_caps": "International caps",
+    "sort_countries": "Countries played in",
+    "sort_cards": "Yellows and reds",
+    "sort_young": "Youngest",
+    "continent_all": "All continents",
+    "continent": {
+      "europe": "Europe",
+      "south_america": "South America",
+      "north_america": "North America",
+      "africa": "Africa",
+      "asia": "Asia"
+    },
+    "caps_one": "{{count}} cap",
+    "caps_other": "{{count}} caps",
+    "countries_n_one": "{{count}} country",
+    "countries_n_other": "{{count}} countries",
+    "cards_n_one": "{{count}} card",
+    "cards_n_other": "{{count}} cards"
   },
   "fixtures": {
     "top_title": "Big matches coming up"

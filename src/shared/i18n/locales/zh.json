@@ -1012,7 +1012,23 @@
     "minutes_other": "{{count}} 分钟",
     "goals_other": "{{count}} 球",
     "mentions_other": "{{count}} 条",
-    "parts_other": "{{count}} 项支柱"
+    "parts_other": "{{count}} 项支柱",
+    "sort_growth": "身价涨幅",
+    "sort_caps": "国家队出场",
+    "sort_countries": "效力过的国家数",
+    "sort_cards": "黄牌与红牌",
+    "sort_young": "最年轻",
+    "continent_all": "所有大洲",
+    "continent": {
+      "europe": "欧洲",
+      "south_america": "南美洲",
+      "north_america": "北美洲",
+      "africa": "非洲",
+      "asia": "亚洲"
+    },
+    "caps_other": "{{count}} 场",
+    "countries_n_other": "{{count}} 国",
+    "cards_n_other": "{{count}} 张"
   },
   "fixtures": {
     "top_title": "即将到来的焦点战"

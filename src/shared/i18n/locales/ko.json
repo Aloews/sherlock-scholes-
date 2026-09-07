@@ -1012,7 +1012,23 @@
     "minutes_other": "{{count}}분",
     "goals_other": "{{count}}골",
     "mentions_other": "{{count}}건",
-    "parts_other": "축 {{count}}개"
+    "parts_other": "축 {{count}}개",
+    "sort_growth": "가치 상승",
+    "sort_caps": "A매치 출전",
+    "sort_countries": "활약한 국가 수",
+    "sort_cards": "경고와 퇴장",
+    "sort_young": "최연소",
+    "continent_all": "모든 대륙",
+    "continent": {
+      "europe": "유럽",
+      "south_america": "남아메리카",
+      "north_america": "북아메리카",
+      "africa": "아프리카",
+      "asia": "아시아"
+    },
+    "caps_other": "{{count}}경기",
+    "countries_n_other": "{{count}}개국",
+    "cards_n_other": "{{count}}장"
   },
   "fixtures": {
     "top_title": "다가오는 빅매치"

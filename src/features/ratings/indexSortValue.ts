@@ -32,6 +32,24 @@ export function formatSortValue(
       return t('index.mentions', { count: Math.round(value) });
     case 'views':
       return n.format(value);
+    case 'caps':
+      return t('index.caps', { count: Math.round(value) });
+    case 'countries':
+      return t('index.countries_n', { count: Math.round(value) });
+    case 'cards':
+      return t('index.cards_n', { count: Math.round(value) });
+    // ⚠️ РОСТ — ЭТО «ВО СКОЛЬКО РАЗ», А НЕ ПРОЦЕНТ И НЕ СУММА. 1.8 значит
+    // «подорожал в 1,8 раза»; написать «1.8» без знака умножения значит
+    // предложить читать это как евро.
+    case 'growth':
+      return `×${new Intl.NumberFormat(lang, { maximumFractionDigits: 2 }).format(value)}`;
+    // ⚠️ «МОЛОДЫЕ» ПРИХОДЯТ ЧИСЛОМ СЕКУНД, А НЕ ВОЗРАСТОМ: сортировать надо по
+    // дате, а показывать секунды нельзя. Год рождения — то, что человек и
+    // ожидает увидеть под «самыми молодыми».
+    case 'young': {
+      const d = new Date(value * 1000);
+      return Number.isNaN(d.getTime()) ? '—' : String(d.getUTCFullYear());
+    }
     // Общий счёт и рейтинг Soccer Wiki — это баллы, а не количество чего-то.
     case 'index':
     case 'rating':
