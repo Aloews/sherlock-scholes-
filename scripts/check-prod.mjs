@@ -897,6 +897,23 @@ async function checkMetricHistory() {
          `${withValue} строк стоимости на ${players} игроков`,
          'ловит возврат к «пишем только тех, у кого число есть»');
 
+  // ⚠️ ПРЕДОХРАНИТЕЛЬ ДОЛЖЕН БЫТЬ СЛЫШЕН, А НЕ ТОЛЬКО СРАБОТАТЬ. Он пропускает
+  // сломавшийся показатель и пишет строку происшествия; раньше он «называл»
+  // его в возвращаемое значение ночного pg_cron, которое не читает никто, и
+  // дыра в истории выглядела как «ничего не менялось». Свежее происшествие
+  // валит проверку — иначе сломанный сборщик снова остался бы незамеченным.
+  const since = new Date(Date.now() - 3 * 86400e3).toISOString().slice(0, 10);
+  const incidents = await fetch(
+    `${url}/rest/v1/metric_snapshot_incident?select=metric,had,got,happened_on` +
+    `&happened_on=gte.${since}`, { headers: auth },
+  ).then((r) => r.json()).catch(() => []);
+  const bad = Array.isArray(incidents) ? incidents : [];
+  record('История показателей: предохранитель молчит', bad.length === 0,
+         bad.length === 0
+           ? 'за трое суток ни один показатель не обрушился'
+           : bad.map((i) => `${i.metric}: было ${i.had}, стало ${i.got} (${i.happened_on})`).join('; '),
+         'ловит сборщик, умерший так, что показатель исчез из истории');
+
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный показатель обязан дать ноль. Не дал
   // — фильтр не работает, и первые две проверки ничего не доказывают.
   const bogus = await count('card_metric_history', 'select=card_id&metric=eq.no_such_metric_zz');

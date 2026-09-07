@@ -200,7 +200,10 @@
       "goals_30d": "Голов за 30 дней",
       "assists_30d": "Передач за 30 дней",
       "news_30d": "Упоминаний в новостях"
-    }
+    },
+    "hl_national": "За {{team}}: {{apps}} матчей, {{goals}} голов",
+    "hl_leagues": "Играл в {{leagues}} лигах, странах: {{countries}}",
+    "hl_born": "Родился {{date}}"
   },
   "profile": {
     "title": "Профиль",

@@ -194,7 +194,10 @@
       "goals_30d": "30日間の得点",
       "assists_30d": "30日間のアシスト",
       "news_30d": "ニュースでの言及"
-    }
+    },
+    "hl_national": "{{team}} 代表: {{apps}} 試合 {{goals}} 得点",
+    "hl_leagues": "{{countries}} か国の {{leagues}} リーグでプレー",
+    "hl_born": "{{date}} 生まれ"
   },
   "profile": {
     "title": "プロフィール",

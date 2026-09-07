@@ -264,3 +264,33 @@ export async function fetchPlayerIndexCount(
   });
   return fromPostgrest<number>(res, `player_index_count(${sort})`);
 }
+
+/** Итоги карьеры одной строкой: клубы, сборная, лиги, страны. */
+export interface CareerTotalsRow {
+  club_apps: number;
+  club_goals: number;
+  club_assists: number;
+  club_minutes: number;
+  club_count: number;
+  season_from: number | null;
+  season_to: number | null;
+  national_apps: number;
+  national_goals: number;
+  national_team: string | null;
+  leagues: number;
+  countries: number;
+}
+
+/**
+ * Итоги карьеры игрока.
+ *
+ * ⚠️ `national_apps` — МАТЧИ ЗА ОДНУ КОМАНДУ, ту, что названа в
+ * `national_team`, а не сумму по всем сборным. Сумма давала Криштиану Роналду
+ * 259 матчей за Португалию: 246 за главную плюс юношеские и олимпийскую.
+ */
+export async function fetchCareerTotals(
+  cardId: string,
+): Promise<LoadState<CareerTotalsRow[]>> {
+  const res = await supabase.rpc('player_career_totals', { p_card_id: cardId });
+  return fromPostgrest<CareerTotalsRow[]>(res, 'player_career_totals');
+}
