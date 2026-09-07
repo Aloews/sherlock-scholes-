@@ -194,7 +194,10 @@
       "goals_30d": "30일간 득점",
       "assists_30d": "30일간 도움",
       "news_30d": "뉴스 언급"
-    }
+    },
+    "hl_national": "{{team}} 대표: {{apps}}경기 {{goals}}골",
+    "hl_leagues": "{{countries}}개국 {{leagues}}개 리그에서 활약",
+    "hl_born": "{{date}} 출생"
   },
   "profile": {
     "title": "프로필",

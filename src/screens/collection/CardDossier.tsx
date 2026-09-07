@@ -11,14 +11,16 @@ import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { formatEur } from '@/shared/lib/money';
+import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
+import { careerHighlight } from '@/shared/lib/careerHighlight';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
 import {
-  fetchCollectedTotals, fetchMetricChanges,
-  type CollectedTotals, type MetricChange,
+  fetchCollectedTotals, fetchMetricChanges, fetchCareerTotals,
+  type CollectedTotals, type MetricChange, type CareerTotalsRow,
 } from '@/features/ratings/ratingsApi';
 import {
   fetchClubOfCard, fetchPlayerLevel, fetchClubsByNames,
@@ -91,6 +93,18 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     return () => { cancelled = true; };
   }, [card.id]);
 
+  // Итоги карьеры: матчи за сборную, число лиг, страны. Из них собирается
+  // ОДНА строка под именем — см. careerHighlight.
+  const [totals, setTotals] = useState<CareerTotalsRow | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setTotals(null);
+    void fetchCareerTotals(card.id).then((r) => {
+      if (!cancelled && r.status === 'ok') setTotals(r.data[0] ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [card.id]);
+
   // Динамика показателей — история изменений, а не сегодняшние числа.
   //
   // ⚠️ ПОКАЗЫВАЕМ ТОЛЬКО ТО, ЧТО ДЕЙСТВИТЕЛЬНО СРАВНИЛОСЬ. Хранятся изменения,
@@ -122,6 +136,20 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   }, [card.id]);
 
   const moved = movedMetrics(changes);
+  const highlight = careerHighlight(totals, card.born_on);
+  // ⚠️ ДАТА ФОРМАТИРУЕТСЯ ЧЕРЕЗ TRY, И ЭТО НЕ ПЕРЕСТРАХОВКА. Intl бросает
+  // RangeError на непрочитанной дате и роняет ВЕСЬ экран в белый лист — так
+  // уже было в FantasyScreen, и разбор этого записан ниже в этом же файле.
+  const bornText = (() => {
+    if (highlight?.kind !== 'born') return null;
+    try {
+      const d = new Date(highlight.date);
+      if (Number.isNaN(d.getTime())) return null;
+      return longDateFormat(lang).format(d);
+    } catch {
+      return null;
+    }
+  })();
 
   const name     = cardDisplayName(card, lang);
   const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
@@ -285,6 +313,24 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             style={{ color: TIER_COLOR[card.tier!] }}
           >
             {tierLabel}
+          </p>
+        )}
+
+        {/* ОДНА строка о человеке — та, что есть: матчи за сборную, иначе
+            число лиг, иначе дата рождения. Владелец: «в карточках стоит
+            писать матчей за сборной или количество лиг, где играл игрок. Если
+            эти данных нет, то дату рождения». Лестница, а не набор: показать
+            всё сразу значит утопить главное. */}
+        {highlight && (
+          <p className="text-center text-brand-muted text-[12px] -mt-2">
+            {highlight.kind === 'national' && t('collection.hl_national', {
+              team: highlight.team, apps: highlight.apps, goals: highlight.goals,
+            })}
+            {highlight.kind === 'leagues' && t('collection.hl_leagues', {
+              leagues: highlight.leagues, countries: highlight.countries,
+            })}
+            {highlight.kind === 'born' && bornText
+              && t('collection.hl_born', { date: bornText })}
           </p>
         )}
 

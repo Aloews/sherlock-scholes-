@@ -196,7 +196,10 @@
       "goals_30d": "Goals in 30 days",
       "assists_30d": "Assists in 30 days",
       "news_30d": "News mentions"
-    }
+    },
+    "hl_national": "For {{team}}: {{apps}} caps, {{goals}} goals",
+    "hl_leagues": "Played in {{leagues}} leagues across {{countries}} countries",
+    "hl_born": "Born {{date}}"
   },
   "profile": {
     "title": "Profile",

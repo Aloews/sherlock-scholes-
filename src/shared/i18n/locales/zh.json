@@ -194,7 +194,10 @@
       "goals_30d": "近 30 天进球",
       "assists_30d": "近 30 天助攻",
       "news_30d": "新闻提及"
-    }
+    },
+    "hl_national": "代表 {{team}}：{{apps}} 场 {{goals}} 球",
+    "hl_leagues": "效力过 {{countries}} 个国家的 {{leagues}} 个联赛",
+    "hl_born": "{{date}} 出生"
   },
   "profile": {
     "title": "个人资料",
