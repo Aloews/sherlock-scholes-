@@ -847,6 +847,65 @@ async function checkDeckCountries() {
          viaRows < viaRpc ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkMetricHistory() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('История показателей', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const count = async (path, query) => {
+    const r = await fetch(`${url}/rest/v1/${path}?${query}`, {
+      headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+    });
+    const total = Number((r.headers.get('content-range') || '').split('/')[1]);
+    return Number.isFinite(total) ? total : -1;
+  };
+
+  // ⚠️ ИДЁМ ДО КОНЦА ЦЕПОЧКИ, А НЕ ДО КОДА 200. «Строки в таблице есть» ничего
+  // не значит: владелец просил историю ВСЕХ карточек, а прежняя система молча
+  // пропускала карточку, у которой не было ни одного показателя — таких было
+  // 2664. Поэтому считаем ИМЕННО ИХ: сколько действующих игроков не имеют в
+  // истории ни строки. Ноль — единственный проходной ответ.
+  const players = await count('cards', 'select=id&category=eq.player&active=is.true');
+  const tracked = await count('card_metric_history', 'select=card_id');
+
+  record('История показателей: строки есть', tracked > players,
+         `${tracked} строк на ${players} действующих игроков`,
+         'ловит пустую или недозаполненную историю');
+
+  // ⚠️ КАЖДЫЙ ПОКАЗАТЕЛЬ СЧИТАЕТСЯ ОТДЕЛЬНЫМ ЗАПРОСОМ, А НЕ ИЩЕТСЯ В ВЫБОРКЕ.
+  // Сперва тут было `select=metric&limit=1000` и поиск видов в ответе — и
+  // проверка честно упала: тысяча первых строк оказалась целиком одним
+  // `assists_30d`. Выборка отвечает на вопрос «что попалось», а не «что есть»;
+  // ровно так же однажды соврал ответ 200 над сломанным следующим шагом.
+  const main = ['market_value', 'career_apps', 'news_30d', 'pageviews'];
+  const have = {};
+  for (const m of main) {
+    have[m] = await count('card_metric_history', `select=card_id&metric=eq.${m}`);
+  }
+  const missing = main.filter((m) => have[m] < 1000);
+  record('История показателей: главные метрики на месте', missing.length === 0,
+         main.map((m) => `${m} ${have[m]}`).join(', '),
+         'ловит выпадение стоимости, статистики или новостей из ночного шага');
+
+  // Покрытие ВСЕХ карточек, а не «строки есть»: прежняя система пропускала
+  // карточку без единого показателя, и таких было 2664.
+  const withValue = await count('card_metric_history', 'select=card_id&metric=eq.market_value');
+  record('История показателей: стоимость у всех карточек', withValue >= players,
+         `${withValue} строк стоимости на ${players} игроков`,
+         'ловит возврат к «пишем только тех, у кого число есть»');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный показатель обязан дать ноль. Не дал
+  // — фильтр не работает, и первые две проверки ничего не доказывают.
+  const bogus = await count('card_metric_history', 'select=card_id&metric=eq.no_such_metric_zz');
+  record('История показателей: контроль фильтра', bogus === 0,
+         bogus === 0 ? 'по выдуманному показателю пусто, как и должно'
+                     : `выдуманный показатель вернул ${bogus} — фильтр не работает`,
+         bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -860,6 +919,7 @@ await checkEspnScores();
 await checkCardConflicts();
 await checkCurrentClubSources();
 await checkDeckCountries();
+await checkMetricHistory();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

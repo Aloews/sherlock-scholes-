@@ -180,7 +180,23 @@
     "fame_world": "Worldwide",
     "value": "Market value",
     "value_source": "Source: {{source}}",
-    "value_source_at": "{{source}}, valued {{date}}"
+    "value_source_at": "{{source}}, valued {{date}}",
+    "dynamics": "Metric changes",
+    "dyn_window": "over 90 days",
+    "dyn_line": "{{was}} → {{now}}",
+    "dyn": {
+      "market_value": "Market value",
+      "pageviews": "Wikipedia page views",
+      "sw_rating": "Soccer Wiki rating",
+      "fame": "Fame",
+      "career_apps": "Career appearances",
+      "career_goals": "Career goals",
+      "career_assists": "Career assists",
+      "career_minutes": "Career minutes",
+      "goals_30d": "Goals in 30 days",
+      "assists_30d": "Assists in 30 days",
+      "news_30d": "News mentions"
+    }
   },
   "profile": {
     "title": "Profile",

@@ -178,7 +178,23 @@
     "fame_world": "전 세계",
     "value": "시장 가치",
     "value_source": "출처: {{source}}",
-    "value_source_at": "{{source}}, {{date}} 평가"
+    "value_source_at": "{{source}}, {{date}} 평가",
+    "dynamics": "지표 변화",
+    "dyn_window": "90일간",
+    "dyn_line": "{{was}} → {{now}}",
+    "dyn": {
+      "market_value": "시장 가치",
+      "pageviews": "위키백과 문서 조회수",
+      "sw_rating": "Soccer Wiki 평점",
+      "fame": "인지도",
+      "career_apps": "통산 출전",
+      "career_goals": "통산 득점",
+      "career_assists": "통산 도움",
+      "career_minutes": "통산 출전 시간",
+      "goals_30d": "30일간 득점",
+      "assists_30d": "30일간 도움",
+      "news_30d": "뉴스 언급"
+    }
   },
   "profile": {
     "title": "프로필",

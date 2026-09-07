@@ -11,11 +11,15 @@ import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
 import { formatEur } from '@/shared/lib/money';
+import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
-import { fetchCollectedTotals, type CollectedTotals } from '@/features/ratings/ratingsApi';
+import {
+  fetchCollectedTotals, fetchMetricChanges,
+  type CollectedTotals, type MetricChange,
+} from '@/features/ratings/ratingsApi';
 import {
   fetchClubOfCard, fetchPlayerLevel, fetchClubsByNames,
   type CardClub, type PlayerLevel, type ClubByName,
@@ -87,6 +91,22 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     return () => { cancelled = true; };
   }, [card.id]);
 
+  // Динамика показателей — история изменений, а не сегодняшние числа.
+  //
+  // ⚠️ ПОКАЗЫВАЕМ ТОЛЬКО ТО, ЧТО ДЕЙСТВИТЕЛЬНО СРАВНИЛОСЬ. Хранятся изменения,
+  // и у карточки, заведённой вчера, у каждого показателя `was` пуст — «было
+  // пусто, стало 600 тыс.» это не рост, это первый замер. Одиннадцать таких
+  // строк в досье выглядели бы динамикой, не будучи ею.
+  const [changes, setChanges] = useState<MetricChange[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setChanges([]);
+    void fetchMetricChanges(card.id).then((r) => {
+      if (!cancelled && r.status === 'ok') setChanges(r.data);
+    });
+    return () => { cancelled = true; };
+  }, [card.id]);
+
   // Новости и видео — по фамилии, через ту же токенизацию, что клеит темы
   // дайджеста через алфавиты. Пусто трое суток подряд — норма: `news_items`
   // столько и живёт, а не каждый день про игрока пишут.
@@ -100,6 +120,8 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     void fetchPlayerClips(card.id).then((r) => { if (!cancelled) setClips(r); });
     return () => { cancelled = true; };
   }, [card.id]);
+
+  const moved = movedMetrics(changes);
 
   const name     = cardDisplayName(card, lang);
   const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
@@ -532,6 +554,29 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                     goals: row.goals,
                     assists: row.assists,
                   })}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Динамика показателей — «создай систему, которая бы отслеживала
+            динамику по всем важным показателям в карточке игрока».
+            Ставится ПОСЛЕ статистики: это производная от неё, а не факт сам
+            по себе, и первым в досье она стоять не должна. */}
+        {moved.length > 0 && (
+          <Section title={t('collection.dynamics')}>
+            <div>
+              {moved.map((row) => (
+                <StatLine
+                  key={row.metric}
+                  label={t(`collection.dyn.${row.metric}`, { defaultValue: row.metric })}
+                  sub={t('collection.dyn_window')}
+                  value={t('collection.dyn_line', {
+                    was: formatMetric(row.metric, row.was, lang),
+                    now: formatMetric(row.metric, row.now_value, lang),
+                  })}
+                  accent={(row.delta ?? 0) > 0}
                 />
               ))}
             </div>

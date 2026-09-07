@@ -178,7 +178,23 @@
     "fame_world": "全球",
     "value": "身价",
     "value_source": "来源：{{source}}",
-    "value_source_at": "{{source}}，{{date}} 估值"
+    "value_source_at": "{{source}}，{{date}} 估值",
+    "dynamics": "指标变化",
+    "dyn_window": "近 90 天",
+    "dyn_line": "{{was}} → {{now}}",
+    "dyn": {
+      "market_value": "身价",
+      "pageviews": "维基百科页面浏览量",
+      "sw_rating": "Soccer Wiki 评分",
+      "fame": "知名度",
+      "career_apps": "生涯出场",
+      "career_goals": "生涯进球",
+      "career_assists": "生涯助攻",
+      "career_minutes": "生涯出场时间",
+      "goals_30d": "近 30 天进球",
+      "assists_30d": "近 30 天助攻",
+      "news_30d": "新闻提及"
+    }
   },
   "profile": {
     "title": "个人资料",

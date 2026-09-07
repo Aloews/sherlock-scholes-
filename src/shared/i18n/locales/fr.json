@@ -180,7 +180,23 @@
     "fame_world": "Dans le monde",
     "value": "Valeur marchande",
     "value_source": "Source : {{source}}",
-    "value_source_at": "{{source}}, estimation de {{date}}"
+    "value_source_at": "{{source}}, estimation de {{date}}",
+    "dynamics": "Évolution des indicateurs",
+    "dyn_window": "sur 90 jours",
+    "dyn_line": "{{was}} → {{now}}",
+    "dyn": {
+      "market_value": "Valeur marchande",
+      "pageviews": "Vues de la page Wikipédia",
+      "sw_rating": "Note Soccer Wiki",
+      "fame": "Notoriété",
+      "career_apps": "Matchs en carrière",
+      "career_goals": "Buts en carrière",
+      "career_assists": "Passes décisives en carrière",
+      "career_minutes": "Minutes en carrière",
+      "goals_30d": "Buts sur 30 jours",
+      "assists_30d": "Passes décisives sur 30 jours",
+      "news_30d": "Mentions dans la presse"
+    }
   },
   "profile": {
     "title": "Profil",

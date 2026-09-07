@@ -184,7 +184,23 @@
     "fame_world": "В мире",
     "value": "Стоимость",
     "value_source": "Источник: {{source}}",
-    "value_source_at": "{{source}}, оценка от {{date}}"
+    "value_source_at": "{{source}}, оценка от {{date}}",
+    "dynamics": "Динамика показателей",
+    "dyn_window": "за 90 дней",
+    "dyn_line": "{{was}} → {{now}}",
+    "dyn": {
+      "market_value": "Стоимость",
+      "pageviews": "Просмотры страницы в Википедии",
+      "sw_rating": "Рейтинг Soccer Wiki",
+      "fame": "Известность",
+      "career_apps": "Матчей за карьеру",
+      "career_goals": "Голов за карьеру",
+      "career_assists": "Передач за карьеру",
+      "career_minutes": "Минут за карьеру",
+      "goals_30d": "Голов за 30 дней",
+      "assists_30d": "Передач за 30 дней",
+      "news_30d": "Упоминаний в новостях"
+    }
   },
   "profile": {
     "title": "Профиль",

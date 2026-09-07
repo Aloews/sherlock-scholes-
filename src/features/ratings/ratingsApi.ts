@@ -124,3 +124,62 @@ export async function fetchCollectedTotals(
   const res = await supabase.rpc('player_collected_totals', { p_card_id: cardId });
   return fromPostgrest<CollectedTotals[]>(res, 'player_collected_totals');
 }
+
+/** Клубная карьера из статистики Transfermarkt: один клуб — одна строка. */
+export interface ClubCareerRow {
+  club_id: string;
+  club_name: string;
+  season_from: number;
+  season_to: number;
+  apps: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+}
+
+/**
+ * Клубная карьера по сезонам, от последнего клуба к первому.
+ *
+ * ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО `card.career_stats`, и подменять одно другим нельзя.
+ * `career_stats` — инфобокс Википедии: четыре верхних клуба ПО МАТЧАМ, и у
+ * Классена в них не попал «ВСГ Тироль», где он отыграл лучший свой сезон.
+ * Здесь — все клубы, сложенные из сезонных строк источника, а сборные из
+ * подсчёта исключены по флагу источника, а не по имени.
+ */
+export async function fetchClubCareer(
+  cardId: string,
+): Promise<LoadState<ClubCareerRow[]>> {
+  const res = await supabase.rpc('player_club_career', { p_card_id: cardId });
+  return fromPostgrest<ClubCareerRow[]>(res, 'player_club_career');
+}
+
+/** Что изменилось у показателя за окно. `was`/`growth` пусты, если считать не из чего. */
+export interface MetricChange {
+  metric: string;
+  was: number | null;
+  now_value: number | null;
+  delta: number | null;
+  growth: number | null;
+  changed_on: string;
+}
+
+/**
+ * История изменений главных показателей карточки.
+ *
+ * ⚠️ ХРАНЯТСЯ ИЗМЕНЕНИЯ, А НЕ ЕЖЕНОЧНЫЕ КОПИИ, поэтому `changed_on` — день,
+ * когда показатель стал таким, а НЕ «дата последнего замера». Читать его как
+ * свежесть данных значит объявить устаревшим то, что просто не менялось.
+ *
+ * ⚠️ `now_value: null` — ЭТО ЗНАЧАЩЕЕ ЗНАЧЕНИЕ, а не ошибка загрузки: числа у
+ * показателя нет вовсе. У 4794 действующих игроков нет стоимости, и история
+ * говорит об этом прямо, вместо того чтобы молчать.
+ */
+export async function fetchMetricChanges(
+  cardId: string,
+  days = 90,
+): Promise<LoadState<MetricChange[]>> {
+  const res = await supabase.rpc('card_metric_changes', {
+    p_card_id: cardId, p_days: days,
+  });
+  return fromPostgrest<MetricChange[]>(res, 'card_metric_changes');
+}

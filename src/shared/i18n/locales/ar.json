@@ -183,7 +183,23 @@
     "fame_world": "حول العالم",
     "value": "القيمة السوقية",
     "value_source": "المصدر: {{source}}",
-    "value_source_at": "{{source}}، تقييم {{date}}"
+    "value_source_at": "{{source}}، تقييم {{date}}",
+    "dynamics": "تغيّر المؤشرات",
+    "dyn_window": "خلال 90 يومًا",
+    "dyn_line": "{{was}} ← {{now}}",
+    "dyn": {
+      "market_value": "القيمة السوقية",
+      "pageviews": "مشاهدات صفحة ويكيبيديا",
+      "sw_rating": "تقييم Soccer Wiki",
+      "fame": "الشهرة",
+      "career_apps": "مباريات المسيرة",
+      "career_goals": "أهداف المسيرة",
+      "career_assists": "تمريرات حاسمة في المسيرة",
+      "career_minutes": "دقائق المسيرة",
+      "goals_30d": "أهداف خلال 30 يومًا",
+      "assists_30d": "تمريرات حاسمة خلال 30 يومًا",
+      "news_30d": "ذكر في الأخبار"
+    }
   },
   "profile": {
     "title": "الملف الشخصي",
