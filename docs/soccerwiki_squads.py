@@ -33,11 +33,17 @@
 import argparse
 import json
 import os
+import sys
 import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+# ⚠️ СВОЙ КАТАЛОГ В ПУТЬ — ЯВНО. При запуске `python3 docs/x.py` он там и так
+# оказывается, а вот тесты грузят файл ПО ПУТИ (spec_from_file_location), и
+# тогда `import _sb` падает с ModuleNotFoundError. Именно так и упал CI.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _sb import sb  # общий транспорт: с повторами на обрыве
 
