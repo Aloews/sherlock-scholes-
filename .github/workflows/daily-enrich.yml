@@ -261,6 +261,32 @@ jobs:
         if: always()
         run: python docs/roster_fill_cards.py
 
+      # ⚠️ ПРОДОЛЖАЕТ ОБХОД, А НЕ НАЧИНАЕТ ЕГО СНАЧАЛА. У Soccer Wiki 240
+      # стран и около 2900 клубов — это примерно семь тысяч запросов, в ночное
+      # окно они не влезают. `--stale-days 7` пропускает клубы, прочитанные на
+      # этой неделе, `--minutes` держит потолок: за неделю мир обходится
+      # целиком, каждую ночь — своим куском.
+      - name: Soccer Wiki squads (world sweep, resumable)
+        if: always()
+        run: APPLY=1 python docs/soccerwiki_squads.py --stale-days 7 --minutes 40
+
+      # Страница игрока: рост, вес, нога, ДАТА РОЖДЕНИЯ. Идёт только по
+      # связанным с колодой — 13 тысяч запросов вместо пятидесяти, — и по
+      # убыванию рейтинга: прогон оборвётся на любом месте, и порядок решает,
+      # чья карточка успеет получить данные.
+      - name: Soccer Wiki player pages (height, foot, birth date)
+        if: always()
+        run: APPLY=1 python docs/soccerwiki_players.py --minutes 40
+
+      # ⚠️ БЕЗ ЭТОГО ШАГА ДВА ПРЕДЫДУЩИХ СОБИРАЮТ В СТОЛ. `apply_soccerwiki_squad`
+      # связывает состав с колодой в момент записи клуба; всё, что появилось
+      # позже — новая карточка, доехавший name_en, починенный resolved_key, —
+      # остаётся несвязанным навсегда. Замер 07.09.2026: связано 13 129
+      # игроков, а рейтинг стоял у 6301 карточки.
+      - name: Re-link Soccer Wiki squads to the deck
+        if: always()
+        run: python docs/soccerwiki_link_refresh.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.

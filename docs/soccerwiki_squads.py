@@ -45,7 +45,7 @@ import urllib.request
 # тогда `import _sb` падает с ModuleNotFoundError. Именно так и упал CI.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _sb import sb  # общий транспорт: с повторами на обрыве
+from _sb import sb, all_rows  # общий транспорт: с повторами на обрыве
 
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
@@ -183,7 +183,12 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--countries", default="", help="коды через запятую (по умолчанию все)")
     ap.add_argument("--limit-clubs", type=int, default=0, help="сколько клубов на страну")
+    ap.add_argument("--minutes", type=float, default=0,
+                    help="потолок по часам: дойдя до него, выйти (для ночного прогона)")
+    ap.add_argument("--stale-days", type=int, default=0,
+                    help="пропускать клубы, прочитанные за последние N суток")
     args = ap.parse_args()
+    deadline = time.time() + args.minutes * 60 if args.minutes > 0 else None
     apply_ = os.environ.get("APPLY") == "1"
     if apply_ and not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("APPLY=1, но SUPABASE_URL/SUPABASE_KEY не заданы")
@@ -198,6 +203,21 @@ def main():
     print("Стран к обходу: %d  (APPLY=%s)"
           % (len(countries), "да" if apply_ else "нет — сухой прогон"), flush=True)
 
+    # ⚠️ ПРОДОЛЖИТЬ, А НЕ НАЧАТЬ СНАЧАЛА. Полный обход мира — около семи тысяч
+    # запросов, в ночное окно он не влезает. Без этого списка прогон с
+    # `--minutes` каждый раз перечитывал бы Албанию и Аргентину и никогда не
+    # доходил бы до Японии: страны идут по алфавиту, а состояния у обхода нет.
+    # Состояние есть у базы — `soccerwiki_club.fetched_at`.
+    fresh = set()
+    if args.stale_days > 0:
+        cutoff = time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                               time.gmtime(time.time() - args.stale_days * 86400))
+        rows = all_rows("soccerwiki_club",
+                        {"select": "club_id", "fetched_at": "gte." + cutoff})
+        fresh = {r["club_id"] for r in rows}
+        print("Свежих клубов (моложе %d сут.): %d — их пропускаем"
+              % (args.stale_days, len(fresh)), flush=True)
+
     clubs_seen = players_seen = linked = lost = 0
     for i, (code, cname) in enumerate(countries, 1):
         page = get("%s/country.php?countryId=%s" % (BASE, urllib.parse.quote(code)))
@@ -206,6 +226,8 @@ def main():
             print("  ⚠️ страна %s не ответила — её пустота НИЧЕГО не значит" % code, flush=True)
             continue
         clubs = parse_clubs(page)
+        if fresh:
+            clubs = [c for c in clubs if c[0] not in fresh]
         if args.limit_clubs:
             clubs = clubs[:args.limit_clubs]
         time.sleep(PAUSE)
@@ -228,6 +250,10 @@ def main():
 
         print("[%d/%d] %-24s клубов %d, игроков всего %d, связано %d"
               % (i, len(countries), cname[:24], len(clubs), players_seen, linked), flush=True)
+
+        if deadline and time.time() > deadline:
+            print("  потолок по часам — остальные страны в следующий прогон", flush=True)
+            break
 
     print("-" * 70)
     print("Клубов разобрано : %d" % clubs_seen)

@@ -702,6 +702,60 @@ P2446. Стоимость клуба не хранится — `club_market_valu
 
 ---
 
+### 7г. Soccer Wiki — рейтинг, позиция и физика игрока
+
+Источник назван прямо: **en.soccerwiki.org**, «for the fans, by the fans».
+Владелец: «вид карточки команд и игроков и данные взять с
+<https://en.soccerwiki.org/>».
+
+```
+/country.php              240 стран
+/country.php?countryId=X  клубы страны ссылками на состав
+/squad.php?clubid=N       СОСТАВ: номер, имя, позиция, возраст, РЕЙТИНГ 1..99
+/player.php?pid=N         рост, вес, нога, ДАТА РОЖДЕНИЯ, портрет
+```
+
+**Два захода, и разница между ними — в цене.** Позиция, возраст и рейтинг
+стоят на странице клуба: полный состав с характеристиками — ОДИН запрос
+(`docs/soccerwiki_squads.py`, `--stale-days` продолжает обход, а не начинает
+его сначала). Рост, нога и дата рождения живут только на странице игрока, то
+есть по запросу на человека, — поэтому `docs/soccerwiki_players.py` идёт
+ТОЛЬКО по связанным с колодой и по убыванию рейтинга.
+
+| Таблица / функция | Файл | Что делает |
+|---|---|---|
+| `soccerwiki_club`, `soccerwiki_player` | `soccerwiki.sql` | клубы и составы как есть, отдельно от колоды |
+| `apply_soccerwiki_squad` | `soccerwiki.sql` | клуб с составом одной транзакцией + связывание |
+| `apply_soccerwiki_details` | `soccerwiki_detail.sql` | пачка страниц игроков; заполняет `cards.born_on` **только там, где даты нет** |
+| `soccerwiki_card(uuid)` | `soccerwiki_detail.sql` | строка для досье: рейтинг, роль, рост, вес, нога |
+| `soccerwiki_squad(text,int)` | `soccerwiki_detail.sql` | состав клуба по убыванию рейтинга |
+| `link_soccerwiki_cards()` | `soccerwiki_detail.sql` | пересвязать составы с колодой ЦЕЛИКОМ |
+| `fill_sw_rating()` | `value_metrics_and_dynamics.sql` | рейтинг источника → `cards.sw_rating` |
+
+На экране: `features/soccerwiki/SoccerWikiPanel` в досье карточки и
+`features/soccerwiki/SoccerWikiSquad` на экране команды — **переключателем**,
+а не третьим списком подряд (правило экрана команды: два списка игроков это
+два ответа на один вопрос). Линию считает `shared/lib/soccerwikiPosition.ts`
+по ПЕРВОМУ коду позиции, и второй копии этого правила нет.
+
+⚠️ **`resolved_key` был пуст у 23 548 строк из 24 807, и это ломало четыре
+места сразу.** `fill_current_club_from_roster()` вставлял
+`(card_id, club, club_key, source, fetched_at)` — без `resolved_key`, хотя
+`club_key` там уже канонический ключ справочника и лежит в соседней колонке
+той же строки. По `resolved_key` соединяются состав Soccer Wiki, связывание
+ростера (`roster_card_link.sql`), выбор игроков в фэнтези
+(`fantasy_options_union.sql`) и переход «игрок → его команда». Пустая колонка
+не роняет ни одно из них: каждое просто находит меньше, и находит МОЛЧА.
+Починка и ночной ремонт — `current_club_resolved_key_roster.sql`,
+`fill_current_club_resolved_key()`.
+
+⚠️ **`fill_sw_rating()` после сбора не звали ни разу.** Связано было 13 129
+игроков, рейтинг стоял у 6301 карточки — ровно столько, сколько было в день,
+когда функцию вызвали руками. Ночной шаг —
+`docs/soccerwiki_link_refresh.py`, он же чинит `resolved_key` и пересвязывает.
+
+---
+
 ## 8. Проверки
 
 ```bash

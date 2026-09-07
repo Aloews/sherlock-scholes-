@@ -1080,6 +1080,86 @@ async function checkFootballers() {
          sane ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkSoccerWiki() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Soccer Wiki: карточка и состав', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // ⚠️ ЦЕПОЧКА ЦЕЛИКОМ, А НЕ КОД 200. Экран команды показывает состав по
+  // рейтингу и раскладывает его по линиям; ответ из нуля строк — это тоже
+  // 200, и «Состав Soccer Wiki» встал бы пустой рамкой. Берём клуб, который
+  // обязан быть у источника, и требуем и строки, и рейтинги, и позиции.
+  const squad = (await rpc('soccerwiki_squad', { p_club_key: 'arsenal', p_limit: 40 })) || [];
+  const rated = squad.filter((p) => p.rating != null);
+  const placed = squad.filter((p) => p.position);
+  const okSquad = squad.length >= 15 && rated.length >= squad.length * 0.8
+                  && placed.length >= squad.length * 0.8;
+  record('Soccer Wiki: состав клуба', okSquad,
+         `«Арсенал»: ${squad.length} игроков, с рейтингом ${rated.length}, с позицией ${placed.length}`,
+         'ловит пустой или безрейтинговый состав на экране команды');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: несуществующий клуб обязан дать ПУСТО. Если и
+  // он вернул состав, значит ключ клуба не участвует в выборке — и зелёная
+  // проверка выше означала бы лишь «RPC отвечает», а не «состав тот самый».
+  const nobody = (await rpc('soccerwiki_squad', { p_club_key: 'нет-такого-клуба-0000' })) || [];
+  record('Soccer Wiki: контроль состава', nobody.length === 0,
+         `выдуманный ключ дал ${nobody.length} строк`,
+         nobody.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // Досье игрока: рост, вес и нога — то, чего у проекта не было НИ ОТКУДА.
+  //
+  // ⚠️ ИГРОК БЕРЁТСЯ ИЗ ДАННЫХ, А НЕ НАЗЫВАЕТСЯ ПО ИМЕНИ. Первая версия
+  // спрашивала про Салаха и покраснела в тот же день: у источника под этим
+  // именем стоит однофамилец из бельгийского «Ломмела», а ливерпульского
+  // Салаха в составе не нашлось. Проверка обязана падать, когда сломана
+  // ЦЕПОЧКА, а не когда конкретный человек сменил клуб.
+  const top = await fetch(
+    `${url}/rest/v1/soccerwiki_player?select=card_id,name,rating`
+    + '&card_id=not.is.null&detail_at=not.is.null&height_cm=not.is.null'
+    + '&order=rating.desc.nullslast&limit=1',
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  const card = top[0]
+    ? ((await rpc('soccerwiki_card', { p_card_id: top[0].card_id })) || [])[0] ?? null
+    : null;
+  const full = card && card.rating != null && card.height_cm != null && card.foot;
+  record('Soccer Wiki: досье игрока', Boolean(full),
+         card
+           ? `${top[0].name}: рейтинг ${card.rating ?? '—'}, рост ${card.height_cm ?? '—'}, нога ${card.foot ?? '—'}`
+           : 'ни одна связанная карточка не дала полного досье',
+         'ловит блок Soccer Wiki, который на досье выйдет пустым');
+
+  // ⚠️ ОХВАТ, А НЕ ОДНА СТРОКА. Одна полная карточка — это ещё не «источник
+  // работает»: связывание может стоять на месте, а проверка выше будет зелена
+  // от одной старой записи. Порог намеренно низкий и меряет ПОЛОМКУ, а не
+  // полноту: сбор идёт и число растёт.
+  const linked = await fetch(
+    `${url}/rest/v1/cards?select=id&active=is.true&sw_rating=not.is.null`,
+    { headers: { ...auth, Prefer: 'count=exact', Range: '0-0' } },
+  ).then((r) => Number((r.headers.get('content-range') || '').split('/')[1]))
+   .catch(() => 0);
+  record('Soccer Wiki: рейтинг доехал до колоды', linked >= 5000,
+         `${linked} карточек с рейтингом источника`,
+         'ловит остановившееся связывание составов с колодой');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: чужой карточке обязано прийти пусто.
+  const alien = (await rpc('soccerwiki_card',
+                           { p_card_id: '00000000-0000-0000-0000-000000000000' })) || [];
+  record('Soccer Wiki: контроль досье', alien.length === 0,
+         `несуществующая карточка дала ${alien.length} строк`,
+         alien.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1097,6 +1177,7 @@ await checkMetricHistory();
 await checkPlayerIndex();
 await checkTopFixtures();
 await checkFootballers();
+await checkSoccerWiki();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
