@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import {
   fetchCollectionFacets, type CollectionFacet, type CollectionFilter,
 } from '@/features/collection/collectionApi';
+import { countryName } from '@/shared/lib/countryName';
+import { readFacets, writeFacets } from '@/shared/lib/facetCache';
 
 /**
  * Отбор по КЛУБУ, ЛИГЕ и СТРАНЕ — один на все экраны, где есть игроки.
@@ -25,16 +27,38 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
   onChange: (next: CollectionFilter) => void;
   category?: 'player' | 'club' | 'all';
 }) {
-  const { t } = useTranslation();
-  const [facets, setFacets] = useState<CollectionFacet[]>([]);
+  const { t, i18n } = useTranslation();
+  // ⚠️ СНАЧАЛА КЭШ, ПОТОМ СЕТЬ — приём из sherlock-tv (channelCache.ts).
+  // Владелец: «коллекции теперь стали очень медленно грузиться». Замер на
+  // бою: этот запрос отвечал 700–1200 мс и отдавал 74 655 байт, и экран ждал
+  // его на КАЖДОМ открытии. Теперь списки показываются мгновенно из
+  // localStorage, а сеть догоняет и молча обновляет.
+  const [facets, setFacets] = useState<CollectionFacet[]>(
+    () => readFacets(category) ?? []);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchCollectionFacets(category).then((f) => { if (!cancelled) setFacets(f); });
+    setFacets(readFacets(category) ?? []);
+    void fetchCollectionFacets(category).then((f) => {
+      if (cancelled || f.length === 0) return;
+      setFacets(f);
+      writeFacets(category, f);
+    });
     return () => { cancelled = true; };
   }, [category]);
 
   if (facets.length === 0) return null;
+
+  /**
+   * ⚠️ СТРАНА ПОКАЗЫВАЕТСЯ ИМЕНЕМ, А НЕ КОДОМ, И ЭТО ИСПРАВЛЕННАЯ ОШИБКА.
+   * `collection_facets` отдаёт в `label` то же, что в `value` — код ISO, — и в
+   * списке стояли «GB · 1507», «GB-ENG · 157». Владелец: «в категориях
+   * коллекциях нет страны ENG» — она там была, но называлась «GB-ENG», а это
+   * не название страны ни на одном языке. Имена уже лежат в countryName,
+   * включая подразделения Британии: Англия, Шотландия, Уэльс.
+   */
+  const labelOf = (kind: 'club' | 'league' | 'country', f: CollectionFacet) =>
+    kind === 'country' ? (countryName(f.value, i18n.language) ?? f.label) : f.label;
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-4 px-4">
@@ -56,7 +80,7 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
           >
             <option value="">{t(`collection.any_${kind}`)}</option>
             {list.map((f) => (
-              <option key={f.value} value={f.value}>{f.label} · {f.n}</option>
+              <option key={f.value} value={f.value}>{labelOf(kind, f)} · {f.n}</option>
             ))}
           </select>
         );
