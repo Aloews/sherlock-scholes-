@@ -199,7 +199,9 @@
     },
     "hl_national": "Avec {{team}} : {{apps}} sélections, {{goals}} buts",
     "hl_leagues": "A joué dans {{leagues}} championnats de {{countries}} pays",
-    "hl_born": "Né le {{date}}"
+    "hl_born": "Né le {{date}}",
+    "search_scope": "Rechercher clubs, championnats, pays",
+    "search_empty": "Aucun résultat"
   },
   "profile": {
     "title": "Profil",

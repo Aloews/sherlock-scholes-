@@ -199,7 +199,9 @@
     },
     "hl_national": "For {{team}}: {{apps}} caps, {{goals}} goals",
     "hl_leagues": "Played in {{leagues}} leagues across {{countries}} countries",
-    "hl_born": "Born {{date}}"
+    "hl_born": "Born {{date}}",
+    "search_scope": "Search clubs, leagues, countries",
+    "search_empty": "Nothing matches that"
   },
   "profile": {
     "title": "Profile",

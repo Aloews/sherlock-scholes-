@@ -444,12 +444,41 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     # `slug` is UNIQUE, so the batch must not carry the pair or the whole
     # upsert 409s. First card wins — the squad pass runs first and is the
     # authoritative one.
-    deduped, used = [], set()
+    #
+    # ⚠️ И ЗАНЯТЫЕ В ТАБЛИЦЕ — ТОЖЕ. Внутрипачечной проверки НЕ ХВАТИЛО, и
+    # прогон 06.09.2026 умер на ней целиком:
+    #
+    #   sports_ru_player upsert 409: Key (slug)=(alexis-mac-allister)
+    #   already exists
+    #
+    # Запись идёт `on conflict (card_id)`, а уникален ещё и `slug`: строка с
+    # ДРУГИМ card_id и тем же slug конфликт по карточке не разрешает, и
+    # Postgres отвергает пачку целиком. Так и вышло — в колоде оказались две
+    # карточки одного игрока (их наплодил шаг заведения карточек из заявок), и
+    # вторая предложила slug, уже занятый первой.
+    #
+    # Занятый чужой карточкой slug пропускаем: справочник от этого не
+    # пострадает — у игрока уже есть строка, — а пачка перестаёт падать.
+    taken = {}
+    for row in db.select("/sports_ru_player?select=card_id,slug&order=card_id"):
+        if row.get("slug"):
+            taken[row["slug"]] = row["card_id"]
+
+    deduped, used, skipped = [], set(), 0
     for r in rows:
         if r["slug"] in used:
             continue
+        holder = taken.get(r["slug"])
+        if holder is not None and holder != r["card_id"]:
+            skipped += 1
+            continue
         used.add(r["slug"])
         deduped.append(r)
+    if skipped:
+        # ⚠️ ПЕЧАТАЕМ, А НЕ ГЛОТАЕМ: пропущенный slug почти всегда значит, что
+        # в колоде две карточки одного человека, и это стоит увидеть.
+        print("slugs already held by another card: {} (дубли карточек?)"
+              .format(skipped))
     return db.upsert("sports_ru_player", deduped, "card_id")
 
 

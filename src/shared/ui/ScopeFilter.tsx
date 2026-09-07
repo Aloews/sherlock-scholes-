@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchCollectionFacets, type CollectionFacet, type CollectionFilter,
 } from '@/features/collection/collectionApi';
 import { countryName } from '@/shared/lib/countryName';
 import { readFacets, writeFacets } from '@/shared/lib/facetCache';
+import { filterByQuery } from '@/shared/lib/facetSearch';
 
 /**
  * Отбор по КЛУБУ, ЛИГЕ и СТРАНЕ — один на все экраны, где есть игроки.
@@ -35,6 +36,11 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
   // localStorage, а сеть догоняет и молча обновляет.
   const [facets, setFacets] = useState<CollectionFacet[]>(
     () => readFacets(category) ?? []);
+  // ⚠️ ПОИСК ОДИН НА ТРИ СПИСКА, А НЕ ТРИ ПОЛЯ. Владелец: «добавь поиск во все
+  // категории большие». Клубов триста, стран 153, лиг 59 — крутить их на
+  // телефоне вслепую дольше, чем набрать. Три поля рядом заняли бы всю ширину
+  // и заставили бы человека угадывать, в котором из них искать «Аль-Хиляль».
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -60,11 +66,34 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
   const labelOf = (kind: 'club' | 'league' | 'country', f: CollectionFacet) =>
     kind === 'country' ? (countryName(f.value, i18n.language) ?? f.label) : f.label;
 
+  const found = useMemo(
+    () => (query ? filterByQuery(facets, query, (f) => labelOf(f.kind, f)).length : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- labelOf зависит
+    // только от языка, и он же в зависимостях через i18n.language.
+    [facets, query, i18n.language],
+  );
+
   return (
+    <div className="space-y-2">
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t('collection.search_scope')}
+        className="w-full h-9 rounded-full border border-brand-border bg-brand-surface
+                   px-3.5 text-[12px] text-white placeholder:text-brand-muted
+                   focus:outline-none focus:border-brand-accent/50"
+      />
+      {/* ⚠️ «НИЧЕГО НЕ НАЙДЕНО» ГОВОРИТСЯ ВСЛУХ. Три пустых выпадающих списка
+          выглядят как сломанный экран, а не как «по такому запросу пусто». */}
+      {found === 0 && (
+        <p className="text-brand-muted text-[11px]">{t('collection.search_empty')}</p>
+      )}
     <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-4 px-4">
       {(['club', 'league', 'country'] as const).map((kind) => {
-        const list = facets.filter((f) => f.kind === kind);
-        if (list.length === 0) return null;
+        const all = facets.filter((f) => f.kind === kind);
+        const list = filterByQuery(all, query, (f) => labelOf(kind, f));
+        if (all.length === 0) return null;
         const key = kind === 'club' ? 'clubKey' : kind;
         const current = (value as Record<string, string | null | undefined>)[key] ?? '';
         return (
@@ -79,12 +108,23 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
             }`}
           >
             <option value="">{t(`collection.any_${kind}`)}</option>
+            {/* ⚠️ ВЫБРАННОЕ ПОКАЗЫВАЕТСЯ ВСЕГДА, даже если поиск его отсеял.
+                Иначе набор в поле молча сбрасывал бы подпись выбранного
+                клуба на «любой», хотя отбор по нему остался бы в силе. */}
+            {current && !list.some((f) => f.value === current)
+              && (() => {
+                const picked = all.find((f) => f.value === current);
+                return picked ? (
+                  <option value={picked.value}>{labelOf(kind, picked)} · {picked.n}</option>
+                ) : null;
+              })()}
             {list.map((f) => (
               <option key={f.value} value={f.value}>{labelOf(kind, f)} · {f.n}</option>
             ))}
           </select>
         );
       })}
+    </div>
     </div>
   );
 }

@@ -202,7 +202,9 @@
     },
     "hl_national": "مع {{team}}: {{apps}} مباراة و{{goals}} هدفًا",
     "hl_leagues": "لعب في {{leagues}} دوريات بـ{{countries}} دول",
-    "hl_born": "من مواليد {{date}}"
+    "hl_born": "من مواليد {{date}}",
+    "search_scope": "ابحث في الأندية والدوريات والدول",
+    "search_empty": "لا نتائج مطابقة"
   },
   "profile": {
     "title": "الملف الشخصي",

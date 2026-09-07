@@ -197,7 +197,9 @@
     },
     "hl_national": "{{team}} 代表: {{apps}} 試合 {{goals}} 得点",
     "hl_leagues": "{{countries}} か国の {{leagues}} リーグでプレー",
-    "hl_born": "{{date}} 生まれ"
+    "hl_born": "{{date}} 生まれ",
+    "search_scope": "クラブ・リーグ・国を検索",
+    "search_empty": "該当なし"
   },
   "profile": {
     "title": "プロフィール",

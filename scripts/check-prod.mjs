@@ -1035,6 +1035,51 @@ async function checkTopFixtures() {
                                      : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkFootballers() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Колода: только футболисты', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/unconfirmed_footballers`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => []) : null;
+  };
+
+  // ⚠️ ПРОВЕРКА ПОЛОЖИТЕЛЬНАЯ: доказать «он не футболист» по нашим данным
+  // нельзя, доказать «футболист» можно — состав Soccer Wiki, заявка
+  // Transfermarkt, сыгранные сезоны или клубная карьера из статьи. В списке
+  // те, у кого нет НИ ОДНОГО свидетельства.
+  const all = (await rpc({ p_limit: 100000 })) || [];
+  const seen = all.filter((c) => (c.pageviews ?? 0) > 5000);
+
+  // Заметный чужак — это тот, кого игрок УВИДИТ: римский император Адриан,
+  // актёр Эстевес, президент США. Неизвестная карточка без свидетельств не
+  // мешает никому, и валить прогон из-за неё значило бы держать проверку
+  // красной вечно.
+  record('Колода: заметных карточек без подтверждения нет', seen.length <= 5,
+         seen.length === 0
+           ? `${all.length} карточек без свидетельств, среди заметных — ни одной`
+           : `заметных: ${seen.map((c) => `${c.name_en ?? c.name} (${c.pageviews})`).join(', ')}`,
+         'ловит чужака вроде президента США или актёра в колоде игроков');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: список обязан быть КОРОЧЕ всей колоды. Если он
+  // сравнялся с ней, значит свидетельства перестали находиться — и проверка
+  // выше зелена не потому, что колода чиста, а потому, что она ослепла.
+  const total = await fetch(
+    `${url}/rest/v1/cards?select=id&category=eq.player&active=is.true`,
+    { headers: { ...auth, Prefer: 'count=exact', Range: '0-0' } },
+  ).then((r) => Number((r.headers.get('content-range') || '').split('/')[1]));
+  const sane = all.length > 0 && all.length < total / 10;
+  record('Колода: контроль свидетельств', sane,
+         `${all.length} без свидетельств из ${total}`,
+         sane ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1051,6 +1096,7 @@ await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
 await checkTopFixtures();
+await checkFootballers();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

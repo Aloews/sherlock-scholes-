@@ -197,7 +197,9 @@
     },
     "hl_national": "代表 {{team}}：{{apps}} 场 {{goals}} 球",
     "hl_leagues": "效力过 {{countries}} 个国家的 {{leagues}} 个联赛",
-    "hl_born": "{{date}} 出生"
+    "hl_born": "{{date}} 出生",
+    "search_scope": "搜索俱乐部、联赛、国家",
+    "search_empty": "没有匹配项"
   },
   "profile": {
     "title": "个人资料",
