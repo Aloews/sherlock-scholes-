@@ -199,7 +199,10 @@
     "hl_leagues": "效力过 {{countries}} 个国家的 {{leagues}} 个联赛",
     "hl_born": "{{date}} 出生",
     "search_scope": "搜索俱乐部、联赛、国家",
-    "search_empty": "没有匹配项"
+    "search_empty": "没有匹配项",
+    "view_cards": "卡牌",
+    "view_clubs": "球队",
+    "view_stats": "数据"
   },
   "profile": {
     "title": "个人资料",
@@ -969,7 +972,8 @@
     "league_isolated": "该联赛很少与其他联赛交手 — 跨联赛可比性 {{pct}}%",
     "market_value": "阵容总身价",
     "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
-    "roster_source": "阵容与身价 — {{source}}"
+    "roster_source": "阵容与身价 — {{source}}",
+    "squad_ours": "俱乐部名单"
   },
   "clubs": {
     "title": "俱乐部",
@@ -1047,5 +1051,51 @@
     "empty": "还没有人上升：指标历史从 9 月 6 日开始。",
     "window_other": "{{count}} 天",
     "by_squad_other": "按 {{count}} 名球员"
+  },
+  "sw": {
+    "rating": "评分",
+    "avg_rating": "平均评分",
+    "avg_age": "平均年龄",
+    "squad_size": "阵容",
+    "height": "身高",
+    "weight": "体重",
+    "foot": "惯用脚",
+    "number": "号码",
+    "cm": "{{value}} 厘米",
+    "kg": "{{value}} 公斤",
+    "born": "出生于 {{date}}",
+    "source": "数据来自 Soccer Wiki",
+    "source_named": "{{name}} · Soccer Wiki",
+    "card_title": "Soccer Wiki 球员卡",
+    "squad_title": "Soccer Wiki 阵容",
+    "line_gk": "门将",
+    "line_def": "后卫",
+    "line_mid": "中场",
+    "line_fwd": "前锋",
+    "line_rest": "其他",
+    "side_l": "左路",
+    "side_r": "右路",
+    "side_c": "中路",
+    "foot_left": "左脚",
+    "foot_right": "右脚",
+    "foot_both": "双脚",
+    "years_other": "{{count}} 岁",
+    "role_keeper": "门将",
+    "role_fullback": "边后卫",
+    "role_wingback": "翼卫",
+    "role_stopper": "盯人中卫",
+    "role_ball_playing_defender": "出球中卫",
+    "role_general_defender": "全能后卫",
+    "role_ball_winning_midfielder": "抢断型中场",
+    "role_deep_lying_playmaker": "后腰组织核心",
+    "role_box_to_box_midfielder": "全能中场",
+    "role_playmaker": "组织核心",
+    "role_advanced_playmaker": "前场组织核心",
+    "role_winger": "边锋",
+    "role_wide_forward": "边路前锋",
+    "role_deep_lying_forward": "影锋",
+    "role_target_man": "支点型中锋",
+    "role_finisher": "终结者",
+    "role_general_forward": "全能前锋"
   }
 }

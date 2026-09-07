@@ -293,14 +293,14 @@ export function HomeScreen() {
             <HomeGameLink
               icon={<IconChartBar size={20} stroke={1.75} />}
               label={t('home.ratings_link')}
-              onClick={() => navigate('/ratings')}
+              onClick={() => navigate('/collection?view=stats')}
             />
             {/* Команды стоят рядом с рейтингом футболистов намеренно: это два
                 среза одних и тех же собранных матчей — по игроку и по клубу. */}
             <HomeGameLink
               icon={<IconShieldHalf size={20} stroke={1.75} />}
               label={t('home.clubs_link')}
-              onClick={() => navigate('/clubs')}
+              onClick={() => navigate('/collection?view=clubs')}
             />
             <HomeGameLink
               icon={<IconSoccerField size={20} stroke={1.75} />}

@@ -25,10 +25,8 @@ const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then((m) 
 const ChessScreen    = lazy(() => import('@/screens/ChessScreen').then((m) => ({ default: m.ChessScreen })));
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
-const RatingsScreen  = lazy(() => import('@/screens/RatingsScreen').then((m) => ({ default: m.RatingsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
-const ClubsScreen    = lazy(() => import('@/screens/ClubsScreen').then((m) => ({ default: m.ClubsScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
@@ -136,8 +134,13 @@ export function Router() {
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
       <Route path="/news"      element={<PageTransition><NewsScreen /></PageTransition>} />
-      <Route path="/ratings"   element={<PageTransition><RatingsScreen /></PageTransition>} />
-      <Route path="/clubs"     element={<PageTransition><ClubsScreen /></PageTransition>} />
+      {/* ⚠️ СТАРЫЕ АДРЕСА ВЕДУТ СРАЗУ В СВОЙ РАЗДЕЛ, а не в оглавление
+          коллекции: перенаправление в оглавление читалось бы как «ссылка
+          сломалась». Не удалены — на них ведут уже разосланные ссылки и
+          прежние сборки клиента. Ровно тот же приём, что у /quiz и
+          /arena/online. */}
+      <Route path="/ratings"   element={<Navigate to="/collection?view=stats" replace />} />
+      <Route path="/clubs"     element={<Navigate to="/collection?view=clubs" replace />} />
       {/* Ключ клуба едет в адресе и содержит пробелы («zenit st petersburg»),
           поэтому он закодирован на стороне ссылки, а useParams его раскодирует. */}
       <Route path="/club/:key" element={<PageTransition><ClubScreen /></PageTransition>} />

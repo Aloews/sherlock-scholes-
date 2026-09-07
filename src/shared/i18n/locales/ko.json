@@ -199,7 +199,10 @@
     "hl_leagues": "{{countries}}개국 {{leagues}}개 리그에서 활약",
     "hl_born": "{{date}} 출생",
     "search_scope": "클럽·리그·국가 검색",
-    "search_empty": "일치하는 항목 없음"
+    "search_empty": "일치하는 항목 없음",
+    "view_cards": "카드",
+    "view_clubs": "구단",
+    "view_stats": "통계"
   },
   "profile": {
     "title": "프로필",
@@ -969,7 +972,8 @@
     "league_isolated": "이 리그는 다른 리그와 거의 맞붙지 않습니다 — 비교 가능도 {{pct}}%",
     "market_value": "스쿼드 가치",
     "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
-    "roster_source": "스쿼드와 시장 가치 — {{source}}"
+    "roster_source": "스쿼드와 시장 가치 — {{source}}",
+    "squad_ours": "구단 등록 명단"
   },
   "clubs": {
     "title": "클럽",
@@ -1047,5 +1051,51 @@
     "empty": "아직 오른 선수가 없습니다. 지표 기록은 9월 6일부터입니다.",
     "window_other": "{{count}}일",
     "by_squad_other": "{{count}}명 기준"
+  },
+  "sw": {
+    "rating": "평점",
+    "avg_rating": "평균 평점",
+    "avg_age": "평균 나이",
+    "squad_size": "선수단",
+    "height": "키",
+    "weight": "몸무게",
+    "foot": "주발",
+    "number": "등번호",
+    "cm": "{{value}}cm",
+    "kg": "{{value}}kg",
+    "born": "{{date}} 출생",
+    "source": "Soccer Wiki 제공 데이터",
+    "source_named": "{{name}} · Soccer Wiki",
+    "card_title": "Soccer Wiki 카드",
+    "squad_title": "Soccer Wiki 기준 선수단",
+    "line_gk": "골키퍼",
+    "line_def": "수비수",
+    "line_mid": "미드필더",
+    "line_fwd": "공격수",
+    "line_rest": "기타",
+    "side_l": "왼쪽",
+    "side_r": "오른쪽",
+    "side_c": "중앙",
+    "foot_left": "왼발",
+    "foot_right": "오른발",
+    "foot_both": "양발",
+    "years_other": "{{count}}세",
+    "role_keeper": "골키퍼",
+    "role_fullback": "풀백",
+    "role_wingback": "윙백",
+    "role_stopper": "스토퍼",
+    "role_ball_playing_defender": "빌드업 수비수",
+    "role_general_defender": "만능 수비수",
+    "role_ball_winning_midfielder": "볼 회수형 미드필더",
+    "role_deep_lying_playmaker": "후방 플레이메이커",
+    "role_box_to_box_midfielder": "박스투박스 미드필더",
+    "role_playmaker": "플레이메이커",
+    "role_advanced_playmaker": "전진 플레이메이커",
+    "role_winger": "윙어",
+    "role_wide_forward": "측면 공격수",
+    "role_deep_lying_forward": "처진 공격수",
+    "role_target_man": "타깃맨",
+    "role_finisher": "피니셔",
+    "role_general_forward": "만능 공격수"
   }
 }

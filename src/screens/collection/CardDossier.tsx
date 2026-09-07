@@ -8,6 +8,7 @@ import { cardDisplayName } from '@/shared/lib/cardName';
 import { byLatestFirst } from '@/shared/lib/careerOrder';
 import { StatLine } from '@/shared/ui/StatLine';
 import { CareerStats } from './CareerStats';
+import { SoccerWikiPanel } from '@/features/soccerwiki/SoccerWikiPanel';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
@@ -397,6 +398,16 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             ))}
           </div>
         )}
+
+        {/* ВИД КАРТОЧКИ ПО SOCCER WIKI. Владелец: «вид карточки команд и
+            игроков и данные взять с https://en.soccerwiki.org/». Рейтинг
+            1–99, роль словом, рост, вес и рабочая нога — ни одного из этих
+            полей у проекта до сих пор не было. Стоит ПЕРЕД «Характеристиками»
+            намеренно: те шесть полос до сих пор пусты (`cards.attributes`
+            никто не заполняет), а это — настоящие числа.
+
+            Блок сам себя не рисует, если карточка не связана с источником. */}
+        <SoccerWikiPanel cardId={card.id} />
 
         {attributeRows.length > 0 && (
           <Section title={t('collection.attributes')}>

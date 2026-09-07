@@ -16,6 +16,8 @@ import { ClubRosterTable } from '@/features/clubs/ClubRosterTable';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
+import { SoccerWikiSquad } from '@/features/soccerwiki/SoccerWikiSquad';
+import { fetchSoccerWikiSquad } from '@/features/soccerwiki/soccerwikiApi';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatEur } from '@/shared/lib/money';
 
@@ -48,6 +50,21 @@ export function ClubScreen() {
   const [roster, setRoster] = useState<LoadState<ClubRosterRow[]>>(LOADING);
   const [matches, setMatches] = useState<LoadState<ClubMatchRow[]>>(LOADING);
   const [fixtures, setFixtures] = useState<LoadState<ClubFixtureRow[]>>(LOADING);
+  // Какой из ответов про состав показан. См. переключатель ниже.
+  const [squadView, setSquadView] = useState<'ours' | 'sw'>('ours');
+  // Есть ли у Soccer Wiki состав именно этого клуба. Спрашиваем ОДИН раз и
+  // до нажатия: вкладка, которая при тапе оказывается пустой, хуже, чем её
+  // отсутствие. Показываем переключатель только когда есть между чем выбирать.
+  const [hasSw, setHasSw] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setHasSw(false);
+    setSquadView('ours');
+    void fetchSoccerWikiSquad(key, 1).then((r) => {
+      if (!cancelled) setHasSw(r.status === 'ok' && r.data.length > 0);
+    });
+    return () => { cancelled = true; };
+  }, [key]);
 
   useEffect(() => {
     let cancelled = false;
@@ -286,10 +303,34 @@ export function ClubScreen() {
             {/* Состав */}
             <section className="space-y-2">
               <h2 className="ds-display text-white text-base font-bold">{t('club.squad')}</h2>
-              {squad.status === 'loading' && (
+
+              {/* ⚠️ ПЕРЕКЛЮЧАТЕЛЬ, А НЕ ТРЕТИЙ СПИСОК ПОДРЯД. Правило этого
+                  экрана записано ниже и старше: два списка игроков — это два
+                  ответа на один вопрос, и рядом они спорят. Soccer Wiki
+                  отвечает на ДРУГОЙ вопрос — «кто сильнее и на какой линии», —
+                  но список всё равно один, поэтому выбор отдан человеку.
+                  Выбор выражается Chip, как и везде в этом проекте. */}
+              {hasSw && (
+                <div className="flex gap-2">
+                  <Chip
+                    label={t('club.squad_ours')}
+                    selected={squadView === 'ours'}
+                    onClick={() => { hapticImpact('light'); setSquadView('ours'); }}
+                  />
+                  <Chip
+                    label={t('sw.squad_title')}
+                    selected={squadView === 'sw'}
+                    onClick={() => { hapticImpact('light'); setSquadView('sw'); }}
+                  />
+                </div>
+              )}
+
+              {squadView === 'sw' && <SoccerWikiSquad clubKey={key} />}
+
+              {squadView === 'ours' && squad.status === 'loading' && (
                 <p className="text-brand-muted text-sm py-4">{t('club.loading')}</p>
               )}
-              {squad.status === 'error' && (
+              {squadView === 'ours' && squad.status === 'error' && (
                 <p className="text-brand-muted text-sm py-4">{t('club.failed')}</p>
               )}
               {/* ⚠️ ПОЛНЫЙ СОСТАВ ВЫТЕСНЯЕТ НЕПОЛНЫЙ, А НЕ ДОПОЛНЯЕТ ЕГО.
@@ -297,7 +338,7 @@ export function ClubScreen() {
                   вопрос: у «Реала» в колоде 25 карточек, а в клубе 27 человек.
                   Показываем ростер там, где он собран, и прежний список —
                   там, где нет. */}
-              {roster.status === 'ok' && roster.data.length > 0 ? (
+              {squadView === 'ours' && (roster.status === 'ok' && roster.data.length > 0 ? (
                 <ClubRosterTable
                   rows={roster.data}
                   onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
@@ -307,7 +348,7 @@ export function ClubScreen() {
                   rows={squad.data}
                   onOpenCard={(cardId) => navigate(`/collection?card=${cardId}`)}
                 />
-              ) : null}
+              ) : null)}
             </section>
 
             {/* Последние матчи */}

@@ -18,6 +18,9 @@ import {
   type CollectionCard, type CollectionFilter,
 } from '@/features/collection/collectionApi';
 import { CardDossier } from '@/screens/collection/CardDossier';
+import { Chip } from '@/shared/ui/Chip';
+import { ClubsPane } from './collection/ClubsPane';
+import { StatsPane } from './collection/StatsPane';
 import { ScopeFilter } from '@/shared/ui/ScopeFilter';
 import type { Card } from '@/shared/types/database';
 import {
@@ -166,6 +169,27 @@ export function CollectionScreen() {
   const [params, setParams] = useSearchParams();
   const cardParam = params.get('card');
 
+  // ⚠️ ТРИ РАЗДЕЛА НА ОДНОМ ЭКРАНЕ, А НЕ ТРИ ЭКРАНА. Владелец: «объедини
+  // экран команды и статистика с коллекциями с навигацией и назад».
+  // Карточки, команды и статистика — это один и тот же собранный футбол,
+  // разрезанный по-разному: карточка игрока, карточка команды, числа. Тремя
+  // соседними строками на главной они читались как три раздела приложения,
+  // хотя это одна полка — ровно тот же разбор, что уже сделан для арены и
+  // мини-игр (docs/MAP.md §2).
+  //
+  // Раздел живёт В АДРЕСЕ, а не только в состоянии: иначе «назад» из команды
+  // возвращало бы в карточки, а разосланная ссылка открывала бы не то.
+  const viewParam = params.get('view');
+  const view: 'cards' | 'clubs' | 'stats' =
+    viewParam === 'clubs' || viewParam === 'stats' ? viewParam : 'cards';
+  const setView = (next: 'cards' | 'clubs' | 'stats') => {
+    hapticImpact('light');
+    const p = new URLSearchParams(params);
+    if (next === 'cards') p.delete('view'); else p.set('view', next);
+    p.delete('card');
+    setParams(p);
+  };
+
   useEffect(() => {
     if (cardParam) setOpenId(cardParam);
   }, [cardParam]);
@@ -255,13 +279,44 @@ export function CollectionScreen() {
           >
             <IconX size={16} stroke={2} />
           </button>
-          <h1 className="ds-display text-xl font-bold text-white">{t('collection.title')}</h1>
+          <h1 className="ds-display text-xl font-bold text-white">
+            {view === 'clubs' ? t('clubs.title')
+              : view === 'stats' ? t('ratings.title')
+              : t('collection.title')}
+          </h1>
+        </div>
+
+        {/* Переключатель разделов. Выбор выражается Chip — единственным
+            способом, каким он выражается в этом проекте. */}
+        <div className="max-w-sm mx-auto flex gap-1.5 mt-3 overflow-x-auto pb-0.5">
+          <Chip label={t('collection.view_cards')} selected={view === 'cards'}
+                onClick={() => setView('cards')} />
+          <Chip label={t('collection.view_clubs')} selected={view === 'clubs'}
+                onClick={() => setView('clubs')} />
+          <Chip label={t('collection.view_stats')} selected={view === 'stats'}
+                onClick={() => setView('stats')} />
         </div>
       </div>
 
+      {/* ⚠️ КОМАНДЫ И СТАТИСТИКА — БЕЗ PRO-ЗАМКА, И ЭТО НЕ НЕДОСМОТР. Pro
+          закрывает КАТАЛОГ карточек: тяжёлое чтение всей колоды и есть та
+          глубина, за которую платят. Списки команд и рейтинги были открыты
+          всем на своих прежних адресах, и переезд в общий экран не повод их
+          закрыть — это было бы отъёмом того, что уже отдано. */}
+      {view === 'clubs' && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-sm mx-auto px-4 pt-4 pb-24"><ClubsPane /></div>
+        </div>
+      )}
+      {view === 'stats' && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-sm mx-auto px-4 pt-4 pb-24"><StatsPane /></div>
+        </div>
+      )}
+
       {/* Free users get the upsell instead of the catalog — and no query is
           issued at all, so the deck read stays a Pro-only cost. */}
-      {!isPro ? (
+      {view === 'cards' && (!isPro ? (
         <div className="flex-1 flex items-center justify-center px-6">
           <div className="max-w-sm w-full flex flex-col items-center gap-4 text-center">
             <span
@@ -395,7 +450,7 @@ export function CollectionScreen() {
               is identical either way; only the source of truth changes. */}
         </div>
       </div>
-      )}
+      ))}
 
       {/* Card detail — the full-screen dossier (screens/collection/CardDossier). */}
       <AnimatePresence>
