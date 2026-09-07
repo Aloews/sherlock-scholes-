@@ -33,6 +33,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _sb import all_rows, sb  # общий транспорт: с повторами на обрыве
+
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
 API = "https://www.transfermarkt.com/ceapi/transferHistory/list/%s"
@@ -74,6 +76,30 @@ def club_tm_id(href):
     return m.group(1) if m else None
 
 
+DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+
+
+def parse_date(text):
+    """Дата перехода или пустая строка. ЧИСТАЯ ФУНКЦИЯ, её проверяет тест.
+
+    ⚠️ «0000-00-00» — НЕ ДАТА, А ЗАГЛУШКА ИСТОЧНИКА, и она уронила прогон.
+    Transfermarkt ставит её, когда день перехода неизвестен; Postgres на ней
+    отвечает «date/time field value out of range», запись пачки падает, и
+    сборщик, шедший час, умирает на одном игроке. Пустая строка здесь значит
+    «дата неизвестна» — это правда, а выдуманный год был бы ложью.
+
+    Заодно отсекается любой другой мусор в этом поле: нулевой месяц, нулевой
+    день, тринадцатый месяц. Проверяем ЗНАЧЕНИЯ, а не только форму записи.
+    """
+    m = DATE.match((text or "").strip())
+    if not m:
+        return ""
+    year, month, day = (int(g) for g in m.groups())
+    if not (1850 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31):
+        return ""
+    return m.group(0)
+
+
 def parse_transfers(payload):
     """Записи истории из ответа API. ЧИСТАЯ ФУНКЦИЯ — её проверяет тест.
 
@@ -90,7 +116,7 @@ def parse_transfers(payload):
         dst = t.get("to") or {}
         out.append({
             "transfer_id": m.group(1),
-            "moved_on": t.get("dateUnformatted") or "",
+            "moved_on": parse_date(t.get("dateUnformatted")),
             "season": t.get("season") or "",
             "from_club": src.get("clubName") or "",
             "from_tm_id": club_tm_id(src.get("href")) or "",
@@ -122,21 +148,6 @@ def get_json(url):
     return None
 
 
-def sb(path, method="GET", body=None, params=None):
-    url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
-    if params:
-        url += "?" + urllib.parse.urlencode(params)
-    key = os.environ["SUPABASE_KEY"]
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method, headers={
-        "apikey": key, "Authorization": "Bearer " + key,
-        "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as fh:
-            raw = fh.read()
-    except urllib.error.HTTPError as e:
-        raise SystemExit("%s: HTTP %s\n%s" % (path, e.code, e.read().decode()[:300]))
-    return json.loads(raw) if raw else []
 
 
 def main():
@@ -152,30 +163,18 @@ def main():
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
 
-    rows, offset = [], 0
-    while True:
-        page = sb("cards", params={
-            "select": "id,name_en,transfermarkt_id,market_value_eur",
-            "category": "eq.player", "active": "is.true",
-            "transfermarkt_id": "not.is.null",
-            "market_value_eur": "gte.%d" % args.min_value,
-            "order": "market_value_eur.desc", "limit": PAGE, "offset": offset})
-        rows.extend(page)
-        if len(page) < PAGE:
-            break
-        offset += PAGE
+    # ⚠️ ЧИТАЕМ ЧЕРЕЗ all_rows: он валится, если страница не пришла. Молча
+    # укоротить список игроков значит объявить обход законченным на обрезке.
+    rows = all_rows("cards", {
+        "select": "id,name_en,transfermarkt_id,market_value_eur",
+        "category": "eq.player", "active": "is.true",
+        "transfermarkt_id": "not.is.null",
+        "market_value_eur": "gte.%d" % args.min_value,
+        "order": "market_value_eur.desc"})
 
     if not args.refresh:
-        done = set()
-        offset = 0
-        while True:
-            page = sb("player_transfer", params={
-                "select": "tm_player_id", "order": "tm_player_id",
-                "limit": PAGE, "offset": offset})
-            done.update(r["tm_player_id"] for r in page)
-            if len(page) < PAGE:
-                break
-            offset += PAGE
+        done = {r["tm_player_id"] for r in all_rows(
+            "player_transfer", {"select": "tm_player_id", "order": "tm_player_id"})}
         rows = [r for r in rows if r["transfermarkt_id"] not in done]
 
     if args.limit:
@@ -184,7 +183,7 @@ def main():
           % (len(rows), args.min_value, "да" if apply_ else "нет — сухой прогон"),
           flush=True)
 
-    written = empty = lost = 0
+    written = empty = lost = refused = 0
     for i, card in enumerate(rows, 1):
         payload = get_json(API % urllib.parse.quote(card["transfermarkt_id"]))
         if payload is None:
@@ -196,10 +195,16 @@ def main():
             elif apply_:
                 res = sb("rpc/apply_player_transfers", method="POST",
                          body={"p_tm_id": card["transfermarkt_id"], "p_rows": moves})
-                written += (res[0].get("written", 0) if res else 0)
+                # ⚠️ ОТКАЗ ЗАПИСИ СЧИТАЕТСЯ ОТДЕЛЬНО. Молча прибавить ноль
+                # значило бы выдать несохранённого игрока за игрока без
+                # переходов — и повторный прогон его бы уже не тронул.
+                if res is None:
+                    refused += 1
+                else:
+                    written += (res[0].get("written", 0) if res else 0)
         if i % 25 == 0:
-            print("  %d/%d, записей %d, пусто %d, потеряно %d"
-                  % (i, len(rows), written, empty, lost), flush=True)
+            print("  %d/%d, записей %d, пусто %d, потеряно %d, отказов %d"
+                  % (i, len(rows), written, empty, lost, refused), flush=True)
         time.sleep(PAUSE)
 
     print("-" * 70)
@@ -207,6 +212,8 @@ def main():
     print("Без переходов   : %d" % empty)
     if lost:
         print("⚠️ ИГРОКОВ ПОТЕРЯНО: %d — их пустота НИЧЕГО не значит, повторить" % lost)
+    if refused:
+        print("⚠️ ЗАПИСЬ ОТКЛОНЕНА У %d — причина напечатана выше, повторить" % refused)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
 

@@ -42,6 +42,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _sb import all_rows, sb  # общий транспорт: с повторами на обрыве
+
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
 API = "https://tmapi.transfermarkt.technology"
@@ -184,31 +186,6 @@ def bulk(kind, ids):
     return out
 
 
-def sb(path, method="GET", body=None, params=None):
-    url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
-    if params:
-        url += "?" + urllib.parse.urlencode(params)
-    key = os.environ["SUPABASE_KEY"]
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method, headers={
-        "apikey": key, "Authorization": "Bearer " + key,
-        "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as fh:
-            raw = fh.read()
-    except urllib.error.HTTPError as e:
-        raise SystemExit("%s: HTTP %s\n%s" % (path, e.code, e.read().decode()[:300]))
-    return json.loads(raw) if raw else []
-
-
-def all_rows(table, params):
-    rows, offset = [], 0
-    while True:
-        page = sb(table, params=dict(params, limit=PAGE, offset=offset))
-        rows.extend(page)
-        if len(page) < PAGE:
-            return rows
-        offset += PAGE
 
 
 def main():
@@ -227,7 +204,7 @@ def main():
     if args.only:
         cards = sb("cards", params={
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "transfermarkt_id": "eq." + args.only, "limit": 1})
+            "transfermarkt_id": "eq." + args.only, "limit": 1}) or []
     else:
         cards = all_rows("cards", {
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
@@ -271,7 +248,7 @@ def main():
     # игроков идёт часами и уже дважды обрывался молча; справочник, записанный
     # последней строкой, при обрыве не записывается вовсе — и вся собранная
     # статистика остаётся с кодами «A1» и «2446» вместо названий.
-    written = empty = lost = 0
+    written = empty = lost = refused = 0
     clubs_seen, comps_seen = set(), set()
     known_clubs = {r["id"] for r in all_rows("tm_club", {"select": "id", "order": "id"})}
     known_comps = {r["id"] for r in all_rows("tm_competition", {"select": "id", "order": "id"})}
@@ -312,12 +289,17 @@ def main():
                 if apply_:
                     res = sb("rpc/apply_player_season_stats", method="POST",
                              body={"p_tm_id": tm, "p_rows": rows})
-                    written += (res[0].get("written", 0) if res else 0)
+                    # Отказ записи — не «нет статистики»: считаем отдельно,
+                    # иначе повторный прогон пропустит несохранённого игрока.
+                    if res is None:
+                        refused += 1
+                    else:
+                        written += (res[0].get("written", 0) if res else 0)
                 else:
                     written += len(rows)
         if i % 25 == 0:
-            print("  %d/%d, строк %d, пусто %d, потеряно %d"
-                  % (i, len(cards), written, empty, lost), flush=True)
+            print("  %d/%d, строк %d, пусто %d, потеряно %d, отказов %d"
+                  % (i, len(cards), written, empty, lost, refused), flush=True)
         if i % 250 == 0:
             flush_directory()
         time.sleep(PAUSE)
@@ -329,6 +311,8 @@ def main():
     print("Без матчей       : %d" % empty)
     if lost:
         print("⚠️ ИГРОКОВ ПОТЕРЯНО: %d — их пустота НИЧЕГО не значит, повторить" % lost)
+    if refused:
+        print("⚠️ ЗАПИСЬ ОТКЛОНЕНА У %d — причина напечатана выше, повторить" % refused)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
 
