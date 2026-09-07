@@ -33,11 +33,19 @@
 import argparse
 import json
 import os
+import sys
 import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+# ⚠️ СВОЙ КАТАЛОГ В ПУТЬ — ЯВНО. При запуске `python3 docs/x.py` он там и так
+# оказывается, а вот тесты грузят файл ПО ПУТИ (spec_from_file_location), и
+# тогда `import _sb` падает с ModuleNotFoundError. Именно так и упал CI.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from _sb import sb  # общий транспорт: с повторами на обрыве
 
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
@@ -161,19 +169,13 @@ def sb_rpc(name, body):
     Голый «HTTP Error 400» не говорит НИЧЕГО о том, что не так с пачкой, и
     отладка такого стоит прогона: первый живой обход упал дважды, и оба раза
     причина была в теле ответа, которого не было видно.
+
+    ⚠️ ОБРЫВ СВЯЗИ — НЕ ОТКАЗ СЕРВЕРА, И ЭТОТ ОБХОД НА НЁМ УЖЕ УМИРАЛ. Прогон
+    шёл час и оборвался на `[SSL: UNEXPECTED_EOF_WHILE_READING]`: сервер
+    ничего не ответил, а сборщик умер вместе с соединением. Повторы живут в
+    общем транспорте `_sb.sb`, там же и печать тела ошибки.
     """
-    url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/rpc/" + name
-    key = os.environ["SUPABASE_KEY"]
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
-                                 headers={"apikey": key, "Authorization": "Bearer " + key,
-                                          "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as fh:
-            raw = fh.read()
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:400]
-        raise SystemExit("RPC %s: HTTP %s\n%s" % (name, e.code, detail))
-    return json.loads(raw) if raw else []
+    return sb("rpc/" + name, method="POST", body=body)
 
 
 def main():

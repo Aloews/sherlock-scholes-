@@ -48,13 +48,49 @@ export interface CollectionPage {
   hasMore: boolean;
 }
 
+/**
+ * Отбор по клубу, лиге и стране.
+ *
+ * ⚠️ ОТБИРАЕТ POSTGRES, А НЕ БРАУЗЕР. PostgREST режет ответ по `db-max-rows`
+ * = 1000, а игроков 25 509: отбор на клиенте работал бы по первой тысяче и
+ * молча врал. Этот проект так уже ошибался — список стран на экране колоды
+ * показывал 88 из 116.
+ */
+export interface CollectionFilter {
+  clubKey?: string | null;
+  league?: string | null;
+  country?: string | null;
+}
+
+/** Что вообще можно выбрать, с числами. Считает база — см. выше. */
+export interface CollectionFacet {
+  kind: 'club' | 'league' | 'country';
+  value: string;
+  label: string;
+  n: number;
+}
+
+export async function fetchCollectionFacets(
+  category: CardCategory | 'all' = 'player',
+): Promise<CollectionFacet[]> {
+  const { data, error } = await supabase.rpc('collection_facets', {
+    p_category: category === 'all' ? null : category,
+  });
+  if (error) {
+    console.error('[collection] facets failed:', error.message);
+    return [];
+  }
+  return (data as CollectionFacet[]) ?? [];
+}
+
 export async function fetchCollection(opts: {
   category: CardCategory | 'all';
   query: string;
   offset: number;
   lang: string;
+  filter?: CollectionFilter;
 }): Promise<CollectionPage> {
-  const { category, query, offset, lang } = opts;
+  const { category, query, offset, lang, filter } = opts;
   const term = query.trim();
   const wantTranslations = embedTranslations && isCardTranslationLang(lang);
 
@@ -70,6 +106,11 @@ export async function fetchCollection(opts: {
         p_query: term || null,
         p_limit: COLLECTION_PAGE_SIZE,
         p_offset: offset,
+        // Пустая строка и null для базы одно и то же — «не отбирать»; шлём
+        // null, чтобы план запроса не зависел от того, как экран очистил поле.
+        p_club_key: filter?.clubKey || null,
+        p_league: filter?.league || null,
+        p_country: filter?.country || null,
       })
       .select(withTranslations ? `${COLUMNS},card_translations(*)` : COLUMNS);
 

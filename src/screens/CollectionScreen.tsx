@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconSearch, IconSearchOff, IconAlertTriangle, IconX, IconCrown } from '@tabler/icons-react';
@@ -12,8 +13,12 @@ import { useDesign } from '@/shared/design/useDesign';
 import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { useProStore } from '@/shared/store/proStore';
-import { fetchCollection, fetchCard, type CollectionCard } from '@/features/collection/collectionApi';
+import {
+  fetchCollection, fetchCard,
+  type CollectionCard, type CollectionFilter,
+} from '@/features/collection/collectionApi';
 import { CardDossier } from '@/screens/collection/CardDossier';
+import { ScopeFilter } from '@/shared/ui/ScopeFilter';
 import type { Card } from '@/shared/types/database';
 import {
   ALL_CATEGORIES, TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN,
@@ -133,6 +138,9 @@ export function CollectionScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [catFilter,   setCatFilter]   = useState<Filter>('all');
+  // Клуб, лига и страна — отбор на СТОРОНЕ БАЗЫ. См. collectionApi:
+  // на клиенте он работал бы по первой тысяче из 25 509 карточек.
+  const [filter, setFilter] = useState<CollectionFilter>({});
   const [searchQuery, setSearchQuery] = useState('');
   // Debounced mirror of searchQuery — the value the query actually runs with.
   const [term, setTerm] = useState('');
@@ -186,6 +194,7 @@ export function CollectionScreen() {
     return () => clearTimeout(id);
   }, [searchQuery]);
 
+
   // First page — re-runs whenever the filter, the debounced term or the retry
   // key changes. Later pages are appended by loadMore().
   useEffect(() => {
@@ -193,7 +202,7 @@ export function CollectionScreen() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchCollection({ category: catFilter, query: term, offset: 0, lang: i18n.language })
+    fetchCollection({ category: catFilter, query: term, offset: 0, lang: i18n.language, filter })
       .then(({ cards: page, hasMore: more }) => {
         if (cancelled) return;
         setCards(page);
@@ -207,19 +216,22 @@ export function CollectionScreen() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catFilter, term, reloadKey, i18n.language, isPro]);
+  }, [catFilter, term, reloadKey, i18n.language, isPro, filter]);
 
   const loadMore = useCallback(() => {
     if (paging) return;
     setPaging(true);
-    fetchCollection({ category: catFilter, query: term, offset: cards.length, lang: i18n.language })
+    fetchCollection({
+      category: catFilter, query: term, offset: cards.length,
+      lang: i18n.language, filter,
+    })
       .then(({ cards: page, hasMore: more }) => {
         setCards((prev) => [...prev, ...page]);
         setHasMore(more);
       })
       .catch(() => setHasMore(false))
       .finally(() => setPaging(false));
-  }, [paging, catFilter, term, cards.length, i18n.language]);
+  }, [paging, catFilter, term, cards.length, i18n.language, filter]);
 
   const pickCategory = (next: Filter) => {
     hapticImpact('light');
@@ -236,7 +248,7 @@ export function CollectionScreen() {
         <div className="max-w-sm mx-auto flex items-center gap-3">
           <button
             type="button"
-            onClick={() => { hapticImpact('light'); navigate('/'); }}
+            onClick={() => { hapticImpact('light'); goBack(navigate); }}
             aria-label={t('home.back')}
             className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl bg-brand-surface
                        border border-brand-border text-brand-muted hover:text-white transition-colors"
@@ -315,6 +327,13 @@ export function CollectionScreen() {
               );
             })}
           </div>
+
+          {/* Клуб, лига, страна — общий компонент, см. ScopeFilter. */}
+          <ScopeFilter
+            value={filter}
+            onChange={setFilter}
+            category={catFilter === 'all' ? 'all' : (catFilter as 'player' | 'club')}
+          />
 
           {/* Body: loading → error → empty → grid */}
           {loading ? (

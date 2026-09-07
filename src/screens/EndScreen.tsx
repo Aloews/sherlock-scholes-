@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { StatLine } from '@/shared/ui/StatLine';
 import { useTranslation } from 'react-i18next';
 import { IconSend } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
@@ -251,7 +252,26 @@ export function EndScreen() {
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
                   <span className="font-semibold text-white">{team.name}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap">
+                {/* ⚠️ ЧИСЛА, А НЕ ТОЛЬКО КРУЖКИ. В досье игрока статистика — это
+                    строки с числами, а здесь их не было вовсе: команда
+                    показывалась кружками раундов, и «сколько всего» читатель
+                    считал глазами. Одна строка на команду, тем же видом, что
+                    в карточке. */}
+                {/* ⚠️ СВОЙ КЛЮЧ, А НЕ ЧУЖОЙ. Сперва я подставил сюда подпись
+                    из карточки — «матчи · голы · передачи». Вид совпал бы, а
+                    смысл соврал: здесь раунды и очки, а не футбольные голы.
+                    Единый ВИД не значит единый текст. */}
+                <StatLine
+                  label={t('end.team_totals')}
+                  value={t('end.totals_line', {
+                    rounds: rounds.length,
+                    points: rounds.reduce((n, r) => n + Math.max(0, r.points), 0),
+                    scored: rounds.filter((r) => r.points >= 1).length,
+                  })}
+                  accent
+                />
+
+                <div className="flex gap-3 flex-wrap pt-2">
                   {rounds.map((r, i) => (
                     <div key={r.id} className="flex flex-col items-center gap-1">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-base ${
