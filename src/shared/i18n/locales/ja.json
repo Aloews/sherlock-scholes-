@@ -931,5 +931,25 @@
   "transfers": {
     "title": "移籍",
     "failed": "移籍情報を読み込めませんでした"
+  },
+  "index": {
+    "title": "総合レーティング",
+    "tab_index": "総合",
+    "tab_form": "調子順",
+    "sort_index": "総合スコア",
+    "sort_value": "市場価値",
+    "sort_views": "ウィキペディア閲覧数",
+    "sort_stats": "出場時間",
+    "sort_goals": "通算得点",
+    "sort_news": "ニュースでの言及",
+    "sort_rating": "Soccer Wiki レーティング",
+    "formula": "スコアは4つの柱――市場価値、ウィキペディアの閲覧数、出場時間、ニュースでの言及――から作られます。分かっていることが少ない選手ほど、スコアは中央に寄ります。",
+    "formula_single": "ひとつの指標順です。その指標がない選手は載りません。ゼロではなく「未計測」だからです。",
+    "empty": "この指標で計測された選手はいません",
+    "of_total": "{{total}} 人中 {{shown}} 人を表示",
+    "minutes_other": "{{count}} 分",
+    "goals_other": "{{count}} 得点",
+    "mentions_other": "{{count}} 件",
+    "parts_other": "{{count}} 本の柱"
   }
 }

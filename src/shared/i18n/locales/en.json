@@ -962,5 +962,29 @@
   "transfers": {
     "title": "Transfers",
     "failed": "Couldn’t load transfers"
+  },
+  "index": {
+    "title": "Overall rating",
+    "tab_index": "Overall",
+    "tab_form": "By form",
+    "sort_index": "Overall score",
+    "sort_value": "Market value",
+    "sort_views": "Wikipedia views",
+    "sort_stats": "Minutes played",
+    "sort_goals": "Career goals",
+    "sort_news": "News mentions",
+    "sort_rating": "Soccer Wiki rating",
+    "formula": "The score combines four pillars: market value, Wikipedia page views, minutes played and news mentions. The less is known about a player, the closer the score sits to the middle.",
+    "formula_single": "Ordered by a single metric. Players without it are absent — that is “not measured”, not zero.",
+    "empty": "Nobody here is measured on this metric",
+    "of_total": "Showing {{shown}} of {{total}}",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "goals_one": "{{count}} goal",
+    "goals_other": "{{count}} goals",
+    "mentions_one": "{{count}} mention",
+    "mentions_other": "{{count}} mentions",
+    "parts_one": "{{count}} pillar",
+    "parts_other": "{{count}} pillars"
   }
 }

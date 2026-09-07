@@ -17,6 +17,7 @@
 import { supabase } from '@/shared/lib/supabase';
 import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 import type { RatingWindow } from './freshness';
+import type { CollectionFilter } from '@/features/collection/collectionApi';
 
 export interface RatingRow {
   card_id: string;
@@ -182,4 +183,84 @@ export async function fetchMetricChanges(
     p_card_id: cardId, p_days: days,
   });
   return fromPostgrest<MetricChange[]>(res, 'card_metric_changes');
+}
+
+/**
+ * По какому показателю строить общий список игроков.
+ *
+ * ⚠️ ЗНАЧЕНИЯ СОВПАДАЮТ С `p_sort` В SQL И ДОЛЖНЫ СОВПАДАТЬ ДАЛЬШЕ. Ветка
+ * `case` в `player_index` — единственное место, где решается, что считать; тут
+ * только имена. Разъедутся — экран молча покажет общий рейтинг под подписью
+ * «по стоимости», и заметить это будет нечем.
+ */
+export const INDEX_SORTS = ['index', 'value', 'views', 'stats', 'goals', 'news', 'rating'] as const;
+export type IndexSort = (typeof INDEX_SORTS)[number];
+
+export interface PlayerIndexRow {
+  card_id: string;
+  name: string;
+  name_en: string | null;
+  photo_url: string | null;
+  country: string | null;
+  club_key: string | null;
+  club: string | null;
+  league: string | null;
+  /** Общий счёт по четырём опорам. */
+  index_score: number | null;
+  /** Сколько опор его сложили: 1..4. Четвёрка весомее одиночки. */
+  parts: number | null;
+  value_part: number | null;
+  views_part: number | null;
+  stats_part: number | null;
+  news_part: number | null;
+  /** Сырое число выбранного показателя: евро, просмотры, минуты. */
+  sort_value: number | null;
+  place: number;
+}
+
+export const INDEX_LIMIT = 50;
+
+/**
+ * Общий рейтинг игроков и сортировки по каждой опоре, внутри лиги/страны/клуба.
+ *
+ * ⚠️ ОТБОР И ПОРЯДОК ДЕЛАЕТ SQL. На клиенте отбор резал бы готовую полусотню, а
+ * при 25 509 карточках PostgREST и вовсе отдаёт не больше тысячи строк: «лучший
+ * в лиге» получился бы лучшим из тех, кто попал в первую страницу.
+ */
+export async function fetchPlayerIndex(
+  sort: IndexSort,
+  filter?: CollectionFilter,
+  lang = 'ru',
+  limit = INDEX_LIMIT,
+  offset = 0,
+): Promise<LoadState<PlayerIndexRow[]>> {
+  const res = await supabase.rpc('player_index', {
+    p_sort: sort,
+    p_league: filter?.league || null,
+    p_country: filter?.country || null,
+    p_club_key: filter?.clubKey || null,
+    p_lang: lang,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  return fromPostgrest<PlayerIndexRow[]>(res, `player_index(${sort})`);
+}
+
+/**
+ * Сколько игроков в срезе — чтобы «3-й из 540» было честным числом.
+ *
+ * ⚠️ ЭТО НЕ ДЛИНА СПИСКА НА ЭКРАНЕ. Экран показывает полсотни; знаменатель
+ * обязан считать всех, иначе каждый список кончался бы «50-м из 50».
+ */
+export async function fetchPlayerIndexCount(
+  sort: IndexSort,
+  filter?: CollectionFilter,
+): Promise<LoadState<number>> {
+  const res = await supabase.rpc('player_index_count', {
+    p_sort: sort,
+    p_league: filter?.league || null,
+    p_country: filter?.country || null,
+    p_club_key: filter?.clubKey || null,
+  });
+  return fromPostgrest<number>(res, `player_index_count(${sort})`);
 }

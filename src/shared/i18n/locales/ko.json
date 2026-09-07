@@ -931,5 +931,25 @@
   "transfers": {
     "title": "이적",
     "failed": "이적 정보를 불러오지 못했습니다"
+  },
+  "index": {
+    "title": "종합 평점",
+    "tab_index": "종합",
+    "tab_form": "폼 순",
+    "sort_index": "종합 점수",
+    "sort_value": "시장 가치",
+    "sort_views": "위키백과 조회수",
+    "sort_stats": "출전 시간",
+    "sort_goals": "통산 득점",
+    "sort_news": "뉴스 언급",
+    "sort_rating": "Soccer Wiki 평점",
+    "formula": "점수는 네 가지 축, 즉 시장 가치, 위키백과 조회수, 출전 시간, 뉴스 언급으로 만들어집니다. 알려진 것이 적은 선수일수록 점수는 중간에 가까워집니다.",
+    "formula_single": "한 가지 지표 순입니다. 그 지표가 없는 선수는 목록에 없습니다. 0이 아니라 ‘측정되지 않음’이기 때문입니다.",
+    "empty": "이 지표로 측정된 선수가 없습니다",
+    "of_total": "{{total}}명 중 {{shown}}명 표시",
+    "minutes_other": "{{count}}분",
+    "goals_other": "{{count}}골",
+    "mentions_other": "{{count}}건",
+    "parts_other": "축 {{count}}개"
   }
 }

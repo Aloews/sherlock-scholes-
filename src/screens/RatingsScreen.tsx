@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { RatingsList } from '@/features/ratings/RatingsList';
+import { PlayerIndexList } from '@/features/ratings/PlayerIndexList';
+import { Chip } from '@/shared/ui/Chip';
+import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
  * Рейтинг футболистов за неделю, месяц и год.
@@ -16,10 +20,17 @@ import { RatingsList } from '@/features/ratings/RatingsList';
  * фэнтези. Здесь остались только шапка и роут: две копии списка однажды
  * разошлись бы в числах, а число под футболистом и число в составе игрока
  * обязаны совпадать.
+ *
+ * ДВА СПИСКА, А НЕ ОДИН С ПЕРЕКЛЮЧАТЕЛЕМ ВНУТРИ, и это разные вопросы:
+ * «Общий» отвечает, кто вообще значительнее — стоимость, просмотры,
+ * минуты, новости, без окна; «По игре» — кто играл лучше за неделю или
+ * месяц. Сложить форму за семь дней с карьерой за пятнадцать лет в одно
+ * число нельзя, поэтому и число у них своё.
  */
 export function RatingsScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [tab, setTab] = useState<'index' | 'form'>('index');
 
   return (
     <div className="min-h-screen bg-brand-bg pb-24">
@@ -35,7 +46,20 @@ export function RatingsScreen() {
           <h1 className="ds-display text-white text-lg font-bold">{t('ratings.title')}</h1>
         </div>
 
-        <RatingsList />
+        <div className="flex gap-1.5">
+          <Chip
+            label={t('index.tab_index')}
+            selected={tab === 'index'}
+            onClick={() => { hapticImpact('light'); setTab('index'); }}
+          />
+          <Chip
+            label={t('index.tab_form')}
+            selected={tab === 'form'}
+            onClick={() => { hapticImpact('light'); setTab('form'); }}
+          />
+        </div>
+
+        {tab === 'index' ? <PlayerIndexList /> : <RatingsList />}
       </div>
     </div>
   );

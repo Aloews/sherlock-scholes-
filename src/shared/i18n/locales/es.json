@@ -962,5 +962,29 @@
   "transfers": {
     "title": "Fichajes",
     "failed": "No se pudieron cargar los fichajes"
+  },
+  "index": {
+    "title": "Clasificación general",
+    "tab_index": "General",
+    "tab_form": "Por forma",
+    "sort_index": "Puntuación general",
+    "sort_value": "Valor de mercado",
+    "sort_views": "Visitas en Wikipedia",
+    "sort_stats": "Minutos jugados",
+    "sort_goals": "Goles en la carrera",
+    "sort_news": "Menciones en noticias",
+    "sort_rating": "Valoración de Soccer Wiki",
+    "formula": "La puntuación combina cuatro pilares: valor de mercado, visitas a la página de Wikipedia, minutos jugados y menciones en noticias. Cuanto menos se sabe de un jugador, más se acerca la puntuación al centro.",
+    "formula_single": "Ordenado por un solo indicador. Quien no lo tiene no aparece: eso es «no medido», no cero.",
+    "empty": "Aquí nadie está medido en este indicador",
+    "of_total": "Se muestran {{shown}} de {{total}}",
+    "minutes_one": "{{count}} minuto",
+    "minutes_other": "{{count}} minutos",
+    "goals_one": "{{count}} gol",
+    "goals_other": "{{count}} goles",
+    "mentions_one": "{{count}} mención",
+    "mentions_other": "{{count}} menciones",
+    "parts_one": "{{count}} pilar",
+    "parts_other": "{{count}} pilares"
   }
 }

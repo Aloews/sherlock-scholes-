@@ -906,6 +906,61 @@ async function checkMetricHistory() {
          bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkPlayerIndex() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Общий рейтинг', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const top = await rpc('player_index',
+    { p_sort: 'index', p_lang: 'ru', p_limit: 10, p_offset: 0 });
+  const rows = Array.isArray(top) ? top : [];
+
+  record('Общий рейтинг: список приходит', rows.length === 10,
+         `${rows.length} строк из 10`,
+         'ловит упавший player_index и отозванный грант для anon');
+
+  // ⚠️ ГЛАВНАЯ ПРОВЕРКА, И ОНА ПОСТАВЛЕНА ПО ЖИВОЙ ОШИБКЕ. Первая версия
+  // счёта делила сумму опор на их число — и Жуан Феликс, у которого была одна
+  // опора (единственное упоминание в новостях), получил ровно 100 и второе
+  // место в мире, обойдя Бруну Фернандеша с четырьмя опорами по 99. Верхушка
+  // общего рейтинга обязана состоять из измеренных со всех сторон.
+  const shallow = rows.filter((r) => (r.parts ?? 0) < 3);
+  record('Общий рейтинг: верхушка измерена со всех сторон', shallow.length === 0,
+         shallow.length === 0
+           ? 'у всех десяти опор 3 и больше'
+           : `${shallow.length} из 10 держатся на одной-двух опорах: ` +
+             shallow.map((r) => `${r.name_en} (${r.parts})`).join(', '),
+         'ловит возврат к среднему без поправки на незнание');
+
+  // Отбор по лиге обязан РЕЗАТЬ. Если он ничего не меняет — фильтр не доехал
+  // до SQL, и «лучший в лиге» на самом деле лучший в мире.
+  const all = await rpc('player_index_count', { p_sort: 'value' });
+  const one = await rpc('player_index_count',
+    { p_sort: 'value', p_league: 'Испания. Ла Лига' });
+  record('Общий рейтинг: отбор по лиге сужает', one > 0 && one < all,
+         `${one} в лиге против ${all} всего`,
+         'ловит фильтр, который не доехал до SQL');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманная лига обязана дать ноль. Не дала —
+  // фильтр не работает, и проверка выше ничего не доказывает.
+  const bogus = await rpc('player_index_count',
+    { p_sort: 'value', p_league: 'Нет такой лиги ZZ' });
+  record('Общий рейтинг: контроль отбора', bogus === 0,
+         bogus === 0 ? 'по выдуманной лиге пусто, как и должно'
+                     : `выдуманная лига вернула ${bogus} — фильтр не работает`,
+         bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -920,6 +975,7 @@ await checkCardConflicts();
 await checkCurrentClubSources();
 await checkDeckCountries();
 await checkMetricHistory();
+await checkPlayerIndex();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));
