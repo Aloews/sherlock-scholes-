@@ -323,6 +323,10 @@ export interface Card {
   facts?: CardFacts | null;             // structural Wikidata facts; absent until the facts/tags migration
   tags?: string[] | null;               // player traits (SpecialTag) + the Pro 'legend' marker
   fame?: number | null;                 // 0..100 recognizability percentile; null = no pageviews data
+  /** Дата рождения. Владелец: «у игроков, которые не завершили карьеру, в
+   *  карточке пиши дату рождения». Лежит в заявках клубов (club_roster.born_on)
+   *  и в паспорте Transfermarkt; null = ни один источник её не дал. */
+  born_on?: string | null;
   /** Известность ДОМА: перцентиль по языкам страны игрока (country_wiki_lang).
    *  Заведена потому, что pageviews_i18n собирался ДЕВЯТЬЮ локалями интерфейса,
    *  и половина активных игроков (1452 из 2918, замер 04.09.2026) не имела ни

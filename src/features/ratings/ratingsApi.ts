@@ -193,7 +193,14 @@ export async function fetchMetricChanges(
  * только имена. Разъедутся — экран молча покажет общий рейтинг под подписью
  * «по стоимости», и заметить это будет нечем.
  */
-export const INDEX_SORTS = ['index', 'value', 'views', 'stats', 'goals', 'news', 'rating'] as const;
+export const INDEX_SORTS = [
+  'index', 'value', 'views', 'stats', 'goals', 'news', 'rating',
+  // Пять показателей, добавленных по просьбе владельца «и другие новые, не
+  // менее важные 5 шт.». Все считаются ночью и лежат колонками в
+  // player_level: считать их в запросе списка значит делать это для всех
+  // 25 509 карточек при каждом открытии экрана.
+  'growth', 'caps', 'countries', 'cards', 'young',
+] as const;
 export type IndexSort = (typeof INDEX_SORTS)[number];
 
 export interface PlayerIndexRow {
@@ -202,6 +209,7 @@ export interface PlayerIndexRow {
   name_en: string | null;
   photo_url: string | null;
   country: string | null;
+  continent: string | null;
   club_key: string | null;
   club: string | null;
   league: string | null;
@@ -218,6 +226,18 @@ export interface PlayerIndexRow {
   place: number;
 }
 
+/** Континенты колоды. Океании тут нет — её нет и в правиле, по которому
+ *  континент проставляется: Австралия и Новая Зеландия сидят в «Прочих». */
+export const CONTINENTS = [
+  'europe', 'south_america', 'north_america', 'africa', 'asia',
+] as const;
+export type Continent = (typeof CONTINENTS)[number];
+
+/** Отбор списка: клуб, лига, страна — как в коллекции, плюс континент. */
+export interface IndexFilter extends CollectionFilter {
+  continent?: Continent | null;
+}
+
 export const INDEX_LIMIT = 50;
 
 /**
@@ -229,7 +249,7 @@ export const INDEX_LIMIT = 50;
  */
 export async function fetchPlayerIndex(
   sort: IndexSort,
-  filter?: CollectionFilter,
+  filter?: IndexFilter,
   lang = 'ru',
   limit = INDEX_LIMIT,
   offset = 0,
@@ -242,6 +262,7 @@ export async function fetchPlayerIndex(
     p_lang: lang,
     p_limit: limit,
     p_offset: offset,
+    p_continent: filter?.continent || null,
   });
   return fromPostgrest<PlayerIndexRow[]>(res, `player_index(${sort})`);
 }
@@ -254,13 +275,146 @@ export async function fetchPlayerIndex(
  */
 export async function fetchPlayerIndexCount(
   sort: IndexSort,
-  filter?: CollectionFilter,
+  filter?: IndexFilter,
 ): Promise<LoadState<number>> {
   const res = await supabase.rpc('player_index_count', {
     p_sort: sort,
     p_league: filter?.league || null,
     p_country: filter?.country || null,
     p_club_key: filter?.clubKey || null,
+    p_continent: filter?.continent || null,
   });
   return fromPostgrest<number>(res, `player_index_count(${sort})`);
+}
+
+/** Итоги карьеры одной строкой: клубы, сборная, лиги, страны. */
+export interface CareerTotalsRow {
+  club_apps: number;
+  club_goals: number;
+  club_assists: number;
+  club_minutes: number;
+  club_count: number;
+  season_from: number | null;
+  season_to: number | null;
+  national_apps: number;
+  national_goals: number;
+  national_team: string | null;
+  leagues: number;
+  countries: number;
+}
+
+/**
+ * Итоги карьеры игрока.
+ *
+ * ⚠️ `national_apps` — МАТЧИ ЗА ОДНУ КОМАНДУ, ту, что названа в
+ * `national_team`, а не сумму по всем сборным. Сумма давала Криштиану Роналду
+ * 259 матчей за Португалию: 246 за главную плюс юношеские и олимпийскую.
+ */
+export async function fetchCareerTotals(
+  cardId: string,
+): Promise<LoadState<CareerTotalsRow[]>> {
+  const res = await supabase.rpc('player_career_totals', { p_card_id: cardId });
+  return fromPostgrest<CareerTotalsRow[]>(res, 'player_career_totals');
+}
+
+/** Важный предстоящий матч: обе эмблемы, стоимость обоих составов. */
+export interface TopFixture {
+  fixture_id: string;
+  commence_at: string;
+  /** Ключ турнира из расписания: `soccer_uefa_champs_league` и т.п. */
+  sport_key: string | null;
+  /** Домашняя лига клуба-хозяина. Запасной вариант, если турнир не переведён. */
+  league: string | null;
+  home_key: string; home_name: string | null; home_crest: string | null;
+  home_value: number | null; home_squad: number;
+  away_key: string; away_name: string | null; away_crest: string | null;
+  away_value: number | null; away_squad: number;
+  /** Сумма стоимости обоих составов — то, чем матчи упорядочены. */
+  importance: number;
+}
+
+/**
+ * Самые важные ближайшие матчи.
+ *
+ * ⚠️ ВАЖНОСТЬ — СУММА СТОИМОСТИ ДВУХ СОСТАВОВ, и это выбор, а не единственный
+ * возможный: владелец просил считать основной метрикой стоимость. Проверка на
+ * бою вывела наверх дерби «Манчестер Юнайтед» — «Манчестер Сити» (2158 млн €),
+ * следом «Порту» — «Манчестер Сити» и «Наполи» — «Арсенал».
+ *
+ * ⚠️ ОТБОР И ПОРЯДОК ДЕЛАЕТ SQL. Расписание живёт целиком в базе, а PostgREST
+ * отдаёт не больше тысячи строк.
+ */
+export async function fetchTopFixtures(
+  lang = 'ru',
+  limit = 3,
+  days = 10,
+): Promise<LoadState<TopFixture[]>> {
+  const res = await supabase.rpc('top_fixtures', {
+    p_lang: lang, p_limit: limit, p_days: days,
+  });
+  return fromPostgrest<TopFixture[]>(res, 'top_fixtures');
+}
+
+/** Карточка, у которой показатель резко пошёл вверх. */
+export interface RisingCard {
+  card_id: string;
+  name: string;
+  name_en: string | null;
+  photo_url: string | null;
+  club: string | null;
+  club_key: string | null;
+  /** Какой именно показатель вырос: market_value, pageviews, news_30d… */
+  metric: string;
+  was: number;
+  now_value: number;
+  /** Во сколько раз. 1.8 значит «в 1,8 раза». */
+  growth: number;
+  changed_on: string;
+}
+
+/**
+ * Кто резко пошёл в гору.
+ *
+ * ⚠️ ПОКАЗАТЕЛЬ НАЗЫВАЕТСЯ. «Игрок вырос» без указания, в чём именно, —
+ * бесполезная строка: подорожал, попал в новости и пробежал больше минут это
+ * три разных события.
+ *
+ * ⚠️ РОСТ ОТ МАЛОГО ЧИСЛА ОТРЕЗАН В SQL порогами «было» у каждого показателя.
+ * Одно упоминание против нуля — рост в бесконечность раз; без порогов верхушку
+ * заняли бы неизвестные игроки с двумя просмотрами.
+ */
+export async function fetchRisingCards(
+  days = 30,
+  limit = 20,
+  lang = 'ru',
+  filter?: IndexFilter,
+): Promise<LoadState<RisingCard[]>> {
+  const res = await supabase.rpc('rising_cards', {
+    p_days: days, p_limit: limit, p_lang: lang,
+    p_league: filter?.league || null,
+    p_country: filter?.country || null,
+    p_continent: filter?.continent || null,
+  });
+  return fromPostgrest<RisingCard[]>(res, 'rising_cards');
+}
+
+/** Клуб, чей состав подорожал. Клуб растёт, когда растут его игроки. */
+export interface RisingClub {
+  club_key: string;
+  club: string | null;
+  crest_url: string | null;
+  league: string | null;
+  players: number;
+  was: number;
+  now_value: number;
+  growth: number;
+}
+
+export async function fetchRisingClubs(
+  days = 30, limit = 10, lang = 'ru',
+): Promise<LoadState<RisingClub[]>> {
+  const res = await supabase.rpc('rising_clubs', {
+    p_days: days, p_limit: limit, p_lang: lang,
+  });
+  return fromPostgrest<RisingClub[]>(res, 'rising_clubs');
 }

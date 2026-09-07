@@ -176,7 +176,7 @@
     "news_and_video": "Новости и видео",
     "f_club": "Клуб",
     "level": "Уровень",
-    "level_basis_fame": "по просмотрам в Википедии — матчей мало",
+    "level_basis_fame": "по просмотрам в Википедии",
     "level_basis_fame_form": "по просмотрам в Википедии и игре",
     "level_basis_icon": "икона футбола",
     "reach": "Просмотры в Википедии",
@@ -200,7 +200,12 @@
       "goals_30d": "Голов за 30 дней",
       "assists_30d": "Передач за 30 дней",
       "news_30d": "Упоминаний в новостях"
-    }
+    },
+    "hl_national": "За {{team}}: {{apps}} матчей, {{goals}} голов",
+    "hl_leagues": "Играл в {{leagues}} лигах, странах: {{countries}}",
+    "hl_born": "Родился {{date}}",
+    "search_scope": "Поиск по клубам, лигам, странам",
+    "search_empty": "По запросу ничего не нашлось"
   },
   "profile": {
     "title": "Профиль",
@@ -512,14 +517,13 @@
     "unmute": "Включить звук"
   },
   "career": {
-    "matches_one": "{{count}} матч",
-    "matches_few": "{{count}} матча",
-    "matches_many": "{{count}} матчей",
-    "matches_other": "{{count}} матчей",
-    "goals_one": "{{count}} гол",
-    "goals_few": "{{count}} гола",
-    "goals_many": "{{count}} голов",
-    "goals_other": "{{count}} голов"
+    "title": "Карьера в цифрах",
+    "matches": "Матчи",
+    "goals": "Голы",
+    "assists": "Пасы",
+    "minutes": "Минуты",
+    "national": "За {{team}} — {{apps}} матчей, {{goals}} голов",
+    "club_line": "{{matches}} м · {{goals}} г · {{assists}} п"
   },
   "facts": {
     "caps_one": "{{count}} матч {{team}}",
@@ -573,13 +577,72 @@
     "puskas": "Пушкаш"
   },
   "league": {
-    "Premier League": "Премьер-лига (Англия)",
-    "La Liga": "Ла Лига",
-    "Serie A": "Серия А",
-    "Bundesliga": "Бундеслига",
-    "Ligue 1": "Лига 1",
-    "Eredivisie": "Эредивизи",
-    "Russian Premier League": "РПЛ (Россия)"
+    "soccer_argentina_primera_division": {
+      "name": "Аргентина. Примера"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "Бразилия. Серия А"
+    },
+    "soccer_china_superleague": {
+      "name": "Китай. Суперлига"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "Кубок Либертадорес"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "Южноамериканский кубок"
+    },
+    "soccer_epl": {
+      "name": "Англия. Премьер-лига"
+    },
+    "soccer_france_ligue_one": {
+      "name": "Франция. Лига 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "Германия. Бундеслига"
+    },
+    "soccer_italy_serie_a": {
+      "name": "Италия. Серия А"
+    },
+    "soccer_japan_j_league": {
+      "name": "Япония. Джей-лига"
+    },
+    "soccer_korea_kleague1": {
+      "name": "Корея. К-лига 1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "Мексика. Лига MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "Нидерланды. Эредивизие"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "Португалия. Примейра"
+    },
+    "soccer_russia_premier_league": {
+      "name": "Россия. Премьер-лига"
+    },
+    "soccer_spain_la_liga": {
+      "name": "Испания. Ла Лига"
+    },
+    "soccer_turkey_super_league": {
+      "name": "Турция. Суперлига"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "Лига чемпионов"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "Лига конференций"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "Лига Европы"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "Лига наций"
+    },
+    "soccer_usa_mls": {
+      "name": "США. MLS"
+    }
   },
   "voice_services": {
     "title": "Голосовой сервис",
@@ -1059,6 +1122,48 @@
     "parts_one": "{{count}} опора",
     "parts_few": "{{count}} опоры",
     "parts_many": "{{count}} опор",
-    "parts_other": "{{count}} опоры"
+    "parts_other": "{{count}} опоры",
+    "sort_growth": "Рост стоимости",
+    "sort_caps": "Матчи за сборную",
+    "sort_countries": "В скольких странах играл",
+    "sort_cards": "Жёлтые и красные",
+    "sort_young": "Самые молодые",
+    "continent_all": "Все континенты",
+    "continent": {
+      "europe": "Европа",
+      "south_america": "Южная Америка",
+      "north_america": "Северная Америка",
+      "africa": "Африка",
+      "asia": "Азия"
+    },
+    "caps_one": "{{count}} матч",
+    "caps_few": "{{count}} матча",
+    "caps_many": "{{count}} матчей",
+    "caps_other": "{{count}} матча",
+    "countries_n_one": "{{count}} страна",
+    "countries_n_few": "{{count}} страны",
+    "countries_n_many": "{{count}} стран",
+    "countries_n_other": "{{count}} страны",
+    "cards_n_one": "{{count}} карточка",
+    "cards_n_few": "{{count}} карточки",
+    "cards_n_many": "{{count}} карточек",
+    "cards_n_other": "{{count}} карточки"
+  },
+  "fixtures": {
+    "top_title": "Ближайшие большие матчи"
+  },
+  "rising": {
+    "tab": "Набирают ход",
+    "clubs": "Клубы",
+    "how": "Показано, во сколько раз вырос показатель. Рост от малого числа не считается: у каждого показателя свой порог.",
+    "empty": "Пока никто не вырос: история показателей ведётся с 6 сентября, а рост считается по её точкам.",
+    "window_one": "{{count}} день",
+    "window_few": "{{count}} дня",
+    "window_many": "{{count}} дней",
+    "window_other": "{{count}} дня",
+    "by_squad_one": "по {{count}} игроку",
+    "by_squad_few": "по {{count}} игрокам",
+    "by_squad_many": "по {{count}} игрокам",
+    "by_squad_other": "по {{count}} игрокам"
   }
 }

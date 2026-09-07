@@ -19,6 +19,7 @@ import { HomeDuelSettings } from '@/screens/home/HomeDuelSettings';
 import { HomeJoinForm } from '@/screens/home/HomeJoinForm';
 import { HomeJoining } from '@/screens/home/HomeJoining';
 import { HomeGoalPreview } from '@/features/digest/HomeGoalPreview';
+import { TopFixtures } from '@/features/fixtures/TopFixtures';
 import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
@@ -266,6 +267,7 @@ export function HomeScreen() {
           </div>
         )}
 
+
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-2.5">
             <HomeGameLink
@@ -329,6 +331,22 @@ export function HomeScreen() {
                 onClick={() => navigate('/collection')}
               />
             )}
+          </div>
+        )}
+
+        {/* Ближайшие большие матчи — эмблемы, турнир, время и сумма стоимости
+            обоих составов, по которой матч сюда и попал. Владелец: «самые
+            важные предстоящие матчи выводить на главную с важными данными и
+            эмблемами».
+
+            ⚠️ ПОД КНОПКАМИ ИГРЫ, А НЕ НАД НИМИ. Блок приходит по сети и
+            появляется не с первым кадром; поставленный выше, он сдвинул бы
+            кнопки вниз ровно тогда, когда палец уже летит к «Алиасу». Здесь
+            он сдвигает только то, что ниже него, — и ради этого же не
+            резервирует пустое место скелетом. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <TopFixtures />
           </div>
         )}
 

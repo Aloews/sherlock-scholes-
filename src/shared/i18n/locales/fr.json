@@ -172,7 +172,7 @@
     "news_and_video": "Actus et vidéos",
     "f_club": "Club",
     "level": "Niveau",
-    "level_basis_fame": "selon les vues Wikipédia — trop peu de matchs",
+    "level_basis_fame": "d'après les vues sur Wikipédia",
     "level_basis_fame_form": "selon les vues Wikipédia et la forme",
     "level_basis_icon": "icône du football",
     "reach": "Vues sur Wikipédia",
@@ -196,7 +196,12 @@
       "goals_30d": "Buts sur 30 jours",
       "assists_30d": "Passes décisives sur 30 jours",
       "news_30d": "Mentions dans la presse"
-    }
+    },
+    "hl_national": "Avec {{team}} : {{apps}} sélections, {{goals}} buts",
+    "hl_leagues": "A joué dans {{leagues}} championnats de {{countries}} pays",
+    "hl_born": "Né le {{date}}",
+    "search_scope": "Rechercher clubs, championnats, pays",
+    "search_empty": "Aucun résultat"
   },
   "profile": {
     "title": "Profil",
@@ -486,10 +491,13 @@
     "unmute": "Activer les sons"
   },
   "career": {
-    "matches_one": "{{count}} match",
-    "matches_other": "{{count}} matchs",
-    "goals_one": "{{count}} but",
-    "goals_other": "{{count}} buts"
+    "title": "La carrière en chiffres",
+    "matches": "Matchs",
+    "goals": "Buts",
+    "assists": "Passes",
+    "minutes": "Minutes",
+    "national": "Avec {{team}} — {{apps}} sélections, {{goals}} buts",
+    "club_line": "{{matches}} m · {{goals}} b · {{assists}} p"
   },
   "facts": {
     "caps_one": "{{count}} sélection",
@@ -535,13 +543,72 @@
     "puskas": "Prix Puskás"
   },
   "league": {
-    "Premier League": "Premier League (Angleterre)",
-    "Russian Premier League": "Premier League russe",
-    "La Liga": "La Liga",
-    "Serie A": "Serie A",
-    "Bundesliga": "Bundesliga",
-    "Ligue 1": "Ligue 1",
-    "Eredivisie": "Eredivisie"
+    "soccer_argentina_primera_division": {
+      "name": "Primera División"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "Brasileirão"
+    },
+    "soccer_china_superleague": {
+      "name": "Super League chinoise"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "Copa Libertadores"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "Copa Sudamericana"
+    },
+    "soccer_epl": {
+      "name": "Premier League"
+    },
+    "soccer_france_ligue_one": {
+      "name": "Ligue 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "Bundesliga"
+    },
+    "soccer_italy_serie_a": {
+      "name": "Serie A"
+    },
+    "soccer_japan_j_league": {
+      "name": "J1 League"
+    },
+    "soccer_korea_kleague1": {
+      "name": "K League 1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "Liga MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "Eredivisie"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "Primeira Liga"
+    },
+    "soccer_russia_premier_league": {
+      "name": "Premier-Liga russe"
+    },
+    "soccer_spain_la_liga": {
+      "name": "Liga"
+    },
+    "soccer_turkey_super_league": {
+      "name": "Süper Lig"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "Ligue des champions"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "Ligue Europa Conférence"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "Ligue Europa"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "Ligue des nations"
+    },
+    "soccer_usa_mls": {
+      "name": "MLS"
+    }
   },
   "voice_services": {
     "title": "Service vocal",
@@ -985,6 +1052,38 @@
     "mentions_one": "{{count}} mention",
     "mentions_other": "{{count}} mentions",
     "parts_one": "{{count}} pilier",
-    "parts_other": "{{count}} piliers"
+    "parts_other": "{{count}} piliers",
+    "sort_growth": "Progression de la valeur",
+    "sort_caps": "Sélections",
+    "sort_countries": "Pays où il a joué",
+    "sort_cards": "Jaunes et rouges",
+    "sort_young": "Les plus jeunes",
+    "continent_all": "Tous les continents",
+    "continent": {
+      "europe": "Europe",
+      "south_america": "Amérique du Sud",
+      "north_america": "Amérique du Nord",
+      "africa": "Afrique",
+      "asia": "Asie"
+    },
+    "caps_one": "{{count}} sélection",
+    "caps_other": "{{count}} sélections",
+    "countries_n_one": "{{count}} pays",
+    "countries_n_other": "{{count}} pays",
+    "cards_n_one": "{{count}} carton",
+    "cards_n_other": "{{count}} cartons"
+  },
+  "fixtures": {
+    "top_title": "Grands matchs à venir"
+  },
+  "rising": {
+    "tab": "En progression",
+    "clubs": "Clubs",
+    "how": "Indique de combien de fois l'indicateur a grimpé. La progression depuis une base minime est ignorée : chaque indicateur a son seuil.",
+    "empty": "Personne n'a encore progressé : l'historique commence le 6 septembre.",
+    "window_one": "{{count}} jour",
+    "window_other": "{{count}} jours",
+    "by_squad_one": "sur {{count}} joueur",
+    "by_squad_other": "sur {{count}} joueurs"
   }
 }

@@ -11,7 +11,8 @@ import { Chip } from '@/shared/ui/Chip';
 import { formatSortValue } from './indexSortValue';
 import {
   fetchPlayerIndex, fetchPlayerIndexCount,
-  INDEX_SORTS, type IndexSort, type PlayerIndexRow,
+  CONTINENTS, INDEX_SORTS,
+  type Continent, type IndexSort, type PlayerIndexRow,
 } from './ratingsApi';
 
 /**
@@ -37,17 +38,22 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   const [sort, setSort] = useState<IndexSort>('index');
   // Тот же отбор, что в коллекции и в рейтинге, и тем же компонентом.
   const [filter, setFilter] = useState<CollectionFilter>({});
+  // Континент — отдельным рядом, а не внутри ScopeFilter: тот собран из
+  // клубов, лиг и стран одной таблицей фактов, а континент это ОДНО из пяти
+  // значений и вопрос другого масштаба. Смешать их в один ряд значит утопить
+  // пять кнопок в списке из сотен клубов.
+  const [continent, setContinent] = useState<Continent | null>(null);
   const [rows, setRows] = useState<LoadState<PlayerIndexRow[]>>(LOADING);
   const [total, setTotal] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setRows(LOADING);
-    void fetchPlayerIndex(sort, filter, i18n.language).then((r) => {
+    void fetchPlayerIndex(sort, { ...filter, continent }, i18n.language).then((r) => {
       if (!cancelled) setRows(r);
     });
     return () => { cancelled = true; };
-  }, [sort, filter, i18n.language]);
+  }, [sort, filter, continent, i18n.language]);
 
   // ⚠️ ОТДЕЛЬНЫМ ЗАПРОСОМ, А НЕ PROMISE.ALL. Знаменатель «из скольких» нужен
   // подписи, а не списку; экран, ждущий по самому медленному из двух, уже
@@ -55,11 +61,11 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   useEffect(() => {
     let cancelled = false;
     setTotal(null);
-    void fetchPlayerIndexCount(sort, filter).then((r) => {
+    void fetchPlayerIndexCount(sort, { ...filter, continent }).then((r) => {
       if (!cancelled && r.status === 'ok') setTotal(r.data);
     });
     return () => { cancelled = true; };
-  }, [sort, filter]);
+  }, [sort, filter, continent]);
 
   const all = rows.status === 'ok' ? rows.data : [];
   const shown = limit == null ? all : all.slice(0, limit);
@@ -67,6 +73,26 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   return (
     <div className="space-y-4">
       <ScopeFilter value={filter} onChange={setFilter} />
+
+      {/* Континенты. «Все» — не отдельное значение, а снятый выбор: кнопка
+          «все континенты» рядом с пятью континентами читалась бы как шестой. */}
+      <div className="-mx-4 px-4 overflow-x-auto">
+        <div className="flex gap-1.5 w-max pb-0.5">
+          <Chip
+            label={t('index.continent_all')}
+            selected={continent === null}
+            onClick={() => { hapticImpact('light'); setContinent(null); }}
+          />
+          {CONTINENTS.map((c) => (
+            <Chip
+              key={c}
+              label={t(`index.continent.${c}`)}
+              selected={continent === c}
+              onClick={() => { hapticImpact('light'); setContinent(c); }}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="-mx-4 px-4 overflow-x-auto">
         <div className="flex gap-1.5 w-max pb-0.5">

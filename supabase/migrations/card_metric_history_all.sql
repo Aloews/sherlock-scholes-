@@ -139,12 +139,36 @@ revoke all on function public.card_metrics_today() from public;
 grant execute on function public.card_metrics_today() to service_role;
 
 -- --------------------------------------------------------------------------
+-- ПРОИСШЕСТВИЕ ПРЕДОХРАНИТЕЛЯ — В ТАБЛИЦУ, А НЕ ТОЛЬКО В ОТВЕТ ФУНКЦИИ.
+--
+-- Первая версия «пропускала показатель и называла его» — называла в
+-- возвращаемое значение ночного задания pg_cron, которое не читает НИКТО.
+-- Показатель молча выпадал из истории, дыра выглядела как «ничего не
+-- менялось», и узнать об этом было неоткуда: предохранитель срабатывал в
+-- пустоту. Теперь у каждого пропуска есть строка с датой и числами, а
+-- `check-prod` краснеет, пока происшествие свежее.
+-- --------------------------------------------------------------------------
+create table if not exists public.metric_snapshot_incident (
+  happened_on date    not null,
+  metric      text    not null,
+  had         integer not null,   -- сколько значений было в прошлый раз
+  got         integer not null,   -- сколько пришло теперь
+  noticed_at  timestamptz not null default now(),
+  primary key (happened_on, metric)
+);
+
+alter table public.metric_snapshot_incident enable row level security;
+drop policy if exists metric_snapshot_incident_read on public.metric_snapshot_incident;
+create policy metric_snapshot_incident_read on public.metric_snapshot_incident for select using (true);
+
+grant select on public.metric_snapshot_incident to anon, authenticated;
+grant all    on public.metric_snapshot_incident to service_role;
+
+-- --------------------------------------------------------------------------
 -- Ночной шаг: записать ТОЛЬКО изменившееся, пропустив сломавшиеся показатели.
 --
--- ⚠️ DROP ПЕРЕД CREATE ОБЯЗАТЕЛЕН. Функция возвращала integer, а теперь ещё и
--- список пропущенных показателей. `create or replace` менять тип возврата не
--- умеет и падает; этот проект на такой замене уже спотыкался — там, где список
--- параметров расширяли, получалась ВТОРАЯ функция, и прод звал старую.
+-- ⚠️ DROP ПЕРЕД CREATE ОБЯЗАТЕЛЕН: функция возвращала integer, а теперь ещё и
+-- список пропущенных. `create or replace` менять тип возврата не умеет.
 -- --------------------------------------------------------------------------
 drop function if exists public.snapshot_card_metrics();
 
@@ -156,33 +180,36 @@ declare
   v_written integer := 0;
   v_skipped text[]  := '{}';
 begin
-  -- Одним запросом, без временных таблиц: два вызова card_metrics_today() —
-  -- это два прохода по всей базе, а materialized гарантирует один.
-  with now_v as materialized (
-    select * from card_metrics_today()
-  ),
-  last_v as materialized (
+  create temporary table _now on commit drop as select * from card_metrics_today();
+
+  create temporary table _last on commit drop as
     select distinct on (h.card_id, h.metric) h.card_id, h.metric, h.value
       from card_metric_history h
-     order by h.card_id, h.metric, h.taken_on desc
-  ),
-  -- Предохранитель: показатель, потерявший больше половины значений, — это
-  -- сломанный сборщик, а не событие. Такой пропускаем целиком и называем.
-  -- Порог в 100 значений — чтобы редкий показатель не признали сломанным
-  -- из-за пары исчезнувших строк.
-  broken as (
-    select n.metric
-      from (select metric, count(value) as have from now_v  group by metric) n
-      join (select metric, count(value) as have from last_v group by metric) l
+     order by h.card_id, h.metric, h.taken_on desc;
+
+  -- Показатель, потерявший больше половины значений, — это сломанный сборщик,
+  -- а не событие. Порог в 100 значений — чтобы редкий показатель не признали
+  -- сломанным из-за пары исчезнувших строк.
+  create temporary table _broken on commit drop as
+    select n.metric, l.have as had, n.have as got
+      from (select metric, count(value)::integer as have from _now  group by metric) n
+      join (select metric, count(value)::integer as have from _last group by metric) l
         on l.metric = n.metric
-     where l.have >= 100 and n.have < l.have / 2
-  ),
-  ins as (
+     where l.have >= 100 and n.have < l.have / 2;
+
+  insert into metric_snapshot_incident (happened_on, metric, had, got)
+  select (now() at time zone 'utc')::date, b.metric, b.had, b.got from _broken b
+  on conflict (happened_on, metric) do update
+     set had = excluded.had, got = excluded.got, noticed_at = now();
+
+  select coalesce(array_agg(metric order by metric), '{}') into v_skipped from _broken;
+
+  with ins as (
     insert into card_metric_history (card_id, metric, taken_on, value)
     select n.card_id, n.metric, (now() at time zone 'utc')::date, n.value
-      from now_v n
-      left join last_v l on l.card_id = n.card_id and l.metric = n.metric
-     where n.metric not in (select metric from broken)
+      from _now n
+      left join _last l on l.card_id = n.card_id and l.metric = n.metric
+     where n.metric not in (select metric from _broken)
        -- Пишем только ИЗМЕНЕНИЕ. `is distinct from` — не придирка: обычное
        -- `<>` считает сравнение с NULL неизвестностью, и переход «числа не
        -- было → число появилось» не записался бы вовсе.
@@ -190,9 +217,7 @@ begin
     on conflict (card_id, metric, taken_on) do update set value = excluded.value
     returning 1
   )
-  select (select count(*)::integer from ins),
-         (select coalesce(array_agg(b.metric order by b.metric), '{}') from broken b)
-    into v_written, v_skipped;
+  select count(*)::integer into v_written from ins;
 
   return query select v_written, v_skipped;
 end;

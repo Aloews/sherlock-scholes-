@@ -175,7 +175,7 @@
     "news_and_video": "أخبار وفيديو",
     "f_club": "النادي",
     "level": "المستوى",
-    "level_basis_fame": "حسب مشاهدات ويكيبيديا — المباريات قليلة",
+    "level_basis_fame": "حسب مشاهدات ويكيبيديا",
     "level_basis_fame_form": "حسب مشاهدات ويكيبيديا والأداء",
     "level_basis_icon": "أيقونة كرة القدم",
     "reach": "مشاهدات ويكيبيديا",
@@ -199,7 +199,12 @@
       "goals_30d": "أهداف خلال 30 يومًا",
       "assists_30d": "تمريرات حاسمة خلال 30 يومًا",
       "news_30d": "ذكر في الأخبار"
-    }
+    },
+    "hl_national": "مع {{team}}: {{apps}} مباراة و{{goals}} هدفًا",
+    "hl_leagues": "لعب في {{leagues}} دوريات بـ{{countries}} دول",
+    "hl_born": "من مواليد {{date}}",
+    "search_scope": "ابحث في الأندية والدوريات والدول",
+    "search_empty": "لا نتائج مطابقة"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -530,18 +535,13 @@
     "unmute": "تشغيل الأصوات"
   },
   "career": {
-    "matches_one": "مباراة واحدة",
-    "matches_two": "مباراتان",
-    "matches_few": "{{count}} مباريات",
-    "matches_many": "{{count}} مباراة",
-    "matches_other": "{{count}} مباراة",
-    "goals_one": "هدف واحد",
-    "goals_two": "هدفان",
-    "goals_few": "{{count}} أهداف",
-    "goals_many": "{{count}} هدفًا",
-    "goals_other": "{{count}} هدف",
-    "matches_zero": "بلا مباريات",
-    "goals_zero": "بلا أهداف"
+    "title": "المسيرة بالأرقام",
+    "matches": "مباريات",
+    "goals": "أهداف",
+    "assists": "تمريرات",
+    "minutes": "دقائق",
+    "national": "مع {{team}} — {{apps}} مباراة و{{goals}} هدفًا",
+    "club_line": "{{matches}} م · {{goals}} هـ · {{assists}} ت"
   },
   "facts": {
     "caps_one": "مباراة دولية واحدة",
@@ -603,13 +603,72 @@
     "puskas": "جائزة بوشكاش"
   },
   "league": {
-    "Premier League": "الدوري الإنجليزي الممتاز",
-    "La Liga": "الليغا",
-    "Serie A": "الدوري الإيطالي",
-    "Bundesliga": "البوندسليغا",
-    "Ligue 1": "الدوري الفرنسي",
-    "Eredivisie": "الدوري الهولندي",
-    "Russian Premier League": "الدوري الروسي الممتاز"
+    "soccer_argentina_primera_division": {
+      "name": "الدوري الأرجنتيني"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "الدوري البرازيلي"
+    },
+    "soccer_china_superleague": {
+      "name": "الدوري الصيني الممتاز"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "كأس ليبرتادوريس"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "كأس سودأمريكانا"
+    },
+    "soccer_epl": {
+      "name": "الدوري الإنجليزي الممتاز"
+    },
+    "soccer_france_ligue_one": {
+      "name": "الدوري الفرنسي"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "الدوري الألماني"
+    },
+    "soccer_italy_serie_a": {
+      "name": "الدوري الإيطالي"
+    },
+    "soccer_japan_j_league": {
+      "name": "الدوري الياباني"
+    },
+    "soccer_korea_kleague1": {
+      "name": "الدوري الكوري"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "دوري إم إكس المكسيكي"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "الدوري الهولندي"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "الدوري البرتغالي"
+    },
+    "soccer_russia_premier_league": {
+      "name": "الدوري الروسي الممتاز"
+    },
+    "soccer_spain_la_liga": {
+      "name": "الدوري الإسباني"
+    },
+    "soccer_turkey_super_league": {
+      "name": "الدوري التركي الممتاز"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "دوري أبطال أوروبا"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "دوري المؤتمر الأوروبي"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "الدوري الأوروبي"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "دوري الأمم الأوروبية"
+    },
+    "soccer_usa_mls": {
+      "name": "الدوري الأمريكي"
+    }
   },
   "voice_services": {
     "title": "خدمة الصوت",
@@ -1119,6 +1178,58 @@
     "parts_two": "ركيزتان",
     "parts_few": "{{count}} ركائز",
     "parts_many": "{{count}} ركيزة",
-    "parts_other": "{{count}} ركيزة"
+    "parts_other": "{{count}} ركيزة",
+    "sort_growth": "نمو القيمة",
+    "sort_caps": "مباريات دولية",
+    "sort_countries": "عدد الدول التي لعب فيها",
+    "sort_cards": "البطاقات الصفراء والحمراء",
+    "sort_young": "الأصغر سنًا",
+    "continent_all": "كل القارات",
+    "continent": {
+      "europe": "أوروبا",
+      "south_america": "أمريكا الجنوبية",
+      "north_america": "أمريكا الشمالية",
+      "africa": "أفريقيا",
+      "asia": "آسيا"
+    },
+    "caps_zero": "{{count}} مباراة",
+    "caps_one": "مباراة واحدة",
+    "caps_two": "مباراتان",
+    "caps_few": "{{count}} مباريات",
+    "caps_many": "{{count}} مباراة",
+    "caps_other": "{{count}} مباراة",
+    "countries_n_zero": "{{count}} دولة",
+    "countries_n_one": "دولة واحدة",
+    "countries_n_two": "دولتان",
+    "countries_n_few": "{{count}} دول",
+    "countries_n_many": "{{count}} دولة",
+    "countries_n_other": "{{count}} دولة",
+    "cards_n_zero": "{{count}} بطاقة",
+    "cards_n_one": "بطاقة واحدة",
+    "cards_n_two": "بطاقتان",
+    "cards_n_few": "{{count}} بطاقات",
+    "cards_n_many": "{{count}} بطاقة",
+    "cards_n_other": "{{count}} بطاقة"
+  },
+  "fixtures": {
+    "top_title": "أبرز المباريات القادمة"
+  },
+  "rising": {
+    "tab": "في صعود",
+    "clubs": "الأندية",
+    "how": "يوضح كم تضاعف المؤشر. النمو من رقم ضئيل لا يُحتسب: لكل مؤشر عتبته.",
+    "empty": "لم يصعد أحد بعد: سجل المؤشرات يبدأ في 6 سبتمبر.",
+    "window_zero": "{{count}} يوم",
+    "window_one": "يوم واحد",
+    "window_two": "يومان",
+    "window_few": "{{count}} أيام",
+    "window_many": "{{count}} يومًا",
+    "window_other": "{{count}} يوم",
+    "by_squad_zero": "عبر {{count}} لاعب",
+    "by_squad_one": "عبر لاعب واحد",
+    "by_squad_two": "عبر لاعبين",
+    "by_squad_few": "عبر {{count}} لاعبين",
+    "by_squad_many": "عبر {{count}} لاعبًا",
+    "by_squad_other": "عبر {{count}} لاعب"
   }
 }

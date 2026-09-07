@@ -897,6 +897,23 @@ async function checkMetricHistory() {
          `${withValue} строк стоимости на ${players} игроков`,
          'ловит возврат к «пишем только тех, у кого число есть»');
 
+  // ⚠️ ПРЕДОХРАНИТЕЛЬ ДОЛЖЕН БЫТЬ СЛЫШЕН, А НЕ ТОЛЬКО СРАБОТАТЬ. Он пропускает
+  // сломавшийся показатель и пишет строку происшествия; раньше он «называл»
+  // его в возвращаемое значение ночного pg_cron, которое не читает никто, и
+  // дыра в истории выглядела как «ничего не менялось». Свежее происшествие
+  // валит проверку — иначе сломанный сборщик снова остался бы незамеченным.
+  const since = new Date(Date.now() - 3 * 86400e3).toISOString().slice(0, 10);
+  const incidents = await fetch(
+    `${url}/rest/v1/metric_snapshot_incident?select=metric,had,got,happened_on` +
+    `&happened_on=gte.${since}`, { headers: auth },
+  ).then((r) => r.json()).catch(() => []);
+  const bad = Array.isArray(incidents) ? incidents : [];
+  record('История показателей: предохранитель молчит', bad.length === 0,
+         bad.length === 0
+           ? 'за трое суток ни один показатель не обрушился'
+           : bad.map((i) => `${i.metric}: было ${i.had}, стало ${i.got} (${i.happened_on})`).join('; '),
+         'ловит сборщик, умерший так, что показатель исчез из истории');
+
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный показатель обязан дать ноль. Не дал
   // — фильтр не работает, и первые две проверки ничего не доказывают.
   const bogus = await count('card_metric_history', 'select=card_id&metric=eq.no_such_metric_zz');
@@ -961,6 +978,108 @@ async function checkPlayerIndex() {
          bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkTopFixtures() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Большие матчи', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/top_fixtures`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const rows = (await rpc({ p_lang: 'ru', p_limit: 5, p_days: 10 })) || [];
+  record('Большие матчи: список приходит', rows.length > 0,
+         `${rows.length} матчей на ближайшие 10 дней`,
+         'ловит упавший top_fixtures и отозванный грант для anon');
+
+  // ⚠️ ЭМБЛЕМЫ ОБЯЗАТЕЛЬНЫ — ИХ ПРОСИЛИ ИМЕННО ТАК. Карточка матча с одним
+  // гербом и пустым квадратом выглядит сломанной, и SQL их и не должен
+  // пропускать; проверка держит это условие.
+  const noCrest = rows.filter((f) => !f.home_crest || !f.away_crest);
+  record('Большие матчи: обе эмблемы на месте', noCrest.length === 0,
+         noCrest.length === 0 ? 'у всех матчей оба герба'
+                              : `${noCrest.length} матчей без пары гербов`,
+         'ловит отбор, пропустивший матч с пустым квадратом вместо герба');
+
+  // Картинка герба должна ОТКРЫВАТЬСЯ, а не просто лежать строкой в ответе:
+  // ссылка 404 выглядит в ответе ровно так же, как живая.
+  let crestOk = false, crestNote = 'матчей нет';
+  if (rows.length) {
+    const r = await fetch(rows[0].home_crest, { method: 'GET' });
+    const type = r.headers.get('content-type') || '';
+    crestOk = r.ok && type.startsWith('image/');
+    crestNote = `${rows[0].home_name}: HTTP ${r.status}, ${type || 'без типа'}`;
+  }
+  record('Большие матчи: герб выкачивается', crestOk, crestNote,
+         'ловит мёртвую ссылку на эмблему — в ответе она неотличима от живой');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: узкое окно обязано вернуть МЕНЬШЕ широкого.
+  //
+  // Сперва тут стояло `p_days: -5` с ожиданием пустоты — и проверка честно
+  // упала, показав, что контроль пустой: в SQL стоит greatest(p_days, 1), и
+  // отрицательное окно схлопывается в сутки, а не в прошлое. Отрицательных
+  // суток не бывает, клампинг верен — неверна была проверка. Сравнение суток
+  // с десятью днями доказывает то же самое и не врёт: если фильтр по времени
+  // не работает, оба окна вернут одно и то же.
+  const wide = (await rpc({ p_lang: 'ru', p_limit: 100, p_days: 10 })) || [];
+  const narrow = (await rpc({ p_lang: 'ru', p_limit: 100, p_days: 1 })) || [];
+  record('Большие матчи: контроль окна', narrow.length < wide.length,
+         `сутки — ${narrow.length} матчей, десять дней — ${wide.length}`,
+         narrow.length < wide.length ? 'проверка способна упасть'
+                                     : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+async function checkFootballers() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Колода: только футболисты', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/unconfirmed_footballers`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => []) : null;
+  };
+
+  // ⚠️ ПРОВЕРКА ПОЛОЖИТЕЛЬНАЯ: доказать «он не футболист» по нашим данным
+  // нельзя, доказать «футболист» можно — состав Soccer Wiki, заявка
+  // Transfermarkt, сыгранные сезоны или клубная карьера из статьи. В списке
+  // те, у кого нет НИ ОДНОГО свидетельства.
+  const all = (await rpc({ p_limit: 100000 })) || [];
+  const seen = all.filter((c) => (c.pageviews ?? 0) > 5000);
+
+  // Заметный чужак — это тот, кого игрок УВИДИТ: римский император Адриан,
+  // актёр Эстевес, президент США. Неизвестная карточка без свидетельств не
+  // мешает никому, и валить прогон из-за неё значило бы держать проверку
+  // красной вечно.
+  record('Колода: заметных карточек без подтверждения нет', seen.length <= 5,
+         seen.length === 0
+           ? `${all.length} карточек без свидетельств, среди заметных — ни одной`
+           : `заметных: ${seen.map((c) => `${c.name_en ?? c.name} (${c.pageviews})`).join(', ')}`,
+         'ловит чужака вроде президента США или актёра в колоде игроков');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: список обязан быть КОРОЧЕ всей колоды. Если он
+  // сравнялся с ней, значит свидетельства перестали находиться — и проверка
+  // выше зелена не потому, что колода чиста, а потому, что она ослепла.
+  const total = await fetch(
+    `${url}/rest/v1/cards?select=id&category=eq.player&active=is.true`,
+    { headers: { ...auth, Prefer: 'count=exact', Range: '0-0' } },
+  ).then((r) => Number((r.headers.get('content-range') || '').split('/')[1]));
+  const sane = all.length > 0 && all.length < total / 10;
+  record('Колода: контроль свидетельств', sane,
+         `${all.length} без свидетельств из ${total}`,
+         sane ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -976,6 +1095,8 @@ await checkCurrentClubSources();
 await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
+await checkTopFixtures();
+await checkFootballers();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

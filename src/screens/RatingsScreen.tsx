@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { RatingsList } from '@/features/ratings/RatingsList';
 import { PlayerIndexList } from '@/features/ratings/PlayerIndexList';
+import { RisingList } from '@/features/ratings/RisingList';
 import { Chip } from '@/shared/ui/Chip';
 import { hapticImpact } from '@/shared/lib/telegram';
 
@@ -30,7 +31,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 export function RatingsScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [tab, setTab] = useState<'index' | 'form'>('index');
+  const [tab, setTab] = useState<'index' | 'form' | 'rising'>('index');
 
   return (
     <div className="min-h-screen bg-brand-bg pb-24">
@@ -57,9 +58,16 @@ export function RatingsScreen() {
             selected={tab === 'form'}
             onClick={() => { hapticImpact('light'); setTab('form'); }}
           />
+          <Chip
+            label={t('rising.tab')}
+            selected={tab === 'rising'}
+            onClick={() => { hapticImpact('light'); setTab('rising'); }}
+          />
         </div>
 
-        {tab === 'index' ? <PlayerIndexList /> : <RatingsList />}
+        {tab === 'index' && <PlayerIndexList />}
+        {tab === 'form' && <RatingsList />}
+        {tab === 'rising' && <RisingList />}
       </div>
     </div>
   );

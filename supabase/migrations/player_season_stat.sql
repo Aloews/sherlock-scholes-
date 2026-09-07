@@ -257,7 +257,12 @@ grant execute on function public.player_club_career(uuid) to anon, authenticated
 -- --------------------------------------------------------------------------
 -- Итоги карьеры одной строкой — то самое число, которое показывает карточка.
 -- Клубы и сборная РАЗДЕЛЕНЫ: сложить их в одну сумму значит соврать.
+--
+-- ⚠️ DROP ПЕРЕД CREATE: набор OUT-колонок менялся дважды, а `create or
+-- replace` этого не умеет.
 -- --------------------------------------------------------------------------
+drop function if exists public.player_career_totals(uuid);
+
 create or replace function public.player_career_totals(p_card_id uuid)
 returns table (
   club_apps        integer,
@@ -269,14 +274,28 @@ returns table (
   season_to        smallint,
   national_apps    integer,
   national_goals   integer,
-  national_team    text
+  national_team    text,
+  leagues          integer,
+  countries        integer
 )
 language sql stable security definer set search_path = public as $$
   with rows as (
-    select s.*, coalesce(k.is_national_team, false) as nat, k.name as club_name
+    select s.*, coalesce(k.is_national_team, false) as nat, k.name as club_name,
+           t.type_id, t.country_id
       from player_season_stat s
       left join tm_club k on k.id = s.club_id
+      left join tm_competition t on t.id = s.competition_id
      where s.card_id = p_card_id
+  ),
+  -- ⚠️ СБОРНАЯ ОДНА, А НЕ ВСЕ СРАЗУ, И ЭТО ИСПРАВЛЕННАЯ ОШИБКА. Сперва тут
+  -- складывались матчи за ВСЕ сборные игрока, и Криштиану Роналду получал 259
+  -- матчей за Португалию: 246 за главную плюс 7 за U21, 4 за U17 и 2 за
+  -- олимпийскую. Подпись называет одну команду — значит и число обязано быть
+  -- её. Главной считается та, за которую сыграно больше всего.
+  team as (
+    select r.club_name, sum(r.apps)::integer as apps, sum(r.goals)::integer as goals
+      from rows r where r.nat and r.club_name is not null
+     group by r.club_name order by sum(r.apps) desc limit 1
   )
   select coalesce(sum(apps) filter (where not nat), 0)::integer,
          coalesce(sum(goals) filter (where not nat), 0)::integer,
@@ -284,11 +303,18 @@ language sql stable security definer set search_path = public as $$
          coalesce(sum(minutes) filter (where not nat), 0)::bigint,
          count(distinct club_id) filter (where not nat)::integer,
          min(season_id), max(season_id),
-         coalesce(sum(apps) filter (where nat), 0)::integer,
-         coalesce(sum(goals) filter (where nat), 0)::integer,
-         -- Сборная взрослая, а не юношеская: у взрослой больше матчей.
-         (select r.club_name from rows r where r.nat
-           group by r.club_name order by sum(r.apps) desc limit 1)
+         coalesce((select apps from team), 0),
+         coalesce((select goals from team), 0),
+         (select club_name from team),
+         -- ⚠️ ЛИГА — ЭТО ДИВИЗИОН, А НЕ ЛЮБОЙ ТУРНИР. `type_id` источника
+         -- разделяет их честно: 1..6 — дивизионы страны от высшего вниз,
+         -- 7 — юношеские, 8 — кубок, 9 — суперкубок, 12 — стыковые. Считать
+         -- кубок лигой значило бы объявить «играл в трёх лигах» человеку,
+         -- отыгравшему один сезон в одном клубе: лига, кубок и суперкубок.
+         count(distinct competition_id) filter (
+           where not nat and type_id between 1 and 6)::integer,
+         count(distinct country_id) filter (
+           where not nat and country_id is not null and country_id > 0)::integer
     from rows;
 $$;
 

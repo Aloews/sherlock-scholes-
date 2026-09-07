@@ -170,7 +170,7 @@
     "news_and_video": "뉴스 및 영상",
     "f_club": "클럽",
     "level": "레벨",
-    "level_basis_fame": "위키백과 조회수 기준 — 경기 수 부족",
+    "level_basis_fame": "위키백과 조회수 기준",
     "level_basis_fame_form": "위키백과 조회수와 경기력 기준",
     "level_basis_icon": "축구의 아이콘",
     "reach": "위키백과 조회수",
@@ -194,7 +194,12 @@
       "goals_30d": "30일간 득점",
       "assists_30d": "30일간 도움",
       "news_30d": "뉴스 언급"
-    }
+    },
+    "hl_national": "{{team}} 대표: {{apps}}경기 {{goals}}골",
+    "hl_leagues": "{{countries}}개국 {{leagues}}개 리그에서 활약",
+    "hl_born": "{{date}} 출생",
+    "search_scope": "클럽·리그·국가 검색",
+    "search_empty": "일치하는 항목 없음"
   },
   "profile": {
     "title": "프로필",
@@ -473,8 +478,13 @@
     "unmute": "소리 켜기"
   },
   "career": {
-    "matches_other": "{{count}}경기",
-    "goals_other": "{{count}}골"
+    "title": "숫자로 보는 커리어",
+    "matches": "경기",
+    "goals": "득점",
+    "assists": "도움",
+    "minutes": "출전 시간",
+    "national": "{{team}} 대표 — {{apps}}경기 {{goals}}골",
+    "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도"
   },
   "facts": {
     "caps_other": "국가대표 {{count}}경기",
@@ -518,13 +528,72 @@
     "puskas": "푸스카스상"
   },
   "league": {
-    "Premier League": "프리미어리그(잉글랜드)",
-    "Russian Premier League": "러시아 프리미어리그",
-    "La Liga": "라리가",
-    "Serie A": "세리에 A",
-    "Bundesliga": "분데스리가",
-    "Ligue 1": "리그 1",
-    "Eredivisie": "에레디비시"
+    "soccer_argentina_primera_division": {
+      "name": "아르헨티나 프리메라"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "브라질 세리에 A"
+    },
+    "soccer_china_superleague": {
+      "name": "중국 슈퍼리그"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "코파 리베르타도레스"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "코파 수다메리카나"
+    },
+    "soccer_epl": {
+      "name": "프리미어리그"
+    },
+    "soccer_france_ligue_one": {
+      "name": "리그 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "분데스리가"
+    },
+    "soccer_italy_serie_a": {
+      "name": "세리에 A"
+    },
+    "soccer_japan_j_league": {
+      "name": "J1리그"
+    },
+    "soccer_korea_kleague1": {
+      "name": "K리그1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "리가 MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "에레디비시"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "프리메이라 리가"
+    },
+    "soccer_russia_premier_league": {
+      "name": "러시아 프리미어리그"
+    },
+    "soccer_spain_la_liga": {
+      "name": "라리가"
+    },
+    "soccer_turkey_super_league": {
+      "name": "쉬페르리그"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "챔피언스리그"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "컨퍼런스리그"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "유로파리그"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "네이션스리그"
+    },
+    "soccer_usa_mls": {
+      "name": "MLS"
+    }
   },
   "voice_services": {
     "title": "음성 서비스",
@@ -950,6 +1019,33 @@
     "minutes_other": "{{count}}분",
     "goals_other": "{{count}}골",
     "mentions_other": "{{count}}건",
-    "parts_other": "축 {{count}}개"
+    "parts_other": "축 {{count}}개",
+    "sort_growth": "가치 상승",
+    "sort_caps": "A매치 출전",
+    "sort_countries": "활약한 국가 수",
+    "sort_cards": "경고와 퇴장",
+    "sort_young": "최연소",
+    "continent_all": "모든 대륙",
+    "continent": {
+      "europe": "유럽",
+      "south_america": "남아메리카",
+      "north_america": "북아메리카",
+      "africa": "아프리카",
+      "asia": "아시아"
+    },
+    "caps_other": "{{count}}경기",
+    "countries_n_other": "{{count}}개국",
+    "cards_n_other": "{{count}}장"
+  },
+  "fixtures": {
+    "top_title": "다가오는 빅매치"
+  },
+  "rising": {
+    "tab": "상승세",
+    "clubs": "클럽",
+    "how": "지표가 몇 배 올랐는지 보여줍니다. 아주 작은 값에서의 상승은 세지 않습니다.",
+    "empty": "아직 오른 선수가 없습니다. 지표 기록은 9월 6일부터입니다.",
+    "window_other": "{{count}}일",
+    "by_squad_other": "{{count}}명 기준"
   }
 }

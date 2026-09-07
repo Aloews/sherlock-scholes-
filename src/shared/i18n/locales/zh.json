@@ -170,7 +170,7 @@
     "news_and_video": "新闻与视频",
     "f_club": "俱乐部",
     "level": "等级",
-    "level_basis_fame": "按维基百科浏览量 — 比赛太少",
+    "level_basis_fame": "依据维基百科浏览量",
     "level_basis_fame_form": "按维基百科浏览量与状态",
     "level_basis_icon": "足球偶像",
     "reach": "维基百科浏览量",
@@ -194,7 +194,12 @@
       "goals_30d": "近 30 天进球",
       "assists_30d": "近 30 天助攻",
       "news_30d": "新闻提及"
-    }
+    },
+    "hl_national": "代表 {{team}}：{{apps}} 场 {{goals}} 球",
+    "hl_leagues": "效力过 {{countries}} 个国家的 {{leagues}} 个联赛",
+    "hl_born": "{{date}} 出生",
+    "search_scope": "搜索俱乐部、联赛、国家",
+    "search_empty": "没有匹配项"
   },
   "profile": {
     "title": "个人资料",
@@ -473,8 +478,13 @@
     "unmute": "开启声音"
   },
   "career": {
-    "matches_other": "{{count}} 场比赛",
-    "goals_other": "{{count}} 个进球"
+    "title": "生涯数据",
+    "matches": "出场",
+    "goals": "进球",
+    "assists": "助攻",
+    "minutes": "出场时间",
+    "national": "代表 {{team}} — {{apps}} 场 {{goals}} 球",
+    "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
   },
   "facts": {
     "caps_other": "国家队出场 {{count}} 次",
@@ -518,13 +528,72 @@
     "puskas": "普斯卡什奖"
   },
   "league": {
-    "Premier League": "英超",
-    "La Liga": "西甲",
-    "Serie A": "意甲",
-    "Bundesliga": "德甲",
-    "Ligue 1": "法甲",
-    "Eredivisie": "荷甲",
-    "Russian Premier League": "俄超"
+    "soccer_argentina_primera_division": {
+      "name": "阿甲"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "巴甲"
+    },
+    "soccer_china_superleague": {
+      "name": "中超"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "解放者杯"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "南美杯"
+    },
+    "soccer_epl": {
+      "name": "英超"
+    },
+    "soccer_france_ligue_one": {
+      "name": "法甲"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "德甲"
+    },
+    "soccer_italy_serie_a": {
+      "name": "意甲"
+    },
+    "soccer_japan_j_league": {
+      "name": "日职联"
+    },
+    "soccer_korea_kleague1": {
+      "name": "韩K联"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "墨超"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "荷甲"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "葡超"
+    },
+    "soccer_russia_premier_league": {
+      "name": "俄超"
+    },
+    "soccer_spain_la_liga": {
+      "name": "西甲"
+    },
+    "soccer_turkey_super_league": {
+      "name": "土超"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "欧冠"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "欧协联"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "欧联"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "欧国联"
+    },
+    "soccer_usa_mls": {
+      "name": "美职联"
+    }
   },
   "voice_services": {
     "title": "语音服务",
@@ -950,6 +1019,33 @@
     "minutes_other": "{{count}} 分钟",
     "goals_other": "{{count}} 球",
     "mentions_other": "{{count}} 条",
-    "parts_other": "{{count}} 项支柱"
+    "parts_other": "{{count}} 项支柱",
+    "sort_growth": "身价涨幅",
+    "sort_caps": "国家队出场",
+    "sort_countries": "效力过的国家数",
+    "sort_cards": "黄牌与红牌",
+    "sort_young": "最年轻",
+    "continent_all": "所有大洲",
+    "continent": {
+      "europe": "欧洲",
+      "south_america": "南美洲",
+      "north_america": "北美洲",
+      "africa": "非洲",
+      "asia": "亚洲"
+    },
+    "caps_other": "{{count}} 场",
+    "countries_n_other": "{{count}} 国",
+    "cards_n_other": "{{count}} 张"
+  },
+  "fixtures": {
+    "top_title": "即将到来的焦点战"
+  },
+  "rising": {
+    "tab": "上升中",
+    "clubs": "俱乐部",
+    "how": "显示指标增长了多少倍。从极小基数的增长不计入：每项指标都有下限。",
+    "empty": "还没有人上升：指标历史从 9 月 6 日开始。",
+    "window_other": "{{count}} 天",
+    "by_squad_other": "按 {{count}} 名球员"
   }
 }
