@@ -205,7 +205,10 @@
     "hl_leagues": "Играл в {{leagues}} лигах, странах: {{countries}}",
     "hl_born": "Родился {{date}}",
     "search_scope": "Поиск по клубам, лигам, странам",
-    "search_empty": "По запросу ничего не нашлось"
+    "search_empty": "По запросу ничего не нашлось",
+    "view_cards": "Карточки",
+    "view_clubs": "Команды",
+    "view_stats": "Статистика"
   },
   "profile": {
     "title": "Профиль",

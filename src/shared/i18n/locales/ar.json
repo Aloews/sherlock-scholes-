@@ -204,7 +204,10 @@
     "hl_leagues": "لعب في {{leagues}} دوريات بـ{{countries}} دول",
     "hl_born": "من مواليد {{date}}",
     "search_scope": "ابحث في الأندية والدوريات والدول",
-    "search_empty": "لا نتائج مطابقة"
+    "search_empty": "لا نتائج مطابقة",
+    "view_cards": "البطاقات",
+    "view_clubs": "الفرق",
+    "view_stats": "الإحصائيات"
   },
   "profile": {
     "title": "الملف الشخصي",

@@ -126,7 +126,7 @@ export function RisingList() {
             <button
               key={c.club_key}
               type="button"
-              onClick={() => { hapticImpact('light'); navigate(`/clubs?club=${c.club_key}`); }}
+              onClick={() => { hapticImpact('light'); navigate(`/club/${encodeURIComponent(c.club_key)}`); }}
               className="w-full text-left ds-panel bg-brand-surface border border-brand-border
                          rounded-2xl p-3 flex items-center gap-3 active:opacity-70 transition-opacity"
             >

@@ -199,7 +199,10 @@
     "hl_leagues": "{{countries}} か国の {{leagues}} リーグでプレー",
     "hl_born": "{{date}} 生まれ",
     "search_scope": "クラブ・リーグ・国を検索",
-    "search_empty": "該当なし"
+    "search_empty": "該当なし",
+    "view_cards": "カード",
+    "view_clubs": "クラブ",
+    "view_stats": "スタッツ"
   },
   "profile": {
     "title": "プロフィール",

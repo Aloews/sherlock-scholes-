@@ -199,7 +199,10 @@
     "hl_leagues": "{{countries}}개국 {{leagues}}개 리그에서 활약",
     "hl_born": "{{date}} 출생",
     "search_scope": "클럽·리그·국가 검색",
-    "search_empty": "일치하는 항목 없음"
+    "search_empty": "일치하는 항목 없음",
+    "view_cards": "카드",
+    "view_clubs": "구단",
+    "view_stats": "통계"
   },
   "profile": {
     "title": "프로필",

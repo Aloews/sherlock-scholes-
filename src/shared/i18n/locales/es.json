@@ -201,7 +201,10 @@
     "hl_leagues": "Jugó en {{leagues}} ligas de {{countries}} países",
     "hl_born": "Nació el {{date}}",
     "search_scope": "Buscar clubes, ligas, países",
-    "search_empty": "No hay coincidencias"
+    "search_empty": "No hay coincidencias",
+    "view_cards": "Cartas",
+    "view_clubs": "Equipos",
+    "view_stats": "Estadísticas"
   },
   "profile": {
     "title": "Perfil",
