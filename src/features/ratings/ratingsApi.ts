@@ -294,3 +294,41 @@ export async function fetchCareerTotals(
   const res = await supabase.rpc('player_career_totals', { p_card_id: cardId });
   return fromPostgrest<CareerTotalsRow[]>(res, 'player_career_totals');
 }
+
+/** Важный предстоящий матч: обе эмблемы, стоимость обоих составов. */
+export interface TopFixture {
+  fixture_id: string;
+  commence_at: string;
+  /** Ключ турнира из расписания: `soccer_uefa_champs_league` и т.п. */
+  sport_key: string | null;
+  /** Домашняя лига клуба-хозяина. Запасной вариант, если турнир не переведён. */
+  league: string | null;
+  home_key: string; home_name: string | null; home_crest: string | null;
+  home_value: number | null; home_squad: number;
+  away_key: string; away_name: string | null; away_crest: string | null;
+  away_value: number | null; away_squad: number;
+  /** Сумма стоимости обоих составов — то, чем матчи упорядочены. */
+  importance: number;
+}
+
+/**
+ * Самые важные ближайшие матчи.
+ *
+ * ⚠️ ВАЖНОСТЬ — СУММА СТОИМОСТИ ДВУХ СОСТАВОВ, и это выбор, а не единственный
+ * возможный: владелец просил считать основной метрикой стоимость. Проверка на
+ * бою вывела наверх дерби «Манчестер Юнайтед» — «Манчестер Сити» (2158 млн €),
+ * следом «Порту» — «Манчестер Сити» и «Наполи» — «Арсенал».
+ *
+ * ⚠️ ОТБОР И ПОРЯДОК ДЕЛАЕТ SQL. Расписание живёт целиком в базе, а PostgREST
+ * отдаёт не больше тысячи строк.
+ */
+export async function fetchTopFixtures(
+  lang = 'ru',
+  limit = 3,
+  days = 10,
+): Promise<LoadState<TopFixture[]>> {
+  const res = await supabase.rpc('top_fixtures', {
+    p_lang: lang, p_limit: limit, p_days: days,
+  });
+  return fromPostgrest<TopFixture[]>(res, 'top_fixtures');
+}
