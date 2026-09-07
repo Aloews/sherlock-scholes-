@@ -521,13 +521,72 @@
     "puskas": "푸스카스상"
   },
   "league": {
-    "Premier League": "프리미어리그(잉글랜드)",
-    "Russian Premier League": "러시아 프리미어리그",
-    "La Liga": "라리가",
-    "Serie A": "세리에 A",
-    "Bundesliga": "분데스리가",
-    "Ligue 1": "리그 1",
-    "Eredivisie": "에레디비시"
+    "soccer_argentina_primera_division": {
+      "name": "아르헨티나 프리메라"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "브라질 세리에 A"
+    },
+    "soccer_china_superleague": {
+      "name": "중국 슈퍼리그"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "코파 리베르타도레스"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "코파 수다메리카나"
+    },
+    "soccer_epl": {
+      "name": "프리미어리그"
+    },
+    "soccer_france_ligue_one": {
+      "name": "리그 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "분데스리가"
+    },
+    "soccer_italy_serie_a": {
+      "name": "세리에 A"
+    },
+    "soccer_japan_j_league": {
+      "name": "J1리그"
+    },
+    "soccer_korea_kleague1": {
+      "name": "K리그1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "리가 MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "에레디비시"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "프리메이라 리가"
+    },
+    "soccer_russia_premier_league": {
+      "name": "러시아 프리미어리그"
+    },
+    "soccer_spain_la_liga": {
+      "name": "라리가"
+    },
+    "soccer_turkey_super_league": {
+      "name": "쉬페르리그"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "챔피언스리그"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "컨퍼런스리그"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "유로파리그"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "네이션스리그"
+    },
+    "soccer_usa_mls": {
+      "name": "MLS"
+    }
   },
   "voice_services": {
     "title": "음성 서비스",
@@ -954,5 +1013,8 @@
     "goals_other": "{{count}}골",
     "mentions_other": "{{count}}건",
     "parts_other": "축 {{count}}개"
+  },
+  "fixtures": {
+    "top_title": "다가오는 빅매치"
   }
 }

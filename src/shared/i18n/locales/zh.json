@@ -521,13 +521,72 @@
     "puskas": "普斯卡什奖"
   },
   "league": {
-    "Premier League": "英超",
-    "La Liga": "西甲",
-    "Serie A": "意甲",
-    "Bundesliga": "德甲",
-    "Ligue 1": "法甲",
-    "Eredivisie": "荷甲",
-    "Russian Premier League": "俄超"
+    "soccer_argentina_primera_division": {
+      "name": "阿甲"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "巴甲"
+    },
+    "soccer_china_superleague": {
+      "name": "中超"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "解放者杯"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "南美杯"
+    },
+    "soccer_epl": {
+      "name": "英超"
+    },
+    "soccer_france_ligue_one": {
+      "name": "法甲"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "德甲"
+    },
+    "soccer_italy_serie_a": {
+      "name": "意甲"
+    },
+    "soccer_japan_j_league": {
+      "name": "日职联"
+    },
+    "soccer_korea_kleague1": {
+      "name": "韩K联"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "墨超"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "荷甲"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "葡超"
+    },
+    "soccer_russia_premier_league": {
+      "name": "俄超"
+    },
+    "soccer_spain_la_liga": {
+      "name": "西甲"
+    },
+    "soccer_turkey_super_league": {
+      "name": "土超"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "欧冠"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "欧协联"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "欧联"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "欧国联"
+    },
+    "soccer_usa_mls": {
+      "name": "美职联"
+    }
   },
   "voice_services": {
     "title": "语音服务",
@@ -954,5 +1013,8 @@
     "goals_other": "{{count}} 球",
     "mentions_other": "{{count}} 条",
     "parts_other": "{{count}} 项支柱"
+  },
+  "fixtures": {
+    "top_title": "即将到来的焦点战"
   }
 }

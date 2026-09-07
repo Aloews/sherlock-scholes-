@@ -978,6 +978,63 @@ async function checkPlayerIndex() {
          bogus === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkTopFixtures() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Большие матчи', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/top_fixtures`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const rows = (await rpc({ p_lang: 'ru', p_limit: 5, p_days: 10 })) || [];
+  record('Большие матчи: список приходит', rows.length > 0,
+         `${rows.length} матчей на ближайшие 10 дней`,
+         'ловит упавший top_fixtures и отозванный грант для anon');
+
+  // ⚠️ ЭМБЛЕМЫ ОБЯЗАТЕЛЬНЫ — ИХ ПРОСИЛИ ИМЕННО ТАК. Карточка матча с одним
+  // гербом и пустым квадратом выглядит сломанной, и SQL их и не должен
+  // пропускать; проверка держит это условие.
+  const noCrest = rows.filter((f) => !f.home_crest || !f.away_crest);
+  record('Большие матчи: обе эмблемы на месте', noCrest.length === 0,
+         noCrest.length === 0 ? 'у всех матчей оба герба'
+                              : `${noCrest.length} матчей без пары гербов`,
+         'ловит отбор, пропустивший матч с пустым квадратом вместо герба');
+
+  // Картинка герба должна ОТКРЫВАТЬСЯ, а не просто лежать строкой в ответе:
+  // ссылка 404 выглядит в ответе ровно так же, как живая.
+  let crestOk = false, crestNote = 'матчей нет';
+  if (rows.length) {
+    const r = await fetch(rows[0].home_crest, { method: 'GET' });
+    const type = r.headers.get('content-type') || '';
+    crestOk = r.ok && type.startsWith('image/');
+    crestNote = `${rows[0].home_name}: HTTP ${r.status}, ${type || 'без типа'}`;
+  }
+  record('Большие матчи: герб выкачивается', crestOk, crestNote,
+         'ловит мёртвую ссылку на эмблему — в ответе она неотличима от живой');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: узкое окно обязано вернуть МЕНЬШЕ широкого.
+  //
+  // Сперва тут стояло `p_days: -5` с ожиданием пустоты — и проверка честно
+  // упала, показав, что контроль пустой: в SQL стоит greatest(p_days, 1), и
+  // отрицательное окно схлопывается в сутки, а не в прошлое. Отрицательных
+  // суток не бывает, клампинг верен — неверна была проверка. Сравнение суток
+  // с десятью днями доказывает то же самое и не врёт: если фильтр по времени
+  // не работает, оба окна вернут одно и то же.
+  const wide = (await rpc({ p_lang: 'ru', p_limit: 100, p_days: 10 })) || [];
+  const narrow = (await rpc({ p_lang: 'ru', p_limit: 100, p_days: 1 })) || [];
+  record('Большие матчи: контроль окна', narrow.length < wide.length,
+         `сутки — ${narrow.length} матчей, десять дней — ${wide.length}`,
+         narrow.length < wide.length ? 'проверка способна упасть'
+                                     : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -993,6 +1050,7 @@ await checkCurrentClubSources();
 await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
+await checkTopFixtures();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

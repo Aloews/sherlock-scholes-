@@ -538,13 +538,72 @@
     "puskas": "Prêmio Puskás"
   },
   "league": {
-    "Premier League": "Premier League (Inglaterra)",
-    "Russian Premier League": "Premier League Russa",
-    "La Liga": "La Liga",
-    "Serie A": "Serie A",
-    "Bundesliga": "Bundesliga",
-    "Ligue 1": "Ligue 1",
-    "Eredivisie": "Eredivisie"
+    "soccer_argentina_primera_division": {
+      "name": "Primera División"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "Brasileirão"
+    },
+    "soccer_china_superleague": {
+      "name": "Superliga Chinesa"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "Copa Libertadores"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "Copa Sudamericana"
+    },
+    "soccer_epl": {
+      "name": "Premier League"
+    },
+    "soccer_france_ligue_one": {
+      "name": "Ligue 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "Bundesliga"
+    },
+    "soccer_italy_serie_a": {
+      "name": "Serie A"
+    },
+    "soccer_japan_j_league": {
+      "name": "J1 League"
+    },
+    "soccer_korea_kleague1": {
+      "name": "K League 1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "Liga MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "Eredivisie"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "Primeira Liga"
+    },
+    "soccer_russia_premier_league": {
+      "name": "Campeonato Russo"
+    },
+    "soccer_spain_la_liga": {
+      "name": "La Liga"
+    },
+    "soccer_turkey_super_league": {
+      "name": "Süper Lig"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "Liga dos Campeões"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "Liga Conferência"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "Liga Europa"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "Liga das Nações"
+    },
+    "soccer_usa_mls": {
+      "name": "MLS"
+    }
   },
   "voice_services": {
     "title": "Serviço de voz",
@@ -989,5 +1048,8 @@
     "mentions_other": "{{count}} menções",
     "parts_one": "{{count}} pilar",
     "parts_other": "{{count}} pilares"
+  },
+  "fixtures": {
+    "top_title": "Grandes jogos a seguir"
   }
 }

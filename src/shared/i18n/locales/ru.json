@@ -576,13 +576,72 @@
     "puskas": "Пушкаш"
   },
   "league": {
-    "Premier League": "Премьер-лига (Англия)",
-    "La Liga": "Ла Лига",
-    "Serie A": "Серия А",
-    "Bundesliga": "Бундеслига",
-    "Ligue 1": "Лига 1",
-    "Eredivisie": "Эредивизи",
-    "Russian Premier League": "РПЛ (Россия)"
+    "soccer_argentina_primera_division": {
+      "name": "Аргентина. Примера"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "Бразилия. Серия А"
+    },
+    "soccer_china_superleague": {
+      "name": "Китай. Суперлига"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "Кубок Либертадорес"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "Южноамериканский кубок"
+    },
+    "soccer_epl": {
+      "name": "Англия. Премьер-лига"
+    },
+    "soccer_france_ligue_one": {
+      "name": "Франция. Лига 1"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "Германия. Бундеслига"
+    },
+    "soccer_italy_serie_a": {
+      "name": "Италия. Серия А"
+    },
+    "soccer_japan_j_league": {
+      "name": "Япония. Джей-лига"
+    },
+    "soccer_korea_kleague1": {
+      "name": "Корея. К-лига 1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "Мексика. Лига MX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "Нидерланды. Эредивизие"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "Португалия. Примейра"
+    },
+    "soccer_russia_premier_league": {
+      "name": "Россия. Премьер-лига"
+    },
+    "soccer_spain_la_liga": {
+      "name": "Испания. Ла Лига"
+    },
+    "soccer_turkey_super_league": {
+      "name": "Турция. Суперлига"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "Лига чемпионов"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "Лига конференций"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "Лига Европы"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "Лига наций"
+    },
+    "soccer_usa_mls": {
+      "name": "США. MLS"
+    }
   },
   "voice_services": {
     "title": "Голосовой сервис",
@@ -1063,5 +1122,8 @@
     "parts_few": "{{count}} опоры",
     "parts_many": "{{count}} опор",
     "parts_other": "{{count}} опоры"
+  },
+  "fixtures": {
+    "top_title": "Ближайшие большие матчи"
   }
 }

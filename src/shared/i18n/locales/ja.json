@@ -521,13 +521,72 @@
     "puskas": "プスカシュ賞"
   },
   "league": {
-    "Premier League": "プレミアリーグ（イングランド）",
-    "Russian Premier League": "ロシア・プレミアリーグ",
-    "La Liga": "ラ・リーガ",
-    "Serie A": "セリエA",
-    "Bundesliga": "ブンデスリーガ",
-    "Ligue 1": "リーグ・アン",
-    "Eredivisie": "エールディヴィジ"
+    "soccer_argentina_primera_division": {
+      "name": "アルゼンチン・プリメーラ"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "ブラジル全国選手権"
+    },
+    "soccer_china_superleague": {
+      "name": "中国スーパーリーグ"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "コパ・リベルタドーレス"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "コパ・スダメリカーナ"
+    },
+    "soccer_epl": {
+      "name": "プレミアリーグ"
+    },
+    "soccer_france_ligue_one": {
+      "name": "リーグ・アン"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "ブンデスリーガ"
+    },
+    "soccer_italy_serie_a": {
+      "name": "セリエA"
+    },
+    "soccer_japan_j_league": {
+      "name": "J1リーグ"
+    },
+    "soccer_korea_kleague1": {
+      "name": "Kリーグ1"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "リーガMX"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "エールディヴィジ"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "プリメイラ・リーガ"
+    },
+    "soccer_russia_premier_league": {
+      "name": "ロシア・プレミアリーグ"
+    },
+    "soccer_spain_la_liga": {
+      "name": "ラ・リーガ"
+    },
+    "soccer_turkey_super_league": {
+      "name": "スュペル・リグ"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "チャンピオンズリーグ"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "カンファレンスリーグ"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "ヨーロッパリーグ"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "ネーションズリーグ"
+    },
+    "soccer_usa_mls": {
+      "name": "MLS"
+    }
   },
   "voice_services": {
     "title": "ボイスサービス",
@@ -954,5 +1013,8 @@
     "goals_other": "{{count}} 得点",
     "mentions_other": "{{count}} 件",
     "parts_other": "{{count}} 本の柱"
+  },
+  "fixtures": {
+    "top_title": "注目の次戦"
   }
 }

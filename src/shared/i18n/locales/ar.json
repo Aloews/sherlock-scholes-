@@ -606,13 +606,72 @@
     "puskas": "جائزة بوشكاش"
   },
   "league": {
-    "Premier League": "الدوري الإنجليزي الممتاز",
-    "La Liga": "الليغا",
-    "Serie A": "الدوري الإيطالي",
-    "Bundesliga": "البوندسليغا",
-    "Ligue 1": "الدوري الفرنسي",
-    "Eredivisie": "الدوري الهولندي",
-    "Russian Premier League": "الدوري الروسي الممتاز"
+    "soccer_argentina_primera_division": {
+      "name": "الدوري الأرجنتيني"
+    },
+    "soccer_brazil_campeonato": {
+      "name": "الدوري البرازيلي"
+    },
+    "soccer_china_superleague": {
+      "name": "الدوري الصيني الممتاز"
+    },
+    "soccer_conmebol_copa_libertadores": {
+      "name": "كأس ليبرتادوريس"
+    },
+    "soccer_conmebol_copa_sudamericana": {
+      "name": "كأس سودأمريكانا"
+    },
+    "soccer_epl": {
+      "name": "الدوري الإنجليزي الممتاز"
+    },
+    "soccer_france_ligue_one": {
+      "name": "الدوري الفرنسي"
+    },
+    "soccer_germany_bundesliga": {
+      "name": "الدوري الألماني"
+    },
+    "soccer_italy_serie_a": {
+      "name": "الدوري الإيطالي"
+    },
+    "soccer_japan_j_league": {
+      "name": "الدوري الياباني"
+    },
+    "soccer_korea_kleague1": {
+      "name": "الدوري الكوري"
+    },
+    "soccer_mexico_ligamx": {
+      "name": "دوري إم إكس المكسيكي"
+    },
+    "soccer_netherlands_eredivisie": {
+      "name": "الدوري الهولندي"
+    },
+    "soccer_portugal_primeira_liga": {
+      "name": "الدوري البرتغالي"
+    },
+    "soccer_russia_premier_league": {
+      "name": "الدوري الروسي الممتاز"
+    },
+    "soccer_spain_la_liga": {
+      "name": "الدوري الإسباني"
+    },
+    "soccer_turkey_super_league": {
+      "name": "الدوري التركي الممتاز"
+    },
+    "soccer_uefa_champs_league": {
+      "name": "دوري أبطال أوروبا"
+    },
+    "soccer_uefa_europa_conference_league": {
+      "name": "دوري المؤتمر الأوروبي"
+    },
+    "soccer_uefa_europa_league": {
+      "name": "الدوري الأوروبي"
+    },
+    "soccer_uefa_nations_league": {
+      "name": "دوري الأمم الأوروبية"
+    },
+    "soccer_usa_mls": {
+      "name": "الدوري الأمريكي"
+    }
   },
   "voice_services": {
     "title": "خدمة الصوت",
@@ -1123,5 +1182,8 @@
     "parts_few": "{{count}} ركائز",
     "parts_many": "{{count}} ركيزة",
     "parts_other": "{{count}} ركيزة"
+  },
+  "fixtures": {
+    "top_title": "أبرز المباريات القادمة"
   }
 }
