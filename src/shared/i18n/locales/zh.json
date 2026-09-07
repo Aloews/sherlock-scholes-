@@ -476,8 +476,13 @@
     "unmute": "开启声音"
   },
   "career": {
-    "matches_other": "{{count}} 场比赛",
-    "goals_other": "{{count}} 个进球"
+    "title": "生涯数据",
+    "matches": "出场",
+    "goals": "进球",
+    "assists": "助攻",
+    "minutes": "出场时间",
+    "national": "代表 {{team}} — {{apps}} 场 {{goals}} 球",
+    "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
   },
   "facts": {
     "caps_other": "国家队出场 {{count}} 次",
@@ -1032,5 +1037,13 @@
   },
   "fixtures": {
     "top_title": "即将到来的焦点战"
+  },
+  "rising": {
+    "tab": "上升中",
+    "clubs": "俱乐部",
+    "how": "显示指标增长了多少倍。从极小基数的增长不计入：每项指标都有下限。",
+    "empty": "还没有人上升：指标历史从 9 月 6 日开始。",
+    "window_other": "{{count}} 天",
+    "by_squad_other": "按 {{count}} 名球员"
   }
 }

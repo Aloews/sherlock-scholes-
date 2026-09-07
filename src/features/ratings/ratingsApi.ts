@@ -354,3 +354,67 @@ export async function fetchTopFixtures(
   });
   return fromPostgrest<TopFixture[]>(res, 'top_fixtures');
 }
+
+/** Карточка, у которой показатель резко пошёл вверх. */
+export interface RisingCard {
+  card_id: string;
+  name: string;
+  name_en: string | null;
+  photo_url: string | null;
+  club: string | null;
+  club_key: string | null;
+  /** Какой именно показатель вырос: market_value, pageviews, news_30d… */
+  metric: string;
+  was: number;
+  now_value: number;
+  /** Во сколько раз. 1.8 значит «в 1,8 раза». */
+  growth: number;
+  changed_on: string;
+}
+
+/**
+ * Кто резко пошёл в гору.
+ *
+ * ⚠️ ПОКАЗАТЕЛЬ НАЗЫВАЕТСЯ. «Игрок вырос» без указания, в чём именно, —
+ * бесполезная строка: подорожал, попал в новости и пробежал больше минут это
+ * три разных события.
+ *
+ * ⚠️ РОСТ ОТ МАЛОГО ЧИСЛА ОТРЕЗАН В SQL порогами «было» у каждого показателя.
+ * Одно упоминание против нуля — рост в бесконечность раз; без порогов верхушку
+ * заняли бы неизвестные игроки с двумя просмотрами.
+ */
+export async function fetchRisingCards(
+  days = 30,
+  limit = 20,
+  lang = 'ru',
+  filter?: IndexFilter,
+): Promise<LoadState<RisingCard[]>> {
+  const res = await supabase.rpc('rising_cards', {
+    p_days: days, p_limit: limit, p_lang: lang,
+    p_league: filter?.league || null,
+    p_country: filter?.country || null,
+    p_continent: filter?.continent || null,
+  });
+  return fromPostgrest<RisingCard[]>(res, 'rising_cards');
+}
+
+/** Клуб, чей состав подорожал. Клуб растёт, когда растут его игроки. */
+export interface RisingClub {
+  club_key: string;
+  club: string | null;
+  crest_url: string | null;
+  league: string | null;
+  players: number;
+  was: number;
+  now_value: number;
+  growth: number;
+}
+
+export async function fetchRisingClubs(
+  days = 30, limit = 10, lang = 'ru',
+): Promise<LoadState<RisingClub[]>> {
+  const res = await supabase.rpc('rising_clubs', {
+    p_days: days, p_limit: limit, p_lang: lang,
+  });
+  return fromPostgrest<RisingClub[]>(res, 'rising_clubs');
+}

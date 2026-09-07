@@ -489,10 +489,13 @@
     "unmute": "Ativar sons"
   },
   "career": {
-    "matches_one": "{{count}} jogo",
-    "matches_other": "{{count}} jogos",
-    "goals_one": "{{count}} gol",
-    "goals_other": "{{count}} gols"
+    "title": "A carreira em números",
+    "matches": "Jogos",
+    "goals": "Gols",
+    "assists": "Assist.",
+    "minutes": "Minutos",
+    "national": "Pela {{team}} — {{apps}} jogos, {{goals}} gols",
+    "club_line": "{{matches}} j · {{goals}} g · {{assists}} a"
   },
   "facts": {
     "caps_one": "{{count}} jogo pela seleção",
@@ -1070,5 +1073,15 @@
   },
   "fixtures": {
     "top_title": "Grandes jogos a seguir"
+  },
+  "rising": {
+    "tab": "Em alta",
+    "clubs": "Clubes",
+    "how": "Mostra quantas vezes o indicador cresceu. Crescimento a partir de base mínima não conta: cada indicador tem seu limiar.",
+    "empty": "Ninguém cresceu ainda: o histórico começa em 6 de setembro.",
+    "window_one": "{{count}} dia",
+    "window_other": "{{count}} dias",
+    "by_squad_one": "por {{count}} jogador",
+    "by_squad_other": "por {{count}} jogadores"
   }
 }

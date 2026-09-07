@@ -489,10 +489,13 @@
     "unmute": "Activer les sons"
   },
   "career": {
-    "matches_one": "{{count}} match",
-    "matches_other": "{{count}} matchs",
-    "goals_one": "{{count}} but",
-    "goals_other": "{{count}} buts"
+    "title": "La carrière en chiffres",
+    "matches": "Matchs",
+    "goals": "Buts",
+    "assists": "Passes",
+    "minutes": "Minutes",
+    "national": "Avec {{team}} — {{apps}} sélections, {{goals}} buts",
+    "club_line": "{{matches}} m · {{goals}} b · {{assists}} p"
   },
   "facts": {
     "caps_one": "{{count}} sélection",
@@ -1070,5 +1073,15 @@
   },
   "fixtures": {
     "top_title": "Grands matchs à venir"
+  },
+  "rising": {
+    "tab": "En progression",
+    "clubs": "Clubs",
+    "how": "Indique de combien de fois l'indicateur a grimpé. La progression depuis une base minime est ignorée : chaque indicateur a son seuil.",
+    "empty": "Personne n'a encore progressé : l'historique commence le 6 septembre.",
+    "window_one": "{{count}} jour",
+    "window_other": "{{count}} jours",
+    "by_squad_one": "sur {{count}} joueur",
+    "by_squad_other": "sur {{count}} joueurs"
   }
 }

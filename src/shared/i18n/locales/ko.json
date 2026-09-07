@@ -476,8 +476,13 @@
     "unmute": "소리 켜기"
   },
   "career": {
-    "matches_other": "{{count}}경기",
-    "goals_other": "{{count}}골"
+    "title": "숫자로 보는 커리어",
+    "matches": "경기",
+    "goals": "득점",
+    "assists": "도움",
+    "minutes": "출전 시간",
+    "national": "{{team}} 대표 — {{apps}}경기 {{goals}}골",
+    "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도"
   },
   "facts": {
     "caps_other": "국가대표 {{count}}경기",
@@ -1032,5 +1037,13 @@
   },
   "fixtures": {
     "top_title": "다가오는 빅매치"
+  },
+  "rising": {
+    "tab": "상승세",
+    "clubs": "클럽",
+    "how": "지표가 몇 배 올랐는지 보여줍니다. 아주 작은 값에서의 상승은 세지 않습니다.",
+    "empty": "아직 오른 선수가 없습니다. 지표 기록은 9월 6일부터입니다.",
+    "window_other": "{{count}}일",
+    "by_squad_other": "{{count}}명 기준"
   }
 }

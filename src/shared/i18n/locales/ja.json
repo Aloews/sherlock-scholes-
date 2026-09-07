@@ -476,8 +476,13 @@
     "unmute": "サウンドをオン"
   },
   "career": {
-    "matches_other": "{{count}} 試合",
-    "goals_other": "{{count}} ゴール"
+    "title": "キャリアの数字",
+    "matches": "試合",
+    "goals": "得点",
+    "assists": "アシスト",
+    "minutes": "出場時間",
+    "national": "{{team}} 代表 — {{apps}} 試合 {{goals}} 得点",
+    "club_line": "{{matches}} 試 · {{goals}} 点 · {{assists}} 助"
   },
   "facts": {
     "caps_other": "代表 {{count}} 試合",
@@ -1032,5 +1037,13 @@
   },
   "fixtures": {
     "top_title": "注目の次戦"
+  },
+  "rising": {
+    "tab": "上昇中",
+    "clubs": "クラブ",
+    "how": "指標が何倍になったかを表示します。ごく小さな数からの伸びは数えません。",
+    "empty": "まだ誰も伸びていません。指標の履歴は9月6日からです。",
+    "window_other": "{{count}} 日",
+    "by_squad_other": "{{count}} 人分"
   }
 }

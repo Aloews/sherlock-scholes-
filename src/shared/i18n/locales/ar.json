@@ -533,18 +533,13 @@
     "unmute": "تشغيل الأصوات"
   },
   "career": {
-    "matches_one": "مباراة واحدة",
-    "matches_two": "مباراتان",
-    "matches_few": "{{count}} مباريات",
-    "matches_many": "{{count}} مباراة",
-    "matches_other": "{{count}} مباراة",
-    "goals_one": "هدف واحد",
-    "goals_two": "هدفان",
-    "goals_few": "{{count}} أهداف",
-    "goals_many": "{{count}} هدفًا",
-    "goals_other": "{{count}} هدف",
-    "matches_zero": "بلا مباريات",
-    "goals_zero": "بلا أهداف"
+    "title": "المسيرة بالأرقام",
+    "matches": "مباريات",
+    "goals": "أهداف",
+    "assists": "تمريرات",
+    "minutes": "دقائق",
+    "national": "مع {{team}} — {{apps}} مباراة و{{goals}} هدفًا",
+    "club_line": "{{matches}} م · {{goals}} هـ · {{assists}} ت"
   },
   "facts": {
     "caps_one": "مباراة دولية واحدة",
@@ -1216,5 +1211,23 @@
   },
   "fixtures": {
     "top_title": "أبرز المباريات القادمة"
+  },
+  "rising": {
+    "tab": "في صعود",
+    "clubs": "الأندية",
+    "how": "يوضح كم تضاعف المؤشر. النمو من رقم ضئيل لا يُحتسب: لكل مؤشر عتبته.",
+    "empty": "لم يصعد أحد بعد: سجل المؤشرات يبدأ في 6 سبتمبر.",
+    "window_zero": "{{count}} يوم",
+    "window_one": "يوم واحد",
+    "window_two": "يومان",
+    "window_few": "{{count}} أيام",
+    "window_many": "{{count}} يومًا",
+    "window_other": "{{count}} يوم",
+    "by_squad_zero": "عبر {{count}} لاعب",
+    "by_squad_one": "عبر لاعب واحد",
+    "by_squad_two": "عبر لاعبين",
+    "by_squad_few": "عبر {{count}} لاعبين",
+    "by_squad_many": "عبر {{count}} لاعبًا",
+    "by_squad_other": "عبر {{count}} لاعب"
   }
 }

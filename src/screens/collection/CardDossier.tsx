@@ -7,6 +7,7 @@ import { CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIco
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { byLatestFirst } from '@/shared/lib/careerOrder';
 import { StatLine } from '@/shared/ui/StatLine';
+import { CareerStats } from './CareerStats';
 import { splitHonours } from '@/shared/lib/honours';
 import { isoToFlag } from '@/shared/lib/flag';
 import { countryName, positionName } from '@/shared/lib/countryName';
@@ -531,6 +532,16 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
           </button>
         )}
+
+        {/* КАРЬЕРА В ЦИФРАХ — первым из статистических блоков. Владелец:
+            «отображай статистику игрока очень очень красиво, сейчас это просто
+            даты, ничего не понятно». Блок «Собранная статистика» ниже начинал
+            строку с ДВУХ ДАТ — периода сбора нашим конвейером, — и числа
+            стояли третьими без подписей. Здесь сперва четыре числа карьеры,
+            подписанные, и только потом клубы. */}
+        <Section title={t('career.title')}>
+          <CareerStats cardId={card.id} />
+        </Section>
 
         {career.length > 0 && (
           <Section title={t('collection.career')}>

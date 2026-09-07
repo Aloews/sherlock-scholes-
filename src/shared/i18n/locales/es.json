@@ -489,10 +489,13 @@
     "unmute": "Activar sonidos"
   },
   "career": {
-    "matches_one": "{{count}} partido",
-    "matches_other": "{{count}} partidos",
-    "goals_one": "{{count}} gol",
-    "goals_other": "{{count}} goles"
+    "title": "La carrera en cifras",
+    "matches": "Partidos",
+    "goals": "Goles",
+    "assists": "Asist.",
+    "minutes": "Minutos",
+    "national": "Con {{team}} — {{apps}} partidos, {{goals}} goles",
+    "club_line": "{{matches}} p · {{goals}} g · {{assists}} a"
   },
   "facts": {
     "caps_one": "{{count}} internacionalidad",
@@ -1070,5 +1073,15 @@
   },
   "fixtures": {
     "top_title": "Próximos grandes partidos"
+  },
+  "rising": {
+    "tab": "En alza",
+    "clubs": "Clubes",
+    "how": "Muestra cuántas veces creció el indicador. El crecimiento desde una base mínima no cuenta: cada indicador tiene su umbral.",
+    "empty": "Todavía nadie ha crecido: el historial empieza el 6 de septiembre.",
+    "window_one": "{{count}} día",
+    "window_other": "{{count}} días",
+    "by_squad_one": "por {{count}} jugador",
+    "by_squad_other": "por {{count}} jugadores"
   }
 }

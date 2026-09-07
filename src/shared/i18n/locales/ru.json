@@ -515,14 +515,13 @@
     "unmute": "Включить звук"
   },
   "career": {
-    "matches_one": "{{count}} матч",
-    "matches_few": "{{count}} матча",
-    "matches_many": "{{count}} матчей",
-    "matches_other": "{{count}} матчей",
-    "goals_one": "{{count}} гол",
-    "goals_few": "{{count}} гола",
-    "goals_many": "{{count}} голов",
-    "goals_other": "{{count}} голов"
+    "title": "Карьера в цифрах",
+    "matches": "Матчи",
+    "goals": "Голы",
+    "assists": "Пасы",
+    "minutes": "Минуты",
+    "national": "За {{team}} — {{apps}} матчей, {{goals}} голов",
+    "club_line": "{{matches}} м · {{goals}} г · {{assists}} п"
   },
   "facts": {
     "caps_one": "{{count}} матч {{team}}",
@@ -1150,5 +1149,19 @@
   },
   "fixtures": {
     "top_title": "Ближайшие большие матчи"
+  },
+  "rising": {
+    "tab": "Набирают ход",
+    "clubs": "Клубы",
+    "how": "Показано, во сколько раз вырос показатель. Рост от малого числа не считается: у каждого показателя свой порог.",
+    "empty": "Пока никто не вырос: история показателей ведётся с 6 сентября, а рост считается по её точкам.",
+    "window_one": "{{count}} день",
+    "window_few": "{{count}} дня",
+    "window_many": "{{count}} дней",
+    "window_other": "{{count}} дня",
+    "by_squad_one": "по {{count}} игроку",
+    "by_squad_few": "по {{count}} игрокам",
+    "by_squad_many": "по {{count}} игрокам",
+    "by_squad_other": "по {{count}} игрокам"
   }
 }

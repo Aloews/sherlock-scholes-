@@ -489,10 +489,13 @@
     "unmute": "Unmute sounds"
   },
   "career": {
-    "matches_one": "{{count}} app",
-    "matches_other": "{{count}} apps",
-    "goals_one": "{{count}} goal",
-    "goals_other": "{{count}} goals"
+    "title": "Career in numbers",
+    "matches": "Matches",
+    "goals": "Goals",
+    "assists": "Assists",
+    "minutes": "Minutes",
+    "national": "For {{team}} — {{apps}} caps, {{goals}} goals",
+    "club_line": "{{matches}} m · {{goals}} g · {{assists}} a"
   },
   "facts": {
     "caps_one": "{{count}} cap",
@@ -1070,5 +1073,15 @@
   },
   "fixtures": {
     "top_title": "Big matches coming up"
+  },
+  "rising": {
+    "tab": "On the rise",
+    "clubs": "Clubs",
+    "how": "Shows how many times a metric grew. Growth from a tiny base is ignored: every metric has its own floor.",
+    "empty": "Nobody has risen yet: the metric history starts on 6 September, and growth is measured between its points.",
+    "window_one": "{{count}} day",
+    "window_other": "{{count}} days",
+    "by_squad_one": "across {{count}} player",
+    "by_squad_other": "across {{count}} players"
   }
 }
