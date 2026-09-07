@@ -261,3 +261,57 @@ comment on function public.link_soccerwiki_cards() is
 
 revoke all on function public.link_soccerwiki_cards() from public;
 grant execute on function public.link_soccerwiki_cards() to service_role;
+
+
+-- Портрет с Soccer Wiki — ВТОРЫМ источником, и только там, где фото нет.
+--
+-- ЗАЧЕМ ВТОРОЙ ИСТОЧНИК, КОГДА ЕСТЬ TRANSFERMARKT. Замер 07.09.2026:
+-- `cards_photo_transfermarkt.py` прошёл 850 карточек и нашёл ОДИН портрет —
+-- у остальных на профиле стоит `portrait/big/default.jpg`, тот самый серый
+-- силуэт. Это не поломка сборщика: у игроков малых лиг фотографии там нет
+-- вовсе. Проверено вручную на шести подряд (Óscar Castro, Adrián Peña,
+-- Guilherme Viana и других) — у всех `default.jpg`.
+--
+-- У Soccer Wiki те же люди сфотографированы: из 912 прочитанных страниц
+-- портрет есть у 912. Карточек игроков без фото 14 325, из них связаны с
+-- источником 6973 — почти половина.
+--
+-- ⚠️ ТОЛЬКО ТАМ, ГДЕ ФОТО НЕТ. Этот проект уже заменял 165 портретов ревизией
+-- и ошибался в первой её версии; перезаписывать снимок, который уже прошёл
+-- сверку с Викиданными, нельзя ни при каких числах.
+--
+-- ⚠️ РИСК ЧУЖОГО ЛИЦА ЗДЕСЬ — ЭТО РИСК СВЯЗЫВАНИЯ, А НЕ ПОИСКА ПО ИМЕНИ.
+-- Портрет берётся по `pid` уже связанного игрока, а связывание идёт точным
+-- именем В ПРЕДЕЛАХ КЛУБА и отвергает неоднозначные пары. Это на порядок
+-- безопаснее, чем искать фото по имени: именно поиск по имени и дал когда-то
+-- Кеннеди лицо президента.
+create or replace function public.fill_photo_from_soccerwiki()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+set statement_timeout = '120s'
+as $function$
+declare
+  v_filled integer := 0;
+begin
+  with upd as (
+    update cards c set photo_url = p.photo_url
+      from soccerwiki_player p
+     where p.card_id = c.id
+       and c.photo_url is null
+       and c.active
+       and p.photo_url is not null
+       and p.photo_url like 'https://cdn.soccerwiki.org/%'
+    returning 1
+  )
+  select count(*) into v_filled from upd;
+  return v_filled;
+end;
+$function$;
+
+comment on function public.fill_photo_from_soccerwiki() is
+  'Портрет с Soccer Wiki карточкам БЕЗ фото. Уже стоящий снимок не трогает.';
+
+revoke all on function public.fill_photo_from_soccerwiki() from public;
+grant execute on function public.fill_photo_from_soccerwiki() to service_role;
