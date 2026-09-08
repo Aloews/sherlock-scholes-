@@ -845,6 +845,7 @@
     "loudness_other": "{{n}} médias",
     "loudest": "Le plus commenté",
     "loudest_more": "Ce qu’ont ajouté les autres médias",
+    "local": "Dans votre langue",
     "recent": "Buts des derniers jours",
     "earlier": "Plus tôt cette semaine",
     "moment": "moment",
@@ -1170,6 +1171,21 @@
     "home": "Fort à domicile",
     "steady": "Régulier",
     "streaky": "Irrégulier",
-    "measured": "Mesuré sur les matchs, non attribué"
+    "measured": "Mesuré sur les matchs, non attribué",
+    "match_title": "Caractère du match",
+    "match_goals_low": "Peu de buts",
+    "match_goals_mid": "Des buts attendus",
+    "match_goals_high": "Match prolifique",
+    "match_flow_closed": "Match fermé",
+    "match_flow_balanced": "Rythme égal",
+    "match_flow_open": "Match ouvert",
+    "match_expected": "Buts attendus",
+    "match_coach": "Entraîneur",
+    "match_per_match": "par match",
+    "match_writing": "Dans la presse",
+    "match_unknown": "Caractère non mesuré : l'une des équipes a joué trop peu de matchs.",
+    "match_no_injuries": "Aucune de nos sources ne donne les blessures ni les exigences de la direction ; elles ne figurent donc pas ici.",
+    "match_basis_one": "Mesuré sur {{count}} match de chaque côté, non supposé",
+    "match_basis_other": "Mesuré sur {{count}} matchs de chaque côté, non supposé"
   }
 }

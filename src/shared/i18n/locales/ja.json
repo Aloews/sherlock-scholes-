@@ -824,6 +824,7 @@
     "loudness_other": "{{n}}媒体",
     "loudest": "最も報じられた話題",
     "loudest_more": "他メディアが伝えたこと",
+    "local": "あなたの言語で",
     "recent": "最近数日のゴール",
     "earlier": "今週のそれ以前",
     "moment": "名場面",
@@ -1127,6 +1128,20 @@
     "home": "ホームに強い",
     "steady": "安定",
     "streaky": "ムラあり",
-    "measured": "試合から算出、後付けではない"
+    "measured": "試合から算出、後付けではない",
+    "match_title": "試合の性格",
+    "match_goals_low": "ゴールは少なめ",
+    "match_goals_mid": "ゴールは入る",
+    "match_goals_high": "点の入る試合",
+    "match_flow_closed": "締まった試合",
+    "match_flow_balanced": "均衡した流れ",
+    "match_flow_open": "オープンな試合",
+    "match_expected": "予想ゴール数",
+    "match_coach": "監督",
+    "match_per_match": "1試合あたり",
+    "match_writing": "報道",
+    "match_unknown": "性格は未計測：どちらかのチームの試合数が少なすぎます。",
+    "match_no_injuries": "負傷者も強化部の要求も、どの情報源にもありません。ここには表示しません。",
+    "match_basis_other": "両チームそれぞれ{{count}}試合で計測、推定ではありません"
   }
 }

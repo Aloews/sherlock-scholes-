@@ -824,6 +824,7 @@
     "loudness_other": "{{n}}개 매체",
     "loudest": "가장 많이 다뤄진 소식",
     "loudest_more": "다른 매체가 덧붙인 내용",
+    "local": "내 언어로",
     "recent": "최근 며칠의 골",
     "earlier": "이번 주 그 전",
     "moment": "장면",
@@ -1127,6 +1128,20 @@
     "home": "홈에 강함",
     "steady": "안정적",
     "streaky": "기복",
-    "measured": "경기에서 산출, 임의 부여 아님"
+    "measured": "경기에서 산출, 임의 부여 아님",
+    "match_title": "경기 성격",
+    "match_goals_low": "골이 적은 편",
+    "match_goals_mid": "골은 나온다",
+    "match_goals_high": "다득점 경기",
+    "match_flow_closed": "닫힌 경기",
+    "match_flow_balanced": "균형 잡힌 흐름",
+    "match_flow_open": "열린 경기",
+    "match_expected": "예상 골 수",
+    "match_coach": "감독",
+    "match_per_match": "경기당",
+    "match_writing": "보도",
+    "match_unknown": "성격 미측정: 한쪽 팀의 경기 수가 너무 적습니다.",
+    "match_no_injuries": "부상자도 구단 수뇌부 요구도 어떤 출처에도 없어 표시하지 않습니다.",
+    "match_basis_other": "양쪽 각 {{count}}경기로 측정, 추정 아님"
   }
 }

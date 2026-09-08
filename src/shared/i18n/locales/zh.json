@@ -824,6 +824,7 @@
     "loudness_other": "{{n}}家媒体",
     "loudest": "讨论最多的新闻",
     "loudest_more": "其他媒体补充的内容",
+    "local": "你的语言",
     "recent": "近日进球",
     "earlier": "本周早些时候",
     "moment": "瞬间",
@@ -1127,6 +1128,20 @@
     "home": "主场强势",
     "steady": "稳定",
     "streaky": "起伏大",
-    "measured": "由比赛计算，非人为设定"
+    "measured": "由比赛计算，非人为设定",
+    "match_title": "比赛性格",
+    "match_goals_low": "进球偏少",
+    "match_goals_mid": "会有进球",
+    "match_goals_high": "进球多的比赛",
+    "match_flow_closed": "封闭的比赛",
+    "match_flow_balanced": "节奏均衡",
+    "match_flow_open": "开放的比赛",
+    "match_expected": "预计进球",
+    "match_coach": "主教练",
+    "match_per_match": "每场",
+    "match_writing": "媒体报道",
+    "match_unknown": "未测得性格：其中一队比赛场次太少。",
+    "match_no_injuries": "我们的任何来源都没有伤病和管理层要求，因此这里不显示。",
+    "match_basis_other": "依据双方各 {{count}} 场比赛测得，并非假设"
   }
 }
