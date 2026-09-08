@@ -186,7 +186,7 @@
     "fame_home": "Дома",
     "fame_world": "В мире",
     "value": "Стоимость",
-    "value_source": "Transfermarkt, на {{date}}",
+    "value_source": "Источник: {{source}}",
     "value_source_at": "{{source}}, оценка от {{date}}",
     "dynamics": "Динамика показателей",
     "dyn_window": "за 90 дней",

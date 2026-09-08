@@ -180,7 +180,7 @@
     "fame_home": "본국",
     "fame_world": "전 세계",
     "value": "시장 가치",
-    "value_source": "Transfermarkt, {{date}} 기준",
+    "value_source": "출처: {{source}}",
     "value_source_at": "{{source}}, {{date}} 평가",
     "dynamics": "지표 변화",
     "dyn_window": "90일간",

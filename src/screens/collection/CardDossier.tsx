@@ -557,12 +557,18 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                 {t('collection.value')}
               </span>
               <span className="block text-[11.5px] text-white/80">
+                {/* ⚠️ `collection.value_source` ЗДЕСЬ НЕ ЗОВЁТСЯ, И ЭТО
+                    ИСПРАВЛЕННАЯ ОШИБКА. Заводя подписи к стоимости, я
+                    переписал уже существующий ключ «Источник: {{source}}»
+                    своим — и панель стоимости выше начала печатать
+                    «Transfermarkt, на {{date}}» с пустой датой. Новые ключи
+                    называются value_growth_*, старый вернулся как был. */}
                 {trend?.growth != null && trend.growth !== 1
                   ? t(trend.growth > 1 ? 'collection.value_growth_up' : 'collection.value_growth_down',
                       { n: Math.abs(Math.round((trend.growth - 1) * 100)) })
                   : trend?.value_at
                     ? t('collection.value_growth_none', { date: dateFmt(trend.value_at) })
-                    : t('collection.value_source', { date: '—' })}
+                    : null}
               </span>
             </span>
           </div>

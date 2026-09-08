@@ -182,7 +182,7 @@
     "fame_home": "Dans son pays",
     "fame_world": "Dans le monde",
     "value": "Valeur marchande",
-    "value_source": "Transfermarkt, au {{date}}",
+    "value_source": "Source : {{source}}",
     "value_source_at": "{{source}}, estimation de {{date}}",
     "dynamics": "Évolution des indicateurs",
     "dyn_window": "sur 90 jours",

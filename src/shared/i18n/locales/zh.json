@@ -180,7 +180,7 @@
     "fame_home": "本国",
     "fame_world": "全球",
     "value": "身价",
-    "value_source": "Transfermarkt，截至 {{date}}",
+    "value_source": "来源：{{source}}",
     "value_source_at": "{{source}}，{{date}} 估值",
     "dynamics": "指标变化",
     "dyn_window": "近 90 天",

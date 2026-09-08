@@ -114,3 +114,60 @@ grant execute on function public.merge_fixture_stub_clubs(boolean) to service_ro
 -- какой-то псевдоним пережил обе.
 delete from club_alias a
  where not exists (select 1 from football_club f where f.club_key = a.club_key);
+
+-- ---------------------------------------------------------------------------
+-- ⚠️ ССЫЛКА НА УДАЛЁННЫЙ КЛУБ ХУЖЕ ОТСУТСТВИЯ ССЫЛКИ, И ЭТО ВТОРАЯ ПОЛОМКА
+-- ТОЙ ЖЕ СКЛЕЙКИ. Строку-двойника убрали, а `card_current_club` продолжал на
+-- неё указывать: 41 карточка показывала пустоту там, где был клуб, и снаружи
+-- это выглядит как «данные не загрузились».
+--
+-- Чинится ПЕРЕРЕШЕНИЕМ ПО ИМЕНИ: имя клуба лежит в той же строке, а
+-- resolve_club_key уже знает псевдонимы, заведённые склейкой. Что не
+-- перерешилось — удаляется: честное «клуб неизвестен» лучше ссылки в никуда.
+-- ---------------------------------------------------------------------------
+update card_current_club cc
+   set club_key = resolve_club_key(cc.club, null)
+ where not exists (select 1 from football_club f where f.club_key = cc.club_key)
+   and cc.club is not null
+   and exists (select 1 from football_club f where f.club_key = resolve_club_key(cc.club, null));
+
+update card_current_club cc
+   set resolved_key = resolve_club_key(cc.club, null)
+ where cc.resolved_key is not null
+   and not exists (select 1 from football_club f where f.club_key = cc.resolved_key)
+   and cc.club is not null
+   and exists (select 1 from football_club f where f.club_key = resolve_club_key(cc.club, null));
+
+delete from card_current_club cc
+ where not exists (select 1 from football_club f where f.club_key = cc.club_key);
+
+-- Сторож на будущее: сколько ссылок ведёт на удалённый клуб. Ноль — норма.
+create or replace function public.orphan_club_refs()
+returns table (место text, сколько integer)
+language sql stable security definer set search_path = public
+set statement_timeout = '15s' as $$
+  -- soccerwiki_club и club_match сюда НЕ входят намеренно: там ключи, которым
+  -- мы клуба никогда и не заводили, — это не сирота после удаления, а
+  -- несобранный клуб.
+  select 'card_current_club.club_key', count(*)::int from card_current_club cc
+   where not exists (select 1 from football_club f where f.club_key = cc.club_key)
+  union all
+  select 'card_current_club.resolved_key', count(*)::int from card_current_club cc
+   where cc.resolved_key is not null
+     and not exists (select 1 from football_club f where f.club_key = cc.resolved_key)
+  union all
+  select 'club_squad.club_key', count(*)::int from club_squad q
+   where not exists (select 1 from football_club f where f.club_key = q.club_key)
+  union all
+  select 'club_alias.club_key', count(*)::int from club_alias a
+   where not exists (select 1 from football_club f where f.club_key = a.club_key)
+  union all
+  select 'club_manager.club_key', count(*)::int from club_manager g
+   where not exists (select 1 from football_club f where f.club_key = g.club_key);
+$$;
+
+comment on function public.orphan_club_refs() is
+  'Сколько ссылок ведёт на удалённый клуб. Ноль — норма; больше нуля значит, что склейка забыла перевести ссылки.';
+
+revoke all on function public.orphan_club_refs() from public;
+grant execute on function public.orphan_club_refs() to anon, authenticated, service_role;

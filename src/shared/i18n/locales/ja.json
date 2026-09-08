@@ -180,7 +180,7 @@
     "fame_home": "母国",
     "fame_world": "世界",
     "value": "市場価値",
-    "value_source": "Transfermarkt、{{date}} 時点",
+    "value_source": "出典: {{source}}",
     "value_source_at": "{{source}}、{{date}} 時点の評価",
     "dynamics": "指標の推移",
     "dyn_window": "90日間",
