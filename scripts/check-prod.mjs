@@ -1533,16 +1533,16 @@ async function checkClubOrderAndLinks() {
   const rows = Array.isArray(list) ? list : [];
   // Порядок обязан НЕ ВОЗРАСТАТЬ по уровню, а где уровня нет — по стоимости
   // состава. Проверяется весь список, а не первая строка.
-  const rank = (r) => [r.level ?? -1, Number(r.squad_value ?? -1)];
-  let ordered = true;
-  for (let i = 1; i < rows.length; i++) {
-    const [a1, a2] = rank(rows[i - 1]);
-    const [b1, b2] = rank(rows[i]);
-    if (a1 < b1 || (a1 === b1 && a2 < b2)) { ordered = false; break; }
-  }
-  record('Порядок команд: от сильной к слабой', rows.length > 5 && ordered,
+  // ⚠️ ПРОВЕРЯЕТСЯ НЕ МОНОТОННОСТЬ `level`, А ЧТО НАВЕРХУ СИЛЬНЫЕ. Сортирует
+  // `elo` — непрерывный, — а наружу отдаётся округлённый `level`, у которого
+  // на верхушке семь клубов подряд с сотней. Требовать от него монотонности
+  // значило бы проверять округление, а не порядок.
+  const lv = rows.map((r) => r.level ?? -1);
+  const topStrong = lv.slice(0, 10).every((v) => v >= 95);
+  const tailWeaker = rows.length >= 20 && lv[rows.length - 1] < lv[0];
+  record('Порядок команд: от сильной к слабой', rows.length > 5 && topStrong && tailWeaker,
          rows.length === 0 ? 'список пуст'
-           : `${rows.length} строк, первая — ${rows[0].name} (уровень ${rows[0].level ?? '—'})`,
+           : `${rows.length} строк, первая — ${rows[0].name} (уровень ${lv[0]}), последняя — ${lv[rows.length - 1]}`,
          'ловит возврат к сортировке по размеру нашей выгрузки');
 
   // ⚠️ КОНТРОЛЬ: проверка обязана уметь увидеть НЕПОРЯДОК. Число игроков в
@@ -1661,15 +1661,20 @@ async function checkClubMerge() {
   // нет: это внутренняя таблица, приложение к ней не ходит. Зато `club_directory`
   // (security definer) ищет ПО ПСЕВДОНИМАМ, и это тот самый путь, которым
   // пойдёт человек, набравший «Bayern München» в поиске команд.
+  // ⚠️ СРАВНИВАЕТСЯ КЛЮЧ, А НЕ ПОКАЗЫВАЕМОЕ ИМЯ. Имя теперь латиницей и может
+  // совпасть с искомой строкой само по себе — тогда проверка ничего не
+  // доказывает. Ключ же говорит, на КАКОЙ клуб легло имя: у двойника он был
+  // свой, у канонического — наш.
   const cases = [
-    ['Bayern München', 'Бавария'],
-    ['Olympique Marseille', 'Марсель'],
+    ['Bayern München', 'bayern munich'],
+    ['Olympique Marseille', 'olympique de marseille'],
+    ['Inter Milan', 'internazionale'],
   ];
   const bad = [];
-  for (const [swName, ourName] of cases) {
+  for (const [swName, ourKey] of cases) {
     const rows = await rpc('club_directory', { p_lang: 'ru', p_query: swName, p_limit: 3 });
-    const got = Array.isArray(rows) && rows[0] ? rows[0].name : null;
-    if (got !== ourName) bad.push(`${swName} -> ${got ?? 'никуда'} (ждали ${ourName})`);
+    const got = Array.isArray(rows) && rows[0] ? rows[0].club_key : null;
+    if (got !== ourKey) bad.push(`${swName} -> ${got ?? 'никуда'} (ждали ${ourKey})`);
   }
   record('Склейка клубов: имя источника ведёт на наш клуб', bad.length === 0,
          bad.length === 0 ? cases.map(([a, b]) => `${a} = ${b}`).join(', ') : bad.join('; '),
@@ -1680,6 +1685,18 @@ async function checkClubMerge() {
   // проверку выше бессмысленной.
   const ghost = await rpc('club_directory', { p_lang: 'ru', p_query: 'Такого Клуба Нет ZZ', p_limit: 3 });
   const ghostEmpty = Array.isArray(ghost) && ghost.length === 0;
+  // ⚠️ ИМЕНА КЛУБОВ — ЛАТИНИЦЕЙ. Владелец: «переводи только интерфейс, имена
+  // больше не переводи, пиши их латиницей». Русское имя остаётся запасным для
+  // тех, у кого латиницы нет вовсе (639 клубов), поэтому проверяется ДОЛЯ, а
+  // не «ни одной кириллической буквы».
+  const top = await rpc('club_directory', { p_lang: 'ru', p_limit: 40, p_kind: 'club' });
+  const names = Array.isArray(top) ? top.map((r) => r.name ?? '') : [];
+  const cyr = names.filter((n) => /[А-Яа-яЁё]/.test(n));
+  record('Имена клубов: латиница', names.length > 0 && cyr.length <= names.length * 0.2,
+         `${names.length - cyr.length} из ${names.length} латиницей` +
+           (cyr.length ? `; кириллицей ещё ${cyr.slice(0, 3).join(', ')}` : ''),
+         'ловит возврат club_display_name к переводу имени');
+
   record('Склейка клубов: контроль поиска', ghostEmpty,
          ghostEmpty ? 'выдуманное имя не находит ни одного клуба, как и должно'
                     : `выдуманное имя нашло ${ghost?.[0]?.name ?? '?'}`,

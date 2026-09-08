@@ -110,12 +110,23 @@ export function ClubsPane() {
       )}
 
       <div className="space-y-1.5">
-        {list.map((c) => (
+        {list.map((c, i) => (
           <button
             key={c.club_key}
             onClick={() => navigate(`/club/${encodeURIComponent(c.club_key)}`)}
             className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5 flex items-center gap-3 text-left active:opacity-70 transition-opacity"
           >
+            {/* ⚠️ МЕСТО В СПИСКЕ ЧИСЛОМ, И ЭТО ПОЧИНКА ЖАЛОБЫ, А НЕ УКРАШЕНИЕ.
+                Владелец: «в рейтинге команд на первом месте оказалась и
+                Барселона и Интер». Уровень — перцентиль, округлённый до
+                целого, и в сотню упираются семь клубов сразу: семь строк с
+                одинаковой сотней читаются как семь первых мест. Порядок при
+                этом строгий (сортирует elo, а не округлённый уровень) —
+                номер его и показывает. Поиск не меняет смысла: это место в
+                том списке, который сейчас на экране. */}
+            <span className="w-5 shrink-0 text-brand-muted/60 text-[11px] tabular-nums text-right">
+              {i + 1}
+            </span>
             {c.crest_url ? (
               <img
                 src={c.crest_url}

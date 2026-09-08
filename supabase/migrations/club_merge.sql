@@ -80,9 +80,14 @@ begin
 
   -- 1. Псевдоним делает склейку постоянной: resolve_club_key после него отдаёт
   --    наш ключ на имя из Soccer Wiki, и новый сбор не заводит двойника снова.
+  -- ⚠️ do update, А НЕ do nothing. У двойника уже мог быть свой псевдоним,
+  -- указывающий НА САМОГО СЕБЯ (source = 'card'): с `do nothing` склейка молча
+  -- его не трогала, клуб удалялся, а имя продолжало вести в никуда. Так и
+  -- вышло с «Inter Milan» — подробности в club_merge_fixture_stubs.sql.
   insert into club_alias (alias_key, scope, club_key, source)
   select d.sw_key, '', d.our_key, 'soccerwiki_merge' from _dup d
-  on conflict (alias_key, scope) do nothing;
+  on conflict (alias_key, scope) do update
+    set club_key = excluded.club_key, source = excluded.source;
   get diagnostics v_alias = row_count;
 
   insert into club_squad (club_key, card_id, shirt_number, position, joined_at, left_at, source, fetched_at)

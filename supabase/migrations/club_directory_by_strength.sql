@@ -15,6 +15,13 @@
 -- идёт СТОИМОСТЬ СОСТАВА: она известна там, где сыгранных матчей нет, и это
 -- мера силы клуба, а не размера выгрузки.
 --
+-- ⚠️ ПОРЯДОК ДЕРЖИТСЯ НА elo, А ПОКАЗЫВАЕТСЯ level. Это не расхождение, а
+-- починка: `level` — перцентиль, округлённый до целого, и на верхушке в сотню
+-- упираются СЕМЬ клубов сразу (Реал, Ман Сити, Арсенал, Барселона, Бавария,
+-- Интер, Аль-Хилаль). Владелец увидел это как «на первом месте оказалась и
+-- Барселона и Интер». Сортировать по числу, у которого нет разрешения
+-- различить верхушку, нельзя; `elo` — то же самое до округления.
+--
 -- ⚠️ ЧИСЛО, ПО КОТОРОМУ СПИСОК УПОРЯДОЧЕН, ВОЗВРАЩАЕТСЯ НАРУЖУ. Порядок, чью
 -- причину не видно, читается как отсутствие порядка — с этого и началось.
 -- Экран показывает уровень, а где его нет — стоимость состава.
@@ -65,7 +72,7 @@ language sql stable security definer set search_path = public as $$
        or exists (select 1 from club_alias a
                    where a.club_key = f.club_key
                      and a.alias_key like club_norm_key(btrim(p_query)) || '%'))
-   order by r.level desc nulls last,
+   order by r.elo desc nulls last,
             v.v desc nulls last,
             coalesce(q.n, 0) desc,
             coalesce(m.n, 0) desc,
@@ -74,7 +81,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 comment on function public.club_directory(text, text, integer, text) is
-  'Справочник команд с поиском, ОТ СИЛЬНОЙ К СЛАБОЙ: club_rating.level, затем стоимость состава. p_kind: club (по умолчанию) или national.';
+  'Справочник команд с поиском, ОТ СИЛЬНОЙ К СЛАБОЙ: elo (level округлён и на верхушке не различает), затем стоимость состава.';
 
 revoke all on function public.club_directory(text, text, integer, text) from public;
 grant execute on function public.club_directory(text, text, integer, text)
