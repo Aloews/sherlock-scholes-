@@ -153,12 +153,15 @@ export function ClubsPane() {
                 пятых клубов, поэтому там показывается стоимость состава,
                 по ней они и стоят. */}
             <div className="text-right shrink-0">
-              {c.level != null ? (
+              {/* ⚠️ СТОИМОСТЬ, А НЕ РЕЙТИНГ. Владелец: «давай пока сделаем
+                  основным рейтингом всего для всех экранов именно стоимость.
+                  А с набором данных сможем понять и проверим, какой лучше
+                  показатель отображает силу игрока». Уровень клуба
+                  по-прежнему приходит с сервера и им же сортируется вторым
+                  ключом — выбросить его сейчас значило бы, что сравнивать
+                  потом будет нечего. */}
+              {c.squad_value ? (
                 <p className="text-brand-accent text-[11px] font-semibold tabular-nums">
-                  {c.level}
-                </p>
-              ) : c.squad_value ? (
-                <p className="text-brand-accent text-[10.5px] tabular-nums">
                   {formatEur(c.squad_value, i18n.language)}
                 </p>
               ) : null}

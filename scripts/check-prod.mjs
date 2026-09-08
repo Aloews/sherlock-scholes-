@@ -1533,17 +1533,30 @@ async function checkClubOrderAndLinks() {
   const rows = Array.isArray(list) ? list : [];
   // Порядок обязан НЕ ВОЗРАСТАТЬ по уровню, а где уровня нет — по стоимости
   // состава. Проверяется весь список, а не первая строка.
-  // ⚠️ ПРОВЕРЯЕТСЯ НЕ МОНОТОННОСТЬ `level`, А ЧТО НАВЕРХУ СИЛЬНЫЕ. Сортирует
-  // `elo` — непрерывный, — а наружу отдаётся округлённый `level`, у которого
-  // на верхушке семь клубов подряд с сотней. Требовать от него монотонности
-  // значило бы проверять округление, а не порядок.
-  const lv = rows.map((r) => r.level ?? -1);
-  const topStrong = lv.slice(0, 10).every((v) => v >= 95);
-  const tailWeaker = rows.length >= 20 && lv[rows.length - 1] < lv[0];
-  record('Порядок команд: от сильной к слабой', rows.length > 5 && topStrong && tailWeaker,
+  // ⚠️ СТОИМОСТЬ И УРОВЕНЬ ОБЯЗАНЫ СМОТРЕТЬ В ОДНУ СТОРОНУ, НО НЕ СОВПАДАТЬ.
+  // Сортирует стоимость; уровень считается независимо, и если бы дорогие
+  // клубы выходили слабыми, значит сломано одно из двух. Сравниваются средние
+  // по верхней и нижней десятке, а не строка со строкой: требовать от
+  // округлённого уровня монотонности — значит проверять округление.
+  const lv = rows.map((r) => r.level ?? -1).filter((v) => v >= 0);
+  const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const topAvg = avg(lv.slice(0, 10));
+  const botAvg = avg(lv.slice(-10));
+  // ⚠️ ПЕРВЫМ КЛЮЧОМ — СТОИМОСТЬ СОСТАВА. Владелец: «сделаем основным
+  // рейтингом всего для всех экранов именно стоимость». Она непрерывна, и
+  // порядок по ней проверяется прямо: не возрастает по списку.
+  const vals = rows.map((r) => Number(r.squad_value ?? -1));
+  let byValue = true;
+  for (let i = 1; i < vals.length; i++) if (vals[i - 1] < vals[i]) { byValue = false; break; }
+  record('Порядок команд: по стоимости состава', rows.length > 5 && byValue,
          rows.length === 0 ? 'список пуст'
-           : `${rows.length} строк, первая — ${rows[0].name} (уровень ${lv[0]}), последняя — ${lv[rows.length - 1]}`,
-         'ловит возврат к сортировке по размеру нашей выгрузки');
+           : `первая — ${rows[0].name}, ${Math.round(vals[0] / 1e6)} млн; последняя ${Math.round(vals[vals.length - 1] / 1e6)} млн`,
+         'ловит возврат к сортировке по уровню или по размеру выгрузки');
+
+  record('Порядок команд: дорогие они же и сильные', lv.length >= 20 && topAvg > botAvg,
+         lv.length < 20 ? `уровень известен лишь у ${lv.length} клубов списка`
+           : `средний уровень верхней десятки ${Math.round(topAvg)}, нижней ${Math.round(botAvg)}`,
+         'ловит разъехавшиеся стоимость и уровень — сломано одно из двух');
 
   // ⚠️ КОНТРОЛЬ: проверка обязана уметь увидеть НЕПОРЯДОК. Число игроков в
   // заявке — прежний первый ключ сортировки — по этому же списку монотонным
@@ -1565,6 +1578,21 @@ async function checkClubOrderAndLinks() {
     return Number.isFinite(n) ? n : -1;
   };
   const linked = await cnt('soccerwiki_player?select=pid&card_id=not.is.null&limit=1');
+  // ⚠️ СОСТАВ — С SOCCER WIKI. Владелец: «заполни составы с Soccer Wiki, а
+  // стоимость отображай с трансфермаркет». Проверяется, что источник стал
+  // ГЛАВНЫМ ПО ОБЪЁМУ, а не просто объявлен главным на словах.
+  const bySrc = async (src) => {
+    const r = await fetch(`${url}/rest/v1/card_current_club?select=card_id&source=eq.${src}&limit=1`,
+      { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+  const sw = await bySrc('soccerwiki');
+  const tm = await bySrc('club_roster');
+  record('Состав: Soccer Wiki — главный источник', sw > tm && sw > 5000,
+         `soccerwiki ${sw}, заявка Transfermarkt ${tm}`,
+         'ловит ночной шаг, переставший заливать составы из Soccer Wiki');
+
   record('Soccer Wiki: связки на месте', linked > 10000,
          `${linked} карточек связано с игроком Soccer Wiki`,
          'ловит обнуление связок ночным шагом');

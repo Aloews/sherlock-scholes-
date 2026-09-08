@@ -223,7 +223,6 @@ export function FixtureCard({
       {rating && (
         <div>
           <SquadStrength
-            rating={rating}
             fixtureId={fixture.id}
             homeTeam={fixture.home_team}
             awayTeam={fixture.away_team}

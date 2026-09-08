@@ -4,11 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { IconChevronDown } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import {
-  fetchFixtureSquads, type SquadMember, type TeamRating,
+  fetchFixtureSquads, type SquadMember,
 } from './squadStrengthApi';
 
 interface Props {
-  rating: TeamRating;
   fixtureId: string;
   homeTeam: string;
   awayTeam: string;
@@ -46,12 +45,21 @@ interface Props {
  * там, где у АПЛ 68–86. Внутри матча это не мешает — обе команды почти всегда
  * из одной лиги, — но складывать эти числа в общую таблицу лиг нельзя.
  */
-export function SquadStrength({ rating, fixtureId, homeTeam, awayTeam }: Props) {
+export function SquadStrength({ fixtureId, homeTeam, awayTeam }: Props) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [squads, setSquads] = useState<SquadMember[] | null>(null);
-  const { home_rating, away_rating, home_squad_level, away_squad_level, depth, basis } = rating;
+  // ⚠️ РЕЙТИНГ БОЛЬШЕ НЕ РИСУЕТСЯ, И ЭТО РЕШЕНИЕ ВЛАДЕЛЬЦА. «В прогнозах и
+  // анонсах писалась стоимость, как сейчас, а не рейтинг… сделаем основным
+  // рейтингом всего для всех экранов именно стоимость». Стоимость каждой
+  // стороны уже стоит в строке матча (FixtureCard, данные из fixture_clubs),
+  // и два разных числа про одно и то же спорили бы друг с другом.
+  //
+  // ⚠️ САМ РЕЙТИНГ НЕ УДАЛЁН — ни из базы, ни из этого запроса: владелец
+  // хочет позже сравнить, какой показатель вернее отражает силу. Здесь он
+  // просто не показывается. Блок остался ради разворачиваемого состава: это
+  // единственный вход в «кто вообще играет» из строки матча.
 
   const toggle = () => {
     hapticImpact('light');
@@ -93,44 +101,8 @@ export function SquadStrength({ rating, fixtureId, homeTeam, awayTeam }: Props) 
     );
   };
 
-  // Полосы рисуются от общей шкалы 0..100, а не «относительно большего»:
-  // растяжка до максимума превратила бы отрыв в 3 пункта в разгром во всю
-  // ширину. Уровень и так нормирован на сотню — второй раз не надо.
-  const row = (team: string, value: number, squad: number) => (
-    <div className="flex items-center gap-2">
-      <span className="text-brand-muted text-[10.5px] w-[4.5rem] shrink-0 truncate">{team}</span>
-      <span className="h-1.5 flex-1 rounded-full bg-brand-border overflow-hidden">
-        <span
-          className="block h-full rounded-full bg-brand-accent"
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-        />
-      </span>
-      {/* Состав отдельным числом рядом: рейтинг собран из него и из формы, и
-          если показать только итог, непонятно, что именно его двигает. */}
-      <span className="text-brand-muted text-[9.5px] tabular-nums w-6 text-right shrink-0">
-        {Math.round(squad)}
-      </span>
-      <span className="text-white text-[10.5px] tabular-nums w-7 text-right shrink-0">
-        {Math.round(value)}
-      </span>
-    </div>
-  );
-
   return (
     <div className="mt-2 space-y-1">
-      <p className="text-brand-muted text-[10px] uppercase tracking-wider">
-        {t('matches.team_rating')}
-        <span className="normal-case">
-          {' · '}{t('matches.squad_depth', { count: depth })}
-          {/* Из чего собрано. При 'squad' формы нет — матчей у команды мало, —
-              и выдавать состав за полный рейтинг значило бы объяснять число
-              не тем. */}
-          {basis === 'squad' && ` · ${t('matches.rating_squad_only')}`}
-        </span>
-      </p>
-      {row(homeTeam, home_rating, home_squad_level)}
-      {row(awayTeam, away_rating, away_squad_level)}
-
       <button
         type="button"
         onClick={toggle}

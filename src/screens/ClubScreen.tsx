@@ -192,7 +192,7 @@ export function ClubScreen() {
                   таблица говорит «как идут дела в этом сезоне», рейтинг —
                   «насколько команда сильна вообще», и первое место в слабой
                   лиге со средним рейтингом не противоречие. */}
-              {p.level != null && (
+              {squadValue && (
                 <button
                   type="button"
                   onClick={() => {
@@ -203,11 +203,16 @@ export function ClubScreen() {
                   disabled={!p.league}
                   className="text-right shrink-0 disabled:opacity-100"
                 >
-                  <p className="ds-display text-brand-accent text-2xl font-black tabular-nums leading-none">
-                    {p.level}
+                  {/* ⚠️ СТОИМОСТЬ СОСТАВА, А НЕ УРОВЕНЬ. Владелец: «сделаем
+                      основным рейтингом всего для всех экранов именно
+                      стоимость». Уровень остаётся в базе и приходит сюда же —
+                      по нему всё ещё можно будет сравнить, какой показатель
+                      вернее, — но на экране первым числом стоит стоимость. */}
+                  <p className="ds-display text-brand-accent text-lg font-black tabular-nums leading-none">
+                    {squadValue ?? '—'}
                   </p>
                   <p className="text-brand-muted/70 text-[9.5px] uppercase tracking-wide">
-                    {t('club.rating')}
+                    {t('club.market_value')}
                   </p>
                   {/* ⚠️ МЕСТО РИСУЕТСЯ ТОЛЬКО СО ЗНАМЕНАТЕЛЕМ. Лиг в
                       справочнике 62, значит первых мест ровно 62 — по одному
