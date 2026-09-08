@@ -119,7 +119,10 @@
     "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
     "minigames_link": "Mini-jeux",
     "stream_link": "TV en direct",
-    "clubs_link": "Clubs et statistiques"
+    "clubs_link": "Clubs et statistiques",
+    "tag_defender": "Défenseurs",
+    "tag_midfielder": "Milieux",
+    "tag_forward": "Attaquants"
   },
   "design": {
     "master": "Nouveau design",
@@ -204,7 +207,10 @@
     "search_empty": "Aucun résultat",
     "view_cards": "Cartes",
     "view_clubs": "Équipes",
-    "view_stats": "Statistiques"
+    "view_stats": "Statistiques",
+    "value_growth_up": "+{{n}} % sur 90 jours",
+    "value_growth_down": "−{{n}} % sur 90 jours",
+    "value_growth_none": "changements enregistrés depuis le {{date}}"
   },
   "profile": {
     "title": "Profil",
@@ -501,7 +507,11 @@
     "minutes": "Minutes",
     "national": "Avec {{team}} — {{apps}} sélections, {{goals}} buts",
     "club_line": "{{matches}} m · {{goals}} b · {{assists}} p",
-    "row_numbers": "{{matches}} m. · {{goals}} buts"
+    "row_numbers": "{{matches}} m. · {{goals}} buts",
+    "n_matches_one": "{{count}} match",
+    "n_matches_other": "{{count}} matchs",
+    "n_goals_one": "{{count}} but",
+    "n_goals_other": "{{count}} buts"
   },
   "facts": {
     "caps_one": "{{count}} sélection",
@@ -1004,7 +1014,9 @@
     "market_value_of": "{{priced}} sur {{squad}} estimés",
     "roster_source": "Effectif et valeurs — {{source}}",
     "squad_ours": "Effectif officiel",
-    "news": "Actualités de l'équipe"
+    "news": "Actualités de l'équipe",
+    "manager": "Entraîneur",
+    "now": "Actuellement"
   },
   "clubs": {
     "title": "Clubs",
@@ -1147,5 +1159,17 @@
     "role_target_man": "Attaquant pivot",
     "role_finisher": "Finisseur",
     "role_general_forward": "Attaquant polyvalent"
+  },
+  "character": {
+    "title": "Caractère",
+    "attacking": "Offensif",
+    "defensive": "Défensif",
+    "complete": "Complet",
+    "open": "Jeu ouvert",
+    "closed": "Jeu fermé",
+    "home": "Fort à domicile",
+    "steady": "Régulier",
+    "streaky": "Irrégulier",
+    "measured": "Mesuré sur les matchs, non attribué"
   }
 }

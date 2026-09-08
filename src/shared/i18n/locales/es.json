@@ -119,7 +119,10 @@
     "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar.",
     "minigames_link": "Minijuegos",
     "stream_link": "TV en vivo",
-    "clubs_link": "Clubes y estadísticas"
+    "clubs_link": "Clubes y estadísticas",
+    "tag_defender": "Defensas",
+    "tag_midfielder": "Centrocampistas",
+    "tag_forward": "Delanteros"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -204,7 +207,10 @@
     "search_empty": "No hay coincidencias",
     "view_cards": "Cartas",
     "view_clubs": "Equipos",
-    "view_stats": "Estadísticas"
+    "view_stats": "Estadísticas",
+    "value_growth_up": "subió {{n}}% en 90 días",
+    "value_growth_down": "bajó {{n}}% en 90 días",
+    "value_growth_none": "los cambios se registran desde {{date}}"
   },
   "profile": {
     "title": "Perfil",
@@ -501,7 +507,11 @@
     "minutes": "Minutos",
     "national": "Con {{team}} — {{apps}} partidos, {{goals}} goles",
     "club_line": "{{matches}} p · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} part. · {{goals}} goles"
+    "row_numbers": "{{matches}} part. · {{goals}} goles",
+    "n_matches_one": "{{count}} partido",
+    "n_matches_other": "{{count}} partidos",
+    "n_goals_one": "{{count}} gol",
+    "n_goals_other": "{{count}} goles"
   },
   "facts": {
     "caps_one": "{{count}} internacionalidad",
@@ -1004,7 +1014,9 @@
     "market_value_of": "{{priced}} de {{squad}} tasados",
     "roster_source": "Plantilla y valores — {{source}}",
     "squad_ours": "Plantilla oficial",
-    "news": "Noticias del equipo"
+    "news": "Noticias del equipo",
+    "manager": "Entrenador",
+    "now": "Ahora"
   },
   "clubs": {
     "title": "Clubes",
@@ -1147,5 +1159,17 @@
     "role_target_man": "Delantero de referencia",
     "role_finisher": "Rematador",
     "role_general_forward": "Delantero polivalente"
+  },
+  "character": {
+    "title": "Carácter",
+    "attacking": "Ofensivo",
+    "defensive": "Defensivo",
+    "complete": "Completo",
+    "open": "Fútbol abierto",
+    "closed": "Fútbol cerrado",
+    "home": "Fuerte en casa",
+    "steady": "Regular",
+    "streaky": "Irregular",
+    "measured": "Medido por los partidos, no asignado"
   }
 }

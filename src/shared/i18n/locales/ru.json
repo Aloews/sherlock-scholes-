@@ -123,7 +123,10 @@
     "invites_failed": "Приглашения не загрузились — если вас звали, попробуйте обновить.",
     "minigames_link": "Мини-игры",
     "stream_link": "Прямой эфир",
-    "clubs_link": "Команды и статистика"
+    "clubs_link": "Команды и статистика",
+    "tag_defender": "Защитники",
+    "tag_midfielder": "Полузащитники",
+    "tag_forward": "Нападающие"
   },
   "design": {
     "master": "Новый дизайн",
@@ -208,7 +211,10 @@
     "search_empty": "По запросу ничего не нашлось",
     "view_cards": "Карточки",
     "view_clubs": "Команды",
-    "view_stats": "Статистика"
+    "view_stats": "Статистика",
+    "value_growth_up": "выросла на {{n}}% за 90 дней",
+    "value_growth_down": "упала на {{n}}% за 90 дней",
+    "value_growth_none": "изменения записываются с {{date}}"
   },
   "profile": {
     "title": "Профиль",
@@ -527,7 +533,15 @@
     "minutes": "Минуты",
     "national": "За {{team}} — {{apps}} матчей, {{goals}} голов",
     "club_line": "{{matches}} м · {{goals}} г · {{assists}} п",
-    "row_numbers": "{{matches}} м · {{goals}} г"
+    "row_numbers": "{{matches}} м · {{goals}} г",
+    "n_matches_one": "{{count}} матч",
+    "n_matches_few": "{{count}} матча",
+    "n_matches_many": "{{count}} матчей",
+    "n_matches_other": "{{count}} матчей",
+    "n_goals_one": "{{count}} гол",
+    "n_goals_few": "{{count}} гола",
+    "n_goals_many": "{{count}} голов",
+    "n_goals_other": "{{count}} голов"
   },
   "facts": {
     "caps_one": "{{count}} матч {{team}}",
@@ -1062,7 +1076,9 @@
     "market_value_of": "по {{priced}} из {{squad}}",
     "roster_source": "Состав и стоимости — {{source}}",
     "squad_ours": "Заявка клуба",
-    "news": "Новости команды"
+    "news": "Новости команды",
+    "manager": "Тренер",
+    "now": "Сейчас"
   },
   "clubs": {
     "title": "Команды",
@@ -1233,5 +1249,17 @@
     "role_target_man": "Таранный нападающий",
     "role_finisher": "Бомбардир",
     "role_general_forward": "Универсальный нападающий"
+  },
+  "character": {
+    "title": "Характер",
+    "attacking": "Атакующий",
+    "defensive": "Оборонительный",
+    "complete": "Сбалансированный",
+    "open": "Открытый футбол",
+    "closed": "Закрытый футбол",
+    "home": "Силён дома",
+    "steady": "Ровный",
+    "streaky": "Рваный",
+    "measured": "Измерено по матчам, не приписано"
   }
 }

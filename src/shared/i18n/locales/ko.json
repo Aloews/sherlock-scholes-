@@ -117,7 +117,10 @@
     "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
     "minigames_link": "미니게임",
     "stream_link": "실시간 TV",
-    "clubs_link": "클럽과 통계"
+    "clubs_link": "클럽과 통계",
+    "tag_defender": "수비수",
+    "tag_midfielder": "미드필더",
+    "tag_forward": "공격수"
   },
   "design": {
     "master": "새 디자인",
@@ -202,7 +205,10 @@
     "search_empty": "일치하는 항목 없음",
     "view_cards": "카드",
     "view_clubs": "구단",
-    "view_stats": "통계"
+    "view_stats": "통계",
+    "value_growth_up": "90일간 {{n}}% 상승",
+    "value_growth_down": "90일간 {{n}}% 하락",
+    "value_growth_none": "{{date}}부터 변동 기록"
   },
   "profile": {
     "title": "프로필",
@@ -488,7 +494,9 @@
     "minutes": "출전 시간",
     "national": "{{team}} 대표 — {{apps}}경기 {{goals}}골",
     "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도",
-    "row_numbers": "{{matches}}경기 · {{goals}}골"
+    "row_numbers": "{{matches}}경기 · {{goals}}골",
+    "n_matches_other": "{{count}}경기",
+    "n_goals_other": "{{count}}골"
   },
   "facts": {
     "caps_other": "국가대표 {{count}}경기",
@@ -977,7 +985,9 @@
     "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
     "roster_source": "스쿼드와 시장 가치 — {{source}}",
     "squad_ours": "구단 등록 명단",
-    "news": "팀 소식"
+    "news": "팀 소식",
+    "manager": "감독",
+    "now": "현재"
   },
   "clubs": {
     "title": "클럽",
@@ -1106,5 +1116,17 @@
     "role_target_man": "타깃맨",
     "role_finisher": "피니셔",
     "role_general_forward": "만능 공격수"
+  },
+  "character": {
+    "title": "성향",
+    "attacking": "공격적",
+    "defensive": "수비적",
+    "complete": "균형",
+    "open": "개방적 경기",
+    "closed": "폐쇄적 경기",
+    "home": "홈에 강함",
+    "steady": "안정적",
+    "streaky": "기복",
+    "measured": "경기에서 산출, 임의 부여 아님"
   }
 }

@@ -119,7 +119,10 @@
     "invites_failed": "Os convites não carregaram — se alguém te convidou, tente atualizar.",
     "minigames_link": "Minijogos",
     "stream_link": "TV ao vivo",
-    "clubs_link": "Clubes e estatísticas"
+    "clubs_link": "Clubes e estatísticas",
+    "tag_defender": "Zagueiros",
+    "tag_midfielder": "Meio-campistas",
+    "tag_forward": "Atacantes"
   },
   "design": {
     "master": "Novo design",
@@ -204,7 +207,10 @@
     "search_empty": "Nada corresponde",
     "view_cards": "Cartas",
     "view_clubs": "Times",
-    "view_stats": "Estatísticas"
+    "view_stats": "Estatísticas",
+    "value_growth_up": "subiu {{n}}% em 90 dias",
+    "value_growth_down": "caiu {{n}}% em 90 dias",
+    "value_growth_none": "alterações registadas desde {{date}}"
   },
   "profile": {
     "title": "Perfil",
@@ -501,7 +507,11 @@
     "minutes": "Minutos",
     "national": "Pela {{team}} — {{apps}} jogos, {{goals}} gols",
     "club_line": "{{matches}} j · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} jogos · {{goals}} gols"
+    "row_numbers": "{{matches}} jogos · {{goals}} gols",
+    "n_matches_one": "{{count}} jogo",
+    "n_matches_other": "{{count}} jogos",
+    "n_goals_one": "{{count}} gol",
+    "n_goals_other": "{{count}} gols"
   },
   "facts": {
     "caps_one": "{{count}} jogo pela seleção",
@@ -1004,7 +1014,9 @@
     "market_value_of": "{{priced}} de {{squad}} avaliados",
     "roster_source": "Plantel e valores — {{source}}",
     "squad_ours": "Elenco oficial",
-    "news": "Notícias do time"
+    "news": "Notícias do time",
+    "manager": "Treinador",
+    "now": "Agora"
   },
   "clubs": {
     "title": "Clubes",
@@ -1147,5 +1159,17 @@
     "role_target_man": "Centroavante de referência",
     "role_finisher": "Finalizador",
     "role_general_forward": "Atacante versátil"
+  },
+  "character": {
+    "title": "Carácter",
+    "attacking": "Ofensivo",
+    "defensive": "Defensivo",
+    "complete": "Completo",
+    "open": "Futebol aberto",
+    "closed": "Futebol fechado",
+    "home": "Forte em casa",
+    "steady": "Regular",
+    "streaky": "Irregular",
+    "measured": "Medido pelos jogos, não atribuído"
   }
 }

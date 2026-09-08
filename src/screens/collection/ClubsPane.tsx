@@ -6,6 +6,7 @@ import { fetchClubDirectory, type ClubDirectoryRow, type ClubKind } from '@/feat
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { Chip } from '@/shared/ui/Chip';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { formatEur } from '@/shared/lib/money';
 
 /**
  * Список команд — вход на экран команды. Половина раздела «Коллекция».
@@ -109,12 +110,23 @@ export function ClubsPane() {
       )}
 
       <div className="space-y-1.5">
-        {list.map((c) => (
+        {list.map((c, i) => (
           <button
             key={c.club_key}
             onClick={() => navigate(`/club/${encodeURIComponent(c.club_key)}`)}
             className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5 flex items-center gap-3 text-left active:opacity-70 transition-opacity"
           >
+            {/* ⚠️ МЕСТО В СПИСКЕ ЧИСЛОМ, И ЭТО ПОЧИНКА ЖАЛОБЫ, А НЕ УКРАШЕНИЕ.
+                Владелец: «в рейтинге команд на первом месте оказалась и
+                Барселона и Интер». Уровень — перцентиль, округлённый до
+                целого, и в сотню упираются семь клубов сразу: семь строк с
+                одинаковой сотней читаются как семь первых мест. Порядок при
+                этом строгий (сортирует elo, а не округлённый уровень) —
+                номер его и показывает. Поиск не меняет смысла: это место в
+                том списке, который сейчас на экране. */}
+            <span className="w-5 shrink-0 text-brand-muted/60 text-[11px] tabular-nums text-right">
+              {i + 1}
+            </span>
             {c.crest_url ? (
               <img
                 src={c.crest_url}
@@ -133,8 +145,26 @@ export function ClubsPane() {
                 {[c.country, c.league].filter(Boolean).join(' · ')}
               </p>
             </div>
-            {/* Что есть у команды — чтобы не заходить наугад. */}
+            {/* ⚠️ ПЕРВЫМ ЧИСЛОМ — ТО, ПО ЧЕМУ СПИСОК УПОРЯДОЧЕН. Владелец:
+                «рейтинг команд не сортируется от лучшей к самой не
+                результативной». Порядок теперь от сильной к слабой, и число,
+                которое его задаёт, стоит рядом: иначе порядок читается как
+                случайный — ровно та жалоба и была. Уровня нет у четырёх
+                пятых клубов, поэтому там показывается стоимость состава,
+                по ней они и стоят. */}
             <div className="text-right shrink-0">
+              {/* ⚠️ СТОИМОСТЬ, А НЕ РЕЙТИНГ. Владелец: «давай пока сделаем
+                  основным рейтингом всего для всех экранов именно стоимость.
+                  А с набором данных сможем понять и проверим, какой лучше
+                  показатель отображает силу игрока». Уровень клуба
+                  по-прежнему приходит с сервера и им же сортируется вторым
+                  ключом — выбросить его сейчас значило бы, что сравнивать
+                  потом будет нечего. */}
+              {c.squad_value ? (
+                <p className="text-brand-accent text-[11px] font-semibold tabular-nums">
+                  {formatEur(c.squad_value, i18n.language)}
+                </p>
+              ) : null}
               <p className="text-brand-muted text-[10.5px] tabular-nums">
                 {t('clubs.players', { count: c.squad })}
               </p>

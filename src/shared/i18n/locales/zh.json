@@ -117,7 +117,10 @@
     "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
     "minigames_link": "小游戏",
     "stream_link": "直播电视",
-    "clubs_link": "俱乐部与数据"
+    "clubs_link": "俱乐部与数据",
+    "tag_defender": "后卫",
+    "tag_midfielder": "中场",
+    "tag_forward": "前锋"
   },
   "design": {
     "master": "新设计",
@@ -202,7 +205,10 @@
     "search_empty": "没有匹配项",
     "view_cards": "卡牌",
     "view_clubs": "球队",
-    "view_stats": "数据"
+    "view_stats": "数据",
+    "value_growth_up": "90 天内上涨 {{n}}%",
+    "value_growth_down": "90 天内下跌 {{n}}%",
+    "value_growth_none": "自 {{date}} 起记录变动"
   },
   "profile": {
     "title": "个人资料",
@@ -488,7 +494,9 @@
     "minutes": "出场时间",
     "national": "代表 {{team}} — {{apps}} 场 {{goals}} 球",
     "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
-    "row_numbers": "{{matches}} 场 · {{goals}} 球"
+    "row_numbers": "{{matches}} 场 · {{goals}} 球",
+    "n_matches_other": "{{count}} 场",
+    "n_goals_other": "{{count}} 球"
   },
   "facts": {
     "caps_other": "国家队出场 {{count}} 次",
@@ -977,7 +985,9 @@
     "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
     "roster_source": "阵容与身价 — {{source}}",
     "squad_ours": "俱乐部名单",
-    "news": "球队新闻"
+    "news": "球队新闻",
+    "manager": "主教练",
+    "now": "现在"
   },
   "clubs": {
     "title": "俱乐部",
@@ -1106,5 +1116,17 @@
     "role_target_man": "支点型中锋",
     "role_finisher": "终结者",
     "role_general_forward": "全能前锋"
+  },
+  "character": {
+    "title": "风格",
+    "attacking": "进攻型",
+    "defensive": "防守型",
+    "complete": "均衡型",
+    "open": "开放式比赛",
+    "closed": "保守式比赛",
+    "home": "主场强势",
+    "steady": "稳定",
+    "streaky": "起伏大",
+    "measured": "由比赛计算，非人为设定"
   }
 }

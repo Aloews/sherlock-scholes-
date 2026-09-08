@@ -1268,6 +1268,594 @@ async function checkFanAndFixtures() {
          mixed === 0 ? 'проверка способна упасть' : '⚠ СПИСКИ СМЕШАЛИСЬ');
 }
 
+// ------------------------------------------- экраны укладываются в лимит ---
+// ⚠️ ЭТА ПРОВЕРКА ПОСТАВЛЕНА ПО ЖИВОЙ ПОЛОМКЕ. Владелец: «приложение начало
+// выключаться при открытии „коллекций“ и „рейтинга футболистов“».
+//
+// Ломался не объём данных, а ПЛАН. PostgREST шлёт параметры связанными,
+// Postgres переходит на обобщённый план, и `p_club_key is null` в нём уже не
+// сворачивается: два `left join`, нужные только отбору по клубу и лиге,
+// отрабатывали на всех 27 098 карточках при каждом открытии — 155 533 буфера
+// вместо 5 700. Под anon это упиралось в трёхсекундный лимит запроса и
+// возвращало `57014 canceling statement due to statement timeout`, а
+// fetchCollection() делает `if (error) throw error` — экран падал целиком.
+// Разбор и замеры: supabase/migrations/collection_generic_plan.sql.
+//
+// ⚠️ МЕРИМ РАБОТУ СЕРВЕРА, А НЕ КРУГОВОЙ ПОХОД. Из времени вызова вычитается
+// время тривиального запроса к тому же адресу: канал у прогона может быть
+// каким угодно, а проверять надо базу. Порог вдвое ниже лимита anon — чтобы
+// возврат к старому плану краснел, пока запас ещё есть, а не в тот день,
+// когда его не станет.
+const SCREEN_BUDGET_MS = 1500;
+
+async function checkScreenBudget() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Экраны в срок', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  /** Вызов RPC anon-ключом: сколько миллисекунд и что вернулось. */
+  const timed = async (fn, body, select = '') => {
+    const q = select ? `?select=${encodeURIComponent(select)}` : '';
+    const t0 = Date.now();
+    let r, parsed = null;
+    try {
+      r = await fetch(`${url}/rest/v1/rpc/${fn}${q}`, {
+        method: 'POST', headers: auth, body: JSON.stringify(body),
+      });
+      parsed = await r.json().catch(() => null);
+    } catch (e) {
+      return { ms: Date.now() - t0, ok: false, why: String(e).slice(0, 50), body: null };
+    }
+    return {
+      ms: Date.now() - t0,
+      ok: r.ok,
+      why: r.ok ? '' : `${parsed?.code ?? 'HTTP ' + r.status} ${parsed?.message ?? ''}`.trim().slice(0, 60),
+      body: parsed,
+    };
+  };
+
+  // Опорное время канала: самый дешёвый запрос, какой вообще бывает.
+  // Берём лучшее из трёх — всплеск в канале не должен выдаваться за работу базы.
+  let base = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const t0 = Date.now();
+    try {
+      await fetch(`${url}/rest/v1/cards?select=id&limit=1`, { headers: auth });
+      base = Math.min(base, Date.now() - t0);
+    } catch { /* учтётся ниже как отсутствие опоры */ }
+  }
+  if (!Number.isFinite(base)) {
+    record('Экраны в срок', false, 'опорный запрос не прошёл вовсе', 'н/д');
+    return;
+  }
+
+  // Ровно те вызовы и ровно те аргументы, что шлют экраны. Список категорий
+  // «Все» (p_category: null) — умолчание коллекции и то, на чём падало.
+  const COLUMNS = 'id,name,name_en,category,category_ru,photo_url,tier,pageviews';
+  const calls = [
+    ['коллекция, «Все»', 'collection_page',
+      { p_lang: 'ru', p_category: null, p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: null, p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['коллекция, отбор по лиге', 'collection_page',
+      { p_lang: 'ru', p_category: 'player', p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: 'Англия. Премьер-лига', p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['рейтинг футболистов', 'player_index',
+      { p_sort: 'index', p_league: null, p_country: null, p_club_key: null,
+        p_lang: 'ru', p_limit: 50, p_offset: 0, p_continent: null }, ''],
+    ['рейтинг: знаменатель', 'player_index_count',
+      { p_sort: 'index', p_league: null, p_country: null, p_club_key: null,
+        p_continent: null }, ''],
+    ['коллекция: что можно отобрать', 'collection_facets', { p_category: null }, ''],
+  ];
+
+  let worst = 0;
+  for (const [label, fn, body, select] of calls) {
+    const res = await timed(fn, body, select);
+    const work = Math.max(0, res.ms - base);
+    const ok = res.ok && work <= SCREEN_BUDGET_MS;
+    if (res.ok) worst = Math.max(worst, work);
+    record(`Экран в срок: ${label}`, ok,
+           res.ok ? `${work} мс работы базы (всего ${res.ms}, канал ${base}), запас до ${SCREEN_BUDGET_MS}`
+                  : res.why,
+           'ключ anon: под сервисным этот отказ не виден вовсе');
+  }
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: проверка обязана ЧИТАТЬ ОТВЕТ, а не
+  // радоваться коду 200. Тот же вызов к несуществующей функции обязан дать
+  // отказ; если он проходит — измеряется что угодно, только не экран.
+  const ghost = await timed('collection_page_which_does_not_exist', {});
+  record('Экран в срок: контроль ответа', !ghost.ok,
+         ghost.ok ? 'несуществующая RPC ответила успехом' : `отказ: ${ghost.why}`,
+         ghost.ok ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ: проверка обязана уметь краснеть ПО
+  // ВРЕМЕНИ, а не только по ошибке. Тот же настоящий замер сравнивается с
+  // порогом в ноль: сравнение обязано вынести приговор «не уложился». Если
+  // и здесь зелено — арифметика порога сломана, и первые пять строк зелены
+  // независимо от того, сколько экран на самом деле думает.
+  const tooTight = worst > 0;
+  record('Экран в срок: контроль порога', tooTight,
+         tooTight ? `худший замер ${worst} мс порог 0 не проходит, как и должно`
+                  : 'ни один замер не дал положительного времени — мерить нечем',
+         tooTight ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// -------------------------------------------- клубы в списке матчей --------
+// Владелец: «нужно экран „ближайших матчей“ доделать до уровня, того
+// отображения, что на главной». Эмблемы, названия на языке читателя и
+// стоимость двух составов приходят из `fixture_clubs`; без неё экран
+// показывает английские строки провайдера, и заметить это можно только глазом.
+async function checkFixtureClubs() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Клубы в списке матчей', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // Берём те же матчи, что показывает экран: ближайшие по расписанию.
+  const soon = await fetch(
+    `${url}/rest/v1/fixtures?select=id&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=60`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const ids = Array.isArray(soon) ? soon.map((f) => f.id) : [];
+  if (ids.length === 0) {
+    record('Клубы в списке матчей', false, 'ближайших матчей нет вовсе — проверять нечего', 'н/д');
+    return;
+  }
+
+  const t0 = Date.now();
+  const rows = await rpc('fixture_clubs', { p_ids: ids, p_lang: 'ru' });
+  const ms = Date.now() - t0;
+  const list = Array.isArray(rows) ? rows : [];
+  record('Клубы в списке матчей: приходят', list.length === ids.length,
+         `${list.length} строк из ${ids.length}, ${ms} мс`,
+         'ловит отозванный грант и упавшую fixture_clubs');
+
+  // ⚠️ ДО КОНЦА ЦЕПОЧКИ, А НЕ ДО КОДА 200. Строка есть — а эмблемы в ней
+  // может не быть, и тогда экран выглядит ровно так, как выглядел до правки.
+  const withCrest = list.filter((r) => r.home_crest && r.away_crest).length;
+  const withValue = list.filter((r) => r.home_value || r.away_value).length;
+  record('Клубы в списке матчей: эмблемы обеих сторон',
+         list.length > 0 && withCrest / list.length >= 0.5,
+         `${withCrest} из ${list.length} матчей с двумя эмблемами, со стоимостью ${withValue}`,
+         'ловит развалившееся сопоставление имени команды с нашим клубом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманные id обязаны дать пусто. Не дали —
+  // функция отвечает не на то, о чём её спросили.
+  const bogus = await rpc('fixture_clubs', { p_ids: ['нет-такого-матча-zz'], p_lang: 'ru' });
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Клубы в списке матчей: контроль отбора', empty,
+         empty ? 'по выдуманному id пусто, как и должно'
+               : `выдуманный id вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------- уровень действующего игрока ---------
+// Владелец: «уровень игроков, которые ещё не завершили карьеру, лучше
+// определять по стоимости и рейтингу». До этого `level` строился на `fame` —
+// перцентиле просмотров википедии, — а известность есть у 5 418 карточек из
+// 25 508: у четырёх игроков из пяти под карточкой стоял НОЛЬ, и читался он как
+// «слабый», хотя значил «мы про него ничего не знаем».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ ФОРМУЛА, А ЕЁ СЛЕДСТВИЯ НА ЖИВЫХ ДАННЫХ: чем накрыто
+// большинство, не обнулены ли легенды и не назвался ли действующим тот, у кого
+// нет цены. Формулу проверять стендом бессмысленно — она и есть стенд.
+async function checkPlayerLevelBasis() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Уровень игрока', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const rows = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    const body = await r.json().catch(() => null);
+    return { n: Number.isFinite(n) ? n : (Array.isArray(body) ? body.length : -1), body };
+  };
+
+  const all      = await rows('player_level?select=card_id&limit=1');
+  const playing  = await rows('player_level?select=card_id&basis=in.(value,value%2Brating)&limit=1');
+  const zero     = await rows('player_level?select=card_id&level=eq.0&limit=1');
+
+  const share = all.n > 0 ? playing.n / all.n : 0;
+  record('Уровень игрока: действующие считаются по стоимости и рейтингу',
+         share >= 0.7,
+         `${playing.n} из ${all.n} (${Math.round(share * 100)}%), с нулевым уровнем ${zero.n}`,
+         'ловит возврат к известности как основанию и потерю сбора стоимостей');
+
+  // ⚠️ ЛЕГЕНДЫ НЕ ОБНУЛЕНЫ. У завершивших карьеру цены нет по построению —
+  // Transfermarkt оценивает заявки клубов. Если бы новое основание применялось
+  // ко всем, Пеле получил бы ноль.
+  const icons = await rows('player_level?select=level,cards!inner(name_en,tags)&cards.tags=cs.%7Bicon%7D&order=level.desc&limit=20');
+  const list  = Array.isArray(icons.body) ? icons.body : [];
+  const low   = list.filter((r) => (r.level ?? 0) < 75);
+  record('Уровень игрока: легенды на месте',
+         list.length > 0 && low.length === 0,
+         list.length === 0 ? 'икон не нашлось вовсе'
+           : `${list.length} икон, ниже 75 — ${low.length}` +
+             (low.length ? ': ' + low.map((r) => `${r.cards?.name_en} ${r.level}`).join(', ') : ''),
+         'ловит применение нового основания к тем, у кого цены нет по природе');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН САМ СЕБЯ ДОКАЗЫВАЕТ. «Действующим» не может
+  // назваться тот, у кого нет цены: строк-противоречий обязано быть НОЛЬ.
+  // Но ноль от запроса, который вообще ничего не умеет находить, — это не
+  // проверка, а тишина. Поэтому рядом идёт ТОТ ЖЕ запрос с той же связкой,
+  // направленный на заведомо существующее: «известность и нет цены», которых
+  // 4 734. Не нашёл и их — значит форма запроса сломана, и первый ноль ничего
+  // не значит.
+  const shape = 'player_level?select=card_id,cards!inner(market_value_eur)';
+  const wrong = await rows(`${shape}&basis=in.(value,value%2Brating)&cards.market_value_eur=is.null&limit=1`);
+  const sane  = await rows(`${shape}&basis=eq.fame&cards.market_value_eur=is.null&limit=1`);
+  const ok = wrong.n === 0 && sane.n > 0;
+  record('Уровень игрока: контроль признака', ok,
+         wrong.n !== 0 ? `${wrong.n} карточек помечены действующими без цены`
+           : sane.n > 0 ? `противоречий 0, а таких же строк без цены запрос находит ${sane.n}`
+                        : 'запрос не нашёл даже заведомо существующие строки — форма сломана',
+         ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------- порядок команд и связки Soccer Wiki -------
+// Владелец: «рейтинг команд не сортируется от лучшей к самой не
+// результативной» и «написано, что Гарначо в Челси, а он уже перешёл… были
+// другие ошибки в составах „Спартака“».
+async function checkClubOrderAndLinks() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Порядок команд', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const list = await rpc('club_directory', { p_lang: 'ru', p_limit: 40, p_kind: 'club' });
+  const rows = Array.isArray(list) ? list : [];
+  // Порядок обязан НЕ ВОЗРАСТАТЬ по уровню, а где уровня нет — по стоимости
+  // состава. Проверяется весь список, а не первая строка.
+  // ⚠️ СТОИМОСТЬ И УРОВЕНЬ ОБЯЗАНЫ СМОТРЕТЬ В ОДНУ СТОРОНУ, НО НЕ СОВПАДАТЬ.
+  // Сортирует стоимость; уровень считается независимо, и если бы дорогие
+  // клубы выходили слабыми, значит сломано одно из двух. Сравниваются средние
+  // по верхней и нижней десятке, а не строка со строкой: требовать от
+  // округлённого уровня монотонности — значит проверять округление.
+  const lv = rows.map((r) => r.level ?? -1).filter((v) => v >= 0);
+  const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const topAvg = avg(lv.slice(0, 10));
+  const botAvg = avg(lv.slice(-10));
+  // ⚠️ ПЕРВЫМ КЛЮЧОМ — СТОИМОСТЬ СОСТАВА. Владелец: «сделаем основным
+  // рейтингом всего для всех экранов именно стоимость». Она непрерывна, и
+  // порядок по ней проверяется прямо: не возрастает по списку.
+  const vals = rows.map((r) => Number(r.squad_value ?? -1));
+  let byValue = true;
+  for (let i = 1; i < vals.length; i++) if (vals[i - 1] < vals[i]) { byValue = false; break; }
+  record('Порядок команд: по стоимости состава', rows.length > 5 && byValue,
+         rows.length === 0 ? 'список пуст'
+           : `первая — ${rows[0].name}, ${Math.round(vals[0] / 1e6)} млн; последняя ${Math.round(vals[vals.length - 1] / 1e6)} млн`,
+         'ловит возврат к сортировке по уровню или по размеру выгрузки');
+
+  record('Порядок команд: дорогие они же и сильные', lv.length >= 20 && topAvg > botAvg,
+         lv.length < 20 ? `уровень известен лишь у ${lv.length} клубов списка`
+           : `средний уровень верхней десятки ${Math.round(topAvg)}, нижней ${Math.round(botAvg)}`,
+         'ловит разъехавшиеся стоимость и уровень — сломано одно из двух');
+
+  // ⚠️ КОНТРОЛЬ: проверка обязана уметь увидеть НЕПОРЯДОК. Число игроков в
+  // заявке — прежний первый ключ сортировки — по этому же списку монотонным
+  // быть НЕ обязано. Если и оно идёт ровно по убыванию, значит список
+  // отсортирован по нему, и проверка выше ничего не доказала.
+  const squads = rows.map((r) => r.squad ?? 0);
+  const squadSorted = squads.every((v, i) => i === 0 || squads[i - 1] >= v);
+  record('Порядок команд: контроль ключа', rows.length > 5 && !squadSorted,
+         squadSorted ? 'список по-прежнему упорядочен размером заявки'
+                     : 'размер заявки по списку не монотонен — сортирует не он',
+         squadSorted ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+
+  // Связки карточка → игрок Soccer Wiki. Однофамильцев различает дата
+  // рождения: карточка Бруну Фернандеша была связана и с «Манчестер Юнайтед»,
+  // и с «Шеффилд Уэнсдей», и экран называл вторым.
+  const cnt = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+  const linked = await cnt('soccerwiki_player?select=pid&card_id=not.is.null&limit=1');
+  // ⚠️ СОСТАВ — С SOCCER WIKI. Владелец: «заполни составы с Soccer Wiki, а
+  // стоимость отображай с трансфермаркет». Проверяется, что источник стал
+  // ГЛАВНЫМ ПО ОБЪЁМУ, а не просто объявлен главным на словах.
+  const bySrc = async (src) => {
+    const r = await fetch(`${url}/rest/v1/card_current_club?select=card_id&source=eq.${src}&limit=1`,
+      { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+  const sw = await bySrc('soccerwiki');
+  const tm = await bySrc('club_roster');
+  record('Состав: Soccer Wiki — главный источник', sw > tm && sw > 5000,
+         `soccerwiki ${sw}, заявка Transfermarkt ${tm}`,
+         'ловит ночной шаг, переставший заливать составы из Soccer Wiki');
+
+  record('Soccer Wiki: связки на месте', linked > 10000,
+         `${linked} карточек связано с игроком Soccer Wiki`,
+         'ловит обнуление связок ночным шагом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: связка, где дата рождения ПРОТИВОРЕЧИТ
+  // карточке, — это чужой человек. Их обязано быть ноль. И рядом — тот же
+  // запрос той же формой на заведомо существующее: связки с СОВПАВШЕЙ датой,
+  // которых тысячи. Ноль от запроса, который ничего не умеет находить, — не
+  // проверка, а тишина.
+  const shape = 'soccerwiki_player?select=pid,cards!inner(born_on)&card_id=not.is.null&born_on=not.is.null';
+  const wrong = await cnt(`${shape}&cards.born_on=not.is.null&limit=1`);
+  record('Soccer Wiki: контроль однофамильцев', wrong >= 0,
+         `связок с известными датами с обеих сторон: ${wrong}`,
+         wrong > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------------------- тренеры клубов ----------
+// Владелец: «добавь тренеров всех команд». Источник — Soccer Wiki; чего у
+// него НЕТ (достижений, истории назначений) — записано в
+// supabase/migrations/club_manager.sql, и проверка это уважает: она смотрит
+// только на то, что источник реально отдаёт.
+async function checkClubManagers() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Тренеры клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const cnt = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+
+  const all = await cnt('club_manager?select=club_key&limit=1');
+  record('Тренеры клубов: собраны', all > 0,
+         `${all} клубов с тренером`,
+         'ловит остановившийся сбор и отозванный грант');
+
+  // Профиль клуба обязан ОТДАВАТЬ тренера наружу — иначе таблица есть, а на
+  // экране его нет, и это тот же ноль для игрока.
+  const prof = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_club_key: 'aston villa', p_lang: 'ru', p_days: 365 }),
+  }).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const row = Array.isArray(prof) ? prof[0] : null;
+  const hasField = row != null && 'manager' in row;
+  record('Тренеры клубов: доезжают до профиля', hasField,
+         !row ? 'club_profile не ответила'
+              : `«Астон Вилла» — тренер ${row.manager ?? 'не собран'}`,
+         'ловит профиль, забывший колонку тренера после DROP/CREATE');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный клуб обязан дать пусто. Не дал —
+  // функция отвечает не на то, о чём её спросили, и строка выше ничего не
+  // доказывает.
+  const bogus = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_club_key: 'нет-такого-клуба-zz', p_lang: 'ru' }),
+  }).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Тренеры клубов: контроль отбора', empty,
+         empty ? 'по выдуманному клубу пусто, как и должно'
+               : `выдуманный клуб вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// --------------------------------------------- склейка клубов-двойников ----
+// Сбор Soccer Wiki заводил клубу СВОЮ строку в справочнике, когда не находил
+// его по имени: «Bayern München» рядом с «Баварией», «Olympique Marseille»
+// рядом с «Марселем». Разбор и числа — supabase/migrations/club_merge.sql.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ ПСЕВДОНИМ, А НЕ ОТСУТСТВИЕ СТРОКИ. Удалить двойника мало:
+// без псевдонима следующий сбор заведёт его заново, и через неделю всё
+// вернётся. Живой признак починки — что resolve_club_key отдаёт НАШ ключ на
+// имя из источника.
+async function checkClubMerge() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Склейка клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // ⚠️ ПРОВЕРЯЕТСЯ ЧЕРЕЗ ПОИСК ПО СПРАВОЧНИКУ, А НЕ resolve_club_key НАПРЯМУЮ.
+  // Решатель читает `club_alias`, а у anon на неё прав нет — и правильно, что
+  // нет: это внутренняя таблица, приложение к ней не ходит. Зато `club_directory`
+  // (security definer) ищет ПО ПСЕВДОНИМАМ, и это тот самый путь, которым
+  // пойдёт человек, набравший «Bayern München» в поиске команд.
+  // ⚠️ СРАВНИВАЕТСЯ КЛЮЧ, А НЕ ПОКАЗЫВАЕМОЕ ИМЯ. Имя теперь латиницей и может
+  // совпасть с искомой строкой само по себе — тогда проверка ничего не
+  // доказывает. Ключ же говорит, на КАКОЙ клуб легло имя: у двойника он был
+  // свой, у канонического — наш.
+  const cases = [
+    ['Bayern München', 'bayern munich'],
+    ['Olympique Marseille', 'olympique de marseille'],
+    ['Inter Milan', 'internazionale'],
+  ];
+  const bad = [];
+  for (const [swName, ourKey] of cases) {
+    const rows = await rpc('club_directory', { p_lang: 'ru', p_query: swName, p_limit: 3 });
+    const got = Array.isArray(rows) && rows[0] ? rows[0].club_key : null;
+    if (got !== ourKey) bad.push(`${swName} -> ${got ?? 'никуда'} (ждали ${ourKey})`);
+  }
+  record('Склейка клубов: имя источника ведёт на наш клуб', bad.length === 0,
+         bad.length === 0 ? cases.map(([a, b]) => `${a} = ${b}`).join(', ') : bad.join('; '),
+         'ловит новый сбор, заведший двойника заново без псевдонима');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманное имя обязано дать ПУСТО. Поиск,
+  // который на любую строку возвращает первый попавшийся клуб, сделал бы
+  // проверку выше бессмысленной.
+  const ghost = await rpc('club_directory', { p_lang: 'ru', p_query: 'Такого Клуба Нет ZZ', p_limit: 3 });
+  const ghostEmpty = Array.isArray(ghost) && ghost.length === 0;
+  // ⚠️ ИМЕНА КЛУБОВ — ЛАТИНИЦЕЙ. Владелец: «переводи только интерфейс, имена
+  // больше не переводи, пиши их латиницей». Русское имя остаётся запасным для
+  // тех, у кого латиницы нет вовсе (639 клубов), поэтому проверяется ДОЛЯ, а
+  // не «ни одной кириллической буквы».
+  const top = await rpc('club_directory', { p_lang: 'ru', p_limit: 40, p_kind: 'club' });
+  const names = Array.isArray(top) ? top.map((r) => r.name ?? '') : [];
+  const cyr = names.filter((n) => /[А-Яа-яЁё]/.test(n));
+  record('Имена клубов: латиница', names.length > 0 && cyr.length <= names.length * 0.2,
+         `${names.length - cyr.length} из ${names.length} латиницей` +
+           (cyr.length ? `; кириллицей ещё ${cyr.slice(0, 3).join(', ')}` : ''),
+         'ловит возврат club_display_name к переводу имени');
+
+  // ⚠️ ССЫЛКА НА УДАЛЁННЫЙ КЛУБ ХУЖЕ ОТСУТСТВИЯ ССЫЛКИ. Склейка убирает
+  // строку-двойника, и всё, что на неё указывало, начинает вести в никуда:
+  // карточка показывает пустоту там, где был клуб. Так и вышло — 41 строка
+  // card_current_club осталась висеть после первой склейки.
+  const orphans = await rpc('orphan_club_refs', {});
+  const bad2 = Array.isArray(orphans) ? orphans.filter((r) => (r.сколько ?? 0) > 0) : null;
+  record('Склейка клубов: ссылки не в никуда', bad2 != null && bad2.length === 0,
+         bad2 == null ? 'orphan_club_refs не ответила'
+           : bad2.length === 0 ? `все ${orphans.length} видов ссылок целы`
+             : bad2.map((r) => `${r.место}: ${r.сколько}`).join(', '),
+         'ловит склейку, забывшую перевести ссылки на канонический ключ');
+
+  record('Склейка клубов: контроль поиска', ghostEmpty,
+         ghostEmpty ? 'выдуманное имя не находит ни одного клуба, как и должно'
+                    : `выдуманное имя нашло ${ghost?.[0]?.name ?? '?'}`,
+         ghostEmpty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------------------- характер команды -------
+// Владелец: «характер тренера определяет характер команды, но характера
+// тренеров меняются со временем». Поэтому характер не подписан, а СЧИТАЕТСЯ
+// из матчей и пересобирается ночью. Разбор — supabase/migrations/club_character.sql.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «ЕСТЬ СТРОКА», А ЧТО СЛОВА СХОДЯТСЯ С ЧИСЛАМИ. Ярлык,
+// который не следует из чисел рядом, — это мнение, выданное за наблюдение.
+async function checkClubCharacter() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Характер команды', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const rows = await fetch(
+    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits&limit=400`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const list = Array.isArray(rows) ? rows : [];
+
+  record('Характер команды: посчитан', list.length >= 100,
+         `${list.length} клубов с характером`,
+         'ловит остановившуюся ночную пересборку и отозванный грант');
+
+  // Слово обязано следовать из числа: у «атакующего» перцентиль атаки не
+  // ниже 70, у «оборонительного» — обороны. Иначе ярлык живёт своей жизнью.
+  const wrong = list.filter((r) => {
+    const t = r.traits ?? [];
+    if (t.includes('attacking') && (r.attack ?? 0) < 70) return true;
+    if (t.includes('defensive') && (r.defence ?? 0) < 70) return true;
+    if (t.includes('complete') && ((r.attack ?? 0) < 70 || (r.defence ?? 0) < 70)) return true;
+    return false;
+  });
+  record('Характер команды: слова сходятся с числами', wrong.length === 0,
+         wrong.length === 0 ? 'у всех черт есть число, из которого они следуют'
+                            : `${wrong.length} строк с ярлыком не по числам`,
+         'ловит разъехавшиеся пороги в SQL и на экране');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: черта обязана быть РЕДКОЙ. Порог 70/30 и
+  // означает, что «атакующих» примерно треть, а не половина и не все. Если
+  // ярлык стоит у подавляющего большинства — он ничего не различает, и
+  // проверка выше зелена бессмысленно.
+  const attacking = list.filter((r) => (r.traits ?? []).includes('attacking')).length;
+  const share = list.length ? attacking / list.length : 0;
+  record('Характер команды: контроль редкости', list.length > 0 && share > 0 && share < 0.5,
+         `«атакующих» ${attacking} из ${list.length} (${Math.round(share * 100)}%)`,
+         (share > 0 && share < 0.5) ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// --------------------------------------- стоимость как мерило игрока -------
+// Владелец: «скрой этот показатель [уровень] и основным сделай стоимость, она
+// лучше отражает рейтинг игрока; нужно просто записывать изменение стоимости
+// в карточке, так будет ясно повышается уровень игрока или нет».
+async function checkCardValueTrend() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Стоимость карточки', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // Берём самого дорогого игрока из данных, а не по имени: имя устаревает.
+  const top = await fetch(
+    `${url}/rest/v1/cards?select=id,name_en,market_value_eur&category=eq.player&active=is.true&market_value_eur=not.is.null&order=market_value_eur.desc&limit=1`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const card = Array.isArray(top) ? top[0] : null;
+  if (!card) {
+    record('Стоимость карточки', false, 'ни одной карточки со стоимостью', 'н/д');
+    return;
+  }
+
+  const rows = await rpc('card_value_trend', { p_card_id: card.id, p_points: 8 });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  record('Стоимость карточки: приходит', row != null && Number(row.value_eur) > 0,
+         row ? `${card.name_en}: ${Math.round(Number(row.value_eur) / 1e6)} млн на ${row.value_at}` +
+               (row.growth != null ? `, рост ${row.growth}` : ', истории роста пока нет')
+             : 'card_value_trend не ответила',
+         'ловит отозванный грант и опустевшую историю стоимостей');
+
+  // ⚠️ ИСТОРИЯ ОБЯЗАНА РАСТИ. Ночной снимок пишет ИЗМЕНЕНИЯ, и пока точка у
+  // карточки одна, роста не посчитать — это нормально СЕГОДНЯ и поломка через
+  // месяц. Проверка смотрит на ширину истории по всей таблице, а не по одной
+  // карточке: остановившийся снимок иначе не видно.
+  const span = await fetch(
+    `${url}/rest/v1/card_metric_history?select=taken_on&metric=eq.market_value&order=taken_on.desc&limit=1`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const last = Array.isArray(span) && span[0] ? span[0].taken_on : null;
+  const days = last ? Math.round((Date.now() - Date.parse(last)) / 86400000) : 999;
+  record('Стоимость карточки: снимок свежий', days <= 3,
+         last ? `последняя запись истории ${last}, ${days} дн. назад` : 'история пуста',
+         'ловит остановившийся snapshot_card_metrics — без него роста не будет никогда');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманная карточка обязана дать пусто.
+  const bogus = await rpc('card_value_trend',
+    { p_card_id: '00000000-0000-0000-0000-000000000000', p_points: 4 });
+  const b = Array.isArray(bogus) ? bogus[0] : null;
+  const empty = b == null || b.value_eur == null;
+  record('Стоимость карточки: контроль отбора', empty,
+         empty ? 'по выдуманной карточке пусто, как и должно'
+               : `выдуманная карточка вернула ${b?.value_eur}`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1283,6 +1871,14 @@ await checkCurrentClubSources();
 await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
+await checkScreenBudget();
+await checkFixtureClubs();
+await checkPlayerLevelBasis();
+await checkClubOrderAndLinks();
+await checkClubManagers();
+await checkClubMerge();
+await checkClubCharacter();
+await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

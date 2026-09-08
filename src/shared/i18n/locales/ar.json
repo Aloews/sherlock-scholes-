@@ -122,7 +122,10 @@
     "invites_failed": "لم تُحمَّل الدعوات — إن دعاك أحد، جرّب التحديث.",
     "minigames_link": "ألعاب مصغّرة",
     "stream_link": "بث مباشر",
-    "clubs_link": "الأندية والإحصاءات"
+    "clubs_link": "الأندية والإحصاءات",
+    "tag_defender": "المدافعون",
+    "tag_midfielder": "لاعبو الوسط",
+    "tag_forward": "المهاجمون"
   },
   "design": {
     "master": "التصميم الجديد",
@@ -207,7 +210,10 @@
     "search_empty": "لا نتائج مطابقة",
     "view_cards": "البطاقات",
     "view_clubs": "الفرق",
-    "view_stats": "الإحصائيات"
+    "view_stats": "الإحصائيات",
+    "value_growth_up": "ارتفعت {{n}}% خلال 90 يومًا",
+    "value_growth_down": "انخفضت {{n}}% خلال 90 يومًا",
+    "value_growth_none": "تُسجَّل التغييرات منذ {{date}}"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -545,7 +551,19 @@
     "minutes": "دقائق",
     "national": "مع {{team}} — {{apps}} مباراة و{{goals}} هدفًا",
     "club_line": "{{matches}} م · {{goals}} هـ · {{assists}} ت",
-    "row_numbers": "{{matches}} مباراة · {{goals}} هدف"
+    "row_numbers": "{{matches}} مباراة · {{goals}} هدف",
+    "n_matches_zero": "لا مباريات",
+    "n_matches_one": "مباراة واحدة",
+    "n_matches_two": "مباراتان",
+    "n_matches_few": "{{count}} مباريات",
+    "n_matches_many": "{{count}} مباراة",
+    "n_matches_other": "{{count}} مباراة",
+    "n_goals_zero": "لا أهداف",
+    "n_goals_one": "هدف واحد",
+    "n_goals_two": "هدفان",
+    "n_goals_few": "{{count}} أهداف",
+    "n_goals_many": "{{count}} هدفًا",
+    "n_goals_other": "{{count}} هدف"
   },
   "facts": {
     "caps_one": "مباراة دولية واحدة",
@@ -1106,7 +1124,9 @@
     "market_value_of": "{{priced}} من {{squad}} مقيَّمين",
     "roster_source": "التشكيلة والقيم — {{source}}",
     "squad_ours": "قائمة النادي",
-    "news": "أخبار الفريق"
+    "news": "أخبار الفريق",
+    "manager": "المدرب",
+    "now": "حاليًا"
   },
   "clubs": {
     "title": "الأندية",
@@ -1302,5 +1322,17 @@
     "role_target_man": "مهاجم مرجعي",
     "role_finisher": "مهاجم إنهاء",
     "role_general_forward": "مهاجم شامل"
+  },
+  "character": {
+    "title": "الطابع",
+    "attacking": "هجومي",
+    "defensive": "دفاعي",
+    "complete": "متكامل",
+    "open": "كرة مفتوحة",
+    "closed": "كرة مغلقة",
+    "home": "قوي في الديار",
+    "steady": "ثابت",
+    "streaky": "متذبذب",
+    "measured": "مقاس من المباريات، غير مُسند"
   }
 }

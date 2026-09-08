@@ -119,7 +119,10 @@
     "invites_failed": "Invitations did not load — if somebody invited you, try refreshing.",
     "minigames_link": "Mini-games",
     "stream_link": "Live TV",
-    "clubs_link": "Clubs and stats"
+    "clubs_link": "Clubs and stats",
+    "tag_defender": "Defenders",
+    "tag_midfielder": "Midfielders",
+    "tag_forward": "Forwards"
   },
   "design": {
     "master": "New design",
@@ -204,7 +207,10 @@
     "search_empty": "Nothing matches that",
     "view_cards": "Cards",
     "view_clubs": "Teams",
-    "view_stats": "Stats"
+    "view_stats": "Stats",
+    "value_growth_up": "up {{n}}% over 90 days",
+    "value_growth_down": "down {{n}}% over 90 days",
+    "value_growth_none": "changes recorded since {{date}}"
   },
   "profile": {
     "title": "Profile",
@@ -501,7 +507,11 @@
     "minutes": "Minutes",
     "national": "For {{team}} — {{apps}} caps, {{goals}} goals",
     "club_line": "{{matches}} m · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} apps · {{goals}} goals"
+    "row_numbers": "{{matches}} apps · {{goals}} goals",
+    "n_matches_one": "{{count}} match",
+    "n_matches_other": "{{count}} matches",
+    "n_goals_one": "{{count}} goal",
+    "n_goals_other": "{{count}} goals"
   },
   "facts": {
     "caps_one": "{{count}} cap",
@@ -1004,7 +1014,9 @@
     "market_value_of": "{{priced}} of {{squad}} priced",
     "roster_source": "Squad and values — {{source}}",
     "squad_ours": "Club roster",
-    "news": "Team news"
+    "news": "Team news",
+    "manager": "Manager",
+    "now": "Now"
   },
   "clubs": {
     "title": "Clubs",
@@ -1147,5 +1159,17 @@
     "role_target_man": "Target man",
     "role_finisher": "Finisher",
     "role_general_forward": "All-round forward"
+  },
+  "character": {
+    "title": "Character",
+    "attacking": "Attacking",
+    "defensive": "Defensive",
+    "complete": "Complete",
+    "open": "Open football",
+    "closed": "Closed football",
+    "home": "Strong at home",
+    "steady": "Steady",
+    "streaky": "Streaky",
+    "measured": "Measured from matches, not assigned"
   }
 }

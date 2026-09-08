@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
@@ -187,8 +187,33 @@ export function CollectionScreen() {
     const p = new URLSearchParams(params);
     if (next === 'cards') p.delete('view'); else p.set('view', next);
     p.delete('card');
-    setParams(p);
+    // ⚠️ REPLACE, А НЕ PUSH, И ЭТО ПОЧИНКА ЗАВИСАНИЯ. Раздел — не страница:
+    // «назад» обязано уводить С ЭКРАНА, а не отменять нажатие вкладки. С push
+    // каждое переключение клало запись в историю, и десяток нажатий
+    // превращал одну кнопку «назад» в десять — а вместе с ними в память
+    // ложилось десять состояний экрана, каждое со своими списками.
+    // Владелец: «из-за того что теперь сохраняется история просмотренных
+    // страничек… приложение начинает зависать».
+    setParams(p, { replace: true });
   };
+
+  // ⚠️ РАЗДЕЛ, КОТОРЫЙ УЖЕ ОТКРЫВАЛИ, БОЛЬШЕ НЕ РАЗМОНТИРУЕТСЯ — ОН ПРЯЧЕТСЯ.
+  // Прежде переключение вкладки уносило пару-тройку тяжёлых чтений в мусор и
+  // при возврате повторяло их заново: каталог 28 тысяч карточек, рейтинг на
+  // 25 508 игроков и справочник команд. Пять переключений — пятнадцать
+  // запросов вместо трёх, и это и есть «перегружается».
+  //
+  // ⚠️ ref, А НЕ state: набор пополняется ВО ВРЕМЯ отрисовки, чтобы только
+  // что выбранный раздел появился тем же кадром. Через эффект он опоздал бы
+  // на кадр, и вкладка мигала бы пустотой. Лишней перерисовки не нужно —
+  // смена `view` её и так вызывает.
+  const visited = useRef<Set<'cards' | 'clubs' | 'stats'>>(new Set());
+  visited.current.add(view);
+  const seen = (v: 'cards' | 'clubs' | 'stats') => visited.current.has(v);
+  // Класс раздела: показанный занимает экран, спрятанный исчезает из вёрстки
+  // (`display: none`), сохраняя своё состояние и место прокрутки.
+  const pane = (v: 'cards' | 'clubs' | 'stats', shown: string) =>
+    (view === v ? shown : 'hidden');
 
   useEffect(() => {
     if (cardParam) setOpenId(cardParam);
@@ -221,7 +246,23 @@ export function CollectionScreen() {
 
   // First page — re-runs whenever the filter, the debounced term or the retry
   // key changes. Later pages are appended by loadMore().
+  //
+  // ⚠️ ТОЛЬКО ЕСЛИ В КАРТОЧКИ УЖЕ ЗАХОДИЛИ, И ЭТО ПОЧИНКА ПАДЕНИЯ, А НЕ
+  // ЭКОНОМИЯ. Владелец: «приложение начало выключаться при открытии
+  // „коллекций“ и „рейтинга футболистов“». Оба этих экрана — ОДИН компонент с
+  // тех пор, как разделы свели вместе, и эффект без проверки раздела запускал
+  // чтение каталога 28 тысяч карточек ДАЖЕ когда открыт рейтинг: три тяжёлых
+  // запроса разом (каталог, фасеты, сам рейтинг) вместо одного. На телефоне
+  // по мобильной сети это и есть «выключается».
+  //
+  // ⚠️ УСЛОВИЕ ИМЕННО «ЗАХОДИЛИ», А НЕ «ОТКРЫТ СЕЙЧАС»: `cardsSeen` один раз
+  // становится true и больше не меняется, поэтому возврат на вкладку карточек
+  // НЕ перезапрашивает каталог. С `view` в зависимостях каждое переключение
+  // туда-обратно стоило бы полного чтения заново — того самого, из-за
+  // которого экран и вставал.
+  const cardsSeen = seen('cards');
   useEffect(() => {
+    if (!cardsSeen) return;
     if (!isPro) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
@@ -240,7 +281,7 @@ export function CollectionScreen() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catFilter, term, reloadKey, i18n.language, isPro, filter]);
+  }, [cardsSeen, catFilter, term, reloadKey, i18n.language, isPro, filter]);
 
   const loadMore = useCallback(() => {
     if (paging) return;
@@ -303,21 +344,21 @@ export function CollectionScreen() {
           глубина, за которую платят. Списки команд и рейтинги были открыты
           всем на своих прежних адресах, и переезд в общий экран не повод их
           закрыть — это было бы отъёмом того, что уже отдано. */}
-      {view === 'clubs' && (
-        <div className="flex-1 overflow-y-auto">
+      {seen('clubs') && (
+        <div className={pane('clubs', 'flex-1 overflow-y-auto')}>
           <div className="max-w-sm mx-auto px-4 pt-4 pb-24"><ClubsPane /></div>
         </div>
       )}
-      {view === 'stats' && (
-        <div className="flex-1 overflow-y-auto">
+      {seen('stats') && (
+        <div className={pane('stats', 'flex-1 overflow-y-auto')}>
           <div className="max-w-sm mx-auto px-4 pt-4 pb-24"><StatsPane /></div>
         </div>
       )}
 
       {/* Free users get the upsell instead of the catalog — and no query is
           issued at all, so the deck read stays a Pro-only cost. */}
-      {view === 'cards' && (!isPro ? (
-        <div className="flex-1 flex items-center justify-center px-6">
+      {seen('cards') && (!isPro ? (
+        <div className={pane('cards', 'flex-1 flex items-center justify-center px-6')}>
           <div className="max-w-sm w-full flex flex-col items-center gap-4 text-center">
             <span
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
@@ -333,7 +374,7 @@ export function CollectionScreen() {
           </div>
         </div>
       ) : (
-      <div className="flex-1 overflow-y-auto">
+      <div className={pane('cards', 'flex-1 overflow-y-auto')}>
         <div className="max-w-sm mx-auto px-4 py-4 space-y-3">
           {/* Search */}
           <div className="relative">

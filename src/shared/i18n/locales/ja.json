@@ -117,7 +117,10 @@
     "invites_failed": "招待を読み込めませんでした。誘われている場合は再読み込みしてください。",
     "minigames_link": "ミニゲーム",
     "stream_link": "ライブTV",
-    "clubs_link": "クラブと統計"
+    "clubs_link": "クラブと統計",
+    "tag_defender": "ディフェンダー",
+    "tag_midfielder": "ミッドフィールダー",
+    "tag_forward": "フォワード"
   },
   "design": {
     "master": "新デザイン",
@@ -202,7 +205,10 @@
     "search_empty": "該当なし",
     "view_cards": "カード",
     "view_clubs": "クラブ",
-    "view_stats": "スタッツ"
+    "view_stats": "スタッツ",
+    "value_growth_up": "90日で {{n}}% 上昇",
+    "value_growth_down": "90日で {{n}}% 下落",
+    "value_growth_none": "{{date}} から変動を記録"
   },
   "profile": {
     "title": "プロフィール",
@@ -488,7 +494,9 @@
     "minutes": "出場時間",
     "national": "{{team}} 代表 — {{apps}} 試合 {{goals}} 得点",
     "club_line": "{{matches}} 試 · {{goals}} 点 · {{assists}} 助",
-    "row_numbers": "{{matches}}試合 · {{goals}}得点"
+    "row_numbers": "{{matches}}試合 · {{goals}}得点",
+    "n_matches_other": "{{count}}試合",
+    "n_goals_other": "{{count}}ゴール"
   },
   "facts": {
     "caps_other": "代表 {{count}} 試合",
@@ -977,7 +985,9 @@
     "market_value_of": "{{squad}} 人中 {{priced}} 人を評価",
     "roster_source": "スカッドと市場価値 — {{source}}",
     "squad_ours": "クラブ登録メンバー",
-    "news": "チームのニュース"
+    "news": "チームのニュース",
+    "manager": "監督",
+    "now": "現在"
   },
   "clubs": {
     "title": "クラブ",
@@ -1106,5 +1116,17 @@
     "role_target_man": "ターゲットマン",
     "role_finisher": "フィニッシャー",
     "role_general_forward": "万能型フォワード"
+  },
+  "character": {
+    "title": "スタイル",
+    "attacking": "攻撃的",
+    "defensive": "守備的",
+    "complete": "総合力",
+    "open": "オープンな試合",
+    "closed": "堅い試合",
+    "home": "ホームに強い",
+    "steady": "安定",
+    "streaky": "ムラあり",
+    "measured": "試合から算出、後付けではない"
   }
 }

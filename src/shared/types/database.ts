@@ -261,10 +261,17 @@ export interface CardAttributes {
 // 'star' is now `fame >= 90` and 'legend' is derived from fame by
 // refresh_card_fame(). The picker's trait chips are DECK_TRAITS in
 // src/shared/types/deck.ts.
+// ⚠️ ЧЕТЫРЕ ЛИНИИ — ЭТО РАЗБИВКА ВСЕЙ КОЛОДЫ, А НЕ ЕЩЁ ДВЕ МЕТКИ. До
+// 08.09.2026 метку несли 2579 игроков из 25 508: остальные 23 021 были для
+// подборщика одинаковыми. Позиция при этом лежала у 25 311 из них — в
+// `position_ru` из заявки Transfermarkt. Линии заполняются оттуда
+// (`fill_player_line_tags`), и охват стал 99,4%.
 export type SpecialTag =
-  | 'goalkeeper' | 'ballon_dor' | 'world_cup' | 'wc2026' | 'giant' | 'dwarf';
+  | 'goalkeeper' | 'defender' | 'midfielder' | 'forward'
+  | 'ballon_dor' | 'world_cup' | 'wc2026' | 'giant' | 'dwarf';
 export const SPECIAL_TAGS: SpecialTag[] = [
-  'goalkeeper', 'ballon_dor', 'world_cup', 'wc2026', 'giant', 'dwarf',
+  'goalkeeper', 'defender', 'midfielder', 'forward',
+  'ballon_dor', 'world_cup', 'wc2026', 'giant', 'dwarf',
 ];
 
 // ─── Rarity tiers (cards.tier) ───────────────────────────────────

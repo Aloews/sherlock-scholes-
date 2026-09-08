@@ -72,6 +72,19 @@ export interface ClubProfile {
    *  игрокам из двадцати восьми — не стоимость клуба, а ровно та же ошибка,
    *  что «1-е место» без размера таблицы. */
   market_value_priced: number | null;
+  /** Тренер клуба по Soccer Wiki. null — у клуба его там не указали.
+   *
+   *  ⚠️ ДОСТИЖЕНИЙ У ИСТОЧНИКА НЕТ ВОВСЕ: страница тренера это имя, дата
+   *  рождения, страна и текущий клуб. Ни одного турнира. Показывать «нет
+   *  трофеев» вместо «мы их не знаем» нельзя, поэтому их здесь и нет. */
+  manager: string | null;
+  manager_country: string | null;
+  manager_born_on: string | null;
+  manager_photo: string | null;
+  /** С какого дня МЫ ВИДИМ этого тренера в клубе — НЕ дата назначения.
+   *  Источник её не отдаёт, и выдать день первого сбора за день назначения
+   *  значило бы соврать числом. */
+  manager_seen_since: string | null;
 }
 
 export interface ClubSquadRow {
@@ -125,6 +138,12 @@ export interface ClubDirectoryRow {
   crest_url: string | null;
   squad: number;
   matches: number;
+  /** Уровень клуба по сыгранным матчам (0..100). Есть у 507 клубов из 2 719 —
+   *  сортировка держится на нём, а где его нет, на стоимости состава. */
+  level: number | null;
+  /** Сумма стоимости состава. Второй ключ порядка и причина, по которой клуб
+   *  без единого сыгранного матча всё равно стоит на своём месте. */
+  squad_value: number | null;
 }
 
 export async function fetchClubProfile(
@@ -389,4 +408,42 @@ export async function fetchLeagueTable(
     p_tournament: tournament, p_lang: lang,
   });
   return fromPostgrest<LeagueTableRow[]>(res, `league_table(${tournament})`);
+}
+
+// ---------------------------------------------------------------------------
+// СТОИМОСТЬ КАК ОСНОВНОЕ МЕРИЛО ИГРОКА.
+//
+// Владелец: «скрой этот показатель [уровень] и основным сделай стоимость, она
+// лучше отражает рейтинг игрока; нужно просто записывать изменение стоимости в
+// карточке, так будет ясно повышается уровень игрока или нет».
+//
+// ⚠️ УРОВЕНЬ УБРАН С КАРТОЧКИ, НО НЕ ИЗ БАЗЫ. Его по-прежнему читают рейтинг
+// футболистов и уровень состава в прогнозах — там он к месту. На карточке он
+// упирался в сотню у слишком многих: перцентиль, округлённый до целого, на
+// верхушке не различает, и «98–100» переставало что-либо значить.
+//
+// ⚠️ ИЗМЕНЕНИЕ ПОКА НЕ ПОКАЗАТЬ, И ЭТО НАДО ГОВОРИТЬ ПРЯМО. `card_metric_history`
+// заведена 06.09.2026: на 25 509 карточек ровно 25 509 записей, то есть по
+// одной. Второй точки нет НИ У ОДНОЙ, а значит и роста нет. Ночной снимок
+// пишет изменения дальше сам; до второй точки карточка показывает стоимость и
+// дату, а не выдуманную стрелку.
+export interface CardValueTrend {
+  value_eur: number | null;
+  value_at: string | null;
+  prev_eur: number | null;
+  prev_at: string | null;
+  /** Отношение «сейчас / 90 дней назад». null — второй точки ещё нет. */
+  growth: number | null;
+  points: Array<{ d: string; v: number }>;
+}
+
+/** Отказ и отсутствие — одинаковый null: карточка в обоих случаях молчит. */
+export async function fetchCardValueTrend(cardId: string): Promise<CardValueTrend | null> {
+  const res = await supabase.rpc('card_value_trend', { p_card_id: cardId, p_points: 8 });
+  if (res.error) {
+    console.error('[card_value_trend]', res.error.code ?? '', res.error.message);
+    return null;
+  }
+  const row = Array.isArray(res.data) ? res.data[0] : res.data;
+  return (row as CardValueTrend) ?? null;
 }
