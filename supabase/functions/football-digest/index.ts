@@ -432,12 +432,6 @@ interface ClipRow {
    * разойтись.
    */
   watch_url: string | null;
-  /**
-   * Язык ролика, если источник его знает. NULL — не задан, и это НЕ
-   * английский: у семнадцати каналов YouTube языка нет и врать про них ради
-   * заполненности столбца нельзя. Разбор — clip_language.sql.
-   */
-  lang: string | null;
 }
 
 function parseAtom(xml: string, channel: string): ClipRow[] {
@@ -463,7 +457,6 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
       views: Number(/<media:statistics[^>]+views="(\d+)"/i.exec(block)?.[1] ?? 0),
       likes: Number(/<media:starRating[^>]+count="(\d+)"/i.exec(block)?.[1] ?? 0),
       watch_url: null,
-      lang: null,
     });
   }
   return out;
@@ -528,7 +521,6 @@ async function fetchClipsViaApi(channel: string, channelId: string): Promise<Cli
         views: 0,
         likes: 0,
         watch_url: null,
-        lang: null,
       };
     })
     .filter((row): row is ClipRow => row !== null);
@@ -598,11 +590,7 @@ interface RutubeVideo {
  * ричных знака и подставляется в НАШ шаблон, поэтому увести читателя на
  * посторонний адрес нечем.
  */
-async function fetchRutubeClips(
-  channel: string,
-  personId: string,
-  lang: string | null,
-): Promise<ClipRow[]> {
+async function fetchRutubeClips(channel: string, personId: string): Promise<ClipRow[]> {
   const body = await fetchText(`https://rutube.ru/api/video/person/${encodeURIComponent(personId)}/`);
   if (!body) return [];
 
@@ -635,7 +623,6 @@ async function fetchRutubeClips(
         views: Number(v.hits ?? 0),
         likes: 0,
         watch_url: `https://rutube.ru/video/${id}/`,
-        lang,
       };
     })
     .filter((row): row is ClipRow => row !== null);
@@ -1010,7 +997,7 @@ async function run(useLlm: boolean): Promise<Response> {
   // разрешённый путь. Подчинить Rutube чужому ограничению значило бы
   // получать обзор тура на час позже без единой причины.
   const rutubeClips = await Promise.all(
-    rutubeChannels.map((ch) => fetchRutubeClips(ch.name, ch.ref, ch.lang)),
+    rutubeChannels.map((ch) => fetchRutubeClips(ch.name, ch.ref)),
   );
 
   const newsRows = unique(fresh([...news.flat(), ...espn.flat()]), (row) => row.url);

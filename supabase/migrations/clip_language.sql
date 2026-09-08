@@ -87,3 +87,60 @@ $$;
 
 revoke all on function digest_local_goals(text, int) from public;
 grant execute on function digest_local_goals(text, int) to anon, authenticated, service_role;
+
+-- ─── Кто проставляет язык ───────────────────────────────────────────────────
+--
+-- ⚠️ БАЗА, А НЕ СБОРЩИК, И ЭТО РЕШЕНИЕ ПО ПРАВИЛУ САМОГО РЕПОЗИТОРИЯ.
+-- Сборщик знает язык источника напрямую — казалось бы, ему и писать. Но тогда
+-- смена языка источника потребовала бы ВЫКЛАДКИ Edge Function, а именно от
+-- этого проект и уходил, когда выносил список источников в таблицу: «добавить
+-- ленту — это INSERT, снять — enabled = false, и деплой для этого не нужен»
+-- (шапка digest_sources.sql). Язык — такое же свойство источника, как адрес.
+--
+-- Связь идёт по ИМЕНИ, и это не хрупкость: `goal_clips.channel` сборщик
+-- заполняет ровно из `digest_source.name`, а менять `name` задним числом та же
+-- шапка уже запрещает — «уже записанные строки останутся со старым именем».
+--
+-- ⚠️ ОДНОЗНАЧНОСТЬ ПРОВЕРЯЕТСЯ, А НЕ ПРЕДПОЛАГАЕТСЯ. Если два источника с
+-- одним именем объявят РАЗНЫЙ язык, угадывать нельзя: строка останется без
+-- языка и просто не попадёт в раздел. Молчание здесь дешевле выдумки —
+-- показать испанцу итальянский ролик как «на вашем языке» хуже, чем не
+-- показать ничего.
+create or replace function fill_clip_languages()
+returns integer language plpgsql security definer set search_path = public as $$
+declare
+  n integer;
+begin
+  with known as (
+    select s.name, min(s.lang) as lang
+      from digest_source s
+     where s.lang is not null and s.lang <> ''
+     group by s.name
+    having count(distinct s.lang) = 1
+  )
+  update goal_clips g
+     set lang = k.lang
+    from known k
+   where g.channel = k.name
+     and g.lang is distinct from k.lang;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+revoke all on function fill_clip_languages() from public;
+grant execute on function fill_clip_languages() to service_role;
+
+-- Зовётся тем же шагом, что уже идёт КАЖДЫЙ прогон конвейера, — чтобы не
+-- заводить второе расписание ради одного столбца.
+create or replace function prune_digest()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from news_items where published_at < now() - interval '3 days';
+  delete from goal_clips where published_at < now() - interval '10 days';
+  perform fill_clip_languages();
+end;
+$$;
+
+revoke all on function prune_digest() from public;
+grant execute on function prune_digest() to service_role;
