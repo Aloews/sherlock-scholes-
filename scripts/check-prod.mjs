@@ -142,9 +142,17 @@ async function checkDigest() {
     });
     const body = await r.json().catch(() => ({}));
     const ok = r.ok && (body.status === 'ok' || body.status === 'no_topics');
+    // ⚠️ `model_failed` — ЭТО КЛЮЧ, А НЕ КОД, И ГОВОРИТЬ ОБ ЭТОМ НАДО ПРЯМО.
+    // Замер 08.09.2026 по логам функции: шлюз `ai.starimg.ru` отвечает
+    // `401 {"message":"Invalid API key","code":"invalid_api_key"}`. Голое
+    // «model_failed» отправляет читателя искать поломку в коде, которой там
+    // нет: чинится секретом SUMMARY_LLM_API_KEY в Supabase.
+    const why = body.error === 'model_failed'
+      ? 'model_failed — шлюз отверг ключ (401). Чинится секретом SUMMARY_LLM_API_KEY'
+      : `${body.error ?? ''}`.trim();
     record('Дайджест: сводка', ok,
            ok ? `${body.status}${body.model ? ` (${body.model})` : ''}`
-              : `HTTP ${r.status} ${body.error ?? ''}`.trim(),
+              : `HTTP ${r.status} ${why}`.trim(),
            'ответ читается целиком, не по коду');
   } catch (e) {
     record('Дайджест: сводка', false, String(e).slice(0, 50), 'н/д');
@@ -264,8 +272,12 @@ async function checkNoScores() {
     const body = await r.json().catch(() => ({}));
     const text = body.summary ?? '';
     if (!text) {
-      record('Сводка: без счёта', false,
-             `нечего проверять: ${body.status ?? body.error ?? 'пустой ответ'}`, 'н/д');
+      // Та же причина, что выше: без модели сводки нет, и проверять счёт не в
+      // чем. Красная строка честна — но она обязана называть, что чинить.
+      const cause = body.error === 'model_failed'
+        ? 'модель не ответила: шлюз отверг ключ SUMMARY_LLM_API_KEY (401)'
+        : `${body.status ?? body.error ?? 'пустой ответ'}`;
+      record('Сводка: без счёта', false, `нечего проверять: ${cause}`, 'н/д');
       return;
     }
     const hit = SCORE_RE().exec(text);

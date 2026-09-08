@@ -121,6 +121,8 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--include-soccerwiki", action="store_true",
+                    help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
@@ -134,9 +136,32 @@ def main():
                               "photo_url": "is.null",
                               "transfermarkt_id": "not.is.null",
                               "order": "id"})
+
+    # ⚠️ ТЕХ, КОГО ЗАКРОЕТ SOCCER WIKI, ЗДЕСЬ СПРАШИВАТЬ НЕЗАЧЕМ, И ЭТО ЗАМЕР.
+    #
+    # У Transfermarkt портрета для этого хвоста попросту НЕТ: замер 08.09.2026
+    # — 650 прочитанных профилей, 0 портретов, у всех `portrait/big/default.jpg`.
+    # Проверено вручную на шести подряд. У Soccer Wiki те же люди
+    # сфотографированы: из 912 прочитанных страниц портрет есть у 912.
+    #
+    # Из 13 589 бесфотных карточек с id на TM за 6650 отвечает Soccer Wiki, и
+    # `fill_photo_from_soccerwiki` поставит им портрет сам. Спрашивать про них
+    # ещё и Transfermarkt — это 6650 запросов в секунду каждый ради нуля, и
+    # ровно на столько же позже дойдёт очередь до тех 6939, для кого TM —
+    # ЕДИНСТВЕННЫЙ источник.
+    #
+    # `--include-soccerwiki` возвращает старое поведение: если у источника
+    # однажды появятся портреты, проверить это надо будет без правки кода.
+    if not args.include_soccerwiki:
+        linked = {r["card_id"] for r in read_all(
+            "soccerwiki_player", {"select": "card_id", "card_id": "not.is.null"})}
+        before = len(rows)
+        rows = [r for r in rows if r["id"] not in linked]
+        print("Пропущено как «закроет Soccer Wiki»: %d" % (before - len(rows)), flush=True)
+
     if args.limit:
         rows = rows[:args.limit]
-    print("Карточек без фото, но с id на Transfermarkt: %d  (APPLY=%s)"
+    print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
           % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
     if not rows:
         return
