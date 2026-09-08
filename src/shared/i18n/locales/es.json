@@ -119,7 +119,10 @@
     "invites_failed": "Las invitaciones no se cargaron: si te invitaron, prueba a actualizar.",
     "minigames_link": "Minijuegos",
     "stream_link": "TV en vivo",
-    "clubs_link": "Clubes y estadísticas"
+    "clubs_link": "Clubes y estadísticas",
+    "tag_defender": "Defensas",
+    "tag_midfielder": "Centrocampistas",
+    "tag_forward": "Delanteros"
   },
   "design": {
     "master": "Diseño nuevo",

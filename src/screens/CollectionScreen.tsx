@@ -221,7 +221,16 @@ export function CollectionScreen() {
 
   // First page — re-runs whenever the filter, the debounced term or the retry
   // key changes. Later pages are appended by loadMore().
+  //
+  // ⚠️ ТОЛЬКО В РАЗДЕЛЕ КАРТОЧЕК, И ЭТО ПОЧИНКА ПАДЕНИЯ, А НЕ ЭКОНОМИЯ.
+  // Владелец: «приложение начало выключаться при открытии „коллекций“ и
+  // „рейтинга футболистов“». Оба этих экрана — ОДИН компонент с тех пор, как
+  // разделы свели вместе, и эффект без проверки раздела запускал чтение
+  // каталога 28 тысяч карточек ДАЖЕ когда открыт рейтинг: три тяжёлых запроса
+  // разом (каталог, фасеты, сам рейтинг) вместо одного. На телефоне по
+  // мобильной сети это и есть «выключается».
   useEffect(() => {
+    if (view !== 'cards') return;
     if (!isPro) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
@@ -240,7 +249,7 @@ export function CollectionScreen() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catFilter, term, reloadKey, i18n.language, isPro, filter]);
+  }, [view, catFilter, term, reloadKey, i18n.language, isPro, filter]);
 
   const loadMore = useCallback(() => {
     if (paging) return;

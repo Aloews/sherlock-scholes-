@@ -1268,6 +1268,182 @@ async function checkFanAndFixtures() {
          mixed === 0 ? 'проверка способна упасть' : '⚠ СПИСКИ СМЕШАЛИСЬ');
 }
 
+// ------------------------------------------- экраны укладываются в лимит ---
+// ⚠️ ЭТА ПРОВЕРКА ПОСТАВЛЕНА ПО ЖИВОЙ ПОЛОМКЕ. Владелец: «приложение начало
+// выключаться при открытии „коллекций“ и „рейтинга футболистов“».
+//
+// Ломался не объём данных, а ПЛАН. PostgREST шлёт параметры связанными,
+// Postgres переходит на обобщённый план, и `p_club_key is null` в нём уже не
+// сворачивается: два `left join`, нужные только отбору по клубу и лиге,
+// отрабатывали на всех 27 098 карточках при каждом открытии — 155 533 буфера
+// вместо 5 700. Под anon это упиралось в трёхсекундный лимит запроса и
+// возвращало `57014 canceling statement due to statement timeout`, а
+// fetchCollection() делает `if (error) throw error` — экран падал целиком.
+// Разбор и замеры: supabase/migrations/collection_generic_plan.sql.
+//
+// ⚠️ МЕРИМ РАБОТУ СЕРВЕРА, А НЕ КРУГОВОЙ ПОХОД. Из времени вызова вычитается
+// время тривиального запроса к тому же адресу: канал у прогона может быть
+// каким угодно, а проверять надо базу. Порог вдвое ниже лимита anon — чтобы
+// возврат к старому плану краснел, пока запас ещё есть, а не в тот день,
+// когда его не станет.
+const SCREEN_BUDGET_MS = 1500;
+
+async function checkScreenBudget() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Экраны в срок', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+
+  /** Вызов RPC anon-ключом: сколько миллисекунд и что вернулось. */
+  const timed = async (fn, body, select = '') => {
+    const q = select ? `?select=${encodeURIComponent(select)}` : '';
+    const t0 = Date.now();
+    let r, parsed = null;
+    try {
+      r = await fetch(`${url}/rest/v1/rpc/${fn}${q}`, {
+        method: 'POST', headers: auth, body: JSON.stringify(body),
+      });
+      parsed = await r.json().catch(() => null);
+    } catch (e) {
+      return { ms: Date.now() - t0, ok: false, why: String(e).slice(0, 50), body: null };
+    }
+    return {
+      ms: Date.now() - t0,
+      ok: r.ok,
+      why: r.ok ? '' : `${parsed?.code ?? 'HTTP ' + r.status} ${parsed?.message ?? ''}`.trim().slice(0, 60),
+      body: parsed,
+    };
+  };
+
+  // Опорное время канала: самый дешёвый запрос, какой вообще бывает.
+  // Берём лучшее из трёх — всплеск в канале не должен выдаваться за работу базы.
+  let base = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const t0 = Date.now();
+    try {
+      await fetch(`${url}/rest/v1/cards?select=id&limit=1`, { headers: auth });
+      base = Math.min(base, Date.now() - t0);
+    } catch { /* учтётся ниже как отсутствие опоры */ }
+  }
+  if (!Number.isFinite(base)) {
+    record('Экраны в срок', false, 'опорный запрос не прошёл вовсе', 'н/д');
+    return;
+  }
+
+  // Ровно те вызовы и ровно те аргументы, что шлют экраны. Список категорий
+  // «Все» (p_category: null) — умолчание коллекции и то, на чём падало.
+  const COLUMNS = 'id,name,name_en,category,category_ru,photo_url,tier,pageviews';
+  const calls = [
+    ['коллекция, «Все»', 'collection_page',
+      { p_lang: 'ru', p_category: null, p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: null, p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['коллекция, отбор по лиге', 'collection_page',
+      { p_lang: 'ru', p_category: 'player', p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: 'Англия. Премьер-лига', p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['рейтинг футболистов', 'player_index',
+      { p_sort: 'index', p_league: null, p_country: null, p_club_key: null,
+        p_lang: 'ru', p_limit: 50, p_offset: 0, p_continent: null }, ''],
+    ['рейтинг: знаменатель', 'player_index_count',
+      { p_sort: 'index', p_league: null, p_country: null, p_club_key: null,
+        p_continent: null }, ''],
+    ['коллекция: что можно отобрать', 'collection_facets', { p_category: null }, ''],
+  ];
+
+  let worst = 0;
+  for (const [label, fn, body, select] of calls) {
+    const res = await timed(fn, body, select);
+    const work = Math.max(0, res.ms - base);
+    const ok = res.ok && work <= SCREEN_BUDGET_MS;
+    if (res.ok) worst = Math.max(worst, work);
+    record(`Экран в срок: ${label}`, ok,
+           res.ok ? `${work} мс работы базы (всего ${res.ms}, канал ${base}), запас до ${SCREEN_BUDGET_MS}`
+                  : res.why,
+           'ключ anon: под сервисным этот отказ не виден вовсе');
+  }
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: проверка обязана ЧИТАТЬ ОТВЕТ, а не
+  // радоваться коду 200. Тот же вызов к несуществующей функции обязан дать
+  // отказ; если он проходит — измеряется что угодно, только не экран.
+  const ghost = await timed('collection_page_which_does_not_exist', {});
+  record('Экран в срок: контроль ответа', !ghost.ok,
+         ghost.ok ? 'несуществующая RPC ответила успехом' : `отказ: ${ghost.why}`,
+         ghost.ok ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ: проверка обязана уметь краснеть ПО
+  // ВРЕМЕНИ, а не только по ошибке. Тот же настоящий замер сравнивается с
+  // порогом в ноль: сравнение обязано вынести приговор «не уложился». Если
+  // и здесь зелено — арифметика порога сломана, и первые пять строк зелены
+  // независимо от того, сколько экран на самом деле думает.
+  const tooTight = worst > 0;
+  record('Экран в срок: контроль порога', tooTight,
+         tooTight ? `худший замер ${worst} мс порог 0 не проходит, как и должно`
+                  : 'ни один замер не дал положительного времени — мерить нечем',
+         tooTight ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// -------------------------------------------- клубы в списке матчей --------
+// Владелец: «нужно экран „ближайших матчей“ доделать до уровня, того
+// отображения, что на главной». Эмблемы, названия на языке читателя и
+// стоимость двух составов приходят из `fixture_clubs`; без неё экран
+// показывает английские строки провайдера, и заметить это можно только глазом.
+async function checkFixtureClubs() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Клубы в списке матчей', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // Берём те же матчи, что показывает экран: ближайшие по расписанию.
+  const soon = await fetch(
+    `${url}/rest/v1/fixtures?select=id&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=60`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const ids = Array.isArray(soon) ? soon.map((f) => f.id) : [];
+  if (ids.length === 0) {
+    record('Клубы в списке матчей', false, 'ближайших матчей нет вовсе — проверять нечего', 'н/д');
+    return;
+  }
+
+  const t0 = Date.now();
+  const rows = await rpc('fixture_clubs', { p_ids: ids, p_lang: 'ru' });
+  const ms = Date.now() - t0;
+  const list = Array.isArray(rows) ? rows : [];
+  record('Клубы в списке матчей: приходят', list.length === ids.length,
+         `${list.length} строк из ${ids.length}, ${ms} мс`,
+         'ловит отозванный грант и упавшую fixture_clubs');
+
+  // ⚠️ ДО КОНЦА ЦЕПОЧКИ, А НЕ ДО КОДА 200. Строка есть — а эмблемы в ней
+  // может не быть, и тогда экран выглядит ровно так, как выглядел до правки.
+  const withCrest = list.filter((r) => r.home_crest && r.away_crest).length;
+  const withValue = list.filter((r) => r.home_value || r.away_value).length;
+  record('Клубы в списке матчей: эмблемы обеих сторон',
+         list.length > 0 && withCrest / list.length >= 0.5,
+         `${withCrest} из ${list.length} матчей с двумя эмблемами, со стоимостью ${withValue}`,
+         'ловит развалившееся сопоставление имени команды с нашим клубом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманные id обязаны дать пусто. Не дали —
+  // функция отвечает не на то, о чём её спросили.
+  const bogus = await rpc('fixture_clubs', { p_ids: ['нет-такого-матча-zz'], p_lang: 'ru' });
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Клубы в списке матчей: контроль отбора', empty,
+         empty ? 'по выдуманному id пусто, как и должно'
+               : `выдуманный id вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1283,6 +1459,8 @@ await checkCurrentClubSources();
 await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
+await checkScreenBudget();
+await checkFixtureClubs();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

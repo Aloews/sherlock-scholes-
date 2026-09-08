@@ -21,6 +21,7 @@ import { monthStart, localDayKey, type Horizon } from '@/features/fixtures/month
 import { fetchBroadcasts, type Broadcast } from '@/features/fixtures/broadcastsApi';
 import { fetchBroadcastRights, type BroadcastRight } from '@/features/fixtures/broadcastRightsApi';
 import { fetchTeamRating, type TeamRating } from '@/features/fixtures/squadStrengthApi';
+import { fetchFixtureClubs, type FixtureClubs } from '@/features/fixtures/fixtureClubsApi';
 import { systemLanguages, viewerCountry } from '@/features/fixtures/viewerCountry';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
@@ -61,6 +62,11 @@ export function MatchesScreen() {
   // вовсе (у Премьер-лиги для России его нет). В обоих случаях карточка
   // покажет ссылку на страницу турнира, как показывала до сих пор.
   const [rights, setRights] = useState<Map<string, BroadcastRight>>(new Map());
+  // Наши клубы за именами команд из расписания: эмблема, название на языке
+  // читателя, стоимость и состав каждой стороны. Пустая карта — нормальное
+  // начальное состояние: без неё карточка показывает то же, что показывала
+  // раньше, английское написание провайдера и время.
+  const [clubs, setClubs] = useState<Map<string, FixtureClubs>>(new Map());
 
   // Календарь: свой месяц, свои матчи и горизонт.
   const [month, setMonth] = useState<Date>(() => monthStart(new Date()));
@@ -166,6 +172,30 @@ export function MatchesScreen() {
   }, [source, league, mode, day]);
 
   const days = useMemo(() => groupByDay(shown), [shown]);
+
+  /**
+   * Клубы матчей — ОТДЕЛЬНЫМ ЗАПРОСОМ И ПО ВСЕМУ РЕЖИМУ, а не по видимому
+   * после фильтра списку: смена чипа турнира не должна ходить в сеть заново.
+   *
+   * Отдельным — по той же причине, что трансляции и уровень состава: этот
+   * запрос дополняет строку матча и ничего в ней не переписывает, так что
+   * ждать его всем экраном значит ждать по самому медленному там, где можно
+   * ждать по самому быстрому.
+   *
+   * Накопительно: календарь и список берут разные матчи, и переключение
+   * режима не должно стирать уже узнанное.
+   */
+  const sourceIds = useMemo(() => dataOr(source, []).map((f) => f.id), [source]);
+  useEffect(() => {
+    if (sourceIds.length === 0) return;
+    let cancelled = false;
+    void fetchFixtureClubs(sourceIds, i18n.language).then((m) => {
+      if (!cancelled && m.size > 0) {
+        setClubs((prev) => new Map([...prev, ...m]));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [sourceIds, i18n.language]);
 
   // Built once per language rather than per row: a formatter is expensive and
   // a list of sixty matches would otherwise build sixty of them.
@@ -330,6 +360,7 @@ export function MatchesScreen() {
                 rights={rights.get(fixture.sport_key)}
                 prediction={byFixture.get(fixture.id)}
                 rating={rating.get(fixture.id)}
+                clubs={clubs.get(fixture.id)}
                 onPredictionSaved={savePrediction}
                 timeFmt={timeFmt}
               />

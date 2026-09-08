@@ -119,7 +119,10 @@
     "invites_failed": "Les invitations ne se sont pas chargées — si on vous a invité, essayez d’actualiser.",
     "minigames_link": "Mini-jeux",
     "stream_link": "TV en direct",
-    "clubs_link": "Clubs et statistiques"
+    "clubs_link": "Clubs et statistiques",
+    "tag_defender": "Défenseurs",
+    "tag_midfielder": "Milieux",
+    "tag_forward": "Attaquants"
   },
   "design": {
     "master": "Nouveau design",

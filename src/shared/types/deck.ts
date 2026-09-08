@@ -77,8 +77,15 @@ export interface TraitDef {
   labelKey: string;
   pro?: boolean;
 }
+// ⚠️ ЛИНИИ ИДУТ ПЕРВЫМИ И ПОДРЯД, от ворот к чужим воротам. Это разбивка
+// всей колоды (99,4% игроков), а `world_cup` и `ballon_dor` — редкие отличия;
+// смешать их в один ряд значило бы поставить «8202 защитника» рядом с
+// «41 обладателем Золотого мяча» как равнозначный выбор.
 export const DECK_TRAITS: TraitDef[] = [
   { tag: 'goalkeeper', labelKey: 'home.tag_goalkeeper' },
+  { tag: 'defender',   labelKey: 'home.tag_defender' },
+  { tag: 'midfielder', labelKey: 'home.tag_midfielder' },
+  { tag: 'forward',    labelKey: 'home.tag_forward' },
   { tag: 'world_cup',  labelKey: 'home.tag_world_cup' },
   { tag: 'wc2026',     labelKey: 'home.tag_wc2026' },
   { tag: 'giant',      labelKey: 'home.tag_giant' },

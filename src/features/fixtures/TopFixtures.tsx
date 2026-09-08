@@ -6,6 +6,7 @@ import { fixtureCountdown } from '@/shared/lib/fixtureCountdown';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { fetchTopFixtures, type TopFixture } from '@/features/ratings/ratingsApi';
+import { Crest } from './Crest';
 
 /**
  * Самые важные ближайшие матчи — на главном экране.
@@ -22,10 +23,15 @@ import { fetchTopFixtures, type TopFixture } from '@/features/ratings/ratingsApi
  * подписывался «Португалия. Высшая лига». В еврокубках домашняя лига клуба и
  * турнир расходятся ВСЕГДА.
  *
- * ⚠️ МЕСТО ПОД БЛОК НЕ РЕЗЕРВИРУЕТСЯ, И ЭТО НАРОЧНО. В отличие от превью гола,
- * этот блок стоит НИЖЕ кнопок игры: появление после первого кадра не сдвигает
- * то, куда летит палец. Пустой скелет на главной ради ещё не пришедшего
- * ответа — плата без выигрыша.
+ * ⚠️ МЕСТО ПОД БЛОК РЕЗЕРВИРУЕТСЯ, ПОКА ИДЁТ ЗАПРОС. Раньше не резервировалось,
+ * и это было верно: блок стоял НИЖЕ кнопок игры и, появляясь, сдвигал только
+ * то, что под ним. Владелец попросил поднять матчи выше новостей — теперь над
+ * ним нет ничего, а под ним и превью гола, и все кнопки игры. Пришедший
+ * позже блок увёл бы «Алиас» из-под уже летящего пальца.
+ *
+ * Место держит СКЕЛЕТ ИЗ ТЕХ ЖЕ КЛАССОВ, а не подобранная в пикселях высота:
+ * высота выходит одинаковой по построению, и её не надо править всякий раз,
+ * когда в строке матча меняется отступ.
  */
 export function TopFixtures({ limit = 3 }: { limit?: number }) {
   const { t, i18n } = useTranslation();
@@ -40,8 +46,13 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
     return () => { cancelled = true; };
   }, [i18n.language, limit]);
 
+  // Пока ответа нет — скелет ровно той же высоты (см. ⚠️ выше).
+  if (rows.status === 'loading') return <FixturesSkeleton limit={limit} />;
+
   // Матчей нет — блока нет. Пустая рамка с подписью «матчей нет» на главной
-  // сообщает о нашем конвейере, а не о футболе.
+  // сообщает о нашем конвейере, а не о футболе. Схлопывание после ответа
+  // экран всё-таки сдвинет, но вверх и только когда матчей действительно нет;
+  // держать пустоту вечно ради этого случая — хуже.
   if (rows.status !== 'ok' || rows.data.length === 0) return null;
 
   const when = new Intl.DateTimeFormat(i18n.language, {
@@ -125,16 +136,48 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
   );
 }
 
-/** Эмблема с местом под неё: без фиксированного размера строка прыгает,
- *  пока картинки грузятся по одной. */
-function Crest({ src, alt }: { src: string | null; alt: string }) {
-  if (!src) return <span className="w-6 h-6 shrink-0" />;
+/**
+ * Скелет на время запроса.
+ *
+ * ⚠️ КЛАССЫ ЗДЕСЬ ОБЯЗАНЫ СОВПАДАТЬ СО СТРОКОЙ МАТЧА — в этом весь смысл.
+ * Высота считается браузером из тех же отступов и тех же кеглей, поэтому
+ * подмена скелета настоящими матчами не двигает ни пикселя. Число в px здесь
+ * молча разъехалось бы с версткой при первой же правке `p-3`.
+ */
+function FixturesSkeleton({ limit }: { limit: number }) {
+  const { t } = useTranslation();
   return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      className="w-6 h-6 shrink-0 object-contain"
-    />
+    <div className="space-y-2" aria-hidden>
+      <p className="text-brand-muted text-[11px] uppercase tracking-wide px-0.5">
+        {t('fixtures.top_title')}
+      </p>
+      {Array.from({ length: limit }, (_, i) => (
+        <div
+          key={i}
+          className="w-full ds-panel bg-brand-surface border border-brand-border
+                     rounded-2xl p-3 animate-pulse"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 shrink-0 rounded-full bg-brand-border" />
+            <span className="text-[12.5px] flex-1 min-w-0">
+              <span className="block h-[1em] rounded bg-brand-border" />
+            </span>
+            <span className="text-brand-muted text-[11px] shrink-0">—</span>
+            <span className="text-[12.5px] flex-1 min-w-0">
+              <span className="block h-[1em] rounded bg-brand-border" />
+            </span>
+            <span className="w-6 h-6 shrink-0 rounded-full bg-brand-border" />
+          </div>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[10.5px] flex-1 min-w-0">
+              <span className="block h-[1em] rounded bg-brand-border" />
+            </span>
+            <span className="text-[10.5px] w-12 shrink-0">
+              <span className="block h-[1em] rounded bg-brand-border" />
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

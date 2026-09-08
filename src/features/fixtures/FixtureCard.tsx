@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { IconDeviceTvOld } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
+import { formatEur } from '@/shared/lib/money';
+import { fixtureCountdown } from '@/shared/lib/fixtureCountdown';
 import { leagueKey, readableSportKey } from './leagues';
+import { Crest } from './Crest';
+import type { FixtureClubs } from './fixtureClubsApi';
 import { PredictionRow } from './PredictionRow';
 import type { Fixture } from './fixturesApi';
 import type { Broadcast } from './broadcastsApi';
@@ -27,6 +31,14 @@ interface Props {
    * НИКАК: «состав 0» читалось бы как «слабый», хотя значит «мы не знаем».
    */
   rating?: TeamRating;
+  /**
+   * Наши клубы за именами команд из расписания: эмблема, название на языке
+   * читателя, стоимость и состав каждой стороны. Отсутствует, пока запрос не
+   * пришёл, и остаётся отсутствовать у матча, чью команду сопоставить не
+   * удалось: тогда карточка показывает то же, что показывала раньше —
+   * английское написание провайдера и время.
+   */
+  clubs?: FixtureClubs;
   onPredictionSaved: (saved: Prediction) => void;
   timeFmt: Intl.DateTimeFormat;
 }
@@ -70,51 +82,102 @@ function ageMinutes(iso: string | null): number | null {
  * чего: 0 из 266 предстоящих матчей имеют прошлую встречу.
  */
 export function FixtureCard({
-  fixture, broadcast, rights, prediction, rating, onPredictionSaved, timeFmt,
+  fixture, broadcast, rights, prediction, rating, clubs, onPredictionSaved, timeFmt,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const hasScore = fixture.home_score !== null && fixture.away_score !== null;
   const age = fixture.completed ? null : ageMinutes(fixture.scores_at);
 
+  // Название на языке читателя, если клуб опознан; иначе — написание
+  // провайдера, как было. Наполовину переведённый список читается хуже
+  // последовательного, но «Реал Мадрид» там, где мы клуб знаем, лучше, чем
+  // «Real Madrid» везде из-за тех, кого не знаем.
+  const homeName = clubs?.home_name ?? fixture.home_team;
+  const awayName = clubs?.away_name ?? fixture.away_team;
+
+  // ⚠️ ОБРАТНЫЙ ОТСЧЁТ ТОЛЬКО У НЕСЫГРАННОГО. Минуты приходят из базы и у
+  // прошедшего матча отрицательны, а `fixtureCountdown` читает отрицательное
+  // как «уже идёт» — верно для списка ближайших и неверно для календаря,
+  // который показывает и сыгранные дни.
+  const cd = fixture.completed ? { kind: 'date' as const }
+                               : fixtureCountdown(clubs?.minutes_to_start);
+  const alert = cd.kind === 'alert' || cd.kind === 'live';
+  const timing =
+    cd.kind === 'live'    ? t('fixtures.live')
+    : cd.kind === 'alert' ? t('fixtures.in_minutes', { count: cd.minutes })
+    : cd.kind === 'hours' ? t('fixtures.in_hours', { count: cd.hours })
+    : null;
+  const comp = t(leagueKey(fixture.sport_key), {
+    defaultValue: readableSportKey(fixture.sport_key),
+  });
+  // Стоимость и состав — У ДВУХ КЛУБОВ ПОРОЗНЬ, а не суммой, как на главной.
+  // Владелец: «оставить составы и стоимость считать у двух клубов». Матч
+  // читают, сравнивая стороны; одна сумма сравнивать не даёт.
+  const side = (value: number | null | undefined, squad: number | undefined) => {
+    // formatEur сам возвращает null на пустой и неположительной сумме —
+    // клуб без единой цены не должен подписываться нулём евро.
+    const money = formatEur(value, i18n.language);
+    const parts = [money, squad ? t('club.squad_size', { count: squad }) : null];
+    return parts.filter(Boolean).join(' · ');
+  };
+  const homeSide = side(clubs?.home_value, clubs?.home_squad);
+  const awaySide = side(clubs?.away_value, clubs?.away_squad);
+
   return (
-    <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl p-3">
-      <div className="flex items-center gap-3">
-        <span className="ds-display text-white text-sm font-bold tabular-nums shrink-0 w-12">
-          {timeFmt.format(new Date(fixture.commence_at))}
+    <div className={`ds-panel bg-brand-surface border rounded-2xl p-3 ${
+      // Матч, на который ещё можно успеть, отличается рамкой — ровно как на
+      // главной: это единственная строка здесь, требующая действия сейчас.
+      alert ? 'border-brand-accent' : 'border-brand-border'
+    }`}>
+      {/* ⚠️ ОДНА СТРОКА «ХОЗЯЕВА — ГОСТИ» С ЭМБЛЕМАМИ, КАК НА ГЛАВНОЙ.
+          Владелец: «нужно экран ближайших матчей доделать до уровня, того
+          отображения, что на главной». Прежние две строки без эмблем и без
+          перевода отличались от главной ровно тем, что делает матч
+          узнаваемым с одного взгляда. Порядок «хозяева, потом гости» не
+          переставляется никогда — см. шапку файла. */}
+      <div className="flex items-center gap-2">
+        <Crest src={clubs?.home_crest ?? null} alt={homeName} />
+        <span className="text-white text-[12.5px] flex-1 min-w-0 truncate">
+          {homeName}
         </span>
+        {/* Счёт держит место и без счёта: подтягивать имена там, где его нет,
+            значит дёргать ширину на каждой второй строке списка, где
+            сыгранные и несыгранные идут вперемешку. */}
+        <span className="ds-display text-white text-[12.5px] font-bold tabular-nums shrink-0">
+          {hasScore
+            ? `${fixture.home_score} : ${fixture.away_score}`
+            : <span className="text-brand-muted/40">—</span>}
+        </span>
+        <span className="text-white text-[12.5px] flex-1 min-w-0 truncate text-right">
+          {awayName}
+        </span>
+        <Crest src={clubs?.away_crest ?? null} alt={awayName} />
+      </div>
 
-        <div className="flex-1 min-w-0">
-          {/* Написание провайдера, по-английски. Переводить названия клубов
-              здесь было бы нечем: для большинства из них у нас нет
-              соответствия, а наполовину переведённый список читается хуже
-              последовательного. */}
-          <p className="text-white text-sm truncate">{fixture.home_team}</p>
-          <p className="text-white text-sm truncate">{fixture.away_team}</p>
+      {/* Стоимость и состав каждой стороны — под её же названием. */}
+      {(homeSide || awaySide) && (
+        <div className="flex items-start gap-2 mt-1">
+          <span className="text-brand-accent text-[10px] tabular-nums flex-1 min-w-0 truncate">
+            {homeSide}
+          </span>
+          <span className="text-brand-accent text-[10px] tabular-nums flex-1 min-w-0 truncate text-right">
+            {awaySide}
+          </span>
         </div>
+      )}
 
-        {/* Reserved even without a score: most matches never get one (score
-            fetching is demand-driven, see match_predictions.sql), and a
-            column that appears only sometimes shifts the team-name width on
-            every other row — the score "jumping" while scrolling a list that
-            mixes scored and unscored matches. */}
-        <div className="shrink-0 w-6 text-right">
-          <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
-            {hasScore ? fixture.home_score : <span className="text-brand-muted/30">—</span>}
-          </p>
-          <p className="ds-display text-white text-sm font-bold tabular-nums leading-tight">
-            {hasScore ? fixture.away_score : <span className="text-brand-muted/30">—</span>}
-          </p>
-        </div>
-
-        <span className="text-brand-muted text-[10.5px] text-right shrink-0 max-w-[35%]">
-          {t(leagueKey(fixture.sport_key), {
-            defaultValue: readableSportKey(fixture.sport_key),
-          })}
+      {/* Время, турнир и — пока он что-то значит — обратный отсчёт. */}
+      <div className="mt-1.5">
+        <span className={`text-[10.5px] ${
+          alert ? 'text-brand-accent font-semibold' : 'text-brand-muted'
+        }`}>
+          {[timeFmt.format(new Date(fixture.commence_at)), comp, timing]
+            .filter(Boolean).join(' · ')}
         </span>
       </div>
 
       {hasScore && (
-        <p className="mt-1 ml-[3.75rem] text-brand-muted/70 text-[10px]">
+        <p className="mt-1 text-brand-muted/70 text-[10px]">
           {fixture.completed
             ? t('matches.final_score')
             : age === null
@@ -138,7 +201,7 @@ export function FixtureCard({
         <button
           type="button"
           onClick={() => { hapticImpact('light'); openLink(rights.source_url); }}
-          className="mt-2 ml-[3.75rem] inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
+          className="mt-2 inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
         >
           <IconDeviceTvOld size={13} stroke={1.75} />
           <span>{t('matches.broadcaster', { name: rights.broadcaster })}</span>
@@ -150,7 +213,7 @@ export function FixtureCard({
         <button
           type="button"
           onClick={() => { hapticImpact('light'); openLink(broadcast.url); }}
-          className="mt-2 ml-[3.75rem] inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
+          className="mt-2 inline-flex items-center gap-1.5 text-brand-muted hover:text-brand-accent transition-colors text-[10.5px]"
         >
           <IconDeviceTvOld size={13} stroke={1.75} />
           <span>{t('matches.where_to_watch', { source: broadcast.name })}</span>
@@ -158,7 +221,7 @@ export function FixtureCard({
       )}
 
       {rating && (
-        <div className="pl-[3.75rem]">
+        <div>
           <SquadStrength
             rating={rating}
             fixtureId={fixture.id}
@@ -168,7 +231,7 @@ export function FixtureCard({
         </div>
       )}
 
-      <div className="mt-2 pl-[3.75rem]">
+      <div className="mt-2">
         <PredictionRow
           fixture={fixture}
           existing={prediction}

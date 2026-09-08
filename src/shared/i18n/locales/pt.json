@@ -119,7 +119,10 @@
     "invites_failed": "Os convites não carregaram — se alguém te convidou, tente atualizar.",
     "minigames_link": "Minijogos",
     "stream_link": "TV ao vivo",
-    "clubs_link": "Clubes e estatísticas"
+    "clubs_link": "Clubes e estatísticas",
+    "tag_defender": "Zagueiros",
+    "tag_midfielder": "Meio-campistas",
+    "tag_forward": "Atacantes"
   },
   "design": {
     "master": "Novo design",

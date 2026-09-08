@@ -117,7 +117,10 @@
     "invites_failed": "초대를 불러오지 못했습니다. 초대받았다면 새로고침해 보세요.",
     "minigames_link": "미니게임",
     "stream_link": "실시간 TV",
-    "clubs_link": "클럽과 통계"
+    "clubs_link": "클럽과 통계",
+    "tag_defender": "수비수",
+    "tag_midfielder": "미드필더",
+    "tag_forward": "공격수"
   },
   "design": {
     "master": "새 디자인",

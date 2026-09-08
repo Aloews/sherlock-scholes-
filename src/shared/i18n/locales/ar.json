@@ -122,7 +122,10 @@
     "invites_failed": "لم تُحمَّل الدعوات — إن دعاك أحد، جرّب التحديث.",
     "minigames_link": "ألعاب مصغّرة",
     "stream_link": "بث مباشر",
-    "clubs_link": "الأندية والإحصاءات"
+    "clubs_link": "الأندية والإحصاءات",
+    "tag_defender": "المدافعون",
+    "tag_midfielder": "لاعبو الوسط",
+    "tag_forward": "المهاجمون"
   },
   "design": {
     "master": "التصميم الجديد",

@@ -117,7 +117,10 @@
     "invites_failed": "邀请未能加载——如果有人邀请了你，请尝试刷新。",
     "minigames_link": "小游戏",
     "stream_link": "直播电视",
-    "clubs_link": "俱乐部与数据"
+    "clubs_link": "俱乐部与数据",
+    "tag_defender": "后卫",
+    "tag_midfielder": "中场",
+    "tag_forward": "前锋"
   },
   "design": {
     "master": "新设计",
