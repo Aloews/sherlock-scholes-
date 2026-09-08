@@ -18,6 +18,7 @@ import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
 import { careerHighlight } from '@/shared/lib/careerHighlight';
 import { careerRowMeta } from '@/shared/lib/careerRowMeta';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
+import { watchUrl } from '@/features/digest/digestFormat';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
 } from '@/shared/types/database';
@@ -719,7 +720,11 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                         type="button"
                         onClick={() => {
                           hapticImpact('light');
-                          openLink(`https://www.youtube.com/watch?v=${clip.video_id}`);
+                          // Через ту же watchUrl, что и остальные три экрана.
+                          // Отдельная копия шаблона тут и была вторым местом,
+                          // где ссылка строилась: с приходом Rutube она бы
+                          // молча уводила в никуда именно с досье.
+                          openLink(watchUrl(clip));
                         }}
                         className="w-32 shrink-0 text-left"
                       >

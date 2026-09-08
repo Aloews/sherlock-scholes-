@@ -1444,6 +1444,73 @@ async function checkFixtureClubs() {
          empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------ обзоры туров на своём языке ----
+// Владелец прислал три адреса с обзорами туров РПЛ. Два из трёх недоступны
+// (капча Yandex у premierliga.ru, js-challenge у okko.sport — разбор в
+// rutube_clips.sql), третий — канал самой лиги на Rutube, и он живой.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «РОЛИКИ ЛЕЖАТ В БАЗЕ», А «ЧИТАТЕЛЬ ИХ УВИДИТ». Именно
+// здесь всё и ломалось в первый раз: строки записались, а в общем топе их было
+// РОВНО НОЛЬ — просмотры не сравнимы между каналами разного размера. Поэтому
+// проверка идёт до того самого вызова, который делает экран.
+async function checkLocalGoals() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Обзоры на своём языке', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const t0 = Date.now();
+  const ru = await rpc('digest_local_goals', { p_lang: 'ru', p_limit: 12 });
+  const ms = Date.now() - t0;
+  const list = Array.isArray(ru) ? ru : [];
+  record('Обзоры на своём языке: раздел не пуст', list.length > 0,
+         `${list.length} роликов на ru, ${ms} мс`,
+         'ловит замолчавший канал Rutube и отозванный грант');
+
+  // ⚠️ ДО КОНЦА ЦЕПОЧКИ: строка есть — а ссылка в ней может вести на YouTube
+  // по идентификатору Rutube, то есть в никуда. Видно это только по нажатию.
+  const rutube = list.filter((r) => String(r.watch_url || '').startsWith('https://rutube.ru/video/'));
+  record('Обзоры на своём языке: ссылка ведёт на Rutube',
+         list.length > 0 && rutube.length === list.length,
+         `${rutube.length} из ${list.length} с адресом Rutube`,
+         'ловит возврат к безусловному шаблону youtube.com/watch?v=');
+
+  // Обзор тура обязан читаться как гол/обзор, иначе на карточке встанет
+  // пометка «момент» у всего подряд.
+  const asGoal = list.filter((r) => r.is_goal).length;
+  record('Обзоры на своём языке: разбор заголовка', list.length > 0 && asGoal > 0,
+         `${asGoal} из ${list.length} распознаны как гол или обзор`,
+         'ловит выпавшие русские слова из looks_like_goal');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: выдуманный язык обязан дать пусто. Не
+  // дал — функция отдаёт всё подряд, и «на вашем языке» значит «что угодно».
+  const bogus = await rpc('digest_local_goals', { p_lang: 'зз', p_limit: 12 });
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Обзоры на своём языке: контроль отбора', empty,
+         empty ? 'по выдуманному языку пусто, как и должно'
+               : `выдуманный язык вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ, И ОН ПРО NULL. У семнадцати каналов
+  // YouTube язык не задан; если бы `lang = null` совпадало с ними, раздел
+  // «на вашем языке» показывал бы итальянскую «Серию А» испанцу.
+  const nulled = await rpc('digest_local_goals', { p_lang: null, p_limit: 12 });
+  const nullEmpty = Array.isArray(nulled) && nulled.length === 0;
+  record('Обзоры на своём языке: контроль NULL', nullEmpty,
+         nullEmpty ? 'по пустому языку пусто, как и должно'
+                   : `пустой язык вернул ${Array.isArray(nulled) ? nulled.length : '?'} строк`,
+         nullEmpty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------- уровень действующего игрока ---------
 // Владелец: «уровень игроков, которые ещё не завершили карьеру, лучше
 // определять по стоимости и рейтингу». До этого `level` строился на `fame` —
@@ -1873,6 +1940,7 @@ await checkMetricHistory();
 await checkPlayerIndex();
 await checkScreenBudget();
 await checkFixtureClubs();
+await checkLocalGoals();
 await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
 await checkClubManagers();

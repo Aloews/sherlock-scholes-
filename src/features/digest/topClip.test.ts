@@ -13,6 +13,7 @@ import { fetchTopClip } from './topClip';
 const weekend = (over: Partial<Record<string, unknown>> = {}) => ({
   video_id: 'w1', title: 'Bruno scored from a corner', channel: 'Premier League',
   published_at: '2026-08-09T12:00:00Z', thumb_url: 'https://i/1.jpg',
+  watch_url: 'https://rutube.ru/video/w1/',
   views: 245031, likes: 900, is_goal: true,
   window_start: '2026-08-08T00:00:00Z', window_end: '2026-08-10T00:00:00Z',
   ...over,
@@ -21,6 +22,7 @@ const weekend = (over: Partial<Record<string, unknown>> = {}) => ({
 const daily = (over: Partial<Record<string, unknown>> = {}) => ({
   video_id: 'd1', title: 'Today at the training ground', channel: 'LALIGA',
   published_at: '2026-08-11T09:00:00Z', thumb_url: 'https://i/2.jpg',
+  watch_url: 'https://www.youtube.com/watch?v=d1',
   ...over,
 });
 
@@ -100,8 +102,33 @@ describe('fetchTopClip', () => {
       title: 'Bruno scored from a corner',
       channel: 'Premier League',
       thumb_url: 'https://i/1.jpg',
+      watch_url: 'https://rutube.ru/video/w1/',
       views: 245031,
       kind: 'goal',
     });
+  });
+
+  // ⚠️ АДРЕС ОБЯЗАН ДОЕХАТЬ ДО ГЛАВНОЙ. fromRecent и fromDaily перекладывают
+  // строку RPC в TopClip поле за полем, и забытое поле здесь не ломает ни
+  // сборку, ни типы: `watch_url` станет undefined, watchUrl молча вернётся к
+  // шаблону YouTube, и превью обзора РПЛ на главной уведёт на чужой ролик.
+  it('переносит адрес ролика, а не собирает его заново', async () => {
+    mockRecent.mockResolvedValue([
+      weekend({ video_id: 'r1', watch_url: 'https://rutube.ru/video/r1/' }),
+    ] as never);
+    mockDaily.mockResolvedValue([] as never);
+
+    const top = await fetchTopClip();
+    expect(top?.watch_url).toBe('https://rutube.ru/video/r1/');
+  });
+
+  it('переносит адрес и у свежего ролика, когда окна ещё нет', async () => {
+    mockRecent.mockResolvedValue([] as never);
+    mockDaily.mockResolvedValue([
+      daily({ video_id: 'y1', watch_url: 'https://www.youtube.com/watch?v=y1' }),
+    ] as never);
+
+    const top = await fetchTopClip();
+    expect(top?.watch_url).toBe('https://www.youtube.com/watch?v=y1');
   });
 });
