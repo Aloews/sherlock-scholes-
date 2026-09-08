@@ -1444,6 +1444,72 @@ async function checkFixtureClubs() {
          empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------- уровень действующего игрока ---------
+// Владелец: «уровень игроков, которые ещё не завершили карьеру, лучше
+// определять по стоимости и рейтингу». До этого `level` строился на `fame` —
+// перцентиле просмотров википедии, — а известность есть у 5 418 карточек из
+// 25 508: у четырёх игроков из пяти под карточкой стоял НОЛЬ, и читался он как
+// «слабый», хотя значил «мы про него ничего не знаем».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ ФОРМУЛА, А ЕЁ СЛЕДСТВИЯ НА ЖИВЫХ ДАННЫХ: чем накрыто
+// большинство, не обнулены ли легенды и не назвался ли действующим тот, у кого
+// нет цены. Формулу проверять стендом бессмысленно — она и есть стенд.
+async function checkPlayerLevelBasis() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Уровень игрока', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const rows = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    const body = await r.json().catch(() => null);
+    return { n: Number.isFinite(n) ? n : (Array.isArray(body) ? body.length : -1), body };
+  };
+
+  const all      = await rows('player_level?select=card_id&limit=1');
+  const playing  = await rows('player_level?select=card_id&basis=in.(value,value%2Brating)&limit=1');
+  const zero     = await rows('player_level?select=card_id&level=eq.0&limit=1');
+
+  const share = all.n > 0 ? playing.n / all.n : 0;
+  record('Уровень игрока: действующие считаются по стоимости и рейтингу',
+         share >= 0.7,
+         `${playing.n} из ${all.n} (${Math.round(share * 100)}%), с нулевым уровнем ${zero.n}`,
+         'ловит возврат к известности как основанию и потерю сбора стоимостей');
+
+  // ⚠️ ЛЕГЕНДЫ НЕ ОБНУЛЕНЫ. У завершивших карьеру цены нет по построению —
+  // Transfermarkt оценивает заявки клубов. Если бы новое основание применялось
+  // ко всем, Пеле получил бы ноль.
+  const icons = await rows('player_level?select=level,cards!inner(name_en,tags)&cards.tags=cs.%7Bicon%7D&order=level.desc&limit=20');
+  const list  = Array.isArray(icons.body) ? icons.body : [];
+  const low   = list.filter((r) => (r.level ?? 0) < 75);
+  record('Уровень игрока: легенды на месте',
+         list.length > 0 && low.length === 0,
+         list.length === 0 ? 'икон не нашлось вовсе'
+           : `${list.length} икон, ниже 75 — ${low.length}` +
+             (low.length ? ': ' + low.map((r) => `${r.cards?.name_en} ${r.level}`).join(', ') : ''),
+         'ловит применение нового основания к тем, у кого цены нет по природе');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН САМ СЕБЯ ДОКАЗЫВАЕТ. «Действующим» не может
+  // назваться тот, у кого нет цены: строк-противоречий обязано быть НОЛЬ.
+  // Но ноль от запроса, который вообще ничего не умеет находить, — это не
+  // проверка, а тишина. Поэтому рядом идёт ТОТ ЖЕ запрос с той же связкой,
+  // направленный на заведомо существующее: «известность и нет цены», которых
+  // 4 734. Не нашёл и их — значит форма запроса сломана, и первый ноль ничего
+  // не значит.
+  const shape = 'player_level?select=card_id,cards!inner(market_value_eur)';
+  const wrong = await rows(`${shape}&basis=in.(value,value%2Brating)&cards.market_value_eur=is.null&limit=1`);
+  const sane  = await rows(`${shape}&basis=eq.fame&cards.market_value_eur=is.null&limit=1`);
+  const ok = wrong.n === 0 && sane.n > 0;
+  record('Уровень игрока: контроль признака', ok,
+         wrong.n !== 0 ? `${wrong.n} карточек помечены действующими без цены`
+           : sane.n > 0 ? `противоречий 0, а таких же строк без цены запрос находит ${sane.n}`
+                        : 'запрос не нашёл даже заведомо существующие строки — форма сломана',
+         ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1461,6 +1527,7 @@ await checkMetricHistory();
 await checkPlayerIndex();
 await checkScreenBudget();
 await checkFixtureClubs();
+await checkPlayerLevelBasis();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
