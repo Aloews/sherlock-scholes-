@@ -1012,7 +1012,8 @@
     "roster_source": "Squad and values — {{source}}",
     "squad_ours": "Club roster",
     "news": "Team news",
-    "manager": "Manager"
+    "manager": "Manager",
+    "now": "Now"
   },
   "clubs": {
     "title": "Clubs",

@@ -983,7 +983,8 @@
     "roster_source": "스쿼드와 시장 가치 — {{source}}",
     "squad_ours": "구단 등록 명단",
     "news": "팀 소식",
-    "manager": "감독"
+    "manager": "감독",
+    "now": "현재"
   },
   "clubs": {
     "title": "클럽",

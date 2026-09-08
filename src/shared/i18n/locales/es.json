@@ -1012,7 +1012,8 @@
     "roster_source": "Plantilla y valores — {{source}}",
     "squad_ours": "Plantilla oficial",
     "news": "Noticias del equipo",
-    "manager": "Entrenador"
+    "manager": "Entrenador",
+    "now": "Ahora"
   },
   "clubs": {
     "title": "Clubes",

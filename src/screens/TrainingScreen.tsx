@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -10,6 +10,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
+import { fetchCurrentClubs, type CurrentClub } from '@/features/collection/currentClubApi';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
 import { trackEvent } from '@/shared/lib/analytics';
@@ -279,6 +280,25 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   // "Report an error" sheet — the history entry being reported, or null.
   const [reporting, setReporting] = useState<HistoryEntry | null>(null);
 
+  // ⚠️ ТЕКУЩИЙ КЛУБ — ИЗ СОБРАННОГО, А НЕ ИЗ СТАТЬИ. Владелец: «после игры в
+  // Элиас написано, что Гарначо в Челси, а он уже перешёл». В `career_stats` у
+  // него «Chelsea 2025–» с ОТКРЫТЫМ периодом, то есть статья до сих пор
+  // считает его игроком «Челси»; заявка клуба и Soccer Wiki независимо
+  // говорят «Астон Вилла». У статьи нет способа сказать «он больше здесь не
+  // играет» — открытый период остаётся открытым навсегда. Разбор — в
+  // features/collection/currentClubApi.ts.
+  //
+  // Грузится ОТДЕЛЬНО и после игры: это добавка к разбору, и держать из-за
+  // неё экран не за что.
+  const [clubNow, setClubNow] = useState<Map<string, CurrentClub>>(new Map());
+  useEffect(() => {
+    const ids = history.map((h) => h.id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void fetchCurrentClubs(ids).then((m) => { if (!cancelled) setClubNow(m); });
+    return () => { cancelled = true; };
+  }, [history]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-brand-bg ds-screen flex items-center justify-center">
@@ -375,7 +395,18 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
       // 2022-24) — only the minute totals lie, so names without numbers.
       lines = entry.clubs_minutes.slice(0, 4).map((c) => line(c.club));
     }
-    return lines.filter((s): s is string => s !== null);
+    const out = lines.filter((s): s is string => s !== null);
+
+    // ⚠️ «СЕЙЧАС» ИДЁТ ПЕРВЫМ И НЕ ЗАМЕНЯЕТ КАРЬЕРУ. Открытый период в статье
+    // — часть настоящей карьеры, выкинуть его нельзя; выдать его за сегодня
+    // тоже нельзя. Поэтому собранный текущий клуб называется отдельной
+    // строкой и стоит выше, а список карьеры остаётся списком карьеры.
+    const now = clubNow.get(entry.id)?.club;
+    if (now) {
+      const clean = cleanClub(now);
+      if (clean) out.unshift(`${t('club.now')}: ${clean}`);
+    }
+    return out;
   };
 
   // Structural facts (cards.facts) for the muted line under the gold titles.

@@ -1632,6 +1632,60 @@ async function checkClubManagers() {
          empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// --------------------------------------------- склейка клубов-двойников ----
+// Сбор Soccer Wiki заводил клубу СВОЮ строку в справочнике, когда не находил
+// его по имени: «Bayern München» рядом с «Баварией», «Olympique Marseille»
+// рядом с «Марселем». Разбор и числа — supabase/migrations/club_merge.sql.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ ПСЕВДОНИМ, А НЕ ОТСУТСТВИЕ СТРОКИ. Удалить двойника мало:
+// без псевдонима следующий сбор заведёт его заново, и через неделю всё
+// вернётся. Живой признак починки — что resolve_club_key отдаёт НАШ ключ на
+// имя из источника.
+async function checkClubMerge() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Склейка клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // ⚠️ ПРОВЕРЯЕТСЯ ЧЕРЕЗ ПОИСК ПО СПРАВОЧНИКУ, А НЕ resolve_club_key НАПРЯМУЮ.
+  // Решатель читает `club_alias`, а у anon на неё прав нет — и правильно, что
+  // нет: это внутренняя таблица, приложение к ней не ходит. Зато `club_directory`
+  // (security definer) ищет ПО ПСЕВДОНИМАМ, и это тот самый путь, которым
+  // пойдёт человек, набравший «Bayern München» в поиске команд.
+  const cases = [
+    ['Bayern München', 'Бавария'],
+    ['Olympique Marseille', 'Марсель'],
+  ];
+  const bad = [];
+  for (const [swName, ourName] of cases) {
+    const rows = await rpc('club_directory', { p_lang: 'ru', p_query: swName, p_limit: 3 });
+    const got = Array.isArray(rows) && rows[0] ? rows[0].name : null;
+    if (got !== ourName) bad.push(`${swName} -> ${got ?? 'никуда'} (ждали ${ourName})`);
+  }
+  record('Склейка клубов: имя источника ведёт на наш клуб', bad.length === 0,
+         bad.length === 0 ? cases.map(([a, b]) => `${a} = ${b}`).join(', ') : bad.join('; '),
+         'ловит новый сбор, заведший двойника заново без псевдонима');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманное имя обязано дать ПУСТО. Поиск,
+  // который на любую строку возвращает первый попавшийся клуб, сделал бы
+  // проверку выше бессмысленной.
+  const ghost = await rpc('club_directory', { p_lang: 'ru', p_query: 'Такого Клуба Нет ZZ', p_limit: 3 });
+  const ghostEmpty = Array.isArray(ghost) && ghost.length === 0;
+  record('Склейка клубов: контроль поиска', ghostEmpty,
+         ghostEmpty ? 'выдуманное имя не находит ни одного клуба, как и должно'
+                    : `выдуманное имя нашло ${ghost?.[0]?.name ?? '?'}`,
+         ghostEmpty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1652,6 +1706,7 @@ await checkFixtureClubs();
 await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
 await checkClubManagers();
+await checkClubMerge();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

@@ -983,7 +983,8 @@
     "roster_source": "スカッドと市場価値 — {{source}}",
     "squad_ours": "クラブ登録メンバー",
     "news": "チームのニュース",
-    "manager": "監督"
+    "manager": "監督",
+    "now": "現在"
   },
   "clubs": {
     "title": "クラブ",

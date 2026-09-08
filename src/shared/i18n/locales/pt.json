@@ -1012,7 +1012,8 @@
     "roster_source": "Plantel e valores — {{source}}",
     "squad_ours": "Elenco oficial",
     "news": "Notícias do time",
-    "manager": "Treinador"
+    "manager": "Treinador",
+    "now": "Agora"
   },
   "clubs": {
     "title": "Clubes",

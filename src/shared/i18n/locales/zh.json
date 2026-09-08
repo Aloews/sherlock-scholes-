@@ -983,7 +983,8 @@
     "roster_source": "阵容与身价 — {{source}}",
     "squad_ours": "俱乐部名单",
     "news": "球队新闻",
-    "manager": "主教练"
+    "manager": "主教练",
+    "now": "现在"
   },
   "clubs": {
     "title": "俱乐部",
