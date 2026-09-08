@@ -1113,5 +1113,17 @@
     "role_target_man": "ターゲットマン",
     "role_finisher": "フィニッシャー",
     "role_general_forward": "万能型フォワード"
+  },
+  "character": {
+    "title": "スタイル",
+    "attacking": "攻撃的",
+    "defensive": "守備的",
+    "complete": "総合力",
+    "open": "オープンな試合",
+    "closed": "堅い試合",
+    "home": "ホームに強い",
+    "steady": "安定",
+    "streaky": "ムラあり",
+    "measured": "試合から算出、後付けではない"
   }
 }

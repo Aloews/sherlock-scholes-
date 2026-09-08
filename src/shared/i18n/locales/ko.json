@@ -1113,5 +1113,17 @@
     "role_target_man": "타깃맨",
     "role_finisher": "피니셔",
     "role_general_forward": "만능 공격수"
+  },
+  "character": {
+    "title": "성향",
+    "attacking": "공격적",
+    "defensive": "수비적",
+    "complete": "균형",
+    "open": "개방적 경기",
+    "closed": "폐쇄적 경기",
+    "home": "홈에 강함",
+    "steady": "안정적",
+    "streaky": "기복",
+    "measured": "경기에서 산출, 임의 부여 아님"
   }
 }

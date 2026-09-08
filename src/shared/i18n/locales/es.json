@@ -1156,5 +1156,17 @@
     "role_target_man": "Delantero de referencia",
     "role_finisher": "Rematador",
     "role_general_forward": "Delantero polivalente"
+  },
+  "character": {
+    "title": "Carácter",
+    "attacking": "Ofensivo",
+    "defensive": "Defensivo",
+    "complete": "Completo",
+    "open": "Fútbol abierto",
+    "closed": "Fútbol cerrado",
+    "home": "Fuerte en casa",
+    "steady": "Regular",
+    "streaky": "Irregular",
+    "measured": "Medido por los partidos, no asignado"
   }
 }

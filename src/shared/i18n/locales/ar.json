@@ -1319,5 +1319,17 @@
     "role_target_man": "مهاجم مرجعي",
     "role_finisher": "مهاجم إنهاء",
     "role_general_forward": "مهاجم شامل"
+  },
+  "character": {
+    "title": "الطابع",
+    "attacking": "هجومي",
+    "defensive": "دفاعي",
+    "complete": "متكامل",
+    "open": "كرة مفتوحة",
+    "closed": "كرة مغلقة",
+    "home": "قوي في الديار",
+    "steady": "ثابت",
+    "streaky": "متذبذب",
+    "measured": "مقاس من المباريات، غير مُسند"
   }
 }

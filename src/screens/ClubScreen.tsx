@@ -14,6 +14,7 @@ import {
 import { ClubSquadTable } from '@/features/clubs/ClubSquadTable';
 import { ClubRosterTable } from '@/features/clubs/ClubRosterTable';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
+import { fetchClubCharacter, type ClubCharacter } from '@/features/clubs/characterApi';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { SoccerWikiSquad } from '@/features/soccerwiki/SoccerWikiSquad';
@@ -49,6 +50,9 @@ export function ClubScreen() {
   const [profile, setProfile] = useState<LoadState<ClubProfile | null>>(LOADING);
   const [squad, setSquad] = useState<LoadState<ClubSquadRow[]>>(LOADING);
   const [roster, setRoster] = useState<LoadState<ClubRosterRow[]>>(LOADING);
+  // Характер команды — измеренный, см. features/clubs/characterApi.ts.
+  // Отдельным запросом: он дополняет экран и ничего на нём не переписывает.
+  const [character, setCharacter] = useState<ClubCharacter | null>(null);
   const [matches, setMatches] = useState<LoadState<ClubMatchRow[]>>(LOADING);
   const [fixtures, setFixtures] = useState<LoadState<ClubFixtureRow[]>>(LOADING);
   // Какой из ответов про состав показан. См. переключатель ниже.
@@ -83,6 +87,7 @@ export function ClubScreen() {
     let cancelled = false;
     setRoster(LOADING);
     void fetchClubRoster(key).then((r) => { if (!cancelled) setRoster(r); });
+    void fetchClubCharacter(key).then((r) => { if (!cancelled) setCharacter(r); });
     return () => { cancelled = true; };
   }, [key]);
 
@@ -217,6 +222,44 @@ export function ClubScreen() {
                 </button>
               )}
             </div>
+
+            {/* ⚠️ ХАРАКТЕР — ИЗМЕРЕННЫЙ, А НЕ ПРИПИСАННЫЙ, И ЧИСЛА СТОЯТ РЯДОМ
+                С СЛОВАМИ. Владелец: «характер тренера определяет характер
+                команды, но характера тренеров меняются со временем». Ярлык,
+                поставленный однажды, стареет молча; здесь черты выводятся из
+                сыгранных матчей и пересобираются ночью, поэтому меняются сами.
+                «Атакующий» без «забивает 3.24 за матч» — это мнение; с числом
+                это наблюдение, и читатель может не согласиться со словом, но
+                не с числом.
+
+                ⚠️ ЧЕРТ МОЖЕТ НЕ БЫТЬ ВОВСЕ. Порог 70/30, а не 50: половина
+                клубов не может быть «атакующей», иначе слово ничего не значит.
+                Команда без ярко выраженного уклона показывает только числа —
+                это честный ответ, а не пустота. */}
+            {character && character.traits.length > 0 && (
+              <div className="ds-panel bg-brand-surface border border-brand-border rounded-2xl px-3 py-2.5 space-y-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[11px] text-brand-muted">{t('character.title')}</p>
+                  <p className="text-[9.5px] text-brand-muted/70 tabular-nums">
+                    {t('career.n_matches', { count: character.matches })}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {character.traits.map((code) => (
+                    <span
+                      key={code}
+                      className="px-2 py-0.5 rounded-full border border-brand-accent/40
+                                 text-brand-accent text-[10.5px]"
+                    >
+                      {t(`character.${code}`, { defaultValue: code })}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[9.5px] text-brand-muted/70 tabular-nums">
+                  {character.gf_pm} : {character.ga_pm} · {t('character.measured')}
+                </p>
+              </div>
+            )}
 
             {/* СТОИМОСТЬ СОСТАВА — сумма по тем, кого удалось оценить, и
                 рядом видно, скольких. Показывается с пяти оценённых: тот же

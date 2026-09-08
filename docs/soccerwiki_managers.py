@@ -154,9 +154,17 @@ def main():
             born = parse_born(fetch(f"{BASE}/football-manager.php?mid={mid}"))
         line = f"{i}/{len(clubs)} {c['name']}: {name} ({country or '—'}, {born or 'др неизв'})"
         if apply:
+            # ⚠️ ИДЕНТИФИКАТОР КЛУБА ИСТОЧНИКА ПЕРЕДАЁТСЯ НАРОЧНО. Под одним
+            # нашим ключом может лежать НЕСКОЛЬКО клубов Soccer Wiki:
+            # «Barcelona SC» (Эквадор) свернулась в тот же `barcelona`, что и
+            # каталонская. Без этого поля сборщик писал тренера каждого по
+            # очереди, и «Барселону» возглавлял тренер эквадорцев — 22 ключа
+            # собирают на себя 47 клубов источника. Кто главный клуб ключа,
+            # решает SQL: по числу связанных с колодой игроков.
             res = sb("rpc/apply_club_manager", "POST", {
                 "p_club_key": c["club_key"], "p_sw_mid": mid, "p_name": name,
                 "p_country": country, "p_born_on": born, "p_photo_url": photo,
+                "p_sw_club_id": c["club_id"],
             })
             wrote += 1
             print(f"{line} — {res}")

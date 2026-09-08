@@ -1156,5 +1156,17 @@
     "role_target_man": "Attaquant pivot",
     "role_finisher": "Finisseur",
     "role_general_forward": "Attaquant polyvalent"
+  },
+  "character": {
+    "title": "Caractère",
+    "attacking": "Offensif",
+    "defensive": "Défensif",
+    "complete": "Complet",
+    "open": "Jeu ouvert",
+    "closed": "Jeu fermé",
+    "home": "Fort à domicile",
+    "steady": "Régulier",
+    "streaky": "Irrégulier",
+    "measured": "Mesuré sur les matchs, non attribué"
   }
 }

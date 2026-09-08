@@ -1156,5 +1156,17 @@
     "role_target_man": "Target man",
     "role_finisher": "Finisher",
     "role_general_forward": "All-round forward"
+  },
+  "character": {
+    "title": "Character",
+    "attacking": "Attacking",
+    "defensive": "Defensive",
+    "complete": "Complete",
+    "open": "Open football",
+    "closed": "Closed football",
+    "home": "Strong at home",
+    "steady": "Steady",
+    "streaky": "Streaky",
+    "measured": "Measured from matches, not assigned"
   }
 }

@@ -1156,5 +1156,17 @@
     "role_target_man": "Centroavante de referência",
     "role_finisher": "Finalizador",
     "role_general_forward": "Atacante versátil"
+  },
+  "character": {
+    "title": "Carácter",
+    "attacking": "Ofensivo",
+    "defensive": "Defensivo",
+    "complete": "Completo",
+    "open": "Futebol aberto",
+    "closed": "Futebol fechado",
+    "home": "Forte em casa",
+    "steady": "Regular",
+    "streaky": "Irregular",
+    "measured": "Medido pelos jogos, não atribuído"
   }
 }

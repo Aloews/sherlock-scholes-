@@ -1703,6 +1703,56 @@ async function checkClubMerge() {
          ghostEmpty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------------- характер команды -------
+// Владелец: «характер тренера определяет характер команды, но характера
+// тренеров меняются со временем». Поэтому характер не подписан, а СЧИТАЕТСЯ
+// из матчей и пересобирается ночью. Разбор — supabase/migrations/club_character.sql.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «ЕСТЬ СТРОКА», А ЧТО СЛОВА СХОДЯТСЯ С ЧИСЛАМИ. Ярлык,
+// который не следует из чисел рядом, — это мнение, выданное за наблюдение.
+async function checkClubCharacter() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Характер команды', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const rows = await fetch(
+    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits&limit=400`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const list = Array.isArray(rows) ? rows : [];
+
+  record('Характер команды: посчитан', list.length >= 100,
+         `${list.length} клубов с характером`,
+         'ловит остановившуюся ночную пересборку и отозванный грант');
+
+  // Слово обязано следовать из числа: у «атакующего» перцентиль атаки не
+  // ниже 70, у «оборонительного» — обороны. Иначе ярлык живёт своей жизнью.
+  const wrong = list.filter((r) => {
+    const t = r.traits ?? [];
+    if (t.includes('attacking') && (r.attack ?? 0) < 70) return true;
+    if (t.includes('defensive') && (r.defence ?? 0) < 70) return true;
+    if (t.includes('complete') && ((r.attack ?? 0) < 70 || (r.defence ?? 0) < 70)) return true;
+    return false;
+  });
+  record('Характер команды: слова сходятся с числами', wrong.length === 0,
+         wrong.length === 0 ? 'у всех черт есть число, из которого они следуют'
+                            : `${wrong.length} строк с ярлыком не по числам`,
+         'ловит разъехавшиеся пороги в SQL и на экране');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: черта обязана быть РЕДКОЙ. Порог 70/30 и
+  // означает, что «атакующих» примерно треть, а не половина и не все. Если
+  // ярлык стоит у подавляющего большинства — он ничего не различает, и
+  // проверка выше зелена бессмысленно.
+  const attacking = list.filter((r) => (r.traits ?? []).includes('attacking')).length;
+  const share = list.length ? attacking / list.length : 0;
+  record('Характер команды: контроль редкости', list.length > 0 && share > 0 && share < 0.5,
+         `«атакующих» ${attacking} из ${list.length} (${Math.round(share * 100)}%)`,
+         (share > 0 && share < 0.5) ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1724,6 +1774,7 @@ await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
 await checkClubManagers();
 await checkClubMerge();
+await checkClubCharacter();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
