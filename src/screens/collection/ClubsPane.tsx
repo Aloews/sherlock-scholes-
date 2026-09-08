@@ -6,6 +6,7 @@ import { fetchClubDirectory, type ClubDirectoryRow, type ClubKind } from '@/feat
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { Chip } from '@/shared/ui/Chip';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { formatEur } from '@/shared/lib/money';
 
 /**
  * Список команд — вход на экран команды. Половина раздела «Коллекция».
@@ -133,8 +134,23 @@ export function ClubsPane() {
                 {[c.country, c.league].filter(Boolean).join(' · ')}
               </p>
             </div>
-            {/* Что есть у команды — чтобы не заходить наугад. */}
+            {/* ⚠️ ПЕРВЫМ ЧИСЛОМ — ТО, ПО ЧЕМУ СПИСОК УПОРЯДОЧЕН. Владелец:
+                «рейтинг команд не сортируется от лучшей к самой не
+                результативной». Порядок теперь от сильной к слабой, и число,
+                которое его задаёт, стоит рядом: иначе порядок читается как
+                случайный — ровно та жалоба и была. Уровня нет у четырёх
+                пятых клубов, поэтому там показывается стоимость состава,
+                по ней они и стоят. */}
             <div className="text-right shrink-0">
+              {c.level != null ? (
+                <p className="text-brand-accent text-[11px] font-semibold tabular-nums">
+                  {c.level}
+                </p>
+              ) : c.squad_value ? (
+                <p className="text-brand-accent text-[10.5px] tabular-nums">
+                  {formatEur(c.squad_value, i18n.language)}
+                </p>
+              ) : null}
               <p className="text-brand-muted text-[10.5px] tabular-nums">
                 {t('clubs.players', { count: c.squad })}
               </p>

@@ -504,7 +504,11 @@
     "minutes": "Minutos",
     "national": "Pela {{team}} — {{apps}} jogos, {{goals}} gols",
     "club_line": "{{matches}} j · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} jogos · {{goals}} gols"
+    "row_numbers": "{{matches}} jogos · {{goals}} gols",
+    "n_matches_one": "{{count}} jogo",
+    "n_matches_other": "{{count}} jogos",
+    "n_goals_one": "{{count}} gol",
+    "n_goals_other": "{{count}} gols"
   },
   "facts": {
     "caps_one": "{{count}} jogo pela seleção",

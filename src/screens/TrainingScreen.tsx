@@ -341,9 +341,15 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
       const club = cleanClub(rawClub);
       if (!club) return null;
       const y = years ? ` ${shortYears(years)}` : '';
+      // ⚠️ `career.n_matches`, А НЕ `career.matches`. Второй — ЗАГОЛОВОК
+      // СТОЛБЦА («Матчи»), в нём нет ни `{{count}}`, ни форм множественного
+      // числа. Строка звала его со счётчиком и печатала голое «Матчи, Голы»
+      // без единого числа — владелец увидел ровно это: «там просто написано
+      // „матчи“ „голы“ без данных». Один ключ на две разные надписи молчит:
+      // i18next не жалуется на лишний `count`, он его просто не подставляет.
       const stats = apps != null
-        ? ` · ${t('career.matches', { count: apps })}` +
-          (goals != null ? `, ${t('career.goals', { count: goals })}` : '')
+        ? ` · ${t('career.n_matches', { count: apps })}` +
+          (goals != null ? `, ${t('career.n_goals', { count: goals })}` : '')
         : '';
       return `${club}${y}${stats}`.trim();
     };

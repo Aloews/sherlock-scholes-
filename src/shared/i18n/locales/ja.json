@@ -491,7 +491,9 @@
     "minutes": "出場時間",
     "national": "{{team}} 代表 — {{apps}} 試合 {{goals}} 得点",
     "club_line": "{{matches}} 試 · {{goals}} 点 · {{assists}} 助",
-    "row_numbers": "{{matches}}試合 · {{goals}}得点"
+    "row_numbers": "{{matches}}試合 · {{goals}}得点",
+    "n_matches_other": "{{count}}試合",
+    "n_goals_other": "{{count}}ゴール"
   },
   "facts": {
     "caps_other": "代表 {{count}} 試合",

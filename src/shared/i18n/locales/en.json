@@ -504,7 +504,11 @@
     "minutes": "Minutes",
     "national": "For {{team}} — {{apps}} caps, {{goals}} goals",
     "club_line": "{{matches}} m · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} apps · {{goals}} goals"
+    "row_numbers": "{{matches}} apps · {{goals}} goals",
+    "n_matches_one": "{{count}} match",
+    "n_matches_other": "{{count}} matches",
+    "n_goals_one": "{{count}} goal",
+    "n_goals_other": "{{count}} goals"
   },
   "facts": {
     "caps_one": "{{count}} cap",

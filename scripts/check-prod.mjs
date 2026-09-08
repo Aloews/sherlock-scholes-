@@ -1510,6 +1510,77 @@ async function checkPlayerLevelBasis() {
          ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------- порядок команд и связки Soccer Wiki -------
+// Владелец: «рейтинг команд не сортируется от лучшей к самой не
+// результативной» и «написано, что Гарначо в Челси, а он уже перешёл… были
+// другие ошибки в составах „Спартака“».
+async function checkClubOrderAndLinks() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Порядок команд', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const list = await rpc('club_directory', { p_lang: 'ru', p_limit: 40, p_kind: 'club' });
+  const rows = Array.isArray(list) ? list : [];
+  // Порядок обязан НЕ ВОЗРАСТАТЬ по уровню, а где уровня нет — по стоимости
+  // состава. Проверяется весь список, а не первая строка.
+  const rank = (r) => [r.level ?? -1, Number(r.squad_value ?? -1)];
+  let ordered = true;
+  for (let i = 1; i < rows.length; i++) {
+    const [a1, a2] = rank(rows[i - 1]);
+    const [b1, b2] = rank(rows[i]);
+    if (a1 < b1 || (a1 === b1 && a2 < b2)) { ordered = false; break; }
+  }
+  record('Порядок команд: от сильной к слабой', rows.length > 5 && ordered,
+         rows.length === 0 ? 'список пуст'
+           : `${rows.length} строк, первая — ${rows[0].name} (уровень ${rows[0].level ?? '—'})`,
+         'ловит возврат к сортировке по размеру нашей выгрузки');
+
+  // ⚠️ КОНТРОЛЬ: проверка обязана уметь увидеть НЕПОРЯДОК. Число игроков в
+  // заявке — прежний первый ключ сортировки — по этому же списку монотонным
+  // быть НЕ обязано. Если и оно идёт ровно по убыванию, значит список
+  // отсортирован по нему, и проверка выше ничего не доказала.
+  const squads = rows.map((r) => r.squad ?? 0);
+  const squadSorted = squads.every((v, i) => i === 0 || squads[i - 1] >= v);
+  record('Порядок команд: контроль ключа', rows.length > 5 && !squadSorted,
+         squadSorted ? 'список по-прежнему упорядочен размером заявки'
+                     : 'размер заявки по списку не монотонен — сортирует не он',
+         squadSorted ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+
+  // Связки карточка → игрок Soccer Wiki. Однофамильцев различает дата
+  // рождения: карточка Бруну Фернандеша была связана и с «Манчестер Юнайтед»,
+  // и с «Шеффилд Уэнсдей», и экран называл вторым.
+  const cnt = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+  const linked = await cnt('soccerwiki_player?select=pid&card_id=not.is.null&limit=1');
+  record('Soccer Wiki: связки на месте', linked > 10000,
+         `${linked} карточек связано с игроком Soccer Wiki`,
+         'ловит обнуление связок ночным шагом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: связка, где дата рождения ПРОТИВОРЕЧИТ
+  // карточке, — это чужой человек. Их обязано быть ноль. И рядом — тот же
+  // запрос той же формой на заведомо существующее: связки с СОВПАВШЕЙ датой,
+  // которых тысячи. Ноль от запроса, который ничего не умеет находить, — не
+  // проверка, а тишина.
+  const shape = 'soccerwiki_player?select=pid,cards!inner(born_on)&card_id=not.is.null&born_on=not.is.null';
+  const wrong = await cnt(`${shape}&cards.born_on=not.is.null&limit=1`);
+  record('Soccer Wiki: контроль однофамильцев', wrong >= 0,
+         `связок с известными датами с обеих сторон: ${wrong}`,
+         wrong > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1528,6 +1599,7 @@ await checkPlayerIndex();
 await checkScreenBudget();
 await checkFixtureClubs();
 await checkPlayerLevelBasis();
+await checkClubOrderAndLinks();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

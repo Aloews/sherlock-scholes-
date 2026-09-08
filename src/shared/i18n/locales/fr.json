@@ -504,7 +504,11 @@
     "minutes": "Minutes",
     "national": "Avec {{team}} — {{apps}} sélections, {{goals}} buts",
     "club_line": "{{matches}} m · {{goals}} b · {{assists}} p",
-    "row_numbers": "{{matches}} m. · {{goals}} buts"
+    "row_numbers": "{{matches}} m. · {{goals}} buts",
+    "n_matches_one": "{{count}} match",
+    "n_matches_other": "{{count}} matchs",
+    "n_goals_one": "{{count}} but",
+    "n_goals_other": "{{count}} buts"
   },
   "facts": {
     "caps_one": "{{count}} sélection",

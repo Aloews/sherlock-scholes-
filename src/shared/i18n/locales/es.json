@@ -504,7 +504,11 @@
     "minutes": "Minutos",
     "national": "Con {{team}} — {{apps}} partidos, {{goals}} goles",
     "club_line": "{{matches}} p · {{goals}} g · {{assists}} a",
-    "row_numbers": "{{matches}} part. · {{goals}} goles"
+    "row_numbers": "{{matches}} part. · {{goals}} goles",
+    "n_matches_one": "{{count}} partido",
+    "n_matches_other": "{{count}} partidos",
+    "n_goals_one": "{{count}} gol",
+    "n_goals_other": "{{count}} goles"
   },
   "facts": {
     "caps_one": "{{count}} internacionalidad",

@@ -491,7 +491,9 @@
     "minutes": "출전 시간",
     "national": "{{team}} 대표 — {{apps}}경기 {{goals}}골",
     "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도",
-    "row_numbers": "{{matches}}경기 · {{goals}}골"
+    "row_numbers": "{{matches}}경기 · {{goals}}골",
+    "n_matches_other": "{{count}}경기",
+    "n_goals_other": "{{count}}골"
   },
   "facts": {
     "caps_other": "국가대표 {{count}}경기",

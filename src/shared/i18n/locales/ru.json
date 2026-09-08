@@ -530,7 +530,15 @@
     "minutes": "Минуты",
     "national": "За {{team}} — {{apps}} матчей, {{goals}} голов",
     "club_line": "{{matches}} м · {{goals}} г · {{assists}} п",
-    "row_numbers": "{{matches}} м · {{goals}} г"
+    "row_numbers": "{{matches}} м · {{goals}} г",
+    "n_matches_one": "{{count}} матч",
+    "n_matches_few": "{{count}} матча",
+    "n_matches_many": "{{count}} матчей",
+    "n_matches_other": "{{count}} матчей",
+    "n_goals_one": "{{count}} гол",
+    "n_goals_few": "{{count}} гола",
+    "n_goals_many": "{{count}} голов",
+    "n_goals_other": "{{count}} голов"
   },
   "facts": {
     "caps_one": "{{count}} матч {{team}}",

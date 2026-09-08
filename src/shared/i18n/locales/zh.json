@@ -491,7 +491,9 @@
     "minutes": "出场时间",
     "national": "代表 {{team}} — {{apps}} 场 {{goals}} 球",
     "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
-    "row_numbers": "{{matches}} 场 · {{goals}} 球"
+    "row_numbers": "{{matches}} 场 · {{goals}} 球",
+    "n_matches_other": "{{count}} 场",
+    "n_goals_other": "{{count}} 球"
   },
   "facts": {
     "caps_other": "国家队出场 {{count}} 次",

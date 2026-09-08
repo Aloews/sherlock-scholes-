@@ -125,6 +125,12 @@ export interface ClubDirectoryRow {
   crest_url: string | null;
   squad: number;
   matches: number;
+  /** Уровень клуба по сыгранным матчам (0..100). Есть у 507 клубов из 2 719 —
+   *  сортировка держится на нём, а где его нет, на стоимости состава. */
+  level: number | null;
+  /** Сумма стоимости состава. Второй ключ порядка и причина, по которой клуб
+   *  без единого сыгранного матча всё равно стоит на своём месте. */
+  squad_value: number | null;
 }
 
 export async function fetchClubProfile(
