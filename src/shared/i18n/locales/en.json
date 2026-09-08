@@ -1171,6 +1171,21 @@
     "home": "Strong at home",
     "steady": "Steady",
     "streaky": "Streaky",
-    "measured": "Measured from matches, not assigned"
+    "measured": "Measured from matches, not assigned",
+    "match_title": "Match character",
+    "match_goals_low": "Few goals",
+    "match_goals_mid": "Goals expected",
+    "match_goals_high": "High-scoring",
+    "match_flow_closed": "Tight game",
+    "match_flow_balanced": "Even flow",
+    "match_flow_open": "Open game",
+    "match_expected": "Goals expected",
+    "match_coach": "Coach",
+    "match_per_match": "per match",
+    "match_writing": "In the news",
+    "match_unknown": "Character not measured: one of the teams has played too few matches.",
+    "match_no_injuries": "No source of ours has injuries or board demands — so they are not shown.",
+    "match_basis_one": "Measured over {{count}} match on each side, not assumed",
+    "match_basis_other": "Measured over {{count}} matches on each side, not assumed"
   }
 }

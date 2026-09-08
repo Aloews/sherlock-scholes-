@@ -1511,6 +1511,86 @@ async function checkLocalGoals() {
          nullEmpty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------------ характер матча ----------
+// Владелец: «доделай анализ характера матча по кнопке в прогнозах».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «RPC ОТВЕЧАЕТ», А ТО, ЧТО ОТВЕТ ГОДЕН ДЛЯ ЭКРАНА. Первый
+// же боевой прогон этой функции показал по «Барселоне» ТРЕНЕРА ЭКВАДОРСКОГО
+// клуба: имя лежало в двух местах, и снимок отставал. Поэтому здесь есть
+// отдельная проверка на тренера — она бы это поймала.
+async function checkMatchCharacter() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Характер матча', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const soon = await fetch(
+    `${url}/rest/v1/fixtures?select=id&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=40`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const ids = Array.isArray(soon) ? soon.map((f) => f.id) : [];
+  if (ids.length === 0) {
+    record('Характер матча', false, 'ближайших матчей нет вовсе — проверять нечего', 'н/д');
+    return;
+  }
+
+  // Матчи перебираются по одному, пока не найдётся измеренный: характер есть у
+  // 366 клубов, и у доброй половины ближайших матчей одна сторона без него.
+  // Это норма, а не поломка, — но проверять содержимое надо на измеренном.
+  let measured = null;
+  let ms = 0;
+  let tried = 0;
+  for (const id of ids.slice(0, 12)) {
+    const t0 = Date.now();
+    const rows = await rpc('match_character', { p_fixture_id: id, p_lang: 'ru' });
+    ms = Math.max(ms, Date.now() - t0);
+    tried += 1;
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (row && row.expected_goals !== null) { measured = row; break; }
+  }
+
+  record('Характер матча: измеренный матч находится', measured !== null,
+         measured ? `${measured.home_name} — ${measured.away_name}, ожидание ${measured.expected_goals} гола, открытость ${measured.openness}`
+                  : `на ${tried} ближайших матчах характера нет ни у одного`,
+         'ловит пустой club_character и отозванный грант');
+
+  // ⚠️ ВРЕМЯ, А НЕ ТОЛЬКО СОДЕРЖИМОЕ. Внутри вызова сидят новости обоих клубов
+  // (217 мс на клуб), и лимит anon — три секунды. Порог 1500 мс вдвое ниже
+  // лимита, чтобы отставание краснело, пока запас ещё есть.
+  record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 1500,
+         `${ms} мс на вызов`,
+         'ловит возврат дорогого club_news в горячий путь');
+
+  // ⚠️ ТРЕНЕР — ОТДЕЛЬНОЙ ПРОВЕРКОЙ, И ВОТ ПОЧЕМУ. Он читается из club_manager;
+  // копия в club_character убрана как раз потому, что отставала на 35 клубах.
+  // Вернётся копия — вернётся и чужой тренер, а по виду блок будет исправен.
+  if (measured) {
+    const both = Boolean(measured.home_manager) && Boolean(measured.away_manager);
+    record('Характер матча: тренеры обеих сторон', both,
+           both ? `${measured.home_manager} и ${measured.away_manager}`
+                : `дома «${measured.home_manager ?? '—'}», в гостях «${measured.away_manager ?? '—'}»`,
+           'ловит развалившуюся связь club_manager с клубом');
+  }
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный матч обязан дать пусто. Не дал —
+  // функция отвечает не на то, о чём её спросили.
+  const bogus = await rpc('match_character', { p_fixture_id: 'нет-такого-матча-zz', p_lang: 'ru' });
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Характер матча: контроль отбора', empty,
+         empty ? 'по выдуманному матчу пусто, как и должно'
+               : `выдуманный матч вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------- уровень действующего игрока ---------
 // Владелец: «уровень игроков, которые ещё не завершили карьеру, лучше
 // определять по стоимости и рейтингу». До этого `level` строился на `fame` —
@@ -1941,6 +2021,7 @@ await checkPlayerIndex();
 await checkScreenBudget();
 await checkFixtureClubs();
 await checkLocalGoals();
+await checkMatchCharacter();
 await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
 await checkClubManagers();

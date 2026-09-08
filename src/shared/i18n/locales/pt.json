@@ -1171,6 +1171,21 @@
     "home": "Forte em casa",
     "steady": "Regular",
     "streaky": "Irregular",
-    "measured": "Medido pelos jogos, não atribuído"
+    "measured": "Medido pelos jogos, não atribuído",
+    "match_title": "Carácter do jogo",
+    "match_goals_low": "Poucos golos",
+    "match_goals_mid": "Haverá golos",
+    "match_goals_high": "Muitos golos",
+    "match_flow_closed": "Jogo fechado",
+    "match_flow_balanced": "Ritmo equilibrado",
+    "match_flow_open": "Jogo aberto",
+    "match_expected": "Golos esperados",
+    "match_coach": "Treinador",
+    "match_per_match": "por jogo",
+    "match_writing": "Na imprensa",
+    "match_unknown": "Carácter não medido: uma das equipas jogou poucos jogos.",
+    "match_no_injuries": "Nenhuma das nossas fontes tem lesões nem exigências da direção; por isso não aparecem.",
+    "match_basis_one": "Medido em {{count}} jogo de cada lado, não presumido",
+    "match_basis_other": "Medido em {{count}} jogos de cada lado, não presumido"
   }
 }

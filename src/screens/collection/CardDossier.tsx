@@ -27,7 +27,7 @@ import {
   type CollectedTotals, type MetricChange, type CareerTotalsRow,
 } from '@/features/ratings/ratingsApi';
 import {
-  fetchClubOfCard, fetchCardValueTrend, fetchClubsByNames,
+  fetchClubOfCard, fetchCardValueTrend, fetchClubsByNames, fetchClubKeyOfCard,
   type CardClub, type CardValueTrend, type ClubByName,
 } from '@/features/clubs/clubsApi';
 import {
@@ -69,6 +69,33 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   const navigate = useNavigate();
   const lang = i18n.language;
   const isRu = lang.startsWith('ru');
+
+  // ⚠️ КАРТОЧКА-КЛУБ ВЕДЁТ НА ЭКРАН КОМАНДЫ, А НЕ В ДОСЬЕ ИГРОКА.
+  //
+  // В колоде 1262 карточки категории `club`, и до этой правки они открывались
+  // тем же досье, что и футболист: пустая карьера, пустая статистика, ни
+  // состава, ни эмблемы, ни тренера. Владелец: «вид команды в „коллекциях“
+  // приведи к такому же виду, как на экране „команды и статистика“». Тот же
+  // вид — это и есть экран команды, и правильнее не копировать его сюда, а
+  // отвести на него: две копии одного экрана разойдутся молча.
+  //
+  // ⚠️ ПОКА КЛЮЧ НЕ НАЙДЕН, ДОСЬЕ НЕ РИСУЕТСЯ — иначе читатель успел бы
+  // увидеть чужую верстку и её подмену. У 28 карточек из 1262 клуба в
+  // справочнике нет вовсе; для них ожидание кончается, и досье показывается
+  // как прежде — пустоватое, но честное.
+  const isClubCard = card.category === 'club';
+  const [clubKey, setClubKey] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!isClubCard) { setClubKey(null); return; }
+    let cancelled = false;
+    setClubKey(undefined);
+    void fetchClubKeyOfCard(card.id).then((k) => { if (!cancelled) setClubKey(k); });
+    return () => { cancelled = true; };
+  }, [card.id, isClubCard]);
+
+  useEffect(() => {
+    if (isClubCard && clubKey) navigate(`/club/${encodeURIComponent(clubKey)}`, { replace: true });
+  }, [isClubCard, clubKey, navigate]);
 
   // Текущий клуб — ссылка на экран команды. Грузится молча и отдельно: у
   // легенды его нет и не должно быть, и это норма, а не поломка.
@@ -316,6 +343,18 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
       return card.market_value_at;
     }
   })();
+
+  // ⚠️ ПОКА КЛЮЧ КЛУБА ИЩЕТСЯ — НЕ РИСУЕМ ДОСЬЕ. Иначе читатель на долю
+  // секунды видит верстку досье игрока, и она сменяется экраном команды: это
+  // читается как сбой, а не как переход. У карточек без клуба ожидание
+  // кончается на null, и досье показывается как прежде.
+  if (isClubCard && clubKey === undefined) {
+    return (
+      <div className="fixed inset-0 z-50 bg-brand-bg ds-screen grid place-items-center">
+        <p className="text-brand-muted text-sm">{t('digest.loading')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-brand-bg ds-screen overflow-y-auto animate-slide-up">
