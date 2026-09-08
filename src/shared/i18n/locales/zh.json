@@ -180,7 +180,7 @@
     "fame_home": "本国",
     "fame_world": "全球",
     "value": "身价",
-    "value_source": "来源：{{source}}",
+    "value_source": "Transfermarkt，截至 {{date}}",
     "value_source_at": "{{source}}，{{date}} 估值",
     "dynamics": "指标变化",
     "dyn_window": "近 90 天",
@@ -205,7 +205,10 @@
     "search_empty": "没有匹配项",
     "view_cards": "卡牌",
     "view_clubs": "球队",
-    "view_stats": "数据"
+    "view_stats": "数据",
+    "value_growth_up": "90 天内上涨 {{n}}%",
+    "value_growth_down": "90 天内下跌 {{n}}%",
+    "value_growth_none": "自 {{date}} 起记录变动"
   },
   "profile": {
     "title": "个人资料",

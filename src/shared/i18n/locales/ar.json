@@ -185,7 +185,7 @@
     "fame_home": "في بلده",
     "fame_world": "حول العالم",
     "value": "القيمة السوقية",
-    "value_source": "المصدر: {{source}}",
+    "value_source": "Transfermarkt، حتى {{date}}",
     "value_source_at": "{{source}}، تقييم {{date}}",
     "dynamics": "تغيّر المؤشرات",
     "dyn_window": "خلال 90 يومًا",
@@ -210,7 +210,10 @@
     "search_empty": "لا نتائج مطابقة",
     "view_cards": "البطاقات",
     "view_clubs": "الفرق",
-    "view_stats": "الإحصائيات"
+    "view_stats": "الإحصائيات",
+    "value_growth_up": "ارتفعت {{n}}% خلال 90 يومًا",
+    "value_growth_down": "انخفضت {{n}}% خلال 90 يومًا",
+    "value_growth_none": "تُسجَّل التغييرات منذ {{date}}"
   },
   "profile": {
     "title": "الملف الشخصي",

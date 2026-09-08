@@ -409,3 +409,41 @@ export async function fetchLeagueTable(
   });
   return fromPostgrest<LeagueTableRow[]>(res, `league_table(${tournament})`);
 }
+
+// ---------------------------------------------------------------------------
+// СТОИМОСТЬ КАК ОСНОВНОЕ МЕРИЛО ИГРОКА.
+//
+// Владелец: «скрой этот показатель [уровень] и основным сделай стоимость, она
+// лучше отражает рейтинг игрока; нужно просто записывать изменение стоимости в
+// карточке, так будет ясно повышается уровень игрока или нет».
+//
+// ⚠️ УРОВЕНЬ УБРАН С КАРТОЧКИ, НО НЕ ИЗ БАЗЫ. Его по-прежнему читают рейтинг
+// футболистов и уровень состава в прогнозах — там он к месту. На карточке он
+// упирался в сотню у слишком многих: перцентиль, округлённый до целого, на
+// верхушке не различает, и «98–100» переставало что-либо значить.
+//
+// ⚠️ ИЗМЕНЕНИЕ ПОКА НЕ ПОКАЗАТЬ, И ЭТО НАДО ГОВОРИТЬ ПРЯМО. `card_metric_history`
+// заведена 06.09.2026: на 25 509 карточек ровно 25 509 записей, то есть по
+// одной. Второй точки нет НИ У ОДНОЙ, а значит и роста нет. Ночной снимок
+// пишет изменения дальше сам; до второй точки карточка показывает стоимость и
+// дату, а не выдуманную стрелку.
+export interface CardValueTrend {
+  value_eur: number | null;
+  value_at: string | null;
+  prev_eur: number | null;
+  prev_at: string | null;
+  /** Отношение «сейчас / 90 дней назад». null — второй точки ещё нет. */
+  growth: number | null;
+  points: Array<{ d: string; v: number }>;
+}
+
+/** Отказ и отсутствие — одинаковый null: карточка в обоих случаях молчит. */
+export async function fetchCardValueTrend(cardId: string): Promise<CardValueTrend | null> {
+  const res = await supabase.rpc('card_value_trend', { p_card_id: cardId, p_points: 8 });
+  if (res.error) {
+    console.error('[card_value_trend]', res.error.code ?? '', res.error.message);
+    return null;
+  }
+  const row = Array.isArray(res.data) ? res.data[0] : res.data;
+  return (row as CardValueTrend) ?? null;
+}

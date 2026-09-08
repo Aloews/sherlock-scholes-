@@ -182,7 +182,7 @@
     "fame_home": "En su país",
     "fame_world": "En el mundo",
     "value": "Valor de mercado",
-    "value_source": "Fuente: {{source}}",
+    "value_source": "Transfermarkt, a {{date}}",
     "value_source_at": "{{source}}, tasación de {{date}}",
     "dynamics": "Evolución de los indicadores",
     "dyn_window": "en 90 días",
@@ -207,7 +207,10 @@
     "search_empty": "No hay coincidencias",
     "view_cards": "Cartas",
     "view_clubs": "Equipos",
-    "view_stats": "Estadísticas"
+    "view_stats": "Estadísticas",
+    "value_growth_up": "subió {{n}}% en 90 días",
+    "value_growth_down": "bajó {{n}}% en 90 días",
+    "value_growth_none": "los cambios se registran desde {{date}}"
   },
   "profile": {
     "title": "Perfil",

@@ -26,8 +26,8 @@ import {
   type CollectedTotals, type MetricChange, type CareerTotalsRow,
 } from '@/features/ratings/ratingsApi';
 import {
-  fetchClubOfCard, fetchPlayerLevel, fetchClubsByNames,
-  type CardClub, type PlayerLevel, type ClubByName,
+  fetchClubOfCard, fetchCardValueTrend, fetchClubsByNames,
+  type CardClub, type CardValueTrend, type ClubByName,
 } from '@/features/clubs/clubsApi';
 import {
   fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
@@ -172,17 +172,25 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     ? (isRu ? TIER_LABEL_RU : TIER_LABEL_EN)[card.tier]
     : null;
 
-  // Уровень — ТО ЖЕ ЧИСЛО, что показывает рейтинг футболистов. Грузится
-  // молча: у неигровой карточки его нет и не должно быть.
-  const [level, setLevel] = useState<PlayerLevel | null>(null);
+  // Стоимость и её изменение — основное мерило игрока. Грузится молча: у
+  // неигровой карточки истории нет и не должно быть.
+  const [trend, setTrend] = useState<CardValueTrend | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setLevel(null);
-    void fetchPlayerLevel(card.id).then((r) => {
-      if (!cancelled && r.status === 'ok') setLevel(r.data);
-    });
+    setTrend(null);
+    void fetchCardValueTrend(card.id).then((r) => { if (!cancelled) setTrend(r); });
     return () => { cancelled = true; };
   }, [card.id]);
+
+  /** Дата коротко, на языке читателя. */
+  const dateFmt = (iso: string): string => {
+    try {
+      return new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
+        .format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  };
 
   // Quick facts — only the tiles that actually have a value.
   const flag = isoToFlag(card.country);
@@ -520,23 +528,41 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             это история, а это то, где он сейчас. Раньше клуб на досье был
             просто текстом, и путь «игрок → его команда → остальной состав»
             обрывался на первом шаге. */}
-        {/* УРОВЕНЬ. Ставится перед клубом и карьерой, потому что это ответ на
-            первый вопрос про футболиста — «насколько он хорош». Подпись
-            обязательна: при basis = 'fame' число построено на просмотрах
-            википедии и про игру не говорит НИЧЕГО, и показать его без
-            оговорки значило бы выдать известность за мастерство. */}
-        {level && (
+        {/* СТОИМОСТЬ — ОСНОВНОЕ МЕРИЛО ИГРОКА. Ставится перед клубом и
+            карьерой, потому что это ответ на первый вопрос про футболиста —
+            «насколько он хорош».
+
+            ⚠️ УРОВЕНЬ ОТСЮДА УБРАН, И ЭТО РЕШЕНИЕ ВЛАДЕЛЬЦА, А НЕ ПОТЕРЯ.
+            «Скрой этот показатель и основным сделай стоимость, она лучше
+            отражает рейтинг игрока». Он был прав и по существу: уровень —
+            перцентиль, округлённый до целого, и на верхушке в сотню упирались
+            слишком многие — «98–100» переставало что-либо значить. В базе
+            уровень остался, его читают рейтинг футболистов и уровень состава
+            в прогнозах: там он к месту.
+
+            ⚠️ ИЗМЕНЕНИЕ ПОКАЗЫВАЕТСЯ, ТОЛЬКО КОГДА ОНО ЕСТЬ. История
+            стоимостей заведена 06.09.2026, и на 25 509 карточек в ней ровно
+            25 509 записей — по одной. Второй точки нет ни у кого, роста
+            посчитать не из чего, и вместо стрелки честнее сказать, с какого
+            дня мы вообще пишем изменения. Ночной снимок наполняет историю
+            сам, и строка появится, когда появится. */}
+        {marketValue && (
           <div className="ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5
                           flex items-center gap-3">
-            <span className="ds-display text-brand-accent text-2xl font-black tabular-nums leading-none">
-              {level.level}
+            <span className="ds-display text-brand-accent text-xl font-black tabular-nums leading-none">
+              {marketValue}
             </span>
             <span className="min-w-0">
               <span className="block text-brand-muted text-[10px] uppercase tracking-wide">
-                {t('collection.level')}
+                {t('collection.value')}
               </span>
               <span className="block text-[11.5px] text-white/80">
-                {t(`collection.level_basis_${level.basis.replace('+', '_')}`)}
+                {trend?.growth != null && trend.growth !== 1
+                  ? t(trend.growth > 1 ? 'collection.value_growth_up' : 'collection.value_growth_down',
+                      { n: Math.abs(Math.round((trend.growth - 1) * 100)) })
+                  : trend?.value_at
+                    ? t('collection.value_growth_none', { date: dateFmt(trend.value_at) })
+                    : t('collection.value_source', { date: '—' })}
               </span>
             </span>
           </div>

@@ -186,7 +186,7 @@
     "fame_home": "Дома",
     "fame_world": "В мире",
     "value": "Стоимость",
-    "value_source": "Источник: {{source}}",
+    "value_source": "Transfermarkt, на {{date}}",
     "value_source_at": "{{source}}, оценка от {{date}}",
     "dynamics": "Динамика показателей",
     "dyn_window": "за 90 дней",
@@ -211,7 +211,10 @@
     "search_empty": "По запросу ничего не нашлось",
     "view_cards": "Карточки",
     "view_clubs": "Команды",
-    "view_stats": "Статистика"
+    "view_stats": "Статистика",
+    "value_growth_up": "выросла на {{n}}% за 90 дней",
+    "value_growth_down": "упала на {{n}}% за 90 дней",
+    "value_growth_none": "изменения записываются с {{date}}"
   },
   "profile": {
     "title": "Профиль",

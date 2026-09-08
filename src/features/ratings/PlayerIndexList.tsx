@@ -35,7 +35,13 @@ import {
 export function PlayerIndexList({ limit }: { limit?: number }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [sort, setSort] = useState<IndexSort>('index');
+  // ⚠️ ПО УМОЛЧАНИЮ — СТОИМОСТЬ, А НЕ СВОДНЫЙ ИНДЕКС. Владелец: «сделай
+  // основным мерилом игрока стоимость, она лучше отражает рейтинг игрока».
+  // Сводный индекс никуда не делся — он первой кнопкой рядом, — но открывается
+  // список тем, чему владелец доверяет как мере. Заодно у стоимости есть
+  // разрешение там, где у перцентиля его нет: индекс на верхушке упирался в
+  // сотню у слишком многих.
+  const [sort, setSort] = useState<IndexSort>('value');
   // Тот же отбор, что в коллекции и в рейтинге, и тем же компонентом.
   const [filter, setFilter] = useState<CollectionFilter>({});
   // Континент — отдельным рядом, а не внутри ScopeFilter: тот собран из

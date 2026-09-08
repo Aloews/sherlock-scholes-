@@ -1753,6 +1753,69 @@ async function checkClubCharacter() {
          (share > 0 && share < 0.5) ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// --------------------------------------- стоимость как мерило игрока -------
+// Владелец: «скрой этот показатель [уровень] и основным сделай стоимость, она
+// лучше отражает рейтинг игрока; нужно просто записывать изменение стоимости
+// в карточке, так будет ясно повышается уровень игрока или нет».
+async function checkCardValueTrend() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Стоимость карточки', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  // Берём самого дорогого игрока из данных, а не по имени: имя устаревает.
+  const top = await fetch(
+    `${url}/rest/v1/cards?select=id,name_en,market_value_eur&category=eq.player&active=is.true&market_value_eur=not.is.null&order=market_value_eur.desc&limit=1`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const card = Array.isArray(top) ? top[0] : null;
+  if (!card) {
+    record('Стоимость карточки', false, 'ни одной карточки со стоимостью', 'н/д');
+    return;
+  }
+
+  const rows = await rpc('card_value_trend', { p_card_id: card.id, p_points: 8 });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  record('Стоимость карточки: приходит', row != null && Number(row.value_eur) > 0,
+         row ? `${card.name_en}: ${Math.round(Number(row.value_eur) / 1e6)} млн на ${row.value_at}` +
+               (row.growth != null ? `, рост ${row.growth}` : ', истории роста пока нет')
+             : 'card_value_trend не ответила',
+         'ловит отозванный грант и опустевшую историю стоимостей');
+
+  // ⚠️ ИСТОРИЯ ОБЯЗАНА РАСТИ. Ночной снимок пишет ИЗМЕНЕНИЯ, и пока точка у
+  // карточки одна, роста не посчитать — это нормально СЕГОДНЯ и поломка через
+  // месяц. Проверка смотрит на ширину истории по всей таблице, а не по одной
+  // карточке: остановившийся снимок иначе не видно.
+  const span = await fetch(
+    `${url}/rest/v1/card_metric_history?select=taken_on&metric=eq.market_value&order=taken_on.desc&limit=1`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const last = Array.isArray(span) && span[0] ? span[0].taken_on : null;
+  const days = last ? Math.round((Date.now() - Date.parse(last)) / 86400000) : 999;
+  record('Стоимость карточки: снимок свежий', days <= 3,
+         last ? `последняя запись истории ${last}, ${days} дн. назад` : 'история пуста',
+         'ловит остановившийся snapshot_card_metrics — без него роста не будет никогда');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманная карточка обязана дать пусто.
+  const bogus = await rpc('card_value_trend',
+    { p_card_id: '00000000-0000-0000-0000-000000000000', p_points: 4 });
+  const b = Array.isArray(bogus) ? bogus[0] : null;
+  const empty = b == null || b.value_eur == null;
+  record('Стоимость карточки: контроль отбора', empty,
+         empty ? 'по выдуманной карточке пусто, как и должно'
+               : `выдуманная карточка вернула ${b?.value_eur}`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1775,6 +1838,7 @@ await checkClubOrderAndLinks();
 await checkClubManagers();
 await checkClubMerge();
 await checkClubCharacter();
+await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

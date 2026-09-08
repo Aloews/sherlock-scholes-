@@ -180,7 +180,7 @@
     "fame_home": "본국",
     "fame_world": "전 세계",
     "value": "시장 가치",
-    "value_source": "출처: {{source}}",
+    "value_source": "Transfermarkt, {{date}} 기준",
     "value_source_at": "{{source}}, {{date}} 평가",
     "dynamics": "지표 변화",
     "dyn_window": "90일간",
@@ -205,7 +205,10 @@
     "search_empty": "일치하는 항목 없음",
     "view_cards": "카드",
     "view_clubs": "구단",
-    "view_stats": "통계"
+    "view_stats": "통계",
+    "value_growth_up": "90일간 {{n}}% 상승",
+    "value_growth_down": "90일간 {{n}}% 하락",
+    "value_growth_none": "{{date}}부터 변동 기록"
   },
   "profile": {
     "title": "프로필",
