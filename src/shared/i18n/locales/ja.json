@@ -487,7 +487,8 @@
     "assists": "アシスト",
     "minutes": "出場時間",
     "national": "{{team}} 代表 — {{apps}} 試合 {{goals}} 得点",
-    "club_line": "{{matches}} 試 · {{goals}} 点 · {{assists}} 助"
+    "club_line": "{{matches}} 試 · {{goals}} 点 · {{assists}} 助",
+    "row_numbers": "{{matches}}試合 · {{goals}}得点"
   },
   "facts": {
     "caps_other": "代表 {{count}} 試合",
@@ -889,7 +890,9 @@
     "title": "ミニゲーム",
     "quiz_hint": "ヒントを一つずつ — 選手を当てよう",
     "famous_hint": "2枚のカード — どちらが有名か",
-    "squad_hint": "クラブの5人 — クラブを当てよう"
+    "squad_hint": "クラブの5人 — クラブを当てよう",
+    "chess_hint": "1台のスマホで2人対戦のボードゲーム",
+    "arena_hint": "2人対戦のサッカー: 対面かオンラインで"
   },
   "social": {
     "online_title": "オンライン中",
@@ -973,7 +976,8 @@
     "market_value": "スカッド総額",
     "market_value_of": "{{squad}} 人中 {{priced}} 人を評価",
     "roster_source": "スカッドと市場価値 — {{source}}",
-    "squad_ours": "クラブ登録メンバー"
+    "squad_ours": "クラブ登録メンバー",
+    "news": "チームのニュース"
   },
   "clubs": {
     "title": "クラブ",
@@ -982,7 +986,9 @@
     "failed": "クラブ一覧を読み込めませんでした",
     "empty": "見つかりません",
     "players_other": "{{count}}人",
-    "matches_other": "{{count}}試合"
+    "matches_other": "{{count}}試合",
+    "kind_club": "クラブ",
+    "kind_national": "代表チーム"
   },
   "table": {
     "title": "順位表",
@@ -1042,7 +1048,10 @@
     "cards_n_other": "{{count}} 枚"
   },
   "fixtures": {
-    "top_title": "注目の次戦"
+    "top_title": "注目の次戦",
+    "in_minutes_other": "{{count}}分後",
+    "in_hours_other": "{{count}}時間後",
+    "live": "開催中"
   },
   "rising": {
     "tab": "上昇中",

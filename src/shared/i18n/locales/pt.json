@@ -500,7 +500,8 @@
     "assists": "Assist.",
     "minutes": "Minutos",
     "national": "Pela {{team}} — {{apps}} jogos, {{goals}} gols",
-    "club_line": "{{matches}} j · {{goals}} g · {{assists}} a"
+    "club_line": "{{matches}} j · {{goals}} g · {{assists}} a",
+    "row_numbers": "{{matches}} jogos · {{goals}} gols"
   },
   "facts": {
     "caps_one": "{{count}} jogo pela seleção",
@@ -912,7 +913,9 @@
     "title": "Minijogos",
     "quiz_hint": "Pistas uma a uma: adivinhe o jogador",
     "famous_hint": "Duas cartas: quem é mais conhecido",
-    "squad_hint": "Cinco de um clube: adivinhe o clube"
+    "squad_hint": "Cinco de um clube: adivinhe o clube",
+    "chess_hint": "Jogo de tabuleiro para dois num celular",
+    "arena_hint": "Futebol para dois: lado a lado ou online"
   },
   "social": {
     "online_title": "Online agora",
@@ -1000,7 +1003,8 @@
     "market_value": "Valor do plantel",
     "market_value_of": "{{priced}} de {{squad}} avaliados",
     "roster_source": "Plantel e valores — {{source}}",
-    "squad_ours": "Elenco oficial"
+    "squad_ours": "Elenco oficial",
+    "news": "Notícias do time"
   },
   "clubs": {
     "title": "Clubes",
@@ -1011,7 +1015,9 @@
     "players_one": "{{count}} jogador",
     "players_other": "{{count}} jogadores",
     "matches_one": "{{count}} jogo",
-    "matches_other": "{{count}} jogos"
+    "matches_other": "{{count}} jogos",
+    "kind_club": "Clubes",
+    "kind_national": "Seleções"
   },
   "table": {
     "title": "Classificação",
@@ -1078,7 +1084,12 @@
     "cards_n_other": "{{count}} cartões"
   },
   "fixtures": {
-    "top_title": "Grandes jogos a seguir"
+    "top_title": "Grandes jogos a seguir",
+    "in_minutes_one": "em {{count}} minuto",
+    "in_minutes_other": "em {{count}} minutos",
+    "in_hours_one": "em {{count}} hora",
+    "in_hours_other": "em {{count}} horas",
+    "live": "ao vivo"
   },
   "rising": {
     "tab": "Em alta",

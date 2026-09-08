@@ -487,7 +487,8 @@
     "assists": "助攻",
     "minutes": "出场时间",
     "national": "代表 {{team}} — {{apps}} 场 {{goals}} 球",
-    "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助"
+    "club_line": "{{matches}} 场 · {{goals}} 球 · {{assists}} 助",
+    "row_numbers": "{{matches}} 场 · {{goals}} 球"
   },
   "facts": {
     "caps_other": "国家队出场 {{count}} 次",
@@ -889,7 +890,9 @@
     "title": "小游戏",
     "quiz_hint": "线索逐条揭晓，猜出球员",
     "famous_hint": "两张卡片，谁更有名",
-    "squad_hint": "同一俱乐部的五人，猜出俱乐部"
+    "squad_hint": "同一俱乐部的五人，猜出俱乐部",
+    "chess_hint": "一部手机两人对战的桌游",
+    "arena_hint": "两人足球：面对面或联网"
   },
   "social": {
     "online_title": "当前在线",
@@ -973,7 +976,8 @@
     "market_value": "阵容总身价",
     "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
     "roster_source": "阵容与身价 — {{source}}",
-    "squad_ours": "俱乐部名单"
+    "squad_ours": "俱乐部名单",
+    "news": "球队新闻"
   },
   "clubs": {
     "title": "俱乐部",
@@ -982,7 +986,9 @@
     "failed": "无法加载俱乐部列表",
     "empty": "没有找到",
     "players_other": "{{count}} 名球员",
-    "matches_other": "{{count}} 场比赛"
+    "matches_other": "{{count}} 场比赛",
+    "kind_club": "俱乐部",
+    "kind_national": "国家队"
   },
   "table": {
     "title": "积分榜",
@@ -1042,7 +1048,10 @@
     "cards_n_other": "{{count}} 张"
   },
   "fixtures": {
-    "top_title": "即将到来的焦点战"
+    "top_title": "即将到来的焦点战",
+    "in_minutes_other": "{{count}} 分钟后",
+    "in_hours_other": "{{count}} 小时后",
+    "live": "正在进行"
   },
   "rising": {
     "tab": "上升中",

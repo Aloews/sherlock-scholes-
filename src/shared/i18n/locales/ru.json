@@ -526,7 +526,8 @@
     "assists": "Пасы",
     "minutes": "Минуты",
     "national": "За {{team}} — {{apps}} матчей, {{goals}} голов",
-    "club_line": "{{matches}} м · {{goals}} г · {{assists}} п"
+    "club_line": "{{matches}} м · {{goals}} г · {{assists}} п",
+    "row_numbers": "{{matches}} м · {{goals}} г"
   },
   "facts": {
     "caps_one": "{{count}} матч {{team}}",
@@ -962,7 +963,9 @@
     "title": "Мини-игры",
     "quiz_hint": "Факты по одному — угадай футболиста",
     "famous_hint": "Две карточки — кто известнее",
-    "squad_hint": "Пятеро из клуба — угадай клуб"
+    "squad_hint": "Пятеро из клуба — угадай клуб",
+    "chess_hint": "Настолка на двоих на одном телефоне",
+    "arena_hint": "Футбол на двоих: рядом или по сети"
   },
   "social": {
     "online_title": "Сейчас в игре",
@@ -1058,7 +1061,8 @@
     "market_value": "Стоимость состава",
     "market_value_of": "по {{priced}} из {{squad}}",
     "roster_source": "Состав и стоимости — {{source}}",
-    "squad_ours": "Заявка клуба"
+    "squad_ours": "Заявка клуба",
+    "news": "Новости команды"
   },
   "clubs": {
     "title": "Команды",
@@ -1073,7 +1077,9 @@
     "matches_one": "{{count}} матч",
     "matches_few": "{{count}} матча",
     "matches_many": "{{count}} матчей",
-    "matches_other": "{{count}} матчей"
+    "matches_other": "{{count}} матчей",
+    "kind_club": "Клубы",
+    "kind_national": "Сборные"
   },
   "table": {
     "title": "Таблицы",
@@ -1154,7 +1160,16 @@
     "cards_n_other": "{{count}} карточки"
   },
   "fixtures": {
-    "top_title": "Ближайшие большие матчи"
+    "top_title": "Ближайшие большие матчи",
+    "in_minutes_one": "через {{count}} минуту",
+    "in_minutes_few": "через {{count}} минуты",
+    "in_minutes_many": "через {{count}} минут",
+    "in_minutes_other": "через {{count}} минуты",
+    "in_hours_one": "через {{count}} час",
+    "in_hours_few": "через {{count}} часа",
+    "in_hours_many": "через {{count}} часов",
+    "in_hours_other": "через {{count}} часа",
+    "live": "уже идёт"
   },
   "rising": {
     "tab": "Набирают ход",

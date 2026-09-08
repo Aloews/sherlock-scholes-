@@ -500,7 +500,8 @@
     "assists": "Assists",
     "minutes": "Minutes",
     "national": "For {{team}} — {{apps}} caps, {{goals}} goals",
-    "club_line": "{{matches}} m · {{goals}} g · {{assists}} a"
+    "club_line": "{{matches}} m · {{goals}} g · {{assists}} a",
+    "row_numbers": "{{matches}} apps · {{goals}} goals"
   },
   "facts": {
     "caps_one": "{{count}} cap",
@@ -912,7 +913,9 @@
     "title": "Mini-games",
     "quiz_hint": "Facts one by one — name the player",
     "famous_hint": "Two cards — who is better known",
-    "squad_hint": "Five from a club — name the club"
+    "squad_hint": "Five from a club — name the club",
+    "chess_hint": "A board game for two on one phone",
+    "arena_hint": "Football for two: side by side or online"
   },
   "social": {
     "online_title": "Online now",
@@ -1000,7 +1003,8 @@
     "market_value": "Squad value",
     "market_value_of": "{{priced}} of {{squad}} priced",
     "roster_source": "Squad and values — {{source}}",
-    "squad_ours": "Club roster"
+    "squad_ours": "Club roster",
+    "news": "Team news"
   },
   "clubs": {
     "title": "Clubs",
@@ -1011,7 +1015,9 @@
     "players_one": "{{count}} player",
     "players_other": "{{count}} players",
     "matches_one": "{{count}} match",
-    "matches_other": "{{count}} matches"
+    "matches_other": "{{count}} matches",
+    "kind_club": "Clubs",
+    "kind_national": "National teams"
   },
   "table": {
     "title": "Tables",
@@ -1078,7 +1084,12 @@
     "cards_n_other": "{{count}} cards"
   },
   "fixtures": {
-    "top_title": "Big matches coming up"
+    "top_title": "Big matches coming up",
+    "in_minutes_one": "in {{count}} minute",
+    "in_minutes_other": "in {{count}} minutes",
+    "in_hours_one": "in {{count}} hour",
+    "in_hours_other": "in {{count}} hours",
+    "live": "live now"
   },
   "rising": {
     "tab": "On the rise",
