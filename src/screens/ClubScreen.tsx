@@ -17,6 +17,7 @@ import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { SoccerWikiSquad } from '@/features/soccerwiki/SoccerWikiSquad';
+import { ClubNews } from '@/features/clubs/ClubNews';
 import { fetchSoccerWikiSquad } from '@/features/soccerwiki/soccerwikiApi';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatEur } from '@/shared/lib/money';
@@ -350,6 +351,11 @@ export function ClubScreen() {
                 />
               ) : null)}
             </section>
+
+            {/* Новости именно об этой команде — то, ради чего в фан-клуб и
+                вступают. Стоят ПОСЛЕ состава и ПЕРЕД матчами: состав отвечает
+                «кто это», новости — «что с ними сейчас», матчи — «что было». */}
+            <ClubNews clubKey={key} />
 
             {/* Последние матчи */}
             {matchRows.length > 0 && (

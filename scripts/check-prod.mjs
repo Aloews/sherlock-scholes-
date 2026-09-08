@@ -142,9 +142,17 @@ async function checkDigest() {
     });
     const body = await r.json().catch(() => ({}));
     const ok = r.ok && (body.status === 'ok' || body.status === 'no_topics');
+    // ⚠️ `model_failed` — ЭТО КЛЮЧ, А НЕ КОД, И ГОВОРИТЬ ОБ ЭТОМ НАДО ПРЯМО.
+    // Замер 08.09.2026 по логам функции: шлюз `ai.starimg.ru` отвечает
+    // `401 {"message":"Invalid API key","code":"invalid_api_key"}`. Голое
+    // «model_failed» отправляет читателя искать поломку в коде, которой там
+    // нет: чинится секретом SUMMARY_LLM_API_KEY в Supabase.
+    const why = body.error === 'model_failed'
+      ? 'model_failed — шлюз отверг ключ (401). Чинится секретом SUMMARY_LLM_API_KEY'
+      : `${body.error ?? ''}`.trim();
     record('Дайджест: сводка', ok,
            ok ? `${body.status}${body.model ? ` (${body.model})` : ''}`
-              : `HTTP ${r.status} ${body.error ?? ''}`.trim(),
+              : `HTTP ${r.status} ${why}`.trim(),
            'ответ читается целиком, не по коду');
   } catch (e) {
     record('Дайджест: сводка', false, String(e).slice(0, 50), 'н/д');
@@ -264,8 +272,12 @@ async function checkNoScores() {
     const body = await r.json().catch(() => ({}));
     const text = body.summary ?? '';
     if (!text) {
-      record('Сводка: без счёта', false,
-             `нечего проверять: ${body.status ?? body.error ?? 'пустой ответ'}`, 'н/д');
+      // Та же причина, что выше: без модели сводки нет, и проверять счёт не в
+      // чем. Красная строка честна — но она обязана называть, что чинить.
+      const cause = body.error === 'model_failed'
+        ? 'модель не ответила: шлюз отверг ключ SUMMARY_LLM_API_KEY (401)'
+        : `${body.status ?? body.error ?? 'пустой ответ'}`;
+      record('Сводка: без счёта', false, `нечего проверять: ${cause}`, 'н/д');
       return;
     }
     const hit = SCORE_RE().exec(text);
@@ -1181,6 +1193,81 @@ async function checkSoccerWiki() {
          alien.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+async function checkFanAndFixtures() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Фан-клуб и анонсы', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const t0 = Date.now();
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const rows = r.ok ? await r.json().catch(() => null) : null;
+    return { rows, ms: Date.now() - t0 };
+  };
+
+  // ⚠️ ТРИ СЕКУНДЫ — НЕ ПРИДИРКА, А ЛИМИТ ANON. Первая версия `top_fixtures` с
+  // сортировкой по времени отвечала 4.1 с, то есть для игрока главная была
+  // пустой. Проверка меряет ВРЕМЯ, а не только содержимое.
+  const top = await rpc('top_fixtures', { p_lang: 'ru', p_limit: 4 });
+  const rows = top.rows || [];
+  const timed = rows.filter((f) => f.minutes_to_start != null);
+  record('Большие матчи: укладываются в лимит anon', top.ms < 3000,
+         `${top.ms} мс на ${rows.length} матчей`,
+         'ловит запрос, который у игрока просто не успеет ответить');
+
+  // Обратный отсчёт — то, из чего строится анонс «через полчаса».
+  record('Большие матчи: минуты до начала приходят', timed.length === rows.length && rows.length > 0,
+         rows.length ? `${timed.length} из ${rows.length} с обратным отсчётом` : 'матчей нет',
+         'ловит анонс трансляции, которому нечего показать');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПОРЯДКА: важность обязана решать. Если убрать
+  // сортировку по стоимости, наверх полезут дешёвые матчи, которые просто
+  // начинаются раньше — ровно та ошибка, что была допущена и поймана 07.09.
+  const far = rows.filter((f) => (f.minutes_to_start ?? 0) > 30);
+  const sorted = far.every((f, i) => i === 0 || far[i - 1].importance >= f.importance);
+  record('Большие матчи: контроль порядка', sorted,
+         far.length > 1
+           ? `${far.length} матчей вне анонса идут по убыванию стоимости`
+           : 'сравнивать нечего',
+         sorted ? 'проверка способна упасть' : '⚠ ПОРЯДОК СЛОМАН');
+
+  // Новости команды: отбор обязан РАЗЛИЧАТЬ команды с общим словом в имени.
+  const city = (await rpc('club_news', { p_club_key: 'manchester city', p_limit: 5 })).rows || [];
+  const utd  = (await rpc('club_news', { p_club_key: 'manchester united', p_limit: 5 })).rows || [];
+  const cityUrls = new Set(city.map((n) => n.url));
+  const overlap = utd.filter((n) => cityUrls.has(n.url)).length;
+  record('Новости команды: приходят', city.length + utd.length > 0,
+         `«Манчестер Сити» ${city.length}, «Манчестер Юнайтед» ${utd.length}`,
+         'ловит фан-клуб без единой новости о своей команде');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: два «Манчестера» НЕ ДОЛЖНЫ получить одну ленту.
+  // Отбор по ЛЮБОЙ основе имени дал бы им общий список — и болельщик Сити
+  // читал бы новости Юнайтед на своём экране.
+  record('Новости команды: контроль различения', overlap === 0,
+         `общих заголовков у двух «Манчестеров»: ${overlap}`,
+         overlap === 0 ? 'проверка способна упасть' : '⚠ ОТБОР НЕ РАЗЛИЧАЕТ КОМАНДЫ');
+
+  // Сборные — отдельным списком, и это тоже цепочка целиком: 175 строк в базе
+  // ничего не стоят, если справочник их не отдаёт.
+  const nat = (await rpc('club_directory', { p_lang: 'ru', p_kind: 'national', p_limit: 50 })).rows || [];
+  const clubs = (await rpc('club_directory', { p_lang: 'ru', p_limit: 50 })).rows || [];
+  const natKeys = new Set(nat.map((c) => c.club_key));
+  const mixed = clubs.filter((c) => natKeys.has(c.club_key)).length;
+  record('Сборные: отдаются своим списком', nat.length >= 20,
+         `${nat.length} сборных`,
+         'ловит вкладку «Сборные», которая откроется пустой');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: сборные не должны просочиться к клубам.
+  record('Сборные: контроль разделения', mixed === 0,
+         `сборных в списке клубов: ${mixed}`,
+         mixed === 0 ? 'проверка способна упасть' : '⚠ СПИСКИ СМЕШАЛИСЬ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1199,6 +1286,7 @@ await checkPlayerIndex();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
+await checkFanAndFixtures();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

@@ -90,6 +90,30 @@ export function MinigamesScreen() {
             action
             onClick={() => { hapticImpact('light'); setGame('squad'); }}
           />
+
+          {/* ⚠️ ЭТИ ДВЕ — ССЫЛКОЙ НА СВОЙ РОУТ, А НЕ ВНУТРЬ ЭКРАНА, И ЭТО НЕ
+              полумера. Владелец: «Шахматы и арену добавь в мини игры» — они и
+              добавлены сюда, на ту же полку. Но втянуть их внутрь нельзя:
+              обоим НЕЛЬЗЯ жить под `PageTransition`, потому что обёртка
+              анимирует transform родителя, а там каждое касание попадает в
+              конкретную клетку поля (§2 docs/MAP.md). Арена вдобавок сама
+              решает, куда вести: начатая онлайн-игра (`arenaSession`)
+              перебивает выбор и возвращает в матч. Ссылка сохраняет и то и
+              другое, а игрок видит их там, где просили. */}
+          <OptionRow
+            leading="♟️"
+            title={t('chess.title')}
+            description={t('minigames.chess_hint')}
+            action
+            onClick={() => { hapticImpact('light'); navigate('/chess'); }}
+          />
+          <OptionRow
+            leading="🥅"
+            title={t('arena.title')}
+            description={t('minigames.arena_hint')}
+            action
+            onClick={() => { hapticImpact('light'); navigate('/arena'); }}
+          />
         </div>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { formatEur } from '@/shared/lib/money';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
 import { careerHighlight } from '@/shared/lib/careerHighlight';
+import { careerRowMeta } from '@/shared/lib/careerRowMeta';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
@@ -153,6 +154,16 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     }
   })();
 
+  // Правая колонка строки карьеры. Числа, если они есть; годы, если чисел нет.
+  const rowMeta = (row: { years?: string | null; apps?: number | null; goals?: number | null }) => {
+    const m = careerRowMeta(row);
+    // ⚠️ СВОЙ КЛЮЧ, А НЕ `career.club_line`. Тот несёт ещё и пасы, а в
+    // `career_stats` из инфобокса Википедии пасов нет вовсе — подставлять туда
+    // ноль значило бы утверждать «ни одной передачи за двадцать лет».
+    if (m.kind === 'numbers') return t('career.row_numbers', { matches: m.apps, goals: m.goals });
+    return m.kind === 'years' ? m.years : '';
+  };
+
   const name     = cardDisplayName(card, lang);
   const catColor = CATEGORY_COLOR[card.category] ?? CATEGORY_FALLBACK_COLOR;
   const facts    = card.facts ?? null;
@@ -210,14 +221,23 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   // собран по числу матчей, `legend_career` — как перечислено в статье. На
   // одном экране стояли две сортировки, и ни одна не отвечала на вопрос «где
   // он играет сейчас», ради которого карьеру и открывают.
+  //
+  // ⚠️ СПРАВА СТОИТ ДОСТИЖЕНИЕ, А НЕ ГОДЫ. Владелец: «года в карточке так и не
+  // поменял, на лучшие достижения игрока». Матчи и голы за клуб лежат в той же
+  // строке `career_stats` и до сих пор не показывались вовсе; годы отвечали на
+  // вопрос «когда», а карьеру открывают ради «чего добился». Правило — в
+  // `careerRowMeta`, и второй его копии здесь нет: у легенды чисел не бывает,
+  // и там годы остаются.
   const career: { club: string; meta: string }[] = byLatestFirst(
     card.legend_career?.clubs?.map((c) => ({
       club: (!isRu && c.club_en) ? c.club_en : c.club,
-      meta: c.years,
+      years: c.years,
+      meta: rowMeta({ years: c.years }),
     }))
     ?? card.career_stats?.map((c) => ({
       club: (isRu && c.club_ru) ? c.club_ru : c.club,
-      meta: c.years,
+      years: c.years,
+      meta: rowMeta(c),
     }))
     ?? [],
   );

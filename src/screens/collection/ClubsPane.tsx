@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconSearch, IconShieldHalf, IconTable } from '@tabler/icons-react';
-import { fetchClubDirectory, type ClubDirectoryRow } from '@/features/clubs/clubsApi';
+import { fetchClubDirectory, type ClubDirectoryRow, type ClubKind } from '@/features/clubs/clubsApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
+import { Chip } from '@/shared/ui/Chip';
+import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
  * Список команд — вход на экран команды. Половина раздела «Коллекция».
@@ -25,6 +27,10 @@ export function ClubsPane() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
+  // Клубы или сборные. Владелец: «так же добавь сборные». Два списка, а не
+  // один: у сборной нет ни состава в колоде, ни матчей в расписании, и в общем
+  // порядке (по размеру состава) все 175 встали бы ровным нулевым хвостом.
+  const [kind, setKind] = useState<ClubKind>('club');
   const [rows, setRows] = useState<LoadState<ClubDirectoryRow[]>>(LOADING);
 
   // Запрос откладывается, пока идёт набор: иначе каждая буква — поход в базу.
@@ -37,11 +43,11 @@ export function ClubsPane() {
   useEffect(() => {
     let cancelled = false;
     setRows(LOADING);
-    void fetchClubDirectory(i18n.language, debounced || null).then((r) => {
+    void fetchClubDirectory(i18n.language, debounced || null, 60, kind).then((r) => {
       if (!cancelled) setRows(r);
     });
     return () => { cancelled = true; };
-  }, [i18n.language, debounced]);
+  }, [i18n.language, debounced, kind]);
 
   const list = useMemo(() => (rows.status === 'ok' ? rows.data : []), [rows]);
 
@@ -59,6 +65,19 @@ export function ClubsPane() {
         <span className="flex-1 text-white text-sm">{t('table.title')}</span>
         <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
       </button>
+
+      <div className="flex gap-2">
+        <Chip
+          label={t('clubs.kind_club')}
+          selected={kind === 'club'}
+          onClick={() => { hapticImpact('light'); setKind('club'); }}
+        />
+        <Chip
+          label={t('clubs.kind_national')}
+          selected={kind === 'national'}
+          onClick={() => { hapticImpact('light'); setKind('national'); }}
+        />
+      </div>
 
       <div className="relative">
         <IconSearch

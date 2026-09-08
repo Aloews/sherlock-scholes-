@@ -331,6 +331,10 @@ export interface TopFixture {
   away_value: number | null; away_squad: number;
   /** Сумма стоимости обоих составов — то, чем матчи упорядочены. */
   importance: number;
+  /** Сколько минут до начала. Считает БАЗА: часы телефона врут молча, и на
+   *  устройстве с уехавшим временем «через полчаса» стало бы «через два часа».
+   *  По нему `fixtureCountdown` решает, писать анонс, часы или дату. */
+  minutes_to_start: number | null;
 }
 
 /**

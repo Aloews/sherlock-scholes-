@@ -211,15 +211,50 @@ export async function fetchClubFixtures(
   return fromPostgrest<ClubFixtureRow[]>(res, `club_upcoming_fixtures(${clubKey})`);
 }
 
+/** 'club' — клубы, 'national' — сборные. Списки РАЗНЫЕ, а не один с флагом:
+ *  «за какой клуб болеть» и «за какую страну» — разные вопросы, и 175 сборных
+ *  вперемешку поставили бы «Бахрейн» между «Барселоной» и «Баварией». */
+export type ClubKind = 'club' | 'national';
+
 export async function fetchClubDirectory(
   lang: string,
   query: string | null,
   limit = 60,
+  kind: ClubKind = 'club',
 ): Promise<LoadState<ClubDirectoryRow[]>> {
   const res = await supabase.rpc('club_directory', {
-    p_lang: lang, p_query: query, p_limit: limit,
+    p_lang: lang, p_query: query, p_limit: limit, p_kind: kind,
   });
   return fromPostgrest<ClubDirectoryRow[]>(res, 'club_directory');
+}
+
+/** Новость о команде: заголовок, где встречается её имя. */
+export interface ClubNewsRow {
+  title: string;
+  url: string;
+  source: string | null;
+  lang: string | null;
+  published_at: string;
+  /** Начало самой статьи из ленты — бесплатно и на языке заметки. */
+  lead_text: string | null;
+}
+
+/**
+ * Новости команды — то, ради чего в фан-клуб и вступают.
+ *
+ * Владелец: «добавь возможность добавляться в фан клуб команды и отслеживать
+ * новости именно о ней».
+ *
+ * ⚠️ ЗАГОЛОВОК ОБЯЗАН СОДЕРЖАТЬ ВСЕ ОСНОВЫ ИМЕНИ, и правило это живёт в SQL.
+ * «Манчестер Сити» и «Манчестер Юнайтед» делят первое слово: по любой основе
+ * болельщик Сити читал бы новости Юнайтед на своём экране.
+ */
+export async function fetchClubNews(
+  clubKey: string,
+  limit = 12,
+): Promise<LoadState<ClubNewsRow[]>> {
+  const res = await supabase.rpc('club_news', { p_club_key: clubKey, p_limit: limit });
+  return fromPostgrest<ClubNewsRow[]>(res, `club_news(${clubKey})`);
 }
 
 export interface CardClub {

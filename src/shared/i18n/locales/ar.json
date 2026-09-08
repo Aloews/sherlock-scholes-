@@ -544,7 +544,8 @@
     "assists": "تمريرات",
     "minutes": "دقائق",
     "national": "مع {{team}} — {{apps}} مباراة و{{goals}} هدفًا",
-    "club_line": "{{matches}} م · {{goals}} هـ · {{assists}} ت"
+    "club_line": "{{matches}} م · {{goals}} هـ · {{assists}} ت",
+    "row_numbers": "{{matches}} مباراة · {{goals}} هدف"
   },
   "facts": {
     "caps_one": "مباراة دولية واحدة",
@@ -1000,7 +1001,9 @@
     "title": "ألعاب مصغّرة",
     "quiz_hint": "معلومات واحدة تلو الأخرى — خمّن اللاعب",
     "famous_hint": "بطاقتان — من الأشهر",
-    "squad_hint": "خمسة من نادٍ — خمّن النادي"
+    "squad_hint": "خمسة من نادٍ — خمّن النادي",
+    "chess_hint": "لعبة لوحية لاثنين على هاتف واحد",
+    "arena_hint": "كرة قدم لاثنين: جنبًا إلى جنب أو عبر الإنترنت"
   },
   "social": {
     "online_title": "متصلون الآن",
@@ -1102,7 +1105,8 @@
     "market_value": "قيمة التشكيلة",
     "market_value_of": "{{priced}} من {{squad}} مقيَّمين",
     "roster_source": "التشكيلة والقيم — {{source}}",
-    "squad_ours": "قائمة النادي"
+    "squad_ours": "قائمة النادي",
+    "news": "أخبار الفريق"
   },
   "clubs": {
     "title": "الأندية",
@@ -1121,7 +1125,9 @@
     "matches_two": "مباراتان",
     "matches_few": "{{count}} مباريات",
     "matches_many": "{{count}} مباراة",
-    "matches_other": "{{count}} مباراة"
+    "matches_other": "{{count}} مباراة",
+    "kind_club": "الأندية",
+    "kind_national": "المنتخبات"
   },
   "table": {
     "title": "الترتيب",
@@ -1216,7 +1222,18 @@
     "cards_n_other": "{{count}} بطاقة"
   },
   "fixtures": {
-    "top_title": "أبرز المباريات القادمة"
+    "top_title": "أبرز المباريات القادمة",
+    "in_minutes_one": "بعد دقيقة",
+    "in_minutes_two": "بعد دقيقتين",
+    "in_minutes_few": "بعد {{count}} دقائق",
+    "in_minutes_many": "بعد {{count}} دقيقة",
+    "in_minutes_other": "بعد {{count}} دقيقة",
+    "in_hours_one": "بعد ساعة",
+    "in_hours_two": "بعد ساعتين",
+    "in_hours_few": "بعد {{count}} ساعات",
+    "in_hours_many": "بعد {{count}} ساعة",
+    "in_hours_other": "بعد {{count}} ساعة",
+    "live": "مباشر الآن"
   },
   "rising": {
     "tab": "في صعود",

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { formatEur } from '@/shared/lib/money';
+import { fixtureCountdown } from '@/shared/lib/fixtureCountdown';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { fetchTopFixtures, type TopFixture } from '@/features/ratings/ratingsApi';
@@ -71,13 +72,29 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
         } catch {
           date = '';
         }
+        // ⚠️ ОБРАТНЫЙ ОТСЧЁТ ВМЕСТО ДАТЫ, ПОКА ОН ЧТО-ТО ЗНАЧИТ. Владелец:
+        // «сделай так чтобы за полчаса анонсировали трансляцию матча». Дата
+        // «7 сент., 21:00» не говорит, успеваешь ты или нет; «через 25 минут»
+        // говорит. Дальше суток обратный отсчёт снова хуже даты — правило
+        // целиком в `fixtureCountdown`, второй его копии здесь нет.
+        const cd = fixtureCountdown(f.minutes_to_start);
+        const alert = cd.kind === 'alert' || cd.kind === 'live';
+        const timing =
+          cd.kind === 'live'  ? t('fixtures.live')
+          : cd.kind === 'alert' ? t('fixtures.in_minutes', { count: cd.minutes })
+          : cd.kind === 'hours' ? t('fixtures.in_hours', { count: cd.hours })
+          : date;
         return (
           <button
             key={f.fixture_id}
             type="button"
             onClick={() => { hapticImpact('light'); navigate('/matches'); }}
-            className="w-full text-left ds-panel bg-brand-surface border border-brand-border
-                       rounded-2xl p-3 active:opacity-70 transition-opacity"
+            className={`w-full text-left ds-panel bg-brand-surface border rounded-2xl p-3
+                        active:opacity-70 transition-opacity ${
+              // Матч, на который ещё можно успеть, отличается рамкой: это
+              // единственная строка здесь, требующая действия сейчас.
+              alert ? 'border-brand-accent' : 'border-brand-border'
+            }`}
           >
             <div className="flex items-center gap-2">
               <Crest src={f.home_crest} alt={f.home_name ?? ''} />
@@ -91,8 +108,10 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
               <Crest src={f.away_crest} alt={f.away_name ?? ''} />
             </div>
             <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-brand-muted text-[10.5px] truncate flex-1 min-w-0">
-                {[comp, date].filter(Boolean).join(' · ')}
+              <span className={`text-[10.5px] truncate flex-1 min-w-0 ${
+                alert ? 'text-brand-accent font-semibold' : 'text-brand-muted'
+              }`}>
+                {[comp, timing].filter(Boolean).join(' · ')}
               </span>
               {/* Число, по которому матч сюда попал — рядом с матчем. */}
               <span className="text-brand-accent text-[10.5px] tabular-nums shrink-0">

@@ -487,7 +487,8 @@
     "assists": "도움",
     "minutes": "출전 시간",
     "national": "{{team}} 대표 — {{apps}}경기 {{goals}}골",
-    "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도"
+    "club_line": "{{matches}}경 · {{goals}}골 · {{assists}}도",
+    "row_numbers": "{{matches}}경기 · {{goals}}골"
   },
   "facts": {
     "caps_other": "국가대표 {{count}}경기",
@@ -889,7 +890,9 @@
     "title": "미니게임",
     "quiz_hint": "힌트를 하나씩 — 선수를 맞혀 보세요",
     "famous_hint": "카드 두 장 — 누가 더 유명할까",
-    "squad_hint": "한 클럽의 다섯 명 — 클럽을 맞혀 보세요"
+    "squad_hint": "한 클럽의 다섯 명 — 클럽을 맞혀 보세요",
+    "chess_hint": "휴대폰 하나로 둘이 하는 보드게임",
+    "arena_hint": "둘이 하는 축구: 옆자리 또는 온라인"
   },
   "social": {
     "online_title": "지금 접속 중",
@@ -973,7 +976,8 @@
     "market_value": "스쿼드 가치",
     "market_value_of": "{{squad}}명 중 {{priced}}명 평가",
     "roster_source": "스쿼드와 시장 가치 — {{source}}",
-    "squad_ours": "구단 등록 명단"
+    "squad_ours": "구단 등록 명단",
+    "news": "팀 소식"
   },
   "clubs": {
     "title": "클럽",
@@ -982,7 +986,9 @@
     "failed": "클럽 목록을 불러오지 못했습니다",
     "empty": "결과 없음",
     "players_other": "{{count}}명",
-    "matches_other": "{{count}}경기"
+    "matches_other": "{{count}}경기",
+    "kind_club": "클럽",
+    "kind_national": "대표팀"
   },
   "table": {
     "title": "순위표",
@@ -1042,7 +1048,10 @@
     "cards_n_other": "{{count}}장"
   },
   "fixtures": {
-    "top_title": "다가오는 빅매치"
+    "top_title": "다가오는 빅매치",
+    "in_minutes_other": "{{count}}분 후",
+    "in_hours_other": "{{count}}시간 후",
+    "live": "진행 중"
   },
   "rising": {
     "tab": "상승세",
