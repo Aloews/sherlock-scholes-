@@ -1011,7 +1011,8 @@
     "market_value_of": "{{priced}} de {{squad}} tasados",
     "roster_source": "Plantilla y valores — {{source}}",
     "squad_ours": "Plantilla oficial",
-    "news": "Noticias del equipo"
+    "news": "Noticias del equipo",
+    "manager": "Entrenador"
   },
   "clubs": {
     "title": "Clubes",

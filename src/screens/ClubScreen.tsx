@@ -169,6 +169,16 @@ export function ClubScreen() {
                     {t('club.squad_size', { count: p.squad })}
                   </p>
                 )}
+                {/* ТРЕНЕР. Владелец: «добавь тренеров всех команд». Источник —
+                    Soccer Wiki. ⚠️ ДОСТИЖЕНИЙ ТАМ НЕТ ВОВСЕ — ни одного
+                    турнира на странице тренера, — поэтому их здесь и нет:
+                    пустая строка «трофеев нет» читалась бы как «он ничего не
+                    выиграл», а значит «мы не знаем». */}
+                {p.manager && (
+                  <p className="text-brand-muted text-[10.5px] truncate mt-0.5">
+                    {t('club.manager')}: <span className="text-white">{p.manager}</span>
+                  </p>
+                )}
               </div>
 
               {/* УРОВЕНЬ КОМАНДЫ — та же шкала 0–100, что у игрока. До этого у

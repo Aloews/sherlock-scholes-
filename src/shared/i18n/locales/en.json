@@ -1011,7 +1011,8 @@
     "market_value_of": "{{priced}} of {{squad}} priced",
     "roster_source": "Squad and values — {{source}}",
     "squad_ours": "Club roster",
-    "news": "Team news"
+    "news": "Team news",
+    "manager": "Manager"
   },
   "clubs": {
     "title": "Clubs",

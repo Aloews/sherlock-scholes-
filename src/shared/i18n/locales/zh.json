@@ -982,7 +982,8 @@
     "market_value_of": "{{squad}} 人中 {{priced}} 人已估值",
     "roster_source": "阵容与身价 — {{source}}",
     "squad_ours": "俱乐部名单",
-    "news": "球队新闻"
+    "news": "球队新闻",
+    "manager": "主教练"
   },
   "clubs": {
     "title": "俱乐部",

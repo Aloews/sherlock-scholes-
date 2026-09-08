@@ -982,7 +982,8 @@
     "market_value_of": "{{squad}} 人中 {{priced}} 人を評価",
     "roster_source": "スカッドと市場価値 — {{source}}",
     "squad_ours": "クラブ登録メンバー",
-    "news": "チームのニュース"
+    "news": "チームのニュース",
+    "manager": "監督"
   },
   "clubs": {
     "title": "クラブ",

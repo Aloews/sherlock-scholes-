@@ -1581,6 +1581,57 @@ async function checkClubOrderAndLinks() {
          wrong > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------------- тренеры клубов ----------
+// Владелец: «добавь тренеров всех команд». Источник — Soccer Wiki; чего у
+// него НЕТ (достижений, истории назначений) — записано в
+// supabase/migrations/club_manager.sql, и проверка это уважает: она смотрит
+// только на то, что источник реально отдаёт.
+async function checkClubManagers() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Тренеры клубов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const cnt = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, { headers: { ...auth, Prefer: 'count=exact' } });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+
+  const all = await cnt('club_manager?select=club_key&limit=1');
+  record('Тренеры клубов: собраны', all > 0,
+         `${all} клубов с тренером`,
+         'ловит остановившийся сбор и отозванный грант');
+
+  // Профиль клуба обязан ОТДАВАТЬ тренера наружу — иначе таблица есть, а на
+  // экране его нет, и это тот же ноль для игрока.
+  const prof = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_club_key: 'aston villa', p_lang: 'ru', p_days: 365 }),
+  }).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const row = Array.isArray(prof) ? prof[0] : null;
+  const hasField = row != null && 'manager' in row;
+  record('Тренеры клубов: доезжают до профиля', hasField,
+         !row ? 'club_profile не ответила'
+              : `«Астон Вилла» — тренер ${row.manager ?? 'не собран'}`,
+         'ловит профиль, забывший колонку тренера после DROP/CREATE');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный клуб обязан дать пусто. Не дал —
+  // функция отвечает не на то, о чём её спросили, и строка выше ничего не
+  // доказывает.
+  const bogus = await fetch(`${url}/rest/v1/rpc/club_profile`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_club_key: 'нет-такого-клуба-zz', p_lang: 'ru' }),
+  }).then((r) => (r.ok ? r.json().catch(() => null) : null));
+  const empty = Array.isArray(bogus) && bogus.length === 0;
+  record('Тренеры клубов: контроль отбора', empty,
+         empty ? 'по выдуманному клубу пусто, как и должно'
+               : `выдуманный клуб вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
 await checkDigest();
@@ -1600,6 +1651,7 @@ await checkScreenBudget();
 await checkFixtureClubs();
 await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
+await checkClubManagers();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();

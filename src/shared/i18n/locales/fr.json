@@ -1011,7 +1011,8 @@
     "market_value_of": "{{priced}} sur {{squad}} estimés",
     "roster_source": "Effectif et valeurs — {{source}}",
     "squad_ours": "Effectif officiel",
-    "news": "Actualités de l'équipe"
+    "news": "Actualités de l'équipe",
+    "manager": "Entraîneur"
   },
   "clubs": {
     "title": "Clubs",

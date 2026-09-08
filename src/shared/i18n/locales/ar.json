@@ -1121,7 +1121,8 @@
     "market_value_of": "{{priced}} من {{squad}} مقيَّمين",
     "roster_source": "التشكيلة والقيم — {{source}}",
     "squad_ours": "قائمة النادي",
-    "news": "أخبار الفريق"
+    "news": "أخبار الفريق",
+    "manager": "المدرب"
   },
   "clubs": {
     "title": "الأندية",

@@ -1073,7 +1073,8 @@
     "market_value_of": "по {{priced}} из {{squad}}",
     "roster_source": "Состав и стоимости — {{source}}",
     "squad_ours": "Заявка клуба",
-    "news": "Новости команды"
+    "news": "Новости команды",
+    "manager": "Тренер"
   },
   "clubs": {
     "title": "Команды",

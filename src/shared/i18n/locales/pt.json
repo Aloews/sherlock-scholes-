@@ -1011,7 +1011,8 @@
     "market_value_of": "{{priced}} de {{squad}} avaliados",
     "roster_source": "Plantel e valores — {{source}}",
     "squad_ours": "Elenco oficial",
-    "news": "Notícias do time"
+    "news": "Notícias do time",
+    "manager": "Treinador"
   },
   "clubs": {
     "title": "Clubes",
