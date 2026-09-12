@@ -356,7 +356,8 @@
     "deck_count_one": "{{count}} card",
     "deck_count_other": "{{count}} cards",
     "deck_save_failed": "The choice was not saved — everyone still has the old deck",
-    "deck_empty": "No cards match this filter — widen the choice"
+    "deck_empty": "No cards match this filter — widen the choice",
+    "invite_fans": "Invite fans of your club"
   },
   "voice": {
     "title": "Voice chat",

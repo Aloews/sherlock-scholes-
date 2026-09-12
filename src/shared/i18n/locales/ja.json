@@ -344,7 +344,8 @@
     "deck_categories_other": "カテゴリー{{count}}件",
     "deck_count_other": "{{count}}枚",
     "deck_save_failed": "選択を保存できませんでした。全員が以前のデッキのままです",
-    "deck_empty": "この条件に合うカードがありません。条件を広げてください"
+    "deck_empty": "この条件に合うカードがありません。条件を広げてください",
+    "invite_fans": "同じクラブのファンを誘う"
   },
   "voice": {
     "title": "ボイスチャット",

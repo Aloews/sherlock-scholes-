@@ -1245,12 +1245,27 @@ async function checkFanAndFixtures() {
          `«Манчестер Сити» ${city.length}, «Манчестер Юнайтед» ${utd.length}`,
          'ловит фан-клуб без единой новости о своей команде');
 
-  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: два «Манчестера» НЕ ДОЛЖНЫ получить одну ленту.
-  // Отбор по ЛЮБОЙ основе имени дал бы им общий список — и болельщик Сити
-  // читал бы новости Юнайтед на своём экране.
-  record('Новости команды: контроль различения', overlap === 0,
-         `общих заголовков у двух «Манчестеров»: ${overlap}`,
-         overlap === 0 ? 'проверка способна упасть' : '⚠ ОТБОР НЕ РАЗЛИЧАЕТ КОМАНДЫ');
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: два «Манчестера» НЕ ДОЛЖНЫ получить ОДНУ И ТУ ЖЕ
+  // ленту. Отбор по любой основе имени дал бы им общий список — и болельщик
+  // Сити читал бы новости Юнайтед на своём экране.
+  //
+  // ⚠️ НО ОБЩИЙ ЗАГОЛОВОК САМ ПО СЕБЕ НЕ ПОЛОМКА, и раньше проверка считала
+  // иначе — требовала `overlap === 0` и краснела на ровном месте. Замер
+  // 12.09.2026, оба общих заголовка: «Kings of Manchester: Who will reign when
+  // United and City clash?» и «Тренер „Манчестер Сити“ Мареска заявил, что
+  // О'Райли готов к дерби с „Манчестер Юнайтед“». Это дерби: в них
+  // ДЕЙСТВИТЕЛЬНО обе команды, и выбросить их значило бы спрятать от
+  // болельщика главную новость недели.
+  //
+  // Различает команды не отсутствие пересечения, а наличие СВОЕГО: у каждой
+  // стороны обязано быть то, чего нет у другой. Полное совпадение лент —
+  // поломка; частичное на дерби — работа.
+  const onlyCity = city.filter((n) => !new Set(utd.map((u) => u.url)).has(n.url)).length;
+  const onlyUtd = utd.filter((n) => !cityUrls.has(n.url)).length;
+  const distinct = city.length > 0 && utd.length > 0 && onlyCity > 0 && onlyUtd > 0;
+  record('Новости команды: контроль различения', distinct,
+         `своих у «Сити» ${onlyCity}, у «Юнайтед» ${onlyUtd}, общих (дерби) ${overlap}`,
+         distinct ? 'проверка способна упасть' : '⚠ ОТБОР НЕ РАЗЛИЧАЕТ КОМАНДЫ');
 
   // Сборные — отдельным списком, и это тоже цепочка целиком: 175 строк в базе
   // ничего не стоят, если справочник их не отдаёт.
@@ -1352,6 +1367,23 @@ async function checkScreenBudget() {
       { p_sort: 'index', p_league: null, p_country: null, p_club_key: null,
         p_continent: null }, ''],
     ['коллекция: что можно отобрать', 'collection_facets', { p_category: null }, ''],
+    // ⚠️ КАТЕГОРИИ ПОИМЁННО, И ИМЕННО ЭТИХ ДВУХ ЗДЕСЬ НЕ БЫЛО. Владелец:
+    // «„коллекции“ очень сильно зависают, когда нажимаешь на какую либо
+    // категорию „термины“ или „клубы“». Замер 12.09.2026 до правки: 1812 мс на
+    // `collection_page('term')` и 445 мс на фасеты к ней — при 84 терминах в
+    // колоде. Проверка «Все» этого не ловила ВООБЩЕ: там категории нет, и
+    // обобщённый план на ней не вредит. Категория, которую никто не измеряет,
+    // и была единственной, что ломалась.
+    ['коллекция, «Термины»', 'collection_page',
+      { p_lang: 'ru', p_category: 'term', p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: null, p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['коллекция, «Клубы»', 'collection_page',
+      { p_lang: 'ru', p_category: 'club', p_query: null, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: null, p_country: null },
+      `${COLUMNS},card_translations(*)`],
+    ['фасеты категории «Термины»', 'collection_facets', { p_category: 'term' }, ''],
+    ['фасеты категории «Клубы»', 'collection_facets', { p_category: 'club' }, ''],
   ];
 
   let worst = 0;
@@ -1384,6 +1416,58 @@ async function checkScreenBudget() {
          tooTight ? `худший замер ${worst} мс порог 0 не проходит, как и должно`
                   : 'ни один замер не дал положительного времени — мерить нечем',
          tooTight ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------ поиск в коллекции: экранирование ----------
+// ⚠️ ЭТА ПРОВЕРКА ПОЯВИЛАСЬ ВМЕСТЕ С ДИНАМИЧЕСКИМ ЗАПРОСОМ, И БЕЗ НЕЁ ЕГО
+// НЕЛЬЗЯ БЫЛО БЫ ДЕРЖАТЬ. `collection_page` теперь собирает текст запроса под
+// заданные параметры (иначе категория стоила 1812 мс — см.
+// collection_dynamic_plan.sql), а строку поиска пишет читатель. Экранирует её
+// `format(%L)`, и это надо ПРОВЕРЯТЬ на боевой базе, а не принимать на веру:
+// подстановка без экранирования выглядит точно так же и работает ровно до
+// первой кавычки.
+async function checkCollectionSearchEscaping() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Поиск в коллекции', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const page = async (q) => {
+    const r = await fetch(`${url}/rest/v1/rpc/collection_page`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({
+        p_lang: 'ru', p_category: 'player', p_query: q, p_limit: 48, p_offset: 0,
+        p_club_key: null, p_league: null, p_country: null, p_sort: null,
+      }),
+    });
+    const body = r.ok ? await r.json().catch(() => null) : null;
+    return { ok: r.ok, n: Array.isArray(body) ? body.length : -1, status: r.status };
+  };
+
+  // Апостроф в имени — не диверсия, а обычный игрок: O'Neill, N'Golo, O'Shea.
+  const quote = await page("O'Neill");
+  record('Поиск в коллекции: апостроф в имени', quote.ok && quote.n > 0,
+         quote.ok ? `${quote.n} карточек по «O'Neill»` : `отказ ${quote.status}`,
+         'ловит сломанное экранирование: без него запрос падает с ошибкой разбора');
+
+  // ⚠️ ПОПЫТКА ВПРЫСКА ОБЯЗАНА ДАТЬ ПУСТО, А НЕ ВСЮ КОЛОДУ. Если бы строка
+  // склеивалась в текст запроса без `%L`, это условие стало бы истинным для
+  // каждой строки и вернуло бы полную страницу — 48 карточек.
+  const inject = await page("' or 1=1 --");
+  record('Поиск в коллекции: впрыск не проходит', inject.ok && inject.n === 0,
+         inject.ok ? `«' or 1=1 --» вернул ${inject.n} карточек`
+                   : `отказ ${inject.status}`,
+         inject.n === 0 ? 'ловит подстановку без экранирования'
+                        : '⚠ СТРОКА ПОИСКА ПОПАДАЕТ В ЗАПРОС КАК КОД');
+
+  // Отрицательный контроль к самой проверке: обычная строка обязана что-то
+  // находить, иначе «ноль» выше зелен от того, что поиск сломан вообще.
+  const plain = await page('месси');
+  record('Поиск в коллекции: контроль различения', plain.ok && plain.n > 0,
+         plain.ok ? `обычный запрос «месси» вернул ${plain.n}` : `отказ ${plain.status}`,
+         plain.n > 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
 // -------------------------------------------- клубы в списке матчей --------
@@ -1589,6 +1673,54 @@ async function checkMatchCharacter() {
          empty ? 'по выдуманному матчу пусто, как и должно'
                : `выдуманный матч вернул ${Array.isArray(bogus) ? bogus.length : '?'} строк`,
          empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ------------------------------------------- позвать своих по клубу -------
+// Владелец: «возможность добавления в комнату … фанаты команды, той или иной».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ ИМЕННО ОТКАЗ, И ЭТО ЗДЕСЬ ГЛАВНОЕ. Функция читает `players`
+// за игрока (security definer), то есть отдаёт ИМЕНА. Единственное, что стоит
+// между ней и перечислением чужих людей, — проверка подписи Telegram. Если
+// она отвалится, функция начнёт отвечать, и внешне это будет выглядеть как
+// «работает».
+async function checkClubFansInvite() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Свои по клубу', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const r = await fetch(`${url}/rest/v1/rpc/club_fans_to_invite`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      p_init_data: 'подделка',
+      p_room_id: '00000000-0000-0000-0000-000000000000',
+      p_limit: 5,
+    }),
+  });
+  const body = await r.json().catch(() => null);
+  const refused = r.status >= 400 && body && body.code === '28000';
+  record('Свои по клубу: подделанная подпись отбита', refused,
+         refused ? 'ответ 28000 «invalid init data», как и должно'
+                 : `код ${r.status}, тело ${JSON.stringify(body).slice(0, 120)}`,
+         refused ? 'ловит отвалившуюся проверку подписи — то есть утечку имён'
+                 : '⚠ ФУНКЦИЯ ОТВЕЧАЕТ БЕЗ ПОДПИСИ');
+
+  // Отрицательный контроль к самой проверке: та же ручка с ПУСТЫМ телом
+  // обязана отвечать иначе — иначе проверка выше зелена от того, что любой
+  // запрос сюда падает, а не от того, что подпись проверяется.
+  const r2 = await fetch(`${url}/rest/v1/rpc/club_fans_to_invite`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const b2 = await r2.json().catch(() => null);
+  const other = !b2 || b2.code !== '28000';
+  record('Свои по клубу: контроль различения', other,
+         other ? `без аргументов ответ иной (${r2.status})`
+               : 'без аргументов тот же 28000 — проверка не различает причины',
+         other ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
 // ------------------------------------- уровень действующего игрока ---------
@@ -2019,9 +2151,11 @@ await checkDeckCountries();
 await checkMetricHistory();
 await checkPlayerIndex();
 await checkScreenBudget();
+await checkCollectionSearchEscaping();
 await checkFixtureClubs();
 await checkLocalGoals();
 await checkMatchCharacter();
+await checkClubFansInvite();
 await checkPlayerLevelBasis();
 await checkClubOrderAndLinks();
 await checkClubManagers();

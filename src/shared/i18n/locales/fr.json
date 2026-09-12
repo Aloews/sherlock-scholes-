@@ -356,7 +356,8 @@
     "deck_count_one": "{{count}} carte",
     "deck_count_other": "{{count}} cartes",
     "deck_save_failed": "Le choix n'a pas été enregistré — tout le monde garde l'ancien jeu",
-    "deck_empty": "Aucune carte ne correspond à ce filtre — élargis la sélection"
+    "deck_empty": "Aucune carte ne correspond à ce filtre — élargis la sélection",
+    "invite_fans": "Inviter les supporters de ton club"
   },
   "voice": {
     "title": "Chat vocal",

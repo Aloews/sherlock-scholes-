@@ -84,3 +84,37 @@ update public.digest_source d
      where kind = 'channel' and wanted
   ) g
  where d.id = g.id;
+
+-- ─── Проверка по содержимому, 12.09.2026 ────────────────────────────────────
+--
+-- Каналы отработали полный круг ротации, и теперь видно не название страницы, а
+-- то, что канал реально выкладывает. Из двадцати шести дали ролики ДВАДЦАТЬ
+-- ДВА — от 9 до 33 штук, все свежие, и заголовки не оставляют сомнений в
+-- принадлежности: «Werder Bremen 3:1 RB Leipzig I Pressekonferenz», «West Ham
+-- 6-0 Wrexham | Championship Extended Highlights», «Shankland's Two-Goal
+-- Masterclass vs Falkirk».
+--
+-- ⚠️ НОЛЬ ДАЛИ РОВНО ТЕ ЧЕТЫРЕ, У КОТОРЫХ СТОЯЛА ОГОВОРКА. Bayer Leverkusen,
+-- Eintracht Frankfurt, Real Sociedad и Torino — это те самые каналы, чьё
+-- описание было умолчанием YouTube («Share your videos with friends…»), и чью
+-- принадлежность подтверждало только совпадение хэндла с именем клуба. Совпало
+-- имя — не совпало содержимое.
+--
+-- Снимаю их с той же формулировкой, что и прочие снятые: строка остаётся, чтобы
+-- следующий не завёл их снова, потратив на тот же круг ротации те же сутки.
+update public.digest_source
+   set wanted = false, enabled = false,
+       note = note || ' ПРОВЕРЕНО 12.09.2026: за полный круг ротации ноль роликов. Оговорка подтвердилась — хэндл совпал, содержимого нет.'
+ where kind = 'channel'
+   and name in ('Bayer Leverkusen', 'Eintracht Frankfurt', 'Real Sociedad', 'Torino')
+   and note like '%ОГОВОРКА%';
+
+-- Раскладка по группам заново — после снятия четырёх.
+update public.digest_source d
+   set poll_group = g.grp
+  from (
+    select id, (row_number() over (order by id) % 6)::int + 1 as grp
+      from public.digest_source
+     where kind = 'channel' and wanted
+  ) g
+ where d.id = g.id;

@@ -344,7 +344,8 @@
     "deck_categories_other": "카테고리 {{count}}개",
     "deck_count_other": "{{count}}장",
     "deck_save_failed": "선택이 저장되지 않았습니다 — 모두 이전 덱 그대로입니다",
-    "deck_empty": "이 필터에 맞는 카드가 없습니다 — 범위를 넓혀 주세요"
+    "deck_empty": "이 필터에 맞는 카드가 없습니다 — 범위를 넓혀 주세요",
+    "invite_fans": "같은 구단 팬 부르기"
   },
   "voice": {
     "title": "음성 채팅",

@@ -344,7 +344,8 @@
     "deck_categories_other": "{{count}} 个类别",
     "deck_count_other": "{{count}} 张",
     "deck_save_failed": "选择未保存 — 所有人仍是原来的卡组",
-    "deck_empty": "没有符合该筛选的卡片 — 请放宽条件"
+    "deck_empty": "没有符合该筛选的卡片 — 请放宽条件",
+    "invite_fans": "邀请同队球迷"
   },
   "voice": {
     "title": "语音聊天",

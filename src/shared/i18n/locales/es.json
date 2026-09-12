@@ -356,7 +356,8 @@
     "deck_count_one": "{{count}} carta",
     "deck_count_other": "{{count}} cartas",
     "deck_save_failed": "No se guardó la elección: todos siguen con el mazo anterior",
-    "deck_empty": "Ninguna carta coincide con este filtro: amplía la selección"
+    "deck_empty": "Ninguna carta coincide con este filtro: amplía la selección",
+    "invite_fans": "Invita a los de tu club"
   },
   "voice": {
     "title": "Chat de voz",

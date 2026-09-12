@@ -356,7 +356,8 @@
     "deck_count_one": "{{count}} carta",
     "deck_count_other": "{{count}} cartas",
     "deck_save_failed": "A escolha não foi salva — todos continuam com o baralho anterior",
-    "deck_empty": "Nenhuma carta corresponde a este filtro — amplie a seleção"
+    "deck_empty": "Nenhuma carta corresponde a este filtro — amplie a seleção",
+    "invite_fans": "Chamar os do teu clube"
   },
   "voice": {
     "title": "Chat de voz",
