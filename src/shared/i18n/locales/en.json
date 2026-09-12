@@ -1031,7 +1031,12 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches",
     "kind_club": "Clubs",
-    "kind_national": "National teams"
+    "kind_national": "National teams",
+    "show_squad": "Show squad",
+    "squad_unknown": "Squad not collected",
+    "squad_source_roster": "Club squad list · Transfermarkt",
+    "squad_source_cards": "From our cards",
+    "squad_source_soccerwiki": "From Soccer Wiki"
   },
   "table": {
     "title": "Tables",

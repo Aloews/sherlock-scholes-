@@ -38,8 +38,21 @@ vi.mock('@/shared/lib/supabase', () => ({
               rpc: async () => ({ data: null, error: null }) },
 }));
 
+// Текущий клуб и итоги карьеры решают, показывать ли ВТОРУЮ историю клубов
+// (см. проверку ниже). Обе заглушки — переменные, чтобы каждый случай задавал
+// свой набор, а не подгонял общий.
+const clubOfCard = vi.fn(async () => ({ status: 'ok', data: null as unknown }));
+const careerTotals = vi.fn(async () => ({ status: 'ok', data: [] as unknown[] }));
+
+vi.mock('@/features/ratings/ratingsApi', () => ({
+  fetchCollectedTotals: vi.fn(async () => ({ status: 'ok', data: [] })),
+  fetchMetricChanges: vi.fn(async () => ({ status: 'ok', data: [] })),
+  fetchCareerTotals: (...a: unknown[]) => careerTotals(...(a as [])),
+  fetchClubCareer: vi.fn(async () => ({ status: 'ok', data: [] })),
+}));
+
 vi.mock('@/features/clubs/clubsApi', () => ({
-  fetchClubOfCard: vi.fn(async () => ({ status: 'ok', data: null })),
+  fetchClubOfCard: (...a: unknown[]) => clubOfCard(...(a as [])),
   fetchCardValueTrend: vi.fn(async () => null),
   fetchClubsByNames: vi.fn(async () => []),
   fetchClubKeyOfCard: vi.fn(async (id: string) =>
@@ -109,6 +122,59 @@ describe('CardDossier', () => {
                   name: 'Unknown Club', name_en: 'Unknown Club' });
     expect(navigateSpy).not.toHaveBeenCalled();
     expect(screen.getByText('Unknown Club')).toBeTruthy();
+  });
+
+  // ⚠️ ДВЕ ИСТОРИИ КЛУБОВ В ОДНОМ ДОСЬЕ — ЖАЛОБА ВЛАДЕЛЬЦА, А НЕ ПРИДИРКА.
+  // «В карточке действующих игроков история клубов написана два раза, первый
+  // точнее, а второй блок… не точный (но его можно оставить у игроков,
+  // которые закончили карьеру)». Проверяются ОБА направления: спрятать у всех
+  // было бы так же неверно, как показывать всем.
+  describe('вторая история клубов', () => {
+    const withCareer = {
+      ...bare,
+      career_stats: [{ club: 'Old Club', years: '2010–2012', apps: 50, goals: 7 }],
+    };
+
+    // ⚠️ `mockResolvedValue`, А НЕ `...Once`, И ЭТО НЕ МЕЛОЧЬ. `fetchCareerTotals`
+    // зовут ДВОЕ: само досье и вложенный в него блок «Карьера в цифрах».
+    // Эффекты ребёнка срабатывают раньше родительских, так что одноразовое
+    // значение доставалось блоку, а досье получало умолчание — и проверка
+    // краснела на том, чего не проверяла.
+    afterEach(() => {
+      clubOfCard.mockResolvedValue({ status: 'ok', data: null });
+      careerTotals.mockResolvedValue({ status: 'ok', data: [] });
+    });
+
+    it('у действующего игрока с точной историей — спрятана', async () => {
+      clubOfCard.mockResolvedValue({
+        status: 'ok', data: { club_key: 'real madrid', name: 'Реал', crest_url: null },
+      });
+      careerTotals.mockResolvedValue({ status: 'ok', data: [{ club_apps: 240 }] });
+      await mount(withCareer);
+      // ⚠️ ЕЩЁ ОДИН ПРОГОН ОЧЕРЕДИ: `setTotals` и `setClub` стоят в РАЗНЫХ
+      // цепочках промисов, и первого `act` хватает не всегда. Без этого
+      // проверка зеленела бы на «не успело», а не на спрятанном блоке.
+      await act(async () => {});
+      expect(screen.queryByText('Old Club')).toBeNull();
+    });
+
+    it('у закончившего карьеру — остаётся: она у него единственная', async () => {
+      clubOfCard.mockResolvedValue({ status: 'ok', data: null });
+      careerTotals.mockResolvedValue({ status: 'ok', data: [{ club_apps: 240 }] });
+      await mount(withCareer);
+      await act(async () => {});
+      expect(screen.getByText('Old Club')).toBeTruthy();
+    });
+
+    it('у действующего БЕЗ точной истории — остаётся: иначе клубов не будет вовсе', async () => {
+      clubOfCard.mockResolvedValue({
+        status: 'ok', data: { club_key: 'real madrid', name: 'Реал', crest_url: null },
+      });
+      careerTotals.mockResolvedValue({ status: 'ok', data: [] });
+      await mount(withCareer);
+      await act(async () => {});
+      expect(screen.getByText('Old Club')).toBeTruthy();
+    });
   });
 
   it('открывается со стоимостью и без истории её изменений', async () => {

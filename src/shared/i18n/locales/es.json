@@ -1031,7 +1031,12 @@
     "matches_one": "{{count}} partido",
     "matches_other": "{{count}} partidos",
     "kind_club": "Clubes",
-    "kind_national": "Selecciones"
+    "kind_national": "Selecciones",
+    "show_squad": "Mostrar plantilla",
+    "squad_unknown": "Plantilla no recopilada",
+    "squad_source_roster": "Plantilla del club · Transfermarkt",
+    "squad_source_cards": "De nuestras cartas",
+    "squad_source_soccerwiki": "De Soccer Wiki"
   },
   "table": {
     "title": "Clasificación",

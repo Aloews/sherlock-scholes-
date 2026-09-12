@@ -1031,7 +1031,12 @@
     "matches_one": "{{count}} jogo",
     "matches_other": "{{count}} jogos",
     "kind_club": "Clubes",
-    "kind_national": "Seleções"
+    "kind_national": "Seleções",
+    "show_squad": "Mostrar elenco",
+    "squad_unknown": "Elenco não reunido",
+    "squad_source_roster": "Elenco do clube · Transfermarkt",
+    "squad_source_cards": "Das nossas cartas",
+    "squad_source_soccerwiki": "Do Soccer Wiki"
   },
   "table": {
     "title": "Classificação",

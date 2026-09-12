@@ -1000,7 +1000,12 @@
     "players_other": "{{count}} 名球员",
     "matches_other": "{{count}} 场比赛",
     "kind_club": "俱乐部",
-    "kind_national": "国家队"
+    "kind_national": "国家队",
+    "show_squad": "查看阵容",
+    "squad_unknown": "尚未收集阵容",
+    "squad_source_roster": "俱乐部名单 · Transfermarkt",
+    "squad_source_cards": "来自我们的卡片",
+    "squad_source_soccerwiki": "来自 Soccer Wiki"
   },
   "table": {
     "title": "积分榜",

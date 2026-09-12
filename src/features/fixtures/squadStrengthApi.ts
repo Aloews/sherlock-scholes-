@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
+import type { SquadPlayer } from '@/features/clubs/clubSquadView';
 
 /**
  * Уровень состава команд матча — по известности их игроков.
@@ -131,16 +132,15 @@ export async function fetchTeamRating(): Promise<Map<string, TeamRating>> {
 // которую почти никто не раскроет: вес первого захода — та самая цифра, что
 // стоит первой строкой в check-limits.
 // ---------------------------------------------------------------------------
-export interface SquadMember {
+export interface SquadMember extends SquadPlayer {
   side: 'home' | 'away';
   club_key: string;
   club: string | null;
-  card_id: string;
-  name: string;
-  level: number;
-  /** 'form' | 'fame' | 'fame+form' | 'icon' — откуда взялся уровень. */
-  basis: string;
-  /** Вошёл ли в расчёт рейтинга: глубина равная с обеих сторон. */
+  /** @deprecated Уровень больше не показывается — см. шапку SquadStrength. */
+  level: number | null;
+  /** @deprecated Основание уровня; осталось ради совместимости RPC. */
+  basis: string | null;
+  /** @deprecated Равная глубина имела смысл, пока рисовался рейтинг. */
   in_rating: boolean;
 }
 
