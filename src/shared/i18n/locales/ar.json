@@ -1149,7 +1149,12 @@
     "matches_many": "{{count}} مباراة",
     "matches_other": "{{count}} مباراة",
     "kind_club": "الأندية",
-    "kind_national": "المنتخبات"
+    "kind_national": "المنتخبات",
+    "show_squad": "عرض التشكيلة",
+    "squad_unknown": "التشكيلة غير مجمّعة",
+    "squad_source_roster": "قائمة النادي · Transfermarkt",
+    "squad_source_cards": "من بطاقاتنا",
+    "squad_source_soccerwiki": "من Soccer Wiki"
   },
   "table": {
     "title": "الترتيب",

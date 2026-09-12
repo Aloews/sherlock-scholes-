@@ -1097,7 +1097,12 @@
     "matches_many": "{{count}} матчей",
     "matches_other": "{{count}} матчей",
     "kind_club": "Клубы",
-    "kind_national": "Сборные"
+    "kind_national": "Сборные",
+    "show_squad": "Показать состав",
+    "squad_unknown": "Состав не собран",
+    "squad_source_roster": "Заявка клуба · Transfermarkt",
+    "squad_source_cards": "По нашим карточкам",
+    "squad_source_soccerwiki": "По Soccer Wiki"
   },
   "table": {
     "title": "Таблицы",

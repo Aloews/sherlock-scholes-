@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { fetchClubKeyOfCard } from '@/features/clubs/clubsApi';
 import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -298,13 +299,42 @@ export function CollectionScreen() {
       .finally(() => setPaging(false));
   }, [paging, catFilter, term, cards.length, i18n.language, filter]);
 
+  // ⚠️ КАРТОЧКА КЛУБА ОТКРЫВАЕТ ЭКРАН КОМАНДЫ, А НЕ ДОСЬЕ. Владелец: «при
+  // нажатии на клуб на всех экранах ссылайся на „команды и статистика“».
+  // Досье клуба это имя, герб и пара фактов; на экране команды — состав со
+  // стоимостями, матчи, тренер и новости.
+  //
+  // ⚠️ ЗАПРОС ИДЁТ ТОЛЬКО ПО ТАПУ ПО КЛУБУ, а не при отрисовке сетки: иначе
+  // это был бы лишний поход в базу на каждую страницу каталога. Клуба нет в
+  // справочнике — открывается досье, как раньше: скудная карточка честнее
+  // ссылки в никуда.
+  const openCardOrClub = (card: CollectionCard) => {
+    hapticImpact('light');
+    if (card.category === 'club') {
+      void fetchClubKeyOfCard(card.id).then((key) => {
+        if (key) navigate(`/club/${encodeURIComponent(key)}`);
+        else setOpenId(card.id);
+      });
+      return;
+    }
+    setOpenId(card.id);
+    trackEvent('collection_card_opened', { tier: card.tier ?? 'none' });
+  };
+
   const pickCategory = (next: Filter) => {
     hapticImpact('light');
     setCatFilter(next);
     if (next !== 'all') trackEvent('collection_filtered', { category: next });
   };
 
-  const filters: Filter[] = ['all', ...ALL_CATEGORIES];
+  // ⚠️ «КЛУБЫ» ИЗ ФИЛЬТРОВ УБРАНЫ, И ЭТО ПРОСЬБА ВЛАДЕЛЬЦА, А НЕ ЧИСТКА.
+  // «В „коллекциях“ убери „клубы“ — там мало данных и нет составов». Карточка
+  // клуба это имя, герб и пара фактов; всё остальное про команду — состав со
+  // стоимостями, матчи, тренер, новости — живёт на экране команды, в соседнем
+  // разделе этого же экрана. Сами карточки клубов из колоды НЕ исчезают: они
+  // по-прежнему раздаются в игре и находятся поиском, а тап по такой карточке
+  // уводит на экран команды (см. openCardOrClub ниже).
+  const filters: Filter[] = ['all', ...ALL_CATEGORIES.filter((c) => c !== 'club')];
 
   return (
     <div className="min-h-screen bg-brand-bg ds-screen flex flex-col">
@@ -458,11 +488,8 @@ export function CollectionScreen() {
             <>
               <div className="grid grid-cols-2 gap-3">
                 {cards.map((card) => (
-                  <CollectionCell key={card.id} card={card} onOpen={() => {
-                    hapticImpact('light');
-                    setOpenId(card.id);
-                    trackEvent('collection_card_opened', { tier: card.tier ?? 'none' });
-                  }} />
+                  <CollectionCell key={card.id} card={card}
+                                  onOpen={() => openCardOrClub(card)} />
                 ))}
               </div>
               {/* Paged rather than "all of it": the catalog is ~2k cards and

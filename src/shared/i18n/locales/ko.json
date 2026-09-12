@@ -1000,7 +1000,12 @@
     "players_other": "{{count}}명",
     "matches_other": "{{count}}경기",
     "kind_club": "클럽",
-    "kind_national": "대표팀"
+    "kind_national": "대표팀",
+    "show_squad": "선수단 보기",
+    "squad_unknown": "선수단 정보 없음",
+    "squad_source_roster": "구단 등록 명단 · Transfermarkt",
+    "squad_source_cards": "우리 카드 기준",
+    "squad_source_soccerwiki": "Soccer Wiki 기준"
   },
   "table": {
     "title": "순위표",

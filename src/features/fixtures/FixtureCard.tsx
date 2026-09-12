@@ -13,7 +13,6 @@ import type { BroadcastRight } from './broadcastRightsApi';
 import type { Prediction } from './predictionsApi';
 import { SquadStrength } from './SquadStrength';
 import { MatchCharacter } from './MatchCharacter';
-import type { TeamRating } from './squadStrengthApi';
 
 interface Props {
   fixture: Fixture;
@@ -31,7 +30,6 @@ interface Props {
    * каждого матча — оцифрованы не все клубы, — и отсутствие показывается
    * НИКАК: «состав 0» читалось бы как «слабый», хотя значит «мы не знаем».
    */
-  rating?: TeamRating;
   /**
    * Наши клубы за именами команд из расписания: эмблема, название на языке
    * читателя, стоимость и состав каждой стороны. Отсутствует, пока запрос не
@@ -83,7 +81,7 @@ function ageMinutes(iso: string | null): number | null {
  * чего: 0 из 266 предстоящих матчей имеют прошлую встречу.
  */
 export function FixtureCard({
-  fixture, broadcast, rights, prediction, rating, clubs, onPredictionSaved, timeFmt,
+  fixture, broadcast, rights, prediction, clubs, onPredictionSaved, timeFmt,
 }: Props) {
   const { t, i18n } = useTranslation();
   const hasScore = fixture.home_score !== null && fixture.away_score !== null;
@@ -221,15 +219,19 @@ export function FixtureCard({
         </button>
       )}
 
-      {rating && (
-        <div>
-          <SquadStrength
-            fixtureId={fixture.id}
-            homeTeam={fixture.home_team}
-            awayTeam={fixture.away_team}
-          />
-        </div>
-      )}
+      {/* ⚠️ БЕЗ УСЛОВИЯ, И ЭТО ПОЧИНКА ЖАЛОБЫ. Владелец: «нужно чтобы у всех
+          команд была функция „показать состав“» и «в прогнозах доделай все
+          составы». Прежде блок показывался только там, где посчитался
+          рейтинг, — а рейтинга нет у большинства матчей, и кнопка пропадала
+          вместе с ним. Теперь состав ищется по заявке клуба, и замер
+          12.09.2026 говорит: обе стороны находятся у 154 ближайших матчей из
+          200 вместо 113, пусто у 4 вместо 13. Там, где пусто, нажатие
+          отвечает словами — так же, как у характера матча ниже. */}
+      <SquadStrength
+        fixtureId={fixture.id}
+        homeTeam={fixture.home_team}
+        awayTeam={fixture.away_team}
+      />
 
       {/* ⚠️ БЕЗ УСЛОВИЯ, В ОТЛИЧИЕ ОТ СОСТАВОВ ВЫШЕ. Характер есть у 366
           клубов, и у доброй половины ближайших матчей одна сторона без него —

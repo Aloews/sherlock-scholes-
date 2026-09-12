@@ -45,6 +45,10 @@ vi.mock('./collection/StatsPane', async () => {
   const { useEffect } = await import('react');
   return { StatsPane: () => { useEffect(() => { statsMounted(); }, []); return <div>pane-stats</div>; } };
 });
+// Клуб по карточке — ходит в Supabase, а в тесте сети нет. Мок нужен ещё и
+// потому, что `clubsApi` создаёт клиент при импорте: без него сборка модуля
+// падает на отсутствии VITE_SUPABASE_URL.
+vi.mock('@/features/clubs/clubsApi', () => ({ fetchClubKeyOfCard: vi.fn(async () => null) }));
 vi.mock('@/shared/ui/ScopeFilter', () => ({ ScopeFilter: () => <div /> }));
 vi.mock('@/screens/collection/CardDossier', () => ({ CardDossier: () => <div /> }));
 vi.mock('@/shared/lib/telegram', () => ({ hapticImpact: vi.fn() }));

@@ -1000,7 +1000,12 @@
     "players_other": "{{count}}人",
     "matches_other": "{{count}}試合",
     "kind_club": "クラブ",
-    "kind_national": "代表チーム"
+    "kind_national": "代表チーム",
+    "show_squad": "メンバーを表示",
+    "squad_unknown": "メンバーは未収集",
+    "squad_source_roster": "クラブ登録メンバー · Transfermarkt",
+    "squad_source_cards": "当アプリのカードから",
+    "squad_source_soccerwiki": "Soccer Wiki より"
   },
   "table": {
     "title": "順位表",

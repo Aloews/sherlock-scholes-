@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconSearch, IconShieldHalf, IconTable } from '@tabler/icons-react';
+import { IconChevronDown, IconSearch, IconShieldHalf, IconTable } from '@tabler/icons-react';
 import { fetchClubDirectory, type ClubDirectoryRow, type ClubKind } from '@/features/clubs/clubsApi';
+import { fetchClubSquadView, type SquadPlayer } from '@/features/clubs/clubSquadView';
+import { SquadList } from '@/features/clubs/SquadList';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { Chip } from '@/shared/ui/Chip';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -111,69 +113,112 @@ export function ClubsPane() {
 
       <div className="space-y-1.5">
         {list.map((c, i) => (
-          <button
-            key={c.club_key}
-            onClick={() => navigate(`/club/${encodeURIComponent(c.club_key)}`)}
-            className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5 flex items-center gap-3 text-left active:opacity-70 transition-opacity"
-          >
-            {/* ⚠️ МЕСТО В СПИСКЕ ЧИСЛОМ, И ЭТО ПОЧИНКА ЖАЛОБЫ, А НЕ УКРАШЕНИЕ.
-                Владелец: «в рейтинге команд на первом месте оказалась и
-                Барселона и Интер». Уровень — перцентиль, округлённый до
-                целого, и в сотню упираются семь клубов сразу: семь строк с
-                одинаковой сотней читаются как семь первых мест. Порядок при
-                этом строгий (сортирует elo, а не округлённый уровень) —
-                номер его и показывает. Поиск не меняет смысла: это место в
-                том списке, который сейчас на экране. */}
-            <span className="w-5 shrink-0 text-brand-muted/60 text-[11px] tabular-nums text-right">
-              {i + 1}
-            </span>
-            {c.crest_url ? (
-              <img
-                src={c.crest_url}
-                alt=""
-                className="w-9 h-9 rounded-lg object-contain bg-brand-bg shrink-0"
-                loading="lazy"
-              />
-            ) : (
-              <span className="w-9 h-9 rounded-lg bg-brand-bg shrink-0 grid place-items-center">
-                <IconShieldHalf size={18} stroke={1.5} className="text-brand-muted" />
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-white text-sm truncate">{c.name}</p>
-              <p className="text-brand-muted text-[10.5px] truncate">
-                {[c.country, c.league].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            {/* ⚠️ ПЕРВЫМ ЧИСЛОМ — ТО, ПО ЧЕМУ СПИСОК УПОРЯДОЧЕН. Владелец:
-                «рейтинг команд не сортируется от лучшей к самой не
-                результативной». Порядок теперь от сильной к слабой, и число,
-                которое его задаёт, стоит рядом: иначе порядок читается как
-                случайный — ровно та жалоба и была. Уровня нет у четырёх
-                пятых клубов, поэтому там показывается стоимость состава,
-                по ней они и стоят. */}
-            <div className="text-right shrink-0">
-              {/* ⚠️ СТОИМОСТЬ, А НЕ РЕЙТИНГ. Владелец: «давай пока сделаем
-                  основным рейтингом всего для всех экранов именно стоимость.
-                  А с набором данных сможем понять и проверим, какой лучше
-                  показатель отображает силу игрока». Уровень клуба
-                  по-прежнему приходит с сервера и им же сортируется вторым
-                  ключом — выбросить его сейчас значило бы, что сравнивать
-                  потом будет нечего. */}
-              {c.squad_value ? (
-                <p className="text-brand-accent text-[11px] font-semibold tabular-nums">
-                  {formatEur(c.squad_value, i18n.language)}
-                </p>
-              ) : null}
-              <p className="text-brand-muted text-[10.5px] tabular-nums">
-                {t('clubs.players', { count: c.squad })}
-              </p>
-              <p className="text-brand-muted/70 text-[10px] tabular-nums">
-                {t('clubs.matches', { count: c.matches })}
-              </p>
-            </div>
-          </button>
+          <ClubRow key={c.club_key} club={c} place={i + 1} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Одна команда в списке: строка-ссылка на её экран и состав по нажатию.
+ *
+ * ⚠️ СОСТАВ ЗДЕСЬ ТОТ ЖЕ, ЧТО ПОД МАТЧЕМ. Владелец: «экран „команды и
+ * статистика“ синхронизируй с функцией „показать составы“». Один запрос
+ * (`club_squad_view`) и один список (`SquadList`) на оба экрана: две копии
+ * одного ответа расходятся молча, и уже расходились.
+ *
+ * ⚠️ ГРУЗИТСЯ ПО НАЖАТИЮ, А НЕ СО СПИСКОМ. Команд на экране шестьдесят;
+ * шестьдесят заявок разом — это вес первого захода, первая строка
+ * check-limits.
+ */
+function ClubRow({ club, place }: { club: ClubDirectoryRow; place: number }) {
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [squad, setSquad] = useState<SquadPlayer[] | null>(null);
+
+  const toggle = () => {
+    hapticImpact('light');
+    const next = !open;
+    setOpen(next);
+    if (next && squad === null) void fetchClubSquadView(club.club_key).then(setSquad);
+  };
+
+  return (
+    <div className="ds-panel bg-brand-surface border border-brand-border rounded-xl">
+      <button
+        onClick={() => navigate(`/club/${encodeURIComponent(club.club_key)}`)}
+        className="w-full px-3 py-2.5 flex items-center gap-3 text-left active:opacity-70 transition-opacity"
+      >
+        {/* ⚠️ МЕСТО В СПИСКЕ ЧИСЛОМ, И ЭТО ПОЧИНКА ЖАЛОБЫ, А НЕ УКРАШЕНИЕ.
+            Владелец: «в рейтинге команд на первом месте оказалась и
+            Барселона и Интер». Уровень — перцентиль, округлённый до целого,
+            и в сотню упираются шесть клубов сразу: шесть строк с одинаковой
+            сотней читаются как шесть первых мест. Порядок при этом строгий
+            (сортирует стоимость состава, а не округлённый уровень) — номер
+            его и показывает. Поиск не меняет смысла: это место в том списке,
+            который сейчас на экране. */}
+        <span className="w-5 shrink-0 text-brand-muted/60 text-[11px] tabular-nums text-right">
+          {place}
+        </span>
+        {club.crest_url ? (
+          <img
+            src={club.crest_url}
+            alt=""
+            className="w-9 h-9 rounded-lg object-contain bg-brand-bg shrink-0"
+            loading="lazy"
+          />
+        ) : (
+          <span className="w-9 h-9 rounded-lg bg-brand-bg shrink-0 grid place-items-center">
+            <IconShieldHalf size={18} stroke={1.5} className="text-brand-muted" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-white text-sm truncate">{club.name}</p>
+          <p className="text-brand-muted text-[10.5px] truncate">
+            {[club.country, club.league].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        {/* ⚠️ ПЕРВЫМ ЧИСЛОМ — ТО, ПО ЧЕМУ СПИСОК УПОРЯДОЧЕН. Владелец:
+            «рейтинг команд не сортируется от лучшей к самой не
+            результативной». Порядок теперь от сильной к слабой, и число,
+            которое его задаёт, стоит рядом: иначе порядок читается как
+            случайный — ровно та жалоба и была. */}
+        <div className="text-right shrink-0">
+          {club.squad_value ? (
+            <p className="text-brand-accent text-[11px] font-semibold tabular-nums">
+              {formatEur(club.squad_value, i18n.language)}
+            </p>
+          ) : null}
+          <p className="text-brand-muted text-[10.5px] tabular-nums">
+            {t('clubs.players', { count: club.squad })}
+          </p>
+          <p className="text-brand-muted/70 text-[10px] tabular-nums">
+            {t('clubs.matches', { count: club.matches })}
+          </p>
+        </div>
+      </button>
+
+      <div className="px-3 pb-2.5">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="flex items-center gap-1 text-brand-muted text-[10px]
+                     active:opacity-70 transition-opacity"
+        >
+          <IconChevronDown
+            size={12}
+            stroke={2}
+            className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+          {t('clubs.show_squad')}
+        </button>
+        {open && squad === null && (
+          <p className="text-brand-muted text-[10px] mt-1">{t('clubs.loading')}</p>
+        )}
+        {open && squad !== null && <SquadList rows={squad} />}
       </div>
     </div>
   );

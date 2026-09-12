@@ -33,6 +33,15 @@ interface Props {
  * новости обоих клубов. Для нажатия нормально, для списка из трёхсот матчей —
  * нет; поэтому кнопка, а не автозагрузка.
  */
+/** Есть ли у стороны хоть что-то, кроме имени: черты, числа, тренер, новость. */
+function hasSide(row: Row, which: 'home' | 'away'): boolean {
+  const traits = which === 'home' ? row.home_traits : row.away_traits;
+  const manager = which === 'home' ? row.home_manager : row.away_manager;
+  const headline = which === 'home' ? row.home_headline : row.away_headline;
+  const gf = which === 'home' ? row.home_gf_pm : row.away_gf_pm;
+  return (traits?.length ?? 0) > 0 || manager !== null || headline !== null || gf !== null;
+}
+
 export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -49,6 +58,10 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
 
   const bands = row ? characterBands(row.expected_goals, row.openness) : null;
   const basis = row ? characterMatches(row.home_matches, row.away_matches) : null;
+  // ⚠️ «НЕИЗВЕСТНО» ПИШЕТСЯ, ТОЛЬКО КОГДА НЕИЗВЕСТНО ВООБЩЕ НИЧЕГО. Раньше
+  // оно печаталось при любом отсутствии характера — и заслоняло собой
+  // тренера и новость, которые в том же ответе лежали.
+  const nothing = !row || (!bands && !hasSide(row, 'home') && !hasSide(row, 'away'));
 
   const side = (
     team: string,
@@ -120,29 +133,46 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
               есть у 366 клубов; у доброй половины ближайших матчей одна из
               сторон сыграла меньше десяти матчей за окно. Показать таким
               «сбалансированный» значило бы выдать незнание за измерение. */}
-          {(!row || !bands) && (
+          {nothing && (
             <p className="text-brand-muted text-[10px]">{t('character.match_unknown')}</p>
           )}
 
+          {/* Две полосы характера — только когда ОБЕ стороны измерены: из них
+              считаются и ожидаемые голы, и открытость, и одна измеренная
+              сторона тут не помогает. */}
           {row && bands && (
-            <>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
-                  {t(`character.match_goals_${bands.goals}`)}
-                </span>
-                <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
-                  {t(`character.match_flow_${bands.flow}`)}
-                </span>
-                <span className="text-brand-muted text-[10px] tabular-nums">
-                  {t('character.match_expected')}: {row.expected_goals}
-                </span>
-              </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
+                {t(`character.match_goals_${bands.goals}`)}
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
+                {t(`character.match_flow_${bands.flow}`)}
+              </span>
+              <span className="text-brand-muted text-[10px] tabular-nums">
+                {t('character.match_expected')}: {row.expected_goals}
+              </span>
+            </div>
+          )}
 
+          {/* ⚠️ СТОРОНЫ РИСУЮТСЯ И БЕЗ ХАРАКТЕРА, И ЭТО ПОЧИНКА, А НЕ
+              ПОСЛАБЛЕНИЕ. Владелец: «доделай прогноз по кнопке». Прежде весь
+              блок висел на `bands`, то есть на измеренном характере ОБЕИХ
+              сторон, — и вместе с характером пропадало то, что мы знаем и так:
+              тренер и свежая новость клуба. Замер 12.09.2026: из 600 сторон
+              ближайших матчей характер есть у 341, а у 117 из оставшихся 259
+              известен тренер. Показывать им «неизвестно», имея имя тренера, —
+              это прятать от читателя то, что лежит в ответе. */}
+          {row && (
+            <>
               {side(row.home_name ?? homeTeam, row.home_traits, row.home_manager,
                     row.home_gf_pm, row.home_ga_pm, row.home_headline)}
               {side(row.away_name ?? awayTeam, row.away_traits, row.away_manager,
                     row.away_gf_pm, row.away_ga_pm, row.away_headline)}
+            </>
+          )}
 
+          {row && bands && (
+            <>
               {basis !== null && (
                 <p className="text-brand-muted/70 text-[9.5px] mt-1.5">
                   {t('character.match_basis', { count: basis })}
