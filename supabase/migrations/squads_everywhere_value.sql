@@ -295,3 +295,36 @@ as $function$
     from unnest(coalesce(p_names, '{}'::text[])) as n(name)
     left join football_club fc on fc.club_key = resolve_club_key(n.name, null);
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 4. УБОРКА ЗА СОБСТВЕННЫМ СИДОМ: «Интер (Милан)».
+--
+-- ⚠️ ЭТО НЕ ПОБОЧНАЯ ПРАВКА, А СЛЕДСТВИЕ ПУНКТА 1. `merge_seeded_clubs`
+-- (шаг ночного `rebuild_clubs_all`) переносит на выживший клуб карточку,
+-- герб и страну — и УДАЛЯЕТ запись двойника из справочника. Но `club_squad`
+-- и `card_current_club` он НЕ переносит: у прежних сидов двойники были
+-- пустыми, и переносить было нечего.
+--
+-- У `inter milan` пусто не было: 4 строки состава и 8 текущих клубов. Внеся
+-- его в seed, мы обрекли их стать ссылками в никуда при первом же ночном
+-- прогоне — то самое «ссылки не в никуда», которое check-prod считает и на
+-- котором уже висит 57 строк. Переносим их здесь, до прогона.
+--
+-- Порядок именно такой: сперва скопировать (двойник может дать карточку,
+-- которой у выжившего нет), потом удалить. `on conflict do nothing` ловит и
+-- первичный ключ, и частичный уникальный индекс «один текущий клуб на
+-- карточку».
+-- ---------------------------------------------------------------------------
+insert into club_squad (club_key, card_id, shirt_number, position, joined_at, left_at, source, fetched_at)
+select 'internazionale', q.card_id, q.shirt_number, q.position, q.joined_at, q.left_at, q.source, q.fetched_at
+  from club_squad q where q.club_key = 'inter milan'
+on conflict do nothing;
+
+delete from club_squad where club_key = 'inter milan';
+
+update card_current_club c set club_key = 'internazionale'
+ where c.club_key = 'inter milan'
+   and not exists (select 1 from card_current_club c2
+                    where c2.card_id = c.card_id and c2.club_key = 'internazionale');
+
+delete from card_current_club where club_key = 'inter milan';
