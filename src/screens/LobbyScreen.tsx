@@ -13,6 +13,7 @@ import { hapticImpact, hapticError, openTelegramLink } from '@/shared/lib/telegr
 import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { RoomDeckPanel } from '@/features/lobby/RoomDeckPanel';
 import { InviteFriendsPanel } from '@/features/lobby/InviteFriendsPanel';
+import { InviteFansPanel } from '@/features/lobby/InviteFansPanel';
 import { VoiceControl } from '@/features/voice/VoiceControl';
 import { VideoStage } from '@/features/voice/VideoStage';
 import { QrCode } from '@/shared/ui/QrCode';
@@ -157,6 +158,10 @@ export function LobbyScreen() {
             their home screen. The link and QR above stay for everybody the
             game has never seen this player with. */}
         <InviteFriendsPanel roomId={room.id} playerId={me?.id ?? null} />
+        {/* Своих по клубу — отдельной панелью и ПОСЛЕ друзей: друг это тот, с
+            кем уже играли, и он ближе. Панель прячет себя, когда своих онлайн
+            нет. */}
+        <InviteFansPanel roomId={room.id} />
 
         {/* Voice is opt-in and asks for the microphone only when tapped.
             Renders nothing when LiveKit is unconfigured. In team mode the

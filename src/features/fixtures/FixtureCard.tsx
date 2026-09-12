@@ -12,6 +12,7 @@ import type { Broadcast } from './broadcastsApi';
 import type { BroadcastRight } from './broadcastRightsApi';
 import type { Prediction } from './predictionsApi';
 import { SquadStrength } from './SquadStrength';
+import { MatchCharacter } from './MatchCharacter';
 import type { TeamRating } from './squadStrengthApi';
 
 interface Props {
@@ -229,6 +230,17 @@ export function FixtureCard({
           />
         </div>
       )}
+
+      {/* ⚠️ БЕЗ УСЛОВИЯ, В ОТЛИЧИЕ ОТ СОСТАВОВ ВЫШЕ. Характер есть у 366
+          клубов, и у доброй половины ближайших матчей одна сторона без него —
+          то есть спрятать кнопку «где не измерено» значило бы спрятать её у
+          половины матчей и оставить читателя гадать, почему у соседнего матча
+          она есть. Нажатие в этом случае отвечает словами. */}
+      <MatchCharacter
+        fixtureId={fixture.id}
+        homeTeam={fixture.home_team}
+        awayTeam={fixture.away_team}
+      />
 
       <div className="mt-2">
         <PredictionRow

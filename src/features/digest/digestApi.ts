@@ -53,6 +53,15 @@ export interface GoalClip {
   thumb_url: string | null;
   /** Очищенный моделью заголовок — или null, см. summary_short выше. */
   title_generated: string | null;
+  /**
+   * Куда вести читателя. ГОТОВЫМ АДРЕСОМ, а не из `video_id`.
+   *
+   * Раньше ссылка собиралась здесь как `youtube.com/watch?v=<id>`, и это было
+   * верно ровно до второго источника: обзоры туров РПЛ лежат на Rutube, и его
+   * идентификатор в шаблоне YouTube ведёт в никуда. Подстановку делает база
+   * (`clip_watch_url`), одним правилом на все шесть RPC.
+   */
+  watch_url: string;
 }
 
 /**
@@ -90,6 +99,32 @@ export interface RankedClip extends GoalClip {
   likes: number;
   /** Разбор заголовка, а не факт. Экран честно помечает остальное как момент. */
   is_goal: boolean;
+}
+
+/**
+ * Ролики НА ЯЗЫКЕ ЧИТАТЕЛЯ — отдельным списком, а не подмешанные в общий топ.
+ *
+ * ЗАЧЕМ ОТДЕЛЬНО, ЗАМЕР 08.09.2026. Канал РПЛ подключён и пишет в базу, но в
+ * общем топе не было НИ ОДНОГО его ролика: у обзора тура 749 просмотров, у
+ * ролика «Арсенала» — 2 451 505. Это не «РПЛ хуже», это разные аудитории, и
+ * любой общий топ по просмотрам её хоронит навсегда. Правки самого
+ * ранжирования пробовались и отвергнуты по замеру — разбор в шапке
+ * clip_language.sql.
+ *
+ * Пусто — это норма, а не поломка: у семнадцати каналов YouTube языка нет и
+ * не будет проставлено задним числом. Раздел просто не появляется, как у
+ * идущих эфиров.
+ */
+export async function fetchLocalGoals(lang: string, limit = 12): Promise<RankedClip[]> {
+  const { data, error } = await supabase.rpc('digest_local_goals', {
+    p_lang: lang,
+    p_limit: limit,
+  });
+  if (error) {
+    console.error('[digest] digest_local_goals failed:', error.code, error.message);
+    return [];
+  }
+  return (data as RankedClip[]) ?? [];
 }
 
 /**

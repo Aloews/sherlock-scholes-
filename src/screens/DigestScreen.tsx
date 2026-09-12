@@ -6,6 +6,7 @@ import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   fetchDigestSummary, fetchGoals, fetchRecentGoals, fetchEarlierGoals, fetchLiveMatches,
+  fetchLocalGoals,
   type DigestSummary, type GoalClip, type RecentGoal, type RankedClip, type LiveMatch,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
@@ -50,6 +51,7 @@ export function DigestScreen() {
   const [goals, setGoals] = useState<GoalClip[] | null>(null);
   const [recent, setRecent] = useState<RecentGoal[] | null>(null);
   const [earlier, setEarlier] = useState<RankedClip[] | null>(null);
+  const [local, setLocal] = useState<RankedClip[] | null>(null);
   // Пустой массив — начальное значение, а не `null`: раздела «идёт сейчас» при
   // пустом списке не бывает вовсе, поэтому различать «ещё не пришло» и «ничего
   // не идёт» здесь нечем и незачем — оба показываются одинаково: никак.
@@ -95,6 +97,7 @@ export function DigestScreen() {
     const run = <T,>(p: Promise<T>, set: (v: T) => void) => {
       void p.then((v) => { if (!cancelled) set(v); });
     };
+    run(fetchLocalGoals(lang), setLocal);
     run(fetchRecentGoals(), setRecent);
     run(fetchEarlierGoals(), setEarlier);
     run(fetchGoals(), setGoals);
@@ -120,11 +123,15 @@ export function DigestScreen() {
    */
   const leagues = useMemo(() => {
     const count = new Map<string, number>();
-    for (const c of [...(recent ?? []), ...(earlier ?? [])]) {
+    // ⚠️ И РАЗДЕЛ НА ЯЗЫКЕ ЧИТАТЕЛЯ ТОЖЕ. Он появился отдельно, но фильтр
+    // общий на все разделы; не считать его здесь значило бы, что его
+    // чемпионат в чипах не появится вовсе — а он ровно тот, ради которого
+    // владелец и просил Rutube.
+    for (const c of [...(local ?? []), ...(recent ?? []), ...(earlier ?? [])]) {
       count.set(c.channel, (count.get(c.channel) ?? 0) + 1);
     }
     return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [recent, earlier]);
+  }, [local, recent, earlier]);
 
   const only = <T extends { channel: string }>(list: T[] | null): T[] =>
     league === null ? list ?? [] : (list ?? []).filter((c) => c.channel === league);
@@ -235,6 +242,25 @@ export function DigestScreen() {
               НИЧЕГО, хотя показать было что. */}
           {summary !== null && <LoudestStory />}
         </section>
+
+        {/* ─── На языке читателя ───
+            ВЫШЕ ОБЩЕГО ТОПА, И ЭТО НЕ ВКУСОВЩИНА. Общий топ ранжируется по
+            просмотрам, а они не сравнимы между каналами разного размера:
+            замер 08.09.2026 — у обзора тура РПЛ 749 просмотров, у ролика
+            «Арсенала» 2 451 505, и во всех четырёх RPC общего топа роликов
+            РПЛ было РОВНО НОЛЬ. Разбор, почему чинить это правкой
+            ранжирования не вышло, — в шапке clip_language.sql.
+
+            Пусто — норма: язык задан только у источников, которые его знают.
+            Тогда раздела просто нет, как у идущих эфиров. */}
+        {local !== null && only(local).length > 0 && (
+          <section className="space-y-2">
+            <p className="text-brand-muted text-[10.5px] uppercase tracking-wider">
+              {t('digest.local')}
+            </p>
+            {only(local).map((clip) => <ClipCard key={clip.video_id} clip={clip} />)}
+          </section>
+        )}
 
         {/* ─── Лучшее за последние дни ───
             Первой секцией намеренно. ОКНО СКОЛЬЗЯЩЕЕ, а не «прошедшие

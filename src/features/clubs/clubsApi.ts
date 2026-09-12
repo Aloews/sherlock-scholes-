@@ -447,3 +447,29 @@ export async function fetchCardValueTrend(cardId: string): Promise<CardValueTren
   const row = Array.isArray(res.data) ? res.data[0] : res.data;
   return (row as CardValueTrend) ?? null;
 }
+
+/**
+ * Ключ клуба по карточке-клубу коллекции.
+ *
+ * ЗАЧЕМ. В колоде 1262 карточки категории `club`, и открывались они ДОСЬЕ
+ * ИГРОКА: пустая карьера, пустая статистика, ни состава, ни эмблемы, ни
+ * тренера. Владелец: «вид команды в „коллекциях“ приведи к такому же виду, как
+ * на экране „команды и статистика“». Тот же вид — это и есть экран команды,
+ * и вести на него надо по ключу.
+ *
+ * ⚠️ NULL У 28 КАРТОЧЕК ИЗ 1262, И ЭТО НЕ ОШИБКА. Замер 09.09.2026: клуб в
+ * справочнике нашёлся у 1234. У остальных вести некуда, и досье остаётся
+ * прежним — пустоватым, но честным.
+ */
+export async function fetchClubKeyOfCard(cardId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('football_club')
+    .select('club_key')
+    .eq('card_id', cardId)
+    .maybeSingle();
+  if (error) {
+    console.error('[football_club by card]', error.code ?? '', error.message);
+    return null;
+  }
+  return (data as { club_key: string } | null)?.club_key ?? null;
+}

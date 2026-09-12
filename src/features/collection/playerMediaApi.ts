@@ -24,6 +24,8 @@ export interface PlayerClip {
   channel: string;
   published_at: string;
   thumb_url: string | null;
+  /** Готовый адрес: ролик может быть и не с YouTube. См. GoalClip.watch_url. */
+  watch_url: string;
 }
 
 /**

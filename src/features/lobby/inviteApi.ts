@@ -80,3 +80,35 @@ export async function declineInvite(initData: string, roomId: string): Promise<b
   }
   return true;
 }
+
+/**
+ * Свои по клубу, кого можно позвать сюда прямо сейчас.
+ *
+ * ⚠️ ЭТО НЕ «ВСЕ БОЛЕЛЬЩИКИ», а участники МОИХ фан-клубов, которые сейчас
+ * онлайн и ещё не в этой комнате. Обоснование каждого из трёх ограничений —
+ * в шапке supabase/migrations/club_fans_invite.sql; коротко: приглашение
+ * незнакомому по совпадению интереса — это спам внутри игры, а приглашение
+ * тому, кто зайдёт завтра, обесценивает все остальные.
+ */
+export interface ClubFan {
+  club_key: string;
+  club: string;
+  player_id: number;
+  first_name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+/** Пусто без подписи — вне Telegram звать некого, и это не отказ. */
+export async function fetchClubFansToInvite(
+  initData: string,
+  roomId: string,
+): Promise<LoadState<ClubFan[]>> {
+  if (!initData) return ok([]);
+  const res = await supabase.rpc('club_fans_to_invite', {
+    p_init_data: initData,
+    p_room_id: roomId,
+    p_limit: 20,
+  });
+  return fromPostgrest<ClubFan[]>(res, 'club_fans_to_invite');
+}

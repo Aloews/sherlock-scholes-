@@ -16,6 +16,8 @@ export interface TopClip {
   title: string;
   channel: string;
   thumb_url: string | null;
+  /** Готовый адрес ролика — см. GoalClip.watch_url. */
+  watch_url: string;
   /**
    * Просмотры. Есть только у роликов выходных: у дневных они настоящие тоже,
    * но раздел суточных отвечает на «что нового», и число там значило бы
@@ -38,6 +40,7 @@ const fromRecent = (clip: RecentGoal): TopClip => ({
   title: clip.title,
   channel: clip.channel,
   thumb_url: clip.thumb_url,
+  watch_url: clip.watch_url,
   views: clip.views,
   kind: clip.is_goal ? 'goal' : 'moment',
 });
@@ -47,6 +50,7 @@ const fromDaily = (clip: GoalClip): TopClip => ({
   title: clip.title,
   channel: clip.channel,
   thumb_url: clip.thumb_url,
+  watch_url: clip.watch_url,
   views: null,
   kind: 'fresh',
 });

@@ -110,7 +110,7 @@ const NEWS_LLM_MODEL = Deno.env.get("NEWS_LLM_MODEL")
   ?? "claude-opus-5";
 
 interface Source {
-  kind: "feed" | "channel" | "espn_news";
+  kind: "feed" | "channel" | "espn_news" | "rutube";
   name: string;
   ref: string;
   lang: string | null;
@@ -423,6 +423,15 @@ interface ClipRow {
   /** Просмотры и оценки на момент забора. Растут — поэтому обновляются. */
   views: number;
   likes: number;
+  /**
+   * Полный адрес ролика — ТОЛЬКО для не-YouTube.
+   *
+   * У YouTube здесь null, и это не лень: ссылка собирается из `video_id`
+   * функцией `clip_watch_url` в базе. Написать её ещё и сюда значило бы
+   * хранить одно и то же дважды и получить два места, где она может
+   * разойтись.
+   */
+  watch_url: string | null;
 }
 
 function parseAtom(xml: string, channel: string): ClipRow[] {
@@ -447,6 +456,7 @@ function parseAtom(xml: string, channel: string): ClipRow[] {
       // прочитан, «лучшие голы» пришлось бы выдумывать; с ним это замер.
       views: Number(/<media:statistics[^>]+views="(\d+)"/i.exec(block)?.[1] ?? 0),
       likes: Number(/<media:starRating[^>]+count="(\d+)"/i.exec(block)?.[1] ?? 0),
+      watch_url: null,
     });
   }
   return out;
@@ -510,6 +520,7 @@ async function fetchClipsViaApi(channel: string, channelId: string): Promise<Cli
           thumbs.high?.url ?? thumbs.medium?.url ?? thumbs.default?.url ?? null,
         views: 0,
         likes: 0,
+        watch_url: null,
       };
     })
     .filter((row): row is ClipRow => row !== null);
@@ -536,6 +547,85 @@ async function fetchClipsViaApi(channel: string, channelId: string): Promise<Cli
     }
   }
   return rows;
+}
+
+interface RutubeVideo {
+  id?: string;
+  title?: string;
+  thumbnail_url?: string | null;
+  hits?: number;
+  /** Эфир, а не запись: у него своя таблица, см. live_streams. */
+  is_livestream?: boolean;
+  is_on_air?: boolean;
+  /** Время публикации и время заведения карточки. ОБА без смещения, см. ниже. */
+  publication_ts?: string;
+  created_ts?: string;
+}
+
+/**
+ * Ролики канала Rutube.
+ *
+ * ЗАЧЕМ ОТДЕЛЬНЫМ ПУТЁМ. Обзоры туров РПЛ на YouTube не выкладываются вовсе, а
+ * лига ведёт свой канал на Rutube и кладёт туда обзор каждого матча в день
+ * матча. Ключа не нужно: отдаётся открытый JSON.
+ *
+ * ⚠️ АДРЕС БЕЗ ЕДИНОГО ПАРАМЕТРА, И ЭТО НЕ СТИЛЬ. robots.txt Rutube в секции
+ * `User-agent: *` запрещает `/*limit=*` и `*page=*` — то есть постранично
+ * ходить туда нельзя, хотя API это умеет. Голый адрес отдаёт двадцать роликов;
+ * при опросе каждые десять минут этого хватает с запасом, и добирать вторую
+ * страницу НЕ НАДО. Сам путь `/api/video/person/` не запрещён: запрет на
+ * `/api/` целиком стоит только в секции Yandex.
+ *
+ * ⚠️ ВРЕМЯ — МОСКОВСКОЕ, А СМЕЩЕНИЕ НЕ НАПИСАНО. `publication_ts` приходит как
+ * «2026-09-08T10:49:45», без буквы Z и без «+03:00», и `new Date()` прочитает
+ * такую строку как UTC — то есть ролик станет на три часа моложе, чем есть.
+ * Замер, который это показал: у того же ролика на его странице лежит
+ * JSON-LD `"datePublished": "2026-09-08T10:49:45+03:00"` — те же цифры и явное
+ * московское смещение. Поэтому оно дописывается здесь.
+ *
+ * ⚠️ ССЫЛКА СТРОИТСЯ ИЗ ИДЕНТИФИКАТОРА, А НЕ БЕРЁТСЯ ИЗ ОТВЕТА. В ответе есть
+ * готовое поле `video_url`, и взять его было бы короче. Но эта строка уезжает
+ * в `watch_url`, а оттуда — прямо в `openLink` на телефоне читателя: чужой
+ * ответ, открытый в его браузере. Идентификатор проверяется на 32 шестнадцать-
+ * ричных знака и подставляется в НАШ шаблон, поэтому увести читателя на
+ * посторонний адрес нечем.
+ */
+async function fetchRutubeClips(channel: string, personId: string): Promise<ClipRow[]> {
+  const body = await fetchText(`https://rutube.ru/api/video/person/${encodeURIComponent(personId)}/`);
+  if (!body) return [];
+
+  let items: RutubeVideo[];
+  try {
+    items = (JSON.parse(body) as { results?: RutubeVideo[] }).results ?? [];
+  } catch {
+    console.warn(`[digest] ${channel}: rutube is not JSON`);
+    return [];
+  }
+
+  return items
+    .map((v): ClipRow | null => {
+      const id = v.id ?? "";
+      if (!/^[0-9a-f]{32}$/.test(id)) return null;
+      if (v.is_livestream || v.is_on_air) return null;
+      const stamp = v.publication_ts ?? v.created_ts;
+      const title = stripTags(v.title ?? "");
+      if (!stamp || !title) return null;
+      const when = parseDate(`${stamp}+03:00`);
+      if (!when) return null;
+      return {
+        video_id: id,
+        title,
+        channel,
+        published_at: when.toISOString(),
+        thumb_url: v.thumbnail_url ?? null,
+        // Просмотры Rutube отдаёт, оценки — нет. Ноль честнее выдуманного:
+        // «самое горячее» ранжируется просмотрами, и ролик в нём участвует.
+        views: Number(v.hits ?? 0),
+        likes: 0,
+        watch_url: `https://rutube.ru/video/${id}/`,
+      };
+    })
+    .filter((row): row is ClipRow => row !== null);
 }
 
 const llmClient = NEWS_LLM_KEY && NEWS_LLM_BASE_URL
@@ -859,6 +949,7 @@ async function run(useLlm: boolean): Promise<Response> {
   //
   // Расчёт целиком — в шапке supabase/migrations/digest_club_channels.sql.
   const group = pollGroupNow();
+  const rutubeChannels = sources.filter((s) => s.kind === "rutube");
   const channels = sources.filter((s) =>
     s.kind === "channel" &&
     (YT_KEY !== "" || !s.needs_key) &&
@@ -900,12 +991,22 @@ async function run(useLlm: boolean): Promise<Response> {
   // считается внутри языка. Отдельным списком, потому что это JSON, а не RSS.
   const espn = await Promise.all(espnLeagues.map(fetchEspnNews));
 
+  // ⚠️ RUTUBE ИДЁТ КАЖДЫЙ ПРОГОН, А НЕ ПО `wantClips`. Тот гейт держит два
+  // ограничения YouTube — запрет Atom-фида в robots.txt и суточную квоту
+  // ключа, — и ни одно из них к Rutube не относится: там открытый JSON и
+  // разрешённый путь. Подчинить Rutube чужому ограничению значило бы
+  // получать обзор тура на час позже без единой причины.
+  const rutubeClips = await Promise.all(
+    rutubeChannels.map((ch) => fetchRutubeClips(ch.name, ch.ref)),
+  );
+
   const newsRows = unique(fresh([...news.flat(), ...espn.flat()]), (row) => row.url);
   // РОЛИКИ БЕРУТСЯ ЦЕЛИКОМ, БЕЗ ОКНА В СУТКИ. Экран выходных смотрит на два
   // дня, которые к понедельнику уже позади, а фид отдаёт всего пятнадцать
   // записей на канал — выбрасывать из них всё старше суток значило бы не иметь
   // выходных вовсе. Срок жизни держит prune_digest: десять дней.
-  const clipRows = unique(clips.flat(), (row) => row.video_id);
+  const clipRows = unique(
+    [...clips.flat(), ...rutubeClips.flat()], (row) => row.video_id);
 
   report.news_seen = newsRows.length;
   // ⚠️ `description` ТЕПЕРЬ КОЛОНКА, И ЕЁ НАДО ПИСАТЬ. Раньше текст заметки
@@ -963,7 +1064,10 @@ async function run(useLlm: boolean): Promise<Response> {
   report.llm_used = useLlm;
   // Сколько источников вообще было взято — иначе «молчащих нет» может значить
   // и «все ответили», и «спрашивать было некого».
-  report.sources = { feeds: feeds.length, channels: channels.length, espn: espnLeagues.length };
+  report.sources = {
+    feeds: feeds.length, channels: channels.length, espn: espnLeagues.length,
+    rutube: rutubeChannels.length,
+  };
   // ПОИМЁННО, а не числом. «Молчит 2 источника» не даёт ничего сделать; лента
   // переезжает и умирает молча, и единственный способ это заметить — увидеть,
   // КТО именно перестал отвечать. Отличает «сегодня тихо» от «полгода назад
@@ -981,6 +1085,10 @@ async function run(useLlm: boolean): Promise<Response> {
   // единственный сигнал, ради которого он заведён.
   report.channels_silent = wantClips ? silent(channels, clips) : [];
   report.clips_skipped = !wantClips;
+  // Поимённо и БЕЗ оговорки про пропущенный прогон: Rutube опрашивается
+  // каждый раз, поэтому пустота у него — всегда молчание источника, а не
+  // «сейчас не его десять минут».
+  report.rutube_silent = silent(rutubeChannels, rutubeClips);
 
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/prune_digest`, {
     method: "POST",

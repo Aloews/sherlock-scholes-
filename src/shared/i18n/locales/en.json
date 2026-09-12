@@ -356,7 +356,8 @@
     "deck_count_one": "{{count}} card",
     "deck_count_other": "{{count}} cards",
     "deck_save_failed": "The choice was not saved — everyone still has the old deck",
-    "deck_empty": "No cards match this filter — widen the choice"
+    "deck_empty": "No cards match this filter — widen the choice",
+    "invite_fans": "Invite fans of your club"
   },
   "voice": {
     "title": "Voice chat",
@@ -845,6 +846,7 @@
     "loudness_other": "{{n}} outlets",
     "loudest": "Most talked about",
     "loudest_more": "What other outlets added",
+    "local": "In your language",
     "recent": "Goals of recent days",
     "earlier": "Earlier this week",
     "moment": "moment",
@@ -1170,6 +1172,21 @@
     "home": "Strong at home",
     "steady": "Steady",
     "streaky": "Streaky",
-    "measured": "Measured from matches, not assigned"
+    "measured": "Measured from matches, not assigned",
+    "match_title": "Match character",
+    "match_goals_low": "Few goals",
+    "match_goals_mid": "Goals expected",
+    "match_goals_high": "High-scoring",
+    "match_flow_closed": "Tight game",
+    "match_flow_balanced": "Even flow",
+    "match_flow_open": "Open game",
+    "match_expected": "Goals expected",
+    "match_coach": "Coach",
+    "match_per_match": "per match",
+    "match_writing": "In the news",
+    "match_unknown": "Character not measured: one of the teams has played too few matches.",
+    "match_no_injuries": "No source of ours has injuries or board demands — so they are not shown.",
+    "match_basis_one": "Measured over {{count}} match on each side, not assumed",
+    "match_basis_other": "Measured over {{count}} matches on each side, not assumed"
   }
 }
