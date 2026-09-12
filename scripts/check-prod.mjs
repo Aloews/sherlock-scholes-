@@ -642,6 +642,102 @@ async function checkClubRoster() {
 }
 
 // ---------------------------------------------------------------------------
+// СОСТАВЫ: ОДИН ОТВЕТ НА ДВА ЭКРАНА, И В НЁМ СТОИМОСТЬ.
+//
+// ⚠️ ЗАЧЕМ ОТДЕЛЬНЫЙ РАЗДЕЛ, КОГДА ВЫШЕ УЖЕ ЕСТЬ «Полный состав клуба».
+// Тот проверяет `club_roster_list` — заявку с Transfermarkt. Экран матча в
+// неё НЕ ХОДИЛ вовсе: он звал `fixture_squads`, а та шла в `club_squad`
+// (наши карточки). У «Брайтона» заявка на 30 человек — и зелёная проверка
+// заявки ровно ничего не говорила о том, что под матчем состава нет.
+//
+// Здесь проверяется ТОТ путь, которым идёт экран: имя команды из расписания →
+// ключ клуба → состав со стоимостями.
+// ---------------------------------------------------------------------------
+async function checkFixtureSquads() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Составы матчей', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const call = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return Array.isArray(j) ? j : null;
+  };
+
+  // ⚠️ ИМЕННО «БРАЙТОН», И ЭТО НЕ СЛУЧАЙНЫЙ КЛУБ. На нём и было видно
+  // расхождение: заявка на 30 человек, а `fixture_squads` отдавала ноль,
+  // потому что расписание зовёт его «Brighton and Hove Albion» (ключ
+  // `brighton and hove albion`), а заявка лежит под `brighton hove albion`.
+  const brighton = await call('club_squad_view', { p_club_key: 'brighton hove albion' });
+  const priced = (brighton ?? []).filter((r) => r.market_value_eur != null).length;
+  record('Составы: club_squad_view отвечает заявкой', (brighton?.length ?? 0) >= 20,
+         `${brighton?.length ?? 0} игроков, ${priced} с ценой`,
+         'спрашивается ЧИСЛО: «состав есть» зеленело бы и на четырёх');
+
+  // Ближайшие матчи — на них и смотрит человек.
+  const fr = await fetch(
+    `${url}/rest/v1/fixtures?select=id,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=40`,
+    { headers: auth },
+  );
+  const fixtures = await fr.json().catch(() => null);
+  if (!Array.isArray(fixtures) || fixtures.length === 0) {
+    record('Составы: ближайшие матчи', false, 'расписание не отдаёт матчей', 'ключ anon');
+    return;
+  }
+
+  let both = 0;
+  let withValue = 0;
+  let ms = 0;
+  for (const f of fixtures) {
+    const t0 = Date.now();
+    const rows = await call('fixture_squads', { p_fixture_id: f.id, p_lang: 'ru' });
+    ms = Math.max(ms, Date.now() - t0);
+    const home = (rows ?? []).filter((r) => r.side === 'home').length;
+    const away = (rows ?? []).filter((r) => r.side === 'away').length;
+    if (home > 0 && away > 0) both += 1;
+    if ((rows ?? []).some((r) => r.market_value_eur != null)) withValue += 1;
+  }
+  const share = both / fixtures.length;
+  // Порог 0.6: на замере 12.09.2026 выходило 0.77, а до правки — 0.56. То
+  // есть порог отделяет починенное от сломанного, а не поставлен «с запасом».
+  record('Составы: обе стороны у большинства матчей', share >= 0.6,
+         `${both} из ${fixtures.length} матчей с обеими сторонами, ${withValue} со стоимостью`,
+         'до правки было 56% — порог отделяет починенное от сломанного');
+
+  record('Составы: укладываются в лимит anon', ms < 2500,
+         `${ms} мс на самый медленный из ${fixtures.length}`,
+         'у ключа anon потолок 3 с, и состав раскрывается по нажатию');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманного клуба и выдуманного матча
+  // состава быть не может. Без него всё выше зеленело бы и на функции,
+  // которая отдаёт что попало.
+  const ghostClub = await call('club_squad_view', { p_club_key: 'клуб-которого-нет' });
+  const ghostFix = await call('fixture_squads', { p_fixture_id: 'матча-нет', p_lang: 'ru' });
+  const empty = ghostClub !== null && ghostClub.length === 0
+             && ghostFix !== null && ghostFix.length === 0;
+  record('Составы: контроль выдуманного', empty,
+         empty ? 'по выдуманным клубу и матчу пусто, как и должно'
+               : 'состав нашёлся там, где его нет',
+         empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // ⚠️ ВТОРОЙ КОНТРОЛЬ — К ПСЕВДОНИМАМ, и он о другом. Выше проверено, что
+  // состав находится; здесь — что он находится ИМЕННО ПО ИМЕНИ ИЗ
+  // РАСПИСАНИЯ. Без псевдонима `resolve_club_key` отдаёт ключ, которого нет
+  // ни в одной заявке, и обе стороны просто пустеют — молча.
+  const named = await call('club_squad_view', { p_club_key: 'brighton and hove albion' });
+  record('Составы: контроль псевдонима', (named?.length ?? 0) === 0,
+         (named?.length ?? 0) === 0
+           ? 'сырой ключ из расписания сам по себе состава не даёт — его даёт псевдоним'
+           : 'сырой ключ отдал состав: проверка псевдонима ничего не проверяет',
+         (named?.length ?? 0) === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+// ---------------------------------------------------------------------------
 // Счёт из ESPN: источник жив, и цепочка доходит ДО БАЗЫ, а не до кода 200.
 //
 // ⚠️ Этот путь бесплатен, и потому идёт раз в два часа. Платный (`/scores` у
@@ -2144,6 +2240,7 @@ await checkClubCrests();
 await checkFameAxes();
 await checkClubValue();
 await checkClubRoster();
+await checkFixtureSquads();
 await checkEspnScores();
 await checkCardConflicts();
 await checkCurrentClubSources();
