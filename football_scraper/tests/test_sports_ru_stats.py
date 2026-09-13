@@ -8,9 +8,11 @@ or:
 import os
 import sys
 
+import requests
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sports_ru_stats import active_cards_by_key  # noqa: E402
+from sports_ru_stats import Db, active_cards_by_key, guess_order  # noqa: E402
 
 
 def check(label, got, want):
@@ -56,9 +58,235 @@ def test_active_cards_by_key():
     return ok
 
 
+def test_guess_order():
+    """Очередь догадки обязана ДВИГАТЬСЯ, а не перебирать одних и тех же.
+
+    ⚠️ ЭТО ПРОВЕРКА ПО СЛЕДАМ ЗАМЕРА, А НЕ ПО ВКУСУ. Кандидаты шли в порядке
+    `id`, а бюджет кончается на первых сотнях: прогон 11.09.2026 угадал ранги
+    с 5-го по 368-й из 24 093, и ровно те же первые сотни перебирались бы
+    каждую ночь. «Собрать статистику всех игроков» при таком порядке
+    недостижимо в принципе.
+    """
+    print(" guess_order")
+    ok = True
+    cards = [_card("a", "А"), _card("b", "Б"), _card("c", "В"), _card("d", "Г")]
+    wanted = {"a", "b", "c", "d"}
+
+    # Уже в справочнике — не кандидат вовсе.
+    got = [c["id"] for c in guess_order(cards, wanted, {"a"}, {})]
+    ok &= check("known card is not a candidate", got, ["b", "c", "d"])
+
+    # Никого не пробовали — порядок исходный.
+    got = [c["id"] for c in guess_order(cards, wanted, set(), {})]
+    ok &= check("nothing tried yet: order kept", got, ["a", "b", "c", "d"])
+
+    # ⚠️ ГЛАВНОЕ: пробованные уходят В КОНЕЦ, непробованные вперёд.
+    misses = {"a": (1, "2026-09-11"), "b": (1, "2026-09-11")}
+    got = [c["id"] for c in guess_order(cards, wanted, set(), misses)]
+    ok &= check("untried go first", got, ["c", "d", "a", "b"])
+
+    # Среди пробованных: сначала те, кого пробовали РЕЖЕ, потом ДАВНЕЕ.
+    misses = {
+        "a": (3, "2026-01-01"),   # пробовали чаще всех — в самый конец
+        "b": (1, "2026-09-11"),   # раз, недавно
+        "c": (1, "2026-01-01"),   # раз, давно — вперёд «b»
+        "d": (2, "2026-01-01"),
+    }
+    got = [c["id"] for c in guess_order(cards, wanted, set(), misses)]
+    ok &= check("fewer tries first, then older", got, ["c", "b", "d", "a"])
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: порядок ОБЯЗАН отличаться от исходного, иначе
+    # проверка выше зеленела бы и на функции, которая ничего не сортирует.
+    ok &= check("order actually changes", got == ["a", "b", "c", "d"], False)
+    return ok
+
+
+class _FlakySession:
+    """Сессия, которая роняет первые `fail` запросов сетью, потом отвечает."""
+
+    def __init__(self, fail, payload):
+        self.fail, self.payload, self.calls = fail, payload, 0
+        self.headers = {}
+
+    def update(self, *a, **k):  # pragma: no cover — headers.update
+        pass
+
+    def get(self, url, timeout=None):
+        self.calls += 1
+        if self.calls <= self.fail:
+            raise requests.ConnectionError("boom")
+        return _Resp(self.payload)
+
+
+class _Resp:
+    def __init__(self, payload, status=200):
+        self.payload, self.status_code = payload, status
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError("{} Server Error".format(self.status_code))
+
+    def json(self):
+        return self.payload
+
+
+def test_select_survives_a_dropped_connection():
+    """Чтение обязано пережить одиночный обрыв — как и запись.
+
+    ⚠️ ПО СЛЕДАМ ПАДЕНИЯ 12.09.2026:
+
+        resolve FAILED: ReadTimeout: ... (read timeout=60)
+
+    Упало на чтении `sports_ru_player`, и карта слагов за сутки не пополнилась
+    вовсе. У `upsert` повтор был с 18.08, у `select` — нет; разница была
+    недосмотром, а не решением: обрывается один и тот же Supabase.
+    """
+    print(" select retry")
+    ok = True
+    db = Db.__new__(Db)
+    db.url = "https://example.invalid/rest/v1"
+
+    # Два обрыва подряд, третий запрос отвечает — строки доходят.
+    db.session = _FlakySession(fail=2, payload=[])
+    got = db.select("/sports_ru_player?select=card_id&order=card_id")
+    ok &= check("survives two drops", got, [])
+    ok &= check("and it really retried", db.session.calls, 3)
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: три обрыва подряд обязаны дойти до вызывающего.
+    # Без него проверка зеленела бы и на «глотать любую ошибку», а это хуже
+    # падения: прогон молча считал бы справочник пустым.
+    db.session = _FlakySession(fail=3, payload=[])
+    raised = False
+    try:
+        db.select("/sports_ru_player?select=card_id&order=card_id")
+    except requests.ConnectionError:
+        raised = True
+    ok &= check("three drops still raise", raised, True)
+    return ok
+
+
+class _CodeSession:
+    """Сессия, отвечающая заданными кодами по очереди."""
+
+    def __init__(self, codes):
+        self.codes, self.calls = list(codes), 0
+        self.headers = {}
+
+    def get(self, url, timeout=None):
+        self.calls += 1
+        code = self.codes[min(self.calls - 1, len(self.codes) - 1)]
+        return _Resp([], status=code)
+
+
+class _PagingSession:
+    """Отдаёт `pages` по очереди и запоминает запрошенные адреса."""
+
+    def __init__(self, pages):
+        self.pages, self.urls = list(pages), []
+        self.headers = {}
+
+    def get(self, url, timeout=None):
+        self.urls.append(url)
+        page = self.pages[min(len(self.urls) - 1, len(self.pages) - 1)]
+        return _Resp(page)
+
+
+def test_keyset_column():
+    """Обход по ключу — только там, где он ДОКАЗУЕМО верен."""
+    print(" keyset column")
+    ok = True
+    ok &= check("simple order",
+                Db._keyset_column("/cards?select=id,name&order=id"), "id")
+    ok &= check("order column must be selected",
+                Db._keyset_column("/cards?select=name&order=id"), None)
+    # ⚠️ СОСТАВНОЙ ПОРЯДОК СРАВНИТЬ ОДНИМ `gt` НЕЛЬЗЯ — остаётся смещение.
+    ok &= check("composite order falls back",
+                Db._keyset_column(
+                    "/sports_ru_player?select=card_id,slug"
+                    "&order=checked_at.asc.nullsfirst,card_id.asc"), None)
+    ok &= check("descending falls back",
+                Db._keyset_column("/cards?select=id&order=id.desc"), None)
+    return ok
+
+
+def test_select_pages_by_key_not_offset():
+    """Страницы обязаны идти ПО КЛЮЧУ, а не по смещению.
+
+    ⚠️ ЭТО ПРОВЕРКА ПО СЛЕДАМ ОТКАЗА, А НЕ ПО ВКУСУ. Ручной прогон 13.09.2026:
+
+        504 Server Error: Gateway Timeout
+        /cards?select=id,name,name_en&...&order=id&limit=1000&offset=5000
+
+    `OFFSET 5000` заставляет Postgres построить и выбросить пять тысяч строк,
+    и цена растёт с каждой страницей. Двадцать шесть страниц по 25 508
+    карточкам сервер не дотягивает.
+    """
+    print(" select pages by key")
+    ok = True
+    first = [{"id": "id-{:04d}".format(i)} for i in range(Db.PAGE_ROWS)]
+    db = Db.__new__(Db)
+    db.url = "https://example.invalid/rest/v1"
+    db.session = _PagingSession([first, [{"id": "id-last"}]])
+    got = db.select("/cards?select=id&order=id")
+    ok &= check("both pages read", len(got), Db.PAGE_ROWS + 1)
+    ok &= check("second page asks by key",
+                "id=gt.id-0999" in db.session.urls[1], True)
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: смещения быть не должно НИ В ОДНОМ адресе.
+    # Без него проверка зеленела бы и на «ключ добавили, а offset оставили».
+    ok &= check("no offset anywhere",
+                any("offset=" in u for u in db.session.urls), False)
+    return ok
+
+
+def test_select_retries_a_gateway_timeout():
+    """504 — это «сервер не успел», а не «запрос отвергли».
+
+    ⚠️ ЭТО ВТОРОЙ КЛАСС ПОЛОМКИ, И ПЕРВЫЙ ПОВТОР ЕГО НЕ ЛОВИЛ. `ReadTimeout` —
+    исключение сети; 504 приходит нормальным ответом и становится исключением
+    только в `raise_for_status`. Повтор, написанный под один класс, второй
+    пропускал бы — что и случилось.
+    """
+    print(" select retries 504")
+    ok = True
+    db = Db.__new__(Db)
+    db.url = "https://example.invalid/rest/v1"
+
+    db.session = _CodeSession([504, 504, 200])
+    ok &= check("504 twice then 200 goes through",
+                db.select("/cards?select=id&order=id"), [])
+    ok &= check("and it really retried", db.session.calls, 3)
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: три отказа подряд обязаны дойти наверх.
+    db.session = _CodeSession([504])
+    raised = False
+    try:
+        db.select("/cards?select=id&order=id")
+    except requests.HTTPError:
+        raised = True
+    ok &= check("three 504 still raise", raised, True)
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ, И ОН ВАЖНЕЕ: 4xx повторять НЕЛЬЗЯ.
+    # «Запрос рассмотрели и отвергли» повторится столько раз, сколько его
+    # послать, — а прогон при этом будет ждать вдвое дольше и упадёт так же.
+    db.session = _CodeSession([400])
+    raised = False
+    try:
+        db.select("/cards?select=id&order=id")
+    except requests.HTTPError:
+        raised = True
+    ok &= check("400 raises at once", raised, True)
+    ok &= check("400 is not retried", db.session.calls, 1)
+    return ok
+
+
 def main():
     print("test_sports_ru_stats.py")
     ok = test_active_cards_by_key()
+    ok = test_guess_order() and ok
+    ok = test_select_survives_a_dropped_connection() and ok
+    ok = test_keyset_column() and ok
+    ok = test_select_pages_by_key_not_offset() and ok
+    ok = test_select_retries_a_gateway_timeout() and ok
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 
