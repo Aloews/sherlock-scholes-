@@ -347,14 +347,33 @@ class Db:
                     "{} delete {}: {}".format(table, r.status_code, r.text[:200])
                 )
 
+    @staticmethod
+    def _pause_write(table, why, attempt):
+        wait = 2 ** (attempt + 1)
+        print("   {} upsert: {} — повтор через {} с".format(table, why, wait),
+              file=sys.stderr)
+        time.sleep(wait)
+
     def upsert(self, table, rows, on_conflict):
         """Записать пачками, пережив одиночный обрыв связи.
 
-        ⚠️ ПОВТОР ТОЛЬКО ПО СЕТИ, И ЭТО РАЗНИЦА ПО СУЩЕСТВУ. Таймаут и обрыв
-        означают «ответ не дошёл» — повтор осмыслен, потому что запись
-        идемпотентна (merge-duplicates по одному ключу). А код 4xx означает
-        «пачку рассмотрели и отвергли»: 409 на дубликате slug повторится
-        столько же раз, сколько его послать. Такое падает сразу.
+        ⚠️ ПОВТОР ПО СЕТИ И ПО 5xx, А НЕ ПО ВСЕМУ ПОДРЯД. Таймаут, обрыв и
+        «сервер не справился» означают одно: ответа нет. Повтор осмыслен,
+        потому что запись идемпотентна (merge-duplicates по одному ключу). А
+        код 4xx означает «пачку рассмотрели и отвергли»: 409 на дубликате slug
+        повторится столько же раз, сколько его послать. Такое падает сразу.
+
+        ⚠️ 5xx ЗДЕСЬ НЕ БЫЛО, И ЭТО РОВНО ТА ЖЕ ОШИБКА, ЧТО УЖЕ ЧИНИЛАСЬ В
+        `_get_with_retry`. Повтор стоял только на исключениях сети, а 504
+        приходит НОРМАЛЬНЫМ ответом — и падал сразу:
+
+            13.09.2026  RuntimeError: player_match_stats upsert 504:
+                        {"message":"Gateway Timeout"}
+
+        Это унесло обход на тринадцатой лиге из пятидесяти трёх, через сорок
+        минут работы. Урок был записан выше по файлу дословно — «повтор,
+        написанный под один класс, второй пропускал бы», — и не применён к
+        записи только потому, что её чинили раньше и по другому поводу.
 
         ПОЧЕМУ ЭТО ПОЯВИЛОСЬ. Ночной прогон 18.08.2026 упал ровно здесь:
         `ReadTimeout ... (read timeout=90)` на одной пачке `sports_ru_player`.
@@ -377,14 +396,10 @@ class Db:
                 except (requests.Timeout, requests.ConnectionError) as exc:
                     if attempt == 2:
                         raise
-                    wait = 2 ** (attempt + 1)
-                    print(
-                        "   {} upsert: {} — повтор через {} с".format(
-                            table, type(exc).__name__, wait
-                        ),
-                        file=sys.stderr,
-                    )
-                    time.sleep(wait)
+                    self._pause_write(table, type(exc).__name__, attempt)
+                    continue
+                if r.status_code in self.RETRY_CODES and attempt < 2:
+                    self._pause_write(table, "HTTP {}".format(r.status_code), attempt)
                     continue
                 if r.status_code >= 300:
                     raise RuntimeError(

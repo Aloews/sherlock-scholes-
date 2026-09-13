@@ -271,7 +271,28 @@ def write_rows(db, rows):
     return db.upsert("player_match_stats", unique, "card_id,match_date,tournament")
 
 
-def collect(days, dry_run=False):
+def chosen_leagues(only):
+    """Коды из `--leagues`, проверенные по списку. Пусто — значит все.
+
+    ⚠️ ОПЕЧАТКА ЗДЕСЬ ОБЯЗАНА ПАДАТЬ, А НЕ МОЛЧА СУЖАТЬ ОБХОД. `--leagues
+    eng.2,ita.9` с тихим пропуском второго кода отработал бы «успешно» по
+    одной лиге вместо двух — ровно тот же тихий ноль, из-за которого вторые
+    дивизионы годами стояли без статистики.
+    """
+    if not only:
+        return list(LEAGUES)
+    codes = [c.strip() for c in only.split(",") if c.strip()]
+    unknown = [c for c in codes if c not in LEAGUES]
+    if unknown:
+        raise SystemExit("нет таких лиг в списке: {}".format(", ".join(unknown)))
+    return codes
+
+
+def collect(days, dry_run=False, only=None):
+    # Список лиг разбирается ПЕРВЫМ: опечатка в `--leagues` не должна стоить
+    # чтения двадцати трёх тысяч карточек, чтобы потом всё равно упасть.
+    leagues = chosen_leagues(only)
+
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
         print("SUPABASE_URL / SUPABASE_KEY are required", file=sys.stderr)
@@ -310,8 +331,17 @@ def collect(days, dry_run=False):
     today = date.today()
     windows = date_windows(days, today)
 
+    # ⚠️ ОДНА УПАВШАЯ ЛИГА НЕ УНОСИТ ОСТАЛЬНЫЕ. Прогон 13.09.2026 умер на
+    # тринадцатой лиге из пятидесяти трёх — `player_match_stats upsert 504` —
+    # и сорок минут работы кончились трассировкой. Повтор по 5xx добавлен там,
+    # где ему место (Db.upsert), но повтор не бывает вечным: за ним обязан
+    # стоять тот же барьер, что в football-fixtures, — падение ОДНОЙ лиги
+    # стоит одной лиги. Список `failed` печатается в конце и даёт ненулевой
+    # код возврата: молчаливый пропуск выглядел бы как лига без матчей, а это
+    # и есть та самая тихая дыра, против которой обход и расширялся.
     total_rows, seen_events, unmatched, written_total = 0, 0, 0, 0
-    for league in LEAGUES:
+    failed = []
+    for league in leagues:
         # ⚠️ СОБЫТИЯ СОБИРАЮТСЯ МНОЖЕСТВОМ, А НЕ СПИСКОМ. Соседние окна
         # смыкаются встык, но ESPN относит матч к дате НАЧАЛА по своему
         # часовому поясу, и матч на стыке попадает в оба ответа. Дубль стоил бы
@@ -378,13 +408,20 @@ def collect(days, dry_run=False):
                     r["goals"], r["assists"]))
             continue
         if rows:
-            written_total += write_rows(db, rows)
+            try:
+                written_total += write_rows(db, rows)
+            except Exception as err:  # noqa: BLE001 — причина печатается рядом
+                print("  !! {} не записана: {}".format(league, str(err)[:200]))
+                failed.append(league)
 
     print("matches read: {}, rows for our cards: {}, players not in the deck: {}"
           .format(seen_events, total_rows, unmatched))
     if dry_run:
         return 0
     print("written: {}".format(written_total))
+    if failed:
+        print("НЕ ЗАПИСАНЫ: {}".format(", ".join(failed)))
+        return 1
     return 0
 
 
@@ -393,9 +430,13 @@ def main():
     ap.add_argument("--days", type=int, default=2,
                     help="сколько последних суток обойти (по умолчанию вчера и сегодня)")
     ap.add_argument("--dry-run", action="store_true")
+    # Чинить прогон, упавший на трёх лигах из пятидесяти трёх, повтором всех
+    # пятидесяти трёх — это час чужого трафика за пять минут работы.
+    ap.add_argument("--leagues", default=None,
+                    help="только эти коды через запятую (по умолчанию все)")
     args = ap.parse_args()
     print("=== espn player stats, {} ===".format(date.today().isoformat()))
-    return collect(max(1, args.days), args.dry_run)
+    return collect(max(1, args.days), args.dry_run, args.leagues)
 
 
 if __name__ == "__main__":

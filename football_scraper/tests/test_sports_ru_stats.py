@@ -121,6 +121,8 @@ class _FlakySession:
 class _Resp:
     def __init__(self, payload, status=200):
         self.payload, self.status_code = payload, status
+        # `upsert` печатает тело отказа — без него отказ был бы безымянным.
+        self.text = ""
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -279,6 +281,71 @@ def test_select_retries_a_gateway_timeout():
     return ok
 
 
+class _PostSession:
+    """Сессия, отвечающая на POST заданными кодами по очереди."""
+
+    def __init__(self, codes):
+        self.codes, self.calls = list(codes), 0
+        self.headers = {}
+
+    def post(self, url, json=None, headers=None, timeout=None):
+        self.calls += 1
+        code = self.codes[min(self.calls - 1, len(self.codes) - 1)]
+        return _Resp([], status=code)
+
+
+def test_upsert_retries_a_gateway_timeout():
+    """504 на ЗАПИСИ — тоже «сервер не успел», и повторять её можно.
+
+    ⚠️ ТОТ ЖЕ УРОК, ЧТО У ЧТЕНИЯ, И ОН НЕ БЫЛ ПЕРЕНЕСЁН НА ЗАПИСЬ. Повтор здесь
+    стоял только на исключениях сети, а 504 приходит нормальным ответом:
+
+        13.09.2026  RuntimeError: player_match_stats upsert 504:
+                    {"message":"Gateway Timeout"}
+
+    Это унесло обход ESPN на тринадцатой лиге из пятидесяти трёх, через сорок
+    минут работы. Повторять запись безопасно ровно потому, что она
+    идемпотентна: merge-duplicates по одному ключу.
+    """
+    print(" upsert retries 504")
+    ok = True
+    db = Db.__new__(Db)
+    db.url = "https://example.invalid/rest/v1"
+    row = [{"card_id": "a", "match_date": "2026-09-01", "tournament": "Serie B"}]
+
+    db.session = _PostSession([504, 504, 200])
+    ok &= check("504 дважды, потом 200 — запись прошла",
+                db.upsert("player_match_stats", row, "card_id"), 1)
+    ok &= check("и повтор был настоящим", db.session.calls, 3)
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: повтор не бывает вечным.
+    db.session = _PostSession([504])
+    raised = False
+    try:
+        db.upsert("player_match_stats", row, "card_id")
+    except RuntimeError:
+        raised = True
+    ok &= check("три 504 подряд всё равно падают", raised, True)
+
+    # ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ, И ОН ВАЖНЕЕ: 4xx повторять НЕЛЬЗЯ.
+    # «Пачку рассмотрели и отвергли» — 409 на дубликате повторится столько раз,
+    # сколько его послать, и прогон только прождёт вдвое дольше.
+    db.session = _PostSession([409])
+    raised = False
+    try:
+        db.upsert("player_match_stats", row, "card_id")
+    except RuntimeError:
+        raised = True
+    ok &= check("409 падает сразу", raised, True)
+    ok &= check("409 не повторяется", db.session.calls, 1)
+
+    # Пустая пачка ничего не пишет и никуда не ходит.
+    db.session = _PostSession([500])
+    ok &= check("пустая пачка — ноль", db.upsert("player_match_stats", [], "card_id"), 0)
+    ok &= check("пустая пачка не ходит в сеть", db.session.calls, 0)
+    return ok
+
+
 def main():
     print("test_sports_ru_stats.py")
     ok = test_active_cards_by_key()
@@ -287,6 +354,7 @@ def main():
     ok = test_keyset_column() and ok
     ok = test_select_pages_by_key_not_offset() and ok
     ok = test_select_retries_a_gateway_timeout() and ok
+    ok = test_upsert_retries_a_gateway_timeout() and ok
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 
