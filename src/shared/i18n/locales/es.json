@@ -1096,6 +1096,13 @@
     "sort_countries": "Países donde jugó",
     "sort_cards": "Amarillas y rojas",
     "sort_young": "Los más jóvenes",
+    "position_all": "Todos",
+    "position": {
+      "goalkeeper": "Porteros",
+      "defender": "Defensas",
+      "midfield": "Centrocampistas",
+      "attack": "Delanteros"
+    },
     "continent_all": "Todos los continentes",
     "continent": {
       "europe": "Europa",

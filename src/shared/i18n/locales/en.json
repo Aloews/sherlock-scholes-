@@ -1096,6 +1096,13 @@
     "sort_countries": "Countries played in",
     "sort_cards": "Yellows and reds",
     "sort_young": "Youngest",
+    "position_all": "All",
+    "position": {
+      "goalkeeper": "Goalkeepers",
+      "defender": "Defenders",
+      "midfield": "Midfielders",
+      "attack": "Forwards"
+    },
     "continent_all": "All continents",
     "continent": {
       "europe": "Europe",

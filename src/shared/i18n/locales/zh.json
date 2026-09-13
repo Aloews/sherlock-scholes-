@@ -1061,6 +1061,13 @@
     "sort_countries": "效力过的国家数",
     "sort_cards": "黄牌与红牌",
     "sort_young": "最年轻",
+    "position_all": "全部",
+    "position": {
+      "goalkeeper": "门将",
+      "defender": "后卫",
+      "midfield": "中场",
+      "attack": "前锋"
+    },
     "continent_all": "所有大洲",
     "continent": {
       "europe": "欧洲",

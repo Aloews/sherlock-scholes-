@@ -1061,6 +1061,13 @@
     "sort_countries": "プレーした国の数",
     "sort_cards": "イエローとレッド",
     "sort_young": "最年少",
+    "position_all": "すべて",
+    "position": {
+      "goalkeeper": "ゴールキーパー",
+      "defender": "ディフェンダー",
+      "midfield": "ミッドフィールダー",
+      "attack": "フォワード"
+    },
     "continent_all": "すべての大陸",
     "continent": {
       "europe": "ヨーロッパ",

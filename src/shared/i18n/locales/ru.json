@@ -1170,6 +1170,13 @@
     "sort_countries": "В скольких странах играл",
     "sort_cards": "Жёлтые и красные",
     "sort_young": "Самые молодые",
+    "position_all": "Все",
+    "position": {
+      "goalkeeper": "Вратари",
+      "defender": "Защитники",
+      "midfield": "Полузащитники",
+      "attack": "Нападающие"
+    },
     "continent_all": "Все континенты",
     "continent": {
       "europe": "Европа",

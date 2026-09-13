@@ -1230,6 +1230,13 @@
     "sort_countries": "عدد الدول التي لعب فيها",
     "sort_cards": "البطاقات الصفراء والحمراء",
     "sort_young": "الأصغر سنًا",
+    "position_all": "الكل",
+    "position": {
+      "goalkeeper": "حراس المرمى",
+      "defender": "المدافعون",
+      "midfield": "لاعبو الوسط",
+      "attack": "المهاجمون"
+    },
     "continent_all": "كل القارات",
     "continent": {
       "europe": "أوروبا",

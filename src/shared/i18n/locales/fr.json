@@ -1096,6 +1096,13 @@
     "sort_countries": "Pays où il a joué",
     "sort_cards": "Jaunes et rouges",
     "sort_young": "Les plus jeunes",
+    "position_all": "Tous",
+    "position": {
+      "goalkeeper": "Gardiens",
+      "defender": "Défenseurs",
+      "midfield": "Milieux",
+      "attack": "Attaquants"
+    },
     "continent_all": "Tous les continents",
     "continent": {
       "europe": "Europe",

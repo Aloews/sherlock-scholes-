@@ -2316,6 +2316,88 @@ async function checkClubRoom() {
          news.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+
+// ----------------------------------------------------- категории игроков ---
+// Владелец: «разбей всех игроков по категориям, дай им ранг».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «ФИЛЬТР ЕСТЬ», А «ФИЛЬТР ФИЛЬТРУЕТ». Параметр, который
+// сервер молча игнорирует, выглядит на экране как работающий: кнопка
+// нажимается, список меняется (потому что меняется сортировка), и заметить,
+// что «нападающие» это те же все, нечем. Поэтому здесь три разных способа
+// поймать мёртвый параметр, и каждый способен упасть отдельно.
+async function checkPlayerPositions() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Категории игроков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+  const count = (pos) => rpc('player_index_count', { p_sort: 'value', p_position: pos });
+
+  const all = await count(null);
+  const parts = {};
+  for (const p of ['goalkeeper', 'defender', 'midfield', 'attack']) parts[p] = await count(p);
+  const sum = Object.values(parts).reduce((a, b) => a + (Number(b) || 0), 0);
+
+  const named = Object.entries(parts).map(([k, v]) => `${k} ${v}`).join(', ');
+  record('Категории: все четыре не пусты',
+         Object.values(parts).every((n) => Number(n) > 0),
+         named, 'ловит пересборку амплуа, которая не прошла');
+
+  // Сумма частей ОБЯЗАНА быть меньше целого: у 1 679 карточек амплуа нет, и
+  // если сумма вдруг сравнялась с общим числом — значит кого-то посчитали
+  // дважды или «без амплуа» кому-то приписали.
+  record('Категории: сумма меньше целого',
+         Number(all) > 0 && sum > 0 && sum < Number(all),
+         `${sum} из ${all}`,
+         'ловит двойной счёт и приписанное наугад амплуа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: выдуманное амплуа обязано дать НОЛЬ.
+  // Мёртвый параметр вернёт здесь всех, и это единственное место, где видно
+  // разницу между «фильтр работает» и «фильтр не читается».
+  const bogus = await count('нет-такого-амплуа');
+  record('Категории: контроль выдуманного',
+         Number(bogus) === 0,
+         Number(bogus) === 0 ? 'выдуманное амплуа дало ноль, как и должно'
+                             : `выдуманное амплуа вернуло ${bogus} игроков`,
+         Number(bogus) === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // Ранг внутри категории: первая тройка нападающих обязана БЫТЬ нападающими.
+  const top = await rpc('player_index', {
+    p_sort: 'value', p_position: 'attack', p_limit: 3, p_lang: 'ru',
+  });
+  const rows = Array.isArray(top) ? top : [];
+  const clean = rows.length === 3 && rows.every((r) => r.player_position === 'attack');
+  record('Категории: ранг считается внутри категории',
+         clean && rows[0]?.place === 1,
+         rows.length ? `1-й ${rows[0].name} (${rows[0].player_position})` : 'пусто',
+         'ловит место, посчитанное по всему списку вместо среза');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ, И ОН ПРО САМУЮ ТИХУЮ ПОЛОМКУ. Если
+  // параметр не читается, срез «вратари» совпадёт с общим списком. Вратарь
+  // дороже всех нападающих не бывает — значит первые строки обязаны
+  // РАЗОЙТИСЬ. Совпали — фильтр мёртв, сколько бы строк он ни вернул.
+  const topAll = await rpc('player_index', { p_sort: 'value', p_limit: 1, p_lang: 'ru' });
+  const topGk = await rpc('player_index', {
+    p_sort: 'value', p_position: 'goalkeeper', p_limit: 1, p_lang: 'ru',
+  });
+  const a = Array.isArray(topAll) ? topAll[0] : null;
+  const g = Array.isArray(topGk) ? topGk[0] : null;
+  const differ = !!a && !!g && a.card_id !== g.card_id;
+  record('Категории: контроль — срез не равен целому',
+         differ,
+         differ ? `все: ${a.name}; вратари: ${g.name}`
+                : 'первый в срезе тот же, что в общем списке',
+         differ ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
@@ -2345,6 +2427,7 @@ await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
+await checkPlayerPositions();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();

@@ -1061,6 +1061,13 @@
     "sort_countries": "활약한 국가 수",
     "sort_cards": "경고와 퇴장",
     "sort_young": "최연소",
+    "position_all": "전체",
+    "position": {
+      "goalkeeper": "골키퍼",
+      "defender": "수비수",
+      "midfield": "미드필더",
+      "attack": "공격수"
+    },
     "continent_all": "모든 대륙",
     "continent": {
       "europe": "유럽",
