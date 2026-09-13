@@ -1020,7 +1020,19 @@
     "squad_ours": "Effectif officiel",
     "news": "Actualités de l'équipe",
     "manager": "Entraîneur",
-    "now": "Actuellement"
+    "now": "Actuellement",
+    "room": "Salon des supporters",
+    "room_empty": "C’est calme ici. Dites le premier mot.",
+    "room_placeholder": "Que pensez-vous de l’équipe ?",
+    "room_send": "Envoyer",
+    "room_delete": "Retirer",
+    "room_anon": "Supporter",
+    "room_discuss": "En discuter",
+    "room_clear_quote": "Retirer l’article",
+    "room_too_fast": "Trop souvent. Attendez quelques secondes.",
+    "room_too_long": "Trop long : 500 caractères au maximum.",
+    "room_unknown_club": "Cette équipe n’existe pas.",
+    "room_failed": "Non envoyé. Réessayez."
   },
   "clubs": {
     "title": "Clubs",

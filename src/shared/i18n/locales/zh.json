@@ -991,7 +991,19 @@
     "squad_ours": "俱乐部名单",
     "news": "球队新闻",
     "manager": "主教练",
-    "now": "现在"
+    "now": "现在",
+    "room": "球迷聊天室",
+    "room_empty": "这里还很安静，说第一句话吧。",
+    "room_placeholder": "你怎么看这支球队？",
+    "room_send": "发送",
+    "room_delete": "删除",
+    "room_anon": "球迷",
+    "room_discuss": "聊聊",
+    "room_clear_quote": "移除新闻",
+    "room_too_fast": "发得太快了，请等几秒。",
+    "room_too_long": "太长了，最多 500 字。",
+    "room_unknown_club": "没有这支球队。",
+    "room_failed": "没能发送，请再试一次。"
   },
   "clubs": {
     "title": "俱乐部",

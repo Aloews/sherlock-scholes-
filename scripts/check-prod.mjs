@@ -2350,6 +2350,68 @@ async function checkLiveStreams() {
          'ловит окно, считающее сутки вперёд «скоро»');
 }
 
+
+// -------------------------------------------------- комната болельщиков ---
+// Владелец: «добавь комнату болельщиков для команд, где можно было изучить
+// состав команды, новости и обсудить их».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ ТО, ЧТО СЛОМАТЬ СТРАШНЕЕ ВСЕГО: комната НЕ ОТДАЁТСЯ
+// анонимному ключу. В её строках стоят имена и аватары живых людей, а
+// анонимный ключ зашит в бандл — то есть открыт всем. `club_news` анониму
+// открыт законно (там чужие заголовки из RSS), и разница между ними и есть
+// предмет этой проверки.
+//
+// Читать комнату по-настоящему отсюда нельзя и не нужно: для этого нужна
+// подпись Telegram, которую взять неоткуда. Значит проверяется не содержимое,
+// а ГРАНИЦА — и она проверяема полностью.
+async function checkClubRoom() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Комната болельщиков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const call = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return { ok: r.ok, status: r.status, rows: r.ok ? await r.json().catch(() => null) : null };
+  };
+
+  // Подделка подписи обязана быть отвергнута. Не «вернуть пусто» — именно
+  // отвергнута: пустой ответ нельзя отличить от «в комнате пока тихо».
+  const read = await call('club_room_posts', {
+    p_init_data: 'подделка', p_club: 'real-madrid', p_limit: 5,
+  });
+  record('Комната: чтение без подписи отбито', !read.ok,
+         read.ok ? `ОТДАЛА ${Array.isArray(read.rows) ? read.rows.length : '?'} строк анониму`
+                 : `HTTP ${read.status}, как и должно`,
+         'ловит снятую проверку tg_validate_init_data на чтении');
+
+  const write = await call('post_club_message', {
+    p_init_data: 'подделка', p_club: 'real-madrid', p_body: 'проверка',
+  });
+  record('Комната: запись без подписи отбита', !write.ok,
+         write.ok ? 'ЗАПИСАЛА от имени анонима' : `HTTP ${write.status}, как и должно`,
+         'ловит снятую проверку на записи');
+
+  // И сама таблица не должна открываться напрямую, мимо функций.
+  const table = await fetch(`${url}/rest/v1/club_post?select=body&limit=1`, { headers: auth });
+  record('Комната: таблица закрыта напрямую', !table.ok,
+         table.ok ? 'club_post ЧИТАЕТСЯ анонимным ключом' : `HTTP ${table.status}, как и должно`,
+         'ловит забытую политику RLS или выданный грант');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И БЕЗ НЕГО ТРИ ПРОВЕРКИ ВЫШЕ НИЧЕГО НЕ СТОЯТ:
+  // отозванный ключ, кончившийся проект и опечатка в адресе дают ровно те же
+  // отказы. Значит надо показать, что этим же ключом открытое — открыто.
+  const news = await call('club_news', { p_club_key: 'real-madrid', p_limit: 1 });
+  record('Комната: контроль — тем же ключом открытое открыто', news.ok,
+         news.ok ? 'club_news отвечает анониму, как и задумано'
+                 : `club_news тоже отказал (HTTP ${news.status}) — ключ или адрес не те`,
+         news.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
@@ -2379,6 +2441,7 @@ await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
+await checkClubRoom();
 await checkLiveStreams();
 await checkFanAndFixtures();
 await checkBundle();

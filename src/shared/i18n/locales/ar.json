@@ -1130,7 +1130,19 @@
     "squad_ours": "قائمة النادي",
     "news": "أخبار الفريق",
     "manager": "المدرب",
-    "now": "حاليًا"
+    "now": "حاليًا",
+    "room": "غرفة المشجعين",
+    "room_empty": "المكان هادئ. قل الكلمة الأولى.",
+    "room_placeholder": "ما رأيك في الفريق؟",
+    "room_send": "إرسال",
+    "room_delete": "إزالة",
+    "room_anon": "مشجع",
+    "room_discuss": "ناقش",
+    "room_clear_quote": "إزالة الخبر",
+    "room_too_fast": "بسرعة كبيرة. انتظر بضع ثوان.",
+    "room_too_long": "طويل جدًا: 500 حرف كحد أقصى.",
+    "room_unknown_club": "لا يوجد فريق بهذا الاسم.",
+    "room_failed": "لم يُرسل. حاول مرة أخرى."
   },
   "clubs": {
     "title": "الأندية",

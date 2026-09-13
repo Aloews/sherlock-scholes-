@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IconExternalLink } from '@tabler/icons-react';
+import { IconExternalLink, IconMessage } from '@tabler/icons-react';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { fetchClubNews, type ClubNewsRow } from './clubsApi';
 import { openLink, hapticImpact } from '@/shared/lib/telegram';
@@ -22,7 +22,19 @@ import { shortDateFormat } from '@/shared/lib/dateFormat';
  * конвейер молчит» выглядят на экране одинаково; рамка с подписью «новостей
  * нет» утверждала бы первое, имея, возможно, второе.
  */
-export function ClubNews({ clubKey }: { clubKey: string }) {
+export function ClubNews({
+  clubKey, onDiscuss,
+}: {
+  clubKey: string;
+  /**
+   * «Обсудить» — новость уходит в комнату болельщиков ниже.
+   *
+   * ⚠️ КНОПКА ОТДЕЛЬНАЯ, А НЕ ЖЕСТ ПО КАРТОЧКЕ. Сама карточка открывает
+   * статью НАРУЖУ, в браузер; повесить на неё второе действие значило бы
+   * гадать, чего хотел человек, — а промах уводит из приложения совсем.
+   */
+  onDiscuss?: (news: { url: string; title: string }) => void;
+}) {
   const { t, i18n } = useTranslation();
   const [rows, setRows] = useState<LoadState<ClubNewsRow[]>>(LOADING);
 
@@ -51,8 +63,8 @@ export function ClubNews({ clubKey }: { clubKey: string }) {
             if (!Number.isNaN(d.getTime())) date = when.format(d);
           } catch { date = ''; }
           return (
+            <div key={n.url} className="space-y-1">
             <button
-              key={n.url}
               type="button"
               onClick={() => { hapticImpact('light'); openLink(n.url); }}
               className="w-full ds-panel bg-brand-surface border border-brand-border rounded-xl
@@ -71,6 +83,18 @@ export function ClubNews({ clubKey }: { clubKey: string }) {
                 {[n.source, date].filter(Boolean).join(' · ')}
               </p>
             </button>
+            {onDiscuss && (
+              <button
+                type="button"
+                onClick={() => { hapticImpact('light'); onDiscuss({ url: n.url, title: n.title }); }}
+                className="flex items-center gap-1 px-3 text-[10.5px] text-brand-muted
+                           active:opacity-60 transition-opacity"
+              >
+                <IconMessage size={12} stroke={1.75} />
+                {t('club.room_discuss')}
+              </button>
+            )}
+            </div>
           );
         })}
       </div>

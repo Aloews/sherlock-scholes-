@@ -991,7 +991,19 @@
     "squad_ours": "クラブ登録メンバー",
     "news": "チームのニュース",
     "manager": "監督",
-    "now": "現在"
+    "now": "現在",
+    "room": "サポーターの部屋",
+    "room_empty": "まだ静かです。最初のひとことをどうぞ。",
+    "room_placeholder": "このチームをどう見ますか？",
+    "room_send": "送信",
+    "room_delete": "削除",
+    "room_anon": "サポーター",
+    "room_discuss": "語る",
+    "room_clear_quote": "ニュースを外す",
+    "room_too_fast": "間隔が短すぎます。数秒お待ちください。",
+    "room_too_long": "長すぎます。500字までです。",
+    "room_unknown_club": "そのチームはありません。",
+    "room_failed": "送信できませんでした。もう一度どうぞ。"
   },
   "clubs": {
     "title": "クラブ",

@@ -1020,7 +1020,19 @@
     "squad_ours": "Club roster",
     "news": "Team news",
     "manager": "Manager",
-    "now": "Now"
+    "now": "Now",
+    "room": "Fan room",
+    "room_empty": "Quiet in here. Say the first word.",
+    "room_placeholder": "What do you make of the team?",
+    "room_send": "Send",
+    "room_delete": "Remove",
+    "room_anon": "Supporter",
+    "room_discuss": "Discuss",
+    "room_clear_quote": "Drop the article",
+    "room_too_fast": "Too often. Wait a few seconds.",
+    "room_too_long": "Too long: 500 characters at most.",
+    "room_unknown_club": "No such team.",
+    "room_failed": "Not sent. Try again."
   },
   "clubs": {
     "title": "Clubs",

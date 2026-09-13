@@ -991,7 +991,19 @@
     "squad_ours": "구단 등록 명단",
     "news": "팀 소식",
     "manager": "감독",
-    "now": "현재"
+    "now": "현재",
+    "room": "팬 라운지",
+    "room_empty": "아직 조용합니다. 첫마디를 남겨 보세요.",
+    "room_placeholder": "이 팀을 어떻게 보시나요?",
+    "room_send": "보내기",
+    "room_delete": "삭제",
+    "room_anon": "팬",
+    "room_discuss": "이야기하기",
+    "room_clear_quote": "뉴스 빼기",
+    "room_too_fast": "너무 자주 보냅니다. 몇 초 기다려 주세요.",
+    "room_too_long": "너무 깁니다. 500자까지입니다.",
+    "room_unknown_club": "그런 팀은 없습니다.",
+    "room_failed": "보내지 못했습니다. 다시 시도해 주세요."
   },
   "clubs": {
     "title": "클럽",

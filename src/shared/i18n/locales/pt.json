@@ -1020,7 +1020,19 @@
     "squad_ours": "Elenco oficial",
     "news": "Notícias do time",
     "manager": "Treinador",
-    "now": "Agora"
+    "now": "Agora",
+    "room": "Sala da torcida",
+    "room_empty": "Está quieto por aqui. Diga a primeira palavra.",
+    "room_placeholder": "O que acha do time?",
+    "room_send": "Enviar",
+    "room_delete": "Remover",
+    "room_anon": "Torcedor",
+    "room_discuss": "Comentar",
+    "room_clear_quote": "Tirar a notícia",
+    "room_too_fast": "Rápido demais. Espere alguns segundos.",
+    "room_too_long": "Longo demais: no máximo 500 caracteres.",
+    "room_unknown_club": "Esse time não existe.",
+    "room_failed": "Não enviou. Tente de novo."
   },
   "clubs": {
     "title": "Clubes",

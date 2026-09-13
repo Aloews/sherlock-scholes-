@@ -1020,7 +1020,19 @@
     "squad_ours": "Plantilla oficial",
     "news": "Noticias del equipo",
     "manager": "Entrenador",
-    "now": "Ahora"
+    "now": "Ahora",
+    "room": "Sala de la afición",
+    "room_empty": "Aquí hay silencio. Di la primera palabra.",
+    "room_placeholder": "¿Qué te parece el equipo?",
+    "room_send": "Enviar",
+    "room_delete": "Quitar",
+    "room_anon": "Aficionado",
+    "room_discuss": "Comentar",
+    "room_clear_quote": "Quitar la noticia",
+    "room_too_fast": "Demasiado seguido. Espera unos segundos.",
+    "room_too_long": "Demasiado largo: 500 caracteres como máximo.",
+    "room_unknown_club": "No existe ese equipo.",
+    "room_failed": "No se envió. Inténtalo de nuevo."
   },
   "clubs": {
     "title": "Clubes",
