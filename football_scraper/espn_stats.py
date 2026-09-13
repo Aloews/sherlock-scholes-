@@ -4,6 +4,12 @@
     python3 espn_stats.py --days 7       # последние 7 суток
     python3 espn_stats.py --dry-run
 
+⚠️ ЭТО ЖЕ И ИСТОЧНИК СТАТИСТИКИ КОМАНД. `club_match` не собирается ниоткуда
+отдельно: `rebuild_club_matches()` сворачивает до матчей ровно те строки,
+которые пишет этот обход (см. supabase/migrations/football_clubs.sql, §9).
+То есть лига, которой нет в списке ниже, — это и игроки без статистики, и
+клубы без формы, без разницы мячей и без характера. Одно и то же место.
+
 ВТОРОЙ ИСТОЧНИК ДЛЯ ТОЙ ЖЕ ТАБЛИЦЫ, и он нужен не для объёма. sports.ru
 находит игрока только через слаг, а слаг берётся со страницы состава
 (российские клубы) или угадывается и проверяется (34 из 40 самых известных).
@@ -41,13 +47,114 @@ from sports_ru_stats import USER_AGENT, Db  # noqa: E402
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
-# Коды лиг проверены запросом — каждый отозвался своим настоящим названием.
-LEAGUES = (
-    "eng.1", "esp.1", "ger.1", "ita.1", "fra.1", "usa.1", "bra.1", "rus.1",
-    "ned.1", "por.1", "mex.1", "arg.1", "ksa.1", "uefa.champions",
-)
+# Лиги: код ESPN -> название, которым он сам отозвался 13.09.2026.
+#
+# ⚠️ НАЗВАНИЕ ЗДЕСЬ НЕ УКРАШЕНИЕ, А ПРОВЕРЯЕМАЯ ЧАСТЬ ЗАПИСИ. Прежде тут стоял
+# голый кортеж кодов с комментарием «проверены запросом», и проверить это
+# утверждение было нечем: код, переставший отвечать, выглядит ровно как код,
+# у которого в тот день не было матчей. Пара «код + имя» делает расхождение
+# видимым — её сверяет `check-prod`, раздел «ESPN: лиги отзываются».
+#
+# ⚠️ ЛИГУ СЮДА ДОБАВЛЯЮТ НЕ ЗА ИЗВЕСТНОСТЬ, А ЗА КАРТОЧКИ В КОЛОДЕ. Каждая
+# строка ниже — лига, в клубах которой у нас ЕСТЬ игроки: без этого обход
+# тратит запросы на матчи людей, которых не с кем сопоставить. Перед добавлением
+# новой строки считают карточки без статистики по её лиге, а не наоборот.
+LEAGUES = {
+    # Те четырнадцать, с которых всё начиналось.
+    "eng.1": "English Premier League",
+    "esp.1": "Spanish LALIGA",
+    "ger.1": "German Bundesliga",
+    "ita.1": "Italian Serie A",
+    "fra.1": "French Ligue 1",
+    "usa.1": "MLS",
+    "bra.1": "Brazilian Serie A",
+    "rus.1": "Russian Premier League",
+    "ned.1": "Dutch Eredivisie",
+    "por.1": "Portuguese Primeira Liga",
+    "mex.1": "Mexican Liga BBVA MX",
+    "arg.1": "Argentine Liga Profesional de Fútbol",
+    "ksa.1": "Saudi Pro League",
+    "uefa.champions": "UEFA Champions League",
+
+    # ВТОРЫЕ ДИВИЗИОНЫ. Самая большая дыра из найденных: в Серии Б, Лиге 2,
+    # Чемпионшипе и Сегунде у нас сотни карточек, а статистики было у каждой
+    # двадцатой — не потому, что её негде взять, а потому, что никто не спросил.
+    "eng.2": "English League Championship",
+    "eng.3": "English League One",
+    "eng.4": "English League Two",
+    "ita.2": "Italian Serie B",
+    "ger.2": "German 2. Bundesliga",
+    "fra.2": "French Ligue 2",
+    "esp.2": "Spanish LALIGA 2",
+    "ned.2": "Dutch Keuken Kampioen Divisie",
+    "tur.2": "Turkish 1. Ligi",
+    "bra.2": "Brazilian Serie B",
+
+    # ПЕРВЫЕ ДИВИЗИОНЫ, КОТОРЫХ ПРОСТО НЕ БЫЛО В СПИСКЕ.
+    "tur.1": "Turkish Super Lig",
+    "sui.1": "Swiss Super League",
+    "bel.1": "Belgian Pro League",
+    "sco.1": "Scottish Premiership",
+    "aut.1": "Austrian Bundesliga",
+    "gre.1": "Greek Super League",
+    "den.1": "Danish Superliga",
+    "swe.1": "Swedish Allsvenskan",
+    "nor.1": "Norwegian Eliteserien",
+    "fin.1": "Finnish Veikkausliga",
+    "cze.1": "Gambrinus Liga",
+    "irl.1": "Irish Premier Division",
+    "isr.1": "Israeli Premier League",
+    "jpn.1": "Japanese J.League",
+    "chn.1": "Chinese Super League",
+    "tha.1": "Thai League 1",
+    "rsa.1": "South African Premiership",
+    "col.1": "Colombian Primera A",
+    "uru.1": "Liga AUF Uruguaya",
+    "chi.1": "Chilean Primera División",
+    "par.1": "Paraguayan Primera División",
+    "ven.1": "Venezuelan Primera División",
+    "bol.1": "Bolivian Liga Profesional",
+
+    # КУБКИ. Дают не новых игроков, а НЕДОСТАЮЩИЕ МАТЧИ уже найденным — и
+    # единственные достают клубы из лиг, которых у ESPN нет вовсе: белорусский
+    # или казахстанский клуб попадает сюда через квалификацию.
+    "uefa.europa": "UEFA Europa League",
+    "uefa.europa.conf": "UEFA Conference League",
+    "conmebol.libertadores": "CONMEBOL Libertadores",
+    "conmebol.sudamericana": "CONMEBOL Sudamericana",
+    "concacaf.champions": "Concacaf Champions Cup",
+    "afc.champions": "AFC Champions League Elite",
+}
 
 DELAY_SECONDS = 0.4
+
+# ⚠️ ОКНО ДАТАМИ, А НЕ ПО ОДНОМУ ДНЮ — ИНАЧЕ СПИСОК ВЫШЕ НЕ ПОМЕЩАЕТСЯ В НОЧЬ.
+# `scoreboard?dates=A-B` отвечает диапазоном, и это проверено сравнением, а не
+# прочитано в документации: за 1–12 сентября по Чемпионшипу обход по дням дал
+# 44 матча, один запрос диапазоном — те же 44, и разность множеств пуста в обе
+# стороны. Девяносто суток на лигу — это 90 запросов против трёх.
+#
+# Тридцать, а не все девяносто разом, — страховка от необъявленного потолка на
+# число событий в ответе. Замер на самых плотных лигах (bra.1, usa.1) показал
+# 91 и 156 событий без потерь, то есть потолка на этих числах нет; окно
+# оставлено узким, потому что цена страховки — два лишних запроса на лигу.
+CHUNK_DAYS = 30
+
+
+def date_windows(days, today):
+    """Окна `(с, по)` в формате ESPN, от свежего к старому.
+
+    Чистая функция: даты на вход, строки на выход — проверяется тестом без сети.
+    """
+    windows = []
+    covered = 0
+    while covered < days:
+        hi = today - timedelta(days=covered)
+        span = min(CHUNK_DAYS, days - covered) - 1
+        lo = hi - timedelta(days=max(span, 0))
+        windows.append((lo.strftime("%Y%m%d"), hi.strftime("%Y%m%d")))
+        covered += span + 1
+    return windows
 
 
 def fold_diacritics(name):
@@ -140,6 +247,30 @@ def active_cards_by_key(cards, current_club_ids):
     return by_key
 
 
+def write_rows(db, rows):
+    """Записать пачку одной лиги, схлопнув дубли. Возвращает записанное.
+
+    ⚠️ ПИШЕТСЯ ПО ЛИГЕ, А НЕ ОДИН РАЗ В КОНЦЕ, И ЭТО ПОЧИНКА. Прежде обход
+    копил строки всех лиг в один список и писал после последней: обход,
+    прерванный на предпоследней лиге, не записывал НИЧЕГО. Пока лиг было
+    четырнадцать и обход укладывался в полчаса, это сходило с рук; на полном
+    списке за девяносто суток — уже нет. Ровно этой формы ошибку чинили в
+    football-fixtures: «ONE WRITE PER COMPETITION, NOT ONE AT THE END».
+
+    Схлопывание здесь, а не в базе: один игрок может значиться в одном матче
+    дважды, ключ (карточка, дата, турнир) это поймает, но PostgREST отвергает
+    пачку с дублем ЦЕЛИКОМ — то есть из-за одной строки потерялась бы лига.
+    """
+    unique, keys = [], set()
+    for r in rows:
+        k = (r["card_id"], r["match_date"], r["tournament"])
+        if k in keys:
+            continue
+        keys.add(k)
+        unique.append(r)
+    return db.upsert("player_match_stats", unique, "card_id,match_date,tournament")
+
+
 def collect(days, dry_run=False):
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
@@ -177,73 +308,83 @@ def collect(days, dry_run=False):
     print("cards with a latin name and a current club: {}".format(len(cards_by_key)))
 
     today = date.today()
-    dates = [(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(days)]
+    windows = date_windows(days, today)
 
-    rows, seen_events, unmatched = [], 0, 0
+    total_rows, seen_events, unmatched, written_total = 0, 0, 0, 0
     for league in LEAGUES:
-        for day in dates:
-            board = fetch_json(session, "{}/{}/scoreboard?dates={}".format(BASE, league, day))
+        # ⚠️ СОБЫТИЯ СОБИРАЮТСЯ МНОЖЕСТВОМ, А НЕ СПИСКОМ. Соседние окна
+        # смыкаются встык, но ESPN относит матч к дате НАЧАЛА по своему
+        # часовому поясу, и матч на стыке попадает в оба ответа. Дубль стоил бы
+        # лишнего запроса за summary — того самого, который в этом обходе и
+        # есть почти вся цена.
+        event_ids = []
+        seen_ids = set()
+        for lo, hi in windows:
+            board = fetch_json(
+                session,
+                "{}/{}/scoreboard?dates={}-{}&limit=1000".format(BASE, league, lo, hi))
             time.sleep(DELAY_SECONDS)
             if not board:
                 continue
             for event_id in completed_event_ids(board):
-                summary = fetch_json(
-                    session, "{}/{}/summary?event={}".format(BASE, league, event_id))
-                time.sleep(DELAY_SECONDS)
-                if not summary:
+                if event_id in seen_ids:
                     continue
-                meta = parse_match_meta(summary)
-                if not meta:
+                seen_ids.add(event_id)
+                event_ids.append(event_id)
+
+        rows = []
+        for event_id in event_ids:
+            summary = fetch_json(
+                session, "{}/{}/summary?event={}".format(BASE, league, event_id))
+            time.sleep(DELAY_SECONDS)
+            if not summary:
+                continue
+            meta = parse_match_meta(summary)
+            if not meta:
+                continue
+            seen_events += 1
+            for player in parse_player_rows(summary):
+                # Не выходившие на поле не пишутся: строка «0 голов, 0
+                # минут» ничего не добавляет рейтингу, а места в таблице
+                # занимает столько же.
+                if not player["played"]:
                     continue
-                seen_events += 1
-                for player in parse_player_rows(summary):
-                    # Не выходившие на поле не пишутся: строка «0 голов, 0
-                    # минут» ничего не добавляет рейтингу, а места в таблице
-                    # занимает столько же.
-                    if not player["played"]:
-                        continue
-                    card = match_card(player["name"], cards_by_key)
-                    if not card:
-                        unmatched += 1
-                        continue
-                    rows.append({
-                        "card_id": card["id"],
-                        "match_date": meta["date"],
-                        "tournament": meta["league"] or league,
-                        "home_team": meta["home"],
-                        "away_team": meta["away"],
-                        "home_score": meta["home_score"],
-                        "away_score": meta["away_score"],
-                        "minutes": None,
-                        "goals": player["goals"],
-                        "assists": player["assists"],
-                        "yellow": player["yellow"],
-                        "red": player["red"],
-                        "source": "espn",
-                    })
+                card = match_card(player["name"], cards_by_key)
+                if not card:
+                    unmatched += 1
+                    continue
+                rows.append({
+                    "card_id": card["id"],
+                    "match_date": meta["date"],
+                    "tournament": meta["league"] or league,
+                    "home_team": meta["home"],
+                    "away_team": meta["away"],
+                    "home_score": meta["home_score"],
+                    "away_score": meta["away_score"],
+                    "minutes": None,
+                    "goals": player["goals"],
+                    "assists": player["assists"],
+                    "yellow": player["yellow"],
+                    "red": player["red"],
+                    "source": "espn",
+                })
+
+        total_rows += len(rows)
+        print("  {:22} матчей {:4}  строк {:5}".format(league, len(event_ids), len(rows)))
+        if dry_run:
+            for r in rows[:3]:
+                print("     {} {} {} г{} п{}".format(
+                    r["match_date"], r["tournament"], r["card_id"][:8],
+                    r["goals"], r["assists"]))
+            continue
+        if rows:
+            written_total += write_rows(db, rows)
 
     print("matches read: {}, rows for our cards: {}, players not in the deck: {}"
-          .format(seen_events, len(rows), unmatched))
-
+          .format(seen_events, total_rows, unmatched))
     if dry_run:
-        for r in rows[:10]:
-            print("   {} {} {} г{} п{}".format(
-                r["match_date"], r["tournament"], r["card_id"][:8], r["goals"], r["assists"]))
         return 0
-
-    # Один и тот же игрок мог сыграть один матч — ключ (card, date, tournament)
-    # это и ловит, но пачку с дублем PostgREST отвергает целиком, поэтому
-    # схлопываем заранее.
-    unique, keys = [], set()
-    for r in rows:
-        k = (r["card_id"], r["match_date"], r["tournament"])
-        if k in keys:
-            continue
-        keys.add(k)
-        unique.append(r)
-
-    written = db.upsert("player_match_stats", unique, "card_id,match_date,tournament")
-    print("written: {}".format(written))
+    print("written: {}".format(written_total))
     return 0
 
 

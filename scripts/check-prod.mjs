@@ -2486,6 +2486,132 @@ async function checkPlayerPositions() {
          differ ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+
+// ---------------------------------------- охват статистики: лиги и команды ---
+// Владелец: «дособери статистику всех команд и игроков».
+//
+// ⚠️ ЧЕГО НЕ ВИДНО БЕЗ ЭТОЙ ПРОВЕРКИ. Ни один тест не краснеет от того, что
+// лиги НЕТ В СПИСКЕ обхода: код исправен, запросы уходят, ответы разбираются,
+// тысяча тестов зелена. Просто игроков этой лиги никто никогда не спрашивал.
+// Замер 13.09.2026, до починки: Серия Б — 5% карточек со статистикой, Лига 2 —
+// 2%, Чемпионшип — 5%, при 50–68% у тех четырнадцати лиг, что в списке были.
+// Разница — одна строка кода на лигу.
+//
+// ⚠️ ЭТО ЖЕ И ПРОВЕРКА СТАТИСТИКИ КОМАНД. `club_match` ниоткуда отдельно не
+// собирается: `rebuild_club_matches()` сворачивает до матчей ровно эти строки.
+// Лига вне списка — это не только игроки без голов, но и клубы без формы, без
+// разницы мячей и без характера.
+async function checkStatsCoverage() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Охват статистики', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  // ⚠️ СЧЁТ ЗАГОЛОВКОМ, А НЕ ДЛИНОЙ ОТВЕТА. PostgREST режет тело по
+  // `db-max-rows` (в этом проекте 1000), и `rows.length` на большой выборке
+  // сказал бы «ровно 1000» с уверенностью. `count=exact` считает в базе.
+  const count = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, {
+      headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+    });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+
+  // 1. СПИСОК ЛИГ ЧИТАЕТСЯ ИЗ САМОГО ОБХОДА, А НЕ ПОВТОРЯЕТСЯ ЗДЕСЬ. Копия
+  //    списка проверяла бы копию: разойдись они — оба остались бы зелёными.
+  const pySrc = existsSync('football_scraper/espn_stats.py')
+    ? readFileSync('football_scraper/espn_stats.py', 'utf-8') : '';
+  const block = /LEAGUES = \{([\s\S]*?)\n\}/.exec(pySrc);
+  const leagues = [...(block?.[1] ?? '').matchAll(/^\s*"([^"]+)":\s*"([^"]+)",/gm)]
+    .map(([, code, name]) => ({ code, name }));
+
+  const espnName = async (code) => {
+    try {
+      const r = await get(
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`,
+        { 'User-Agent': UA });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return (d.leagues ?? [])[0]?.name ?? null;
+    } catch { return null; }
+  };
+
+  // По восемь за раз: полсотни запросов подряд растянули бы прогон, а все разом
+  // — повод для источника ответить отказом.
+  const answered = [];
+  for (let i = 0; i < leagues.length; i += 8) {
+    answered.push(...await Promise.all(
+      leagues.slice(i, i + 8).map(async (l) => ({ ...l, got: await espnName(l.code) }))));
+  }
+  const dead    = answered.filter((l) => !l.got);
+  const renamed = answered.filter((l) => l.got && l.got !== l.name);
+  record('Охват: каждая лига списка отзывается',
+         leagues.length >= 50 && dead.length === 0,
+         leagues.length === 0 ? 'список лиг не прочитался из espn_stats.py'
+           : `${leagues.length} лиг, молчат ${dead.length}` +
+             (dead.length ? ': ' + dead.map((l) => l.code).join(', ') : ''),
+         'ловит код лиги, переставший существовать: обход по нему молча даёт ноль матчей');
+
+  record('Охват: имя лиги совпадает с записанным',
+         leagues.length > 0 && renamed.length === 0,
+         renamed.length ? renamed.map((l) => `${l.code}: «${l.name}» -> «${l.got}»`).join('; ')
+                        : `все ${answered.length} названий сошлись`,
+         'ловит переехавший код: отвечает чужая лига, а обход пишет её матчи как свои');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманного кода имени быть не может.
+  const ghost = await espnName('zz.9');
+  record('Охват: контроль выдуманной лиги', ghost === null,
+         ghost === null ? 'по коду zz.9 имени нет, как и должно'
+                        : `выдуманная лига назвалась «${ghost}»`,
+         ghost === null ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 2. КОНЕЦ ЦЕПОЧКИ: ответ источника — это ещё не строка в таблице. Спрашивается
+  //    ровно то, ради чего всё делалось: СКОЛЬКИМ лигам из списка статистика
+  //    действительно дошла до базы за последний месяц.
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const seen = [];
+  for (let i = 0; i < leagues.length; i += 8) {
+    const part = await Promise.all(leagues.slice(i, i + 8).map(async (l) => ({
+      name: l.name,
+      n: await count(`player_match_stats?select=card_id&match_date=gte.${since}`
+                     + `&tournament=eq.${encodeURIComponent(l.name)}`),
+    })));
+    seen.push(...part.filter((x) => x.n > 0));
+  }
+  // Порог ниже измеренного не по робости: у половины списка сезон летний или
+  // южноамериканский, и «сколько лиг играет прямо сейчас» — величина сезонная.
+  // Двадцать — это заведомо ниже зимнего и летнего дна и заведомо выше тех
+  // четырнадцати, что были до починки.
+  record('Охват: статистика доходит дальше топ-лиг',
+         seen.length >= 20,
+         `${seen.length} лиг из ${leagues.length} дали матчи за 30 суток`,
+         'ловит возврат к короткому списку: четырнадцать лиг эту планку не берут');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ПРО ФОРМУ ЗАПРОСА. Ноль по выдуманному
+  // турниру ничего не значит сам по себе: так же ответил бы сломанный фильтр.
+  // Рядом — тот же запрос по заведомо существующему.
+  const nonsense = await count(
+    `player_match_stats?select=card_id&tournament=eq.${encodeURIComponent('Лига Кривых Зеркал')}`);
+  const real = seen.length ? seen[0] : { name: '—', n: 0 };
+  const filterOk = nonsense === 0 && real.n > 0;
+  record('Охват: контроль отбора по турниру', filterOk,
+         nonsense !== 0 ? `выдуманный турнир дал ${nonsense} строк`
+           : real.n > 0 ? `по выдуманному 0, по «${real.name}» — ${real.n}`
+                        : 'запрос не нашёл даже настоящий турнир — форма сломана',
+         filterOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 3. КОМАНДЫ. Та же цепочка, последнее звено: матчи клубов — свёртка этих же
+  //    строк, и без неё у клуба нет ни формы, ни характера.
+  const clubMatches = await count(`club_match?select=home_key&match_date=gte.${since}`);
+  record('Охват: матчи команд свёрнуты',
+         clubMatches >= 800,
+         `${clubMatches} матчей команд за 30 суток`,
+         'ловит разрыв player_match_stats -> rebuild_club_matches: игроки есть, команд нет');
+}
+
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
@@ -2516,6 +2642,7 @@ await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
 await checkPlayerPositions();
+await checkStatsCoverage();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();
