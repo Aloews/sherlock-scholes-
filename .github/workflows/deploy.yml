@@ -1,0 +1,112 @@
+name: deploy
+
+# ОДНА КНОПКА: Actions → deploy → Run workflow.
+#
+# ⚠️ ЧТО ЭТА КНОПКА ДЕЛАЕТ И ЧЕГО НЕ ДЕЛАЕТ — НАПИСАНО ЗДЕСЬ, А НЕ ОБЕЩАНО
+# В ОБЩИХ СЛОВАХ. Полный разбор: docs/DEPLOY.md
+#
+#   делает:   проверки → семь Edge-функций → секреты → (по желанию) домен →
+#             проверка прода до конца цепочки
+#   НЕ делает: миграции базы и фронтенд.
+#
+# Почему не миграции: файлы в supabase/migrations названы по смыслу
+# (club_room.sql), а не отметкой времени, и применяются выборочно — `supabase
+# db push` такой набор прогонит целиком и по порядку имён. Это не «пока не
+# сделали», это сознательный отказ: неверный порядок на боевой базе дороже
+# любого удобства.
+#
+# Почему не фронтенд: его выкладывает сам Vercel на push в main. Отдельная
+# выкладка отсюда означала бы два источника правды о том, что сейчас в проде.
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Домен для переезда (пусто — не трогать)'
+        type: string
+        default: ''
+      functions:
+        description: 'Выложить Edge-функции'
+        type: boolean
+        default: true
+      checks:
+        description: 'Прогнать проверки перед выкладкой'
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Проверки ПЕРЕД выкладкой, а не после. Выложить и потом узнать — это
+      # уже не проверка, а вскрытие.
+      - name: Проверки
+        if: ${{ inputs.checks }}
+        run: |
+          npx tsc --noEmit
+          node scripts/check-i18n.mjs
+          npm test
+          npm run build
+
+      # ⚠️ ФУНКЦИИ ПЕРЕЧИСЛЕНЫ ПОИМЁННО, И СПИСОК ПРОВЕРЯЕТСЯ. `supabase
+      # functions deploy` без имени выкладывает всё из папки — включая то, что
+      # туда положили на пробу. Список из папки при этом СВЕРЯЕТСЯ со списком
+      # ниже: новая функция, забытая здесь, валит шаг, а не уезжает молча
+      # мимо (или, наоборот, не остаётся невыложенной, как однажды случилось
+      # с livekit.js в sherlock-ai-bot — там забытая строка COPY уронила
+      # контейнер, и заметили это только по логам).
+      - name: Edge-функции
+        if: ${{ inputs.functions }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::нет секрета SUPABASE_ACCESS_TOKEN — выложить нечем"
+            exit 1
+          fi
+          KNOWN="assistant-bot digest-summary football-digest football-fixtures football-scores-espn livekit-token tg-pay"
+          ON_DISK=$(ls -1 supabase/functions | sort | tr '\n' ' ')
+          EXPECTED=$(echo $KNOWN | tr ' ' '\n' | sort | tr '\n' ' ')
+          if [ "$ON_DISK" != "$EXPECTED" ]; then
+            echo "::error::список функций разошёлся с папкой"
+            echo "  в папке:  $ON_DISK"
+            echo "  в списке: $EXPECTED"
+            exit 1
+          fi
+          for fn in $KNOWN; do
+            echo "── $fn"
+            npx supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
+          done
+
+      - name: Домен
+        if: ${{ inputs.domain != '' }}
+        run: node scripts/set-domain.mjs --domain=${{ inputs.domain }}
+
+      # ⚠️ ПОСЛЕДНИМ ШАГОМ — ЕДИНСТВЕННАЯ ПРОВЕРКА, КОТОРАЯ МОЖЕТ УПАСТЬ ПО ТОЙ
+      # ЖЕ ПРИЧИНЕ, ПО КОТОРОЙ ЛОМАЕТСЯ ПРИЛОЖЕНИЕ: она ходит в боевые адреса
+      # без единого мока и идёт до конца цепочки. Разбор — в CLAUDE.md.
+      - name: Проверка прода
+        env:
+          PROD_APP_URL: ${{ inputs.domain != '' && format('https://{0}', inputs.domain) || '' }}
+        run: node scripts/check-prod.mjs

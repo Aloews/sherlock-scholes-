@@ -35,7 +35,10 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 
-const APP = process.env.PROD_APP_URL ?? 'https://sherlock-scholes.vercel.app';
+// ⚠️ `||`, А НЕ `??`: пустая строка — это «переменную задали пустой», и
+// `??` пропустила бы её дальше как настоящий адрес. Так и приходит
+// значение из GitHub Actions, когда домен в форме не заполнили.
+const APP = process.env.PROD_APP_URL || 'https://sherlock-scholes.vercel.app';
 const TIMEOUT_MS = 25_000;
 // UA с контактом, а не подделка под браузер: источник вправе знать, кто ходит.
 const UA = 'sherlock-scholes-bot/1.0 (+https://github.com/Aloews/sherlock-scholes-)';
