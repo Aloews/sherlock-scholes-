@@ -839,7 +839,9 @@
     "summary_quiet": "今日は話題がまとまりませんでした。要約するものがありません。",
     "summary_refused": "モデルはこれらの話題の要約を行いませんでした。",
     "live": "配信中",
-    "live_official": "公式チャンネル"
+    "live_soon": "まもなく配信",
+    "live_since": "{{time}} から配信中",
+    "live_starts": "{{time}} 開始"
   },
   "arena": {
     "title": "アリーナ",

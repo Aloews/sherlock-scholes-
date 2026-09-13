@@ -22,16 +22,47 @@
 -- конференцию — ровно та поломка доверия, из-за которой в `weekend_goals`
 -- заведена пометка «момент».
 --
--- ⚠️ ОТКУДА БЕРЁТСЯ ФАКТ ЭФИРА — НЕ ИЗ API. Идущий эфир НЕ ПОПАДАЕТ в список
--- загрузок канала: проверено на живом эфире MLS — сто роликов в
+-- ⚠️ КАНДИДАТА ДАЁТ СТРАНИЦА, А СТАТУС — API. Разделение не украшение: в нём
+-- вся починка «идёт сейчас».
+--
+-- НАЙТИ эфир через API дорого. Идущий эфир НЕ ПОПАДАЕТ в список загрузок
+-- канала: проверено на живом эфире MLS — сто роликов в
 -- `UUSZbXT5TLLW_i-5W8FZpFsg`, эфира среди них нет. Значит дешёвый путь
 -- (`playlistItems`, 1 единица квоты) его не найдёт, а `search.list` с
 -- `eventType=live` стоит 100 единиц за канал: двенадцать каналов даже раз в
--- час — 28 800 единиц в сутки при квоте 10 000, а на нынешних десяти минутах
--- 172 800. Поэтому функция читает страницу
+-- час — 28 800 единиц в сутки при квоте 10 000, а на десяти минутах 172 800.
+-- Поэтому кандидат по-прежнему берётся со страницы
 -- `youtube.com/channel/<id>/live` — ноль квоты, и `robots.txt` YouTube её не
 -- запрещает (запрещены `/feeds/videos.xml`, `/results`, `/youtubei/`, но не
 -- `/channel/` и не `/live`).
+--
+-- ⚠️ НО СТРАНИЦА НЕ ГОВОРИТ, ИДЁТ ЭФИР ИЛИ ТОЛЬКО НАЗНАЧЕН. Это замер
+-- 13.09.2026, а не опасение:
+--
+--   вечные эфиры (Sky News, NASA, DW, Bloomberg, Lofi Girl) — `"isLiveNow":true`
+--     не встречается НИ РАЗУ, а canonical вообще не указывает на ролик;
+--   каналы лиг с АНОНСОМ (Concacaf, MLS) — canonical на ролик есть, и рядом
+--     `"isUpcoming":true`, `"scheduledStartTime"`, `LIVE_STREAM_OFFLINE`.
+--
+-- То есть прежний признак ловил РОВНО ПРОТИВОПОЛОЖНОЕ обещанному. В таблице
+-- лежали одни анонсы, и все восемь строк, которые экран подписывал «идёт
+-- сейчас», начинались в будущем — вплоть до «Пряма трансляція матчу УПЛ-2
+-- (15.09.2026)» при сегодняшнем 13.09. Владелец назвал это издевательством, и
+-- он прав: человек открывал ссылку и читал «трансляция начнётся через 2 дня».
+--
+-- Статус спрашивается у `videos.list?part=snippet,liveStreamingDetails` —
+-- ОДНА ЕДИНИЦА ЗА ВЕСЬ ПРОГОН, а не за канал: до 50 идентификаторов уходят
+-- одним вызовом. 144 единицы в сутки на десятиминутном расписании при квоте
+-- 10 000. Решают два поля, а не разметка:
+--
+--   actualStartTime есть, actualEndTime нет → ИДЁТ
+--   actualStartTime нет, есть scheduledStartTime → НАЗНАЧЕН
+--   actualEndTime есть → КОНЧИЛСЯ, строка удаляется сразу
+--
+-- ⚠️ И ЗАГОЛОВОК ТЕПЕРЬ ОТТУДА ЖЕ, а не из oEmbed: тот же ответ несёт
+-- `snippet.title`, то есть двенадцать лишних запросов к YouTube ушли вместе с
+-- отдельным шагом. oEmbed выбирался ради чистого текста без сущностей — JSON
+-- API даёт его с тем же свойством.
 -- ============================================================================
 
 create table if not exists public.live_streams (
@@ -71,8 +102,34 @@ create table if not exists public.live_streams (
 
   -- Когда конвейер в последний раз ВИДЕЛ этот эфир живым. По нему и чистится:
   -- эфир не «заканчивается» событием, он просто перестаёт находиться.
-  seen_at     timestamptz not null default now()
+  seen_at     timestamptz not null default now(),
+
+  -- ⚠️ ДВА ВРЕМЕНИ, И ИМЕННО ИХ ТУТ НЕ ХВАТАЛО. `started_at` — когда эфир
+  -- начался НА САМОМ ДЕЛЕ (`actualStartTime`); NULL значит «ещё не
+  -- начинался». `scheduled_start_at` — на когда назначен
+  -- (`scheduledStartTime`); он бывает заполнен и у идущего эфира, поэтому не
+  -- отменяет первый, а дополняет.
+  --
+  -- Хранятся ФАКТЫ (две отметки времени), а признак «идёт» считается при
+  -- чтении — тем же правилом, что и `looks_like_match` выше: `started_at is
+  -- not null`. Хранить ещё и признак значило бы держать его в двух местах.
+  started_at         timestamptz,
+  scheduled_start_at timestamptz
 );
+
+-- Для баз, где таблица уже создана: `create table if not exists` выше их не
+-- добавит. Обе строки обязаны быть — в create для чистой базы, в alter для
+-- боевой.
+alter table public.live_streams add column if not exists started_at timestamptz;
+alter table public.live_streams add column if not exists scheduled_start_at timestamptz;
+
+-- ⚠️ РАЗОВАЯ УБОРКА ЗА ПРЕЖНИМ КОНВЕЙЕРОМ. Строки, записанные до этой правки,
+-- обеих отметок не имеют — про них попросту неизвестно, идут они или назначены,
+-- и ни одна из функций чтения их теперь не отдаёт. Оставить их значит держать в
+-- таблице девятнадцать строк, про которые нельзя сказать ничего. Новая строка
+-- без обеих отметок появиться не может: конвейер пишет только приговорённое.
+delete from public.live_streams
+where started_at is null and scheduled_start_at is null;
 
 comment on table public.live_streams is
   'Идущие прямо сейчас эфиры с ОФИЦИАЛЬНЫХ каналов лиг. Не список стримов: '
@@ -193,41 +250,103 @@ returns boolean language sql immutable as $$
 $$;
 
 /**
- * Идущие сейчас эфиры — только матчи, свежие сверху.
+ * Идущие сейчас эфиры — только матчи, которые УЖЕ НАЧАЛИСЬ.
  *
- * ОКНО В ЧАС, а не «всё, что в таблице». Конвейер ходит раз в десять минут и
- * удаляет то, чего больше не видит, но между падением конвейера и чисткой
- * экран показывал бы вчерашний эфир как идущий. Час — это шесть пропущенных
- * прогонов подряд: столько конвейер не молчит, а если молчит, то честнее
- * пустой раздел, чем уверенное «идёт сейчас» под завершившимся матчем.
+ * ⚠️ `started_at is not null` — ЭТО И ЕСТЬ ПОЧИНКА. Прежде условия было два
+ * (матч по заголовку и свежесть строки), и ни одно из них не спрашивало,
+ * начался ли эфир, — потому что спросить было негде: конвейер этого не
+ * приносил. Замер 13.09.2026: восемь строк в разделе «идёт сейчас», НИ ОДНА
+ * не шла. Подробности — в шапке файла.
+ *
+ * ОКНО В ЧАС остаётся поверх этого, а не вместо. Конвейер ходит раз в десять
+ * минут, удаляет кончившееся сразу и чистит несвежее; час — это шесть
+ * пропущенных прогонов подряд: столько конвейер не молчит, а если молчит, то
+ * честнее пустой раздел, чем уверенное «идёт сейчас» под кончившимся матчем.
+ *
+ * ⚠️ СНАЧАЛА DROP: набор выходных колонок изменился (добавился `started_at`),
+ * а `create or replace` этого не разрешает — 42P13.
  */
+drop function if exists public.digest_live_matches(integer);
 create or replace function public.digest_live_matches(p_limit integer default 8)
 returns table (
   video_id   text,
   channel    text,
   title      text,
-  seen_at    timestamptz
+  seen_at    timestamptz,
+  started_at timestamptz
 )
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select l.video_id, l.channel, l.title, l.seen_at
+  select l.video_id, l.channel, l.title, l.seen_at, l.started_at
   from public.live_streams l
   where public.looks_like_match(l.title)
     and not public.is_studio_talk(l.title)
+    and l.started_at is not null
     and l.seen_at > now() - interval '1 hour'
-  order by l.seen_at desc, l.channel
+  -- По порядковым номерам: имена выходных колонок — заодно и OUT-параметры,
+  -- и неквалифицированная ссылка на них здесь двусмысленна.
+  order by 4 desc, 2
   limit greatest(1, least(coalesce(p_limit, 8), 20));
+$$;
+
+/**
+ * Эфиры, которые ещё НЕ НАЧАЛИСЬ, но начнутся скоро.
+ *
+ * ⚠️ ЗАЧЕМ ОТДЕЛЬНАЯ ФУНКЦИЯ, А НЕ ПРОСТО ВЫБРОСИТЬ АНОНСЫ. Выбросить —
+ * значит опустошить раздел: сегодня в таблице лежат ОДНИ анонсы, и починка
+ * «показывать только идущее» на глаз неотличима от «перестало работать».
+ * Анонс сам по себе полезен — врала ПОДПИСЬ под ним, а не он. Поэтому он
+ * остаётся, но под своей: «начало в 20:00», со временем, а не «идёт сейчас».
+ *
+ * ОКНО ПО НАЗНАЧЕННОМУ ВРЕМЕНИ, А НЕ ПО `seen_at`. Страница канала показывает
+ * ближайший назначенный эфир и тогда, когда он через двое суток, — и такую
+ * строку конвейер видит свежей каждые десять минут. По `seen_at` она была бы
+ * вечно «скоро»; по `scheduled_start_at` — только в свой день.
+ *
+ * ПЯТНАДЦАТЬ МИНУТ ЗАПАСА НАЗАД: конвейер ходит раз в десять минут, поэтому
+ * `started_at` отстаёт от правды на прогон. Эфир, чьё время только что
+ * наступило, — «вот-вот», а не «пропал с экрана».
+ */
+create or replace function public.digest_upcoming_matches(
+  p_limit integer default 6,
+  p_hours integer default 12
+)
+returns table (
+  video_id           text,
+  channel            text,
+  title              text,
+  scheduled_start_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select l.video_id, l.channel, l.title, l.scheduled_start_at
+  from public.live_streams l
+  where public.looks_like_match(l.title)
+    and not public.is_studio_talk(l.title)
+    and l.started_at is null
+    and l.scheduled_start_at is not null
+    and l.scheduled_start_at > now() - interval '15 minutes'
+    and l.scheduled_start_at < now()
+        + make_interval(hours => greatest(1, least(coalesce(p_hours, 12), 48)))
+    and l.seen_at > now() - interval '1 hour'
+  order by 4, 2
+  limit greatest(1, least(coalesce(p_limit, 6), 20));
 $$;
 
 revoke all on function public.looks_like_match(text) from public;
 revoke all on function public.is_studio_talk(text) from public;
 revoke all on function public.digest_live_matches(integer) from public;
+revoke all on function public.digest_upcoming_matches(integer, integer) from public;
 grant execute on function public.looks_like_match(text) to anon, authenticated, service_role;
 grant execute on function public.is_studio_talk(text) to anon, authenticated, service_role;
 grant execute on function public.digest_live_matches(integer) to anon, authenticated, service_role;
+grant execute on function public.digest_upcoming_matches(integer, integer) to anon, authenticated, service_role;
 
 -- Эфир, которого конвейер не видит два часа, удаляется. Не час: чистка должна
 -- пережить один пропущенный прогон, иначе она соревнуется с окном чтения выше.

@@ -6,11 +6,13 @@ import { IconArrowLeft, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
 import {
   fetchDigestSummary, fetchGoals, fetchRecentGoals, fetchEarlierGoals, fetchLiveMatches,
+  fetchUpcomingMatches,
   fetchLocalGoals,
   type DigestSummary, type GoalClip, type RecentGoal, type RankedClip, type LiveMatch,
+  type UpcomingMatch,
 } from '@/features/digest/digestApi';
 import { ClipCard } from '@/features/digest/ClipCard';
-import { LiveNow } from '@/features/digest/LiveNow';
+import { LiveNow, LiveSoon } from '@/features/digest/LiveNow';
 import { LoudestStory } from '@/features/digest/LoudestStory';
 import { Button } from '@/shared/ui/Button';
 import { Chip } from '@/shared/ui/Chip';
@@ -56,6 +58,9 @@ export function DigestScreen() {
   // пустом списке не бывает вовсе, поэтому различать «ещё не пришло» и «ничего
   // не идёт» здесь нечем и незачем — оба показываются одинаково: никак.
   const [live, setLive] = useState<LiveMatch[]>([]);
+  // По той же причине пустой массив: раздела «скоро» при пустом списке тоже
+  // не бывает.
+  const [soon, setSoon] = useState<UpcomingMatch[]>([]);
   // null — «все чемпионаты». Не пустое множество: пустое пришлось бы всюду
   // читать как «ничего не выбрано, значит показать всё», и одна забытая
   // проверка превратила бы фильтр в пустой экран.
@@ -102,6 +107,7 @@ export function DigestScreen() {
     run(fetchEarlierGoals(), setEarlier);
     run(fetchGoals(), setGoals);
     run(fetchLiveMatches(), setLive);
+    run(fetchUpcomingMatches(), setSoon);
     return () => { cancelled = true; };
   }, [lang]);
 
@@ -181,6 +187,12 @@ export function DigestScreen() {
             верным, пока читатель листает. Сам раздел исчезает, когда показывать
             нечего, — а нечего будет чаще, чем есть: см. LiveNow.tsx. */}
         <LiveNow matches={live} />
+
+        {/* ─── Скоро в эфире ───
+            Сразу под идущим, потому что это тот же список, только с другой
+            стороны отметки времени. Раньше обе стороны лежали в одном разделе
+            под подписью «идёт сейчас» — разбор в LiveNow.tsx. */}
+        <LiveSoon matches={soon} />
 
         {/* ─── Краткая суть ───
             По кнопке, а не при открытии экрана: текст пишет языковая модель.

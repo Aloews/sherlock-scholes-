@@ -861,7 +861,9 @@
     "summary_quiet": "No topics came together today — there's nothing to recap.",
     "summary_refused": "The model declined to recap these topics.",
     "live": "On now",
-    "live_official": "official channel"
+    "live_soon": "Starting soon",
+    "live_since": "live since {{time}}",
+    "live_starts": "starts at {{time}}"
   },
   "arena": {
     "title": "Arena",

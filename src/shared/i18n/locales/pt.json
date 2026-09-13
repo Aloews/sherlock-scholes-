@@ -861,7 +861,9 @@
     "summary_quiet": "Hoje não se formou nenhum tema — não há nada a resumir.",
     "summary_refused": "O modelo não quis resumir estes temas.",
     "live": "Ao vivo agora",
-    "live_official": "canal oficial"
+    "live_soon": "Em breve ao vivo",
+    "live_since": "ao vivo desde as {{time}}",
+    "live_starts": "começa às {{time}}"
   },
   "arena": {
     "title": "Arena",

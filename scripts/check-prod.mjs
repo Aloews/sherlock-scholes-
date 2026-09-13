@@ -2251,6 +2251,105 @@ async function checkCardValueTrend() {
 
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
+
+// --------------------------------------------------------------- эфиры ----
+// Владелец: «в дайджесте много предстоящих матчей с подписью „идут сейчас“;
+// открываешь на ютубе — пишут, что трансляция начнётся через 2 дня».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «RPC ОТВЕЧАЕТ», А ТО, ЧТО ПОДПИСЬ НЕ ВРЁТ. Прежний
+// конвейер отвечал 200 и отдавал строки — восемь штук, и ни одна не шла. Код
+// ответа был зелёный ровно тогда, когда экран издевался над читателем.
+//
+// Проверять «идёт ли эфир на самом деле» отсюда нельзя: ключа YouTube у
+// анонимного прогона нет и быть не должно. Зато можно проверить то, что
+// делает ложь невозможной — ВНУТРЕННЮЮ НЕПРОТИВОРЕЧИВОСТЬ: у начавшегося
+// эфира время начала в прошлом, у назначенного — в будущем, и ни одна строка
+// не записана вовсе без отметки времени. Прежняя поломка нарушала все три.
+async function checkLiveStreams() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Эфиры', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+  const rows = await fetch(
+    `${url}/rest/v1/live_streams?select=video_id,title,started_at,scheduled_start_at&limit=200`,
+    { headers: auth },
+  ).then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null);
+
+  const all = Array.isArray(rows) ? rows : [];
+  const now = Date.now();
+  const at = (v) => (v ? Date.parse(v) : NaN);
+  // Минута допуска: часы функции и часы базы — не одни и те же часы.
+  const SLACK = 60_000;
+
+  record('Эфиры: конвейер приносит', all.length > 0,
+         `${all.length} строк в live_streams`,
+         'пусто значит, что страницы каналов перестали разбираться');
+
+  // ⚠️ ГЛАВНОЕ. Строка без обеих отметок — это ровно прежняя поломка: записали
+  // кандидата, не спросив, идёт ли он. Новый конвейер такую не пишет вовсе.
+  const blind = all.filter((r) => !r.started_at && !r.scheduled_start_at);
+  record('Эфиры: без отметки времени не пишется', all.length > 0 && blind.length === 0,
+         blind.length === 0 ? 'ни одной строки вслепую'
+                            : `${blind.length} строк без времени: «${String(blind[0].title).slice(0, 40)}»`,
+         'ловит возврат к записи по разметке страницы');
+
+  const impossible = all.filter((r) => r.started_at && at(r.started_at) > now + SLACK);
+  record('Эфиры: начавшийся начался в прошлом', impossible.length === 0,
+         impossible.length === 0 ? 'противоречий нет'
+           : `${impossible.length} строк начинаются в будущем и считаются начавшимися`,
+         'ловит перепутанные местами actualStartTime и scheduledStartTime');
+
+  // Экранная функция — та самая, под чьей подписью стояло враньё.
+  const live = await rpc('digest_live_matches', { p_limit: 20 });
+  const lst = Array.isArray(live) ? live : [];
+  const lying = lst.filter((r) => !r.started_at || at(r.started_at) > now + SLACK);
+  record('Эфиры: в «идёт сейчас» только начавшиеся',
+         Array.isArray(live) && lying.length === 0,
+         !Array.isArray(live) ? 'функция не ответила'
+           : lying.length === 0 ? `${lst.length} идущих, все с временем начала в прошлом`
+           : `${lying.length} из ${lst.length} НЕ начинались: «${String(lying[0].title).slice(0, 40)}»`,
+         'это и есть та самая проверка, которой не было');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН НУЖЕН ИМЕННО ЗДЕСЬ. Пустой список проходит
+  // предыдущую проверку не глядя. Значит надо доказать, что в таблице ЕСТЬ
+  // назначенное на будущее — то самое, что прежний конвейер объявлял идущим, —
+  // и что в «идёт сейчас» оно не попало.
+  const future = all.filter((r) => !r.started_at && r.scheduled_start_at
+                                   && at(r.scheduled_start_at) > now);
+  const liveIds = new Set(lst.map((r) => r.video_id));
+  const leaked = future.filter((r) => liveIds.has(r.video_id));
+  const exercised = future.length > 0;
+  record('Эфиры: контроль — анонс в «идёт сейчас» не просочился',
+         exercised && leaked.length === 0,
+         exercised
+           ? (leaked.length === 0
+               ? `${future.length} анонсов в таблице, в «идёт сейчас» ни одного`
+               : `просочилось ${leaked.length}: «${String(leaked[0].title).slice(0, 40)}»`)
+           : 'анонсов в таблице нет',
+         exercised ? 'проверка способна упасть'
+                   : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ: доказывать нечего, в таблице нет анонсов');
+
+  // «Скоро» — обратная сторона той же отметки: только будущее и только близкое.
+  const soon = await rpc('digest_upcoming_matches', { p_limit: 20, p_hours: 12 });
+  const sl = Array.isArray(soon) ? soon : [];
+  const past = sl.filter((r) => at(r.scheduled_start_at) < now - 20 * 60_000);
+  const far = sl.filter((r) => at(r.scheduled_start_at) > now + 13 * 3_600_000);
+  record('Эфиры: «скоро» — только ближайшие часы',
+         Array.isArray(soon) && past.length === 0 && far.length === 0,
+         !Array.isArray(soon) ? 'функция не ответила'
+           : `${sl.length} назначенных, прошедших ${past.length}, дальних ${far.length}`,
+         'ловит окно, считающее сутки вперёд «скоро»');
+}
+
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
@@ -2280,6 +2379,7 @@ await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
+await checkLiveStreams();
 await checkFanAndFixtures();
 await checkBundle();
 

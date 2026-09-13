@@ -114,6 +114,17 @@ testcase(
     () => !passes('cd football_scraper && python3 tests/test_descriptions.py')),
 );
 
+testcase(
+  'тест эфиров замечает анонс, объявленный идущим',
+  'ровно это и случилось в проде: раздел «идёт сейчас» показывал восемь ' +
+  'трансляций, ни одна из которых не шла, — одна начиналась через два дня',
+  () => withBroken('supabase/functions/live-streams/verdict.ts',
+    (s) => s.replace(
+      'return { state: "upcoming", title, started_at: null, scheduled_start_at: scheduled };',
+      'return { state: "live", title, started_at: null, scheduled_start_at: scheduled }; // СЛОМАНО НАРОЧНО'),
+    () => !passes('npx vitest run test/live_streams_verdict.test.ts')),
+);
+
 // ---------------------------------------------------------------------------
 // Дерево обязано быть чистым: иначе восстановление затрёт чужие правки.
 const dirty = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
