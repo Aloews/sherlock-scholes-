@@ -5,7 +5,6 @@ import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
   IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf,
-  IconGridDots,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -339,11 +338,11 @@ export function HomeScreen() {
               label={t('home.minigames_link')}
               onClick={() => navigate('/minigames')}
             />
-            <HomeGameLink
-              icon={<IconGridDots size={20} stroke={1.75} />}
-              label={t('home.chess_link')}
-              onClick={() => navigate('/chess')}
-            />
+            {/* ⚠️ ШАХМАТ ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ КНОПКИ. Они
+                лежат в мини-играх — «Мини-игры» выше и есть вход к ним.
+                Владелец просил убрать их с главной дважды: первый раз плитку
+                завели в /minigames, а ссылку отсюда снять забыли, и снаружи
+                это выглядело как «не убрал». */}
             {/* Classic has no tab bar, so the collection would otherwise have
                 no way in at all once the button stack moved. */}
             {!master && (
