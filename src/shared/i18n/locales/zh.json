@@ -1142,12 +1142,18 @@
     "match_flow_closed": "封闭的比赛",
     "match_flow_balanced": "节奏均衡",
     "match_flow_open": "开放的比赛",
-    "match_expected": "预计进球",
     "match_coach": "主教练",
-    "match_per_match": "每场",
     "match_writing": "媒体报道",
     "match_unknown": "未测得性格：其中一队比赛场次太少。",
     "match_no_injuries": "我们的任何来源都没有伤病和管理层要求，因此这里不显示。",
-    "match_basis_other": "依据双方各 {{count}} 场比赛测得，并非假设"
+    "match_basis_other": "依据双方各 {{count}} 场比赛测得。这是对过往比赛的测量，不是比分预测",
+    "match_says_goals_low": "预计进球不多。",
+    "match_says_goals_mid": "进球数预计与普通比赛相当。",
+    "match_says_goals_high": "这场比赛有望多进球。",
+    "match_says_flow_closed": "两队都打得谨慎，预计比赛偏沉闷。",
+    "match_says_flow_balanced": "既不一味进攻，也不一味防守。",
+    "match_says_flow_open": "两队都踢得开放，来回攻防。",
+    "match_expected_total": "预计进球 {{goals}}：两队合计，每场。",
+    "match_side_numbers": "场均进 {{gf}} 球，失 {{ga}} 球"
   }
 }

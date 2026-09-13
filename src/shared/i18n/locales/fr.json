@@ -1185,13 +1185,19 @@
     "match_flow_closed": "Match fermé",
     "match_flow_balanced": "Rythme égal",
     "match_flow_open": "Match ouvert",
-    "match_expected": "Buts attendus",
     "match_coach": "Entraîneur",
-    "match_per_match": "par match",
     "match_writing": "Dans la presse",
     "match_unknown": "Caractère non mesuré : l'une des équipes a joué trop peu de matchs.",
     "match_no_injuries": "Aucune de nos sources ne donne les blessures ni les exigences de la direction ; elles ne figurent donc pas ici.",
-    "match_basis_one": "Mesuré sur {{count}} match de chaque côté, non supposé",
-    "match_basis_other": "Mesuré sur {{count}} matchs de chaque côté, non supposé"
+    "match_basis_one": "Mesuré sur {{count}} match de chaque côté. Cela mesure les matchs passés, cela ne prédit pas le score",
+    "match_basis_other": "Mesuré sur {{count}} matchs de chaque côté. Cela mesure les matchs passés, cela ne prédit pas le score",
+    "match_says_goals_low": "On attend peu de buts.",
+    "match_says_goals_mid": "Autant de buts que dans un match ordinaire.",
+    "match_says_goals_high": "Le match promet des buts.",
+    "match_says_flow_closed": "Les deux équipes jouent prudemment : match fermé en vue.",
+    "match_says_flow_balanced": "Pas de penchant net, ni tout offensif ni tout défensif.",
+    "match_says_flow_open": "Les deux jouent ouvert : un match de transitions.",
+    "match_expected_total": "Buts attendus — {{goals}} : les deux équipes réunies, par match.",
+    "match_side_numbers": "Marque {{gf}}, encaisse {{ga}} par match"
   }
 }

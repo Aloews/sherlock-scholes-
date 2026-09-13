@@ -85,9 +85,13 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
           ))}
         </div>
       )}
+      {/* ⚠️ ПОДПИСАНО СЛОВАМИ, А НЕ ДВОЕТОЧИЕМ. Здесь стояло «1.8 : 1.2 · за
+          матч», и два числа через двоеточие читаются как ПРЕДСКАЗАННЫЙ СЧЁТ —
+          то самое, чего этот блок не делает и делать не может. Это средние
+          забитые и пропущенные за матч, и так это теперь и написано. */}
       {(gf !== null && ga !== null) && (
-        <p className="text-brand-muted text-[10px] mt-1 tabular-nums">
-          {gf} : {ga} · {t('character.match_per_match')}
+        <p className="text-brand-muted text-[10px] mt-1">
+          {t('character.match_side_numbers', { gf, ga })}
         </p>
       )}
       {manager && (
@@ -140,17 +144,36 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
           {/* Две полосы характера — только когда ОБЕ стороны измерены: из них
               считаются и ожидаемые голы, и открытость, и одна измеренная
               сторона тут не помогает. */}
+          {/* ⚠️ СНАЧАЛА ФРАЗОЙ, ПОТОМ ЧИСЛОМ. Владелец: «прогноз матча попробуй
+              сделать более понятным». Прежде блок начинался с двух ярлыков и
+              числа «Ждём голов: 2.7» — и число это НИЧЕГО не говорило само по
+              себе: 2.7 чего, у кого, за какой срок. Две короткие фразы
+              отвечают на вопрос, ради которого блок открывают: каким будет
+              матч. Ярлыки остались ниже — они короткие и годятся, чтобы
+              сравнить два матча глазами.
+
+              Две отдельные фразы, а не одна составная: девять сочетаний
+              «голы × течение» пришлось бы переводить девять раз на девяти
+              языках, и в половине из них склейка вышла бы корявой. */}
           {row && bands && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
-                {t(`character.match_goals_${bands.goals}`)}
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
-                {t(`character.match_flow_${bands.flow}`)}
-              </span>
-              <span className="text-brand-muted text-[10px] tabular-nums">
-                {t('character.match_expected')}: {row.expected_goals}
-              </span>
+            <div className="space-y-1">
+              <p className="text-white text-[11.5px] leading-snug">
+                {t(`character.match_says_goals_${bands.goals}`)}{' '}
+                {t(`character.match_says_flow_${bands.flow}`)}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
+                  {t(`character.match_goals_${bands.goals}`)}
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
+                  {t(`character.match_flow_${bands.flow}`)}
+                </span>
+              </div>
+              {/* Число названо тем, что оно есть: сумма голов ОБЕИХ команд за
+                  матч, а не счёт и не чья-то доля. */}
+              <p className="text-brand-muted text-[10px]">
+                {t('character.match_expected_total', { goals: row.expected_goals })}
+              </p>
             </div>
           )}
 
