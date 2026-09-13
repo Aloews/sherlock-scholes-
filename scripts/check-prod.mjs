@@ -2528,15 +2528,31 @@ async function checkStatsCoverage() {
   const leagues = [...(block?.[1] ?? '').matchAll(/^\s*"([^"]+)":\s*"([^"]+)",/gm)]
     .map(([, code, name]) => ({ code, name }));
 
-  const espnName = async (code) => {
+  const board = async (code, dates) => {
     try {
+      const q = dates ? `?dates=${dates}&limit=1000` : '';
       const r = await get(
-        `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`,
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard${q}`,
         { 'User-Agent': UA });
-      if (!r.ok) return null;
-      const d = await r.json();
-      return (d.leagues ?? [])[0]?.name ?? null;
+      return r.ok ? await r.json() : null;
     } catch { return null; }
+  };
+  const espnName = async (code) => {
+    const d = await board(code);
+    return d ? ((d.leagues ?? [])[0]?.name ?? null) : null;
+  };
+  /** Дата последнего ЗАВЕРШЁННОГО матча лиги в окне, или null.
+   *  Признак завершённости тот же, что читает сам обход
+   *  (`completed_event_ids` в scraper/espn.py): `status.type.completed`, и
+   *  никакой другой — идущий матч тоже приходит событием. */
+  const lastFinished = async (code, dates) => {
+    const d = await board(code, dates);
+    const days = (d?.events ?? [])
+      .filter((e) => e.status?.type?.completed === true)
+      .map((e) => String(e.date ?? '').slice(0, 10))
+      .filter(Boolean)
+      .sort();
+    return days.length ? days[days.length - 1] : null;
   };
 
   // По восемь за раз: полсотни запросов подряд растянули бы прогон, а все разом
@@ -2549,7 +2565,7 @@ async function checkStatsCoverage() {
   const dead    = answered.filter((l) => !l.got);
   const renamed = answered.filter((l) => l.got && l.got !== l.name);
   record('Охват: каждая лига списка отзывается',
-         leagues.length >= 50 && dead.length === 0,
+         leagues.length >= 45 && dead.length === 0,
          leagues.length === 0 ? 'список лиг не прочитался из espn_stats.py'
            : `${leagues.length} лиг, молчат ${dead.length}` +
              (dead.length ? ': ' + dead.map((l) => l.code).join(', ') : ''),
@@ -2589,6 +2605,46 @@ async function checkStatsCoverage() {
          seen.length >= 20,
          `${seen.length} лиг из ${leagues.length} дали матчи за 30 суток`,
          'ловит возврат к короткому списку: четырнадцать лиг эту планку не берут');
+
+  // ⚠️ ЛИГА, МОЛЧАЩАЯ ГОД, — ЭТО БРОШЕННЫЙ КОД, А НЕ МЕЖСЕЗОНЬЕ, И ОТЛИЧИТЬ
+  //    ОДНО ОТ ДРУГОГО МОЖНО ТОЛЬКО ГОДОВЫМ ОКНОМ. Шесть кодов из первого
+  //    списка отвечали 200 своим настоящим именем и не публиковали НИЧЕГО:
+  //    у tur.2, fin.1, cze.1 и isr.1 ноль матчей за год, у sui.1 последний
+  //    28.09.2025, у irl.1 — 01.11.2025. Все шесть играют прямо сейчас, просто
+  //    не у ESPN. Проверка «код отзывается» называла их живыми — та же форма
+  //    ошибки, что с ТВ: верхний манифест 200, вариант под ним 404.
+  //
+  //    Годовое окно спрашивается ТОЛЬКО у молчащих последний месяц: у лиги,
+  //    которая и так дала строки, спрашивать нечего, а ответ за год по плотной
+  //    лиге — это сотни событий в теле. По трёхмесячному окну пусты и кубки
+  //    УЕФА, и тайская лига, а у них последний матч в мае и новый сезон на
+  //    носу — вот почему окно именно годовое.
+  const quiet = leagues.filter((l) => !seen.some((x) => x.name === l.name));
+  const year = `${new Date(Date.now() - 365 * 24 * 3600 * 1000)
+    .toISOString().slice(0, 10).replace(/-/g, '')}-`
+    + `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  //    Считается ПОСЛЕДНЯЯ ДАТА, а не число матчей, и это разница по существу:
+  //    у sui.1 за год 8 матчей, у irl.1 — 35, то есть по счётчику обе «живые»,
+  //    а последние их матчи 28.09.2025 и 01.11.2025. Девять месяцев не молчит
+  //    ни одна лига: у Элитесериен зимний перерыв четыре месяца, у МЛС три,
+  //    у России два. Девять — это источник, а не календарь.
+  const STALE_DAYS = 270;
+  const abandoned = [];
+  for (let i = 0; i < quiet.length; i += 4) {
+    const part = await Promise.all(quiet.slice(i, i + 4).map(async (l) => ({
+      code: l.code, last: await lastFinished(l.code, year),
+    })));
+    abandoned.push(...part.filter((x) => !x.last
+      || (Date.now() - Date.parse(x.last)) / 86400000 > STALE_DAYS));
+  }
+  record('Охват: молчащие лиги — межсезонье, а не брошенный код',
+         abandoned.length === 0,
+         quiet.length === 0 ? 'молчащих за месяц нет вовсе'
+           : `молчат месяц ${quiet.length}, дольше ${STALE_DAYS} суток — ` +
+             (abandoned.length
+               ? abandoned.map((x) => `${x.code} (${x.last ?? 'ни одного за год'})`).join(', ')
+               : 'ни одна'),
+         'ловит код, который отвечает 200 своим именем и не публикует матчей');
 
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ПРО ФОРМУ ЗАПРОСА. Ноль по выдуманному
   // турниру ничего не значит сам по себе: так же ответил бы сломанный фильтр.
