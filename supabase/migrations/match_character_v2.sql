@@ -302,7 +302,8 @@ grant execute on function match_character(text, text) to anon, authenticated, se
 --
 -- Замер после:
 --
---   club_news        750 мс → 5 мс
+--   club_news        750 мс → 5 мс   (на клубе с двумя именами;
+--                                     у клуба с одним см. ниже)
 --   match_character 1620 мс → 17 мс
 --
 -- Это чинит не только этот блок: `club_news` читают ещё экран клуба и комната
@@ -322,20 +323,33 @@ language sql stable security definer
 set search_path to 'public'
 set statement_timeout to '10s'
 as $function$
+  -- ⚠️ ПУСТАЯ СТОРОНА ОТСЕКАЕТСЯ `nullif`, А НЕ `cardinality(...)` ВНУТРИ OR —
+  -- И ЭТО ВТОРАЯ ПОЛОВИНА ТОЙ ЖЕ ПОЧИНКИ, НАЙДЕННАЯ ПОЗЖЕ. Перевёрнутый `@>`
+  -- сам по себе индекс ещё не даёт: guard внутри OR лишает планировщика права
+  -- им воспользоваться — он не знает заранее, что одна сторона пуста, и обе
+  -- ветки вырождаются в полный проход по news_items с `digest_tokens` на
+  -- каждой заметке. Поймано порогом проверки: «характер матча» снова покраснел
+  -- на 634 мс, и виноват оказался клуб «Атлетико» — основа имени одна
+  -- (`{atlet}`), а `name_en` у него пуст, то есть вторая ветка всегда пустая.
+  --
+  --   club_news('atletiko', 20)   425 мс -> 5.9 мс   (те же 20 строк)
+  --   match_character             773 мс -> 20 мс
+  --
+  -- Отсекать пустую сторону ОБЯЗАТЕЛЬНО: `x @> '{}'` истинно для ЛЮБОЙ строки,
+  -- то есть без отсечения клуб без имени собрал бы всю ленту. `nullif` даёт
+  -- `x @> NULL` = NULL — ветка не срабатывает, а обе остаются обычными `@>` и
+  -- складываются в BitmapOr по одному индексу. Проверено контролем: по
+  -- выдуманному ключу по-прежнему НОЛЬ заметок.
   with me as (
-    select club_name_stems(f.name)    as ru,
-           club_name_stems(f.name_en) as en
+    select nullif(club_name_stems(f.name), '{}')    as ru,
+           nullif(club_name_stems(f.name_en), '{}') as en
       from football_club f where f.club_key = p_club_key
   )
   select n.title, n.url, n.source, n.lang, n.published_at,
          coalesce(n.summary_short, news_lead(n.description))
     from news_items n, me
-   where (cardinality(me.ru) > 0 or cardinality(me.en) > 0)
-     and not non_football_url(n.url)
-     and (
-          (cardinality(me.ru) > 0 and digest_tokens(n.title) @> me.ru)
-       or (cardinality(me.en) > 0 and digest_tokens(n.title) @> me.en)
-     )
+   where not non_football_url(n.url)
+     and (digest_tokens(n.title) @> me.ru or digest_tokens(n.title) @> me.en)
    order by n.published_at desc
    limit greatest(1, least(coalesce(p_limit, 12), 40));
 $function$;
