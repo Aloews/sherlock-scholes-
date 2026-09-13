@@ -1185,13 +1185,19 @@
     "match_flow_closed": "Partido cerrado",
     "match_flow_balanced": "Ritmo parejo",
     "match_flow_open": "Partido abierto",
-    "match_expected": "Goles esperados",
     "match_coach": "Entrenador",
-    "match_per_match": "por partido",
     "match_writing": "En la prensa",
     "match_unknown": "Carácter no medido: uno de los equipos ha jugado muy pocos partidos.",
     "match_no_injuries": "Ninguna de nuestras fuentes tiene lesiones ni exigencias de la directiva; por eso no aparecen.",
-    "match_basis_one": "Medido sobre {{count}} partido de cada lado, no supuesto",
-    "match_basis_other": "Medido sobre {{count}} partidos de cada lado, no supuesto"
+    "match_basis_one": "Medido sobre {{count}} partido de cada lado. Mide partidos pasados, no predice el marcador",
+    "match_basis_other": "Medido sobre {{count}} partidos de cada lado. Mide partidos pasados, no predice el marcador",
+    "match_says_goals_low": "Se esperan pocos goles.",
+    "match_says_goals_mid": "Tantos goles como en un partido normal.",
+    "match_says_goals_high": "El partido promete goles.",
+    "match_says_flow_closed": "Ambos juegan con cautela: se espera un partido cerrado.",
+    "match_says_flow_balanced": "Sin inclinación clara: ni todo al ataque ni todo atrás.",
+    "match_says_flow_open": "Ambos juegan abierto: partido de ida y vuelta.",
+    "match_expected_total": "Goles esperados — {{goals}}: los dos equipos juntos, por partido.",
+    "match_side_numbers": "Marca {{gf}}, encaja {{ga}} por partido"
   }
 }
