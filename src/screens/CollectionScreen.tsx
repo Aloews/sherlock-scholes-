@@ -458,7 +458,7 @@ export function CollectionScreen() {
           <ScopeFilter
             value={filter}
             onChange={setFilter}
-            category={catFilter === 'all' ? 'all' : (catFilter as 'player' | 'club')}
+            category={catFilter}
           />
 
           {/* Body: loading → error → empty → grid */}

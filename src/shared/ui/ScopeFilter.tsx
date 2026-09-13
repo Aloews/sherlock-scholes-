@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   fetchCollectionFacets, type CollectionFacet, type CollectionFilter,
 } from '@/features/collection/collectionApi';
+import type { CardCategory } from '@/shared/types/database';
 import { countryName } from '@/shared/lib/countryName';
 import { readFacets, writeFacets } from '@/shared/lib/facetCache';
 import { filterByQuery } from '@/shared/lib/facetSearch';
@@ -26,7 +27,12 @@ import { filterByQuery } from '@/shared/lib/facetSearch';
 export function ScopeFilter({ value, onChange, category = 'player' }: {
   value: CollectionFilter;
   onChange: (next: CollectionFilter) => void;
-  category?: 'player' | 'club' | 'all';
+  // ⚠️ ЛЮБАЯ КАТЕГОРИЯ КОЛОДЫ, А НЕ ТРИ. Здесь стояло `'player' | 'club' |
+  // 'all'`, а экран коллекции передавал сюда `catFilter as 'player' | 'club'` —
+  // приведение, которое ЛГАЛО: на деле приходят и 'term', и 'era', и ещё
+  // девять. Из-за узкого типа никто и не думал про категории, у которых
+  // фасетов НОЛЬ, — а их девять из тринадцати, и ровно на них гас экран.
+  category?: CardCategory | 'all';
 }) {
   const { t, i18n } = useTranslation();
   // ⚠️ СНАЧАЛА КЭШ, ПОТОМ СЕТЬ — приём из sherlock-tv (channelCache.ts).
@@ -53,8 +59,6 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
     return () => { cancelled = true; };
   }, [category]);
 
-  if (facets.length === 0) return null;
-
   /**
    * ⚠️ СТРАНА ПОКАЗЫВАЕТСЯ ИМЕНЕМ, А НЕ КОДОМ, И ЭТО ИСПРАВЛЕННАЯ ОШИБКА.
    * `collection_facets` отдаёт в `label` то же, что в `value` — код ISO, — и в
@@ -72,6 +76,26 @@ export function ScopeFilter({ value, onChange, category = 'player' }: {
     // только от языка, и он же в зависимостях через i18n.language.
     [facets, query, i18n.language],
   );
+
+  // ⚠️ ВЫХОД СТОИТ ПОСЛЕ ВСЕХ ХУКОВ, И ЭТО НЕ ПРИДИРКА К ПОРЯДКУ СТРОК — ЭТО
+  // ПОЧИНКА БЕЛОГО ЭКРАНА. Раньше `useMemo` стоял НИЖЕ этого `return null`:
+  // у категории без фасетов компонент отдавал четыре хука, у категории с
+  // фасетами — пять. React такого не прощает и роняет ВСЁ ПОДДЕРЕВО:
+  //
+  //   Minified React error #310 — Rendered more hooks than during the
+  //   previous render
+  //
+  // Снаружи это выглядит как «коллекции зависают»: экран гаснет и перестаёт
+  // отвечать. Владелец сообщал об этом трижды и назвал категории поимённо —
+  // «термины, клубы, эпохи»; ровно у них фасетов НОЛЬ. Всего таких категорий
+  // девять из тринадцати: club_nickname, coach, derby, era, position,
+  // referee, stadium, term, trophy — то есть падало на каждом втором
+  // нажатии, в обе стороны.
+  //
+  // Замер 13.09.2026 в настоящем браузере на настоящих данных: до правки
+  // переход «Все» → «Игроки» гасил экран (кнопок на странице 0), после —
+  // экран живой.
+  if (facets.length === 0) return null;
 
   return (
     <div className="space-y-2">
