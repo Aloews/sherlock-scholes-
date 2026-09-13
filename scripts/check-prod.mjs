@@ -1767,9 +1767,15 @@ async function checkMatchCharacter() {
     }
     ms = Math.max(...warm);
   }
-  record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 1500,
+  // ⚠️ ПОРОГ СНИЖЕН С 1500 ДО 600, И ЭТО НЕ УЖЕСТОЧЕНИЕ РАДИ УЖЕСТОЧЕНИЯ.
+  // 1500 был подобран под ту цену, которую вызов имел с неиндексированным
+  // `club_news`: 1.6 секунды на матч, из них 750 мс на клуб. После индекса по
+  // `digest_tokens(title)` вызов стоит 164 мс — и прежний порог перестал бы
+  // ловить что-либо вовсе: под ним уместился бы даже возврат полного перебора.
+  // Порог, который не может сработать, — пустая проверка.
+  record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 600,
          `${ms} мс на вызов (худший из трёх прогретых)`,
-         'ловит возврат дорогого club_news в горячий путь');
+         'ловит потерянный индекс news_items_tokens_idx и возврат полного перебора');
 
   // ⚠️ ТРЕНЕР — ОТДЕЛЬНОЙ ПРОВЕРКОЙ, И ВОТ ПОЧЕМУ. Он читается из club_manager;
   // копия в club_character убрана как раз потому, что отставала на 35 клубах.
@@ -1781,6 +1787,88 @@ async function checkMatchCharacter() {
                 : `дома «${measured.home_manager ?? '—'}», в гостях «${measured.away_manager ?? '—'}»`,
            'ловит развалившуюся связь club_manager с клубом');
   }
+
+  // ⚠️ ТОЧКА ОТСЧЁТА И ФОРМА — ТО, ЧЕМ ЗАМЕНЕНЫ ОБЩИЕ СЛОВА. Владелец:
+  // «Комментарий "Голов ожидаемо столько же, сколько в обычном матче" звучит
+  // поиздевательски и несёт очень мало информации… либо просто добавить сухую
+  // статистику». Фраза убрана; вместо неё два числа рядом и пять букв формы.
+  // Если медиана перестанет считаться, экран тихо вернётся к одному числу без
+  // точки отсчёта — то есть ровно к тому, на что жаловались.
+  if (measured) {
+    record('Характер матча: есть точка отсчёта', measured.goals_median !== null,
+           measured.goals_median !== null
+             ? `ожидание ${measured.expected_goals} против обычных ${measured.goals_median}`
+             : 'медиана не посчиталась — число осталось без сравнения',
+           'ловит пустой club_character под медианой');
+
+    const formOk = (v) => v === null || /^[WDL]{0,5}$/.test(v);
+    const forms = [measured.home_form, measured.away_form];
+    record('Характер матча: форма читается',
+           forms.every(formOk) && forms.some((v) => (v ?? '').length > 0),
+           `${measured.home_form ?? '—'} / ${measured.away_form ?? '—'}`,
+           'ловит чужие буквы из club_match и развалившийся порядок');
+  }
+
+  // ⚠️ ГЛАВНАЯ ПРОВЕРКА ЭТОГО РАЗДЕЛА, И ОНА ПО ЖАЛОБЕ ВЛАДЕЛЬЦА: «в „пишут“
+  // везде новости об анонсе матча и где его посмотреть». Отбор делает
+  // `news_about_play`; здесь он проверяется НА НАСТОЯЩИХ ЗАГОЛОВКАХ, снятых с
+  // боевой ленты, и обе половины служат контролем друг другу: если предикат
+  // умрёт в ноль — провалится вторая, если начнёт пропускать всё —
+  // провалится первая.
+  const ANNOUNCEMENTS = [
+    '«Леванте» — «Барселона»: во сколько начало матча Ла Лиги, где смотреть трансляцию',
+    '«Спартак» — «Ростов»: онлайн-трансляция матча 8-го тура РПЛ-2026/2027 начнётся в 17:00',
+    'Celta de Vigo - Málaga, en directo | Sigue en vivo, el partido de LaLiga EA Sports',
+    'Coventry vs Brighton team news LIVE!',
+    'Rangers v Celtic: Scottish League Cup quarter-final – live',
+  ];
+  const ABOUT_PLAY = [
+    '«Мы показали прекрасную игру». Тренер «Комо» Фабрегас — о матче с «РБ Лейпциг» в ЛЧ',
+    '«Мы хотим сделать небо голубым». Буадди — о манчестерском дерби',
+    'Le Borussia Mönchengladbach se sépare déjà de son entraîneur',
+    'Pep Guardiola explains his new high press',
+  ];
+  const score = async (title) => rpc('news_about_play', { p_title: title, p_manager: null });
+
+  const passedAnnouncements = [];
+  for (const title of ANNOUNCEMENTS) {
+    if (Number(await score(title)) > 0) passedAnnouncements.push(title);
+  }
+  record('Характер матча: анонсы отброшены', passedAnnouncements.length === 0,
+         passedAnnouncements.length === 0
+           ? `${ANNOUNCEMENTS.length} анонсов, ни один не прошёл`
+           : `прошло ${passedAnnouncements.length}: «${passedAnnouncements[0].slice(0, 50)}»`,
+         'ловит возврат «где смотреть» в блок про характер игры');
+
+  const droppedPlay = [];
+  for (const title of ABOUT_PLAY) {
+    if (Number(await score(title)) <= 0) droppedPlay.push(title);
+  }
+  record('Характер матча: слова тренера проходят', droppedPlay.length === 0,
+         droppedPlay.length === 0
+           ? `${ABOUT_PLAY.length} заголовков про игру, прошли все`
+           : `отброшено ${droppedPlay.length}: «${droppedPlay[0].slice(0, 50)}»`,
+         'ловит предикат, который отбрасывает вообще всё');
+
+  // И то же самое, но на том, что ДЕЙСТВИТЕЛЬНО дошло до экрана: ни один
+  // показанный заголовок не имеет права быть анонсом.
+  let shown = 0;
+  const bad = [];
+  for (const id of ids.slice(0, 12)) {
+    const rows = await rpc('match_character', { p_fixture_id: id, p_lang: 'ru' });
+    const r = Array.isArray(rows) ? rows[0] : null;
+    for (const [head, sc] of [[r?.home_headline, r?.home_headline_score],
+                              [r?.away_headline, r?.away_headline_score]]) {
+      if (!head) continue;
+      shown += 1;
+      if (!(Number(sc) > 0)) bad.push(head);
+    }
+  }
+  record('Характер матча: показанные новости — про игру',
+         bad.length === 0,
+         shown > 0 ? `${shown} заголовков на 12 матчах, анонсов среди них ${bad.length}`
+                   : 'ни одного заголовка не показано — это тоже ответ',
+         'ловит заголовок, попавший на экран мимо отбора');
 
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный матч обязан дать пусто. Не дал —
   // функция отвечает не на то, о чём её спросили.

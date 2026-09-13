@@ -65,3 +65,64 @@ export function characterMatches(
   if (away === null || away === undefined) return null;
   return Math.min(home, away);
 }
+
+/** Исход одного матча в строке формы. */
+export type FormResult = 'W' | 'D' | 'L';
+
+/**
+ * Последние матчи буквами — в массив, старые слева.
+ *
+ * ⚠️ ПОРЯДОК ЗНАЧИМ, И ПОЭТОМУ ЭТО СТРОКА, А НЕ ТРИ ЧИСЛА. «Три победы, потом
+ * два поражения» и «два поражения, потом три победы» дают одинаковые 3-0-2 и
+ * описывают разные команды. Владелец просил сухую статистику вместо общих
+ * слов — форма и есть самое сухое, что у нас про команду есть.
+ *
+ * ⚠️ ЧУЖИЕ БУКВЫ ОТБРАСЫВАЮТСЯ, А НЕ ПРЕВРАЩАЮТСЯ В НИЧЬЮ. Строку собирает
+ * SQL и других букв давать не должен; если даст — это поломка источника, и
+ * молча записать её ничьёй значило бы нарисовать матч, которого не было.
+ */
+export function parseForm(letters: string | null | undefined): FormResult[] {
+  if (!letters) return [];
+  return [...letters].filter((c): c is FormResult => c === 'W' || c === 'D' || c === 'L');
+}
+
+/** Сколько побед, ничьих и поражений в строке формы. */
+export function formRecord(letters: string | null | undefined): {
+  w: number; d: number; l: number;
+} {
+  const r = parseForm(letters);
+  return {
+    w: r.filter((x) => x === 'W').length,
+    d: r.filter((x) => x === 'D').length,
+    l: r.filter((x) => x === 'L').length,
+  };
+}
+
+/** Что известно про одну сторону. Пустое поле — не строка на экране. */
+export interface SideFacts {
+  traits: string[];
+  manager: string | null;
+  headline: string | null;
+  gf: number | null;
+  ga: number | null;
+  attack: number | null;
+  defence: number | null;
+  form: string | null;
+}
+
+/**
+ * Есть ли у стороны хоть что-то, кроме имени.
+ *
+ * ⚠️ ПРАВИЛО ВЛАДЕЛЬЦА ЦЕЛИКОМ: «если нет данных, её лучше не писать». Оно
+ * сказано было про строку о травмах, но оно шире одной строки, и здесь принято
+ * как общее. Сторона без единого факта не рисуется вовсе — ни подписью, ни
+ * пустой рамкой.
+ */
+export function sideHasFacts(s: SideFacts): boolean {
+  return s.traits.length > 0
+    || s.manager !== null
+    || s.headline !== null
+    || s.gf !== null
+    || s.attack !== null
+    || parseForm(s.form).length > 0;
+}

@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { IconChevronDown } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { fetchMatchCharacter, type MatchCharacter as Row } from './matchCharacterApi';
-import { characterBands, characterMatches } from './matchCharacter';
+import {
+  characterBands, characterMatches, parseForm, sideHasFacts,
+  type FormResult, type SideFacts,
+} from './matchCharacter';
 
 interface Props {
   fixtureId: string;
@@ -12,34 +15,60 @@ interface Props {
 }
 
 /**
- * Характер матча по кнопке.
+ * Характер матча по кнопке — переделан по разбору владельца.
  *
- * ⚠️ ЭТО НЕ ПРОГНОЗ СЧЁТА И НЕ ФАВОРИТ. Шапка FixtureCard запрещает выделенную
- * сторону, вероятности и всё, производное от коэффициентов, — и здесь запрет
- * соблюдён не по букве, а по сути: обе стороны нарисованы ОДИНАКОВО, порядок
- * всегда «хозяева, потом гости», ожидаемые голы названы СУММОЙ ДВУХ СТОРОН, а
- * не счётом, и ни одного числа, читаемого как шанс, здесь нет.
+ * Он сказал три вещи, и каждая здесь исправлена отдельно:
  *
- * Вопрос, на который отвечает блок, другой: КАКИМ будет матч — открытым или
- * вязким, результативным или скупым. Именно это и просил владелец: «как будет
- * разворачиваться характер игры».
+ *   «Описание нужно не такое общее, либо просто добавить сухую статистику»
+ *   «в „пишут“ везде новости об анонсе матча и где его посмотреть»
+ *   «строчка про травмы неинформативная, если нет данных её лучше не писать»
  *
- * ⚠️ СЧИТАЕТ БАЗА, А НЕ МОДЕЛЬ, и это решение, а не экономия. Абзац прозы от
- * модели неотличим от выдуманного; число отличимо — под ним стоит, на скольких
- * матчах оно построено. Плюс владелец прямо просил не тратить токены
- * автоматически.
+ * ⚠️ 1. ОБЩИХ ФРАЗ БОЛЬШЕ НЕТ. Блок открывался двумя предложениями вида
+ * «Голов ожидаем столько же, сколько в обычном матче» — это пересказ середины
+ * шкалы, и владелец назвал его издевательским справедливо: читатель уже
+ * знает, что бывают обычные матчи. Вместо них два ЧИСЛА рядом: ожидаемая
+ * результативность и обычная (медиана по всем измеренным клубам). Оба
+ * проверяемы; прилагательное — нет.
  *
- * ⚠️ ПО ТРЕБОВАНИЮ. Один вызов — 753 мс (замер 09.09.2026), из них 435 на
- * новости обоих клубов. Для нажатия нормально, для списка из трёхсот матчей —
- * нет; поэтому кнопка, а не автозагрузка.
+ * ⚠️ 2. НОВОСТЬ ОТОБРАНА, А НЕ ВЗЯТА ПОСЛЕДНЕЙ. Отбор делает `news_about_play`
+ * в SQL: анонсы и трансляции отбрасываются совсем, слова тренера поднимаются
+ * наверх. Не нашлось ничего про игру — строки нет вовсе.
+ *
+ * ⚠️ 3. НЕТ ДАННЫХ — НЕТ СТРОКИ, и это правило принято ШИРЕ той строки, о
+ * которой шла речь. Ушла строка про травмы (источника у проекта нет ни
+ * одного); сторона без единого факта не рисуется; проценты атаки и обороны
+ * появляются только вместе.
+ *
+ * ⚠️ ЭТО ПО-ПРЕЖНЕМУ НЕ ПРОГНОЗ СЧЁТА И НЕ ФАВОРИТ. Шапка FixtureCard
+ * запрещает выделенную сторону и всё, производное от коэффициентов. Обе
+ * стороны нарисованы одинаково, порядок всегда «хозяева, потом гости»,
+ * ожидаемые голы названы СУММОЙ ДВУХ СТОРОН, а не счётом.
+ *
+ * ⚠️ СЧИТАЕТ БАЗА, А НЕ МОДЕЛЬ. Абзац прозы от модели неотличим от
+ * выдуманного; число отличимо — под ним стоит, на скольких матчах оно
+ * построено. Владелец к тому же прямо просил не тратить токены автоматически.
  */
-/** Есть ли у стороны хоть что-то, кроме имени: черты, числа, тренер, новость. */
-function hasSide(row: Row, which: 'home' | 'away'): boolean {
-  const traits = which === 'home' ? row.home_traits : row.away_traits;
-  const manager = which === 'home' ? row.home_manager : row.away_manager;
-  const headline = which === 'home' ? row.home_headline : row.away_headline;
-  const gf = which === 'home' ? row.home_gf_pm : row.away_gf_pm;
-  return (traits?.length ?? 0) > 0 || manager !== null || headline !== null || gf !== null;
+
+/** Буква формы цветом: победа зелёным, поражение красным, ничья серым. */
+function FormLetters({ letters }: { letters: string }) {
+  const { t } = useTranslation();
+  const tone: Record<FormResult, string> = {
+    W: 'bg-emerald-500/20 text-emerald-400',
+    D: 'bg-brand-bg text-brand-muted',
+    L: 'bg-red-500/15 text-red-400',
+  };
+  return (
+    <span className="flex gap-0.5 shrink-0">
+      {parseForm(letters).map((r, i) => (
+        <span
+          key={`${r}-${i}`}
+          className={`w-3.5 h-3.5 rounded-sm text-[8.5px] leading-[14px] text-center font-bold ${tone[r]}`}
+        >
+          {t(`character.form_${r.toLowerCase()}`)}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
@@ -58,57 +87,86 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
 
   const bands = row ? characterBands(row.expected_goals, row.openness) : null;
   const basis = row ? characterMatches(row.home_matches, row.away_matches) : null;
+
+  const facts = (which: 'home' | 'away'): SideFacts => ({
+    traits: which === 'home' ? row!.home_traits : row!.away_traits,
+    manager: which === 'home' ? row!.home_manager : row!.away_manager,
+    headline: which === 'home' ? row!.home_headline : row!.away_headline,
+    gf: which === 'home' ? row!.home_gf_pm : row!.away_gf_pm,
+    ga: which === 'home' ? row!.home_ga_pm : row!.away_ga_pm,
+    attack: which === 'home' ? row!.home_attack : row!.away_attack,
+    defence: which === 'home' ? row!.home_defence : row!.away_defence,
+    form: which === 'home' ? row!.home_form : row!.away_form,
+  });
+
   // ⚠️ «НЕИЗВЕСТНО» ПИШЕТСЯ, ТОЛЬКО КОГДА НЕИЗВЕСТНО ВООБЩЕ НИЧЕГО. Раньше
   // оно печаталось при любом отсутствии характера — и заслоняло собой
-  // тренера и новость, которые в том же ответе лежали.
-  const nothing = !row || (!bands && !hasSide(row, 'home') && !hasSide(row, 'away'));
+  // тренера, форму и новость, которые в том же ответе лежали.
+  const nothing = !row
+    || (!bands && !sideHasFacts(facts('home')) && !sideHasFacts(facts('away')));
 
-  const side = (
-    team: string,
-    traits: string[],
-    manager: string | null,
-    gf: number | null,
-    ga: number | null,
-    headline: string | null,
-  ) => (
-    <div className="mt-2">
-      <p className="text-brand-muted text-[9.5px] uppercase tracking-wider mb-1">{team}</p>
-      {traits.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {traits.map((code) => (
-            <span
-              key={code}
-              className="px-1.5 py-0.5 rounded bg-brand-bg text-brand-accent text-[10px]"
-            >
-              {t(`character.${code}`, { defaultValue: code })}
-            </span>
-          ))}
+  const side = (team: string, s: SideFacts) => {
+    if (!sideHasFacts(s)) return null;
+    return (
+      <div className="mt-2">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-brand-muted text-[9.5px] uppercase tracking-wider flex-1 min-w-0 truncate">
+            {team}
+          </p>
+          {/* Форма — самое сухое, что у нас есть про команду, и порядок в ней
+              значим: «три победы, потом два поражения» и обратное дают
+              одинаковые 3-0-2 и описывают разные команды. */}
+          {parseForm(s.form).length > 0 && <FormLetters letters={s.form!} />}
         </div>
-      )}
-      {/* ⚠️ ПОДПИСАНО СЛОВАМИ, А НЕ ДВОЕТОЧИЕМ. Здесь стояло «1.8 : 1.2 · за
-          матч», и два числа через двоеточие читаются как ПРЕДСКАЗАННЫЙ СЧЁТ —
-          то самое, чего этот блок не делает и делать не может. Это средние
-          забитые и пропущенные за матч, и так это теперь и написано. */}
-      {(gf !== null && ga !== null) && (
-        <p className="text-brand-muted text-[10px] mt-1">
-          {t('character.match_side_numbers', { gf, ga })}
-        </p>
-      )}
-      {manager && (
-        <p className="text-brand-muted text-[10px] mt-0.5">
-          {t('character.match_coach')}: <span className="text-white">{manager}</span>
-        </p>
-      )}
-      {/* Заголовок новости — внешний текст. Печатается как текст, разметку
-          React не исполняет; ссылки здесь намеренно нет: читать новость есть
-          где, а строка тут отвечает на «что вокруг матча». */}
-      {headline && (
-        <p className="text-brand-muted text-[10px] mt-0.5 line-clamp-2">
-          {t('character.match_writing')}: {headline}
-        </p>
-      )}
-    </div>
-  );
+
+        {s.traits.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {s.traits.map((code) => (
+              <span
+                key={code}
+                className="px-1.5 py-0.5 rounded bg-brand-bg text-brand-accent text-[10px]"
+              >
+                {t(`character.${code}`, { defaultValue: code })}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* ⚠️ ПОДПИСАНО СЛОВАМИ, А НЕ ДВОЕТОЧИЕМ. Здесь стояло «1.8 : 1.2 · за
+            матч», и два числа через двоеточие читаются как ПРЕДСКАЗАННЫЙ СЧЁТ —
+            то самое, чего этот блок не делает и делать не может. */}
+        {(s.gf !== null && s.ga !== null) && (
+          <p className="text-brand-muted text-[10px] mt-1">
+            {t('character.match_side_numbers', { gf: s.gf, ga: s.ga })}
+          </p>
+        )}
+
+        {/* Перцентили — вторая сухая строка: «выше 82% клубов» проверяемо, в
+            отличие от слова «атакующая». Только вместе: одна половина без
+            второй говорит о команде меньше, чем кажется. */}
+        {(s.attack !== null && s.defence !== null) && (
+          <p className="text-brand-muted text-[10px] mt-0.5">
+            {t('character.match_side_ranks', { attack: s.attack, defence: s.defence })}
+          </p>
+        )}
+
+        {s.manager && (
+          <p className="text-brand-muted text-[10px] mt-0.5">
+            {t('character.match_coach')}: <span className="text-white">{s.manager}</span>
+          </p>
+        )}
+
+        {/* Заголовок новости — внешний текст. Печатается как текст, разметку
+            React не исполняет. Ссылки здесь намеренно нет: читать новость есть
+            где, а строка тут отвечает на «что говорят про игру». */}
+        {s.headline && (
+          <p className="text-brand-muted text-[10px] mt-0.5 line-clamp-2">
+            {t('character.match_writing')}: {s.headline}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="mt-2 space-y-1">
@@ -141,25 +199,17 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
             <p className="text-brand-muted text-[10px]">{t('character.match_unknown')}</p>
           )}
 
-          {/* Две полосы характера — только когда ОБЕ стороны измерены: из них
-              считаются и ожидаемые голы, и открытость, и одна измеренная
-              сторона тут не помогает. */}
-          {/* ⚠️ СНАЧАЛА ФРАЗОЙ, ПОТОМ ЧИСЛОМ. Владелец: «прогноз матча попробуй
-              сделать более понятным». Прежде блок начинался с двух ярлыков и
-              числа «Ждём голов: 2.7» — и число это НИЧЕГО не говорило само по
-              себе: 2.7 чего, у кого, за какой срок. Две короткие фразы
-              отвечают на вопрос, ради которого блок открывают: каким будет
-              матч. Ярлыки остались ниже — они короткие и годятся, чтобы
-              сравнить два матча глазами.
-
-              Две отдельные фразы, а не одна составная: девять сочетаний
-              «голы × течение» пришлось бы переводить девять раз на девяти
-              языках, и в половине из них склейка вышла бы корявой. */}
           {row && bands && (
             <div className="space-y-1">
+              {/* Два числа рядом вместо прилагательного. Медианы может не быть
+                  (пустой club_character) — тогда остаётся одно число, названное
+                  тем, что оно есть. */}
               <p className="text-white text-[11.5px] leading-snug">
-                {t(`character.match_says_goals_${bands.goals}`)}{' '}
-                {t(`character.match_says_flow_${bands.flow}`)}
+                {row.goals_median !== null
+                  ? t('character.match_expected_vs', {
+                      goals: row.expected_goals, median: row.goals_median,
+                    })
+                  : t('character.match_expected_total', { goals: row.expected_goals })}
               </p>
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="px-1.5 py-0.5 rounded bg-brand-accent/15 text-brand-accent text-[10.5px]">
@@ -169,42 +219,28 @@ export function MatchCharacter({ fixtureId, homeTeam, awayTeam }: Props) {
                   {t(`character.match_flow_${bands.flow}`)}
                 </span>
               </div>
-              {/* Число названо тем, что оно есть: сумма голов ОБЕИХ команд за
-                  матч, а не счёт и не чья-то доля. */}
-              <p className="text-brand-muted text-[10px]">
-                {t('character.match_expected_total', { goals: row.expected_goals })}
-              </p>
             </div>
           )}
 
           {/* ⚠️ СТОРОНЫ РИСУЮТСЯ И БЕЗ ХАРАКТЕРА, И ЭТО ПОЧИНКА, А НЕ
-              ПОСЛАБЛЕНИЕ. Владелец: «доделай прогноз по кнопке». Прежде весь
-              блок висел на `bands`, то есть на измеренном характере ОБЕИХ
-              сторон, — и вместе с характером пропадало то, что мы знаем и так:
-              тренер и свежая новость клуба. Замер 12.09.2026: из 600 сторон
-              ближайших матчей характер есть у 341, а у 117 из оставшихся 259
-              известен тренер. Показывать им «неизвестно», имея имя тренера, —
-              это прятать от читателя то, что лежит в ответе. */}
+              ПОСЛАБЛЕНИЕ. Прежде весь блок висел на `bands`, то есть на
+              измеренном характере ОБЕИХ сторон, — и вместе с характером
+              пропадало то, что мы знаем и так: тренер, форма, новость. */}
           {row && (
             <>
-              {side(row.home_name ?? homeTeam, row.home_traits, row.home_manager,
-                    row.home_gf_pm, row.home_ga_pm, row.home_headline)}
-              {side(row.away_name ?? awayTeam, row.away_traits, row.away_manager,
-                    row.away_gf_pm, row.away_ga_pm, row.away_headline)}
+              {side(row.home_name ?? homeTeam, facts('home'))}
+              {side(row.away_name ?? awayTeam, facts('away'))}
             </>
           )}
 
-          {row && bands && (
-            <>
-              {basis !== null && (
-                <p className="text-brand-muted/70 text-[9.5px] mt-1.5">
-                  {t('character.match_basis', { count: basis })}
-                </p>
-              )}
-              <p className="text-brand-muted/70 text-[9.5px]">
-                {t('character.match_no_injuries')}
-              </p>
-            </>
+          {/* ⚠️ СТРОКИ ПРО ТРАВМЫ ЗДЕСЬ БОЛЬШЕ НЕТ. Она печаталась всегда и
+              сообщала, что данных о травмах у нас нет, — то есть занимала
+              место, говоря об отсутствии. Источника травм у проекта
+              по-прежнему ни одного; появится источник — появится строка. */}
+          {row && bands && basis !== null && (
+            <p className="text-brand-muted/70 text-[9.5px] mt-1.5">
+              {t('character.match_basis', { count: basis })}
+            </p>
           )}
         </>
       )}
