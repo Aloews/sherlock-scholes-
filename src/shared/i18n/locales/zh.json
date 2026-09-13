@@ -836,11 +836,7 @@
     "summary_loading": "正在生成摘要…",
     "summary_failed": "摘要生成失败，请重试。",
     "summary_quiet": "今天没有形成话题，暂无内容可概括。",
-    "summary_refused": "模型未对这些话题进行概括。",
-    "live": "正在直播",
-    "live_soon": "即将直播",
-    "live_since": "{{time}} 起直播中",
-    "live_starts": "{{time}} 开始"
+    "summary_refused": "模型未对这些话题进行概括。"
   },
   "arena": {
     "title": "竞技场",

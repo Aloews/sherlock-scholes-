@@ -836,11 +836,7 @@
     "summary_loading": "要約を作成中…",
     "summary_failed": "要約を作成できませんでした。もう一度お試しください。",
     "summary_quiet": "今日は話題がまとまりませんでした。要約するものがありません。",
-    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。",
-    "live": "配信中",
-    "live_soon": "まもなく配信",
-    "live_since": "{{time}} から配信中",
-    "live_starts": "{{time}} 開始"
+    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。"
   },
   "arena": {
     "title": "アリーナ",

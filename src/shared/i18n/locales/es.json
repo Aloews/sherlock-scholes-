@@ -858,11 +858,7 @@
     "summary_loading": "Escribiendo el resumen…",
     "summary_failed": "No se pudo crear el resumen. Inténtalo de nuevo.",
     "summary_quiet": "Hoy no se formó ningún tema: no hay nada que resumir.",
-    "summary_refused": "El modelo no quiso resumir estos temas.",
-    "live": "En directo",
-    "live_soon": "Próximamente en directo",
-    "live_since": "en directo desde las {{time}}",
-    "live_starts": "empieza a las {{time}}"
+    "summary_refused": "El modelo no quiso resumir estos temas."
   },
   "arena": {
     "title": "Arena",

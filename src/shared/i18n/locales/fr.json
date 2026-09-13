@@ -858,11 +858,7 @@
     "summary_loading": "Rédaction du résumé…",
     "summary_failed": "Le résumé n'a pas abouti. Réessayez.",
     "summary_quiet": "Aucun sujet ne s'est dégagé aujourd'hui : rien à résumer.",
-    "summary_refused": "Le modèle n'a pas voulu résumer ces sujets.",
-    "live": "En direct",
-    "live_soon": "Bientôt en direct",
-    "live_since": "en direct depuis {{time}}",
-    "live_starts": "début à {{time}}"
+    "summary_refused": "Le modèle n'a pas voulu résumer ces sujets."
   },
   "arena": {
     "title": "Arène",
