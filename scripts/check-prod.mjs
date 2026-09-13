@@ -2698,7 +2698,75 @@ await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
 await checkPlayerPositions();
+
+// ------------------------------------------------- точность прогноза --------
+// ⚠️ БЛОК «ХАРАКТЕР МАТЧА» ПЕЧАТАЛ ОЖИДАЕМУЮ РЕЗУЛЬТАТИВНОСТЬ, И НИКТО НИ РАЗУ
+// НЕ ПРОВЕРИЛ, СБЫВАЕТСЯ ЛИ ОНА. Теперь проверяет `forecast_backtest` — без
+// утечки: окно кончается за сутки до матча, медиана точки отсчёта берётся по
+// матчам строго до начала месяца. Снимок пишется ночью в `forecast_quality`,
+// здесь он только читается: сам обсчёт в потолок анонима (3 с) не помещается.
+//
+// ⚠️ ЧТО ЗАМЕР ПОКАЗАЛ, И ЭТО НЕ В ПОЛЬЗУ МОДЕЛИ. На 5644 матчах модель 1.3142,
+// «всегда называй медиану» 1.3102 — то есть ожидаемая результативность НЕ БЬЁТ
+// тривиальную догадку. Поэтому проверка ниже и НЕ требует, чтобы била: она
+// требует, чтобы модель не стала заметно ХУЖЕ неё. Требование «обгони» было бы
+// красным с первого дня и его бы просто отключили.
+async function checkForecastQuality() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Точность прогноза', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const r = await fetch(
+    `${url}/rest/v1/forecast_quality?select=*&order=computed_at.desc&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const row = (await r.json().catch(() => []))[0];
+  if (!row) {
+    record('Точность прогноза: снимок есть', false,
+           'forecast_quality пуст — ночной шаг не отработал', 'н/д');
+    return;
+  }
+
+  const age = (Date.now() - Date.parse(row.computed_at)) / 86400000;
+  record('Точность прогноза: снимок свежий',
+         age <= 3 && row.matches >= 1000,
+         `${row.matches} матчей, посчитано ${age.toFixed(1)} сут. назад`,
+         'ловит остановку ночного rebuild_forecast_quality и обвал числа матчей');
+
+  // ЕДИНСТВЕННОЕ, ЧТО ЗАМЕР ПОДТВЕРЖДАЕТ: личность команд что-то несёт.
+  // Перепутанный прогноз — те же числа, приклеенные к чужим матчам.
+  const t = Number(row.gain) / (Number(row.gain_se) || Infinity);
+  record('Точность прогноза: личность команд что-то даёт',
+         t >= 2,
+         `выигрыш над перепутанным ${Number(row.gain).toFixed(4)} гола, ` +
+         `se ${Number(row.gain_se).toFixed(4)}, t = ${t.toFixed(2)}`,
+         'ловит вырождение прогноза в шум: t < 2 значит «те же числа в любом порядке»');
+
+  // ⚠️ ЗАЩИТА ОТ «УЛУЧШЕНИЙ», КОТОРЫЕ УХУДШАЮТ. Проверенная мультипликативная
+  // модель (атака x оборона x среднее лиги) дала 1.4474 против 1.3102 у
+  // медианы — эта строка поймала бы её сразу. Допуск 0.02 гола: модель уже
+  // проигрывает медиане 0.0040, и запрещать это задним числом нечестно.
+  const slack = Number(row.mae_model) - Number(row.mae_baseline);
+  record('Точность прогноза: не хуже тривиальной догадки',
+         slack <= 0.02,
+         `модель ${Number(row.mae_model).toFixed(4)}, медиана ` +
+         `${Number(row.mae_baseline).toFixed(4)}, разница ${slack.toFixed(4)}; ` +
+         `ближе медианы в ${Number(row.pct_closer).toFixed(1)}% матчей`,
+         'ловит правку формулы, которая делает прогноз хуже константы');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: перепутанный прогноз ОБЯЗАН быть хуже настоящего.
+  // Не хуже — значит замер меряет не то, и верить верхним строкам нельзя.
+  const ok = Number(row.mae_shuffled) > Number(row.mae_model);
+  record('Точность прогноза: контроль перепутанного', ok,
+         ok ? `перепутанный ${Number(row.mae_shuffled).toFixed(4)} хуже настоящего `
+              + `${Number(row.mae_model).toFixed(4)}, как и должно`
+            : 'перепутанный прогноз не хуже настоящего',
+         ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkStatsCoverage();
+await checkForecastQuality();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();
