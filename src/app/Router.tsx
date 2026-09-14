@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
+import { useProStore } from '@/shared/store/proStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
 import { usePresence } from '@/features/social/usePresence';
 import { VoiceProvider } from '@/features/voice/VoiceProvider';
@@ -56,6 +57,29 @@ function RequireRoom({ children }: { children: React.ReactNode }) {
   // useSessionRestore checks for an unfinished room instead of bouncing home.
   if (!room && restoring) return <LazyFallback />;
   if (!room) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+// ⚠️ ВОРОТА ПОДПИСКИ. Владелец: «спрячь все экраны кроме футбольного алиаса в
+// подписку pro». Что открыто — в `@/shared/lib/proGate`, белым списком: забытый
+// маршрут окажется ЗАКРЫТ, а не тихо открыт (разбор там же).
+//
+// ⚠️ ПОКА СТАТУС НЕ ЗАГРУЖЕН — НИ ЗАМКА, НИ ЭКРАНА. `isPro` стартует как false,
+// и без этой ветки подписчик, открывший закрытый экран по прямой ссылке, на
+// долю секунды улетал бы на витрину подписки, которую он уже купил. Держим
+// маршрут тем же LazyFallback, что и подгрузку чанка.
+//
+// ⚠️ `replace`, А НЕ ОБЫЧНЫЙ ПЕРЕХОД: иначе «назад» из витрины возвращает на
+// закрытый экран, тот снова отправляет на витрину, и кнопка «назад» перестаёт
+// работать вовсе.
+function ProOnly({ children }: { children: React.ReactNode }) {
+  const isPro  = useProStore((s) => s.isPro);
+  const loaded = useProStore((s) => s.loaded);
+  const { pathname, search } = useLocation();
+  if (!loaded) return <LazyFallback />;
+  if (!isPro) {
+    return <Navigate to={`/pro?from=${encodeURIComponent(pathname + search)}`} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -121,19 +145,19 @@ export function Router() {
       />
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
-      <Route path="/collection" element={<PageTransition><CollectionScreen /></PageTransition>} />
+      <Route path="/collection" element={<ProOnly><PageTransition><CollectionScreen /></PageTransition></ProOnly>} />
       <Route path="/profile"   element={<PageTransition><ProfileScreen /></PageTransition>} />
-      <Route path="/friends"   element={<PageTransition><FriendsScreen /></PageTransition>} />
-      <Route path="/matches"   element={<PageTransition><MatchesScreen /></PageTransition>} />
-      <Route path="/fantasy"   element={<PageTransition><FantasyScreen /></PageTransition>} />
+      <Route path="/friends"   element={<ProOnly><PageTransition><FriendsScreen /></PageTransition></ProOnly>} />
+      <Route path="/matches"   element={<ProOnly><PageTransition><MatchesScreen /></PageTransition></ProOnly>} />
+      <Route path="/fantasy"   element={<ProOnly><PageTransition><FantasyScreen /></PageTransition></ProOnly>} />
       {/* Без PageTransition, как и арена: обёртка анимирует transform родителя,
           и первые касания уезжали бы вместе с ним — а здесь каждое касание
           попадает в конкретную клетку доски. */}
-      <Route path="/chess"     element={<ChessScreen />} />
-      <Route path="/digest"    element={<PageTransition><DigestScreen /></PageTransition>} />
+      <Route path="/chess"     element={<ProOnly><ChessScreen /></ProOnly>} />
+      <Route path="/digest"    element={<ProOnly><PageTransition><DigestScreen /></PageTransition></ProOnly>} />
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
-      <Route path="/news"      element={<PageTransition><NewsScreen /></PageTransition>} />
+      <Route path="/news"      element={<ProOnly><PageTransition><NewsScreen /></PageTransition></ProOnly>} />
       {/* ⚠️ СТАРЫЕ АДРЕСА ВЕДУТ СРАЗУ В СВОЙ РАЗДЕЛ, а не в оглавление
           коллекции: перенаправление в оглавление читалось бы как «ссылка
           сломалась». Не удалены — на них ведут уже разосланные ссылки и
@@ -143,17 +167,17 @@ export function Router() {
       <Route path="/clubs"     element={<Navigate to="/collection?view=clubs" replace />} />
       {/* Ключ клуба едет в адресе и содержит пробелы («zenit st petersburg»),
           поэтому он закодирован на стороне ссылки, а useParams его раскодирует. */}
-      <Route path="/club/:key" element={<PageTransition><ClubScreen /></PageTransition>} />
+      <Route path="/club/:key" element={<ProOnly><PageTransition><ClubScreen /></PageTransition></ProOnly>} />
       {/* Таблица: без турнира в адресе открывается самая полная — экран со
           списком лиг и пустотой под ним требовал бы лишнего касания. */}
-      <Route path="/table"  element={<PageTransition><LeagueTableScreen /></PageTransition>} />
-      <Route path="/table/:tournament" element={<PageTransition><LeagueTableScreen /></PageTransition>} />
+      <Route path="/table"  element={<ProOnly><PageTransition><LeagueTableScreen /></PageTransition></ProOnly>} />
+      <Route path="/table/:tournament" element={<ProOnly><PageTransition><LeagueTableScreen /></PageTransition></ProOnly>} />
       {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
           родителя, и первые кадры холста уезжали бы вместе с ним. */}
       {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже
           разосланные игрокам, и просто удалить его значит их сломать. Экран
           теперь один и сам выбирает режим — см. шапку ArenaScreen. */}
-      <Route path="/minigames" element={<MinigamesScreen />} />
+      <Route path="/minigames" element={<ProOnly><MinigamesScreen /></ProOnly>} />
       {/* Старые адреса мини-игр: ведут в тот же экран, но сразу в свою игру
           (см. `?game=` в шапке MinigamesScreen). Не удалены — на них ведут
           ссылки, уже разосланные игрокам. */}
@@ -161,7 +185,7 @@ export function Router() {
       <Route path="/famous" element={<Navigate to="/minigames?game=famous" replace />} />
       <Route path="/squad"  element={<Navigate to="/minigames?game=squad" replace />} />
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
-      <Route path="/arena"     element={<ArenaScreen />} />
+      <Route path="/arena"     element={<ProOnly><ArenaScreen /></ProOnly>} />
       <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />

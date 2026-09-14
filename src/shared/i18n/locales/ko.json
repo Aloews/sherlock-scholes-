@@ -253,7 +253,9 @@
     "frame_default": "기본",
     "frame_gold": "골드",
     "frame_purple": "퍼플",
-    "back": "뒤로"
+    "back": "뒤로",
+    "locked_hint": "이 섹션은 Pro로 열립니다. 축구 알리아스 자체는 언제나 무료입니다.",
+    "benefit_sections": "모든 섹션: 경기, 랭킹, 클럽, 판타지, 미니게임"
   },
   "tutorial": {
     "title_1": "방 만들기",

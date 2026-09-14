@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IconHome2, IconCards, IconUser, IconCrown } from '@tabler/icons-react';
+import { IconHome2, IconCards, IconUser, IconCrown, IconLock } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { useProStore } from '@/shared/store/proStore';
+import { requiresPro } from '@/shared/lib/proGate';
 
 // Bottom tab navigation — part of the master design's app shell (the classic
 // design has no tab bar and navigates from Home). Translucent over the page
@@ -25,6 +27,12 @@ export function TabBar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // ⚠️ ЗАКРЫТАЯ ВКЛАДКА ОСТАЁТСЯ НА МЕСТЕ С ЗАМКОМ. Убрать её — значит сломать
+  // раскладку из четырёх кнопок и спрятать от игрока то, за что он платит;
+  // нажатие всё равно приведёт на витрину (ворота стоят в роутере). Замок
+  // рисуется только когда статус УЖЕ известен — иначе он мигнёт подписчику.
+  const isPro     = useProStore((s) => s.isPro);
+  const proLoaded = useProStore((s) => s.loaded);
 
   return (
     <nav
@@ -37,6 +45,7 @@ export function TabBar() {
     >
       {TABS.map(({ to, icon: Icon, labelKey }) => {
         const active = pathname === to;
+        const locked = proLoaded && !isPro && requiresPro(to);
         return (
           <button
             key={to}
@@ -47,7 +56,16 @@ export function TabBar() {
               active ? 'text-brand-accent' : 'text-brand-muted'
             }`}
           >
-            <Icon size={21} stroke={1.75} />
+            <span className="relative flex items-center justify-center">
+              <Icon size={21} stroke={1.75} />
+              {locked && (
+                <IconLock
+                  size={11}
+                  stroke={2.2}
+                  className="absolute -right-2 -top-0.5 text-brand-accent"
+                />
+              )}
+            </span>
             <span className="text-[9.5px] font-semibold">{t(labelKey)}</span>
           </button>
         );

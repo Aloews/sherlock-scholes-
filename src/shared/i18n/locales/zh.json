@@ -253,7 +253,9 @@
     "frame_default": "默认",
     "frame_gold": "金色",
     "frame_purple": "紫色",
-    "back": "返回"
+    "back": "返回",
+    "locked_hint": "此板块需要 Pro 订阅。足球猜词游戏本身始终免费。",
+    "benefit_sections": "全部板块：比赛、排行、球队、梦幻联赛与小游戏"
   },
   "tutorial": {
     "title_1": "创建房间",

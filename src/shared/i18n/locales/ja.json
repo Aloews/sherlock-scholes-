@@ -253,7 +253,9 @@
     "frame_default": "デフォルト",
     "frame_gold": "ゴールド",
     "frame_purple": "パープル",
-    "back": "戻る"
+    "back": "戻る",
+    "locked_hint": "このセクションは Pro で開きます。サッカー版アリアス自体はずっと無料です。",
+    "benefit_sections": "すべてのセクション：試合、ランキング、クラブ、ファンタジー、ミニゲーム"
   },
   "tutorial": {
     "title_1": "ルームを作ろう",

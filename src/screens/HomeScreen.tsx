@@ -8,6 +8,7 @@ import {
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
+import { requiresPro } from '@/shared/lib/proGate';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { HomeGameLink } from '@/screens/home/HomeGameLink';
@@ -49,6 +50,11 @@ export function HomeScreen() {
   const { loading } = useGameStore();
   const { soundEnabled, setSoundEnabled, proFrame } = useSettingsStore();
   const isPro = useProStore((s) => s.isPro);
+  // ⚠️ ЗАМОК РИСУЕТСЯ ТОЛЬКО КОГДА СТАТУС УЖЕ ИЗВЕСТЕН. `isPro` стартует как
+  // false, и без проверки `proLoaded` подписчик на долю секунды видел бы
+  // замки на всём, за что уже заплатил.
+  const proLoaded = useProStore((s) => s.loaded);
+  const locked = (to: string) => proLoaded && !isPro && requiresPro(to);
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom } = useRoom();
   const { t } = useTranslation();
@@ -300,21 +306,25 @@ export function HomeScreen() {
               icon={<IconBallFootball size={20} stroke={1.75} />}
               label={t('home.matches_link')}
               onClick={() => navigate('/matches')}
+              locked={locked('/matches')}
             />
             <HomeGameLink
               icon={<IconPlayerPlay size={20} stroke={1.75} />}
               label={t('home.digest_link')}
               onClick={() => navigate('/digest')}
+              locked={locked('/digest')}
             />
             <HomeGameLink
               icon={<IconNews size={20} stroke={1.75} />}
               label={t('home.news_link')}
               onClick={() => navigate('/news')}
+              locked={locked('/news')}
             />
             <HomeGameLink
               icon={<IconChartBar size={20} stroke={1.75} />}
               label={t('home.ratings_link')}
               onClick={() => navigate('/collection?view=stats')}
+              locked={locked('/collection?view=stats')}
             />
             {/* Команды стоят рядом с рейтингом футболистов намеренно: это два
                 среза одних и тех же собранных матчей — по игроку и по клубу. */}
@@ -322,21 +332,25 @@ export function HomeScreen() {
               icon={<IconShieldHalf size={20} stroke={1.75} />}
               label={t('home.clubs_link')}
               onClick={() => navigate('/collection?view=clubs')}
+              locked={locked('/collection?view=clubs')}
             />
             <HomeGameLink
               icon={<IconSoccerField size={20} stroke={1.75} />}
               label={t('home.arena_link')}
               onClick={() => navigate('/arena')}
+              locked={locked('/arena')}
             />
             <HomeGameLink
               icon={<IconTrophy size={20} stroke={1.75} />}
               label={t('home.fantasy_link')}
               onClick={() => navigate('/fantasy')}
+              locked={locked('/fantasy')}
             />
             <HomeGameLink
               icon={<IconHelp size={20} stroke={1.75} />}
               label={t('home.minigames_link')}
               onClick={() => navigate('/minigames')}
+              locked={locked('/minigames')}
             />
             {/* ⚠️ ШАХМАТ ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ КНОПКИ. Они
                 лежат в мини-играх — «Мини-игры» выше и есть вход к ним.
@@ -350,6 +364,7 @@ export function HomeScreen() {
                 icon={<IconStack2 size={20} stroke={1.75} />}
                 label={t('home.collection')}
                 onClick={() => navigate('/collection')}
+                locked={locked('/collection')}
               />
             )}
           </div>

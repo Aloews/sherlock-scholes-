@@ -261,7 +261,9 @@
     "frame_default": "Default",
     "frame_gold": "Gold",
     "frame_purple": "Purple",
-    "back": "Back"
+    "back": "Back",
+    "locked_hint": "This section opens with Pro. The football Alias itself stays free — always.",
+    "benefit_sections": "Every section: matches, ratings, clubs, fantasy and mini-games"
   },
   "tutorial": {
     "title_1": "Create a Room",

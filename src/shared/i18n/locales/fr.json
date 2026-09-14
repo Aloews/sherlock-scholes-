@@ -261,7 +261,9 @@
     "frame_default": "Par défaut",
     "frame_gold": "Or",
     "frame_purple": "Violet",
-    "back": "Retour"
+    "back": "Retour",
+    "locked_hint": "Cette section s'ouvre avec Pro. L'Alias football reste gratuit — toujours.",
+    "benefit_sections": "Toutes les sections : matchs, classements, clubs, fantasy et mini-jeux"
   },
   "tutorial": {
     "title_1": "Créez un salon",

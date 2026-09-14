@@ -261,7 +261,9 @@
     "frame_default": "Padrão",
     "frame_gold": "Ouro",
     "frame_purple": "Roxo",
-    "back": "Voltar"
+    "back": "Voltar",
+    "locked_hint": "Esta secção abre com o Pro. O Alias de futebol continua gratuito — sempre.",
+    "benefit_sections": "Todas as secções: jogos, classificações, clubes, fantasy e minijogos"
   },
   "tutorial": {
     "title_1": "Crie uma sala",
