@@ -172,6 +172,27 @@ def get(url):
     return None
 
 
+def order_todo(talents, linked):
+    """Слить два списка, сохранив порядок и выбросив повторы.
+
+    ⚠️ ТАЛАНТЫ ИДУТ ПЕРВЫМИ, И ЭТО ВЕСЬ СМЫСЛ ФУНКЦИИ. Прогон длинный и может
+    оборваться на любом месте; кто прочитан раньше — тот и получит дату
+    рождения, а без неё игрока нечем связать с карточкой.
+
+    ⚠️ ПОВТОР ВЫБРАСЫВАЕТСЯ ПО ПЕРВОМУ ВХОЖДЕНИЮ. Игрок может быть и в очереди
+    талантов, и среди связанных; прочитать его дважды значит потратить запрос
+    впустую и сдвинуть остальных.
+    """
+    seen, out = set(), []
+    for r in list(talents) + list(linked):
+        pid = r["pid"]
+        if pid in seen:
+            continue
+        seen.add(pid)
+        out.append(r)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -184,15 +205,42 @@ def main():
     apply = os.environ.get("APPLY") == "1"
     deadline = time.time() + args.minutes * 60 if args.minutes > 0 else None
 
-    # ⚠️ ТОЛЬКО СВЯЗАННЫЕ С КОЛОДОЙ, И ПО УБЫВАНИЮ РЕЙТИНГА. Прогон длинный, и
-    # оборваться он может на любом месте; порядок решает, чьи карточки успеют
-    # получить рост и дату — Салаха или четвёртого вратаря третьего дивизиона.
-    params = {"select": "pid,name,rating",
-              "card_id": "not.is.null",
-              "order": "rating.desc.nullslast,pid.asc"}
+    # ⚠️ ЧИТАЮТСЯ ДВЕ ГРУППЫ, И РАНЬШЕ БЫЛА ТОЛЬКО ОДНА — ОТ ЭТОГО ВЫШЛА ПЕТЛЯ.
+    #
+    # Стоял отбор `card_id=not.is.null`: страницы читались ТОЛЬКО у тех, кто уже
+    # связан с колодой. Замысел понятен — прогон длинный, и не хочется тратить
+    # его на четвёртого вратаря третьего дивизиона. Но получилось замкнуто:
+    # у несвязанного игрока никогда не появлялась дата рождения, а без даты его
+    # нечем связать с карточкой — ни по имени (однофамильцы), ни по чему ещё.
+    # Замер 14.09.2026: 57 650 строк, страницы прочитаны у 2 613, и из 42 840
+    # НЕСВЯЗАННЫХ дата рождения была ровно у двух.
+    #
+    # ⚠️ И ПОРЯДОК «ПО УБЫВАНИЮ РЕЙТИНГА» ТОЖЕ ОКАЗАЛСЯ НЕ ТЕМ. Рейтинг растёт
+    # с возрастом (66.2 в среднем у тех, кому ≤19, против 76.5 у тех, кому 29+),
+    # поэтому такой порядок читает сначала ветеранов, а молодых — последними.
+    # Владелец про это и написал: «выявлять самых молодых и талантливых, а не
+    # только игроков-проектов».
+    #
+    # Теперь сначала идёт очередь талантов (`player_talent_queue`: перцентиль
+    # рейтинга СРЕДИ СВОИХ РОВЕСНИКОВ, затем молодость), а следом — связанные с
+    # колодой по рейтингу, как было. Список ограничен: в очереди 5 217 строк, а
+    # не все 57 650.
+    talents = all_rows("player_talent_queue",
+                       {"select": "pid,name,rating,place", "order": "place.asc"})
+    linked = all_rows("soccerwiki_player",
+                      {"select": "pid,name,rating", "card_id": "not.is.null",
+                       "order": "rating.desc.nullslast,pid.asc"})
     if not args.refresh:
-        params["detail_at"] = "is.null"
-    todo = all_rows("soccerwiki_player", params)
+        # `detail_at` нет во взгляде очереди, поэтому непрочитанные отбираются
+        # отдельным запросом и пересекаются по pid.
+        fresh = {r["pid"] for r in all_rows(
+            "soccerwiki_player", {"select": "pid", "detail_at": "is.null"})}
+        talents = [r for r in talents if r["pid"] in fresh]
+        linked = [r for r in linked if r["pid"] in fresh]
+
+    todo = order_todo(talents, linked)
+    print("очередь талантов: %d, связанных с колодой: %d"
+          % (len(talents), len(linked)))
     if args.limit > 0:
         todo = todo[:args.limit]
     print("страниц к чтению: %d%s" % (len(todo), "" if apply else "  (СУХОЙ ПРОГОН)"))

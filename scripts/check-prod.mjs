@@ -3173,6 +3173,73 @@ async function checkAmateur() {
 }
 
 /**
+ * ТАЛАНТЫ: читаются ли страницы тех, кого в колоде ещё нет.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ ПРО ЗАМКНУТУЮ ПЕТЛЮ, КОТОРАЯ МОЛЧАЛА МЕСЯЦАМИ. Сборщик
+ * страниц игроков стоял с отбором `card_id=not.is.null` — читал ТОЛЬКО тех, кто
+ * уже связан с колодой. Замысел понятен (не тратить длинный прогон на
+ * четвёртого вратаря третьего дивизиона), но получилось так: у несвязанного
+ * игрока никогда не появлялась дата рождения, а без даты его нечем связать —
+ * по имени не выходит, там однофамильцы. Замер 14.09.2026: 57 650 строк,
+ * страницы прочитаны у 2 613, и из 42 840 НЕСВЯЗАННЫХ дата была ровно у двух.
+ *
+ * ⚠️ СНАРУЖИ ЭТО ВЫГЛЯДЕЛО КАК «ВСЁ РАБОТАЕТ»: шаг отрабатывал каждую ночь,
+ * что-то читал, ничего не падало. Поэтому проверка смотрит не на «шаг
+ * выполнился», а на то, попадают ли в чтение те, ради кого он нужен.
+ */
+async function checkTalentQueue() {
+  const url = env('VITE_SUPABASE_URL');
+  const svc = serviceKey();
+  if (!url || !svc) {
+    record('Таланты', false, 'нет SUPABASE_KEY — очередь закрыта для анонима', 'н/д');
+    return;
+  }
+  const get = async (path) => {
+    const r = await fetch(`${url}/rest/v1/${path}`, {
+      headers: { apikey: svc, Authorization: `Bearer ${svc}`,
+                 Prefer: 'count=exact', Range: '0-0' },
+    });
+    const cr = r.headers.get('content-range') ?? '';
+    const total = Number(cr.split('/')[1]);
+    return { ok: r.ok, total: Number.isFinite(total) ? total : null,
+             rows: r.ok ? await r.json().catch(() => []) : [] };
+  };
+
+  const queue = await get('player_talent_queue?select=pid&order=place.asc');
+  record('Таланты: очередь не пуста',
+         queue.ok && (queue.total ?? 0) > 0,
+         `${queue.total ?? '?'} строк`,
+         'ловит развалившийся взгляд: без очереди сборщик снова читает по рейтингу');
+
+  // ⚠️ ГЛАВНАЯ СТРОКА РАЗДЕЛА. Страницы обязаны читаться и у тех, у кого
+  // карточки НЕТ, — иначе петля закрыта снова и это никак не видно.
+  const unlinkedRead = await get(
+    'soccerwiki_player?select=pid&card_id=is.null&detail_at=not.is.null');
+  record('Таланты: страницы читаются и без карточки',
+         (unlinkedRead.total ?? 0) >= 100,
+         `${unlinkedRead.total ?? '?'} несвязанных со страницей`,
+         'ловит возврат отбора card_id=not.is.null: даты не появятся, связать нечем');
+
+  const born = await get(
+    'soccerwiki_player?select=pid&card_id=is.null&born_on=not.is.null');
+  record('Таланты: у несвязанных есть даты рождения',
+         (born.total ?? 0) >= 40,
+         `${born.total ?? '?'} с датой`,
+         'ловит сборщик, который читает страницы, но не достаёт дату');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: считалка вообще различает срезы. Проверки выше
+  // смотрят на числа, и если счётчик отдаёт одно и то же на любой запрос, они
+  // проходят, ничего не измерив.
+  const all = await get('soccerwiki_player?select=pid');
+  const distinct = (all.total ?? 0) > (unlinkedRead.total ?? 0)
+                && (unlinkedRead.total ?? 0) > 0;
+  record('Таланты: контроль — срезы различаются',
+         distinct,
+         `всего ${all.total ?? '?'}, со страницей и без карточки ${unlinkedRead.total ?? '?'}`,
+         distinct ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+/**
  * ПРОГНОЗ ПОБЕДИТЕЛЯ: три прогнозиста, история и дофамин мухи.
  *
  * ⚠️ ГЛАВНОЕ ЗДЕСЬ — НЕ «ЕСТЬ ЛИ ЦИФРЫ», А ЧЕСТНО ЛИ ОНИ ПОЛУЧЕНЫ. Дашборд,
@@ -3485,6 +3552,7 @@ await checkSpotlight();
 await checkAmateur();
 await checkFunctionCors();
 await checkForecastWinner();
+await checkTalentQueue();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
