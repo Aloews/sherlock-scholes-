@@ -397,6 +397,18 @@ export interface RisingCard {
   /** Во сколько раз. 1.8 значит «в 1,8 раза». */
   growth: number;
   changed_on: string;
+  /**
+   * ЧЕМ РОСТ ПОДТВЕРЖДЁН НА ПОЛЕ за то же окно.
+   *
+   * ⚠️ ЭТО НЕ УКРАШЕНИЕ СТРОКИ, А ПРИЧИНА, ПО КОТОРОЙ ОНА В СПИСКЕ. Рост по
+   * чужому мнению об игроке (упоминания, оценка Soccer Wiki, просмотры)
+   * сервер засчитывает только тому, кто в этом окне выходил на поле: иначе
+   * всплеск упоминаний — однофамилец. Замер до правила: из 17 строк по
+   * упоминаниям за неделю ОДИННАДЦАТЬ не сыграли ни минуты.
+   */
+  minutes: number;
+  goals: number;
+  assists: number;
 }
 
 /**
@@ -444,4 +456,43 @@ export async function fetchRisingClubs(
     p_days: days, p_limit: limit, p_lang: lang,
   });
   return fromPostgrest<RisingClub[]>(res, 'rising_clubs');
+}
+
+
+/**
+ * САМЫЕ ДОРОГИЕ ПЕРЕХОДЫ — рейтинг ТРАНСФЕРОВ, а не игроков.
+ *
+ * Владелец: «рейтинг самых дорогих трансферов внутри рейтинга самых дорогих
+ * футболистов».
+ *
+ * ⚠️ СТРОКА — ЭТО ПЕРЕХОД, А НЕ ЧЕЛОВЕК, и в этом вся разница с соседним
+ * списком на том же экране. У Неймара два дорогих перехода; схлопнуть их в
+ * игрока значило бы потерять второй и превратить рейтинг трансферов во второй
+ * рейтинг игроков.
+ *
+ * ⚠️ ОБЪЯВЛЕННЫЕ ЗАРАНЕЕ НЕ ПОКАЗЫВАЮТСЯ. В таблице есть переходы с датой
+ * 2027-07-01: они ещё не состоялись, и в рейтинге состоявшихся им не место.
+ * Отсекает сервер, а не экран.
+ */
+export interface TopTransfer {
+  card_id: string;
+  name: string;
+  name_en: string | null;
+  photo_url: string | null;
+  fee_eur: number;
+  moved_on: string;
+  season: string | null;
+  from_club: string | null;
+  to_club: string | null;
+}
+
+export async function fetchTopTransfers(
+  lang: string,
+  limit = 20,
+): Promise<LoadState<TopTransfer[]>> {
+  const res = await supabase.rpc('top_transfers', {
+    p_lang: lang.slice(0, 2),
+    p_limit: limit,
+  });
+  return fromPostgrest<TopTransfer[]>(res, 'top_transfers');
 }

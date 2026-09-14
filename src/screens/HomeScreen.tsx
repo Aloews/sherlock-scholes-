@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf,
+  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf, IconFriends,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -243,16 +243,11 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* Whose phone this is. The "Welcome back," above it is gone: it
-            said nothing the avatar in the header does not already say, and it
-            pushed the first real thing on the screen towards the fold. The
-            name stays — it is the one part of that block that was ever
-            information. */}
-        {view === 'home' && master && (
-          <p className="w-full max-w-sm ds-display text-xl font-bold text-white">
-            {player ? `${player.first_name} ${player.last_name ?? ''}`.trim() : t('home.welcome_stranger')}
-          </p>
-        )}
+        {/* ⚠️ ИМЕНИ ЗДЕСЬ БОЛЬШЕ НЕТ. Владелец: «подпись „имени“ … можно
+            убрать с главной». Раньше отсюда ушло «С возвращением», и по той
+            же причине: аватар в шапке уже говорит, чей это телефон, а строка
+            на весь экран отодвигала первое настоящее дело за сгиб. Имя было
+            последним, что от этого блока осталось, — теперь нет и его. */}
 
         {/* THE MENU OF GAMES. Alias is a row like the other three, not a
             stack of tall buttons above them: once there are four games, one
@@ -345,6 +340,14 @@ export function HomeScreen() {
               label={t('home.fantasy_link')}
               onClick={() => navigate('/fantasy')}
               locked={locked('/fantasy')}
+            />
+            {/* Любительские лиги — единственный раздел, куда игрок ПИШЕТ:
+                своя лига, своя команда, он сам в составе. */}
+            <HomeGameLink
+              icon={<IconFriends size={20} stroke={1.75} />}
+              label={t('home.amateur_link')}
+              onClick={() => navigate('/amateur')}
+              locked={locked('/amateur')}
             />
             <HomeGameLink
               icon={<IconHelp size={20} stroke={1.75} />}

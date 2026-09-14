@@ -121,7 +121,8 @@
     "clubs_link": "Clubs and stats",
     "tag_defender": "Defenders",
     "tag_midfielder": "Midfielders",
-    "tag_forward": "Forwards"
+    "tag_forward": "Forwards",
+    "amateur_link": "Amateur leagues"
   },
   "design": {
     "master": "New design",
@@ -1130,12 +1131,18 @@
   "rising": {
     "tab": "On the rise",
     "clubs": "Clubs",
-    "how": "Shows how many times a metric grew. Growth from a tiny base is ignored: every metric has its own floor.",
+    "how": "Shows how many times a figure grew. Growth from a small number does not count: each figure has its own floor. And growth in what others say about a player — mentions, ratings, page views — counts only for someone who actually played in that window: otherwise the spike belongs to a namesake.",
     "empty": "Nobody has risen yet: the metric history starts on 6 September, and growth is measured between its points.",
     "window_one": "{{count}} day",
     "window_other": "{{count}} days",
     "by_squad_one": "across {{count}} player",
-    "by_squad_other": "across {{count}} players"
+    "by_squad_other": "across {{count}} players",
+    "goals_one": "{{count}} goal",
+    "goals_other": "{{count}} goals",
+    "assists_one": "{{count}} assist",
+    "assists_other": "{{count}} assists",
+    "minutes_one": "{{count}} minute played",
+    "minutes_other": "{{count}} minutes played"
   },
   "sw": {
     "rating": "Rating",
@@ -1214,5 +1221,109 @@
     "match_basis_other": "Measured over {{count}} matches on each side. This measures past games, it does not predict the score",
     "match_expected_total": "Expected goals — {{goals}}: that is both teams together, per match.",
     "match_side_numbers": "Scores {{gf}}, concedes {{ga}} per match"
+  },
+  "duel": {
+    "title": "Who forecasts better",
+    "intro": "Three forecasters trained on the same matches and were tested on matches they had never seen. Split by time: trained on the past, checked against the future. This is a measurement, not a sales pitch.",
+    "basis": "Checked on {{n}} matches, none of which were used for training.",
+    "hit": "Correct",
+    "mae": "Error {{v}} goals",
+    "coverage": "Called {{v}} of matches — silent on the rest",
+    "silent": "Stayed silent",
+    "recent": "Recent matches",
+    "col_match": "Match",
+    "col_total": "Goals",
+    "legend": "✓ — called the right side of the 2.5-goal line, ✗ — wrong, — our own variant stayed silent.",
+    "baseline_title": "Baselines",
+    "verdict": "The honest result: on average error none of the three beats the median. The one thing that works is silence — our own variant declines matches where the two models disagree or both sit on the line, and gets the rest right noticeably more often.",
+    "failed": "Could not load the measurement.",
+    "model": {
+      "own": "Our own variant",
+      "llm": "LLM",
+      "fly": "Fruit-fly brain",
+      "median": "Median",
+      "current": "Current formula"
+    },
+    "what": {
+      "own": "A blend of the two models that stays silent when they disagree",
+      "llm": "A trained linear head over nine match features",
+      "fly": "A reservoir: connections frozen, only the readout learns — how the fly connectome is read",
+      "median": "Always names the most common number of goals",
+      "current": "What the app shows today; it does not learn"
+    },
+    "short": {
+      "own": "Ours",
+      "llm": "LLM",
+      "fly": "Fly"
+    }
+  },
+  "spotlight": {
+    "title": "Noise versus play",
+    "mode": {
+      "loud": "Louder than they play",
+      "quiet": "Quieter than they play"
+    },
+    "intro": {
+      "loud": "Who is talked about and paid more than they take the field. Compared only with peers of the same age and position in the same league: money and attention are not comparable across leagues, and a goalkeeper is not comparable to a striker on goals.",
+      "quiet": "Who plays and scores more than they are talked about and paid. Same peers, same position, same league."
+    },
+    "caveat": "This is the gap between attention and play, NOT a claim about anyone's intentions. The gap cannot tell causes apart: an injury, a transfer, the start of a season and genuine hype all look the same here. The top of this list was once a Ballon d'Or winner who had missed a year with a knee injury.",
+    "how": "Attention is market value and Wikipedia page views. Play is matches, goals and assists. Both numbers are a rank among peers of the same position in the same league, from 0 to 100. Only players whose match statistics we have collected appear: zero matches without collection is a hole on our side, not a bench on theirs.",
+    "attention": "Attention",
+    "output": "Play",
+    "played": "{{apps}} matches · {{ga}} goals+assists",
+    "age_one": "{{count}} year old",
+    "age_other": "{{count}} years old",
+    "pos": {
+      "goalkeeper": "Goalkeeper",
+      "defender": "Defender",
+      "midfield": "Midfielder",
+      "attack": "Forward"
+    },
+    "empty": "Nobody here yet: not enough peers of the same position to compare against.",
+    "failed": "Could not load."
+  },
+  "amateur": {
+    "title": "Amateur leagues",
+    "intro": "Set up your own league, the teams in it, and put yourself in as a player. A league is not listed publicly: to invite people, give them the code.",
+    "empty": "No leagues yet. Set one up, or join with a code.",
+    "create_title": "New league",
+    "league_name": "League name",
+    "league_city": "Town or yard (optional)",
+    "league_add": "Create league",
+    "league_failed": "Could not create the league",
+    "join_title": "Join with a code",
+    "code_placeholder": "LEAGUE CODE",
+    "code_go": "Find",
+    "code_not_found": "No league with that code",
+    "code_title": "Invite code",
+    "code_how": "Give it to the people you are inviting. Only you can see it.",
+    "team_name": "Team name",
+    "team_add": "Add team",
+    "team_failed": "Could not add the team",
+    "join_me": "Add myself",
+    "join_confirm": "Join",
+    "join_failed": "Could not join",
+    "need_name": "Enter the name to show",
+    "my_name": "Name to show",
+    "shirt": "Number",
+    "leave": "leave",
+    "back_to_list": "← All leagues",
+    "logo_add": "logo",
+    "logo_failed": "Failed",
+    "logo_too_big": "Over 256 KB",
+    "teams_one": "{{count}} team",
+    "teams_other": "{{count}} teams",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "squad_one": "{{count}} player",
+    "squad_other": "{{count}} players"
+  },
+  "transfers_top": {
+    "title": "Most expensive transfers",
+    "show": "show",
+    "hide": "hide",
+    "failed": "Could not load transfers",
+    "note": "A row here is a transfer, not a player: one person can appear more than once. A transfer fee and a player's value today are different numbers — Neymar cost €222M in 2017. Transfers announced but not yet completed are not shown."
   }
 }

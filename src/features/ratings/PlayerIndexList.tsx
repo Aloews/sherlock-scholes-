@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { cardDisplayName } from '@/shared/lib/cardName';
 import { IconBallFootball } from '@tabler/icons-react';
 import { ScopeFilter } from '@/shared/ui/ScopeFilter';
 import type { CollectionFilter } from '@/features/collection/collectionApi';
@@ -9,6 +10,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { Chip } from '@/shared/ui/Chip';
 import { formatSortValue } from './indexSortValue';
+import { TopTransfers } from './TopTransfers';
 import {
   fetchPlayerIndex, fetchPlayerIndexCount,
   CONTINENTS, INDEX_SORTS, POSITIONS,
@@ -153,6 +155,18 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
         {sort === 'index' ? t('index.formula') : t('index.formula_single')}
       </p>
 
+      {/* ⚠️ РЕЙТИНГ ТРАНСФЕРОВ ЖИВЁТ ВНУТРИ РЕЙТИНГА ПО СТОИМОСТИ, и это
+          просьба владельца дословно: «рейтинг самых дорогих трансферов внутри
+          рейтинга самых дорогих футболистов». Рядом они не спорят, а
+          дополняют друг друга: слева сколько игрок СТОИТ сегодня, ниже —
+          сколько за него однажды ЗАПЛАТИЛИ. Это разные числа, и держать их на
+          разных экранах значило заставлять игрока помнить одно, пока он
+          смотрит на другое.
+
+          Только на этой сортировке: под «минутами на поле» или «упоминаниями
+          в новостях» цена перехода была бы случайной соседкой. */}
+      {sort === 'value' && <TopTransfers />}
+
       {rows.status === 'loading' && (
         <p className="text-brand-muted text-sm text-center py-8">{t('ratings.loading')}</p>
       )}
@@ -191,7 +205,7 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm truncate">{row.name}</p>
+            <p className="text-white text-sm truncate">{cardDisplayName({ name: row.name, name_en: row.name_en, category: 'player' }, i18n.language)}</p>
             <p className="text-brand-muted text-[11px] truncate">
               {[row.club, row.league].filter(Boolean).join(' · ')}
             </p>

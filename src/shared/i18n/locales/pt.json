@@ -121,7 +121,8 @@
     "clubs_link": "Clubes e estatísticas",
     "tag_defender": "Zagueiros",
     "tag_midfielder": "Meio-campistas",
-    "tag_forward": "Atacantes"
+    "tag_forward": "Atacantes",
+    "amateur_link": "Ligas amadoras"
   },
   "design": {
     "master": "Novo design",
@@ -1130,12 +1131,18 @@
   "rising": {
     "tab": "Em alta",
     "clubs": "Clubes",
-    "how": "Mostra quantas vezes o indicador cresceu. Crescimento a partir de base mínima não conta: cada indicador tem seu limiar.",
+    "how": "Mostra quantas vezes o indicador cresceu. O crescimento a partir de um número pequeno não conta: cada indicador tem o seu limiar. E o crescimento naquilo que os outros dizem do jogador — menções, avaliação, visitas — só conta para quem entrou em campo no mesmo período: caso contrário o pico é de um homónimo.",
     "empty": "Ninguém cresceu ainda: o histórico começa em 6 de setembro.",
     "window_one": "{{count}} dia",
     "window_other": "{{count}} dias",
     "by_squad_one": "por {{count}} jogador",
-    "by_squad_other": "por {{count}} jogadores"
+    "by_squad_other": "por {{count}} jogadores",
+    "goals_one": "{{count}} golo",
+    "goals_other": "{{count}} golos",
+    "assists_one": "{{count}} assistência",
+    "assists_other": "{{count}} assistências",
+    "minutes_one": "{{count}} minuto jogado",
+    "minutes_other": "{{count}} minutos jogados"
   },
   "sw": {
     "rating": "Avaliação",
@@ -1214,5 +1221,109 @@
     "match_basis_other": "Medido em {{count}} jogos de cada lado. Mede jogos passados, não prevê o resultado",
     "match_expected_total": "Golos esperados — {{goals}}: as duas equipas juntas, por jogo.",
     "match_side_numbers": "Marca {{gf}}, sofre {{ga}} por jogo"
+  },
+  "duel": {
+    "title": "Quem prevê melhor",
+    "intro": "Três previsores aprenderam com os mesmos jogos e foram testados em jogos que nunca tinham visto. Corte por tempo: aprende-se com o passado e verifica-se no futuro. Isto é uma medição, não publicidade.",
+    "basis": "Verificado em {{n}} jogos, nenhum deles usado na aprendizagem.",
+    "hit": "Acertou",
+    "mae": "Erro {{v}} golos",
+    "coverage": "Pronunciou-se em {{v}} dos jogos — nos restantes cala-se",
+    "silent": "Ficou calado",
+    "recent": "Últimos jogos",
+    "col_match": "Jogo",
+    "col_total": "Golos",
+    "legend": "✓ — acertou o lado da linha de 2,5 golos, ✗ — errou, — a nossa variante ficou calada.",
+    "baseline_title": "Pontos de referência",
+    "verdict": "O resultado honesto: no erro médio nenhum dos três supera a mediana. A única coisa que funciona é o silêncio — a nossa variante recusa os jogos em que os dois modelos discordam ou ambos ficam colados à linha, e acerta bastante mais nos restantes.",
+    "failed": "Não foi possível carregar a medição.",
+    "model": {
+      "own": "A nossa variante",
+      "llm": "LLM",
+      "fly": "Cérebro da mosca",
+      "median": "Mediana",
+      "current": "Fórmula atual"
+    },
+    "what": {
+      "own": "Mistura dos dois modelos que se cala quando eles discordam",
+      "llm": "Uma cabeça linear treinada sobre nove características do jogo",
+      "fly": "Um reservatório: as ligações ficam fixas e só a saída aprende — como se lê o conectoma da mosca",
+      "median": "Diz sempre o número de golos mais frequente",
+      "current": "O que a aplicação mostra hoje; não aprende"
+    },
+    "short": {
+      "own": "Nossa",
+      "llm": "LLM",
+      "fly": "Mosca"
+    }
+  },
+  "spotlight": {
+    "title": "Ruído contra jogo",
+    "mode": {
+      "loud": "Mais ruído do que jogo",
+      "quiet": "Mais jogo do que ruído"
+    },
+    "intro": {
+      "loud": "De quem se fala e a quem se paga mais do que entra em campo. Comparado apenas com colegas da mesma idade e posição na mesma liga: dinheiro e atenção não se comparam entre ligas, nem um guarda-redes com um avançado em golos.",
+      "quiet": "Quem joga e marca mais do que aquilo de que se fala e se paga. Os mesmos colegas, a mesma posição, a mesma liga."
+    },
+    "caveat": "Isto é a diferença entre atenção e jogo, NÃO uma afirmação sobre as intenções de alguém. A diferença não distingue causas: uma lesão, uma transferência, o início da época e um verdadeiro exagero parecem iguais aqui. No topo desta lista esteve uma vez um Bola de Ouro que falhara um ano por lesão no joelho.",
+    "how": "A atenção é o valor de mercado e as visitas à página da Wikipédia. O jogo são jogos, golos e assistências. Ambos os números são o lugar entre colegas da mesma posição na mesma liga, de 0 a 100. Só aparecem jogadores cuja estatística de jogos foi recolhida: zero jogos sem recolha é um buraco nosso, não um banco deles.",
+    "attention": "Atenção",
+    "output": "Jogo",
+    "played": "{{apps}} jogos · {{ga}} golos+assistências",
+    "age_one": "{{count}} ano",
+    "age_other": "{{count}} anos",
+    "pos": {
+      "goalkeeper": "Guarda-redes",
+      "defender": "Defesa",
+      "midfield": "Médio",
+      "attack": "Avançado"
+    },
+    "empty": "Ainda ninguém aqui: faltam colegas da mesma posição para comparar.",
+    "failed": "Não foi possível carregar."
+  },
+  "amateur": {
+    "title": "Ligas amadoras",
+    "intro": "Crie a sua liga, as equipas nela e inscreva-se como jogador. A liga não aparece em nenhuma lista pública: para convidar alguém, dê-lhe o código.",
+    "empty": "Ainda não há nenhuma liga. Crie a sua ou entre com um código.",
+    "create_title": "Nova liga",
+    "league_name": "Nome da liga",
+    "league_city": "Cidade ou bairro (opcional)",
+    "league_add": "Criar liga",
+    "league_failed": "Não foi possível criar a liga",
+    "join_title": "Entrar com código",
+    "code_placeholder": "CÓDIGO DA LIGA",
+    "code_go": "Procurar",
+    "code_not_found": "Não há nenhuma liga com esse código",
+    "code_title": "Código de convite",
+    "code_how": "Dê-o a quem convidar. Só você o vê.",
+    "team_name": "Nome da equipa",
+    "team_add": "Adicionar equipa",
+    "team_failed": "Não foi possível adicionar a equipa",
+    "join_me": "Inscrever-me",
+    "join_confirm": "Inscrever",
+    "join_failed": "Não foi possível inscrever",
+    "need_name": "Escreva como quer aparecer",
+    "my_name": "Como quer aparecer",
+    "shirt": "Número",
+    "leave": "sair",
+    "back_to_list": "← Todas as ligas",
+    "logo_add": "logo",
+    "logo_failed": "Não resultou",
+    "logo_too_big": "Mais de 256 KB",
+    "teams_one": "{{count}} equipa",
+    "teams_other": "{{count}} equipas",
+    "players_one": "{{count}} jogador",
+    "players_other": "{{count}} jogadores",
+    "squad_one": "{{count}} jogador",
+    "squad_other": "{{count}} jogadores"
+  },
+  "transfers_top": {
+    "title": "As transferências mais caras",
+    "show": "mostrar",
+    "hide": "ocultar",
+    "failed": "Não foi possível carregar as transferências",
+    "note": "Aqui cada linha é uma transferência, não um jogador: a mesma pessoa pode aparecer mais do que uma vez. O valor da transferência e o valor atual do jogador são números diferentes: por Neymar pagaram-se 222 M € em 2017. Transferências anunciadas mas ainda não concretizadas não aparecem."
   }
 }

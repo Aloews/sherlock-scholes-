@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconPlayerPlayFilled, IconFlame } from '@tabler/icons-react';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
@@ -65,10 +65,6 @@ export function HomeGoalPreview() {
     return () => { cancelled = true; };
   }, [lang]);
 
-  const viewFmt = useMemo(
-    () => new Intl.NumberFormat(i18n.language, { notation: 'compact' }),
-    [i18n.language],
-  );
 
   if (clip === null) return null;
 
@@ -120,10 +116,12 @@ export function HomeGoalPreview() {
         <span className="block text-white text-[13px] leading-tight line-clamp-2 mt-0.5">
           {clip.title}
         </span>
-        <span className="block text-brand-muted text-[10px] mt-0.5 truncate">
-          {clip.channel}
-          {clip.views !== null && ` · ${t('digest.views', { count: clip.views, n: viewFmt.format(clip.views) })}`}
-        </span>
+        {/* ⚠️ ОПИСАНИЯ ПОД ЗАГОЛОВКОМ БОЛЬШЕ НЕТ. Владелец: «в первой теме
+            убрать описание с главной». Канал и число просмотров ничего не
+            решали здесь: ролик открывают по заголовку, а не по имени канала,
+            — зато строка съедала высоту над кнопками игр. На самом экране
+            роликов (`/digest`) они остались: там это список, где источник
+            ролика различает соседние строки. */}
       </span>
     </button>
 

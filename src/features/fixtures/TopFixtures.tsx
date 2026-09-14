@@ -59,11 +59,13 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
 
+  // ⚠️ ЗАГОЛОВКА «БЛИЖАЙШИЕ БОЛЬШИЕ МАТЧИ» ЗДЕСЬ БОЛЬШЕ НЕТ. Владелец:
+  // «подпись „имени“ и „ближайшие больше матчи“ можно убрать с главной».
+  // Снят и у настоящего блока, и у скелета ниже — оставить в одном значило бы
+  // сдвинуть экран в момент подмены, ровно ту беду, ради которой скелет и
+  // заведён.
   return (
     <div className="space-y-2">
-      <p className="text-brand-muted text-[11px] uppercase tracking-wide px-0.5">
-        {t('fixtures.top_title')}
-      </p>
 
       {rows.data.map((f) => {
         // Турнир из матча; если ключа нет в переводах — домашняя лига клуба.
@@ -145,12 +147,8 @@ export function TopFixtures({ limit = 3 }: { limit?: number }) {
  * молча разъехалось бы с версткой при первой же правке `p-3`.
  */
 function FixturesSkeleton({ limit }: { limit: number }) {
-  const { t } = useTranslation();
   return (
     <div className="space-y-2" aria-hidden>
-      <p className="text-brand-muted text-[11px] uppercase tracking-wide px-0.5">
-        {t('fixtures.top_title')}
-      </p>
       {Array.from({ length: limit }, (_, i) => (
         <div
           key={i}

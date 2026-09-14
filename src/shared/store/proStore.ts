@@ -17,8 +17,16 @@ interface ProState {
   gamesPlayed: number;
   loading: boolean;
   loaded: boolean; // status fetch attempted (success or skip)
+  /**
+   * Ответ пришёл из ПАМЯТКИ, а не с сервера. Ворота уже открыты, проверка ещё
+   * идёт. Нужен затем, чтобы `useProStatus` не принял памятку за готовый
+   * ответ и всё-таки сходил на сервер — см. proCache.ts.
+   */
+  seeded: boolean;
 
   setStatus(s: { telegramId: number; isPro: boolean; proSince: string | null; gamesPlayed: number }): void;
+  /** Открыть ворота по памятке. `loaded`, но не окончательно: seeded=true. */
+  seedStatus(s: { isPro: boolean; gamesPlayed: number }): void;
   setGamesPlayed(n: number): void;
   setLoading(v: boolean): void;
   markLoaded(): void;
@@ -31,10 +39,14 @@ export const useProStore = create<ProState>((set) => ({
   gamesPlayed: 0,
   loading: false,
   loaded: false,
+  seeded: false,
 
   setStatus: ({ telegramId, isPro, proSince, gamesPlayed }) =>
-    set({ telegramId, isPro, proSince, gamesPlayed, loaded: true, loading: false }),
+    set({ telegramId, isPro, proSince, gamesPlayed, loaded: true, loading: false, seeded: false }),
+
+  seedStatus: ({ isPro, gamesPlayed }) =>
+    set({ isPro, gamesPlayed, loaded: true, loading: false, seeded: true }),
   setGamesPlayed: (gamesPlayed) => set({ gamesPlayed }),
   setLoading: (loading) => set({ loading }),
-  markLoaded: () => set({ loaded: true, loading: false }),
+  markLoaded: () => set({ loaded: true, loading: false, seeded: false }),
 }));

@@ -121,7 +121,8 @@
     "clubs_link": "Clubs et statistiques",
     "tag_defender": "Défenseurs",
     "tag_midfielder": "Milieux",
-    "tag_forward": "Attaquants"
+    "tag_forward": "Attaquants",
+    "amateur_link": "Championnats amateurs"
   },
   "design": {
     "master": "Nouveau design",
@@ -1130,12 +1131,18 @@
   "rising": {
     "tab": "En progression",
     "clubs": "Clubs",
-    "how": "Indique de combien de fois l'indicateur a grimpé. La progression depuis une base minime est ignorée : chaque indicateur a son seuil.",
+    "how": "On montre de combien de fois l’indicateur a grandi. Une hausse à partir d’un petit nombre ne compte pas : chaque indicateur a son seuil. Et la hausse de ce que les autres disent du joueur — mentions, note, consultations — ne compte que pour celui qui a joué sur la même période : sinon le pic appartient à un homonyme.",
     "empty": "Personne n'a encore progressé : l'historique commence le 6 septembre.",
     "window_one": "{{count}} jour",
     "window_other": "{{count}} jours",
     "by_squad_one": "sur {{count}} joueur",
-    "by_squad_other": "sur {{count}} joueurs"
+    "by_squad_other": "sur {{count}} joueurs",
+    "goals_one": "{{count}} but",
+    "goals_other": "{{count}} buts",
+    "assists_one": "{{count}} passe décisive",
+    "assists_other": "{{count}} passes décisives",
+    "minutes_one": "{{count}} minute jouée",
+    "minutes_other": "{{count}} minutes jouées"
   },
   "sw": {
     "rating": "Note",
@@ -1214,5 +1221,109 @@
     "match_basis_other": "Mesuré sur {{count}} matchs de chaque côté. Cela mesure les matchs passés, cela ne prédit pas le score",
     "match_expected_total": "Buts attendus — {{goals}} : les deux équipes réunies, par match.",
     "match_side_numbers": "Marque {{gf}}, encaisse {{ga}} par match"
+  },
+  "duel": {
+    "title": "Qui prédit le mieux",
+    "intro": "Trois prévisionnistes ont appris sur les mêmes matchs et ont été testés sur des matchs qu’ils n’avaient jamais vus. Découpage par le temps : on apprend sur le passé, on vérifie sur l’avenir. Ceci est une mesure, pas une publicité.",
+    "basis": "Vérifié sur {{n}} matchs, dont aucun n’a servi à l’apprentissage.",
+    "hit": "Juste",
+    "mae": "Erreur {{v}} but",
+    "coverage": "S’est prononcé sur {{v}} des matchs — se tait sur les autres",
+    "silent": "S’est tu",
+    "recent": "Derniers matchs",
+    "col_match": "Match",
+    "col_total": "Buts",
+    "legend": "✓ — a trouvé le bon côté de la ligne des 2,5 buts, ✗ — s’est trompé, — notre variante s’est tue.",
+    "baseline_title": "Points de repère",
+    "verdict": "Le résultat honnête : à l’erreur moyenne, aucun des trois ne bat la médiane. La seule chose qui marche, c’est le silence — notre variante refuse les matchs où les deux modèles divergent ou se tiennent tous deux sur la ligne, et se trompe nettement moins sur les autres.",
+    "failed": "Impossible de charger la mesure.",
+    "model": {
+      "own": "Notre variante",
+      "llm": "LLM",
+      "fly": "Cerveau de la drosophile",
+      "median": "Médiane",
+      "current": "Formule actuelle"
+    },
+    "what": {
+      "own": "Un mélange des deux modèles qui se tait quand ils divergent",
+      "llm": "Une tête linéaire entraînée sur neuf caractéristiques du match",
+      "fly": "Un réservoir : connexions figées, seule la sortie apprend — comme on lit le connectome de la mouche",
+      "median": "Annonce toujours le nombre de buts le plus fréquent",
+      "current": "Ce que l’application affiche aujourd’hui ; elle n’apprend pas"
+    },
+    "short": {
+      "own": "Nôtre",
+      "llm": "LLM",
+      "fly": "Mouche"
+    }
+  },
+  "spotlight": {
+    "title": "Le bruit contre le jeu",
+    "mode": {
+      "loud": "Plus de bruit que de jeu",
+      "quiet": "Plus de jeu que de bruit"
+    },
+    "intro": {
+      "loud": "De qui parle-t-on et à qui paie-t-on plus qu’il ne joue. La comparaison ne se fait qu’avec des joueurs du même âge et du même poste dans le même championnat : l’argent et l’attention ne se comparent pas d’un championnat à l’autre, ni un gardien à un attaquant sur les buts.",
+      "quiet": "Qui joue et marque plus qu’on n’en parle et qu’on ne le paie. Mêmes joueurs du même âge, même poste, même championnat."
+    },
+    "caveat": "C’est l’écart entre l’attention et le jeu, et NON une affirmation sur les intentions de qui que ce soit. L’écart ne distingue pas les causes : une blessure, un transfert, un début de saison et un vrai matraquage se ressemblent ici. En tête de cette liste s’est un jour trouvé un Ballon d’or qui avait manqué un an sur blessure au genou.",
+    "how": "L’attention, c’est la valeur marchande et les consultations de la page Wikipédia. Le jeu, ce sont les matchs, les buts et les passes décisives. Les deux chiffres donnent le rang parmi les joueurs du même poste dans le même championnat, de 0 à 100. Seuls apparaissent les joueurs dont nous avons collecté les statistiques : zéro match sans collecte est un trou chez nous, pas un banc chez eux.",
+    "attention": "Attention",
+    "output": "Jeu",
+    "played": "{{apps}} matchs · {{ga}} buts+passes",
+    "age_one": "{{count}} an",
+    "age_other": "{{count}} ans",
+    "pos": {
+      "goalkeeper": "Gardien",
+      "defender": "Défenseur",
+      "midfield": "Milieu",
+      "attack": "Attaquant"
+    },
+    "empty": "Personne ici pour l’instant : pas assez de joueurs du même poste pour comparer.",
+    "failed": "Impossible de charger."
+  },
+  "amateur": {
+    "title": "Championnats amateurs",
+    "intro": "Créez votre championnat, les équipes qui le composent et inscrivez-vous comme joueur. Le championnat n’apparaît dans aucune liste publique : pour inviter, donnez le code.",
+    "empty": "Aucun championnat pour l’instant. Créez le vôtre ou entrez avec un code.",
+    "create_title": "Nouveau championnat",
+    "league_name": "Nom du championnat",
+    "league_city": "Ville ou quartier (facultatif)",
+    "league_add": "Créer",
+    "league_failed": "Impossible de créer le championnat",
+    "join_title": "Entrer avec un code",
+    "code_placeholder": "CODE",
+    "code_go": "Chercher",
+    "code_not_found": "Aucun championnat avec ce code",
+    "code_title": "Code d’invitation",
+    "code_how": "Donnez-le à ceux que vous invitez. Vous seul le voyez.",
+    "team_name": "Nom de l’équipe",
+    "team_add": "Ajouter l’équipe",
+    "team_failed": "Impossible d’ajouter l’équipe",
+    "join_me": "M’inscrire",
+    "join_confirm": "S’inscrire",
+    "join_failed": "Impossible de s’inscrire",
+    "need_name": "Indiquez le nom à afficher",
+    "my_name": "Nom à afficher",
+    "shirt": "Numéro",
+    "leave": "quitter",
+    "back_to_list": "← Tous les championnats",
+    "logo_add": "logo",
+    "logo_failed": "Échec",
+    "logo_too_big": "Plus de 256 Ko",
+    "teams_one": "{{count}} équipe",
+    "teams_other": "{{count}} équipes",
+    "players_one": "{{count}} joueur",
+    "players_other": "{{count}} joueurs",
+    "squad_one": "{{count}} joueur",
+    "squad_other": "{{count}} joueurs"
+  },
+  "transfers_top": {
+    "title": "Les transferts les plus chers",
+    "show": "afficher",
+    "hide": "masquer",
+    "failed": "Impossible de charger les transferts",
+    "note": "Ici une ligne est un transfert, pas un joueur : la même personne peut y figurer plusieurs fois. Le montant d’un transfert et la valeur actuelle du joueur sont deux chiffres différents : Neymar a coûté 222 M € en 2017. Les transferts annoncés mais pas encore effectifs ne sont pas montrés."
   }
 }

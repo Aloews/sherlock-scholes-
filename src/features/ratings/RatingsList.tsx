@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ScopeFilter } from '@/shared/ui/ScopeFilter';
 import type { CollectionFilter } from '@/features/collection/collectionApi';
 import { useTranslation } from 'react-i18next';
+import { cardDisplayName } from '@/shared/lib/cardName';
 import { IconBallFootball } from '@tabler/icons-react';
 import {
   fetchRatings,
@@ -163,7 +164,7 @@ export function RatingsList({ limit }: RatingsListProps) {
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm truncate">{row.name}</p>
+            <p className="text-white text-sm truncate">{cardDisplayName({ name: row.name, name_en: row.name_en, category: 'player' }, i18n.language)}</p>
             <p className="text-brand-muted text-[11px] truncate">
               {/* Клуб собран из свидетельств и бывает устаревшим, поэтому
                   рядом всегда стоит число матчей окна — оно из этого же окна

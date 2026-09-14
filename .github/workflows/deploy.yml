@@ -85,7 +85,7 @@ jobs:
             echo "::error::нет секрета SUPABASE_ACCESS_TOKEN — выложить нечем"
             exit 1
           fi
-          KNOWN="assistant-bot digest-summary football-digest football-fixtures football-scores-espn livekit-token tg-pay"
+          KNOWN="amateur-logo assistant-bot digest-summary football-digest football-fixtures football-scores-espn livekit-token tg-pay"
           ON_DISK=$(ls -1 supabase/functions | sort | tr '\n' ' ')
           EXPECTED=$(echo $KNOWN | tr ' ' '\n' | sort | tr '\n' ' ')
           if [ "$ON_DISK" != "$EXPECTED" ]; then

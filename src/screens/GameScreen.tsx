@@ -18,7 +18,7 @@ import { useVoice } from '@/features/voice/VoiceProvider';
 import { voiceEnabled } from '@/features/voice/voiceApi';
 import { useSettingsStore } from '@/shared/store/settingsStore';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { playSound, isMuted, toggleMute } from '@/shared/lib/sounds';
+import { playSound, tickIntensity, TICK_FROM, isMuted, toggleMute } from '@/shared/lib/sounds';
 
 function MuteButton() {
   const [muted, setMuted] = useState(isMuted);
@@ -146,7 +146,7 @@ export function GameScreen() {
       // Silence while the clock is held. The countdown sounds mean "you are
       // running out of time", and a player waiting on their network is not.
       if (clockHeld) return;
-      if (rem > 0 && rem <= 10) playSound('tick');
+      if (rem > 0 && rem <= TICK_FROM) playSound('tick', { intensity: tickIntensity(rem) });
       if (rem === 0) playSound('gong');
     }, [clockHeld]),
   });

@@ -154,8 +154,6 @@ def get_json(url):
     return None
 
 
-
-
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -164,24 +162,36 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--refresh", action="store_true",
                     help="перезапросить и тех, у кого история уже собрана")
+    ap.add_argument("--stale-days", type=int, default=0,
+                    help="перезапросить тех, чья история старше N дней "
+                         "(дозой: сначала самые дорогие)")
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
 
-    # ⚠️ ЧИТАЕМ ЧЕРЕЗ all_rows: он валится, если страница не пришла. Молча
-    # укоротить список игроков значит объявить обход законченным на обрезке.
-    rows = all_rows("cards", {
-        "select": "id,name_en,transfermarkt_id,market_value_eur",
-        "category": "eq.player", "active": "is.true",
-        "transfermarkt_id": "not.is.null",
-        "market_value_eur": "gte.%d" % args.min_value,
-        "order": "market_value_eur.desc"})
-
-    if not args.refresh:
-        done = {r["tm_player_id"] for r in all_rows(
-            "player_transfer", {"select": "tm_player_id", "order": "tm_player_id"})}
-        rows = [r for r in rows if r["transfermarkt_id"] not in done]
+    # ⚠️ КОГО ОБХОДИТЬ — РЕШАЕТ БАЗА. Прежде скрипт читал `cards` целиком, а
+    # для дозы по свежести ещё и всю `player_transfer` (67 392 строки
+    # постранично) — и живой прогон ответил 504 Gateway Timeout, то есть доза
+    # не работала вовсе. Теперь отбор свёрнут в `transfers_to_refresh`, и
+    # оттуда приходит ровно доза.
+    #
+    # --refresh сохранён как был: «взять всех подряд, не глядя на свежесть».
+    if args.refresh:
+        rows = all_rows("cards", {
+            "select": "id,name_en,transfermarkt_id,market_value_eur",
+            "category": "eq.player", "active": "is.true",
+            "transfermarkt_id": "not.is.null",
+            "market_value_eur": "gte.%d" % args.min_value,
+            "order": "market_value_eur.desc"})
+    else:
+        rows = sb("rpc/transfers_to_refresh", "POST", body={
+            "p_min_value": args.min_value,
+            "p_stale_days": args.stale_days,
+            "p_limit": args.limit or 100000,
+        })
+        if rows is None:
+            raise SystemExit("transfers_to_refresh не ответила — обход отменён")
 
     if args.limit:
         rows = rows[:args.limit]

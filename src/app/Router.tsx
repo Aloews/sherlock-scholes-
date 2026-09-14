@@ -30,6 +30,9 @@ const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({
 const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
+const DuelScreen     = lazy(() => import('@/screens/DuelScreen').then((m) => ({ default: m.DuelScreen })));
+const SpotlightScreen = lazy(() => import('@/screens/SpotlightScreen').then((m) => ({ default: m.SpotlightScreen })));
+const AmateurScreen  = lazy(() => import('@/screens/AmateurScreen').then((m) => ({ default: m.AmateurScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
@@ -158,6 +161,9 @@ export function Router() {
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
       <Route path="/news"      element={<ProOnly><PageTransition><NewsScreen /></PageTransition></ProOnly>} />
+      <Route path="/duel"      element={<ProOnly><PageTransition><DuelScreen /></PageTransition></ProOnly>} />
+      <Route path="/spotlight" element={<ProOnly><PageTransition><SpotlightScreen /></PageTransition></ProOnly>} />
+      <Route path="/amateur"   element={<ProOnly><PageTransition><AmateurScreen /></PageTransition></ProOnly>} />
       {/* ⚠️ СТАРЫЕ АДРЕСА ВЕДУТ СРАЗУ В СВОЙ РАЗДЕЛ, а не в оглавление
           коллекции: перенаправление в оглавление читалось бы как «ссылка
           сломалась». Не удалены — на них ведут уже разосланные ссылки и

@@ -129,6 +129,19 @@ function record(name, ok, detail, control) {
 }
 
 // -------------------------------------------------------------- дайджест ---
+// ⚠️ РАЗДЕЛЫ ЗА ПОДПИСКОЙ ПРОВЕРЯЮТСЯ СЕРВИСНЫМ КЛЮЧОМ, И ЭТО НЕ ЛАЗЕЙКА.
+// `player_index` закрыт `require_pro()`: аноним получает 401. Проверять его
+// анонимом больше нельзя, а бросить проверку — значит потерять единственное
+// сквозное подтверждение, что рейтинг вообще считается. Сервисная роль — это
+// ключ владельца, он никогда не уезжает в браузер; им ходят бот и ночные
+// задания, и ворота его пропускают по построению.
+//
+// ⚠️ КЛЮЧА НЕТ — ПРОВЕРКА КРАСНАЯ, А НЕ ЗЕЛЁНАЯ. Молча пропустить раздел
+// значит получить ту самую зелёную пустоту, против которой написан этот файл.
+function serviceKey() {
+  return env('SUPABASE_SERVICE_KEY') || env('SUPABASE_KEY');
+}
+
 async function checkDigest() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -1036,9 +1049,13 @@ async function checkMetricHistory() {
 
 async function checkPlayerIndex() {
   const url = env('VITE_SUPABASE_URL');
-  const key = env('VITE_SUPABASE_ANON_KEY');
+  // player_index ушёл за подписку — см. serviceKey() выше.
+  const key = serviceKey();
   if (!url || !key) {
-    record('Общий рейтинг', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    record('Общий рейтинг', false,
+           key ? 'нет VITE_SUPABASE_URL в окружении'
+               : 'нет SUPABASE_KEY: раздел за подпиской, анонимом его не проверить',
+           'н/д');
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -1427,14 +1444,26 @@ async function checkScreenBudget() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
-  /** Вызов RPC anon-ключом: сколько миллисекунд и что вернулось. */
+  // ⚠️ ЭТИ ДВА RPC УШЛИ ЗА ПОДПИСКУ, и анонимом они теперь отвечают 401
+  // `pro_required`. Мерить их всё равно надо: у подписчика экран обязан
+  // открываться в срок, и порог здесь — про скорость, а не про доступ. Ключ
+  // владельца ворота пропускают по построению (см. serviceKey выше).
+  const PRO_FNS = new Set(['player_index', 'player_index_count']);
+  const proKey = serviceKey();
+  const authFor = (fn) => {
+    if (!PRO_FNS.has(fn) || !proKey) return auth;
+    return { apikey: proKey, Authorization: `Bearer ${proKey}`,
+             'Content-Type': 'application/json' };
+  };
+
+  /** Вызов RPC: сколько миллисекунд и что вернулось. */
   const timed = async (fn, body, select = '') => {
     const q = select ? `?select=${encodeURIComponent(select)}` : '';
     const t0 = Date.now();
     let r, parsed = null;
     try {
       r = await fetch(`${url}/rest/v1/rpc/${fn}${q}`, {
-        method: 'POST', headers: auth, body: JSON.stringify(body),
+        method: 'POST', headers: authFor(fn), body: JSON.stringify(body),
       });
       parsed = await r.json().catch(() => null);
     } catch (e) {
@@ -2258,8 +2287,18 @@ async function checkClubCharacter() {
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  // ⚠️ ПОРЯДОК И ПОЛНЫЙ ОБЪЁМ — НЕ ПЕДАНТИЗМ. Раньше здесь стоял `limit=400`
+  // БЕЗ order: PostgREST отдавал первые четыреста строк в физическом порядке
+  // таблицы, и контроль редкости ниже получал «атакующих 0 из 400» при 120 из
+  // 648 в самой таблице. То есть проверка краснела на ЗДОРОВЫХ данных — а это
+  // хуже пустой: по ней перестают смотреть.
+  //
+  // Предел поднят до тысячи (это потолок PostgREST по db-max-rows) и клубов
+  // сейчас 648. Перерастём тысячу — усечение вернётся, и заметит его строка
+  // «посчитан»: она печатает, сколько строк пришло.
   const rows = await fetch(
-    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits&limit=400`,
+    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits`
+    + `&order=club_key.asc&limit=1000`,
     { headers: auth },
   ).then((r) => (r.ok ? r.json().catch(() => null) : null));
   const list = Array.isArray(rows) ? rows : [];
@@ -2331,19 +2370,41 @@ async function checkCardValueTrend() {
              : 'card_value_trend не ответила',
          'ловит отозванный грант и опустевшую историю стоимостей');
 
-  // ⚠️ ИСТОРИЯ ОБЯЗАНА РАСТИ. Ночной снимок пишет ИЗМЕНЕНИЯ, и пока точка у
-  // карточки одна, роста не посчитать — это нормально СЕГОДНЯ и поломка через
-  // месяц. Проверка смотрит на ширину истории по всей таблице, а не по одной
-  // карточке: остановившийся снимок иначе не видно.
-  const span = await fetch(
-    `${url}/rest/v1/card_metric_history?select=taken_on&metric=eq.market_value&order=taken_on.desc&limit=1`,
-    { headers: auth },
+  // ⚠️ ЭТА ПРОВЕРКА БЫЛА НЕВЕРНОЙ И КРАСНЕЛА НА ЗДОРОВЫХ ДАННЫХ. Она брала
+  // последнюю запись `card_metric_history` и требовала, чтобы та была не
+  // старше трёх дней — то есть читала ИСТОРИЮ ИЗМЕНЕНИЙ как ежедневный
+  // снимок. А `snapshot_card_metrics` пишет строку ТОЛЬКО когда значение
+  // изменилось (`l.value is distinct from n.value`): стоимости с
+  // Transfermarkt меняются раз в месяц-полтора, и неделя без строк — это
+  // нормальная неделя, а не остановившееся задание.
+  //
+  // Замер: «последняя запись 2026-09-07, 7 дн. назад» — и при этом
+  // `card_metrics_today()` в ту же секунду отдавала 20 715 стоимостей. То
+  // есть источник был жив, а проверка семь дней кричала о поломке. Красная
+  // проверка на здоровых данных хуже пустой: по ней перестают смотреть.
+  //
+  // Смотреть надо на ЗАДАНИЕ, а не на данные: успевало ли оно отработать.
+  const runs = await fetch(
+    `${url}/rest/v1/rpc/snapshot_freshness`,
+    { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: '{}' },
   ).then((r) => (r.ok ? r.json().catch(() => null) : null));
-  const last = Array.isArray(span) && span[0] ? span[0].taken_on : null;
-  const days = last ? Math.round((Date.now() - Date.parse(last)) / 86400000) : 999;
-  record('Стоимость карточки: снимок свежий', days <= 3,
-         last ? `последняя запись истории ${last}, ${days} дн. назад` : 'история пуста',
+  const fresh = Array.isArray(runs) ? runs[0] : null;
+  const ranDays = fresh && fresh.last_success ? fresh.hours_ago / 24 : 999;
+  record('Снимок показателей: задание отработало', ranDays <= 1.5,
+         fresh && fresh.last_success
+           ? `snapshot_card_metrics отработал ${Math.round(fresh.hours_ago)} ч назад, `
+             + `у ${fresh.measured_today} карточек есть стоимость`
+           : 'нет ни одного успешного прогона',
          'ловит остановившийся snapshot_card_metrics — без него роста не будет никогда');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ К НЕМУ: задание может отрабатывать и писать
+  // пустоту. Источник обязан отдавать стоимости ПРЯМО СЕЙЧАС — иначе завтра
+  // задание запишет нули, и «отработало» будет правдой без смысла.
+  record('Снимок показателей: контроль — источник жив',
+         !!fresh && Number(fresh.measured_today) > 1000,
+         fresh ? `${fresh.measured_today} карточек со стоимостью в cards`
+               : 'snapshot_freshness не ответила',
+         'ловит живое задание над опустевшим источником');
 
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманная карточка обязана дать пусто.
   const bogus = await rpc('card_value_trend',
@@ -2431,9 +2492,13 @@ async function checkClubRoom() {
 // поймать мёртвый параметр, и каждый способен упасть отдельно.
 async function checkPlayerPositions() {
   const url = env('VITE_SUPABASE_URL');
-  const key = env('VITE_SUPABASE_ANON_KEY');
+  // player_index_count ушёл за подписку — см. serviceKey() выше.
+  const key = serviceKey();
   if (!url || !key) {
-    record('Категории игроков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    record('Категории игроков', false,
+           key ? 'нет VITE_SUPABASE_URL в окружении'
+               : 'нет SUPABASE_KEY: раздел за подпиской, анонимом его не проверить',
+           'н/д');
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -2781,8 +2846,416 @@ async function checkForecastQuality() {
          ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+
+// ------------------------------------------------ ворота подписки на RPC ---
+// ⚠️ СПРЯТАННЫЙ ЭКРАН НЕ ЗАКРЫВАЕТ ДАННЫЕ. Мини-приложение живёт на клиенте:
+// кто откроет devtools, позовёт RPC напрямую. Поэтому у платных данных стоят
+// СВОИ ворота — `require_pro()` читает подпись Telegram из заголовка
+// `x-tg-init-data`, проверяет её ботовым секретом и смотрит `is_pro`.
+//
+// ⚠️ ПРОВЕРЯЮТСЯ ОБЕ СТОРОНЫ, И ЭТО ВЕСЬ СМЫСЛ. «Аноним получил отказ» само по
+// себе ничего не доказывает: ровно так же выглядит сломанная функция, опечатка
+// в имени и отозванный грант. Рядом обязан стоять путь, который ПРОХОДИТ.
+async function checkProGate() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  const svc = serviceKey();
+  if (!url || !anon) {
+    record('Ворота Pro', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const call = async (key, headers = {}) => {
+    const r = await fetch(`${url}/rest/v1/rpc/player_index`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`,
+                 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ p_sort: 'value', p_lang: 'ru', p_limit: 3 }),
+    });
+    const body = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: body?.code, rows: Array.isArray(body) ? body.length : null };
+  };
+
+  const bare = await call(anon);
+  record('Ворота Pro: без подписи не пускают',
+         !bare.ok && bare.code === '42501',
+         bare.ok ? `аноним получил ${bare.rows} строк рейтинга БЕЗ подписки`
+                 : `HTTP ${bare.status}, код ${bare.code}`,
+         'ловит снятые ворота: рейтинг снова раздаётся даром');
+
+  // ⚠️ ПОДДЕЛКА ОБЯЗАНА НЕ ПРОЙТИ. Заголовок ставит кто угодно; защищает не он,
+  // а подпись ботовым секретом внутри него. `hash=deadbeef` это и проверяет.
+  const forged = await call(anon, { 'x-tg-init-data': 'user=%7B%22id%22%3A1%7D&hash=deadbeef' });
+  record('Ворота Pro: подделка не проходит',
+         !forged.ok && forged.code === '42501',
+         forged.ok ? `подделанная подпись дала ${forged.rows} строк`
+                   : `HTTP ${forged.status}, код ${forged.code}`,
+         'ловит ворота, которые смотрят на НАЛИЧИЕ заголовка, а не на его подпись');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: путь, который ОБЯЗАН пройти. Без него два отказа
+  // выше одинаково хорошо объясняются сломанной функцией.
+  if (!svc) {
+    record('Ворота Pro: контроль проходящего пути', false,
+           'нет SUPABASE_KEY — проверить, что ворота хоть кого-то пускают, нечем',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+    return;
+  }
+  const pass = await call(svc);
+  record('Ворота Pro: контроль проходящего пути',
+         pass.ok && pass.rows > 0,
+         pass.ok ? `сервисная роль прошла, ${pass.rows} строк`
+                 : `и сервисная роль не прошла: HTTP ${pass.status}, код ${pass.code}`,
+         pass.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+/**
+ * ДАШБОРД СОСТЯЗАНИЯ ПРОГНОЗИСТОВ.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ НЕ ДОСТУПНОСТЬ, А ЧЕСТНОСТЬ ЧИСЕЛ. Дашборд врёт не
+ * падая: покрытие, потерянное по дороге, превращает «66 % на четырёх матчах
+ * из десяти» в «66 %» — и модель, отвечающая на лёгкие вопросы, встаёт рядом
+ * с теми, кто отвечает на все.
+ */
+async function checkForecastDuel() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Состязание прогнозистов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const rpc = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const models = await rpc('forecast_duel_models', {});
+  const by = Object.fromEntries(models.rows.map((m) => [m.model, m]));
+  record('Состязание: все пять участников на месте',
+         ['own', 'llm', 'fly', 'median', 'current'].every((k) => by[k]),
+         models.ok ? `пришло: ${models.rows.map((m) => m.model).join(', ') || 'ничего'}`
+                   : `HTTP ${models.status}, код ${models.code}`,
+         'ловит пропавшего участника: экран показал бы состязание двоих как состязание троих');
+
+  // ⚠️ ГЛАВНОЕ ЧИСЛО РАЗДЕЛА. «Свой вариант» тем и работает, что молчит; если
+  // покрытие вдруг стало единицей, значит молчание потерялось по дороге — а
+  // его доля угаданных считается ТОЛЬКО по названным матчам и без молчания
+  // становится неправдой.
+  const own = by.own;
+  record('Состязание: свой вариант действительно молчит',
+         !!own && Number(own.coverage) > 0.2 && Number(own.coverage) < 0.95,
+         own ? `назвал ${(Number(own.coverage) * 100).toFixed(1)} % матчей`
+             : 'своего варианта нет вовсе',
+         'ловит потерянное молчание: 66 % на части матчей встали бы рядом с 58 % на всех');
+
+  record('Состязание: у остальных покрытие ровно единица',
+         ['llm', 'fly', 'median', 'current'].every((k) => by[k] && Number(by[k].coverage) === 1),
+         ['llm', 'fly', 'median', 'current']
+           .map((k) => `${k} ${by[k] ? by[k].coverage : '—'}`).join(', '),
+         'ловит молчание, приписанное тому, кто отвечает на все матчи');
+
+  record('Состязание: замер на живой выборке, а не на десятке матчей',
+         !!own && own.matches >= 200,
+         own ? `${own.matches} матчей` : 'нет данных',
+         'ловит замер на горстке матчей, где любой процент — совпадение');
+
+  const recent = await rpc('forecast_duel_recent', { p_lang: 'ru', p_limit: 60 });
+  const named = recent.rows.filter((r) => r.home_name && r.away_name).length;
+  record('Состязание: матчи подписаны клубами',
+         recent.ok && recent.rows.length > 0 && named === recent.rows.length,
+         recent.ok ? `${named} из ${recent.rows.length} строк с названиями клубов`
+                   : `HTTP ${recent.status}, код ${recent.code}`,
+         'ловит столбик галочек без подписей: непонятно, к какому матчу прогноз');
+
+  // ⚠️ МОЛЧАНИЕ — НЕ ПРОМАХ. Записать его как false значило бы наказать
+  // модель за то, ради чего она сделана, и показать на экране 26 % вместо 66 %.
+  const silent = recent.rows.filter((r) => !r.own_called);
+  record('Состязание: промолчал — значит null, а не «не угадал»',
+         silent.length > 0 && silent.every((r) => r.hit_own === null),
+         silent.length === 0 ? 'среди последних матчей ни одного молчания — проверять нечего'
+                             : `${silent.length} молчаний, все null`,
+         silent.length === 0 ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'ловит молчание, засчитанное промахом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: попадание обязано совпадать со стороной порога,
+  // пересчитанной здесь заново. Если сервер и проверка считают его по-разному,
+  // одна из галочек на экране врёт.
+  const called = recent.rows.filter((r) => r.own_called);
+  const agree = called.every((r) => r.hit_own === ((Number(r.p_own) > 2.5) === (r.total > 2.5)));
+  record('Состязание: контроль — галочка пересчитана независимо',
+         called.length > 0 && agree,
+         called.length === 0 ? 'названных матчей нет — пересчитывать нечего'
+                             : `${called.length} названных, расхождений ${agree ? 0 : 'ЕСТЬ'}`,
+         called.length === 0 ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
+/**
+ * ГРОМКОСТЬ ПРОТИВ ИГРЫ.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ ТРИ ОШИБКИ, КОТОРЫЕ БЫЛИ СДЕЛАНЫ ПРИ ПОСТРОЕНИИ
+ * ЭТОЙ ФУНКЦИИ, и каждая называла бы живых людей в лицо: игроки без
+ * собранной статистики выглядели как не игравшие, вратари — как «громче,
+ * чем играет» (голов у них структурно ноль), а минуты стояли основой
+ * игрового времени при том, что их нет у половины строк.
+ */
+async function checkSpotlight() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Громкость против игры', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const call = async (mode, limit = 25) => {
+    const r = await fetch(`${url}/rest/v1/rpc/player_spotlight`, {
+      method: 'POST',
+      headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_lang: 'ru', p_limit: limit, p_mode: mode }),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const loud = await call('loud');
+  record('Громкость: список приходит', loud.ok && loud.rows.length >= 10,
+         loud.ok ? `${loud.rows.length} строк` : `HTTP ${loud.status}, код ${loud.code}`,
+         'ловит отозванный грант и опустевшую статистику матчей');
+
+  // ⚠️ ОШИБКА ПЕРВАЯ: игрок без собранной статистики попадал в список как «не
+  // игравший». Первые восемь строк были такими, среди них Эсекьель Барко,
+  // который весь год играет.
+  const noApps = loud.rows.filter((r) => !(Number(r.apps) > 0));
+  record('Громкость: у каждого есть сыгранные матчи', loud.rows.length > 0 && noApps.length === 0,
+         noApps.length === 0 ? 'ноль строк без матчей'
+                             : `${noApps.length} строк с нулём матчей: ${noApps[0]?.name_en}`,
+         'ловит возврат к left join: список дыр в сборе вместо списка игроков');
+
+  // ⚠️ ОШИБКА ВТОРАЯ: без сравнения внутри амплуа КАЖДЫЙ вратарь попадал в
+  // «громче, чем играет» — голы у него структурно ноль.
+  const keepers = loud.rows.filter((r) => r.player_position === 'goalkeeper').length;
+  record('Громкость: вратари не заполняют список',
+         loud.rows.length > 0 && keepers / loud.rows.length < 0.4,
+         `вратарей ${keepers} из ${loud.rows.length}`,
+         'ловит пропавшее сравнение внутри амплуа: список обвинял бы за амплуа');
+
+  record('Громкость: перцентиль считан не из горстки',
+         loud.rows.length > 0 && loud.rows.every((r) => Number(r.peers) >= 8),
+         loud.rows.length ? `наименьшая группа ровесников ${Math.min(...loud.rows.map((r) => Number(r.peers)))}`
+                          : 'строк нет',
+         'ловит «выше девяноста процентов», сказанное про семерых');
+
+  record('Громкость: разрыв сходится с двумя числами',
+         loud.rows.length > 0 &&
+         loud.rows.every((r) => Math.abs((Number(r.attention) - Number(r.output)) - Number(r.gap)) < 0.002),
+         'разрыв пересчитан независимо',
+         'ловит разъехавшиеся внимание, игру и разрыв');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: обратный режим обязан давать ДРУГИХ людей и
+  // разрыв с другим знаком. Одинаковые списки значат, что p_mode не работает.
+  const quiet = await call('quiet');
+  const loudIds = new Set(loud.rows.map((r) => r.card_id));
+  const overlap = quiet.rows.filter((r) => loudIds.has(r.card_id)).length;
+  record('Громкость: контроль — обратный режим даёт других',
+         quiet.ok && quiet.rows.length > 0 && overlap === 0 &&
+         quiet.rows.every((r) => Number(r.gap) <= 0),
+         quiet.ok ? `пересечение ${overlap}, разрывы ${quiet.rows.every((r) => Number(r.gap) <= 0) ? 'отрицательные' : 'РАЗНОЗНАКОВЫЕ'}`
+                  : `HTTP ${quiet.status}, код ${quiet.code}`,
+         'ловит не работающий p_mode: обе вкладки показывали бы одно и то же');
+}
+
+/**
+ * ЛЮБИТЕЛЬСКИЕ ЛИГИ — единственный раздел, куда пишут пользователи.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ НЕ РАБОТУ, А ЗАКРЫТОСТЬ. Проверить, что лига
+ * заводится, отсюда нельзя: для этого нужна настоящая подпись Telegram, а
+ * подделать её мы не можем и не должны. Зато можно проверить то, что важнее:
+ * что БЕЗ подписи не заводится ничего и что таблицы не открыты напрямую.
+ * Анонимный ключ лежит в каждом браузере, и один забытый грант здесь означает
+ * чужие лиги, правимые кем угодно.
+ */
+async function checkAmateur() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Любительские лиги', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const h = { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' };
+  const rpc = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST', headers: h, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, hint: j?.hint };
+  };
+
+  const bad = 'user=%7B%22id%22%3A1%7D&auth_date=1&hash=deadbeef';
+  const mk = await rpc('amateur_create_league', { p_init_data: bad, p_name: 'проверка' });
+  record('Любительские лиги: без подписи лига не заводится',
+         !mk.ok && mk.code === '42501',
+         mk.ok ? 'ЛИГА ЗАВЕДЕНА С ПОДДЕЛЬНОЙ ПОДПИСЬЮ' : `HTTP ${mk.status}, код ${mk.code}`,
+         'ловит снятую проверку подписи: чужие лиги от чужого имени');
+
+  const join = await rpc('amateur_join_team', {
+    p_init_data: bad, p_team_id: '11111111-1111-1111-1111-111111111111',
+    p_display_name: 'проверка',
+  });
+  record('Любительские лиги: без подписи игрок не записывается',
+         !join.ok && join.code === '42501',
+         join.ok ? 'ИГРОК ЗАПИСАН С ПОДДЕЛЬНОЙ ПОДПИСЬЮ' : `HTTP ${join.status}, код ${join.code}`,
+         'ловит запись человека, который о лиге не знает — с именем и номером');
+
+  // ⚠️ ТАБЛИЦЫ НЕ ОТДАЮТСЯ НАПРЯМУЮ. Один грант на select здесь — и коды
+  // приглашений всех лиг читаются одним запросом.
+  for (const table of ['amateur_league', 'amateur_team', 'amateur_player']) {
+    const r = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, { headers: h });
+    record(`Любительские лиги: таблица ${table} закрыта`,
+           r.status === 401 || r.status === 403 || r.status === 404,
+           `HTTP ${r.status}`,
+           'ловит грант на чтение: коды приглашений всех лиг одним запросом');
+  }
+
+  // ⚠️ ЛОГОТИП: ФУНКЦИЯ ОТКАЗЫВАЕТ ДО ЕДИНОГО БАЙТА НА ДИСКЕ.
+  const logo = async (body) => {
+    const r = await fetch(`${url}/functions/v1/amateur-logo`, {
+      method: 'POST', headers: h, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { status: r.status, error: j?.error };
+  };
+  const uuid = '11111111-1111-1111-1111-111111111111';
+  const png = 'iVBORw0KGgoAAAAA';
+  const noSig = await logo({ kind: 'league', id: uuid, data: png });
+  record('Логотип: без подписи не принимается',
+         noSig.status === 401 && noSig.error === 'no_signature',
+         `HTTP ${noSig.status}, ${noSig.error}`,
+         'ловит открытую загрузку: публичная корзина, куда пишет кто угодно');
+
+  const badSig = await logo({ initData: bad, kind: 'league', id: uuid, data: png });
+  record('Логотип: подделанная подпись не принимается',
+         badSig.status === 401 && badSig.error === 'bad_signature',
+         `HTTP ${badSig.status}, ${badSig.error}`,
+         'ловит проверку по НАЛИЧИЮ подписи вместо её сходимости');
+
+  const badId = await logo({ initData: bad, kind: 'league', id: 'not-a-uuid', data: png });
+  record('Логотип: путь берётся не из запроса',
+         badId.status === 400 && badId.error === 'bad_id',
+         `HTTP ${badId.status}, ${badId.error}`,
+         'ловит имя файла из запроса — запись поверх чужого логотипа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: функция вообще живая и отвечает по делу, а не
+  // всё подряд отвергает, будучи, например, не выложенной.
+  const wrongMethod = await fetch(`${url}/functions/v1/amateur-logo`, { method: 'GET', headers: h });
+  const wm = await wrongMethod.json().catch(() => null);
+  record('Логотип: контроль — функция выложена и отвечает',
+         wrongMethod.status === 405 && wm?.error === 'method_not_allowed',
+         `HTTP ${wrongMethod.status}, ${wm?.error}`,
+         wrongMethod.status === 405 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+/**
+ * ТРАНСФЕРЫ: РАСПИСАНИЕ И РЕЙТИНГ ПЕРЕХОДОВ.
+ *
+ * ⚠️ ГЛАВНОЕ ЗДЕСЬ — ПРОВЕРКА, ЧТО ИСТОРИЯ ВООБЩЕ ОБНОВЛЯЕТСЯ. Она собиралась
+ * один раз и навсегда: скрипт был, расписания не было, а его отбор «у кого
+ * истории ещё нет» пропускал всех, у кого она есть. Январский переход
+ * человека, собранного в сентябре, не пришёл бы никогда.
+ */
+async function checkTransfers() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  const svc = serviceKey();
+  if (!url || !anon) {
+    record('Трансферы', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const rpc = async (fn, body, key = anon) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const top = await rpc('top_transfers', { p_lang: 'ru', p_limit: 20 });
+  record('Переходы: рейтинг приходит', top.ok && top.rows.length >= 10,
+         top.ok ? `${top.rows.length} строк, дороже всех ${
+           top.rows[0] ? Math.round(Number(top.rows[0].fee_eur) / 1e6) + ' млн' : '—'}`
+                : `HTTP ${top.status}, код ${top.code}`,
+         'ловит отозванный грант и опустевшую историю переходов');
+
+  record('Переходы: по убыванию суммы',
+         top.rows.length > 1 &&
+         top.rows.every((r, i) => i === 0 || Number(top.rows[i - 1].fee_eur) >= Number(r.fee_eur)),
+         'порядок проверен независимо',
+         'ловит потерянный order by: «самые дорогие» перестали бы быть самыми дорогими');
+
+  // ⚠️ ОБЪЯВЛЕННЫЕ ЗАРАНЕЕ НЕ СЧИТАЮТСЯ СОСТОЯВШИМИСЯ. В таблице есть строки
+  // с датой 2027-07-01, и без отсечения они бы возглавили рейтинг сделками,
+  // которых ещё не было.
+  const today = new Date().toISOString().slice(0, 10);
+  const future = top.rows.filter((r) => r.moved_on > today);
+  record('Переходы: будущее не попадает в состоявшиеся', future.length === 0,
+         future.length === 0 ? 'ни одной даты из будущего'
+                             : `${future.length} строк с датой позже сегодня`,
+         'ловит снятое отсечение: рейтинг возглавили бы несостоявшиеся сделки');
+
+  record('Переходы: у каждой строки есть клубы',
+         top.rows.length > 0 && top.rows.every((r) => r.from_club && r.to_club),
+         `${top.rows.filter((r) => r.from_club && r.to_club).length} из ${top.rows.length}`,
+         'ловит переход «ниоткуда в никуда»: сумма без сторон ничего не значит');
+
+  if (!svc) {
+    record('Переходы: доза обновления считается', false,
+           'нет SUPABASE_KEY — отбор служебный, анониму он закрыт',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+    return;
+  }
+
+  // ⚠️ ОТБОР ОБЯЗАН БРАТЬ УСТАРЕВШИХ, А НЕ ТОЛЬКО НОВИЧКОВ. Без этого
+  // «обновление раз в квартал» — пустые слова.
+  const stale = await rpc('transfers_to_refresh',
+                          { p_min_value: 600000, p_stale_days: 90, p_limit: 150 }, svc);
+  record('Переходы: доза обновления считается',
+         stale.ok && stale.rows.length > 0,
+         stale.ok ? `${stale.rows.length} игроков к обходу за ночь`
+                  : `HTTP ${stale.status}, код ${stale.code}`,
+         'ловит сломанный отбор: обход шёл бы вхолостую и история замерла бы');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: срок годности обязан ЧТО-ТО МЕНЯТЬ. «Старше
+  // суток» — это почти все собранные, «старше ста лет» — никто, значит одни
+  // новички. Числа обязаны разойтись.
+  //
+  // ⚠️ ПРЕДЕЛ СНЯТ НАРОЧНО, И ЭТО НЕ МЕЛОЧЬ. Первая версия контроля брала обе
+  // стороны с `p_limit: 150` и сравнивала 150 со 150 — то есть сравнивала два
+  // упора в потолок и краснела на здоровой функции. И первая пара сроков (90
+  // дней против 100 лет) тоже не различала: последний сбор был шесть дней
+  // назад, устаревших не было вовсе, обе стороны давали 748 новичков.
+  //
+  // ⚠️ «Старше суток» приходит УСЕЧЁННЫМ до 1000 строк — это db-max-rows
+  // PostgREST, а не наш p_limit. Для контроля этого довольно (1000 > 748, и
+  // стороны расходятся), но читать это число как настоящее количество нельзя.
+  const many = await rpc('transfers_to_refresh',
+                         { p_min_value: 600000, p_stale_days: 1, p_limit: 100000 }, svc);
+  const few  = await rpc('transfers_to_refresh',
+                         { p_min_value: 600000, p_stale_days: 36500, p_limit: 100000 }, svc);
+  const works = many.ok && few.ok && few.rows.length < many.rows.length;
+  record('Переходы: контроль — срок годности действительно читается', works,
+         `старше суток ${many.rows.length}${many.rows.length === 1000 ? ' (усечено PostgREST)' : ''}, `
+         + `старше ста лет ${few.rows.length}`,
+         works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkStatsCoverage();
+await checkProGate();
 await checkForecastQuality();
+await checkForecastDuel();
+await checkSpotlight();
+await checkAmateur();
+await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();
