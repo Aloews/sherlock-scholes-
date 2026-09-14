@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconStar, IconCheck, IconCrown, IconLock,
@@ -20,8 +20,18 @@ import { PRO_PRICE_STARS, PRO_FRAMES, FRAME_COLOR } from '@/shared/lib/pro';
 // and read back from the server-validated proStore — never trusted from here.
 export function ProScreen() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { t } = useTranslation();
   const isPro = useProStore((s) => s.isPro);
+  // ⚠️ ПРИШЁЛ С ЗАКРЫТОГО ЭКРАНА — СКАЖИ ОБ ЭТОМ. Ворота отправляют сюда с
+  // `?from=<путь>`; без этой строки человек, ткнувший в «Матчи», оказывается на
+  // незнакомой витрине и не понимает, почему его сюда выкинуло.
+  //
+  // ⚠️ `from` — ВНЕШНЯЯ СТРОКА, и на экран она не попадает. Показывается
+  // только ФАКТ перехода, а не её содержимое: иначе адрес вида
+  // `/pro?from=<что угодно>` рисовал бы чужой текст на нашей витрине.
+  const cameFromLocked = params.get('from') !== null && !isPro;
+
   const setStatus = useProStore((s) => s.setStatus);
   const { proFrame, setProFrame } = useSettingsStore();
   const [buying, setBuying] = useState(false);
@@ -31,6 +41,7 @@ export function ProScreen() {
     t('pro.benefit_legends'),
     t('pro.benefit_all'),
     t('pro.benefit_cosmetics'),
+    t('pro.benefit_sections'),
     t('pro.benefit_forever'),
   ];
 
@@ -84,6 +95,17 @@ export function ProScreen() {
           <h1 className="ds-display text-white text-2xl font-black">{t('pro.title')}</h1>
           <p className="text-brand-muted text-sm">{t('pro.subtitle')}</p>
         </div>
+
+        {cameFromLocked && (
+          <div
+            className="w-full max-w-sm mb-4 rounded-xl border border-brand-accent/40 px-4 py-3
+                       flex items-start gap-2.5"
+            style={{ backgroundColor: 'rgba(255,210,74,0.08)' }}
+          >
+            <IconLock size={16} stroke={1.9} className="text-brand-accent shrink-0 mt-0.5" />
+            <p className="text-white text-[12.5px] leading-snug">{t('pro.locked_hint')}</p>
+          </div>
+        )}
 
         {/* Benefits */}
         <div className="ds-panel w-full max-w-sm bg-brand-surface rounded-2xl border border-brand-border p-4 space-y-3">

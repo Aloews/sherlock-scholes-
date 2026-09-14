@@ -19,6 +19,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { SoccerWikiSquad } from '@/features/soccerwiki/SoccerWikiSquad';
 import { ClubNews } from '@/features/clubs/ClubNews';
+import { ClubRoom, type QuotedNews } from '@/features/clubs/ClubRoom';
 import { fetchSoccerWikiSquad } from '@/features/soccerwiki/soccerwikiApi';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatEur } from '@/shared/lib/money';
@@ -54,6 +55,9 @@ export function ClubScreen() {
   // Отдельным запросом: он дополняет экран и ничего на нём не переписывает.
   const [character, setCharacter] = useState<ClubCharacter | null>(null);
   const [matches, setMatches] = useState<LoadState<ClubMatchRow[]>>(LOADING);
+  // Новость, которую понесли в комнату. Живёт на экране, а не внутри
+  // комнаты: приносят её из ленты выше, то есть из соседнего блока.
+  const [quoted, setQuoted] = useState<QuotedNews | null>(null);
   const [fixtures, setFixtures] = useState<LoadState<ClubFixtureRow[]>>(LOADING);
   // Какой из ответов про состав показан. См. переключатель ниже.
   const [squadView, setSquadView] = useState<'ours' | 'sw'>('ours');
@@ -413,7 +417,12 @@ export function ClubScreen() {
             {/* Новости именно об этой команде — то, ради чего в фан-клуб и
                 вступают. Стоят ПОСЛЕ состава и ПЕРЕД матчами: состав отвечает
                 «кто это», новости — «что с ними сейчас», матчи — «что было». */}
-            <ClubNews clubKey={key} />
+            <ClubNews clubKey={key} onDiscuss={setQuoted} />
+
+            {/* Комната болельщиков — то, чего на экране не было: место, где о
+                составе и новостях ГОВОРЯТ. Стоит сразу под новостями, потому
+                что «обсудить» из ленты ведёт именно сюда. */}
+            <ClubRoom clubKey={key} quoted={quoted} onClearQuote={() => setQuoted(null)} />
 
             {/* Последние матчи */}
             {matchRows.length > 0 && (

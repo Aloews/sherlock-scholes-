@@ -105,7 +105,6 @@
     "squad_as_of": "Squad as of {{date}} — from the players’ articles, not live",
     "matches_link": "Upcoming matches",
     "fantasy_link": "Fantasy league",
-    "chess_link": "Football chess",
     "alias_link": "Football Alias",
     "digest_link": "Goals & moments",
     "news_link": "News",
@@ -262,7 +261,9 @@
     "frame_default": "Default",
     "frame_gold": "Gold",
     "frame_purple": "Purple",
-    "back": "Back"
+    "back": "Back",
+    "locked_hint": "This section opens with Pro. The football Alias itself stays free — always.",
+    "benefit_sections": "Every section: matches, ratings, clubs, fantasy and mini-games"
   },
   "tutorial": {
     "title_1": "Create a Room",
@@ -859,9 +860,7 @@
     "summary_loading": "Writing the recap…",
     "summary_failed": "The recap didn't come together. Try again.",
     "summary_quiet": "No topics came together today — there's nothing to recap.",
-    "summary_refused": "The model declined to recap these topics.",
-    "live": "On now",
-    "live_official": "official channel"
+    "summary_refused": "The model declined to recap these topics."
   },
   "arena": {
     "title": "Arena",
@@ -1018,7 +1017,18 @@
     "squad_ours": "Club roster",
     "news": "Team news",
     "manager": "Manager",
-    "now": "Now"
+    "room": "Fan room",
+    "room_empty": "Quiet in here. Say the first word.",
+    "room_placeholder": "What do you make of the team?",
+    "room_send": "Send",
+    "room_delete": "Remove",
+    "room_anon": "Supporter",
+    "room_discuss": "Discuss",
+    "room_clear_quote": "Drop the article",
+    "room_too_fast": "Too often. Wait a few seconds.",
+    "room_too_long": "Too long: 500 characters at most.",
+    "room_unknown_club": "No such team.",
+    "room_failed": "Not sent. Try again."
   },
   "clubs": {
     "title": "Clubs",
@@ -1087,6 +1097,13 @@
     "sort_countries": "Countries played in",
     "sort_cards": "Yellows and reds",
     "sort_young": "Youngest",
+    "position_all": "All",
+    "position": {
+      "goalkeeper": "Goalkeepers",
+      "defender": "Defenders",
+      "midfield": "Midfielders",
+      "attack": "Forwards"
+    },
     "continent_all": "All continents",
     "continent": {
       "europe": "Europe",
@@ -1185,18 +1202,16 @@
     "match_flow_closed": "Tight game",
     "match_flow_balanced": "Even flow",
     "match_flow_open": "Open game",
+    "match_expected_vs": "Expected goals: {{goals}} for both sides. Usual — {{median}}.",
+    "match_side_ranks": "attack above {{attack}}% of clubs, defence above {{defence}}%",
+    "form_w": "W",
+    "form_d": "D",
+    "form_l": "L",
     "match_coach": "Coach",
     "match_writing": "In the news",
     "match_unknown": "Character not measured: one of the teams has played too few matches.",
-    "match_no_injuries": "No source of ours has injuries or board demands — so they are not shown.",
     "match_basis_one": "Measured over {{count}} match on each side. This measures past games, it does not predict the score",
     "match_basis_other": "Measured over {{count}} matches on each side. This measures past games, it does not predict the score",
-    "match_says_goals_low": "Expect a low-scoring match.",
-    "match_says_goals_mid": "About as many goals as in an average match.",
-    "match_says_goals_high": "The match promises goals.",
-    "match_says_flow_closed": "Both sides play it safe — expect a tight game.",
-    "match_says_flow_balanced": "No lean either way: neither all-out attack nor a shell.",
-    "match_says_flow_open": "Both play open — end-to-end football.",
     "match_expected_total": "Expected goals — {{goals}}: that is both teams together, per match.",
     "match_side_numbers": "Scores {{gf}}, concedes {{ga}} per match"
   }

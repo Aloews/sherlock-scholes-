@@ -11,8 +11,8 @@ import { Chip } from '@/shared/ui/Chip';
 import { formatSortValue } from './indexSortValue';
 import {
   fetchPlayerIndex, fetchPlayerIndexCount,
-  CONTINENTS, INDEX_SORTS,
-  type Continent, type IndexSort, type PlayerIndexRow,
+  CONTINENTS, INDEX_SORTS, POSITIONS,
+  type Continent, type IndexSort, type PlayerIndexRow, type PlayerPosition,
 } from './ratingsApi';
 
 /**
@@ -49,17 +49,23 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   // значений и вопрос другого масштаба. Смешать их в один ряд значит утопить
   // пять кнопок в списке из сотен клубов.
   const [continent, setContinent] = useState<Continent | null>(null);
+  // ⚠️ АМПЛУА — РАЗРЕЗ, А НЕ ЕЩЁ ОДИН ПОКАЗАТЕЛЬ. Владелец: «разбей всех
+  // игроков по категориям, дай им ранг». Ранг у списка был всегда — место в
+  // общем порядке; не было категорий, и «3820-й игрок» не говорит ничего,
+  // тогда как «12-й нападающий» говорит всё. Поэтому это кнопки ОТБОРА: они
+  // не меняют показатель, они сужают, среди кого считается место.
+  const [position, setPosition] = useState<PlayerPosition | null>(null);
   const [rows, setRows] = useState<LoadState<PlayerIndexRow[]>>(LOADING);
   const [total, setTotal] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setRows(LOADING);
-    void fetchPlayerIndex(sort, { ...filter, continent }, i18n.language).then((r) => {
+    void fetchPlayerIndex(sort, { ...filter, continent, position }, i18n.language).then((r) => {
       if (!cancelled) setRows(r);
     });
     return () => { cancelled = true; };
-  }, [sort, filter, continent, i18n.language]);
+  }, [sort, filter, continent, position, i18n.language]);
 
   // ⚠️ ОТДЕЛЬНЫМ ЗАПРОСОМ, А НЕ PROMISE.ALL. Знаменатель «из скольких» нужен
   // подписи, а не списку; экран, ждущий по самому медленному из двух, уже
@@ -67,11 +73,11 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   useEffect(() => {
     let cancelled = false;
     setTotal(null);
-    void fetchPlayerIndexCount(sort, { ...filter, continent }).then((r) => {
+    void fetchPlayerIndexCount(sort, { ...filter, continent, position }).then((r) => {
       if (!cancelled && r.status === 'ok') setTotal(r.data);
     });
     return () => { cancelled = true; };
-  }, [sort, filter, continent]);
+  }, [sort, filter, continent, position]);
 
   const all = rows.status === 'ok' ? rows.data : [];
   const shown = limit == null ? all : all.slice(0, limit);
@@ -79,6 +85,33 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
   return (
     <div className="space-y-4">
       <ScopeFilter value={filter} onChange={setFilter} />
+
+      {/* Амплуа — четыре категории, на которые делятся все игроки. Стоит ВЫШЕ
+          континентов: «кто лучший нападающий» спрашивают чаще, чем «кто лучший
+          в Южной Америке», а первый ряд читают первым.
+
+          ⚠️ КНОПКИ «БЕЗ АМПЛУА» ЗДЕСЬ НЕТ, И ЭТО РЕШЕНИЕ. Амплуа неизвестно у
+          1 679 карточек из 25 508 — у них нет строки ни в заявке клуба, ни в
+          составе Soccer Wiki. Кнопка «без амплуа» предлагала бы смотреть
+          список, собранный по признаку «мы не знаем», — это не категория
+          игроков, а дыра в данных. Они видны там, где и должны: в «Всех». */}
+      <div className="-mx-4 px-4 overflow-x-auto">
+        <div className="flex gap-1.5 w-max pb-0.5">
+          <Chip
+            label={t('index.position_all')}
+            selected={position === null}
+            onClick={() => { hapticImpact('light'); setPosition(null); }}
+          />
+          {POSITIONS.map((p) => (
+            <Chip
+              key={p}
+              label={t(`index.position.${p}`)}
+              selected={position === p}
+              onClick={() => { hapticImpact('light'); setPosition(p); }}
+            />
+          ))}
+        </div>
+      </div>
 
       {/* Континенты. «Все» — не отдельное значение, а снятый выбор: кнопка
           «все континенты» рядом с пятью континентами читалась бы как шестой. */}

@@ -105,7 +105,6 @@
     "squad_as_of": "Plantilla a {{date}} — de los artículos de los jugadores, no en directo",
     "matches_link": "Próximos partidos",
     "fantasy_link": "Liga fantasy",
-    "chess_link": "Ajedrez futbolístico",
     "alias_link": "Alias futbolero",
     "digest_link": "Goles y jugadas",
     "news_link": "Noticias",
@@ -262,7 +261,9 @@
     "frame_default": "Predeterminado",
     "frame_gold": "Oro",
     "frame_purple": "Púrpura",
-    "back": "Atrás"
+    "back": "Atrás",
+    "locked_hint": "Esta sección se abre con Pro. El Alias futbolístico sigue siendo gratis, siempre.",
+    "benefit_sections": "Todas las secciones: partidos, clasificaciones, clubes, fantasy y minijuegos"
   },
   "tutorial": {
     "title_1": "Crea una sala",
@@ -859,9 +860,7 @@
     "summary_loading": "Escribiendo el resumen…",
     "summary_failed": "No se pudo crear el resumen. Inténtalo de nuevo.",
     "summary_quiet": "Hoy no se formó ningún tema: no hay nada que resumir.",
-    "summary_refused": "El modelo no quiso resumir estos temas.",
-    "live": "En directo",
-    "live_official": "canal oficial"
+    "summary_refused": "El modelo no quiso resumir estos temas."
   },
   "arena": {
     "title": "Arena",
@@ -1018,7 +1017,18 @@
     "squad_ours": "Plantilla oficial",
     "news": "Noticias del equipo",
     "manager": "Entrenador",
-    "now": "Ahora"
+    "room": "Sala de la afición",
+    "room_empty": "Aquí hay silencio. Di la primera palabra.",
+    "room_placeholder": "¿Qué te parece el equipo?",
+    "room_send": "Enviar",
+    "room_delete": "Quitar",
+    "room_anon": "Aficionado",
+    "room_discuss": "Comentar",
+    "room_clear_quote": "Quitar la noticia",
+    "room_too_fast": "Demasiado seguido. Espera unos segundos.",
+    "room_too_long": "Demasiado largo: 500 caracteres como máximo.",
+    "room_unknown_club": "No existe ese equipo.",
+    "room_failed": "No se envió. Inténtalo de nuevo."
   },
   "clubs": {
     "title": "Clubes",
@@ -1087,6 +1097,13 @@
     "sort_countries": "Países donde jugó",
     "sort_cards": "Amarillas y rojas",
     "sort_young": "Los más jóvenes",
+    "position_all": "Todos",
+    "position": {
+      "goalkeeper": "Porteros",
+      "defender": "Defensas",
+      "midfield": "Centrocampistas",
+      "attack": "Delanteros"
+    },
     "continent_all": "Todos los continentes",
     "continent": {
       "europe": "Europa",
@@ -1185,18 +1202,16 @@
     "match_flow_closed": "Partido cerrado",
     "match_flow_balanced": "Ritmo parejo",
     "match_flow_open": "Partido abierto",
+    "match_expected_vs": "Goles esperados: {{goals}} entre los dos. Lo habitual — {{median}}.",
+    "match_side_ranks": "ataque por encima del {{attack}}% de los clubes, defensa del {{defence}}%",
+    "form_w": "V",
+    "form_d": "E",
+    "form_l": "D",
     "match_coach": "Entrenador",
     "match_writing": "En la prensa",
     "match_unknown": "Carácter no medido: uno de los equipos ha jugado muy pocos partidos.",
-    "match_no_injuries": "Ninguna de nuestras fuentes tiene lesiones ni exigencias de la directiva; por eso no aparecen.",
     "match_basis_one": "Medido sobre {{count}} partido de cada lado. Mide partidos pasados, no predice el marcador",
     "match_basis_other": "Medido sobre {{count}} partidos de cada lado. Mide partidos pasados, no predice el marcador",
-    "match_says_goals_low": "Se esperan pocos goles.",
-    "match_says_goals_mid": "Tantos goles como en un partido normal.",
-    "match_says_goals_high": "El partido promete goles.",
-    "match_says_flow_closed": "Ambos juegan con cautela: se espera un partido cerrado.",
-    "match_says_flow_balanced": "Sin inclinación clara: ni todo al ataque ni todo atrás.",
-    "match_says_flow_open": "Ambos juegan abierto: partido de ida y vuelta.",
     "match_expected_total": "Goles esperados — {{goals}}: los dos equipos juntos, por partido.",
     "match_side_numbers": "Marca {{gf}}, encaja {{ga}} por partido"
   }

@@ -30,6 +30,7 @@ to anon by design).
 """
 import argparse
 import os
+import re
 import sys
 import time
 from datetime import date
@@ -88,7 +89,18 @@ SLUG_VERIFY_RATIO = 0.80
 
 DELAY_SECONDS = 1.2
 MAX_RETRIES = 4
-PAGE_BUDGET = 2000
+
+# ⚠️ БЮДЖЕТ ПОДНЯТ С 2000, И ЭТО АРИФМЕТИКА, А НЕ ЖЕЛАНИЕ БОЛЬШЕГО. Прогон
+# 12.09.2026: `pages fetched: 2000`, из них сбор дошёл до 1810 игроков из
+# 2153 — то есть весь бюджет уходил в сбор, а шагу догадки не доставалось
+# ничего. Догадка — единственный способ пополнить сам список игроков, и
+# владелец просил статистику ВСЕХ, то есть именно её.
+#
+# Потолок ставит не осторожность, а время прогона: 3500 страниц по 1.2 с — это
+# 70 минут выборки плюс ~20 минут на чтение и запись базы, при
+# `timeout-minutes: 180` в player-stats.yml. Пауза между запросами НЕ
+# тронута — вежливость к чужому серверу не размен.
+PAGE_BUDGET = 3500
 
 # Сколько страниц бюджета НЕ отдаётся резолву слагов.
 #
@@ -104,7 +116,17 @@ PAGE_BUDGET = 2000
 # матчей, не прочитанные сегодня, завтра уже не прочитаются — страница отдаёт
 # один сезон целиком, но `checked_at`-порядок вращает список, и пропущенный
 # игрок ждёт своей очереди.
-COLLECT_RESERVE = PAGE_BUDGET // 2
+# ⚠️ ЧИСЛОМ, А НЕ ДОЛЕЙ БЮДЖЕТА, И ЭТО СМЕНА ПРИОРИТЕТА. Половина от 3500 —
+# это 1750 страниц сбору и почти столько же догадке; но сбор ВРАЩАЕТСЯ по
+# `checked_at`, и непрочитанный сегодня игрок читается завтра, а не теряется.
+# Карточка, до которой догадка не дошла, не появляется в списке НИКОГДА —
+# пока до неё не дойдёт очередь, статистики у неё нет вовсе.
+#
+# 1200 хватает, чтобы каждый из 2153 слагов читался раз в двое суток; остаток
+# (~2100 страниц, 700–1000 карточек за ночь) уходит догадке. При 24 093
+# кандидатах это первый заход по всему списку примерно за месяц — против
+# «первые 368 каждую ночь» до этой правки.
+COLLECT_RESERVE = 1200
 
 
 class Fetcher:
@@ -181,6 +203,91 @@ class Db:
              "Content-Type": "application/json"}
         )
 
+    # Коды, при которых запрос имеет смысл ПОВТОРИТЬ. 5xx значит «сервер не
+    # справился», 408 и 429 — «не сейчас». Всё остальное из 4xx значит «запрос
+    # рассмотрели и отвергли», и повтор даст тот же ответ столько раз, сколько
+    # его послать.
+    RETRY_CODES = {408, 429, 500, 502, 503, 504}
+
+    def _get_with_retry(self, url, what):
+        """GET, переживающий обрыв связи и неготовность сервера.
+
+        ⚠️ ЭТОГО ЗДЕСЬ НЕ БЫЛО, И ПРОГОН ОТ ЭТОГО ПАДАЛ — ДВАЖДЫ И ПО-РАЗНОМУ.
+
+            12.09.2026  resolve FAILED: ReadTimeout ... (read timeout=60)
+            13.09.2026  resolve FAILED: HTTPError: 504 Server Error:
+                        Gateway Timeout ... /cards?...&offset=5000
+
+        Второе поймано ручным прогоном уже после починки первого, и это важно:
+        `ReadTimeout` — исключение сети, а 504 приходит НОРМАЛЬНЫМ ответом и
+        становится исключением только в `raise_for_status`. Повтор, написанный
+        под один класс, второй пропускал бы.
+
+        Для вызывающего разницы нет никакой: ответа нет, карта слагов за сутки
+        не пополняется, прогон красный. Чтение к тому же ИДЕМПОТЕНТНО —
+        повторять его безопаснее, чем запись, у которой повтор с 18.08.
+
+        ⚠️ ПОВТОР НЕ ЛЕЧИТ ПРИЧИНУ 504, и притворяться иначе нельзя: сервер не
+        успел, потому что его попросили о дорогом. Причина снята в `select`
+        ниже — обходом по ключу вместо смещения.
+        """
+        for attempt in range(3):
+            try:
+                r = self.session.get(url, timeout=60)
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                if attempt == 2:
+                    raise
+                self._pause(what, type(exc).__name__, attempt)
+                continue
+            if r.status_code in self.RETRY_CODES and attempt < 2:
+                self._pause(what, "HTTP {}".format(r.status_code), attempt)
+                continue
+            r.raise_for_status()
+            return r
+        raise AssertionError("unreachable")  # pragma: no cover
+
+    @staticmethod
+    def _pause(what, why, attempt):
+        wait = 2 ** (attempt + 1)
+        print("   {} select: {} — повтор через {} с".format(what, why, wait),
+              file=sys.stderr)
+        time.sleep(wait)
+
+    @staticmethod
+    def _keyset_column(path):
+        """Колонка для обхода по ключу — или None, если так нельзя.
+
+        ⚠️ СМЕЩЕНИЕ НА БОЛЬШОЙ ТАБЛИЦЕ — ЭТО НЕ МЕДЛЕННО, ЭТО ОТКАЗ. Ручной
+        прогон 13.09.2026 получил на шестой странице `cards`:
+
+            504 Server Error: Gateway Timeout
+            /cards?select=id,name,name_en&...&order=id&limit=1000&offset=5000
+
+        `OFFSET 5000` заставляет Postgres построить и выбросить пять тысяч
+        строк, и цена растёт с каждой страницей: к двадцать шестой это
+        двадцать пять тысяч выброшенных строк ради нужной тысячи. Обход по
+        ключу (`id=gt.<последний>`) стоит одинаково на любой странице — и
+        заодно снимает то, о чём предупреждает `select`: при обходе по ключу
+        строка не может ни задвоиться, ни пропасть, сколько бы их ни вставили
+        между запросами.
+
+        Так можно не всегда: ключ обязан быть ОДНОЙ колонкой, по возрастанию,
+        и обязан быть в `select` — иначе последнюю строку не с чем сравнить.
+        Составной порядок (`checked_at,card_id`) остаётся на смещении, и это
+        безопасно: там таблица на две тысячи строк, то есть три страницы.
+        """
+        m = re.search(r"[?&]order=([^&]+)", path)
+        if not m:
+            return None
+        order = m.group(1)
+        if "," in order or ".desc" in order:
+            return None
+        col = order.split(".")[0]
+        sel = re.search(r"[?&]select=([^&]+)", path)
+        if not sel or col not in sel.group(1).split(","):
+            return None
+        return col
+
     def select(self, path, cap=None):
         """Все строки под `path`, страницами. `cap` — сколько хватит.
 
@@ -189,37 +296,84 @@ class Db:
         запросами строки могут переставиться, и тогда обход одну строку
         покажет дважды, а другую не покажет вовсе. Хуже всего то, что
         результат при этом правдоподобен — просто в нём кого-то нет.
+
+        Где можно, обход идёт ПО КЛЮЧУ, а не по смещению — разбор в
+        `_keyset_column`. Где нельзя (составной порядок), остаётся смещение.
         """
         assert "order=" in path, "select() paginates, so the path must order: " + path
-        rows, offset = [], 0
+        key = self._keyset_column(path)
+        what = path.split("?")[0].lstrip("/")
         sep = "&" if "?" in path else "?"
+        rows, offset, last = [], 0, None
         while True:
             want = self.PAGE_ROWS if cap is None else min(self.PAGE_ROWS, cap - len(rows))
             if want <= 0:
                 break
-            r = self.session.get(
-                "{}{}{}limit={}&offset={}".format(self.url, path, sep, want, offset),
-                timeout=60,
-            )
-            r.raise_for_status()
-            batch = r.json()
+            if key:
+                after = "&{}=gt.{}".format(key, last) if last is not None else ""
+                url = "{}{}{}limit={}{}".format(self.url, path, sep, want, after)
+            else:
+                url = "{}{}{}limit={}&offset={}".format(self.url, path, sep, want, offset)
+            batch = self._get_with_retry(url, what).json()
             rows.extend(batch)
             # Короткая страница — последняя. Полная не доказывает, что есть
             # следующая, поэтому лишний пустой запрос здесь допустим: он стоит
             # одного round-trip, а его отсутствие стоило бы половины таблицы.
             if len(batch) < want:
                 break
-            offset += len(batch)
+            if key:
+                last = batch[-1][key]
+            else:
+                offset += len(batch)
         return rows
+
+    def delete_in(self, table, column, values):
+        """Удалить строки, у которых `column` попал в `values`.
+
+        Пачками по 200: список идёт В СТРОКЕ ЗАПРОСА, а у неё есть предел
+        длины, о котором сервер сообщит отказом, а не усечением.
+        """
+        for i in range(0, len(values), 200):
+            chunk = values[i:i + 200]
+            r = self.session.delete(
+                "{}/{}?{}=in.({})".format(
+                    self.url, table, column, ",".join('"%s"' % v for v in chunk)
+                ),
+                headers={"Prefer": "return=minimal"},
+                timeout=60,
+            )
+            if r.status_code >= 300:
+                raise RuntimeError(
+                    "{} delete {}: {}".format(table, r.status_code, r.text[:200])
+                )
+
+    @staticmethod
+    def _pause_write(table, why, attempt):
+        wait = 2 ** (attempt + 1)
+        print("   {} upsert: {} — повтор через {} с".format(table, why, wait),
+              file=sys.stderr)
+        time.sleep(wait)
 
     def upsert(self, table, rows, on_conflict):
         """Записать пачками, пережив одиночный обрыв связи.
 
-        ⚠️ ПОВТОР ТОЛЬКО ПО СЕТИ, И ЭТО РАЗНИЦА ПО СУЩЕСТВУ. Таймаут и обрыв
-        означают «ответ не дошёл» — повтор осмыслен, потому что запись
-        идемпотентна (merge-duplicates по одному ключу). А код 4xx означает
-        «пачку рассмотрели и отвергли»: 409 на дубликате slug повторится
-        столько же раз, сколько его послать. Такое падает сразу.
+        ⚠️ ПОВТОР ПО СЕТИ И ПО 5xx, А НЕ ПО ВСЕМУ ПОДРЯД. Таймаут, обрыв и
+        «сервер не справился» означают одно: ответа нет. Повтор осмыслен,
+        потому что запись идемпотентна (merge-duplicates по одному ключу). А
+        код 4xx означает «пачку рассмотрели и отвергли»: 409 на дубликате slug
+        повторится столько же раз, сколько его послать. Такое падает сразу.
+
+        ⚠️ 5xx ЗДЕСЬ НЕ БЫЛО, И ЭТО РОВНО ТА ЖЕ ОШИБКА, ЧТО УЖЕ ЧИНИЛАСЬ В
+        `_get_with_retry`. Повтор стоял только на исключениях сети, а 504
+        приходит НОРМАЛЬНЫМ ответом — и падал сразу:
+
+            13.09.2026  RuntimeError: player_match_stats upsert 504:
+                        {"message":"Gateway Timeout"}
+
+        Это унесло обход на тринадцатой лиге из пятидесяти трёх, через сорок
+        минут работы. Урок был записан выше по файлу дословно — «повтор,
+        написанный под один класс, второй пропускал бы», — и не применён к
+        записи только потому, что её чинили раньше и по другому поводу.
 
         ПОЧЕМУ ЭТО ПОЯВИЛОСЬ. Ночной прогон 18.08.2026 упал ровно здесь:
         `ReadTimeout ... (read timeout=90)` на одной пачке `sports_ru_player`.
@@ -242,14 +396,10 @@ class Db:
                 except (requests.Timeout, requests.ConnectionError) as exc:
                     if attempt == 2:
                         raise
-                    wait = 2 ** (attempt + 1)
-                    print(
-                        "   {} upsert: {} — повтор через {} с".format(
-                            table, type(exc).__name__, wait
-                        ),
-                        file=sys.stderr,
-                    )
-                    time.sleep(wait)
+                    self._pause_write(table, type(exc).__name__, attempt)
+                    continue
+                if r.status_code in self.RETRY_CODES and attempt < 2:
+                    self._pause_write(table, "HTTP {}".format(r.status_code), attempt)
                     continue
                 if r.status_code >= 300:
                     raise RuntimeError(
@@ -330,6 +480,28 @@ def resolve_by_name(fetcher, card):
     return None
 
 
+def guess_order(cards, wanted, known, misses):
+    """Очередь шага догадки: кого пробовать сегодня и в каком порядке.
+
+    ⚠️ ПОРЯДОК ЗДЕСЬ — НЕ ОФОРМЛЕНИЕ, А РАЗНИЦА МЕЖДУ «СОБЕРЁМ ВСЕХ» И
+    «НЕ СОБЕРЁМ НИКОГДА». Раньше кандидаты шли в порядке `id`, а бюджет
+    кончается на первых сотнях: каждую ночь перебирались одни и те же
+    карточки, а остальные двадцать тысяч не пробовались НИ РАЗУ. Замер по
+    прогону 11.09.2026 — угаданы ранги с 5-го по 368-й из 24 093.
+
+    Ключ сортировки — (сколько раз пробовали, когда пробовали в последний
+    раз), а «не пробовали ни разу» это (-1, "") и идёт раньше всего. Значит
+    очередь двигается: каждую ночь берутся новые, а к старым отказам она
+    возвращается, только когда новых не осталось.
+
+    Насовсем не выбрасывается никто: страница у игрока может появиться
+    завтра, и отметка отказа — не приговор, а место в очереди.
+    """
+    todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
+    todo.sort(key=lambda c: misses.get(c["id"], (-1, "")))
+    return todo
+
+
 def active_cards_by_key(cards, current_club_ids):
     """Cards eligible for squad-page name matching, keyed by canonical_key.
 
@@ -360,7 +532,7 @@ def active_cards_by_key(cards, current_club_ids):
     return by_key
 
 
-def resolve_slugs(fetcher, db, dry_run=False, guess=True):
+def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERVE):
     """Crawl league tables and squads, map squad names onto cards.
 
     Two passes, in this order because the first is authoritative and cheap per
@@ -417,11 +589,29 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
     if guess:
         wanted = current_club_ids - seen_cards
         known = {p["card_id"] for p in db.select("/sports_ru_player?select=card_id&order=card_id")}
-        todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
-        print("guessing slugs for {} cards not on any squad page".format(len(todo)))
-        guessed = 0
+        # ⚠️ ПАМЯТЬ ОБ ОТКАЗЕ, И БЕЗ НЕЁ ШАГ ХОДИЛ ПО КРУГУ. Кандидаты шли в
+        # порядке id, а бюджет кончается на первых сотнях — то есть каждую
+        # ночь перебирались ОДНИ И ТЕ ЖЕ карточки, а остальные двадцать тысяч
+        # не пробовались ни разу. Замер по прогону 11.09.2026: угаданы ранги с
+        # 5-го по 368-й из 24 093. При таком порядке «собрать всех» —
+        # недостижимо в принципе, а не медленно.
+        #
+        # Отказ теперь записывается, и очередь строится по нему: сначала те,
+        # кого не пробовали ВОВСЕ, потом те, кого пробовали реже и давнее.
+        # Ни один кандидат не выбрасывается навсегда — страница у игрока может
+        # появиться, — но и не отнимает попытку у ни разу не виденного.
+        misses = {
+            m["card_id"]: (m.get("tries") or 1, m.get("tried_at") or "")
+            for m in db.select(
+                "/sports_ru_no_slug?select=card_id,tried_at,tries&order=card_id")
+        }
+        todo = guess_order(cards, wanted, known, misses)
+        fresh = sum(1 for c in todo if c["id"] not in misses)
+        print("guessing slugs for {} cards not on any squad page ({} ни разу не пробованы)"
+              .format(len(todo), fresh))
+        guessed, tried, failed, resolved_ids = 0, 0, [], []
         for card in todo:
-            if fetcher.remaining <= COLLECT_RESERVE:
+            if fetcher.remaining <= reserve:
                 print("  reserve reached ({} pages left), leaving the rest for collect"
                       .format(fetcher.remaining))
                 break
@@ -430,11 +620,26 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True):
             except RuntimeError:  # budget spent — keep what we have
                 print("  budget spent, stopping the guess pass")
                 break
+            tried += 1
             if slug:
                 guessed += 1
+                resolved_ids.append(card["id"])
                 rows.append({"card_id": card["id"], "slug": slug,
                              "name_ru": card["name"], "club_slug": None})
-        print("guessed and verified: {}".format(guessed))
+            else:
+                prev = misses.get(card["id"])
+                failed.append({"card_id": card["id"], "tried_at": _now_iso(),
+                               "tries": (prev[0] + 1) if prev else 1})
+        print("tried {}, guessed and verified: {}".format(tried, guessed))
+        # Записывается ЗДЕСЬ, а не вместе с найденными: это другая таблица и
+        # другой смысл. Успех — строка справочника; отказ — отметка «тут уже
+        # смотрели», без которой очередь выше не сдвинется ни на шаг.
+        if failed and not dry_run:
+            db.upsert("sports_ru_no_slug", failed, "card_id")
+        # ⚠️ УСПЕХ ТОЖЕ СТИРАЕТ ОТМЕТКУ — иначе однажды не найденный игрок
+        # навсегда остался бы в хвосте очереди, хотя страница у него уже есть.
+        if resolved_ids and not dry_run:
+            db.delete_in("sports_ru_no_slug", "card_id", resolved_ids)
 
     if dry_run:
         for r in rows[:10]:
@@ -631,6 +836,10 @@ def main():
     ap.add_argument("--limit", type=int, help="cap players read this run")
     ap.add_argument("--dry-run", action="store_true", help="fetch and parse, write nothing")
     ap.add_argument("--budget", type=int, default=PAGE_BUDGET, help="max pages to fetch")
+    # Резерв сбора — флагом, чтобы ручной прогон мог проверить шаг догадки, не
+    # тратя весь ночной бюджет. По умолчанию тот же, что у расписания.
+    ap.add_argument("--reserve", type=int, default=COLLECT_RESERVE,
+                    help="pages kept for the collect pass")
     args = ap.parse_args()
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
@@ -661,7 +870,8 @@ def main():
     if do_resolve:
         print("-- resolve --")
         try:
-            print("slug map rows: {}".format(resolve_slugs(fetcher, db, args.dry_run)))
+            print("slug map rows: {}".format(
+                resolve_slugs(fetcher, db, args.dry_run, reserve=args.reserve)))
         except Exception as exc:  # noqa: BLE001 — причина печатается целиком
             failed = exc
             print("resolve FAILED: {}: {}".format(type(exc).__name__, exc), file=sys.stderr)

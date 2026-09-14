@@ -103,7 +103,6 @@
     "squad_as_of": "{{date}} 기준 스쿼드 — 선수 문서 기반이며 실시간이 아닙니다",
     "matches_link": "예정된 경기",
     "fantasy_link": "판타지 리그",
-    "chess_link": "축구 체스",
     "alias_link": "축구 알리아스",
     "digest_link": "골과 장면",
     "news_link": "뉴스",
@@ -254,7 +253,9 @@
     "frame_default": "기본",
     "frame_gold": "골드",
     "frame_purple": "퍼플",
-    "back": "뒤로"
+    "back": "뒤로",
+    "locked_hint": "이 섹션은 Pro로 열립니다. 축구 알리아스 자체는 언제나 무료입니다.",
+    "benefit_sections": "모든 섹션: 경기, 랭킹, 클럽, 판타지, 미니게임"
   },
   "tutorial": {
     "title_1": "방 만들기",
@@ -837,9 +838,7 @@
     "summary_loading": "요약을 작성하는 중…",
     "summary_failed": "요약을 만들지 못했습니다. 다시 시도해 주세요.",
     "summary_quiet": "오늘은 모인 화제가 없어 요약할 내용이 없습니다.",
-    "summary_refused": "모델이 이 화제들의 요약을 거절했습니다.",
-    "live": "지금 중계 중",
-    "live_official": "공식 채널"
+    "summary_refused": "모델이 이 화제들의 요약을 거절했습니다."
   },
   "arena": {
     "title": "아레나",
@@ -989,7 +988,18 @@
     "squad_ours": "구단 등록 명단",
     "news": "팀 소식",
     "manager": "감독",
-    "now": "현재"
+    "room": "팬 라운지",
+    "room_empty": "아직 조용합니다. 첫마디를 남겨 보세요.",
+    "room_placeholder": "이 팀을 어떻게 보시나요?",
+    "room_send": "보내기",
+    "room_delete": "삭제",
+    "room_anon": "팬",
+    "room_discuss": "이야기하기",
+    "room_clear_quote": "뉴스 빼기",
+    "room_too_fast": "너무 자주 보냅니다. 몇 초 기다려 주세요.",
+    "room_too_long": "너무 깁니다. 500자까지입니다.",
+    "room_unknown_club": "그런 팀은 없습니다.",
+    "room_failed": "보내지 못했습니다. 다시 시도해 주세요."
   },
   "clubs": {
     "title": "클럽",
@@ -1052,6 +1062,13 @@
     "sort_countries": "활약한 국가 수",
     "sort_cards": "경고와 퇴장",
     "sort_young": "최연소",
+    "position_all": "전체",
+    "position": {
+      "goalkeeper": "골키퍼",
+      "defender": "수비수",
+      "midfield": "미드필더",
+      "attack": "공격수"
+    },
     "continent_all": "모든 대륙",
     "continent": {
       "europe": "유럽",
@@ -1142,17 +1159,15 @@
     "match_flow_closed": "닫힌 경기",
     "match_flow_balanced": "균형 잡힌 흐름",
     "match_flow_open": "열린 경기",
+    "match_expected_vs": "예상 득점: 두 팀 합계 {{goals}}. 보통은 {{median}}.",
+    "match_side_ranks": "공격은 클럽의 {{attack}}%보다 위, 수비는 {{defence}}%보다 위",
+    "form_w": "승",
+    "form_d": "무",
+    "form_l": "패",
     "match_coach": "감독",
     "match_writing": "보도",
     "match_unknown": "성격 미측정: 한쪽 팀의 경기 수가 너무 적습니다.",
-    "match_no_injuries": "부상자도 구단 수뇌부 요구도 어떤 출처에도 없어 표시하지 않습니다.",
     "match_basis_other": "양쪽 각 {{count}}경기로 측정. 과거 경기 측정이며 스코어 예측이 아닙니다",
-    "match_says_goals_low": "골은 많지 않을 전망입니다.",
-    "match_says_goals_mid": "골은 평범한 경기 수준으로 예상됩니다.",
-    "match_says_goals_high": "골이 많은 경기가 될 것으로 보입니다.",
-    "match_says_flow_closed": "두 팀 모두 신중해 답답한 경기가 될 수 있습니다.",
-    "match_says_flow_balanced": "공격 일변도도, 수비 일변도도 아닙니다.",
-    "match_says_flow_open": "두 팀 모두 열린 축구, 오가는 공방전입니다.",
     "match_expected_total": "예상 득점 {{goals}}: 두 팀 합계, 경기당입니다.",
     "match_side_numbers": "경기당 {{gf}}골 득점, {{ga}}골 실점"
   }

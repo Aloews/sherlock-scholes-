@@ -18,6 +18,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 import type { RatingWindow } from './freshness';
 import type { CollectionFilter } from '@/features/collection/collectionApi';
+import type { PlayerPosition } from './positions';
 
 export interface RatingRow {
   card_id: string;
@@ -224,7 +225,25 @@ export interface PlayerIndexRow {
   /** Сырое число выбранного показателя: евро, просмотры, минуты. */
   sort_value: number | null;
   place: number;
+  /**
+   * Амплуа — то, по чему список режется на категории.
+   *
+   * ⚠️ `player_position`, А НЕ `position`: в SQL так называется выходная
+   * колонка, потому что `position` — зарезервированное слово (там это
+   * функция `position(подстрока in строка)`), и объявление с таким именем не
+   * разбирается вовсе. Имя не новое: ровно так же зовётся колонка у
+   * `club_squad_view`.
+   *
+   * null — амплуа не знаем: у 1 679 карточек из 25 508 нет строки ни в
+   * заявке клуба, ни в составе Soccer Wiki. Это отдельный, честный случай, а
+   * не «полузащитник по умолчанию».
+   */
+  player_position: PlayerPosition | null;
 }
+
+// Список амплуа живёт в pure-модуле: он нужен тестам, а этот файл тянет
+// клиент Supabase и без VITE_-переменных не грузится вовсе.
+export { POSITIONS, type PlayerPosition } from './positions';
 
 /** Континенты колоды. Океании тут нет — её нет и в правиле, по которому
  *  континент проставляется: Австралия и Новая Зеландия сидят в «Прочих». */
@@ -236,6 +255,8 @@ export type Continent = (typeof CONTINENTS)[number];
 /** Отбор списка: клуб, лига, страна — как в коллекции, плюс континент. */
 export interface IndexFilter extends CollectionFilter {
   continent?: Continent | null;
+  /** Амплуа: разрез на категории. null — все. */
+  position?: PlayerPosition | null;
 }
 
 export const INDEX_LIMIT = 50;
@@ -263,6 +284,7 @@ export async function fetchPlayerIndex(
     p_limit: limit,
     p_offset: offset,
     p_continent: filter?.continent || null,
+    p_position: filter?.position || null,
   });
   return fromPostgrest<PlayerIndexRow[]>(res, `player_index(${sort})`);
 }
@@ -283,6 +305,7 @@ export async function fetchPlayerIndexCount(
     p_country: filter?.country || null,
     p_club_key: filter?.clubKey || null,
     p_continent: filter?.continent || null,
+    p_position: filter?.position || null,
   });
   return fromPostgrest<number>(res, `player_index_count(${sort})`);
 }

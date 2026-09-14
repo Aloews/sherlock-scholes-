@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { IconLock } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 
 /**
@@ -19,9 +20,14 @@ interface HomeGameLinkProps {
   icon: ReactNode;
   label: string;
   onClick(): void;
+  /** Экран за подпиской: вместо шеврона рисуется замок. */
+  locked?: boolean;
 }
 
-export function HomeGameLink({ icon, label, onClick }: HomeGameLinkProps) {
+// ⚠️ ЗАКРЫТОЕ ПОКАЗЫВАЕТСЯ С ЗАМКОМ, А НЕ ПРЯЧЕТСЯ. Убрать строку совсем —
+// значит оставить экран, на котором нечего купить: игрок не узнает, что даёт
+// подписка, а список схлопнется до двух кнопок. Замок и есть витрина.
+export function HomeGameLink({ icon, label, onClick, locked }: HomeGameLinkProps) {
   return (
     <button
       type="button"
@@ -33,7 +39,9 @@ export function HomeGameLink({ icon, label, onClick }: HomeGameLinkProps) {
       {/* Not an icon: the chevron is a text glyph so it takes the row's own
           colour and baseline, and it is decorative — the label is the name of
           the destination, so there is nothing here for a screen reader. */}
-      <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
+      {locked
+        ? <IconLock size={15} stroke={1.9} className="text-brand-accent shrink-0" />
+        : <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>}
     </button>
   );
 }

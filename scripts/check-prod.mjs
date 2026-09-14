@@ -35,7 +35,10 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 
-const APP = process.env.PROD_APP_URL ?? 'https://sherlock-scholes.vercel.app';
+// ⚠️ `||`, А НЕ `??`: пустая строка — это «переменную задали пустой», и
+// `??` пропустила бы её дальше как настоящий адрес. Так и приходит
+// значение из GitHub Actions, когда домен в форме не заполнили.
+const APP = process.env.PROD_APP_URL || 'https://sherlock-scholes.vercel.app';
 const TIMEOUT_MS = 25_000;
 // UA с контактом, а не подделка под браузер: источник вправе знать, кто ходит.
 const UA = 'sherlock-scholes-bot/1.0 (+https://github.com/Aloews/sherlock-scholes-)';
@@ -1363,6 +1366,22 @@ async function checkFanAndFixtures() {
          `своих у «Сити» ${onlyCity}, у «Юнайтед» ${onlyUtd}, общих (дерби) ${overlap}`,
          distinct ? 'проверка способна упасть' : '⚠ ОТБОР НЕ РАЗЛИЧАЕТ КОМАНДЫ');
 
+  // ⚠️ ВТОРОЙ КОНТРОЛЬ, И ОН ПРО ОПАСНУЮ СТОРОНУ ОТБОРА. Пустой набор основ
+  // имени НЕ ДОЛЖЕН подходить ко всему подряд: `x @> '{}'` истинно для любой
+  // строки, и клуб без имени собрал бы всю ленту целиком. Отсечение пустой
+  // стороны в `club_news` сделано через `nullif` — ради индекса, — и эта
+  // строка сторожит, что оно не потерялось при следующей правке ради скорости.
+  // ⚠️ `rows === null` — ЭТО ОТКАЗ ЗАПРОСА, А НЕ ПУСТОЙ ОТВЕТ, и считать его
+  // успехом нельзя: тогда проверка зеленела бы ровно тогда, когда сломана.
+  const ghost = (await rpc('club_news', { p_club_key: 'нет-такого-клуба', p_limit: 20 })).rows;
+  const ghostOk = Array.isArray(ghost) && ghost.length === 0;
+  record('Новости команды: контроль пустого имени', ghostOk,
+         ghost === null ? 'запрос club_news отказал — проверить нечего'
+           : ghostOk ? 'по выдуманному клубу ноль заметок, как и должно'
+                     : `выдуманный клуб получил ${ghost.length} заметок — `
+                       + 'пустой набор основ подходит ко всему',
+         ghostOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
   // Сборные — отдельным списком, и это тоже цепочка целиком: 175 строк в базе
   // ничего не стоят, если справочник их не отдаёт.
   const nat = (await rpc('club_directory', { p_lang: 'ru', p_kind: 'national', p_limit: 50 })).rows || [];
@@ -1764,9 +1783,15 @@ async function checkMatchCharacter() {
     }
     ms = Math.max(...warm);
   }
-  record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 1500,
+  // ⚠️ ПОРОГ СНИЖЕН С 1500 ДО 600, И ЭТО НЕ УЖЕСТОЧЕНИЕ РАДИ УЖЕСТОЧЕНИЯ.
+  // 1500 был подобран под ту цену, которую вызов имел с неиндексированным
+  // `club_news`: 1.6 секунды на матч, из них 750 мс на клуб. После индекса по
+  // `digest_tokens(title)` вызов стоит 164 мс — и прежний порог перестал бы
+  // ловить что-либо вовсе: под ним уместился бы даже возврат полного перебора.
+  // Порог, который не может сработать, — пустая проверка.
+  record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 600,
          `${ms} мс на вызов (худший из трёх прогретых)`,
-         'ловит возврат дорогого club_news в горячий путь');
+         'ловит потерянный индекс news_items_tokens_idx и возврат полного перебора');
 
   // ⚠️ ТРЕНЕР — ОТДЕЛЬНОЙ ПРОВЕРКОЙ, И ВОТ ПОЧЕМУ. Он читается из club_manager;
   // копия в club_character убрана как раз потому, что отставала на 35 клубах.
@@ -1778,6 +1803,88 @@ async function checkMatchCharacter() {
                 : `дома «${measured.home_manager ?? '—'}», в гостях «${measured.away_manager ?? '—'}»`,
            'ловит развалившуюся связь club_manager с клубом');
   }
+
+  // ⚠️ ТОЧКА ОТСЧЁТА И ФОРМА — ТО, ЧЕМ ЗАМЕНЕНЫ ОБЩИЕ СЛОВА. Владелец:
+  // «Комментарий "Голов ожидаемо столько же, сколько в обычном матче" звучит
+  // поиздевательски и несёт очень мало информации… либо просто добавить сухую
+  // статистику». Фраза убрана; вместо неё два числа рядом и пять букв формы.
+  // Если медиана перестанет считаться, экран тихо вернётся к одному числу без
+  // точки отсчёта — то есть ровно к тому, на что жаловались.
+  if (measured) {
+    record('Характер матча: есть точка отсчёта', measured.goals_median !== null,
+           measured.goals_median !== null
+             ? `ожидание ${measured.expected_goals} против обычных ${measured.goals_median}`
+             : 'медиана не посчиталась — число осталось без сравнения',
+           'ловит пустой club_character под медианой');
+
+    const formOk = (v) => v === null || /^[WDL]{0,5}$/.test(v);
+    const forms = [measured.home_form, measured.away_form];
+    record('Характер матча: форма читается',
+           forms.every(formOk) && forms.some((v) => (v ?? '').length > 0),
+           `${measured.home_form ?? '—'} / ${measured.away_form ?? '—'}`,
+           'ловит чужие буквы из club_match и развалившийся порядок');
+  }
+
+  // ⚠️ ГЛАВНАЯ ПРОВЕРКА ЭТОГО РАЗДЕЛА, И ОНА ПО ЖАЛОБЕ ВЛАДЕЛЬЦА: «в „пишут“
+  // везде новости об анонсе матча и где его посмотреть». Отбор делает
+  // `news_about_play`; здесь он проверяется НА НАСТОЯЩИХ ЗАГОЛОВКАХ, снятых с
+  // боевой ленты, и обе половины служат контролем друг другу: если предикат
+  // умрёт в ноль — провалится вторая, если начнёт пропускать всё —
+  // провалится первая.
+  const ANNOUNCEMENTS = [
+    '«Леванте» — «Барселона»: во сколько начало матча Ла Лиги, где смотреть трансляцию',
+    '«Спартак» — «Ростов»: онлайн-трансляция матча 8-го тура РПЛ-2026/2027 начнётся в 17:00',
+    'Celta de Vigo - Málaga, en directo | Sigue en vivo, el partido de LaLiga EA Sports',
+    'Coventry vs Brighton team news LIVE!',
+    'Rangers v Celtic: Scottish League Cup quarter-final – live',
+  ];
+  const ABOUT_PLAY = [
+    '«Мы показали прекрасную игру». Тренер «Комо» Фабрегас — о матче с «РБ Лейпциг» в ЛЧ',
+    '«Мы хотим сделать небо голубым». Буадди — о манчестерском дерби',
+    'Le Borussia Mönchengladbach se sépare déjà de son entraîneur',
+    'Pep Guardiola explains his new high press',
+  ];
+  const score = async (title) => rpc('news_about_play', { p_title: title, p_manager: null });
+
+  const passedAnnouncements = [];
+  for (const title of ANNOUNCEMENTS) {
+    if (Number(await score(title)) > 0) passedAnnouncements.push(title);
+  }
+  record('Характер матча: анонсы отброшены', passedAnnouncements.length === 0,
+         passedAnnouncements.length === 0
+           ? `${ANNOUNCEMENTS.length} анонсов, ни один не прошёл`
+           : `прошло ${passedAnnouncements.length}: «${passedAnnouncements[0].slice(0, 50)}»`,
+         'ловит возврат «где смотреть» в блок про характер игры');
+
+  const droppedPlay = [];
+  for (const title of ABOUT_PLAY) {
+    if (Number(await score(title)) <= 0) droppedPlay.push(title);
+  }
+  record('Характер матча: слова тренера проходят', droppedPlay.length === 0,
+         droppedPlay.length === 0
+           ? `${ABOUT_PLAY.length} заголовков про игру, прошли все`
+           : `отброшено ${droppedPlay.length}: «${droppedPlay[0].slice(0, 50)}»`,
+         'ловит предикат, который отбрасывает вообще всё');
+
+  // И то же самое, но на том, что ДЕЙСТВИТЕЛЬНО дошло до экрана: ни один
+  // показанный заголовок не имеет права быть анонсом.
+  let shown = 0;
+  const bad = [];
+  for (const id of ids.slice(0, 12)) {
+    const rows = await rpc('match_character', { p_fixture_id: id, p_lang: 'ru' });
+    const r = Array.isArray(rows) ? rows[0] : null;
+    for (const [head, sc] of [[r?.home_headline, r?.home_headline_score],
+                              [r?.away_headline, r?.away_headline_score]]) {
+      if (!head) continue;
+      shown += 1;
+      if (!(Number(sc) > 0)) bad.push(head);
+    }
+  }
+  record('Характер матча: показанные новости — про игру',
+         bad.length === 0,
+         shown > 0 ? `${shown} заголовков на 12 матчах, анонсов среди них ${bad.length}`
+                   : 'ни одного заголовка не показано — это тоже ответ',
+         'ловит заголовок, попавший на экран мимо отбора');
 
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: выдуманный матч обязан дать пусто. Не дал —
   // функция отвечает не на то, о чём её спросили.
@@ -2251,6 +2358,332 @@ async function checkCardValueTrend() {
 
 // ------------------------------------------------------------- печать -------
 console.log(`\nПроверка прода: ${APP}\n`);
+
+// -------------------------------------------------- комната болельщиков ---
+// Владелец: «добавь комнату болельщиков для команд, где можно было изучить
+// состав команды, новости и обсудить их».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ ТО, ЧТО СЛОМАТЬ СТРАШНЕЕ ВСЕГО: комната НЕ ОТДАЁТСЯ
+// анонимному ключу. В её строках стоят имена и аватары живых людей, а
+// анонимный ключ зашит в бандл — то есть открыт всем. `club_news` анониму
+// открыт законно (там чужие заголовки из RSS), и разница между ними и есть
+// предмет этой проверки.
+//
+// Читать комнату по-настоящему отсюда нельзя и не нужно: для этого нужна
+// подпись Telegram, которую взять неоткуда. Значит проверяется не содержимое,
+// а ГРАНИЦА — и она проверяема полностью.
+async function checkClubRoom() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Комната болельщиков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const call = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return { ok: r.ok, status: r.status, rows: r.ok ? await r.json().catch(() => null) : null };
+  };
+
+  // Подделка подписи обязана быть отвергнута. Не «вернуть пусто» — именно
+  // отвергнута: пустой ответ нельзя отличить от «в комнате пока тихо».
+  const read = await call('club_room_posts', {
+    p_init_data: 'подделка', p_club: 'real-madrid', p_limit: 5,
+  });
+  record('Комната: чтение без подписи отбито', !read.ok,
+         read.ok ? `ОТДАЛА ${Array.isArray(read.rows) ? read.rows.length : '?'} строк анониму`
+                 : `HTTP ${read.status}, как и должно`,
+         'ловит снятую проверку tg_validate_init_data на чтении');
+
+  const write = await call('post_club_message', {
+    p_init_data: 'подделка', p_club: 'real-madrid', p_body: 'проверка',
+  });
+  record('Комната: запись без подписи отбита', !write.ok,
+         write.ok ? 'ЗАПИСАЛА от имени анонима' : `HTTP ${write.status}, как и должно`,
+         'ловит снятую проверку на записи');
+
+  // И сама таблица не должна открываться напрямую, мимо функций.
+  const table = await fetch(`${url}/rest/v1/club_post?select=body&limit=1`, { headers: auth });
+  record('Комната: таблица закрыта напрямую', !table.ok,
+         table.ok ? 'club_post ЧИТАЕТСЯ анонимным ключом' : `HTTP ${table.status}, как и должно`,
+         'ловит забытую политику RLS или выданный грант');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И БЕЗ НЕГО ТРИ ПРОВЕРКИ ВЫШЕ НИЧЕГО НЕ СТОЯТ:
+  // отозванный ключ, кончившийся проект и опечатка в адресе дают ровно те же
+  // отказы. Значит надо показать, что этим же ключом открытое — открыто.
+  const news = await call('club_news', { p_club_key: 'real-madrid', p_limit: 1 });
+  record('Комната: контроль — тем же ключом открытое открыто', news.ok,
+         news.ok ? 'club_news отвечает анониму, как и задумано'
+                 : `club_news тоже отказал (HTTP ${news.status}) — ключ или адрес не те`,
+         news.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+
+// ----------------------------------------------------- категории игроков ---
+// Владелец: «разбей всех игроков по категориям, дай им ранг».
+//
+// ⚠️ ПРОВЕРЯЕТСЯ НЕ «ФИЛЬТР ЕСТЬ», А «ФИЛЬТР ФИЛЬТРУЕТ». Параметр, который
+// сервер молча игнорирует, выглядит на экране как работающий: кнопка
+// нажимается, список меняется (потому что меняется сортировка), и заметить,
+// что «нападающие» это те же все, нечем. Поэтому здесь три разных способа
+// поймать мёртвый параметр, и каждый способен упасть отдельно.
+async function checkPlayerPositions() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Категории игроков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+  const count = (pos) => rpc('player_index_count', { p_sort: 'value', p_position: pos });
+
+  const all = await count(null);
+  const parts = {};
+  for (const p of ['goalkeeper', 'defender', 'midfield', 'attack']) parts[p] = await count(p);
+  const sum = Object.values(parts).reduce((a, b) => a + (Number(b) || 0), 0);
+
+  const named = Object.entries(parts).map(([k, v]) => `${k} ${v}`).join(', ');
+  record('Категории: все четыре не пусты',
+         Object.values(parts).every((n) => Number(n) > 0),
+         named, 'ловит пересборку амплуа, которая не прошла');
+
+  // Сумма частей ОБЯЗАНА быть меньше целого: у 1 679 карточек амплуа нет, и
+  // если сумма вдруг сравнялась с общим числом — значит кого-то посчитали
+  // дважды или «без амплуа» кому-то приписали.
+  record('Категории: сумма меньше целого',
+         Number(all) > 0 && sum > 0 && sum < Number(all),
+         `${sum} из ${all}`,
+         'ловит двойной счёт и приписанное наугад амплуа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПЕРВЫЙ: выдуманное амплуа обязано дать НОЛЬ.
+  // Мёртвый параметр вернёт здесь всех, и это единственное место, где видно
+  // разницу между «фильтр работает» и «фильтр не читается».
+  const bogus = await count('нет-такого-амплуа');
+  record('Категории: контроль выдуманного',
+         Number(bogus) === 0,
+         Number(bogus) === 0 ? 'выдуманное амплуа дало ноль, как и должно'
+                             : `выдуманное амплуа вернуло ${bogus} игроков`,
+         Number(bogus) === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // Ранг внутри категории: первая тройка нападающих обязана БЫТЬ нападающими.
+  const top = await rpc('player_index', {
+    p_sort: 'value', p_position: 'attack', p_limit: 3, p_lang: 'ru',
+  });
+  const rows = Array.isArray(top) ? top : [];
+  const clean = rows.length === 3 && rows.every((r) => r.player_position === 'attack');
+  record('Категории: ранг считается внутри категории',
+         clean && rows[0]?.place === 1,
+         rows.length ? `1-й ${rows[0].name} (${rows[0].player_position})` : 'пусто',
+         'ловит место, посчитанное по всему списку вместо среза');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ВТОРОЙ, И ОН ПРО САМУЮ ТИХУЮ ПОЛОМКУ. Если
+  // параметр не читается, срез «вратари» совпадёт с общим списком. Вратарь
+  // дороже всех нападающих не бывает — значит первые строки обязаны
+  // РАЗОЙТИСЬ. Совпали — фильтр мёртв, сколько бы строк он ни вернул.
+  const topAll = await rpc('player_index', { p_sort: 'value', p_limit: 1, p_lang: 'ru' });
+  const topGk = await rpc('player_index', {
+    p_sort: 'value', p_position: 'goalkeeper', p_limit: 1, p_lang: 'ru',
+  });
+  const a = Array.isArray(topAll) ? topAll[0] : null;
+  const g = Array.isArray(topGk) ? topGk[0] : null;
+  const differ = !!a && !!g && a.card_id !== g.card_id;
+  record('Категории: контроль — срез не равен целому',
+         differ,
+         differ ? `все: ${a.name}; вратари: ${g.name}`
+                : 'первый в срезе тот же, что в общем списке',
+         differ ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+
+// ---------------------------------------- охват статистики: лиги и команды ---
+// Владелец: «дособери статистику всех команд и игроков».
+//
+// ⚠️ ЧЕГО НЕ ВИДНО БЕЗ ЭТОЙ ПРОВЕРКИ. Ни один тест не краснеет от того, что
+// лиги НЕТ В СПИСКЕ обхода: код исправен, запросы уходят, ответы разбираются,
+// тысяча тестов зелена. Просто игроков этой лиги никто никогда не спрашивал.
+// Замер 13.09.2026, до починки: Серия Б — 5% карточек со статистикой, Лига 2 —
+// 2%, Чемпионшип — 5%, при 50–68% у тех четырнадцати лиг, что в списке были.
+// Разница — одна строка кода на лигу.
+//
+// ⚠️ ЭТО ЖЕ И ПРОВЕРКА СТАТИСТИКИ КОМАНД. `club_match` ниоткуда отдельно не
+// собирается: `rebuild_club_matches()` сворачивает до матчей ровно эти строки.
+// Лига вне списка — это не только игроки без голов, но и клубы без формы, без
+// разницы мячей и без характера.
+async function checkStatsCoverage() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Охват статистики', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  // ⚠️ СЧЁТ ЗАГОЛОВКОМ, А НЕ ДЛИНОЙ ОТВЕТА. PostgREST режет тело по
+  // `db-max-rows` (в этом проекте 1000), и `rows.length` на большой выборке
+  // сказал бы «ровно 1000» с уверенностью. `count=exact` считает в базе.
+  const count = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, {
+      headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+    });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+
+  // 1. СПИСОК ЛИГ ЧИТАЕТСЯ ИЗ САМОГО ОБХОДА, А НЕ ПОВТОРЯЕТСЯ ЗДЕСЬ. Копия
+  //    списка проверяла бы копию: разойдись они — оба остались бы зелёными.
+  const pySrc = existsSync('football_scraper/espn_stats.py')
+    ? readFileSync('football_scraper/espn_stats.py', 'utf-8') : '';
+  const block = /LEAGUES = \{([\s\S]*?)\n\}/.exec(pySrc);
+  const leagues = [...(block?.[1] ?? '').matchAll(/^\s*"([^"]+)":\s*"([^"]+)",/gm)]
+    .map(([, code, name]) => ({ code, name }));
+
+  const board = async (code, dates) => {
+    try {
+      const q = dates ? `?dates=${dates}&limit=1000` : '';
+      const r = await get(
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard${q}`,
+        { 'User-Agent': UA });
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  };
+  const espnName = async (code) => {
+    const d = await board(code);
+    return d ? ((d.leagues ?? [])[0]?.name ?? null) : null;
+  };
+  /** Дата последнего ЗАВЕРШЁННОГО матча лиги в окне, или null.
+   *  Признак завершённости тот же, что читает сам обход
+   *  (`completed_event_ids` в scraper/espn.py): `status.type.completed`, и
+   *  никакой другой — идущий матч тоже приходит событием. */
+  const lastFinished = async (code, dates) => {
+    const d = await board(code, dates);
+    const days = (d?.events ?? [])
+      .filter((e) => e.status?.type?.completed === true)
+      .map((e) => String(e.date ?? '').slice(0, 10))
+      .filter(Boolean)
+      .sort();
+    return days.length ? days[days.length - 1] : null;
+  };
+
+  // По восемь за раз: полсотни запросов подряд растянули бы прогон, а все разом
+  // — повод для источника ответить отказом.
+  const answered = [];
+  for (let i = 0; i < leagues.length; i += 8) {
+    answered.push(...await Promise.all(
+      leagues.slice(i, i + 8).map(async (l) => ({ ...l, got: await espnName(l.code) }))));
+  }
+  const dead    = answered.filter((l) => !l.got);
+  const renamed = answered.filter((l) => l.got && l.got !== l.name);
+  record('Охват: каждая лига списка отзывается',
+         leagues.length >= 45 && dead.length === 0,
+         leagues.length === 0 ? 'список лиг не прочитался из espn_stats.py'
+           : `${leagues.length} лиг, молчат ${dead.length}` +
+             (dead.length ? ': ' + dead.map((l) => l.code).join(', ') : ''),
+         'ловит код лиги, переставший существовать: обход по нему молча даёт ноль матчей');
+
+  record('Охват: имя лиги совпадает с записанным',
+         leagues.length > 0 && renamed.length === 0,
+         renamed.length ? renamed.map((l) => `${l.code}: «${l.name}» -> «${l.got}»`).join('; ')
+                        : `все ${answered.length} названий сошлись`,
+         'ловит переехавший код: отвечает чужая лига, а обход пишет её матчи как свои');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманного кода имени быть не может.
+  const ghost = await espnName('zz.9');
+  record('Охват: контроль выдуманной лиги', ghost === null,
+         ghost === null ? 'по коду zz.9 имени нет, как и должно'
+                        : `выдуманная лига назвалась «${ghost}»`,
+         ghost === null ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 2. КОНЕЦ ЦЕПОЧКИ: ответ источника — это ещё не строка в таблице. Спрашивается
+  //    ровно то, ради чего всё делалось: СКОЛЬКИМ лигам из списка статистика
+  //    действительно дошла до базы за последний месяц.
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const seen = [];
+  for (let i = 0; i < leagues.length; i += 8) {
+    const part = await Promise.all(leagues.slice(i, i + 8).map(async (l) => ({
+      name: l.name,
+      n: await count(`player_match_stats?select=card_id&match_date=gte.${since}`
+                     + `&tournament=eq.${encodeURIComponent(l.name)}`),
+    })));
+    seen.push(...part.filter((x) => x.n > 0));
+  }
+  // Порог ниже измеренного не по робости: у половины списка сезон летний или
+  // южноамериканский, и «сколько лиг играет прямо сейчас» — величина сезонная.
+  // Двадцать — это заведомо ниже зимнего и летнего дна и заведомо выше тех
+  // четырнадцати, что были до починки.
+  record('Охват: статистика доходит дальше топ-лиг',
+         seen.length >= 20,
+         `${seen.length} лиг из ${leagues.length} дали матчи за 30 суток`,
+         'ловит возврат к короткому списку: четырнадцать лиг эту планку не берут');
+
+  // ⚠️ ЛИГА, МОЛЧАЩАЯ ГОД, — ЭТО БРОШЕННЫЙ КОД, А НЕ МЕЖСЕЗОНЬЕ, И ОТЛИЧИТЬ
+  //    ОДНО ОТ ДРУГОГО МОЖНО ТОЛЬКО ГОДОВЫМ ОКНОМ. Шесть кодов из первого
+  //    списка отвечали 200 своим настоящим именем и не публиковали НИЧЕГО:
+  //    у tur.2, fin.1, cze.1 и isr.1 ноль матчей за год, у sui.1 последний
+  //    28.09.2025, у irl.1 — 01.11.2025. Все шесть играют прямо сейчас, просто
+  //    не у ESPN. Проверка «код отзывается» называла их живыми — та же форма
+  //    ошибки, что с ТВ: верхний манифест 200, вариант под ним 404.
+  //
+  //    Годовое окно спрашивается ТОЛЬКО у молчащих последний месяц: у лиги,
+  //    которая и так дала строки, спрашивать нечего, а ответ за год по плотной
+  //    лиге — это сотни событий в теле. По трёхмесячному окну пусты и кубки
+  //    УЕФА, и тайская лига, а у них последний матч в мае и новый сезон на
+  //    носу — вот почему окно именно годовое.
+  const quiet = leagues.filter((l) => !seen.some((x) => x.name === l.name));
+  const year = `${new Date(Date.now() - 365 * 24 * 3600 * 1000)
+    .toISOString().slice(0, 10).replace(/-/g, '')}-`
+    + `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  //    Считается ПОСЛЕДНЯЯ ДАТА, а не число матчей, и это разница по существу:
+  //    у sui.1 за год 8 матчей, у irl.1 — 35, то есть по счётчику обе «живые»,
+  //    а последние их матчи 28.09.2025 и 01.11.2025. Девять месяцев не молчит
+  //    ни одна лига: у Элитесериен зимний перерыв четыре месяца, у МЛС три,
+  //    у России два. Девять — это источник, а не календарь.
+  const STALE_DAYS = 270;
+  const abandoned = [];
+  for (let i = 0; i < quiet.length; i += 4) {
+    const part = await Promise.all(quiet.slice(i, i + 4).map(async (l) => ({
+      code: l.code, last: await lastFinished(l.code, year),
+    })));
+    abandoned.push(...part.filter((x) => !x.last
+      || (Date.now() - Date.parse(x.last)) / 86400000 > STALE_DAYS));
+  }
+  record('Охват: молчащие лиги — межсезонье, а не брошенный код',
+         abandoned.length === 0,
+         quiet.length === 0 ? 'молчащих за месяц нет вовсе'
+           : `молчат месяц ${quiet.length}, дольше ${STALE_DAYS} суток — ` +
+             (abandoned.length
+               ? abandoned.map((x) => `${x.code} (${x.last ?? 'ни одного за год'})`).join(', ')
+               : 'ни одна'),
+         'ловит код, который отвечает 200 своим именем и не публикует матчей');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ПРО ФОРМУ ЗАПРОСА. Ноль по выдуманному
+  // турниру ничего не значит сам по себе: так же ответил бы сломанный фильтр.
+  // Рядом — тот же запрос по заведомо существующему.
+  const nonsense = await count(
+    `player_match_stats?select=card_id&tournament=eq.${encodeURIComponent('Лига Кривых Зеркал')}`);
+  const real = seen.length ? seen[0] : { name: '—', n: 0 };
+  const filterOk = nonsense === 0 && real.n > 0;
+  record('Охват: контроль отбора по турниру', filterOk,
+         nonsense !== 0 ? `выдуманный турнир дал ${nonsense} строк`
+           : real.n > 0 ? `по выдуманному 0, по «${real.name}» — ${real.n}`
+                        : 'запрос не нашёл даже настоящий турнир — форма сломана',
+         filterOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 3. КОМАНДЫ. Та же цепочка, последнее звено: матчи клубов — свёртка этих же
+  //    строк, и без неё у клуба нет ни формы, ни характера.
+  const clubMatches = await count(`club_match?select=home_key&match_date=gte.${since}`);
+  record('Охват: матчи команд свёрнуты',
+         clubMatches >= 800,
+         `${clubMatches} матчей команд за 30 суток`,
+         'ловит разрыв player_match_stats -> rebuild_club_matches: игроки есть, команд нет');
+}
+
 await checkDigest();
 await checkAnonRpc();
 await checkNoScores();
@@ -2280,6 +2713,77 @@ await checkCardValueTrend();
 await checkTopFixtures();
 await checkFootballers();
 await checkSoccerWiki();
+await checkPlayerPositions();
+
+// ------------------------------------------------- точность прогноза --------
+// ⚠️ БЛОК «ХАРАКТЕР МАТЧА» ПЕЧАТАЛ ОЖИДАЕМУЮ РЕЗУЛЬТАТИВНОСТЬ, И НИКТО НИ РАЗУ
+// НЕ ПРОВЕРИЛ, СБЫВАЕТСЯ ЛИ ОНА. Теперь проверяет `forecast_backtest` — без
+// утечки: окно кончается за сутки до матча, медиана точки отсчёта берётся по
+// матчам строго до начала месяца. Снимок пишется ночью в `forecast_quality`,
+// здесь он только читается: сам обсчёт в потолок анонима (3 с) не помещается.
+//
+// ⚠️ ЧТО ЗАМЕР ПОКАЗАЛ, И ЭТО НЕ В ПОЛЬЗУ МОДЕЛИ. На 5644 матчах модель 1.3142,
+// «всегда называй медиану» 1.3102 — то есть ожидаемая результативность НЕ БЬЁТ
+// тривиальную догадку. Поэтому проверка ниже и НЕ требует, чтобы била: она
+// требует, чтобы модель не стала заметно ХУЖЕ неё. Требование «обгони» было бы
+// красным с первого дня и его бы просто отключили.
+async function checkForecastQuality() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Точность прогноза', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const r = await fetch(
+    `${url}/rest/v1/forecast_quality?select=*&order=computed_at.desc&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const row = (await r.json().catch(() => []))[0];
+  if (!row) {
+    record('Точность прогноза: снимок есть', false,
+           'forecast_quality пуст — ночной шаг не отработал', 'н/д');
+    return;
+  }
+
+  const age = (Date.now() - Date.parse(row.computed_at)) / 86400000;
+  record('Точность прогноза: снимок свежий',
+         age <= 3 && row.matches >= 1000,
+         `${row.matches} матчей, посчитано ${age.toFixed(1)} сут. назад`,
+         'ловит остановку ночного rebuild_forecast_quality и обвал числа матчей');
+
+  // ЕДИНСТВЕННОЕ, ЧТО ЗАМЕР ПОДТВЕРЖДАЕТ: личность команд что-то несёт.
+  // Перепутанный прогноз — те же числа, приклеенные к чужим матчам.
+  const t = Number(row.gain) / (Number(row.gain_se) || Infinity);
+  record('Точность прогноза: личность команд что-то даёт',
+         t >= 2,
+         `выигрыш над перепутанным ${Number(row.gain).toFixed(4)} гола, ` +
+         `se ${Number(row.gain_se).toFixed(4)}, t = ${t.toFixed(2)}`,
+         'ловит вырождение прогноза в шум: t < 2 значит «те же числа в любом порядке»');
+
+  // ⚠️ ЗАЩИТА ОТ «УЛУЧШЕНИЙ», КОТОРЫЕ УХУДШАЮТ. Проверенная мультипликативная
+  // модель (атака x оборона x среднее лиги) дала 1.4474 против 1.3102 у
+  // медианы — эта строка поймала бы её сразу. Допуск 0.02 гола: модель уже
+  // проигрывает медиане 0.0040, и запрещать это задним числом нечестно.
+  const slack = Number(row.mae_model) - Number(row.mae_baseline);
+  record('Точность прогноза: не хуже тривиальной догадки',
+         slack <= 0.02,
+         `модель ${Number(row.mae_model).toFixed(4)}, медиана ` +
+         `${Number(row.mae_baseline).toFixed(4)}, разница ${slack.toFixed(4)}; ` +
+         `ближе медианы в ${Number(row.pct_closer).toFixed(1)}% матчей`,
+         'ловит правку формулы, которая делает прогноз хуже константы');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: перепутанный прогноз ОБЯЗАН быть хуже настоящего.
+  // Не хуже — значит замер меряет не то, и верить верхним строкам нельзя.
+  const ok = Number(row.mae_shuffled) > Number(row.mae_model);
+  record('Точность прогноза: контроль перепутанного', ok,
+         ok ? `перепутанный ${Number(row.mae_shuffled).toFixed(4)} хуже настоящего `
+              + `${Number(row.mae_model).toFixed(4)}, как и должно`
+            : 'перепутанный прогноз не хуже настоящего',
+         ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+await checkStatsCoverage();
+await checkForecastQuality();
+await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();
 

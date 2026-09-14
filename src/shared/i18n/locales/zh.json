@@ -103,7 +103,6 @@
     "squad_as_of": "{{date}} 的阵容 — 来自球员条目，并非实时",
     "matches_link": "近期比赛",
     "fantasy_link": "梦幻联赛",
-    "chess_link": "足球棋",
     "alias_link": "足球猜词",
     "digest_link": "进球与瞬间",
     "news_link": "新闻",
@@ -254,7 +253,9 @@
     "frame_default": "默认",
     "frame_gold": "金色",
     "frame_purple": "紫色",
-    "back": "返回"
+    "back": "返回",
+    "locked_hint": "此板块需要 Pro 订阅。足球猜词游戏本身始终免费。",
+    "benefit_sections": "全部板块：比赛、排行、球队、梦幻联赛与小游戏"
   },
   "tutorial": {
     "title_1": "创建房间",
@@ -837,9 +838,7 @@
     "summary_loading": "正在生成摘要…",
     "summary_failed": "摘要生成失败，请重试。",
     "summary_quiet": "今天没有形成话题，暂无内容可概括。",
-    "summary_refused": "模型未对这些话题进行概括。",
-    "live": "正在直播",
-    "live_official": "官方频道"
+    "summary_refused": "模型未对这些话题进行概括。"
   },
   "arena": {
     "title": "竞技场",
@@ -989,7 +988,18 @@
     "squad_ours": "俱乐部名单",
     "news": "球队新闻",
     "manager": "主教练",
-    "now": "现在"
+    "room": "球迷聊天室",
+    "room_empty": "这里还很安静，说第一句话吧。",
+    "room_placeholder": "你怎么看这支球队？",
+    "room_send": "发送",
+    "room_delete": "删除",
+    "room_anon": "球迷",
+    "room_discuss": "聊聊",
+    "room_clear_quote": "移除新闻",
+    "room_too_fast": "发得太快了，请等几秒。",
+    "room_too_long": "太长了，最多 500 字。",
+    "room_unknown_club": "没有这支球队。",
+    "room_failed": "没能发送，请再试一次。"
   },
   "clubs": {
     "title": "俱乐部",
@@ -1052,6 +1062,13 @@
     "sort_countries": "效力过的国家数",
     "sort_cards": "黄牌与红牌",
     "sort_young": "最年轻",
+    "position_all": "全部",
+    "position": {
+      "goalkeeper": "门将",
+      "defender": "后卫",
+      "midfield": "中场",
+      "attack": "前锋"
+    },
     "continent_all": "所有大洲",
     "continent": {
       "europe": "欧洲",
@@ -1142,17 +1159,15 @@
     "match_flow_closed": "封闭的比赛",
     "match_flow_balanced": "节奏均衡",
     "match_flow_open": "开放的比赛",
+    "match_expected_vs": "预计进球：双方合计 {{goals}}。通常为 {{median}}。",
+    "match_side_ranks": "进攻高于 {{attack}}% 的球队，防守高于 {{defence}}%",
+    "form_w": "胜",
+    "form_d": "平",
+    "form_l": "负",
     "match_coach": "主教练",
     "match_writing": "媒体报道",
     "match_unknown": "未测得性格：其中一队比赛场次太少。",
-    "match_no_injuries": "我们的任何来源都没有伤病和管理层要求，因此这里不显示。",
     "match_basis_other": "依据双方各 {{count}} 场比赛测得。这是对过往比赛的测量，不是比分预测",
-    "match_says_goals_low": "预计进球不多。",
-    "match_says_goals_mid": "进球数预计与普通比赛相当。",
-    "match_says_goals_high": "这场比赛有望多进球。",
-    "match_says_flow_closed": "两队都打得谨慎，预计比赛偏沉闷。",
-    "match_says_flow_balanced": "既不一味进攻，也不一味防守。",
-    "match_says_flow_open": "两队都踢得开放，来回攻防。",
     "match_expected_total": "预计进球 {{goals}}：两队合计，每场。",
     "match_side_numbers": "场均进 {{gf}} 球，失 {{ga}} 球"
   }

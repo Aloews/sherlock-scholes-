@@ -103,7 +103,6 @@
     "squad_as_of": "{{date}} 時点の所属 — 選手記事より、リアルタイムではありません",
     "matches_link": "今後の試合",
     "fantasy_link": "ファンタジーリーグ",
-    "chess_link": "サッカーチェス",
     "alias_link": "サッカー・アリアス",
     "digest_link": "ゴールと名場面",
     "news_link": "ニュース",
@@ -254,7 +253,9 @@
     "frame_default": "デフォルト",
     "frame_gold": "ゴールド",
     "frame_purple": "パープル",
-    "back": "戻る"
+    "back": "戻る",
+    "locked_hint": "このセクションは Pro で開きます。サッカー版アリアス自体はずっと無料です。",
+    "benefit_sections": "すべてのセクション：試合、ランキング、クラブ、ファンタジー、ミニゲーム"
   },
   "tutorial": {
     "title_1": "ルームを作ろう",
@@ -837,9 +838,7 @@
     "summary_loading": "要約を作成中…",
     "summary_failed": "要約を作成できませんでした。もう一度お試しください。",
     "summary_quiet": "今日は話題がまとまりませんでした。要約するものがありません。",
-    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。",
-    "live": "配信中",
-    "live_official": "公式チャンネル"
+    "summary_refused": "モデルはこれらの話題の要約を行いませんでした。"
   },
   "arena": {
     "title": "アリーナ",
@@ -989,7 +988,18 @@
     "squad_ours": "クラブ登録メンバー",
     "news": "チームのニュース",
     "manager": "監督",
-    "now": "現在"
+    "room": "サポーターの部屋",
+    "room_empty": "まだ静かです。最初のひとことをどうぞ。",
+    "room_placeholder": "このチームをどう見ますか？",
+    "room_send": "送信",
+    "room_delete": "削除",
+    "room_anon": "サポーター",
+    "room_discuss": "語る",
+    "room_clear_quote": "ニュースを外す",
+    "room_too_fast": "間隔が短すぎます。数秒お待ちください。",
+    "room_too_long": "長すぎます。500字までです。",
+    "room_unknown_club": "そのチームはありません。",
+    "room_failed": "送信できませんでした。もう一度どうぞ。"
   },
   "clubs": {
     "title": "クラブ",
@@ -1052,6 +1062,13 @@
     "sort_countries": "プレーした国の数",
     "sort_cards": "イエローとレッド",
     "sort_young": "最年少",
+    "position_all": "すべて",
+    "position": {
+      "goalkeeper": "ゴールキーパー",
+      "defender": "ディフェンダー",
+      "midfield": "ミッドフィールダー",
+      "attack": "フォワード"
+    },
     "continent_all": "すべての大陸",
     "continent": {
       "europe": "ヨーロッパ",
@@ -1142,17 +1159,15 @@
     "match_flow_closed": "締まった試合",
     "match_flow_balanced": "均衡した流れ",
     "match_flow_open": "オープンな試合",
+    "match_expected_vs": "予想得点: 両チーム合計 {{goals}}。通常は {{median}}。",
+    "match_side_ranks": "攻撃はクラブの {{attack}}% より上、守備は {{defence}}% より上",
+    "form_w": "勝",
+    "form_d": "分",
+    "form_l": "敗",
     "match_coach": "監督",
     "match_writing": "報道",
     "match_unknown": "性格は未計測：どちらかのチームの試合数が少なすぎます。",
-    "match_no_injuries": "負傷者も強化部の要求も、どの情報源にもありません。ここには表示しません。",
     "match_basis_other": "両チームそれぞれ{{count}}試合で計測。過去の試合の計測であり、スコアの予想ではありません",
-    "match_says_goals_low": "得点は少なめになりそうです。",
-    "match_says_goals_mid": "得点は平均的な試合並みの見込みです。",
-    "match_says_goals_high": "点の入る試合になりそうです。",
-    "match_says_flow_closed": "両チームとも慎重で、締まった展開になりそうです。",
-    "match_says_flow_balanced": "攻め一辺倒でも守り一辺倒でもありません。",
-    "match_says_flow_open": "両者ともオープンで、行ったり来たりの展開です。",
     "match_expected_total": "予想得点 {{goals}}：両チーム合計、1試合あたりです。",
     "match_side_numbers": "1試合あたり {{gf}} 得点、{{ga}} 失点"
   }

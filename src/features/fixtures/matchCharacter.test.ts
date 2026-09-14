@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  characterBands, characterMatches,
+  characterBands, characterMatches, parseForm, formRecord, sideHasFacts,
   GOALS_LOW, GOALS_HIGH, FLOW_CLOSED, FLOW_OPEN,
 } from './matchCharacter';
 
@@ -59,5 +59,71 @@ describe('characterMatches', () => {
   it('без одной из сторон не отвечает', () => {
     expect(characterMatches(74, null)).toBeNull();
     expect(characterMatches(null, 74)).toBeNull();
+  });
+});
+
+describe('форма последних матчей', () => {
+  // ⚠️ ФОРМА — ЭТО СТРОКА, А НЕ ТРИ ЧИСЛА, и порядок в ней значим. «Три
+  // победы, потом два поражения» и обратное дают одинаковые 3-0-2 и описывают
+  // разные команды. Владелец просил сухую статистику вместо общих слов — это
+  // самое сухое, что у нас про команду есть.
+  it('буквы читаются по порядку, старые слева', () => {
+    expect(parseForm('WWDLW')).toEqual(['W', 'W', 'D', 'L', 'W']);
+  });
+
+  it('пусто и null — это пусто, а не выдуманная ничья', () => {
+    expect(parseForm(null)).toEqual([]);
+    expect(parseForm(undefined)).toEqual([]);
+    expect(parseForm('')).toEqual([]);
+  });
+
+  // ⚠️ ЧУЖАЯ БУКВА ОТБРАСЫВАЕТСЯ, А НЕ СТАНОВИТСЯ НИЧЬЁЙ. Строку собирает SQL
+  // и других букв давать не должен; если даст — это поломка источника, и
+  // молча записать её ничьёй значило бы нарисовать матч, которого не было.
+  it('мусор выбрасывается, а не превращается в матч', () => {
+    expect(parseForm('W?D-L')).toEqual(['W', 'D', 'L']);
+    expect(parseForm('wwd')).toEqual([]);   // строчные — не наш формат
+  });
+
+  it('считает победы, ничьи и поражения', () => {
+    expect(formRecord('WWDLW')).toEqual({ w: 3, d: 1, l: 1 });
+    expect(formRecord(null)).toEqual({ w: 0, d: 0, l: 0 });
+  });
+});
+
+describe('нет данных — нет строки', () => {
+  const empty = {
+    traits: [], manager: null, headline: null,
+    gf: null, ga: null, attack: null, defence: null, form: null,
+  };
+
+  // ⚠️ ПРАВИЛО ВЛАДЕЛЬЦА, ПРИНЯТОЕ ШИРЕ ОДНОЙ СТРОКИ: «если нет данных, её
+  // лучше не писать». Сказано было про строку о травмах; здесь то же самое
+  // применено к стороне целиком — без единого факта она не рисуется вовсе.
+  it('сторона без единого факта не рисуется', () => {
+    expect(sideHasFacts(empty)).toBe(false);
+  });
+
+  it('любого одного факта достаточно', () => {
+    expect(sideHasFacts({ ...empty, manager: 'Симеоне' })).toBe(true);
+    expect(sideHasFacts({ ...empty, traits: ['attacking'] })).toBe(true);
+    expect(sideHasFacts({ ...empty, gf: 1.8 })).toBe(true);
+    expect(sideHasFacts({ ...empty, attack: 82 })).toBe(true);
+    expect(sideHasFacts({ ...empty, form: 'WWD' })).toBe(true);
+    expect(sideHasFacts({ ...empty, headline: 'Симеоне — о новой схеме' })).toBe(true);
+  });
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: пустая строка формы фактом НЕ считается.
+  // Иначе сторона, у которой ровно ничего нет, всё равно рисовалась бы —
+  // пустой подписью с именем команды и ничем под ней.
+  it('пустая форма фактом не считается', () => {
+    expect(sideHasFacts({ ...empty, form: '' })).toBe(false);
+    expect(sideHasFacts({ ...empty, form: '???' })).toBe(false);
+  });
+
+  // Ноль — измеренный ноль, а не пустота: команда, которая не забивает,
+  // существует.
+  it('ноль забитых — это факт', () => {
+    expect(sideHasFacts({ ...empty, gf: 0 })).toBe(true);
   });
 });
