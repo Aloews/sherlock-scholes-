@@ -1318,5 +1318,12 @@
     "players_other": "{{count}} joueurs",
     "squad_one": "{{count}} joueur",
     "squad_other": "{{count}} joueurs"
+  },
+  "transfers_top": {
+    "title": "Les transferts les plus chers",
+    "show": "afficher",
+    "hide": "masquer",
+    "failed": "Impossible de charger les transferts",
+    "note": "Ici une ligne est un transfert, pas un joueur : la même personne peut y figurer plusieurs fois. Le montant d’un transfert et la valeur actuelle du joueur sont deux chiffres différents : Neymar a coûté 222 M € en 2017. Les transferts annoncés mais pas encore effectifs ne sont pas montrés."
   }
 }

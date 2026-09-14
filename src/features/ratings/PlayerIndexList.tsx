@@ -10,6 +10,7 @@ import { hapticImpact } from '@/shared/lib/telegram';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { Chip } from '@/shared/ui/Chip';
 import { formatSortValue } from './indexSortValue';
+import { TopTransfers } from './TopTransfers';
 import {
   fetchPlayerIndex, fetchPlayerIndexCount,
   CONTINENTS, INDEX_SORTS, POSITIONS,
@@ -153,6 +154,18 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
       <p className="text-brand-muted/70 text-[11px]">
         {sort === 'index' ? t('index.formula') : t('index.formula_single')}
       </p>
+
+      {/* ⚠️ РЕЙТИНГ ТРАНСФЕРОВ ЖИВЁТ ВНУТРИ РЕЙТИНГА ПО СТОИМОСТИ, и это
+          просьба владельца дословно: «рейтинг самых дорогих трансферов внутри
+          рейтинга самых дорогих футболистов». Рядом они не спорят, а
+          дополняют друг друга: слева сколько игрок СТОИТ сегодня, ниже —
+          сколько за него однажды ЗАПЛАТИЛИ. Это разные числа, и держать их на
+          разных экранах значило заставлять игрока помнить одно, пока он
+          смотрит на другое.
+
+          Только на этой сортировке: под «минутами на поле» или «упоминаниями
+          в новостях» цена перехода была бы случайной соседкой. */}
+      {sort === 'value' && <TopTransfers />}
 
       {rows.status === 'loading' && (
         <p className="text-brand-muted text-sm text-center py-8">{t('ratings.loading')}</p>
