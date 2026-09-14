@@ -129,6 +129,19 @@ function record(name, ok, detail, control) {
 }
 
 // -------------------------------------------------------------- дайджест ---
+// ⚠️ РАЗДЕЛЫ ЗА ПОДПИСКОЙ ПРОВЕРЯЮТСЯ СЕРВИСНЫМ КЛЮЧОМ, И ЭТО НЕ ЛАЗЕЙКА.
+// `player_index` закрыт `require_pro()`: аноним получает 401. Проверять его
+// анонимом больше нельзя, а бросить проверку — значит потерять единственное
+// сквозное подтверждение, что рейтинг вообще считается. Сервисная роль — это
+// ключ владельца, он никогда не уезжает в браузер; им ходят бот и ночные
+// задания, и ворота его пропускают по построению.
+//
+// ⚠️ КЛЮЧА НЕТ — ПРОВЕРКА КРАСНАЯ, А НЕ ЗЕЛЁНАЯ. Молча пропустить раздел
+// значит получить ту самую зелёную пустоту, против которой написан этот файл.
+function serviceKey() {
+  return env('SUPABASE_SERVICE_KEY') || env('SUPABASE_KEY');
+}
+
 async function checkDigest() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -1036,9 +1049,13 @@ async function checkMetricHistory() {
 
 async function checkPlayerIndex() {
   const url = env('VITE_SUPABASE_URL');
-  const key = env('VITE_SUPABASE_ANON_KEY');
+  // player_index ушёл за подписку — см. serviceKey() выше.
+  const key = serviceKey();
   if (!url || !key) {
-    record('Общий рейтинг', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    record('Общий рейтинг', false,
+           key ? 'нет VITE_SUPABASE_URL в окружении'
+               : 'нет SUPABASE_KEY: раздел за подпиской, анонимом его не проверить',
+           'н/д');
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -1427,14 +1444,26 @@ async function checkScreenBudget() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
-  /** Вызов RPC anon-ключом: сколько миллисекунд и что вернулось. */
+  // ⚠️ ЭТИ ДВА RPC УШЛИ ЗА ПОДПИСКУ, и анонимом они теперь отвечают 401
+  // `pro_required`. Мерить их всё равно надо: у подписчика экран обязан
+  // открываться в срок, и порог здесь — про скорость, а не про доступ. Ключ
+  // владельца ворота пропускают по построению (см. serviceKey выше).
+  const PRO_FNS = new Set(['player_index', 'player_index_count']);
+  const proKey = serviceKey();
+  const authFor = (fn) => {
+    if (!PRO_FNS.has(fn) || !proKey) return auth;
+    return { apikey: proKey, Authorization: `Bearer ${proKey}`,
+             'Content-Type': 'application/json' };
+  };
+
+  /** Вызов RPC: сколько миллисекунд и что вернулось. */
   const timed = async (fn, body, select = '') => {
     const q = select ? `?select=${encodeURIComponent(select)}` : '';
     const t0 = Date.now();
     let r, parsed = null;
     try {
       r = await fetch(`${url}/rest/v1/rpc/${fn}${q}`, {
-        method: 'POST', headers: auth, body: JSON.stringify(body),
+        method: 'POST', headers: authFor(fn), body: JSON.stringify(body),
       });
       parsed = await r.json().catch(() => null);
     } catch (e) {
@@ -2431,9 +2460,13 @@ async function checkClubRoom() {
 // поймать мёртвый параметр, и каждый способен упасть отдельно.
 async function checkPlayerPositions() {
   const url = env('VITE_SUPABASE_URL');
-  const key = env('VITE_SUPABASE_ANON_KEY');
+  // player_index_count ушёл за подписку — см. serviceKey() выше.
+  const key = serviceKey();
   if (!url || !key) {
-    record('Категории игроков', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    record('Категории игроков', false,
+           key ? 'нет VITE_SUPABASE_URL в окружении'
+               : 'нет SUPABASE_KEY: раздел за подпиской, анонимом его не проверить',
+           'н/д');
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -2781,7 +2814,69 @@ async function checkForecastQuality() {
          ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+
+// ------------------------------------------------ ворота подписки на RPC ---
+// ⚠️ СПРЯТАННЫЙ ЭКРАН НЕ ЗАКРЫВАЕТ ДАННЫЕ. Мини-приложение живёт на клиенте:
+// кто откроет devtools, позовёт RPC напрямую. Поэтому у платных данных стоят
+// СВОИ ворота — `require_pro()` читает подпись Telegram из заголовка
+// `x-tg-init-data`, проверяет её ботовым секретом и смотрит `is_pro`.
+//
+// ⚠️ ПРОВЕРЯЮТСЯ ОБЕ СТОРОНЫ, И ЭТО ВЕСЬ СМЫСЛ. «Аноним получил отказ» само по
+// себе ничего не доказывает: ровно так же выглядит сломанная функция, опечатка
+// в имени и отозванный грант. Рядом обязан стоять путь, который ПРОХОДИТ.
+async function checkProGate() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  const svc = serviceKey();
+  if (!url || !anon) {
+    record('Ворота Pro', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const call = async (key, headers = {}) => {
+    const r = await fetch(`${url}/rest/v1/rpc/player_index`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`,
+                 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ p_sort: 'value', p_lang: 'ru', p_limit: 3 }),
+    });
+    const body = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: body?.code, rows: Array.isArray(body) ? body.length : null };
+  };
+
+  const bare = await call(anon);
+  record('Ворота Pro: без подписи не пускают',
+         !bare.ok && bare.code === '42501',
+         bare.ok ? `аноним получил ${bare.rows} строк рейтинга БЕЗ подписки`
+                 : `HTTP ${bare.status}, код ${bare.code}`,
+         'ловит снятые ворота: рейтинг снова раздаётся даром');
+
+  // ⚠️ ПОДДЕЛКА ОБЯЗАНА НЕ ПРОЙТИ. Заголовок ставит кто угодно; защищает не он,
+  // а подпись ботовым секретом внутри него. `hash=deadbeef` это и проверяет.
+  const forged = await call(anon, { 'x-tg-init-data': 'user=%7B%22id%22%3A1%7D&hash=deadbeef' });
+  record('Ворота Pro: подделка не проходит',
+         !forged.ok && forged.code === '42501',
+         forged.ok ? `подделанная подпись дала ${forged.rows} строк`
+                   : `HTTP ${forged.status}, код ${forged.code}`,
+         'ловит ворота, которые смотрят на НАЛИЧИЕ заголовка, а не на его подпись');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: путь, который ОБЯЗАН пройти. Без него два отказа
+  // выше одинаково хорошо объясняются сломанной функцией.
+  if (!svc) {
+    record('Ворота Pro: контроль проходящего пути', false,
+           'нет SUPABASE_KEY — проверить, что ворота хоть кого-то пускают, нечем',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+    return;
+  }
+  const pass = await call(svc);
+  record('Ворота Pro: контроль проходящего пути',
+         pass.ok && pass.rows > 0,
+         pass.ok ? `сервисная роль прошла, ${pass.rows} строк`
+                 : `и сервисная роль не прошла: HTTP ${pass.status}, код ${pass.code}`,
+         pass.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkStatsCoverage();
+await checkProGate();
 await checkForecastQuality();
 await checkClubRoom();
 await checkFanAndFixtures();
