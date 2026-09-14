@@ -1255,5 +1255,31 @@
       "llm": "LLM",
       "fly": "Mosca"
     }
+  },
+  "spotlight": {
+    "title": "Ruído contra jogo",
+    "mode": {
+      "loud": "Mais ruído do que jogo",
+      "quiet": "Mais jogo do que ruído"
+    },
+    "intro": {
+      "loud": "De quem se fala e a quem se paga mais do que entra em campo. Comparado apenas com colegas da mesma idade e posição na mesma liga: dinheiro e atenção não se comparam entre ligas, nem um guarda-redes com um avançado em golos.",
+      "quiet": "Quem joga e marca mais do que aquilo de que se fala e se paga. Os mesmos colegas, a mesma posição, a mesma liga."
+    },
+    "caveat": "Isto é a diferença entre atenção e jogo, NÃO uma afirmação sobre as intenções de alguém. A diferença não distingue causas: uma lesão, uma transferência, o início da época e um verdadeiro exagero parecem iguais aqui. No topo desta lista esteve uma vez um Bola de Ouro que falhara um ano por lesão no joelho.",
+    "how": "A atenção é o valor de mercado e as visitas à página da Wikipédia. O jogo são jogos, golos e assistências. Ambos os números são o lugar entre colegas da mesma posição na mesma liga, de 0 a 100. Só aparecem jogadores cuja estatística de jogos foi recolhida: zero jogos sem recolha é um buraco nosso, não um banco deles.",
+    "attention": "Atenção",
+    "output": "Jogo",
+    "played": "{{apps}} jogos · {{ga}} golos+assistências",
+    "age_one": "{{count}} ano",
+    "age_other": "{{count}} anos",
+    "pos": {
+      "goalkeeper": "Guarda-redes",
+      "defender": "Defesa",
+      "midfield": "Médio",
+      "attack": "Avançado"
+    },
+    "empty": "Ainda ninguém aqui: faltam colegas da mesma posição para comparar.",
+    "failed": "Não foi possível carregar."
   }
 }

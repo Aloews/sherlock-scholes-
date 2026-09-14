@@ -1255,5 +1255,31 @@
       "llm": "LLM",
       "fly": "Mouche"
     }
+  },
+  "spotlight": {
+    "title": "Le bruit contre le jeu",
+    "mode": {
+      "loud": "Plus de bruit que de jeu",
+      "quiet": "Plus de jeu que de bruit"
+    },
+    "intro": {
+      "loud": "De qui parle-t-on et à qui paie-t-on plus qu’il ne joue. La comparaison ne se fait qu’avec des joueurs du même âge et du même poste dans le même championnat : l’argent et l’attention ne se comparent pas d’un championnat à l’autre, ni un gardien à un attaquant sur les buts.",
+      "quiet": "Qui joue et marque plus qu’on n’en parle et qu’on ne le paie. Mêmes joueurs du même âge, même poste, même championnat."
+    },
+    "caveat": "C’est l’écart entre l’attention et le jeu, et NON une affirmation sur les intentions de qui que ce soit. L’écart ne distingue pas les causes : une blessure, un transfert, un début de saison et un vrai matraquage se ressemblent ici. En tête de cette liste s’est un jour trouvé un Ballon d’or qui avait manqué un an sur blessure au genou.",
+    "how": "L’attention, c’est la valeur marchande et les consultations de la page Wikipédia. Le jeu, ce sont les matchs, les buts et les passes décisives. Les deux chiffres donnent le rang parmi les joueurs du même poste dans le même championnat, de 0 à 100. Seuls apparaissent les joueurs dont nous avons collecté les statistiques : zéro match sans collecte est un trou chez nous, pas un banc chez eux.",
+    "attention": "Attention",
+    "output": "Jeu",
+    "played": "{{apps}} matchs · {{ga}} buts+passes",
+    "age_one": "{{count}} an",
+    "age_other": "{{count}} ans",
+    "pos": {
+      "goalkeeper": "Gardien",
+      "defender": "Défenseur",
+      "midfield": "Milieu",
+      "attack": "Attaquant"
+    },
+    "empty": "Personne ici pour l’instant : pas assez de joueurs du même poste pour comparer.",
+    "failed": "Impossible de charger."
   }
 }

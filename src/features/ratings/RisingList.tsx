@@ -57,6 +57,19 @@ export function RisingList() {
 
   return (
     <div className="space-y-4">
+      {/* Вход в «громкость против игры» стоит здесь, а не на главной: сюда
+          приходят с вопросом «кто на самом деле набирает», и разрыв между
+          вниманием и игрой — продолжение того же вопроса. */}
+      <button
+        type="button"
+        onClick={() => { hapticImpact('light'); navigate('/spotlight'); }}
+        className="w-full text-left ds-panel bg-brand-surface border border-brand-border
+                   rounded-2xl px-3 py-2.5 active:opacity-70 transition-opacity"
+      >
+        <p className="text-white text-[13px]">{t('spotlight.title')}</p>
+        <p className="text-brand-muted text-[11px] leading-snug">{t('spotlight.mode.loud')} · {t('spotlight.mode.quiet')}</p>
+      </button>
+
       <div className="flex gap-1.5">
         {[7, 30, 90].map((d) => (
           <Chip

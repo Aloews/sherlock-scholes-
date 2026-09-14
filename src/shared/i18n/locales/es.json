@@ -1255,5 +1255,31 @@
       "llm": "LLM",
       "fly": "Mosca"
     }
+  },
+  "spotlight": {
+    "title": "Ruido frente a juego",
+    "mode": {
+      "loud": "Más ruido que juego",
+      "quiet": "Más juego que ruido"
+    },
+    "intro": {
+      "loud": "De quién se habla y a quién se paga más de lo que salta al campo. Se compara solo con coetáneos de la misma demarcación en la misma liga: el dinero y la atención no son comparables entre ligas, ni un portero con un delantero en goles.",
+      "quiet": "Quién juega y marca más de lo que se habla de él y se le paga. Mismos coetáneos, misma demarcación, misma liga."
+    },
+    "caveat": "Es la diferencia entre atención y juego, NO una afirmación sobre las intenciones de nadie. La diferencia no distingue causas: una lesión, un traspaso, el inicio de temporada y un bombo real se ven igual aquí. En lo alto de esta lista estuvo una vez un Balón de Oro que se había perdido un año por lesión de rodilla.",
+    "how": "La atención es el valor de mercado y las visitas a la página de Wikipedia. El juego son partidos, goles y asistencias. Ambas cifras son el puesto entre coetáneos de la misma demarcación en la misma liga, de 0 a 100. Solo aparecen los jugadores cuya estadística de partidos tenemos recogida: cero partidos sin recogida es un hueco nuestro, no un banquillo suyo.",
+    "attention": "Atención",
+    "output": "Juego",
+    "played": "{{apps}} partidos · {{ga}} goles+asistencias",
+    "age_one": "{{count}} año",
+    "age_other": "{{count}} años",
+    "pos": {
+      "goalkeeper": "Portero",
+      "defender": "Defensa",
+      "midfield": "Centrocampista",
+      "attack": "Delantero"
+    },
+    "empty": "Aquí todavía no hay nadie: faltan coetáneos de la misma demarcación para comparar.",
+    "failed": "No se pudo cargar."
   }
 }

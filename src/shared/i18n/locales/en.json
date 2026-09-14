@@ -1255,5 +1255,31 @@
       "llm": "LLM",
       "fly": "Fly"
     }
+  },
+  "spotlight": {
+    "title": "Noise versus play",
+    "mode": {
+      "loud": "Louder than they play",
+      "quiet": "Quieter than they play"
+    },
+    "intro": {
+      "loud": "Who is talked about and paid more than they take the field. Compared only with peers of the same age and position in the same league: money and attention are not comparable across leagues, and a goalkeeper is not comparable to a striker on goals.",
+      "quiet": "Who plays and scores more than they are talked about and paid. Same peers, same position, same league."
+    },
+    "caveat": "This is the gap between attention and play, NOT a claim about anyone's intentions. The gap cannot tell causes apart: an injury, a transfer, the start of a season and genuine hype all look the same here. The top of this list was once a Ballon d'Or winner who had missed a year with a knee injury.",
+    "how": "Attention is market value and Wikipedia page views. Play is matches, goals and assists. Both numbers are a rank among peers of the same position in the same league, from 0 to 100. Only players whose match statistics we have collected appear: zero matches without collection is a hole on our side, not a bench on theirs.",
+    "attention": "Attention",
+    "output": "Play",
+    "played": "{{apps}} matches · {{ga}} goals+assists",
+    "age_one": "{{count}} year old",
+    "age_other": "{{count}} years old",
+    "pos": {
+      "goalkeeper": "Goalkeeper",
+      "defender": "Defender",
+      "midfield": "Midfielder",
+      "attack": "Forward"
+    },
+    "empty": "Nobody here yet: not enough peers of the same position to compare against.",
+    "failed": "Could not load."
   }
 }

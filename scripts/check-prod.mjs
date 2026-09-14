@@ -2991,10 +2991,84 @@ async function checkForecastDuel() {
          called.length === 0 ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
 }
 
+/**
+ * ГРОМКОСТЬ ПРОТИВ ИГРЫ.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ ТРИ ОШИБКИ, КОТОРЫЕ БЫЛИ СДЕЛАНЫ ПРИ ПОСТРОЕНИИ
+ * ЭТОЙ ФУНКЦИИ, и каждая называла бы живых людей в лицо: игроки без
+ * собранной статистики выглядели как не игравшие, вратари — как «громче,
+ * чем играет» (голов у них структурно ноль), а минуты стояли основой
+ * игрового времени при том, что их нет у половины строк.
+ */
+async function checkSpotlight() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Громкость против игры', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const call = async (mode, limit = 25) => {
+    const r = await fetch(`${url}/rest/v1/rpc/player_spotlight`, {
+      method: 'POST',
+      headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_lang: 'ru', p_limit: limit, p_mode: mode }),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const loud = await call('loud');
+  record('Громкость: список приходит', loud.ok && loud.rows.length >= 10,
+         loud.ok ? `${loud.rows.length} строк` : `HTTP ${loud.status}, код ${loud.code}`,
+         'ловит отозванный грант и опустевшую статистику матчей');
+
+  // ⚠️ ОШИБКА ПЕРВАЯ: игрок без собранной статистики попадал в список как «не
+  // игравший». Первые восемь строк были такими, среди них Эсекьель Барко,
+  // который весь год играет.
+  const noApps = loud.rows.filter((r) => !(Number(r.apps) > 0));
+  record('Громкость: у каждого есть сыгранные матчи', loud.rows.length > 0 && noApps.length === 0,
+         noApps.length === 0 ? 'ноль строк без матчей'
+                             : `${noApps.length} строк с нулём матчей: ${noApps[0]?.name_en}`,
+         'ловит возврат к left join: список дыр в сборе вместо списка игроков');
+
+  // ⚠️ ОШИБКА ВТОРАЯ: без сравнения внутри амплуа КАЖДЫЙ вратарь попадал в
+  // «громче, чем играет» — голы у него структурно ноль.
+  const keepers = loud.rows.filter((r) => r.player_position === 'goalkeeper').length;
+  record('Громкость: вратари не заполняют список',
+         loud.rows.length > 0 && keepers / loud.rows.length < 0.4,
+         `вратарей ${keepers} из ${loud.rows.length}`,
+         'ловит пропавшее сравнение внутри амплуа: список обвинял бы за амплуа');
+
+  record('Громкость: перцентиль считан не из горстки',
+         loud.rows.length > 0 && loud.rows.every((r) => Number(r.peers) >= 8),
+         loud.rows.length ? `наименьшая группа ровесников ${Math.min(...loud.rows.map((r) => Number(r.peers)))}`
+                          : 'строк нет',
+         'ловит «выше девяноста процентов», сказанное про семерых');
+
+  record('Громкость: разрыв сходится с двумя числами',
+         loud.rows.length > 0 &&
+         loud.rows.every((r) => Math.abs((Number(r.attention) - Number(r.output)) - Number(r.gap)) < 0.002),
+         'разрыв пересчитан независимо',
+         'ловит разъехавшиеся внимание, игру и разрыв');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: обратный режим обязан давать ДРУГИХ людей и
+  // разрыв с другим знаком. Одинаковые списки значат, что p_mode не работает.
+  const quiet = await call('quiet');
+  const loudIds = new Set(loud.rows.map((r) => r.card_id));
+  const overlap = quiet.rows.filter((r) => loudIds.has(r.card_id)).length;
+  record('Громкость: контроль — обратный режим даёт других',
+         quiet.ok && quiet.rows.length > 0 && overlap === 0 &&
+         quiet.rows.every((r) => Number(r.gap) <= 0),
+         quiet.ok ? `пересечение ${overlap}, разрывы ${quiet.rows.every((r) => Number(r.gap) <= 0) ? 'отрицательные' : 'РАЗНОЗНАКОВЫЕ'}`
+                  : `HTTP ${quiet.status}, код ${quiet.code}`,
+         'ловит не работающий p_mode: обе вкладки показывали бы одно и то же');
+}
+
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();
 await checkForecastDuel();
+await checkSpotlight();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();
