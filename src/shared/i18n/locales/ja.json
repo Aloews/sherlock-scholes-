@@ -1208,6 +1208,26 @@
       "own": "独自",
       "llm": "言語",
       "fly": "ハエ"
+    },
+    "fly_verdict": "ハエの判定",
+    "fly_again": "もう一度",
+    "fly_dopamine_other": "ドーパミン：{{n}} 件の結果",
+    "exp_total": "予想 {{v}} 点",
+    "agree_other": "{{n}} 名が一致",
+    "board": "これまでの予想者",
+    "upcoming": "次の試合",
+    "history": "予想の履歴",
+    "graded_other": "{{n}} 試合",
+    "last30": "直近30：{{v}}",
+    "streak_other": "連続 {{n}}",
+    "no_upcoming": "次の試合はまだありません。予想は夜に届きます。",
+    "no_history": "指定した試合が行われると履歴が表示されます。",
+    "backfilled_note": "一部の行は後から埋めたものです。調整時にモデルが見ていない試合が対象で、印が付き、同じように数えます。",
+    "goals_section": "次は得点について",
+    "pick": {
+      "H": "ホーム",
+      "D": "引き分け",
+      "A": "アウェー"
     }
   },
   "spotlight": {

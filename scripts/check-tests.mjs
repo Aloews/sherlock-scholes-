@@ -124,6 +124,40 @@ testcase(
 );
 
 testcase(
+  'vitest замечает закрытый экран, показанный неподписанному',
+  'владелец просил прятать недоступные разделы, а не показывать их с замком; ' +
+  'правило, которое перестало прятать, снаружи выглядит как «ничего не ' +
+  'изменилось», и заметить это можно только тестом',
+  () => withBroken('src/shared/lib/proGate.ts',
+    (s) => s.replace(
+      '  return state.proLoaded && !state.isPro && requiresPro(pathname);',
+      '  return false;  // СЛОМАНО НАРОЧНО: не прячем ничего'),
+    () => !passes('npx vitest run src/shared/lib/proGate.test.ts')),
+);
+
+testcase(
+  'тесты мухи замечают дофамин, который усиливает связь',
+  'у дрозофилы дофамин ОСЛАБЛЯЕТ синапс KC→MBON; правило, которое усиливает, ' +
+  'выглядит как обучение и даёт числа, но это уже не муха, а обычный градиент',
+  () => withBroken('football_scraper/fly_brain.py',
+    (s) => s.replace('block * (1.0 - self.depression), floor)',
+                     'block * (1.0 + self.depression), floor)'),
+    () => !passes(py('tests/test_fly_brain.py'))),
+);
+
+testcase(
+  'pytest замечает тест, который выходит на успехе',
+  'CLAUDE.md предупреждает: `pytest -q` СОБИРАЕТ все файлы test_*.py, то есть ' +
+  'импортирует их. `sys.exit(0)` в теле модуля рвёт сбор с INTERNALERROR — и ' +
+  'прогон падает ровно тогда, когда все проверки прошли. Локально зелено, в ' +
+  'CI красное; так и случилось с тестами мухи',
+  () => withBroken('football_scraper/tests/test_fly_brain.py',
+    (s) => s.replace('print("все прошли")',
+                     'print("все прошли")\nsys.exit(0)  # СЛОМАНО НАРОЧНО'),
+    () => !passes('cd football_scraper && python3 -m pytest -q', 600_000)),
+);
+
+testcase(
   'check-prod замечает мёртвый адрес',
   'проверка прода — единственная, способная упасть по той причине, по которой ' +
   'ломается приложение; если она зелёная на несуществующем хосте, она пустая',

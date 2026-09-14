@@ -1255,6 +1255,30 @@
       "own": "Ours",
       "llm": "LLM",
       "fly": "Fly"
+    },
+    "fly_verdict": "The fly's verdict",
+    "fly_again": "again",
+    "fly_dopamine_one": "dopamine: {{n}} outcome",
+    "fly_dopamine_other": "dopamine: {{n}} outcomes",
+    "exp_total": "{{v}} goals expected",
+    "agree_one": "{{n}} agrees",
+    "agree_other": "{{n}} agree",
+    "board": "Forecasters so far",
+    "upcoming": "Next matches",
+    "history": "Forecast history",
+    "graded_one": "{{n}} match",
+    "graded_other": "{{n}} matches",
+    "last30": "last 30: {{v}}",
+    "streak_one": "streak {{n}}",
+    "streak_other": "streak {{n}}",
+    "no_upcoming": "No upcoming matches yet — picks arrive overnight.",
+    "no_history": "History appears once the called matches are played.",
+    "backfilled_note": "Some rows were filled in afterwards, on matches the models never saw while being fitted. They are marked and counted the same.",
+    "goals_section": "Now about goals",
+    "pick": {
+      "H": "home",
+      "D": "draw",
+      "A": "away"
     }
   },
   "spotlight": {

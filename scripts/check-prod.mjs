@@ -3173,6 +3173,121 @@ async function checkAmateur() {
 }
 
 /**
+ * ПРОГНОЗ ПОБЕДИТЕЛЯ: три прогнозиста, история и дофамин мухи.
+ *
+ * ⚠️ ГЛАВНОЕ ЗДЕСЬ — НЕ «ЕСТЬ ЛИ ЦИФРЫ», А ЧЕСТНО ЛИ ОНИ ПОЛУЧЕНЫ. Дашборд,
+ * который показывает долю угаданных, слишком легко сделать красивым: достаточно
+ * дописать прогноз после матча. Поэтому проверяется не точность, а устройство:
+ * прогноз записан ДО матча, исход проставлен ОТДЕЛЬНО, дофамин дошёл до мозга.
+ */
+async function checkForecastWinner() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  const svc = serviceKey();
+  if (!url || !anon) {
+    record('Прогноз победителя', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const rpc = async (key, name, body, headers = {}) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`,
+                 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body ?? {}),
+    });
+    return { status: r.status, rows: r.ok ? await r.json().catch(() => null) : null };
+  };
+
+  // ── ворота ────────────────────────────────────────────────────────────────
+  const noSig = await rpc(anon, 'forecast_scoreboard', {});
+  record('Прогноз: без подписи не отдаётся',
+         noSig.status === 401,
+         `HTTP ${noSig.status}`,
+         'ловит открытый платный дашборд: экран спрятан, а RPC нет');
+
+  if (!svc) {
+    record('Прогноз', false, 'нет SUPABASE_KEY — дальше нечем', 'н/д');
+    return;
+  }
+
+  const board = await rpc(svc, 'forecast_scoreboard', {});
+  const rows = Array.isArray(board.rows) ? board.rows : [];
+  record('Прогноз: контроль проходящего пути',
+         board.status === 200 && rows.length > 0,
+         `HTTP ${board.status}, ${rows.length} строк`,
+         board.status === 200 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  const models = new Set(rows.map((r) => r.model));
+  record('Прогноз: все три прогнозиста на месте',
+         ['llm', 'fly', 'own'].every((m) => models.has(m)),
+         [...models].join(', ') || 'пусто',
+         'ловит молча выпавшую модель: дашборд на двоих выглядит так же');
+
+  // ⚠️ ТОЧКА ОТСЧЁТА ОБЯЗАТЕЛЬНА. «Всегда хозяева» на этой выборке даёт около
+  // 44 %; модель, не бьющая её, не умеет ничего — сколько бы нейронов в ней ни
+  // было. Порог мягкий (0.40): проверка ловит обвал, а не колебание.
+  const worst = rows.reduce((a, r) => Math.min(a, Number(r.accuracy) || 0), 1);
+  record('Прогноз: никто не хуже подбрасывания монеты',
+         rows.length > 0 && worst >= 0.40,
+         rows.map((r) => `${r.model} ${(Number(r.accuracy) * 100).toFixed(1)}%`).join(', '),
+         'ловит развалившуюся модель и перепутанные местами исходы');
+
+  const fly = rows.find((r) => r.model === 'fly');
+  record('Прогноз: муха получила дофамин',
+         !!fly && Number(fly.dopamine) > 0,
+         fly ? `${fly.dopamine} исходов дошло до мозга` : 'мухи нет в сводке',
+         'ловит остановку обучения: прогнозы идут, а мозг их не видит');
+
+  // ── история ───────────────────────────────────────────────────────────────
+  const hist = await rpc(svc, 'forecast_history', { p_limit: 60 });
+  const h = Array.isArray(hist.rows) ? hist.rows : [];
+  record('Прогноз: история приходит',
+         h.length > 0, `${h.length} строк`,
+         'ловит пустую историю при непустой сводке');
+
+  // ⚠️ ГЛАВНАЯ СТРОКА РАЗДЕЛА. `correct` обязан СХОДИТЬСЯ с `pick` и `actual`.
+  // Разойдись они — и «доля угаданных» перестанет значить что-либо, оставаясь
+  // правдоподобной.
+  const bad = h.filter((r) => r.correct !== (r.pick === r.actual));
+  record('Прогноз: «угадал» пересчитывается независимо',
+         h.length > 0 && bad.length === 0,
+         bad.length === 0 ? `${h.length} строк сошлись`
+                          : `${bad.length} строк расходятся`,
+         'ловит галочку, проставленную отдельно от названного и случившегося');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: отбор по модели ДЕЙСТВИТЕЛЬНО отбирает. Без него
+  // строка выше проверяла бы выборку, которая всегда одна и та же.
+  const onlyFly = await rpc(svc, 'forecast_history', { p_model: 'fly', p_limit: 20 });
+  const of = Array.isArray(onlyFly.rows) ? onlyFly.rows : [];
+  const pure = of.length > 0 && of.every((r) => r.model === 'fly');
+  record('Прогноз: контроль отбора по модели',
+         pure, pure ? `${of.length} строк, все от мухи`
+                    : `пришло ${of.length}, чужих ${of.filter((r) => r.model !== 'fly').length}`,
+         pure ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // ── ближайшие ─────────────────────────────────────────────────────────────
+  const soon = await rpc(svc, 'forecast_upcoming', { p_limit: 20 });
+  const up = Array.isArray(soon.rows) ? soon.rows : [];
+  record('Прогноз: ближайшие матчи названы',
+         up.length > 0, `${up.length} матчей`,
+         'ловит остановку ночного шага: экран пуст, а сводка выглядит живой');
+
+  // ⚠️ ПРОГНОЗ ОБЯЗАН БЫТЬ СДЕЛАН ДО МАТЧА. Строка, дописанная после, — это уже
+  // не прогноз, и именно так дашборды становятся красивыми.
+  const late = up.filter((r) => Date.parse(r.commence_at) <= Date.now());
+  record('Прогноз: назван до матча, а не после',
+         up.length > 0 && late.length === 0,
+         late.length === 0 ? 'все названные матчи ещё не начались'
+                           : `${late.length} матчей уже начались`,
+         'ловит запись прогноза задним числом');
+
+  record('Прогноз: три мнения на матч',
+         up.length > 0 && up.every((r) => r.llm_pick && r.fly_pick && r.own_pick),
+         `${up.filter((r) => r.llm_pick && r.fly_pick && r.own_pick).length} из ${up.length}`,
+         'ловит модель, которая молча перестала называть');
+}
+
+/**
  * ПРЕДЗАПРОС CORS К EDGE-ФУНКЦИЯМ.
  *
  * ⚠️ ЭТА ПРОВЕРКА ПОЯВИЛАСЬ ПО СЛОМАННОЙ КНОПКЕ, И НИ ОДНА ИЗ СОТНИ ОСТАЛЬНЫХ
@@ -3369,6 +3484,7 @@ await checkForecastDuel();
 await checkSpotlight();
 await checkAmateur();
 await checkFunctionCors();
+await checkForecastWinner();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
