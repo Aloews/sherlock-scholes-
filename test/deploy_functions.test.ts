@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
+import { needsSignature } from '../src/shared/lib/signatureScope';
 
 /**
  * СПИСОК ФУНКЦИЙ В КНОПКЕ ВЫКЛАДКИ ОБЯЗАН СОВПАДАТЬ С ПАПКОЙ.
@@ -44,5 +45,73 @@ describe('кнопка выкладки знает все Edge-функции', 
 
   it('контроль: пропущенное имя замечается', () => {
     expect(knownFromWorkflow().slice(1)).not.toEqual(onDisk());
+  });
+});
+
+/**
+ * CORS ФУНКЦИИ ОБЯЗАН ПОКРЫВАТЬ ТО, ЧТО КЛИЕНТ ДЕЙСТВИТЕЛЬНО ШЛЁТ.
+ *
+ * ⚠️ ТЕСТ ПО ЖИВОЙ ПОЛОМКЕ, И ОНА БЫЛА ТИХОЙ. Ворота Pro добавили подпись
+ * Telegram заголовком `x-tg-init-data` на КАЖДЫЙ запрос клиента Supabase — в
+ * том числе на `functions.invoke`. На нестандартный заголовок браузер шлёт
+ * предзапрос OPTIONS; список разрешённых у Edge-функций прибит гвоздями, и
+ * браузер заблокировал вызов ЦЕЛИКОМ, ещё до отправки.
+ *
+ * Владелец: «сводка новостей по кнопке „собрать сводку“ не работает». Вместе с
+ * ней молча перестали работать вход в комнату, ОПЛАТА Pro и загрузка логотипа.
+ * Сервер был жив — прямой POST отвечал 200 за 2.6 с, — поэтому ни curl, ни
+ * сотня проверок этого не видели: предзапрос делает БРАУЗЕР.
+ *
+ * ⚠️ ПОЭТОМУ ЗДЕСЬ СВЕРЯЮТСЯ ДВЕ СТОРОНЫ, А НЕ ОДНА. Набор заголовков берётся
+ * из того же правила, по которому живёт клиент (`needsSignature`), и
+ * сравнивается со списком в функции. Расширить правило и забыть про CORS
+ * теперь нельзя: тест покраснеет здесь, а не у игрока на экране.
+ */
+const CALLED_FROM_BROWSER = [
+  'digest-summary',
+  'livekit-token',
+  'tg-pay',
+  'amateur-logo',
+];
+
+/** Что клиент Supabase кладёт в запрос к Edge-функции. */
+function headersClientSends(fnUrl: string): string[] {
+  const base = ['authorization', 'content-type', 'apikey', 'x-client-info'];
+  return needsSignature(fnUrl) ? [...base, 'x-tg-init-data'] : base;
+}
+
+describe('CORS Edge-функций', () => {
+  it.each(CALLED_FROM_BROWSER)('%s разрешает всё, что шлёт клиент', (name) => {
+    const url = `https://example.supabase.co/functions/v1/${name}`;
+    const src = readFileSync(`supabase/functions/${name}/index.ts`, 'utf8');
+    const m = src.match(/"Access-Control-Allow-Headers":\s*"([^"]+)"/);
+    expect(m, `в ${name} не нашёлся Access-Control-Allow-Headers`).toBeTruthy();
+    const allowed = m![1].toLowerCase().split(',').map((x) => x.trim());
+    for (const h of headersClientSends(url)) {
+      expect(allowed, `${name} не пропускает ${h}`).toContain(h);
+    }
+  });
+
+  // ⚠️ СПИСОК ВЫШЕ ОБЯЗАН СОВПАДАТЬ С ТЕМ, ЧТО ДЕЙСТВИТЕЛЬНО ЗОВЁТ КОД.
+  // Иначе новая функция, добавленная во фронтенд, сломается ровно так же, а
+  // этот тест останется зелёным — он просто про неё не узнает.
+  it('список совпадает с вызовами supabase.functions.invoke в коде', () => {
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(e.name)) files.push(p);
+      }
+    };
+    walk('src');
+    const called = new Set<string>();
+    for (const f of files) {
+      const src = readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/functions\.invoke\(\s*['"]([^'"]+)['"]/g)) {
+        called.add(m[1]);
+      }
+    }
+    expect([...called].sort()).toEqual([...CALLED_FROM_BROWSER].sort());
   });
 });

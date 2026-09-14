@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { needsSignature } from './signatureScope';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -52,7 +53,11 @@ function telegramSignature(): string {
 const fetchWithSignature: typeof fetch = (input, init) => {
   const opts = init ?? {};
   const headers = new Headers(opts.headers);
-  const sig = telegramSignature();
+  const url =
+    typeof input === 'string' ? input
+      : input instanceof URL ? input.href
+        : input.url;
+  const sig = needsSignature(url) ? telegramSignature() : '';
   if (sig) {
     try {
       headers.set('x-tg-init-data', sig);
@@ -62,6 +67,7 @@ const fetchWithSignature: typeof fetch = (input, init) => {
   }
   return fetch(input, { ...opts, headers });
 };
+
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: { fetch: fetchWithSignature },

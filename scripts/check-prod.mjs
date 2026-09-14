@@ -2824,6 +2824,24 @@ async function checkForecastQuality() {
          `se ${Number(row.gain_se).toFixed(4)}, t = ${t.toFixed(2)}`,
          'ловит вырождение прогноза в шум: t < 2 значит «те же числа в любом порядке»');
 
+  // ⚠️ КОНТРОЛЬ САМОГО КОНТРОЛЯ, И ОН ЗДЕСЬ НЕ ДЛЯ КРАСОТЫ. Строка выше
+  // полгода показывала t около двух, и это читалось как замер о футболе:
+  // «кто играет — почти неважно». Мерил сломанный контроль. Перестановка
+  // бралась как `lag(predicted) over (order by match_date, actual)` — то есть
+  // матчи сортировались ПО ОТВЕТУ, и «чужим» оказывался матч с тем же счётом:
+  // средний разрыв 0.38 гола, в 79.8 % случаев счёт совпадал буква в букву.
+  // После перехода на хеш от даты и клубов: разрыв 1.32, t = 6.8, а сама
+  // модель не изменилась ни на тысячную (1.3150 против 1.3152).
+  //
+  // Порог 1.0 стоит между сломанным (0.38) и честным (1.32): вернуть
+  // сортировку по факту, не уронив прогон, теперь нельзя.
+  const gap = row.donor_gap == null ? null : Number(row.donor_gap);
+  record('Точность прогноза: перепутанный — правда чужой',
+         gap != null && gap >= 1.0,
+         gap == null ? 'forecast_quality.donor_gap пуст — снимок от старой версии замера'
+                     : `донор прогноза отстоит на ${gap.toFixed(2)} гола`,
+         'ловит возврат перестановки к сортировке по ответу: тогда разрыв падает до 0.38');
+
   // ⚠️ ЗАЩИТА ОТ «УЛУЧШЕНИЙ», КОТОРЫЕ УХУДШАЮТ. Проверенная мультипликативная
   // модель (атака x оборона x среднее лиги) дала 1.4474 против 1.3102 у
   // медианы — эта строка поймала бы её сразу. Допуск 0.02 гола: модель уже
@@ -3155,6 +3173,101 @@ async function checkAmateur() {
 }
 
 /**
+ * ПРЕДЗАПРОС CORS К EDGE-ФУНКЦИЯМ.
+ *
+ * ⚠️ ЭТА ПРОВЕРКА ПОЯВИЛАСЬ ПО СЛОМАННОЙ КНОПКЕ, И НИ ОДНА ИЗ СОТНИ ОСТАЛЬНЫХ
+ * ЭТОГО НЕ ВИДЕЛА. Владелец: «сводка новостей по кнопке „собрать сводку“ не
+ * работает». Прямой POST к `digest-summary` анонимным ключом в ту же минуту
+ * отвечал HTTP 200 за 2.6 с — то есть сервер был жив, а кнопка не работала.
+ *
+ * ПРИЧИНА. Ворота Pro научили клиент Supabase подписывать КАЖДЫЙ запрос
+ * заголовком `x-tg-init-data`, и `functions.invoke` пошёл через тот же fetch.
+ * На нестандартный заголовок браузер шлёт предзапрос OPTIONS. PostgREST
+ * отвечает ЭХОМ — что спросили, то и разрешил, поэтому экраны работали. А у
+ * Edge-функций список прибит гвоздями:
+ *
+ *     access-control-allow-headers: authorization, content-type, apikey, x-client-info
+ *
+ * `x-tg-init-data` в нём нет — браузер блокировал запрос ЦЕЛИКОМ, ещё до
+ * отправки. Сломалось разом всё, что зовётся из браузера: сводка, вход в
+ * комнату (livekit-token), ОПЛАТА Pro (tg-pay) и загрузка логотипа.
+ *
+ * ⚠️ ПОЧИНЕНО НА КЛИЕНТЕ, А НЕ РАСШИРЕНИЕМ СПИСКА, И ЭТО ОСОЗНАННО. Подпись
+ * нужна только PostgREST: `require_pro()` читает её из `request.headers`, а
+ * Edge-функции получают initData телом запроса. Правило живёт в
+ * `src/shared/lib/signatureScope.ts` и проверяется юнит-тестом; расширять
+ * CORS ради заголовка, который туда больше не едет, значило бы развести прод
+ * и репозиторий ради ничего.
+ *
+ * ⚠️ CURL ЭТОГО НЕ ПОЙМАЕТ НИКОГДА, И В ЭТОМ ВЕСЬ СМЫСЛ РАЗДЕЛА: предзапрос
+ * делает браузер, а не сервер. Проверка обязана спрашивать OPTIONS с
+ * `Access-Control-Request-Headers`, как спрашивает браузер.
+ */
+async function checkFunctionCors() {
+  const url = env('VITE_SUPABASE_URL');
+  if (!url) {
+    record('CORS функций', false, 'нет VITE_SUPABASE_URL в окружении', 'н/д');
+    return;
+  }
+
+  // Ровно те, что зовёт `supabase.functions.invoke` из кода приложения.
+  const FUNCS = ['digest-summary', 'livekit-token', 'tg-pay', 'amateur-logo'];
+
+  // ⚠️ ЭТО НЕ «УДОБНЫЙ НАБОР», А ТО, ЧТО КЛАДЁТ КЛИЕНТ. Расходится с
+  // `headersClientSends` в `test/deploy_functions.test.ts` — значит одна из
+  // двух проверок врёт.
+  const SENDS = ['authorization', 'content-type', 'apikey', 'x-client-info'];
+
+  const preflight = async (name, ask) => {
+    const r = await fetch(`${url}/functions/v1/${name}`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: APP,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': ask.join(', '),
+      },
+    });
+    return (r.headers.get('access-control-allow-headers') ?? '').toLowerCase();
+  };
+
+  const bad = [];
+  for (const name of FUNCS) {
+    try {
+      const allow = await preflight(name, SENDS);
+      const miss = SENDS.filter((h) => !allow.includes(h));
+      if (miss.length) bad.push(`${name}: не пропускает ${miss.join(', ')}`);
+    } catch (e) {
+      bad.push(`${name}: ${String(e).slice(0, 40)}`);
+    }
+  }
+  record('CORS функций: браузер вправе позвать',
+         bad.length === 0,
+         bad.length === 0
+           ? `${FUNCS.length} функции пропускают всё, что шлёт клиент`
+           : bad.join('; '),
+         'ловит браузерную блокировку вызова: сервер жив, а кнопка не работает');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ЗДЕСЬ ГЛАВНЫЙ. Сервер, отвечающий ЭХОМ на
+  // что угодно (так делает PostgREST), прошёл бы проверку выше, ничего не
+  // разрешая на самом деле: браузер спросит ровно то, что ему нужно, и всегда
+  // получит «да». Заодно это и есть замер поломки: `x-tg-init-data` в списке
+  // НЕТ, и проверка обязана это видеть.
+  const echoed = [];
+  for (const name of FUNCS) {
+    try {
+      const allow = await preflight(name, [...SENDS, 'x-tg-init-data']);
+      if (allow.includes('x-tg-init-data')) echoed.push(name);
+    } catch { /* уже посчитано выше */ }
+  }
+  record('CORS функций: контроль — список не эхо',
+         echoed.length === 0,
+         echoed.length === 0
+           ? 'незаявленный заголовок не разрешается, значит список настоящий'
+           : `эхом отвечают: ${echoed.join(', ')}`,
+         echoed.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+/**
  * ТРАНСФЕРЫ: РАСПИСАНИЕ И РЕЙТИНГ ПЕРЕХОДОВ.
  *
  * ⚠️ ГЛАВНОЕ ЗДЕСЬ — ПРОВЕРКА, ЧТО ИСТОРИЯ ВООБЩЕ ОБНОВЛЯЕТСЯ. Она собиралась
@@ -3255,6 +3368,7 @@ await checkForecastQuality();
 await checkForecastDuel();
 await checkSpotlight();
 await checkAmateur();
+await checkFunctionCors();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
