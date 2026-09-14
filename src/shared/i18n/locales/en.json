@@ -1214,5 +1214,40 @@
     "match_basis_other": "Measured over {{count}} matches on each side. This measures past games, it does not predict the score",
     "match_expected_total": "Expected goals — {{goals}}: that is both teams together, per match.",
     "match_side_numbers": "Scores {{gf}}, concedes {{ga}} per match"
+  },
+  "duel": {
+    "title": "Who forecasts better",
+    "intro": "Three forecasters trained on the same matches and were tested on matches they had never seen. Split by time: trained on the past, checked against the future. This is a measurement, not a sales pitch.",
+    "basis": "Checked on {{n}} matches, none of which were used for training.",
+    "hit": "Correct",
+    "mae": "Error {{v}} goals",
+    "coverage": "Called {{v}} of matches — silent on the rest",
+    "silent": "Stayed silent",
+    "recent": "Recent matches",
+    "col_match": "Match",
+    "col_total": "Goals",
+    "legend": "✓ — called the right side of the 2.5-goal line, ✗ — wrong, — our own variant stayed silent.",
+    "baseline_title": "Baselines",
+    "verdict": "The honest result: on average error none of the three beats the median. The one thing that works is silence — our own variant declines matches where the two models disagree or both sit on the line, and gets the rest right noticeably more often.",
+    "failed": "Could not load the measurement.",
+    "model": {
+      "own": "Our own variant",
+      "llm": "LLM",
+      "fly": "Fruit-fly brain",
+      "median": "Median",
+      "current": "Current formula"
+    },
+    "what": {
+      "own": "A blend of the two models that stays silent when they disagree",
+      "llm": "A trained linear head over nine match features",
+      "fly": "A reservoir: connections frozen, only the readout learns — how the fly connectome is read",
+      "median": "Always names the most common number of goals",
+      "current": "What the app shows today; it does not learn"
+    },
+    "short": {
+      "own": "Ours",
+      "llm": "LLM",
+      "fly": "Fly"
+    }
   }
 }

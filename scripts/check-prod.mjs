@@ -2287,8 +2287,18 @@ async function checkClubCharacter() {
     return;
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  // ⚠️ ПОРЯДОК И ПОЛНЫЙ ОБЪЁМ — НЕ ПЕДАНТИЗМ. Раньше здесь стоял `limit=400`
+  // БЕЗ order: PostgREST отдавал первые четыреста строк в физическом порядке
+  // таблицы, и контроль редкости ниже получал «атакующих 0 из 400» при 120 из
+  // 648 в самой таблице. То есть проверка краснела на ЗДОРОВЫХ данных — а это
+  // хуже пустой: по ней перестают смотреть.
+  //
+  // Предел поднят до тысячи (это потолок PostgREST по db-max-rows) и клубов
+  // сейчас 648. Перерастём тысячу — усечение вернётся, и заметит его строка
+  // «посчитан»: она печатает, сколько строк пришло.
   const rows = await fetch(
-    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits&limit=400`,
+    `${url}/rest/v1/club_character?select=club_key,matches,gf_pm,ga_pm,attack,defence,traits`
+    + `&order=club_key.asc&limit=1000`,
     { headers: auth },
   ).then((r) => (r.ok ? r.json().catch(() => null) : null));
   const list = Array.isArray(rows) ? rows : [];
@@ -2875,9 +2885,94 @@ async function checkProGate() {
          pass.ok ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+/**
+ * ДАШБОРД СОСТЯЗАНИЯ ПРОГНОЗИСТОВ.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ НЕ ДОСТУПНОСТЬ, А ЧЕСТНОСТЬ ЧИСЕЛ. Дашборд врёт не
+ * падая: покрытие, потерянное по дороге, превращает «66 % на четырёх матчах
+ * из десяти» в «66 %» — и модель, отвечающая на лёгкие вопросы, встаёт рядом
+ * с теми, кто отвечает на все.
+ */
+async function checkForecastDuel() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Состязание прогнозистов', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const rpc = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const models = await rpc('forecast_duel_models', {});
+  const by = Object.fromEntries(models.rows.map((m) => [m.model, m]));
+  record('Состязание: все пять участников на месте',
+         ['own', 'llm', 'fly', 'median', 'current'].every((k) => by[k]),
+         models.ok ? `пришло: ${models.rows.map((m) => m.model).join(', ') || 'ничего'}`
+                   : `HTTP ${models.status}, код ${models.code}`,
+         'ловит пропавшего участника: экран показал бы состязание двоих как состязание троих');
+
+  // ⚠️ ГЛАВНОЕ ЧИСЛО РАЗДЕЛА. «Свой вариант» тем и работает, что молчит; если
+  // покрытие вдруг стало единицей, значит молчание потерялось по дороге — а
+  // его доля угаданных считается ТОЛЬКО по названным матчам и без молчания
+  // становится неправдой.
+  const own = by.own;
+  record('Состязание: свой вариант действительно молчит',
+         !!own && Number(own.coverage) > 0.2 && Number(own.coverage) < 0.95,
+         own ? `назвал ${(Number(own.coverage) * 100).toFixed(1)} % матчей`
+             : 'своего варианта нет вовсе',
+         'ловит потерянное молчание: 66 % на части матчей встали бы рядом с 58 % на всех');
+
+  record('Состязание: у остальных покрытие ровно единица',
+         ['llm', 'fly', 'median', 'current'].every((k) => by[k] && Number(by[k].coverage) === 1),
+         ['llm', 'fly', 'median', 'current']
+           .map((k) => `${k} ${by[k] ? by[k].coverage : '—'}`).join(', '),
+         'ловит молчание, приписанное тому, кто отвечает на все матчи');
+
+  record('Состязание: замер на живой выборке, а не на десятке матчей',
+         !!own && own.matches >= 200,
+         own ? `${own.matches} матчей` : 'нет данных',
+         'ловит замер на горстке матчей, где любой процент — совпадение');
+
+  const recent = await rpc('forecast_duel_recent', { p_lang: 'ru', p_limit: 60 });
+  const named = recent.rows.filter((r) => r.home_name && r.away_name).length;
+  record('Состязание: матчи подписаны клубами',
+         recent.ok && recent.rows.length > 0 && named === recent.rows.length,
+         recent.ok ? `${named} из ${recent.rows.length} строк с названиями клубов`
+                   : `HTTP ${recent.status}, код ${recent.code}`,
+         'ловит столбик галочек без подписей: непонятно, к какому матчу прогноз');
+
+  // ⚠️ МОЛЧАНИЕ — НЕ ПРОМАХ. Записать его как false значило бы наказать
+  // модель за то, ради чего она сделана, и показать на экране 26 % вместо 66 %.
+  const silent = recent.rows.filter((r) => !r.own_called);
+  record('Состязание: промолчал — значит null, а не «не угадал»',
+         silent.length > 0 && silent.every((r) => r.hit_own === null),
+         silent.length === 0 ? 'среди последних матчей ни одного молчания — проверять нечего'
+                             : `${silent.length} молчаний, все null`,
+         silent.length === 0 ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'ловит молчание, засчитанное промахом');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: попадание обязано совпадать со стороной порога,
+  // пересчитанной здесь заново. Если сервер и проверка считают его по-разному,
+  // одна из галочек на экране врёт.
+  const called = recent.rows.filter((r) => r.own_called);
+  const agree = called.every((r) => r.hit_own === ((Number(r.p_own) > 2.5) === (r.total > 2.5)));
+  record('Состязание: контроль — галочка пересчитана независимо',
+         called.length > 0 && agree,
+         called.length === 0 ? 'названных матчей нет — пересчитывать нечего'
+                             : `${called.length} названных, расхождений ${agree ? 0 : 'ЕСТЬ'}`,
+         called.length === 0 ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();
+await checkForecastDuel();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();

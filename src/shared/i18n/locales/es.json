@@ -1214,5 +1214,40 @@
     "match_basis_other": "Medido sobre {{count}} partidos de cada lado. Mide partidos pasados, no predice el marcador",
     "match_expected_total": "Goles esperados — {{goals}}: los dos equipos juntos, por partido.",
     "match_side_numbers": "Marca {{gf}}, encaja {{ga}} por partido"
+  },
+  "duel": {
+    "title": "Quién pronostica mejor",
+    "intro": "Tres pronosticadores aprendieron con los mismos partidos y se pusieron a prueba con partidos que nunca habían visto. Corte por tiempo: se aprende del pasado y se comprueba en el futuro. Esto es una medición, no publicidad.",
+    "basis": "Comprobado en {{n}} partidos; ninguno se usó en el aprendizaje.",
+    "hit": "Acertado",
+    "mae": "Error {{v}} goles",
+    "coverage": "Se pronunció en {{v}} de los partidos; en el resto calla",
+    "silent": "Guardó silencio",
+    "recent": "Últimos partidos",
+    "col_match": "Partido",
+    "col_total": "Goles",
+    "legend": "✓ — acertó el lado de la línea de 2,5 goles, ✗ — falló, — nuestra variante guardó silencio.",
+    "baseline_title": "Puntos de referencia",
+    "verdict": "El resultado honesto: en error medio ninguno de los tres supera a la mediana. Lo único que funciona es el silencio: nuestra variante rechaza los partidos en los que los dos modelos discrepan o ambos están pegados a la línea, y acierta bastante más en los que sí pronostica.",
+    "failed": "No se pudo cargar la medición.",
+    "model": {
+      "own": "Nuestra variante",
+      "llm": "LLM",
+      "fly": "Cerebro de la mosca",
+      "median": "Mediana",
+      "current": "Fórmula actual"
+    },
+    "what": {
+      "own": "Mezcla de los dos modelos que calla cuando discrepan",
+      "llm": "Una cabeza lineal entrenada sobre nueve rasgos del partido",
+      "fly": "Un reservorio: las conexiones quedan fijas y solo aprende la salida, como se lee el conectoma de la mosca",
+      "median": "Siempre dice el número de goles más frecuente",
+      "current": "Lo que muestra hoy la aplicación; no aprende"
+    },
+    "short": {
+      "own": "Nuestra",
+      "llm": "LLM",
+      "fly": "Mosca"
+    }
   }
 }

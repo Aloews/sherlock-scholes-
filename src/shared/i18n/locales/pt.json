@@ -1214,5 +1214,40 @@
     "match_basis_other": "Medido em {{count}} jogos de cada lado. Mede jogos passados, não prevê o resultado",
     "match_expected_total": "Golos esperados — {{goals}}: as duas equipas juntas, por jogo.",
     "match_side_numbers": "Marca {{gf}}, sofre {{ga}} por jogo"
+  },
+  "duel": {
+    "title": "Quem prevê melhor",
+    "intro": "Três previsores aprenderam com os mesmos jogos e foram testados em jogos que nunca tinham visto. Corte por tempo: aprende-se com o passado e verifica-se no futuro. Isto é uma medição, não publicidade.",
+    "basis": "Verificado em {{n}} jogos, nenhum deles usado na aprendizagem.",
+    "hit": "Acertou",
+    "mae": "Erro {{v}} golos",
+    "coverage": "Pronunciou-se em {{v}} dos jogos — nos restantes cala-se",
+    "silent": "Ficou calado",
+    "recent": "Últimos jogos",
+    "col_match": "Jogo",
+    "col_total": "Golos",
+    "legend": "✓ — acertou o lado da linha de 2,5 golos, ✗ — errou, — a nossa variante ficou calada.",
+    "baseline_title": "Pontos de referência",
+    "verdict": "O resultado honesto: no erro médio nenhum dos três supera a mediana. A única coisa que funciona é o silêncio — a nossa variante recusa os jogos em que os dois modelos discordam ou ambos ficam colados à linha, e acerta bastante mais nos restantes.",
+    "failed": "Não foi possível carregar a medição.",
+    "model": {
+      "own": "A nossa variante",
+      "llm": "LLM",
+      "fly": "Cérebro da mosca",
+      "median": "Mediana",
+      "current": "Fórmula atual"
+    },
+    "what": {
+      "own": "Mistura dos dois modelos que se cala quando eles discordam",
+      "llm": "Uma cabeça linear treinada sobre nove características do jogo",
+      "fly": "Um reservatório: as ligações ficam fixas e só a saída aprende — como se lê o conectoma da mosca",
+      "median": "Diz sempre o número de golos mais frequente",
+      "current": "O que a aplicação mostra hoje; não aprende"
+    },
+    "short": {
+      "own": "Nossa",
+      "llm": "LLM",
+      "fly": "Mosca"
+    }
   }
 }

@@ -1214,5 +1214,40 @@
     "match_basis_other": "Mesuré sur {{count}} matchs de chaque côté. Cela mesure les matchs passés, cela ne prédit pas le score",
     "match_expected_total": "Buts attendus — {{goals}} : les deux équipes réunies, par match.",
     "match_side_numbers": "Marque {{gf}}, encaisse {{ga}} par match"
+  },
+  "duel": {
+    "title": "Qui prédit le mieux",
+    "intro": "Trois prévisionnistes ont appris sur les mêmes matchs et ont été testés sur des matchs qu’ils n’avaient jamais vus. Découpage par le temps : on apprend sur le passé, on vérifie sur l’avenir. Ceci est une mesure, pas une publicité.",
+    "basis": "Vérifié sur {{n}} matchs, dont aucun n’a servi à l’apprentissage.",
+    "hit": "Juste",
+    "mae": "Erreur {{v}} but",
+    "coverage": "S’est prononcé sur {{v}} des matchs — se tait sur les autres",
+    "silent": "S’est tu",
+    "recent": "Derniers matchs",
+    "col_match": "Match",
+    "col_total": "Buts",
+    "legend": "✓ — a trouvé le bon côté de la ligne des 2,5 buts, ✗ — s’est trompé, — notre variante s’est tue.",
+    "baseline_title": "Points de repère",
+    "verdict": "Le résultat honnête : à l’erreur moyenne, aucun des trois ne bat la médiane. La seule chose qui marche, c’est le silence — notre variante refuse les matchs où les deux modèles divergent ou se tiennent tous deux sur la ligne, et se trompe nettement moins sur les autres.",
+    "failed": "Impossible de charger la mesure.",
+    "model": {
+      "own": "Notre variante",
+      "llm": "LLM",
+      "fly": "Cerveau de la drosophile",
+      "median": "Médiane",
+      "current": "Formule actuelle"
+    },
+    "what": {
+      "own": "Un mélange des deux modèles qui se tait quand ils divergent",
+      "llm": "Une tête linéaire entraînée sur neuf caractéristiques du match",
+      "fly": "Un réservoir : connexions figées, seule la sortie apprend — comme on lit le connectome de la mouche",
+      "median": "Annonce toujours le nombre de buts le plus fréquent",
+      "current": "Ce que l’application affiche aujourd’hui ; elle n’apprend pas"
+    },
+    "short": {
+      "own": "Nôtre",
+      "llm": "LLM",
+      "fly": "Mouche"
+    }
   }
 }
