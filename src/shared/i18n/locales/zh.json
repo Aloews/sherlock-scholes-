@@ -1208,6 +1208,26 @@
       "own": "自有",
       "llm": "语言",
       "fly": "果蝇"
+    },
+    "fly_verdict": "果蝇的判断",
+    "fly_again": "再来一次",
+    "fly_dopamine_other": "多巴胺：{{n}} 个结果",
+    "exp_total": "预计 {{v}} 球",
+    "agree_other": "{{n}} 位一致",
+    "board": "预测者战绩",
+    "upcoming": "接下来的比赛",
+    "history": "预测历史",
+    "graded_other": "{{n}} 场",
+    "last30": "近 30 场：{{v}}",
+    "streak_other": "连中 {{n}}",
+    "no_upcoming": "暂无接下来的比赛——预测会在夜间生成。",
+    "no_history": "所选比赛踢完后，历史就会出现。",
+    "backfilled_note": "部分行是事后补的，针对模型在拟合时从未见过的比赛。它们已标注，并同等计入。",
+    "goals_section": "再说进球",
+    "pick": {
+      "H": "主队",
+      "D": "平局",
+      "A": "客队"
     }
   },
   "spotlight": {

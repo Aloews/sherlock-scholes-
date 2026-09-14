@@ -1255,6 +1255,30 @@
       "own": "Nôtre",
       "llm": "LLM",
       "fly": "Mouche"
+    },
+    "fly_verdict": "Le verdict de la mouche",
+    "fly_again": "encore",
+    "fly_dopamine_one": "dopamine : {{n}} résultat",
+    "fly_dopamine_other": "dopamine : {{n}} résultats",
+    "exp_total": "{{v}} buts attendus",
+    "agree_one": "{{n}} d'accord",
+    "agree_other": "{{n}} d'accord",
+    "board": "Les pronostiqueurs à ce jour",
+    "upcoming": "Prochains matchs",
+    "history": "Historique des pronostics",
+    "graded_one": "{{n}} match",
+    "graded_other": "{{n}} matchs",
+    "last30": "30 derniers : {{v}}",
+    "streak_one": "série {{n}}",
+    "streak_other": "série {{n}}",
+    "no_upcoming": "Pas encore de match à venir — les pronostics arrivent la nuit.",
+    "no_history": "L'historique apparaîtra une fois les matchs annoncés joués.",
+    "backfilled_note": "Certaines lignes ont été remplies après coup, sur des matchs que les modèles n'ont jamais vus lors du calage. Elles sont marquées et comptent pareil.",
+    "goals_section": "Et maintenant, les buts",
+    "pick": {
+      "H": "domicile",
+      "D": "nul",
+      "A": "extérieur"
     }
   },
   "spotlight": {

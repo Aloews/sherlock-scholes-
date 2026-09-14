@@ -1208,6 +1208,26 @@
       "own": "자체",
       "llm": "언어",
       "fly": "초파리"
+    },
+    "fly_verdict": "초파리의 판정",
+    "fly_again": "다시",
+    "fly_dopamine_other": "도파민: 결과 {{n}}건",
+    "exp_total": "예상 {{v}}골",
+    "agree_other": "{{n}}명 일치",
+    "board": "지금까지의 예측자",
+    "upcoming": "다음 경기",
+    "history": "예측 기록",
+    "graded_other": "{{n}}경기",
+    "last30": "최근 30: {{v}}",
+    "streak_other": "연속 {{n}}",
+    "no_upcoming": "아직 다음 경기가 없습니다. 예측은 밤에 도착합니다.",
+    "no_history": "지목한 경기가 끝나면 기록이 나타납니다.",
+    "backfilled_note": "일부 행은 나중에 채운 것입니다. 모델이 보정 때 보지 않은 경기이며, 표시되고 동일하게 집계됩니다.",
+    "goals_section": "이제 득점 이야기",
+    "pick": {
+      "H": "홈",
+      "D": "무승부",
+      "A": "원정"
     }
   },
   "spotlight": {

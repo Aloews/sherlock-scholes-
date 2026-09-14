@@ -1255,6 +1255,30 @@
       "own": "Nossa",
       "llm": "LLM",
       "fly": "Mosca"
+    },
+    "fly_verdict": "O veredito da mosca",
+    "fly_again": "de novo",
+    "fly_dopamine_one": "dopamina: {{n}} resultado",
+    "fly_dopamine_other": "dopamina: {{n}} resultados",
+    "exp_total": "{{v}} gols esperados",
+    "agree_one": "{{n}} concorda",
+    "agree_other": "{{n}} concordam",
+    "board": "Prognosticadores até agora",
+    "upcoming": "Próximos jogos",
+    "history": "Histórico de prognósticos",
+    "graded_one": "{{n}} jogo",
+    "graded_other": "{{n}} jogos",
+    "last30": "últimos 30: {{v}}",
+    "streak_one": "sequência {{n}}",
+    "streak_other": "sequência {{n}}",
+    "no_upcoming": "Ainda não há próximos jogos — os prognósticos chegam à noite.",
+    "no_history": "O histórico aparece quando os jogos indicados forem disputados.",
+    "backfilled_note": "Algumas linhas foram preenchidas depois, em jogos que os modelos nunca viram ao serem ajustados. Estão marcadas e contam igual.",
+    "goals_section": "Agora, sobre os gols",
+    "pick": {
+      "H": "casa",
+      "D": "empate",
+      "A": "fora"
     }
   },
   "spotlight": {

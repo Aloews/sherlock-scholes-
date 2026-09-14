@@ -8,7 +8,7 @@ import {
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
-import { requiresPro } from '@/shared/lib/proGate';
+import { hiddenForNonPro } from '@/shared/lib/proGate';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { HomeGameLink } from '@/screens/home/HomeGameLink';
@@ -54,7 +54,9 @@ export function HomeScreen() {
   // false, и без проверки `proLoaded` подписчик на долю секунды видел бы
   // замки на всём, за что уже заплатил.
   const proLoaded = useProStore((s) => s.loaded);
-  const locked = (to: string) => proLoaded && !isPro && requiresPro(to);
+  // Правило «прятать или показывать» живёт в `proGate.ts` — там же, где список
+  // открытых маршрутов, и там же оно проверяется тестом.
+  const hidden = (to: string) => hiddenForNonPro(to, { isPro, proLoaded });
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom } = useRoom();
   const { t } = useTranslation();
@@ -273,7 +275,11 @@ export function HomeScreen() {
             кнопки игр вниз ровно тогда, когда палец летит к «Алиасу». Поэтому
             TopFixtures на время запроса держит место скелетом из тех же
             классов — приезд матчей больше ничего не двигает. */}
-        {view === 'home' && (
+        {/* ⚠️ И САМ БЛОК ТОЖЕ ПРЯЧЕТСЯ БЕЗ ПОДПИСКИ: он ведёт на /matches, то
+            есть без неё это витрина в запертую дверь. Если однажды решим, что
+            приманка важнее чистой главной, — снять условие здесь, одна
+            строка. */}
+        {view === 'home' && !hidden('/matches') && (
           <div className="w-full max-w-sm">
             <TopFixtures />
           </div>
@@ -283,7 +289,7 @@ export function HomeScreen() {
             словом «дайджест», которое обещает новости: экран открывали, голов
             не находили и спрашивали, где они. Строка ниже теперь называет их
             своим словом, а сам ролик виден отсюда. */}
-        {view === 'home' && (
+        {view === 'home' && !hidden('/digest') && (
           <div className="w-full max-w-sm">
             <HomeGoalPreview />
           </div>
@@ -297,64 +303,73 @@ export function HomeScreen() {
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
-            <HomeGameLink
-              icon={<IconBallFootball size={20} stroke={1.75} />}
-              label={t('home.matches_link')}
-              onClick={() => navigate('/matches')}
-              locked={locked('/matches')}
-            />
-            <HomeGameLink
-              icon={<IconPlayerPlay size={20} stroke={1.75} />}
-              label={t('home.digest_link')}
-              onClick={() => navigate('/digest')}
-              locked={locked('/digest')}
-            />
-            <HomeGameLink
-              icon={<IconNews size={20} stroke={1.75} />}
-              label={t('home.news_link')}
-              onClick={() => navigate('/news')}
-              locked={locked('/news')}
-            />
-            <HomeGameLink
-              icon={<IconChartBar size={20} stroke={1.75} />}
-              label={t('home.ratings_link')}
-              onClick={() => navigate('/collection?view=stats')}
-              locked={locked('/collection?view=stats')}
-            />
+            {!hidden('/matches') && (
+              <HomeGameLink
+                icon={<IconBallFootball size={20} stroke={1.75} />}
+                label={t('home.matches_link')}
+                onClick={() => navigate('/matches')}
+              />
+            )}
+            {!hidden('/digest') && (
+              <HomeGameLink
+                icon={<IconPlayerPlay size={20} stroke={1.75} />}
+                label={t('home.digest_link')}
+                onClick={() => navigate('/digest')}
+              />
+            )}
+            {!hidden('/news') && (
+              <HomeGameLink
+                icon={<IconNews size={20} stroke={1.75} />}
+                label={t('home.news_link')}
+                onClick={() => navigate('/news')}
+              />
+            )}
+            {!hidden('/collection?view=stats') && (
+              <HomeGameLink
+                icon={<IconChartBar size={20} stroke={1.75} />}
+                label={t('home.ratings_link')}
+                onClick={() => navigate('/collection?view=stats')}
+              />
+            )}
             {/* Команды стоят рядом с рейтингом футболистов намеренно: это два
                 среза одних и тех же собранных матчей — по игроку и по клубу. */}
-            <HomeGameLink
-              icon={<IconShieldHalf size={20} stroke={1.75} />}
-              label={t('home.clubs_link')}
-              onClick={() => navigate('/collection?view=clubs')}
-              locked={locked('/collection?view=clubs')}
-            />
-            <HomeGameLink
-              icon={<IconSoccerField size={20} stroke={1.75} />}
-              label={t('home.arena_link')}
-              onClick={() => navigate('/arena')}
-              locked={locked('/arena')}
-            />
-            <HomeGameLink
-              icon={<IconTrophy size={20} stroke={1.75} />}
-              label={t('home.fantasy_link')}
-              onClick={() => navigate('/fantasy')}
-              locked={locked('/fantasy')}
-            />
+            {!hidden('/collection?view=clubs') && (
+              <HomeGameLink
+                icon={<IconShieldHalf size={20} stroke={1.75} />}
+                label={t('home.clubs_link')}
+                onClick={() => navigate('/collection?view=clubs')}
+              />
+            )}
+            {!hidden('/arena') && (
+              <HomeGameLink
+                icon={<IconSoccerField size={20} stroke={1.75} />}
+                label={t('home.arena_link')}
+                onClick={() => navigate('/arena')}
+              />
+            )}
+            {!hidden('/fantasy') && (
+              <HomeGameLink
+                icon={<IconTrophy size={20} stroke={1.75} />}
+                label={t('home.fantasy_link')}
+                onClick={() => navigate('/fantasy')}
+              />
+            )}
             {/* Любительские лиги — единственный раздел, куда игрок ПИШЕТ:
                 своя лига, своя команда, он сам в составе. */}
-            <HomeGameLink
-              icon={<IconFriends size={20} stroke={1.75} />}
-              label={t('home.amateur_link')}
-              onClick={() => navigate('/amateur')}
-              locked={locked('/amateur')}
-            />
-            <HomeGameLink
-              icon={<IconHelp size={20} stroke={1.75} />}
-              label={t('home.minigames_link')}
-              onClick={() => navigate('/minigames')}
-              locked={locked('/minigames')}
-            />
+            {!hidden('/amateur') && (
+              <HomeGameLink
+                icon={<IconFriends size={20} stroke={1.75} />}
+                label={t('home.amateur_link')}
+                onClick={() => navigate('/amateur')}
+              />
+            )}
+            {!hidden('/minigames') && (
+              <HomeGameLink
+                icon={<IconHelp size={20} stroke={1.75} />}
+                label={t('home.minigames_link')}
+                onClick={() => navigate('/minigames')}
+              />
+            )}
             {/* ⚠️ ШАХМАТ ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ КНОПКИ. Они
                 лежат в мини-играх — «Мини-игры» выше и есть вход к ним.
                 Владелец просил убрать их с главной дважды: первый раз плитку
@@ -362,12 +377,11 @@ export function HomeScreen() {
                 это выглядело как «не убрал». */}
             {/* Classic has no tab bar, so the collection would otherwise have
                 no way in at all once the button stack moved. */}
-            {!master && (
+            {!master && !hidden('/collection') && (
               <HomeGameLink
                 icon={<IconStack2 size={20} stroke={1.75} />}
                 label={t('home.collection')}
                 onClick={() => navigate('/collection')}
-                locked={locked('/collection')}
               />
             )}
           </div>
