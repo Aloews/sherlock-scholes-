@@ -3173,6 +3173,93 @@ async function checkAmateur() {
 }
 
 /**
+ * ПРЕДЗАПРОС CORS К EDGE-ФУНКЦИЯМ.
+ *
+ * ⚠️ ЭТА ПРОВЕРКА ПОЯВИЛАСЬ ПО СЛОМАННОЙ КНОПКЕ, И НИ ОДНА ИЗ СОТНИ ОСТАЛЬНЫХ
+ * ЭТОГО НЕ ВИДЕЛА. Владелец: «сводка новостей по кнопке „собрать сводку“ не
+ * работает». Прямой POST к `digest-summary` анонимным ключом в ту же минуту
+ * отвечал HTTP 200 за 2.6 с — то есть сервер был жив, а кнопка не работала.
+ *
+ * ПРИЧИНА. Клиент Supabase собран со СВОИМ fetch: он подписывает КАЖДЫЙ запрос
+ * заголовком `x-tg-init-data` (подпись Telegram для `require_pro()`), и
+ * `functions.invoke` идёт через тот же fetch. На нестандартный заголовок
+ * браузер шлёт предзапрос OPTIONS. PostgREST отвечает ЭХОМ — что спросили, то и
+ * разрешил, поэтому экраны работали. А у Edge-функций список прибит гвоздями:
+ *
+ *     access-control-allow-headers: authorization, content-type, apikey, x-client-info
+ *
+ * `x-tg-init-data` в нём не было — браузер блокировал запрос ЦЕЛИКОМ, ещё до
+ * отправки. Сломалось разом всё, что зовётся из браузера: сводка, вход в
+ * комнату (livekit-token), оплата (tg-pay) и загрузка логотипа.
+ *
+ * ⚠️ CURL ЭТОГО НЕ ПОЙМАЕТ НИКОГДА, И В ЭТОМ ВЕСЬ СМЫСЛ РАЗДЕЛА: предзапрос
+ * делает браузер, а не сервер. Проверка обязана спрашивать OPTIONS с
+ * `Access-Control-Request-Headers`, как спрашивает браузер.
+ */
+async function checkFunctionCors() {
+  const url = env('VITE_SUPABASE_URL');
+  if (!url) {
+    record('CORS функций', false, 'нет VITE_SUPABASE_URL в окружении', 'н/д');
+    return;
+  }
+
+  // Ровно те, что зовёт `supabase.functions.invoke` из кода приложения.
+  const FUNCS = [
+    ['digest-summary', 'сводка новостей'],
+    ['livekit-token',  'вход в комнату'],
+    ['tg-pay',         'оплата Pro'],
+    ['amateur-logo',   'логотип любительской лиги'],
+  ];
+
+  const preflight = async (name, ask) => {
+    const r = await fetch(`${url}/functions/v1/${name}`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: APP,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': ask,
+      },
+    });
+    return (r.headers.get('access-control-allow-headers') ?? '').toLowerCase();
+  };
+
+  const ASK = 'authorization, content-type, apikey, x-client-info, x-tg-init-data';
+  const bad = [];
+  for (const [name] of FUNCS) {
+    try {
+      const allow = await preflight(name, ASK);
+      if (!allow.includes('x-tg-init-data')) bad.push(`${name}: ${allow || 'пусто'}`);
+    } catch (e) {
+      bad.push(`${name}: ${String(e).slice(0, 40)}`);
+    }
+  }
+  record('CORS функций: подпись Telegram разрешена',
+         bad.length === 0,
+         bad.length === 0
+           ? `${FUNCS.length} функции пропускают x-tg-init-data`
+           : bad.join('; '),
+         'ловит браузерную блокировку вызова: сервер жив, а кнопка не работает');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ЗДЕСЬ ОБЯЗАТЕЛЕН. Сервер, отвечающий ЭХОМ
+  // на что угодно (так делает PostgREST), прошёл бы проверку выше, ничего не
+  // разрешая на самом деле: браузер спросит ровно то, что ему нужно, и всегда
+  // получит «да». Выдуманный заголовок обязан НЕ попасть в список.
+  let echoed = [];
+  for (const [name] of FUNCS) {
+    try {
+      const allow = await preflight(name, `${ASK}, x-vydumannyy-zagolovok-zz`);
+      if (allow.includes('x-vydumannyy-zagolovok-zz')) echoed.push(name);
+    } catch { /* уже посчитано выше */ }
+  }
+  record('CORS функций: контроль — список не эхо',
+         echoed.length === 0,
+         echoed.length === 0
+           ? 'выдуманный заголовок не разрешается, значит список настоящий'
+           : `эхом отвечают: ${echoed.join(', ')}`,
+         echoed.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
+/**
  * ТРАНСФЕРЫ: РАСПИСАНИЕ И РЕЙТИНГ ПЕРЕХОДОВ.
  *
  * ⚠️ ГЛАВНОЕ ЗДЕСЬ — ПРОВЕРКА, ЧТО ИСТОРИЯ ВООБЩЕ ОБНОВЛЯЕТСЯ. Она собиралась
@@ -3273,6 +3360,7 @@ await checkForecastQuality();
 await checkForecastDuel();
 await checkSpotlight();
 await checkAmateur();
+await checkFunctionCors();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();

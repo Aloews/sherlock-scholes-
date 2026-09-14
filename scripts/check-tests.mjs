@@ -111,6 +111,18 @@ testcase(
 );
 
 testcase(
+  'vitest замечает закрытую для браузера функцию',
+  'подпись Telegram, не пропущенная CORS-ом, блокирует вызов В БРАУЗЕРЕ, ' +
+  'пока сервер отвечает 200 на прямой запрос: ровно так «собрать сводку» ' +
+  'перестала работать, а сотня проверок осталась зелёной',
+  () => withBroken('supabase/functions/digest-summary/index.ts',
+    (s) => s.replace(
+      '"Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-tg-init-data",',
+      '"Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",'),
+    () => !passes('npx vitest run test/deploy_functions.test.ts')),
+);
+
+testcase(
   'check-prod замечает мёртвый адрес',
   'проверка прода — единственная, способная упасть по той причине, по которой ' +
   'ломается приложение; если она зелёная на несуществующем хосте, она пустая',
