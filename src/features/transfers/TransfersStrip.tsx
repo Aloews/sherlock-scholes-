@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { IconArrowRight, IconArrowsExchange } from '@tabler/icons-react';
+import { IconArrowRight, IconArrowsExchange, IconChevronDown } from '@tabler/icons-react';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { fetchRecentTransfers, type Transfer } from './transfersApi';
@@ -16,6 +16,12 @@ import { shortDateFormat } from '@/shared/lib/dateFormat';
  * а не уйти из приложения). Подмешать его в ленту значило бы либо выдумать
  * ссылку, либо завести в ленте строку, которая ведёт себя иначе всех прочих.
  *
+ * ⚠️ СПИСОК СВЁРНУТ, ПОКА ЕГО НЕ ОТКРЫЛИ. Двенадцать переходов — это
+ * двенадцать карточек с гербами НАД лентой новостей: раздел, ради которого
+ * экран открывали, оказывался ниже сгиба. Число рядом с заголовком стоит
+ * ИМЕННО поэтому — кнопка обязана говорить, что внутри, до того как её нажмут,
+ * иначе это не свёрнутый список, а спрятанный.
+ *
  * ⚠️ ПУСТО — ЭТО НОРМА, И БЛОК ТОГДА ИСЧЕЗАЕТ ЦЕЛИКОМ. Настоящие даты
  * переходов есть только у игроков, собранных из Викиданных; вне трансферного
  * окна и до сбора состава показывать нечего. Заголовок «Переходы» над пустотой
@@ -27,6 +33,7 @@ export function TransfersStrip({ days = 45, limit = 12 }: { days?: number; limit
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [state, setState] = useState<LoadState<Transfer[]>>(LOADING);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -52,13 +59,32 @@ export function TransfersStrip({ days = 45, limit = 12 }: { days?: number; limit
   if (state.data.length === 0) return null;
 
   return (
-    <section className="mb-4">
-      <h2 className="ds-display text-white text-sm font-black mb-2 flex items-center gap-2">
-        <IconArrowsExchange size={16} stroke={2} className="text-brand-accent" />
-        {t('transfers.title')}
-      </h2>
+    <section className={open ? 'mb-4' : 'mb-3'}>
+      {/* Заголовок стал кнопкой. Стрелка поворачивается, `aria-expanded`
+          говорит то же самое тем, кто её не видит. */}
+      <button
+        type="button"
+        onClick={() => { hapticImpact('light'); setOpen((v) => !v); }}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2 py-1 text-left
+                   active:opacity-70 transition-opacity"
+      >
+        <IconArrowsExchange size={16} stroke={2} className="text-brand-accent shrink-0" />
+        <span className="ds-display text-white text-sm font-black flex-1">
+          {t('transfers.title')}
+        </span>
+        <span className="text-brand-muted text-xs tabular-nums">{state.data.length}</span>
+        <IconChevronDown
+          size={14}
+          stroke={2}
+          className={`text-brand-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-      <div className="space-y-2">
+      {/* ⚠️ `hidden`, А НЕ РАЗМОНТИРОВАНИЕ. Список уже загружен — снимать его
+          с DOM значило бы терять прокрутку и проигрывать анимацию заново на
+          каждое второе нажатие. */}
+      <div className="space-y-2 mt-2" hidden={!open}>
         {state.data.map((tr) => (
           <button
             key={tr.card_id + tr.to_key}
