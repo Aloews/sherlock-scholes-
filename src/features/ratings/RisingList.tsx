@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { cardDisplayName } from '@/shared/lib/cardName';
 import { IconTrendingUp } from '@tabler/icons-react';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -97,11 +98,24 @@ export function RisingList() {
             <span className="w-9 h-9 rounded-full bg-brand-bg shrink-0" />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm truncate">{r.name}</p>
+            <p className="text-white text-sm truncate">{cardDisplayName({ name: r.name, name_en: r.name_en, category: 'player' }, i18n.language)}</p>
             <p className="text-brand-muted text-[11px] truncate">
               {[r.club, t(`collection.dyn.${r.metric}`, { defaultValue: r.metric })]
                 .filter(Boolean).join(' · ')}
             </p>
+            {/* ⚠️ ЧЕМ ПОДТВЕРЖДЁН РОСТ — НА ЭКРАНЕ, А НЕ ТОЛЬКО В УСЛОВИИ.
+                Владелец: «попали игроки, которые никак себя не проявили».
+                Теперь сервер их не пускает, но игрок должен ВИДЕТЬ, за что
+                строка здесь, а не верить списку на слово. */}
+            {r.minutes > 0 && (
+              <p className="text-emerald-400/90 text-[10.5px] truncate">
+                {[
+                  r.goals > 0 ? t('rising.goals', { count: r.goals }) : null,
+                  r.assists > 0 ? t('rising.assists', { count: r.assists }) : null,
+                  t('rising.minutes', { count: r.minutes }),
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </div>
           <div className="text-right shrink-0">
             <p className="ds-display text-brand-accent text-sm font-bold tabular-nums">

@@ -1130,12 +1130,18 @@
   "rising": {
     "tab": "On the rise",
     "clubs": "Clubs",
-    "how": "Shows how many times a metric grew. Growth from a tiny base is ignored: every metric has its own floor.",
+    "how": "Shows how many times a figure grew. Growth from a small number does not count: each figure has its own floor. And growth in what others say about a player — mentions, ratings, page views — counts only for someone who actually played in that window: otherwise the spike belongs to a namesake.",
     "empty": "Nobody has risen yet: the metric history starts on 6 September, and growth is measured between its points.",
     "window_one": "{{count}} day",
     "window_other": "{{count}} days",
     "by_squad_one": "across {{count}} player",
-    "by_squad_other": "across {{count}} players"
+    "by_squad_other": "across {{count}} players",
+    "goals_one": "{{count}} goal",
+    "goals_other": "{{count}} goals",
+    "assists_one": "{{count}} assist",
+    "assists_other": "{{count}} assists",
+    "minutes_one": "{{count}} minute played",
+    "minutes_other": "{{count}} minutes played"
   },
   "sw": {
     "rating": "Rating",

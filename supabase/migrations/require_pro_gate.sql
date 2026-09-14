@@ -37,6 +37,7 @@ as $$
 declare
   v_role text;
   v_init text;
+  v_id   bigint;
 begin
   v_role := nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role';
   if v_role = 'service_role' then
@@ -44,17 +45,37 @@ begin
   end if;
 
   v_init := nullif(current_setting('request.headers', true), '')::jsonb ->> 'x-tg-init-data';
-  if v_init is null or not public.tg_is_pro(v_init) then
+
+  -- ⚠️ ТРИ РАЗНЫЕ ПРИЧИНЫ — ТРИ РАЗНЫХ HINT. Сперва все три отвечали
+  -- одинаковым «pro_required», и когда у владельца перестал грузиться общий
+  -- рейтинг, по ответу нельзя было отличить «подпись не доехала» от «подписки
+  -- нет» — а лечатся они противоположно. Код остаётся 42501: по нему решает
+  -- экран. Меняется только hint, то есть то, что читает человек.
+  if v_init is null then
     raise exception 'pro_required'
       using errcode = '42501',
-            hint = 'Раздел открывается с подпиской Pro';
+            hint = 'no_signature: заголовок x-tg-init-data не доехал — приложение открыто вне Telegram или telegram-web-app.js не загрузился';
+  end if;
+
+  v_id := public.tg_validate_init_data(v_init);
+  if v_id is null then
+    raise exception 'pro_required'
+      using errcode = '42501',
+            hint = 'bad_signature: подпись не сходится или старше суток';
+  end if;
+
+  if not exists (select 1 from users u where u.telegram_id = v_id and u.is_pro) then
+    raise exception 'pro_required'
+      using errcode = '42501',
+            hint = 'not_pro: подпись верна, подписки нет';
   end if;
 end;
 $$;
 
 comment on function public.require_pro() is
   'Страж подписки. Пропускает service_role и Pro-игрока с подписью в заголовке '
-  'x-tg-init-data; иначе 42501 pro_required.';
+  'x-tg-init-data; иначе 42501 pro_required, и hint называет ПРИЧИНУ: '
+  'no_signature / bad_signature / not_pro.';
 
 revoke all on function public.require_pro() from public;
 grant execute on function public.require_pro() to anon, authenticated, service_role;

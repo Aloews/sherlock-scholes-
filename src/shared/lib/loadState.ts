@@ -37,11 +37,17 @@ export const failed = (code: string): LoadState<never> => ({ status: 'error', co
  * одно «не получилось» значит снова потерять то, ради чего всё это.
  */
 export function fromPostgrest<T>(
-  res: { data: T | null; error: { code?: string; message: string } | null },
+  res: { data: T | null; error: { code?: string; message: string; hint?: string | null } | null },
   where: string,
 ): LoadState<T> {
   if (res.error) {
-    console.error(`[${where}]`, res.error.code ?? '', res.error.message);
+    // ⚠️ HINT ТОЖЕ В ЛОГ. У ворот подписки код один на три разные причины
+    // («подпись не доехала», «подпись не сходится», «подписки нет»), и
+    // различает их только hint. Без него отказ у ПОДПИСЧИКА неотличим от
+    // отказа у неподписчика — а это ровно тот случай, когда у владельца
+    // перестал грузиться общий рейтинг.
+    console.error(`[${where}]`, res.error.code ?? '', res.error.message,
+                  res.error.hint ?? '');
     return failed(res.error.code ?? 'unknown');
   }
   // Успех без строк — это ok с пустотой, а не ошибка. Разница видна экрану:

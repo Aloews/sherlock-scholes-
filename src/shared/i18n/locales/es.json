@@ -1130,12 +1130,18 @@
   "rising": {
     "tab": "En alza",
     "clubs": "Clubes",
-    "how": "Muestra cuántas veces creció el indicador. El crecimiento desde una base mínima no cuenta: cada indicador tiene su umbral.",
+    "how": "Se muestra cuántas veces creció el indicador. El crecimiento desde una cifra pequeña no cuenta: cada indicador tiene su umbral. Y el crecimiento en lo que otros dicen del jugador —menciones, valoración, visitas— solo cuenta para quien jugó en ese mismo periodo: de lo contrario el pico es de un homónimo.",
     "empty": "Todavía nadie ha crecido: el historial empieza el 6 de septiembre.",
     "window_one": "{{count}} día",
     "window_other": "{{count}} días",
     "by_squad_one": "por {{count}} jugador",
-    "by_squad_other": "por {{count}} jugadores"
+    "by_squad_other": "por {{count}} jugadores",
+    "goals_one": "{{count}} gol",
+    "goals_other": "{{count}} goles",
+    "assists_one": "{{count}} asistencia",
+    "assists_other": "{{count}} asistencias",
+    "minutes_one": "{{count}} minuto jugado",
+    "minutes_other": "{{count}} minutos jugados"
   },
   "sw": {
     "rating": "Valoración",

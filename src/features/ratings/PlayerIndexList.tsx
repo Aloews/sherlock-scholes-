@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { cardDisplayName } from '@/shared/lib/cardName';
 import { IconBallFootball } from '@tabler/icons-react';
 import { ScopeFilter } from '@/shared/ui/ScopeFilter';
 import type { CollectionFilter } from '@/features/collection/collectionApi';
@@ -191,7 +192,7 @@ export function PlayerIndexList({ limit }: { limit?: number }) {
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm truncate">{row.name}</p>
+            <p className="text-white text-sm truncate">{cardDisplayName({ name: row.name, name_en: row.name_en, category: 'player' }, i18n.language)}</p>
             <p className="text-brand-muted text-[11px] truncate">
               {[row.club, row.league].filter(Boolean).join(' · ')}
             </p>

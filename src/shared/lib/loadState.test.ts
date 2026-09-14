@@ -41,7 +41,20 @@ describe('fromPostgrest', () => {
   it('пишет в консоль, называя место', () => {
     const spy = quiet();
     fromPostgrest({ data: null, error: { code: '42501', message: 'permission denied' } }, 'digest_news');
-    expect(spy).toHaveBeenCalledWith('[digest_news]', '42501', 'permission denied');
+    expect(spy).toHaveBeenCalledWith('[digest_news]', '42501', 'permission denied', '');
+  });
+
+  // ⚠️ У ВОРОТ ПОДПИСКИ КОД ОДИН НА ТРИ ПРИЧИНЫ, и различает их только hint:
+  // «подпись не доехала», «подпись не сходится», «подписки нет». Потеряв его,
+  // отказ у ПОДПИСЧИКА становится неотличим от отказа у неподписчика — а это
+  // ровно тот случай, когда у владельца перестал грузиться общий рейтинг.
+  it('hint не теряется: он называет ПРИЧИНУ отказа ворот', () => {
+    const spy = quiet();
+    fromPostgrest(
+      { data: null, error: { code: '42501', message: 'pro_required', hint: 'no_signature: …' } },
+      'player_index',
+    );
+    expect(spy).toHaveBeenCalledWith('[player_index]', '42501', 'pro_required', 'no_signature: …');
   });
 
   it('данные при ошибке игнорируются', () => {
