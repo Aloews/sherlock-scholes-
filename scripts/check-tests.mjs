@@ -111,15 +111,16 @@ testcase(
 );
 
 testcase(
-  'vitest замечает закрытую для браузера функцию',
-  'подпись Telegram, не пропущенная CORS-ом, блокирует вызов В БРАУЗЕРЕ, ' +
-  'пока сервер отвечает 200 на прямой запрос: ровно так «собрать сводку» ' +
-  'перестала работать, а сотня проверок осталась зелёной',
-  () => withBroken('supabase/functions/digest-summary/index.ts',
+  'vitest замечает подпись, уехавшую в Edge-функцию',
+  'подпись Telegram, попавшая в вызов функции, требует предзапроса CORS — и ' +
+  'браузер блокирует вызов ЦЕЛИКОМ, пока сервер отвечает 200 на прямой ' +
+  'запрос: ровно так «собрать сводку», вход в комнату и ОПЛАТА перестали ' +
+  'работать, а сотня проверок осталась зелёной',
+  () => withBroken('src/shared/lib/signatureScope.ts',
     (s) => s.replace(
-      '"Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-tg-init-data",',
-      '"Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",'),
-    () => !passes('npx vitest run test/deploy_functions.test.ts')),
+      "  return url.includes('/rest/v1/') || url.includes('/realtime/v1/');",
+      '  return true;  // СЛОМАНО НАРОЧНО: подпись едет всюду'),
+    () => !passes('npx vitest run test/deploy_functions.test.ts src/shared/lib/signatureScope.test.ts')),
 );
 
 testcase(

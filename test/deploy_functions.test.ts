@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
+import { needsSignature } from '../src/shared/lib/signatureScope';
 
 /**
  * СПИСОК ФУНКЦИЙ В КНОПКЕ ВЫКЛАДКИ ОБЯЗАН СОВПАДАТЬ С ПАПКОЙ.
@@ -48,22 +49,23 @@ describe('кнопка выкладки знает все Edge-функции', 
 });
 
 /**
- * ФУНКЦИЯ, КОТОРУЮ ЗОВЁТ БРАУЗЕР, ОБЯЗАНА ПРОПУСКАТЬ ПОДПИСЬ TELEGRAM.
+ * CORS ФУНКЦИИ ОБЯЗАН ПОКРЫВАТЬ ТО, ЧТО КЛИЕНТ ДЕЙСТВИТЕЛЬНО ШЛЁТ.
  *
- * ⚠️ ПРОВЕРКА ПО ЖИВОЙ ПОЛОМКЕ. Владелец: «сводка новостей по кнопке „собрать
- * сводку“ не работает». Прямой POST к `digest-summary` в ту же минуту отвечал
- * HTTP 200 за 2.6 с: сервер был жив, а кнопка — нет.
+ * ⚠️ ТЕСТ ПО ЖИВОЙ ПОЛОМКЕ, И ОНА БЫЛА ТИХОЙ. Ворота Pro добавили подпись
+ * Telegram заголовком `x-tg-init-data` на КАЖДЫЙ запрос клиента Supabase — в
+ * том числе на `functions.invoke`. На нестандартный заголовок браузер шлёт
+ * предзапрос OPTIONS; список разрешённых у Edge-функций прибит гвоздями, и
+ * браузер заблокировал вызов ЦЕЛИКОМ, ещё до отправки.
  *
- * Клиент Supabase собран со своим fetch и подписывает КАЖДЫЙ запрос заголовком
- * `x-tg-init-data`; `functions.invoke` идёт через тот же fetch. На
- * нестандартный заголовок браузер шлёт предзапрос OPTIONS, и если сервер его не
- * разрешил — блокирует запрос ЦЕЛИКОМ, ещё до отправки. PostgREST отвечает
- * эхом, поэтому экраны работали; у Edge-функций список прибит гвоздями, и
- * сломалось разом всё, что зовётся из браузера: сводка, вход в комнату, оплата
- * и загрузка логотипа.
+ * Владелец: «сводка новостей по кнопке „собрать сводку“ не работает». Вместе с
+ * ней молча перестали работать вход в комнату, ОПЛАТА Pro и загрузка логотипа.
+ * Сервер был жив — прямой POST отвечал 200 за 2.6 с, — поэтому ни curl, ни
+ * сотня проверок этого не видели: предзапрос делает БРАУЗЕР.
  *
- * ⚠️ CURL ЭТОГО НЕ ПОЙМАЕТ: предзапрос делает браузер, а не сервер. В
- * `check-prod` есть тот же вопрос, заданный боевому адресу; здесь — до пуша.
+ * ⚠️ ПОЭТОМУ ЗДЕСЬ СВЕРЯЮТСЯ ДВЕ СТОРОНЫ, А НЕ ОДНА. Набор заголовков берётся
+ * из того же правила, по которому живёт клиент (`needsSignature`), и
+ * сравнивается со списком в функции. Расширить правило и забыть про CORS
+ * теперь нельзя: тест покраснеет здесь, а не у игрока на экране.
  */
 const CALLED_FROM_BROWSER = [
   'digest-summary',
@@ -72,12 +74,22 @@ const CALLED_FROM_BROWSER = [
   'amateur-logo',
 ];
 
+/** Что клиент Supabase кладёт в запрос к Edge-функции. */
+function headersClientSends(fnUrl: string): string[] {
+  const base = ['authorization', 'content-type', 'apikey', 'x-client-info'];
+  return needsSignature(fnUrl) ? [...base, 'x-tg-init-data'] : base;
+}
+
 describe('CORS Edge-функций', () => {
-  it.each(CALLED_FROM_BROWSER)('%s пропускает x-tg-init-data', (name) => {
+  it.each(CALLED_FROM_BROWSER)('%s разрешает всё, что шлёт клиент', (name) => {
+    const url = `https://example.supabase.co/functions/v1/${name}`;
     const src = readFileSync(`supabase/functions/${name}/index.ts`, 'utf8');
     const m = src.match(/"Access-Control-Allow-Headers":\s*"([^"]+)"/);
     expect(m, `в ${name} не нашёлся Access-Control-Allow-Headers`).toBeTruthy();
-    expect(m![1].toLowerCase()).toContain('x-tg-init-data');
+    const allowed = m![1].toLowerCase().split(',').map((x) => x.trim());
+    for (const h of headersClientSends(url)) {
+      expect(allowed, `${name} не пропускает ${h}`).toContain(h);
+    }
   });
 
   // ⚠️ СПИСОК ВЫШЕ ОБЯЗАН СОВПАДАТЬ С ТЕМ, ЧТО ДЕЙСТВИТЕЛЬНО ЗОВЁТ КОД.

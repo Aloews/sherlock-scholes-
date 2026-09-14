@@ -117,24 +117,9 @@ const LANGS: Record<string, string> = {
   zh: "китайском упрощённом (简体中文)",
 };
 
-// ⚠️ `x-tg-init-data` В СПИСКЕ — НЕ ЗАПАС, А УСЛОВИЕ РАБОТЫ КНОПКИ.
-// Клиент Supabase собран с своим fetch, который подписывает КАЖДЫЙ запрос
-// заголовком `x-tg-init-data` (подпись Telegram для `require_pro()`), и
-// `functions.invoke` идёт через тот же fetch. Браузер на нестандартный
-// заголовок шлёт предзапрос OPTIONS, и если сервер его не разрешил —
-// блокирует ЗАПРОС ЦЕЛИКОМ, ещё до отправки. Снаружи это «Собрать сводку не
-// работает».
-//
-// ⚠️ CURL ЭТОГО НЕ ЛОВИТ И НЕ ПОЙМАЕТ НИКОГДА: предзапрос делает браузер, а
-// не сервер. Прямой POST тем же ключом отвечал 200 за 2.6 с, пока кнопка у
-// владельца не работала вовсе. Проверять надо OPTIONS с
-// `Access-Control-Request-Headers` — это и делает `check-prod`.
-//
-// ⚠️ И `*` ЗДЕСЬ НЕ ГОДИТСЯ: в списке есть `authorization`, а на него
-// подстановочный знак по спецификации Fetch не распространяется.
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-tg-init-data",
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 

@@ -3180,17 +3180,24 @@ async function checkAmateur() {
  * работает». Прямой POST к `digest-summary` анонимным ключом в ту же минуту
  * отвечал HTTP 200 за 2.6 с — то есть сервер был жив, а кнопка не работала.
  *
- * ПРИЧИНА. Клиент Supabase собран со СВОИМ fetch: он подписывает КАЖДЫЙ запрос
- * заголовком `x-tg-init-data` (подпись Telegram для `require_pro()`), и
- * `functions.invoke` идёт через тот же fetch. На нестандартный заголовок
- * браузер шлёт предзапрос OPTIONS. PostgREST отвечает ЭХОМ — что спросили, то и
- * разрешил, поэтому экраны работали. А у Edge-функций список прибит гвоздями:
+ * ПРИЧИНА. Ворота Pro научили клиент Supabase подписывать КАЖДЫЙ запрос
+ * заголовком `x-tg-init-data`, и `functions.invoke` пошёл через тот же fetch.
+ * На нестандартный заголовок браузер шлёт предзапрос OPTIONS. PostgREST
+ * отвечает ЭХОМ — что спросили, то и разрешил, поэтому экраны работали. А у
+ * Edge-функций список прибит гвоздями:
  *
  *     access-control-allow-headers: authorization, content-type, apikey, x-client-info
  *
- * `x-tg-init-data` в нём не было — браузер блокировал запрос ЦЕЛИКОМ, ещё до
+ * `x-tg-init-data` в нём нет — браузер блокировал запрос ЦЕЛИКОМ, ещё до
  * отправки. Сломалось разом всё, что зовётся из браузера: сводка, вход в
- * комнату (livekit-token), оплата (tg-pay) и загрузка логотипа.
+ * комнату (livekit-token), ОПЛАТА Pro (tg-pay) и загрузка логотипа.
+ *
+ * ⚠️ ПОЧИНЕНО НА КЛИЕНТЕ, А НЕ РАСШИРЕНИЕМ СПИСКА, И ЭТО ОСОЗНАННО. Подпись
+ * нужна только PostgREST: `require_pro()` читает её из `request.headers`, а
+ * Edge-функции получают initData телом запроса. Правило живёт в
+ * `src/shared/lib/signatureScope.ts` и проверяется юнит-тестом; расширять
+ * CORS ради заголовка, который туда больше не едет, значило бы развести прод
+ * и репозиторий ради ничего.
  *
  * ⚠️ CURL ЭТОГО НЕ ПОЙМАЕТ НИКОГДА, И В ЭТОМ ВЕСЬ СМЫСЛ РАЗДЕЛА: предзапрос
  * делает браузер, а не сервер. Проверка обязана спрашивать OPTIONS с
@@ -3204,12 +3211,12 @@ async function checkFunctionCors() {
   }
 
   // Ровно те, что зовёт `supabase.functions.invoke` из кода приложения.
-  const FUNCS = [
-    ['digest-summary', 'сводка новостей'],
-    ['livekit-token',  'вход в комнату'],
-    ['tg-pay',         'оплата Pro'],
-    ['amateur-logo',   'логотип любительской лиги'],
-  ];
+  const FUNCS = ['digest-summary', 'livekit-token', 'tg-pay', 'amateur-logo'];
+
+  // ⚠️ ЭТО НЕ «УДОБНЫЙ НАБОР», А ТО, ЧТО КЛАДЁТ КЛИЕНТ. Расходится с
+  // `headersClientSends` в `test/deploy_functions.test.ts` — значит одна из
+  // двух проверок врёт.
+  const SENDS = ['authorization', 'content-type', 'apikey', 'x-client-info'];
 
   const preflight = async (name, ask) => {
     const r = await fetch(`${url}/functions/v1/${name}`, {
@@ -3217,44 +3224,45 @@ async function checkFunctionCors() {
       headers: {
         Origin: APP,
         'Access-Control-Request-Method': 'POST',
-        'Access-Control-Request-Headers': ask,
+        'Access-Control-Request-Headers': ask.join(', '),
       },
     });
     return (r.headers.get('access-control-allow-headers') ?? '').toLowerCase();
   };
 
-  const ASK = 'authorization, content-type, apikey, x-client-info, x-tg-init-data';
   const bad = [];
-  for (const [name] of FUNCS) {
+  for (const name of FUNCS) {
     try {
-      const allow = await preflight(name, ASK);
-      if (!allow.includes('x-tg-init-data')) bad.push(`${name}: ${allow || 'пусто'}`);
+      const allow = await preflight(name, SENDS);
+      const miss = SENDS.filter((h) => !allow.includes(h));
+      if (miss.length) bad.push(`${name}: не пропускает ${miss.join(', ')}`);
     } catch (e) {
       bad.push(`${name}: ${String(e).slice(0, 40)}`);
     }
   }
-  record('CORS функций: подпись Telegram разрешена',
+  record('CORS функций: браузер вправе позвать',
          bad.length === 0,
          bad.length === 0
-           ? `${FUNCS.length} функции пропускают x-tg-init-data`
+           ? `${FUNCS.length} функции пропускают всё, что шлёт клиент`
            : bad.join('; '),
          'ловит браузерную блокировку вызова: сервер жив, а кнопка не работает');
 
-  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ЗДЕСЬ ОБЯЗАТЕЛЕН. Сервер, отвечающий ЭХОМ
-  // на что угодно (так делает PostgREST), прошёл бы проверку выше, ничего не
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ, И ОН ЗДЕСЬ ГЛАВНЫЙ. Сервер, отвечающий ЭХОМ на
+  // что угодно (так делает PostgREST), прошёл бы проверку выше, ничего не
   // разрешая на самом деле: браузер спросит ровно то, что ему нужно, и всегда
-  // получит «да». Выдуманный заголовок обязан НЕ попасть в список.
-  let echoed = [];
-  for (const [name] of FUNCS) {
+  // получит «да». Заодно это и есть замер поломки: `x-tg-init-data` в списке
+  // НЕТ, и проверка обязана это видеть.
+  const echoed = [];
+  for (const name of FUNCS) {
     try {
-      const allow = await preflight(name, `${ASK}, x-vydumannyy-zagolovok-zz`);
-      if (allow.includes('x-vydumannyy-zagolovok-zz')) echoed.push(name);
+      const allow = await preflight(name, [...SENDS, 'x-tg-init-data']);
+      if (allow.includes('x-tg-init-data')) echoed.push(name);
     } catch { /* уже посчитано выше */ }
   }
   record('CORS функций: контроль — список не эхо',
          echoed.length === 0,
          echoed.length === 0
-           ? 'выдуманный заголовок не разрешается, значит список настоящий'
+           ? 'незаявленный заголовок не разрешается, значит список настоящий'
            : `эхом отвечают: ${echoed.join(', ')}`,
          echoed.length === 0 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
