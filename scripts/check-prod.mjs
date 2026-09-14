@@ -3064,11 +3064,102 @@ async function checkSpotlight() {
          'ловит не работающий p_mode: обе вкладки показывали бы одно и то же');
 }
 
+/**
+ * ЛЮБИТЕЛЬСКИЕ ЛИГИ — единственный раздел, куда пишут пользователи.
+ *
+ * ⚠️ ЭТОТ РАЗДЕЛ СТЕРЕЖЁТ НЕ РАБОТУ, А ЗАКРЫТОСТЬ. Проверить, что лига
+ * заводится, отсюда нельзя: для этого нужна настоящая подпись Telegram, а
+ * подделать её мы не можем и не должны. Зато можно проверить то, что важнее:
+ * что БЕЗ подписи не заводится ничего и что таблицы не открыты напрямую.
+ * Анонимный ключ лежит в каждом браузере, и один забытый грант здесь означает
+ * чужие лиги, правимые кем угодно.
+ */
+async function checkAmateur() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !anon) {
+    record('Любительские лиги', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const h = { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' };
+  const rpc = async (fn, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST', headers: h, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, hint: j?.hint };
+  };
+
+  const bad = 'user=%7B%22id%22%3A1%7D&auth_date=1&hash=deadbeef';
+  const mk = await rpc('amateur_create_league', { p_init_data: bad, p_name: 'проверка' });
+  record('Любительские лиги: без подписи лига не заводится',
+         !mk.ok && mk.code === '42501',
+         mk.ok ? 'ЛИГА ЗАВЕДЕНА С ПОДДЕЛЬНОЙ ПОДПИСЬЮ' : `HTTP ${mk.status}, код ${mk.code}`,
+         'ловит снятую проверку подписи: чужие лиги от чужого имени');
+
+  const join = await rpc('amateur_join_team', {
+    p_init_data: bad, p_team_id: '11111111-1111-1111-1111-111111111111',
+    p_display_name: 'проверка',
+  });
+  record('Любительские лиги: без подписи игрок не записывается',
+         !join.ok && join.code === '42501',
+         join.ok ? 'ИГРОК ЗАПИСАН С ПОДДЕЛЬНОЙ ПОДПИСЬЮ' : `HTTP ${join.status}, код ${join.code}`,
+         'ловит запись человека, который о лиге не знает — с именем и номером');
+
+  // ⚠️ ТАБЛИЦЫ НЕ ОТДАЮТСЯ НАПРЯМУЮ. Один грант на select здесь — и коды
+  // приглашений всех лиг читаются одним запросом.
+  for (const table of ['amateur_league', 'amateur_team', 'amateur_player']) {
+    const r = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, { headers: h });
+    record(`Любительские лиги: таблица ${table} закрыта`,
+           r.status === 401 || r.status === 403 || r.status === 404,
+           `HTTP ${r.status}`,
+           'ловит грант на чтение: коды приглашений всех лиг одним запросом');
+  }
+
+  // ⚠️ ЛОГОТИП: ФУНКЦИЯ ОТКАЗЫВАЕТ ДО ЕДИНОГО БАЙТА НА ДИСКЕ.
+  const logo = async (body) => {
+    const r = await fetch(`${url}/functions/v1/amateur-logo`, {
+      method: 'POST', headers: h, body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { status: r.status, error: j?.error };
+  };
+  const uuid = '11111111-1111-1111-1111-111111111111';
+  const png = 'iVBORw0KGgoAAAAA';
+  const noSig = await logo({ kind: 'league', id: uuid, data: png });
+  record('Логотип: без подписи не принимается',
+         noSig.status === 401 && noSig.error === 'no_signature',
+         `HTTP ${noSig.status}, ${noSig.error}`,
+         'ловит открытую загрузку: публичная корзина, куда пишет кто угодно');
+
+  const badSig = await logo({ initData: bad, kind: 'league', id: uuid, data: png });
+  record('Логотип: подделанная подпись не принимается',
+         badSig.status === 401 && badSig.error === 'bad_signature',
+         `HTTP ${badSig.status}, ${badSig.error}`,
+         'ловит проверку по НАЛИЧИЮ подписи вместо её сходимости');
+
+  const badId = await logo({ initData: bad, kind: 'league', id: 'not-a-uuid', data: png });
+  record('Логотип: путь берётся не из запроса',
+         badId.status === 400 && badId.error === 'bad_id',
+         `HTTP ${badId.status}, ${badId.error}`,
+         'ловит имя файла из запроса — запись поверх чужого логотипа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: функция вообще живая и отвечает по делу, а не
+  // всё подряд отвергает, будучи, например, не выложенной.
+  const wrongMethod = await fetch(`${url}/functions/v1/amateur-logo`, { method: 'GET', headers: h });
+  const wm = await wrongMethod.json().catch(() => null);
+  record('Логотип: контроль — функция выложена и отвечает',
+         wrongMethod.status === 405 && wm?.error === 'method_not_allowed',
+         `HTTP ${wrongMethod.status}, ${wm?.error}`,
+         wrongMethod.status === 405 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();
 await checkForecastDuel();
 await checkSpotlight();
+await checkAmateur();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();

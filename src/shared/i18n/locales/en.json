@@ -121,7 +121,8 @@
     "clubs_link": "Clubs and stats",
     "tag_defender": "Defenders",
     "tag_midfielder": "Midfielders",
-    "tag_forward": "Forwards"
+    "tag_forward": "Forwards",
+    "amateur_link": "Amateur leagues"
   },
   "design": {
     "master": "New design",
@@ -1281,5 +1282,41 @@
     },
     "empty": "Nobody here yet: not enough peers of the same position to compare against.",
     "failed": "Could not load."
+  },
+  "amateur": {
+    "title": "Amateur leagues",
+    "intro": "Set up your own league, the teams in it, and put yourself in as a player. A league is not listed publicly: to invite people, give them the code.",
+    "empty": "No leagues yet. Set one up, or join with a code.",
+    "create_title": "New league",
+    "league_name": "League name",
+    "league_city": "Town or yard (optional)",
+    "league_add": "Create league",
+    "league_failed": "Could not create the league",
+    "join_title": "Join with a code",
+    "code_placeholder": "LEAGUE CODE",
+    "code_go": "Find",
+    "code_not_found": "No league with that code",
+    "code_title": "Invite code",
+    "code_how": "Give it to the people you are inviting. Only you can see it.",
+    "team_name": "Team name",
+    "team_add": "Add team",
+    "team_failed": "Could not add the team",
+    "join_me": "Add myself",
+    "join_confirm": "Join",
+    "join_failed": "Could not join",
+    "need_name": "Enter the name to show",
+    "my_name": "Name to show",
+    "shirt": "Number",
+    "leave": "leave",
+    "back_to_list": "← All leagues",
+    "logo_add": "logo",
+    "logo_failed": "Failed",
+    "logo_too_big": "Over 256 KB",
+    "teams_one": "{{count}} team",
+    "teams_other": "{{count}} teams",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "squad_one": "{{count}} player",
+    "squad_other": "{{count}} players"
   }
 }

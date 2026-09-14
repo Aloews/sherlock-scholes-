@@ -119,7 +119,8 @@
     "clubs_link": "クラブと統計",
     "tag_defender": "ディフェンダー",
     "tag_midfielder": "ミッドフィールダー",
-    "tag_forward": "フォワード"
+    "tag_forward": "フォワード",
+    "amateur_link": "アマチュアリーグ"
   },
   "design": {
     "master": "新デザイン",
@@ -1233,5 +1234,38 @@
     },
     "empty": "まだ誰もいません。同ポジションの同年代が足りず比べられません。",
     "failed": "読み込めませんでした。"
+  },
+  "amateur": {
+    "title": "アマチュアリーグ",
+    "intro": "自分のリーグとその中のチームを作り、自分を選手として登録します。リーグは公開一覧には出ません。誘うときはコードを渡してください。",
+    "empty": "まだリーグがありません。作るか、コードで入ってください。",
+    "create_title": "新しいリーグ",
+    "league_name": "リーグ名",
+    "league_city": "町や広場（任意）",
+    "league_add": "リーグを作る",
+    "league_failed": "リーグを作れませんでした",
+    "join_title": "コードで入る",
+    "code_placeholder": "リーグのコード",
+    "code_go": "探す",
+    "code_not_found": "そのコードのリーグはありません",
+    "code_title": "招待コード",
+    "code_how": "誘う人に渡してください。見えるのはあなただけです。",
+    "team_name": "チーム名",
+    "team_add": "チームを追加",
+    "team_failed": "チームを追加できませんでした",
+    "join_me": "自分を登録",
+    "join_confirm": "登録する",
+    "join_failed": "登録できませんでした",
+    "need_name": "表示する名前を入れてください",
+    "my_name": "表示する名前",
+    "shirt": "背番号",
+    "leave": "抜ける",
+    "back_to_list": "← すべてのリーグ",
+    "logo_add": "ロゴ",
+    "logo_failed": "失敗",
+    "logo_too_big": "256 KB 超",
+    "teams_other": "{{count}} チーム",
+    "players_other": "{{count}} 人",
+    "squad_other": "{{count}} 人"
   }
 }

@@ -121,7 +121,8 @@
     "clubs_link": "Clubes y estadísticas",
     "tag_defender": "Defensas",
     "tag_midfielder": "Centrocampistas",
-    "tag_forward": "Delanteros"
+    "tag_forward": "Delanteros",
+    "amateur_link": "Ligas de aficionados"
   },
   "design": {
     "master": "Diseño nuevo",
@@ -1281,5 +1282,41 @@
     },
     "empty": "Aquí todavía no hay nadie: faltan coetáneos de la misma demarcación para comparar.",
     "failed": "No se pudo cargar."
+  },
+  "amateur": {
+    "title": "Ligas de aficionados",
+    "intro": "Cree su propia liga, los equipos que la forman e inscríbase como jugador. La liga no aparece en ningún listado público: para invitar a alguien, dele el código.",
+    "empty": "Todavía no hay ninguna liga. Cree la suya o entre con un código.",
+    "create_title": "Nueva liga",
+    "league_name": "Nombre de la liga",
+    "league_city": "Ciudad o barrio (opcional)",
+    "league_add": "Crear liga",
+    "league_failed": "No se pudo crear la liga",
+    "join_title": "Entrar con código",
+    "code_placeholder": "CÓDIGO DE LIGA",
+    "code_go": "Buscar",
+    "code_not_found": "No hay ninguna liga con ese código",
+    "code_title": "Código de invitación",
+    "code_how": "Déselo a quienes invite. Solo usted lo ve.",
+    "team_name": "Nombre del equipo",
+    "team_add": "Añadir equipo",
+    "team_failed": "No se pudo añadir el equipo",
+    "join_me": "Inscribirme",
+    "join_confirm": "Inscribirse",
+    "join_failed": "No se pudo inscribir",
+    "need_name": "Escriba cómo mostrarle",
+    "my_name": "Cómo mostrarle",
+    "shirt": "Dorsal",
+    "leave": "salir",
+    "back_to_list": "← Todas las ligas",
+    "logo_add": "logo",
+    "logo_failed": "No salió",
+    "logo_too_big": "Más de 256 KB",
+    "teams_one": "{{count}} equipo",
+    "teams_other": "{{count}} equipos",
+    "players_one": "{{count}} jugador",
+    "players_other": "{{count}} jugadores",
+    "squad_one": "{{count}} jugador",
+    "squad_other": "{{count}} jugadores"
   }
 }

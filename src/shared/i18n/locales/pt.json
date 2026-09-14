@@ -121,7 +121,8 @@
     "clubs_link": "Clubes e estatísticas",
     "tag_defender": "Zagueiros",
     "tag_midfielder": "Meio-campistas",
-    "tag_forward": "Atacantes"
+    "tag_forward": "Atacantes",
+    "amateur_link": "Ligas amadoras"
   },
   "design": {
     "master": "Novo design",
@@ -1281,5 +1282,41 @@
     },
     "empty": "Ainda ninguém aqui: faltam colegas da mesma posição para comparar.",
     "failed": "Não foi possível carregar."
+  },
+  "amateur": {
+    "title": "Ligas amadoras",
+    "intro": "Crie a sua liga, as equipas nela e inscreva-se como jogador. A liga não aparece em nenhuma lista pública: para convidar alguém, dê-lhe o código.",
+    "empty": "Ainda não há nenhuma liga. Crie a sua ou entre com um código.",
+    "create_title": "Nova liga",
+    "league_name": "Nome da liga",
+    "league_city": "Cidade ou bairro (opcional)",
+    "league_add": "Criar liga",
+    "league_failed": "Não foi possível criar a liga",
+    "join_title": "Entrar com código",
+    "code_placeholder": "CÓDIGO DA LIGA",
+    "code_go": "Procurar",
+    "code_not_found": "Não há nenhuma liga com esse código",
+    "code_title": "Código de convite",
+    "code_how": "Dê-o a quem convidar. Só você o vê.",
+    "team_name": "Nome da equipa",
+    "team_add": "Adicionar equipa",
+    "team_failed": "Não foi possível adicionar a equipa",
+    "join_me": "Inscrever-me",
+    "join_confirm": "Inscrever",
+    "join_failed": "Não foi possível inscrever",
+    "need_name": "Escreva como quer aparecer",
+    "my_name": "Como quer aparecer",
+    "shirt": "Número",
+    "leave": "sair",
+    "back_to_list": "← Todas as ligas",
+    "logo_add": "logo",
+    "logo_failed": "Não resultou",
+    "logo_too_big": "Mais de 256 KB",
+    "teams_one": "{{count}} equipa",
+    "teams_other": "{{count}} equipas",
+    "players_one": "{{count}} jogador",
+    "players_other": "{{count}} jogadores",
+    "squad_one": "{{count}} jogador",
+    "squad_other": "{{count}} jogadores"
   }
 }

@@ -121,7 +121,8 @@
     "clubs_link": "Clubs et statistiques",
     "tag_defender": "Défenseurs",
     "tag_midfielder": "Milieux",
-    "tag_forward": "Attaquants"
+    "tag_forward": "Attaquants",
+    "amateur_link": "Championnats amateurs"
   },
   "design": {
     "master": "Nouveau design",
@@ -1281,5 +1282,41 @@
     },
     "empty": "Personne ici pour l’instant : pas assez de joueurs du même poste pour comparer.",
     "failed": "Impossible de charger."
+  },
+  "amateur": {
+    "title": "Championnats amateurs",
+    "intro": "Créez votre championnat, les équipes qui le composent et inscrivez-vous comme joueur. Le championnat n’apparaît dans aucune liste publique : pour inviter, donnez le code.",
+    "empty": "Aucun championnat pour l’instant. Créez le vôtre ou entrez avec un code.",
+    "create_title": "Nouveau championnat",
+    "league_name": "Nom du championnat",
+    "league_city": "Ville ou quartier (facultatif)",
+    "league_add": "Créer",
+    "league_failed": "Impossible de créer le championnat",
+    "join_title": "Entrer avec un code",
+    "code_placeholder": "CODE",
+    "code_go": "Chercher",
+    "code_not_found": "Aucun championnat avec ce code",
+    "code_title": "Code d’invitation",
+    "code_how": "Donnez-le à ceux que vous invitez. Vous seul le voyez.",
+    "team_name": "Nom de l’équipe",
+    "team_add": "Ajouter l’équipe",
+    "team_failed": "Impossible d’ajouter l’équipe",
+    "join_me": "M’inscrire",
+    "join_confirm": "S’inscrire",
+    "join_failed": "Impossible de s’inscrire",
+    "need_name": "Indiquez le nom à afficher",
+    "my_name": "Nom à afficher",
+    "shirt": "Numéro",
+    "leave": "quitter",
+    "back_to_list": "← Tous les championnats",
+    "logo_add": "logo",
+    "logo_failed": "Échec",
+    "logo_too_big": "Plus de 256 Ko",
+    "teams_one": "{{count}} équipe",
+    "teams_other": "{{count}} équipes",
+    "players_one": "{{count}} joueur",
+    "players_other": "{{count}} joueurs",
+    "squad_one": "{{count}} joueur",
+    "squad_other": "{{count}} joueurs"
   }
 }

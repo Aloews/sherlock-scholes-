@@ -119,7 +119,8 @@
     "clubs_link": "俱乐部与数据",
     "tag_defender": "后卫",
     "tag_midfielder": "中场",
-    "tag_forward": "前锋"
+    "tag_forward": "前锋",
+    "amateur_link": "业余联赛"
   },
   "design": {
     "master": "新设计",
@@ -1233,5 +1234,38 @@
     },
     "empty": "这里还没有人：同位置的同龄人不够，无法比较。",
     "failed": "无法载入。"
+  },
+  "amateur": {
+    "title": "业余联赛",
+    "intro": "建立你自己的联赛、里面的球队，并把自己登记为球员。联赛不会出现在任何公开列表里：要请人加入，就把代码给他。",
+    "empty": "还没有联赛。建一个，或用代码加入。",
+    "create_title": "新建联赛",
+    "league_name": "联赛名称",
+    "league_city": "城市或球场（可不填）",
+    "league_add": "建立联赛",
+    "league_failed": "无法建立联赛",
+    "join_title": "用代码加入",
+    "code_placeholder": "联赛代码",
+    "code_go": "查找",
+    "code_not_found": "没有这个代码的联赛",
+    "code_title": "邀请代码",
+    "code_how": "把它给你要请的人。只有你看得到。",
+    "team_name": "球队名称",
+    "team_add": "添加球队",
+    "team_failed": "无法添加球队",
+    "join_me": "登记自己",
+    "join_confirm": "登记",
+    "join_failed": "无法登记",
+    "need_name": "请填写显示的名字",
+    "my_name": "显示的名字",
+    "shirt": "号码",
+    "leave": "退出",
+    "back_to_list": "← 所有联赛",
+    "logo_add": "队徽",
+    "logo_failed": "没成功",
+    "logo_too_big": "超过 256 KB",
+    "teams_other": "{{count}} 支球队",
+    "players_other": "{{count}} 人",
+    "squad_other": "{{count}} 人"
   }
 }

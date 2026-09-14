@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
   IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf,
+  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf, IconFriends,
 } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -340,6 +340,14 @@ export function HomeScreen() {
               label={t('home.fantasy_link')}
               onClick={() => navigate('/fantasy')}
               locked={locked('/fantasy')}
+            />
+            {/* Любительские лиги — единственный раздел, куда игрок ПИШЕТ:
+                своя лига, своя команда, он сам в составе. */}
+            <HomeGameLink
+              icon={<IconFriends size={20} stroke={1.75} />}
+              label={t('home.amateur_link')}
+              onClick={() => navigate('/amateur')}
+              locked={locked('/amateur')}
             />
             <HomeGameLink
               icon={<IconHelp size={20} stroke={1.75} />}
