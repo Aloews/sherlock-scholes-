@@ -3154,12 +3154,108 @@ async function checkAmateur() {
          wrongMethod.status === 405 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+/**
+ * ТРАНСФЕРЫ: РАСПИСАНИЕ И РЕЙТИНГ ПЕРЕХОДОВ.
+ *
+ * ⚠️ ГЛАВНОЕ ЗДЕСЬ — ПРОВЕРКА, ЧТО ИСТОРИЯ ВООБЩЕ ОБНОВЛЯЕТСЯ. Она собиралась
+ * один раз и навсегда: скрипт был, расписания не было, а его отбор «у кого
+ * истории ещё нет» пропускал всех, у кого она есть. Январский переход
+ * человека, собранного в сентябре, не пришёл бы никогда.
+ */
+async function checkTransfers() {
+  const url = env('VITE_SUPABASE_URL');
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  const svc = serviceKey();
+  if (!url || !anon) {
+    record('Трансферы', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const rpc = async (fn, body, key = anon) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => null);
+    return { ok: r.ok, status: r.status, code: j?.code, rows: Array.isArray(j) ? j : [] };
+  };
+
+  const top = await rpc('top_transfers', { p_lang: 'ru', p_limit: 20 });
+  record('Переходы: рейтинг приходит', top.ok && top.rows.length >= 10,
+         top.ok ? `${top.rows.length} строк, дороже всех ${
+           top.rows[0] ? Math.round(Number(top.rows[0].fee_eur) / 1e6) + ' млн' : '—'}`
+                : `HTTP ${top.status}, код ${top.code}`,
+         'ловит отозванный грант и опустевшую историю переходов');
+
+  record('Переходы: по убыванию суммы',
+         top.rows.length > 1 &&
+         top.rows.every((r, i) => i === 0 || Number(top.rows[i - 1].fee_eur) >= Number(r.fee_eur)),
+         'порядок проверен независимо',
+         'ловит потерянный order by: «самые дорогие» перестали бы быть самыми дорогими');
+
+  // ⚠️ ОБЪЯВЛЕННЫЕ ЗАРАНЕЕ НЕ СЧИТАЮТСЯ СОСТОЯВШИМИСЯ. В таблице есть строки
+  // с датой 2027-07-01, и без отсечения они бы возглавили рейтинг сделками,
+  // которых ещё не было.
+  const today = new Date().toISOString().slice(0, 10);
+  const future = top.rows.filter((r) => r.moved_on > today);
+  record('Переходы: будущее не попадает в состоявшиеся', future.length === 0,
+         future.length === 0 ? 'ни одной даты из будущего'
+                             : `${future.length} строк с датой позже сегодня`,
+         'ловит снятое отсечение: рейтинг возглавили бы несостоявшиеся сделки');
+
+  record('Переходы: у каждой строки есть клубы',
+         top.rows.length > 0 && top.rows.every((r) => r.from_club && r.to_club),
+         `${top.rows.filter((r) => r.from_club && r.to_club).length} из ${top.rows.length}`,
+         'ловит переход «ниоткуда в никуда»: сумма без сторон ничего не значит');
+
+  if (!svc) {
+    record('Переходы: доза обновления считается', false,
+           'нет SUPABASE_KEY — отбор служебный, анониму он закрыт',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+    return;
+  }
+
+  // ⚠️ ОТБОР ОБЯЗАН БРАТЬ УСТАРЕВШИХ, А НЕ ТОЛЬКО НОВИЧКОВ. Без этого
+  // «обновление раз в квартал» — пустые слова.
+  const stale = await rpc('transfers_to_refresh',
+                          { p_min_value: 600000, p_stale_days: 90, p_limit: 150 }, svc);
+  record('Переходы: доза обновления считается',
+         stale.ok && stale.rows.length > 0,
+         stale.ok ? `${stale.rows.length} игроков к обходу за ночь`
+                  : `HTTP ${stale.status}, код ${stale.code}`,
+         'ловит сломанный отбор: обход шёл бы вхолостую и история замерла бы');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: срок годности обязан ЧТО-ТО МЕНЯТЬ. «Старше
+  // суток» — это почти все собранные, «старше ста лет» — никто, значит одни
+  // новички. Числа обязаны разойтись.
+  //
+  // ⚠️ ПРЕДЕЛ СНЯТ НАРОЧНО, И ЭТО НЕ МЕЛОЧЬ. Первая версия контроля брала обе
+  // стороны с `p_limit: 150` и сравнивала 150 со 150 — то есть сравнивала два
+  // упора в потолок и краснела на здоровой функции. И первая пара сроков (90
+  // дней против 100 лет) тоже не различала: последний сбор был шесть дней
+  // назад, устаревших не было вовсе, обе стороны давали 748 новичков.
+  //
+  // ⚠️ «Старше суток» приходит УСЕЧЁННЫМ до 1000 строк — это db-max-rows
+  // PostgREST, а не наш p_limit. Для контроля этого довольно (1000 > 748, и
+  // стороны расходятся), но читать это число как настоящее количество нельзя.
+  const many = await rpc('transfers_to_refresh',
+                         { p_min_value: 600000, p_stale_days: 1, p_limit: 100000 }, svc);
+  const few  = await rpc('transfers_to_refresh',
+                         { p_min_value: 600000, p_stale_days: 36500, p_limit: 100000 }, svc);
+  const works = many.ok && few.ok && few.rows.length < many.rows.length;
+  record('Переходы: контроль — срок годности действительно читается', works,
+         `старше суток ${many.rows.length}${many.rows.length === 1000 ? ' (усечено PostgREST)' : ''}, `
+         + `старше ста лет ${few.rows.length}`,
+         works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();
 await checkForecastDuel();
 await checkSpotlight();
 await checkAmateur();
+await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
 await checkBundle();

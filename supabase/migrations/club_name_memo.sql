@@ -401,3 +401,70 @@ $$;
 
 revoke all on function public.fixture_clubs(text[], text) from public;
 grant execute on function public.fixture_clubs(text[], text) to anon, authenticated, service_role;
+
+
+-- ── 7) fixture_squad_strength: та же памятка легаси-функции ────────────────
+-- ⚠️ ЕЁ НЕ ЗОВЁТ НИ ОДИН ЭКРАН — её сменил fixture_team_rating. Но удалять
+-- функцию, которую может звать выкаченный где-то фронтенд, этот проект уже
+-- пробовал: легаси-шим pick_random_cards уронил прод (docs/MAP.md §3).
+--
+-- ⚠️ ОНА НЕ УКЛАДЫВАЛАСЬ В АНОНИМНЫЕ ТРИ СЕКУНДЫ. check-prod дважды поймал
+-- 57014 «canceling statement due to statement timeout» — не всегда, а под
+-- нагрузкой: в спокойную минуту те же три вызова давали 345–516 мс.
+-- Перемежающийся отказ хуже постоянного: на него перестают смотреть.
+-- Стало 44–63 мс на четырёх прогонах подряд.
+--
+-- ⚠️ КЛЮЧ ТЕПЕРЬ РЕШАЕТСЯ ТАК ЖЕ, КАК ВЕЗДЕ, И ЭТО МЕНЯЕТ ОТВЕТ. Раньше здесь
+-- звался `club_match_key`, который НЕ проходит через словарь псевдонимов.
+-- Промежуточная версия этой правки брала ключ из памятки (она построена на
+-- resolve_club_key), а при промахе падала обратно на club_match_key — два
+-- разных правила в одной функции, ровно то, от чего этот проект и страдал.
+--
+-- Цена честная и измерена: 113 матчей → 120. Семь матчей, у которых уровня
+-- состава раньше не было, теперь его получили — это те, где название команды
+-- из расписания сходится с нашим клубом только через псевдоним.
+
+create or replace function public.fixture_squad_strength(p_min_depth int default 5)
+returns table (
+  fixture_id text, home_fame numeric, away_fame numeric,
+  depth int, home_squad int, away_squad int)
+language sql stable security definer set search_path = public as $$
+  with fx as materialized (
+    select f.id,
+           coalesce(mh.club_key, resolve_club_key(f.home_team, null)) as hk,
+           coalesce(ma.club_key, resolve_club_key(f.away_team, null)) as ak
+      from fixtures f
+      left join club_name_resolved mh on mh.team = f.home_team
+      left join club_name_resolved ma on ma.team = f.away_team
+     where f.commence_at >= now() and not f.completed
+  ),
+  p as (
+    select cc.club_key, c.fame,
+           row_number() over (partition by cc.club_key order by c.fame desc) as rn
+      from card_current_club cc
+      join cards c on c.id = cc.card_id
+     where c.active and c.category = 'player' and c.fame is not null
+  ),
+  sz as (select p.club_key, count(*)::int as n from p group by p.club_key),
+  sized as (
+    select fx.id, fx.hk, fx.ak, hz.n as hn, az.n as an,
+           least(hz.n, az.n, 11) as depth
+      from fx
+      join sz hz on hz.club_key = fx.hk
+      join sz az on az.club_key = fx.ak
+     -- Порог обязателен. По двум карточкам «уровень состава» — это уровень
+     -- двух человек, и подписать его именем клуба значит соврать.
+     where least(hz.n, az.n) >= greatest(2, p_min_depth)
+  )
+  select s.id,
+         round(avg(ph.fame)::numeric, 1),
+         round(avg(pa.fame)::numeric, 1),
+         s.depth, s.hn, s.an
+    from sized s
+    join p ph on ph.club_key = s.hk and ph.rn <= s.depth
+    join p pa on pa.club_key = s.ak and pa.rn <= s.depth
+   group by s.id, s.depth, s.hn, s.an
+$$;
+
+revoke all on function public.fixture_squad_strength(int) from public;
+grant execute on function public.fixture_squad_strength(int) to anon, authenticated, service_role;
