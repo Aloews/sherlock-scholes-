@@ -167,8 +167,8 @@ testcase(
   'выбрать λ по тем же матчам, на которых потом отчитываешься, — это ' +
   'подглядывание в ответ: число выходит красивое, а на новых матчах его нет',
   () => withBroken('football_scraper/forecast_duel.py',
-    (s) => s.replace('def fit_linear(Xtr, ytr, Xva, yva, lambdas=LAMBDAS):',
-                     'def fit_linear(Xtr, ytr, Xva, yva, lambdas=(0.01,)):'),
+    (s) => s.replace('        m = mae(Xva @ w, yva)',
+                     '        m = mae(Xtr @ w, ytr)  # СЛОМАНО: подбор по обучающей'),
     () => !passes(py('tests/test_forecast_duel.py'))),
 );
 
