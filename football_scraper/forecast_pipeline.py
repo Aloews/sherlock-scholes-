@@ -55,6 +55,27 @@ def env() -> tuple[str, str]:
     return url, key
 
 
+def _rpc(url: str, key: str, name: str, body: dict | None = None):
+    """Позвать функцию базы и ПРОЧИТАТЬ ОТВЕТ.
+
+    ⚠️ `_write` ДЛЯ ЭТОГО НЕ ГОДИТСЯ, И ЭТО НЕ ПРИДИРКА. Он шлёт
+    `Prefer: return=minimal` и возвращает КОД ОТВЕТА, а не тело. Шаг сверки на
+    нём печатал «сверено прогнозов: 0» при любом исходе: работа шла, счётчик
+    врал. В логе ночного прогона это единственное, по чему видно, жив ли шаг, —
+    то есть врущий счётчик хуже отсутствующего.
+    """
+    import json
+    import urllib.request
+    req = urllib.request.Request(
+        f"{url.rstrip('/')}/rest/v1/rpc/{name}",
+        data=json.dumps(body or {}).encode(),
+        method="POST",
+        headers={"apikey": key, "Authorization": "Bearer " + key,
+                 "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read() or b"null")
+
+
 def now_iso() -> str:
     """Время в форме, годной И для тела запроса, И для адресной строки.
 
@@ -214,37 +235,24 @@ def step_pick(url: str, key: str, limit: int = 400) -> int:
 
 
 def step_grade(url: str, key: str) -> int:
-    open_picks = _fetch(url, key,
-                        "forecast_pick?select=fixture_id,model,pick&correct=is.null")
-    if not open_picks:
-        print("нечего сверять")
-        return 0
-    ids = sorted({p["fixture_id"] for p in open_picks})
-    done: dict[str, dict] = {}
-    for i in range(0, len(ids), 100):
-        chunk = ",".join(ids[i:i + 100])
-        for f in _fetch(url, key,
-                        f"fixtures?select=id,home_score,away_score,completed"
-                        f"&id=in.({chunk})&completed=is.true"):
-            if f["home_score"] is not None and f["away_score"] is not None:
-                done[f["id"]] = f
-    body = []
-    for p in open_picks:
-        f = done.get(p["fixture_id"])
-        if not f:
-            continue
-        hs, as_ = int(f["home_score"]), int(f["away_score"])
-        actual = "H" if hs > as_ else "A" if hs < as_ else "D"
-        body.append({
-            "fixture_id": p["fixture_id"], "model": p["model"],
-            "actual": actual, "actual_total": hs + as_,
-            "correct": p["pick"] == actual, "graded_at": now_iso(),
-        })
-    if body:
-        _write(url, key, "forecast_pick?on_conflict=fixture_id,model", body,
-               method="POST")
-    print(f"сверено {len(body)} прогнозов")
-    return len(body)
+    """Сверить названное с тем, чем матчи кончились.
+
+    ⚠️ ВСЁ ДЕЛАЕТ БАЗА, И ЭТО ПОЧИНКА, А НЕ УКРАШЕНИЕ. Прежний шаг читал
+    `fixtures` напрямую и падал с 403: у `service_role` нет SELECT на эту
+    таблицу, и сверка не шла вовсе — история прогнозов не заполнялась, дофамин
+    мухе не приходил.
+
+        42501 permission denied for table fixtures
+
+    Выдавать грант ради одного шага не стали: приложение и так читает расписание
+    только через функции с `security definer`, и сверка стала ещё одной такой.
+    Заодно это один запрос вместо сотен.
+    """
+    res = _rpc(url, key, "grade_forecast_picks")
+    row = (res or [{}])[0] if isinstance(res, list) else (res or {})
+    graded = int(row.get("graded") or 0)
+    print(f"сверено прогнозов: {graded}, матчей: {row.get('matches')}")
+    return graded
 
 
 def step_dopamine(url: str, key: str) -> int:
@@ -272,8 +280,15 @@ def step_dopamine(url: str, key: str) -> int:
         fed.append({"fixture_id": p["fixture_id"], "model": "fly",
                     "dopamine_at": now_iso()})
     if fed:
-        _write(url, key, "forecast_pick?on_conflict=fixture_id,model", fed,
-               method="POST")
+        # ⚠️ PATCH, А НЕ UPSERT, И ЭТО ПОЧИНКА 400. `POST ?on_conflict=` — это
+        # ВСТАВКА с разрешением конфликта, поэтому PostgREST требует все колонки
+        # без умолчания: `pick`, `commence_at`, `home_team`, `away_team`. Здесь
+        # их нет и быть не должно — проставляется одна отметка `dopamine_at`.
+        # В бэкфилле тот же вызов проходил, потому что строки там полные.
+        for r in fed:
+            _write(url, key,
+                   f"forecast_pick?fixture_id=eq.{r['fixture_id']}&model=eq.fly",
+                   {"dopamine_at": r["dopamine_at"]}, method="PATCH")
         prev = _fetch(url, key, "fly_state?select=dopamine&id=eq.mb")
         total = int(prev[0]["dopamine"]) if prev else 0
         fly_save(url, key, fly, total + len(fed))
