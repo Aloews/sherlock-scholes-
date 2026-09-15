@@ -260,6 +260,11 @@ def run(rows) -> dict:
         "lambda": lam,
         "own_tau": {"home": th, "away": ta, "k_form": kf},
         "fly_protocol": {"epochs": fly_epochs, "depression": fly_dep},
+        # Доля тронутых синапсов на полу. Печатается НАРОЧНО: односторонняя
+        # депрессия однажды выглядела остановкой обучения, замер показал полку
+        # (разбор у `FLOOR` в fly_brain.py), и число стоит видеть, а не
+        # вспоминать.
+        "fly_floored": fly.floored_fraction(),
         "fly_taught": fly.taught,
         "fly_depressed": round(fly.learned_fraction(), 5),
         "accuracy": {

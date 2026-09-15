@@ -19,8 +19,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fly_brain import (  # noqa: E402
-    FLOOR, KC_SPARSITY, FlyBrain, OUTCOMES, encode_odour, outcome_compartments,
-    row_to_odour,
+    FLOOR, KC_SPARSITY, ODOUR, FlyBrain, OUTCOMES, encode_odour,
+    outcome_compartments, row_to_odour,
 )
 
 fails: list[str] = []
@@ -148,6 +148,56 @@ check("память переносится вектором без потерь"
       f"{vec.size} синапсов")
 check("сохраняются только существующие связи",
       vec.size == int((saved.kc_mbon0 > 0).sum()), f"{vec.size}")
+
+# ── пол: полка, а не остановка ───────────────────────────────────────────────
+# ⚠️ ЭТОТ БЛОК СТОИТ ПРОТИВ СОБЛАЗНА, А НЕ ПРОТИВ ОШИБКИ. Депрессия
+# односторонняя, доля синапсов на полу растёт, и отсюда напрашивается возврат
+# весов к коннектому — «мухи же забывают». Его пробовали, и он стирает память
+# начисто; разбор с числами лежит у `FLOOR` в fly_brain.py. Замер показывает
+# полку, и проверка держит ИМЕННО замедление: равные порции учений дают всё
+# меньшую прибавку пола.
+shelf = FlyBrain.load()
+shelf.depression = 0.02
+check("чистый мозг — на полу никого", shelf.floored_fraction() == 0.0,
+      f"{shelf.floored_fraction()}")
+
+_rng = np.random.default_rng(20260915)
+
+
+def _teach_random(brain, n):
+    """Учить на случайных, но РАЗНЫХ матчах — как в бою, по одному разу.
+
+    Разные нарочно: повтор одной выборки — это переобучение, другая болезнь,
+    и пол при нём ведёт себя иначе (разбор у `FLOOR`).
+    """
+    for _ in range(n):
+        row = {k: float(_rng.random()) * ceiling for k, ceiling in ODOUR}
+        brain.learn(row_to_odour(row),
+                    actual=OUTCOMES[int(_rng.integers(len(OUTCOMES)))])
+
+
+_marks = []
+for _ in range(4):
+    _teach_random(shelf, 400)
+    _marks.append(shelf.floored_fraction())
+_steps = [_marks[i + 1] - _marks[i] for i in range(len(_marks) - 1)]
+
+check("пол появляется", _marks[0] > 0.0, f"{_marks[0]:.1%} после 400 учений")
+check("пол растёт", _marks[-1] > _marks[0],
+      " → ".join(f"{m:.1%}" for m in _marks))
+check("прибавка убывает — это полка, а не разгон", _steps[-1] < _steps[0],
+      " → ".join(f"{d:+.1%}" for d in _steps))
+check("пол не съедает всё", _marks[-1] < 1.0, f"{_marks[-1]:.1%}")
+
+# ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: замер обязан ВИДЕТЬ исчерпание, когда оно есть.
+# Мозг, у которого одно совпадение сразу кладёт синапс на пол, обязан дать
+# долю 100 % — иначе проверки выше смотрят в пустоту.
+_hard = FlyBrain.load()
+_hard.depression = 1.0
+_teach_random(_hard, 400)
+check("контроль: мгновенная депрессия даёт полный пол",
+      _hard.floored_fraction() == 1.0, f"{_hard.floored_fraction():.1%}")
+
 
 print()
 if fails:
