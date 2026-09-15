@@ -3187,6 +3187,68 @@ async function checkAmateur() {
  * что-то читал, ничего не падало. Поэтому проверка смотрит не на «шаг
  * выполнился», а на то, попадают ли в чтение те, ради кого он нужен.
  */
+async function checkFameCoverage() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Охват известных', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  // Счёт заголовком, а не длиной тела: PostgREST режет ответ по `db-max-rows`,
+  // и на выборке в двадцать тысяч `rows.length` сказал бы «ровно 1000».
+  const count = async (q) => {
+    const r = await fetch(`${url}/rest/v1/${q}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`,
+                 Prefer: 'count=exact', Range: '0-0' },
+    });
+    const n = Number((r.headers.get('content-range') ?? '').split('/')[1]);
+    return Number.isFinite(n) ? n : -1;
+  };
+
+  const BASE = 'active=eq.true&category=eq.player';
+  // ⚠️ ЗНАМЕНАТЕЛЬ — ТОЛЬКО С ТЕКУЩИМ КЛУБОМ, И ЭТО НЕ ПОДГОНКА. Шаг догадки
+  // берёт кандидатов из `card_current_club` нарочно, и замер говорит, что он
+  // прав: у Тьерри Анри и Серхио Агуэро страницы на sports.ru ЕСТЬ и сверку
+  // имени проходят, а сезонов в выборе НОЛЬ — источник не отдаёт матчи
+  // завершивших карьеру. Из 474 известных карточек без статистики 429 именно
+  // такие: Марадона, Пеле, Зидан, Кройф, Мальдини, плюс тренеры. Считать их в
+  // знаменателе значило бы держать проверку вечно красной из-за того, чего
+  // источник не отдаёт никому.
+  const withClub = 'card_current_club!inner(card_id)';
+  const withStats = 'player_match_stats!inner(card_id)';
+
+  const famous = await count(`cards?select=id,${withClub}&${BASE}&fame=gte.80`);
+  const famousDone = await count(
+    `cards?select=id,${withClub},${withStats}&${BASE}&fame=gte.80`);
+  const share = famous > 0 ? famousDone / famous : 0;
+
+  // ⚠️ ЭТА СТРОКА СТОИТ ПРОТИВ ТИХОГО ГОЛОДА, А НЕ ПРОТИВ ПАДЕНИЯ. Шаг
+  // догадки отрабатывал каждую ночь, что-то угадывал и не падал — а самых
+  // известных карточек не пробовал НИ РАЗУ: у всех непробованных ключ
+  // сортировки был одинаков, и внутри группы порядок оставался по `id`.
+  // Замер 15.09.2026: у всех тридцати карточек с известностью 70+ без
+  // статистики `tried = 0`, среди них Анри, Родриго, Агуэро, Карвахаль.
+  // Снаружи это выглядело как «всё работает».
+  record('Охват известных: у играющих есть статистика',
+         share >= 0.85,
+         `${famousDone} из ${famous} (${(share * 100).toFixed(1)}%)`,
+         'ловит очередь догадки, которая до известных не доходит');
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: проверка обязана РАЗЛИЧАТЬ срезы. Тот же счёт по
+  // карточкам без единого просмотра в википедии обязан дать заметно меньшую
+  // долю — иначе строка выше зеленела бы на чём угодно, в том числе на
+  // выборке, где известность не участвует вовсе.
+  const nameless = await count(`cards?select=id,${withClub}&${BASE}&fame=is.null`);
+  const namelessDone = await count(
+    `cards?select=id,${withClub},${withStats}&${BASE}&fame=is.null`);
+  const namelessShare = nameless > 0 ? namelessDone / nameless : 0;
+  record('Охват известных: контроль — срезы различаются',
+         famous > 0 && nameless > 0 && share - namelessShare >= 0.2,
+         `известные ${(share * 100).toFixed(1)}%, безвестные `
+         + `${(namelessShare * 100).toFixed(1)}%`,
+         'ловит отбор по известности, который ничего не отбирает');
+}
+
 async function checkTalentQueue() {
   const url = env('VITE_SUPABASE_URL');
   const svc = serviceKey();
@@ -3580,6 +3642,7 @@ await checkAmateur();
 await checkFunctionCors();
 await checkForecastWinner();
 await checkTalentQueue();
+await checkFameCoverage();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
