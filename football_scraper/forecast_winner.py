@@ -67,6 +67,22 @@ K_FORM_GRID = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0)
 FLY_EPOCHS = (1, 2, 4, 8)
 FLY_DEPRESSION = (0.02, 0.05, 0.1, 0.2)
 
+# Сдвиги выхода, из которых подбирается калибровка компартментов.
+#
+# ⚠️ ЭТО ЧИНИТ «МУХА ВСЕГДА НАЗЫВАЕТ ЛЕВУЮ КОМАНДУ». Замер по 907 сверенным
+# прогнозам: хозяев муха называла в 69.1 % случаев, а выигрывают они в 43.8 %.
+# Причина не в признаках, а в правиле: депрессия бьёт по компартментам
+# СБЫВШЕГОСЯ исхода, хозяева сбываются чаще всех, их `push` проседает сильнее
+# прочих — и побеждает почти всегда, каким бы ни был матч. То есть муха учила
+# частоту исхода вместо разницы команд, и против «Реала» в гостях называла
+# хозяев ровно так же.
+#
+# Сдвиг — это усиление самого MBON, а не правка связей и не правка памяти:
+# веса KC→MBON остаются теми же, меняется порог, с которым читается их сумма.
+# Подбирается на ПРОВЕРОЧНОЙ трети, как лямбда и пороги соседей.
+FLY_BIAS = (-0.20, -0.12, -0.08, -0.05, -0.03, -0.02, -0.01,
+            0.0, 0.01, 0.02, 0.03, 0.05, 0.08)
+
 
 # ─────────────────────────────────────────────────────────── данные ──────────
 def design(rows) -> np.ndarray:
@@ -206,6 +222,50 @@ def paired_se(a: list[str], b: list[str], rows) -> float:
     return float(d.std(ddof=1) / math.sqrt(len(d))) if len(d) > 1 else float("inf")
 
 
+# Зеркальная пара признаков: хозяева <-> гости.
+MIRROR_PAIRS = (("h_gf", "a_gf"), ("h_ga", "a_ga"), ("h_wr", "a_wr"),
+                ("h_dr", "a_dr"), ("h_home_gf", "a_away_gf"),
+                ("h_home_ga", "a_away_ga"), ("h_home_wr", "a_away_wr"))
+MIRROR_OUTCOME = {"H": "A", "A": "H", "D": "D"}
+
+
+def mirrored(r) -> dict:
+    """Тот же матч, где команды поменялись местами, и исход тоже."""
+    d = dict(r)
+    for a, b in MIRROR_PAIRS:
+        d[a], d[b] = r.get(b), r.get(a)
+    d["outcome"] = MIRROR_OUTCOME[r["outcome"]]
+    return d
+
+
+def call_with_bias(scores: dict, bias: dict) -> str:
+    """Исход с наименьшим `push - pull` ПОСЛЕ сдвига компартмента."""
+    return min(OUTCOMES, key=lambda o: scores[o] - bias.get(o, 0.0))
+
+
+def fit_fly_bias(scores_list, rows) -> dict:
+    """Сдвиги компартментов, поднимающие точность на проверочной части.
+
+    ⚠️ ПОДБИРАЕТСЯ ПО ОЧЕРЕДИ, А НЕ ПОЛНЫМ ПЕРЕБОРОМ ТРОЙКИ. Полный перебор
+    7³ = 343 сочетаний на тех же данных переобучил бы сдвиги под шум
+    проверочной части; покоординатный проход даёт то же исправление перекоса,
+    но трогает по одному числу за раз. Ноль входит в сетку нарочно: если
+    сдвиг не помогает, подбор обязан выбрать его сам.
+    """
+    bias = {o: 0.0 for o in OUTCOMES}
+    best = accuracy([call_with_bias(sc, bias) for sc in scores_list], rows)
+    # Два прохода: сдвиги связаны между собой (подняв один исход, опускаешь
+    # остальные), и одного прохода не хватает, чтобы это учесть.
+    for _ in range(2):
+        for o in OUTCOMES:
+            for b in FLY_BIAS:
+                trial = dict(bias, **{o: b})
+                a = accuracy([call_with_bias(sc, trial) for sc in scores_list], rows)
+                if a > best:
+                    best, bias = a, trial
+    return bias
+
+
 def run(rows) -> dict:
     rows = sorted(rows, key=lambda r: (r["match_date"], r["home_key"], r["away_key"]))
     tr, va, te = split_by_time(len(rows))
@@ -232,19 +292,37 @@ def run(rows) -> dict:
     # времени сочетания дают долговременную память) и НАСКОЛЬКО сильным было
     # подкрепление. Линейной модели так же подбирают лямбду, «своему варианту» —
     # пороги; иначе сравнение было бы нечестным к мухе.
-    best_fly = (-1.0, 1, 0.05, None)
+    # ⚠️ ЗЕРКАЛО В ОБУЧЕНИИ — ПРОТИВ «ВСЕГДА ЛЕВАЯ КОМАНДА». Проверка
+    # переворотом: если поменять команды местами, ответ обязан зеркально
+    # перевернуться, а он это делал лишь в 67 % случаев — в остальных треть
+    # муха держалась за СТОРОНУ ПОЛЯ, а не за силу команд. Показать ей тот же
+    # матч наоборот (и наоборот исход) значит учить разнице команд, а не
+    # позиции. Преимущество хозяев при этом не теряется: оно приходит
+    # отдельными признаками h_home_* и a_away_*, которые зеркалятся вместе с
+    # остальными. Включать или нет — решает проверочная треть, поэтому False
+    # в списке остаётся.
+    best_fly = (-1.0, 1, 0.05, False, None)
     for epochs in FLY_EPOCHS:
         for dep in FLY_DEPRESSION:
-            f = FlyBrain.load()
-            f.depression = dep
-            for _ in range(epochs):
-                for r in train:
-                    f.learn(row_to_odour(r), actual=r["outcome"])
-            a = accuracy([f.predict(row_to_odour(r)) for r in valid], valid)
-            if a > best_fly[0]:
-                best_fly = (a, epochs, dep, f)
-    _, fly_epochs, fly_dep, fly = best_fly
-    fly_pred = [fly.predict(row_to_odour(r)) for r in test]
+            for mirror in (False, True):
+                f = FlyBrain.load()
+                f.depression = dep
+                for _ in range(epochs):
+                    for r in train:
+                        f.learn(row_to_odour(r), actual=r["outcome"])
+                        if mirror:
+                            m = mirrored(r)
+                            f.learn(row_to_odour(m), actual=m["outcome"])
+                a = accuracy([f.predict(row_to_odour(r)) for r in valid], valid)
+                if a > best_fly[0]:
+                    best_fly = (a, epochs, dep, mirror, f)
+    _, fly_epochs, fly_dep, fly_mirror, fly = best_fly
+
+    # Калибровка компартментов — на той же проверочной трети.
+    va_scores = [fly.scores(row_to_odour(r)) for r in valid]
+    fly_bias = fit_fly_bias(va_scores, valid)
+    te_scores = [fly.scores(row_to_odour(r)) for r in test]
+    fly_pred = [call_with_bias(sc, fly_bias) for sc in te_scores]
 
     # ── own: пороги на проверочной ────────────────────────────────────────────
     th, ta, kf = fit_own(valid)
@@ -259,7 +337,13 @@ def run(rows) -> dict:
         "baseline_outcome": top,
         "lambda": lam,
         "own_tau": {"home": th, "away": ta, "k_form": kf},
-        "fly_protocol": {"epochs": fly_epochs, "depression": fly_dep},
+        "fly_protocol": {"epochs": fly_epochs, "depression": fly_dep,
+                         "mirror": fly_mirror, "bias": fly_bias},
+        # Доля тронутых синапсов на полу. Печатается НАРОЧНО: односторонняя
+        # депрессия однажды выглядела остановкой обучения, замер показал полку
+        # (разбор у `FLOOR` в fly_brain.py), и число стоит видеть, а не
+        # вспоминать.
+        "fly_floored": fly.floored_fraction(),
         "fly_taught": fly.taught,
         "fly_depressed": round(fly.learned_fraction(), 5),
         "accuracy": {

@@ -429,8 +429,11 @@ def match_card(name, cards_by_key):
     return best if best_score >= NAME_MATCH_RATIO else None
 
 
-def resolve_by_name(fetcher, card):
+def resolve_by_name(fetcher, card, max_candidates=None):
     """Slug for a card whose squad page never listed it, or None.
+
+    `max_candidates` обрезает перебор сверху; None — перебирать все формы.
+    Зачем — в `_candidate_budget`.
 
     WHY THIS EXISTS. sports.ru server-renders the squad table for Russian clubs
     and leaves it EMPTY for foreign ones — Chelsea's squad block is literally
@@ -463,7 +466,10 @@ def resolve_by_name(fetcher, card):
         return None
     card_ru = canonical_key(card["name"])
     card_en = canonical_key(fold_latin(name_en))
-    for candidate in slug_candidates(name_en):
+    candidates = slug_candidates(name_en)
+    if max_candidates is not None:
+        candidates = candidates[:max_candidates]
+    for candidate in candidates:
         html = fetcher.get("{}/football/person/{}/".format(BASE, candidate))
         if html is None:
             continue
@@ -490,15 +496,35 @@ def guess_order(cards, wanted, known, misses):
     прогону 11.09.2026 — угаданы ранги с 5-го по 368-й из 24 093.
 
     Ключ сортировки — (сколько раз пробовали, когда пробовали в последний
-    раз), а «не пробовали ни разу» это (-1, "") и идёт раньше всего. Значит
-    очередь двигается: каждую ночь берутся новые, а к старым отказам она
-    возвращается, только когда новых не осталось.
+    раз, известность наоборот), а «не пробовали ни разу» это (-1, "") и идёт
+    раньше всего. Значит очередь двигается: каждую ночь берутся новые, а к
+    старым отказам она возвращается, только когда новых не осталось.
+
+    ⚠️ ТРЕТИЙ КЛЮЧ — НЕ УКРАШЕНИЕ, И БЕЗ НЕГО САМЫХ ИЗВЕСТНЫХ НЕ ПРОБОВАЛИ
+    ВОВСЕ. У всех непробованных первые два ключа одинаковы — (-1, ""), — а
+    сортировка в питоне устойчива, то есть внутри этой группы порядок
+    оставался тем, в котором карточки пришли из базы: по `id`. Бюджет
+    кончается на первой тысяче из двадцати с лишним, и кто попадёт в эту
+    тысячу, решал номер карточки.
+
+    Замер на боевой базе 15.09.2026, карточки с известностью 70+ и БЕЗ
+    статистики: у всех тридцати `tried = 0`. Среди них Тьерри Анри
+    (известность 100), Родриго (97), Серхио Агуэро (96), Дани Карвахаль (95),
+    Войцех Щенсный (94), Марко Верратти (89) — то есть ровно те, кого колода
+    сдаёт чаще всего, не пробовались НИ РАЗУ, пока тысячи карточек без единого
+    просмотра в википедии пробовались каждую ночь.
+
+    Известность — это и есть порядок, в котором колода сдаёт карточки
+    (`cards.fame`, перцентиль по просмотрам), так что «сначала известные»
+    значит «сначала те, чью статистику игрок увидит». Карточка без
+    известности считается нулём и идёт после — не выбрасывается, а уступает.
 
     Насовсем не выбрасывается никто: страница у игрока может появиться
     завтра, и отметка отказа — не приговор, а место в очереди.
     """
     todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
-    todo.sort(key=lambda c: misses.get(c["id"], (-1, "")))
+    todo.sort(key=lambda c: misses.get(c["id"], (-1, ""))
+                            + (-float(c.get("fame") or 0.0),))
     return todo
 
 
@@ -532,6 +558,37 @@ def active_cards_by_key(cards, current_club_ids):
     return by_key
 
 
+# Сколько форм имени пробовать на карточку за один заход.
+#
+# ⚠️ ЭТО ПРО СКОРОСТЬ ПЕРВОГО ОБХОДА, А НЕ ПРО ОТКАЗ ОТ РЕДКИХ ФОРМ.
+# `slug_candidates` даёт четыре формы: полное имя, хвост после первого слова,
+# голая фамилия, голое имя. Замер по 727 угаданным карточкам (15.09.2026):
+#
+#     кандидат #1 — 711 (98%), #2 — 11 (2%), #3 — 4 (1%), #4 — 1 (0%)
+#
+# Но перебор платит за промахи: карточка, которой на sports.ru нет вовсе,
+# стоит ЧЕТЫРЕ страницы вместо одной, и таких примерно половина (635 отказов
+# на 727 попаданий). Средняя цена карточки выходит 2.41 страницы, а при двух
+# формах — 1.48. При ночном бюджете догадки в 2300 страниц это 1554 карточки
+# за ночь вместо 954, то есть первый обход 21712 кандидатов занимает около
+# двадцати трёх ночей вместо тридцати восьми.
+#
+# ⚠️ ФОРМЫ НЕ ВЫБРАСЫВАЮТСЯ, А ОТКЛАДЫВАЮТСЯ НА ВТОРОЙ ЗАХОД, и это
+# принципиально. Именно #4 — голое имя — ловит бразильцев, играющих под
+# именем: «Vinícius Júnior» живёт на `/football/person/vinicius/`, и обрезать
+# её насовсем значило бы потерять ровно самых известных. Очередь промахов уже
+# упорядочена «сначала те, кого не пробовали, потом реже и давнее», так что
+# второй заход по карточке физически наступает после того, как весь список
+# прошли по разу. Редкая форма достаётся тому, у кого частая не сработала, —
+# и достаётся ПОСЛЕ, а не вместо.
+FIRST_PASS_CANDIDATES = 2
+
+
+def _candidate_budget(tries):
+    """Сколько форм имени отдать карточке, которую пробовали `tries` раз."""
+    return FIRST_PASS_CANDIDATES if tries <= 0 else None
+
+
 def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERVE):
     """Crawl league tables and squads, map squad names onto cards.
 
@@ -539,8 +596,10 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
     player (one page yields a whole squad) while the second costs one or two
     requests per player and rests on a verified guess.
     """
+    # `fame` читается ради порядка очереди догадки (см. `guess_order`): без
+    # неё самые известные карточки не пробовались ни разу.
     cards = db.select(
-        "/cards?select=id,name,name_en&active=eq.true&category=eq.player&order=id"
+        "/cards?select=id,name,name_en,fame&active=eq.true&category=eq.player&order=id"
     )
     current_club_ids = {
         c["card_id"] for c in db.select("/card_current_club?select=card_id&order=card_id")
@@ -610,13 +669,51 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
         print("guessing slugs for {} cards not on any squad page ({} ни разу не пробованы)"
               .format(len(todo), fresh))
         guessed, tried, failed, resolved_ids = 0, 0, [], []
+
+        # ⚠️ ОТМЕТКИ ПИШУТСЯ ПАЧКАМИ ПО ХОДУ, А НЕ ОДНИМ ЗАЛПОМ В КОНЦЕ.
+        # Раньше весь `failed` копился в памяти до последней строки цикла, и
+        # это возвращало ровно ту поломку, ради которой таблица заведена:
+        # прогон, убитый на середине прохода — `timeout-minutes: 180` в
+        # player-stats.yml, падение, снятый контейнер, — не записывал НИ ОДНОЙ
+        # отметки. Очередь не сдвигалась, и следующей ночью перебирались те же
+        # первые сотни карточек. Выход по резерву и по бюджету до записи
+        # доходил, а вот убитый процесс — нет, и различить эти два случая по
+        # таблице было нельзя: она одинаково пуста.
+        #
+        # Пачкой, а не построчно, потому что запрос на карточку — это лишняя
+        # секунда на каждую из двух тысяч; 200 строк на upsert держат обещание
+        # «убили — потеряли последние двести», а не «потеряли всё».
+        FLUSH_EVERY = 200
+
+        def flush():
+            """Отдать накопленные отметки и успехи базе и очистить буферы."""
+            if dry_run:
+                failed.clear()
+                resolved_ids.clear()
+                return
+            # Записывается ОТДЕЛЬНО от найденных: это другая таблица и другой
+            # смысл. Успех — строка справочника; отказ — отметка «тут уже
+            # смотрели», без которой очередь выше не сдвинется ни на шаг.
+            if failed:
+                db.upsert("sports_ru_no_slug", failed, "card_id")
+                failed.clear()
+            # ⚠️ УСПЕХ ТОЖЕ СТИРАЕТ ОТМЕТКУ — иначе однажды не найденный игрок
+            # навсегда остался бы в хвосте очереди, хотя страница у него уже
+            # есть.
+            if resolved_ids:
+                db.delete_in("sports_ru_no_slug", "card_id", resolved_ids)
+                resolved_ids.clear()
+
         for card in todo:
             if fetcher.remaining <= reserve:
                 print("  reserve reached ({} pages left), leaving the rest for collect"
                       .format(fetcher.remaining))
                 break
+            prev = misses.get(card["id"])
             try:
-                slug = resolve_by_name(fetcher, card)
+                slug = resolve_by_name(
+                    fetcher, card,
+                    max_candidates=_candidate_budget(prev[0] if prev else 0))
             except RuntimeError:  # budget spent — keep what we have
                 print("  budget spent, stopping the guess pass")
                 break
@@ -627,19 +724,20 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
                 rows.append({"card_id": card["id"], "slug": slug,
                              "name_ru": card["name"], "club_slug": None})
             else:
-                prev = misses.get(card["id"])
                 failed.append({"card_id": card["id"], "tried_at": _now_iso(),
                                "tries": (prev[0] + 1) if prev else 1})
+            # Проход идёт сорок минут и до этой строки не печатал НИЧЕГО.
+            # Молчащий шаг неотличим от повисшего: сорок минут тишины при
+            # живом процессе уже стоили одного разбирательства «почему в базе
+            # ноль попыток». Строка раз в двести карточек — это раз в
+            # несколько минут, не поток.
+            if tried % FLUSH_EVERY == 0:
+                flush()
+                print("  ... {}/{}, угадано {}, страниц осталось {}"
+                      .format(tried, len(todo), guessed, fetcher.remaining),
+                      flush=True)
         print("tried {}, guessed and verified: {}".format(tried, guessed))
-        # Записывается ЗДЕСЬ, а не вместе с найденными: это другая таблица и
-        # другой смысл. Успех — строка справочника; отказ — отметка «тут уже
-        # смотрели», без которой очередь выше не сдвинется ни на шаг.
-        if failed and not dry_run:
-            db.upsert("sports_ru_no_slug", failed, "card_id")
-        # ⚠️ УСПЕХ ТОЖЕ СТИРАЕТ ОТМЕТКУ — иначе однажды не найденный игрок
-        # навсегда остался бы в хвосте очереди, хотя страница у него уже есть.
-        if resolved_ids and not dry_run:
-            db.delete_in("sports_ru_no_slug", "card_id", resolved_ids)
+        flush()
 
     if dry_run:
         for r in rows[:10]:
