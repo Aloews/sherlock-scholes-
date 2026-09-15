@@ -157,3 +157,26 @@ comment on function public.fill_current_club_from_soccerwiki() is
 
 revoke all on function public.fill_current_club_from_soccerwiki() from public, anon, authenticated;
 grant execute on function public.fill_current_club_from_soccerwiki() to service_role;
+
+-- ── 3. Четыре легенды, у которых привязка ОДНА и она чужая ───────────────────
+--
+-- Датой их не решить: ни у строки Soccer Wiki, ни у карточки даты нет, и
+-- второй строки для сверки тоже нет. Решено глазами по совокупности признаков
+-- (правило и разбор — `football_scraper/legend_guard.py`):
+--
+--   pid 146273  «Thierry Henry»   19 лет, рейтинг 65 — São Paulo FC
+--   pid 173275  «Fernando Torres» 22 года, рейтинг 70 — Patriotas Boyacá
+--   pid  65279  «Patrick Vieira»  35 лет, рейтинг 75 — Betim Futebol
+--   pid 141243  «Sergio Agüero»   32 года, рейтинг 76 — PSM Makassar
+--
+-- ⚠️ ФОРМАЛЬНЫЙ ОТБОР ЛОВИЛ ШЕСТЬ, И ДВОЕ ИЗ НИХ ЖИВЫЕ. Ёитиро Какитани (36,
+-- «Tokushima Vortis») и Энди Кэрролл (37, «Dagenham & Redbridge») подходят под
+-- те же признаки и играют по-настоящему. Поэтому правило названо ПОДОЗРЕНИЕМ,
+-- а не приговором, снимают связь глазами, и оба они в тестах стоят
+-- отрицательными контролями.
+update soccerwiki_player set card_id = null
+ where pid in (146273, 173275, 65279, 141243);
+
+delete from card_current_club cc
+ where cc.source = 'soccerwiki'
+   and not exists (select 1 from soccerwiki_player sw where sw.card_id = cc.card_id);
