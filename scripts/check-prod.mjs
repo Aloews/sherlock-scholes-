@@ -3193,6 +3193,58 @@ async function checkAmateur() {
  * что-то читал, ничего не падало. Поэтому проверка смотрит не на «шаг
  * выполнился», а на то, попадают ли в чтение те, ради кого он нужен.
  */
+async function checkOdds() {
+  const url = env('VITE_SUPABASE_URL');
+  const svc = serviceKey();
+  if (!url || !svc) {
+    record('Котировки', false, 'нет SUPABASE_KEY — таблица закрыта для анонима', 'н/д');
+    return;
+  }
+  // ⚠️ ЧЕРЕЗ ФУНКЦИЮ, А НЕ ЗАПРОСОМ К ТАБЛИЦЕ. У `fixture_odds` намеренно нет
+  // грантов вообще, поэтому её не читает даже service_role — и это работающая
+  // защита, а не помеха, которую надо обойти. `odds_health` отдаёт три числа
+  // и ни одной цены.
+  const health = await fetch(`${url}/rest/v1/rpc/odds_health`, {
+    method: 'POST',
+    headers: { apikey: svc, Authorization: `Bearer ${svc}`,
+               'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const h = health.ok ? (await health.json().catch(() => []))[0] ?? {} : {};
+
+  record('Котировки: сбор дошёл до базы',
+         Number(h.rows ?? 0) > 0,
+         `${h.rows ?? '?'} строк, ${h.matches ?? '?'} матчей`,
+         'ловит сборщик, который отрабатывает и ничего не пишет');
+
+  // ⚠️ СВЕЖЕСТЬ, А НЕ НАЛИЧИЕ. Раз собранные котировки останутся в таблице
+  // навсегда, и проверка «строки есть» будет зеленеть годами после того, как
+  // сбор умрёт. Обход идёт через день, поэтому порог — четверо суток.
+  record('Котировки: не протухли',
+         Number(h.fresh_rows ?? 0) > 0,
+         `${h.fresh_rows ?? '?'} строк за четверо суток, последние ${
+           h.last_taken ? String(h.last_taken).slice(0, 16) : '—'}`,
+         'ловит умерший сбор при непустой таблице');
+
+  // ⚠️ ГЛАВНАЯ СТРОКА РАЗДЕЛА — §4.4 LIVE_FOOTBALL_HANDOFF. Таблица обязана
+  // быть ЗАКРЫТА для анонима: вся защита «коэффициенты только внутрь» держится
+  // на отсутствии политики RLS, а не на обещании не запрашивать.
+  const anon = env('VITE_SUPABASE_ANON_KEY');
+  let leaked = null;
+  if (anon) {
+    const r = await fetch(`${url}/rest/v1/fixture_odds?select=fixture_id&limit=1`, {
+      headers: { apikey: anon, Authorization: `Bearer ${anon}` },
+    });
+    const body = r.ok ? await r.json().catch(() => null) : null;
+    leaked = Array.isArray(body) && body.length > 0;
+  }
+  record('Котировки: аноним таблицу НЕ читает',
+         anon ? leaked === false : false,
+         anon ? (leaked ? '!! отдала строки' : 'закрыта, как и задумано')
+              : 'нет анонимного ключа',
+         'ловит политику RLS, добавленную по невнимательности');
+}
+
 async function checkFameCoverage() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -3649,6 +3701,7 @@ await checkFunctionCors();
 await checkForecastWinner();
 await checkTalentQueue();
 await checkFameCoverage();
+await checkOdds();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();

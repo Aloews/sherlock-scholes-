@@ -119,3 +119,56 @@ export async function fetchHistoryCount(
   const res = await supabase.rpc('forecast_history_count', { p_model: model });
   return fromPostgrest<number>(res, 'forecast_history_count');
 }
+
+// ── экспрессы: только для админа ─────────────────────────────────────────────
+//
+// ⚠️ §4.4 docs/LIVE_FOOTBALL_HANDOFF.md: игроку не показывают ни
+// коэффициентов, ни производных от них, и держится это отсутствием политики
+// RLS у `fixture_odds`. Здесь граница не сдвинута: таблицу клиент по-прежнему
+// не читает, а функция ниже требует пароль персонала. Ничего из этого не
+// должно попасть ни на один экран, кроме /admin.
+
+export interface AccumulatorLeg {
+  fixture_id: string;
+  commence_at: string;
+  home_team: string;
+  away_team: string;
+  pick: Outcome;
+  /** Десятичный коэффициент на выбранный исход, медиана по букмекерам. */
+  price: number;
+  /** Вероятность БЕЗ маржи: обратная величина, делённая на overround. */
+  fair_prob: number;
+  books: number;
+  /** Сколько наших моделей назвали то же самое. Сигнал посмотреть, не поправка. */
+  models_agree: number;
+  model_picks: string | null;
+}
+
+export async function fetchAccumulator(
+  password: string, legs = 4, minProb = 0.6, hours = 72,
+): Promise<LoadState<AccumulatorLeg[]>> {
+  const res = await supabase.rpc('admin_accumulator', {
+    p_password: password, p_legs: legs, p_min_prob: minProb, p_hours: hours,
+  });
+  return fromPostgrest<AccumulatorLeg[]>(res, 'admin_accumulator');
+}
+
+/**
+ * Арифметика экспресса. Считается ЗДЕСЬ, а не в базе, потому что зависит от
+ * того, какие ноги админ оставил на экране.
+ *
+ * ⚠️ ОЖИДАЕМЫЙ ВОЗВРАТ ВСЕГДА МЕНЬШЕ ЕДИНИЦЫ, И ЭТО НЕ ОШИБКА РАСЧЁТА.
+ * Вероятности очищены от маржи, а выплата — нет: она и есть цена букмекера
+ * вместе с его маржой. Перемножение возвращает ровно то, что рынок обещает
+ * в среднем, и оно меньше вложенного. Замер на живых котировках 20.09.2026:
+ * одна нога 0.934, две 0.877, четыре 0.773, шесть 0.658 — чем длиннее
+ * экспресс, тем хуже И проходимость, И возврат.
+ */
+export function accumulatorMath(legs: AccumulatorLeg[]): {
+  passRate: number; payout: number; expectedReturn: number;
+} {
+  if (legs.length === 0) return { passRate: 0, payout: 0, expectedReturn: 0 };
+  const passRate = legs.reduce((a, l) => a * l.fair_prob, 1);
+  const payout = legs.reduce((a, l) => a * l.price, 1);
+  return { passRate, payout, expectedReturn: passRate * payout };
+}
