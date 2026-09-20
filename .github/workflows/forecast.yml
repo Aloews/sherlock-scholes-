@@ -1,0 +1,91 @@
+name: forecast
+
+# Ночной круг трёх прогнозистов, ОТДЕЛЬНО от обогащения колоды.
+#
+# ⚠️ ОН БЫЛ ЧАСТЬЮ `daily-enrich` И ПЯТЬ СУТОК НЕ ЗАПУСКАЛСЯ. Там он стоял
+# двадцатым шагом из тридцати одного, а первый шаг — обогащение — идёт пять с
+# лишним часов при потолке `timeout-minutes: 330`. Замер прогона 19.09.2026:
+#
+#     шаг 7  «Run daily enrichment»    09:10:28 → 14:31:10   (5 ч 21 мин)
+#     шаг 8  «Collect pageviews»       упал в 14:45
+#     шаги 9–31                        skipped, job cancelled на 335-й минуте
+#
+# Среди пропущенных — «Forecast winner — grade, dopamine, pick». Пометка
+# `if: always()` тут не помогает: она спасает от упавшего ШАГА, а не от
+# убитого по таймауту JOB. Снаружи всё выглядело исправным — workflow в
+# списке есть, красного нет, — а прогнозы не назывались с 14 сентября и 108
+# сыгранных матчей висели несверенными.
+#
+# Разделение убирает саму возможность такой связи: медленный сбор данных
+# больше не может отнять время у прогнозов, потому что время у них своё.
+
+on:
+  schedule:
+    # 05:40 UTC — после того, как player-stats (04:40) дособрал вчерашние
+    # матчи, но задолго до того, как daily-enrich (05:00) доберётся до конца.
+    # Шаги независимы: прогноз читает `duel_features` и `fixtures`, которых
+    # обогащение колоды не касается.
+    - cron: '40 5 * * *'
+  workflow_dispatch: {}
+
+# Два круга разом сверяли бы одно и то же и дважды кормили муху.
+concurrency:
+  group: forecast
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    # Весь круг укладывается в минуты: это четыре запроса к базе и немного
+    # арифметики. Потолок стоит на случай зависшего запроса, а не потому, что
+    # работа долгая.
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}   # service_role — репо-секрет
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install deps
+        run: pip install -r football_scraper/requirements.txt
+
+      # Мозг мухи и правило депрессии проверяются ДО круга: они чистые, сети и
+      # секретов им не нужно. Испорченный мозг назвал бы правдоподобные, но
+      # неверные исходы, а правдоподобно неверное — ровно то, что не должно
+      # попадать в историю прогнозов.
+      - name: Tests
+        working-directory: football_scraper
+        run: |
+          python3 tests/test_fly_brain.py
+          python3 tests/test_forecast_duel.py
+
+      # ⚠️ ПОРЯДОК ВНУТРИ ШАГА — ЭТО И ЕСТЬ ОБУЧЕНИЕ. Сначала сверить названное
+      # с тем, чем матчи кончились, потом отдать исходы мухе (дофамин), и
+      # только потом называть новые: иначе муха назовёт завтрашние матчи
+      # мозгом, который ещё не узнал вчерашних.
+      - name: Grade, dopamine, pick
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then
+            python football_scraper/forecast_pipeline.py train
+          fi
+          python football_scraper/forecast_pipeline.py grade
+          python football_scraper/forecast_pipeline.py dopamine
+          python football_scraper/forecast_pipeline.py pick
+
+      # Переобучение дуэли — по понедельникам, отдельным шагом и с
+      # `if: always()`: оно независимо от круга выше, и его падение не должно
+      # уносить сверку с дофамином вместе с собой.
+      - name: Forecast duel — retrain on Mondays
+        if: always()
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then
+            python football_scraper/forecast_duel.py
+          else
+            echo "не понедельник — переобучение пропущено"
+          fi
