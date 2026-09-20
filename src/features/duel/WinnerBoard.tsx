@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { FlyVerdict } from './FlyVerdict';
 import {
-  fetchForecastHistory, fetchScoreboard, fetchUpcomingPicks,
-  type ForecastModel, type HistoryRow, type Outcome,
+  fetchForecastHistory, fetchHistoryCount, fetchScoreboard, fetchUpcomingPicks,
+  type ForecastModel, type HistoryCursor, type HistoryRow, type Outcome,
   type Scoreboard, type UpcomingPick,
 } from './forecastApi';
 
@@ -39,11 +39,70 @@ function PickChip({ pick, tint }: { pick: Outcome | null; tint: string }) {
   return <span className={`font-bold ${tint}`}>{t(`duel.pick.${pick}`)}</span>;
 }
 
+const PAGE = 40;
+
+/**
+ * История прогнозов страницами, с фильтром по прогнозисту.
+ *
+ * ⚠️ РАССЧИТАНА НА ДЕСЯТКИ ТЫСЯЧ СТРОК. Каждый сыгранный матч добавляет по
+ * строке на прогнозиста, то есть тысяча матчей — это три тысячи строк, и
+ * дальше только больше. Поэтому здесь нет ни «загрузить всё», ни `offset`:
+ * страница берётся КУРСОРОМ по последней показанной строке, и стоит она
+ * одинаково что на первой сотне, что на десятитысячной.
+ *
+ * Уже показанное не перезапрашивается: новая страница добавляется к прежним.
+ * Смена фильтра начинает с чистого листа — это другой список, а не другая его
+ * часть.
+ */
+function useHistory(model: ForecastModel | null) {
+  const [rows, setRows] = useState<HistoryRow[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [done, setDone] = useState(false);
+
+  // Фильтр сменился — список начинается заново.
+  useEffect(() => {
+    let dead = false;
+    setRows([]); setDone(false); setBusy(true); setTotal(null);
+    void fetchHistoryCount(model).then((s) => { if (!dead) setTotal(dataOr(s, null)); });
+    void fetchForecastHistory(model, PAGE, null).then((s) => {
+      if (dead) return;
+      const got = dataOr(s, []);
+      setRows(got); setDone(got.length < PAGE); setBusy(false);
+    });
+    return () => { dead = true; };
+  }, [model]);
+
+  const more = useCallback(() => {
+    const last = rows[rows.length - 1];
+    if (!last || busy || done) return;
+    setBusy(true);
+    const after: HistoryCursor = {
+      commence_at: last.commence_at, fixture_id: last.fixture_id,
+    };
+    void fetchForecastHistory(model, PAGE, after).then((s) => {
+      const got = dataOr(s, []);
+      // ⚠️ ДОБАВЛЯЕМ, А НЕ ЗАМЕНЯЕМ, и это не мелочь: замена стирала бы всё
+      // пролистанное, а курсор указывал бы в середину — список складывался бы
+      // гармошкой при каждом нажатии.
+      setRows((prev) => [...prev, ...got]);
+      setDone(got.length < PAGE);
+      setBusy(false);
+    });
+  }, [model, rows, busy, done]);
+
+  return { rows, total, busy, done, more };
+}
+
+function dayLabel(iso: string, lang: string): string {
+  return new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
+}
+
 export function WinnerBoard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [board, setBoard] = useState<LoadState<Scoreboard[]>>(LOADING);
   const [soon, setSoon] = useState<LoadState<UpcomingPick[]>>(LOADING);
-  const [past, setPast] = useState<LoadState<HistoryRow[]>>(LOADING);
+  const [only, setOnly] = useState<ForecastModel | null>(null);
   const [chosen, setChosen] = useState(0);
   const [replay, setReplay] = useState(0);
 
@@ -53,13 +112,12 @@ export function WinnerBoard() {
     // ожидание по самому медленному было бы ожиданием на пустом месте.
     void fetchScoreboard().then((s) => { if (!dead) setBoard(s); });
     void fetchUpcomingPicks(20).then((s) => { if (!dead) setSoon(s); });
-    void fetchForecastHistory(null, 30).then((s) => { if (!dead) setPast(s); });
     return () => { dead = true; };
   }, []);
 
   const rows = dataOr(board, []);
   const list = dataOr(soon, []);
-  const history = dataOr(past, []);
+  const past = useHistory(only);
   const match = list[Math.min(chosen, Math.max(0, list.length - 1))];
   const dopamine = rows.find((r) => r.model === 'fly')?.dopamine ?? 0;
 
@@ -189,43 +247,112 @@ export function WinnerBoard() {
 
       {/* ── история: что назвали и чем кончилось ── */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-        <div className="text-[11px] uppercase tracking-wider text-brand-muted px-1 pb-1">
-          {t('duel.history')}
+        <div className="flex items-baseline justify-between gap-2 px-1 pb-2">
+          <span className="text-[11px] uppercase tracking-wider text-brand-muted">
+            {t('duel.history')}
+          </span>
+          {past.total != null && past.rows.length > 0 && (
+            <span className="text-[11px] text-brand-muted tabular-nums">
+              {t('duel.history_shown', { n: past.rows.length, total: past.total })}
+            </span>
+          )}
         </div>
-        {history.length === 0 ? (
-          <p className="text-[12px] text-brand-muted px-1 py-2">{t('duel.no_history')}</p>
+
+        {/* Фильтр по прогнозисту. При тысячах строк «показать всех вперемешку»
+            перестаёт быть читаемым: вопрос почти всегда про одного. */}
+        <div className="flex flex-wrap gap-1.5 px-1 pb-2">
+          {([null, 'own', 'llm', 'fly'] as (ForecastModel | null)[]).map((m) => (
+            <button
+              key={m ?? 'all'}
+              type="button"
+              onClick={() => { hapticImpact('light'); setOnly(m); }}
+              className={`rounded-full px-3 py-1 text-[11px] border transition-colors ${
+                only === m
+                  ? 'bg-white/15 border-white/25 text-white'
+                  : 'bg-transparent border-white/10 text-brand-muted'
+              } ${m ? TINT[m] : ''} ${only === m ? '' : 'opacity-80'}`}
+            >
+              {m ? t(`duel.model.${m}`) : t('duel.history_all')}
+            </button>
+          ))}
+        </div>
+
+        {past.rows.length === 0 ? (
+          <p className="text-[12px] text-brand-muted px-1 py-2">
+            {past.busy ? '…' : t('duel.no_history')}
+          </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <tbody>
-                {history.map((h) => (
-                  <tr key={`${h.fixture_id}-${h.model}`} className="border-t border-white/5">
-                    <td className="py-1.5 pr-2">
-                      <span className="text-white truncate">{h.home_team}</span>
-                      <span className="text-brand-muted"> — </span>
-                      <span className="text-brand-muted truncate">{h.away_team}</span>
-                    </td>
-                    <td className={`py-1.5 px-1 text-center ${TINT[h.model]}`}>
-                      {t(`duel.short.${h.model}`)}
-                    </td>
-                    <td className="py-1.5 px-1 text-center">
-                      <PickChip pick={h.pick} tint={TINT[h.model]} />
-                    </td>
-                    <td className="py-1.5 px-1 text-center text-brand-muted">
-                      {h.actual ? t(`duel.pick.${h.actual}`) : '—'}
-                    </td>
-                    <td className="py-1.5 pl-1 text-center">
-                      {h.correct == null
-                        ? <span className="text-brand-muted/60">—</span>
-                        : <span className={h.correct ? 'text-emerald-400' : 'text-rose-400'}>
-                            {h.correct ? '✓' : '✗'}
-                          </span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <tbody>
+                  {past.rows.map((h, i) => {
+                    // Дата печатается один раз на день, а не в каждой строке:
+                    // при сорока строках подряд повтор съедает колонку и ничего
+                    // не добавляет.
+                    const day = dayLabel(h.commence_at, i18n.language);
+                    const first = i === 0
+                      || dayLabel(past.rows[i - 1].commence_at, i18n.language) !== day;
+                    return (
+                      <tr
+                        key={`${h.fixture_id}-${h.model}`}
+                        className={`border-t border-white/5 ${
+                          h.correct ? 'bg-emerald-400/[0.04]' : ''}`}
+                      >
+                        <td className="py-1.5 pr-2 align-top w-[3.2rem]">
+                          <span className="text-[10px] text-brand-muted tabular-nums">
+                            {first ? day : ''}
+                          </span>
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <span className="text-white">{h.home_team}</span>
+                          <span className="text-brand-muted"> — </span>
+                          <span className="text-brand-muted">{h.away_team}</span>
+                          {h.backfilled && (
+                            <span className="text-[9px] text-brand-muted/60 ml-1">
+                              {t('duel.short.backfilled', { defaultValue: '↺' })}
+                            </span>
+                          )}
+                        </td>
+                        <td className={`py-1.5 px-1 text-center ${TINT[h.model]}`}>
+                          {t(`duel.short.${h.model}`)}
+                        </td>
+                        <td className="py-1.5 px-1 text-center">
+                          <PickChip pick={h.pick} tint={TINT[h.model]} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center text-brand-muted">
+                          {h.actual ? t(`duel.pick.${h.actual}`) : '—'}
+                        </td>
+                        <td className="py-1.5 pl-1 text-center">
+                          {h.correct == null
+                            ? <span className="text-brand-muted/60">—</span>
+                            : <span className={h.correct ? 'text-emerald-400' : 'text-rose-400'}>
+                                {h.correct ? '✓' : '✗'}
+                              </span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 text-center">
+              {past.done ? (
+                <span className="text-[11px] text-brand-muted">{t('duel.history_end')}</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={past.busy}
+                  onClick={() => { hapticImpact('light'); past.more(); }}
+                  className="rounded-full px-4 py-1.5 text-[12px] border border-white/15
+                             text-white bg-white/5 disabled:opacity-40"
+                >
+                  {past.busy ? '…' : t('duel.history_more')}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

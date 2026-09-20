@@ -1228,7 +1228,11 @@
       "H": "主队",
       "D": "平局",
       "A": "客队"
-    }
+    },
+    "history_all": "全部",
+    "history_more": "显示更多",
+    "history_shown": "{{total}} 条中的 {{n}} 条",
+    "history_end": "这就是全部记录"
   },
   "spotlight": {
     "title": "声量与出场",

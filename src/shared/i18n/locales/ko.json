@@ -1228,7 +1228,11 @@
       "H": "홈",
       "D": "무승부",
       "A": "원정"
-    }
+    },
+    "history_all": "전체",
+    "history_more": "더 보기",
+    "history_shown": "{{total}}개 중 {{n}}개",
+    "history_end": "이것이 전체 기록입니다"
   },
   "spotlight": {
     "title": "화제와 출전",

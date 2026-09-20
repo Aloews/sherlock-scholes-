@@ -1279,7 +1279,11 @@
       "H": "casa",
       "D": "empate",
       "A": "fora"
-    }
+    },
+    "history_all": "Todos",
+    "history_more": "Mostrar mais",
+    "history_shown": "{{n}} de {{total}}",
+    "history_end": "Este é todo o histórico"
   },
   "spotlight": {
     "title": "Ruído contra jogo",
