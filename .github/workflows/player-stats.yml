@@ -119,7 +119,7 @@ jobs:
       - name: Освежить статистику планировщику и кэш рейтинга
         if: always()
         run: |
-          for fn in refresh_stats_planner refresh_player_rating_cache; do
+          for fn in refresh_stats_planner refresh_player_rating_cache settle_accumulators; do
             code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
               -H "apikey: $SUPABASE_KEY" \
               -H "Authorization: Bearer $SUPABASE_KEY" \
