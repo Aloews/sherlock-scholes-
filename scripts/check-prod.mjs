@@ -702,15 +702,41 @@ async function checkFixtureSquads() {
          'спрашивается ЧИСЛО: «состав есть» зеленело бы и на четырёх');
 
   // Ближайшие матчи — на них и смотрит человек.
+  //
+  // ⚠️ БЕЗ ТУРНИРОВ СБОРНЫХ, И ЭТО НЕ ПОСЛАБЛЕНИЕ. У сборной нет КЛУБНОЙ
+  // заявки и быть не может, а `fixture_squads` отдаёт именно клубный состав.
+  //
+  // Поймано 20.09.2026: проверка покраснела на «17 из 40», и первой мыслью
+  // было, что сломалось сопоставление имён. Оно цело — все сорок матчей
+  // резолвятся в оба ключа. Просто начался перерыв на сборные: 18 из 40
+  // ближайших матчей оказались Лигой наций. Проверка краснела бы каждый
+  // международный перерыв, по календарю, а не по поломке, — и к третьему
+  // разу на неё перестали бы смотреть.
+  //
+  // ⚠️ ОТБОР ПО ТУРНИРУ, А НЕ ПО ВИДУ КОМАНДЫ, И ПЕРВАЯ ПОПЫТКА БЫЛА ИМЕННО
+  // ПО ВИДУ — она не сработала. «Portugal», «Serbia», «Norway» лежат в
+  // `football_club` как `kind = 'club'` со страной NULL и нулём игроков: это
+  // заглушки, заведённые импортом расписания, а не 269 настоящих записей
+  // `kind = 'national'`. То есть по виду команды сборную от клуба здесь не
+  // отличить, и заглушки — отдельная находка, записанная в NEXT_SESSION.
+  //
+  // Список турниров тот же, что ведёт сам сборщик расписания
+  // (`SEASONAL_KEYS` в supabase/functions/football-fixtures/index.ts).
+  const NATIONAL_KEYS = new Set([
+    'soccer_uefa_nations_league',
+    'soccer_fifa_world_cup',
+    'soccer_fifa_world_cup_qualifiers_europe',
+    'soccer_uefa_european_championship',
+    'soccer_uefa_euro_qualification',
+  ]);
   const fr = await fetch(
-    `${url}/rest/v1/fixtures?select=id,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=40`,
+    `${url}/rest/v1/fixtures?select=id,sport_key,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=200`,
     { headers: auth },
   );
-  const fixtures = await fr.json().catch(() => null);
-  if (!Array.isArray(fixtures) || fixtures.length === 0) {
-    record('Составы: ближайшие матчи', false, 'расписание не отдаёт матчей', 'ключ anon');
-    return;
-  }
+  const all = await fr.json().catch(() => null);
+  const fixtures = Array.isArray(all)
+    ? all.filter((f) => !NATIONAL_KEYS.has(f.sport_key)).slice(0, 40)
+    : all;
 
   let both = 0;
   let withValue = 0;
@@ -1711,12 +1737,28 @@ async function checkLocalGoals() {
          'ловит замолчавший канал Rutube и отозванный грант');
 
   // ⚠️ ДО КОНЦА ЦЕПОЧКИ: строка есть — а ссылка в ней может вести на YouTube
-  // по идентификатору Rutube, то есть в никуда. Видно это только по нажатию.
-  const rutube = list.filter((r) => String(r.watch_url || '').startsWith('https://rutube.ru/video/'));
-  record('Обзоры на своём языке: ссылка ведёт на Rutube',
-         list.length > 0 && rutube.length === list.length,
-         `${rutube.length} из ${list.length} с адресом Rutube`,
-         'ловит возврат к безусловному шаблону youtube.com/watch?v=');
+  // по чужому идентификатору, то есть в никуда. Видно это только по нажатию.
+  //
+  // ⚠️ ПРОВЕРЯЕТСЯ СЕМЕЙСТВО АДРЕСОВ, А НЕ ОДИН ХОСТ, И ЭТО ПОЧИНКА САМОЙ
+  // ПРОВЕРКИ. Здесь стояло `startsWith('https://rutube.ru/video/')` — тогда
+  // русский источник был один. С появлением групп ВК проверка покраснела на
+  // исправном разделе: «0 из 12 с адресом Rutube» при двенадцати живых
+  // роликах. Проверка, знающая имена источников поимённо, ломается от
+  // добавления источника, а не от поломки — и приучает не смотреть на неё.
+  //
+  // Настоящее требование другое: ссылка собрана НАШИМ шаблоном под известный
+  // нам хост, а не взята из чужого ответа и не склеена безусловным
+  // youtube-шаблоном. Поэтому список хостов, и он рядом с тем, что строит
+  // ссылки (fetchRutubeClips / fetchVkClips в football-digest).
+  const OUR_HOSTS = ['https://rutube.ru/video/', 'https://vkvideo.ru/video'];
+  const ours = list.filter((r) => OUR_HOSTS.some((h) => String(r.watch_url || '').startsWith(h)));
+  const hosts = [...new Set(list.map((r) => {
+    try { return new URL(String(r.watch_url || '')).host; } catch { return '(не адрес)'; }
+  }))];
+  record('Обзоры на своём языке: ссылка собрана нашим шаблоном',
+         list.length > 0 && ours.length === list.length,
+         `${ours.length} из ${list.length}; хосты: ${hosts.join(', ')}`,
+         'ловит возврат к безусловному шаблону youtube.com/watch?v= и чужой адрес из ответа источника');
 
   // Обзор тура обязан читаться как гол/обзор, иначе на карточке встанет
   // пометка «момент» у всего подряд.
