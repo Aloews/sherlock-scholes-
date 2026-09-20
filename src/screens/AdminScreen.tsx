@@ -8,6 +8,7 @@ import {
   modListReports, modResolveReports, modFlagCandidate,
   buildForbiddenWords, type CardInput, type StaffRole, type CardReportGroup,
 } from '@/features/admin/adminApi';
+import { AccumulatorPanel } from '@/features/duel/AccumulatorPanel';
 import { WinnerBoard } from '@/features/duel/WinnerBoard';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
@@ -197,7 +198,14 @@ function StaffCabinet({ password, role, onLogout }: {
       {tab === 'cards' && (
         <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
       )}
-      {tab === 'forecast' && isAdmin && <WinnerBoard />}
+      {tab === 'forecast' && isAdmin && (
+        <div className="space-y-4">
+          {/* Экспресс выше истории: открывая эту вкладку, смотрят «что сейчас»,
+              а не «что было». */}
+          <AccumulatorPanel password={password} />
+          <WinnerBoard />
+        </div>
+      )}
 
     </div>
   );
