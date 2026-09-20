@@ -1279,7 +1279,11 @@
       "H": "home",
       "D": "draw",
       "A": "away"
-    }
+    },
+    "history_all": "All",
+    "history_more": "Show more",
+    "history_shown": "{{n}} of {{total}}",
+    "history_end": "That is the whole history"
   },
   "spotlight": {
     "title": "Noise versus play",

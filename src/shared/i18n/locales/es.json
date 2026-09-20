@@ -1279,7 +1279,11 @@
       "H": "local",
       "D": "empate",
       "A": "visitante"
-    }
+    },
+    "history_all": "Todos",
+    "history_more": "Mostrar más",
+    "history_shown": "{{n}} de {{total}}",
+    "history_end": "Este es todo el historial"
   },
   "spotlight": {
     "title": "Ruido frente a juego",

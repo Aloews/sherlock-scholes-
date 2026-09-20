@@ -1228,7 +1228,11 @@
       "H": "ホーム",
       "D": "引き分け",
       "A": "アウェー"
-    }
+    },
+    "history_all": "すべて",
+    "history_more": "もっと見る",
+    "history_shown": "{{total}} 件中 {{n}} 件",
+    "history_end": "これで履歴はすべてです"
   },
   "spotlight": {
     "title": "話題と出場",

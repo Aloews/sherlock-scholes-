@@ -79,12 +79,43 @@ export async function fetchScoreboard(): Promise<LoadState<Scoreboard[]>> {
   return fromPostgrest<Scoreboard[]>(res, 'forecast_scoreboard');
 }
 
+/** Курсор страницы: последняя показанная строка. */
+export interface HistoryCursor {
+  commence_at: string;
+  fixture_id: string;
+}
+
+/**
+ * Страница истории.
+ *
+ * ⚠️ КУРСОРОМ, А НЕ СМЕЩЕНИЕМ. История растёт до десятков тысяч строк, а
+ * `offset N` заставляет базу прочитать и выбросить N строк: десятая страница
+ * дешёвая, трёхсотая — нет, и тормозит она ровно тогда, когда истории
+ * накопилось много. Курсор по (commence_at, fixture_id) стоит одинаково на
+ * любой глубине.
+ *
+ * Оба поля курсора передаются вместе. Время матча не уникально — у тура оно
+ * совпадает до секунды, — поэтому вторым ключом идёт `fixture_id`; иначе
+ * страница либо зациклится, либо перескочит одновременно начавшиеся матчи.
+ */
 export async function fetchForecastHistory(
   model: ForecastModel | null,
   limit = 40,
+  after: HistoryCursor | null = null,
 ): Promise<LoadState<HistoryRow[]>> {
   const res = await supabase.rpc('forecast_history', {
-    p_model: model, p_limit: limit,
+    p_model: model,
+    p_limit: limit,
+    p_before_at: after?.commence_at ?? null,
+    p_before_id: after?.fixture_id ?? null,
   });
   return fromPostgrest<HistoryRow[]>(res, 'forecast_history');
+}
+
+/** Сколько строк в истории всего — чтобы экран не делал вид, что показал всё. */
+export async function fetchHistoryCount(
+  model: ForecastModel | null,
+): Promise<LoadState<number>> {
+  const res = await supabase.rpc('forecast_history_count', { p_model: model });
+  return fromPostgrest<number>(res, 'forecast_history_count');
 }

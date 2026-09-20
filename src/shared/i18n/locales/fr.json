@@ -1279,7 +1279,11 @@
       "H": "domicile",
       "D": "nul",
       "A": "extérieur"
-    }
+    },
+    "history_all": "Tous",
+    "history_more": "Afficher plus",
+    "history_shown": "{{n}} sur {{total}}",
+    "history_end": "C’est tout l’historique"
   },
   "spotlight": {
     "title": "Le bruit contre le jeu",
