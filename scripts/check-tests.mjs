@@ -227,7 +227,8 @@ testcase(
   () => withBroken('football_scraper/sports_ru_stats.py',
     (s) => s.replace(
       '    todo.sort(key=lambda c: misses.get(c["id"], (-1, ""))\n'
-      + '                            + (-float(c.get("fame") or 0.0),))',
+      + '                            + (-float(value.get(c.get("club_key")) or 0.0),\n'
+      + '                               -float(c.get("fame") or 0.0)))',
       '    todo.sort(key=lambda c: misses.get(c["id"], (-1, "")))'),
     () => !passes(py('tests/test_sports_ru_stats.py'))),
 );
@@ -247,8 +248,12 @@ testcase(
   'тесты скрапера замечают дыру в окне дат',
   'пропущенные сутки выглядят как сутки без матчей: обход не падает, а матчи ' +
   'за этот день просто не собираются никогда',
+  // Шаг по тридцать суток вместо шага по дню — правдоподобная «оптимизация»:
+  // на большинстве длин она даёт те же месяцы и замечается только там, где
+  // отрезок перешагивает месяц целиком (60 суток от 13 сентября теряют июль).
   () => withBroken('football_scraper/espn_stats.py',
-    (s) => s.replace('        covered += span + 1', '        covered += span + 2'),
+    (s) => s.replace('        day -= timedelta(days=1)',
+                     '        day -= timedelta(days=30)'),
     () => !passes(py('tests/test_espn_stats.py'))),
 );
 
