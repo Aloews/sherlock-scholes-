@@ -486,7 +486,7 @@ def resolve_by_name(fetcher, card, max_candidates=None):
     return None
 
 
-def guess_order(cards, wanted, known, misses):
+def guess_order(cards, wanted, known, misses, club_value=None):
     """Очередь шага догадки: кого пробовать сегодня и в каком порядке.
 
     ⚠️ ПОРЯДОК ЗДЕСЬ — НЕ ОФОРМЛЕНИЕ, А РАЗНИЦА МЕЖДУ «СОБЕРЁМ ВСЕХ» И
@@ -519,12 +519,27 @@ def guess_order(cards, wanted, known, misses):
     значит «сначала те, чью статистику игрок увидит». Карточка без
     известности считается нулём и идёт после — не выбрасывается, а уступает.
 
+    ⚠️ ПЕРЕД ИЗВЕСТНОСТЬЮ СТОИТ СТОИМОСТЬ КЛУБА, И ЭТО ДАЁТ БОЛЬШЕ ЗА ТЕ ЖЕ
+    СТРАНИЦЫ. Замер 20.09.2026: без статистики 12 824 карточки в 1191 клубе,
+    но в пятидесяти самых дорогих клубах их всего 235 — при том что на эти
+    полсотни приходится 26.2 млрд евро из 51.1, то есть половина стоимости
+    всего охваченного футбола. Двести тридцать пять страниц — это пять минут
+    обхода; те же пять минут, потраченные по порядку `id`, не закрывают ни
+    одного клуба целиком.
+
+    Стоимость клуба и известность игрока связаны, но не совпадают: в дорогом
+    клубе есть молодой запасной без единого просмотра в википедии, и именно
+    он чаще всего и оказывается пропущенным. Поэтому ключа два, и клуб
+    первый.
+
     Насовсем не выбрасывается никто: страница у игрока может появиться
     завтра, и отметка отказа — не приговор, а место в очереди.
     """
+    value = club_value or {}
     todo = [c for c in cards if c["id"] in wanted and c["id"] not in known]
     todo.sort(key=lambda c: misses.get(c["id"], (-1, ""))
-                            + (-float(c.get("fame") or 0.0),))
+                            + (-float(value.get(c.get("club_key")) or 0.0),
+                               -float(c.get("fame") or 0.0)))
     return todo
 
 
@@ -599,11 +614,15 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
     # `fame` читается ради порядка очереди догадки (см. `guess_order`): без
     # неё самые известные карточки не пробовались ни разу.
     cards = db.select(
-        "/cards?select=id,name,name_en,fame&active=eq.true&category=eq.player&order=id"
+        "/cards?select=id,name,name_en,fame,market_value_eur"
+        "&active=eq.true&category=eq.player&order=id"
     )
-    current_club_ids = {
-        c["card_id"] for c in db.select("/card_current_club?select=card_id&order=card_id")
-    }
+    # `club_key` читается ради приоритета очереди догадки (см. `guess_order`):
+    # самые дорогие клубы закрываются первыми.
+    club_of = {c["card_id"]: c.get("club_key")
+               for c in db.select(
+                   "/card_current_club?select=card_id,club_key&order=card_id")}
+    current_club_ids = set(club_of)
     cards_by_key = active_cards_by_key(cards, current_club_ids)
     print("cards in deck: {}, with a current club: {}".format(len(cards), len(current_club_ids)))
 
@@ -664,7 +683,16 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
             for m in db.select(
                 "/sports_ru_no_slug?select=card_id,tried_at,tries&order=card_id")
         }
-        todo = guess_order(cards, wanted, known, misses)
+        # Стоимость клуба — сумма стоимостей его игроков в колоде. Считается
+        # здесь, а не запросом: обе половины уже прочитаны выше.
+        club_value = {}
+        for c in cards:
+            k = club_of.get(c["id"])
+            if k:
+                club_value[k] = club_value.get(k, 0.0) + float(c.get("market_value_eur") or 0.0)
+        for c in cards:
+            c["club_key"] = club_of.get(c["id"])
+        todo = guess_order(cards, wanted, known, misses, club_value)
         fresh = sum(1 for c in todo if c["id"] not in misses)
         print("guessing slugs for {} cards not on any squad page ({} ни разу не пробованы)"
               .format(len(todo), fresh))

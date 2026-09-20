@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScreenHeader } from '@/shared/ui/ScreenHeader';
-import { WinnerBoard } from '@/features/duel/WinnerBoard';
 import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import {
   fetchDuelModels, fetchDuelMatches,
@@ -146,12 +145,11 @@ export function DuelScreen() {
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
         <p className="text-[12px] text-brand-muted leading-relaxed">{t('duel.intro')}</p>
 
-        {/* ⚠️ ПОБЕДИТЕЛЬ ВЫШЕ ГОЛОВ, И ЭТО ПОРЯДОК ПО ВАЖНОСТИ, А НЕ ПО ДАТЕ.
-            Владелец просил «помимо голов указывать победителя»; человек
-            открывает этот экран с вопросом «кто выиграет», а не «сколько
-            забьют». Блок про голы остался ниже — он отвечает на другой
-            вопрос и своего ответа не теряет. */}
-        <WinnerBoard />
+        {/* ⚠️ ДОСКА ПРОГНОЗИСТОВ УЕХАЛА В АДМИНКУ (/admin, вкладка
+            «Прогнозисты»), и возвращать её сюда не надо. Три модели, называющие
+            победителя, читаются игроком как совет на что ставить, а точность у
+            них 46–48 % при 44 % у «всегда хозяева». Этот экран остаётся про
+            голы — там прогноз отвечает на вопрос, который сам же и задаёт. */}
 
         <div className="pt-2 text-[11px] uppercase tracking-wider text-brand-muted">
           {t('duel.goals_section')}

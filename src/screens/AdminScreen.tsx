@@ -8,6 +8,7 @@ import {
   modListReports, modResolveReports, modFlagCandidate,
   buildForbiddenWords, type CardInput, type StaffRole, type CardReportGroup,
 } from '@/features/admin/adminApi';
+import { WinnerBoard } from '@/features/duel/WinnerBoard';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
@@ -123,10 +124,10 @@ export function AdminScreen() {
   );
 }
 
-type Tab = 'cards' | 'reports';
+type Tab = 'cards' | 'reports' | 'forecast';
 
 const TAB_LABEL: Record<Tab, string> = {
-  reports: 'Репорты', cards: 'Карточки',
+  reports: 'Репорты', cards: 'Карточки', forecast: 'Прогнозисты',
 };
 
 function StaffCabinet({ password, role, onLogout }: {
@@ -174,7 +175,13 @@ function StaffCabinet({ password, role, onLogout }: {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['reports', 'cards'] as Tab[]).map((tb) => (
+        {/* ⚠️ «Прогнозисты» — ТОЛЬКО АДМИНУ, И ЭТО НЕ ОФОРМЛЕНИЕ. Раньше доска
+            висела на /duel, то есть её видел любой игрок с подпиской. Три
+            модели, называющие исход матча, читаются как совет на что ставить,
+            а точность у них 46–48 % при 44 % у «всегда хозяева»: показывать
+            такое игроку значит выдавать шум за подсказку. Модератору тоже не
+            нужно — это не инструмент разбора жалоб. */}
+        {(['reports', 'cards', ...(isAdmin ? ['forecast' as Tab] : [])] as Tab[]).map((tb) => (
           <Chip
             key={tb}
             label={TAB_LABEL[tb]}
@@ -190,6 +197,7 @@ function StaffCabinet({ password, role, onLogout }: {
       {tab === 'cards' && (
         <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
       )}
+      {tab === 'forecast' && isAdmin && <WinnerBoard />}
 
     </div>
   );

@@ -25,8 +25,9 @@ def check(label, got, want):
     return got == want
 
 
-def _card(card_id, name, fame=None):
-    return {"id": card_id, "name": name, "name_en": "", "fame": fame}
+def _card(card_id, name, fame=None, club=None):
+    return {"id": card_id, "name": name, "name_en": "", "fame": fame,
+            "club_key": club}
 
 
 def test_active_cards_by_key():
@@ -132,6 +133,29 @@ def test_guess_order():
     byfame = [c["id"] for c in guess_order(flat, wanted, set(), {})]
     ok &= check("контроль: при равной известности порядок исходный",
                 byfame, ["a", "b", "c", "d"])
+
+    # ⚠️ СТОИМОСТЬ КЛУБА ИДЁТ ПЕРЕД ИЗВЕСТНОСТЬЮ. Замер 20.09.2026: без
+    # статистики 12 824 карточки в 1191 клубе, но в пятидесяти самых дорогих
+    # их всего 235 — при половине всей стоимости охваченного футбола. Молодой
+    # запасной дорогого клуба ценнее для охвата, чем известный ветеран
+    # дешёвого, и по известности он бы туда никогда не попал.
+    rich = [_card("a", "А", 100.0, "poor"), _card("b", "Б", 10.0, "rich"),
+            _card("c", "В", 50.0, "poor")]
+    value = {"rich": 900e6, "poor": 1e6}
+    got = [c["id"] for c in guess_order(rich, {"a", "b", "c"}, set(), {}, value)]
+    ok &= check("дорогой клуб вперёд безвестным игроком", got, ["b", "a", "c"])
+
+    # Внутри одного клуба порядок по-прежнему по известности.
+    same = [_card("a", "А", 10.0, "x"), _card("b", "Б", 90.0, "x")]
+    got = [c["id"] for c in guess_order(same, {"a", "b"}, set(), {}, {"x": 5e6})]
+    ok &= check("внутри клуба — по известности", got, ["b", "a"])
+
+    # ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: без карты стоимостей порядок обязан вернуться к
+    # известности, иначе проверка выше зеленела бы и на функции, которая
+    # стоимость игнорирует.
+    got = [c["id"] for c in guess_order(rich, {"a", "b", "c"}, set(), {}, None)]
+    ok &= check("контроль: без стоимостей — снова по известности",
+                got, ["a", "c", "b"])
     return ok
 
 
