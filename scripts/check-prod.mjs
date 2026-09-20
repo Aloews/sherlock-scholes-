@@ -2628,18 +2628,44 @@ async function checkStatsCoverage() {
     const d = await board(code);
     return d ? ((d.leagues ?? [])[0]?.name ?? null) : null;
   };
-  /** Дата последнего ЗАВЕРШЁННОГО матча лиги в окне, или null.
+  /** Месяцы `YYYYMM` за последний год, от свежего к старому. */
+  const lastMonths = (count) => {
+    const out = [];
+    const d = new Date();
+    d.setUTCDate(1);
+    for (let i = 0; i < count; i += 1) {
+      out.push(`${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
+      d.setUTCMonth(d.getUTCMonth() - 1);
+    }
+    return out;
+  };
+
+  /** Дата последнего ЗАВЕРШЁННОГО матча лиги за год, или null.
    *  Признак завершённости тот же, что читает сам обход
-   *  (`completed_event_ids` в scraper/espn.py): `status.type.completed`, и
-   *  никакой другой — идущий матч тоже приходит событием. */
-  const lastFinished = async (code, dates) => {
-    const d = await board(code, dates);
-    const days = (d?.events ?? [])
-      .filter((e) => e.status?.type?.completed === true)
-      .map((e) => String(e.date ?? '').slice(0, 10))
-      .filter(Boolean)
-      .sort();
-    return days.length ? days[days.length - 1] : null;
+   *  (`completed_events` в scraper/espn.py): `status.type.completed`, и
+   *  никакой другой — идущий матч тоже приходит событием.
+   *
+   *  ⚠️ СПРАШИВАЕТСЯ ПОМЕСЯЧНО, А НЕ ДИАПАЗОНОМ ДАТ, И ЭТО НЕ СТИЛЬ. Здесь
+   *  стояло `dates=ГГГГММДД-ГГГГММДД`, и ESPN перестал такое понимать — 400
+   *  на КАЖДУЮ лигу, включая заведомо живую. Проверка от этого не покраснела
+   *  честно, а начала врать в одну сторону: 400 читался как «ни одного матча
+   *  за год», и живые кубки УЕФА попадали в список брошенных кодов рядом с
+   *  настоящей поломкой. Тот же диапазон стоял в самом обходе — там он молча
+   *  обнулил ночной сбор, см. espn_stats.py.
+   *
+   *  Месяцы идут от свежего к старому и обход обрывается на ПЕРВОМ, где матч
+   *  нашёлся: у живой лиги это один запрос, тринадцать — только у мёртвой. */
+  const lastFinished = async (code, months) => {
+    for (const month of months) {
+      const d = await board(code, month);
+      const days = (d?.events ?? [])
+        .filter((e) => e.status?.type?.completed === true)
+        .map((e) => String(e.date ?? '').slice(0, 10))
+        .filter(Boolean)
+        .sort();
+      if (days.length) return days[days.length - 1];
+    }
+    return null;
   };
 
   // По восемь за раз: полсотни запросов подряд растянули бы прогон, а все разом
@@ -2707,9 +2733,7 @@ async function checkStatsCoverage() {
   //    УЕФА, и тайская лига, а у них последний матч в мае и новый сезон на
   //    носу — вот почему окно именно годовое.
   const quiet = leagues.filter((l) => !seen.some((x) => x.name === l.name));
-  const year = `${new Date(Date.now() - 365 * 24 * 3600 * 1000)
-    .toISOString().slice(0, 10).replace(/-/g, '')}-`
-    + `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  const year = lastMonths(13);
   //    Считается ПОСЛЕДНЯЯ ДАТА, а не число матчей, и это разница по существу:
   //    у sui.1 за год 8 матчей, у irl.1 — 35, то есть по счётчику обе «живые»,
   //    а последние их матчи 28.09.2025 и 01.11.2025. Девять месяцев не молчит

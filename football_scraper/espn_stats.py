@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from scraper.dedup import canonical_key  # noqa: E402
 from scraper.espn import (  # noqa: E402
-    completed_event_ids,
+    completed_events,
     parse_match_meta,
     parse_player_rows,
 )
@@ -154,33 +154,73 @@ LEAGUES = {
 
 DELAY_SECONDS = 0.4
 
-# ⚠️ ОКНО ДАТАМИ, А НЕ ПО ОДНОМУ ДНЮ — ИНАЧЕ СПИСОК ВЫШЕ НЕ ПОМЕЩАЕТСЯ В НОЧЬ.
-# `scoreboard?dates=A-B` отвечает диапазоном, и это проверено сравнением, а не
-# прочитано в документации: за 1–12 сентября по Чемпионшипу обход по дням дал
-# 44 матча, один запрос диапазоном — те же 44, и разность множеств пуста в обе
-# стороны. Девяносто суток на лигу — это 90 запросов против трёх.
+# ⚠️ ОКНО КАЛЕНДАРНЫМ МЕСЯЦЕМ, А НЕ ДИАПАЗОНОМ ДАТ. ЗДЕСЬ СТОЯЛО
+# `dates=A-B`, И ESPN ПЕРЕСТАЛ ЭТО ПОНИМАТЬ — 400 НА КАЖДУЮ ЛИГУ, БЕЗ
+# ИСКЛЮЧЕНИЙ. Поломка тихая вдвойне: `fetch_json` гасит не-200 (одна лига не
+# должна валить прогон), а лига без событий печатается как «матчей 0» — то
+# есть как межсезонье. Прогон CI 20.09.2026 закончился «success» со строкой
 #
-# Тридцать, а не все девяносто разом, — страховка от необъявленного потолка на
-# число событий в ответе. Замер на самых плотных лигах (bra.1, usa.1) показал
-# 91 и 156 событий без потерь, то есть потолка на этих числах нет; окно
-# оставлено узким, потому что цена страховки — два лишних запроса на лигу.
-CHUNK_DAYS = 30
+#     matches read: 0, rows for our cards: 0, players not in the deck: 0
+#
+# и так каждую ночь с 16 сентября: последний записанный матч из ESPN — 15-е,
+# а 18 матчей Лиги Европы с 16-го не попали в базу вовсе.
+#
+# Замер по ответам ESPN 20.09.2026, три из трёх на каждом варианте:
+#
+#     dates=20260915              -> 200
+#     dates=202609                -> 200
+#     dates=2026                  -> 200
+#     dates=20260914-20260915     -> 400 {"message":"Failed to get events endpoint."}
+#     dates=20260817-20260915     -> 400
+#     dates=202608-202609         -> 400
+#
+# Месяц взят вместо диапазона и проверен ТЕМ ЖЕ сравнением, что когда-то
+# оправдало диапазон, — множествами id, а не количеством:
+#
+#     eng.1 2026-03   месяц 32   по дням 32   разность пуста в обе стороны
+#     usa.1 2026-08   месяц 75   по дням 75   разность пуста в обе стороны
+#     bra.1 2026-08   месяц 40   по дням 40   разность пуста в обе стороны
+#
+# usa.1 — самая плотная в списке, и 75 событий она отдаёт целиком: потолка на
+# этих числах нет.
+#
+# Цена не выросла: месяц — это ОДИН запрос табло там, где раньше был один
+# запрос диапазона, а дорогая часть обхода (summary на каждый матч) не
+# изменилась, потому что события месяца отбираются по запрошенным суткам
+# ниже.
 
 
-def date_windows(days, today):
-    """Окна `(с, по)` в формате ESPN, от свежего к старому.
+def month_windows(days, today):
+    """Месяцы `YYYYMM`, покрывающие последние `days` суток, от свежего к старому.
 
     Чистая функция: даты на вход, строки на выход — проверяется тестом без сети.
     """
-    windows = []
-    covered = 0
-    while covered < days:
-        hi = today - timedelta(days=covered)
-        span = min(CHUNK_DAYS, days - covered) - 1
-        lo = hi - timedelta(days=max(span, 0))
-        windows.append((lo.strftime("%Y%m%d"), hi.strftime("%Y%m%d")))
-        covered += span + 1
-    return windows
+    months = []
+    day = today
+    first = today - timedelta(days=days - 1)
+    while day >= first:
+        key = day.strftime("%Y%m")
+        if key not in months:
+            months.append(key)
+        day -= timedelta(days=1)
+    return months
+
+
+def within_span(event_date, first, last):
+    """Событие попало в запрошенные сутки? Границы расширены на день.
+
+    ⚠️ ЗАПАС В СУТКИ ОБЯЗАТЕЛЕН, А НЕ АККУРАТЕН. Дата в табло — UTC по началу
+    матча, а `parse_match_meta` берёт свою из карточки матча; на матче в 23:30Z
+    это разные дни. Отбор без запаса выбросил бы ровно поздние матчи — те, что
+    и так труднее всего заметить. Лишний день стоит нескольких запросов
+    summary и ничего не портит: запись идёт upsert-ом по (карточка, дата,
+    турнир).
+    """
+    if not event_date:
+        return True
+    return (first - timedelta(days=1)).isoformat() <= event_date <= (
+        last + timedelta(days=1)
+    ).isoformat()
 
 
 def fold_diacritics(name):
@@ -355,7 +395,8 @@ def collect(days, dry_run=False, only=None):
     print("cards with a latin name and a current club: {}".format(len(cards_by_key)))
 
     today = date.today()
-    windows = date_windows(days, today)
+    first_day = today - timedelta(days=days - 1)
+    windows = month_windows(days, today)
 
     # ⚠️ ОДНА УПАВШАЯ ЛИГА НЕ УНОСИТ ОСТАЛЬНЫЕ. Прогон 13.09.2026 умер на
     # тринадцатой лиге из пятидесяти трёх — `player_match_stats upsert 504` —
@@ -375,18 +416,35 @@ def collect(days, dry_run=False, only=None):
         # есть почти вся цена.
         event_ids = []
         seen_ids = set()
-        for lo, hi in windows:
+        board_failed = False
+        for month in windows:
             board = fetch_json(
                 session,
-                "{}/{}/scoreboard?dates={}-{}&limit=1000".format(BASE, league, lo, hi))
+                "{}/{}/scoreboard?dates={}&limit=1000".format(BASE, league, month))
             time.sleep(DELAY_SECONDS)
             if not board:
+                # ⚠️ НЕ `continue`. Здесь и была тихая дыра: табло, ответившее
+                # не-200, давало «матчей 0», неотличимое от межсезонья, — и
+                # прогон, не принёсший НИ ОДНОЙ строки за всю ночь, выходил с
+                # нулём и зелёной галочкой в CI. Молчание источника обязано
+                # стоить лиги в списке `failed` и ненулевого кода возврата,
+                # ровно как молчание записи ниже.
+                board_failed = True
                 continue
-            for event_id in completed_event_ids(board):
+            for event_id, event_date in completed_events(board):
                 if event_id in seen_ids:
+                    continue
+                if not within_span(event_date, first_day, today):
                     continue
                 seen_ids.add(event_id)
                 event_ids.append(event_id)
+        if board_failed:
+            # Месяц мог не ответить один из трёх — то, что пришло, пишется:
+            # upsert идемпотентен, и выбросить готовые строки ради красоты
+            # отчёта значило бы наказать лигу за чужой сбой. Но в `failed`
+            # она попадает, и прогон кончится ненулевым кодом.
+            print("  !! {}: табло ответило не на все месяцы".format(league))
+            failed.append(league)
 
         rows = []
         for event_id in event_ids:
