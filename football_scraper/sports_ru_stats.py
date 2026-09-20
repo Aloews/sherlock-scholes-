@@ -868,22 +868,49 @@ def collapse_duplicate_keys(rows):
     return [best[k] for k in order]
 
 
-def collect_stats(fetcher, db, limit=None, dry_run=False):
-    """Read stat pages least-recently-checked first and write the matches.
+# ⚠️ ПОРЯДОК — СУТКИ ПРОВЕРКИ, ПОТОМ ВАЖНОСТЬ. Здесь стояло
+# `checked_at.asc.nullsfirst,card_id.asc`, и второй ключ решал всё: у ни
+# разу не читанных карточек `checked_at` одинаково пуст, а бюджета хватает
+# на пятую часть очереди — значит, кто попадёт в эту пятую часть,
+# определял случайный UUID. Та же ошибка, что уже чинилась в проходе
+# догадки (см. `_order_for_guess`), только там её нашли, а здесь нет.
+#
+# Замер на боевой очереди 20.09.2026, первые 1154 строки (столько
+# успевает прогон): карточек с известностью 90+ было 11, стало 28;
+# стоимость охваченных клубов 108.4 млрд против 147.6.
+#
+# Ротация цела: ключ первый — сутки, а не важность. Прочитанная карточка
+# уходит в завтрашнее ведро сама, поэтому дешёвые не голодают.
+#
+# `card_id` остаётся последним ключом, и это по-прежнему не для красоты:
+# обход идёт страницами, а при неполном порядке страницы могут
+# перекрыться, и часть игроков не была бы прочитана ни разу.
+#
+# Разбор и замеры — в supabase/migrations/sports_ru_read_order.sql.
+READ_ORDER_PATH = ("/sports_ru_read_order?select=card_id,slug,name_ru"
+                   "&order=checked_day.asc.nullsfirst,club_value_eur.desc,"
+                   "fame.desc,card_id.asc")
 
-    The order matters: a run cut short by the budget still advances instead of
-    re-reading the same head of the list every night.
+
+def collect_stats(fetcher, db, limit=None, dry_run=False):
+    """Read stat pages by staleness bucket, then by worth, and write matches.
+
+    The order matters twice over. A run cut short by the budget must advance
+    instead of re-reading the same head every night — that is the staleness
+    bucket. And inside a bucket it must spend the budget on the players the
+    deck actually shows — that is the club value and the fame. Details and
+    the measurement are in the comment below.
     """
-    # `card_id` дописан в порядок вторым ключом не для красоты: `checked_at`
-    # у непрочитанных карточек одинаково пуст, а обход идёт страницами по
-    # смещению — при неполном порядке страницы могут перекрыться, и часть
-    # игроков не была бы прочитана ни разу.
-    path = ("/sports_ru_player?select=card_id,slug,name_ru"
-            "&order=checked_at.asc.nullsfirst,card_id.asc")
+    path = READ_ORDER_PATH
     players = db.select(path, cap=int(limit) if limit else None)
     print("players to read: {}".format(len(players)))
 
+    # ⚠️ `checked` — ЭТО ПОТРАЧЕННЫЕ СТРАНИЦЫ, А `parsed` — ПРОЧИТАННЫЕ
+    # ИГРОКИ, И ЭТО РАЗНЫЕ ЧИСЛА С ТЕХ ПОР, КАК ПРОПАВШАЯ СТРАНИЦА ТОЖЕ
+    # ОТМЕЧАЕТСЯ. Один счётчик на оба смысла означал бы «прочитали 1154
+    # игрока» там, где сорок пять из них не открылись вовсе.
     stats, checked, suspect = [], [], []
+    parsed = 0
     for p in players:
         try:
             html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
@@ -893,11 +920,25 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
             # RuntimeError выбросил бы целую ночь чтения ради строки в логе.
             # Ровно этого опасается комментарий про потолок в workflow —
             # «закончиться бюджетом, а не обрывом посреди записи».
-            print("  budget spent after {} players, writing what was read"
-                  .format(len(checked)))
+            print("  budget spent after {} pages ({} players read), "
+                  "writing what was read".format(len(checked), parsed))
             break
         if html is None:
+            # ⚠️ ОТМЕТКА СТАВИТСЯ И НА ПРОПАВШУЮ СТРАНИЦУ. Здесь стоял голый
+            # `continue`, и `checked_at` у такой карточки оставался пуст —
+            # то есть она НАВСЕГДА оставалась в голове очереди и жгла
+            # страницу бюджета каждую ночь. Замер 20.09.2026: в очереди 46
+            # карточек без единой отметки, и ровно 45 строк «page gone» в
+            # логе того же прогона — это одно и то же множество, которое
+            # ходило по кругу неизвестно сколько ночей.
+            #
+            # Отметка — не приговор: карточка уходит в ротацию наравне со
+            # всеми и будет проверена снова, когда до неё дойдёт очередь.
+            # Страница у игрока может появиться завтра, но платить за эту
+            # надежду каждую ночь незачем.
             print("  !! {} ({}): page gone".format(p["name_ru"], p["slug"]))
+            checked.append({"card_id": p["card_id"], "slug": p["slug"],
+                            "checked_at": _now_iso()})
             continue
         rows = parse_match_rows(html)
 
@@ -929,8 +970,10 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
             )
         checked.append({"card_id": p["card_id"], "slug": p["slug"],
                         "checked_at": _now_iso()})
+        parsed += 1
 
-    print("parsed {} match rows from {} players".format(len(stats), len(checked)))
+    print("parsed {} match rows from {} players ({} pages spent)"
+          .format(len(stats), parsed, len(checked)))
     if suspect:
         print("!! {} players disagreed with their own page total:".format(len(suspect)))
         for name, gap in suspect[:10]:

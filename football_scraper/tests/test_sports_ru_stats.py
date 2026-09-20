@@ -13,7 +13,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sports_ru_stats import (  # noqa: E402
-    FIRST_PASS_CANDIDATES, SEED_CLUBS, Db, _candidate_budget,
+    FIRST_PASS_CANDIDATES, READ_ORDER_PATH, SEED_CLUBS, Db, _candidate_budget,
     active_cards_by_key, guess_order, resolve_by_name, resolve_slugs,
     slug_candidates,
 )
@@ -588,10 +588,45 @@ def test_rare_name_forms_are_deferred_not_dropped():
     return ok
 
 
+def test_read_order_spends_the_budget_on_worth():
+    """Очередь чтения: сутки, потом стоимость клуба, потом известность.
+
+    ⚠️ ПРОВЕРЯЕТСЯ ИМЕННО ПОРЯДОК КЛЮЧЕЙ, А НЕ ИХ НАЛИЧИЕ. Бюджета хватает на
+    пятую часть очереди (замер 20.09.2026: 1154 игрока из 5755), поэтому
+    порядок решает не «когда», а «прочитают ли вообще». Здесь стояло
+    `checked_at.asc.nullsfirst,card_id.asc`, и в бюджет попадали те, у кого
+    удачный UUID: карточек с известностью 90+ было 11 из 319, стало 28.
+
+    Сутки обязаны быть ПЕРВЫМИ: важность впереди ротации означала бы читать
+    одних и тех же дорогих каждую ночь, а дешёвых — никогда.
+
+    Карточка обязана быть ПОСЛЕДНЕЙ: обход идёт страницами, и при неполном
+    порядке страницы перекрываются — одного игрока прочли бы дважды, другого
+    ни разу.
+    """
+    ok = True
+    order = READ_ORDER_PATH.split("order=")[1]
+    keys = [k.split(".")[0] for k in order.split(",") if not k.startswith(("asc", "desc", "nullsfirst"))]
+    ok &= check("ключи по порядку", keys,
+                ["checked_day", "club_value_eur", "fame", "card_id"])
+    ok &= check("ни разу не читанные впереди",
+                "checked_day.asc.nullsfirst" in order, True)
+    ok &= check("стоимость и известность — по убыванию",
+                ("club_value_eur.desc" in order, "fame.desc" in order), (True, True))
+    # Представление, а не таблица: у таблицы нет ни ведра суток, ни стоимости.
+    ok &= check("читается очередь, а не сырая таблица",
+                READ_ORDER_PATH.startswith("/sports_ru_read_order?"), True)
+    # Все три ключа сортировки обязаны быть выбраны или вычислимы на стороне
+    # базы; card_id ещё и в select, иначе постраничный обход не сошьётся.
+    ok &= check("card_id есть в select", "select=card_id," in READ_ORDER_PATH, True)
+    return ok
+
+
 def main():
     print("test_sports_ru_stats.py")
     ok = test_active_cards_by_key()
     ok = test_guess_order() and ok
+    ok = test_read_order_spends_the_budget_on_worth() and ok
     ok = test_guess_pass_flushes_before_the_end() and ok
     ok = test_rare_name_forms_are_deferred_not_dropped() and ok
     ok = test_select_survives_a_dropped_connection() and ok
