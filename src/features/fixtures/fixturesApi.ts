@@ -147,3 +147,25 @@ export function groupByDay(fixtures: Fixture[]): { day: string; fixtures: Fixtur
   // Insertion order is already chronological — the query sorted them.
   return [...days.entries()].map(([day, list]) => ({ day, fixtures: list }));
 }
+
+import { type LeagueValue } from './leagueOrder';
+
+export { compareLeaguesByValue, type LeagueValue } from './leagueOrder';
+
+/**
+ * Порядок турниров на экране матчей: по стоимости их участников.
+ *
+ * ⚠️ ПОРЯДОК СЧИТАЕТСЯ В БАЗЕ, А НЕ ЗДЕСЬ, И ЭТО НЕ ЛЕНЬ. Стоимость состава
+ * лежит в `club_roster` построчно, по игрокам; притащить её на клиент значило
+ * бы качать заявки всех клубов ради одной сортировки чипов. RPC отдаёт по
+ * строке на турнир.
+ *
+ * Возвращается МЕДИАНА стоимости состава среди клубов, у которых есть матч в
+ * окне, и признак «закреплён» у шести турниров, названных владельцем. Почему
+ * медиана, а не среднее, — в шапке league_squad_value.sql: по среднему Лига
+ * Европы однажды встала четвёртой по ОДНОМУ клубу.
+ */
+export async function fetchLeagueValues(): Promise<LoadState<LeagueValue[]>> {
+  const res = await supabase.rpc('league_squad_value', { p_days: 30 });
+  return fromPostgrest<LeagueValue[]>(res, 'league_squad_value');
+}
