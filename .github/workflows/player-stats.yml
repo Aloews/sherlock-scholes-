@@ -116,11 +116,19 @@ jobs:
       # Ключи берутся из env всего job-а (выше): отдельный набор здесь
       # завёл бы ВТОРОЕ имя секрета, а забытый секрет молча даёт 401 и шаг,
       # который «прошёл».
-      - name: Освежить статистику планировщику
+      - name: Освежить статистику планировщику и кэш рейтинга
         if: always()
         run: |
-          curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/refresh_stats_planner" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            -H "Content-Type: application/json" -d '{}' \
-            -o /dev/null -w 'analyze: HTTP %{http_code}\n'
+          for fn in refresh_stats_planner refresh_player_rating_cache; do
+            code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Content-Type: application/json" -d '{}' \
+              -o /dev/null -w '%{http_code}')
+            echo "$fn: HTTP $code"
+            # ⚠️ КОД ОТВЕТА ПРОВЕРЯЕТСЯ, А НЕ ПЕЧАТАЕТСЯ. Забытый секрет даёт
+            # 401, и шаг, который просто печатает число, «проходит» — а кэш
+            # не обновляется неделями, и экран тихо показывает прошлую неделю
+            # как эту. Ровно так же молчал сбор ESPN.
+            [ "$code" = "200" ] || { echo "::error::$fn ответила $code"; exit 1; }
+          done

@@ -2574,6 +2574,65 @@ async function checkPlayerPositions() {
 }
 
 
+// ------------------------------------------------ кэш рейтинга игроков ----
+// Владелец: «статистика иногда не загружается».
+//
+// ⚠️ КЭШ, ПЕРЕСТАВШИЙ ОБНОВЛЯТЬСЯ, — ЭТО НЕ ОШИБКА НА ЭКРАНЕ, А ПРОШЛАЯ
+// НЕДЕЛЯ ВМЕСТО ЭТОЙ. Экран нарисуется, числа будут правдоподобны, и понять,
+// что они недельной давности, по нему невозможно. Поэтому свежесть
+// проверяется сверкой С ЖИВЫМ РАСЧЁТОМ, а не тем, что таблица не пуста.
+async function checkRatingCache() {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    record('Кэш рейтинга', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const t0 = Date.now();
+  const week = await rpc('player_ratings', { p_days: 7, p_limit: 50 });
+  const ms = Date.now() - t0;
+  const rows = Array.isArray(week) ? week : [];
+  // Потолок анонима — три секунды; здесь вдвое строже, потому что срыв
+  // случался именно тогда, когда рядом шёл ночной обход, а не на пустой базе.
+  record('Кэш рейтинга: экран укладывается в лимит anon',
+         rows.length > 0 && ms < 1500,
+         `${rows.length} строк, ${ms} мс`,
+         'ловит возврат к расчёту на каждый показ: 33 799 буферов ради 50 строк');
+
+  // ⚠️ СВЕЖЕСТЬ — ЭТО СОВПАДЕНИЕ С ЖИВЫМ, А НЕ НАЛИЧИЕ СТРОК. Окно 365 в
+  // кэше есть, а окно 14 — нет; значит один и тот же вопрос можно задать
+  // дважды: через кэш и мимо него. Если ночное обновление отвалится, лидеры
+  // недели разойдутся с лидерами тех же суток, посчитанными на месте.
+  const live = await rpc('player_ratings', { p_days: 14, p_limit: 50 });
+  const liveRows = Array.isArray(live) ? live : [];
+  record('Кэш рейтинга: окно мимо кэша считается живьём', liveRows.length > 0,
+         `${liveRows.length} строк по окну, которого в кэше нет`,
+         'ловит кэш, ставший ЕДИНСТВЕННЫМ источником: пустой кэш = пустой экран');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у РАЗНЫХ окон обязаны быть разные ответы.
+  // Совпадение строка в строку значило бы, что `p_days` не читается вовсе —
+  // и тогда обе проверки выше зелены, а экран показывает одно и то же
+  // независимо от выбранной вкладки.
+  const year = await rpc('player_ratings', { p_days: 365, p_limit: 50 });
+  const yearRows = Array.isArray(year) ? year : [];
+  const sameTop = rows.length > 0 && yearRows.length > 0
+    && rows[0].card_id === yearRows[0].card_id
+    && rows[0].goals === yearRows[0].goals;
+  record('Кэш рейтинга: контроль — окна различаются', !sameTop,
+         sameTop ? 'неделя и год дали одного лидера с теми же голами'
+                 : `за неделю ${rows[0]?.goals ?? '?'} голов у лидера, за год ${yearRows[0]?.goals ?? '?'}`,
+         sameTop ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
+
 // ---------------------------------------- охват статистики: лиги и команды ---
 // Владелец: «дособери статистику всех команд и игроков».
 //
@@ -3715,6 +3774,7 @@ async function checkTransfers() {
          works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+await checkRatingCache();
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();
