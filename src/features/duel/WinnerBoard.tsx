@@ -54,7 +54,7 @@ const PAGE = 40;
  * Смена фильтра начинает с чистого листа — это другой список, а не другая его
  * часть.
  */
-function useHistory(model: ForecastModel | null) {
+function useHistory(model: ForecastModel | null, password: string | null) {
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [busy, setBusy] = useState(true);
@@ -64,14 +64,14 @@ function useHistory(model: ForecastModel | null) {
   useEffect(() => {
     let dead = false;
     setRows([]); setDone(false); setBusy(true); setTotal(null);
-    void fetchHistoryCount(model).then((s) => { if (!dead) setTotal(dataOr(s, null)); });
-    void fetchForecastHistory(model, PAGE, null).then((s) => {
+    void fetchHistoryCount(model, password).then((s) => { if (!dead) setTotal(dataOr(s, null)); });
+    void fetchForecastHistory(model, PAGE, null, password).then((s) => {
       if (dead) return;
       const got = dataOr(s, []);
       setRows(got); setDone(got.length < PAGE); setBusy(false);
     });
     return () => { dead = true; };
-  }, [model]);
+  }, [model, password]);
 
   const more = useCallback(() => {
     const last = rows[rows.length - 1];
@@ -80,7 +80,7 @@ function useHistory(model: ForecastModel | null) {
     const after: HistoryCursor = {
       commence_at: last.commence_at, fixture_id: last.fixture_id,
     };
-    void fetchForecastHistory(model, PAGE, after).then((s) => {
+    void fetchForecastHistory(model, PAGE, after, password).then((s) => {
       const got = dataOr(s, []);
       // ⚠️ ДОБАВЛЯЕМ, А НЕ ЗАМЕНЯЕМ, и это не мелочь: замена стирала бы всё
       // пролистанное, а курсор указывал бы в середину — список складывался бы
@@ -89,7 +89,7 @@ function useHistory(model: ForecastModel | null) {
       setDone(got.length < PAGE);
       setBusy(false);
     });
-  }, [model, rows, busy, done]);
+  }, [model, password, rows, busy, done]);
 
   return { rows, total, busy, done, more };
 }
@@ -98,7 +98,13 @@ function dayLabel(iso: string, lang: string): string {
   return new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
 }
 
-export function WinnerBoard() {
+/**
+ * `password` — пароль персонала, если доска открыта из админки. Он нужен не
+ * для красоты: функции прогнозов закрыты `require_pro()`, который проверяет
+ * подпись Telegram, а в /admin входят из обычного браузера. Без него экран
+ * отвечал `pro_required` при живых данных под ним.
+ */
+export function WinnerBoard({ password = null }: { password?: string | null }) {
   const { t, i18n } = useTranslation();
   const [board, setBoard] = useState<LoadState<Scoreboard[]>>(LOADING);
   const [soon, setSoon] = useState<LoadState<UpcomingPick[]>>(LOADING);
@@ -110,14 +116,14 @@ export function WinnerBoard() {
     let dead = false;
     // Три запроса рядом, а не по очереди: ни один не зависит от другого, и
     // ожидание по самому медленному было бы ожиданием на пустом месте.
-    void fetchScoreboard().then((s) => { if (!dead) setBoard(s); });
-    void fetchUpcomingPicks(20).then((s) => { if (!dead) setSoon(s); });
+    void fetchScoreboard(password).then((s) => { if (!dead) setBoard(s); });
+    void fetchUpcomingPicks(20, password).then((s) => { if (!dead) setSoon(s); });
     return () => { dead = true; };
-  }, []);
+  }, [password]);
 
   const rows = dataOr(board, []);
   const list = dataOr(soon, []);
-  const past = useHistory(only);
+  const past = useHistory(only, password);
   const match = list[Math.min(chosen, Math.max(0, list.length - 1))];
   const dopamine = rows.find((r) => r.model === 'fly')?.dopamine ?? 0;
 

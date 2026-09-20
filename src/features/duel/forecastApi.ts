@@ -69,13 +69,30 @@ export interface HistoryRow {
   backfilled: boolean;
 }
 
-export async function fetchUpcomingPicks(limit = 20): Promise<LoadState<UpcomingPick[]>> {
-  const res = await supabase.rpc('forecast_upcoming', { p_limit: limit });
+/**
+ * ⚠️ ПАРОЛЬ ПЕРСОНАЛА — ВТОРОЙ КЛЮЧ, И БЕЗ НЕГО ДОСКА НЕ ОТКРЫВАЛАСЬ ВОВСЕ.
+ * Эти функции закрыты `require_pro()`, который проверяет подпись Telegram.
+ * Пока доска висела на /duel, её открывали ИЗ Telegram с подпиской и всё
+ * сходилось. После переезда в /admin вход стал по паролю из обычного
+ * браузера, где заголовка `x-tg-init-data` нет и быть не может, — и экран
+ * отвечал `pro_required` при живых данных под ним.
+ *
+ * Пароль не снимает проверку, а добавляет второй способ её пройти: без
+ * подписи И без верного пароля отказ прежний.
+ */
+export async function fetchUpcomingPicks(
+  limit = 20, password: string | null = null,
+): Promise<LoadState<UpcomingPick[]>> {
+  const res = await supabase.rpc('forecast_upcoming', {
+    p_limit: limit, p_password: password,
+  });
   return fromPostgrest<UpcomingPick[]>(res, 'forecast_upcoming');
 }
 
-export async function fetchScoreboard(): Promise<LoadState<Scoreboard[]>> {
-  const res = await supabase.rpc('forecast_scoreboard');
+export async function fetchScoreboard(
+  password: string | null = null,
+): Promise<LoadState<Scoreboard[]>> {
+  const res = await supabase.rpc('forecast_scoreboard', { p_password: password });
   return fromPostgrest<Scoreboard[]>(res, 'forecast_scoreboard');
 }
 
@@ -102,21 +119,25 @@ export async function fetchForecastHistory(
   model: ForecastModel | null,
   limit = 40,
   after: HistoryCursor | null = null,
+  password: string | null = null,
 ): Promise<LoadState<HistoryRow[]>> {
   const res = await supabase.rpc('forecast_history', {
     p_model: model,
     p_limit: limit,
     p_before_at: after?.commence_at ?? null,
     p_before_id: after?.fixture_id ?? null,
+    p_password: password,
   });
   return fromPostgrest<HistoryRow[]>(res, 'forecast_history');
 }
 
 /** Сколько строк в истории всего — чтобы экран не делал вид, что показал всё. */
 export async function fetchHistoryCount(
-  model: ForecastModel | null,
+  model: ForecastModel | null, password: string | null = null,
 ): Promise<LoadState<number>> {
-  const res = await supabase.rpc('forecast_history_count', { p_model: model });
+  const res = await supabase.rpc('forecast_history_count', {
+    p_model: model, p_password: password,
+  });
   return fromPostgrest<number>(res, 'forecast_history_count');
 }
 
