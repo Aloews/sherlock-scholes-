@@ -73,8 +73,33 @@ Settings → Secrets and variables → Actions:
 | `VERCEL_PROJECT_ID` | `prj_zPmwoDaqeK57VzUBzFxTJGMjUm65` | то же |
 | `VERCEL_TEAM_ID` | `team_e1o23XoY7tj0C19a4zwqDMhT` | то же |
 | `TELEGRAM_BOT_TOKEN` | @BotFather | кнопку меню придётся переставить руками |
+| `SUPABASE_ANON_KEY` | Project Settings → API → anon public | **последний шаг проверяет прод вслепую** |
 
-Уже заведены: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_KEY`.
+Уже заведены: `SUPABASE_URL`, `SUPABASE_KEY`.
+
+⚠️ **`SUPABASE_ANON_KEY` ЗДЕСЬ БЫЛ ЗАПИСАН КАК ЗАВЕДЁННЫЙ, А ЕГО НЕТ.** Замер
+по журналу успешного прогона 20.09.2026 (блок `env` шага выкладки):
+
+    SUPABASE_ACCESS_TOKEN  ***        SUPABASE_PROJECT_REF   ***
+    VITE_SUPABASE_URL      ***        VITE_SUPABASE_ANON_KEY (пусто)
+
+Функции выложились, а последний шаг — `check-prod` против боевых адресов —
+напечатал «падений: 44», и все сорок четыре были «нет VITE_SUPABASE_* в
+окружении». То есть кнопка сообщала о развале прода там, где ей просто нечем
+было посмотреть. Полчаса ушло на поиск поломки, которой не было.
+
+Сам скрипт теперь это различает: без ключей он печатает одну строку
+«ПРОВЕРКА НЕ ВЫПОЛНЕНА» и выходит с кодом 2, а не выдаёт стену мнимых
+падений. Но ключ всё равно нужен — иначе последний шаг кнопки бесполезен.
+
+⚠️ **Секретов с суффиксами не заводите.** Workflow читает ровно
+`secrets.SUPABASE_ACCESS_TOKEN`; `SUPABASE_ACCESS_TOKEN_2` и подобные не
+читает ничто, и их наличие создаёт ложное впечатление, что ключ на месте.
+Проверить, кто что читает, можно одной командой:
+
+```bash
+grep -rn "secrets\." .github/workflows/
+```
 
 ⚠️ **`SUPABASE_KEY` — это service_role.** Он есть у скраперов и не нужен
 выкладке; не добавляйте его туда, где он не нужен.
