@@ -203,7 +203,7 @@ function StaffCabinet({ password, role, onLogout }: {
           {/* Экспресс выше истории: открывая эту вкладку, смотрят «что сейчас»,
               а не «что было». */}
           <AccumulatorPanel password={password} />
-          <WinnerBoard />
+          <WinnerBoard password={password} />
         </div>
       )}
 
