@@ -207,6 +207,20 @@ async function checkDigest() {
 //
 // В обоих случаях psql, MCP и любая проверка «под сервисным ключом» показывают
 // зелень. Поэтому ходить надо ИМЕННО anon-ключом и ИМЕННО до строк.
+// ⚠️ БЮДЖЕТ ВРЕМЕНИ, А НЕ ТОЛЬКО КОД ОТВЕТА. Проверка «вернулся массив»
+// зеленела на функции, которая шла 4.3 с при анонимном потолке в 3 с: она
+// падала через раз — в спокойную минуту 345–516 мс, под нагрузкой 57014
+// «canceling statement due to statement timeout». Перемежающийся отказ хуже
+// постоянного: на него перестают смотреть, а у игрока раздел «иногда не
+// грузится».
+//
+// Порог взят с запасом от замеров на бегунке GitHub, где сеть добавляет своё:
+// 216, 621, 621, 646, 806 мс. 2000 мс — вдвое больше худшего наблюдавшегося и
+// заметно раньше серверного потолка, то есть краснеет ДО того, как это увидит
+// игрок, и не краснеет от обычного разброса сети.
+const ANON_CEILING_MS = 3000;  // statement_timeout роли anon, менять только вместе с базой
+const ANON_BUDGET_MS = 2000;
+
 const RPCS = [
   ['fixture_team_rating',    { p_min_depth: 5 },              'рейтинг состава в прогнозах'],
   ['fixture_squad_strength', { p_min_depth: 5 },              'известность состава'],
@@ -230,6 +244,7 @@ async function checkAnonRpc() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
+  const slowest = [];
   for (const [fn, args, label] of RPCS) {
     try {
       const t0 = Date.now();
@@ -240,14 +255,33 @@ async function checkAnonRpc() {
       const body = await r.json().catch(() => null);
       // arena_leaderboard законно пуста, когда за окно не было матчей, поэтому
       // здесь мерим НЕ количество строк, а «вернулся массив, а не код ошибки».
-      const ok = r.ok && Array.isArray(body);
-      const why = ok ? `${body.length} строк, ${ms} мс`
-                     : `${body?.code ?? 'HTTP ' + r.status} ${body?.message ?? ''}`.trim().slice(0, 60);
+      const answered = r.ok && Array.isArray(body);
+      const fast = ms <= ANON_BUDGET_MS;
+      const ok = answered && fast;
+      const why = !answered
+        ? `${body?.code ?? 'HTTP ' + r.status} ${body?.message ?? ''}`.trim().slice(0, 60)
+        : fast ? `${body.length} строк, ${ms} мс`
+               : `${body.length} строк, но ${ms} мс — бюджет ${ANON_BUDGET_MS}, `
+                 + `за ним потолок anon ${ANON_CEILING_MS}`;
       record(`RPC anon: ${label}`, ok, why, 'ключ anon, не сервисный; ошибка читается из тела');
+      if (answered) slowest.push([label, ms]);
     } catch (e) {
       record(`RPC anon: ${label}`, false, String(e).slice(0, 50), 'н/д');
     }
   }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ БЮДЖЕТА. Бюджет — это сравнение числа с числом, и
+  // оно молча перестаёт работать, если замер сломан (ms всегда 0, список
+  // пуст, сравнение перевёрнуто). Тот же самый замер с заведомо недостижимым
+  // порогом ОБЯЗАН назвать вызов медленным. Не назвал — значит зелень шести
+  // строк выше ничего не стоит.
+  const measured = slowest.length > 0 && slowest.every(([, ms]) => Number.isFinite(ms));
+  const worst = measured ? slowest.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
+  const catches = measured && worst[1] > 0;
+  record('RPC anon: контроль бюджета', catches,
+         catches ? `замер живой: самый долгий «${worst[0]}» ${worst[1]} мс, порог 0 мс поймал бы его`
+                 : 'замер времени сломан — бюджет ничего не проверяет',
+         'бюджет проверяется тем же замером с порогом 0');
 
   // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Ровно тот же запрос к заведомо запертой таблице:
   // он ОБЯЗАН получить отказ. Если и он проходит — значит anon-ключ на этом

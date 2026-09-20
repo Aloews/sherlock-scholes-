@@ -13,6 +13,9 @@
 //                      и игрок решает, что ТВ не работает
 //   бюджет pg_cron     считался руками в шапке schedule_football_digest.sql
 //   localStorage       лимит ~5 МБ на весь домен, и данные туда класть нельзя
+//   потолок anon, 3 с  три RPC жили за ним или у самого края; одна отвечала
+//                      57014 через раз, другой просто подняли потолок внутри,
+//                      и экран пять секунд молчал, ничего не ломая
 //
 // ⚠️ ЭТО ЗАМЕР, А НЕ ПРОВЕРКА. Скрипт ничего не заваливает и ничего не
 // запрещает: он печатает числа и говорит, сколько осталось. Решение «пушить
@@ -126,6 +129,88 @@ async function supabase() {
   }
 }
 
+// ------------------------------------------ потолок anon по времени --------
+//
+// ⚠️ ЭТОТ ЛИМИТ УЖЕ ЛОМАЛ ПРИЛОЖЕНИЕ, И ЛОМАЛ ТИХО. У роли anon
+// statement_timeout — три секунды. Функция, которая в них не укладывается,
+// отвечает 57014 «canceling statement due to statement timeout», и на экране
+// это выглядит как «раздел иногда не грузится»: под нагрузкой падает, в
+// спокойную минуту работает.
+//
+// Пойманные так: `fixture_squad_strength` (4317 мс), `club_directory`
+// (2249 мс, красный прогон выкладки), `player_spotlight` (4682 мс по сети —
+// эта не падала вовсе, потому что внутри стоял `SET statement_timeout TO
+// '30s'`: потолок подняли вместо того, чтобы ускорить).
+//
+// ⚠️ ПОСЛЕДНИЙ СЛУЧАЙ — ПРИЧИНА, ПО КОТОРОЙ ЭТОТ ОБХОД ЗДЕСЬ, А НЕ В
+// check-prod. Проверка ловит только упавшее. Функция, которой подняли
+// потолок, не падает никогда — она просто заставляет человека ждать пять
+// секунд, и никакая зелень этого не покажет. Увидеть можно ТОЛЬКО замером.
+//
+// Список функций берётся из кода фронтенда, а не выписывается сюда: выписанный
+// устаревает молча, и по нему потом пропускают функции.
+async function anonRpcTiming() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    row('Потолок anon, 3 с', 'не измерено', 'нет VITE_SUPABASE_* ', 'skip');
+    return;
+  }
+
+  const names = new Set();
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.tsx?$/.test(e.name)) {
+        for (const m of readFileSync(p, 'utf-8').matchAll(/\.rpc\('([a-z0-9_]+)'/g)) {
+          names.add(m[1]);
+        }
+      }
+    }
+  };
+  try { walk('src'); } catch { /* нет src — печатаем «не измерено» ниже */ }
+  if (names.size === 0) {
+    row('Потолок anon, 3 с', 'не измерено', 'не нашёл вызовов .rpc( в src', 'skip');
+    return;
+  }
+
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const timed = [];
+  for (const fn of names) {
+    const t0 = Date.now();
+    try {
+      // Пустые аргументы. Тем, кому нужны обязательные параметры или подпись,
+      // PostgREST отвечает отказом мгновенно — их время ни о чём не говорит,
+      // и они отброшены ниже. Смысл обхода — не проверить функции, а найти
+      // среди тех, что отвечают, живущих у потолка.
+      const r = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+        method: 'POST', headers: auth, body: '{}',
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      const ms = Date.now() - t0;
+      const body = await r.json().catch(() => null);
+      if (r.ok) timed.push([ms, fn, 'ответ']);
+      else if (body?.code === '57014') timed.push([ms, fn, 'ПОТОЛОК 57014']);
+    } catch { /* сеть — не лимит, молчим */ }
+  }
+  timed.sort((a, b) => b[0] - a[0]);
+
+  const CEILING = 3000;
+  const NOTE = 1000;  // с этого места стоит смотреть глазами
+  const hot = timed.filter(([ms, , why]) => ms >= NOTE || why !== 'ответ');
+  row('Потолок anon, 3 с', `измерено ${timed.length} из ${names.size}`,
+      hot.length === 0
+        ? `самый долгий ${timed[0]?.[0] ?? 0} мс — до потолка далеко`
+        : `⚠ у потолка ${hot.length}: смотреть ниже`,
+      hot.length === 0 ? 'ok' : 'warn');
+  for (const [ms, fn, why] of hot) {
+    row(`  ${fn}`, `${ms} мс`,
+        why !== 'ответ' ? '⚠ УЖЕ УПИРАЕТСЯ' : `до потолка ${CEILING - ms} мс`,
+        ms >= CEILING * 0.6 || why !== 'ответ' ? 'warn' : 'ok');
+  }
+}
+
 // ------------------------------------------------------------- бандлы -------
 function bundles() {
   const dir = 'dist/assets';
@@ -157,6 +242,7 @@ const MARK = { ok: '  ', warn: '⚠ ', skip: '· ' };
 
 await github();
 await supabase();
+await anonRpcTiming();
 bundles();
 
 const w1 = Math.max(...rows.map((r) => r.name.length));
