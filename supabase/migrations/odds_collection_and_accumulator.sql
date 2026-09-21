@@ -236,3 +236,43 @@ grant execute on function public.fetch_fixture_odds() to service_role;
 
 select cron.schedule('fetch-fixture-odds', '10 6 */2 * *',
                      'select public.fetch_fixture_odds()');
+
+-- ── Сколько матчей с котировками в каждом окне ─────────────────────────────
+--
+-- ⚠️ ЗАВЕДЕНО ПО ВТОРОЙ ЖАЛОБЕ ВЛАДЕЛЬЦА НА ТУ ЖЕ ПАНЕЛЬ: «выбрал недельный
+-- прогноз и месячный — он никак не поменялся». Так и было, и виновата моя же
+-- предыдущая правка. Панель расширяла пустое окно САМА, до месяца; а матчи с
+-- котировками сейчас есть ТОЛЬКО в месяце. Значит любой выбор — три дня,
+-- неделя, две недели — молча превращался в месяц и давал один и тот же
+-- список. Управление, которое не меняет ничего, неотличимо от сломанного.
+--
+-- Правильно так: выбор пользователя — ЗАКОН, пустое окно остаётся пустым и
+-- объясняет себя. А чтобы выбирать осмысленно, рядом с каждым окном должно
+-- стоять число матчей. Его и отдаёт эта функция.
+--
+-- ⚠️ ЦЕН ЗДЕСЬ НЕТ И БЫТЬ НЕ МОЖЕТ — только СЧЁТ матчей, у которых цена
+-- существует. §4.4 LIVE_FOOTBALL_HANDOFF запрещает показывать игроку
+-- коэффициенты и производные от них; количество матчей производной от цены не
+-- является. Пароль персонала всё равно проверяется — панель за ним и живёт.
+create or replace function public.admin_odds_windows(p_password text)
+returns table(hours integer, matches integer)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not admin_check_password(p_password) then
+    raise exception 'нет доступа' using errcode = '42501';
+  end if;
+  return query
+  select w.h,
+         (select count(*)::int
+            from fixtures f
+           where f.commence_at > now()
+             and not f.completed
+             and f.commence_at < now() + make_interval(hours => w.h)
+             and exists (select 1 from fixture_odds o where o.fixture_id = f.id))
+    from unnest(array[72, 168, 336, 720]) as w(h)
+   order by w.h;
+end;
+$$;
+
+revoke all on function public.admin_odds_windows(text) from public;
+grant execute on function public.admin_odds_windows(text) to anon, authenticated, service_role;

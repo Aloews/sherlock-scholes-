@@ -194,6 +194,23 @@ export async function fetchAccumulator(
 }
 
 /**
+ * Сколько матчей с котировками в каждом окне: 72 / 168 / 336 / 720 часов.
+ *
+ * ⚠️ НУЖНО ИМЕННО ДЛЯ ПОДПИСЕЙ ОКОН, И ЭТО НЕ УКРАШЕНИЕ. Без числа рядом выбор
+ * «неделя» выглядит как сломанный: список не меняется, потому что матчей с
+ * ценой в неделе ноль, а человеку об этом взяться неоткуда. С числом окно
+ * «неделя — 0» объясняет себя до нажатия.
+ *
+ * Цен функция не отдаёт — только СЧЁТ матчей, у которых цена существует.
+ */
+export async function fetchOddsWindows(
+  password: string,
+): Promise<LoadState<{ hours: number; matches: number }[]>> {
+  const res = await supabase.rpc('admin_odds_windows', { p_password: password });
+  return fromPostgrest<{ hours: number; matches: number }[]>(res, 'admin_odds_windows');
+}
+
+/**
  * Арифметика экспресса. Считается ЗДЕСЬ, а не в базе, потому что зависит от
  * того, какие ноги админ оставил на экране.
  *

@@ -4,10 +4,10 @@ import { dataOr } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { shortDateFormat, timeFormat } from '@/shared/lib/dateFormat';
 import {
-  accumulatorMath, fetchAccumulator, type AccumulatorLeg,
+  accumulatorMath, fetchAccumulator, fetchOddsWindows, type AccumulatorLeg,
 } from './forecastApi';
 import {
-  resolveAccumulatorWindow, windowLabel, WINDOW_HOURS,
+  resolveAccumulatorWindow, nearestWindowWith, windowLabel, WINDOW_HOURS,
 } from './accumulatorWindow';
 
 /**
@@ -42,13 +42,23 @@ import {
  * порог» в такой день не помогает НИКАК: понижай хоть до нуля — матчей в окне
  * нет вовсе.
  *
- * Отсюда три правки. Первая: окно выбирается, вплоть до месяца. Вторая: если
- * в выбранном окне пусто, панель сама идёт шире и ГОВОРИТ, что сделала, —
- * молча показать матчи через три недели там, где просили три дня, значило бы
- * соврать второй раз. Третья: причина пустоты теперь различается замером, а
- * не угадывается. Панель отдельно спрашивает то же окно с нулевым порогом:
- * вернулись матчи — виноват порог, и тогда видно, какой лучший; не вернулись
- * — виновато окно, и про порог не говорится ни слова.
+ * Отсюда окно стало выбираемым, вплоть до месяца, а причина пустоты —
+ * различаемой замером: тот же запрос повторяется с нулевым порогом.
+ * Вернулись матчи — виноват порог, и видно лучший; не вернулись — виновато
+ * окно, и про порог не говорится ни слова.
+ *
+ * ⚠️ И ВТОРАЯ ЖАЛОБА, ПО ТОМУ ЖЕ МЕСТУ: «выбрал недельный прогноз и месячный
+ * — он никак не поменялся». Так и было, и виновата моя же первая правка.
+ * Пустое окно панель расширяла САМА, до месяца; а матчи с котировками есть
+ * только в месяце — значит любой выбор молча превращался в месяц и давал один
+ * и тот же список. Управление, которое не меняет ничего, неотличимо от
+ * сломанного, и «умная» подмена выбора хуже пустого ответа: она отнимает у
+ * человека возможность увидеть, что в его окне пусто.
+ *
+ * Теперь так: спрашивается РОВНО выбранное окно, пусто остаётся пустым, рядом
+ * с каждым окном стоит число матчей с ценой («неделя — 0», «месяц — 77»), а
+ * под пустым окном — одна кнопка в ближайшее окно, где матчи есть. Выбор
+ * пользователя закон; подсказка это подсказка, а не подмена.
  */
 
 const PICK_RU: Record<string, string> = { H: 'П1', D: 'Х', A: 'П2' };
@@ -65,7 +75,7 @@ export function AccumulatorPanel({ password }: { password: string }) {
   const [minProb, setMinProb] = useState(0.6);
   const [hours, setHours] = useState(72);
   const [rows, setRows] = useState<AccumulatorLeg[]>([]);
-  const [usedHours, setUsedHours] = useState(72);
+  const [counts, setCounts] = useState<Record<number, number>>({});
   const [empty, setEmpty] = useState<Empty>(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -74,8 +84,8 @@ export function AccumulatorPanel({ password }: { password: string }) {
     let dead = false;
     setBusy(true); setErr(null); setEmpty(null);
 
-    // ⚠️ ПОИСК ОКНА ЖИВЁТ В `accumulatorWindow.ts`, А НЕ ЗДЕСЬ, И ЭТО НЕ
-    // вкусовщина: у него четыре разных исхода, три из которых на живых данных
+    // ⚠️ ЛОГИКА ОКНА ЖИВЁТ В `accumulatorWindow.ts`, А НЕ ЗДЕСЬ, И ЭТО НЕ
+    // вкусовщина: у неё четыре разных исхода, три из которых на живых данных
     // встречаются раз в месяц. В компоненте их не проверить, в чистой функции
     // — проверяются все четыре (`accumulatorWindow.test.ts`).
     void (async () => {
@@ -92,10 +102,9 @@ export function AccumulatorPanel({ password }: { password: string }) {
         setErr('не удалось загрузить'); setRows([]); setBusy(false); return;
       }
       if (out.kind === 'rows') {
-        setRows(out.rows); setUsedHours(out.hours); setEmpty(null); setBusy(false); return;
+        setRows(out.rows); setEmpty(null); setBusy(false); return;
       }
       setRows([]);
-      setUsedHours(out.hours);
       setEmpty(out.kind === 'floor' ? { kind: 'floor', best: out.best } : { kind: 'window' });
       setBusy(false);
     })();
@@ -103,11 +112,25 @@ export function AccumulatorPanel({ password }: { password: string }) {
     return () => { dead = true; };
   }, [password, legs, minProb, hours]);
 
+  // Числа рядом с окнами. Зависят только от пароля: от порога и числа ног они
+  // не меняются, а перезапрашивать их на каждое переключение значило бы
+  // платить запросом за неизменное.
+  useEffect(() => {
+    let dead = false;
+    void fetchOddsWindows(password).then((s) => {
+      if (dead) return;
+      const map: Record<number, number> = {};
+      for (const w of dataOr(s, [])) map[w.hours] = w.matches;
+      setCounts(map);
+    });
+    return () => { dead = true; };
+  }, [password]);
+
   const math = accumulatorMath(rows);
   const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
   const day = shortDateFormat(i18n.language);
   const clock = timeFormat(i18n.language);
-  const widened = rows.length > 0 && usedHours !== hours;
+  const wider = nearestWindowWith(counts, hours);
 
   return (
     <div className="space-y-3">
@@ -146,8 +169,13 @@ export function AccumulatorPanel({ password }: { password: string }) {
               onChange={(e) => { hapticImpact('light'); setHours(Number(e.target.value)); }}
               className="bg-brand-bg border border-white/15 rounded px-2 py-1 text-white"
             >
+              {/* ⚠️ ЧИСЛО РЯДОМ С ОКНОМ — НЕ УКРАШЕНИЕ. Без него «неделя»
+                  выглядит сломанной: список не меняется, потому что матчей с
+                  ценой в неделе ноль, а узнать это неоткуда. */}
               {WINDOW_HOURS.map((h) => (
-                <option key={h} value={h}>{windowLabel(h)}</option>
+                <option key={h} value={h}>
+                  {windowLabel(h)}{counts[h] == null ? '' : ` — ${counts[h]}`}
+                </option>
               ))}
             </select>
           </label>
@@ -155,15 +183,6 @@ export function AccumulatorPanel({ password }: { password: string }) {
 
         {busy && <p className="text-[12px] text-brand-muted">…</p>}
         {err && <p className="text-[12px] text-rose-400">{err}</p>}
-
-        {/* Расширили окно сами — говорим об этом. Иначе матч через три недели
-            выглядел бы как матч послезавтра. */}
-        {!busy && !err && widened && (
-          <p className="text-[12px] text-amber-300/90 leading-relaxed">
-            За «{windowLabel(hours)}» матчей с котировками нет — показываю ближайший
-            {' '}«{windowLabel(usedHours)}». Даты каждого матча — в таблице.
-          </p>
-        )}
 
         {!busy && !err && empty?.kind === 'floor' && (
           <p className="text-[12px] text-brand-muted leading-relaxed">
@@ -174,14 +193,30 @@ export function AccumulatorPanel({ password }: { password: string }) {
         )}
 
         {!busy && !err && empty?.kind === 'window' && (
-          <p className="text-[12px] text-brand-muted leading-relaxed">
-            За «{windowLabel(usedHours)}» нет ни одного матча с котировками — дело
-            НЕ в пороге, понижать его бесполезно. Котировки покупаются по
-            десяти клубным лигам (АПЛ, Ла Лига, Серия А, Бундеслига, Лига 1,
-            РПЛ, Эредивизи, Примейра, ЛЧ, ЛЕ); когда у них перерыв на сборные,
-            в ближайшие дни нет ничего, а линия появляется к возобновлению
-            туров.
-          </p>
+          <div className="space-y-2">
+            <p className="text-[12px] text-brand-muted leading-relaxed">
+              За «{windowLabel(hours)}» нет ни одного матча с котировками — дело
+              НЕ в пороге, понижать его бесполезно. Котировки покупаются по
+              десяти клубным лигам (АПЛ, Ла Лига, Серия А, Бундеслига, Лига 1,
+              РПЛ, Эредивизи, Примейра, ЛЧ, ЛЕ); когда у них перерыв на
+              сборные, в ближайшие дни нет ничего, а линия появляется к
+              возобновлению туров.
+            </p>
+            {/* ⚠️ ПОДСКАЗКА, А НЕ ПОДМЕНА. Раньше панель расширяла окно сама —
+                и любой выбор давал один и тот же список, из-за чего владелец
+                и написал «выбрал неделю и месяц, он никак не поменялся».
+                Теперь окно меняет ЧЕЛОВЕК, одним нажатием и зная, сколько там
+                матчей. */}
+            {wider != null && (
+              <button
+                type="button"
+                onClick={() => { hapticImpact('light'); setHours(wider); }}
+                className="text-[12px] text-brand-accent"
+              >
+                Показать за «{windowLabel(wider)}» — там {counts[wider]} матчей →
+              </button>
+            )}
+          </div>
         )}
 
         {rows.length > 0 && (
