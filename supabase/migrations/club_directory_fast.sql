@@ -81,8 +81,13 @@ drop policy if exists club_directory_facts_read on public.club_directory_facts;
 create policy club_directory_facts_read on public.club_directory_facts for select using (true);
 grant select on public.club_directory_facts to anon, authenticated, service_role;
 
-create index if not exists club_directory_facts_order
-  on public.club_directory_facts (squad_value desc nulls last);
+-- ⚠️ ИНДЕКСА ПО `squad_value` ЗДЕСЬ НЕТ, И ЭТО ПРОВЕРЕНО, А НЕ ЗАБЫТО. Он был
+-- заведён сразу («сортируем по стоимости — значит нужен индекс») и через
+-- полчаса попал в советник Supabase как НИ РАЗУ НЕ ИСПОЛЬЗОВАННЫЙ. Так и
+-- должно быть: в таблице 3760 строк, соединение идёт от `football_club`, и
+-- планировщик всегда предпочтёт хеш-соединение с сортировкой. Замер после
+-- удаления: 36.2 мс при тех же 5546 буферах — то есть индекс не давал ничего,
+-- а платить за него пришлось бы каждую ночь при пересборке.
 
 -- ── 2) Сборка — в той же ночной функции, что и составы ─────────────────────
 --
