@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { dataOr } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { shortDateFormat, timeFormat } from '@/shared/lib/dateFormat';
 import {
   accumulatorMath, fetchAccumulator, type AccumulatorLeg,
 } from './forecastApi';
+import {
+  resolveAccumulatorWindow, windowLabel, WINDOW_HOURS,
+} from './accumulatorWindow';
 
 /**
  * ЭКСПРЕСС ДЛЯ АДМИНА — с честной арифметикой, а не с советом.
@@ -27,38 +32,88 @@ import {
  * Экран, который показывает проходимость и прячет возврат, читается как
  * «шансы хорошие» — а хорошие шансы и выгодная ставка это разные вещи, и
  * длинный экспресс ухудшает обе сразу.
+ *
+ * ⚠️ ОКНО БЫЛО ПРИБИТО К 72 ЧАСАМ, И ПАНЕЛЬ ВРАЛА О ПРИЧИНЕ ПУСТОТЫ. Она
+ * писала «понизьте порог», хотя порог был ни при чём: замер 21.09.2026 —
+ * в ближайшие 14 суток 71 матч и НИ ОДНОГО с котировками, а все 77 матчей с
+ * котировками начинаются 9 октября. Котировки покупаются по десяти клубным
+ * лигам (бюджет в 500 кредитов, разбор в `supabase/functions/football-odds`),
+ * а ближайшие две недели заняты сборными, МЛС и Аргентиной. Совет «понизьте
+ * порог» в такой день не помогает НИКАК: понижай хоть до нуля — матчей в окне
+ * нет вовсе.
+ *
+ * Отсюда три правки. Первая: окно выбирается, вплоть до месяца. Вторая: если
+ * в выбранном окне пусто, панель сама идёт шире и ГОВОРИТ, что сделала, —
+ * молча показать матчи через три недели там, где просили три дня, значило бы
+ * соврать второй раз. Третья: причина пустоты теперь различается замером, а
+ * не угадывается. Панель отдельно спрашивает то же окно с нулевым порогом:
+ * вернулись матчи — виноват порог, и тогда видно, какой лучший; не вернулись
+ * — виновато окно, и про порог не говорится ни слова.
  */
 
 const PICK_RU: Record<string, string> = { H: 'П1', D: 'Х', A: 'П2' };
 
+/** Почему пусто. Не мнение, а результат отдельного запроса. */
+type Empty =
+  | { kind: 'floor'; best: number }   // матчи есть, но все ниже порога
+  | { kind: 'window' }                // матчей с котировками нет вовсе
+  | null;
+
 export function AccumulatorPanel({ password }: { password: string }) {
+  const { i18n } = useTranslation();
   const [legs, setLegs] = useState(4);
   const [minProb, setMinProb] = useState(0.6);
+  const [hours, setHours] = useState(72);
   const [rows, setRows] = useState<AccumulatorLeg[]>([]);
+  const [usedHours, setUsedHours] = useState(72);
+  const [empty, setEmpty] = useState<Empty>(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let dead = false;
-    setBusy(true); setErr(null);
-    void fetchAccumulator(password, legs, minProb, 72).then((s) => {
+    setBusy(true); setErr(null); setEmpty(null);
+
+    // ⚠️ ПОИСК ОКНА ЖИВЁТ В `accumulatorWindow.ts`, А НЕ ЗДЕСЬ, И ЭТО НЕ
+    // вкусовщина: у него четыре разных исхода, три из которых на живых данных
+    // встречаются раз в месяц. В компоненте их не проверить, в чистой функции
+    // — проверяются все четыре (`accumulatorWindow.test.ts`).
+    void (async () => {
+      const out = await resolveAccumulatorWindow<AccumulatorLeg>(
+        hours, minProb,
+        async (h, floor) => {
+          const s = await fetchAccumulator(password, legs, floor, h);
+          return s.status === 'error' ? null : dataOr(s, []);
+        },
+      );
       if (dead) return;
-      const got = dataOr(s, []);
-      setRows(got);
-      setErr(s.status === 'error' ? 'не удалось загрузить' : null);
+
+      if (out.kind === 'error') {
+        setErr('не удалось загрузить'); setRows([]); setBusy(false); return;
+      }
+      if (out.kind === 'rows') {
+        setRows(out.rows); setUsedHours(out.hours); setEmpty(null); setBusy(false); return;
+      }
+      setRows([]);
+      setUsedHours(out.hours);
+      setEmpty(out.kind === 'floor' ? { kind: 'floor', best: out.best } : { kind: 'window' });
       setBusy(false);
-    });
+    })();
+
     return () => { dead = true; };
-  }, [password, legs, minProb]);
+  }, [password, legs, minProb, hours]);
 
   const math = accumulatorMath(rows);
   const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
+  const day = shortDateFormat(i18n.language);
+  const clock = timeFormat(i18n.language);
+  const widened = rows.length > 0 && usedHours !== hours;
 
   return (
     <div className="space-y-3">
       <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-3">
         <div className="text-[11px] uppercase tracking-wider text-brand-muted">
-          Экспресс — ближайшие 72 часа
+          Экспресс — матчи с котировками
         </div>
 
         <div className="flex flex-wrap gap-3 text-[12px]">
@@ -79,8 +134,20 @@ export function AccumulatorPanel({ password }: { password: string }) {
               onChange={(e) => { hapticImpact('light'); setMinProb(Number(e.target.value)); }}
               className="bg-brand-bg border border-white/15 rounded px-2 py-1 text-white"
             >
-              {[0.5, 0.6, 0.7, 0.8, 0.85].map((n) => (
+              {[0.4, 0.5, 0.6, 0.7, 0.8, 0.85].map((n) => (
                 <option key={n} value={n}>{(n * 100).toFixed(0)}%</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-brand-muted">Матчи ближайшие</span>
+            <select
+              value={hours}
+              onChange={(e) => { hapticImpact('light'); setHours(Number(e.target.value)); }}
+              className="bg-brand-bg border border-white/15 rounded px-2 py-1 text-white"
+            >
+              {WINDOW_HOURS.map((h) => (
+                <option key={h} value={h}>{windowLabel(h)}</option>
               ))}
             </select>
           </label>
@@ -88,9 +155,32 @@ export function AccumulatorPanel({ password }: { password: string }) {
 
         {busy && <p className="text-[12px] text-brand-muted">…</p>}
         {err && <p className="text-[12px] text-rose-400">{err}</p>}
-        {!busy && !err && rows.length === 0 && (
-          <p className="text-[12px] text-brand-muted">
-            Нет матчей с таким порогом. Понизьте порог или подождите сбора котировок.
+
+        {/* Расширили окно сами — говорим об этом. Иначе матч через три недели
+            выглядел бы как матч послезавтра. */}
+        {!busy && !err && widened && (
+          <p className="text-[12px] text-amber-300/90 leading-relaxed">
+            За «{windowLabel(hours)}» матчей с котировками нет — показываю ближайший
+            {' '}«{windowLabel(usedHours)}». Даты каждого матча — в таблице.
+          </p>
+        )}
+
+        {!busy && !err && empty?.kind === 'floor' && (
+          <p className="text-[12px] text-brand-muted leading-relaxed">
+            Матчи с котировками есть, но ни один не дотягивает до порога
+            {' '}{(minProb * 100).toFixed(0)}%: лучший — {fmtPct(empty.best)}.
+            Понизьте порог.
+          </p>
+        )}
+
+        {!busy && !err && empty?.kind === 'window' && (
+          <p className="text-[12px] text-brand-muted leading-relaxed">
+            За «{windowLabel(usedHours)}» нет ни одного матча с котировками — дело
+            НЕ в пороге, понижать его бесполезно. Котировки покупаются по
+            десяти клубным лигам (АПЛ, Ла Лига, Серия А, Бундеслига, Лига 1,
+            РПЛ, Эредивизи, Примейра, ЛЧ, ЛЕ); когда у них перерыв на сборные,
+            в ближайшие дни нет ничего, а линия появляется к возобновлению
+            туров.
           </p>
         )}
 
@@ -100,6 +190,7 @@ export function AccumulatorPanel({ password }: { password: string }) {
               <table className="w-full text-[12px]">
                 <thead className="text-[10px] uppercase tracking-wider text-brand-muted">
                   <tr>
+                    <th className="text-left font-normal pb-1">Когда</th>
                     <th className="text-left font-normal pb-1">Матч</th>
                     <th className="px-1 font-normal pb-1">Исход</th>
                     <th className="px-1 font-normal pb-1">Коэф.</th>
@@ -110,6 +201,14 @@ export function AccumulatorPanel({ password }: { password: string }) {
                 <tbody>
                   {rows.map((l) => (
                     <tr key={l.fixture_id} className="border-t border-white/5">
+                      {/* ⚠️ ДАТА — НЕ УКРАШЕНИЕ. Отбор идёт по вероятности, а не
+                          по близости, поэтому в одном экспрессе легко
+                          оказываются матчи с разницей в три недели. Без даты
+                          это читалось бы как «ближайшие». */}
+                      <td className="py-1.5 pr-2 whitespace-nowrap text-brand-muted tabular-nums">
+                        <div className="leading-tight">{day.format(new Date(l.commence_at))}</div>
+                        <div className="leading-tight">{clock.format(new Date(l.commence_at))}</div>
+                      </td>
                       <td className="py-1.5 pr-2">
                         <div className="text-white leading-tight">{l.home_team}</div>
                         <div className="text-brand-muted leading-tight">{l.away_team}</div>
