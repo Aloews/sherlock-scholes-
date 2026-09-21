@@ -88,15 +88,26 @@ grant select on public.club_squad_fame to anon, authenticated, service_role;
 -- завести. Забытый шаг сборки не падает: он молчит, а таблица просто стареет,
 -- и наружу это выходит через недели неверными числами. Имя функции стало чуть
 -- уже своего содержимого; это дешевле молчаливого расхождения.
+--
+-- ⚠️ ТЕЛО ЭТОЙ ФУНКЦИИ ЛЕЖИТ В ДВУХ ФАЙЛАХ ОДИНАКОВЫМ, И ЭТО НЕ КОПИПАСТА ПО
+-- НЕВНИМАТЕЛЬНОСТИ. Её же дополняет `club_directory_fast.sql`, добавляя третью
+-- памятку. Пока версии различались, порядок применения РЕШАЛ ИСХОД: по именам
+-- `club_directory_fast.sql` идёт раньше `club_squad_fame.sql`, и применение
+-- «по алфавиту» оставляло в базе короткую версию — та молча переставала
+-- наполнять `club_directory_facts`, справочник клубов навсегда застывал на
+-- числах последней удачной сборки, и НИ ОДНА ПРОВЕРКА НЕ КРАСНЕЛА: ответ
+-- приходит, строки есть, просто они вчерашние. Теперь тело одинаково, и любой
+-- порядок даёт полную версию. Расхождение ловит `test/rebuild_club_squad_levels.test.ts`.
 
 create or replace function public.rebuild_club_squad_levels()
 returns integer
 language plpgsql security definer set search_path = public as $$
 declare v_count integer;
 declare v_fame  integer;
+declare v_dir   integer;
 begin
-  -- Две отдельные команды, а не data-modifying CTE: все CTE делят один снимок,
-  -- и delete внутри insert конфликтовал бы сам с собой.
+  -- Две отдельные команды на таблицу, а не data-modifying CTE: все CTE делят
+  -- один снимок, и delete внутри insert конфликтовал бы сам с собой.
   delete from club_squad_level;
 
   insert into club_squad_level (club_key, rn, level, squad_size)
@@ -115,19 +126,16 @@ begin
 
   get diagnostics v_count = row_count;
 
-  -- ── известность, тот же приём ──
+  -- ── известность, тот же приём (club_squad_fame.sql) ──
   delete from club_squad_fame;
 
   insert into club_squad_fame (club_key, rn, fame, squad_size)
   select r.club_key, r.rn::smallint, r.fame::smallint, r.n::smallint
     from (
       select cc.club_key, c.fame,
-             -- ⚠️ `c.id` ВТОРЫМ КЛЮЧОМ СОРТИРОВКИ — против недетерминированного
-             -- порядка при равной известности. На среднее это не влияет вовсе
-             -- (у одинаковых fame одинаковый вклад), но без него две сборки
-             -- подряд кладут в памятку РАЗНЫХ игроков, и следующий, кто
-             -- заглянет в таблицу глазами, увидит расхождение на ровном месте.
-             -- Этот проект уже ловил такое на DISTINCT ON без полного добора.
+             -- `c.id` вторым ключом — против недетерминированного порядка при
+             -- равной известности; на среднее не влияет, на воспроизводимость
+             -- влияет.
              row_number() over (partition by cc.club_key
                                     order by c.fame desc, c.id) as rn,
              count(*)     over (partition by cc.club_key)        as n
@@ -139,9 +147,29 @@ begin
 
   get diagnostics v_fame = row_count;
 
-  -- Возвращается по-прежнему число строк УРОВНЕЙ: на это значение смотрит
-  -- расписание и старые логи. Известность дописывается в сообщение.
-  raise notice 'club_squad_level: % строк, club_squad_fame: % строк', v_count, v_fame;
+  -- ── справочник клубов ──
+  delete from club_directory_facts;
+
+  insert into club_directory_facts (club_key, squad, squad_value)
+  select f.club_key,
+         coalesce(sq.n, 0),
+         v.v
+    from football_club f
+    left join (select s.club_key, count(*)::int as n
+                 from club_squad s where s.left_at is null group by s.club_key) sq
+           on sq.club_key = f.club_key
+    left join (select cc.club_key, sum(c.market_value_eur)::bigint as v
+                 from card_current_club cc
+                 join cards c on c.id = cc.card_id and c.active and c.category = 'player'
+                group by cc.club_key) v
+           on v.club_key = f.club_key;
+
+  get diagnostics v_dir = row_count;
+
+  raise notice 'club_squad_level: %, club_squad_fame: %, club_directory_facts: %',
+               v_count, v_fame, v_dir;
+  -- Возвращается по-прежнему число строк УРОВНЕЙ: на него смотрят расписание
+  -- и старые логи.
   return v_count;
 end;
 $$;
