@@ -251,15 +251,11 @@ export function MatchesScreen() {
           <IconArrowLeft size={22} stroke={2} />
         </button>
         <h1 className="ds-display text-white text-xl font-black flex-1">{t('matches.title')}</h1>
-        {/* Вход в замер прогнозистов — отсюда, а не с главной: сюда приходят
-            за прогнозом, и «кто вообще угадывает» — вопрос этого экрана. */}
-        <button
-          type="button"
-          onClick={() => { hapticImpact('light'); navigate('/duel'); }}
-          className="text-[11px] text-brand-accent whitespace-nowrap"
-        >
-          {t('duel.title')}
-        </button>
+        {/* ⚠️ ЗДЕСЬ БЫЛ ВХОД В «КТО ЛУЧШЕ ПРЕДСКАЗЫВАЕТ», И ЕГО УБРАЛ ВЛАДЕЛЕЦ.
+            Экран остался и открывается по `/duel`, вход в него переехал в
+            админку, к доске прогнозистов. Причина простая: сюда приходят
+            ставить свой прогноз на ближайший матч, а замер трёх моделей —
+            вопрос не этого экрана, и ссылка в шапке уводила с него. */}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">

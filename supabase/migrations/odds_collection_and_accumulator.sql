@@ -161,14 +161,40 @@ grant execute on function public.admin_accumulator(text, integer, numeric, integ
 -- ГРАНТОВ вообще, поэтому через PostgREST её не читает даже service_role — и
 -- это работающая защита, а не помеха, которую надо обойти грантом. Проверке
 -- нужны три числа, а не цены; функция отдаёт ровно их.
-create or replace function public.odds_health()
-returns table(rows bigint, fresh_rows bigint, matches bigint, last_taken timestamptz)
+-- ⚠️ ЧЕТЫРЁХ ЧИСЕЛ БЫЛО МАЛО, И ЭТО ВЫЯСНИЛОСЬ ЖАЛОБОЙ ВЛАДЕЛЬЦА.
+-- 21.09.2026 `odds_health` показывала полное здоровье — 3212 строк, свежие,
+-- 106 матчей, сбор час назад, — а панель экспресса не собирала НИ ОДНОГО
+-- билета и советовала «понизьте порог». Оба утверждения были верны
+-- одновременно: котировки есть, но ВСЕ на матчи с 9 октября, потому что у
+-- десяти купленных лиг перерыв на сборные, а ближайшие две недели заняты
+-- сборными, МЛС и Аргентиной.
+--
+-- То есть здоровье сбора и пригодность котировок — РАЗНЫЕ вопросы, и первый
+-- зеленел при мёртвом втором. Поэтому добавлены `next_priced` (когда
+-- начинается ближайший матч с котировками) и `priced_72h` (сколько их в
+-- ближайшие трое суток). Печатает их `check-limits`: это замер, а не
+-- проверка — на перерыве сборных ноль в окне НОРМАЛЕН, и падать тут нечему.
+drop function if exists public.odds_health();
+
+create function public.odds_health()
+returns table(rows bigint, fresh_rows bigint, matches bigint, last_taken timestamptz,
+              next_priced timestamptz, priced_72h bigint, priced_month bigint)
 language sql stable security definer set search_path = public as $$
-  select count(*),
-         count(*) filter (where taken_at > now() - interval '4 days'),
-         count(distinct fixture_id),
-         max(taken_at)
-    from fixture_odds;
+  select (select count(*) from fixture_odds),
+         (select count(*) from fixture_odds where taken_at > now() - interval '4 days'),
+         (select count(distinct fixture_id) from fixture_odds),
+         (select max(taken_at) from fixture_odds),
+         (select min(f.commence_at) from fixtures f
+           where f.commence_at > now() and not f.completed
+             and exists (select 1 from fixture_odds o where o.fixture_id = f.id)),
+         (select count(*) from fixtures f
+           where f.commence_at > now() and not f.completed
+             and f.commence_at < now() + interval '72 hours'
+             and exists (select 1 from fixture_odds o where o.fixture_id = f.id)),
+         (select count(*) from fixtures f
+           where f.commence_at > now() and not f.completed
+             and f.commence_at < now() + interval '30 days'
+             and exists (select 1 from fixture_odds o where o.fixture_id = f.id));
 $$;
 
 revoke all on function public.odds_health() from public, anon, authenticated;
