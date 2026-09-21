@@ -3749,6 +3749,80 @@ async function checkForecastWinner() {
   // ОБЯЗАНА вернуть входное число без изменений. Если она и там что-то
   // «калибрует» — значит она калибрует не тем, чем думает, и все проверки
   // выше зеленеют зря.
+  // ── экспрессы, собранные моделями ─────────────────────────────────────────
+  //
+  // ⚠️ ГЛАВНОЕ, ЧТО ЗДЕСЬ ПРОВЕРЯЕТСЯ, — НЕ «ЕСТЬ ЛИ БИЛЕТЫ», А ГРАНИЦА §4.4.
+  // Экспрессы бывают двух видов: собранные букмекерской линией (в них есть
+  // цена, и они закрыты паролем персонала) и собранные моделями из
+  // собственных калиброванных вероятностей (цены нет, их видит игрок).
+  // Разделение держится фильтром `model is not null` в самих функциях, и
+  // именно это надо проверять анонимным ключом, а не доверять коду экрана.
+  const accAnon = await rpc(anon, 'model_accumulator_history', { p_limit: 50 });
+  const acc = Array.isArray(accAnon.rows) ? accAnon.rows : [];
+  record('Экспрессы: аноним видит билеты моделей',
+         accAnon.status === 200 && acc.length > 0,
+         `HTTP ${accAnon.status}, ${acc.length} билетов`,
+         'ловит закрытую от игрока историю экспрессов: экран пуст, а данные есть');
+
+  const models3 = new Set(acc.map((r) => r.model));
+  record('Экспрессы: собирают все три модели',
+         ['llm', 'fly', 'own'].every((m) => models3.has(m)),
+         [...models3].sort().join(', ') || 'пусто',
+         'ловит модель, выпавшую из ночной сборки');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ГРАНИЦЫ. Ни один билет, отданный анониму, не
+  // имеет права нести цену или выплату. Если поле вдруг появится — значит
+  // фильтр в функции перестал работать, и §4.4 нарушен молча.
+  const priced = acc.filter((r) => r.payout != null || r.price != null);
+  record('Экспрессы: контроль границы §4.4 — цен наружу нет',
+         priced.length === 0,
+         priced.length === 0 ? 'ни одного билета с ценой или выплатой'
+                             : `${priced.length} билетов НЕСУТ цену — граница сломана`,
+         'без этого нельзя отличить «цен нет» от «цены есть, но их не рисуют»');
+
+  // Вероятность прохода — произведение вероятностей плеч. Пересчитываем
+  // НЕЗАВИСИМО по одному билету: сходится — значит число не декоративное.
+  const sample = acc.find((r) => r.legs >= 3);
+  if (sample) {
+    const legsRes = await rpc(anon, 'model_accumulator_legs', { p_ticket: sample.id });
+    const ls = Array.isArray(legsRes.rows) ? legsRes.rows : [];
+    const mine = ls.reduce((a, l) => a * Number(l.prob), 1);
+    const ok = ls.length === sample.legs && Math.abs(mine - Number(sample.pass_prob)) < 0.02;
+    record('Экспресс: шанс прохода пересчитывается независимо',
+           ok,
+           ls.length !== sample.legs
+             ? `плеч ${ls.length}, а в билете ${sample.legs}`
+             : `${mine.toFixed(4)} против ${Number(sample.pass_prob).toFixed(4)}`,
+           'ловит билет, у которого число на экране не связано с его плечами');
+  } else {
+    record('Экспресс: шанс прохода пересчитывается независимо', false,
+           'нет билета с тремя плечами', 'н/д');
+  }
+
+  // ⚠️ ДОЛЯ ПРОХОДОВ ПЕРЕСЧИТЫВАЕТСЯ НЕЗАВИСИМО, А НЕ ПРИНИМАЕТСЯ НА ВЕРУ.
+  // Просто напечатать «прошло 21 %» — это замер, который не может упасть, и
+  // скрипт справедливо назвал бы такую строку ПУСТОЙ. Поэтому здесь сверяется
+  // арифметика самой сводки: `hit_rate` обязан равняться `won / settled`, а
+  // `won` не может превышать `settled`. Сломается функция — строка покраснеет.
+  const accBoard = await rpc(anon, 'model_accumulator_scoreboard', {});
+  const ab2 = Array.isArray(accBoard.rows) ? accBoard.rows : [];
+  const accBad = ab2.filter((r) => {
+    if (r.settled === 0) return r.hit_rate != null;
+    if (r.won > r.settled) return true;
+    return Math.abs(Number(r.hit_rate) - (100 * r.won) / r.settled) > 0.1;
+  });
+  // Пока вся история собрана задним числом, доля завышена — это часть ответа,
+  // а не сноска: без неё число читается как заслуга.
+  const backfilledOnly = ab2.length > 0 && ab2.every((r) => r.backfilled >= r.settled);
+  record('Экспрессы: доля проходов сходится с числом билетов',
+         ab2.length > 0 && accBad.length === 0,
+         (accBad.length
+           ? `${accBad.length} строк со сломанной арифметикой`
+           : ab2.map((r) => `${r.model}/${r.legs}: ${r.hit_rate ?? '—'}% при ожидании ${r.expected ?? '—'}%`)
+               .join('; ') || 'сводка пуста')
+         + (backfilledOnly ? ' | ВСЯ история задним числом, доля завышена' : ''),
+         'доля пересчитывается из won и settled; расхождение больше 0.1 пункта валит');
+
   const noFit = await rpc(svc, 'calibrated_confidence', { p: 0.9, p_model: 'нет-такой-модели' });
   const noFitVal = typeof noFit.rows === 'number' ? noFit.rows : Number(noFit.rows);
   const passthrough = Math.abs(noFitVal - 0.9) < 1e-9;

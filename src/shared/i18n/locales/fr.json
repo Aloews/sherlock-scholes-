@@ -1284,7 +1284,25 @@
     "history_all": "Tous",
     "history_more": "Afficher plus",
     "history_shown": "{{n}} sur {{total}}",
-    "history_end": "C’est tout l’historique"
+    "history_end": "C’est tout l’historique",
+    "acc": {
+      "title": "Combinés des trois modèles",
+      "board": "à quelle fréquence ils passent",
+      "history": "historique des combinés",
+      "none": "pas de combiné pour les prochains jours : trop peu de matchs où les trois s'accordent",
+      "chance": "{{v}} % de passer",
+      "pending": "en attente des matchs",
+      "won": "passé",
+      "lost": "non passé",
+      "legs_won": "{{n}} sur {{k}} sélections justes",
+      "backfilled": "reconstitué après coup",
+      "hit": "passés {{v}}",
+      "expected": "attendu {{v}}",
+      "settled": "{{n}} tickets",
+      "caveat": "Cet historique a été reconstitué après coup : la calibration ayant servi à choisir les sélections a été ajustée sur ces mêmes matchs, le taux affiché est donc surévalué. La vérification honnête est une validation en avant sur 12 543 matchs : trois sélections passent dans 17 à 21 % des cas, quatre dans 13 à 14 %.",
+      "legs_one": "{{count}} sélection",
+      "legs_other": "{{count}} sélections"
+    }
   },
   "spotlight": {
     "title": "Le bruit contre le jeu",

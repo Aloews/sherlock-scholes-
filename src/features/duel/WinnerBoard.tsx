@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { FlyVerdict } from './FlyVerdict';
+import { ModelAccumulators } from './ModelAccumulators';
 import {
   fetchForecastHistory, fetchHistoryCount, fetchScoreboard, fetchUpcomingPicks,
   type ForecastModel, type HistoryCursor, type HistoryRow, type Outcome,
@@ -215,6 +216,15 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
           )}
         </div>
       )}
+
+      {/* ── экспрессы трёх моделей и их история ──
+        *
+        * ⚠️ ЭТО НЕ ПАНЕЛЬ ИЗ /admin. Та собирает плечи из букмекерской линии
+        * и живёт за паролем персонала (§4.4 LIVE_FOOTBALL_HANDOFF). Здесь
+        * плечи собраны из СОБСТВЕННЫХ калиброванных вероятностей моделей —
+        * ни цены, ни выплаты, ни ожидаемого возврата, поэтому место ей тут.
+        */}
+      <ModelAccumulators />
 
       {/* ── ближайшие матчи ── */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-3">

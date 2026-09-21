@@ -212,3 +212,86 @@ export function accumulatorMath(legs: AccumulatorLeg[]): {
   const payout = legs.reduce((a, l) => a * l.price, 1);
   return { passRate, payout, expectedReturn: passRate * payout };
 }
+
+// ── экспрессы, собранные МОДЕЛЯМИ ────────────────────────────────────────────
+//
+// ⚠️ ЭТО ДРУГОЙ ИСТОЧНИК, ЧЕМ `admin_accumulator` ВЫШЕ, И РАЗНИЦА ПРИНЦИПИАЛЬНА.
+// Там плечи берутся из букмекерской линии, и поэтому вся та панель живёт за
+// паролем персонала (§4.4 docs/LIVE_FOOTBALL_HANDOFF.md). Здесь плечи
+// собраны из СОБСТВЕННЫХ калиброванных вероятностей трёх моделей: ни цены,
+// ни выплаты, ни ожидаемого возврата нет и быть не может. Граница §4.4 не
+// сдвинута — она просто не задета, и функции базы это гарантируют фильтром
+// `model is not null`, а не доверием вызывающему.
+//
+// ⚠️ ПРАВИЛО ОТБОРА ВЫБРАНО ЗАМЕРОМ НА ИСТОРИИ, А НЕ НА ГЛАЗ. Ход вперёд по
+// 12 543 матчам, 167 дней проверки: согласие всех трёх моделей плюс порог
+// 0.45 по калиброванной вероятности. Разбор и оговорка про значимость — в
+// шапке `supabase/migrations/accumulator_from_models.sql`.
+
+export interface ModelAccumulator {
+  id: number;
+  placed_at: string;
+  /** Игровой день, на который собран экспресс. */
+  match_day: string;
+  model: ForecastModel;
+  legs: number;
+  /** Произведение калиброванных вероятностей плеч. */
+  pass_prob: number;
+  settled_at: string | null;
+  won: boolean | null;
+  legs_won: number | null;
+  /**
+   * ⚠️ СОБРАН ЗАДНИМ ЧИСЛОМ — и это обязано быть видно на экране.
+   * У таких билетов есть поддавки: калибровка, которой отбирались плечи,
+   * подогнана в том числе на этих же матчах. Честное число даёт ход вперёд
+   * в `football_scraper/accumulator_backtest.py`, и оно ЗАМЕТНО СКРОМНЕЕ.
+   */
+  backfilled: boolean;
+  teams: string | null;
+}
+
+export interface AccumulatorScore {
+  model: ForecastModel;
+  legs: number;
+  settled: number;
+  won: number;
+  /** Доля прошедших, проценты. */
+  hit_rate: number | null;
+  /** Сколько обещала калибровка, проценты. Без неё доля не значит ничего. */
+  expected: number | null;
+  avg_legs_won: number | null;
+  pending: number;
+  backfilled: number;
+}
+
+export async function fetchModelAccumulators(
+  model: ForecastModel | null = null, limit = 40,
+): Promise<LoadState<ModelAccumulator[]>> {
+  const res = await supabase.rpc('model_accumulator_history', {
+    p_limit: limit, p_model: model,
+  });
+  return fromPostgrest<ModelAccumulator[]>(res, 'model_accumulator_history');
+}
+
+export async function fetchAccumulatorScore(): Promise<LoadState<AccumulatorScore[]>> {
+  const res = await supabase.rpc('model_accumulator_scoreboard', {});
+  return fromPostgrest<AccumulatorScore[]>(res, 'model_accumulator_scoreboard');
+}
+
+export interface ModelAccumulatorLeg {
+  fixture_id: string;
+  commence_at: string;
+  home_team: string;
+  away_team: string;
+  pick: Outcome;
+  /** Калиброванная вероятность именно этого исхода. Не коэффициент. */
+  prob: number;
+  correct: boolean | null;
+}
+
+export async function fetchModelAccumulatorLegs(
+  ticket: number,
+): Promise<LoadState<ModelAccumulatorLeg[]>> {
+  const res = await supabase.rpc('model_accumulator_legs', { p_ticket: ticket });
+  return fromPostgrest<ModelAccumulatorLeg[]>(res, 'model_accumulator_legs');
+}

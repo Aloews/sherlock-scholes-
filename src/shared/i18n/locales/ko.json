@@ -1233,7 +1233,24 @@
     "history_all": "전체",
     "history_more": "더 보기",
     "history_shown": "{{total}}개 중 {{n}}개",
-    "history_end": "이것이 전체 기록입니다"
+    "history_end": "이것이 전체 기록입니다",
+    "acc": {
+      "title": "세 모델이 만든 다폴더",
+      "board": "적중 빈도",
+      "history": "다폴더 기록",
+      "none": "가까운 날짜의 다폴더 없음: 셋 모두 일치하는 경기가 적음",
+      "chance": "적중 확률 {{v}}%",
+      "pending": "경기 대기",
+      "won": "적중",
+      "lost": "실패",
+      "legs_won": "{{k}}개 중 {{n}}개 적중",
+      "backfilled": "사후 생성",
+      "hit": "적중 {{v}}",
+      "expected": "예상 {{v}}",
+      "settled": "{{n}}건",
+      "caveat": "이 기록은 사후에 만든 것입니다. 폴더를 고를 때 쓴 보정이 같은 경기들로도 맞춰져 있어 적중률이 부풀려져 있습니다. 공정한 검증은 12,543경기 전진 검증이며 3폴더 17~21 %, 4폴더 13~14 %입니다.",
+      "legs_other": "{{count}}개"
+    }
   },
   "spotlight": {
     "title": "화제와 출전",

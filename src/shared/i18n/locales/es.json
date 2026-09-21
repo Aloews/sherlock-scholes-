@@ -1284,7 +1284,25 @@
     "history_all": "Todos",
     "history_more": "Mostrar más",
     "history_shown": "{{n}} de {{total}}",
-    "history_end": "Este es todo el historial"
+    "history_end": "Este es todo el historial",
+    "acc": {
+      "title": "Combinadas de los tres modelos",
+      "board": "con qué frecuencia entraron",
+      "history": "historial de combinadas",
+      "none": "no hay combinada para los próximos días: hay pocos partidos en los que coincidan los tres",
+      "chance": "{{v}}% de acierto",
+      "pending": "esperando los partidos",
+      "won": "entró",
+      "lost": "no entró",
+      "legs_won": "{{n}} de {{k}} selecciones acertadas",
+      "backfilled": "reconstruida a posteriori",
+      "hit": "entraron {{v}}",
+      "expected": "se esperaba {{v}}",
+      "settled": "{{n}} boletos",
+      "caveat": "Este historial se reconstruyó a posteriori: la calibración con la que se eligieron las selecciones se ajustó también sobre estos mismos partidos, así que el porcentaje está inflado. La comprobación honesta es una validación hacia delante sobre 12 543 partidos: tres selecciones entran entre el 17 y el 21 % de las veces, cuatro entre el 13 y el 14 %.",
+      "legs_one": "{{count}} selección",
+      "legs_other": "{{count}} selecciones"
+    }
   },
   "spotlight": {
     "title": "Ruido frente a juego",
