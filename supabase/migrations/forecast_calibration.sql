@@ -90,9 +90,19 @@ create policy forecast_calibration_write on public.forecast_calibration
 -- ⚠️ НЕТ ПОДГОНКИ — ВОЗВРАЩАЕТСЯ ИСХОДНОЕ ЧИСЛО, А НЕ NULL И НЕ НОЛЬ. Пока
 -- ночной шаг ни разу не отработал (или у модели слишком мало размеченного),
 -- экран обязан показывать то же, что показывал вчера, а не пустоту.
+--
+-- ⚠️ SECURITY INVOKER, А НЕ DEFINER, И ЭТО НЕ МЕЛОЧЬ. Здесь нет ничего, что
+-- нужно было бы открывать чужими правами: `forecast_calibration` и так
+-- читается анонимом (политика `using (true)`), потому что калиброванное
+-- число видно на экране. Первая версия стояла `definer` по привычке — и
+-- советник Supabase честно назвал это лишним правом. DEFINER там, где
+-- достаточно INVOKER, ничего не даёт функции и однажды даёт лишнее тому,
+-- кто её позовёт. Вызов из `forecast_upcoming` (она DEFINER и за подпиской)
+-- от этого не страдает: внутри DEFINER-функции INVOKER-функция исполняется
+-- уже с её правами — проверено, 20 строк из 20 приходят пересчитанными.
 create or replace function public.calibrated_confidence(p numeric, p_model text)
 returns numeric
-language sql stable security definer set search_path = public as $$
+language sql stable security invoker set search_path = public as $$
   select case
     when p is null then null
     when c.a is null then round(p, 3)
