@@ -1263,6 +1263,7 @@
     "exp_total": "{{v}} goals expected",
     "agree_one": "{{n}} agrees",
     "agree_other": "{{n}} agree",
+    "calibrated": "confidence checked against hits",
     "board": "Forecasters so far",
     "upcoming": "Next matches",
     "history": "Forecast history",
@@ -1283,7 +1284,25 @@
     "history_all": "All",
     "history_more": "Show more",
     "history_shown": "{{n}} of {{total}}",
-    "history_end": "That is the whole history"
+    "history_end": "That is the whole history",
+    "acc": {
+      "title": "Accumulators from the three models",
+      "board": "how often they landed",
+      "history": "accumulator history",
+      "none": "no accumulator for the coming days: too few matches where all three agree",
+      "chance": "{{v}}% to land",
+      "pending": "waiting for the matches",
+      "won": "landed",
+      "lost": "missed",
+      "legs_won": "{{n}} of {{k}} legs right",
+      "backfilled": "built after the fact",
+      "hit": "landed {{v}}",
+      "expected": "expected {{v}}",
+      "settled": "{{n}} tickets",
+      "caveat": "This history was built after the fact: the calibration used to pick the legs was fitted on these same matches, so the landing rate here is inflated. The honest check is a walk-forward over 12,543 matches: three legs land 17–21% of the time, four legs 13–14%.",
+      "legs_one": "{{count}} leg",
+      "legs_other": "{{count}} legs"
+    }
   },
   "spotlight": {
     "title": "Noise versus play",

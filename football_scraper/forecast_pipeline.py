@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """Ночной круг трёх прогнозистов: назвать — сверить — получить дофамин.
 
-⚠️ ЧЕТЫРЕ ШАГА, И ПОРЯДОК ВАЖЕН.
+⚠️ ПЯТЬ ШАГОВ, И ПОРЯДОК ВАЖЕН.
 
     train      подогнать линейную модель и пороги «своего варианта»,
                поднять память мухи из базы
     pick       назвать исход КАЖДОГО предстоящего матча всеми тремя —
                и записать это ДО матча
     grade      сверить записанное с тем, чем матч кончился
+    calibrate  привести уверенность к правде: подогнать sigmoid(a·logit(p)+b)
+               по размеченному и записать вместе с Brier на отложенной части
     dopamine   отдать исход мухе: PAM в компартменты сбывшегося исхода,
                депрессия синапсов KC→MBON у горевших клеток; память — обратно
                в базу
+
+⚠️ CALIBRATE ИДЁТ ПОСЛЕ GRADE, И ЭТО НЕ ВКУСОВЩИНА: калибровать можно только
+по матчам, у которых известен исход. Он НЕ меняет выбранные исходы — только
+число рядом с ними. Зачем это вообще нужно и почему без него нельзя считать
+экспрессы — в шапке calibration.py.
 
 ⚠️ ПРОГНОЗ ПИШЕТСЯ ДО МАТЧА И БОЛЬШЕ НЕ ПРАВИТСЯ. Без этого «история
 прогнозов» превращается в историю объяснений задним числом: строку допишут
@@ -34,6 +41,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from calibration import evaluate  # noqa: E402
 from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 from forecast_duel import _fetch, _write  # noqa: E402
 from forecast_winner import (  # noqa: E402
@@ -280,6 +288,63 @@ def step_grade(url: str, key: str) -> int:
     return graded
 
 
+def step_calibrate(url: str, key: str) -> int:
+    """Подогнать калибровку уверенности по каждой модели и записать в базу.
+
+    ⚠️ ИДЁТ ПОСЛЕ `grade` И ТОЛЬКО ПОСЛЕ. Калибруется по размеченному —
+    прогнозам, у которых уже известен исход. Запуск до сверки подгонял бы
+    вчерашнюю калибровку на позавчерашних данных и называл это свежей.
+
+    ⚠️ ПИШЕТСЯ НЕ ТОЛЬКО ПОДГОНКА, НО И ТРИ BRIER С ОТЛОЖЕННОЙ ЧАСТИ. Без них
+    в базе лежало бы слово «откалибровано», по которому нельзя понять, стало
+    ли лучше и насколько. Третье число — константа (предсказатель, всегда
+    называющий долю попаданий): без него «лучше сырого» ничего не значит,
+    потому что быть лучше вранья — не достижение.
+
+    ⚠️ МОДЕЛЬ С МАЛЫМ ЧИСЛОМ РАЗМЕЧЕННОГО ПРОПУСКАЕТСЯ, А НЕ КАЛИБРУЕТСЯ
+    КОЕ-КАК. `calibrated_confidence` при отсутствии строки возвращает
+    исходное число — то есть отсутствие подгонки честно означает
+    «не калибровано», а не тихо подставленную чепуху.
+    """
+    rows = _fetch(url, key,
+                  "forecast_pick?select=model,confidence,correct,commence_at"
+                  "&correct=not.is.null&confidence=not.is.null"
+                  "&order=commence_at.asc,fixture_id.asc")
+    by: dict[str, list] = {}
+    for r in rows:
+        by.setdefault(r["model"], []).append(
+            (float(r["confidence"]), 1.0 if r["correct"] else 0.0))
+
+    body, skipped = [], []
+    for model in MODELS:
+        pairs = by.get(model, [])
+        try:
+            m = evaluate(pairs)
+        except ValueError as e:
+            skipped.append(f"{model}: {e}")
+            continue
+        body.append({
+            "model": model,
+            "a": round(m["a"], 6), "b": round(m["b"], 6),
+            "trained_on": m["trained_on"], "tested_on": m["tested_on"],
+            "brier_raw": round(m["brier_raw"], 4),
+            "brier_cal": round(m["brier_cal"], 4),
+            "brier_const": round(m["brier_const"], 4),
+            "fitted_at": now_iso(),
+        })
+        better = "лучше" if m["brier_cal"] < m["brier_const"] else "НЕ лучше"
+        print(f"  {model}: a={m['a']:.3f} b={m['b']:+.3f}  "
+              f"Brier сырой {m['brier_raw']:.4f} → калибр {m['brier_cal']:.4f}, "
+              f"константа {m['brier_const']:.4f} — {better} константы")
+    if body:
+        _write(url, key, "forecast_calibration?on_conflict=model", body, method="POST")
+    for s in skipped:
+        print(f"  пропущено {s}")
+    print(f"калибровка: {len(body)} моделей из {len(MODELS)}, "
+          f"размеченного {len(rows)}")
+    return len(body)
+
+
 def step_dopamine(url: str, key: str) -> int:
     """Отдать мухе сыгранные матчи: подкрепление на КАЖДЫЙ исход.
 
@@ -411,6 +476,8 @@ def main() -> int:
         step_train(url, key)
     if step in ("grade", "all"):
         step_grade(url, key)
+    if step in ("calibrate", "all"):
+        step_calibrate(url, key)
     if step in ("dopamine", "all"):
         step_dopamine(url, key)
     if step in ("pick", "all"):

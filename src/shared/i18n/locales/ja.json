@@ -1214,6 +1214,7 @@
     "fly_dopamine_other": "ドーパミン：{{n}} 件の結果",
     "exp_total": "予想 {{v}} 点",
     "agree_other": "{{n}} 名が一致",
+    "calibrated": "的中率で補正した確信度",
     "board": "これまでの予想者",
     "upcoming": "次の試合",
     "history": "予想の履歴",
@@ -1232,7 +1233,24 @@
     "history_all": "すべて",
     "history_more": "もっと見る",
     "history_shown": "{{total}} 件中 {{n}} 件",
-    "history_end": "これで履歴はすべてです"
+    "history_end": "これで履歴はすべてです",
+    "acc": {
+      "title": "3つのモデルが組んだ連勝単式",
+      "board": "的中の頻度",
+      "history": "連勝単式の履歴",
+      "none": "近日中の連勝単式はなし：3つすべてが一致する試合が少ない",
+      "chance": "的中率 {{v}}%",
+      "pending": "試合待ち",
+      "won": "的中",
+      "lost": "不的中",
+      "legs_won": "{{k}} 件中 {{n}} 件的中",
+      "backfilled": "後から作成",
+      "hit": "的中 {{v}}",
+      "expected": "想定 {{v}}",
+      "settled": "{{n}} 件",
+      "caveat": "この履歴は後から作成したものです。選択に使った補正は同じ試合でも調整されているため、ここでの的中率は過大です。公正な検証は 12,543 試合の前進検証で、3件で 17〜21 %、4件で 13〜14 % です。",
+      "legs_other": "{{count}} 件"
+    }
   },
   "spotlight": {
     "title": "話題と出場",

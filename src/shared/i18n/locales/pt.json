@@ -1263,6 +1263,7 @@
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
     "agree_other": "{{n}} concordam",
+    "calibrated": "confiança conferida com os acertos",
     "board": "Prognosticadores até agora",
     "upcoming": "Próximos jogos",
     "history": "Histórico de prognósticos",
@@ -1283,7 +1284,25 @@
     "history_all": "Todos",
     "history_more": "Mostrar mais",
     "history_shown": "{{n}} de {{total}}",
-    "history_end": "Este é todo o histórico"
+    "history_end": "Este é todo o histórico",
+    "acc": {
+      "title": "Múltiplas dos três modelos",
+      "board": "com que frequência entraram",
+      "history": "histórico de múltiplas",
+      "none": "não há múltipla para os próximos dias: poucos jogos em que os três concordam",
+      "chance": "{{v}}% de entrar",
+      "pending": "aguardando os jogos",
+      "won": "entrou",
+      "lost": "não entrou",
+      "legs_won": "{{n}} de {{k}} seleções certas",
+      "backfilled": "montada depois do facto",
+      "hit": "entraram {{v}}",
+      "expected": "esperava-se {{v}}",
+      "settled": "{{n}} bilhetes",
+      "caveat": "Este histórico foi montado depois do facto: a calibração usada para escolher as seleções foi ajustada também nestes mesmos jogos, por isso a percentagem aqui está inflada. A verificação honesta é uma validação para a frente sobre 12 543 jogos: três seleções entram em 17–21 % das vezes, quatro em 13–14 %.",
+      "legs_one": "{{count}} seleção",
+      "legs_other": "{{count}} seleções"
+    }
   },
   "spotlight": {
     "title": "Ruído contra jogo",

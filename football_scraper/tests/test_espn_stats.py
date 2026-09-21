@@ -12,12 +12,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import date, timedelta  # noqa: E402
 
+from calendar import monthrange  # noqa: E402
+
 from espn_stats import (  # noqa: E402
-    CHUNK_DAYS,
     LEAGUES,
     active_cards_by_key,
     card_key,
-    date_windows,
+    month_windows,
+    within_span,
     write_rows,
 )
 
@@ -66,49 +68,82 @@ def test_active_cards_by_key():
     return ok
 
 
-def _days_covered(windows):
-    """Множество всех суток, которые покрывают окна — по одной дате за раз."""
+def _days_covered(months):
+    """Множество всех суток, которые покрывают месячные окна `YYYYMM`."""
     days = set()
-    for lo, hi in windows:
-        a = date(int(lo[:4]), int(lo[4:6]), int(lo[6:]))
-        b = date(int(hi[:4]), int(hi[4:6]), int(hi[6:]))
-        while a <= b:
-            days.add(a)
-            a += timedelta(days=1)
+    for key in months:
+        y, m = int(key[:4]), int(key[4:])
+        for d in range(1, monthrange(y, m)[1] + 1):
+            days.add(date(y, m, d))
     return days
 
 
-def test_date_windows():
-    """Окна дат обязаны покрыть ровно запрошенные сутки — без дыр и без хвоста.
+def test_month_windows():
+    """Месяцы обязаны накрыть запрошенные сутки — без единой дыры.
 
     Дыра здесь не падает и не кричит: пропущенный день выглядит как день без
     матчей, и потеря обнаружилась бы только тем, что у игрока не хватает
     матча в рейтинге. Поэтому проверяется не форма строк, а ПОКРЫТИЕ.
+
+    ⚠️ ЛИШНЕЕ ТЕПЕРЬ РАЗРЕШЕНО, И ЭТО НЕ ПОСЛАБЛЕНИЕ. Календарный месяц по
+    определению шире запрошенных суток; отсечь лишнее обязан `within_span`
+    при отборе событий, и его проверяет тест ниже. Здесь сторожится ровно то,
+    ради чего окно и считается, — что НИ ОДНИ запрошенные сутки не потеряны.
     """
     ok = True
     today = date(2026, 9, 13)
 
-    for days in (1, 2, 29, 30, 31, 60, 90, 91):
-        windows = date_windows(days, today)
-        covered = _days_covered(windows)
+    for days in (1, 2, 29, 30, 31, 60, 90, 91, 365):
+        months = month_windows(days, today)
+        covered = _days_covered(months)
         want = {today - timedelta(days=i) for i in range(days)}
         # Сравниваются множества, а печатается их РАЗНОСТЬ: вывалить сюда
         # девяносто дат значило бы утопить настоящее падение в стене строк —
         # ровно так, как это уже было с прогоном тестов скрапера.
         ok &= check("{} сут.: не покрыто".format(days), sorted(want - covered), [])
-        ok &= check("{} сут.: лишнее".format(days), sorted(covered - want), [])
+        # Месяцев ровно столько, сколько их задевает отрезок, — ни одного
+        # лишнего запроса к ESPN.
         ok &= check(
-            "{} сут.: окон не больше нужного".format(days),
-            len(windows), (days + CHUNK_DAYS - 1) // CHUNK_DAYS,
+            "{} сут.: месяцев не больше нужного".format(days),
+            len(months), len({(d.year, d.month) for d in want}),
         )
+        ok &= check("{} сут.: без повторов".format(days), len(months), len(set(months)))
 
-    # Формат — ESPN-овский YYYYMMDD, и «с» не позже «по».
-    lo, hi = date_windows(2, today)[0]
-    ok &= check("формат даты", (len(lo), len(hi), lo <= hi), (8, 8, True))
-    ok &= check("свежее окно первым", hi, "20260913")
+    # Формат — ESPN-овский YYYYMM, свежий месяц первым.
+    # 60 суток от 13 сентября достают до июля — три месяца, а не два.
+    ok &= check("формат месяца", [len(m) for m in month_windows(60, today)], [6, 6, 6])
+    ok &= check("свежий месяц первым", month_windows(60, today)[0], "202609")
+    ok &= check("двое суток — один месяц", month_windows(2, today), ["202609"])
+    # Переход через границу месяца: 13 сентября минус 20 суток — это ещё август.
+    ok &= check("через границу месяца", month_windows(20, today), ["202609", "202608"])
+    # И через границу года.
+    ok &= check("через границу года", month_windows(40, date(2026, 1, 20)),
+                ["202601", "202512"])
+    return ok
 
-    # Сутки считаются ВКЛЮЧИТЕЛЬНО: двое суток — это сегодня и вчера.
-    ok &= check("двое суток = сегодня и вчера", date_windows(2, today), [("20260912", "20260913")])
+
+def test_within_span():
+    """Отбор событий месяца по запрошенным суткам, с запасом в день.
+
+    ⚠️ ЗАПАС ПРОВЕРЯЕТСЯ КАК ТРЕБОВАНИЕ, А НЕ КАК ДОПУСК. Дата в табло — UTC
+    по началу матча, а записывается дата из карточки матча; на матче в 23:30Z
+    это разные сутки. Отбор ровно по границе выбрасывал бы поздние матчи —
+    самые незаметные из возможных потерь.
+    """
+    ok = True
+    first, last = date(2026, 9, 12), date(2026, 9, 13)
+    ok &= check("внутри", within_span("2026-09-12", first, last), True)
+    ok &= check("внутри, второй день", within_span("2026-09-13", first, last), True)
+    ok &= check("запас слева", within_span("2026-09-11", first, last), True)
+    ok &= check("запас справа", within_span("2026-09-14", first, last), True)
+    ok &= check("за запасом слева", within_span("2026-09-10", first, last), False)
+    ok &= check("за запасом справа", within_span("2026-09-15", first, last), False)
+    ok &= check("другой месяц отсечён", within_span("2026-08-30", first, last), False)
+    # Событие без даты не выбрасывается: лучше лишний summary, чем потерянный
+    # матч из-за поля, которого в ответе не оказалось.
+    ok &= check("без даты — берём", within_span("", first, last), True)
+    ok &= check("через границу года",
+                within_span("2025-12-31", date(2026, 1, 1), date(2026, 1, 2)), True)
     return ok
 
 
@@ -194,7 +229,8 @@ def test_write_rows():
 def main():
     print("test_espn_stats.py")
     ok = test_active_cards_by_key()
-    ok &= test_date_windows()
+    ok &= test_month_windows()
+    ok &= test_within_span()
     ok &= test_leagues()
     ok &= test_write_rows()
     print("PASS" if ok else "FAIL")

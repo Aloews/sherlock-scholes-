@@ -106,7 +106,12 @@ Deno.serve(async (req) => {
   // собирались отвергнуть.
   if (b64.length > MAX_BYTES * 1.4) return json({ error: "too_big" }, 413);
 
-  let bytes: Uint8Array;
+  // ⚠️ ПАРАМЕТР У `Uint8Array` ОБЯЗАТЕЛЕН, И ЭТО НЕ УКРАШЕНИЕ. С TypeScript
+  // 5.7 тип стал обобщённым, и голое `Uint8Array` значит
+  // `Uint8Array<ArrayBufferLike>`, которое `fetch` в тело не принимает.
+  // Присваивается сюда всегда `new Uint8Array(...)`, то есть
+  // `Uint8Array<ArrayBuffer>` — аннотация лишь перестаёт его расширять.
+  let bytes: Uint8Array<ArrayBuffer>;
   try {
     const bin = atob(b64);
     bytes = new Uint8Array(bin.length);

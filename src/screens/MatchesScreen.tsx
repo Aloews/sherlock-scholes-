@@ -7,9 +7,11 @@ import {
   fetchUpcomingFixtures,
   fetchFixturesInMonth,
   fetchFixturesHorizon,
+  fetchLeagueValues,
   groupByDay,
   type Fixture,
 } from '@/features/fixtures/fixturesApi';
+import { compareLeaguesByValue, type LeagueValue } from '@/features/fixtures/leagueOrder';
 import { LOADING, ok, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { leagueKey, readableSportKey } from '@/features/fixtures/leagues';
 import { fetchMyPredictions, type Prediction } from '@/features/fixtures/predictionsApi';
@@ -69,6 +71,10 @@ export function MatchesScreen() {
   // Календарь: свой месяц, свои матчи и горизонт.
   const [month, setMonth] = useState<Date>(() => monthStart(new Date()));
   const [monthRows, setMonthRows] = useState<LoadState<Fixture[]>>(LOADING);
+  // Стоимость составов по турнирам — она решает порядок чипов. Отдельным
+  // запросом и БЕЗ ожидания: пока он идёт, чипы стоят в запасном порядке
+  // (см. compareLeaguesByValue), а не пропадают.
+  const [leagueValues, setLeagueValues] = useState<LoadState<LeagueValue[]>>(LOADING);
   const [horizon, setHorizon] = useState<Horizon>({ first: null, publishedUntil: null });
   const [day, setDay] = useState<string | null>(null);
 
@@ -88,6 +94,9 @@ export function MatchesScreen() {
       // ничего не переписывают. Держать из-за них весь экран значит ждать по
       // самому медленному запросу там, где можно ждать по самому быстрому.
       void fetchBroadcasts().then((tv) => { if (!cancelled) setBroadcasts(tv); });
+      // Порядок турниров — тоже отдельно: он меняет расстановку чипов, а не
+      // содержимое списка, и держать из-за него весь экран не за что.
+      void fetchLeagueValues().then((v) => { if (!cancelled) setLeagueValues(v); });
       // Уровень состава — тоже отдельно и по той же причине: он добавляет
       // блок под матчем и ничего не переписывает. Плюс есть далеко не у
       // каждого матча (оцифрованы не все клубы), так что ждать его — значит
@@ -149,13 +158,23 @@ export function MatchesScreen() {
    * фильтр по заранее написанному перечню молча потерял бы его. А чип для
    * лиги, которой сегодня нет в расписании, — это кнопка, ведущая в пустоту.
    *
-   * Порядок — по числу матчей: лига, которой сегодня много, стоит первой.
+   * ⚠️ ПОРЯДОК — ПО СТОИМОСТИ УЧАСТНИКОВ, А НЕ ПО ЧИСЛУ МАТЧЕЙ. Здесь стояло
+   * `b[1] - a[1]` по счётчику, и это ставило лигу с плотным туром выше Ла
+   * Лиги: календарь открывался не тем, ради чего его открывают. Шесть
+   * турниров — топ-5 Европы и РПЛ — закреплены первыми; остальные идут по
+   * медиане стоимости состава тех клубов, у кого матч в окне. Правило и
+   * замеры — в league_squad_value.sql и compareLeaguesByValue.
+   *
+   * Число матчей остаётся на чипе подписью: оно полезно глазу, но не решает,
+   * кто первый.
    */
   const leagues = useMemo(() => {
     const count = new Map<string, number>();
     for (const f of dataOr(source, [])) count.set(f.sport_key, (count.get(f.sport_key) ?? 0) + 1);
-    return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [source]);
+    const worth = new Map(dataOr(leagueValues, []).map((v) => [v.sport_key, v]));
+    return [...count.entries()]
+      .sort((a, b) => compareLeaguesByValue(a[0], b[0], worth));
+  }, [source, leagueValues]);
 
   const shown = useMemo(() => {
     let rows = dataOr(source, []);

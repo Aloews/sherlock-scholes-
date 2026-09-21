@@ -99,6 +99,18 @@ const YT_KEY = Deno.env.get("YOUTUBE_API_KEY") ?? "";
  * пересказа разбираются партиями по мере прихода, а не разом; дальше — только
  * новые. Захотите развести обратно — задайте NEWS_LLM_API_KEY, и он победит.
  */
+/**
+ * Ключ ВК. Где его взять — в шапке supabase/migrations/vk_video_sources.sql.
+ *
+ * ⚠️ БЕЗ КЛЮЧА ВК НЕ ОПРАШИВАЕТСЯ ВОВСЕ, И ЭТО ВИДНО В ОТЧЁТЕ ОТДЕЛЬНОЙ
+ * СТРОКОЙ. Открытого пути к этим группам нет: страница `vkvideo.ru/@имя`
+ * отвечает 302 на автологин, а `api.vk.com` без токена — `error_code 15,
+ * token required`. Тихо вернуть пустоту значило бы поставить «источник
+ * молчит» там, где на самом деле «ключа не дали».
+ */
+const VK_TOKEN = Deno.env.get("VK_SERVICE_TOKEN") ?? "";
+const VK_API_VERSION = "5.199";
+
 const NEWS_LLM_KEY = Deno.env.get("NEWS_LLM_API_KEY")
   ?? Deno.env.get("SUMMARY_LLM_API_KEY")
   ?? "";
@@ -110,7 +122,7 @@ const NEWS_LLM_MODEL = Deno.env.get("NEWS_LLM_MODEL")
   ?? "claude-opus-5";
 
 interface Source {
-  kind: "feed" | "channel" | "espn_news" | "rutube";
+  kind: "feed" | "channel" | "espn_news" | "rutube" | "vk";
   name: string;
   ref: string;
   lang: string | null;
@@ -628,6 +640,128 @@ async function fetchRutubeClips(channel: string, personId: string): Promise<Clip
     .filter((row): row is ClipRow => row !== null);
 }
 
+interface VkVideo {
+  id?: number;
+  owner_id?: number;
+  title?: string;
+  date?: number;
+  views?: number;
+  likes?: { count?: number } | number;
+  image?: { url?: string; width?: number }[];
+  type?: string;
+  live?: number;
+  live_status?: string;
+}
+
+/** Ответ api.vk.com: либо `response`, либо `error`. */
+async function vkCall(
+  method: string, params: Record<string, string>,
+): Promise<{ ok: true; data: unknown } | { ok: false; code: number; msg: string }> {
+  const q = new URLSearchParams({
+    ...params, access_token: VK_TOKEN, v: VK_API_VERSION,
+  });
+  const body = await fetchText(`https://api.vk.com/method/${method}?${q}`);
+  if (!body) return { ok: false, code: -1, msg: "нет ответа" };
+  let parsed: { response?: unknown; error?: { error_code?: number; error_msg?: string } };
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { ok: false, code: -2, msg: "не JSON" };
+  }
+  if (parsed.error) {
+    return {
+      ok: false,
+      code: Number(parsed.error.error_code ?? 0),
+      msg: String(parsed.error.error_msg ?? "").slice(0, 120),
+    };
+  }
+  return { ok: true, data: parsed.response };
+}
+
+/**
+ * Ролики сообщества ВК.
+ *
+ * ЗАЧЕМ. Владелец прислал две группы с матчами и трансляциями:
+ * `vkvideo.ru/@pl_forever` и `vkvideo.ru/@sportcast.online`. Русских обзоров
+ * у нас один источник — канал РПЛ на Rutube, и он уже подводил: первая
+ * страница его выдачи замерла на 11.09.2026, пока лига играла 12 матчей.
+ * Второй русский источник снимает эту единственную точку отказа.
+ *
+ * ⚠️ ТОЛЬКО API, HTML НЕ ВАРИАНТ. Замер 20.09.2026: `vkvideo.ru/@pl_forever`
+ * отвечает 302 на `login.vk.ru/?act=autologin`, то есть содержимого без
+ * входа там нет вовсе. А `robots.txt` ВК прямо РАЗРЕШАЕТ `/video-*` — то
+ * есть ссылка на ролик законна, закрыт именно обход страницы сообщества.
+ *
+ * ⚠️ ССЫЛКА СТРОИТСЯ ИЗ ЧИСЕЛ, А НЕ БЕРЁТСЯ ИЗ ОТВЕТА. То же правило, что у
+ * Rutube: `player` и прочие готовые адреса из чужого JSON уехали бы прямо в
+ * `openLink` на телефоне читателя. `owner_id` и `id` проверяются как целые
+ * числа и подставляются в НАШ шаблон, поэтому увести читателя на посторонний
+ * адрес нечем.
+ *
+ * ⚠️ ВРЕМЯ — UNIX-СЕКУНДЫ В UTC, И ЭТО ПРОЩЕ, ЧЕМ У RUTUBE. Там приходила
+ * строка без смещения, которую `new Date()` читал как UTC, и ролик молодел
+ * на три часа. Здесь смещения нет по определению — число секунд от эпохи.
+ *
+ * Трансляции пропускаются: `live_status` в эфире — это не обзор, а идущий
+ * поток, и записать его как ролик значило бы показать в подборке ссылку,
+ * которая к вечеру ведёт в никуда. Ровно по этой причине из проекта уже
+ * убран раздел «идёт сейчас».
+ */
+async function fetchVkClips(channel: string, screenName: string): Promise<ClipRow[]> {
+  if (!VK_TOKEN) return [];
+
+  // Экранное имя -> owner_id. У сообщества он отрицательный.
+  const resolved = await vkCall("utils.resolveScreenName", { screen_name: screenName });
+  if (!resolved.ok) {
+    console.warn(`[digest] ${channel}: vk resolveScreenName ${resolved.code} ${resolved.msg}`);
+    return [];
+  }
+  const info = resolved.data as { type?: string; object_id?: number } | null;
+  const objectId = Number(info?.object_id ?? 0);
+  if (!Number.isInteger(objectId) || objectId <= 0) {
+    console.warn(`[digest] ${channel}: vk screen name «${screenName}» не разрешилось`);
+    return [];
+  }
+  const ownerId = info?.type === "group" ? -objectId : objectId;
+
+  const got = await vkCall("video.get", {
+    owner_id: String(ownerId), count: "30", extended: "0",
+  });
+  if (!got.ok) {
+    // ⚠️ КОД 15 НАЗЫВАЕТСЯ ОТДЕЛЬНО. Это «нужен токен пользователя»: у
+    // сервисного ключа `video.get` может быть закрыт, и тогда лечится не
+    // повтором, а другим типом ключа. Спутать это с «группа пуста» —
+    // значит искать поломку не там.
+    console.warn(`[digest] ${channel}: vk video.get ${got.code} ${got.msg}`);
+    return [];
+  }
+  const items = ((got.data as { items?: VkVideo[] } | null)?.items) ?? [];
+
+  return items
+    .map((v): ClipRow | null => {
+      const id = Number(v.id ?? 0);
+      const owner = Number(v.owner_id ?? ownerId);
+      if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(owner)) return null;
+      if (v.live === 1 || (v.live_status && v.live_status !== "finished")) return null;
+      const title = stripTags(v.title ?? "");
+      const when = Number(v.date ?? 0);
+      if (!title || !Number.isFinite(when) || when <= 0) return null;
+      const thumbs = (v.image ?? []).filter((im) => typeof im?.url === "string");
+      const biggest = thumbs.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
+      return {
+        video_id: `vk${owner}_${id}`,
+        title,
+        channel,
+        published_at: new Date(when * 1000).toISOString(),
+        thumb_url: biggest?.url ?? null,
+        views: Number(v.views ?? 0),
+        likes: typeof v.likes === "object" ? Number(v.likes?.count ?? 0) : Number(v.likes ?? 0),
+        watch_url: `https://vkvideo.ru/video${owner}_${id}`,
+      };
+    })
+    .filter((row): row is ClipRow => row !== null);
+}
+
 const llmClient = NEWS_LLM_KEY && NEWS_LLM_BASE_URL
   ? new Anthropic({ apiKey: NEWS_LLM_KEY, baseURL: NEWS_LLM_BASE_URL })
   : null;
@@ -950,6 +1084,10 @@ async function run(useLlm: boolean): Promise<Response> {
   // Расчёт целиком — в шапке supabase/migrations/digest_club_channels.sql.
   const group = pollGroupNow();
   const rutubeChannels = sources.filter((s) => s.kind === "rutube");
+  // Без ключа ВК не опрашивается вовсе — см. VK_TOKEN. Отбор здесь, а не
+  // внутри сборщика: иначе «молчат обе группы» в отчёте значило бы и «ключа
+  // нет», и «группы пусты», а это разные поводы.
+  const vkChannels = sources.filter((s) => s.kind === "vk" && VK_TOKEN !== "");
   const channels = sources.filter((s) =>
     s.kind === "channel" &&
     (YT_KEY !== "" || !s.needs_key) &&
@@ -999,6 +1137,11 @@ async function run(useLlm: boolean): Promise<Response> {
   const rutubeClips = await Promise.all(
     rutubeChannels.map((ch) => fetchRutubeClips(ch.name, ch.ref)),
   );
+  // ВК — рядом с Rutube и по той же причине: свой ключ, своя квота, к
+  // ограничениям YouTube отношения не имеет.
+  const vkClips = await Promise.all(
+    vkChannels.map((ch) => fetchVkClips(ch.name, ch.ref)),
+  );
 
   const newsRows = unique(fresh([...news.flat(), ...espn.flat()]), (row) => row.url);
   // РОЛИКИ БЕРУТСЯ ЦЕЛИКОМ, БЕЗ ОКНА В СУТКИ. Экран выходных смотрит на два
@@ -1006,7 +1149,7 @@ async function run(useLlm: boolean): Promise<Response> {
   // записей на канал — выбрасывать из них всё старше суток значило бы не иметь
   // выходных вовсе. Срок жизни держит prune_digest: десять дней.
   const clipRows = unique(
-    [...clips.flat(), ...rutubeClips.flat()], (row) => row.video_id);
+    [...clips.flat(), ...rutubeClips.flat(), ...vkClips.flat()], (row) => row.video_id);
 
   report.news_seen = newsRows.length;
   // ⚠️ `description` ТЕПЕРЬ КОЛОНКА, И ЕЁ НАДО ПИСАТЬ. Раньше текст заметки
@@ -1066,7 +1209,7 @@ async function run(useLlm: boolean): Promise<Response> {
   // и «все ответили», и «спрашивать было некого».
   report.sources = {
     feeds: feeds.length, channels: channels.length, espn: espnLeagues.length,
-    rutube: rutubeChannels.length,
+    rutube: rutubeChannels.length, vk: vkChannels.length,
   };
   // ПОИМЁННО, а не числом. «Молчит 2 источника» не даёт ничего сделать; лента
   // переезжает и умирает молча, и единственный способ это заметить — увидеть,
@@ -1089,6 +1232,10 @@ async function run(useLlm: boolean): Promise<Response> {
   // каждый раз, поэтому пустота у него — всегда молчание источника, а не
   // «сейчас не его десять минут».
   report.rutube_silent = silent(rutubeChannels, rutubeClips);
+  // ⚠️ «КЛЮЧА НЕТ» И «ГРУППЫ МОЛЧАТ» — РАЗНЫЕ СТРОКИ. Один общий ноль на оба
+  // случая уже стоил этому проекту пяти суток слепоты в сборе ESPN.
+  report.vk_configured = VK_TOKEN !== "";
+  report.vk_silent = silent(vkChannels, vkClips);
 
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/prune_digest`, {
     method: "POST",

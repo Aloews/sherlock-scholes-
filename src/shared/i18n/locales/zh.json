@@ -1214,6 +1214,7 @@
     "fly_dopamine_other": "多巴胺：{{n}} 个结果",
     "exp_total": "预计 {{v}} 球",
     "agree_other": "{{n}} 位一致",
+    "calibrated": "按命中率校准的置信度",
     "board": "预测者战绩",
     "upcoming": "接下来的比赛",
     "history": "预测历史",
@@ -1232,7 +1233,24 @@
     "history_all": "全部",
     "history_more": "显示更多",
     "history_shown": "{{total}} 条中的 {{n}} 条",
-    "history_end": "这就是全部记录"
+    "history_end": "这就是全部记录",
+    "acc": {
+      "title": "三个模型组成的串关",
+      "board": "命中频率",
+      "history": "串关历史",
+      "none": "近几日没有串关：三者一致的比赛太少",
+      "chance": "命中概率 {{v}}%",
+      "pending": "等待比赛",
+      "won": "命中",
+      "lost": "未中",
+      "legs_won": "{{k}} 场中 {{n}} 场正确",
+      "backfilled": "事后补建",
+      "hit": "命中 {{v}}",
+      "expected": "预期 {{v}}",
+      "settled": "{{n}} 张",
+      "caveat": "这段历史是事后补建的：挑选关卡所用的校准也在这些比赛上拟合过，因此此处命中率被高估。公正的检验是对 12 543 场比赛的前向验证：三关命中 17–21 %，四关 13–14 %。",
+      "legs_other": "{{count}} 场"
+    }
   },
   "spotlight": {
     "title": "声量与出场",

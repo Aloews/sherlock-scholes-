@@ -153,3 +153,36 @@ jobs:
             echo "Failed:$failed"
             exit 1
           fi
+
+  # ⚠️ ТИПЫ EDGE-ФУНКЦИЙ НЕ ПРОВЕРЯЛ НИКТО. `npx tsc` смотрит на `src/`, а
+  # `supabase/functions/` — это Deno, другой рантайм и другие глобалы; ни в
+  # CI, ни в кнопке выкладки проверки не было вовсе. Первый же прогон
+  # 20.09.2026 нашёл две: `EdgeRuntime` в assistant-bot — неизвестное имя
+  # (TS2304), и `Uint8Array` без параметра в amateur-logo, которое `fetch` в
+  # тело не принимает. Обе безвредны в рантайме, но следующая такая может
+  # быть и не безвредной, а узнать о ней было бы неоткуда: функция падает
+  # уже в проде, а прежнее развёртывание остаётся жить.
+  #
+  # `nodeModulesDir: auto` обязателен: football-digest тянет npm-пакет
+  # (@anthropic-ai/sdk), и без этого проверка падает на «не нашёл пакет».
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Типы всех Edge-функций
+        run: |
+          echo '{ "nodeModulesDir": "auto" }' > /tmp/deno.json
+          failed=""
+          for d in supabase/functions/*/; do
+            fn=$(basename "$d")
+            echo "::group::$fn"
+            deno check --config /tmp/deno.json "$d/index.ts" || failed="$failed $fn"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::типы не сошлись:$failed"
+            exit 1
+          fi

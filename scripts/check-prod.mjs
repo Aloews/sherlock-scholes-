@@ -207,6 +207,20 @@ async function checkDigest() {
 //
 // В обоих случаях psql, MCP и любая проверка «под сервисным ключом» показывают
 // зелень. Поэтому ходить надо ИМЕННО anon-ключом и ИМЕННО до строк.
+// ⚠️ БЮДЖЕТ ВРЕМЕНИ, А НЕ ТОЛЬКО КОД ОТВЕТА. Проверка «вернулся массив»
+// зеленела на функции, которая шла 4.3 с при анонимном потолке в 3 с: она
+// падала через раз — в спокойную минуту 345–516 мс, под нагрузкой 57014
+// «canceling statement due to statement timeout». Перемежающийся отказ хуже
+// постоянного: на него перестают смотреть, а у игрока раздел «иногда не
+// грузится».
+//
+// Порог взят с запасом от замеров на бегунке GitHub, где сеть добавляет своё:
+// 216, 621, 621, 646, 806 мс. 2000 мс — вдвое больше худшего наблюдавшегося и
+// заметно раньше серверного потолка, то есть краснеет ДО того, как это увидит
+// игрок, и не краснеет от обычного разброса сети.
+const ANON_CEILING_MS = 3000;  // statement_timeout роли anon, менять только вместе с базой
+const ANON_BUDGET_MS = 2000;
+
 const RPCS = [
   ['fixture_team_rating',    { p_min_depth: 5 },              'рейтинг состава в прогнозах'],
   ['fixture_squad_strength', { p_min_depth: 5 },              'известность состава'],
@@ -230,6 +244,7 @@ async function checkAnonRpc() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
+  const slowest = [];
   for (const [fn, args, label] of RPCS) {
     try {
       const t0 = Date.now();
@@ -240,14 +255,33 @@ async function checkAnonRpc() {
       const body = await r.json().catch(() => null);
       // arena_leaderboard законно пуста, когда за окно не было матчей, поэтому
       // здесь мерим НЕ количество строк, а «вернулся массив, а не код ошибки».
-      const ok = r.ok && Array.isArray(body);
-      const why = ok ? `${body.length} строк, ${ms} мс`
-                     : `${body?.code ?? 'HTTP ' + r.status} ${body?.message ?? ''}`.trim().slice(0, 60);
+      const answered = r.ok && Array.isArray(body);
+      const fast = ms <= ANON_BUDGET_MS;
+      const ok = answered && fast;
+      const why = !answered
+        ? `${body?.code ?? 'HTTP ' + r.status} ${body?.message ?? ''}`.trim().slice(0, 60)
+        : fast ? `${body.length} строк, ${ms} мс`
+               : `${body.length} строк, но ${ms} мс — бюджет ${ANON_BUDGET_MS}, `
+                 + `за ним потолок anon ${ANON_CEILING_MS}`;
       record(`RPC anon: ${label}`, ok, why, 'ключ anon, не сервисный; ошибка читается из тела');
+      if (answered) slowest.push([label, ms]);
     } catch (e) {
       record(`RPC anon: ${label}`, false, String(e).slice(0, 50), 'н/д');
     }
   }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ БЮДЖЕТА. Бюджет — это сравнение числа с числом, и
+  // оно молча перестаёт работать, если замер сломан (ms всегда 0, список
+  // пуст, сравнение перевёрнуто). Тот же самый замер с заведомо недостижимым
+  // порогом ОБЯЗАН назвать вызов медленным. Не назвал — значит зелень шести
+  // строк выше ничего не стоит.
+  const measured = slowest.length > 0 && slowest.every(([, ms]) => Number.isFinite(ms));
+  const worst = measured ? slowest.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
+  const catches = measured && worst[1] > 0;
+  record('RPC anon: контроль бюджета', catches,
+         catches ? `замер живой: самый долгий «${worst[0]}» ${worst[1]} мс, порог 0 мс поймал бы его`
+                 : 'замер времени сломан — бюджет ничего не проверяет',
+         'бюджет проверяется тем же замером с порогом 0');
 
   // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. Ровно тот же запрос к заведомо запертой таблице:
   // он ОБЯЗАН получить отказ. Если и он проходит — значит anon-ключ на этом
@@ -702,15 +736,41 @@ async function checkFixtureSquads() {
          'спрашивается ЧИСЛО: «состав есть» зеленело бы и на четырёх');
 
   // Ближайшие матчи — на них и смотрит человек.
+  //
+  // ⚠️ БЕЗ ТУРНИРОВ СБОРНЫХ, И ЭТО НЕ ПОСЛАБЛЕНИЕ. У сборной нет КЛУБНОЙ
+  // заявки и быть не может, а `fixture_squads` отдаёт именно клубный состав.
+  //
+  // Поймано 20.09.2026: проверка покраснела на «17 из 40», и первой мыслью
+  // было, что сломалось сопоставление имён. Оно цело — все сорок матчей
+  // резолвятся в оба ключа. Просто начался перерыв на сборные: 18 из 40
+  // ближайших матчей оказались Лигой наций. Проверка краснела бы каждый
+  // международный перерыв, по календарю, а не по поломке, — и к третьему
+  // разу на неё перестали бы смотреть.
+  //
+  // ⚠️ ОТБОР ПО ТУРНИРУ, А НЕ ПО ВИДУ КОМАНДЫ, И ПЕРВАЯ ПОПЫТКА БЫЛА ИМЕННО
+  // ПО ВИДУ — она не сработала. «Portugal», «Serbia», «Norway» лежат в
+  // `football_club` как `kind = 'club'` со страной NULL и нулём игроков: это
+  // заглушки, заведённые импортом расписания, а не 269 настоящих записей
+  // `kind = 'national'`. То есть по виду команды сборную от клуба здесь не
+  // отличить, и заглушки — отдельная находка, записанная в NEXT_SESSION.
+  //
+  // Список турниров тот же, что ведёт сам сборщик расписания
+  // (`SEASONAL_KEYS` в supabase/functions/football-fixtures/index.ts).
+  const NATIONAL_KEYS = new Set([
+    'soccer_uefa_nations_league',
+    'soccer_fifa_world_cup',
+    'soccer_fifa_world_cup_qualifiers_europe',
+    'soccer_uefa_european_championship',
+    'soccer_uefa_euro_qualification',
+  ]);
   const fr = await fetch(
-    `${url}/rest/v1/fixtures?select=id,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=40`,
+    `${url}/rest/v1/fixtures?select=id,sport_key,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=200`,
     { headers: auth },
   );
-  const fixtures = await fr.json().catch(() => null);
-  if (!Array.isArray(fixtures) || fixtures.length === 0) {
-    record('Составы: ближайшие матчи', false, 'расписание не отдаёт матчей', 'ключ anon');
-    return;
-  }
+  const all = await fr.json().catch(() => null);
+  const fixtures = Array.isArray(all)
+    ? all.filter((f) => !NATIONAL_KEYS.has(f.sport_key)).slice(0, 40)
+    : all;
 
   let both = 0;
   let withValue = 0;
@@ -1711,12 +1771,28 @@ async function checkLocalGoals() {
          'ловит замолчавший канал Rutube и отозванный грант');
 
   // ⚠️ ДО КОНЦА ЦЕПОЧКИ: строка есть — а ссылка в ней может вести на YouTube
-  // по идентификатору Rutube, то есть в никуда. Видно это только по нажатию.
-  const rutube = list.filter((r) => String(r.watch_url || '').startsWith('https://rutube.ru/video/'));
-  record('Обзоры на своём языке: ссылка ведёт на Rutube',
-         list.length > 0 && rutube.length === list.length,
-         `${rutube.length} из ${list.length} с адресом Rutube`,
-         'ловит возврат к безусловному шаблону youtube.com/watch?v=');
+  // по чужому идентификатору, то есть в никуда. Видно это только по нажатию.
+  //
+  // ⚠️ ПРОВЕРЯЕТСЯ СЕМЕЙСТВО АДРЕСОВ, А НЕ ОДИН ХОСТ, И ЭТО ПОЧИНКА САМОЙ
+  // ПРОВЕРКИ. Здесь стояло `startsWith('https://rutube.ru/video/')` — тогда
+  // русский источник был один. С появлением групп ВК проверка покраснела на
+  // исправном разделе: «0 из 12 с адресом Rutube» при двенадцати живых
+  // роликах. Проверка, знающая имена источников поимённо, ломается от
+  // добавления источника, а не от поломки — и приучает не смотреть на неё.
+  //
+  // Настоящее требование другое: ссылка собрана НАШИМ шаблоном под известный
+  // нам хост, а не взята из чужого ответа и не склеена безусловным
+  // youtube-шаблоном. Поэтому список хостов, и он рядом с тем, что строит
+  // ссылки (fetchRutubeClips / fetchVkClips в football-digest).
+  const OUR_HOSTS = ['https://rutube.ru/video/', 'https://vkvideo.ru/video'];
+  const ours = list.filter((r) => OUR_HOSTS.some((h) => String(r.watch_url || '').startsWith(h)));
+  const hosts = [...new Set(list.map((r) => {
+    try { return new URL(String(r.watch_url || '')).host; } catch { return '(не адрес)'; }
+  }))];
+  record('Обзоры на своём языке: ссылка собрана нашим шаблоном',
+         list.length > 0 && ours.length === list.length,
+         `${ours.length} из ${list.length}; хосты: ${hosts.join(', ')}`,
+         'ловит возврат к безусловному шаблону youtube.com/watch?v= и чужой адрес из ответа источника');
 
   // Обзор тура обязан читаться как гол/обзор, иначе на карточке встанет
   // пометка «момент» у всего подряд.
@@ -2574,6 +2650,65 @@ async function checkPlayerPositions() {
 }
 
 
+// ------------------------------------------------ кэш рейтинга игроков ----
+// Владелец: «статистика иногда не загружается».
+//
+// ⚠️ КЭШ, ПЕРЕСТАВШИЙ ОБНОВЛЯТЬСЯ, — ЭТО НЕ ОШИБКА НА ЭКРАНЕ, А ПРОШЛАЯ
+// НЕДЕЛЯ ВМЕСТО ЭТОЙ. Экран нарисуется, числа будут правдоподобны, и понять,
+// что они недельной давности, по нему невозможно. Поэтому свежесть
+// проверяется сверкой С ЖИВЫМ РАСЧЁТОМ, а не тем, что таблица не пуста.
+async function checkRatingCache() {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    record('Кэш рейтинга', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    return r.ok ? r.json().catch(() => null) : null;
+  };
+
+  const t0 = Date.now();
+  const week = await rpc('player_ratings', { p_days: 7, p_limit: 50 });
+  const ms = Date.now() - t0;
+  const rows = Array.isArray(week) ? week : [];
+  // Потолок анонима — три секунды; здесь вдвое строже, потому что срыв
+  // случался именно тогда, когда рядом шёл ночной обход, а не на пустой базе.
+  record('Кэш рейтинга: экран укладывается в лимит anon',
+         rows.length > 0 && ms < 1500,
+         `${rows.length} строк, ${ms} мс`,
+         'ловит возврат к расчёту на каждый показ: 33 799 буферов ради 50 строк');
+
+  // ⚠️ СВЕЖЕСТЬ — ЭТО СОВПАДЕНИЕ С ЖИВЫМ, А НЕ НАЛИЧИЕ СТРОК. Окно 365 в
+  // кэше есть, а окно 14 — нет; значит один и тот же вопрос можно задать
+  // дважды: через кэш и мимо него. Если ночное обновление отвалится, лидеры
+  // недели разойдутся с лидерами тех же суток, посчитанными на месте.
+  const live = await rpc('player_ratings', { p_days: 14, p_limit: 50 });
+  const liveRows = Array.isArray(live) ? live : [];
+  record('Кэш рейтинга: окно мимо кэша считается живьём', liveRows.length > 0,
+         `${liveRows.length} строк по окну, которого в кэше нет`,
+         'ловит кэш, ставший ЕДИНСТВЕННЫМ источником: пустой кэш = пустой экран');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у РАЗНЫХ окон обязаны быть разные ответы.
+  // Совпадение строка в строку значило бы, что `p_days` не читается вовсе —
+  // и тогда обе проверки выше зелены, а экран показывает одно и то же
+  // независимо от выбранной вкладки.
+  const year = await rpc('player_ratings', { p_days: 365, p_limit: 50 });
+  const yearRows = Array.isArray(year) ? year : [];
+  const sameTop = rows.length > 0 && yearRows.length > 0
+    && rows[0].card_id === yearRows[0].card_id
+    && rows[0].goals === yearRows[0].goals;
+  record('Кэш рейтинга: контроль — окна различаются', !sameTop,
+         sameTop ? 'неделя и год дали одного лидера с теми же голами'
+                 : `за неделю ${rows[0]?.goals ?? '?'} голов у лидера, за год ${yearRows[0]?.goals ?? '?'}`,
+         sameTop ? '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ' : 'проверка способна упасть');
+}
+
+
 // ---------------------------------------- охват статистики: лиги и команды ---
 // Владелец: «дособери статистику всех команд и игроков».
 //
@@ -2628,18 +2763,44 @@ async function checkStatsCoverage() {
     const d = await board(code);
     return d ? ((d.leagues ?? [])[0]?.name ?? null) : null;
   };
-  /** Дата последнего ЗАВЕРШЁННОГО матча лиги в окне, или null.
+  /** Месяцы `YYYYMM` за последний год, от свежего к старому. */
+  const lastMonths = (count) => {
+    const out = [];
+    const d = new Date();
+    d.setUTCDate(1);
+    for (let i = 0; i < count; i += 1) {
+      out.push(`${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
+      d.setUTCMonth(d.getUTCMonth() - 1);
+    }
+    return out;
+  };
+
+  /** Дата последнего ЗАВЕРШЁННОГО матча лиги за год, или null.
    *  Признак завершённости тот же, что читает сам обход
-   *  (`completed_event_ids` в scraper/espn.py): `status.type.completed`, и
-   *  никакой другой — идущий матч тоже приходит событием. */
-  const lastFinished = async (code, dates) => {
-    const d = await board(code, dates);
-    const days = (d?.events ?? [])
-      .filter((e) => e.status?.type?.completed === true)
-      .map((e) => String(e.date ?? '').slice(0, 10))
-      .filter(Boolean)
-      .sort();
-    return days.length ? days[days.length - 1] : null;
+   *  (`completed_events` в scraper/espn.py): `status.type.completed`, и
+   *  никакой другой — идущий матч тоже приходит событием.
+   *
+   *  ⚠️ СПРАШИВАЕТСЯ ПОМЕСЯЧНО, А НЕ ДИАПАЗОНОМ ДАТ, И ЭТО НЕ СТИЛЬ. Здесь
+   *  стояло `dates=ГГГГММДД-ГГГГММДД`, и ESPN перестал такое понимать — 400
+   *  на КАЖДУЮ лигу, включая заведомо живую. Проверка от этого не покраснела
+   *  честно, а начала врать в одну сторону: 400 читался как «ни одного матча
+   *  за год», и живые кубки УЕФА попадали в список брошенных кодов рядом с
+   *  настоящей поломкой. Тот же диапазон стоял в самом обходе — там он молча
+   *  обнулил ночной сбор, см. espn_stats.py.
+   *
+   *  Месяцы идут от свежего к старому и обход обрывается на ПЕРВОМ, где матч
+   *  нашёлся: у живой лиги это один запрос, тринадцать — только у мёртвой. */
+  const lastFinished = async (code, months) => {
+    for (const month of months) {
+      const d = await board(code, month);
+      const days = (d?.events ?? [])
+        .filter((e) => e.status?.type?.completed === true)
+        .map((e) => String(e.date ?? '').slice(0, 10))
+        .filter(Boolean)
+        .sort();
+      if (days.length) return days[days.length - 1];
+    }
+    return null;
   };
 
   // По восемь за раз: полсотни запросов подряд растянули бы прогон, а все разом
@@ -2707,9 +2868,7 @@ async function checkStatsCoverage() {
   //    УЕФА, и тайская лига, а у них последний матч в мае и новый сезон на
   //    носу — вот почему окно именно годовое.
   const quiet = leagues.filter((l) => !seen.some((x) => x.name === l.name));
-  const year = `${new Date(Date.now() - 365 * 24 * 3600 * 1000)
-    .toISOString().slice(0, 10).replace(/-/g, '')}-`
-    + `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  const year = lastMonths(13);
   //    Считается ПОСЛЕДНЯЯ ДАТА, а не число матчей, и это разница по существу:
   //    у sui.1 за год 8 матчей, у irl.1 — 35, то есть по счётчику обе «живые»,
   //    а последние их матчи 28.09.2025 и 01.11.2025. Девять месяцев не молчит
@@ -2753,6 +2912,31 @@ async function checkStatsCoverage() {
          clubMatches >= 800,
          `${clubMatches} матчей команд за 30 суток`,
          'ловит разрыв player_match_stats -> rebuild_club_matches: игроки есть, команд нет');
+}
+
+// ⚠️ БЕЗ КЛЮЧЕЙ ПРОВЕРКА НЕ ВЫПОЛНЯЕТСЯ, А НЕ «ПАДАЕТ СОРОК ЧЕТЫРЕ РАЗА».
+// Каждый раздел ниже сам умеет сказать «нет VITE_SUPABASE_* в окружении» и
+// записать себе минус. По отдельности это честно, а вместе получается
+// «✗ падений: 44» — и прогон выглядит так, будто развалился прод, хотя
+// проверять просто нечем.
+//
+// Так и вышло 20.09.2026: кнопка выкладки успешно выложила все девять
+// функций, а последним шагом напечатала 44 падения — потому что в секретах
+// GitHub не было `SUPABASE_ANON_KEY`. Полчаса ушло на поиск поломки, которой
+// не было. Отличать «сломано» от «нечем посмотреть» обязан сам скрипт.
+//
+// Код возврата 2, а не 1: «не выполнено» — это не то же самое, что
+// «выполнено и красное», и вызывающая сторона вправе их различать.
+{
+  const нет = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
+    .filter((v) => !process.env[v]);
+  if (нет.length) {
+    console.error('\nПРОВЕРКА НЕ ВЫПОЛНЕНА: нет ' + нет.join(', ') + '.');
+    console.error('Это НЕ поломка прода — проверять нечем.');
+    console.error('В GitHub Actions они приходят из секретов SUPABASE_URL и '
+                  + 'SUPABASE_ANON_KEY (см. docs/DEPLOY.md).');
+    process.exit(2);
+  }
 }
 
 await checkDigest();
@@ -3499,6 +3683,154 @@ async function checkForecastWinner() {
          st == null ? 'forecast_starving не ответила'
                     : `${st.starving} сверенных матчей не дошли до мозга`,
          'ловит шаг dopamine, который перестал доезжать: муха перестаёт учиться');
+
+  // ── калибровка ────────────────────────────────────────────────────────────
+  //
+  // ⚠️ ЧТО ИМЕННО ЗДЕСЬ МОЖЕТ СЛОМАТЬСЯ ТИХО. Ночной шаг `calibrate` может
+  // перестать доезжать ровно так же, как до него переставали `grade` и
+  // `dopamine`: экран продолжит показывать числа, просто это снова будут
+  // сырые — те, где «уверен на 100 %» значит «попадаю в половине случаев».
+  // Снаружи не отличить, поэтому проверяется не «таблица есть», а что число
+  // на экране ДЕЙСТВИТЕЛЬНО пересчитано.
+  const calRes = await get(
+    `${url}/rest/v1/forecast_calibration`
+    + '?select=model,a,b,brier_raw,brier_cal,brier_const,fitted_at',
+    { apikey: svc, Authorization: `Bearer ${svc}` });
+  const cr = calRes.ok ? await calRes.json().catch(() => []) : [];
+  const calModels = new Set(cr.map((r) => r.model));
+  record('Калибровка: подогнана по всем трём',
+         ['llm', 'fly', 'own'].every((m) => calModels.has(m)),
+         cr.length ? cr.map((r) => r.model).sort().join(', ') : 'таблица пуста',
+         'ловит остановку ночного шага calibrate: экран возвращается к сырым числам');
+
+  // Свежесть: подгонка старше недели значит, что шаг умер, а строки остались.
+  const oldest = cr.length
+    ? Math.max(...cr.map((r) => Date.now() - Date.parse(r.fitted_at))) : Infinity;
+  const days = Number.isFinite(oldest) ? (oldest / 86400000).toFixed(1) : '?';
+  record('Калибровка: не протухла',
+         Number.isFinite(oldest) && oldest < 8 * 86400000,
+         Number.isFinite(oldest) ? `самая старая подгонка ${days} сут назад`
+                                 : 'подгонок нет вовсе',
+         'строки в таблице живут вечно; протухшая подгонка выглядит как свежая');
+
+  // ⚠️ САМОЕ ВАЖНОЕ ЧИСЛО ЗДЕСЬ — brier_const, А НЕ brier_cal. «Стало лучше
+  // сырого» ничего не значит: быть лучше вранья не достижение. Значение имеет
+  // только сравнение с константой — предсказателем, который всегда называет
+  // одну и ту же долю попаданий.
+  const better = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_raw));
+  record('Калибровка: лучше сырого на отложенной части',
+         cr.length > 0 && better.length === cr.length,
+         cr.map((r) => `${r.model} ${Number(r.brier_raw).toFixed(3)}→${Number(r.brier_cal).toFixed(3)}`)
+           .join(', ') || 'нечего сравнивать',
+         'ловит подгонку, которая делает хуже — такое бывает при вырожденном входе');
+
+  const vsConst = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_const));
+  record('Калибровка: сколько моделей обошли константу',
+         cr.length > 0,
+         `${vsConst.length} из ${cr.length}: `
+         + cr.map((r) => `${r.model} ${Number(r.brier_cal).toFixed(4)} против ${Number(r.brier_const).toFixed(4)}`)
+             .join('; '),
+         'ЗАМЕР, А НЕ ПОРОГ: печатает правду о том, есть ли у моделей умение');
+
+  // ⚠️ ЧИСЛО НА ЭКРАНЕ ДОЛЖНО БЫТЬ ПЕРЕСЧИТАНО, А НЕ ПРОСТО ЛЕЖАТЬ В ТАБЛИЦЕ.
+  // Проверяется сама RPC, которой пользуется экран: у неё рядом обязаны быть
+  // сырое и калиброванное, и они обязаны РАЗЛИЧАТЬСЯ — иначе `forecast_upcoming`
+  // отдаёт калиброванную колонку, не применив подгонку.
+  const withBoth = up.filter((r) => r.own_conf != null && r.own_cal != null);
+  const moved = withBoth.filter((r) => Math.abs(Number(r.own_cal) - Number(r.own_conf)) > 0.001);
+  record('Калибровка: экран получает пересчитанное число',
+         withBoth.length > 0 && moved.length > 0,
+         withBoth.length === 0 ? 'в ответе нет пары conf/cal'
+           : `${moved.length} из ${withBoth.length} строк пересчитаны, пример `
+             + `${Number(withBoth[0].own_conf).toFixed(3)} → ${Number(withBoth[0].own_cal).toFixed(3)}`,
+         'ловит RPC, которая отдаёт колонку, но не применяет подгонку');
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. У несуществующей модели подгонки нет, и функция
+  // ОБЯЗАНА вернуть входное число без изменений. Если она и там что-то
+  // «калибрует» — значит она калибрует не тем, чем думает, и все проверки
+  // выше зеленеют зря.
+  // ── экспрессы, собранные моделями ─────────────────────────────────────────
+  //
+  // ⚠️ ГЛАВНОЕ, ЧТО ЗДЕСЬ ПРОВЕРЯЕТСЯ, — НЕ «ЕСТЬ ЛИ БИЛЕТЫ», А ГРАНИЦА §4.4.
+  // Экспрессы бывают двух видов: собранные букмекерской линией (в них есть
+  // цена, и они закрыты паролем персонала) и собранные моделями из
+  // собственных калиброванных вероятностей (цены нет, их видит игрок).
+  // Разделение держится фильтром `model is not null` в самих функциях, и
+  // именно это надо проверять анонимным ключом, а не доверять коду экрана.
+  const accAnon = await rpc(anon, 'model_accumulator_history', { p_limit: 50 });
+  const acc = Array.isArray(accAnon.rows) ? accAnon.rows : [];
+  record('Экспрессы: аноним видит билеты моделей',
+         accAnon.status === 200 && acc.length > 0,
+         `HTTP ${accAnon.status}, ${acc.length} билетов`,
+         'ловит закрытую от игрока историю экспрессов: экран пуст, а данные есть');
+
+  const models3 = new Set(acc.map((r) => r.model));
+  record('Экспрессы: собирают все три модели',
+         ['llm', 'fly', 'own'].every((m) => models3.has(m)),
+         [...models3].sort().join(', ') || 'пусто',
+         'ловит модель, выпавшую из ночной сборки');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ГРАНИЦЫ. Ни один билет, отданный анониму, не
+  // имеет права нести цену или выплату. Если поле вдруг появится — значит
+  // фильтр в функции перестал работать, и §4.4 нарушен молча.
+  const priced = acc.filter((r) => r.payout != null || r.price != null);
+  record('Экспрессы: контроль границы §4.4 — цен наружу нет',
+         priced.length === 0,
+         priced.length === 0 ? 'ни одного билета с ценой или выплатой'
+                             : `${priced.length} билетов НЕСУТ цену — граница сломана`,
+         'без этого нельзя отличить «цен нет» от «цены есть, но их не рисуют»');
+
+  // Вероятность прохода — произведение вероятностей плеч. Пересчитываем
+  // НЕЗАВИСИМО по одному билету: сходится — значит число не декоративное.
+  const sample = acc.find((r) => r.legs >= 3);
+  if (sample) {
+    const legsRes = await rpc(anon, 'model_accumulator_legs', { p_ticket: sample.id });
+    const ls = Array.isArray(legsRes.rows) ? legsRes.rows : [];
+    const mine = ls.reduce((a, l) => a * Number(l.prob), 1);
+    const ok = ls.length === sample.legs && Math.abs(mine - Number(sample.pass_prob)) < 0.02;
+    record('Экспресс: шанс прохода пересчитывается независимо',
+           ok,
+           ls.length !== sample.legs
+             ? `плеч ${ls.length}, а в билете ${sample.legs}`
+             : `${mine.toFixed(4)} против ${Number(sample.pass_prob).toFixed(4)}`,
+           'ловит билет, у которого число на экране не связано с его плечами');
+  } else {
+    record('Экспресс: шанс прохода пересчитывается независимо', false,
+           'нет билета с тремя плечами', 'н/д');
+  }
+
+  // ⚠️ ДОЛЯ ПРОХОДОВ ПЕРЕСЧИТЫВАЕТСЯ НЕЗАВИСИМО, А НЕ ПРИНИМАЕТСЯ НА ВЕРУ.
+  // Просто напечатать «прошло 21 %» — это замер, который не может упасть, и
+  // скрипт справедливо назвал бы такую строку ПУСТОЙ. Поэтому здесь сверяется
+  // арифметика самой сводки: `hit_rate` обязан равняться `won / settled`, а
+  // `won` не может превышать `settled`. Сломается функция — строка покраснеет.
+  const accBoard = await rpc(anon, 'model_accumulator_scoreboard', {});
+  const ab2 = Array.isArray(accBoard.rows) ? accBoard.rows : [];
+  const accBad = ab2.filter((r) => {
+    if (r.settled === 0) return r.hit_rate != null;
+    if (r.won > r.settled) return true;
+    return Math.abs(Number(r.hit_rate) - (100 * r.won) / r.settled) > 0.1;
+  });
+  // Пока вся история собрана задним числом, доля завышена — это часть ответа,
+  // а не сноска: без неё число читается как заслуга.
+  const backfilledOnly = ab2.length > 0 && ab2.every((r) => r.backfilled >= r.settled);
+  record('Экспрессы: доля проходов сходится с числом билетов',
+         ab2.length > 0 && accBad.length === 0,
+         (accBad.length
+           ? `${accBad.length} строк со сломанной арифметикой`
+           : ab2.map((r) => `${r.model}/${r.legs}: ${r.hit_rate ?? '—'}% при ожидании ${r.expected ?? '—'}%`)
+               .join('; ') || 'сводка пуста')
+         + (backfilledOnly ? ' | ВСЯ история задним числом, доля завышена' : ''),
+         'доля пересчитывается из won и settled; расхождение больше 0.1 пункта валит');
+
+  const noFit = await rpc(svc, 'calibrated_confidence', { p: 0.9, p_model: 'нет-такой-модели' });
+  const noFitVal = typeof noFit.rows === 'number' ? noFit.rows : Number(noFit.rows);
+  const passthrough = Math.abs(noFitVal - 0.9) < 1e-9;
+  record('Калибровка: контроль модели без подгонки',
+         passthrough,
+         passthrough ? '0.9 вернулось как 0.9 — подгонки нет, число не тронуто'
+                     : `0.9 превратилось в ${noFitVal} — калибруется НЕ ТЕМ`,
+         'без этого нельзя отличить «применилось» от «что-то посчиталось»');
 }
 
 /**
@@ -3691,6 +4023,7 @@ async function checkTransfers() {
          works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+await checkRatingCache();
 await checkStatsCoverage();
 await checkProGate();
 await checkForecastQuality();

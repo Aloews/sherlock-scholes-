@@ -135,17 +135,28 @@ def parse_player_rows(summary):
     return rows
 
 
-def completed_event_ids(scoreboard):
-    """Ids of matches that have actually finished.
+def completed_events(scoreboard):
+    """Pairs `(id, YYYY-MM-DD)` for matches that have actually finished.
 
     An in-progress match would be written and then never corrected: the
     pipeline upserts by (card, date, tournament), so a 60th-minute snapshot
     would sit there as the final line until someone noticed a striker stuck on
     one goal.
+
+    The date comes back alongside the id because the caller now asks ESPN for
+    a whole calendar month at a time and has to narrow the answer down to the
+    days it actually wanted. It is the scoreboard's own `date`, in UTC, and
+    only ever used to decide whether an event is inside the requested span --
+    the date that gets stored still comes from `parse_match_meta`.
     """
     out = []
     for event in scoreboard.get("events") or []:
         status = ((event.get("status") or {}).get("type") or {})
         if status.get("completed") is True and event.get("id"):
-            out.append(str(event["id"]))
+            out.append((str(event["id"]), str(event.get("date") or "")[:10]))
     return out
+
+
+def completed_event_ids(scoreboard):
+    """Just the ids, for callers that do not narrow by date."""
+    return [event_id for event_id, _ in completed_events(scoreboard)]
