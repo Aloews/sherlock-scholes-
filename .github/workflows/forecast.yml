@@ -64,17 +64,23 @@ jobs:
         run: |
           python3 tests/test_fly_brain.py
           python3 tests/test_forecast_duel.py
+          python3 tests/test_calibration.py
 
       # ⚠️ ПОРЯДОК ВНУТРИ ШАГА — ЭТО И ЕСТЬ ОБУЧЕНИЕ. Сначала сверить названное
       # с тем, чем матчи кончились, потом отдать исходы мухе (дофамин), и
       # только потом называть новые: иначе муха назовёт завтрашние матчи
       # мозгом, который ещё не узнал вчерашних.
-      - name: Grade, dopamine, pick
+      # ⚠️ CALIBRATE СТОИТ ПОСЛЕ GRADE И ДО PICK, И ОБА СОСЕДСТВА ЗНАЧИМЫ.
+      # После сверки — потому что калибруется по матчам с известным исходом.
+      # До того, как названы новые прогнозы, — чтобы экран сразу отдавал их с
+      # сегодняшней подгонкой, а не с вчерашней.
+      - name: Grade, calibrate, dopamine, pick
         run: |
           if [ "$(date -u +%u)" = "1" ]; then
             python football_scraper/forecast_pipeline.py train
           fi
           python football_scraper/forecast_pipeline.py grade
+          python football_scraper/forecast_pipeline.py calibrate
           python football_scraper/forecast_pipeline.py dopamine
           python football_scraper/forecast_pipeline.py pick
 

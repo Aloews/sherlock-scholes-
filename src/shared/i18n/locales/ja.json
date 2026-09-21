@@ -1214,6 +1214,7 @@
     "fly_dopamine_other": "ドーパミン：{{n}} 件の結果",
     "exp_total": "予想 {{v}} 点",
     "agree_other": "{{n}} 名が一致",
+    "calibrated": "的中率で補正した確信度",
     "board": "これまでの予想者",
     "upcoming": "次の試合",
     "history": "予想の履歴",

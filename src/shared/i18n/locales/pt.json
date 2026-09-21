@@ -1263,6 +1263,7 @@
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
     "agree_other": "{{n}} concordam",
+    "calibrated": "confiança conferida com os acertos",
     "board": "Prognosticadores até agora",
     "upcoming": "Próximos jogos",
     "history": "Histórico de prognósticos",

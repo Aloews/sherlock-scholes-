@@ -1214,6 +1214,7 @@
     "fly_dopamine_other": "多巴胺：{{n}} 个结果",
     "exp_total": "预计 {{v}} 球",
     "agree_other": "{{n}} 位一致",
+    "calibrated": "按命中率校准的置信度",
     "board": "预测者战绩",
     "upcoming": "接下来的比赛",
     "history": "预测历史",

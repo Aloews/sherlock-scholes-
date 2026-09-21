@@ -3683,6 +3683,80 @@ async function checkForecastWinner() {
          st == null ? 'forecast_starving не ответила'
                     : `${st.starving} сверенных матчей не дошли до мозга`,
          'ловит шаг dopamine, который перестал доезжать: муха перестаёт учиться');
+
+  // ── калибровка ────────────────────────────────────────────────────────────
+  //
+  // ⚠️ ЧТО ИМЕННО ЗДЕСЬ МОЖЕТ СЛОМАТЬСЯ ТИХО. Ночной шаг `calibrate` может
+  // перестать доезжать ровно так же, как до него переставали `grade` и
+  // `dopamine`: экран продолжит показывать числа, просто это снова будут
+  // сырые — те, где «уверен на 100 %» значит «попадаю в половине случаев».
+  // Снаружи не отличить, поэтому проверяется не «таблица есть», а что число
+  // на экране ДЕЙСТВИТЕЛЬНО пересчитано.
+  const calRes = await get(
+    `${url}/rest/v1/forecast_calibration`
+    + '?select=model,a,b,brier_raw,brier_cal,brier_const,fitted_at',
+    { apikey: svc, Authorization: `Bearer ${svc}` });
+  const cr = calRes.ok ? await calRes.json().catch(() => []) : [];
+  const calModels = new Set(cr.map((r) => r.model));
+  record('Калибровка: подогнана по всем трём',
+         ['llm', 'fly', 'own'].every((m) => calModels.has(m)),
+         cr.length ? cr.map((r) => r.model).sort().join(', ') : 'таблица пуста',
+         'ловит остановку ночного шага calibrate: экран возвращается к сырым числам');
+
+  // Свежесть: подгонка старше недели значит, что шаг умер, а строки остались.
+  const oldest = cr.length
+    ? Math.max(...cr.map((r) => Date.now() - Date.parse(r.fitted_at))) : Infinity;
+  const days = Number.isFinite(oldest) ? (oldest / 86400000).toFixed(1) : '?';
+  record('Калибровка: не протухла',
+         Number.isFinite(oldest) && oldest < 8 * 86400000,
+         Number.isFinite(oldest) ? `самая старая подгонка ${days} сут назад`
+                                 : 'подгонок нет вовсе',
+         'строки в таблице живут вечно; протухшая подгонка выглядит как свежая');
+
+  // ⚠️ САМОЕ ВАЖНОЕ ЧИСЛО ЗДЕСЬ — brier_const, А НЕ brier_cal. «Стало лучше
+  // сырого» ничего не значит: быть лучше вранья не достижение. Значение имеет
+  // только сравнение с константой — предсказателем, который всегда называет
+  // одну и ту же долю попаданий.
+  const better = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_raw));
+  record('Калибровка: лучше сырого на отложенной части',
+         cr.length > 0 && better.length === cr.length,
+         cr.map((r) => `${r.model} ${Number(r.brier_raw).toFixed(3)}→${Number(r.brier_cal).toFixed(3)}`)
+           .join(', ') || 'нечего сравнивать',
+         'ловит подгонку, которая делает хуже — такое бывает при вырожденном входе');
+
+  const vsConst = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_const));
+  record('Калибровка: сколько моделей обошли константу',
+         cr.length > 0,
+         `${vsConst.length} из ${cr.length}: `
+         + cr.map((r) => `${r.model} ${Number(r.brier_cal).toFixed(4)} против ${Number(r.brier_const).toFixed(4)}`)
+             .join('; '),
+         'ЗАМЕР, А НЕ ПОРОГ: печатает правду о том, есть ли у моделей умение');
+
+  // ⚠️ ЧИСЛО НА ЭКРАНЕ ДОЛЖНО БЫТЬ ПЕРЕСЧИТАНО, А НЕ ПРОСТО ЛЕЖАТЬ В ТАБЛИЦЕ.
+  // Проверяется сама RPC, которой пользуется экран: у неё рядом обязаны быть
+  // сырое и калиброванное, и они обязаны РАЗЛИЧАТЬСЯ — иначе `forecast_upcoming`
+  // отдаёт калиброванную колонку, не применив подгонку.
+  const withBoth = up.filter((r) => r.own_conf != null && r.own_cal != null);
+  const moved = withBoth.filter((r) => Math.abs(Number(r.own_cal) - Number(r.own_conf)) > 0.001);
+  record('Калибровка: экран получает пересчитанное число',
+         withBoth.length > 0 && moved.length > 0,
+         withBoth.length === 0 ? 'в ответе нет пары conf/cal'
+           : `${moved.length} из ${withBoth.length} строк пересчитаны, пример `
+             + `${Number(withBoth[0].own_conf).toFixed(3)} → ${Number(withBoth[0].own_cal).toFixed(3)}`,
+         'ловит RPC, которая отдаёт колонку, но не применяет подгонку');
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. У несуществующей модели подгонки нет, и функция
+  // ОБЯЗАНА вернуть входное число без изменений. Если она и там что-то
+  // «калибрует» — значит она калибрует не тем, чем думает, и все проверки
+  // выше зеленеют зря.
+  const noFit = await rpc(svc, 'calibrated_confidence', { p: 0.9, p_model: 'нет-такой-модели' });
+  const noFitVal = typeof noFit.rows === 'number' ? noFit.rows : Number(noFit.rows);
+  const passthrough = Math.abs(noFitVal - 0.9) < 1e-9;
+  record('Калибровка: контроль модели без подгонки',
+         passthrough,
+         passthrough ? '0.9 вернулось как 0.9 — подгонки нет, число не тронуто'
+                     : `0.9 превратилось в ${noFitVal} — калибруется НЕ ТЕМ`,
+         'без этого нельзя отличить «применилось» от «что-то посчиталось»');
 }
 
 /**

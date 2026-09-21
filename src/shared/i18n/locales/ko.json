@@ -1214,6 +1214,7 @@
     "fly_dopamine_other": "도파민: 결과 {{n}}건",
     "exp_total": "예상 {{v}}골",
     "agree_other": "{{n}}명 일치",
+    "calibrated": "적중률로 보정한 신뢰도",
     "board": "지금까지의 예측자",
     "upcoming": "다음 경기",
     "history": "예측 기록",

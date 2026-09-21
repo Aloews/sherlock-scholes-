@@ -31,10 +31,20 @@
 -- 1. Счёт матчей (`club_match` за 400 дней) НЕ участвует в сортировке — он
 --    только в ответе. Значит его можно посчитать после `limit`, для шестидесяти
 --    строк вместо трёх с половиной тысяч.
--- 2. Счёт состава в сортировке участвует (третий ключ), поэтому остаётся до
---    `limit` — но из `lateral` на клуб превращается в один group by по
---    25 096 строкам.
+-- 2. Счёт состава и стоимость состава в сортировке УЧАСТВУЮТ, поэтому после
+--    `limit` их не унести — они переехали в ночную памятку
+--    `club_directory_facts` (3491 строка, собирается вместе с уровнями
+--    составов в 06:42).
 -- 3. `club_display_name` зовётся после `limit`: шестьдесят раз вместо 3491.
+--
+-- ⚠️ ПОЧЕМУ ДВА ЗАХОДА, А НЕ ОДИН. Первая правка убрала два `lateral` и дала
+-- 2249 → 84.6 мс на спокойной базе. Этого оказалось МАЛО: `check-prod` всё
+-- равно поймал 57014, потому что под собственной нагрузкой проверки инстанс
+-- режет процессор, а в запросе оставались два полных прохода — по 24 818
+-- строкам `card_current_club` (сумма стоимостей) и 25 096 строкам
+-- `club_squad` (размер состава), на КАЖДЫЙ вызов. Замер по сети без нагрузки
+-- показывал 0.7–1.0 с при потолке 3 с — то есть «починено» означало «падает
+-- реже». Второй заход убрал и их: 84.6 → 26.5 мс, 10601 → 5563 буфера.
 --
 -- ⚠️ ПОРЯДОК СТРОК СОХРАНЁН ДОСЛОВНО. Ключи сортировки (`стоимость, elo,
 -- состав, имя`) вынесены сквозь подзапрос и применены второй раз после
@@ -43,6 +53,129 @@
 -- ответе их нет и не было.
 --
 -- ЗАМЕР ПОСЛЕ и сверка ответа — в конце файла.
+
+-- ── 1) Памятка: состав и стоимость состава по клубам ───────────────────────
+--
+-- ⚠️ ЭТИ ДВА ЧИСЛА УЧАСТВУЮТ В СОРТИРОВКЕ, поэтому унести их за `limit`, как
+-- счёт матчей, нельзя: чтобы отобрать шестьдесят, надо знать стоимость у всех
+-- 3491. Значит остаётся второй приём — посчитать ночью.
+--
+-- Счёт матчей сюда НЕ кладётся намеренно: он нужен только отобранным
+-- шестидесяти, и лишняя колонка в памятке означала бы лишний проход по
+-- `club_match` каждую ночь ради числа, которое и так дёшево посчитать после
+-- `limit`.
+
+create table if not exists public.club_directory_facts (
+  club_key    text primary key,
+  squad       integer not null,
+  squad_value bigint
+);
+
+comment on table public.club_directory_facts is
+  'Состав и стоимость состава по клубам для справочника. Пересобирается '
+  'ночью вместе с уровнями составов (06:42). Счёт матчей сюда НЕ кладётся: '
+  'он нужен только шестидесяти отобранным и считается после limit.';
+
+alter table public.club_directory_facts enable row level security;
+drop policy if exists club_directory_facts_read on public.club_directory_facts;
+create policy club_directory_facts_read on public.club_directory_facts for select using (true);
+grant select on public.club_directory_facts to anon, authenticated, service_role;
+
+create index if not exists club_directory_facts_order
+  on public.club_directory_facts (squad_value desc nulls last);
+
+-- ── 2) Сборка — в той же ночной функции, что и составы ─────────────────────
+--
+-- ⚠️ ТРЕТЬЯ ТАБЛИЦА В ФУНКЦИИ С ИМЕНЕМ ПРО УРОВНИ — СОЗНАТЕЛЬНО, и причина та
+-- же, что в club_squad_fame.sql: ночью эту работу запускает pg_cron строкой
+-- `select public.rebuild_club_squad_levels()`, прибитой в расписании. Каждая
+-- новая функция здесь требовала бы новой записи в cron — то есть ещё одного
+-- места, которое можно забыть завести. Забытый шаг сборки не падает: он
+-- молчит, а таблица просто стареет.
+
+create or replace function public.rebuild_club_squad_levels()
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare v_count integer;
+declare v_fame  integer;
+declare v_dir   integer;
+begin
+  -- Две отдельные команды на таблицу, а не data-modifying CTE: все CTE делят
+  -- один снимок, и delete внутри insert конфликтовал бы сам с собой.
+  delete from club_squad_level;
+
+  insert into club_squad_level (club_key, rn, level, squad_size)
+  select r.club_key, r.rn::smallint, r.level::smallint, r.n::smallint
+    from (
+      select q.club_key, l.level,
+             row_number() over (partition by q.club_key order by l.level desc) as rn,
+             count(*)     over (partition by q.club_key)                        as n
+        from club_squad q
+        join player_level l on l.card_id = q.card_id
+        join cards c on c.id = q.card_id and c.active and c.category = 'player'
+       where q.left_at is null
+    ) r
+   -- Глубже одиннадцати не считается никогда: depth ограничен сверху 11.
+   where r.rn <= 11;
+
+  get diagnostics v_count = row_count;
+
+  -- ── известность, тот же приём (club_squad_fame.sql) ──
+  delete from club_squad_fame;
+
+  insert into club_squad_fame (club_key, rn, fame, squad_size)
+  select r.club_key, r.rn::smallint, r.fame::smallint, r.n::smallint
+    from (
+      select cc.club_key, c.fame,
+             -- `c.id` вторым ключом — против недетерминированного порядка при
+             -- равной известности; на среднее не влияет, на воспроизводимость
+             -- влияет.
+             row_number() over (partition by cc.club_key
+                                    order by c.fame desc, c.id) as rn,
+             count(*)     over (partition by cc.club_key)        as n
+        from card_current_club cc
+        join cards c on c.id = cc.card_id
+       where c.active and c.category = 'player' and c.fame is not null
+    ) r
+   where r.rn <= 11;
+
+  get diagnostics v_fame = row_count;
+
+  -- ── справочник клубов ──
+  delete from club_directory_facts;
+
+  insert into club_directory_facts (club_key, squad, squad_value)
+  select f.club_key,
+         coalesce(sq.n, 0),
+         v.v
+    from football_club f
+    left join (select s.club_key, count(*)::int as n
+                 from club_squad s where s.left_at is null group by s.club_key) sq
+           on sq.club_key = f.club_key
+    left join (select cc.club_key, sum(c.market_value_eur)::bigint as v
+                 from card_current_club cc
+                 join cards c on c.id = cc.card_id and c.active and c.category = 'player'
+                group by cc.club_key) v
+           on v.club_key = f.club_key;
+
+  get diagnostics v_dir = row_count;
+
+  raise notice 'club_squad_level: %, club_squad_fame: %, club_directory_facts: %',
+               v_count, v_fame, v_dir;
+  -- Возвращается по-прежнему число строк УРОВНЕЙ: на него смотрят расписание
+  -- и старые логи.
+  return v_count;
+end;
+$$;
+
+revoke all on function public.rebuild_club_squad_levels() from public;
+grant execute on function public.rebuild_club_squad_levels() to service_role;
+
+-- Заполнить сразу, не дожидаясь 06:42: пустая памятка означала бы пустой
+-- справочник клубов до утра.
+select public.rebuild_club_squad_levels();
+
+-- ── 3) Сама функция ────────────────────────────────────────────────────────
 
 create or replace function public.club_directory(
   p_lang  text default 'ru',
@@ -73,29 +206,20 @@ language sql stable security definer set search_path = public as $$
   -- ⚠️ elo НЕ ВЫБРОШЕН И level ПО-ПРЕЖНЕМУ ОТДАЁТСЯ: владелец хочет позже
   -- сравнить, какой показатель вернее. Выбросить сейчас — значит нечего будет
   -- сравнивать.
-  with val as (
-    select cc.club_key, sum(c.market_value_eur)::bigint as v
-      from card_current_club cc
-      join cards c on c.id = cc.card_id and c.active and c.category = 'player'
-     group by cc.club_key
-  ),
-  sq as (
-    -- Был `left join lateral … on true` — то есть отдельный поиск на каждый из
-    -- 3491 клуба. Стал один проход по 25 096 строкам состава.
-    select s.club_key, count(*)::int as n
-      from club_squad s
-     where s.left_at is null
-     group by s.club_key
-  ),
-  top as (
+  --
+  -- ⚠️ ПОРЯДОК СТРОК СОХРАНЁН ДОСЛОВНО. Ключи сортировки (стоимость, elo,
+  -- состав, имя) вынесены сквозь подзапрос и применены второй раз после
+  -- `limit` — иначе `limit` отдал бы правильные шестьдесят клубов в
+  -- произвольном порядке. `ord_elo` и `raw_name` тянутся наверх только ради
+  -- этого: в ответе их нет и не было.
+  with top as (
     select f.club_key, f.name as raw_name, f.country, f.league, f.crest_url,
-           coalesce(sq.n, 0)::int as squad,
-           r.level::int as level, v.v as squad_value,
+           coalesce(d.squad, 0) as squad,
+           r.level::int as level, d.squad_value,
            r.elo as ord_elo
       from football_club f
-      left join sq on sq.club_key = f.club_key
+      left join club_directory_facts d on d.club_key = f.club_key
       left join club_rating r on r.club_key = f.club_key
-      left join val v on v.club_key = f.club_key
      where f.kind = case when coalesce(p_kind, 'club') = 'national' then 'national' else 'club' end
        and (p_query is null or btrim(p_query) = ''
          or f.name ilike '%' || btrim(p_query) || '%'
@@ -104,9 +228,9 @@ language sql stable security definer set search_path = public as $$
          or exists (select 1 from club_alias a
                      where a.club_key = f.club_key
                        and a.alias_key like club_norm_key(btrim(p_query)) || '%'))
-     order by v.v desc nulls last,
+     order by d.squad_value desc nulls last,
               r.elo desc nulls last,
-              coalesce(sq.n, 0) desc,
+              coalesce(d.squad, 0) desc,
               f.name
      limit greatest(coalesce(p_limit, 60), 1)
   )
@@ -132,29 +256,38 @@ revoke all on function public.club_directory(text, text, int, text) from public;
 grant execute on function public.club_directory(text, text, int, text)
   to anon, authenticated, service_role;
 
--- ── ЗАМЕР ПОСЛЕ ────────────────────────────────────────────────────────────
+  to anon, authenticated, service_role;
+
+-- ── ЗАМЕРЫ ─────────────────────────────────────────────────────────────────
 --
---     Function Scan on club_directory  (actual rows=60 loops=1)
---       Buffers: shared hit=10601
---     Execution Time: 84.560 ms
---
---     2249.811 мс → 84.560 мс,  82210 буферов → 10601,  строк 60 → 60
+--     было                        2249.811 мс   82210 буферов
+--     после первого захода          84.560 мс   10601
+--     после памятки                 26.498 мс    5563
 --
 -- ── СВЕРКА ОТВЕТА ──────────────────────────────────────────────────────────
 --
--- ⚠️ СРАВНИВАЛСЯ НЕ НАБОР СТРОК, А ОТВЕТ ЦЕЛИКОМ ВМЕСТЕ С ПОРЯДКОМ: md5 от
--- строк, склеенных в том порядке, в котором функция их отдаёт. Порядок здесь
--- и есть смысл функции — это витрина «самые дорогие составы сверху», и
--- перестановка была бы поломкой, которую `except` не увидел бы.
+-- ⚠️ СРАВНИВАЛСЯ НЕ НАБОР СТРОК, А ОТВЕТ ЦЕЛИКОМ ВМЕСТЕ С ПОРЯДКОМ. Порядок
+-- здесь и есть смысл функции — это витрина «самые дорогие составы сверху», и
+-- перестановка была бы поломкой, которую `except` по множествам не увидел бы.
 --
---   вызов                 md5 до и после
---   ru/null/60/club       396f81152872103fa89adc6b273c2c63   ✓ совпал
---   en/null/60/club       396f81152872103fa89adc6b273c2c63   ✓ совпал
---   ru/null/40/national   efa378ee74855dd137b9c4972fd7fdab   ✓ совпал
---   ru/«зенит»/60/club    a75f885853dc543656080abe619a8103   ✓ совпал  (4 строки)
---   ru/«man»/10/club      3e1ab871539d9bfa39ca8811e2e1e451   ✓ совпал  (10 строк)
+-- Первый заход сверялся по md5 ответа на пяти наборах параметров — язык
+-- (влияет на club_display_name), kind (другая ветка where), поиск кириллицей
+-- и латиницей (ilike + club_norm_key + club_alias), маленький limit
+-- (проверяет, что перенос счёта матчей за limit не сдвинул границу
+-- отсечения). Все пять совпали.
 --
--- Взяты все четыре развилки тела: язык (влияет на club_display_name), kind
--- (другая ветка where), поиск кириллицей и латиницей (ilike + club_norm_key +
--- club_alias), маленький limit (проверяет, что перенос счёта матчей за limit
--- не сдвинул границу отсечения).
+-- ⚠️ А ВОТ ВТОРОЙ ЗАХОД ПОКАЗАЛ, ЧТО ЭТОТ СПОСОБ СВЕРКИ ЗДЕСЬ ХРУПОК, И ЭТО
+-- СТОИТ ЗАПИСАТЬ. md5 «до» снимался 20.09, «после» — 21.09, и четыре из пяти
+-- разошлись. Причина не в правке: в теле стоит `current_date - 400`, окно
+-- сдвинулось на сутки вместе с датой, и счёт матчей у части клубов честно
+-- изменился. Сверка по снимку, сделанному вчера, у функции, зависящей от
+-- сегодняшней даты, доказывает не то, что нужно.
+--
+-- Правильная сверка — обе версии В ОДИН МОМЕНТ: прежняя логика (живые `val`
+-- и `sq`) посчитана заново рядом с новой и вычтена в обе стороны, вместе с
+-- номером строки:
+--
+--     old_rows 60 | new_rows 60 | only_old 0 | only_new 0
+--
+-- Ноль в обе стороны при сравнении, включающем `row_number()`, — это и
+-- значит «тот же ответ в том же порядке».

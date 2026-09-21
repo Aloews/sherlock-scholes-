@@ -149,7 +149,17 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
             home={match.home_team}
             away={match.away_team}
             pick={match.fly_pick}
-            confidence={match.fly_conf}
+            /*
+             * ⚠️ КАЛИБРОВАННОЕ ЧИСЛО, А НЕ СЫРОЕ, И ЭТО ИСПРАВЛЕНИЕ ЛЖИ НА
+             * ЭКРАНЕ. Сырая уверенность мухи по 992 размеченным прогнозам —
+             * в среднем 10.2 % при 46.2 % попаданий; у «своего варианта»
+             * 78.6 % при 46.0 %. Подпись под прогнозом обязана значить то,
+             * что говорит.
+             *
+             * Запасной путь на сырое оставлен намеренно: пока ночная
+             * подгонка не отработала, показать прежнее честнее, чем прочерк.
+             */
+            confidence={match.fly_cal ?? match.fly_conf}
             replayKey={replay}
           />
 
@@ -161,6 +171,12 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
             {match.agree != null && (
               <span>{t('duel.agree', { n: match.agree })}</span>
             )}
+            {/*
+              * Подпись появляется ТОЛЬКО когда число действительно
+              * калибровано. Написать её всегда значило бы обещать сверку
+              * там, где её ещё не было.
+              */}
+            {match.fly_cal != null && <span>{t('duel.calibrated')}</span>}
           </div>
         </div>
       )}
