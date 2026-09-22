@@ -126,7 +126,8 @@
   },
   "design": {
     "master": "New design",
-    "classic": "Classic design"
+    "classic": "Classic design",
+    "paper": "Paper design"
   },
   "tabs": {
     "home": "Home",

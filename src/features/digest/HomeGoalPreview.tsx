@@ -99,7 +99,7 @@ export function HomeGoalPreview() {
         )}
         <span className="absolute inset-0 flex items-center justify-center">
           <span className="w-8 h-8 rounded-full bg-black/55 flex items-center justify-center">
-            <IconPlayerPlayFilled size={14} className="text-white translate-x-[1px]" />
+            <IconPlayerPlayFilled size={14} className="ds-on-media translate-x-[1px]" />
           </span>
         </span>
       </span>

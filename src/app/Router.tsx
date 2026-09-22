@@ -48,7 +48,7 @@ function LazyFallback() {
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <circle cx="12" cy="12" r="10" fill="#fff" />
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
       </motion.svg>
     </div>
   );

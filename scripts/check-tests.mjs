@@ -471,6 +471,29 @@ testcase(
     () => !passes('npx vitest run src/shared/ui/PlayerPhoto.test.tsx')),
 );
 
+testcase(
+  'тесты дизайна замечают нечитаемый текст на бумаге',
+  'в переданном макете стояло «--brand-muted #8C8275 — 4.6:1 на #F2EADB»; ' +
+  'пересчёт дал 3.16, то есть вторичный текст на кремовом не дотягивал до ' +
+  'AA. Число в комментарии не проверяет себя само — проверяет только мера',
+  () => withBroken('src/index.css',
+    (s) => s.replace('    --brand-muted:        90 82 70;    /* #5A5246',
+                     '    --brand-muted:       140 130 117;  /* СЛОМАНО #8C8275'),
+    () => !passes('npx vitest run test/design_paper.test.ts')),
+);
+
+testcase(
+  'тесты дизайна замечают фон, прибитый к тёмному',
+  'у body рядом стоит `bg-brand-bg`, который читает токен и даёт кремовый, ' +
+  'но встроенный `style="background: #0a0e1a"` перебивает его по правилам ' +
+  'каскада. Обе строки выглядят осмысленно порознь, и заметить это можно ' +
+  'было только замером computed-стиля в браузере',
+  () => withBroken('index.html',
+    (s) => s.replace('style="background: var(--splash-bg, #0a0e1a); margin: 0"',
+                     'style="background: #0a0e1a; margin: 0"  /* СЛОМАНО */'),
+    () => !passes('npx vitest run test/design_paper.test.ts')),
+);
+
 // ---------------------------------------------------------------------------
 // Дерево обязано быть чистым: иначе восстановление затрёт чужие правки.
 const dirty = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();

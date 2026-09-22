@@ -68,7 +68,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <circle cx="12" cy="12" r="10" fill="#fff" />
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
               </motion.svg>
               <p className="text-zinc-500 text-sm">{t('app.loading')}</p>
             </>

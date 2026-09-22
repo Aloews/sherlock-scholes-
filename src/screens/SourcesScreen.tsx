@@ -131,7 +131,11 @@ export function SourcesScreen() {
             </div>
           ))}
 
-          <p className="text-[10.5px] leading-relaxed text-brand-muted/70 pt-1">
+          {/* ⚠️ БЕЗ ПРОЗРАЧНОСТИ, И ЭТО ЗАМЕР, А НЕ ВКУС. `text-brand-muted/70`
+              на 10.5 пикселях даёт 3.28 на бумаге и 4.24 на тёмном — ниже AA
+              в обоих. Это строка про то, как с нами связаться правообладателю:
+              нечитаемая, она обессмысливает весь экран. */}
+          <p className="text-[10.5px] leading-relaxed text-brand-muted pt-1">
             {t('rights.contact')}
           </p>
         </div>

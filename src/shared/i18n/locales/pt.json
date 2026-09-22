@@ -126,7 +126,8 @@
   },
   "design": {
     "master": "Novo design",
-    "classic": "Design clássico"
+    "classic": "Design clássico",
+    "paper": "Design papel"
   },
   "tabs": {
     "home": "Início",

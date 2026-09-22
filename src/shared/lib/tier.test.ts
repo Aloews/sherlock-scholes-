@@ -20,12 +20,36 @@ describe('tierCardStyle', () => {
     expect(tierCardStyle('not-a-tier')).toBeUndefined();
   });
 
-  it('uses the tier colour for the border of rare/epic/legendary', () => {
+  it('берёт цвет ИЗ ТОКЕНА ДИЗАЙНА, но с константой в запасе', () => {
+    // ⚠️ ЦВЕТ ПЕРЕЕХАЛ ИЗ КОНСТАНТЫ В CSS-ПЕРЕМЕННУЮ, И БЕЗ ЗАПАСА ЭТО
+    // ЛОМАЕТ ВСЁ ВНЕ БРАУЗЕРА. `TIER_COLOR` подобран под почти чёрный фон:
+    // `icon` там #F4EEE6 и на кремовой бумаге исчезает целиком. Но в тестах
+    // и при серверном рендере переменных нет вовсе, поэтому hex обязан
+    // остаться запасным значением внутри var().
     for (const t of ['legendary', 'epic', 'rare'] as const) {
       const style = tierCardStyle(t);
       expect(style).toBeDefined();
-      expect(style!.borderColor).toBe(TIER_COLOR[t]);
+      expect(style!.borderColor).toBe(`var(--tier-${t}, ${TIER_COLOR[t]})`);
       expect(String(style!.boxShadow)).toContain(TIER_COLOR[t]);
+    }
+  });
+
+  it('прозрачность считается color-mix, а не склейкой hex с альфой', () => {
+    // ⚠️ ЭТО РОВНО ТА ПОЛОМКА, КОТОРУЮ ЛЕГКО ВЕРНУТЬ ОДНОЙ СТРОКОЙ.
+    // `${c}80` работало, пока `c` был `#B47AFF`; с `var(--tier-epic, …)`
+    // получается `var(--tier-epic, #B47AFF)80` — мусор, который браузер
+    // молча выбрасывает ВМЕСТЕ СО ВСЕЙ ТЕНЬЮ. Ни один тест на радиус этого
+    // не заметит: числа-то на месте.
+    for (const t of ['icon', 'legendary', 'epic', 'rare'] as const) {
+      for (const d of ['master', 'classic'] as const) {
+        for (const style of [tierCardStyle(t, d), tierRingStyle(t, d), tierFrameStyle(t, d)]) {
+          if (!style) continue;
+          const css = `${style.boxShadow ?? ''} ${style.background ?? ''}`;
+          expect(css, `${t}/${d}: hex-альфа приклеена к var()`)
+            .not.toMatch(/\)[0-9a-f]{2}\b/i);
+          if (/0 0 \d+px/.test(css)) expect(css).toContain('color-mix');
+        }
+      }
     }
   });
 
@@ -143,7 +167,8 @@ describe('tierRingStyle — design branches', () => {
   it('rings every decorated tier at 2px in both designs', () => {
     for (const t of ['icon', 'legendary', 'epic', 'rare'] as const) {
       for (const d of ['master', 'classic'] as const) {
-        expect(String(tierRingStyle(t, d)!.boxShadow)).toContain(`0 0 0 2px ${TIER_COLOR[t]}`);
+        expect(String(tierRingStyle(t, d)!.boxShadow))
+          .toContain(`0 0 0 2px var(--tier-${t}, ${TIER_COLOR[t]})`);
       }
     }
   });
@@ -152,7 +177,7 @@ describe('tierRingStyle — design branches', () => {
 describe('tier helpers — properties (fast-check)', () => {
   it('never throws and only decorates real non-common tiers', () => {
     fc.assert(
-      fc.property(fc.string(), fc.constantFrom(...(['master', 'classic'] as const)), (s, design) => {
+      fc.property(fc.string(), fc.constantFrom(...(['master', 'classic', 'paper'] as const)), (s, design) => {
         const card  = tierCardStyle(s, design);
         const ring  = tierRingStyle(s, design);
         const frame = tierFrameStyle(s, design);

@@ -124,7 +124,8 @@
   },
   "design": {
     "master": "새 디자인",
-    "classic": "클래식 디자인"
+    "classic": "클래식 디자인",
+    "paper": "페이퍼 디자인"
   },
   "tabs": {
     "home": "홈",

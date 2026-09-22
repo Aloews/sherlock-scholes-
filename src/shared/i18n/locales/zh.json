@@ -124,7 +124,8 @@
   },
   "design": {
     "master": "新设计",
-    "classic": "经典设计"
+    "classic": "经典设计",
+    "paper": "纸质设计"
   },
   "tabs": {
     "home": "主页",
