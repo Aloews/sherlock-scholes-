@@ -56,6 +56,31 @@ const json = (body: unknown, status = 200) =>
   });
 
 // --- Telegram Bot API helper ---
+
+/**
+ * ⚠️ СРОК У КАЖДОГО ОБРАЩЕНИЯ НАРУЖУ, И ОН СТАВИТСЯ ОДИН РАЗ НА ВЕСЬ МОДУЛЬ.
+ *
+ * Запрос без срока НЕ ПАДАЕТ — он висит. Висящий сборщик неотличим от
+ * работающего, и ровно этим ночной обход шёл 3 ч 36 мин при бюджете 80 минут;
+ * разбор — в CLAUDE.md, «Прогон по расписанию обязан уметь краснеть».
+ *
+ * ⚠️ ЗАТЕНЕНИЕ `fetch`, А НЕ ПРАВКА КАЖДОГО ВЫЗОВА. Мест вызова в Edge-функциях
+ * этого проекта тридцать три; поправить их по одному значит оставить без срока
+ * тридцать четвёртый, дописанный завтра. Здесь же новый вызов получает срок
+ * просто потому, что написан в этом файле.
+ *
+ * Свой `signal` у вызова ПОБЕЖДАЕТ: `init.signal ?? …` — то есть место, которому
+ * нужен другой срок или отмена по своей причине, ничего не теряет.
+ *
+ * Двадцать секунд с запасом покрывают любой здоровый ответ: замеры
+ * соседних функций — 164–2600 мс.
+ */
+const FETCH_MS = 20_000;
+const bareFetch = globalThis.fetch;
+// eslint-disable-next-line no-shadow-restricted-names
+const fetch = (input: string | URL | Request, init: RequestInit = {}): Promise<Response> =>
+  bareFetch(input, { ...init, signal: init.signal ?? AbortSignal.timeout(FETCH_MS) });
+
 async function tg(method: string, body: unknown): Promise<any> {
   const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
     method: "POST",
