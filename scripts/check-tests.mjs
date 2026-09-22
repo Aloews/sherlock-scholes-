@@ -398,6 +398,44 @@ testcase(
     () => !passes(py('tests/test_calibration.py'))),
 );
 
+testcase(
+  'тесты прав замечают затёртое решение владельца о лицензии',
+  '`license_ok` отвечает «есть ли у нас право это показывать», и ставит его ' +
+  'человек. Допиши кто-нибудь `license_ok = excluded.license_ok` в upsert ' +
+  'реестра — и следующее применение миграции вернёт умолчания поверх его ' +
+  'решения. Ни одного признака на экране при этом не появится: строки на ' +
+  'месте, числа на месте, они просто перестали быть его',
+  () => withBroken('supabase/migrations/content_rights.sql',
+    (s) => s.replace('  attribution = excluded.attribution,',
+                     '  attribution = excluded.attribution,\n'
+                     + '  license_ok  = excluded.license_ok,  -- СЛОМАНО'),
+    () => !passes('npx vitest run test/content_rights.test.ts')),
+);
+
+testcase(
+  'тесты прав замечают ревизию, открытую анониму',
+  'ревизия отвечает «5335 снимков показываются без разрешения» — это ' +
+  'утверждение про нас, а не про контент, и вдобавок стоит 5.5 с полного ' +
+  'прохода при потолке anon в три секунды. Выданная анониму, она и список ' +
+  'претензий раздаёт, и отвечает 57014 вместо ответа',
+  () => withBroken('supabase/migrations/content_rights.sql',
+    (s) => s.replace('grant execute on function public.content_rights_gaps()         to service_role;',
+                     'grant execute on function public.content_rights_gaps() to anon, service_role;  -- СЛОМАНО'),
+    () => !passes('npx vitest run test/content_rights.test.ts')),
+);
+
+testcase(
+  'тесты подписи замечают разбор, который «узнаёт» чужой хост',
+  'если `file_title_from_url` начнёт отдавать имя для ссылок Transfermarkt ' +
+  'и ESPN, сборщик подписей понесёт Викискладу имена чужих файлов. Тот ' +
+  'ответит «нет такого» на каждое — и прогон будет выглядеть рабочим, не ' +
+  'подписав ничего',
+  () => withBroken('docs/cards_photo_credits.py',
+    (s) => s.replace("    m = re.search(r\"/commons/[0-9a-f]/[0-9a-f]{2}/([^/]+)$\", path)",
+                     "    m = re.search(r\"/([^/]+)$\", path)  # СЛОМАНО: любой хост"),
+    () => !passes(py('tests/test_photo_credits.py'))),
+);
+
 // ---------------------------------------------------------------------------
 // Дерево обязано быть чистым: иначе восстановление затрёт чужие правки.
 const dirty = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
