@@ -90,7 +90,6 @@
  */
 const FETCH_MS = 20_000;
 const bareFetch = globalThis.fetch;
-// eslint-disable-next-line no-shadow-restricted-names
 const fetch = (input: string | URL | Request, init: RequestInit = {}): Promise<Response> =>
   bareFetch(input, { ...init, signal: init.signal ?? AbortSignal.timeout(FETCH_MS) });
 
