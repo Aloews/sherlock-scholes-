@@ -221,6 +221,22 @@
     "streak_best_one": "best {{count}} day",
     "streak_best_other": "best {{count}} days"
   },
+  "rights": {
+    "title": "Sources and rights",
+    "entry_hint": "Where the photos, texts and data come from",
+    "intro": "Some of the material here comes from open sources. Every one of them is named below with its licence — the licences themselves require it.",
+    "license": "Licence",
+    "attribution": "Attribution",
+    "attr_per_record": "each file has its own author",
+    "attr_source": "naming the source is enough",
+    "attr_none": "not required",
+    "terms": "Terms of use",
+    "site": "Source website",
+    "load_failed": "Could not load the list of sources.",
+    "contact": "If you hold the rights to something here and think it is used incorrectly, write to us — we will correct it or take it down.",
+    "photo": "Photo: {{credit}}",
+    "text_from": "Based on material from {{source}}"
+  },
   "level": {
     "title_1": "Rookie",
     "title_5": "Detective",

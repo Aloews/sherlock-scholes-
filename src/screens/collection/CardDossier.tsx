@@ -18,6 +18,7 @@ import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
 import { careerHighlight } from '@/shared/lib/careerHighlight';
 import { careerRowMeta } from '@/shared/lib/careerRowMeta';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
+import { PhotoCredit } from '@/features/rights/PhotoCredit';
 import { watchUrl } from '@/features/digest/digestFormat';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
@@ -449,6 +450,16 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
           </div>
         )}
 
+        {/* ⚠️ ПОДПИСЬ — УСЛОВИЕ ЛИЦЕНЗИИ, А НЕ ПОДРОБНОСТЬ. Снимки с
+            Викисклада (7072 файла, замер 22.09.2026) лежат под CC BY / CC
+            BY-SA: показывать их можно и коммерчески, ровно пока названы
+            автор и лицензия. Досье — единственное место в игре, где у
+            снимка есть место под строку: в самой игре карточка показывается
+            секундами и подпись там была бы нечитаемой. */}
+        {card.photo_url && (
+          <PhotoCredit url={card.photo_url} sourceKey={card.photo_source} />
+        )}
+
         {/* Two per row, not the prototype's four: its tiles held numbers, ours
             hold words like "Нападающий", which truncate at 390px. */}
         {tiles.length > 0 && (
@@ -841,6 +852,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
             >
               {blurb}
             </p>
+            {/* CC BY-SA требует назвать источник текста там, где текст
+                показан. Ставится только у тех описаний, чьё происхождение
+                установлено: у части карточек текст написан руками, и
+                приписать его Википедии значило бы соврать про источник. */}
+            {card.descriptions_source === 'wikipedia' && (
+              <p className="text-[10px] text-brand-muted/80 mt-1.5">
+                {t('rights.text_from', { source: 'Wikipedia' })}
+              </p>
+            )}
           </Section>
         )}
       </div>

@@ -319,6 +319,15 @@ export interface Card {
                             // Not an ordering key on its own: see pageviews_i18n and
                             // collection_views() in collection_page_by_lang.sql.
   photo_url: string | null; // Commons photo (players); null = no photo
+  /** Ключ в `content_source`: чей это снимок. Выводится из хоста ссылки
+   *  миграцией content_rights.sql — руками не заполняется. Нужен подписи под
+   *  фото: лицензии Викисклада требуют назвать автора, и без источника
+   *  экран не знает, требуется подпись или нет. */
+  photo_source?: string | null;
+  /** Ключ в `content_source` для текста описания. `wikipedia` = взято из
+   *  Википедии (CC BY-SA, источник обязан быть назван); null = происхождение
+   *  не установлено, и приписывать его источнику нельзя. */
+  descriptions_source?: string | null;
   continent?: Continent | null; // players only; absent until continents_filter.sql runs
   country?: string | null;      // ISO code for the flag (GB-ENG etc.); absent until cards_country_column.sql runs
   position_ru?: string | null;  // Вратарь/Защитник/Полузащитник/Нападающий; absent until cards_position_column.sql runs

@@ -9,6 +9,7 @@ import {
   buildForbiddenWords, type CardInput, type StaffRole, type CardReportGroup,
 } from '@/features/admin/adminApi';
 import { AccumulatorPanel } from '@/features/duel/AccumulatorPanel';
+import { RightsPanel } from '@/features/rights/RightsPanel';
 import { WinnerBoard } from '@/features/duel/WinnerBoard';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
@@ -196,7 +197,13 @@ function StaffCabinet({ password, role, onLogout }: {
 
       {tab === 'reports' && <ReportsPanel password={password} onOpenCard={openCard} />}
       {tab === 'cards' && (
-        <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
+        <div className="space-y-4">
+          <CardsPanel password={password} isAdmin={isAdmin} form={form} setForm={setForm} />
+          {/* ⚠️ РЕВИЗИЯ ПРАВ — АДМИНУ, НЕ МОДЕРАТОРУ. Она отвечает «столько-то
+              записей показывается без разрешения»: это утверждение про
+              владельца, а не инструмент разбора жалоб. */}
+          {isAdmin && <RightsPanel password={password} />}
+        </div>
       )}
       {tab === 'forecast' && isAdmin && (
         <div className="space-y-4">

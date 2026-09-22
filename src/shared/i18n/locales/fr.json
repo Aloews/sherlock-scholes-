@@ -221,6 +221,22 @@
     "streak_best_one": "record : {{count}} jour",
     "streak_best_other": "record : {{count}} jours"
   },
+  "rights": {
+    "title": "Sources et droits",
+    "entry_hint": "D'où viennent les photos, les textes et les données",
+    "intro": "Une partie du contenu provient de sources ouvertes. Toutes sont nommées ici, avec leur licence — les licences elles-mêmes l'exigent.",
+    "license": "Licence",
+    "attribution": "Attribution",
+    "attr_per_record": "chaque fichier a son propre auteur",
+    "attr_source": "nommer la source suffit",
+    "attr_none": "non requise",
+    "terms": "Conditions d'utilisation",
+    "site": "Site de la source",
+    "load_failed": "Impossible de charger la liste des sources.",
+    "contact": "Si vous détenez des droits sur un contenu et estimez qu'il est mal utilisé, écrivez-nous : nous le corrigerons ou le retirerons.",
+    "photo": "Photo : {{credit}}",
+    "text_from": "D'après des éléments de {{source}}"
+  },
   "level": {
     "title_1": "Stagiaire",
     "title_5": "Détective",

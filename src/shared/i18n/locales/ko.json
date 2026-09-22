@@ -217,6 +217,22 @@
     "streak_other": "{{count}}일 연속",
     "streak_best_other": "최고 기록 {{count}}일"
   },
+  "rights": {
+    "title": "출처와 권리",
+    "entry_hint": "사진·글·데이터의 출처",
+    "intro": "자료의 일부는 공개 출처에서 모았습니다. 라이선스가 요구하는 대로, 모든 출처를 라이선스와 함께 여기에 밝힙니다.",
+    "license": "라이선스",
+    "attribution": "출처 표시",
+    "attr_per_record": "파일마다 저작자가 다릅니다",
+    "attr_source": "출처 이름만 밝히면 됩니다",
+    "attr_none": "필요 없음",
+    "terms": "이용 약관",
+    "site": "출처 사이트",
+    "load_failed": "출처 목록을 불러오지 못했습니다.",
+    "contact": "권리자이시고 자료가 잘못 쓰였다고 생각하신다면 알려 주세요. 바로잡거나 내리겠습니다.",
+    "photo": "사진: {{credit}}",
+    "text_from": "{{source}} 자료를 바탕으로 함"
+  },
   "level": {
     "title_1": "수습생",
     "title_5": "탐정",

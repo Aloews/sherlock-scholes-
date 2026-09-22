@@ -4023,6 +4023,149 @@ async function checkTransfers() {
          works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------------------ происхождение и права ---
+// ⚠️ ЭТО ПРОВЕРКА УСЛОВИЯ ЛИЦЕНЗИИ, А НЕ ОПРЯТНОСТИ ДАННЫХ. Фотографии с
+// Викисклада (7072 файла, замер 22.09.2026) лежат под CC BY / CC BY-SA:
+// показывать их можно и коммерчески, ровно пока названы автор и лицензия.
+// Тексты описаний — из Википедии под CC BY-SA, и та требует назвать источник.
+// До сентября 2026 в приложении не было названо НИ ОДНОГО.
+//
+// Проверяется вся цепочка, а не наличие таблицы:
+//
+//   1. реестр источников ЧИТАЕТСЯ анонимом — иначе экран «Источники» пуст,
+//      и подпись, которой никто не видит, подписью не является;
+//   2. у всего собранного контента источник ОПОЗНАН — иначе про эти записи
+//      нельзя сказать вообще ничего (спрашивается СЕРВИСНЫМ ключом: ревизия
+//      идёт около шести секунд, а у anon потолок три);
+//   3. у живого снимка из колоды подпись ДОХОДИТ ДО КОНЦА: не «таблица
+//      есть», а «вот этот файл на экране подписан вот этим автором».
+//
+// И у каждой — отрицательный контроль: неизвестный хост обязан остаться
+// неопознанным, выдуманная ссылка — остаться без подписи, а внутренняя
+// ревизия (она отвечает «столько-то показывается без разрешения») обязана
+// быть анониму ЗАКРЫТА.
+async function checkContentRights() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Права: реестр источников', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const t0 = Date.now();
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => null);
+    return { status: r.status, ok: r.ok, data, ms: Date.now() - t0 };
+  };
+
+  // 1. Реестр виден игроку.
+  let sources = [];
+  try {
+    const r = await get(`${url}/rest/v1/content_source`
+                        + '?select=key,title,license,attribution', auth);
+    sources = r.ok ? (await r.json().catch(() => [])) : [];
+  } catch { sources = []; }
+  const perRecord = sources.filter((x) => x.attribution === 'per_record');
+  record('Права: реестр источников читается анонимом',
+         sources.length >= 8 && perRecord.length > 0,
+         sources.length ? `${sources.length} источников, из них «подпись у каждого файла» ${perRecord.length}`
+                        : 'реестр НЕ ОТДАЁТСЯ — экран «Источники» будет пуст',
+         'без этого лицензия CC BY-SA не выполнена: источник нигде не назван');
+
+  // 2. Всё собранное опознано.
+  //
+  // ⚠️ СЕРВИСНЫМ КЛЮЧОМ, И ЭТО РЕШЕНИЕ ПО ЗАМЕРУ, А НЕ УДОБСТВО. Ревизия
+  // обходит ВСЕ таблицы с контентом (166 тысяч строк статистики, 57 тысяч
+  // SoccerWiki, 27 тысяч карточек) и стоит около шести секунд. У роли anon
+  // потолок запроса — три, то есть анониму она отвечала бы 57014 вместо
+  // ответа, да ещё и раздавала бы по шесть секунд процессорного времени
+  // кому угодно. Это внутренняя ревизия, и ходить в неё надо изнутри.
+  const svc = serviceKey();
+  if (!svc) {
+    record('Права: у всего собранного известен источник', false,
+           'нет SUPABASE_SERVICE_KEY — ревизию нечем спросить', 'н/д');
+  } else {
+    const svcAuth = { apikey: svc, Authorization: `Bearer ${svc}`,
+                      'Content-Type': 'application/json' };
+    const t0 = Date.now();
+    const r = await fetch(`${url}/rest/v1/rpc/content_rights_unresolved`, {
+      method: 'POST', headers: svcAuth, body: '{}',
+    });
+    const ms = Date.now() - t0;
+    const data = await r.json().catch(() => null);
+    const clean = r.ok && Array.isArray(data) && data.length === 0;
+    record('Права: у всего собранного известен источник', clean,
+           r.ok
+             ? (clean ? `ни одной неопознанной колонки, ${ms} мс`
+                      : `НЕ ОПОЗНАНО: ${data.map((x) => x.area).join(', ').slice(0, 80)}`)
+             : `HTTP ${r.status} ${data?.code ?? ''}`,
+           'ловит сборщик, который завёл источник и не внёс его в мост');
+  }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ОПОЗНАНИЯ. Пункт 2 зелен и тогда, когда
+  // «опознаётся» вообще всё подряд. Чужой хост ОБЯЗАН остаться без источника,
+  // а знакомый — с ним. Совпали ответы — проверка выше ничего не стоит.
+  const known = await rpc('content_source_of_url',
+                          { p_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/X.jpg' });
+  const alien = await rpc('content_source_of_url', { p_url: 'https://example.invalid/x.jpg' });
+  const discriminates = known.ok && alien.ok
+                        && known.data === 'wikimedia_commons' && alien.data === null;
+  record('Права: контроль — чужой хост остаётся неопознанным', discriminates,
+         discriminates ? 'Викисклад опознан, example.invalid — нет'
+                       : `знакомый → ${JSON.stringify(known.data)}, чужой → ${JSON.stringify(alien.data)}`,
+         discriminates ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 3. Живой снимок из колоды — и его подпись. До конца цепочки: берём ту
+  // самую ссылку, которую увидит игрок, и спрашиваем подпись именно к ней.
+  let live = null;
+  try {
+    const r = await get(`${url}/rest/v1/cards`
+                        + '?select=photo_url&photo_source=eq.wikimedia_commons'
+                        + '&photo_url=not.is.null&limit=1', auth);
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    live = rows[0]?.photo_url ?? null;
+  } catch { live = null; }
+
+  if (!live) {
+    record('Права: подпись к живому снимку', false,
+           'в колоде не нашлось снимка с Викисклада — проверять нечего',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+  } else {
+    const credit = await rpc('media_credit_for', { p_urls: [live] });
+    const row = credit.ok && Array.isArray(credit.data) ? credit.data[0] : null;
+    const signed = Boolean(row && (row.author || row.license));
+    record('Права: у живого снимка из колоды есть подпись', signed,
+           signed ? `${(row.author || '(автор не указан)')} · ${row.license ?? 'лицензия не названа'}`
+                  : 'снимок на экране, подписи нет — условие CC BY-SA не выполнено',
+           'идёт до конца: ссылка из карточки → подпись к ней, а не «таблица существует»');
+
+    // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПОДПИСИ: выдуманная ссылка обязана остаться без
+    // подписи. Иначе «подписано» значило бы «функция что-нибудь возвращает».
+    const fake = await rpc('media_credit_for',
+                           { p_urls: ['https://commons.wikimedia.org/wiki/Special:FilePath/'
+                                      + 'нет-такого-файла-' + Date.now() + '.jpg'] });
+    const empty = fake.ok && Array.isArray(fake.data) && fake.data.length === 0;
+    record('Права: контроль — выдуманная ссылка остаётся без подписи', empty,
+           empty ? 'подпись не выдумывается' : `вернулось ${JSON.stringify(fake.data).slice(0, 60)}`,
+           empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+  }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ЗАКРЫТОСТИ. Обе ревизии отвечают «столько-то
+  // записей показывается без разрешения» — это про нас, а не про контент, и
+  // анониму их видеть нельзя. Открыты — значит гранты разъехались.
+  const audit = await rpc('content_rights_audit', {});
+  const probe = await rpc('content_rights_unresolved', {});
+  const locked = (!audit.ok || audit.data?.code === '42501')
+                 && (!probe.ok || probe.data?.code === '42501');
+  record('Права: контроль — внутренняя ревизия закрыта анониму', locked,
+         locked ? 'content_rights_audit и content_rights_unresolved анониму недоступны'
+                : 'ревизия ОТКРЫТА анониму — и по содержанию, и по шести секундам CPU',
+         locked ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkRatingCache();
 await checkStatsCoverage();
 await checkProGate();
@@ -4038,6 +4181,7 @@ await checkOdds();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
+await checkContentRights();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

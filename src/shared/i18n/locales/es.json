@@ -221,6 +221,22 @@
     "streak_best_one": "mejor: {{count}} día",
     "streak_best_other": "mejor: {{count}} días"
   },
+  "rights": {
+    "title": "Fuentes y derechos",
+    "entry_hint": "De dónde salen las fotos, los textos y los datos",
+    "intro": "Parte del material procede de fuentes abiertas. Aquí se nombran todas, con su licencia: las propias licencias lo exigen.",
+    "license": "Licencia",
+    "attribution": "Atribución",
+    "attr_per_record": "cada archivo tiene su propio autor",
+    "attr_source": "basta con nombrar la fuente",
+    "attr_none": "no se requiere",
+    "terms": "Condiciones de uso",
+    "site": "Sitio de la fuente",
+    "load_failed": "No se pudo cargar la lista de fuentes.",
+    "contact": "Si usted es titular de derechos y cree que algo se usa de forma indebida, escríbanos: lo corregiremos o lo retiraremos.",
+    "photo": "Foto: {{credit}}",
+    "text_from": "A partir de material de {{source}}"
+  },
   "level": {
     "title_1": "Novato",
     "title_5": "Detective",

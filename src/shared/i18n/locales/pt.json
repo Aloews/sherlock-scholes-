@@ -221,6 +221,22 @@
     "streak_best_one": "recorde: {{count}} dia",
     "streak_best_other": "recorde: {{count}} dias"
   },
+  "rights": {
+    "title": "Fontes e direitos",
+    "entry_hint": "De onde vêm as fotos, os textos e os dados",
+    "intro": "Parte do material vem de fontes abertas. Todas estão nomeadas aqui, com a respectiva licença — as próprias licenças exigem isso.",
+    "license": "Licença",
+    "attribution": "Atribuição",
+    "attr_per_record": "cada arquivo tem o seu autor",
+    "attr_source": "basta nomear a fonte",
+    "attr_none": "não é exigida",
+    "terms": "Termos de uso",
+    "site": "Site da fonte",
+    "load_failed": "Não foi possível carregar a lista de fontes.",
+    "contact": "Se você detém os direitos sobre algo aqui e acha que foi usado de forma indevida, escreva para nós — vamos corrigir ou remover.",
+    "photo": "Foto: {{credit}}",
+    "text_from": "Com base em material de {{source}}"
+  },
   "level": {
     "title_1": "Novato",
     "title_5": "Detetive",

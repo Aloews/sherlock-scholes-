@@ -77,22 +77,37 @@ def _env(**extra):
 
 # (label, argv, env) — all run with cwd=SCRAPER (run.py modes need it; the
 # docs/ scripts compute their own paths, so cwd is harmless for them).
-STEPS = [
-    ("1/7 newcomers (resolve + facts/tier/wc2026)",
+# ⚠️ НОМЕРА ШАГОВ СЧИТАЮТСЯ, А НЕ ВПИСЫВАЮТСЯ. Раньше метки были вписаны
+# вручную («1/7», «2/7», …), и добавление шага означало переписать их все —
+# то есть однажды не переписать. Это та же ловушка, что стоила проекту «семи
+# Edge-функций» при девяти и «остальных семи тестов» при полутора десятках:
+# число устаревает молча, а по нему потом читают отчёт.
+_STEPS = [
+    ("newcomers (resolve + facts/tier/wc2026)",
      [PY, os.path.join(HERE, "cards_enrich_newcomers.py"), "--apply"], _env()),
-    ("2/7 career_stats (legends + clubs_minutes-tail players)",
+    ("career_stats (legends + clubs_minutes-tail players)",
      [PY, os.path.join(HERE, "cards_career_build.py")], _env(APPLY="1")),
-    ("3/7 photos (cards without photo_url)",
+    ("photos (cards without photo_url)",
      [PY, "run.py", "--cards-photos"], _env()),
-    ("4/7 translations (card_translations)",
+    # ⚠️ СРАЗУ ЗА ФОТО, И ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА. Снимки с Викисклада
+    # разрешено показывать ровно пока названы автор и лицензия; шаг выше
+    # добавляет снимки, этот добавляет к ним подписи. Разведи их по разным
+    # ночам — и сутки в приложении висят чужие фотографии без подписи.
+    ("photo credits (условие лицензии CC BY: автор и лицензия у снимка)",
+     [PY, os.path.join(HERE, "cards_photo_credits.py"), "--minutes", "12"],
+     _env(APPLY="1")),
+    ("translations (card_translations)",
      [PY, "run.py", "--cards-translations"], _env()),
-    ("5/7 legend/career reprocess (free, cache-only)",
+    ("legend/career reprocess (free, cache-only)",
      [PY, os.path.join(HERE, "cards_legend_career_reprocess.py")], _env(APPLY="1")),
-    ("6/7 tier recompute (after new stars/facts)",
+    ("tier recompute (after new stars/facts)",
      [PY, os.path.join(HERE, "cards_tier_build.py")], _env(APPLY="1")),
-    ("7/7 fame recompute (percentile drifts on every import)",
+    ("fame recompute (percentile drifts on every import)",
      [PY, os.path.join(HERE, "cards_fame_refresh.py")], _env()),
 ]
+
+STEPS = [("%d/%d %s" % (i + 1, len(_STEPS), label), argv, env)
+         for i, (label, argv, env) in enumerate(_STEPS)]
 
 
 def run_steps(steps, deadline_at=None, runner=None, now=time.monotonic):

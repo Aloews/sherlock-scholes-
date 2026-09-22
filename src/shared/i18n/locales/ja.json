@@ -217,6 +217,22 @@
     "streak_other": "連続{{count}}日",
     "streak_best_other": "自己ベスト{{count}}日"
   },
+  "rights": {
+    "title": "出典と権利",
+    "entry_hint": "写真・文章・データの出どころ",
+    "intro": "素材の一部はオープンな情報源から集めたものです。ライセンスがそれを求めているため、すべての出典をライセンスとともにここに記載しています。",
+    "license": "ライセンス",
+    "attribution": "クレジット表示",
+    "attr_per_record": "ファイルごとに著作者が異なります",
+    "attr_source": "出典名の表示で足ります",
+    "attr_none": "不要",
+    "terms": "利用規約",
+    "site": "出典のサイト",
+    "load_failed": "出典の一覧を読み込めませんでした。",
+    "contact": "権利者の方で、素材の使い方が正しくないとお考えの場合はご連絡ください。訂正または削除します。",
+    "photo": "写真: {{credit}}",
+    "text_from": "{{source}} の資料に基づく"
+  },
   "level": {
     "title_1": "見習い",
     "title_5": "刑事",
