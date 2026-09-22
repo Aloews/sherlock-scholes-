@@ -39,6 +39,11 @@ def check(name, cond):
         FAILED.append(name)
 
 
+def peek_now(clock):
+    """Часы для проверки остатка: время двигает сам раннер."""
+    return lambda: clock["t"]
+
+
 def steps(n):
     return [("%d/%d шаг" % (i + 1, n), ["echo", str(i)], {}) for i in range(n)]
 
@@ -52,7 +57,7 @@ def main():
     def now():
         return clock["t"]
 
-    def runner(_argv, _env):
+    def runner(_argv, _env, _limit=None):
         clock["t"] += 60.0 * 40      # каждый шаг «идёт» сорок минут
         return 0
 
@@ -65,7 +70,7 @@ def main():
     check("у непущенных время ноль, а не выдуманное", got[2][2] == 0.0 and got[3][2] == 0.0)
 
     # ── 2. Непущенный отличим от упавшего ──────────────────────────────────
-    def failing(_argv, _env):
+    def failing(_argv, _env, _limit=None):
         return 1
 
     got = run_steps(steps(2), deadline_at=None, runner=failing, now=now)
@@ -77,7 +82,7 @@ def main():
     # ── 3. Без срока — прежнее поведение ───────────────────────────────────
     ran = []
 
-    def counting(argv, _env):
+    def counting(argv, _env, _limit=None):
         ran.append(argv)
         clock["t"] += 60.0 * 600      # десять часов на шаг
         return 0
@@ -93,6 +98,59 @@ def main():
     check("срок уже прошёл — не запущено ничего", not ran)
     check("и все три помечены пропущенными",
           all(rc is None for _, rc, _ in got))
+
+    # ── 5. ЖЁСТКИЙ СРОК ШАГА: убит — это не «упал» и не «не запускали» ──────
+    #
+    # ⚠️ ЭТО ВТОРАЯ ПОЛОВИНА ТОЙ ЖЕ ПОЛОМКИ. Проверка срока ПЕРЕД шагом не
+    # может прервать уже идущий: 22.09.2026 первый шаг шёл 3 ч 36 мин при
+    # `--minutes 80`, и хвост снова не выполнился. По данным это видно так:
+    # club_crest не обновлялся 20 суток, club_roster 15, soccerwiki_player и
+    # player_transfer по 14 — при том, что ни один прогон не был красным.
+    clock["t"] = 0.0
+    seen_limits = []
+
+    def slow(_argv, _env, limit=None):
+        seen_limits.append(limit)
+        clock["t"] += 60.0 * 90       # шаг «идёт» полтора часа
+        return "timeout" if limit is not None and 60.0 * 90 > limit else 0
+
+    got = run_steps(steps(2), deadline_at=None, runner=slow, now=now,
+                    step_seconds=60.0 * 25)
+    check("свой срок доехал до раннера, а не остался в расчётах",
+          seen_limits and seen_limits[0] == 60.0 * 25)
+    check("затянувшийся шаг ПОМЕЧЕН УБИТЫМ, а не успешным",
+          got[0][1] == "timeout")
+    check("убитый отличим от упавшего (1) и от непущенного (None)",
+          got[0][1] != 1 and got[0][1] is not None)
+    check("падение по сроку НЕ останавливает цепочку",
+          len(got) == 2 and got[1][1] == "timeout")
+
+    # ── 6. Срок шага ограничен остатком общего ─────────────────────────────
+    #
+    # ⚠️ БЕЗ ЭТОГО «СВОЙ СРОК» У ПОСЛЕДНЕГО ШАГА ОЗНАЧАЛ БЫ «СКОЛЬКО УГОДНО»:
+    # бюджет ночи кончается, а шаг всё идёт, потому что его собственные 25
+    # минут ещё не вышли.
+    clock["t"] = 0.0
+    seen_limits.clear()
+
+    def peek(_argv, _env, limit=None):
+        seen_limits.append(limit)
+        clock["t"] += 60.0 * 10
+        return 0
+
+    run_steps(steps(3), deadline_at=60.0 * 25, runner=peek, now=peek_now(clock),
+              step_seconds=60.0 * 25)
+    check("первому отдан его собственный срок (остаток больше)",
+          seen_limits[0] == 60.0 * 25)
+    check("последнему отдан ОСТАТОК, а не его собственный срок",
+          len(seen_limits) >= 2 and seen_limits[1] == 60.0 * 15)
+
+    # ── 7. Отрицательный контроль: без срока раннер получает None ───────────
+    # Иначе проверки выше зеленели бы и на функции, которая всегда шлёт
+    # какое-нибудь число.
+    seen_limits.clear()
+    run_steps(steps(1), deadline_at=None, runner=peek, now=now, step_seconds=None)
+    check("без сроков предел не выдумывается", seen_limits == [None])
 
     print()
     if FAILED:

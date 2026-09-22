@@ -415,3 +415,58 @@ jobs:
         run: pip install -r football_scraper/requirements.txt
       - name: Refresh card fame (percentile over pageviews)
         run: python docs/cards_fame_refresh.py
+
+  # ⚠️ СТОРОЖ. ОН СУЩЕСТВУЕТ ПОТОМУ, ЧТО ЭТОТ ОБХОД ДВАЖДЫ ТЕРЯЛ ПОЛОВИНУ СЕБЯ
+  # МОЛЧА, И ОБА РАЗА УЗНАЛ ОБ ЭТОМ ЧЕЛОВЕК, А НЕ ПРОВЕРКА.
+  #
+  #   12–21.09.2026  десять прогонов подряд «cancelled» — читается как
+  #                  «отменили вручную»; 21 шаг из 28 не запускался.
+  #   22.09.2026     срок в 80 минут не помог: он проверялся ПЕРЕД шагом и не
+  #                  мог прервать уже идущий, первый шаг шёл 3 ч 36 мин.
+  #
+  # В обоих случаях в списке Actions не было НИ ОДНОЙ красной строки, а данные
+  # говорили прямо: club_roster не обновлялся 15 суток, soccerwiki_player и
+  # player_transfer по 14. Две недели без второй половины конвейера.
+  #
+  # Сторож превращает молчание в ПАДЕНИЕ, и это не косметика: GitHub шлёт
+  # владельцу письмо о неудачном прогоне по расписанию, и не шлёт — об
+  # отменённом. То есть красный прогон доходит до человека сам, без того,
+  # чтобы кто-то открыл вкладку и посмотрел.
+  #
+  # Отдельным job'ом с `needs` + `if: always()` — ровно как `fame` выше:
+  # шаг внутри упавшего job'а не выполняется, job после него — выполняется.
+  watch:
+    runs-on: ubuntu-latest
+    needs: [enrich, fame]
+    if: always()
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      ENRICH_RESULT: ${{ needs.enrich.result }}
+      FAME_RESULT: ${{ needs.fame.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ⚠️ ПЕРВЫМ — ИСХОД САМИХ JOB'ОВ, И ИМЕННО ЧЕРЕЗ ENV. Подстановка
+      # `${{ }}` прямо в `run` — это склейка строки с чужим значением; здесь
+      # значение своё и из перечисления, но приём один раз сработает и на
+      # чужом. Через env оно остаётся значением, а не кодом.
+      - name: Обогащение и слава завершились успехом?
+        run: |
+          echo "enrich = $ENRICH_RESULT, fame = $FAME_RESULT"
+          bad=0
+          [ "$ENRICH_RESULT" = "success" ] || { echo "::error::обогащение: $ENRICH_RESULT — это НЕ успех"; bad=1; }
+          [ "$FAME_RESULT"   = "success" ] || { echo "::error::слава: $FAME_RESULT — это НЕ успех"; bad=1; }
+          exit $bad
+
+      # ⚠️ ВТОРЫМ — ДАННЫЕ, И `if: always()` ЗДЕСЬ ОБЯЗАТЕЛЕН. Шаг выше мог
+      # уже покраснеть, но вопрос «доходит ли обход до конца» от этого не
+      # снимается: job мог закончиться успехом и при этом не наполнить
+      # половину таблиц, и наоборот.
+      - name: Обход дошёл до конца — по свежести данных
+        if: always()
+        run: node scripts/check-nightly.mjs
