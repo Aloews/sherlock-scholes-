@@ -35,13 +35,33 @@ fame is computed from — so the workflow re-runs cards_fame_refresh.py again
 after that step. Running it here too keeps a standalone `python
 docs/daily_enrich.py` correct on its own.
 
-Run from anywhere:  python docs/daily_enrich.py
+⚠️ СРОК (--minutes) — ЭТО ПОЧИНКА ЖИВОЙ ПОЛОМКИ, А НЕ ПРЕДОСТОРОЖНОСТЬ.
+Оркестратор не имел потолка по времени вовсе и съедал ночь целиком: замер по
+прогонам 12–21.09.2026 — шаг «Run daily enrichment» шёл 5 ч 22 мин, после чего
+job упирался в свои 330 минут, runner получал SIGTERM (exit 143), и ДВАДЦАТЬ
+ОДИН шаг ниже по цепочке не выполнялся ВООБЩЕ: эмблемы, стоимости, трансферы,
+мост на Transfermarkt, составы, связывание составов с колодой, новые карточки,
+Soccer Wiki и ревизия колоды. Десять ночей подряд.
+
+⚠️ И УВИДЕТЬ ЭТО БЫЛО НЕОТКУДА. Прогон в списке Actions помечался не
+«failure», а «cancelled» — то есть читался как «кто-то отменил вручную».
+Сам оркестратор при этом честно печатал «ok» по каждому своему шагу и выходил
+с нулём: он и правда отработал, просто забрал всё время.
+
+Отсюда срок: `--minutes N` (или `ENRICH_MINUTES`). Проверяется ПЕРЕД каждым
+шагом — шаг, на который времени уже не осталось, не запускается и помечается
+`skip (время)`. Это честнее обрыва посередине: скрипты возобновляемые, и
+недоделанное догонится завтра, а вот убитый на полуслове шаг оставляет мусор.
+
+Run from anywhere:  python docs/daily_enrich.py [--minutes 110]
 CI:                  see .github/workflows/daily-enrich.yml
 Requires SUPABASE_URL + SUPABASE_KEY (service_role) in the env (or .env).
 """
+import argparse
 import os
 import sys
 import subprocess
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -75,32 +95,74 @@ STEPS = [
 ]
 
 
-def main():
-    print("=" * 70, flush=True)
-    print("DAILY ENRICH — %d steps, continue-on-error, resumable" % len(STEPS), flush=True)
-    print("=" * 70, flush=True)
+def run_steps(steps, deadline_at=None, runner=None, now=time.monotonic):
+    """Прогнать шаги, не выходя за срок. Возвращает [(label, rc, seconds)].
 
+    ⚠️ СРОК ПРОВЕРЯЕТСЯ ПЕРЕД ШАГОМ, А НЕ ВНУТРИ НЕГО, и это сознательно.
+    Убить шаг на полуслове значит оставить недописанную пачку и потраченный
+    бюджет Wikimedia без результата; не начать его — значит просто отложить
+    до завтра, а все скрипты здесь возобновляемые по кешу.
+
+    `rc` у непущенного шага — None: это НЕ ошибка и не успех, это «не
+    запускали», и в сводке оно должно читаться именно так.
+    """
+    run = runner if runner is not None else (
+        lambda argv, env: subprocess.run(argv, cwd=SCRAPER, env=env).returncode)
     results = []
-    for label, argv, env in STEPS:
+    for label, argv, env in steps:
+        if deadline_at is not None and now() >= deadline_at:
+            print("\n>>> STEP %s — ПРОПУЩЕН: время вышло" % label, flush=True)
+            results.append((label, None, 0.0))
+            continue
         print("\n" + "-" * 70, flush=True)
         print(">>> STEP %s" % label, flush=True)
         print("    $ %s" % " ".join(argv), flush=True)
         print("-" * 70, flush=True)
+        started = now()
         try:
-            rc = subprocess.run(argv, cwd=SCRAPER, env=env).returncode
+            rc = run(argv, env)
         except Exception as exc:  # never let a launch failure kill the chain
             print("!!! STEP FAILED TO LAUNCH: %r" % exc, flush=True)
             rc = -1
+        spent = now() - started
         # A non-zero exit is logged but NOT fatal — a budget wall or a transient
         # network blip in one step must not stop the free downstream steps.
-        results.append((label, rc))
-        print("<<< STEP %s -> exit %d%s" % (label, rc, "" if rc == 0 else "  (continuing)"),
+        results.append((label, rc, spent))
+        print("<<< STEP %s -> exit %d за %.1f мин%s"
+              % (label, rc, spent / 60.0, "" if rc == 0 else "  (continuing)"),
               flush=True)
+    return results
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    # ⚠️ СРОК ПО УМОЛЧАНИЮ НЕ БЕСКОНЕЧЕН. Именно бесконечный съел ночь десять
+    # раз подряд (разбор в шапке файла). 110 минут оставляют время двадцати
+    # одному шагу ниже по цепочке при потолке job'а в 350 минут.
+    ap.add_argument("--minutes", type=float,
+                    default=float(os.environ.get("ENRICH_MINUTES", "110")),
+                    help="сколько минут отвести на все шаги; 0 — без ограничения")
+    args = ap.parse_args(argv)
+
+    print("=" * 70, flush=True)
+    print("DAILY ENRICH — %d steps, continue-on-error, resumable" % len(STEPS), flush=True)
+    print("срок: %s" % ("без ограничения" if args.minutes <= 0
+                        else "%.0f мин" % args.minutes), flush=True)
+    print("=" * 70, flush=True)
+
+    deadline = None if args.minutes <= 0 else time.monotonic() + args.minutes * 60.0
+    results = run_steps(STEPS, deadline_at=deadline)
 
     print("\n" + "=" * 70, flush=True)
     print("DAILY ENRICH SUMMARY", flush=True)
-    for label, rc in results:
-        print("  [%s] %s" % ("ok " if rc == 0 else "warn", label), flush=True)
+    for label, rc, spent in results:
+        mark = "skip" if rc is None else ("ok  " if rc == 0 else "warn")
+        tail = "не запускался (время)" if rc is None else "%.1f мин" % (spent / 60.0)
+        print("  [%s] %-55s %s" % (mark, label, tail), flush=True)
+    skipped = sum(1 for _, rc, _ in results if rc is None)
+    if skipped:
+        print("  ⚠️ шагов пропущено по времени: %d — догонятся завтра, кеш их помнит"
+              % skipped, flush=True)
     print("=" * 70, flush=True)
     # The orchestrator itself always exits 0: per-step failures are expected
     # (budget walls) and reported. Health is judged by cards_audit.py, the
