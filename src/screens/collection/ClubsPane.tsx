@@ -9,6 +9,7 @@ import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { Chip } from '@/shared/ui/Chip';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { formatEur } from '@/shared/lib/money';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * Список команд — вход на экран команды. Половина раздела «Коллекция».
@@ -168,6 +169,7 @@ function ClubRow({ club, place }: { club: ClubDirectoryRow; place: number }) {
             alt=""
             className="w-9 h-9 rounded-lg object-contain bg-brand-bg shrink-0"
             loading="lazy"
+            {...provenanceAttrs({ url: club.crest_url })}
           />
         ) : (
           <span className="w-9 h-9 rounded-lg bg-brand-bg shrink-0 grid place-items-center">

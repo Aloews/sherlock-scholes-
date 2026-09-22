@@ -23,6 +23,7 @@ import { ClubRoom, type QuotedNews } from '@/features/clubs/ClubRoom';
 import { fetchSoccerWikiSquad } from '@/features/soccerwiki/soccerwikiApi';
 import { longDateFormat } from '@/shared/lib/dateFormat';
 import { formatEur } from '@/shared/lib/money';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * Экран команды: кто это, как идут дела, кто играет и что дальше.
@@ -162,6 +163,7 @@ export function ClubScreen() {
                   alt=""
                   className="w-14 h-14 rounded-xl object-contain bg-brand-bg shrink-0"
                   loading="lazy"
+                  {...provenanceAttrs({ url: p.crest_url })}
                 />
               ) : (
                 <span className="w-14 h-14 rounded-xl bg-brand-bg shrink-0 grid place-items-center">

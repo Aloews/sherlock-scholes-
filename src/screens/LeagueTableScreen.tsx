@@ -10,6 +10,7 @@ import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { Chip } from '@/shared/ui/Chip';
 import { longDateFormat } from '@/shared/lib/dateFormat';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * Турнирная таблица.
@@ -147,7 +148,8 @@ export function LeagueTableScreen() {
                       <td className="pr-3 py-2">
                         <div className="flex items-center gap-2 min-w-0">
                           {r.crest_url ? (
-                            <img src={r.crest_url} alt="" className="w-6 h-6 rounded object-contain bg-brand-bg shrink-0" loading="lazy" />
+                            <img src={r.crest_url} alt="" className="w-6 h-6 rounded object-contain bg-brand-bg shrink-0" loading="lazy"
+                                 {...provenanceAttrs({ url: r.crest_url })} />
                           ) : (
                             <IconShieldHalf size={14} stroke={1.5} className="text-brand-muted shrink-0" />
                           )}

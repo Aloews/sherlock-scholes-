@@ -40,10 +40,18 @@ interface PhotoCreditProps {
   url: string | null | undefined;
   /** `cards.photo_source` — запасная подпись, когда подписи к файлу ещё нет. */
   sourceKey?: string | null;
+  /**
+   * Каким элементом рисовать подпись.
+   *
+   * ⚠️ `figcaption` ТОЛЬКО ВНУТРИ `figure`, и это не придирка к разметке:
+   * именно эта пара говорит разбору, к КАКОМУ изображению относится подпись.
+   * У нас на экране досье их два — снимок и его размытая копия подложкой.
+   */
+  as?: 'p' | 'figcaption';
   className?: string;
 }
 
-export function PhotoCredit({ url, sourceKey, className }: PhotoCreditProps) {
+export function PhotoCredit({ url, sourceKey, as = 'p', className }: PhotoCreditProps) {
   const { t } = useTranslation();
   const [credit, setCredit] = useState<MediaCredit | null>(null);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
@@ -77,17 +85,41 @@ export function PhotoCredit({ url, sourceKey, className }: PhotoCreditProps) {
   if (sourceTitle) parts.push(sourceTitle);
 
   const line = t('rights.photo', { credit: parts.join(' · ') });
+  const cls = className
+    ?? 'text-[10px] leading-snug text-brand-muted/80 mt-1.5 block';
+  const Caption = as;
 
-  return credit?.credit_url ? (
-    <a
-      href={credit.credit_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={className ?? 'block text-[10px] leading-snug text-brand-muted/80 mt-1.5 hover:text-brand-accent transition-colors'}
-    >
-      {line}
-    </a>
-  ) : (
-    <p className={className ?? 'text-[10px] leading-snug text-brand-muted/80 mt-1.5'}>{line}</p>
+  return (
+    <>
+      {/*
+        ⚠️ НЕВИДИМАЯ ПОЛОВИНА ПОДПИСИ. `<meta itemprop>` внутри `<body>` —
+        стандартный способ нести метаданные, которых не видно человеку, и
+        CC 4.0 (§3.a.2) прямо принимает такую форму указания авторства:
+        «любым разумным для носителя способом, включая ссылку или
+        машиночитаемые метаданные».
+
+        Видимая строка ниже остаётся и никуда не денется: там, где место под
+        неё есть, прятать имя автора незачем. Но метка нужна и там, где
+        строку поставить некуда, — поэтому обе половины одного ответа живут
+        в одном компоненте, и забыть одну из них нельзя.
+      */}
+      {author && <meta itemProp="creator" content={author} />}
+      {license && <meta itemProp="license" content={credit?.license_url || license} />}
+      {sourceTitle && <meta itemProp="sourceOrganization" content={sourceTitle} />}
+      {credit?.credit_url && <link itemProp="url" href={credit.credit_url} />}
+
+      <Caption className={cls}>
+        {credit?.credit_url ? (
+          <a
+            href={credit.credit_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-brand-accent transition-colors"
+          >
+            {line}
+          </a>
+        ) : line}
+      </Caption>
+    </>
   );
 }

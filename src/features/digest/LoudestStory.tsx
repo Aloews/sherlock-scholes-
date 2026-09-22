@@ -6,6 +6,7 @@ import { fetchNews } from './digestApi';
 import { groupStories, type Story } from './groupStories';
 import { feedLanguage, plainText } from './digestFormat';
 import { leadAddsDetail, storyReveal } from './leadNovelty';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * САМЫЙ ОБСУЖДАЕМЫЙ СЮЖЕТ, РАСКРЫТЫЙ — и только он один.
@@ -96,6 +97,8 @@ export function LoudestStory({ limit = 60 }: { limit?: number }) {
               loading="lazy"
               className="w-16 h-16 shrink-0 rounded-xl object-cover bg-brand-border"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              {...provenanceAttrs({ source: 'rss_publishers', author: lead.source,
+                                    creditUrl: lead.url })}
             />
           )}
         </div>
