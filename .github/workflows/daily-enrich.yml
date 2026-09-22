@@ -23,7 +23,20 @@ jobs:
     # потолок в 100 минут сам по себе резал ночь примерно на 6000 запросов —
     # меньше дневного бюджета. Ставим с запасом, чтобы упирались в бюджет,
     # а не в таймер (максимум GitHub — 360 минут).
-    timeout-minutes: 330
+    #
+    # ⚠️ И ИМЕННО ЭТОТ ПОТОЛОК ДЕСЯТЬ НОЧЕЙ ПОДРЯД УБИВАЛ ПОЛОВИНУ ОБХОДА.
+    # Прогоны 12–21.09.2026 все помечены «cancelled»: первый шаг шёл 5 ч 22 мин
+    # без всякого срока, упирался в эти минуты, runner получал SIGTERM
+    # (exit 143) — и ДВАДЦАТЬ ОДИН шаг ниже не выполнялся ВООБЩЕ. `if: always()`
+    # от этого не спасает: при отмене job'а шаги не запускаются вовсе.
+    #
+    # Поэтому теперь время РАСПРЕДЕЛЕНО, а не занято первым желающим:
+    # обогащение 80, просмотры 60, два прохода Soccer Wiki по 35 — всего 210
+    # минут из 350, и сто сорок остаётся семнадцати шагам без собственного
+    # срока. Арифметику стережёт `test/daily_enrich_budget.test.ts`: он и
+    # поймал первую попытку этой же починки, где сумма съедала почти весь
+    # потолок и разница была только в том, КТО остался без времени.
+    timeout-minutes: 350
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}   # service_role — repo secret, NEVER committed
@@ -58,8 +71,13 @@ jobs:
       - name: Prune stale cache misses
         run: APPLY=1 python docs/cache_prune_empty.py
 
+      # ⚠️ `--minutes` ЗДЕСЬ ОБЯЗАТЕЛЕН, А НЕ ЖЕЛАТЕЛЕН. Без него шаг съедал
+      # всю ночь и оставлял два десятка шагов ниже несделанными (разбор — в
+      # шапке job'а и в docs/daily_enrich.py). Срок проверяется ПЕРЕД каждым
+      # внутренним шагом: недоделанное догоняется завтра по кешу, а убитый на
+      # полуслове шаг оставил бы мусор.
       - name: Run daily enrichment
-        run: python docs/daily_enrich.py
+        run: python docs/daily_enrich.py --minutes 80
 
       # ⚠️ ОДИН ШАГ НА ВСЕ ЯЗЫКИ, А НЕ ДВА. Здесь стояли ДВА сбора просмотров,
       # и разбор ночного лога 06.09.2026 показал, зачем их свели в один:
@@ -85,7 +103,9 @@ jobs:
       # статья есть, а не девять локалей приложения.
       - name: Collect pageviews in every language
         if: always()
-        run: APPLY=1 python docs/cards_pageviews_world.py --all --limit 600 --minutes 150
+        # 100 минут вместо 150: у шага и так был свой срок, но вместе с
+        # безлимитным обогащением выше сумма не оставляла времени никому.
+        run: APPLY=1 python docs/cards_pageviews_world.py --all --limit 600 --minutes 60
 
       # Внешние идентификаторы карточек: QID -> P2446 (Transfermarkt) и P27 ->
       # страна. Без QID карточку не обогатить, а резолв по ИМЕНИ промахивается
@@ -314,7 +334,7 @@ jobs:
       # целиком, каждую ночь — своим куском.
       - name: Soccer Wiki squads (world sweep, resumable)
         if: always()
-        run: APPLY=1 python docs/soccerwiki_squads.py --stale-days 7 --minutes 40
+        run: APPLY=1 python docs/soccerwiki_squads.py --stale-days 7 --minutes 35
 
       # Страница игрока: рост, вес, нога, ДАТА РОЖДЕНИЯ. Идёт только по
       # связанным с колодой — 13 тысяч запросов вместо пятидесяти, — и по
@@ -330,7 +350,7 @@ jobs:
       # РОВЕСНИКОВ, затем молодость), потом связанные — как было.
       - name: Soccer Wiki player pages (height, foot, birth date)
         if: always()
-        run: APPLY=1 python docs/soccerwiki_players.py --minutes 40
+        run: APPLY=1 python docs/soccerwiki_players.py --minutes 35
 
       # ⚠️ МОСТ ПО КЛУБУ И ДАТЕ РОЖДЕНИЯ, А НЕ ПО ИМЕНИ. Soccer Wiki пишет
       # фамилию первой и склеивает: «Júnior Neymar», «Jorge Koke», «Alarcón

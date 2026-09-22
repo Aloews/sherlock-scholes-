@@ -56,6 +56,20 @@ create index if not exists player_rating_cache_window_idx
 comment on table public.player_rating_cache is
   'Суммы для экрана рейтинга по трём окнам. Обновляется refresh_player_rating_cache() после ночного сбора. Пустой кэш НЕ означает пустой экран: player_ratings() падает обратно на живой расчёт.';
 
+-- ⚠️ ТАБЛИЦА ЗАКРЫТА, И ЭТО ПОЧИНКА, А НЕ ПРЕДОСТОРОЖНОСТЬ. Советник Supabase
+-- держал на ней ЕДИНСТВЕННУЮ у этого проекта ошибку уровня ERROR:
+-- «rls_disabled_in_public» — 9745 строк в схеме public, RLS выключен, грант
+-- select у anon есть. То есть кэш читался анонимом напрямую через PostgREST,
+-- хотя ни один экран к нему не обращается.
+--
+-- Закрыто целиком, а не политикой «читать всем»: экран ходит в
+-- `player_ratings()`, а она SECURITY DEFINER и RLS обходит. Значит права
+-- анониму тут не нужны вовсе — ровно как у `fixture_odds`, где отсутствие
+-- грантов и есть защита.
+alter table public.player_rating_cache enable row level security;
+revoke all on public.player_rating_cache from anon, authenticated;
+grant select, insert, update, delete on public.player_rating_cache to service_role;
+
 create or replace function public.refresh_player_rating_cache()
 returns text
 language plpgsql
