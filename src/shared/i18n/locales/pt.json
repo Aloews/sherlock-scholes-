@@ -757,7 +757,16 @@
     "soccer_fifa_world_cup": "Copa do Mundo",
     "soccer_fifa_world_cup_qualifiers_europe": "Eliminatórias da Copa (Europa)",
     "soccer_uefa_european_championship": "Campeonato Europeu",
-    "soccer_uefa_euro_qualification": "Qualificação para o Europeu"
+    "soccer_uefa_euro_qualification": "Qualificação para o Europeu",
+    "soccer_international_friendlies": "Amistosos internacionais",
+    "soccer_concacaf_nations_league": "Liga das Nações da Concacaf",
+    "soccer_concacaf_gold_cup": "Copa Ouro da Concacaf",
+    "soccer_conmebol_copa_america": "Copa América",
+    "soccer_africa_cup_of_nations": "Copa Africana de Nações",
+    "soccer_fifa_world_cup_qualifiers_africa": "Eliminatórias da Copa (África)",
+    "soccer_fifa_world_cup_qualifiers_asia": "Eliminatórias da Copa (Ásia)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "Eliminatórias da Copa (Concacaf)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "Eliminatórias da Copa (Conmebol)"
   },
   "fantasy": {
     "title": "Fantasy",

@@ -737,7 +737,16 @@
     "soccer_fifa_world_cup": "世界杯",
     "soccer_fifa_world_cup_qualifiers_europe": "世界杯预选赛（欧洲）",
     "soccer_uefa_european_championship": "欧洲杯",
-    "soccer_uefa_euro_qualification": "欧洲杯预选赛"
+    "soccer_uefa_euro_qualification": "欧洲杯预选赛",
+    "soccer_international_friendlies": "国际友谊赛",
+    "soccer_concacaf_nations_league": "中北美洲国家联赛",
+    "soccer_concacaf_gold_cup": "中北美洲金杯赛",
+    "soccer_conmebol_copa_america": "美洲杯",
+    "soccer_africa_cup_of_nations": "非洲国家杯",
+    "soccer_fifa_world_cup_qualifiers_africa": "世界杯预选赛（非洲）",
+    "soccer_fifa_world_cup_qualifiers_asia": "世界杯预选赛（亚洲）",
+    "soccer_fifa_world_cup_qualifiers_north_america": "世界杯预选赛（中北美洲）",
+    "soccer_fifa_world_cup_qualifiers_south_america": "世界杯预选赛（南美洲）"
   },
   "fantasy": {
     "title": "梦幻联赛",

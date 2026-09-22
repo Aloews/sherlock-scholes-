@@ -737,7 +737,16 @@
     "soccer_fifa_world_cup": "ワールドカップ",
     "soccer_fifa_world_cup_qualifiers_europe": "ワールドカップ予選（欧州）",
     "soccer_uefa_european_championship": "欧州選手権",
-    "soccer_uefa_euro_qualification": "欧州選手権予選"
+    "soccer_uefa_euro_qualification": "欧州選手権予選",
+    "soccer_international_friendlies": "国際親善試合",
+    "soccer_concacaf_nations_league": "CONCACAFネーションズリーグ",
+    "soccer_concacaf_gold_cup": "CONCACAFゴールドカップ",
+    "soccer_conmebol_copa_america": "コパ・アメリカ",
+    "soccer_africa_cup_of_nations": "アフリカネーションズカップ",
+    "soccer_fifa_world_cup_qualifiers_africa": "ワールドカップ予選（アフリカ）",
+    "soccer_fifa_world_cup_qualifiers_asia": "ワールドカップ予選（アジア）",
+    "soccer_fifa_world_cup_qualifiers_north_america": "ワールドカップ予選（北中米）",
+    "soccer_fifa_world_cup_qualifiers_south_america": "ワールドカップ予選（南米）"
   },
   "fantasy": {
     "title": "ファンタジー",

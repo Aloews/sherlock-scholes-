@@ -495,6 +495,76 @@ testcase(
 );
 
 // ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают включённую обратно Лигу наций УЕФА',
+  'её расписание ведёт платный провайдер под своими идентификаторами; ESPN ' +
+  'отдаст те же матчи под своими, с приставкой espn:, и в календаре встанут ' +
+  'две строки на одну игру. Заметить это можно только глазами — обе строки ' +
+  'выглядят правильными',
+  () => withBroken('supabase/migrations/national_fixtures.sql',
+    (s) => s.replace("'Лига наций УЕФА', false,", "'Лига наций УЕФА', true,"),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают турнир, забытый в одной локали',
+  'реестр турниров живёт в базе, имена — в девяти файлах, и разойтись им ' +
+  'ничто не мешает. Забытый ключ не падает и не логируется: он выходит на ' +
+  'экран как «Concacaf Gold Cup» посреди корейского списка',
+  () => withBroken('src/shared/i18n/locales/ja.json',
+    (s) => {
+      const d = JSON.parse(s);
+      delete d.leagues.soccer_concacaf_gold_cup;
+      return JSON.stringify(d, null, 2) + '\n';
+    },
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают запрос без срока',
+  'запрос без срока не падает — он висит, а висящий сборщик неотличим от ' +
+  'работающего. Ровно так ночной обход шёл 3 ч 36 мин при бюджете 80 минут',
+  () => withBroken('supabase/functions/football-national/index.ts',
+    (s) => s.replace('          signal: AbortSignal.timeout(REQUEST_MS),\n', ''),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают дешёвый режим, ставший дорогим',
+  'режим scores зовётся каждые пять минут. Подменить ему реестр на полный — ' +
+  'значит обходить все турниры за три месяца 288 раз в сутки: 11 232 запроса ' +
+  'к чужому бесплатному адресу вместо пары десятков',
+  () => withBroken('supabase/functions/football-national/index.ts',
+    (s) => s.replace('mode === "scores" ? "national_leagues_in_play" : "espn_national_leagues"',
+                     '"espn_national_leagues"'),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают снятую заслонку перед вызовом',
+  'без проверки окна задание поднимало бы Edge-функцию 288 раз в сутки ради ' +
+  'ответа «матчей нет». Стоимость видна только в счёте за месяц',
+  () => withBroken('supabase/migrations/schedule_national_fixtures.sql',
+    (s) => s.replace("  if p_mode = 'scores' then", "  if false then"),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают турнир, выпавший из KNOWN_SPORT_KEYS',
+  'без записи имя турнира уходит в readableSportKey — «Fifa World Cup ' +
+  'Qualifiers Africa» посреди списка матчей. Это не ошибка, это просто уродливо, ' +
+  'и поэтому её никто не чинит годами',
+  () => withBroken('src/features/fixtures/leagues.ts',
+    (s) => s.replace("  'soccer_international_friendlies',\n", ''),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
 // Дерево обязано быть чистым: иначе восстановление затрёт чужие правки.
 const dirty = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
 if (dirty) {

@@ -801,7 +801,16 @@
     "soccer_fifa_world_cup": "Чемпионат мира",
     "soccer_fifa_world_cup_qualifiers_europe": "Отбор ЧМ (Европа)",
     "soccer_uefa_european_championship": "Чемпионат Европы",
-    "soccer_uefa_euro_qualification": "Отбор Евро"
+    "soccer_uefa_euro_qualification": "Отбор Евро",
+    "soccer_international_friendlies": "Товарищеские матчи сборных",
+    "soccer_concacaf_nations_league": "Лига наций КОНКАКАФ",
+    "soccer_concacaf_gold_cup": "Золотой кубок КОНКАКАФ",
+    "soccer_conmebol_copa_america": "Кубок Америки",
+    "soccer_africa_cup_of_nations": "Кубок африканских наций",
+    "soccer_fifa_world_cup_qualifiers_africa": "Отбор ЧМ (Африка)",
+    "soccer_fifa_world_cup_qualifiers_asia": "Отбор ЧМ (Азия)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "Отбор ЧМ (Северная Америка)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "Отбор ЧМ (Южная Америка)"
   },
   "fantasy": {
     "title": "Фэнтези",

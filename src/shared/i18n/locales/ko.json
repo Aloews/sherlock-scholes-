@@ -737,7 +737,16 @@
     "soccer_fifa_world_cup": "월드컵",
     "soccer_fifa_world_cup_qualifiers_europe": "월드컵 예선 (유럽)",
     "soccer_uefa_european_championship": "유럽 선수권",
-    "soccer_uefa_euro_qualification": "유럽 선수권 예선"
+    "soccer_uefa_euro_qualification": "유럽 선수권 예선",
+    "soccer_international_friendlies": "국가대표 친선경기",
+    "soccer_concacaf_nations_league": "북중미 네이션스리그",
+    "soccer_concacaf_gold_cup": "북중미 골드컵",
+    "soccer_conmebol_copa_america": "코파 아메리카",
+    "soccer_africa_cup_of_nations": "아프리카 네이션스컵",
+    "soccer_fifa_world_cup_qualifiers_africa": "월드컵 예선 (아프리카)",
+    "soccer_fifa_world_cup_qualifiers_asia": "월드컵 예선 (아시아)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "월드컵 예선 (북중미)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "월드컵 예선 (남미)"
   },
   "fantasy": {
     "title": "판타지",
