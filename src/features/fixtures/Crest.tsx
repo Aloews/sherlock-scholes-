@@ -1,5 +1,11 @@
+import { provenanceAttrs } from '@/shared/lib/provenance';
+
 /**
  * Эмблема клуба с местом под неё.
+ *
+ * ⚠️ Эмблемы приходят от ESPN, TheSportsDB и Transfermarkt — то есть это
+ * тоже собранный чужой материал, и метка источника стоит здесь по той же
+ * причине, по которой размер задан здесь: вторая копия разошлась бы.
  *
  * ⚠️ РАЗМЕР ЗАДАН И ПУСТОЙ СЛУЧАЙ ТОЖЕ ЗАНИМАЕТ МЕСТО. Без этого строка
  * прыгает, пока картинки грузятся по одной, а матч без эмблемы съезжает
@@ -17,6 +23,7 @@ export function Crest({ src, alt }: { src: string | null; alt: string }) {
       alt={alt}
       loading="lazy"
       className="w-6 h-6 shrink-0 object-contain"
+      {...provenanceAttrs({ url: src })}
     />
   );
 }

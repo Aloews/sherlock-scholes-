@@ -12,6 +12,7 @@ import {
   fetchRisingCards, fetchRisingClubs,
   type RisingCard, type RisingClub,
 } from './ratingsApi';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * Кто набирает ход — игроки и клубы, у которых показатель резко пошёл вверх.
@@ -159,7 +160,8 @@ export function RisingList() {
             >
               {c.crest_url ? (
                 <img src={c.crest_url} alt="" loading="lazy"
-                     className="w-7 h-7 shrink-0 object-contain" />
+                     className="w-7 h-7 shrink-0 object-contain"
+                     {...provenanceAttrs({ url: c.crest_url })} />
               ) : (
                 <span className="w-7 h-7 shrink-0" />
               )}

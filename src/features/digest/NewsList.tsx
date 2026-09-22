@@ -8,6 +8,7 @@ import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import { feedLanguage, plainText } from './digestFormat';
 import { leadAddsDetail } from './leadNovelty';
 import { timeFormat } from '@/shared/lib/dateFormat';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * Лента заголовков.
@@ -118,6 +119,9 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
                 отсутствие — норма вёрстки, а не дыра: блока просто нет, текст
                 занимает всю ширину. `onError` убирает и битую ссылку: иконка
                 сломанного изображения выглядит как поломка приложения. */}
+            {/* ⚠️ МЕТКА ИСТОЧНИКА У ЧУЖОЙ КАРТИНКИ. Картинка приходит из ленты
+                издания и остаётся его; `data-credit` ведёт на саму заметку —
+                ссылка на издание и есть здесь форма указания авторства. */}
             {lead.image_url && (
               <img
                 src={lead.image_url}
@@ -125,6 +129,8 @@ export function NewsList({ limit = 60 }: { limit?: number }) {
                 loading="lazy"
                 className="w-16 h-16 shrink-0 rounded-xl object-cover bg-brand-border"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                {...provenanceAttrs({ source: 'rss_publishers', author: lead.source,
+                                      creditUrl: lead.url })}
               />
             )}
           </div>

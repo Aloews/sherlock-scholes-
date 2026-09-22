@@ -126,7 +126,8 @@
   },
   "design": {
     "master": "Novo design",
-    "classic": "Design clássico"
+    "classic": "Design clássico",
+    "paper": "Design papel"
   },
   "tabs": {
     "home": "Início",
@@ -220,6 +221,22 @@
     "streak_other": "Sequência: {{count}} dias",
     "streak_best_one": "recorde: {{count}} dia",
     "streak_best_other": "recorde: {{count}} dias"
+  },
+  "rights": {
+    "title": "Fontes e direitos",
+    "entry_hint": "De onde vêm as fotos, os textos e os dados",
+    "intro": "Parte do material vem de fontes abertas. Todas estão nomeadas aqui, com a respectiva licença — as próprias licenças exigem isso.",
+    "license": "Licença",
+    "attribution": "Atribuição",
+    "attr_per_record": "cada arquivo tem o seu autor",
+    "attr_source": "basta nomear a fonte",
+    "attr_none": "não é exigida",
+    "terms": "Termos de uso",
+    "site": "Site da fonte",
+    "load_failed": "Não foi possível carregar a lista de fontes.",
+    "contact": "Se você detém os direitos sobre algo aqui e acha que foi usado de forma indevida, escreva para nós — vamos corrigir ou remover.",
+    "photo": "Foto: {{credit}}",
+    "text_from": "Com base em material de {{source}}"
   },
   "level": {
     "title_1": "Novato",
@@ -740,7 +757,16 @@
     "soccer_fifa_world_cup": "Copa do Mundo",
     "soccer_fifa_world_cup_qualifiers_europe": "Eliminatórias da Copa (Europa)",
     "soccer_uefa_european_championship": "Campeonato Europeu",
-    "soccer_uefa_euro_qualification": "Qualificação para o Europeu"
+    "soccer_uefa_euro_qualification": "Qualificação para o Europeu",
+    "soccer_international_friendlies": "Amistosos internacionais",
+    "soccer_concacaf_nations_league": "Liga das Nações da Concacaf",
+    "soccer_concacaf_gold_cup": "Copa Ouro da Concacaf",
+    "soccer_conmebol_copa_america": "Copa América",
+    "soccer_africa_cup_of_nations": "Copa Africana de Nações",
+    "soccer_fifa_world_cup_qualifiers_africa": "Eliminatórias da Copa (África)",
+    "soccer_fifa_world_cup_qualifiers_asia": "Eliminatórias da Copa (Ásia)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "Eliminatórias da Copa (Concacaf)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "Eliminatórias da Copa (Conmebol)"
   },
   "fantasy": {
     "title": "Fantasy",

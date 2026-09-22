@@ -129,7 +129,8 @@
   },
   "design": {
     "master": "التصميم الجديد",
-    "classic": "التصميم الكلاسيكي"
+    "classic": "التصميم الكلاسيكي",
+    "paper": "تصميم ورقي"
   },
   "tabs": {
     "home": "الرئيسية",
@@ -231,6 +232,22 @@
     "streak_best_few": "الأفضل: {{count}} أيام",
     "streak_best_many": "الأفضل: {{count}} يومًا",
     "streak_best_other": "الأفضل: {{count}} يوم"
+  },
+  "rights": {
+    "title": "المصادر والحقوق",
+    "entry_hint": "من أين تأتي الصور والنصوص والبيانات",
+    "intro": "جزء من المحتوى مأخوذ من مصادر مفتوحة. جميعها مذكورة هنا مع رخصة كل منها، فالرخص نفسها تشترط ذلك.",
+    "license": "الرخصة",
+    "attribution": "نسبة العمل إلى مصدره",
+    "attr_per_record": "لكل ملف مؤلفه الخاص",
+    "attr_source": "يكفي ذكر اسم المصدر",
+    "attr_none": "غير مطلوبة",
+    "terms": "شروط الاستخدام",
+    "site": "موقع المصدر",
+    "load_failed": "تعذّر تحميل قائمة المصادر.",
+    "contact": "إن كنت صاحب حقوق وترى أن المادة استُخدمت على نحو غير صحيح، فراسلنا وسنصححها أو نزيلها.",
+    "photo": "الصورة: {{credit}}",
+    "text_from": "استنادًا إلى مواد من {{source}}"
   },
   "level": {
     "title_1": "مبتدئ",
@@ -819,7 +836,16 @@
     "soccer_fifa_world_cup": "كأس العالم",
     "soccer_fifa_world_cup_qualifiers_europe": "تصفيات كأس العالم (أوروبا)",
     "soccer_uefa_european_championship": "بطولة أوروبا",
-    "soccer_uefa_euro_qualification": "تصفيات بطولة أوروبا"
+    "soccer_uefa_euro_qualification": "تصفيات بطولة أوروبا",
+    "soccer_international_friendlies": "مباريات ودية دولية",
+    "soccer_concacaf_nations_league": "دوري أمم كونكاكاف",
+    "soccer_concacaf_gold_cup": "الكأس الذهبية لكونكاكاف",
+    "soccer_conmebol_copa_america": "كوبا أمريكا",
+    "soccer_africa_cup_of_nations": "كأس الأمم الأفريقية",
+    "soccer_fifa_world_cup_qualifiers_africa": "تصفيات كأس العالم (أفريقيا)",
+    "soccer_fifa_world_cup_qualifiers_asia": "تصفيات كأس العالم (آسيا)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "تصفيات كأس العالم (أمريكا الشمالية)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "تصفيات كأس العالم (أمريكا الجنوبية)"
   },
   "fantasy": {
     "title": "فانتازي",

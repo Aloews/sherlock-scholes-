@@ -104,7 +104,7 @@ function Tile({ feed, mirrored = false, self = false }: TileProps) {
           talking ? 'border-brand-accent' : 'border-brand-border',
         )}
       />
-      <span className="absolute inset-x-0 bottom-0 px-1.5 py-0.5 text-[9.5px] text-white truncate bg-black/45 rounded-b-xl">
+      <span className="absolute inset-x-0 bottom-0 px-1.5 py-0.5 text-[9.5px] ds-on-media truncate bg-black/45 rounded-b-xl">
         {self ? t('voice.you') : name ?? ''}
       </span>
     </div>

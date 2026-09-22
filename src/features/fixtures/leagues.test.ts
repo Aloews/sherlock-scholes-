@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { KNOWN_SPORT_KEYS, leagueKey, readableSportKey } from './leagues';
 import ru from '@/shared/i18n/locales/ru.json';
+import en from '@/shared/i18n/locales/en.json';
+import es from '@/shared/i18n/locales/es.json';
+import pt from '@/shared/i18n/locales/pt.json';
+import fr from '@/shared/i18n/locales/fr.json';
 import ar from '@/shared/i18n/locales/ar.json';
+import ja from '@/shared/i18n/locales/ja.json';
+import ko from '@/shared/i18n/locales/ko.json';
+import zh from '@/shared/i18n/locales/zh.json';
 
 // The provider names competitions, we name the translations, and the two meet
 // at leagueKey(). Both halves of that meeting have already gone wrong once.
@@ -36,7 +43,16 @@ describe('leagueKey', () => {
 describe('league translations', () => {
   // Every competition we have seen must be named, in every language. A gap
   // shows up as a raw provider key in the middle of a fixture list.
-  it.each([['ru', ru], ['ar', ar]] as const)('%s names every known competition', (_lang, dict) => {
+  //
+  // ⚠️ ЗДЕСЬ СТОЯЛИ ДВА ЯЗЫКА ИЗ ДЕВЯТИ, И ЭТО ПОКРЫВАЛО ОДНУ ТРЕТЬ ОШИБКИ.
+  // Пропуск ключа в es или ja не отличается ничем от пропуска в ru: игрок
+  // видит `soccer_concacaf_gold_cup` посреди списка. Проверка стоит
+  // миллисекунду на язык, а `check-i18n` сверяет только НАБОРЫ ключей между
+  // локалями — ключ, забытый ВО ВСЕХ ДЕВЯТИ разом, для него законен.
+  it.each([
+    ['ru', ru], ['en', en], ['es', es], ['pt', pt], ['fr', fr],
+    ['ar', ar], ['ja', ja], ['ko', ko], ['zh', zh],
+  ] as const)('%s names every known competition', (_lang, dict) => {
     const leagues = (dict as { leagues: Record<string, string> }).leagues;
     const missing = KNOWN_SPORT_KEYS.filter(
       (key) => !leagues[leagueKey(key).replace('leagues.', '')],

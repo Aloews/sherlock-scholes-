@@ -124,7 +124,8 @@
   },
   "design": {
     "master": "新设计",
-    "classic": "经典设计"
+    "classic": "经典设计",
+    "paper": "纸质设计"
   },
   "tabs": {
     "home": "主页",
@@ -216,6 +217,22 @@
     "xp_progress": "距下一等级还需 {{into}} / {{total}} XP",
     "streak_other": "连续 {{count}} 天",
     "streak_best_other": "最佳 {{count}} 天"
+  },
+  "rights": {
+    "title": "来源与权利",
+    "entry_hint": "照片、文字和数据的出处",
+    "intro": "部分素材来自开放来源。许可协议要求署名，因此这里列出全部来源及其许可。",
+    "license": "许可",
+    "attribution": "署名",
+    "attr_per_record": "每个文件的作者各不相同",
+    "attr_source": "写明来源即可",
+    "attr_none": "无需署名",
+    "terms": "使用条款",
+    "site": "来源网站",
+    "load_failed": "无法加载来源列表。",
+    "contact": "如果您是权利人，认为素材使用有误，请与我们联系，我们会更正或撤下。",
+    "photo": "照片：{{credit}}",
+    "text_from": "基于 {{source}} 的资料"
   },
   "level": {
     "title_1": "见习生",
@@ -720,7 +737,16 @@
     "soccer_fifa_world_cup": "世界杯",
     "soccer_fifa_world_cup_qualifiers_europe": "世界杯预选赛（欧洲）",
     "soccer_uefa_european_championship": "欧洲杯",
-    "soccer_uefa_euro_qualification": "欧洲杯预选赛"
+    "soccer_uefa_euro_qualification": "欧洲杯预选赛",
+    "soccer_international_friendlies": "国际友谊赛",
+    "soccer_concacaf_nations_league": "中北美洲国家联赛",
+    "soccer_concacaf_gold_cup": "中北美洲金杯赛",
+    "soccer_conmebol_copa_america": "美洲杯",
+    "soccer_africa_cup_of_nations": "非洲国家杯",
+    "soccer_fifa_world_cup_qualifiers_africa": "世界杯预选赛（非洲）",
+    "soccer_fifa_world_cup_qualifiers_asia": "世界杯预选赛（亚洲）",
+    "soccer_fifa_world_cup_qualifiers_north_america": "世界杯预选赛（中北美洲）",
+    "soccer_fifa_world_cup_qualifiers_south_america": "世界杯预选赛（南美洲）"
   },
   "fantasy": {
     "title": "梦幻联赛",

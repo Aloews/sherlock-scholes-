@@ -321,7 +321,7 @@ export function DigestScreen() {
                   />
                   <span className="absolute inset-0 flex items-center justify-center">
                     <span className="w-11 h-11 rounded-full bg-black/55 flex items-center justify-center">
-                      <IconPlayerPlayFilled size={18} className="text-white translate-x-[1px]" />
+                      <IconPlayerPlayFilled size={18} className="ds-on-media translate-x-[1px]" />
                     </span>
                   </span>
                 </span>

@@ -130,7 +130,8 @@
   },
   "design": {
     "master": "Новый дизайн",
-    "classic": "Классический дизайн"
+    "classic": "Классический дизайн",
+    "paper": "Бумажный дизайн"
   },
   "tabs": {
     "home": "Главная",
@@ -228,6 +229,22 @@
     "streak_best_few": "рекорд {{count}} дня",
     "streak_best_many": "рекорд {{count}} дней",
     "streak_best_other": "рекорд {{count}} дня"
+  },
+  "rights": {
+    "title": "Источники и права",
+    "entry_hint": "Откуда в игре фотографии, тексты и данные",
+    "intro": "Часть материалов собрана из открытых источников. Здесь названы все они и лицензия каждого — этого требуют сами лицензии.",
+    "license": "Лицензия",
+    "attribution": "Указание источника",
+    "attr_per_record": "у каждого файла свой автор",
+    "attr_source": "достаточно назвать источник",
+    "attr_none": "не требуется",
+    "terms": "Условия использования",
+    "site": "Сайт источника",
+    "load_failed": "Не удалось загрузить список источников.",
+    "contact": "Если вы правообладатель и считаете, что материал использован неверно, напишите нам — поправим или уберём.",
+    "photo": "Фото: {{credit}}",
+    "text_from": "По материалам {{source}}"
   },
   "level": {
     "title_1": "Стажёр",
@@ -784,7 +801,16 @@
     "soccer_fifa_world_cup": "Чемпионат мира",
     "soccer_fifa_world_cup_qualifiers_europe": "Отбор ЧМ (Европа)",
     "soccer_uefa_european_championship": "Чемпионат Европы",
-    "soccer_uefa_euro_qualification": "Отбор Евро"
+    "soccer_uefa_euro_qualification": "Отбор Евро",
+    "soccer_international_friendlies": "Товарищеские матчи сборных",
+    "soccer_concacaf_nations_league": "Лига наций КОНКАКАФ",
+    "soccer_concacaf_gold_cup": "Золотой кубок КОНКАКАФ",
+    "soccer_conmebol_copa_america": "Кубок Америки",
+    "soccer_africa_cup_of_nations": "Кубок африканских наций",
+    "soccer_fifa_world_cup_qualifiers_africa": "Отбор ЧМ (Африка)",
+    "soccer_fifa_world_cup_qualifiers_asia": "Отбор ЧМ (Азия)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "Отбор ЧМ (Северная Америка)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "Отбор ЧМ (Южная Америка)"
   },
   "fantasy": {
     "title": "Фэнтези",

@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { photoFitClass, photoFitCircleClass } from '@/shared/lib/photoFit';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 /**
  * The one place that decides how a card's photo sits in its frame.
@@ -51,6 +52,13 @@ export function PlayerPhoto({
   onError,
   'aria-hidden': ariaHidden,
 }: PlayerPhotoProps) {
+  // ⚠️ НЕВИДИМАЯ МАРКИРОВКА ИСТОЧНИКА СТОИТ ЗДЕСЬ, А НЕ У КАЖДОГО ВЫЗЫВАЮЩЕГО.
+  // Этот компонент и заведён потому, что каждый экран писал свой <img> и
+  // забывал взять правило кадрирования. С правами вышло бы то же самое: метка,
+  // которую надо не забыть поставить, однажды не ставится — и на экране
+  // оказывается чужой снимок без единого признака, чей он. Атрибуты не меняют
+  // ни пикселя, а источник выводится из самой ссылки, поэтому ни один экран не
+  // обязан ничего дозапрашивать.
   return (
     <img
       src={src}
@@ -58,6 +66,7 @@ export function PlayerPhoto({
       loading={loading}
       onError={onError}
       aria-hidden={ariaHidden}
+      {...provenanceAttrs({ url: src })}
       className={clsx(
         shape === 'free' ? photoFitClass(category) : photoFitCircleClass(category),
         className,

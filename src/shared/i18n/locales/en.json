@@ -126,7 +126,8 @@
   },
   "design": {
     "master": "New design",
-    "classic": "Classic design"
+    "classic": "Classic design",
+    "paper": "Paper design"
   },
   "tabs": {
     "home": "Home",
@@ -220,6 +221,22 @@
     "streak_other": "Streak: {{count}} days",
     "streak_best_one": "best {{count}} day",
     "streak_best_other": "best {{count}} days"
+  },
+  "rights": {
+    "title": "Sources and rights",
+    "entry_hint": "Where the photos, texts and data come from",
+    "intro": "Some of the material here comes from open sources. Every one of them is named below with its licence — the licences themselves require it.",
+    "license": "Licence",
+    "attribution": "Attribution",
+    "attr_per_record": "each file has its own author",
+    "attr_source": "naming the source is enough",
+    "attr_none": "not required",
+    "terms": "Terms of use",
+    "site": "Source website",
+    "load_failed": "Could not load the list of sources.",
+    "contact": "If you hold the rights to something here and think it is used incorrectly, write to us — we will correct it or take it down.",
+    "photo": "Photo: {{credit}}",
+    "text_from": "Based on material from {{source}}"
   },
   "level": {
     "title_1": "Rookie",
@@ -740,7 +757,16 @@
     "soccer_fifa_world_cup": "World Cup",
     "soccer_fifa_world_cup_qualifiers_europe": "World Cup qualifying (Europe)",
     "soccer_uefa_european_championship": "European Championship",
-    "soccer_uefa_euro_qualification": "Euro qualifying"
+    "soccer_uefa_euro_qualification": "Euro qualifying",
+    "soccer_international_friendlies": "International friendlies",
+    "soccer_concacaf_nations_league": "CONCACAF Nations League",
+    "soccer_concacaf_gold_cup": "CONCACAF Gold Cup",
+    "soccer_conmebol_copa_america": "Copa América",
+    "soccer_africa_cup_of_nations": "Africa Cup of Nations",
+    "soccer_fifa_world_cup_qualifiers_africa": "World Cup qualifying (Africa)",
+    "soccer_fifa_world_cup_qualifiers_asia": "World Cup qualifying (Asia)",
+    "soccer_fifa_world_cup_qualifiers_north_america": "World Cup qualifying (North America)",
+    "soccer_fifa_world_cup_qualifiers_south_america": "World Cup qualifying (South America)"
   },
   "fantasy": {
     "title": "Fantasy",

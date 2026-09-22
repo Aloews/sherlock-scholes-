@@ -18,6 +18,8 @@ import { formatMetric, movedMetrics } from '@/shared/lib/metricFormat';
 import { careerHighlight } from '@/shared/lib/careerHighlight';
 import { careerRowMeta } from '@/shared/lib/careerRowMeta';
 import { hapticImpact, openLink } from '@/shared/lib/telegram';
+import { PhotoCredit } from '@/features/rights/PhotoCredit';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 import { watchUrl } from '@/features/digest/digestFormat';
 import {
   TIER_COLOR, TIER_LABEL_RU, TIER_LABEL_EN, type Card, type CardAttributes,
@@ -404,7 +406,14 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
           </p>
         )}
 
+        {/* ⚠️ FIGURE, А НЕ ДВА СОСЕДА, И ЭТО ТОЖЕ ПРО ПРАВА. Снимок и подпись к
+            нему — одно целое: `figure` + `figcaption` ровно это и означают в
+            HTML, а `itemScope`/`itemType` делают связку машиночитаемой. Пока
+            подпись стояла отдельным элементом рядом, ни один разбор не мог
+            сказать, к какому изображению она относится, — а у нас на экране
+            их два (второй, размытый, декоративен и копия того же файла). */}
         {card.photo_url && (
+          <figure className="m-0 space-y-0" itemScope itemType="https://schema.org/ImageObject">
           <div
             className="relative w-full h-[180px] rounded-2xl border border-brand-border
                        bg-brand-surface overflow-hidden flex items-center justify-center"
@@ -433,6 +442,8 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
               src={card.photo_url}
               alt={name}
               className="relative max-w-full max-h-full object-contain"
+              itemProp="contentUrl"
+              {...provenanceAttrs({ url: card.photo_url, source: card.photo_source })}
             />
             {card.ovr != null && (
               <div
@@ -447,6 +458,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
               </div>
             )}
           </div>
+          {/* ⚠️ ПОДПИСЬ — УСЛОВИЕ ЛИЦЕНЗИИ, А НЕ ПОДРОБНОСТЬ. Снимки с
+              Викисклада (7072 файла, замер 22.09.2026) лежат под CC BY / CC
+              BY-SA: показывать их можно и коммерчески, ровно пока названы
+              автор и лицензия. Досье — единственное место в игре, где у
+              снимка есть место под строку: в самой игре карточка показывается
+              секундами и подпись там была бы нечитаемой. Невидимую метку
+              PhotoCredit ставит здесь же — внутри этого figure. */}
+          <PhotoCredit url={card.photo_url} sourceKey={card.photo_source} as="figcaption" />
+          </figure>
         )}
 
         {/* Two per row, not the prototype's four: its tiles held numbers, ours
@@ -622,7 +642,8 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                        flex items-center gap-3 text-left active:opacity-70 transition-opacity"
           >
             {club.crest_url ? (
-              <img src={club.crest_url} alt="" className="w-8 h-8 rounded-lg object-contain bg-brand-bg shrink-0" loading="lazy" />
+              <img src={club.crest_url} alt="" className="w-8 h-8 rounded-lg object-contain bg-brand-bg shrink-0" loading="lazy"
+                   {...provenanceAttrs({ url: club.crest_url })} />
             ) : (
               <IconShirt size={16} stroke={1.75} className="text-brand-muted shrink-0" />
             )}
@@ -681,6 +702,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                         loading="lazy"
                         className="w-4 h-4 mt-0.5 shrink-0 object-contain"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        {...provenanceAttrs({ url: found.crest_url })}
                       />
                     ) : (
                       <IconShirt size={14} stroke={1.75} className="text-brand-muted mt-0.5 shrink-0" />
@@ -838,9 +860,19 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
               className="text-[12.5px] leading-relaxed text-brand-muted bg-brand-surface
                          border border-brand-border rounded-xl px-3.5 py-3 ds-panel"
               style={{ borderLeftColor: catColor }}
+              {...provenanceAttrs({ source: card.descriptions_source })}
             >
               {blurb}
             </p>
+            {/* CC BY-SA требует назвать источник текста там, где текст
+                показан. Ставится только у тех описаний, чьё происхождение
+                установлено: у части карточек текст написан руками, и
+                приписать его Википедии значило бы соврать про источник. */}
+            {card.descriptions_source === 'wikipedia' && (
+              <p className="text-[10px] text-brand-muted/80 mt-1.5">
+                {t('rights.text_from', { source: 'Wikipedia' })}
+              </p>
+            )}
           </Section>
         )}
       </div>

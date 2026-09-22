@@ -64,9 +64,14 @@ const googleSearch = (name: string) => {
 /** 32x32 round avatar for the summary history. Falls back to a category
  * placeholder circle when the card has no photo_url or the image fails.
  * (The country flag lives in the meta line under the name, not here.) */
+// ⚠️ ЧЕРЕЗ ТОКЕН, А НЕ HEX'ОМ, И ЭТО НЕ ЧИСТОПЛЮЙСТВО. Пока дизайна было два
+// и оба тёмных, разницы не было: #FF6300 давал 6.45, #4A9EFF — 6.99. На
+// кремовой бумаге те же цвета дают 2.50 и 2.30, то есть счёт в тридцать
+// пикселей почти пропадает. Значения тёмных дизайнов не изменились ни на тон —
+// они просто переехали в src/index.css, где им и место.
 const TEAM_COLOR: Record<Team, string> = {
-  orange: '#FF6300',
-  blue:   '#4A9EFF',
+  orange: 'var(--score-left, #FF6300)',
+  blue:   'var(--score-right, #4A9EFF)',
 };
 
 // History row status bar: guessed = success green, skipped = warning orange.
@@ -74,7 +79,7 @@ const STATUS_GUESSED = '#00C97D';
 const STATUS_SKIPPED = '#FF6300';
 
 // Score separator — muted slate, NOT a pure grey.
-const SCORE_DIVIDER = '#4A5270';
+const SCORE_DIVIDER = 'var(--score-divider, #4A5270)';
 
 const CATEGORY_COLOR: Record<CardCategory, string> = {
   player:        '#FF6300',

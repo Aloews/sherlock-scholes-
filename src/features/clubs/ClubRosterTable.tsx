@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { formatEur } from '@/shared/lib/money';
 import { isoToFlag } from '@/shared/lib/flag';
 import type { ClubRosterRow } from './clubsApi';
+import { provenanceAttrs } from '@/shared/lib/provenance';
 
 export function ClubRosterTable({
   rows,
@@ -48,6 +49,7 @@ export function ClubRosterTable({
                 src={r.photo_url}
                 alt=""
                 className="w-7 h-7 rounded-full object-cover shrink-0 bg-brand-border"
+                {...provenanceAttrs({ url: r.photo_url })}
               />
             ) : (
               <span className="w-7 h-7 rounded-full bg-brand-border shrink-0" />

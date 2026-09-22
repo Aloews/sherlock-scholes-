@@ -398,6 +398,183 @@ testcase(
     () => !passes(py('tests/test_calibration.py'))),
 );
 
+testcase(
+  'тесты прав замечают затёртое решение владельца о лицензии',
+  '`license_ok` отвечает «есть ли у нас право это показывать», и ставит его ' +
+  'человек. Допиши кто-нибудь `license_ok = excluded.license_ok` в upsert ' +
+  'реестра — и следующее применение миграции вернёт умолчания поверх его ' +
+  'решения. Ни одного признака на экране при этом не появится: строки на ' +
+  'месте, числа на месте, они просто перестали быть его',
+  () => withBroken('supabase/migrations/content_rights.sql',
+    (s) => s.replace('  attribution = excluded.attribution,',
+                     '  attribution = excluded.attribution,\n'
+                     + '  license_ok  = excluded.license_ok,  -- СЛОМАНО'),
+    () => !passes('npx vitest run test/content_rights.test.ts')),
+);
+
+testcase(
+  'тесты прав замечают ревизию, открытую анониму',
+  'ревизия отвечает «5335 снимков показываются без разрешения» — это ' +
+  'утверждение про нас, а не про контент, и вдобавок стоит 5.5 с полного ' +
+  'прохода при потолке anon в три секунды. Выданная анониму, она и список ' +
+  'претензий раздаёт, и отвечает 57014 вместо ответа',
+  () => withBroken('supabase/migrations/content_rights.sql',
+    (s) => s.replace('grant execute on function public.content_rights_gaps()         to service_role;',
+                     'grant execute on function public.content_rights_gaps() to anon, service_role;  -- СЛОМАНО'),
+    () => !passes('npx vitest run test/content_rights.test.ts')),
+);
+
+testcase(
+  'тесты подписи замечают разбор, который «узнаёт» чужой хост',
+  'если `file_title_from_url` начнёт отдавать имя для ссылок Transfermarkt ' +
+  'и ESPN, сборщик подписей понесёт Викискладу имена чужих файлов. Тот ' +
+  'ответит «нет такого» на каждое — и прогон будет выглядеть рабочим, не ' +
+  'подписав ничего',
+  () => withBroken('docs/cards_photo_credits.py',
+    (s) => s.replace("    m = re.search(r\"/commons/[0-9a-f]/[0-9a-f]{2}/([^/]+)$\", path)",
+                     "    m = re.search(r\"/([^/]+)$\", path)  # СЛОМАНО: любой хост"),
+    () => !passes(py('tests/test_photo_credits.py'))),
+);
+
+testcase(
+  'тесты маркировки замечают разъехавшееся правило «чей файл»',
+  'правило выписано дважды: в SQL по нему считает ревизия прав, в TypeScript ' +
+  'им помечается каждый показанный файл. Разъедутся — обе стороны будут ' +
+  '«работать», просто говорить про разное: ревизия считает снимок Викисклада ' +
+  'подписанным, а разметка объявляет его чужим',
+  () => withBroken('src/shared/lib/provenance.ts',
+    (s) => s.replace("'a.espncdn.com': 'espn',",
+                     "'a.espncdn.com': 'thesportsdb',  // СЛОМАНО"),
+    () => !passes('npx vitest run test/provenance_parity.test.ts')),
+);
+
+testcase(
+  'тесты маркировки замечают экран, забывший пометить чужой файл',
+  'метка, которую надо не забыть поставить на новом экране, однажды не ' +
+  'ставится — и это ничем себя не проявит: картинка отрисуется, тесты ' +
+  'пройдут, экран будет выглядеть готовым. Обход по всему src — ' +
+  'единственное, что делает слово «ко всему» проверяемым',
+  () => withBroken('src/screens/LeagueTableScreen.tsx',
+    (s) => s.replace('\n                                 {...provenanceAttrs({ url: r.crest_url })} />',
+                     ' />  {/* СЛОМАНО */}'),
+    () => !passes('npx vitest run test/provenance_coverage.test.ts')),
+);
+
+testcase(
+  'тесты маркировки замечают метку, одинаковую для всех',
+  'если незнакомый хост начнёт получать метку-заглушку вместо пустоты, ' +
+  'чужое спрячется под своим — ровно то, против чего вся эта работа. ' +
+  'И проверка «метка есть» при этом зеленела бы',
+  () => withBroken('src/shared/lib/provenance.ts',
+    (s) => s.replace('  return HOST_SOURCE[host] ?? null;',
+                     "  return HOST_SOURCE[host] ?? 'own';  // СЛОМАНО"),
+    () => !passes('npx vitest run src/shared/ui/PlayerPhoto.test.tsx')),
+);
+
+testcase(
+  'тесты дизайна замечают нечитаемый текст на бумаге',
+  'в переданном макете стояло «--brand-muted #8C8275 — 4.6:1 на #F2EADB»; ' +
+  'пересчёт дал 3.16, то есть вторичный текст на кремовом не дотягивал до ' +
+  'AA. Число в комментарии не проверяет себя само — проверяет только мера',
+  () => withBroken('src/index.css',
+    (s) => s.replace('    --brand-muted:        90 82 70;    /* #5A5246',
+                     '    --brand-muted:       140 130 117;  /* СЛОМАНО #8C8275'),
+    () => !passes('npx vitest run test/design_paper.test.ts')),
+);
+
+testcase(
+  'тесты дизайна замечают фон, прибитый к тёмному',
+  'у body рядом стоит `bg-brand-bg`, который читает токен и даёт кремовый, ' +
+  'но встроенный `style="background: #0a0e1a"` перебивает его по правилам ' +
+  'каскада. Обе строки выглядят осмысленно порознь, и заметить это можно ' +
+  'было только замером computed-стиля в браузере',
+  () => withBroken('index.html',
+    (s) => s.replace('style="background: var(--splash-bg, #0a0e1a); margin: 0"',
+                     'style="background: #0a0e1a; margin: 0"  /* СЛОМАНО */'),
+    () => !passes('npx vitest run test/design_paper.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают включённую обратно Лигу наций УЕФА',
+  'её расписание ведёт платный провайдер под своими идентификаторами; ESPN ' +
+  'отдаст те же матчи под своими, с приставкой espn:, и в календаре встанут ' +
+  'две строки на одну игру. Заметить это можно только глазами — обе строки ' +
+  'выглядят правильными',
+  () => withBroken('supabase/migrations/national_fixtures.sql',
+    (s) => s.replace("'Лига наций УЕФА', false,", "'Лига наций УЕФА', true,"),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают турнир, забытый в одной локали',
+  'реестр турниров живёт в базе, имена — в девяти файлах, и разойтись им ' +
+  'ничто не мешает. Забытый ключ не падает и не логируется: он выходит на ' +
+  'экран как «Concacaf Gold Cup» посреди корейского списка',
+  () => withBroken('src/shared/i18n/locales/ja.json',
+    (s) => {
+      const d = JSON.parse(s);
+      delete d.leagues.soccer_concacaf_gold_cup;
+      return JSON.stringify(d, null, 2) + '\n';
+    },
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают запрос без срока',
+  'запрос без срока не падает — он висит, а висящий сборщик неотличим от ' +
+  'работающего. Ровно так ночной обход шёл 3 ч 36 мин при бюджете 80 минут',
+  () => withBroken('supabase/functions/football-national/index.ts',
+    (s) => s.replace('          signal: AbortSignal.timeout(REQUEST_MS),\n', ''),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают дешёвый режим, ставший дорогим',
+  'режим scores зовётся каждые пять минут. Подменить ему реестр на полный — ' +
+  'значит обходить все турниры за три месяца 288 раз в сутки: 11 232 запроса ' +
+  'к чужому бесплатному адресу вместо пары десятков',
+  () => withBroken('supabase/functions/football-national/index.ts',
+    (s) => s.replace('mode === "scores" ? "national_leagues_in_play" : "espn_national_leagues"',
+                     '"espn_national_leagues"'),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают снятую заслонку перед вызовом',
+  'без проверки окна задание поднимало бы Edge-функцию 288 раз в сутки ради ' +
+  'ответа «матчей нет». Стоимость видна только в счёте за месяц',
+  () => withBroken('supabase/migrations/schedule_national_fixtures.sql',
+    (s) => s.replace("  if p_mode = 'scores' then", "  if false then"),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты сборных замечают турнир, выпавший из KNOWN_SPORT_KEYS',
+  'без записи имя турнира уходит в readableSportKey — «Fifa World Cup ' +
+  'Qualifiers Africa» посреди списка матчей. Это не ошибка, это просто уродливо, ' +
+  'и поэтому её никто не чинит годами',
+  () => withBroken('src/features/fixtures/leagues.ts',
+    (s) => s.replace("  'soccer_international_friendlies',\n", ''),
+    () => !passes('npx vitest run test/national_fixtures.test.ts')),
+);
+
+// ---------------------------------------------------------------------------
+testcase(
+  'тесты выкладки замечают запрос наружу без срока',
+  'запрос без срока не падает — он висит, и висящая функция неотличима от ' +
+  'работающей. На 22.09.2026 срок стоял у одной Edge-функции из десяти; ' +
+  'тридцать три вызова висели бы до потолка платформы',
+  () => withBroken('supabase/functions/football-scores-espn/index.ts',
+    (s) => s.replace('init.signal ?? AbortSignal.timeout(FETCH_MS)', 'init.signal'),
+    () => !passes('npx vitest run test/deploy_functions.test.ts')),
+);
+
 // ---------------------------------------------------------------------------
 // Дерево обязано быть чистым: иначе восстановление затрёт чужие правки.
 const dirty = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();

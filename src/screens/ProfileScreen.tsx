@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
-import { IconX, IconUsers, IconChevronRight, IconFlame } from '@tabler/icons-react';
+import { IconX, IconUsers, IconChevronRight, IconFlame, IconLicense } from '@tabler/icons-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { useAuthStore } from '@/shared/store/authStore';
 import { usePlayerStats } from '@/features/game/usePlayerStats';
@@ -116,6 +116,24 @@ export function ProfileScreen() {
             <span className="flex-1 min-w-0">
               <span className="block text-sm text-white font-semibold">{t('friends.title')}</span>
               <span className="block text-[11px] text-brand-muted mt-0.5">{t('friends.entry_hint')}</span>
+            </span>
+            <span className="text-brand-muted shrink-0"><IconChevronRight size={16} stroke={2} /></span>
+          </button>
+
+          {/* Источники и права. ⚠️ ЭТО НЕ «О ПРОЕКТЕ»: тексты и часть эмблем
+              взяты под CC BY-SA, а эта лицензия разрешает их показывать ровно
+              пока источник НАЗВАН в доступном месте. До этой строки такого
+              места в приложении не было ни одного. */}
+          <button
+            type="button"
+            onClick={() => { hapticImpact('light'); navigate('/sources'); }}
+            className="ds-panel w-full bg-brand-surface border border-brand-border rounded-2xl p-4
+                       flex items-center gap-3 text-left hover:border-brand-accent transition-colors"
+          >
+            <span className="text-brand-accent shrink-0"><IconLicense size={20} stroke={1.75} /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm text-white font-semibold">{t('rights.title')}</span>
+              <span className="block text-[11px] text-brand-muted mt-0.5">{t('rights.entry_hint')}</span>
             </span>
             <span className="text-brand-muted shrink-0"><IconChevronRight size={16} stroke={2} /></span>
           </button>

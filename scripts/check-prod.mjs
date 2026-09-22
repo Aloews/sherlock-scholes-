@@ -128,6 +128,43 @@ function record(name, ok, detail, control) {
   results.push({ name, ok, detail, control });
 }
 
+/**
+ * Вызвать RPC под анонимным ключом, ОДИН РАЗ ПЕРЕСПРОСИВ при сетевом сбое.
+ *
+ * ⚠️ ЭТО НЕ ПОБЛАЖКА ПРОВЕРКЕ, А РАЗДЕЛЕНИЕ ДВУХ РАЗНЫХ ОТВЕТОВ. «RPC вернул
+ * не массив» значит либо «функция сломана», либо «пакет не доехал» — и
+ * пока они неразличимы, отчёт краснеет через раз. Замер 22.09.2026: три
+ * прогона подряд из одного контейнера дали 4, 1 и 0 падений на неизменном
+ * коде; падали `card_club_conflicts` и `deck_countries`, у которых на сервере
+ * 273 мс и 33 мс.
+ *
+ * Сломанная функция не чинится переспросом — она упадёт оба раза, и проверка
+ * покраснеет. А переспрос ВИДЕН в отчёте: `retried` дописывается к строке,
+ * чтобы «позеленело со второго раза» не выглядело как «всё хорошо».
+ */
+async function anonRpc(url, key, name, body = {}, attempts = 2) {
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  let retried = 0;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+        method: 'POST', headers: auth, body: JSON.stringify(body),
+      });
+      const rows = await r.json().catch(() => null);
+      if (Array.isArray(rows)) return { rows, retried };
+    } catch { /* сеть — пробуем ещё раз */ }
+    retried += 1;
+  }
+  return { rows: null, retried: retried - 1 };
+}
+
+/** Середина выборки. Для времени ответа она честнее худшего: одиночный
+ *  выброс сети двигает максимум и не двигает медиану. */
+function median(xs) {
+  const a = [...xs].sort((x, y) => x - y);
+  return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+}
+
 // -------------------------------------------------------------- дайджест ---
 // ⚠️ РАЗДЕЛЫ ЗА ПОДПИСКОЙ ПРОВЕРЯЮТСЯ СЕРВИСНЫМ КЛЮЧОМ, И ЭТО НЕ ЛАЗЕЙКА.
 // `player_index` закрыт `require_pro()`: аноним получает 401. Проверять его
@@ -709,6 +746,34 @@ async function checkClubRoster() {
 // Здесь проверяется ТОТ путь, которым идёт экран: имя команды из расписания →
 // ключ клуба → состав со стоимостями.
 // ---------------------------------------------------------------------------
+/**
+ * Турниры СБОРНЫХ — из реестра в базе, а не из списка в этом файле.
+ *
+ * ⚠️ СПИСОК ЗДЕСЬ УЖЕ РАЗОШЁЛСЯ С ЖИЗНЬЮ, И РОВНО ТАК, КАК ОБЕЩАЛ КОММЕНТАРИЙ
+ * РЯДОМ С НИМ. В нём было пять турниров; 22.09.2026 добавились товарищеские,
+ * Лига наций КОНКАКАФ и шесть отборов — и обе проверки, которые этим списком
+ * пользуются, покраснели по КАЛЕНДАРЮ, а не по поломке: «6 из 40 матчей с
+ * обеими сторонами» во время международного перерыва.
+ *
+ * Реестр `espn_national_league` — единственное место, где этот перечень
+ * ведётся, и он открыт анониму на чтение. Берём оттуда.
+ *
+ * Возвращает `null`, если реестр не прочитался: вызывающий обязан сказать об
+ * этом вслух, а не подставить вчерашний список молча.
+ */
+async function nationalSportKeys(url, key) {
+  try {
+    const r = await fetch(`${url}/rest/v1/espn_national_league?select=sport_key`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    const rows = await r.json().catch(() => null);
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return new Set(rows.map((x) => x.sport_key));
+  } catch {
+    return null;
+  }
+}
+
 async function checkFixtureSquads() {
   const url = env('VITE_SUPABASE_URL');
   const key = env('VITE_SUPABASE_ANON_KEY');
@@ -756,13 +821,12 @@ async function checkFixtureSquads() {
   //
   // Список турниров тот же, что ведёт сам сборщик расписания
   // (`SEASONAL_KEYS` в supabase/functions/football-fixtures/index.ts).
-  const NATIONAL_KEYS = new Set([
-    'soccer_uefa_nations_league',
-    'soccer_fifa_world_cup',
-    'soccer_fifa_world_cup_qualifiers_europe',
-    'soccer_uefa_european_championship',
-    'soccer_uefa_euro_qualification',
-  ]);
+  const NATIONAL_KEYS = await nationalSportKeys(url, key);
+  record('Составы: реестр турниров сборных прочитан', NATIONAL_KEYS !== null,
+         NATIONAL_KEYS ? `${NATIONAL_KEYS.size} турниров сборных исключены из знаменателя`
+                       : 'espn_national_league не читается — знаменатель не очищен',
+         'без реестра проверка ниже краснеет каждый международный перерыв');
+  if (!NATIONAL_KEYS) return;
   const fr = await fetch(
     `${url}/rest/v1/fixtures?select=id,sport_key,home_team,away_team&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=200`,
     { headers: auth },
@@ -890,6 +954,106 @@ async function checkEspnScores() {
 }
 
 // ---------------------------------------------------------------------------
+// Матчи сборных: источник жив, строки доехали ДО ТАБЛИЦЫ, и матч не задвоен.
+//
+// ⚠️ ЭТО ЕДИНСТВЕННЫЙ ТУРНИРНЫЙ ПУТЬ, ГДЕ СТРОКИ СОЗДАЁТ НЕ ПРОВАЙДЕР. У
+// платного провайдера из турниров сборных ровно один — Лига наций УЕФА
+// (замер 22.09.2026, его же справочник). Остальные приходят из ESPN, и если
+// ESPN отвалится, календарь сборных просто перестанет пополняться: ни одной
+// ошибки на экране, ни одной красной строки в Actions. Увидеть это можно
+// только отсюда.
+//
+// ⚠️ ПРОВЕРЯЕТСЯ И ЗАДВОЕНИЕ, ПОТОМУ ЧТО ЭТО ЕДИНСТВЕННЫЙ СПОСОБ ЕГО ЗАМЕТИТЬ.
+// Лига наций УЕФА есть у ОБОИХ источников; у ESPN она выключена в реестре
+// строкой с причиной. Включить её обратно — значит получить две строки на
+// каждый матч, под разными идентификаторами, и обе будут выглядеть
+// правильными.
+// ---------------------------------------------------------------------------
+async function checkNationalFixtures() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Матчи сборных', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const head = { apikey: key, Authorization: `Bearer ${key}` };
+  const now = new Date();
+  const ym = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const board = (slug) =>
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${ym}`;
+
+  // 1. ИСТОЧНИК. Спрашивается то же, что спрашивает функция, и разбирается до
+  //    матчей — 200 над пустым телом здесь ничего не значит.
+  let events = 0;
+  try {
+    const r = await fetch(board('fifa.friendly'), { headers: { 'User-Agent': UA } });
+    const d = await r.json();
+    events = (d.events ?? []).length;
+  } catch { events = 0; }
+  record('Матчи сборных: ESPN отдаёт матчи', events > 0,
+         `${events} матчей у fifa.friendly за ${ym}`,
+         'разбирается СПИСОК МАТЧЕЙ, а не код ответа');
+
+  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: у выдуманного турнира матчей быть не может.
+  let ghostOk = false;
+  try {
+    const r = await fetch(board('fifa.nosuchcup'), { headers: { 'User-Agent': UA } });
+    const d = await r.json().catch(() => ({}));
+    ghostOk = !r.ok || !(d.events ?? []).length;
+  } catch { ghostOk = true; }
+  record('Матчи сборных: контроль выдуманного турнира', ghostOk,
+         ghostOk ? 'по fifa.nosuchcup пусто, как и должно' : 'выдуманный турнир отдал матчи',
+         ghostOk ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 2. КОНЕЦ ЦЕПОЧКИ — ровно тот запрос, которым экран читает расписание.
+  const q = `${url}/rest/v1/fixtures?select=id,sport_key,commence_at,home_team,away_team,`
+          + `home_score,completed&id=like.espn:*&limit=1000`;
+  const rr = await fetch(q, { headers: head });
+  const rows = await rr.json().catch(() => null);
+  if (!Array.isArray(rows)) {
+    record('Матчи сборных: доехали до таблицы', false,
+           'fixtures не читаются под anon', 'ключ anon');
+    return;
+  }
+  const ahead = rows.filter((r) => new Date(r.commence_at) > now).length;
+  record('Матчи сборных: доехали до таблицы', ahead > 0,
+         `${ahead} предстоящих из ${rows.length} собранных`,
+         'пустота здесь значит, что сбор встал — на экране это выглядит как межсезонье');
+
+  // 3. РЕЗУЛЬТАТЫ. Завершённый матч сборной ОБЯЗАН иметь счёт — иначе
+  //    «результаты» есть только на словах.
+  const done = rows.filter((r) => r.completed);
+  const blank = done.filter((r) => r.home_score === null).length;
+  record('Матчи сборных: у сыгранного есть счёт', done.length > 0 && blank === 0,
+         `${done.length - blank} из ${done.length} завершённых со счётом`,
+         'ловит календарь без результатов — строка есть, счёта нет');
+
+  // 4. ЗАДВОЕНИЕ. Тот же матч, пришедший из двух источников, — две строки с
+  //    одним временем и одними командами, но разными id.
+  const wide = await fetch(
+    `${url}/rest/v1/fixtures?select=id,commence_at,home_team&commence_at=gte.`
+    + `${new Date(now.getTime() - 7 * 864e5).toISOString()}&limit=1000`,
+    { headers: head },
+  );
+  const all = await wide.json().catch(() => null);
+  let dupes = 0;
+  if (Array.isArray(all)) {
+    const seen = new Map();
+    for (const r of all) {
+      const k = `${r.commence_at}|${r.home_team}`;
+      const kind = String(r.id).startsWith('espn:') ? 'espn' : 'provider';
+      const had = seen.get(k);
+      if (had && had !== kind) dupes += 1;
+      else seen.set(k, kind);
+    }
+  }
+  record('Матчи сборных: матч не задвоен двумя источниками', Array.isArray(all) && dupes === 0,
+         dupes === 0 ? `${Array.isArray(all) ? all.length : 0} матчей за неделю, пар нет`
+                     : `${dupes} матчей пришли из обоих источников`,
+         'ловит включённый обратно uefa.nations — обе строки выглядят правильными');
+}
+
+// ---------------------------------------------------------------------------
 // Список стран в подборе колоды — ПОЛНЫЙ, а не первая тысяча строк.
 //
 // ⚠️ Экран читал все активные карточки и собирал set() в браузере. PostgREST
@@ -935,11 +1099,9 @@ async function checkCardConflicts() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
-  const r = await fetch(`${url}/rest/v1/rpc/card_club_conflicts`, {
-    method: 'POST', headers: auth, body: '{}',
-  });
-  const rows = await r.json().catch(() => null);
+  const { rows, retried } = await anonRpc(url, key, 'card_club_conflicts');
   const conflicts = Array.isArray(rows) ? rows.length : -1;
+  const again = retried ? ` (переспрошено ${retried})` : '';
 
   // Сколько из спорных карточек всё ещё берут клуб ИЗ СТАТЬИ. Это и есть
   // поломка: сам факт расхождения — норма, статьи отстают.
@@ -957,7 +1119,7 @@ async function checkCardConflicts() {
   }
 
   record('Расхождения карточек: клуб берётся из собранного', fromArticle === 0,
-         `расхождений ${conflicts}, из статьи в прогнозах ${fromArticle}`,
+         `расхождений ${conflicts}, из статьи в прогнозах ${fromArticle}${again}`,
          'ловит возврат приоритета статьи над заявкой');
 
   // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: сам отчёт обязан что-то находить. Пустой отчёт
@@ -1009,11 +1171,9 @@ async function checkDeckCountries() {
   }
   const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
-  const r = await fetch(`${url}/rest/v1/rpc/deck_countries`, {
-    method: 'POST', headers: auth, body: '{}',
-  });
-  const rows = await r.json().catch(() => null);
+  const { rows, retried } = await anonRpc(url, key, 'deck_countries');
   const viaRpc = Array.isArray(rows) ? rows.length : 0;
+  const again = retried ? ` (переспрошено ${retried})` : '';
 
   // ⚠️ ТОТ САМЫЙ УСЕЧЁННЫЙ ПУТЬ, которым экран ходил раньше. Он и есть
   // отрицательный контроль: если он вдруг вернёт СТОЛЬКО ЖЕ, значит колода
@@ -1027,7 +1187,7 @@ async function checkDeckCountries() {
     ? new Set(rawRows.map((x) => x.country).filter(Boolean)).size : 0;
 
   record('Страны колоды: список полный', viaRpc > 0 && viaRpc > viaRows,
-         `${viaRpc} стран запросом против ${viaRows} чтением строк`,
+         `${viaRpc} стран запросом против ${viaRows} чтением строк${again}`,
          'ловит усечение по db-max-rows: список остаётся непустым и экран не падает');
 
   record('Страны колоды: контроль усечения', viaRows > 0 && viaRows < viaRpc,
@@ -1701,11 +1861,24 @@ async function checkFixtureClubs() {
   };
 
   // Берём те же матчи, что показывает экран: ближайшие по расписанию.
+  //
+  // ⚠️ БЕЗ ТУРНИРОВ СБОРНЫХ, ПО ТОЙ ЖЕ ПРИЧИНЕ, ЧТО И В `checkFixtureSquads`.
+  // У сборной нет клубной эмблемы и быть не может; оставить её в знаменателе
+  // значит красить проверку по календарю. Замер 22.09.2026, международный
+  // перерыв: 28 из 60 — при том, что все 28 клубных матчей были с эмблемами.
+  const national = await nationalSportKeys(url, key);
+  record('Клубы в списке матчей: реестр сборных прочитан', national !== null,
+         national ? `${national.size} турниров сборных исключены из знаменателя`
+                  : 'espn_national_league не читается — знаменатель не очищен',
+         'без реестра проверка ниже краснеет каждый международный перерыв');
+  if (!national) return;
   const soon = await fetch(
-    `${url}/rest/v1/fixtures?select=id&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=60`,
+    `${url}/rest/v1/fixtures?select=id,sport_key&commence_at=gt.${new Date().toISOString()}&order=commence_at.asc&limit=200`,
     { headers: auth },
   ).then((r) => (r.ok ? r.json().catch(() => null) : null));
-  const ids = Array.isArray(soon) ? soon.map((f) => f.id) : [];
+  const ids = Array.isArray(soon)
+    ? soon.filter((f) => !national.has(f.sport_key)).slice(0, 60).map((f) => f.id)
+    : [];
   if (ids.length === 0) {
     record('Клубы в списке матчей', false, 'ближайших матчей нет вовсе — проверять нечего', 'н/д');
     return;
@@ -1883,16 +2056,23 @@ async function checkMatchCharacter() {
   // краснела с 1615 мс там, где установившееся время 840–1220 мс. Замер
   // 13.09.2026 по четырём матчам, четыре захода на каждый.
   //
-  // Берётся ХУДШЕЕ из трёх прогретых, а не лучшее: у зрителя бывает и
-  // худшее, и запас до лимита нужен именно под него.
+  // ⚠️ БЕРЁТСЯ МЕДИАНА ПЯТИ ПРОГРЕТЫХ, А БЫЛО ХУДШЕЕ ИЗ ТРЁХ. Худшее меряет
+  // не вызов, а сеть: один выброс двигает максимум целиком. Замер 22.09.2026,
+  // три прогона подряд на одном и том же матче и неизменном коде — 302, 338 и
+  // 802 мс; третий покраснел о порог 600, хотя на сервере вызов стоит 164 мс.
+  // Отчёт, красный через раз, перестают читать — и это дороже, чем пропущенное
+  // замедление.
+  //
+  // Медиана двигается только настоящим замедлением: чтобы она перевалила за
+  // 600 при обычных 300, замедлиться должна БОЛЬШАЯ ЧАСТЬ вызовов, а не один.
   if (measured) {
     const warm = [];
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       const t0 = Date.now();
       await rpc('match_character', { p_fixture_id: measured.fixture_id, p_lang: 'ru' });
       if (i > 0) warm.push(Date.now() - t0);
     }
-    ms = Math.max(...warm);
+    ms = median(warm);
   }
   // ⚠️ ПОРОГ СНИЖЕН С 1500 ДО 600, И ЭТО НЕ УЖЕСТОЧЕНИЕ РАДИ УЖЕСТОЧЕНИЯ.
   // 1500 был подобран под ту цену, которую вызов имел с неиндексированным
@@ -1901,7 +2081,7 @@ async function checkMatchCharacter() {
   // ловить что-либо вовсе: под ним уместился бы даже возврат полного перебора.
   // Порог, который не может сработать, — пустая проверка.
   record('Характер матча: укладывается в лимит anon', ms > 0 && ms < 600,
-         `${ms} мс на вызов (худший из трёх прогретых)`,
+         `${ms} мс на вызов (медиана пяти прогретых)`,
          'ловит потерянный индекс news_items_tokens_idx и возврат полного перебора');
 
   // ⚠️ ТРЕНЕР — ОТДЕЛЬНОЙ ПРОВЕРКОЙ, И ВОТ ПОЧЕМУ. Он читается из club_manager;
@@ -2948,6 +3128,7 @@ await checkClubValue();
 await checkClubRoster();
 await checkFixtureSquads();
 await checkEspnScores();
+await checkNationalFixtures();
 await checkCardConflicts();
 await checkCurrentClubSources();
 await checkDeckCountries();
@@ -4023,6 +4204,149 @@ async function checkTransfers() {
          works ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
 }
 
+// ------------------------------------------------------ происхождение и права ---
+// ⚠️ ЭТО ПРОВЕРКА УСЛОВИЯ ЛИЦЕНЗИИ, А НЕ ОПРЯТНОСТИ ДАННЫХ. Фотографии с
+// Викисклада (7072 файла, замер 22.09.2026) лежат под CC BY / CC BY-SA:
+// показывать их можно и коммерчески, ровно пока названы автор и лицензия.
+// Тексты описаний — из Википедии под CC BY-SA, и та требует назвать источник.
+// До сентября 2026 в приложении не было названо НИ ОДНОГО.
+//
+// Проверяется вся цепочка, а не наличие таблицы:
+//
+//   1. реестр источников ЧИТАЕТСЯ анонимом — иначе экран «Источники» пуст,
+//      и подпись, которой никто не видит, подписью не является;
+//   2. у всего собранного контента источник ОПОЗНАН — иначе про эти записи
+//      нельзя сказать вообще ничего (спрашивается СЕРВИСНЫМ ключом: ревизия
+//      идёт около шести секунд, а у anon потолок три);
+//   3. у живого снимка из колоды подпись ДОХОДИТ ДО КОНЦА: не «таблица
+//      есть», а «вот этот файл на экране подписан вот этим автором».
+//
+// И у каждой — отрицательный контроль: неизвестный хост обязан остаться
+// неопознанным, выдуманная ссылка — остаться без подписи, а внутренняя
+// ревизия (она отвечает «столько-то показывается без разрешения») обязана
+// быть анониму ЗАКРЫТА.
+async function checkContentRights() {
+  const url = env('VITE_SUPABASE_URL');
+  const key = env('VITE_SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    record('Права: реестр источников', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+    return;
+  }
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const rpc = async (name, body) => {
+    const t0 = Date.now();
+    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers: auth, body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => null);
+    return { status: r.status, ok: r.ok, data, ms: Date.now() - t0 };
+  };
+
+  // 1. Реестр виден игроку.
+  let sources = [];
+  try {
+    const r = await get(`${url}/rest/v1/content_source`
+                        + '?select=key,title,license,attribution', auth);
+    sources = r.ok ? (await r.json().catch(() => [])) : [];
+  } catch { sources = []; }
+  const perRecord = sources.filter((x) => x.attribution === 'per_record');
+  record('Права: реестр источников читается анонимом',
+         sources.length >= 8 && perRecord.length > 0,
+         sources.length ? `${sources.length} источников, из них «подпись у каждого файла» ${perRecord.length}`
+                        : 'реестр НЕ ОТДАЁТСЯ — экран «Источники» будет пуст',
+         'без этого лицензия CC BY-SA не выполнена: источник нигде не назван');
+
+  // 2. Всё собранное опознано.
+  //
+  // ⚠️ СЕРВИСНЫМ КЛЮЧОМ, И ЭТО РЕШЕНИЕ ПО ЗАМЕРУ, А НЕ УДОБСТВО. Ревизия
+  // обходит ВСЕ таблицы с контентом (166 тысяч строк статистики, 57 тысяч
+  // SoccerWiki, 27 тысяч карточек) и стоит около шести секунд. У роли anon
+  // потолок запроса — три, то есть анониму она отвечала бы 57014 вместо
+  // ответа, да ещё и раздавала бы по шесть секунд процессорного времени
+  // кому угодно. Это внутренняя ревизия, и ходить в неё надо изнутри.
+  const svc = serviceKey();
+  if (!svc) {
+    record('Права: у всего собранного известен источник', false,
+           'нет SUPABASE_SERVICE_KEY — ревизию нечем спросить', 'н/д');
+  } else {
+    const svcAuth = { apikey: svc, Authorization: `Bearer ${svc}`,
+                      'Content-Type': 'application/json' };
+    const t0 = Date.now();
+    const r = await fetch(`${url}/rest/v1/rpc/content_rights_unresolved`, {
+      method: 'POST', headers: svcAuth, body: '{}',
+    });
+    const ms = Date.now() - t0;
+    const data = await r.json().catch(() => null);
+    const clean = r.ok && Array.isArray(data) && data.length === 0;
+    record('Права: у всего собранного известен источник', clean,
+           r.ok
+             ? (clean ? `ни одной неопознанной колонки, ${ms} мс`
+                      : `НЕ ОПОЗНАНО: ${data.map((x) => x.area).join(', ').slice(0, 80)}`)
+             : `HTTP ${r.status} ${data?.code ?? ''}`,
+           'ловит сборщик, который завёл источник и не внёс его в мост');
+  }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ОПОЗНАНИЯ. Пункт 2 зелен и тогда, когда
+  // «опознаётся» вообще всё подряд. Чужой хост ОБЯЗАН остаться без источника,
+  // а знакомый — с ним. Совпали ответы — проверка выше ничего не стоит.
+  const known = await rpc('content_source_of_url',
+                          { p_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/X.jpg' });
+  const alien = await rpc('content_source_of_url', { p_url: 'https://example.invalid/x.jpg' });
+  const discriminates = known.ok && alien.ok
+                        && known.data === 'wikimedia_commons' && alien.data === null;
+  record('Права: контроль — чужой хост остаётся неопознанным', discriminates,
+         discriminates ? 'Викисклад опознан, example.invalid — нет'
+                       : `знакомый → ${JSON.stringify(known.data)}, чужой → ${JSON.stringify(alien.data)}`,
+         discriminates ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+
+  // 3. Живой снимок из колоды — и его подпись. До конца цепочки: берём ту
+  // самую ссылку, которую увидит игрок, и спрашиваем подпись именно к ней.
+  let live = null;
+  try {
+    const r = await get(`${url}/rest/v1/cards`
+                        + '?select=photo_url&photo_source=eq.wikimedia_commons'
+                        + '&photo_url=not.is.null&limit=1', auth);
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    live = rows[0]?.photo_url ?? null;
+  } catch { live = null; }
+
+  if (!live) {
+    record('Права: подпись к живому снимку', false,
+           'в колоде не нашлось снимка с Викисклада — проверять нечего',
+           '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+  } else {
+    const credit = await rpc('media_credit_for', { p_urls: [live] });
+    const row = credit.ok && Array.isArray(credit.data) ? credit.data[0] : null;
+    const signed = Boolean(row && (row.author || row.license));
+    record('Права: у живого снимка из колоды есть подпись', signed,
+           signed ? `${(row.author || '(автор не указан)')} · ${row.license ?? 'лицензия не названа'}`
+                  : 'снимок на экране, подписи нет — условие CC BY-SA не выполнено',
+           'идёт до конца: ссылка из карточки → подпись к ней, а не «таблица существует»');
+
+    // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ПОДПИСИ: выдуманная ссылка обязана остаться без
+    // подписи. Иначе «подписано» значило бы «функция что-нибудь возвращает».
+    const fake = await rpc('media_credit_for',
+                           { p_urls: ['https://commons.wikimedia.org/wiki/Special:FilePath/'
+                                      + 'нет-такого-файла-' + Date.now() + '.jpg'] });
+    const empty = fake.ok && Array.isArray(fake.data) && fake.data.length === 0;
+    record('Права: контроль — выдуманная ссылка остаётся без подписи', empty,
+           empty ? 'подпись не выдумывается' : `вернулось ${JSON.stringify(fake.data).slice(0, 60)}`,
+           empty ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+  }
+
+  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ЗАКРЫТОСТИ. Обе ревизии отвечают «столько-то
+  // записей показывается без разрешения» — это про нас, а не про контент, и
+  // анониму их видеть нельзя. Открыты — значит гранты разъехались.
+  const audit = await rpc('content_rights_audit', {});
+  const probe = await rpc('content_rights_unresolved', {});
+  const locked = (!audit.ok || audit.data?.code === '42501')
+                 && (!probe.ok || probe.data?.code === '42501');
+  record('Права: контроль — внутренняя ревизия закрыта анониму', locked,
+         locked ? 'content_rights_audit и content_rights_unresolved анониму недоступны'
+                : 'ревизия ОТКРЫТА анониму — и по содержанию, и по шести секундам CPU',
+         locked ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
+}
+
 await checkRatingCache();
 await checkStatsCoverage();
 await checkProGate();
@@ -4038,6 +4362,7 @@ await checkOdds();
 await checkTransfers();
 await checkClubRoom();
 await checkFanAndFixtures();
+await checkContentRights();
 await checkBundle();
 
 const w = Math.max(...results.map((r) => r.name.length));

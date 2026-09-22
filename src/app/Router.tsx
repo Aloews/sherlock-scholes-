@@ -20,6 +20,7 @@ const TutorialScreen = lazy(() => import('@/screens/TutorialScreen').then((m) =>
 const CollectionScreen = lazy(() => import('@/screens/CollectionScreen').then((m) => ({ default: m.CollectionScreen })));
 const ProfileScreen  = lazy(() => import('@/screens/ProfileScreen').then((m) => ({ default: m.ProfileScreen })));
 const FriendsScreen  = lazy(() => import('@/screens/FriendsScreen').then((m) => ({ default: m.FriendsScreen })));
+const SourcesScreen  = lazy(() => import('@/screens/SourcesScreen').then((m) => ({ default: m.SourcesScreen })));
 const MatchesScreen  = lazy(() => import('@/screens/MatchesScreen').then((m) => ({ default: m.MatchesScreen })));
 const FantasyScreen  = lazy(() => import('@/screens/FantasyScreen').then((m) => ({ default: m.FantasyScreen })));
 const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then((m) => ({ default: m.MinigamesScreen })));
@@ -47,7 +48,7 @@ function LazyFallback() {
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <circle cx="12" cy="12" r="10" fill="#fff" />
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
       </motion.svg>
     </div>
   );
@@ -150,6 +151,11 @@ export function Router() {
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
       <Route path="/collection" element={<ProOnly><PageTransition><CollectionScreen /></PageTransition></ProOnly>} />
       <Route path="/profile"   element={<PageTransition><ProfileScreen /></PageTransition>} />
+      {/* ⚠️ БЕЗ ProOnly НАМЕРЕННО. Экран источников — это выполнение лицензий
+          (CC BY-SA требует НАЗВАТЬ источник), а не возможность подписки:
+          спрятать его за подписку значило бы не выполнить условие для тех,
+          кто её не купил, — то есть для большинства. */}
+      <Route path="/sources"   element={<PageTransition><SourcesScreen /></PageTransition>} />
       <Route path="/friends"   element={<ProOnly><PageTransition><FriendsScreen /></PageTransition></ProOnly>} />
       <Route path="/matches"   element={<ProOnly><PageTransition><MatchesScreen /></PageTransition></ProOnly>} />
       <Route path="/fantasy"   element={<ProOnly><PageTransition><FantasyScreen /></PageTransition></ProOnly>} />

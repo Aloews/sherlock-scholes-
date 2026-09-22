@@ -34,16 +34,33 @@ export const KNOWN_SPORT_KEYS = [
   'soccer_uefa_europa_league',
   'soccer_uefa_europa_conference_league',
   'soccer_uefa_nations_league',
-  // Сборные раз в два-четыре года. Ключей нет в расписании прямо сейчас — и
-  // именно поэтому они здесь: провайдер отдаёт турнир, когда тот начинается,
-  // а без записи имя выпало бы в readableSportKey ровно в тот месяц, когда на
-  // экран смотрят чаще всего.
-  'soccer_fifa_world_cup',
-  'soccer_fifa_world_cup_qualifiers_europe',
-  'soccer_uefa_european_championship',
-  'soccer_uefa_euro_qualification',
   'soccer_conmebol_copa_libertadores',
   'soccer_conmebol_copa_sudamericana',
+  // ── Сборные ────────────────────────────────────────────────────────────
+  //
+  // Эти ключи заводит НЕ платный провайдер: у него из турниров сборных ровно
+  // один — Лига наций УЕФА, что выше. Остальные приходят из ESPN через
+  // football-national, и реестр, который их перечисляет, лежит в базе
+  // (`espn_national_league`). Здесь они повторены затем, что без записи имя
+  // выпало бы в readableSportKey — «Fifa World Cup Qualifiers Europe»
+  // посреди списка матчей.
+  //
+  // ⚠️ ТУРНИР БЕЗ МАТЧЕЙ ПРЯМО СЕЙЧАС ВСЁ РАВНО ПЕРЕЧИСЛЕН. Кубок Америки
+  // раз в четыре года, отбор ЧМ — циклами; ключ появляется в расписании в
+  // день старта, и именно тогда на экран смотрят чаще всего.
+  'soccer_fifa_world_cup',
+  'soccer_fifa_world_cup_qualifiers_europe',
+  'soccer_fifa_world_cup_qualifiers_africa',
+  'soccer_fifa_world_cup_qualifiers_asia',
+  'soccer_fifa_world_cup_qualifiers_north_america',
+  'soccer_fifa_world_cup_qualifiers_south_america',
+  'soccer_uefa_european_championship',
+  'soccer_uefa_euro_qualification',
+  'soccer_concacaf_nations_league',
+  'soccer_concacaf_gold_cup',
+  'soccer_conmebol_copa_america',
+  'soccer_africa_cup_of_nations',
+  'soccer_international_friendlies',
 ] as const;
 
 /**
