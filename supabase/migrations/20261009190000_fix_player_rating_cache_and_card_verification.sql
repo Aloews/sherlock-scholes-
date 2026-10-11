@@ -25,6 +25,7 @@ begin
     from (values (7::smallint), (30::smallint), (365::smallint)) as w(days)
     join public.player_match_days d
       on d.match_date >= current_date - w.days
+     and d.match_date <= current_date
    group by w.days, d.card_id
   having sum(coalesce(d.goals, 0)) + sum(coalesce(d.assists, 0)) > 0;
 
