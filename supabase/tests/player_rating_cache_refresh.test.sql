@@ -1,4 +1,4 @@
--- Regression test for player_rating_cache_refresh_guard_fix.sql.
+-- Regression test for 20261009190000_fix_player_rating_cache_and_card_verification.sql.
 -- Run in a disposable/test database with the rating schema migrated:
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_refresh.test.sql
 -- The whole fixture, including the cache rebuild, is rolled back.
