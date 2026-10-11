@@ -1,4 +1,4 @@
--- Regression test for 20261009190000_fix_player_rating_cache_and_card_verification.sql.
+-- Regression test for the cache refresh and per-card fallback migrations.
 -- Run in a disposable/test database with the rating schema migrated:
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_refresh.test.sql
 -- The whole fixture, including the cache rebuild, is rolled back.
@@ -43,9 +43,25 @@ begin
 
   assert v_result is not null and v_result like 'строк:%',
     'refresh must return a row-count summary';
+
+  -- Reproduce the production failure: another player's cache rows exist, but
+  -- this player's row for the requested window is missing. The live fallback
+  -- must still return the player rather than treating the partial cache as
+  -- a complete leaderboard.
+  delete from public.player_rating_cache
+   where card_id = v_card and days = 7;
+
+  select r.goals, r.assists into v_goals, v_assists
+    from public.player_ratings(7, 200) r
+   where r.card_id = v_card;
+
+  assert v_goals = 1 and v_assists = 1,
+    'missing per-card cache row must fall back to match-day stats; got goals='
+    || coalesce(v_goals::text, 'NULL') || ', assists='
+    || coalesce(v_assists::text, 'NULL');
 end
 $test$;
 
-select 'player_rating_cache_refresh: all assertions passed' as result;
+select 'player_rating_cache_refresh_and_partial_fallback: all assertions passed' as result;
 
 rollback;
