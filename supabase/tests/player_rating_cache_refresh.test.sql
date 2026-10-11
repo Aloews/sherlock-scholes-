@@ -11,6 +11,8 @@ declare
   v_days integer;
   v_goals integer;
   v_assists integer;
+  v_matches integer;
+  v_minutes integer;
   v_result text;
 begin
   insert into public.cards (name, name_en, category, active)
@@ -20,7 +22,10 @@ begin
   insert into public.player_match_stats
     (card_id, match_date, tournament, minutes, goals, assists, source)
   values
-    (v_card, current_date, 'ZZTESTCACHE League', 90, 1, 1, 'sports.ru');
+    (v_card, current_date, 'ZZTESTCACHE League', 90, 1, 1, 'sports.ru'),
+    -- Upcoming fixtures may be present in the source table, but must not count
+    -- as appearances or leak into a current rating window.
+    (v_card, current_date + 1, 'ZZTESTCACHE League', 0, 0, 0, 'sports.ru');
 
   -- Must complete despite the production guard against unqualified DELETE.
   v_result := public.refresh_player_rating_cache();
@@ -33,9 +38,13 @@ begin
     'a player with a goal and assist must have cache rows for 7/30/365 days; got '
     || v_days;
 
-  select goals, assists into v_goals, v_assists
+  select goals, assists, matches, minutes into v_goals, v_assists, v_matches, v_minutes
     from public.player_rating_cache
    where card_id = v_card and days = 7;
+
+  assert v_matches = 1 and v_minutes = 90,
+    'future fixture must not count as an appearance or minutes; got matches='
+    || v_matches || ', minutes=' || v_minutes;
 
   assert v_goals = 1 and v_assists = 1,
     'cache must preserve fixture stats; got goals=' || v_goals
@@ -51,9 +60,15 @@ begin
   delete from public.player_rating_cache
    where card_id = v_card and days = 7;
 
-  select r.goals, r.assists into v_goals, v_assists
+  select r.goals, r.assists, r.matches, r.minutes
+    into v_goals, v_assists, v_matches, v_minutes
     from public.player_ratings(7, 200) r
    where r.card_id = v_card;
+
+  assert v_matches = 1 and v_minutes = 90,
+    'live fallback must exclude future fixtures; got matches='
+    || coalesce(v_matches::text, 'NULL') || ', minutes='
+    || coalesce(v_minutes::text, 'NULL');
 
   assert v_goals = 1 and v_assists = 1,
     'missing per-card cache row must fall back to match-day stats; got goals='
