@@ -50,6 +50,7 @@ as $function$
            sum(coalesce(d.assists, 0))::int
       from public.player_match_days d
      where d.match_date >= current_date - greatest(coalesce(p_days, 7), 1)
+       and d.match_date <= current_date
        and not exists (
          select 1
            from public.player_rating_cache k
