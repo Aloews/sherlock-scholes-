@@ -104,6 +104,7 @@ select lower(regexp_replace(trim(name_en), '[^[:alnum:]]', '', 'g')) as normaliz
        array_agg(transfermarkt_id order by id) as external_ids
   from public.cards
  where active and category = 'player'
+   and nullif(trim(name_en), '') is not null
  group by 1
 having count(*) > 1
  order by cards desc, normalized_name;
