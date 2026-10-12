@@ -7,7 +7,7 @@ USING public.round_cards rc, public.rounds rd, public.rooms rm
 WHERE e.round_card_id = rc.id
   AND rd.id = rc.round_id
   AND rm.id = rd.room_id
-  AND rm.mode <> '1v1';
+  AND rm."mode" <> '1v1';
 
 -- Recompute counters from the remaining 1v1-only event ledger.
 DELETE FROM public.player_card_progress;
@@ -52,7 +52,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT rd.room_id, rd.team_id, rm.mode
+  SELECT rd.room_id, rd.team_id, rm."mode"
     INTO v_room_id, v_explainer_team_id, v_mode
   FROM public.rounds rd
   JOIN public.rooms rm ON rm.id = rd.room_id
