@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconCheck, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
 
@@ -186,8 +187,8 @@ export function SmartDecksPanel({ onStart }: Props) {
             setSelectedCardIds([...(deck.filter.card_ids ?? [])]);
             setDeckLoadError(false);
             setLoadingDeckPlayers(true);
-            void supabase.from('cards').select('id,name,name_en,photo_url,category')
-              .in('id', deck.filter.card_ids ?? [])
+            void Promise.resolve(supabase.from('cards').select('id,name,name_en,photo_url,category')
+              .in('id', deck.filter.card_ids ?? []))
               .then(({ data, error }) => {
                 if (error || !data) { setDeckLoadError(true); setDeckPlayers([]); }
                 else {
@@ -227,7 +228,7 @@ export function SmartDecksPanel({ onStart }: Props) {
             const playerName = lang === 'ru' || !player.name_en ? player.name : player.name_en;
             return <label key={player.id} className={`flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer transition-colors ${checked ? 'border-brand-accent/60 bg-brand-accent/10' : 'border-brand-border bg-brand-surface'}`}>
               <input type="checkbox" checked={checked} onChange={() => setSelectedCardIds((current) => checked ? current.filter((id) => id !== player.id) : [...current, player.id])} className="accent-brand-accent w-4 h-4 shrink-0"/>
-              {player.photo_url ? <img src={player.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-brand-border shrink-0"/> : <div className="w-10 h-10 rounded-lg bg-brand-border shrink-0 flex items-center justify-center text-xs text-brand-muted">{playerName.slice(0,1)}</div>}
+              {player.photo_url ? <PlayerPhoto src={player.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-brand-border shrink-0"/> : <div className="w-10 h-10 rounded-lg bg-brand-border shrink-0 flex items-center justify-center text-xs text-brand-muted">{playerName.slice(0,1)}</div>}
               <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">{playerName}</span>
               {checked && <IconCheck size={16} className="text-brand-accent shrink-0"/>}
             </label>;
