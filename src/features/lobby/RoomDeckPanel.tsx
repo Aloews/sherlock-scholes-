@@ -10,12 +10,13 @@
 // and a wall of chips above the team grid gets in the way of that; the summary
 // line says what the deck is in one line, and the host opens it to change it.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Chip } from '@/shared/ui/Chip';
 import { OptionRow } from '@/shared/ui/OptionRow';
 import { SelectRow } from '@/shared/ui/SelectRow';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
+import { supabase } from '@/shared/lib/supabase';
 import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { isWholeDeck } from '@/features/room/roomDeck';
 import { IconChevronDown } from '@tabler/icons-react';
@@ -144,7 +145,7 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
 
   const nothingSelected = Array.isArray(filter.categories) && filter.categories.length === 0;
 
-  const buildDeckFromPrompt = async (event: React.FormEvent<HTMLFormElement>) => {
+  const buildDeckFromPrompt = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const prompt = deckPrompt.trim();
     if (!prompt || buildingDeck) return;
@@ -158,7 +159,7 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
     setBuildingDeck(true);
     setDeckPromptError('');
     try {
-      const { data, error } = await (await import('@/shared/lib/supabase')).supabase.functions.invoke('smart-deck-builder', {
+      const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
         body: {
           prompt,
           language: i18n.language.startsWith('ru') ? 'ru' : 'en',
