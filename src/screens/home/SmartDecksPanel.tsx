@@ -18,6 +18,7 @@ interface SmartDeck {
   groupBy?: 'league' | 'birth-country';
   groupKey?: string;
   careerTotals?: Array<{ card_id: string; appearances: number; goals: number; assists: number | null }>;
+  careerRows?: Array<{ card_id: string; name: string; appearances: number; goals: number; assists: number | null }>;
 }
 interface SmartDeckEditorial { id: string; title: string; hook: string; why: string; rank: number }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
@@ -48,7 +49,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
-      supabase.rpc('player_ratings', { p_days: 30, p_limit: 16, p_club_key: null, p_league: null, p_country: null }),
+      supabase.rpc('player_ratings', { p_days: 30, p_limit: 200, p_club_key: null, p_league: null, p_country: null }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,top_league,career_stats,facts,tags,legend_career').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(200),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,top_league,career_stats,facts,tags,legend_career').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
@@ -60,7 +61,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
     setNews(headlines.slice(0, 4));
-    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, 12));
+    setForm(formRows.filter((p) => p.card_id && p.matches > 0));
     setLegends(legendRows);
     setPlayers([...new Map([...playerPool, ...legendRows].map((player) => [player.id, player])).values()]);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, 16));
@@ -123,6 +124,12 @@ export function SmartDecksPanel({ onStart }: Props) {
         filter: { categories: ['player'], card_ids: comparison.players.map((p) => p.id), lang },
         groupBy: comparison.groupBy, groupKey: comparison.groupKey,
         careerTotals: comparison.careerTotals,
+        careerRows: comparison.players.map((player, index) => ({
+          card_id: player.id, name: player.name,
+          appearances: comparison.careerTotals[index].appearances,
+          goals: comparison.careerTotals[index].goals,
+          assists: comparison.careerTotals[index].assists,
+        })),
       });
     }
     if (goldenEra && goldenEra.players.length >= 3) result.push({
@@ -202,6 +209,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     {requested && !loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
     {requested && !loading && !failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Пока недостаточно подтверждённых данных для тематической колоды.':'Not enough verified data for a themed deck yet.'}</div>}
     {requested && editorialMode === 'ai' && <p className="text-[9px] uppercase tracking-[0.12em] text-brand-accent">{ru?'ИИ-редактор · факты проверены':'AI editor · facts verified'}</p>}
+    {requested && !loading && !decks.some((deck) => deck.family === 'comparison' && deck.groupBy === 'birth-country') && <p className="text-[10px] leading-relaxed text-brand-muted">{ru?'Подборки по стране рождения появятся после загрузки подтверждённых данных о месте рождения. Национальность не используется вместо страны рождения.':'Birth-country decks will appear when sourced birthplace data is available. Nationality is not used as a substitute.'}</p>}
     {requested && orderedDecks.map(deck => {
       const Icon = deck.icon==='bolt'?IconBolt:deck.icon==='calendar'||deck.icon==='era'?IconCalendarEvent:IconCrown;
       return <article key={deck.id} className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface">
@@ -212,7 +220,15 @@ export function SmartDecksPanel({ onStart }: Props) {
             <p className="text-[11px] leading-relaxed text-brand-muted mt-1">{editorials[deck.id]?.hook ?? deck.description}</p>
             {editorials[deck.id]?.why && <p className="text-[10px] leading-relaxed text-white/75 mt-1.5"><span className="text-brand-accent font-semibold">{ru?'Почему сейчас: ':'Why now: '}</span>{editorials[deck.id].why}</p>}</div>
           <div className="flex flex-wrap gap-1.5">{deck.names.map(name=><span key={name} className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-white/90">{name}</span>)}<span className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-brand-muted">{deck.filter.card_ids?.length ?? 0} {ru?'карточек':'cards'}</span></div>
-          <button type="button" onClick={()=>onStart(deck.filter,deck.id)} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
+          {deck.family === 'comparison' && deck.careerRows && <div className="rounded-xl border border-brand-border bg-brand-bg/70 p-3 space-y-2">
+            <p className="text-[9px] uppercase tracking-wider text-brand-muted font-bold">{ru?'Карьера: матчи · голы':'Career: appearances · goals'}</p>
+            {deck.careerRows.slice(0, 5).map((row) => <div key={row.card_id} className="flex items-center gap-2 text-[11px]">
+              <span className="min-w-0 flex-1 truncate text-white/90">{row.name}</span>
+              <span className="shrink-0 tabular-nums text-brand-muted">{row.appearances} · {row.goals}</span>
+            </div>)}
+            <p className="text-[9px] leading-relaxed text-brand-muted">{ru?'Сумма показателей из доступной истории карьеры. Для лиги это не только матчи внутри указанного чемпионата.':'Totals from available career history. For league groups, these are not limited to matches in that league.'}</p>
+          </div>}
+          <button type="button" onClick={()=>onStart(deck.filter,deck.id) className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
         </div>
       </article>;
     })}
