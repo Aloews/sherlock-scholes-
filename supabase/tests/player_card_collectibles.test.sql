@@ -69,15 +69,30 @@ BEGIN
   END IF;
 END $do$;
 
--- The threshold awards exactly once at 100 and remains stable after that.
-UPDATE public.player_card_progress SET correct_guesses = 99
-WHERE player_id = 20 AND card_id = '00000000-0000-0000-0000-000000000101';
+-- A status toggle must not create a second credit for the same round-card.
 UPDATE public.round_cards SET status = 'skipped'
 WHERE round_id = '00000000-0000-0000-0000-000000000301'
   AND card_id = '00000000-0000-0000-0000-000000000101';
 UPDATE public.round_cards SET status = 'correct'
 WHERE round_id = '00000000-0000-0000-0000-000000000301'
   AND card_id = '00000000-0000-0000-0000-000000000101';
+DO $do$
+BEGIN
+  IF (SELECT correct_guesses FROM public.player_card_progress WHERE player_id = 20 AND card_id = '00000000-0000-0000-0000-000000000101') <> 1 THEN
+    RAISE EXCEPTION 'status toggles must not double-credit a round-card';
+  END IF;
+END $do$;
+
+-- A second round-card for the same card supplies the 100th correct guess.
+UPDATE public.player_card_progress SET correct_guesses = 99
+WHERE player_id = 20 AND card_id = '00000000-0000-0000-0000-000000000101';
+INSERT INTO public.round_cards (round_id, card_id, status)
+VALUES ('00000000-0000-0000-0000-000000000301',
+        '00000000-0000-0000-0000-000000000101', 'pending');
+UPDATE public.round_cards SET status = 'correct'
+WHERE round_id = '00000000-0000-0000-0000-000000000301'
+  AND card_id = '00000000-0000-0000-0000-000000000101'
+  AND status = 'pending';
 DO $do$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.player_card_collectibles WHERE player_id = 20 AND card_id = '00000000-0000-0000-0000-000000000101') THEN
