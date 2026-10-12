@@ -100,7 +100,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
       p_room_id:   validRoom.id,
       p_player_id: playerId,
     });
-    if (!rpcError && joined) return joined as Room;
+    if (!rpcError && joined) return requireRoomCode(joined as Room);
     if (rpcError?.message.includes('ROOM_FULL_1V1'))    throw new Error('ROOM_FULL_1V1');
     if (rpcError?.message.includes('ROOM_NOT_WAITING')) throw new Error('Room not found or game already started');
     // Any other error means the function isn't on prod yet → legacy path.
@@ -160,7 +160,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
   if (insertErr && insertErr.code !== '23505') throw new Error('Failed to join room');
   if (!insertErr) await backOutIfStarted(room.id, playerId);
 
-  return room as Room;
+  return validRoom;
 }
 
 export async function leaveRoom(roomId: string, playerId: number): Promise<void> {
