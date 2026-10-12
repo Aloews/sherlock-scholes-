@@ -193,10 +193,12 @@ RETURNS TABLE (
   other_player_name text,
   offered_card_id uuid,
   offered_card_name text,
+  offered_card_name_en text,
   offered_photo_url text,
   offered_tier text,
   requested_card_id uuid,
   requested_card_name text,
+  requested_card_name_en text,
   requested_photo_url text,
   requested_tier text,
   status text,
@@ -225,8 +227,8 @@ BEGIN
          CASE WHEN t.to_player_id = v_me THEN 'incoming' ELSE 'outgoing' END,
          CASE WHEN t.to_player_id = v_me THEN t.from_player_id ELSE t.to_player_id END,
          trim(concat_ws(' ', other.first_name, other.last_name)),
-         offered.id, offered.name, offered.photo_url, offered.tier,
-         requested.id, requested.name, requested.photo_url, requested.tier,
+         offered.id, offered.name, offered.name_en, offered.photo_url, offered.tier,
+         requested.id, requested.name, requested.name_en, requested.photo_url, requested.tier,
          t.status, t.created_at, t.expires_at
   FROM public.player_card_trade_offers t
   JOIN public.players other
