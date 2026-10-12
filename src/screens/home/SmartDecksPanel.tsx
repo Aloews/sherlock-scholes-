@@ -217,8 +217,7 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   return <section className="w-full max-w-sm space-y-3" aria-labelledby="smart-decks-title">
     <div>
-      <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-brand-accent mb-1">{ru?'ПОД ТВОЙ ФУТБОЛЬНЫЙ МОМЕНТ':'YOUR FOOTBALL MOMENT'}</p>
-      <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Подборки с футбольным сюжетом':'A deck with a story'}</h2>
+      <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Умные колоды':'Smart decks'}</h2>
     </div>
     {loading && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Собираем подборки из свежих данных…':'Building decks from fresh data…'}</div>}
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
@@ -229,8 +228,7 @@ export function SmartDecksPanel({ onStart }: Props) {
         <div className="absolute inset-0 opacity-20 pointer-events-none">{deck.image && <img src={deck.image} alt="" className="w-full h-full object-cover blur-sm scale-110"/>}<div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/85 to-transparent"/></div>
         <div className="relative p-4 space-y-3">
           <div className="flex items-center gap-2 text-brand-accent"><Icon size={14}/><span className="text-[9px] font-bold tracking-[0.13em] uppercase">{deck.eyebrow}</span></div>
-          <div><h3 className="ds-display text-lg font-extrabold text-white">{editorials[deck.id]?.title ?? deck.title}</h3>
-            {editorials[deck.id]?.why && <p className="text-[10px] leading-relaxed text-white/75 mt-1.5"><span className="text-brand-accent font-semibold">{ru?'Почему сейчас: ':'Why now: '}</span>{editorials[deck.id].why}</p>}</div>
+          <h3 className="ds-display text-lg font-extrabold text-white">{editorials[deck.id]?.title ?? deck.title}</h3>
           <div className="flex flex-wrap gap-1.5">{deck.names.map(name=><span key={name} className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-white/90">{name}</span>)}<span className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-brand-muted">{deck.filter.card_ids?.length ?? 0} {ru?'карточек':'cards'}</span></div>
           <button type="button" onClick={() => {
             setActiveDeck(deck);
