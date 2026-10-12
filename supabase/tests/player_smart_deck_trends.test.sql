@@ -20,17 +20,19 @@ begin
     (v_player, current_date - 5, 'League A', 90, 2, 0, 'source-a', false),
     (v_player, current_date - 5, 'League A', null, 8, 0, 'source-b', false),
     (v_player, current_date - 10, 'League A', 90, 1, 1, 'source-a', false),
+    (v_player, current_date - 15, 'League A', 90, 0, 0, 'source-a', false),
     (v_player, current_date - 35, 'League A', 90, 0, 0, 'source-a', false),
     (v_player, current_date - 40, 'League A', 90, 1, 0, 'source-a', false),
+    (v_player, current_date - 50, 'League A', 90, 0, 0, 'source-a', false),
     (v_player, current_date + 1, 'League A', 90, 9, 0, 'source-a', false),
     (v_player, current_date - 3, 'League A', 90, 7, 0, 'source-a', true);
 
   select * into v_recent from public.player_smart_deck_trends(1000) where card_id = v_player;
   if not found then raise exception 'test player missing from trend RPC'; end if;
-  if v_recent.recent_matches <> 2 or v_recent.recent_goals <> 3 then
+  if v_recent.recent_matches <> 3 or v_recent.recent_goals <> 3 then
     raise exception 'recent window must deduplicate sources and exclude disputed/future matches; got matches %, goals %', v_recent.recent_matches, v_recent.recent_goals;
   end if;
-  if v_recent.previous_matches <> 2 or v_recent.previous_goals <> 1 then
+  if v_recent.previous_matches <> 3 or v_recent.previous_goals <> 1 then
     raise exception 'previous window incorrect: matches %, goals %', v_recent.previous_matches, v_recent.previous_goals;
   end if;
 
