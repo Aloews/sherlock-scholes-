@@ -87,6 +87,13 @@ _STEPS = [
      [PY, os.path.join(HERE, "cards_enrich_newcomers.py"), "--apply"], _env()),
     ("career_stats (legends + clubs_minutes-tail players)",
      [PY, os.path.join(HERE, "cards_career_build.py")], _env(APPLY="1")),
+    # Birth country is a separate sourced fact: Wikidata P19 (birthplace) ->
+    # P17 (country). Never substitute nationality (cards.country). Process a
+    # bounded resumable batch so source outages/budget caps do not block the
+    # rest of nightly enrichment.
+    ("birth-country (Wikidata P19 -> P17, incremental)",
+     [PY, os.path.join(HERE, "cards_birth_country_build.py")],
+     _env(APPLY="1", BIRTH_COUNTRY_BATCH_SIZE="150")),
     ("photos (cards without photo_url)",
      [PY, "run.py", "--cards-photos"], _env()),
     # ⚠️ СРАЗУ ЗА ФОТО, И ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА. Снимки с Викисклада
