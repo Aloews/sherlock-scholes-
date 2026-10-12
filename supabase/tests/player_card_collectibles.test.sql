@@ -109,4 +109,7 @@ BEGIN
   END IF;
 END $do$;
 
+SELECT count(*) FROM public.my_card_collectibles('20');
+SELECT count(*) FROM public.my_card_collectible_progress('20');
+
 ROLLBACK;
