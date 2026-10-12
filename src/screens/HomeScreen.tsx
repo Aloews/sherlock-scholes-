@@ -27,6 +27,7 @@ import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
+import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
 import type { CardCategory } from '@/shared/types/database';
@@ -34,7 +35,7 @@ import type { CardCategory } from '@/shared/types/database';
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
 // It exists because the home screen is now a LIST OF GAMES and Alias is one of
 // them, rather than the screen itself with three others tacked underneath.
-type View = 'home' | 'alias' | 'mode_select' | 'create_team' | 'create_1v1'
+type View = 'home' | 'alias' | 'smart_decks' | 'mode_select' | 'create_team' | 'create_1v1'
   | 'create_training' | 'join' | 'joining';
 
 export function HomeScreen() {
@@ -232,8 +233,22 @@ export function HomeScreen() {
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
+            onSmartDecks={() => { hapticImpact('light'); setView('smart_decks'); }}
             onBack={() => { hapticImpact('light'); setView('home'); }}
           />
+        )}
+
+        {view === 'smart_decks' && (
+          <div className="w-full max-w-sm space-y-3 animate-slide-up">
+            <button
+              type="button"
+              onClick={() => setView('alias')}
+              className="rounded-xl border border-brand-border px-3 py-2 text-sm font-semibold text-brand-muted hover:text-white"
+            >
+              ← {t('home.back')}
+            </button>
+            <SmartDecksPanel onStart={startGame} />
+          </div>
         )}
 
         {/* Player stats — classic landing only */}
