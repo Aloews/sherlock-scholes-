@@ -26,7 +26,7 @@ const validRoom = {
   settings: { categories: null, cards_per_round: 5, total_rounds: 3, round_seconds: 60 },
 };
 
-function queryBuilder(table: string, calls: Array<{ table: string; method: string; args: unknown[] }>) {
+function queryBuilder(table: string, calls: Array<{ table: string; method: string; args: unknown[] }>, room = validRoom) {
   let proxy: Record<string | symbol, unknown>;
   proxy = new Proxy({}, {
     get(_target, property) {
@@ -36,7 +36,7 @@ function queryBuilder(table: string, calls: Array<{ table: string; method: strin
             call.table === 'rooms' && call.method === 'select' && call.args[0] === 'status'
           );
           const result = table === 'rooms'
-            ? { data: isStatusCheck ? { status: 'waiting' } : validRoom, error: null }
+            ? { data: isStatusCheck ? { status: 'waiting' } : room, error: null }
             : { data: null, error: null };
           return Promise.resolve(result).then(resolve, reject);
         };
@@ -96,7 +96,7 @@ describe('room code contract', () => {
 
   it('joins a 1v1 room only with the full normalized code', async () => {
     const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
-    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls));
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, mode: '1v1' }));
     mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
     await joinRoom('ab12cd', 200);
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'AB12CD'] });
