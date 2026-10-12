@@ -54,6 +54,16 @@ describe('HomeJoinForm room-code input', () => {
     expect(input.value).toHaveLength(6);
   });
 
+  it('does not enable joining after only one character', () => {
+    const onSubmit = vi.fn();
+    render(<Harness onSubmit={onSubmit} />);
+    const input = screen.getByLabelText('home.room_code_label') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'a' } });
+    expect(input.value).toBe('a');
+    expect(screen.getByRole('button', { name: 'home.join_room' })).toHaveProperty('disabled', true);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('does not allow joining with fewer than six characters', () => {
     const onSubmit = vi.fn();
     render(<Harness onSubmit={onSubmit} />);
@@ -61,6 +71,17 @@ describe('HomeJoinForm room-code input', () => {
     fireEvent.change(input, { target: { value: 'ab12' } });
     expect(screen.getByRole('button', { name: 'home.join_room' })).toHaveProperty('disabled', true);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('submits the complete six-character value with Enter', () => {
+    const onSubmit = vi.fn();
+    render(<Harness onSubmit={onSubmit} />);
+    const input = screen.getByLabelText('home.room_code_label') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'ab12cd' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(input.value).toBe('ab12cd');
+    expect(normalizeCode(input.value)).toBe('AB12CD');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('submits the complete code without dropping its final character', () => {
