@@ -27,7 +27,6 @@ const ChessScreen    = lazy(() => import('@/screens/ChessScreen').then((m) => ({
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
-const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
 const DuelScreen     = lazy(() => import('@/screens/DuelScreen').then((m) => ({ default: m.DuelScreen })));
@@ -118,13 +117,7 @@ export function Router() {
   // именно этот экран, то есть почти никто. Стучится только при видимой
   // вкладке — см. usePresence.
   usePresence();
-  const { pathname } = useLocation();
-  // The tab bar belongs to the master app shell, and only to its root routes —
-  // never over a live game, lobby or results, where leaving mid-round by a
-  // stray tap would be destructive. `with-tabbar` shortens the screens'
-  // min-h-screen by the bar's height (see index.css).
-  const showTabs = useDesign() === 'master'
-    && (TAB_ROUTES as readonly string[]).includes(pathname);
+  // Public navigation is intentionally limited to the football Alias.
 
   return (
     // VoiceProvider sits ABOVE the routes on purpose: the session must survive
