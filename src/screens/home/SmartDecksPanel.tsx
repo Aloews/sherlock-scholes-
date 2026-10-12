@@ -37,10 +37,16 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [editorials, setEditorials] = useState<Record<string, SmartDeckEditorial>>({});
   const [editorialMode, setEditorialMode] = useState<'loading' | 'ai' | 'deterministic'>('deterministic');
   const [activeDeck, setActiveDeck] = useState<SmartDeck | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [prompt, setPrompt] = useState('');
   const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [loadingDeckPlayers, setLoadingDeckPlayers] = useState(false);
+  const [generatingDeck, setGeneratingDeck] = useState(false);
   const [deckLoadError, setDeckLoadError] = useState(false);
+  const [generatedTitle, setGeneratedTitle] = useState('');
+  const [generatedDescription, setGeneratedDescription] = useState('');
+  const [generationError, setGenerationError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +173,13 @@ export function SmartDecksPanel({ onStart }: Props) {
       <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Подборки с футбольным сюжетом':'A deck with a story'}</h2>
       <p className="text-[11px] text-brand-muted mt-1">{ru?'Каждая колода должна отвечать на вопрос: что произошло, почему эти игроки связаны и что интересно проверить в игре.':'Every deck should answer: what happened, why these players are connected, and what makes them interesting to play.'}</p>
     </div>
+    <button type="button" onClick={() => {
+      setActiveDeck(null); setPrompt(''); setDeckPlayers([]); setSelectedCardIds([]);
+      setGeneratedTitle(''); setGeneratedDescription(''); setGenerationError('');
+      setDeckLoadError(false); setBuilderOpen(true);
+    }} className="w-full flex items-center justify-between rounded-2xl border border-brand-accent/50 bg-brand-accent/10 text-white font-bold text-sm px-4 py-3">
+      <span>{ru?'Попросить ИИ собрать колоду':'Ask AI to build a deck'}</span><IconArrowUpRight size={18}/>
+    </button>
     {loading && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Собираем подборки из свежих данных…':'Building decks from fresh data…'}</div>}
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
     {!loading && !failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Пока недостаточно подтверждённых данных для тематической колоды.':'Not enough verified data for a themed deck yet.'}</div>}
@@ -183,68 +196,74 @@ export function SmartDecksPanel({ onStart }: Props) {
           <div className="flex flex-wrap gap-1.5">{deck.names.map(name=><span key={name} className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-white/90">{name}</span>)}<span className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-brand-muted">{deck.filter.card_ids?.length ?? 0} {ru?'карточек':'cards'}</span></div>
           <button type="button" onClick={() => {
             setActiveDeck(deck);
-            setDeckPlayers([]);
-            setSelectedCardIds([...(deck.filter.card_ids ?? [])]);
-            setDeckLoadError(false);
-            setLoadingDeckPlayers(true);
-            void Promise.resolve(supabase.from('cards').select('id,name,name_en,photo_url,category')
-              .in('id', deck.filter.card_ids ?? []))
-              .then(({ data, error }) => {
-                if (error || !data) { setDeckLoadError(true); setDeckPlayers([]); }
-                else {
-                  const rows = data as DeckPlayerRow[];
-                  const byId = new Map(rows.map((row) => [row.id, row]));
-                  setDeckPlayers((deck.filter.card_ids ?? []).flatMap((id) => {
-                    const row = byId.get(id);
-                    return row ? [row] : [];
-                  }));
-                }
-              })
-              .catch(() => setDeckLoadError(true))
-              .finally(() => setLoadingDeckPlayers(false));
-          }} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Собрать колоду':'Build deck'}</span><IconArrowUpRight size={18}/></button>
+            setPrompt(ru
+              ? `Собери игровую колоду по теме «${deck.title}». Используй эту подборку как отправную точку, добавь подходящих футболистов из каталога и сделай состав разнообразным. ${deck.description}`
+              : `Build a playable deck around “${deck.title}”. Use this recommendation as the starting point, add suitable footballers from the catalogue, and keep the selection varied. ${deck.description}`);
+            setDeckPlayers([]); setSelectedCardIds([]); setGeneratedTitle(''); setGeneratedDescription('');
+            setGenerationError(''); setDeckLoadError(false); setBuilderOpen(true);
+          }} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Собрать колоду с ИИ':'Build with AI'}</span><IconArrowUpRight size={18}/></button>
         </div>
       </article>;
     })}
-    {activeDeck && <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveDeck(null); }}>
+    {builderOpen && <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !generatingDeck) setBuilderOpen(false); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="smart-deck-builder-title" className="w-full max-w-lg max-h-[92dvh] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-brand-border bg-brand-bg shadow-2xl flex flex-col">
         <header className="flex items-start gap-3 p-4 border-b border-brand-border">
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] uppercase tracking-[0.16em] font-bold text-brand-accent">{ru?'КОНСТРУКТОР КОЛОДЫ':'DECK BUILDER'}</p>
-            <h2 id="smart-deck-builder-title" className="ds-display text-xl font-extrabold text-white mt-1">{editorials[activeDeck.id]?.title ?? activeDeck.title}</h2>
-            <p className="text-xs text-brand-muted mt-1">{ru?'Проверь состав, убери лишние карточки и собери колоду для игры.':'Review the players, remove cards if you like, and build your game deck.'}</p>
+            <p className="text-[9px] uppercase tracking-[0.16em] font-bold text-brand-accent">{ru?'КОНСТРУКТОР КОЛОДЫ · ИИ':'AI DECK BUILDER'}</p>
+            <h2 id="smart-deck-builder-title" className="ds-display text-xl font-extrabold text-white mt-1">{ru?'Какую колоду сыграем?':'What kind of deck should we play?'}</h2>
+            <p className="text-xs text-brand-muted mt-1">{ru?'Опиши тему обычными словами. ИИ выберет реальные карточки футболистов из каталога.':'Describe the theme in your own words. AI will select real football player cards from the catalogue.'}</p>
           </div>
-          <button type="button" aria-label={ru?'Закрыть':'Close'} onClick={() => setActiveDeck(null)} className="shrink-0 w-9 h-9 rounded-xl border border-brand-border text-brand-muted flex items-center justify-center"><IconX size={18}/></button>
+          <button type="button" aria-label={ru?'Закрыть':'Close'} disabled={generatingDeck} onClick={() => setBuilderOpen(false)} className="shrink-0 w-9 h-9 rounded-xl border border-brand-border text-brand-muted flex items-center justify-center disabled:opacity-40"><IconX size={18}/></button>
         </header>
-        <div className="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-3">
-          <div><p className="text-sm font-bold text-white">{ru?'Карточки игроков':'Player cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
-          <div className="text-right shrink-0"><p className="text-lg font-extrabold text-brand-accent tabular-nums">{selectedCardIds.length}</p><p className="text-[9px] text-brand-muted">{ru?'в колоде':'in deck'}</p></div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-          {loadingDeckPlayers && <div className="flex items-center justify-center gap-2 py-8 text-sm text-brand-muted"><IconLoader2 size={18} className="animate-spin"/>{ru?'Загружаем карточки…':'Loading player cards…'}</div>}
-          {!loadingDeckPlayers && deckLoadError && <div className="rounded-xl border border-red-400/30 p-3 text-sm text-red-200">{ru?'Не удалось загрузить карточки. Закрой окно и попробуй ещё раз.':'Could not load cards. Close this window and try again.'}</div>}
-          {!loadingDeckPlayers && !deckLoadError && deckPlayers.map((player) => {
-            const checked = selectedCardIds.includes(player.id);
-            const playerName = lang === 'ru' || !player.name_en ? player.name : player.name_en;
-            return <label key={player.id} className={`flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer transition-colors ${checked ? 'border-brand-accent/60 bg-brand-accent/10' : 'border-brand-border bg-brand-surface'}`}>
-              <input type="checkbox" checked={checked} onChange={() => setSelectedCardIds((current) => checked ? current.filter((id) => id !== player.id) : [...current, player.id])} className="accent-brand-accent w-4 h-4 shrink-0"/>
-              {player.photo_url ? <PlayerPhoto src={player.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-brand-border shrink-0"/> : <div className="w-10 h-10 rounded-lg bg-brand-border shrink-0 flex items-center justify-center text-xs text-brand-muted">{playerName.slice(0,1)}</div>}
-              <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">{playerName}</span>
-              {checked && <IconCheck size={16} className="text-brand-accent shrink-0"/>}
-            </label>;
-          })}
-          {!loadingDeckPlayers && !deckLoadError && deckPlayers.length === 0 && <p className="py-6 text-sm text-brand-muted text-center">{ru?'В этой подборке нет доступных карточек.':'No available cards in this deck.'}</p>}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <label htmlFor="smart-deck-prompt" className="block text-xs font-bold text-white">{ru?'Твой запрос':'Your request'}</label>
+          <textarea id="smart-deck-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value.slice(0,700))} maxLength={700} rows={4} placeholder={ru?'Например: футболисты, игравшие за Реал и Манчестер Юнайтед; молодые звёзды до 23 лет; легенды чемпионатов мира…':'For example: players who played for Real Madrid and Manchester United; rising stars under 23; World Cup legends…'} className="w-full resize-y rounded-2xl border border-brand-border bg-brand-surface text-white text-sm p-3 placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent"/>
+          <div className="flex items-center justify-between text-[10px] text-brand-muted"><span>{ru?'От 3 символов · до 700':'3–700 characters'}</span><span>{prompt.length}/700</span></div>
+          {generationError && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{generationError}</p>}
+          {generatingDeck && <div role="status" className="flex items-center gap-2 rounded-xl bg-brand-surface p-3 text-sm text-brand-muted"><IconLoader2 size={18} className="animate-spin"/>{ru?'ИИ подбирает игроков по твоему запросу…':'AI is selecting players for your deck…'}</div>}
+          {generatedTitle && !generatingDeck && <div className="rounded-2xl border border-brand-accent/40 bg-brand-accent/10 p-3 space-y-1">
+            <p className="text-sm font-extrabold text-white">{generatedTitle}</p>
+            {generatedDescription && <p className="text-xs text-brand-muted">{generatedDescription}</p>}
+            <p className="text-[10px] font-bold text-brand-accent">{ru?'Состав колоды':'Deck roster'} · {selectedCardIds.length}</p>
+            {deckPlayers.map((player) => {
+              const checked = selectedCardIds.includes(player.id);
+              const playerName = lang === 'ru' || !player.name_en ? player.name : player.name_en;
+              return <label key={player.id} className="flex items-center gap-2 py-1.5 cursor-pointer">
+                <input type="checkbox" checked={checked} onChange={() => setSelectedCardIds((current) => checked ? current.filter((id) => id !== player.id) : [...current, player.id])} className="accent-brand-accent w-4 h-4"/>
+                {player.photo_url && <img src={player.photo_url} alt="" className="w-8 h-8 rounded-lg object-cover bg-brand-border"/>}
+                <span className="text-xs text-white">{playerName}</span>
+              </label>;
+            })}
+          </div>}
         </div>
         <footer className="p-4 border-t border-brand-border bg-brand-surface/80 space-y-2">
-          <button type="button" disabled={loadingDeckPlayers || deckLoadError || selectedCardIds.length === 0} onClick={() => {
-            const filter = { ...activeDeck.filter, card_ids: selectedCardIds };
-            const presetId = activeDeck.id;
-            setActiveDeck(null);
-            onStart(filter, presetId);
-          }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm px-4 py-3 disabled:opacity-40 disabled:cursor-not-allowed">
-            {ru?'Собрать колоду и играть':'Build deck & play'}<IconArrowUpRight size={18}/>
-          </button>
-          <button type="button" onClick={() => setSelectedCardIds(deckPlayers.map((player) => player.id))} disabled={loadingDeckPlayers || deckPlayers.length === 0} className="w-full rounded-xl border border-brand-border text-brand-muted text-xs font-semibold px-4 py-2.5 disabled:opacity-40">{ru?'Выбрать всех игроков':'Select all players'}</button>
+          {!generatedTitle ? <button type="button" disabled={generatingDeck || prompt.trim().length < 3} onClick={async () => {
+            setGeneratingDeck(true); setGenerationError(''); setGeneratedTitle(''); setDeckPlayers([]); setSelectedCardIds([]);
+            try {
+              const { data, error } = await supabase.functions.invoke('smart-deck-builder', { body: { prompt: prompt.trim(), language: ru ? 'ru' : 'en' } });
+              if (error || !data || !Array.isArray(data.card_ids)) throw new Error('generation');
+              const ids = [...new Set((data.card_ids as unknown[]).filter((id): id is string => typeof id === 'string'))].slice(0,20);
+              if (ids.length < 8) throw new Error('generation');
+              const { data: rows, error: cardsError } = await supabase.from('cards').select('id,name,name_en,photo_url,category').in('id', ids);
+              if (cardsError || !rows) throw new Error('cards');
+              const byId = new Map((rows as DeckPlayerRow[]).map((row) => [row.id,row]));
+              const ordered = ids.flatMap((id) => { const row=byId.get(id); return row ? [row] : []; });
+              if (ordered.length < 8 || ordered.some((row) => row.category !== 'player')) throw new Error('cards');
+              setDeckPlayers(ordered); setSelectedCardIds(ordered.map((row) => row.id));
+              setGeneratedTitle(typeof data.title === 'string' ? data.title : (ru ? 'Колода по запросу' : 'Your custom deck'));
+              setGeneratedDescription(typeof data.description === 'string' ? data.description : '');
+            } catch {
+              setGenerationError(ru ? 'Не удалось собрать колоду. Проверь соединение и попробуй изменить запрос.' : 'Could not build the deck. Check your connection and try another request.');
+            } finally { setGeneratingDeck(false); }
+          }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm px-4 py-3 disabled:opacity-40"><IconBolt size={18}/>{ru?'Собрать колоду с ИИ':'Generate deck with AI'}</button> : <>
+            <button type="button" disabled={selectedCardIds.length < 3} onClick={() => {
+              const filter: DeckFilter = { categories: ['player'], card_ids: selectedCardIds, lang };
+              const presetId = activeDeck?.id ?? 'smart-ai-custom';
+              setBuilderOpen(false);
+              onStart(filter, presetId);
+            }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm px-4 py-3 disabled:opacity-40"><IconArrowUpRight size={18}/>{ru?'Играть этой колодой':'Play this deck'}</button>
+            <button type="button" onClick={() => { setGeneratedTitle(''); setGeneratedDescription(''); setDeckPlayers([]); setSelectedCardIds([]); }} className="w-full rounded-xl border border-brand-border text-brand-muted text-xs font-semibold px-4 py-2.5">{ru?'Изменить запрос':'Edit request'}</button>
+          </>}
         </footer>
       </section>
     </div>}
