@@ -107,13 +107,9 @@ ALTER TABLE public.round_cards ADD COLUMN card_id uuid;
 ALTER TABLE public.cards ADD COLUMN category_ru text;
 ALTER TABLE public.cards ADD COLUMN tier text;
 CREATE FUNCTION public.tg_validate_init_data(text)
-RETURNS bigint LANGUAGE sql IMMUTABLE AS $
-  SELECT CASE WHEN $1 ~ '^[0-9]+
-
-CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
-RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
- THEN $1::bigint ELSE NULL END
-$;
+RETURNS bigint LANGUAGE sql IMMUTABLE AS $tg$
+  SELECT CASE WHEN length($1) > 0 THEN $1::bigint ELSE NULL END
+$tg$;
 
 CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
 RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
