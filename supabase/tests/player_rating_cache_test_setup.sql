@@ -75,5 +75,31 @@ CREATE TABLE public.player_presence (
   hidden boolean NOT NULL DEFAULT false
 );
 
+
+CREATE TABLE public.rooms (
+  id uuid PRIMARY KEY,
+  status text NOT NULL,
+  stats_awarded_at timestamptz
+);
+CREATE TABLE public.room_players (
+  room_id uuid NOT NULL,
+  player_id bigint NOT NULL,
+  team_id uuid
+);
+CREATE TABLE public.scores (
+  room_id uuid NOT NULL,
+  team_id uuid NOT NULL,
+  points integer NOT NULL
+);
+CREATE TABLE public.rounds (
+  id uuid PRIMARY KEY,
+  room_id uuid NOT NULL,
+  explainer_id bigint
+);
+CREATE TABLE public.round_cards (
+  round_id uuid NOT NULL,
+  status text NOT NULL
+);
+
 CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
 RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
