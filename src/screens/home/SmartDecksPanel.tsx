@@ -92,7 +92,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       stats:form.map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
     });
     if (formAndNews.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
-      id:'smart-form-meets-headlines', family:'form-news', eyebrow:ru?'ФАКТЫ ВСТРЕЧАЮТСЯ С ХАЙПОМ':'FORM MEETS THE HEADLINES',
+      id:'smart-form-meets-headlines', family:'form-news', eyebrow:ru?'ФОРМА + НОВОСТИ':'FORM + HEADLINES',
       title:ru?'Форма и новости':'Form & headlines',
       icon:'bolt', image:formAndNews[0]?.photo_url ?? null, names:formAndNews.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:formAndNews.map(p=>p.id), lang },
@@ -100,14 +100,14 @@ export function SmartDecksPanel({ onStart }: Props) {
       stats:form.filter(p=>formAndNews.some(m=>m.id===p.card_id)).map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
     });
     if (newsMatches.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
-      id:'smart-news-pulse', family:'news', eyebrow:ru?'СВЕЖИЕ НОВОСТИ · 72 ЧАСА':'NEWS PULSE · 72 HOURS',
+      id:'smart-news-pulse', family:'news', eyebrow:ru?'НОВОСТИ · 72 ЧАСА':'NEWS · 72 HOURS',
       title:ru?'В центре новостей':'In the headlines',
       icon:'calendar', image:newsMatches[0]?.photo_url ?? null, names:newsMatches.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:newsMatches.map(p=>p.id), lang },
       evidence:newsMatches.map(p=>({ card_id:p.id, title:p.matchedHeadline.title, url:p.matchedHeadline.url, source:p.matchedHeadline.source, published_at:p.matchedHeadline.published_at })),
     });
     if (goldenEra && goldenEra.players.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
-      id:'smart-golden-era', family:'golden-era', eyebrow:ru?'ЗОЛОТАЯ ЭПОХА · ПО КАРЬЕРАМ':'GOLDEN ERA · CAREER OVERLAP',
+      id:'smart-golden-era', family:'golden-era', eyebrow:ru?'ЗОЛОТАЯ ЭПОХА':'GOLDEN ERA',
       title:ru?`Золотая эпоха: ${goldenEra.club}`:`Golden era: ${goldenEra.club}`,
       icon:'era', image:goldenEra.players[0]?.photo_url ?? null,
       names:goldenEra.players.slice(0,5).map(p=>p.name),
