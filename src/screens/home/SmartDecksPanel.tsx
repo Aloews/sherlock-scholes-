@@ -26,6 +26,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     let cancelled = false;
     const load = async () => {
       setLoading(true); setFailed(false);
+      try {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
@@ -45,6 +46,11 @@ export function SmartDecksPanel({ onStart }: Props) {
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, 16));
       setLoading(false);
+      } catch {
+        if (cancelled) return;
+        setFailed(true);
+        setLoading(false);
+      }
     };
     void load();
     return () => { cancelled = true; };
