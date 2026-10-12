@@ -235,7 +235,9 @@
     "collectibles_empty": "Пока нет коллекционных карточек. Первая откроется после 100 верных отгадок одной карточки.",
     "collectibles_error": "Не удалось загрузить коллекцию. Попробуйте позже.",
     "collectibles_guesses": "Верных отгадок: {{count}}",
-    "collectibles_owned": "Коллекционная"
+    "collectibles_owned": "Коллекционная",
+    "collectibles_progress_title": "Ближе всего к открытию",
+    "collectibles_progress_remaining": "Осталось верно угадать: {{count}}"
   },
   "rights": {
     "title": "Источники и права",
