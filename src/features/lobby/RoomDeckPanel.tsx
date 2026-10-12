@@ -176,7 +176,6 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
           <OptionRow
             leading="⚽"
             title={t('category.player')}
-            description={t('home.who_players_desc')}
             selected={players}
             onClick={togglePlayers}
           />
