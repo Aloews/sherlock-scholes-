@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scraper.dedup import canonical_key  # noqa: E402
 from scraper.espn import (  # noqa: E402
     completed_events,
+    has_roster_data,
     parse_match_meta,
     parse_player_rows,
 )
@@ -438,13 +439,11 @@ def collect(days, dry_run=False, only=None):
                     continue
                 seen_ids.add(event_id)
                 event_ids.append(event_id)
+        league_failed = board_failed
         if board_failed:
-            # Месяц мог не ответить один из трёх — то, что пришло, пишется:
-            # upsert идемпотентен, и выбросить готовые строки ради красоты
-            # отчёта значило бы наказать лигу за чужой сбой. Но в `failed`
-            # она попадает, и прогон кончится ненулевым кодом.
+            # Успешные месяцы и матчи всё равно сохраняются, но частичный
+            # ответ табло обязан сделать итоговый статус красным.
             print("  !! {}: табло ответило не на все месяцы".format(league))
-            failed.append(league)
 
         rows = []
         for event_id in event_ids:
@@ -452,9 +451,14 @@ def collect(days, dry_run=False, only=None):
                 session, "{}/{}/summary?event={}".format(BASE, league, event_id))
             time.sleep(DELAY_SECONDS)
             if not summary:
+                print("  !! {} event {}: summary недоступен".format(league, event_id))
+                league_failed = True
                 continue
             meta = parse_match_meta(summary)
-            if not meta:
+            if not meta or not has_roster_data(summary):
+                print("  !! {} event {}: неполный summary (metadata/rosters)"
+                      .format(league, event_id))
+                league_failed = True
                 continue
             seen_events += 1
             for player in parse_player_rows(summary):
@@ -483,6 +487,9 @@ def collect(days, dry_run=False, only=None):
                     "source": "espn",
                 })
 
+        if league_failed and league not in failed:
+            failed.append(league)
+
         total_rows += len(rows)
         print("  {:22} матчей {:4}  строк {:5}".format(league, len(event_ids), len(rows)))
         if dry_run:
@@ -501,7 +508,7 @@ def collect(days, dry_run=False, only=None):
     print("matches read: {}, rows for our cards: {}, players not in the deck: {}"
           .format(seen_events, total_rows, unmatched))
     if dry_run:
-        return 0
+        return 1 if failed else 0
     print("written: {}".format(written_total))
     if failed:
         print("НЕ ЗАПИСАНЫ: {}".format(", ".join(failed)))
