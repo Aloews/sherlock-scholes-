@@ -8,7 +8,7 @@ import { buildGoldenEra, matchNewsToPlayers, selectBreakoutPlayers, type Canonic
 
 interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; matches: number; goals: number; assists: number }
 interface SmartDeck {
-  id: string; family: 'form' | 'form-news' | 'news' | 'golden-era';
+  id: string; family: 'form' | 'form-news' | 'news' | 'golden-era' | 'breakout';
   eyebrow: string; title: string; description: string;
   icon: 'bolt' | 'calendar' | 'crown' | 'era'; image: string | null;
   names: string[]; filter: DeckFilter;
@@ -28,7 +28,8 @@ export function SmartDecksPanel({ onStart }: Props) {
   const lang = i18n.language.slice(0, 2);
   const [news, setNews] = useState<NewsHeadline[]>([]);
   const [newsMatches, setNewsMatches] = useState<NewsCardMatch[]>([]);
-  const [form, setForm] = useState<RatingCandidate[]>([]);\n  const [breakouts, setBreakouts] = useState<PlayerTrendCandidate[]>([]);
+  const [form, setForm] = useState<RatingCandidate[]>([]);
+  const [breakouts, setBreakouts] = useState<PlayerTrendCandidate[]>([]);
   const [legends, setLegends] = useState<CanonicalPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -75,7 +76,8 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   const decks = useMemo<SmartDeck[]>(() => {
     const result: SmartDeck[] = [];
-    const goldenEra: GoldenEra | null = buildGoldenEra(legends, TARGET_DECK_SIZE);\n    const breakoutRows = breakouts;
+    const goldenEra: GoldenEra | null = buildGoldenEra(legends, TARGET_DECK_SIZE);
+    const breakoutRows = breakouts;
     const formIds = new Set(form.map((p) => p.card_id));
     const formAndNews = newsMatches.filter((p) => formIds.has(p.id));
     const newsSourceCount = new Set(newsMatches.map((p) => p.matchedHeadline.source).filter(Boolean)).size;
