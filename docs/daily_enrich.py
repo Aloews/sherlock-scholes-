@@ -8,26 +8,24 @@ the orchestrator simply RESUMES where the budget ran out (the on-disk cache +
 budget files, carried between CI runs, are the checkpoint).
 
 ORDER (why):
-  1. newcomers      bare cards (facts IS NULL) need RESOLVE first to warm the
-                    caches the later DB-only scripts read; also fills facts/tier/
-                    wc2026 for just those cards.            (cards_enrich_newcomers --apply)
-  2. career_stats   full Wikipedia career (clubs+apps+goals) for legends and any
-                    clubs_minutes-tail player missing it — fixes cards showing 1
-                    club instead of the real set. Runs AFTER newcomers so
-                    facts.birth_year (its namesake check) is warm. (career_build APPLY=1)
-  3. photos         cards without photo_url -> ruwiki/Wikidata image.  (run.py --cards-photos)
-  4. translations   untranslated card names -> card_translations.      (run.py --cards-translations)
-  5. legend/career  FREE cache-only reprocess of legend_career+titles. (reprocess, APPLY=1)
-  6. tier           recompute tier LAST so new stars/facts/titles count. (tier_build, APPLY=1)
-  7. fame           recompute cards.fame LAST of all — it is a PERCENTILE, so
+  1. newcomers      bare cards need RESOLVE first to warm caches and fill their
+                    facts/tier/wc2026.                    (cards_enrich_newcomers --apply)
+  2. career_stats   full career (clubs+apps+goals) for legends and players with
+                    incomplete club histories.            (career_build APPLY=1)
+  3. birth-country  incremental Wikidata P19 -> birthplace P17, preserving
+                    nationality as a separate field.       (cards_birth_country_build.py)
+  4. photos         cards without photo_url -> ruwiki/Wikidata image.  (run.py --cards-photos)
+  5. translations   untranslated card names -> card_translations.      (run.py --cards-translations)
+  6. legend/career  FREE cache-only reprocess of legend_career+titles. (reprocess, APPLY=1)
+  7. tier           recompute tier after new stars/facts/titles.       (tier_build, APPLY=1)
+  8. fame           recompute cards.fame LAST of all — it is a PERCENTILE, so
                     every step above (new cards, pageviews, active flips) shifts
                     the scale. Also re-derives tier + the Pro 'legend' tag from
-                    the refreshed fame, which is why it runs after step 6, not
-                    before it.                        (cards_fame_refresh.py)
+                    refreshed fame.                         (cards_fame_refresh.py)
 
-Budget: steps 1-4 spend the shared Wikimedia budget; 5-7 spend ZERO (pure DB).
-Putting the free steps last means a budget wall in steps 1-4 still lets tier +
-legend reprocess + fame refresh run to completion every day.
+Budget: steps 1-5 share the Wikimedia request budget; steps 6-8 are cache/DB-only.
+The birth-country step is incremental and bounded, so an exhausted source budget
+does not block the rest of the nightly enrichment.
 
 Note: the daily workflow (.github/workflows/daily-enrich.yml) also runs
 cards_pageviews_i18n.py AFTER this orchestrator, which changes the very metric
