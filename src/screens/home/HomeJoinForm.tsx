@@ -14,6 +14,7 @@ interface Props {
   loading: boolean;
   onSubmit: () => void;
   onJoinRoom: (code: string) => void;
+  playerId: number | null;
   onBack: () => void;
 }
 
@@ -27,13 +28,13 @@ interface Props {
  * только то, что видно.
  */
 export function HomeJoinForm({
-  code, onCode, typedCode, inputRef, loading, onSubmit, onJoinRoom, onBack,
+  code, onCode, typedCode, inputRef, loading, onSubmit, onJoinRoom, playerId, onBack,
 }: Props) {
   const { t } = useTranslation();
 
   return (
     <div className="w-full max-w-sm space-y-4 animate-slide-up">
-      <OpenRoomsPanel onJoin={onJoinRoom} loading={loading} />
+      <OpenRoomsPanel onJoin={onJoinRoom} loading={loading} playerId={playerId} />
       <div className="space-y-2">
         <label className="text-brand-muted text-sm font-medium">
           {t('home.room_code_label')}
