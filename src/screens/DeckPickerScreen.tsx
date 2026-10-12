@@ -187,26 +187,6 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   }, [countryOpts]);
 
   // ── Actions ──────────────────────────────────────────────────────
-  const toggleCategory = (cat: CardCategory) => {
-    hapticImpact('light');
-    setSelCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else { next.add(cat); trackEvent('category_selected', { kind: 'category', value: cat }); }
-      return next;
-    });
-  };
-
-  const toggleGroup = (cats: CardCategory[]) => {
-    hapticImpact('light');
-    setSelCats((prev) => {
-      const next = new Set(prev);
-      const anyOn = cats.some((c) => next.has(c));
-      cats.forEach((c) => (anyOn ? next.delete(c) : next.add(c)));
-      return next;
-    });
-  };
-
   const toggleContinent = (value: ContinentFilter) => {
     hapticImpact('light');
     setSelConts((prev) => {
