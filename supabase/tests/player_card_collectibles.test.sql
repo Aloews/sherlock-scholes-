@@ -67,6 +67,15 @@ BEGIN
   IF NOT has_function_privilege('anon', 'public.my_card_collectibles(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'verified inventory RPC must be executable by anon';
   END IF;
+  IF has_table_privilege('anon', 'public.player_card_progress', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.player_card_progress', 'SELECT')
+     OR has_table_privilege('anon', 'public.player_card_guess_events', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.player_card_guess_events', 'SELECT') THEN
+    RAISE EXCEPTION 'progress and event ledger tables must not be directly readable by client roles';
+  END IF;
+  IF NOT has_function_privilege('anon', 'public.my_card_collectible_progress(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'verified progress RPC must be executable by anon';
+  END IF;
 END $do$;
 
 -- A status toggle must not create a second credit for the same round-card.
