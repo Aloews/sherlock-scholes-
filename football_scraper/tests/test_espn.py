@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scraper.espn import (  # noqa: E402
     completed_event_ids,
     has_roster_data,
+    has_scoreboard_payload,
     parse_match_date,
     parse_match_meta,
     parse_player_rows,
@@ -119,7 +120,23 @@ def main():
     ok &= check("missing roster is incomplete",
                 has_roster_data({"header": SUMMARY["header"]}), False)
     ok &= check("empty roster is incomplete",
-                has_roster_data({"rosters": [{"roster": []}]}), False)
+                has_roster_data({"rosters": [{"roster": []}, {"roster": []}]}), False)
+    ok &= check("one team roster is incomplete",
+                has_roster_data({"rosters": SUMMARY["rosters"][:1]}), False)
+    ok &= check("roster without named players is incomplete",
+                has_roster_data({"rosters": [
+                    {"roster": [{"athlete": {}}]},
+                    SUMMARY["rosters"][1],
+                ]}), False)
+
+    # HTTP 200 with a wrong JSON shape must not masquerade as an empty schedule.
+    ok &= check("valid empty scoreboard", has_scoreboard_payload({"events": []}), True)
+    ok &= check("missing events is invalid", has_scoreboard_payload({"foo": []}), False)
+    ok &= check("non-list events is invalid", has_scoreboard_payload({"events": {}}), False)
+    ok &= check("malformed event is invalid", has_scoreboard_payload({"events": [None]}), False)
+    ok &= check("normal event is valid", has_scoreboard_payload({
+        "events": [{"id": "123", "status": {"type": {"completed": True}}}]
+    }), True)
 
     # ---- player rows -----------------------------------------------------
     rows = parse_player_rows(SUMMARY)
