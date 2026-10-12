@@ -87,4 +87,19 @@ describe('room code contract', () => {
     expect(room.code).toBe('AB12CD');
     expect(room.code).toHaveLength(6);
   });
+
+  it('validates codes returned by the 1v1 room creator', async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1', code: 'A' }, error: null });
+    await expect(createRoom(100, {}, '1v1')).rejects.toThrow('INVALID_ROOM_CODE_RETURNED');
+    expect(mocks.rpc).toHaveBeenCalledWith('create_1v1_room', expect.objectContaining({ p_host_id: 100 }));
+  });
+
+  it('joins a 1v1 room only with the full normalized code', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls));
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
+    await joinRoom('ab12cd', 200);
+    expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'AB12CD'] });
+    expect(mocks.rpc).toHaveBeenCalledWith('join_1v1_room', { p_room_id: 'room-123', p_player_id: 200 });
+  });
 });
