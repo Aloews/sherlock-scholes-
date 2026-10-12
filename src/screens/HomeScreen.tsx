@@ -364,8 +364,9 @@ export function HomeScreen() {
             onConfigureCategories={() => setCategoryDialogOpen(true)}
             deckPrompt={roomDeckPrompt}
             buildingDeck={buildingRoomDeck}
+            hasResolvedDeck={roomDeckFilter !== null}
             deckMessage={roomDeckMessage}
-            onDeckPromptChange={setRoomDeckPrompt}
+            onDeckPromptChange={handleRoomDeckPromptChange}
             onBuildDeck={() => { void buildRoomDeck(); }}
             onCreate={() => createRoom({ total_rounds: rounds1v1, categories, ...(roomDeckFilter ? { deck: roomDeckFilter } : {}) }, '1v1')}
             onBack={() => setView('mode_select')}
