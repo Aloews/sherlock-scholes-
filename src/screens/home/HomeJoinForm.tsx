@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
+import { sanitizeCodeInput } from '@/features/lobby/invite';
 import { OpenRoomsPanel } from './OpenRoomsPanel';
 
 interface Props {
@@ -42,7 +42,6 @@ export function HomeJoinForm({
         <input
           ref={inputRef}
           type="text"
-          maxLength={CODE_LENGTH}
           value={code}
           // Очищается, а не приводится к верхнему регистру: поле обязано
           // держать ровно то, что может держать код, чтобы управляемое
