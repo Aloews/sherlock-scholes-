@@ -16,6 +16,7 @@ vi.mock('@/shared/lib/analytics', () => ({ trackEvent: vi.fn() }));
 vi.mock('@/shared/lib/telegram', () => ({ getRawInitData: () => 'signed-init-data' }));
 
 import { createRoom, joinRoom } from './roomService';
+import type { DeckFilter } from '@/shared/types/deck';
 
 const validRoom = {
   id: 'room-123',
@@ -105,7 +106,7 @@ describe('room code contract', () => {
   });
 
   it('preserves an AI-selected category and exact card IDs in team-room settings', async () => {
-    const deck = { categories: ['coach'], card_ids: ['coach-1', 'coach-2', 'coach-3'] };
+    const deck: DeckFilter = { categories: ['coach'], card_ids: ['coach-1', 'coach-2', 'coach-3'] };
     mocks.rpc.mockResolvedValue({ data: validRoom, error: null });
 
     await createRoom(100, { categories: ['coach'], deck });
@@ -117,7 +118,7 @@ describe('room code contract', () => {
   });
 
   it('preserves an AI-selected deck in 1v1 without changing the six-character room code', async () => {
-    const deck = { categories: ['stadium'], card_ids: ['stadium-1', 'stadium-2', 'stadium-3'] };
+    const deck: DeckFilter = { categories: ['stadium'], card_ids: ['stadium-1', 'stadium-2', 'stadium-3'] };
     mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
 
     const room = await createRoom(100, { total_rounds: 5, categories: ['stadium'], deck }, '1v1');
