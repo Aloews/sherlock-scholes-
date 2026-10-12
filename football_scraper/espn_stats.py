@@ -41,6 +41,7 @@ from scraper.dedup import canonical_key  # noqa: E402
 from scraper.espn import (  # noqa: E402
     completed_events,
     has_roster_data,
+    has_scoreboard_payload,
     parse_match_meta,
     parse_player_rows,
 )
@@ -423,13 +424,10 @@ def collect(days, dry_run=False, only=None):
                 session,
                 "{}/{}/scoreboard?dates={}&limit=1000".format(BASE, league, month))
             time.sleep(DELAY_SECONDS)
-            if not board:
-                # ⚠️ НЕ `continue`. Здесь и была тихая дыра: табло, ответившее
-                # не-200, давало «матчей 0», неотличимое от межсезонья, — и
-                # прогон, не принёсший НИ ОДНОЙ строки за всю ночь, выходил с
-                # нулём и зелёной галочкой в CI. Молчание источника обязано
-                # стоить лиги в списке `failed` и ненулевого кода возврата,
-                # ровно как молчание записи ниже.
+            if not has_scoreboard_payload(board):
+                # HTTP 200 is not enough: malformed JSON or a changed response
+                # shape must not be interpreted as a valid day with no games.
+                print("  !! {}: некорректный ответ scoreboard".format(league))
                 board_failed = True
                 continue
             for event_id, event_date in completed_events(board):
