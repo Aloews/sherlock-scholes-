@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IconBallFootball, IconClock, IconTargetArrow, IconRun, IconChevronRight } from '@tabler/icons-react';
+import { IconBallFootball, IconClock, IconTargetArrow, IconRun } from '@tabler/icons-react';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import {
   fetchCareerTotals, fetchClubCareer,
