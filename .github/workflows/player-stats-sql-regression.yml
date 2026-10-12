@@ -49,3 +49,9 @@ jobs:
 
       - name: Smart Deck exact-card regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_card_ids.test.sql
+
+      - name: Apply private Smart Deck editorial cache migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012130000_smart_deck_editorial_cache.sql
+
+      - name: Smart Deck cache permissions regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_editorial_cache.test.sql
