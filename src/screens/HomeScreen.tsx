@@ -229,9 +229,6 @@ export function HomeScreen() {
           </div>
         )}
 
-        {view === 'home' && (
-          <SmartDecksPanel onStart={startGame} />
-        )}
 
         {/* ── The football Alias's own actions ── */}
         {view === 'alias' && (
@@ -241,6 +238,10 @@ export function HomeScreen() {
             onJoin={() => { hapticImpact('light'); setView('join'); }}
             onBack={() => { hapticImpact('light'); setView('home'); }}
           />
+        )}
+
+        {view === 'alias' && (
+          <SmartDecksPanel onStart={startGame} />
         )}
 
         {/* Player stats — classic landing only */}
