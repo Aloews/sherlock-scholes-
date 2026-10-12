@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import {
   ALL_CATEGORIES,
@@ -16,7 +17,8 @@ interface Props {
 
 /** Shared category selector for quick play and online rooms. */
 export function CategoryPickerDialog({ selectedCategories, onClose, onApply }: Props) {
-  const ru = (typeof navigator !== 'undefined' ? navigator.language : 'ru').toLowerCase().startsWith('ru');
+  const { i18n } = useTranslation();
+  const ru = i18n.language.toLowerCase().startsWith('ru');
   const [draft, setDraft] = useState<Set<CardCategory>>(
     () => new Set(selectedCategories ?? ALL_CATEGORIES),
   );
