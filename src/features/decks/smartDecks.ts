@@ -116,6 +116,33 @@ function careerTotals(player: CanonicalPlayer) {
   return { appearances, goals, assists };
 }
 
+function latestKnownCareerEndYear(player: CanonicalPlayer): number | null {
+  const candidates: string[] = [];
+  const yearsActive = player.facts?.years_active;
+  if (typeof yearsActive === 'string') candidates.push(yearsActive);
+  for (const row of player.career_stats ?? []) {
+    if (typeof row.years === 'string') candidates.push(row.years);
+  }
+  let latest: number | null = null;
+  for (const value of candidates) {
+    const text = value.trim();
+    // An open range such as "2015–" does not prove a retirement year.
+    if (!text || /[-–—]\\s*$/.test(text)) continue;
+    const match = text.match(/(\\d{4})(?:\\D+(\\d{4}))?/);
+    if (!match) continue;
+    const end = Number(match[2] ?? match[1]);
+    if (end >= 1850 && end <= new Date().getFullYear() + 1) {
+      latest = latest === null ? end : Math.max(latest, end);
+    }
+  }
+  return latest;
+}
+
+function isHistoricalPlayer(player: CanonicalPlayer): boolean {
+  const endYear = latestKnownCareerEndYear(player);
+  return endYear !== null && endYear < new Date().getFullYear() - 1;
+}
+
 /**
  * Build comparisons only when the same cohort contains a recent-form player,
  * a historical/legend card and career totals for every selected card.
@@ -146,7 +173,7 @@ export function buildStatisticalComparisons(
     }
     for (const rows of byKey.values()) {
       const hasCurrent = rows.some((row) => recentFormIds.has(row.player.id));
-      const hasHistorical = rows.some((row) => row.player.tags?.includes('legend'));
+      const hasHistorical = rows.some((row) => !recentFormIds.has(row.player.id) && isHistoricalPlayer(row.player));
       if (rows.length >= 3 && hasCurrent && hasHistorical) {
         groups.push({ groupBy, groupKey: keyOf(rows[0].player)!, rows });
       }
