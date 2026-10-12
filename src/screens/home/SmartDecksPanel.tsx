@@ -87,7 +87,6 @@ export function SmartDecksPanel({ onStart }: Props) {
     if (form.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-current-form', family:'form', eyebrow:ru?'ФОРМА · 30 ДНЕЙ':'FORM · 30 DAYS',
       title:ru?'Сейчас на пике':'In form now',
-      description:ru?'Не просто громкие имена: эти футболисты набрали реальные матчи и результативные действия в собранной статистике за 30 дней. Проверь, кого ты узнаешь без подсказки.':'Not just famous names: these players recorded actual appearances and contributions in the collected 30-day match data. See who you can recognize without a hint.',
       icon:'bolt', image:form[0]?.photo_url ?? null, names:form.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:form.map(p=>p.card_id), lang },
       stats:form.map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
@@ -118,9 +117,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     return result;
   }, [form, legends, newsMatches, lang, ru]);
 
-  const orderedDecks = useMemo(() => [...decks].sort((a, b) =>
-    (editorials[a.id]?.rank ?? 100) - (editorials[b.id]?.rank ?? 100),
-  ), [decks, editorials]);
+  const orderedDecks = decks;
 
   const sendDeckPrompt = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
