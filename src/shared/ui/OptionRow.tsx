@@ -12,6 +12,7 @@ import { IconCheck, IconChevronRight, IconLock } from '@tabler/icons-react';
  */
 export interface OptionRowProps {
   title: ReactNode;
+  description?: string;
   /** Emoji or icon in the leading tile. */
   leading?: ReactNode;
   /** Trailing count; negative or null hides it. */
@@ -26,7 +27,7 @@ export interface OptionRowProps {
 }
 
 export function OptionRow({
-  title, leading, count, selected, locked, disabled, action, onClick,
+  title, description, leading, count, selected, locked, disabled, action, onClick,
 }: OptionRowProps) {
   return (
     <button
@@ -48,6 +49,9 @@ export function OptionRow({
           {/* Pro gold is fixed across designs — it marks the paid tier, not a state. */}
           {locked && <IconLock size={13} stroke={2.5} className="text-[#FFD24A]" />}
         </span>
+        {description && (
+          <span className="block text-brand-muted text-xs mt-0.5 leading-snug">{description}</span>
+        )}
       </span>
       {count != null && count >= 0 && (
         <span className="text-brand-muted/70 text-xs tabular-nums flex-shrink-0">{count}</span>
