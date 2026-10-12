@@ -14,7 +14,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Family = "form" | "form-news" | "news" | "golden-era";
+type Family = "form" | "form-news" | "news" | "golden-era" | "breakout";
 interface Evidence {
   card_id: string;
   title: string;
@@ -31,7 +31,7 @@ interface Candidate {
   names: string[];
   evidence?: Evidence[];
   era?: { club: string; startYear: number; endYear: number };
-  stats?: Array<{ card_id: string; matches: number; goals: number; assists: number }>;
+  stats?: Array<{ card_id: string; matches: number; goals: number; assists: number; previous_matches?: number; previous_goals?: number; previous_assists?: number }>;
 }
 interface CardDbRow {
   id: string; name: string; name_en: string | null; active: boolean; category: string;
@@ -69,7 +69,7 @@ async function validateCandidates(
   candidates: Candidate[],
 ): Promise<Candidate[]> {
   const ids = [...new Set(candidates.flatMap((d) => d.card_ids))];
-  if (!ids.length || ids.length > 128) return []; // up to four decks × twenty canonical cards, with overlap
+  if (!ids.length || ids.length > 128) return []; // up to five decks × twenty canonical cards, with overlap
   const { data: cardData, error: cardError } = await supabase.from("cards")
     .select("id,name,name_en,active,category,legend_career")
     .in("id", ids);
@@ -83,7 +83,7 @@ async function validateCandidates(
   const ratingRows = (rating.data ?? []) as Array<{ card_id: string; matches: number; goals: number; assists: number }>;
   const ratingsById = new Map(ratingRows.map((r) => [r.card_id, r]));
   const formIds = new Set(ratingRows.map((r) => r.card_id));
-  const families = new Set<Family>(["form", "form-news", "news", "golden-era"]);
+  const trendResult = candidates.some((c) => c.family === "breakout")\n    ? await supabase.rpc("player_smart_deck_trends", { p_limit: 1000 })\n    : { data: [], error: null };\n  if (trendResult.error) throw new Error("trend_validation_failed");\n  const trendsById = new Map((trendResult.data ?? []).map((r: any) => [r.card_id, r]));\n  const families = new Set<Family>(["form", "form-news", "news", "golden-era", "breakout"]);
 
   const result: Candidate[] = [];
   for (const candidate of candidates) {
@@ -94,7 +94,7 @@ async function validateCandidates(
     if (deckCards.some((c) => !c || !c.active || c.category !== "player")) continue;
 
     if (candidate.family === "form" && deckIds.some((id) => !formIds.has(id))) continue;
-    if (candidate.family === "form-news" && deckIds.some((id) => !formIds.has(id))) continue;
+    if (candidate.family === "form-news" && deckIds.some((id) => !formIds.has(id))) continue;\n    if (candidate.family === "breakout" && deckIds.some((id) => {\n      const r = trendsById.get(id) as any;\n      if (!r || r.recent_matches < 3 || r.previous_matches < 3 || r.recent_points < 12) return true;\n      const recentRate = r.recent_points / r.recent_matches;\n      const previousRate = r.previous_points / r.previous_matches;\n      return recentRate - previousRate < 1 || recentRate < previousRate * 1.5;\n    })) continue;
 
     if (candidate.family === "news" || candidate.family === "form-news") {
       const evidence = (candidate.evidence ?? []).filter((e) =>
@@ -152,7 +152,7 @@ async function validateCandidates(
       };
     }
 
-    if (candidate.family === "form" || candidate.family === "form-news") {
+    if (candidate.family === "breakout") {\n      // Never trust browser-supplied numbers: re-read both windows from the DB.\n      candidate.stats = deckIds.map((id) => {\n        const r = trendsById.get(id) as any;\n        return { card_id: id, matches: r.recent_matches, goals: r.recent_goals, assists: r.recent_assists, previous_matches: r.previous_matches, previous_goals: r.previous_goals, previous_assists: r.previous_assists };\n      });\n    } else if (candidate.family === "form" || candidate.family === "form-news") {
       // Stats are sourced on the server. Never let browser-supplied numbers
       // become facts in the editorial prompt.
       candidate.stats = deckIds.map((id) => ratingsById.get(id)!)
@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const language = body?.language === "en" ? "en" : "ru";
-    const input = Array.isArray(body?.candidates) ? body.candidates.slice(0, 4) as Candidate[] : [];
+    const input = Array.isArray(body?.candidates) ? body.candidates.slice(0, 5) as Candidate[] : [];
     if (!input.length) return json({ editorials: {}, mode: "deterministic" });
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
