@@ -28,6 +28,7 @@ import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { OnlinePanel } from '@/features/social/OnlinePanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
+import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
 
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
@@ -226,6 +227,10 @@ export function HomeScreen() {
               onClick={() => setView('alias')}
             />
           </div>
+        )}
+
+        {view === 'home' && (
+          <SmartDecksPanel onStart={startGame} />
         )}
 
         {/* ── The football Alias's own actions ── */}
