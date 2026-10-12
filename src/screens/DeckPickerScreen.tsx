@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { OptionRow } from '@/shared/ui/OptionRow';
 import { Chip } from '@/shared/ui/Chip';
+import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
 import { SelectRow } from '@/shared/ui/SelectRow';
 import { Section } from '@/shared/ui/Section';
 import {
@@ -38,7 +39,7 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { ALL_CONTINENT_FILTERS, type CardCategory, type ContinentFilter } from '@/shared/types/database';
 import {
-  CATEGORY_GROUPS, DECK_LEAGUES, DECK_PRESETS, DECK_TRAITS,
+  DECK_LEAGUES, DECK_PRESETS, DECK_TRAITS,
   FAME_LEVELS, FAME_MIN, NON_PLAYER_CATEGORIES, normalizeFilter,
   type DeckFilter, type DeckPreset, type FameLevel,
 } from '@/shared/types/deck';
@@ -61,6 +62,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   const lang = i18n.language.slice(0, 2);
 
   const [step, setStep] = useState<Step>('presets');
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [withPlayers, setWithPlayers] = useState(true);
   const [selCats, setSelCats] = useState<Set<CardCategory>>(new Set(NON_PLAYER_CATEGORIES));
   // Onboarding PRE-SELECTS a recognizability step instead of applying an
@@ -319,34 +321,19 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
               />
             </Section>
 
-            {CATEGORY_GROUPS.map((group) => {
-              const on = group.categories.filter((c) => selCats.has(c)).length;
-              return (
-                <section key={group.id} className="space-y-2">
-                  <button
-                    onClick={() => toggleGroup(group.categories)}
-                    className="w-full flex items-center justify-between active:opacity-70"
-                  >
-                    <span className="text-white text-sm font-semibold">{t(group.labelKey)}</span>
-                    <span className={`text-xs tabular-nums rounded-full px-2 py-0.5 border ${
-                      on ? 'border-brand-accent/40 text-white bg-brand-accent/10' : 'border-brand-border text-brand-muted'
-                    }`}>
-                      {on}/{group.categories.length}
-                    </span>
-                  </button>
-                  <div className="flex flex-wrap gap-1.5">
-                    {group.categories.map((cat) => (
-                      <Chip
-                        key={cat}
-                        label={t(`category.${cat}`)}
-                        selected={selCats.has(cat)}
-                        onClick={() => toggleCategory(cat)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            <button
+              type="button"
+              onClick={() => setCategoryDialogOpen(true)}
+              className="flex w-full items-center justify-between rounded-2xl border border-brand-border bg-brand-surface px-4 py-3 text-left"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-white">{t('home.step_who')}</span>
+                <span className="mt-1 block text-xs text-brand-muted">
+                  {everything ? (lang === 'ru' ? 'Все категории' : 'All categories') : `${selectedCats.length} ${lang === 'ru' ? 'категорий' : 'categories'}`}
+                </span>
+              </span>
+              <span className="text-sm font-semibold text-brand-accent">{lang === 'ru' ? 'Настроить' : 'Configure'} →</span>
+            </button>
           </>
         )}
 
@@ -485,6 +472,17 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
             {t('home.build_own')}
           </Button>
         </StickyFooter>
+      )}
+      {categoryDialogOpen && (
+        <CategoryPickerDialog
+          selectedCategories={everything ? null : selectedCats}
+          onClose={() => setCategoryDialogOpen(false)}
+          onApply={(next) => {
+            setWithPlayers(next === null || next.includes('player'));
+            setSelCats(new Set((next ?? []).filter((category) => category !== 'player')));
+            setCategoryDialogOpen(false);
+          }}
+        />
       )}
     </ScreenFrame>
   );
