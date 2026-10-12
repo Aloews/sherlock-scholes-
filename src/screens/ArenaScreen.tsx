@@ -62,14 +62,12 @@ export function ArenaScreen() {
           <OptionRow
             leading="📱"
             title={t('arena.mode_local')}
-            description={t('arena.mode_local_hint')}
             action
             onClick={() => { hapticImpact('light'); setMode('local'); }}
           />
           <OptionRow
             leading="🌐"
             title={t('arena.mode_online')}
-            description={t('arena.mode_online_hint')}
             action
             onClick={() => { hapticImpact('light'); setMode('online'); }}
           />

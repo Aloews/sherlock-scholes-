@@ -72,21 +72,18 @@ export function MinigamesScreen() {
           <OptionRow
             leading="❓"
             title={t('quiz.title')}
-            description={t('minigames.quiz_hint')}
             action
             onClick={() => { hapticImpact('light'); setGame('quiz'); }}
           />
           <OptionRow
             leading="⚔️"
             title={t('famous.title')}
-            description={t('minigames.famous_hint')}
             action
             onClick={() => { hapticImpact('light'); setGame('famous'); }}
           />
           <OptionRow
             leading="👕"
             title={t('squad.title')}
-            description={t('minigames.squad_hint')}
             action
             onClick={() => { hapticImpact('light'); setGame('squad'); }}
           />
@@ -103,14 +100,12 @@ export function MinigamesScreen() {
           <OptionRow
             leading="♟️"
             title={t('chess.title')}
-            description={t('minigames.chess_hint')}
             action
             onClick={() => { hapticImpact('light'); navigate('/chess'); }}
           />
           <OptionRow
             leading="🥅"
             title={t('arena.title')}
-            description={t('minigames.arena_hint')}
             action
             onClick={() => { hapticImpact('light'); navigate('/arena'); }}
           />
