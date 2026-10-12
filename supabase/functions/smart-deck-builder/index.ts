@@ -40,7 +40,7 @@ function parseModelJson(value: string): Record<string, unknown> | null {
   }
 }
 
-async function loadCatalog(supabase: any, prompt: string, currentIds: string[]) {
+async function loadCatalog(supabase: any, prompt: string, currentIds: string[], targetCardCount: number) {
   const fields = "id,name,name_en,photo_url,category,country,position_ru,fame,legend_career";
   const [playersResult, otherResult] = await Promise.all([
     supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
     if (quotaError) throw new Error("quota_unavailable");
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
 
-    const catalog = await loadCatalog(supabase, prompt, currentIds);
+    const catalog = await loadCatalog(supabase, prompt, currentIds, targetCardCount);
     if (catalog.length < 3) return json({ error: "catalog_unavailable" }, 503);
 
     const compactCatalog = catalog.map((card) => ({
