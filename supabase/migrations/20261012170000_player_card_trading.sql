@@ -256,7 +256,6 @@ DECLARE
   v_trade public.player_card_trade_offers%ROWTYPE;
   v_offered_card_id uuid;
   v_requested_collectible_id uuid;
-  v_requested_card_id uuid;
 BEGIN
   v_me := public.tg_validate_init_data(p_init_data);
   IF v_me IS NULL THEN
@@ -280,7 +279,7 @@ BEGIN
     UPDATE public.player_card_trade_offers
     SET status = 'expired', responded_at = now()
     WHERE id = v_trade.id;
-    RAISE EXCEPTION 'TRADE_EXPIRED';
+    RETURN false;
   END IF;
 
   SELECT i.card_id INTO v_offered_card_id
@@ -290,7 +289,60 @@ BEGIN
     RAISE EXCEPTION 'OFFERED_CARD_NOT_FOUND';
   END IF;
 
-  -- Declining never changes ownership, so it remains possible even if an asset moved.
+  -- A decline is always allowed for the recipient and never moves assets.
+  IF NOT p_accept THEN
+    UPDATE public.player_card_trade_offers
+    SET status = 'declined', responded_at = now()
+    WHERE id = v_trade.id;
+    INSERT INTO public.player_card_trade_events
+      (trade_id, actor_player_id, action, offered_card_id, requested_card_id)
+    VALUES (v_trade.id, v_me, 'declined', v_offered_card_id, v_trade.requested_card_id);
+    RETURN true;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.player_card_collectibles i
+    WHERE i.id = v_trade.offered_collectible_id AND i.player_id = v_trade.from_player_id
+  ) THEN
+    RAISE EXCEPTION 'OFFERED_CARD_NOT_OWNED';
+  END IF;
+
+  SELECT i.id INTO v_requested_collectible_id
+  FROM public.player_card_collectibles i
+  WHERE i.player_id = v_trade.to_player_id AND i.card_id = v_trade.requested_card_id;
+  IF v_requested_collectible_id IS NULL THEN
+    RAISE EXCEPTION 'REQUESTED_CARD_NOT_OWNED';
+  END IF;
+
+  -- Lock both collectible instances in deterministic order before ownership changes.
+  PERFORM i.id
+  FROM public.player_card_collectibles i
+  WHERE i.id IN (v_trade.offered_collectible_id, v_requested_collectible_id)
+  ORDER BY i.id
+  FOR UPDATE;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.player_card_collectibles i
+    WHERE i.id = v_trade.offered_collectible_id
+      AND i.player_id = v_trade.from_player_id AND i.card_id = v_offered_card_id
+  ) OR NOT EXISTS (
+    SELECT 1 FROM public.player_card_collectibles i
+    WHERE i.id = v_requested_collectible_id
+      AND i.player_id = v_trade.to_player_id AND i.card_id = v_trade.requested_card_id
+  ) THEN
+    RAISE EXCEPTION 'TRADE_OWNERSHIP_CHANGED';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.player_card_collectibles i
+    WHERE i.player_id = v_trade.to_player_id AND i.card_id = v_offered_card_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.player_card_collectibles i
+    WHERE i.player_id = v_trade.from_player_id AND i.card_id = v_trade.requested_card_id
+  ) THEN
+    RAISE EXCEPTION 'DUPLICATE_CARD';
+  END IF;
+
   UPDATE public.player_card_collectibles
   SET player_id = v_trade.to_player_id, acquired_via = 'trade', acquired_at = now()
   WHERE id = v_trade.offered_collectible_id;
@@ -310,7 +362,6 @@ BEGIN
   RETURN true;
 END;
 $function$;
-
 CREATE OR REPLACE FUNCTION public.cancel_player_card_trade(
   p_init_data text,
   p_trade_id uuid
