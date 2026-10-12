@@ -126,8 +126,6 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!decks.length) { setEditorials({}); setEditorialMode('deterministic'); return; }
-    setEditorialMode('loading');
     const candidates = decks.map((deck) => ({
       id: deck.id,
       family: deck.family,
@@ -152,11 +150,9 @@ export function SmartDecksPanel({ onStart }: Props) {
         if (decks.some((deck) => deck.id === row.id) && row.title && row.hook) next[row.id] = row;
       }
       setEditorials(next);
-      setEditorialMode(data.mode === 'ai' || data.mode === 'cached-ai' ? 'ai' : 'deterministic');
     }).catch(() => {
       if (cancelled) return;
       setEditorials({});
-      setEditorialMode('deterministic');
     });
     return () => { cancelled = true; };
   }, [decks, ru]);
