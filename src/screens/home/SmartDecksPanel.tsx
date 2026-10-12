@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
+import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
 
@@ -227,7 +228,7 @@ export function SmartDecksPanel({ onStart }: Props) {
               const playerName = lang === 'ru' || !player.name_en ? player.name : player.name_en;
               return <label key={player.id} className="flex items-center gap-2 py-1.5 cursor-pointer">
                 <input type="checkbox" checked={checked} onChange={() => setSelectedCardIds((current) => checked ? current.filter((id) => id !== player.id) : [...current, player.id])} className="accent-brand-accent w-4 h-4"/>
-                {player.photo_url && <img src={player.photo_url} alt="" className="w-8 h-8 rounded-lg object-cover bg-brand-border"/>}
+                {player.photo_url && <PlayerPhoto src={player.photo_url} className="w-8 h-8 rounded-lg object-cover bg-brand-border" />}
                 <span className="text-xs text-white">{playerName}</span>
               </label>;
             })}
