@@ -129,18 +129,22 @@ jobs:
       - name: Освежить статистику планировщику и кэш рейтинга
         if: always()
         run: |
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
           for fn in refresh_stats_planner refresh_player_rating_cache build_model_accumulators settle_accumulators; do
             code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
               -H "apikey: $SUPABASE_KEY" \
               -H "Authorization: Bearer $SUPABASE_KEY" \
               -H "Content-Type: application/json" -d '{}' \
-              -o /dev/null -w '%{http_code}')
+              -o "$response_file" -w '%{http_code}')
+            if [ "$code" != "200" ]; then
+              echo "::error::$fn ответила HTTP $code"
+              # The response body carries the Postgres/PostgREST error that
+              # identifies the failed RPC; never print credentials or headers.
+              cat "$response_file"
+              exit 1
+            fi
             echo "$fn: HTTP $code"
-            # ⚠️ КОД ОТВЕТА ПРОВЕРЯЕТСЯ, А НЕ ПЕЧАТАЕТСЯ. Забытый секрет даёт
-            # 401, и шаг, который просто печатает число, «проходит» — а кэш
-            # не обновляется неделями, и экран тихо показывает прошлую неделю
-            # как эту. Ровно так же молчал сбор ESPN.
-            [ "$code" = "200" ] || { echo "::error::$fn ответила $code"; exit 1; }
           done
 
   # ⚠️ СТОРОЖ, И ОН ЗДЕСЬ ПО ЧУЖОЙ БЕДЕ. Соседний обход (`daily-enrich`)

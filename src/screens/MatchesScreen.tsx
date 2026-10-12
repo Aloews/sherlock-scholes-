@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { goBack } from '@/shared/lib/goBack';
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft, IconBallFootball } from '@tabler/icons-react';
+import { IconArrowLeft, IconBallFootball, IconTable } from '@tabler/icons-react';
 import {
   fetchUpcomingFixtures,
   fetchFixturesInMonth,
@@ -278,6 +278,16 @@ export function MatchesScreen() {
         {predictions.status === 'error' && (
           <p className="text-red-400/80 text-[10.5px]">{t('matches.predictions_failed')}</p>
         )}
+
+        <button
+          type="button"
+          onClick={() => { hapticImpact('light'); navigate('/table'); }}
+          className="w-full flex items-center gap-2 ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5 text-left active:opacity-70 transition-opacity"
+        >
+          <IconTable size={17} stroke={1.75} className="text-brand-accent shrink-0" />
+          <span className="text-white text-sm flex-1">{t('table.title')}</span>
+          <span aria-hidden="true" className="text-brand-muted text-lg leading-none">›</span>
+        </button>
 
         {/* ─── Режим ───
             Выбор режима сбрасывает выбранный день: он существует только в

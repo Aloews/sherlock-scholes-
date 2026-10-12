@@ -28,6 +28,19 @@ import { provenanceAttrs } from '@/shared/lib/provenance';
  * тридцати дней и есть начало сезона. Дата стоит под таблицей, чтобы «за
  * сезон» не пришлось понимать на веру.
  */
+// Эти турниры должны быть доступны первыми, независимо от числа матчей в
+// источнике статистики игроков. Без этого top-30 по объёму данных скрывал
+// АПЛ и РПЛ, хотя их строки и таблицы уже есть в базе.
+const FEATURED_LEAGUES = [
+  'Англия. Премьер-лига',
+  'Испания. Ла Лига',
+  'Италия. Серия А',
+  'Германия. Бундеслига',
+  'Франция. Лига 1',
+  'Россия. Премьер-лига',
+  'Нидерланды. Эредивизи',
+];
+
 export function LeagueTableScreen() {
   const { tournament: fromPath } = useParams<{ tournament: string }>();
   const [params, setParams] = useSearchParams();
@@ -41,14 +54,29 @@ export function LeagueTableScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchLeagues(lang).then((r) => { if (!cancelled) setLeagues(r); });
+    // Загружаем расширенный список, затем закрепляем главные лиги в UI.
+    // Запрос по умолчанию возвращал только 30 турниров по числу матчей;
+    // АПЛ и РПЛ оказывались за границей лимита и исчезали из выбора.
+    void fetchLeagues(lang, 100).then((r) => { if (!cancelled) setLeagues(r); });
     return () => { cancelled = true; };
   }, [lang]);
 
   // Без выбранного турнира открываем первый из списка — он самый полный по
   // числу матчей. Экран со списком лиг и пустотой под ним требовал бы лишнего
   // касания, чтобы увидеть хоть что-то.
-  const list = leagues.status === 'ok' ? leagues.data : [];
+  const allLeagues = leagues.status === 'ok' ? leagues.data : [];
+  const priority = (name: string) => {
+    const index = FEATURED_LEAGUES.indexOf(name);
+    return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  const list = [...allLeagues]
+    .sort((a, b) => {
+      const ap = priority(a.tournament);
+      const bp = priority(b.tournament);
+      if (ap !== bp) return ap - bp;
+      return b.matches - a.matches;
+    })
+    .slice(0, 30);
   const current = selected || list[0]?.tournament || '';
 
   useEffect(() => {
