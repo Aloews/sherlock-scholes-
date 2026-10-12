@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
+import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, selectBreakoutPlayers, type CanonicalPlayer, type NewsHeadline, type PlayerTrendCandidate } from './smartDecks';
 import { normalizeFilter } from '@/shared/types/deck';
 const players: CanonicalPlayer[] = [
  { id:'messi', name:'Лионель Месси', name_en:'Lionel Messi', photo_url:null, country:'AR', position_ru:'Нападающий', fame:100 },
@@ -89,28 +89,26 @@ describe('exact-card deck filter', () => {
   });
 
 
-import { selectBreakoutPlayers, type PlayerTrendCandidate } from './smartDecks';
-
 describe('data-driven breakout deck ranking', () => {
   const trend = (overrides: Partial<PlayerTrendCandidate> = {}): PlayerTrendCandidate => ({
     id: 'p1', name: 'Player One', name_en: 'Player One', photo_url: null,
     country: 'GB', position_ru: 'Нападающий', fame: 50,
     recent_matches: 6, recent_goals: 5, recent_assists: 2,
     previous_matches: 6, previous_goals: 1, previous_assists: 0,
-    recent_points: 34, previous_points: 4, recent_last_match: '2026-10-10',
+    recent_points: 34, previous_points: 4, recent_last_match: '2026-10-10', stats_collected_at: new Date().toISOString(),
     ...overrides,
   });
 
   it('ranks genuine per-match improvement using the two 30-day windows', () => {
     const strong = trend({ id: 'strong', name: 'Strong', recent_points: 34, previous_points: 4 });
-    const weak = trend({ id: 'weak', name: 'Weak', recent_points: 16, previous_points: 10 });
+    const weak = trend({ id: 'weak', name: 'Weak', recent_points: 14, previous_points: 10 });
     expect(selectBreakoutPlayers([weak, strong]).map((p) => p.id)).toEqual(['strong']);
   });
 
   it('requires enough matches in both windows and a meaningful absolute lift', () => {
     expect(selectBreakoutPlayers([
       trend({ id: 'tiny-sample', recent_matches: 2 }),
-      trend({ id: 'no-lift', recent_points: 16, previous_points: 10 }),
+      trend({ id: 'no-lift', recent_points: 14, previous_points: 10 }),
       trend({ id: 'no-history', previous_matches: 0 }),
     ])).toEqual([]);
   });
