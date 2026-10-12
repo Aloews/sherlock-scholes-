@@ -73,7 +73,6 @@ export function CollectibleTradingPanel({ playerId }: { playerId: number | null 
   const [notice, setNotice] = useState('');
 
   const isRu = i18n.language.startsWith('ru');
-  const tierLabels = isRu ? TIER_LABEL_RU : TIER_LABEL_EN;
 
   const load = useCallback(async () => {
     setLoading(true);
