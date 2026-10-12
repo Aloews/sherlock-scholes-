@@ -31,9 +31,22 @@ Deno.serve(async (req: Request) => {
     if (prompt.length < 3) return json({ error: "prompt_too_short" }, 400);
     if (!LLM_KEY) return json({ error: "ai_unavailable" }, 503);
 
+    const initData = req.headers.get("x-tg-init-data") ?? body?.initData;
+    if (typeof initData !== "string" || initData.length < 20) {
+      return json({ error: "unauthorized" }, 401);
+    }
+
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    // Verify Telegram's signed initData in Postgres; never spend model tokens
+    // for an anonymous or forged caller.
+    const { data: identity, error: identityError } = await supabase.rpc("get_user_status", {
+      p_init_data: initData,
+    });
+    if (identityError || typeof identity?.telegram_id !== "number") {
+      return json({ error: "unauthorized" }, 401);
+    }
     // The model may choose only real, active player cards from this catalogue.
     const { data: rows, error } = await supabase.from("cards")
       .select("id,name,name_en,category,active,photo_url")
