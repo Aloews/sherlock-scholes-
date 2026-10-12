@@ -51,7 +51,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 200, p_club_key: null, p_league: null, p_country: null }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,top_league,career_stats,facts,tags,legend_career').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(200),
-      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,top_league,career_stats,facts,tags,legend_career').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
+      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,top_league,career_stats,facts,tags').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
     const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error);
