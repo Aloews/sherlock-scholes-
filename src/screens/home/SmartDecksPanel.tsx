@@ -19,6 +19,7 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [newsMatches, setNewsMatches] = useState<NewsCardMatch[]>([]);
   const [form, setForm] = useState<RatingCandidate[]>([]);
   const [legends, setLegends] = useState<CanonicalPlayer[]>([]);
+  const [eras, setEras] = useState<CanonicalPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -28,22 +29,25 @@ export function SmartDecksPanel({ onStart }: Props) {
       setLoading(true); setFailed(false);
       try {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
-    const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
+    const [newsRes, formRes, legendRes, playersRes, eraRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 16, p_club_key: null, p_league: null, p_country: null }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(200),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
+      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'era').order('name').limit(30),
     ]);
     if (cancelled) return;
-    const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error);
+    const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error || eraRes.error);
     setFailed(hasError);
     const headlines = (newsRes.data ?? []) as NewsHeadline[];
     const formRows = (formRes.data ?? []) as RatingCandidate[];
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
+    const eraCards = (eraRes.data ?? []) as CanonicalPlayer[];
     setNews(headlines.slice(0, 4));
     setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, 12));
     setLegends(legendRows);
+    setEras(eraCards);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, 16));
       setLoading(false);
       } catch {
@@ -88,8 +92,15 @@ export function SmartDecksPanel({ onStart }: Props) {
       names:goldenEra.players.slice(0,3).map(p=>p.name),
       filter:{ categories:['player'], card_ids:goldenEra.players.map(p=>p.id), lang },
     });
+    if (eras.length >= 3) result.push({
+      id:'smart-era-cards', eyebrow:ru?'ФУТБОЛЬНАЯ ИСТОРИЯ':'FOOTBALL HISTORY',
+      title:ru?'Эпохи, которые изменили футбол':'Eras that changed football',
+      description:ru?'Подборка существующих карточек эпох. Составы игроков будут рекомендоваться только после проверки связей и сезонов.':'A playable deck of existing era cards. Player lineups will be recommended only after their club and season links are verified.',
+      icon:'era', image:eras[0]?.photo_url ?? null, names:eras.slice(0,3).map(p=>p.name),
+      filter:{ categories:['era'], card_ids:eras.map(p=>p.id), lang },
+    });
     return result;
-  }, [form, legends, newsMatches, lang, ru]);
+  }, [form, legends, eras, newsMatches, lang, ru]);
 
   return <section className="w-full max-w-sm space-y-3" aria-labelledby="smart-decks-title">
     <div>
