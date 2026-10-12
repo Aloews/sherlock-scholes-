@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
-  initData: vi.fn(() => 'signed-init-data'),
+  initData: vi.fn((): string | null => 'signed-init-data'),
   success: vi.fn(),
   error: vi.fn(),
   impact: vi.fn(),
