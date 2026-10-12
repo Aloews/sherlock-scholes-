@@ -106,10 +106,10 @@ export function LobbyScreen() {
         >
           {t('lobby.leave')}
         </button>
-        <div className="flex flex-col items-center">
+        <div className="flex shrink-0 flex-col items-center min-w-[8rem]">
           <p className="text-brand-muted text-xs">{t('lobby.room_code')}</p>
           <button
-            className={`text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors ${master ? 'ds-display' : ''}`}
+            className={`whitespace-nowrap text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors ${master ? 'ds-display' : ''}`}
             onClick={() => { void copyCode(); }}
           >
             {room.code}
@@ -231,7 +231,7 @@ export function LobbyScreen() {
               <div className="bg-brand-surface/50 rounded-2xl border border-brand-border/50 border-dashed p-6 flex flex-col items-center gap-2">
                 <p className="text-brand-muted text-sm">{t('lobby.share_code')}</p>
                 <p
-                  className="text-3xl font-black tracking-widest"
+                  className="whitespace-nowrap text-3xl font-black tracking-widest"
                   style={{ color: '#22c55e' }}
                 >
                   {room.code}
