@@ -16,6 +16,7 @@ vi.mock('@/shared/lib/analytics', () => ({ trackEvent: vi.fn() }));
 vi.mock('@/shared/lib/telegram', () => ({ getRawInitData: () => 'signed-init-data' }));
 
 import { createRoom, joinRoom } from './roomService';
+import type { DeckFilter } from '@/shared/types/deck';
 
 const validRoom = {
   id: 'room-123',
@@ -72,6 +73,22 @@ describe('room code contract', () => {
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['status', 'waiting'] });
   });
 
+  it('rejects a room row whose stored code is shorter than six characters', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, code: 'A' }));
+
+    await expect(joinRoom('AB12CD', 200)).rejects.toThrow('INVALID_ROOM_CODE_RETURNED');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 1v1 join response that does not contain the full code', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, mode: '1v1' }));
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1', code: 'A' }, error: null });
+
+    await expect(joinRoom('AB12CD', 200)).rejects.toThrow('INVALID_ROOM_CODE_RETURNED');
+  });
+
   it('does not return a created room unless the generated code has six valid characters', async () => {
     mocks.rpc.mockResolvedValue({
       data: { ...validRoom, code: 'A' },
@@ -86,6 +103,52 @@ describe('room code contract', () => {
     const room = await createRoom(100);
     expect(room.code).toBe('AB12CD');
     expect(room.code).toHaveLength(6);
+  });
+
+  it('preserves an AI-selected category and exact card IDs in team-room settings', async () => {
+    const deck: DeckFilter = { categories: ['coach'], card_ids: ['coach-1', 'coach-2', 'coach-3'] };
+    mocks.rpc.mockResolvedValue({ data: validRoom, error: null });
+
+    await createRoom(100, { categories: ['coach'], deck });
+
+    expect(mocks.rpc).toHaveBeenCalledWith('create_team_room', {
+      p_host_id: 100,
+      p_settings: expect.objectContaining({ categories: ['coach'], deck }),
+    });
+  });
+
+  it('sizes a 1v1 round to the resolved AI deck and preserves the full room code', async () => {
+    const deck: DeckFilter = { categories: ['stadium'], card_ids: ['stadium-1', 'stadium-2', 'stadium-3'] };
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
+
+    const room = await createRoom(100, { total_rounds: 5, categories: ['stadium'], deck }, '1v1');
+
+    expect(room.code).toBe('AB12CD');
+    expect(room.code).toHaveLength(6);
+    expect(mocks.rpc).toHaveBeenCalledWith('create_1v1_room', {
+      p_host_id: 100,
+      p_settings: expect.objectContaining({
+        categories: ['stadium'],
+        deck,
+        total_rounds: 5,
+        cards_per_round: 3,
+      }),
+    });
+  });
+
+  it('keeps 100 cards per round when the AI deck contains 100 cards', async () => {
+    const deck: DeckFilter = {
+      categories: ['player'],
+      card_ids: Array.from({ length: 100 }, (_, index) => `player-${index}`),
+    };
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
+
+    await createRoom(100, { categories: ['player'], deck }, '1v1');
+
+    expect(mocks.rpc).toHaveBeenCalledWith('create_1v1_room', {
+      p_host_id: 100,
+      p_settings: expect.objectContaining({ cards_per_round: 100, deck }),
+    });
   });
 
   it('validates codes returned by the 1v1 room creator', async () => {

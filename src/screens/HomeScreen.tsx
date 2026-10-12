@@ -23,14 +23,16 @@ import { usePlayerStats } from '@/features/game/usePlayerStats';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { recordQuickGameStart } from '@/features/game/onboarding';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
+import { hapticImpact, cloudGet, getRawInitData } from '@/shared/lib/telegram';
+import { supabase } from '@/shared/lib/supabase';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
+import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
-import type { CardCategory } from '@/shared/types/database';
+import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
 
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
 // It exists because the home screen is now a LIST OF GAMES and Alias is one of
@@ -80,6 +82,10 @@ export function HomeScreen() {
   const [rounds1v1, setRounds1v1] = useState(3);
   const [categories, setCategories] = useState<CardCategory[] | null>(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [roomDeckFilter, setRoomDeckFilter] = useState<DeckFilter | null>(null);
+  const [roomDeckPrompt, setRoomDeckPrompt] = useState('');
+  const [buildingRoomDeck, setBuildingRoomDeck] = useState(false);
+  const [roomDeckMessage, setRoomDeckMessage] = useState('');
   const categoriesLabel = categories == null
     ? (i18n.language.startsWith('ru') ? 'Все категории' : 'All categories')
     : `${categories.length} ${i18n.language.startsWith('ru') ? 'категорий' : 'categories'}`;
@@ -118,6 +124,49 @@ export function HomeScreen() {
 
   // Quick game: the deck picker is its own screen (DeckPickerScreen). It
   // owns the filter it builds and hands the finished DeckFilter back here.
+  const handleRoomDeckPromptChange = (value: string) => {
+    setRoomDeckPrompt(value);
+    setRoomDeckMessage('');
+    if (roomDeckFilter) {
+      setRoomDeckFilter(null);
+      setCategories(null);
+    }
+  };
+
+  const buildRoomDeck = async () => {
+    const prompt = roomDeckPrompt.trim();
+    if (prompt.length < 3 || buildingRoomDeck) return;
+    setBuildingRoomDeck(true);
+    setRoomDeckMessage('');
+    const targetCardCount = view === 'create_1v1' ? 100 : 20;
+    try {
+      const initData = getRawInitData();
+      if (!initData) throw new Error('telegram_auth_required');
+      const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
+        body: { prompt, language: i18n.language.startsWith('ru') ? 'ru' : 'en', init_data: initData, current_card_ids: [], target_card_count: targetCardCount },
+      });
+      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      const resolved = parseAIResolvedDeck(data, targetCardCount);
+      if (!resolved) throw new Error('not_enough_cards');
+      const selectedCategories = resolved.filter.categories ?? [];
+      setRoomDeckFilter(resolved.filter);
+      setCategories(selectedCategories.length === ALL_CATEGORIES.length ? null : selectedCategories);
+      setRoomDeckMessage(resolved.message || (i18n.language.startsWith('ru')
+        ? `Колода готова: ${resolved.cardCount} карточек.`
+        : `Deck ready: ${resolved.cardCount} cards.`));
+    } catch (error) {
+      const ru = i18n.language.startsWith('ru');
+      const detail = error instanceof Error ? error.message : '';
+      setRoomDeckMessage(detail === 'telegram_auth_required'
+        ? (ru ? 'Открой приложение через Telegram.' : 'Open the app through Telegram.')
+        : detail === 'not_enough_cards'
+          ? (ru ? 'Не найдено достаточно карточек по запросу. Уточни тему.' : 'Not enough cards matched. Refine the topic.')
+          : (ru ? 'Не удалось обработать запрос. Попробуй ещё раз.' : 'Could not process the request. Try again.'));
+    } finally {
+      setBuildingRoomDeck(false);
+    }
+  };
+
   const startGame = (filter: DeckFilter, presetId: string) => {
     trackEvent('quick_game_start', {
       preset: presetId,
@@ -295,7 +344,13 @@ export function HomeScreen() {
             loading={loading}
             categoriesLabel={categoriesLabel}
             onConfigureCategories={() => setCategoryDialogOpen(true)}
-            onCreate={() => createRoom({ categories })}
+            deckPrompt={roomDeckPrompt}
+            buildingDeck={buildingRoomDeck}
+            hasResolvedDeck={roomDeckFilter !== null}
+            deckMessage={roomDeckMessage}
+            onDeckPromptChange={handleRoomDeckPromptChange}
+            onBuildDeck={() => { void buildRoomDeck(); }}
+            onCreate={() => createRoom({ categories, ...(roomDeckFilter ? { deck: roomDeckFilter } : {}) })}
             onBack={() => setView('mode_select')}
           />
         )}
@@ -307,7 +362,13 @@ export function HomeScreen() {
             loading={loading}
             categoriesLabel={categoriesLabel}
             onConfigureCategories={() => setCategoryDialogOpen(true)}
-            onCreate={() => createRoom({ total_rounds: rounds1v1, categories }, '1v1')}
+            deckPrompt={roomDeckPrompt}
+            buildingDeck={buildingRoomDeck}
+            hasResolvedDeck={roomDeckFilter !== null}
+            deckMessage={roomDeckMessage}
+            onDeckPromptChange={handleRoomDeckPromptChange}
+            onBuildDeck={() => { void buildRoomDeck(); }}
+            onCreate={() => createRoom({ total_rounds: rounds1v1, categories, ...(roomDeckFilter ? { deck: roomDeckFilter } : {}) }, '1v1')}
             onBack={() => setView('mode_select')}
           />
         )}
@@ -344,7 +405,7 @@ export function HomeScreen() {
         <CategoryPickerDialog
           selectedCategories={categories}
           onClose={() => setCategoryDialogOpen(false)}
-          onApply={(next) => { setCategories(next); setCategoryDialogOpen(false); }}
+          onApply={(next) => { setCategories(next); setRoomDeckFilter(null); setRoomDeckMessage(''); setCategoryDialogOpen(false); }}
         />
       )}
     </div>

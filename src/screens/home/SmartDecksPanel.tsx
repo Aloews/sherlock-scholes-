@@ -5,6 +5,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { getRawInitData, openLink } from '@/shared/lib/telegram';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
+import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
 import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
 
 interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; matches: number; goals: number; assists: number }
@@ -188,18 +189,19 @@ export function SmartDecksPanel({ onStart }: Props) {
       if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
       const result = data as { message?: string; title?: string; cards?: DeckPlayerRow[] };
       const cards = Array.isArray(result.cards) ? result.cards.filter((card) =>
-        typeof card.id === 'string' && typeof card.name === 'string' && card.category === 'player'
+        typeof card.id === 'string' && typeof card.name === 'string' && ALL_CATEGORIES.includes(card.category as CardCategory)
       ) : [];
       if (cards.length < 3) throw new Error('not_enough_cards');
       const ids = [...new Set(cards.map((card) => card.id))];
       const selectedCards = cards.filter((card) => ids.includes(card.id));
       setDeckPlayers(selectedCards);
       setSelectedCardIds(ids);
+      const selectedCategories = [...new Set(selectedCards.map((card) => card.category as CardCategory))];
       setActiveDeck((current) => current ? {
         ...current,
         title: result.title || current.title,
         names: selectedCards.slice(0, 5).map((card) => ru || !card.name_en ? card.name : card.name_en),
-        filter: { ...current.filter, categories: ['player'], card_ids: ids, lang },
+        filter: { ...current.filter, categories: selectedCategories, card_ids: ids, lang },
       } : current);
       setChatMessages((current) => [...current, {
         role: 'assistant',
@@ -300,7 +302,7 @@ export function SmartDecksPanel({ onStart }: Props) {
           {aiBuildError && <p role="alert" className="text-[11px] text-red-300">{aiBuildError}</p>}
         </div>
         <div className="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-3">
-          <div><p className="text-sm font-bold text-white">{ru?'Карточки игроков':'Player cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
+          <div><p className="text-sm font-bold text-white">{ru?'Карточки':'Cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
           <div className="text-right shrink-0"><p className="text-lg font-extrabold text-brand-accent tabular-nums">{selectedCardIds.length}</p><p className="text-[9px] text-brand-muted">{ru?'в колоде':'in deck'}</p></div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">

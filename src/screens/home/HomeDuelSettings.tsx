@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { RoomDeckIntentPanel } from './RoomDeckIntentPanel';
 
 interface Props {
   rounds: number;
@@ -10,10 +11,16 @@ interface Props {
   categoriesLabel: string;
   onConfigureCategories: () => void;
   onBack: () => void;
+  deckPrompt: string;
+  buildingDeck: boolean;
+  hasResolvedDeck: boolean;
+  deckMessage: string;
+  onDeckPromptChange: (value: string) => void;
+  onBuildDeck: () => void;
 }
 
 /** Настройки игры один на один. Раунды здесь выбираются — в отличие от командной. */
-export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, categoriesLabel, onConfigureCategories, onBack }: Props) {
+export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, categoriesLabel, onConfigureCategories, onBack, deckPrompt, buildingDeck, hasResolvedDeck, deckMessage, onDeckPromptChange, onBuildDeck }: Props) {
   const { t, i18n } = useTranslation();
 
   return (
@@ -51,7 +58,8 @@ export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, categori
         <span><span className="block text-sm font-semibold text-white">{t('home.step_who')}</span><span className="mt-1 block text-xs text-brand-muted">{categoriesLabel}</span></span>
         <span className="text-sm font-semibold text-brand-accent">{i18n.language.startsWith('ru') ? 'Настроить' : 'Configure'} →</span>
       </button>
-      <Button fullWidth size="lg" loading={loading} onClick={onCreate}>
+      <RoomDeckIntentPanel prompt={deckPrompt} loading={buildingDeck} message={deckMessage} onPromptChange={onDeckPromptChange} onBuild={onBuildDeck} />
+      <Button fullWidth size="lg" loading={loading || buildingDeck} disabled={buildingDeck || (!!deckPrompt.trim() && !hasResolvedDeck)} onClick={onCreate}>
         {t('home.create_room')}
       </Button>
       <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); onBack(); }}>
