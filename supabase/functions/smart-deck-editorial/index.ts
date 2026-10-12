@@ -175,9 +175,11 @@ async function validateCandidates(
       const hasLegend = deckCards.some((card) => card?.tags?.includes("legend"));
       const totals = deckCards.map((card) => {
         const lines = Array.isArray(card?.career_stats) ? card.career_stats : [];
+        // Career totals are comparable only when both shared metrics are
+        // known. Missing goals must not silently become a zero.
         const usable = lines.filter((line) =>
-          (typeof line.apps === "number" && Number.isFinite(line.apps) && line.apps >= 0) ||
-          (typeof line.goals === "number" && Number.isFinite(line.goals) && line.goals >= 0)
+          typeof line.apps === "number" && Number.isFinite(line.apps) && line.apps >= 0 &&
+          typeof line.goals === "number" && Number.isFinite(line.goals) && line.goals >= 0
         );
         if (!usable.length) return null;
         const appearances = usable.reduce((sum, line) => sum + (typeof line.apps === "number" && Number.isFinite(line.apps) ? line.apps : 0), 0);
