@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearRoom, readRoom, writeRoom, ROOM_TTL_MS } from './arenaSession';
+import { clearRoom, readRoom, writeRoom, ROOM_TTL_MS, generateArenaRoomCode } from './arenaSession';
 
 /**
  * Половина этих проверок — про ЧУЖОЙ ввод, и это не паранойя.
@@ -91,6 +91,29 @@ describe('arenaSession', () => {
     localStorage.setItem('arena.room', JSON.stringify({ code: 'AB12CD', role: 'host' }));
     expect(readRoom(1000)).toBeNull();
     localStorage.setItem('arena.room', JSON.stringify({ code: 'AB12CD', role: 'host', at: 'вчера' }));
+    expect(readRoom(1000)).toBeNull();
+  });
+});
+
+describe('arena room code generation', () => {
+  it('always generates exactly six valid characters', () => {
+    for (let i = 0; i < 100; i++) {
+      const code = generateArenaRoomCode();
+      expect(code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);
+      expect(code).toHaveLength(6);
+    }
+  });
+
+  it('consumes six random values rather than returning a partial code', () => {
+    const values = [0, 0.1, 0.2, 0.3, 0.4, 0.5];
+    let calls = 0;
+    const code = generateArenaRoomCode(() => values[calls++] ?? 0);
+    expect(calls).toBe(6);
+    expect(code).toHaveLength(6);
+  });
+
+  it('never persists a one-character code when restoring a room', () => {
+    localStorage.setItem('arena.room', JSON.stringify({ code: 'A', role: 'host', at: 1000 }));
     expect(readRoom(1000)).toBeNull();
   });
 });
