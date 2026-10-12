@@ -10,6 +10,13 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
+import { normalizeCode } from '@/features/lobby/invite';
+
+function requireRoomCode(room: Room): Room {
+  const code = normalizeCode(room.code);
+  if (!code) throw new Error('INVALID_ROOM_CODE_RETURNED');
+  return { ...room, code };
+}
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -32,7 +39,7 @@ export async function createRoom(
       p_settings: s,
     });
     if (error || !data) throw new Error(error?.message ?? 'Failed to create room');
-    return data as Room;
+    return requireRoomCode(data as Room);
   }
 
   const finalSettings: RoomSettings = {
@@ -50,7 +57,7 @@ export async function createRoom(
     p_settings: finalSettings,
   });
   if (error || !room) throw new Error(error?.message ?? 'Failed to create room');
-  return room as Room;
+  return requireRoomCode(room as Room);
 }
 
 // Join-vs-start race guard: joinRoom saw status='waiting' before inserting,
@@ -70,10 +77,12 @@ async function backOutIfStarted(
 }
 
 export async function joinRoom(code: string, playerId: number): Promise<Room> {
+  const normalizedCode = normalizeCode(code);
+  if (!normalizedCode) throw new Error('INVALID_ROOM_CODE');
   const { data: room, error } = await supabase
     .from('rooms')
     .select()
-    .eq('code', code.toUpperCase())
+    .eq('code', normalizedCode)
     .eq('status', 'waiting')
     .single();
 

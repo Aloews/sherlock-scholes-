@@ -73,3 +73,9 @@ jobs:
 
       - name: Player card collectibles regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_card_collectibles.test.sql
+
+      - name: Apply AI deck builder quota migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012180000_smart_deck_builder_quota.sql
+
+      - name: AI deck builder quota regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_builder_quota.test.sql

@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: { from: mocks.from, rpc: mocks.rpc, functions: { invoke: mocks.invoke } },
 }));
-vi.mock('@/shared/lib/telegram', () => ({ openLink: vi.fn() }));
+vi.mock('@/shared/lib/telegram', () => ({ openLink: vi.fn(), getRawInitData: () => 'signed-init-data' }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ i18n: { language: 'en' } }),
 }));
@@ -103,5 +103,33 @@ describe('SmartDecksPanel deck builder', () => {
     for (const checkbox of screen.getAllByRole('checkbox')) fireEvent.click(checkbox);
     expect(screen.getByRole('button', { name: /Build deck & play/i })).toHaveProperty('disabled', true);
     expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it('sends a natural-language prompt to the AI and plays the exact returned card IDs', async () => {
+    const onStart = vi.fn();
+    mocks.invoke.mockImplementation((name: string) => Promise.resolve(name === 'smart-deck-builder'
+      ? { data: { title: 'AI selected deck', message: 'Built from your request.', cards: cards.slice(1, 8) }, error: null }
+      : { data: { editorials: [], mode: 'deterministic' }, error: null }));
+    render(<SmartDecksPanel onStart={onStart} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Build deck/i }));
+    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(10));
+    fireEvent.change(screen.getByRole('textbox', { name: /AI deck request/i }), {
+      target: { value: 'Build a deck with the players I asked for' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Build with AI/i }));
+
+    expect(await screen.findByText('Built from your request.')).toBeTruthy();
+    expect(mocks.invoke).toHaveBeenCalledWith('smart-deck-builder', expect.objectContaining({
+      body: expect.objectContaining({
+        prompt: 'Build a deck with the players I asked for',
+        language: 'en',
+        init_data: 'signed-init-data',
+      }),
+    }));
+    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(7));
+    fireEvent.click(screen.getByRole('button', { name: /Build deck & play/i }));
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart.mock.calls[0][0].card_ids).toEqual(cards.slice(1, 8).map((card) => card.id));
   });
 });

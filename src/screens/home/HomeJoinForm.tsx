@@ -36,19 +36,25 @@ export function HomeJoinForm({
     <div className="w-full max-w-sm space-y-4 animate-slide-up">
       <OpenRoomsPanel onJoin={onJoinRoom} loading={loading} playerId={playerId} />
       <div className="space-y-2">
-        <label className="text-brand-muted text-sm font-medium">
+        <label htmlFor="room-code-input" className="text-brand-muted text-sm font-medium">
           {t('home.room_code_label')}
         </label>
         <input
           ref={inputRef}
+          id="room-code-input"
           type="text"
           maxLength={CODE_LENGTH}
           value={code}
-          // Очищается, а не приводится к верхнему регистру: поле обязано
-          // держать ровно то, что может держать код, чтобы управляемое
-          // значение никогда не расходилось с тем, что выдала клавиатура.
-          // См. sanitizeCodeInput.
-          onChange={(e) => onCode(sanitizeCodeInput(e.target.value))}
+          // Верхний регистр применяется только визуально. Состояние не меняется
+          // посреди ввода: полная нормализация происходит при проверке кода.
+          onChange={(e) => onCode(e.target.value.slice(0, CODE_LENGTH))}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            if (/https?:\/\/|[?&](?:startapp|start)=|[\s-]/i.test(pasted)) {
+              e.preventDefault();
+              onCode(sanitizeCodeInput(pasted));
+            }
+          }}
           // Клавиша действия на самой клавиатуре отправляет форму, чтобы
           // игроку не пришлось тянуться к кнопке, спрятанной за этой же
           // клавиатурой.
