@@ -36,6 +36,35 @@ CREATE INDEX IF NOT EXISTS player_card_progress_owner_count_idx
 CREATE INDEX IF NOT EXISTS player_card_collectibles_owner_date_idx
   ON public.player_card_collectibles (player_id, acquired_at DESC);
 
+-- Preserve legitimate history from completed rounds before this feature shipped.
+-- The production dataset is small enough for a single transactional backfill;
+-- the event primary key makes re-running the migration safe.
+INSERT INTO public.player_card_guess_events (round_card_id, player_id, card_id, guessed_at)
+SELECT rc.id, rp.player_id, rc.card_id,
+       coalesce(rc.decided_at, r.ended_at, r.started_at, now())
+FROM public.round_cards rc
+JOIN public.rounds r ON r.id = rc.round_id
+JOIN public.room_players rp
+  ON rp.room_id = r.room_id
+ AND rp.team_id IS NOT NULL
+ AND rp.team_id <> r.team_id
+WHERE rc.status = 'correct'
+ON CONFLICT (round_card_id, player_id) DO NOTHING;
+
+INSERT INTO public.player_card_progress (player_id, card_id, correct_guesses, last_guessed_at)
+SELECT e.player_id, e.card_id, count(*)::integer, max(e.guessed_at)
+FROM public.player_card_guess_events e
+GROUP BY e.player_id, e.card_id
+ON CONFLICT (player_id, card_id) DO UPDATE
+SET correct_guesses = greatest(public.player_card_progress.correct_guesses, EXCLUDED.correct_guesses),
+    last_guessed_at = greatest(public.player_card_progress.last_guessed_at, EXCLUDED.last_guessed_at);
+
+INSERT INTO public.player_card_collectibles (player_id, card_id, acquired_via, acquired_at)
+SELECT p.player_id, p.card_id, '100_correct_guesses', p.last_guessed_at
+FROM public.player_card_progress p
+WHERE p.correct_guesses >= 100
+ON CONFLICT (player_id, card_id) DO NOTHING;
+
 ALTER TABLE public.player_card_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_card_collectibles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_card_guess_events ENABLE ROW LEVEL SECURITY;
