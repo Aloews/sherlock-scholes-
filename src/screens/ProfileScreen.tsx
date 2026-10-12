@@ -10,6 +10,7 @@ import { levelProgress, levelTitleKey } from '@/shared/lib/level';
 import { WeeklyQuests } from '@/screens/profile/WeeklyQuests';
 import { SoundCheckPanel } from '@/features/voice/SoundCheckPanel';
 import { VoiceServicesPanel } from '@/features/voice/VoiceServicesPanel';
+import { HardCardsPanel } from '@/screens/profile/HardCardsPanel';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -97,6 +98,8 @@ export function ProfileScreen() {
               the header card is re-read afterwards rather than incremented
               locally — the bar must never disagree with the database. */}
           <WeeklyQuests playerId={player?.id ?? null} onClaimed={() => void reload()} />
+
+          <HardCardsPanel playerId={player?.id ?? null} />
 
           {/* Sound check. Here rather than in the lobby because it is a
               settings-shaped thing you do once on a new phone, and because a
