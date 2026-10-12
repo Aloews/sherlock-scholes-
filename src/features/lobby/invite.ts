@@ -60,7 +60,11 @@ function extractCode(raw: string): string {
   // продолжают ходить по чатам, и код в них тот же самый.
   const fromLink = /[?&](?:startapp|start)=([^&\s]+)/i.exec(text);
   const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
-  return candidate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Keep the exact letter case while the user is typing. Rewriting the value
+  // to uppercase on every keystroke breaks IME/mobile keyboards and can make
+  // a controlled input lose characters. normalizeCode() uppercases once the
+  // complete code is submitted.
+  return candidate.replace(/[^a-zA-Z0-9]/g, '');
 }
 
 /**
