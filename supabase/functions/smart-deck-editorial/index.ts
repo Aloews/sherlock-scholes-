@@ -76,8 +76,8 @@ function isHistoricalCard(card: CardDbRow): boolean {
   let latestEnd: number | null = null;
   for (const value of candidates) {
     const text = value.trim();
-    if (!text || /[-–—]\\s*$/.test(text)) continue;
-    const match = text.match(/(\\d{4})(?:\\D+(\\d{4}))?/);
+    if (!text || /[-–—]\s*$/.test(text)) continue;
+    const match = text.match(/(\d{4})(?:\D+(\d{4}))?/);
     if (!match) continue;
     const end = Number(match[2] ?? match[1]);
     if (end >= 1850 && end <= new Date().getUTCFullYear() + 1) {
