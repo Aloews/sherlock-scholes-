@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS public.player_card_collectibles (
   UNIQUE (player_id, card_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.player_card_guess_events (
+  round_card_id uuid NOT NULL REFERENCES public.round_cards(id) ON DELETE CASCADE,
+  player_id bigint NOT NULL,
+  card_id uuid NOT NULL REFERENCES public.cards(id) ON DELETE RESTRICT,
+  guessed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (round_card_id, player_id)
+);
+
 CREATE INDEX IF NOT EXISTS player_card_progress_owner_count_idx
   ON public.player_card_progress (player_id, correct_guesses DESC);
 CREATE INDEX IF NOT EXISTS player_card_collectibles_owner_date_idx
@@ -30,8 +38,11 @@ CREATE INDEX IF NOT EXISTS player_card_collectibles_owner_date_idx
 
 ALTER TABLE public.player_card_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_card_collectibles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.player_card_guess_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.player_card_progress FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.player_card_collectibles FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.player_card_guess_events FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.player_card_guess_events FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.credit_collectible_card_progress()
 RETURNS trigger
@@ -44,6 +55,7 @@ DECLARE
   v_explainer_team_id uuid;
   v_player record;
   v_count integer;
+  v_event_player bigint;
 BEGIN
   IF NEW.status <> 'correct' OR (TG_OP = 'UPDATE' AND OLD.status = 'correct') THEN
     RETURN NEW;
@@ -68,6 +80,18 @@ BEGIN
       AND rp.team_id IS NOT NULL
       AND rp.team_id <> v_explainer_team_id
   LOOP
+    v_event_player := NULL;
+    INSERT INTO public.player_card_guess_events (round_card_id, player_id, card_id)
+    VALUES (NEW.id, v_player.player_id, NEW.card_id)
+    ON CONFLICT (round_card_id, player_id) DO NOTHING
+    RETURNING player_id INTO v_event_player;
+
+    -- A round-card can be toggled by clients; its unique ledger row ensures
+    -- one card contributes at most once to each player's progress per round.
+    IF v_event_player IS NULL THEN
+      CONTINUE;
+    END IF;
+
     INSERT INTO public.player_card_progress (player_id, card_id, correct_guesses, last_guessed_at)
     VALUES (v_player.player_id, NEW.card_id, 1, now())
     ON CONFLICT (player_id, card_id) DO UPDATE
