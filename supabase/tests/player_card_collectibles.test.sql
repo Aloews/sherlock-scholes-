@@ -17,7 +17,7 @@ INSERT INTO public.cards (id, name, name_en, category, active)
 VALUES ('00000000-0000-0000-0000-000000000101', 'Тестовый игрок', 'Test Player', 'player', true)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.rooms (id, status) VALUES ('00000000-0000-0000-0000-000000000201', 'playing')
+INSERT INTO public.rooms (id, status, mode) VALUES ('00000000-0000-0000-0000-000000000201', 'playing', '1v1')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.rounds (id, room_id, explainer_id, team_id)
 VALUES ('00000000-0000-0000-0000-000000000301',
@@ -29,8 +29,8 @@ VALUES ('00000000-0000-0000-0000-000000000201', 10, '00000000-0000-0000-0000-000
        ('00000000-0000-0000-0000-000000000201', 20, '00000000-0000-0000-0000-000000000402')
 ON CONFLICT DO NOTHING;
 
--- A skipped card does not grant progress. Correcting it credits the opposing
--- team once; a repeated UPDATE to correct cannot inflate the count.
+-- A skipped card does not grant progress. In 1v1, correcting it credits
+-- only the opposing player once; repeated status changes cannot inflate it.
 INSERT INTO public.round_cards (round_id, card_id, status)
 VALUES ('00000000-0000-0000-0000-000000000301',
         '00000000-0000-0000-0000-000000000101', 'pending');
@@ -111,5 +111,34 @@ END $do$;
 
 SELECT count(*) FROM public.my_card_collectibles('20');
 SELECT count(*) FROM public.my_card_collectible_progress('20');
+
+
+-- Team mode must never contribute to collectible progress for either teammate.
+INSERT INTO public.rooms (id, status, mode)
+VALUES ('00000000-0000-0000-0000-000000000202', 'playing', 'team')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.rounds (id, room_id, explainer_id, team_id)
+VALUES ('00000000-0000-0000-0000-000000000302',
+        '00000000-0000-0000-0000-000000000202', 30,
+        '00000000-0000-0000-0000-000000000403')
+ON CONFLICT (id) DO UPDATE SET team_id = EXCLUDED.team_id;
+INSERT INTO public.room_players (room_id, player_id, team_id)
+VALUES ('00000000-0000-0000-0000-000000000202', 30, '00000000-0000-0000-0000-000000000403'),
+       ('00000000-0000-0000-0000-000000000202', 40, '00000000-0000-0000-0000-000000000404')
+ON CONFLICT DO NOTHING;
+INSERT INTO public.round_cards (round_id, card_id, status)
+VALUES ('00000000-0000-0000-0000-000000000302',
+        '00000000-0000-0000-0000-000000000101', 'pending');
+UPDATE public.round_cards SET status = 'correct'
+WHERE round_id = '00000000-0000-0000-0000-000000000302'
+  AND card_id = '00000000-0000-0000-0000-000000000101';
+DO $do$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.player_card_progress WHERE player_id IN (30, 40)
+  ) THEN
+    RAISE EXCEPTION 'team games must not grant collectible progress';
+  END IF;
+END $do$;
 
 ROLLBACK;

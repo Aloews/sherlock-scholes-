@@ -65,5 +65,8 @@ jobs:
       - name: Apply player card collectibles migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012150000_player_card_collectibles.sql
 
+      - name: Apply 1v1-only collectible follow-up migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012160000_collectibles_1v1_only.sql
+
       - name: Player card collectibles regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_card_collectibles.test.sql
