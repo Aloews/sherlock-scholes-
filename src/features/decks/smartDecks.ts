@@ -94,3 +94,61 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   }
   return matches;
 }
+
+
+export interface PlayerTrendCandidate extends CanonicalPlayer {
+  recent_matches: number;
+  recent_goals: number;
+  recent_assists: number;
+  previous_matches: number;
+  previous_goals: number;
+  previous_assists: number;
+  recent_points: number;
+  previous_points: number;
+  recent_last_match: string | null;
+  stats_collected_at: string | null;
+}
+
+/**
+ * Finds genuine recent breakouts from the already-collected match data.
+ * Uses per-match goal contributions to avoid rewarding players just because
+ * they appeared in more fixtures. Requires a minimum sample in both windows,
+ * a meaningful absolute improvement, and a 50% relative uplift. No LLM/player
+ * search is involved; output IDs are the canonical cards supplied by Postgres.
+ */
+export function selectBreakoutPlayers(
+  rows: PlayerTrendCandidate[],
+  maxCards = 20,
+  minSample = 3,
+  now = Date.now(),
+): PlayerTrendCandidate[] {
+  const eligible = rows.flatMap((row) => {
+    if (
+      !row.id ||
+      !row.stats_collected_at ||
+      !Number.isFinite(Date.parse(row.stats_collected_at)) ||
+      Date.parse(row.stats_collected_at) < now - 72 * 60 * 60 * 1000 ||
+      row.recent_matches < minSample ||
+      row.previous_matches < minSample ||
+      row.recent_points < 12 ||
+      row.previous_points < 0
+    ) return [];
+    const recentPerMatch = row.recent_points / row.recent_matches;
+    const previousPerMatch = row.previous_points / row.previous_matches;
+    const absoluteLift = recentPerMatch - previousPerMatch;
+    const relativeLift = previousPerMatch > 0
+      ? recentPerMatch / previousPerMatch
+      : recentPerMatch > 0 ? Number.POSITIVE_INFINITY : 0;
+    if (absoluteLift < 1 || relativeLift < 1.5) return [];
+    return [{ row, recentPerMatch, previousPerMatch, absoluteLift, relativeLift }];
+  });
+  return eligible
+    .sort((a, b) =>
+      b.absoluteLift - a.absoluteLift ||
+      b.recentPerMatch - a.recentPerMatch ||
+      b.row.recent_goals - a.row.recent_goals ||
+      a.row.name.localeCompare(b.row.name),
+    )
+    .slice(0, Math.max(0, Math.min(maxCards, 20)))
+    .map(({ row }) => row);
+}

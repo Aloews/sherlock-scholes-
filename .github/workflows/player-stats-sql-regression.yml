@@ -55,3 +55,9 @@ jobs:
 
       - name: Smart Deck cache permissions regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_editorial_cache.test.sql
+
+      - name: Apply Smart Deck trend analytics migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012140000_player_smart_deck_trends.sql
+
+      - name: Smart Deck trend analytics regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_smart_deck_trends.test.sql
