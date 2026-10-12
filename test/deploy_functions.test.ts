@@ -120,7 +120,6 @@ const CALLED_FROM_BROWSER = [
   'digest-summary',
   'livekit-token',
   'smart-deck-builder',
-  'smart-deck-editorial',
   'tg-pay',
   'amateur-logo',
 ];
