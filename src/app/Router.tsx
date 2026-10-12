@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
-import { useProStore } from '@/shared/store/proStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
 import { usePresence } from '@/features/social/usePresence';
 import { VoiceProvider } from '@/features/voice/VoiceProvider';
