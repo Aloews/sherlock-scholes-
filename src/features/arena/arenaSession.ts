@@ -33,10 +33,22 @@
 // зеркальном совпадении половин. То есть попытка сохранить счёт превратила бы
 // «матч начался заново» в «матч не засчитан вовсе».
 
-import { normalizeCode } from '@/features/lobby/invite';
+import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
 import type { NetRole } from './useArenaNet';
 
 const KEY = 'arena.room';
+
+const ARENA_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** Generate a room code with the exact same six-character contract as join input. */
+export function generateArenaRoomCode(random: () => number = Math.random): string {
+  let code = '';
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += ARENA_CODE_ALPHABET[Math.floor(random() * ARENA_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
 
 /**
  * Сколько живёт запомненная комната.
