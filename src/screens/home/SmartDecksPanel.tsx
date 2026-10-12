@@ -42,24 +42,26 @@ export function SmartDecksPanel({ onStart }: Props) {
       setLoading(true); setFailed(false);
       try {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
-    const [newsRes, formRes, trendRes, legendRes, playersRes] = await Promise.all([
+    const [newsRes, formRes, trendRes, freshnessRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at,description,summary_short').gte('published_at', since).order('published_at', { ascending: false }).limit(500),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),
       supabase.rpc('player_smart_deck_trends', { p_limit: 1000 }),
+      supabase.rpc('player_stats_freshness'),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
-    const hasError = !!(newsRes.error || formRes.error || trendRes.error || legendRes.error || playersRes.error);
+    const hasError = !!(newsRes.error || formRes.error || trendRes.error || freshnessRes.error || legendRes.error || playersRes.error);
     setFailed(hasError);
     const headlines = (newsRes.data ?? []) as NewsHeadline[];
     const formRows = (formRes.data ?? []) as RatingCandidate[];
     const trendRows = (trendRes.data ?? []).map((row: Omit<PlayerTrendCandidate, 'id'> & { card_id: string }) => ({ ...row, id: row.card_id })) as PlayerTrendCandidate[];
+    const freshness = (freshnessRes.data ?? [])[0] as { collected_at?: string | null } | undefined;
+    const statsFresh = !!freshness?.collected_at && Date.parse(freshness.collected_at) >= Date.now() - 72 * 60 * 60 * 1000;
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
     setNews(headlines.slice(0, 4));
-    const freshTrendIds = new Set(trendRows.filter((row) => row.stats_collected_at && Date.parse(row.stats_collected_at) >= Date.now() - 72 * 60 * 60 * 1000).map((row) => row.id));
-    setForm(formRows.filter((p) => p.card_id && p.matches > 0 && freshTrendIds.has(p.card_id)).slice(0, TARGET_DECK_SIZE));
+    setForm(statsFresh ? formRows.filter((p) => p.card_id && p.matches > 0).slice(0, TARGET_DECK_SIZE) : []);
     setBreakouts(selectBreakoutPlayers(trendRows, TARGET_DECK_SIZE));
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, TARGET_DECK_SIZE));
