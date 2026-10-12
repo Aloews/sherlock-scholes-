@@ -79,6 +79,7 @@ CREATE TABLE public.player_presence (
 CREATE TABLE public.rooms (
   id uuid PRIMARY KEY,
   status text NOT NULL,
+  code char(6) UNIQUE NOT NULL DEFAULT '',
   stats_awarded_at timestamptz
 );
 
