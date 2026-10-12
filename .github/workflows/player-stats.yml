@@ -33,12 +33,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  collect:
+  # Pure parser/regression checks run before any production writer starts.
+  validate:
     runs-on: ubuntu-latest
-    # ~1200 players at a 1.2 s pause is ~25 minutes of fetching; the slug pass
-    # adds the club crawl. The ceiling is set so a slow night ends by running
-    # out of BUDGET (a number this repo controls) rather than by being cut off
-    # mid-write.
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: football_scraper
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Parser tests
+        run: |
+          python3 tests/test_sports_ru.py
+          python3 tests/test_espn.py
+          python3 tests/test_sports_ru_stats.py
+          python3 tests/test_espn_stats.py
+
+  collect:
+    needs: [validate]
+    if: ${{ inputs.resolve_only != true }}
+    runs-on: ubuntu-latest
+    # Daily match collection runs before the optional slug discovery job.
+    # The ceiling protects the writer from running indefinitely; a separate
+    # job owns the slower, lower-priority slug crawl.
     timeout-minutes: 180
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -55,29 +82,12 @@ jobs:
       - name: Install deps
         run: pip install -r football_scraper/requirements.txt
 
-      # The parsers are pure and their tests need no network and no secrets, so
-      # they run BEFORE the crawl. A markup change that shifts the stat columns
-      # produces believable numbers, and believable wrong numbers are exactly
-      # what must not reach the table. The _stats tests cover the same risk on
-      # the matching side — active_cards_by_key is what stops a retired
-      # legend's bare-name card from absorbing a namesake's real matches (see
-      # docs/namesake_fixes.sql); a regression there is exactly the kind of
-      # believable-wrong-number bug this step exists to catch before the run.
-      - name: Parser tests
-        working-directory: football_scraper
-        run: |
-          python3 tests/test_sports_ru.py
-          python3 tests/test_espn.py
-          python3 tests/test_sports_ru_stats.py
-          python3 tests/test_espn_stats.py
-
       - name: Collect
         working-directory: football_scraper
         run: |
           args=""
-          if [ "${{ inputs.resolve_only }}" = "true" ]; then args="$args --resolve"; fi
           if [ -n "${{ inputs.limit }}" ]; then args="$args --limit ${{ inputs.limit }}"; fi
-          python3 sports_ru_stats.py $args
+          python3 sports_ru_stats.py --collect $args
 
       # Второй источник для той же таблицы. Отдельным шагом и с `if: always()`:
       # источники независимы, и падение одного не должно уносить второй —
@@ -160,18 +170,58 @@ jobs:
   # падении прогона по расписанию GitHub шлёт владельцу письмо — об
   # отменённом не шлёт. Это единственное звено, которое доносит поломку до
   # человека без того, чтобы человек её искал.
+  # Slug discovery is useful but secondary: never let its crawl consume
+  # the time budget needed by the daily match-stat collection above.
+  # It has its own timeout and runs only after validation and the collection
+  # job succeed (or when explicitly requested in resolve-only mode).
+  resolve-slugs:
+    needs: [validate, collect]
+    if: ${{ always() && needs.validate.result == 'success' && (needs.collect.result == 'success' || inputs.resolve_only == true) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install deps
+        working-directory: football_scraper
+        run: pip install -r requirements.txt
+
+      - name: Resolve slug map
+        working-directory: football_scraper
+        run: python3 sports_ru_stats.py --resolve
+
   watch:
     runs-on: ubuntu-latest
-    needs: [collect]
+    needs: [validate, collect, resolve-slugs]
     if: always()
     timeout-minutes: 5
     env:
-      RESULT: ${{ needs.collect.result }}
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      COLLECT_RESULT: ${{ needs.collect.result }}
+      RESOLVE_RESULT: ${{ needs.resolve-slugs.result }}
+      RESOLVE_ONLY: ${{ inputs.resolve_only }}
     steps:
       # Значение своё и из перечисления, но подставлять его прямо в `run`
       # всё равно нельзя: приём, который однажды склеит строку с чужим
       # значением, лучше не заводить вовсе. Через env оно остаётся значением.
       - name: Прогон завершился успехом?
         run: |
-          echo "collect = $RESULT"
-          [ "$RESULT" = "success" ] || { echo "::error::collect: $RESULT — это НЕ успех"; exit 1; }
+          echo "validate = $VALIDATE_RESULT"
+          echo "collect = $COLLECT_RESULT"
+          echo "resolve-slugs = $RESOLVE_RESULT"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation failed"; exit 1; }
+          if [ "$RESOLVE_ONLY" = "true" ]; then
+            [ "$RESOLVE_RESULT" = "success" ] || { echo "::error::resolve-slugs: $RESOLVE_RESULT"; exit 1; }
+          else
+            [ "$COLLECT_RESULT" = "success" ] || { echo "::error::collect: $COLLECT_RESULT"; exit 1; }
+            [ "$RESOLVE_RESULT" = "success" ] || { echo "::error::resolve-slugs: $RESOLVE_RESULT"; exit 1; }
+          fi

@@ -12,6 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.espn import (  # noqa: E402
     completed_event_ids,
+    has_roster_data,
+    has_scoreboard_payload,
     parse_match_date,
     parse_match_meta,
     parse_player_rows,
@@ -103,6 +105,38 @@ def main():
     ok &= check("no header -> no meta", parse_match_meta({}), None)
     ok &= check("no date -> no meta", parse_match_meta(
         {"header": {"competitions": [{}]}}), None)
+    ok &= check("invalid calendar date rejected", parse_match_date({
+        "header": {"competitions": [{"date": "2026-19-42T10:00Z"}]}
+    }), None)
+    ok &= check("valid date after invalid candidate", parse_match_date({
+        "header": {"competitions": [
+            {"date": "2026-19-42T10:00Z"},
+            {"date": "2026-08-15T23:30Z"},
+        ]}
+    }), "2026-08-15")
+
+    # HTTP 200 is not proof that a summary contains usable player statistics.
+    ok &= check("roster payload present", has_roster_data(SUMMARY), True)
+    ok &= check("missing roster is incomplete",
+                has_roster_data({"header": SUMMARY["header"]}), False)
+    ok &= check("empty roster is incomplete",
+                has_roster_data({"rosters": [{"roster": []}, {"roster": []}]}), False)
+    ok &= check("one team roster is incomplete",
+                has_roster_data({"rosters": SUMMARY["rosters"][:1]}), False)
+    ok &= check("roster without named players is incomplete",
+                has_roster_data({"rosters": [
+                    {"roster": [{"athlete": {}}]},
+                    SUMMARY["rosters"][1],
+                ]}), False)
+
+    # HTTP 200 with a wrong JSON shape must not masquerade as an empty schedule.
+    ok &= check("valid empty scoreboard", has_scoreboard_payload({"events": []}), True)
+    ok &= check("missing events is invalid", has_scoreboard_payload({"foo": []}), False)
+    ok &= check("non-list events is invalid", has_scoreboard_payload({"events": {}}), False)
+    ok &= check("malformed event is invalid", has_scoreboard_payload({"events": [None]}), False)
+    ok &= check("normal event is valid", has_scoreboard_payload({
+        "events": [{"id": "123", "status": {"type": {"completed": True}}}]
+    }), True)
 
     # ---- player rows -----------------------------------------------------
     rows = parse_player_rows(SUMMARY)

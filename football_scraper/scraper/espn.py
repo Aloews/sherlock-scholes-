@@ -19,6 +19,9 @@ rule in §4 of docs/LIVE_FOOTBALL_HANDOFF.md, and the safest way to honour that
 is for the parser to never learn the keys exist.
 """
 
+from datetime import date
+
+
 # Stat names as ESPN spells them. Taken from the payload, not from memory:
 # every one of these was read off a real completed match.
 STAT_GOALS = "totalGoals"
@@ -45,17 +48,18 @@ def _stat(entry, name, default=0):
 
 
 def parse_match_date(summary):
-    """`YYYY-MM-DD` of kickoff, or None.
-
-    Taken from the header competition rather than from the request date: a
-    match listed under 15 August can kick off at 23:30Z and belong to the 15th
-    everywhere, and a scoreboard query for one day returns events from two.
-    """
+    """`YYYY-MM-DD` of kickoff, or None; malformed calendar dates are rejected."""
     header = summary.get("header") or {}
     for competition in header.get("competitions") or []:
-        date = competition.get("date")
-        if isinstance(date, str) and len(date) >= 10:
-            return date[:10]
+        raw_date = competition.get("date")
+        if not isinstance(raw_date, str) or len(raw_date) < 10:
+            continue
+        iso_date = raw_date[:10]
+        try:
+            date.fromisoformat(iso_date)
+        except ValueError:
+            continue
+        return iso_date
     return None
 
 
@@ -133,6 +137,55 @@ def parse_player_rows(summary):
                 }
             )
     return rows
+
+
+def has_roster_data(summary):
+    """True only when both teams have at least one named player in the roster.
+
+    ESPN can return HTTP 200 with a partial summary. A non-empty roster array
+    alone is insufficient: one team can be missing, or every player entry can
+    lack an athlete name, which would silently drop the match from the stats.
+    """
+    rosters = summary.get("rosters") if isinstance(summary, dict) else None
+    if not isinstance(rosters, list) or len(rosters) < 2:
+        return False
+    for roster in rosters:
+        if not isinstance(roster, dict):
+            return False
+        entries = roster.get("roster")
+        if not isinstance(entries, list) or not any(
+            isinstance(entry, dict)
+            and isinstance(entry.get("athlete"), dict)
+            and isinstance(
+                entry["athlete"].get("displayName") or entry["athlete"].get("fullName"),
+                str,
+            )
+            and bool((entry["athlete"].get("displayName") or entry["athlete"].get("fullName")).strip())
+            for entry in entries
+        ):
+            return False
+    return True
+
+
+def has_scoreboard_payload(scoreboard):
+    """Reject HTTP-200 JSON that is not an ESPN scoreboard response.
+
+    An empty `events` list is a valid no-fixtures response. Missing/wrongly
+    typed event containers or malformed event records are not: accepting those
+    as an empty schedule makes a broken upstream schema look like a quiet day.
+    """
+    if not isinstance(scoreboard, dict):
+        return False
+    events = scoreboard.get("events")
+    if not isinstance(events, list):
+        return False
+    for event in events:
+        if not isinstance(event, dict) or not event.get("id"):
+            return False
+        status = event.get("status")
+        if not isinstance(status, dict) or not isinstance(status.get("type"), dict):
+            return False
+    return True
 
 
 def completed_events(scoreboard):
