@@ -22,6 +22,7 @@ interface CardRow {
   country: string | null;
   position_ru: string | null;
   fame: number | null;
+  tags: string[] | null;
   legend_career: { clubs?: Array<{ club?: string; years?: string }> } | null;
 }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -41,14 +42,18 @@ function parseModelJson(value: string): Record<string, unknown> | null {
 }
 
 async function loadCatalog(supabase: any, prompt: string, currentIds: string[], targetCardCount: number) {
-  const fields = "id,name,name_en,photo_url,category,country,position_ru,fame,legend_career";
-  const [playersResult, otherResult] = await Promise.all([
+  const fields = "id,name,name_en,photo_url,category,country,position_ru,fame,tags,legend_career";
+  const nonPlayerCategories = [
+    "club", "term", "referee", "coach", "stadium", "club_nickname",
+    "commentator", "position", "woman", "derby", "trophy", "era",
+  ];
+  const [playersResult, ...otherResults] = await Promise.all([
     supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
-      .order("fame", { ascending: false, nullsFirst: false }).limit(350),
-    supabase.from("cards").select(fields).eq("active", true).neq("category", "player")
-      .order("name", { ascending: true }).limit(600),
+      .order("fame", { ascending: false, nullsFirst: false }).limit(250),
+    ...nonPlayerCategories.map((category) => supabase.from("cards").select(fields)
+      .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(80)),
   ]);
-  if (playersResult.error || otherResult.error) throw new Error("catalog_unavailable");
+  if (playersResult.error || otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
 
   const tokens = [...new Set(prompt.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 3))].slice(0, 8);
   let named: CardRow[] = [];
@@ -75,7 +80,7 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
   const byId = new Map<string, CardRow>();
   for (const row of [
     ...(playersResult.data ?? []) as CardRow[],
-    ...(otherResult.data ?? []) as CardRow[],
+    ...otherResults.flatMap((result) => (result.data ?? []) as CardRow[]),
     ...named,
     ...current,
   ]) byId.set(row.id, row);
@@ -128,6 +133,7 @@ Deno.serve(async (req: Request) => {
       country: card.country,
       position: card.position_ru,
       fame: card.fame,
+      tags: card.tags ?? [],
       career: (card.legend_career?.clubs ?? []).slice(0, 6)
         .map((club) => ({ club: club.club, years: club.years })),
     }));
