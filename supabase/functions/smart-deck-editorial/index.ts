@@ -74,10 +74,14 @@ async function validateCandidates(
     p_days: 30, p_limit: 200, p_club_key: null, p_league: null, p_country: null,
   });
   if (rating.error) throw new Error("rating_validation_failed");
-  const formIds = new Set((rating.data ?? []).map((r: { card_id: string }) => r.card_id));
+  const ratingRows = (rating.data ?? []) as Array<{ card_id: string; matches: number; goals: number; assists: number }>;
+  const ratingsById = new Map(ratingRows.map((r) => [r.card_id, r]));
+  const formIds = new Set(ratingRows.map((r) => r.card_id));
+  const families = new Set<Family>(["form", "form-news", "news", "golden-era"]);
 
   const result: Candidate[] = [];
   for (const candidate of candidates) {
+    if (!families.has(candidate.family)) continue;
     const deckIds = [...new Set(candidate.card_ids)].slice(0, 20);
     if (!candidate.id || deckIds.length < 3 || deckIds.length !== candidate.card_ids.length) continue;
     const deckCards = deckIds.map((id) => cards.get(id));
@@ -94,7 +98,7 @@ async function validateCandidates(
         Date.parse(e.published_at) <= Date.now() + 5 * 60 * 1000
       );
       const urls = [...new Set(evidence.map((e) => e.url))];
-      if (urls.length < 3) continue;
+      if (new Set(evidence.map((e) => e.card_id)).size < 3 || urls.length === 0) continue;
       const { data: newsRows, error: newsError } = await supabase.from("news_items")
         .select("title,url,source,published_at").in("url", urls)
         .gte("published_at", new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString());
@@ -133,7 +137,21 @@ async function validateCandidates(
           return start <= era.endYear && end >= era.startYear && end >= start;
         });
       }).length;
-      if (overlapCount < 3) continue;
+      if (overlapCount < 3 || overlapCount !== deckIds.length) continue;
+      candidate.era = {
+        club: safeText(era.club, 80),
+        startYear: era.startYear,
+        endYear: era.endYear,
+      };
+    }
+
+    if (candidate.family === "form" || candidate.family === "form-news") {
+      // Stats are sourced on the server. Never let browser-supplied numbers
+      // become facts in the editorial prompt.
+      candidate.stats = deckIds.map((id) => ratingsById.get(id)!)
+        .map((r) => ({ card_id: r.card_id, matches: r.matches, goals: r.goals, assists: r.assists }));
+    } else {
+      candidate.stats = [];
     }
 
     result.push({
@@ -169,9 +187,8 @@ Deno.serve(async (req: Request) => {
     const cacheKey = await sha256(JSON.stringify({
       language,
       candidates: verified.map((d) => ({
-        id: d.id, family: d.family, title: d.title, description: d.description,
-        card_ids: d.card_ids, names: d.names, evidence: d.evidence ?? [], era: d.era ?? null,
-        stats: d.stats ?? [],
+        id: d.id, family: d.family, card_ids: d.card_ids, names: d.names,
+        evidence: d.evidence ?? [], era: d.era ?? null, stats: d.stats ?? [],
       })),
     }));
     const { data: cached } = await supabase.from("smart_deck_editorial_cache")
@@ -181,7 +198,7 @@ Deno.serve(async (req: Request) => {
     if (!LLM_KEY) return json({ editorials: {}, mode: "deterministic" });
     const client = new Anthropic({ apiKey: LLM_KEY, baseURL: LLM_BASE_URL });
     const modelInput = verified.map((d) => ({
-      id: d.id, family: d.family, existing_title: d.title, existing_description: d.description,
+      id: d.id, family: d.family,
       players: d.names,
       verified_headlines: (d.evidence ?? []).map((e) => ({
         title: e.title, source: e.source, published_at: e.published_at,
