@@ -39,7 +39,7 @@ interface Candidate {
 interface CardDbRow {
   id: string; name: string; name_en: string | null; active: boolean; category: string;
   top_league: string | null;
-  career_stats: Array<{ apps?: number | null; goals?: number | null; assists?: number | null }> | null;
+  career_stats: Array<{ apps?: number | null; goals?: number | null; assists?: number | null; years?: string }> | null;
   facts: Record<string, unknown> | null;
   tags: string[] | null;
   legend_career: { clubs?: Array<{ club?: string; years?: string }> } | null;
