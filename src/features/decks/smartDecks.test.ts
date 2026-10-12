@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
+import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
 const players: CanonicalPlayer[] = [
  { id:'messi', name:'Лионель Месси', name_en:'Lionel Messi', photo_url:null, country:'AR', position_ru:'Нападающий', fame:100 },
  { id:'salah', name:'Мохамед Салах', name_en:'Mohamed Salah', photo_url:null, country:'EG', position_ru:'Нападающий', fame:90 },
@@ -15,4 +15,28 @@ describe('smart deck entity matching', () => {
  it('matches full canonical names but not surname-only fragments', () => expect(matchNewsToPlayers(headlines, players).map(x=>x.id)).toEqual(['messi','salah']));
  it('deduplicates a card across multiple headlines', () => expect(matchNewsToPlayers([...headlines, headlines[0]], players).filter(x=>x.id==='messi')).toHaveLength(1));
  it('returns no candidate when a headline only contains a surname', () => expect(matchNewsToPlayers([headlines[2]], players)).toEqual([]));
+});
+
+describe('golden-era deck selection', () => {
+  it('selects players with a verified overlapping career at the same club', () => {
+    const squad = [
+      { ...players[0], legend_career: { clubs: [{ club: 'AC Milan', years: '1988–1992' }] } },
+      { ...players[1], legend_career: { clubs: [{ club: 'AC Milan', years: '1989–1994' }] } },
+      { ...players[2], legend_career: { clubs: [{ club: 'AC Milan', years: '1990–1993' }] } },
+    ];
+    const era = buildGoldenEra(squad);
+    expect(era?.club).toBe('AC Milan');
+    expect(era?.startYear).toBe(1990);
+    expect(era?.endYear).toBe(1992);
+    expect(era?.players).toHaveLength(3);
+  });
+
+  it('does not invent an era from non-overlapping careers', () => {
+    const squad = [
+      { ...players[0], legend_career: { clubs: [{ club: 'AC Milan', years: '1980–1984' }] } },
+      { ...players[1], legend_career: { clubs: [{ club: 'AC Milan', years: '1985–1988' }] } },
+      { ...players[2], legend_career: { clubs: [{ club: 'AC Milan', years: '1989–1993' }] } },
+    ];
+    expect(buildGoldenEra(squad)).toBeNull();
+  });
 });
