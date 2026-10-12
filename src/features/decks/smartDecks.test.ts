@@ -48,3 +48,15 @@ describe('exact-card deck filter', () => {
       .toEqual({ categories: ['player'], card_ids: ['a', 'b'], lang: 'ru' });
   });
 });
+
+  it('rejects player timelines that overlap across different clubs', () => {
+    const squad = [
+      { ...players[0], legend_career: { clubs: [
+        { club: 'Manchester United', years: '2003–2022' },
+        { club: 'Real Madrid', years: '2009–2018' },
+      ] } },
+      { ...players[1], legend_career: { clubs: [{ club: 'Manchester United', years: '2006–2018' }] } },
+      { ...players[2], legend_career: { clubs: [{ club: 'Manchester United', years: '2004–2017' }] } },
+    ];
+    expect(buildGoldenEra(squad)).toBeNull();
+  });
