@@ -44,16 +44,18 @@ function parseModelJson(value: string): Record<string, unknown> | null {
 async function loadCatalog(supabase: any, prompt: string, currentIds: string[], targetCardCount: number) {
   const fields = "id,name,name_en,photo_url,category,country,position_ru,fame,tags,legend_career";
   const nonPlayerCategories = [
-    "club", "term", "referee", "coach", "stadium", "club_nickname",
+    "term", "referee", "coach", "stadium", "club_nickname",
     "commentator", "position", "woman", "derby", "trophy", "era",
   ];
-  const [playersResult, ...otherResults] = await Promise.all([
+  const [playersResult, clubsResult, ...otherResults] = await Promise.all([
     supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
       .order("fame", { ascending: false, nullsFirst: false }).limit(250),
+    supabase.from("cards").select(fields).eq("active", true).eq("category", "club")
+      .order("fame", { ascending: false, nullsFirst: false }).limit(250),
     ...nonPlayerCategories.map((category) => supabase.from("cards").select(fields)
-      .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(65)),
+      .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(80)),
   ]);
-  if (playersResult.error || otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
+  if (playersResult.error || clubsResult.error || otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
 
   const tokens = [...new Set(prompt.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 3))].slice(0, 8);
   let named: CardRow[] = [];
@@ -80,11 +82,12 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
   const byId = new Map<string, CardRow>();
   for (const row of [
     ...(playersResult.data ?? []) as CardRow[],
+    ...(clubsResult.data ?? []) as CardRow[],
     ...otherResults.flatMap((result) => (result.data ?? []) as CardRow[]),
     ...named,
     ...current,
   ]) byId.set(row.id, row);
-  return [...byId.values()].slice(0, 1300);
+  return [...byId.values()].slice(0, 1700);
 }
 
 Deno.serve(async (req: Request) => {
