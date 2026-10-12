@@ -43,7 +43,7 @@ function parseModelJson(value: string): Record<string, unknown> | null {
   }
 }
 
-async function loadCatalog(supabase: ReturnType<typeof createClient>, prompt: string, currentIds: string[]) {
+async function loadCatalog(supabase: any, prompt: string, currentIds: string[]) {
   const { data: popular, error: popularError } = await supabase.from("cards")
     .select("id,name,name_en,photo_url,category,country,position_ru,fame,legend_career")
     .eq("active", true).eq("category", "player")
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const selected = new Map(catalog.map((card) => [card.id, card]));
-    const cards = selectedIds.map((id) => selected.get(id)!).filter((card) => card.active !== false).map((card) => ({
+    const cards = selectedIds.map((id) => selected.get(id)!).map((card) => ({
       id: card.id,
       name: card.name,
       name_en: card.name_en,
