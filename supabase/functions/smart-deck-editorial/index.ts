@@ -65,6 +65,27 @@ function normalize(value: string): string {
 function safeText(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/[<>]/g, "").trim().slice(0, max) : "";
 }
+
+function isHistoricalCard(card: CardDbRow): boolean {
+  const candidates: string[] = [];
+  const yearsActive = card.facts?.years_active;
+  if (typeof yearsActive === "string") candidates.push(yearsActive);
+  for (const row of card.career_stats ?? []) {
+    if (typeof row.years === "string") candidates.push(row.years);
+  }
+  let latestEnd: number | null = null;
+  for (const value of candidates) {
+    const text = value.trim();
+    if (!text || /[-–—]\\s*$/.test(text)) continue;
+    const match = text.match(/(\\d{4})(?:\\D+(\\d{4}))?/);
+    if (!match) continue;
+    const end = Number(match[2] ?? match[1]);
+    if (end >= 1850 && end <= new Date().getUTCFullYear() + 1) {
+      latestEnd = latestEnd === null ? end : Math.max(latestEnd, end);
+    }
+  }
+  return latestEnd !== null && latestEnd < new Date().getUTCFullYear() - 1;
+}
 async function sha256(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -172,7 +193,7 @@ async function validateCandidates(
         return typeof birthCountry === "string" && normalize(birthCountry) === group;
       });
       const hasRecentForm = deckIds.some((id) => formIds.has(id));
-      const hasLegend = deckCards.some((card) => card?.tags?.includes("legend"));
+      const hasHistorical = deckCards.some((card) => !!card && !formIds.has(card.id) && isHistoricalCard(card));
       const totals = deckCards.map((card) => {
         const lines = Array.isArray(card?.career_stats) ? card.career_stats : [];
         // Career totals are comparable only when both shared metrics are
@@ -188,7 +209,7 @@ async function validateCandidates(
         const assists = assistLines.length ? assistLines.reduce((sum, line) => sum + (line.assists as number), 0) : null;
         return { appearances, goals, assists };
       });
-      if (!belongs || !hasRecentForm || !hasLegend || totals.some((row) => row === null)) continue;
+      if (!belongs || !hasRecentForm || !hasHistorical || totals.some((row) => row === null)) continue;
       candidate.groupBy = groupBy;
       candidate.groupKey = groupKey;
       candidate.careerTotals = deckIds.map((card_id, index) => ({
