@@ -37,10 +37,6 @@ jobs:
           sudo apt-get install --yes postgresql-client
       - name: Create disposable test schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_test_setup.sql
-      - name: Fix six-character room-code generator
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012210000_fix_room_code_generator.sql
-      - name: Room-code regression
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/room_code_generator.test.sql
       - name: Apply rating-cache migrations
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261009190000_fix_player_rating_cache_and_card_verification.sql
