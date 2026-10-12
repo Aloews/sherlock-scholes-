@@ -37,7 +37,6 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [editorials, setEditorials] = useState<Record<string, SmartDeckEditorial>>({});
-  const [editorialMode, setEditorialMode] = useState<'loading' | 'ai' | 'deterministic'>('deterministic');
   const [activeDeck, setActiveDeck] = useState<SmartDeck | null>(null);
   const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
@@ -146,7 +145,6 @@ export function SmartDecksPanel({ onStart }: Props) {
       if (cancelled) return;
       if (error || !data || typeof data !== 'object') {
         setEditorials({});
-        setEditorialMode('deterministic');
         return;
       }
       const next: Record<string, SmartDeckEditorial> = {};
@@ -229,7 +227,6 @@ export function SmartDecksPanel({ onStart }: Props) {
     {loading && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Собираем подборки из свежих данных…':'Building decks from fresh data…'}</div>}
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
     {!loading && !failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Пока недостаточно подтверждённых данных для тематической колоды.':'Not enough verified data for a themed deck yet.'}</div>}
-    {editorialMode === 'ai' && <p className="text-[9px] uppercase tracking-[0.12em] text-brand-accent">{ru?'ИИ-редактор · факты проверены':'AI editor · facts verified'}</p>}
     {orderedDecks.map(deck => {
       const Icon = deck.icon==='bolt'?IconBolt:deck.icon==='calendar'||deck.icon==='era'?IconCalendarEvent:IconCrown;
       return <article key={deck.id} className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface">
@@ -244,7 +241,7 @@ export function SmartDecksPanel({ onStart }: Props) {
             setDeckPlayers([]);
             setSelectedCardIds([...(deck.filter.card_ids ?? [])]);
             setDeckLoadError(false);
-            setChatMessages([{ role: 'assistant', content: ru ? 'Опиши колоду обычным сообщением. Например: «Легенды Реала 2010-х», «только вратари» или «убери Холанда и добавь Салаха».' : 'Describe your deck in a message. For example: “Real Madrid legends from the 2010s”, “goalkeepers only”, or “remove Haaland and add Salah”.' }]);
+            setChatMessages([]);
             setDeckPrompt('');
             setAiBuildError('');
             setBuildingWithAI(false);
@@ -299,7 +296,7 @@ export function SmartDecksPanel({ onStart }: Props) {
           {aiBuildError && <p role="alert" className="text-[11px] text-red-300">{aiBuildError}</p>}
         </div>
         <div className="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-3">
-          <div><p className="text-sm font-bold text-white">{ru?'Карточки':'Cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
+          <p className="text-sm font-bold text-white">{ru?'Карточки':'Cards'}</p>
           <div className="text-right shrink-0"><p className="text-lg font-extrabold text-brand-accent tabular-nums">{selectedCardIds.length}</p><p className="text-[9px] text-brand-muted">{ru?'в колоде':'in deck'}</p></div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
@@ -330,7 +327,6 @@ export function SmartDecksPanel({ onStart }: Props) {
         </footer>
       </section>
     </div>}
-    {failed && decks.length > 0 && <p className="text-[10px] text-brand-muted">{ru?'Часть источников временно недоступна; показаны только данные, которые удалось проверить.':'Some sources are temporarily unavailable; only successfully verified data is shown.'}</p>}
     {news.length>0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-3 space-y-2">
       <div className="flex items-center gap-2 text-brand-muted"><IconCalendarEvent size={14}/><span className="text-[10px] uppercase tracking-wider font-bold">{ru?'В центре внимания':'In the headlines'}</span></div>
       {news.slice(0,3).map(item=><button key={item.url} type="button" onClick={()=>openLink(item.url)} className="w-full flex items-start gap-2 text-left"><span className="flex-1 text-[11px] leading-snug text-white/90">{item.title}</span><span className="shrink-0 text-[9px] text-brand-muted">{item.source}<IconArrowUpRight size={10} className="inline ml-1"/></span></button>)}
