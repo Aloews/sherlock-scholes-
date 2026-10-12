@@ -200,8 +200,8 @@ export function SmartDecksPanel({ onStart }: Props) {
       <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Подборки с футбольным сюжетом':'A deck with a story'}</h2>
       <p className="text-[11px] text-brand-muted mt-1">{ru?'Новости, форма, статистика карьеры и связи между поколениями. Источники проверяются перед сборкой.':'News, form, career stats and connections across eras. Sources are checked before a deck is built.'}</p>
     </div>
-    <button type="button" disabled={loading} onClick={requestDecks} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 disabled:opacity-60">
-      <span>{loading ? (ru ? 'Собираем подборку…' : 'Building your deck…') : (requested ? (ru ? 'Обновить подборку от ИИ' : 'Refresh AI picks') : (ru ? 'Собрать подборку от ИИ' : 'Generate AI picks'))}</span>
+    <button type="button" disabled={loading || editorialMode === 'loading'} onClick={requestDecks} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 disabled:opacity-60">
+      <span>{loading || editorialMode === 'loading' ? (ru ? 'Собираем подборку…' : 'Building your deck…') : (requested ? (ru ? 'Обновить подборку от ИИ' : 'Refresh AI picks') : (ru ? 'Собрать подборку от ИИ' : 'Generate AI picks'))}</span>
       <IconBolt size={18}/>
     </button>
     {!requested && <p className="text-[10px] text-brand-muted">{ru?'Нажми, когда захочешь новую подборку. До нажатия данные и ИИ не запрашиваются.':'Tap when you want a fresh selection. No source or AI requests run before you ask.'}</p>}
