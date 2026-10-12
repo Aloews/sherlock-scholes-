@@ -15,16 +15,30 @@ export function normalizeFootballText(value: string): string {
 
 /** Find the largest overlapping group of verified player career ranges at one club. */
 export function buildGoldenEra(players: CanonicalPlayer[], maxPlayers = 16): GoldenEra | null {
-  const ranges: { player: CanonicalPlayer; club: string; key: string; start: number; end: number }[] = [];
   const currentYear = new Date().getFullYear();
-  for (const player of players) for (const entry of player.legend_career?.clubs ?? []) {
-    const years = entry.years.match(/(\d{4})(?:\D+(\d{4}))?/);
-    if (!years || !entry.club.trim()) continue;
-    const start = Number(years[1]);
-    const end = years[2] ? Number(years[2]) : currentYear;
-    if (start < 1850 || end < start || end > currentYear + 1) continue;
-    ranges.push({ player, club: entry.club.trim(), key: normalizeFootballText(entry.club), start, end });
+  const byPlayer = players.map((player) => ({
+    player,
+    ranges: (player.legend_career?.clubs ?? []).flatMap((entry) => {
+      const years = entry.years.match(/(\d{4})(?:\D+(\d{4}))?/);
+      if (!years || !entry.club.trim()) return [];
+      const start = Number(years[1]);
+      const end = years[2] ? Number(years[2]) : currentYear;
+      if (start < 1850 || end < start || end > currentYear + 1) return [];
+      return [{ player, club: entry.club.trim(), key: normalizeFootballText(entry.club), start, end }];
+    }),
+  }));
+  // The current Wikidata-derived snapshot sometimes merges separate spells
+  // at one club (e.g. Man United 2003–2022) and overlaps that range with a
+  // different club (Real Madrid 2009–2018). Exclude that player's ranges
+  // rather than manufacture a "golden era" from impossible simultaneous clubs.
+  const ambiguous = new Set<string>();
+  for (const row of byPlayer) {
+    for (let i = 0; i < row.ranges.length; i++) for (let j = i + 1; j < row.ranges.length; j++) {
+      const a = row.ranges[i], b = row.ranges[j];
+      if (a.key !== b.key && a.start <= b.end && b.start <= a.end) ambiguous.add(row.player.id);
+    }
   }
+  const ranges = byPlayer.filter((row) => !ambiguous.has(row.player.id)).flatMap((row) => row.ranges);
   let best: GoldenEra | null = null;
   for (const anchor of ranges) {
     const active = ranges.filter((candidate) =>
