@@ -41,9 +41,7 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [prompt, setPrompt] = useState('');
   const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
-  const [loadingDeckPlayers, setLoadingDeckPlayers] = useState(false);
   const [generatingDeck, setGeneratingDeck] = useState(false);
-  const [deckLoadError, setDeckLoadError] = useState(false);
   const [generatedTitle, setGeneratedTitle] = useState('');
   const [generatedDescription, setGeneratedDescription] = useState('');
   const [generationError, setGenerationError] = useState('');
@@ -176,7 +174,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     <button type="button" onClick={() => {
       setActiveDeck(null); setPrompt(''); setDeckPlayers([]); setSelectedCardIds([]);
       setGeneratedTitle(''); setGeneratedDescription(''); setGenerationError('');
-      setDeckLoadError(false); setBuilderOpen(true);
+      setBuilderOpen(true);
     }} className="w-full flex items-center justify-between rounded-2xl border border-brand-accent/50 bg-brand-accent/10 text-white font-bold text-sm px-4 py-3">
       <span>{ru?'Попросить ИИ собрать колоду':'Ask AI to build a deck'}</span><IconArrowUpRight size={18}/>
     </button>
@@ -200,7 +198,7 @@ export function SmartDecksPanel({ onStart }: Props) {
               ? `Собери игровую колоду по теме «${deck.title}». Используй эту подборку как отправную точку, добавь подходящих футболистов из каталога и сделай состав разнообразным. ${deck.description}`
               : `Build a playable deck around “${deck.title}”. Use this recommendation as the starting point, add suitable footballers from the catalogue, and keep the selection varied. ${deck.description}`);
             setDeckPlayers([]); setSelectedCardIds([]); setGeneratedTitle(''); setGeneratedDescription('');
-            setGenerationError(''); setDeckLoadError(false); setBuilderOpen(true);
+            setGenerationError(''); setBuilderOpen(true);
           }} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Собрать колоду с ИИ':'Build with AI'}</span><IconArrowUpRight size={18}/></button>
         </div>
       </article>;
