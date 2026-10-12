@@ -55,3 +55,9 @@ jobs:
 
       - name: Smart Deck cache permissions regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_editorial_cache.test.sql
+
+      - name: Apply presence and stats RPC hardening
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012111500_presence_stats_hardening.sql
+
+      - name: Presence and stats RPC privilege regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/presence_stats_hardening.test.sql
