@@ -60,7 +60,7 @@ async function sha256(value: string): Promise<string> {
 }
 
 async function validateCandidates(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   candidates: Candidate[],
 ): Promise<Candidate[]> {
   const ids = [...new Set(candidates.flatMap((d) => d.card_ids))];
