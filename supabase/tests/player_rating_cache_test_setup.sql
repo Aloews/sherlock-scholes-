@@ -66,3 +66,14 @@ create function public.fill_current_club_from_soccerwiki()
 returns table("записано" integer) language sql as $$ select 0 $$;
 create function public.card_club_conflicts()
 returns table(card_id uuid) language sql as $$ select null::uuid where false $$;
+
+
+-- Minimal fixtures for the presence/stats privilege regression migration.
+CREATE TABLE public.player_presence (
+  player_id bigint PRIMARY KEY,
+  seen_at timestamptz NOT NULL DEFAULT now(),
+  hidden boolean NOT NULL DEFAULT false
+);
+
+CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
+RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
