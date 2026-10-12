@@ -106,6 +106,7 @@ export interface PlayerTrendCandidate extends CanonicalPlayer {
   recent_points: number;
   previous_points: number;
   recent_last_match: string | null;
+  stats_collected_at: string | null;
 }
 
 /**
@@ -119,11 +120,12 @@ export function selectBreakoutPlayers(
   rows: PlayerTrendCandidate[],
   maxCards = 20,
   minSample = 3,
+  now = Date.now(),
 ): PlayerTrendCandidate[] {
   const eligible = rows.flatMap((row) => {
     if (
       !row.id ||
-      row.recent_matches < minSample ||
+      !row.stats_collected_at ||\n      !Number.isFinite(Date.parse(row.stats_collected_at)) ||\n      Date.parse(row.stats_collected_at) < now - 72 * 60 * 60 * 1000 ||\n      row.recent_matches < minSample ||
       row.previous_matches < minSample ||
       row.recent_points < 12 ||
       row.previous_points < 0
