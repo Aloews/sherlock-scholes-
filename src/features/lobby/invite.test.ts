@@ -103,7 +103,7 @@ describe('copyText', () => {
 // verbatim or was never part of a code.
 
 describe('sanitizeCodeInput', () => {
-  it('keeps what a code is made of, and uppercases as it goes', () => {
+  it('keeps the exact typed characters; normalization happens on submit', () => {
     expect(sanitizeCodeInput('ab12cd')).toBe('ab12cd');
     expect(sanitizeCodeInput('a')).toBe('a');
   });
