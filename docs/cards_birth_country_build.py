@@ -221,6 +221,10 @@ def main():
                 "birth_country": country,
                 "birth_country_qid": country_qid,
                 "birth_country_source": "Wikidata P19→P17",
+                "birth_country_sources": [
+                    "https://www.wikidata.org/wiki/" + qid,
+                    "https://www.wikidata.org/wiki/" + place_qid,
+                ],
             })
             if place_label:
                 facts["birth_place"] = place_label
