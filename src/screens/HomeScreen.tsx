@@ -124,6 +124,15 @@ export function HomeScreen() {
 
   // Quick game: the deck picker is its own screen (DeckPickerScreen). It
   // owns the filter it builds and hands the finished DeckFilter back here.
+  const handleRoomDeckPromptChange = (value: string) => {
+    setRoomDeckPrompt(value);
+    setRoomDeckMessage('');
+    if (roomDeckFilter) {
+      setRoomDeckFilter(null);
+      setCategories(null);
+    }
+  };
+
   const buildRoomDeck = async () => {
     const prompt = roomDeckPrompt.trim();
     if (prompt.length < 3 || buildingRoomDeck) return;
@@ -337,7 +346,7 @@ export function HomeScreen() {
             deckPrompt={roomDeckPrompt}
             buildingDeck={buildingRoomDeck}
             deckMessage={roomDeckMessage}
-            onDeckPromptChange={setRoomDeckPrompt}
+            onDeckPromptChange={handleRoomDeckPromptChange}
             onBuildDeck={() => { void buildRoomDeck(); }}
             onCreate={() => createRoom({ categories, ...(roomDeckFilter ? { deck: roomDeckFilter } : {}) })}
             onBack={() => setView('mode_select')}
