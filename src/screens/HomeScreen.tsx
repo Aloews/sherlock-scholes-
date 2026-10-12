@@ -26,10 +26,10 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
-import { OnlinePanel } from '@/features/social/OnlinePanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
-import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
+import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
+import type { CardCategory } from '@/shared/types/database';
 
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
 // It exists because the home screen is now a LIST OF GAMES and Alias is one of
@@ -46,7 +46,7 @@ export function HomeScreen() {
   const isPro = true;
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom } = useRoom();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { stats, loading: statsLoading } = usePlayerStats(player?.id ?? null);
   // The landing block has a different layout per design; everything below it
   // (mode select, room settings, chip picker, join) is shared.
@@ -77,6 +77,11 @@ export function HomeScreen() {
 
   const [view,      setView]      = useState<View>('home');
   const [rounds1v1, setRounds1v1] = useState(3);
+  const [categories, setCategories] = useState<CardCategory[] | null>(null);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const categoriesLabel = categories == null
+    ? (i18n.language.startsWith('ru') ? 'Все категории' : 'All categories')
+    : `${categories.length} ${i18n.language.startsWith('ru') ? 'категорий' : 'categories'}`;
 
   // ВЕСЬ ВХОД В КОМНАТУ ЖИВЁТ В ХУКЕ, и это не косметика. Способов войти
   // четыре — набрать код, открыть ссылку, нажать приглашение друга, нажать
@@ -205,14 +210,6 @@ export function HomeScreen() {
           </div>
         )}
 
-        {/* Online players are actionable from the landing screen: this is where
-            players decide whether to start a game or invite someone into one. */}
-        {view === 'home' && (
-          <div className="w-full max-w-sm">
-            <OnlinePanel />
-          </div>
-        )}
-
         {/* ⚠️ ИМЕНИ ЗДЕСЬ БОЛЬШЕ НЕТ. Владелец: «подпись „имени“ … можно
             убрать с главной». Раньше отсюда ушло «С возвращением», и по той
             же причине: аватар в шапке уже говорит, чей это телефон, а строка
@@ -227,10 +224,6 @@ export function HomeScreen() {
               onClick={() => setView('alias')}
             />
           </div>
-        )}
-
-        {view === 'home' && (
-          <SmartDecksPanel onStart={startGame} />
         )}
 
         {/* ── The football Alias's own actions ── */}
@@ -285,7 +278,9 @@ export function HomeScreen() {
         {view === 'create_team' && (
           <HomeTeamSettings
             loading={loading}
-            onCreate={() => createRoom()}
+            categoriesLabel={categoriesLabel}
+            onConfigureCategories={() => setCategoryDialogOpen(true)}
+            onCreate={() => createRoom({ categories })}
             onBack={() => setView('mode_select')}
           />
         )}
@@ -295,7 +290,9 @@ export function HomeScreen() {
             rounds={rounds1v1}
             onRounds={setRounds1v1}
             loading={loading}
-            onCreate={() => createRoom({ total_rounds: rounds1v1 }, '1v1')}
+            categoriesLabel={categoriesLabel}
+            onConfigureCategories={() => setCategoryDialogOpen(true)}
+            onCreate={() => createRoom({ total_rounds: rounds1v1, categories }, '1v1')}
             onBack={() => setView('mode_select')}
           />
         )}
@@ -328,6 +325,13 @@ export function HomeScreen() {
         {!master && <QuoteRotator />}
         <p className="text-brand-muted/40 text-xs text-center">{t('home.footer')}</p>
       </div>
+      {categoryDialogOpen && (
+        <CategoryPickerDialog
+          selectedCategories={categories}
+          onClose={() => setCategoryDialogOpen(false)}
+          onApply={(next) => { setCategories(next); setCategoryDialogOpen(false); }}
+        />
+      )}
     </div>
   );
 }
