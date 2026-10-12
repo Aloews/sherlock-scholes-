@@ -25,13 +25,14 @@ interface HomeAliasActionsProps {
   onQuickGame(): void;
   onCompetitive(): void;
   onJoin(): void;
+  onSmartDecks(): void;
   onBack(): void;
 }
 
 export function HomeAliasActions({
-  onQuickGame, onCompetitive, onJoin, onBack,
+  onQuickGame, onCompetitive, onJoin, onSmartDecks, onBack,
 }: HomeAliasActionsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <div className="w-full max-w-sm space-y-2.5 animate-slide-up">
@@ -42,6 +43,9 @@ export function HomeAliasActions({
           action that starts a game fastest. */}
       <Button fullWidth size="lg" className="h-[58px]" onClick={onQuickGame}>
         {t('home.mode_training_title')}
+      </Button>
+      <Button fullWidth size="lg" variant="secondary" onClick={onSmartDecks}>
+        {i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}
       </Button>
       <Button fullWidth size="lg" variant="secondary" onClick={onCompetitive}>
         {t('home.competitive_mode')}
