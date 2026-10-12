@@ -4,10 +4,10 @@ import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconSparkles 
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
 import type { DeckFilter } from '@/shared/types/deck';
-import { matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch } from '@/features/decks/smartDecks';
+import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
 
 interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; matches: number; goals: number; assists: number }
-interface SmartDeck { id: string; eyebrow: string; title: string; description: string; icon: 'bolt' | 'calendar' | 'crown'; image: string | null; names: string[]; filter: DeckFilter }
+interface SmartDeck { id: string; eyebrow: string; title: string; description: string; icon: 'bolt' | 'calendar' | 'crown' | 'era'; image: string | null; names: string[]; filter: DeckFilter }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
 const NEWS_WINDOW_HOURS = 72;
 
@@ -30,7 +30,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 16, p_club_key: null, p_league: null, p_country: null }),
-      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(16),
+      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(200),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
@@ -52,6 +52,7 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   const decks = useMemo<SmartDeck[]>(() => {
     const result: SmartDeck[] = [];
+    const goldenEra: GoldenEra | null = buildGoldenEra(legends, 16);
     if (form.length >= 3) result.push({
       id:'smart-current-form', eyebrow:ru?'ФОРМА · 30 ДНЕЙ':'FORM · 30 DAYS',
       title:ru?'Сейчас на пике':'In form now',
@@ -73,6 +74,14 @@ export function SmartDecksPanel({ onStart }: Props) {
       icon:'crown', image:legends[0]?.photo_url ?? null, names:legends.slice(0,3).map(p=>p.name),
       filter:{ categories:['player'], card_ids:legends.map(p=>p.id), lang },
     });
+    if (goldenEra && goldenEra.players.length >= 3) result.push({
+      id:'smart-golden-era', eyebrow:ru?'ЗОЛОТАЯ ЭПОХА · ПО КАРЬЕРАМ':'GOLDEN ERA · CAREER OVERLAP',
+      title:ru?`Великая эпоха: ${goldenEra.club}`:`Golden era: ${goldenEra.club}`,
+      description:ru?`Подтверждённое пересечение карьер ${goldenEra.startYear}–${goldenEra.endYear}. Состав собран по данным карточек.`:`Verified career overlap from ${goldenEra.startYear} to ${goldenEra.endYear}, derived from player dossier data.`,
+      icon:'era', image:goldenEra.players[0]?.photo_url ?? null,
+      names:goldenEra.players.slice(0,3).map(p=>p.name),
+      filter:{ categories:['player'], card_ids:goldenEra.players.map(p=>p.id), lang },
+    });
     return result;
   }, [form, legends, newsMatches, lang, ru]);
 
@@ -86,7 +95,7 @@ export function SmartDecksPanel({ onStart }: Props) {
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
     {!loading && !failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Пока недостаточно подтверждённых данных для тематической колоды.':'Not enough verified data for a themed deck yet.'}</div>}
     {decks.map(deck => {
-      const Icon = deck.icon==='bolt'?IconBolt:deck.icon==='calendar'?IconCalendarEvent:IconCrown;
+      const Icon = deck.icon==='bolt'?IconBolt:deck.icon==='calendar'||deck.icon==='era'?IconCalendarEvent:IconCrown;
       return <article key={deck.id} className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface">
         <div className="absolute inset-0 opacity-20 pointer-events-none">{deck.image && <img src={deck.image} alt="" className="w-full h-full object-cover blur-sm scale-110"/>}<div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/85 to-transparent"/></div>
         <div className="relative p-4 space-y-3">
