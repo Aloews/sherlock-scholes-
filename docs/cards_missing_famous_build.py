@@ -104,6 +104,14 @@ CANDIDATES = {
         ("Facundo Pellistri", None), ("Lazar Samardžić", None), ("Milos Kerkez", None),
     ],
     "Легенды прошлого": [
+        # Found by the live-deck audit: these canonical names had no active card.
+        # The Wikidata resolver verifies identity and RU sitelink before any
+        # INSERT SQL is generated; no manual name-to-person mapping is trusted.
+        ("Abedi Pelé", None), ("Ronaldinho", "Ronaldo de Assis Moreira"),
+        ("Ronaldo Nazário", "Ronaldo Luís Nazário de Lima"),
+        ("Valeriy Lobanovskyi", None), ("Mia Hamm", None), ("Marta", "Marta Vieira da Silva"),
+        ("Birgit Prinz", None), ("Carli Lloyd", None), ("Homare Sawa", None),
+        ("Sun Wen", None),
         ("Diego Maradona", None), ("Ferenc Puskás", None), ("Just Fontaine", None),
         ("Gheorghe Hagi", None), ("Davor Šuker", None), ("Hidetoshi Nakata", None),
         ("Roberto Baggio", None), ("Hong Myung-bo", None), ("Bobby Moore", None),
