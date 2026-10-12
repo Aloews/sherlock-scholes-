@@ -61,3 +61,9 @@ jobs:
 
       - name: Presence and stats RPC privilege regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/presence_stats_hardening.test.sql
+
+      - name: Apply player card collectibles migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012150000_player_card_collectibles.sql
+
+      - name: Player card collectibles regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_card_collectibles.test.sql
