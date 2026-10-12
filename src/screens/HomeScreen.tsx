@@ -304,6 +304,7 @@ export function HomeScreen() {
             loading={loading}
             onSubmit={() => { void join.submit(); }}
             onJoinRoom={(roomCode) => { void join.enter(roomCode); }}
+            playerId={player?.id ?? null}
             onBack={() => { join.setCode(''); setView('home'); }}
           />
         )}
