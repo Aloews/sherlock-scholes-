@@ -345,6 +345,7 @@ export function HomeScreen() {
             onConfigureCategories={() => setCategoryDialogOpen(true)}
             deckPrompt={roomDeckPrompt}
             buildingDeck={buildingRoomDeck}
+            hasResolvedDeck={roomDeckFilter !== null}
             deckMessage={roomDeckMessage}
             onDeckPromptChange={handleRoomDeckPromptChange}
             onBuildDeck={() => { void buildRoomDeck(); }}
