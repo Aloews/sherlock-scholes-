@@ -36,11 +36,12 @@ export function HomeJoinForm({
     <div className="w-full max-w-sm space-y-4 animate-slide-up">
       <OpenRoomsPanel onJoin={onJoinRoom} loading={loading} playerId={playerId} />
       <div className="space-y-2">
-        <label className="text-brand-muted text-sm font-medium">
+        <label htmlFor="room-code-input" className="text-brand-muted text-sm font-medium">
           {t('home.room_code_label')}
         </label>
         <input
           ref={inputRef}
+          id="room-code-input"
           type="text"
           maxLength={CODE_LENGTH}
           value={code}
