@@ -219,10 +219,11 @@ def main():
         os.path.join(SCRAPER, "cache", "photos_budget.json"))
     wd = WikidataEnricher(cfg["wikidata"], cache)
 
-    def wikitext(title, lang):
+    def wikitext(title, lang, force_refresh=False):
         nskey = lang + "_wikitext"
         cached = cache.get(nskey, title)
-        if cached is not None:
+        # Bypass the old article cache when the live squad proves a transfer.
+        if cached is not None and not force_refresh:
             return cached.get("wt")
         budget.consume()
         time.sleep(0.4)
@@ -276,6 +277,12 @@ def main():
     STILL_PLAYING = {r["card_id"] for r in stats_rows}
     print("still playing in %d (player_match_stats): %d cards" % (NOW, len(STILL_PLAYING)), flush=True)
 
+    # Live squad data is a refresh signal only; it never overwrites match stats.
+    current_rows = fetch_all(url, key, "card_current_club", "card_id,club")
+    CURRENT_CLUB = {r["card_id"]: str(r.get("club") or "").strip()
+                    for r in current_rows if r.get("club")}
+    print("current club references: %d cards" % len(CURRENT_CLUB), flush=True)
+
     # Самопочинка: у уже записанных career_stats вычищаем вики-разметку,
     # утёкшую до появления clean_years (аудит валит весь workflow как FATAL).
     repaired = 0
@@ -309,33 +316,30 @@ def main():
     def qid_for(c):
         return qmap.get(ck(c.get("name"))) or qmap.get(ck(c.get("name_en")))
 
-    def career_is_stale(cs):
-        """True when career_stats exists but every entry is a CLOSED range
-        (no open '–' tail) and the latest end year is before NOW.
+    def career_is_stale(cs, current_club=None):
+        """Refresh an active career when its open-ended club disagrees with
+        the live squad, or when a closed career predates the current year.
 
-        Checks EVERY entry, not cs[-1]: the array is sorted by apps
-        descending (line ~400), not chronologically, so the last element is
-        whichever of the top 4 clubs has the fewest appearances — often the
-        newest transfer, but not reliably, and never something to key a date
-        check on.
-
-        Deliberately does NOT fire on its own for a career that has been
-        closed for years: that is what a genuinely retired legend's card
-        looks like, and re-fetching those forever would spend the shared
-        Wikimedia budget for no new data. The caller only acts on this
-        together with STILL_PLAYING — independent proof, from
-        player_match_stats, that the card is provably still active — so a
-        real retiree (no rows this year) is never touched."""
+        The timeline is sorted by appearances, not chronology, so inspect all
+        open-ended entries instead of assuming the final row is the latest."""
         if not cs:
             return False
-        years = [str(r.get("years") or "") for r in cs]
-        if any(re.search(r"[–—-]\s*$", y) for y in years):
+        open_rows = [
+            r for r in cs
+            if re.search(r"[–—-]\s*$", str(r.get("years") or ""))
+        ]
+        if open_rows and current_club:
+            current_key = ck(current_club)
+            open_keys = {ck(r.get("club")) for r in open_rows if r.get("club")}
+            if current_key and open_keys and current_key not in open_keys:
+                return True
+        if open_rows:
             return False
         end_years = []
-        for y in years:
-            m = re.search(r"(\d{4})\D*$", y)
-            if m:
-                end_years.append(int(m.group(1)))
+        for row in cs:
+            match = re.search(r"(\d{4})\D*$", str(row.get("years") or ""))
+            if match:
+                end_years.append(int(match.group(1)))
         return bool(end_years) and max(end_years) < NOW
 
     def needs_career(c):
@@ -369,10 +373,25 @@ def main():
         return bool(c.get("clubs_minutes") or c.get("name_en"))
 
     pool = [c for c in cards if needs_career(c)]
+
+    # Prioritize records that can fix a visible stale career now. Writes are
+    # resumable, so a timeout continues with unfinished players on the next run.
+    def refresh_priority(card):
+        existing = card.get("career_stats")
+        active = card["id"] in STILL_PLAYING
+        if active and existing and career_is_stale(existing, CURRENT_CLUB.get(card["id"])):
+            return 0
+        if active and not existing and CURRENT_CLUB.get(card["id"]):
+            return 1
+        if not existing:
+            return 2
+        return 3
+
+    pool.sort(key=refresh_priority)
     print("POOL (legends + clubs_minutes-tail players): %d  | APPLY=%s | gate>=%d apps"
           % (len(pool), APPLY, MIN_APPS), flush=True)
 
-    def career_for(c):
+    def career_for(c, force_refresh=False):
         """Return (rows, lang, via, wiki_birth) or ([], None, via, None).
 
         via ∈ {qid, name_title, name}:
@@ -405,7 +424,7 @@ def main():
         for lang, title, via in attempts:
             if not title:
                 continue
-            wt = wikitext(title, lang)
+            wt = wikitext(title, lang, force_refresh=force_refresh)
             if not wt:
                 continue
             ib = extract_infobox(wt)
@@ -424,13 +443,13 @@ def main():
         existing = c.get("career_stats")
         refreshing = False
         if existing:
-            if c["id"] in STILL_PLAYING and career_is_stale(existing):
+            if c["id"] in STILL_PLAYING and career_is_stale(existing, CURRENT_CLUB.get(c["id"])):
                 refreshing = True
             else:
                 skipped_existing += 1
                 continue
         try:
-            rows, lang, via, wiki_birth = career_for(c)
+            rows, lang, via, wiki_birth = career_for(c, force_refresh=refreshing)
         except RuntimeError:
             print("BUDGET EXHAUSTED at %d/%d — stopping, progress cached." % (idx, len(pool)), flush=True)
             break

@@ -1,13 +1,11 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/shared/store/gameStore';
-import { useProStore } from '@/shared/store/proStore';
 import { useSessionRestore } from '@/features/room/useSessionRestore';
 import { usePresence } from '@/features/social/usePresence';
 import { VoiceProvider } from '@/features/voice/VoiceProvider';
-import { useDesign } from '@/shared/design/useDesign';
-import { TabBar, TAB_ROUTES } from '@/app/TabBar';
+import { staffVerify } from '@/features/admin/adminApi';
 import { HomeScreen }     from '@/screens/HomeScreen';
 
 // HomeScreen stays static so the first screen never flashes. The rest are
@@ -28,7 +26,6 @@ const ChessScreen    = lazy(() => import('@/screens/ChessScreen').then((m) => ({
 const DigestScreen   = lazy(() => import('@/screens/DigestScreen').then((m) => ({ default: m.DigestScreen })));
 const NewsScreen     = lazy(() => import('@/screens/NewsScreen').then((m) => ({ default: m.NewsScreen })));
 const ArenaScreen    = lazy(() => import('@/screens/ArenaScreen').then((m) => ({ default: m.ArenaScreen })));
-const ProScreen      = lazy(() => import('@/screens/ProScreen').then((m) => ({ default: m.ProScreen })));
 const ClubScreen     = lazy(() => import('@/screens/ClubScreen').then((m) => ({ default: m.ClubScreen })));
 const LeagueTableScreen = lazy(() => import('@/screens/LeagueTableScreen').then((m) => ({ default: m.LeagueTableScreen })));
 const DuelScreen     = lazy(() => import('@/screens/DuelScreen').then((m) => ({ default: m.DuelScreen })));
@@ -76,14 +73,26 @@ function RequireRoom({ children }: { children: React.ReactNode }) {
 // ⚠️ `replace`, А НЕ ОБЫЧНЫЙ ПЕРЕХОД: иначе «назад» из витрины возвращает на
 // закрытый экран, тот снова отправляет на витрину, и кнопка «назад» перестаёт
 // работать вовсе.
-function ProOnly({ children }: { children: React.ReactNode }) {
-  const isPro  = useProStore((s) => s.isPro);
-  const loaded = useProStore((s) => s.loaded);
-  const { pathname, search } = useLocation();
-  if (!loaded) return <LazyFallback />;
-  if (!isPro) {
-    return <Navigate to={`/pro?from=${encodeURIComponent(pathname + search)}`} replace />;
-  }
+function AdminOnly({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<'checking' | 'allowed' | 'denied'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    const password = sessionStorage.getItem('ss_admin_pw');
+    if (!password) {
+      setStatus('denied');
+      return () => { cancelled = true; };
+    }
+    void staffVerify(password).then((role) => {
+      if (!cancelled) setStatus(role ? 'allowed' : 'denied');
+    }).catch(() => {
+      if (!cancelled) setStatus('denied');
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (status === 'checking') return <LazyFallback />;
+  if (status === 'denied') return <Navigate to="/admin" replace />;
   return <>{children}</>;
 }
 
@@ -107,19 +116,13 @@ export function Router() {
   // именно этот экран, то есть почти никто. Стучится только при видимой
   // вкладке — см. usePresence.
   usePresence();
-  const { pathname } = useLocation();
-  // The tab bar belongs to the master app shell, and only to its root routes —
-  // never over a live game, lobby or results, where leaving mid-round by a
-  // stray tap would be destructive. `with-tabbar` shortens the screens'
-  // min-h-screen by the bar's height (see index.css).
-  const showTabs = useDesign() === 'master'
-    && (TAB_ROUTES as readonly string[]).includes(pathname);
+  // Public navigation is intentionally limited to the football Alias.
 
   return (
     // VoiceProvider sits ABOVE the routes on purpose: the session must survive
     // lobby -> /game, which unmounts the lobby. See VoiceProvider.tsx.
     <VoiceProvider>
-    <div className={showTabs ? 'with-tabbar' : undefined}>
+    <div>
     <Suspense fallback={<LazyFallback />}>
     <Routes>
       <Route path="/" element={<PageTransition><HomeScreen /></PageTransition>} />
@@ -149,27 +152,27 @@ export function Router() {
       />
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
-      <Route path="/collection" element={<ProOnly><PageTransition><CollectionScreen /></PageTransition></ProOnly>} />
-      <Route path="/profile"   element={<PageTransition><ProfileScreen /></PageTransition>} />
+      <Route path="/collection" element={<AdminOnly><PageTransition><CollectionScreen /></PageTransition></AdminOnly>} />
+      <Route path="/profile"   element={<AdminOnly><PageTransition><ProfileScreen /></PageTransition></AdminOnly>} />
       {/* ⚠️ БЕЗ ProOnly НАМЕРЕННО. Экран источников — это выполнение лицензий
           (CC BY-SA требует НАЗВАТЬ источник), а не возможность подписки:
           спрятать его за подписку значило бы не выполнить условие для тех,
           кто её не купил, — то есть для большинства. */}
-      <Route path="/sources"   element={<PageTransition><SourcesScreen /></PageTransition>} />
-      <Route path="/friends"   element={<ProOnly><PageTransition><FriendsScreen /></PageTransition></ProOnly>} />
-      <Route path="/matches"   element={<ProOnly><PageTransition><MatchesScreen /></PageTransition></ProOnly>} />
-      <Route path="/fantasy"   element={<ProOnly><PageTransition><FantasyScreen /></PageTransition></ProOnly>} />
+      <Route path="/sources"   element={<AdminOnly><PageTransition><SourcesScreen /></PageTransition></AdminOnly>} />
+      <Route path="/friends"   element={<AdminOnly><PageTransition><FriendsScreen /></PageTransition></AdminOnly>} />
+      <Route path="/matches"   element={<AdminOnly><PageTransition><MatchesScreen /></PageTransition></AdminOnly>} />
+      <Route path="/fantasy"   element={<AdminOnly><PageTransition><FantasyScreen /></PageTransition></AdminOnly>} />
       {/* Без PageTransition, как и арена: обёртка анимирует transform родителя,
           и первые касания уезжали бы вместе с ним — а здесь каждое касание
           попадает в конкретную клетку доски. */}
-      <Route path="/chess"     element={<ProOnly><ChessScreen /></ProOnly>} />
-      <Route path="/digest"    element={<ProOnly><PageTransition><DigestScreen /></PageTransition></ProOnly>} />
+      <Route path="/chess"     element={<AdminOnly><ChessScreen /></AdminOnly>} />
+      <Route path="/digest"    element={<AdminOnly><PageTransition><DigestScreen /></PageTransition></AdminOnly>} />
       {/* Без PageTransition: арена рисует canvas, а обёртка анимирует
           transform родителя — первые кадры игры уезжали бы вместе с ним. */}
-      <Route path="/news"      element={<ProOnly><PageTransition><NewsScreen /></PageTransition></ProOnly>} />
-      <Route path="/duel"      element={<ProOnly><PageTransition><DuelScreen /></PageTransition></ProOnly>} />
-      <Route path="/spotlight" element={<ProOnly><PageTransition><SpotlightScreen /></PageTransition></ProOnly>} />
-      <Route path="/amateur"   element={<ProOnly><PageTransition><AmateurScreen /></PageTransition></ProOnly>} />
+      <Route path="/news"      element={<AdminOnly><PageTransition><NewsScreen /></PageTransition></AdminOnly>} />
+      <Route path="/duel"      element={<AdminOnly><PageTransition><DuelScreen /></PageTransition></AdminOnly>} />
+      <Route path="/spotlight" element={<AdminOnly><PageTransition><SpotlightScreen /></PageTransition></AdminOnly>} />
+      <Route path="/amateur"   element={<AdminOnly><PageTransition><AmateurScreen /></PageTransition></AdminOnly>} />
       {/* ⚠️ СТАРЫЕ АДРЕСА ВЕДУТ СРАЗУ В СВОЙ РАЗДЕЛ, а не в оглавление
           коллекции: перенаправление в оглавление читалось бы как «ссылка
           сломалась». Не удалены — на них ведут уже разосланные ссылки и
@@ -179,17 +182,17 @@ export function Router() {
       <Route path="/clubs"     element={<Navigate to="/collection?view=clubs" replace />} />
       {/* Ключ клуба едет в адресе и содержит пробелы («zenit st petersburg»),
           поэтому он закодирован на стороне ссылки, а useParams его раскодирует. */}
-      <Route path="/club/:key" element={<ProOnly><PageTransition><ClubScreen /></PageTransition></ProOnly>} />
+      <Route path="/club/:key" element={<AdminOnly><PageTransition><ClubScreen /></PageTransition></AdminOnly>} />
       {/* Таблица: без турнира в адресе открывается самая полная — экран со
           списком лиг и пустотой под ним требовал бы лишнего касания. */}
-      <Route path="/table"  element={<ProOnly><PageTransition><LeagueTableScreen /></PageTransition></ProOnly>} />
-      <Route path="/table/:tournament" element={<ProOnly><PageTransition><LeagueTableScreen /></PageTransition></ProOnly>} />
+      <Route path="/table"  element={<AdminOnly><PageTransition><LeagueTableScreen /></PageTransition></AdminOnly>} />
+      <Route path="/table/:tournament" element={<AdminOnly><PageTransition><LeagueTableScreen /></PageTransition></AdminOnly>} />
       {/* Без PageTransition, как и локальная арена: обёртка анимирует transform
           родителя, и первые кадры холста уезжали бы вместе с ним. */}
       {/* Старый адрес онлайн-арены: на него ведут ссылки-приглашения, уже
           разосланные игрокам, и просто удалить его значит их сломать. Экран
           теперь один и сам выбирает режим — см. шапку ArenaScreen. */}
-      <Route path="/minigames" element={<ProOnly><MinigamesScreen /></ProOnly>} />
+      <Route path="/minigames" element={<AdminOnly><MinigamesScreen /></AdminOnly>} />
       {/* Старые адреса мини-игр: ведут в тот же экран, но сразу в свою игру
           (см. `?game=` в шапке MinigamesScreen). Не удалены — на них ведут
           ссылки, уже разосланные игрокам. */}
@@ -197,13 +200,12 @@ export function Router() {
       <Route path="/famous" element={<Navigate to="/minigames?game=famous" replace />} />
       <Route path="/squad"  element={<Navigate to="/minigames?game=squad" replace />} />
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
-      <Route path="/arena"     element={<ProOnly><ArenaScreen /></ProOnly>} />
-      <Route path="/pro"       element={<PageTransition><ProScreen /></PageTransition>} />
+      <Route path="/arena"     element={<AdminOnly><ArenaScreen /></AdminOnly>} />
+      <Route path="/pro"       element={<Navigate to="/admin" replace />} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
-    {showTabs && <TabBar />}
     </div>
     </VoiceProvider>
   );

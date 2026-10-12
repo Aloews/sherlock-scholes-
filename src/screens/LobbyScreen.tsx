@@ -14,6 +14,7 @@ import { copyText, deepLink, shareLink } from '@/features/lobby/invite';
 import { RoomDeckPanel } from '@/features/lobby/RoomDeckPanel';
 import { InviteFriendsPanel } from '@/features/lobby/InviteFriendsPanel';
 import { InviteFansPanel } from '@/features/lobby/InviteFansPanel';
+import { OnlinePanel } from '@/features/social/OnlinePanel';
 import { VoiceControl } from '@/features/voice/VoiceControl';
 import { VideoStage } from '@/features/voice/VideoStage';
 import { QrCode } from '@/shared/ui/QrCode';
@@ -162,6 +163,7 @@ export function LobbyScreen() {
             кем уже играли, и он ближе. Панель прячет себя, когда своих онлайн
             нет. */}
         <InviteFansPanel roomId={room.id} />
+        <OnlinePanel />
 
         {/* Voice is opt-in and asks for the microphone only when tapped.
             Renders nothing when LiveKit is unconfigured. In team mode the

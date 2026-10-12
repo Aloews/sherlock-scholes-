@@ -175,6 +175,39 @@ function StaffCabinet({ password, role, onLogout }: {
         <button className="text-brand-muted text-sm" onClick={onLogout}>Выйти</button>
       </div>
 
+      <section className="rounded-2xl border border-brand-border bg-brand-surface/50 p-3 space-y-2">
+        <p className="text-xs uppercase tracking-wider text-brand-muted">Разделы приложения</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {[
+            ['Коллекция футболистов', '/collection'],
+            ['Рейтинг игроков', '/ratings'],
+            ['Команды', '/clubs'],
+            ['Матчи', '/matches'],
+            ['Новости', '/news'],
+            ['Дайджест', '/digest'],
+            ['Фэнтези', '/fantasy'],
+            ['Мини-игры', '/minigames'],
+            ['Шахматы', '/chess'],
+            ['Футбольная арена', '/arena'],
+            ['Любительские лиги', '/amateur'],
+            ['Друзья', '/friends'],
+            ['Прогнозисты', '/duel'],
+            ['Таблица лиг', '/table'],
+            ['Профиль', '/profile'],
+            ['Источники', '/sources'],
+          ].map(([label, path]) => (
+            <button
+              key={path}
+              type="button"
+              onClick={() => navigate(path)}
+              className="rounded-xl border border-brand-border px-3 py-2 text-left text-xs text-white/90 hover:border-brand-accent transition-colors"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Tabs */}
       <div className="flex gap-2">
         {/* ⚠️ «Прогнозисты» — ТОЛЬКО АДМИНУ, И ЭТО НЕ ОФОРМЛЕНИЕ. Раньше доска
