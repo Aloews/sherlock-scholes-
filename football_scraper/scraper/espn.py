@@ -19,6 +19,9 @@ rule in §4 of docs/LIVE_FOOTBALL_HANDOFF.md, and the safest way to honour that
 is for the parser to never learn the keys exist.
 """
 
+from datetime import date
+
+
 # Stat names as ESPN spells them. Taken from the payload, not from memory:
 # every one of these was read off a real completed match.
 STAT_GOALS = "totalGoals"
@@ -45,17 +48,18 @@ def _stat(entry, name, default=0):
 
 
 def parse_match_date(summary):
-    """`YYYY-MM-DD` of kickoff, or None.
-
-    Taken from the header competition rather than from the request date: a
-    match listed under 15 August can kick off at 23:30Z and belong to the 15th
-    everywhere, and a scoreboard query for one day returns events from two.
-    """
+    """`YYYY-MM-DD` of kickoff, or None; malformed calendar dates are rejected."""
     header = summary.get("header") or {}
     for competition in header.get("competitions") or []:
-        date = competition.get("date")
-        if isinstance(date, str) and len(date) >= 10:
-            return date[:10]
+        raw_date = competition.get("date")
+        if not isinstance(raw_date, str) or len(raw_date) < 10:
+            continue
+        iso_date = raw_date[:10]
+        try:
+            date.fromisoformat(iso_date)
+        except ValueError:
+            continue
+        return iso_date
     return None
 
 
@@ -133,6 +137,24 @@ def parse_player_rows(summary):
                 }
             )
     return rows
+
+
+def has_roster_data(summary):
+    """True only when a match summary contains a parseable player roster.
+
+    ESPN can return HTTP 200 with a partial summary. Treating a missing or
+    empty `rosters` payload as a completed parse silently loses every player
+    from that match, so the collector uses this guard to fail the league run.
+    """
+    rosters = summary.get("rosters") if isinstance(summary, dict) else None
+    if not isinstance(rosters, list) or not rosters:
+        return False
+    return any(
+        isinstance(roster, dict)
+        and isinstance(roster.get("roster"), list)
+        and bool(roster["roster"])
+        for roster in rosters
+    )
 
 
 def completed_events(scoreboard):
