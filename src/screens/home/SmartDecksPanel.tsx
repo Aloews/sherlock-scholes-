@@ -222,7 +222,7 @@ export function SmartDecksPanel({ onStart }: Props) {
         <header className="flex items-start gap-3 p-4 border-b border-brand-border">
           <div className="min-w-0 flex-1">
             <p className="text-[9px] uppercase tracking-[0.16em] font-bold text-brand-accent">{ru?'КОНСТРУКТОР КОЛОДЫ':'DECK BUILDER'}</p>
-            <h2 id="smart-deck-builder-title" className="ds-display text-xl font-extrabold text-white mt-1">{editorials[activeDeck.id]?.title ?? activeDeck.title}</h2>
+            <h2 id="smart-deck-builder-title" className="ds-display text-xl font-extrabold text-white">{activeDeck.title}</h2>
           </div>
           <button type="button" aria-label={ru?'Закрыть':'Close'} onClick={() => setActiveDeck(null)} className="shrink-0 w-9 h-9 rounded-xl border border-brand-border text-brand-muted flex items-center justify-center"><IconX size={18}/></button>
         </header>
