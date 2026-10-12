@@ -44,10 +44,12 @@ export function HomeJoinForm({
           id="room-code-input"
           type="text"
           maxLength={CODE_LENGTH}
+          autoComplete="off"
+          inputMode="text"
           value={code}
           // Верхний регистр применяется только визуально. Состояние не меняется
           // посреди ввода: полная нормализация происходит при проверке кода.
-          onChange={(e) => onCode(e.target.value.slice(0, CODE_LENGTH))}
+          onChange={(e) => onCode(e.currentTarget.value)}
           onPaste={(e) => {
             const pasted = e.clipboardData.getData('text');
             if (/https?:\/\/|[?&](?:startapp|start)=|[\s-]/i.test(pasted)) {
