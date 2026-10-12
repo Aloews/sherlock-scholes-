@@ -52,7 +52,6 @@ as $$
       count(*) filter (where d.match_date <= current_date - 30)::integer as previous_matches,
       coalesce(sum(d.goals) filter (where d.match_date <= current_date - 30), 0)::integer as previous_goals,
       coalesce(sum(d.assists) filter (where d.match_date <= current_date - 30), 0)::integer as previous_assists,
-      max(d.match_date) filter (where d.match_date > current_date - 30) as recent_last_match,
       max(d.match_date) filter (where d.match_date > current_date - 30) as recent_last_match
     from per_day d
     group by d.card_id
@@ -68,11 +67,25 @@ as $$
   join source_freshness sf on sf.card_id = a.card_id
   join public.cards c on c.id = a.card_id
   where c.active and c.category = 'player'
-    and (a.recent_matches > 0 or a.previous_matches > 0)
+    and a.recent_matches >= 3
+    and a.previous_matches >= 3
+    and (a.recent_goals * 4 + a.recent_assists * 3) >= 12
+    and sf.stats_collected_at >= now() - interval '72 hours'
+    and (
+      ((a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches)
+      - ((a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches)
+    ) >= 1
+    and (
+      (a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches
+    ) >= (
+      (a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches
+    ) * 1.5
   order by
+    (
+      ((a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches)
+      - ((a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches)
+    ) desc,
     (a.recent_goals * 4 + a.recent_assists * 3) desc,
-    a.recent_goals desc,
-    a.recent_matches desc,
     c.name
   limit greatest(1, least(coalesce(p_limit, 100), 1000));
 $$;
