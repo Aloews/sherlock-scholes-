@@ -50,11 +50,11 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[]) 
   ]);
   if (playersResult.error || otherResult.error) throw new Error("catalog_unavailable");
 
-  const tokens = [...new Set(prompt.split(/[^\\p{L}\\p{N}]+/u).filter((x) => x.length >= 3))].slice(0, 8);
+  const tokens = [...new Set(prompt.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 3))].slice(0, 8);
   let named: CardRow[] = [];
   if (tokens.length) {
     const clauses = tokens.flatMap((token) => {
-      const safe = token.replace(/[(),.%_\\\\]/g, "");
+      const safe = token.replace(/[(),.%_\\]/g, "");
       return safe ? [`name.ilike.%${safe}%,name_en.ilike.%${safe}%`] : [];
     });
     if (clauses.length) {
