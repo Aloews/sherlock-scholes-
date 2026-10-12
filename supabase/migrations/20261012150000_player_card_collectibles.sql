@@ -42,7 +42,6 @@ ALTER TABLE public.player_card_guess_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.player_card_progress FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.player_card_collectibles FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.player_card_guess_events FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON TABLE public.player_card_guess_events FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.credit_collectible_card_progress()
 RETURNS trigger
@@ -153,8 +152,50 @@ BEGIN
 END;
 $function$;
 
+
+CREATE OR REPLACE FUNCTION public.my_card_collectible_progress(p_init_data text)
+RETURNS TABLE (
+  card_id uuid,
+  name text,
+  name_en text,
+  category text,
+  category_ru text,
+  photo_url text,
+  tier text,
+  correct_guesses integer
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_me bigint;
+BEGIN
+  v_me := public.tg_validate_init_data(p_init_data);
+  IF v_me IS NULL THEN
+    RAISE EXCEPTION 'UNAUTHORIZED';
+  END IF;
+
+  RETURN QUERY
+  SELECT c.id, c.name, c.name_en, c.category, c.category_ru,
+         c.photo_url, c.tier, p.correct_guesses
+  FROM public.player_card_progress p
+  JOIN public.cards c ON c.id = p.card_id
+  WHERE p.player_id = v_me
+    AND p.correct_guesses < 100
+    AND NOT EXISTS (
+      SELECT 1 FROM public.player_card_collectibles i
+      WHERE i.player_id = v_me AND i.card_id = p.card_id
+    )
+  ORDER BY p.correct_guesses DESC, p.last_guessed_at DESC, c.name
+  LIMIT 3;
+END;
+$function$;
+
 REVOKE ALL ON FUNCTION public.credit_collectible_card_progress() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.my_card_collectibles(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.my_card_collectibles(text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.my_card_collectible_progress(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.my_card_collectible_progress(text) TO anon, authenticated;
 
 COMMIT;
