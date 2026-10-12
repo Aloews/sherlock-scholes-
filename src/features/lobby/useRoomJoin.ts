@@ -72,30 +72,17 @@ export function useRoomJoin({ formOpen, onJoining, onFallBackToForm }: Options) 
     if (!useGameStore.getState().room) onFallBackToForm();
   }, [player, joinRoom, onJoining, onFallBackToForm]);
 
-  /** Войти по тому, что набрано в поле. */
+  /** Ручной ввод — явное действие; открытые комнаты доступны для входа в один тап. */
   const submit = useCallback(async () => {
     if (!typedCode) return;
-    await joinRoom(typedCode);
-  }, [typedCode, joinRoom]);
+    await enter(typedCode);
+  }, [typedCode, enter]);
 
-  // ПОСЛЕДНИЙ СИМВОЛ И ЕСТЬ КНОПКА. Шесть символов — это весь код, решать
-  // после них нечего, а просить нажатие значит просить игрока найти кнопку,
-  // на которой сидит клавиатура (docs/LOBBY_AND_VOICE_FIXES.md §2).
-  //
-  // Защёлка — по коду, который пробовали последним, а не булевым флагом: после
-  // отказа поле сохраняет содержимое, чтобы его поправили, и простой признак
-  // «уже пробовали» либо срабатывал бы на каждом рендере, либо не срабатывал
-  // больше никогда.
-  const autoJoined = useRef<string | null>(null);
-  useEffect(() => {
-    if (!formOpen || !typedCode || loading) return;
-    // Ещё не авторизованы: joinRoom откажет мгновенно, и защёлка ниже
-    // запомнила бы этот отказ как «этот код уже пробовали».
-    if (!player) return;
-    if (autoJoined.current === typedCode) return;
-    autoJoined.current = typedCode;
-    void joinRoom(typedCode);
-  }, [formOpen, typedCode, loading, joinRoom, player]);
+  // Вход не запускается автоматически при наборе последнего символа:
+  // это было неожиданно для пользователей и конфликтовало с исправлением
+  // кода комнаты. Для простого входа есть список открытых комнат в один тап;
+  // для приватной комнаты пользователь явно подтверждает полный код кнопкой
+  // или Enter. Ссылки-приглашения по-прежнему открывают комнату напрямую.
 
   // Пришли по ссылке-приглашению (t.me/…?startapp=CODE): Telegram отдаёт
   // полезную нагрузку в start_param, и это единственное место, которое её

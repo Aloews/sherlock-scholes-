@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconChevronLeft, IconTrophy, IconShirt, IconFlag } from '@tabler/icons-react';
-import { PlayerCard } from '@/shared/ui/PlayerCard';
 import { CATEGORY_COLOR, CATEGORY_FALLBACK_COLOR } from '@/shared/ui/CategoryIcon';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { byLatestFirst } from '@/shared/lib/careerOrder';
@@ -376,125 +375,111 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
       </div>
 
       <div className="max-w-sm mx-auto px-5 py-5 space-y-5 pb-12">
-        {/* Hero — the same card the game shows, framed by rarity. */}
-        <PlayerCard card={card} mode="explainer" />
-
-        {tierLabel && (
-          <p
-            className="text-center text-[11px] font-bold uppercase tracking-[0.12em] -mt-2"
-            style={{ color: TIER_COLOR[card.tier!] }}
-          >
-            {tierLabel}
-          </p>
-        )}
-
-        {/* ОДНА строка о человеке — та, что есть: матчи за сборную, иначе
-            число лиг, иначе дата рождения. Владелец: «в карточках стоит
-            писать матчей за сборной или количество лиг, где играл игрок. Если
-            эти данных нет, то дату рождения». Лестница, а не набор: показать
-            всё сразу значит утопить главное. */}
-        {highlight && (
-          <p className="text-center text-brand-muted text-[12px] -mt-2">
-            {highlight.kind === 'national' && t('collection.hl_national', {
-              team: highlight.team, apps: highlight.apps, goals: highlight.goals,
-            })}
-            {highlight.kind === 'leagues' && t('collection.hl_leagues', {
-              leagues: highlight.leagues, countries: highlight.countries,
-            })}
-            {highlight.kind === 'born' && bornText
-              && t('collection.hl_born', { date: bornText })}
-          </p>
-        )}
-
-        {/* ⚠️ FIGURE, А НЕ ДВА СОСЕДА, И ЭТО ТОЖЕ ПРО ПРАВА. Снимок и подпись к
-            нему — одно целое: `figure` + `figcaption` ровно это и означают в
-            HTML, а `itemScope`/`itemType` делают связку машиночитаемой. Пока
-            подпись стояла отдельным элементом рядом, ни один разбор не мог
-            сказать, к какому изображению она относится, — а у нас на экране
-            их два (второй, размытый, декоративен и копия того же файла). */}
-        {card.photo_url && (
-          <figure className="m-0 space-y-0" itemScope itemType="https://schema.org/ImageObject">
-          <div
-            className="relative w-full h-[180px] rounded-2xl border border-brand-border
-                       bg-brand-surface overflow-hidden flex items-center justify-center"
-          >
-            {/* object-contain, not object-cover: source photos range from tight
-                headshots to full-body shots, and a fixed-height crop was cutting
-                a lot of them off. Showing the whole photo (letterboxed if needed)
-                never loses the subject, at the cost of some empty space beside
-                narrow ones.
-
-                ⚠️ ПУСТОТУ ПО БОКАМ ЗАКРЫВАЕТ РАЗМЫТАЯ КОПИЯ ТОГО ЖЕ СНИМКА, а
-                не обрезка. Обрезка вернула бы ровно то, из-за чего здесь и
-                появился object-contain — отрезанные головы; размытая подложка
-                заполняет кадр, не трогая сам портрет. Картинка одна и та же,
-                браузер берёт её из кэша: второго запроса в сеть нет.
-
-                aria-hidden и alt="" — подложка декоративна, читалке экрана её
-                объявлять нечего: подпись несёт снимок сверху. */}
+        {/* Player dossier hero: portrait + identity + verified team. Unlike the game card,
+            this is a profile view, so the face and the footballer's identity lead. */}
+        <section className="relative overflow-hidden rounded-3xl border border-brand-border bg-brand-surface">
+          {card.photo_url && (
             <img
               src={card.photo_url}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40"
+              className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-25"
             />
-            <img
-              src={card.photo_url}
-              alt={name}
-              className="relative max-w-full max-h-full object-contain"
-              itemProp="contentUrl"
-              {...provenanceAttrs({ url: card.photo_url, source: card.photo_source })}
-            />
-            {card.ovr != null && (
-              <div
-                role="img"
-                aria-label={t('collection.ovr_aria', { value: card.ovr })}
-                className="absolute top-3 left-3 w-11 h-11 rounded-xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(155deg, rgb(var(--brand-accent-soft)), rgb(var(--brand-accent)))',
-                }}
-              >
-                <span className="ds-display text-[16px] font-extrabold text-brand-bg">{card.ovr}</span>
-              </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-brand-bg/10 via-brand-bg/65 to-brand-bg" />
+          <div className="relative p-4">
+            {card.photo_url ? (
+              <figure className="m-0">
+                <div className="relative h-[250px] sm:h-[280px] flex items-center justify-center">
+                  <img
+                    src={card.photo_url}
+                    alt={name}
+                    className="max-h-full max-w-full object-contain drop-shadow-2xl"
+                    itemProp="contentUrl"
+                    {...provenanceAttrs({ url: card.photo_url, source: card.photo_source })}
+                  />
+                  {card.ovr != null && (
+                    <div className="absolute left-0 top-2 rounded-xl border border-white/15 bg-brand-bg/80 px-3 py-2 text-center backdrop-blur">
+                      <span className="block ds-display text-2xl font-black text-white tabular-nums">{card.ovr}</span>
+                      <span className="block text-[8px] uppercase tracking-widest text-brand-muted">{t('collection.ovr_aria', { value: card.ovr })}</span>
+                    </div>
+                  )}
+                  {tierLabel && (
+                    <span className="absolute right-0 top-2 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider backdrop-blur bg-brand-bg/75"
+                      style={{ color: TIER_COLOR[card.tier!] }}>
+                      {tierLabel}
+                    </span>
+                  )}
+                </div>
+                <PhotoCredit url={card.photo_url} sourceKey={card.photo_source} as="figcaption" />
+              </figure>
+            ) : (
+              <div className="h-28 flex items-center justify-center text-5xl" aria-hidden="true">⚽</div>
             )}
-          </div>
-          {/* ⚠️ ПОДПИСЬ — УСЛОВИЕ ЛИЦЕНЗИИ, А НЕ ПОДРОБНОСТЬ. Снимки с
-              Викисклада (7072 файла, замер 22.09.2026) лежат под CC BY / CC
-              BY-SA: показывать их можно и коммерчески, ровно пока названы
-              автор и лицензия. Досье — единственное место в игре, где у
-              снимка есть место под строку: в самой игре карточка показывается
-              секундами и подпись там была бы нечитаемой. Невидимую метку
-              PhotoCredit ставит здесь же — внутри этого figure. */}
-          <PhotoCredit url={card.photo_url} sourceKey={card.photo_source} as="figcaption" />
-          </figure>
-        )}
 
-        {/* Two per row, not the prototype's four: its tiles held numbers, ours
-            hold words like "Нападающий", which truncate at 390px. */}
+            <div className="pt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {card.country && (
+                  <span className="text-lg leading-none" aria-label={countryName(card.country, lang) ?? card.country}>
+                    {flag || '🌍'}
+                  </span>
+                )}
+                {card.category === 'player' && (
+                  <span className="rounded-full border border-brand-border bg-brand-bg/70 px-2 py-1 text-[9px] uppercase tracking-wider text-brand-muted">
+                    {card.tags?.includes('legend') ? (isRu ? 'Легенда' : 'Legend') : (isRu ? 'Игрок' : 'Player')}
+                  </span>
+                )}
+              </div>
+              <h1 className="ds-display text-2xl sm:text-3xl font-extrabold leading-tight text-white">{name}</h1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-brand-muted">
+                {(card.position_ru || facts?.position) && (
+                  <span>{positionName(card.position_ru ?? facts?.position ?? null, lang) ?? (card.position_ru ?? facts?.position)}</span>
+                )}
+                {card.country && (
+                  <span>{countryName(card.country, lang) ?? card.country}</span>
+                )}
+              </div>
+              {club && (
+                <button
+                  type="button"
+                  onClick={() => { hapticImpact('light'); navigate(`/club/${encodeURIComponent(club.club_key)}`); }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-brand-border bg-brand-bg/70 px-3 py-2 text-left text-sm text-white"
+                >
+                  {club.crest_url && <img src={club.crest_url} alt="" className="h-6 w-6 object-contain" loading="lazy" {...provenanceAttrs({ url: club.crest_url })} />}
+                  <span>
+                    <span className="block text-[9px] uppercase tracking-wider text-brand-muted">{isRu ? 'Клуб по подтверждённым данным' : 'Verified club'}</span>
+                    <span className="block font-semibold">{club.name}</span>
+                  </span>
+                  <IconChevronLeft size={14} className="rotate-180 text-brand-muted" />
+                </button>
+              )}
+              {highlight && (
+                <p className="border-t border-white/10 pt-3 text-[12px] leading-relaxed text-white/80">
+                  {highlight.kind === 'national' && t('collection.hl_national', {
+                    team: highlight.team, apps: highlight.apps, goals: highlight.goals,
+                  })}
+                  {highlight.kind === 'leagues' && t('collection.hl_leagues', {
+                    leagues: highlight.leagues, countries: highlight.countries,
+                  })}
+                  {highlight.kind === 'born' && bornText && t('collection.hl_born', { date: bornText })}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Only confirmed facts are shown. Missing attributes stay absent rather than guessed. */}
         {tiles.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             {tiles.map((tile) => (
-              <div
-                key={tile.label}
-                className="ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5 text-center"
-              >
-                <p className="text-[13px] font-bold text-white truncate">{tile.value}</p>
-                <p className="text-[9px] uppercase tracking-[0.05em] text-brand-muted mt-0.5">
-                  {tile.label}
-                </p>
+              <div key={tile.label} className="ds-panel bg-brand-surface border border-brand-border rounded-xl px-3 py-3">
+                <p className="text-[14px] font-bold text-white truncate">{tile.value}</p>
+                <p className="text-[9px] uppercase tracking-[0.05em] text-brand-muted mt-1">{tile.label}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* ВИД КАРТОЧКИ ПО SOCCER WIKI. Владелец: «вид карточки команд и
-            игроков и данные взять с https://en.soccerwiki.org/». Рейтинг
-            1–99, роль словом, рост, вес и рабочая нога — ни одного из этих
-            полей у проекта до сих пор не было. Стоит ПЕРЕД «Характеристиками»
-            намеренно: те шесть полос до сих пор пусты (`cards.attributes`
-            никто не заполняет), а это — настоящие числа.
-
-            Блок сам себя не рисует, если карточка не связана с источником. */}
         <SoccerWikiPanel cardId={card.id} />
 
         {attributeRows.length > 0 && (
@@ -507,10 +492,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                     <span className="font-bold text-white">{row.value}</span>
                   </div>
                   <div className="h-[5px] rounded-full bg-brand-border overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${row.value}%`, background: 'var(--accent-gradient)' }}
-                    />
+                    <div className="h-full rounded-full" style={{ width: `${row.value}%`, background: 'var(--accent-gradient)' }} />
                   </div>
                 </div>
               ))}

@@ -12,7 +12,12 @@ create table public.cards (
   category text not null,
   active boolean not null default true,
   photo_url text,
-  country text
+  country text,
+  continent text,
+  top_league text,
+  tags text[],
+  langs text[],
+  fame smallint
 );
 
 create table public.player_match_stats (

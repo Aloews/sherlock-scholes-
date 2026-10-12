@@ -26,7 +26,9 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
+import { OnlinePanel } from '@/features/social/OnlinePanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
+import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
 
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
@@ -203,6 +205,14 @@ export function HomeScreen() {
           </div>
         )}
 
+        {/* Online players are actionable from the landing screen: this is where
+            players decide whether to start a game or invite someone into one. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <OnlinePanel />
+          </div>
+        )}
+
         {/* ⚠️ ИМЕНИ ЗДЕСЬ БОЛЬШЕ НЕТ. Владелец: «подпись „имени“ … можно
             убрать с главной». Раньше отсюда ушло «С возвращением», и по той
             же причине: аватар в шапке уже говорит, чей это телефон, а строка
@@ -217,6 +227,10 @@ export function HomeScreen() {
               onClick={() => setView('alias')}
             />
           </div>
+        )}
+
+        {view === 'home' && (
+          <SmartDecksPanel onStart={startGame} />
         )}
 
         {/* ── The football Alias's own actions ── */}
@@ -294,6 +308,8 @@ export function HomeScreen() {
             inputRef={join.inputRef}
             loading={loading}
             onSubmit={() => { void join.submit(); }}
+            onJoinRoom={(roomCode) => { void join.enter(roomCode); }}
+            playerId={player?.id ?? null}
             onBack={() => { join.setCode(''); setView('home'); }}
           />
         )}
