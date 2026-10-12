@@ -40,6 +40,7 @@ describe('HomeJoinForm room-code input', () => {
       expect(input.value).toBe(value);
     }
     expect(input.value).toHaveLength(6);
+    expect(normalizeCode(input.value)).toBe('AB12CD');
     expect(screen.getByRole('button', { name: 'home.join_room' })).toHaveProperty('disabled', false);
   });
 
