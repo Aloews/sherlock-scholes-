@@ -1,6 +1,5 @@
--- Collectible cards: unlock a card after 100 successful team guesses.
--- In team mode a correct answer is a team achievement; every member of the
--- guessing team receives progress. The explainer's team is rounds.team_id.
+-- Collectible cards: unlock a card after 100 correct guesses in 1v1 only.
+-- Team games are excluded because the individual guesser is not identifiable.
 -- Attribution is server-side and idempotent: only pending/skipped -> correct
 -- status transitions can increment progress once.
 BEGIN;
@@ -44,6 +43,7 @@ SELECT rc.id, rp.player_id, rc.card_id,
        coalesce(rc.decided_at, r.ended_at, r.started_at, now())
 FROM public.round_cards rc
 JOIN public.rounds r ON r.id = rc.round_id
+JOIN public.rooms rm ON rm.id = r.room_id AND rm.mode = '1v1'
 JOIN public.room_players rp
   ON rp.room_id = r.room_id
  AND rp.team_id IS NOT NULL
@@ -81,6 +81,7 @@ AS $function$
 DECLARE
   v_room_id uuid;
   v_explainer_team_id uuid;
+  v_mode text;
   v_player record;
   v_count integer;
   v_event_player bigint;
@@ -89,18 +90,20 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT r.room_id, r.team_id
-    INTO v_room_id, v_explainer_team_id
+  SELECT r.room_id, r.team_id, rm.mode
+    INTO v_room_id, v_explainer_team_id, v_mode
   FROM public.rounds r
+  JOIN public.rooms rm ON rm.id = r.room_id
   WHERE r.id = NEW.round_id;
 
-  IF v_room_id IS NULL OR v_explainer_team_id IS NULL OR NEW.card_id IS NULL THEN
+  IF v_mode IS DISTINCT FROM '1v1'
+     OR v_room_id IS NULL
+     OR v_explainer_team_id IS NULL
+     OR NEW.card_id IS NULL THEN
     RETURN NEW;
   END IF;
 
-  -- The active round's team explains; players on the opposing team guess.
-  -- In a team game this credits the team collectively because the current
-  -- UI does not identify one individual speaker among the guessing team.
+  -- In 1v1, the opposing team_id belongs to exactly one guessing player.
   FOR v_player IN
     SELECT rp.player_id
     FROM public.room_players rp
