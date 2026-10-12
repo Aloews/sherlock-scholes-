@@ -1,4 +1,4 @@
-export interface NewsHeadline { title: string; url: string; source: string; published_at: string }
+export interface NewsHeadline { title: string; url: string; source: string; published_at: string; description?: string | null; summary_short?: string | null }
 export interface LegendClub { club: string; years: string }
 export interface CanonicalPlayer {
   id: string; name: string; name_en: string | null; photo_url: string | null;
@@ -70,10 +70,10 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const matches: NewsCardMatch[] = [];
   const used = new Set<string>();
   for (const headline of headlines) {
-    const title = normalizeFootballText(headline.title);
+    // Many real football stories mention the player in the summary/body, not in the headline.\n    // Match against all ingested editorial text, while the server still verifies the URL/title.\n    const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
     if (!title) continue;
     for (const entry of normalizedPlayers) {
-      if (used.has(entry.player.id) || !entry.names.some((name) => title.includes(name))) continue;
+      if (used.has(entry.player.id) || !entry.names.some((name) => articleText.includes(name))) continue;
       used.add(entry.player.id);
       matches.push({ id: entry.player.id, name: entry.player.name, photo_url: entry.player.photo_url, matchedHeadline: headline });
       if (matches.length >= maxCards) return matches;
