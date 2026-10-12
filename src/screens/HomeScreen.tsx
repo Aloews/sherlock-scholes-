@@ -29,7 +29,7 @@ import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
-import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
+import type { CardCategory } from '@/shared/types/database';
 
 // 'alias' is the football Alias's own menu — quick game, competitive, join.
 // It exists because the home screen is now a LIST OF GAMES and Alias is one of
