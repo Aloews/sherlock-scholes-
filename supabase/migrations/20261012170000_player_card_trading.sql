@@ -143,6 +143,14 @@ BEGIN
     RAISE EXCEPTION 'NOT_FRIEND';
   END IF;
 
+  IF (
+    SELECT count(*)
+    FROM public.player_card_trade_offers t
+    WHERE t.from_player_id = v_me AND t.created_at >= now() - interval '24 hours'
+  ) >= 20 THEN
+    RAISE EXCEPTION 'TRADE_RATE_LIMIT';
+  END IF;
+
   SELECT i.card_id INTO v_offered_card_id
   FROM public.player_card_collectibles i
   WHERE i.id = p_offered_collectible_id AND i.player_id = v_me
