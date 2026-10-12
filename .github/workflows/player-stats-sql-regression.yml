@@ -1,0 +1,45 @@
+name: player-stats-sql-regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sql-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sherlock_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sherlock_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: sherlock_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Create disposable test schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_test_setup.sql
+      - name: Apply rating-cache migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261009190000_fix_player_rating_cache_and_card_verification.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012080000_player_rating_cache_per_card_fallback.sql
+      - name: Run SQL regression assertions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_refresh.test.sql
