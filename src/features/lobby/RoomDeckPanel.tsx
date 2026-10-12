@@ -10,13 +10,12 @@
 // and a wall of chips above the team grid gets in the way of that; the summary
 // line says what the deck is in one line, and the host opens it to change it.
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Chip } from '@/shared/ui/Chip';
 import { OptionRow } from '@/shared/ui/OptionRow';
 import { SelectRow } from '@/shared/ui/SelectRow';
-import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
-import { supabase } from '@/shared/lib/supabase';
+import { hapticImpact } from '@/shared/lib/telegram';
 import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { isWholeDeck } from '@/features/room/roomDeck';
 import { IconChevronDown } from '@tabler/icons-react';
@@ -78,9 +77,6 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [squads, setSquads] = useState<Squad[]>([]);
-  const [deckPrompt, setDeckPrompt] = useState('');
-  const [buildingDeck, setBuildingDeck] = useState(false);
-  const [deckPromptError, setDeckPromptError] = useState('');
 
   // Only the host can pick one, and only once the panel is open — the list is
   // an RPC, and every guest in every lobby fetching it buys nothing.
@@ -145,45 +141,6 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
 
   const nothingSelected = Array.isArray(filter.categories) && filter.categories.length === 0;
 
-  const buildDeckFromPrompt = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const prompt = deckPrompt.trim();
-    if (!prompt || buildingDeck) return;
-    const initData = getRawInitData();
-    if (!initData) {
-      setDeckPromptError(i18n.language.startsWith('ru')
-        ? 'Открой приложение через Telegram.'
-        : 'Open the app through Telegram.');
-      return;
-    }
-    setBuildingDeck(true);
-    setDeckPromptError('');
-    try {
-      const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
-        body: {
-          prompt,
-          language: i18n.language.startsWith('ru') ? 'ru' : 'en',
-          init_data: initData,
-          current_card_ids: filter.card_ids ?? [],
-        },
-      });
-      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
-      const cards = Array.isArray(data.cards) ? data.cards.filter((card: { id?: unknown; category?: unknown }) =>
-        typeof card.id === 'string' && typeof card.category === 'string') : [];
-      const ids = [...new Set(cards.map((card: { id: string }) => card.id))];
-      if (ids.length < 3) throw new Error('not_enough_cards');
-      const categories = [...new Set(cards.map((card: { category: string }) => card.category))] as CardCategory[];
-      patch({ card_ids: ids, categories, leagues: null, clubs: null, countries: null, continents: null, tags: null });
-      setDeckPrompt('');
-    } catch (error) {
-      setDeckPromptError(error instanceof Error && error.message === 'not_enough_cards'
-        ? (i18n.language.startsWith('ru') ? 'Недостаточно карточек по запросу. Уточни тему.' : 'Not enough matching cards. Refine the request.')
-        : (i18n.language.startsWith('ru') ? 'Не удалось собрать колоду. Попробуй ещё раз.' : 'Could not build the deck. Try again.'));
-    } finally {
-      setBuildingDeck(false);
-    }
-  };
-
   return (
     <div className="ds-panel bg-brand-surface rounded-2xl border border-brand-border overflow-hidden">
       <button
@@ -216,22 +173,6 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
 
       {open && isHost && (
         <div className="px-4 pb-4 space-y-3 border-t border-brand-border pt-3 animate-fade-in">
-          <form onSubmit={buildDeckFromPrompt} className="space-y-2">
-            <textarea
-              aria-label={i18n.language.startsWith('ru') ? 'Запрос для колоды' : 'Deck request'}
-              value={deckPrompt}
-              onChange={(event) => setDeckPrompt(event.target.value)}
-              rows={2}
-              maxLength={1000}
-              placeholder={i18n.language.startsWith('ru') ? 'Например: легенды Реала 2010-х, только вратари' : 'E.g. Real Madrid legends from the 2010s, goalkeepers only'}
-              className="w-full resize-none rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
-            />
-            <button type="submit" disabled={!deckPrompt.trim() || buildingDeck} className="w-full rounded-xl bg-brand-accent px-4 py-2.5 text-sm font-bold text-brand-bg disabled:opacity-40">
-              {buildingDeck ? (i18n.language.startsWith('ru') ? 'Собираем…' : 'Building…') : (i18n.language.startsWith('ru') ? 'Собрать колоду' : 'Build deck')}
-            </button>
-            {deckPromptError && <p role="alert" className="text-xs text-red-300">{deckPromptError}</p>}
-          </form>
-
           <OptionRow
             leading="⚽"
             title={t('category.player')}
