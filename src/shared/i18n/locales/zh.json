@@ -216,7 +216,16 @@
     "level": "等级 {{n}}",
     "xp_progress": "距下一等级还需 {{into}} / {{total}} XP",
     "streak_other": "连续 {{count}} 天",
-    "streak_best_other": "最佳 {{count}} 天"
+    "streak_best_other": "最佳 {{count}} 天",
+    "collectibles_title": "收藏卡牌",
+    "collectibles_count": "已解锁卡牌",
+    "collectibles_hint": "在团队游戏中答对卡牌。同一张卡牌答对 100 次后，它就会加入你的个人收藏。",
+    "collectibles_empty": "还没有收藏卡牌。同一张卡牌答对 100 次即可解锁第一张。",
+    "collectibles_error": "无法加载收藏，请稍后重试。",
+    "collectibles_guesses": "答对次数",
+    "collectibles_owned": "收藏卡",
+    "collectibles_progress_title": "即将解锁",
+    "collectibles_progress_remaining": "还需答对"
   },
   "rights": {
     "title": "来源与权利",

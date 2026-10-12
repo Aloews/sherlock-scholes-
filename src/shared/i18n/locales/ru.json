@@ -228,7 +228,16 @@
     "streak_best_one": "рекорд {{count}} день",
     "streak_best_few": "рекорд {{count}} дня",
     "streak_best_many": "рекорд {{count}} дней",
-    "streak_best_other": "рекорд {{count}} дня"
+    "streak_best_other": "рекорд {{count}} дня",
+    "collectibles_title": "Коллекционные карточки",
+    "collectibles_count": "Открыто карточек",
+    "collectibles_hint": "Правильно угадывайте карточки в командных играх. После 100 верных отгадок одной и той же карточки она попадёт в ваш профиль.",
+    "collectibles_empty": "Пока нет коллекционных карточек. Первая откроется после 100 верных отгадок одной карточки.",
+    "collectibles_error": "Не удалось загрузить коллекцию. Попробуйте позже.",
+    "collectibles_guesses": "Верных отгадок",
+    "collectibles_owned": "Коллекционная",
+    "collectibles_progress_title": "Ближе всего к открытию",
+    "collectibles_progress_remaining": "Осталось до открытия"
   },
   "rights": {
     "title": "Источники и права",

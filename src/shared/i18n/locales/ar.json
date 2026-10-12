@@ -231,7 +231,16 @@
     "streak_best_two": "الأفضل: يومان",
     "streak_best_few": "الأفضل: {{count}} أيام",
     "streak_best_many": "الأفضل: {{count}} يومًا",
-    "streak_best_other": "الأفضل: {{count}} يوم"
+    "streak_best_other": "الأفضل: {{count}} يوم",
+    "collectibles_title": "بطاقات قابلة للجمع",
+    "collectibles_count": "البطاقات المفتوحة",
+    "collectibles_hint": "أجب بشكل صحيح عن البطاقات في مباريات الفرق. بعد الإجابة الصحيحة عن البطاقة نفسها 100 مرة، تُضاف إلى مجموعة ملفك الشخصي.",
+    "collectibles_empty": "لا توجد بطاقات قابلة للجمع بعد. افتح بطاقتك الأولى بالإجابة الصحيحة عن البطاقة نفسها 100 مرة.",
+    "collectibles_error": "تعذر تحميل المجموعة. حاول مرة أخرى لاحقًا.",
+    "collectibles_guesses": "الإجابات الصحيحة",
+    "collectibles_owned": "قابلة للجمع",
+    "collectibles_progress_title": "الأقرب إلى الفتح",
+    "collectibles_progress_remaining": "الإجابات المتبقية"
   },
   "rights": {
     "title": "المصادر والحقوق",

@@ -220,7 +220,16 @@
     "streak_one": "Streak: {{count}} day",
     "streak_other": "Streak: {{count}} days",
     "streak_best_one": "best {{count}} day",
-    "streak_best_other": "best {{count}} days"
+    "streak_best_other": "best {{count}} days",
+    "collectibles_title": "Collectible cards",
+    "collectibles_count": "Cards unlocked",
+    "collectibles_hint": "Guess cards correctly in team games. After 100 correct guesses of the same card, it becomes part of your profile collection.",
+    "collectibles_empty": "No collectibles yet. Your first card unlocks after 100 correct guesses of the same card.",
+    "collectibles_error": "Couldn't load collectibles. Try again later.",
+    "collectibles_guesses": "Correct guesses",
+    "collectibles_owned": "Collectible",
+    "collectibles_progress_title": "Closest to unlock",
+    "collectibles_progress_remaining": "More to unlock"
   },
   "rights": {
     "title": "Sources and rights",
