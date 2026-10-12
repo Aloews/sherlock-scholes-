@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
+import { buildGoldenEra, buildStatisticalComparisons, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
 import { normalizeFilter } from '@/shared/types/deck';
 const players: CanonicalPlayer[] = [
  { id:'messi', name:'Лионель Месси', name_en:'Lionel Messi', photo_url:null, country:'AR', position_ru:'Нападающий', fame:100 },
@@ -60,3 +60,50 @@ describe('exact-card deck filter', () => {
     ];
     expect(buildGoldenEra(squad)).toBeNull();
   });
+
+
+describe('cross-era statistical comparisons', () => {
+  const cohort: CanonicalPlayer[] = [
+    { ...players[0], name: 'Historical Example', top_league: 'Premier League', tags: ['legend'], facts: { years_active: '1988–2000' }, career_stats: [{ apps: 100, goals: 30, years: '1988–2000' }] },
+    { ...players[1], name: 'Current Example', top_league: 'Premier League', tags: [], facts: { years_active: '2010–2026' }, career_stats: [{ apps: 90, goals: 25, years: '2010–2026' }] },
+    { ...players[2], name: 'Third Example', top_league: 'Premier League', tags: [], facts: { years_active: '2020–2026' }, career_stats: [{ apps: 20, goals: 7, years: '2020–2026' }] },
+  ];
+
+  it('builds a league cohort only with comparable career totals and both eras represented', () => {
+    const result = buildStatisticalComparisons(cohort, new Set(['salah']));
+    expect(result).toHaveLength(1);
+    expect(result[0].groupBy).toBe('league');
+    expect(result[0].groupKey).toBe('Premier League');
+    expect(result[0].players.map((p) => p.id)).toContain('messi');
+    expect(result[0].careerTotals.every((row) => row.appearances >= 0 && row.goals >= 0)).toBe(true);
+  });
+
+  it('does not treat nationality as country of birth', () => {
+    const nationalityOnly = cohort.map((p) => ({ ...p, top_league: null, facts: undefined }));
+    expect(buildStatisticalComparisons(nationalityOnly, new Set(['salah']))).toEqual([]);
+  });
+
+  it('uses only an explicit birthplace field for birthplace cohorts', () => {
+    const birthplace = cohort.map((p) => ({
+      ...p,
+      top_league: null,
+      facts: { ...(p.facts ?? {}), birth_country: 'Argentina' },
+    }));
+    const result = buildStatisticalComparisons(birthplace, new Set(['salah']));
+    expect(result).toHaveLength(1);
+    expect(result[0].groupBy).toBe('birth-country');
+    expect(result[0].groupKey).toBe('Argentina');
+  });
+
+  it('does not mistake a fame tag for evidence of a past career', () => {
+    const noRetirementEvidence = cohort.map((p) => ({
+      ...p, facts: { years_active: '2010–2026' },
+      career_stats: [{ apps: 100, goals: 20, years: '2010–2026' }],
+    }));
+    expect(buildStatisticalComparisons(noRetirementEvidence, new Set(['salah']))).toEqual([]);
+  });
+
+  it('does not create a mixed-era comparison without a recent-form player', () => {
+    expect(buildStatisticalComparisons(cohort, new Set())).toEqual([]);
+  });
+});

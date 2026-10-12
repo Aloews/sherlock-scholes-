@@ -14,7 +14,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Family = "form" | "form-news" | "news" | "golden-era";
+type Family = "form" | "form-news" | "news" | "golden-era" | "comparison";
 interface Evidence {
   card_id: string;
   title: string;
@@ -32,9 +32,16 @@ interface Candidate {
   evidence?: Evidence[];
   era?: { club: string; startYear: number; endYear: number };
   stats?: Array<{ card_id: string; matches: number; goals: number; assists: number }>;
+  groupBy?: "league" | "birth-country";
+  groupKey?: string;
+  careerTotals?: Array<{ card_id: string; appearances: number; goals: number; assists: number | null }>;
 }
 interface CardDbRow {
   id: string; name: string; name_en: string | null; active: boolean; category: string;
+  top_league: string | null;
+  career_stats: Array<{ apps?: number | null; goals?: number | null; assists?: number | null; years?: string }> | null;
+  facts: Record<string, unknown> | null;
+  tags: string[] | null;
   legend_career: { clubs?: Array<{ club?: string; years?: string }> } | null;
 }
 interface NewsDbRow { title: string; url: string; source: string; published_at: string }
@@ -58,6 +65,27 @@ function normalize(value: string): string {
 function safeText(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/[<>]/g, "").trim().slice(0, max) : "";
 }
+
+function isHistoricalCard(card: CardDbRow): boolean {
+  const candidates: string[] = [];
+  const yearsActive = card.facts?.years_active;
+  if (typeof yearsActive === "string") candidates.push(yearsActive);
+  for (const row of card.career_stats ?? []) {
+    if (typeof row.years === "string") candidates.push(row.years);
+  }
+  let latestEnd: number | null = null;
+  for (const value of candidates) {
+    const text = value.trim();
+    if (!text || /[-–—]\s*$/.test(text)) continue;
+    const match = text.match(/(\d{4})(?:\D+(\d{4}))?/);
+    if (!match) continue;
+    const end = Number(match[2] ?? match[1]);
+    if (end >= 1850 && end <= new Date().getUTCFullYear() + 1) {
+      latestEnd = latestEnd === null ? end : Math.max(latestEnd, end);
+    }
+  }
+  return latestEnd !== null && latestEnd < new Date().getUTCFullYear() - 1;
+}
 async function sha256(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -71,7 +99,7 @@ async function validateCandidates(
   const ids = [...new Set(candidates.flatMap((d) => d.card_ids))];
   if (!ids.length || ids.length > 64) return [];
   const { data: cardData, error: cardError } = await supabase.from("cards")
-    .select("id,name,name_en,active,category,legend_career")
+    .select("id,name,name_en,active,category,top_league,career_stats,facts,tags,legend_career")
     .in("id", ids);
   if (cardError) throw new Error("card_validation_failed");
   const cardRows = (cardData ?? []) as unknown as CardDbRow[];
@@ -83,7 +111,7 @@ async function validateCandidates(
   const ratingRows = (rating.data ?? []) as Array<{ card_id: string; matches: number; goals: number; assists: number }>;
   const ratingsById = new Map(ratingRows.map((r) => [r.card_id, r]));
   const formIds = new Set(ratingRows.map((r) => r.card_id));
-  const families = new Set<Family>(["form", "form-news", "news", "golden-era"]);
+  const families = new Set<Family>(["form", "form-news", "news", "golden-era", "comparison"]);
 
   const result: Candidate[] = [];
   for (const candidate of candidates) {
@@ -152,6 +180,43 @@ async function validateCandidates(
       };
     }
 
+    if (candidate.family === "comparison") {
+      const groupBy = candidate.groupBy;
+      const groupKey = safeText(candidate.groupKey, 100);
+      if (!groupBy || !groupKey || !["league", "birth-country"].includes(groupBy)) continue;
+      const group = normalize(groupKey);
+      const belongs = deckCards.every((card) => {
+        if (!card) return false;
+        if (groupBy === "league") return !!card.top_league && normalize(card.top_league) === group;
+        const facts = card.facts ?? {};
+        const birthCountry = facts.birth_country ?? facts.birthCountry ?? facts.place_of_birth_country;
+        return typeof birthCountry === "string" && normalize(birthCountry) === group;
+      });
+      const hasRecentForm = deckIds.some((id) => formIds.has(id));
+      const hasHistorical = deckCards.some((card) => !!card && !formIds.has(card.id) && isHistoricalCard(card));
+      const totals = deckCards.map((card) => {
+        const lines = Array.isArray(card?.career_stats) ? card.career_stats : [];
+        // Career totals are comparable only when both shared metrics are
+        // known. Missing goals must not silently become a zero.
+        const usable = lines.filter((line) =>
+          typeof line.apps === "number" && Number.isFinite(line.apps) && line.apps >= 0 &&
+          typeof line.goals === "number" && Number.isFinite(line.goals) && line.goals >= 0
+        );
+        if (!usable.length) return null;
+        const appearances = usable.reduce((sum, line) => sum + (typeof line.apps === "number" && Number.isFinite(line.apps) ? line.apps : 0), 0);
+        const goals = usable.reduce((sum, line) => sum + (typeof line.goals === "number" && Number.isFinite(line.goals) ? line.goals : 0), 0);
+        const assistLines = usable.filter((line) => typeof line.assists === "number" && Number.isFinite(line.assists));
+        const assists = assistLines.length ? assistLines.reduce((sum, line) => sum + (line.assists as number), 0) : null;
+        return { appearances, goals, assists };
+      });
+      if (!belongs || !hasRecentForm || !hasHistorical || totals.some((row) => row === null)) continue;
+      candidate.groupBy = groupBy;
+      candidate.groupKey = groupKey;
+      candidate.careerTotals = deckIds.map((card_id, index) => ({
+        card_id, appearances: totals[index]!.appearances, goals: totals[index]!.goals, assists: totals[index]!.assists,
+      }));
+    }
+
     if (candidate.family === "form" || candidate.family === "form-news") {
       // Stats are sourced on the server. Never let browser-supplied numbers
       // become facts in the editorial prompt.
@@ -196,6 +261,7 @@ Deno.serve(async (req: Request) => {
       candidates: verified.map((d) => ({
         id: d.id, family: d.family, card_ids: d.card_ids, names: d.names,
         evidence: d.evidence ?? [], era: d.era ?? null, stats: d.stats ?? [],
+        groupBy: d.groupBy ?? null, groupKey: d.groupKey ?? null, careerTotals: d.careerTotals ?? [],
       })),
     }));
     const { data: cached } = await supabase.from("smart_deck_editorial_cache")
@@ -224,6 +290,8 @@ Deno.serve(async (req: Request) => {
       })),
       verified_era: d.era ?? null,
       verified_recent_stats: d.stats ?? [],
+      verified_comparison_group: d.family === "comparison" ? { type: d.groupBy, label: d.groupKey, note: "Career-wide totals; not restricted to the named league." } : null,
+      verified_career_totals: d.careerTotals ?? [],
     }));
     const response = await client.messages.create({
       model: LLM_MODEL,
