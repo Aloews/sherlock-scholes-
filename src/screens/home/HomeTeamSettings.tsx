@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
+import { RoomDeckIntentPanel } from './RoomDeckIntentPanel';
 
 interface Props {
   loading: boolean;
@@ -8,6 +9,11 @@ interface Props {
   categoriesLabel: string;
   onConfigureCategories: () => void;
   onBack: () => void;
+  deckPrompt: string;
+  buildingDeck: boolean;
+  deckMessage: string;
+  onDeckPromptChange: (value: string) => void;
+  onBuildDeck: () => void;
 }
 
 /**
@@ -17,7 +23,7 @@ interface Props {
  * фиксированы. Показаны намеренно — человек, создающий комнату, должен
  * знать, во что зовёт друзей, а не узнавать это после первого раунда.
  */
-export function HomeTeamSettings({ loading, onCreate, categoriesLabel, onConfigureCategories, onBack }: Props) {
+export function HomeTeamSettings({ loading, onCreate, categoriesLabel, onConfigureCategories, onBack, deckPrompt, buildingDeck, deckMessage, onDeckPromptChange, onBuildDeck }: Props) {
   const { t, i18n } = useTranslation();
 
   return (
@@ -41,6 +47,7 @@ export function HomeTeamSettings({ loading, onCreate, categoriesLabel, onConfigu
         <span><span className="block text-sm font-semibold text-white">{t('home.step_who')}</span><span className="mt-1 block text-xs text-brand-muted">{categoriesLabel}</span></span>
         <span className="text-sm font-semibold text-brand-accent">{i18n.language.startsWith('ru') ? 'Настроить' : 'Configure'} →</span>
       </button>
+      <RoomDeckIntentPanel prompt={deckPrompt} loading={buildingDeck} message={deckMessage} onPromptChange={onDeckPromptChange} onBuild={onBuildDeck} />
       <Button fullWidth size="lg" loading={loading} onClick={onCreate}>
         {t('home.create_room')}
       </Button>
