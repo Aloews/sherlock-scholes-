@@ -293,7 +293,7 @@ export function SmartDecksPanel({ onStart }: Props) {
               placeholder={ru ? 'Какую колоду собрать?' : 'What deck should I build?'}
               className="min-w-0 flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
             />
-            <button type="submit" disabled={!deckPrompt.trim() || buildingWithAI} className="h-10 shrink-0 rounded-xl bg-brand-accent px-3 text-sm font-bold text-brand-bg disabled:opacity-40">
+            <button type="submit" aria-label={ru ? 'Собрать с ИИ' : 'Build with AI'} disabled={!deckPrompt.trim() || buildingWithAI} className="h-10 shrink-0 rounded-xl bg-brand-accent px-3 text-sm font-bold text-brand-bg disabled:opacity-40">
               {buildingWithAI ? <IconLoader2 size={18} className="animate-spin"/> : <IconArrowUpRight size={18}/>}
             </button>
           </form>
