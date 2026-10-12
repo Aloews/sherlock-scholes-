@@ -35,6 +35,14 @@ as $$
       and not coalesce(s.disputed, false)
     order by s.card_id, s.match_date, (s.minutes is not null) desc, s.source, s.tournament
   ),
+  source_freshness as (
+    select s.card_id, max(s.fetched_at) as stats_collected_at
+    from public.player_match_stats s
+    where s.match_date > current_date - 60
+      and s.match_date <= current_date
+      and not coalesce(s.disputed, false)
+    group by s.card_id
+  ),
   aggregates as (
     select
       d.card_id,
@@ -45,7 +53,7 @@ as $$
       coalesce(sum(d.goals) filter (where d.match_date <= current_date - 30), 0)::integer as previous_goals,
       coalesce(sum(d.assists) filter (where d.match_date <= current_date - 30), 0)::integer as previous_assists,
       max(d.match_date) filter (where d.match_date > current_date - 30) as recent_last_match,
-      max(d.fetched_at) as stats_collected_at
+      max(d.match_date) filter (where d.match_date > current_date - 30) as recent_last_match
     from per_day d
     group by d.card_id
   )
@@ -55,8 +63,9 @@ as $$
     a.previous_matches, a.previous_goals, a.previous_assists,
     (a.recent_goals * 4 + a.recent_assists * 3)::integer,
     (a.previous_goals * 4 + a.previous_assists * 3)::integer,
-    a.recent_last_match, a.stats_collected_at
+    a.recent_last_match, sf.stats_collected_at
   from aggregates a
+  join source_freshness sf on sf.card_id = a.card_id
   join public.cards c on c.id = a.card_id
   where c.active and c.category = 'player'
     and (a.recent_matches > 0 or a.previous_matches > 0)
