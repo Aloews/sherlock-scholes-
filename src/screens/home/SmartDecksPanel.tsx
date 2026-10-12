@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
-import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
 
