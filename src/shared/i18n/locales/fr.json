@@ -220,7 +220,16 @@
     "streak_one": "Série : {{count}} jour",
     "streak_other": "Série : {{count}} jours",
     "streak_best_one": "record : {{count}} jour",
-    "streak_best_other": "record : {{count}} jours"
+    "streak_best_other": "record : {{count}} jours",
+    "collectibles_title": "Cartes à collectionner",
+    "collectibles_count": "Débloquées : {{count}}",
+    "collectibles_hint": "Trouvez les bonnes réponses en équipe. Après 100 bonnes réponses pour une même carte, elle rejoint la collection de votre profil.",
+    "collectibles_empty": "Aucune carte pour le moment. Débloquez la première en trouvant 100 fois la même carte.",
+    "collectibles_error": "Impossible de charger la collection. Réessayez plus tard.",
+    "collectibles_guesses": "Bonnes réponses : {{count}}",
+    "collectibles_owned": "À collectionner",
+    "collectibles_progress_title": "Cartes proches du déblocage",
+    "collectibles_progress_remaining": "Encore {{count}} bonnes réponses"
   },
   "rights": {
     "title": "Sources et droits",
