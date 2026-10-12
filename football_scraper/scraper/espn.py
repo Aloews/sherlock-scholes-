@@ -140,21 +140,52 @@ def parse_player_rows(summary):
 
 
 def has_roster_data(summary):
-    """True only when a match summary contains a parseable player roster.
+    """True only when both teams have at least one named player in the roster.
 
-    ESPN can return HTTP 200 with a partial summary. Treating a missing or
-    empty `rosters` payload as a completed parse silently loses every player
-    from that match, so the collector uses this guard to fail the league run.
+    ESPN can return HTTP 200 with a partial summary. A non-empty roster array
+    alone is insufficient: one team can be missing, or every player entry can
+    lack an athlete name, which would silently drop the match from the stats.
     """
     rosters = summary.get("rosters") if isinstance(summary, dict) else None
-    if not isinstance(rosters, list) or not rosters:
+    if not isinstance(rosters, list) or len(rosters) < 2:
         return False
-    return any(
-        isinstance(roster, dict)
-        and isinstance(roster.get("roster"), list)
-        and bool(roster["roster"])
-        for roster in rosters
-    )
+    for roster in rosters:
+        if not isinstance(roster, dict):
+            return False
+        entries = roster.get("roster")
+        if not isinstance(entries, list) or not any(
+            isinstance(entry, dict)
+            and isinstance(entry.get("athlete"), dict)
+            and isinstance(
+                entry["athlete"].get("displayName") or entry["athlete"].get("fullName"),
+                str,
+            )
+            and bool((entry["athlete"].get("displayName") or entry["athlete"].get("fullName")).strip())
+            for entry in entries
+        ):
+            return False
+    return True
+
+
+def has_scoreboard_payload(scoreboard):
+    """Reject HTTP-200 JSON that is not an ESPN scoreboard response.
+
+    An empty `events` list is a valid no-fixtures response. Missing/wrongly
+    typed event containers or malformed event records are not: accepting those
+    as an empty schedule makes a broken upstream schema look like a quiet day.
+    """
+    if not isinstance(scoreboard, dict):
+        return False
+    events = scoreboard.get("events")
+    if not isinstance(events, list):
+        return False
+    for event in events:
+        if not isinstance(event, dict) or not event.get("id"):
+            return False
+        status = event.get("status")
+        if not isinstance(status, dict) or not isinstance(status.get("type"), dict):
+            return False
+    return True
 
 
 def completed_events(scoreboard):
