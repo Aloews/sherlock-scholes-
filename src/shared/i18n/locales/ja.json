@@ -218,14 +218,14 @@
     "streak_other": "連続{{count}}日",
     "streak_best_other": "自己ベスト{{count}}日",
     "collectibles_title": "コレクションカード",
-    "collectibles_count": "解除済み：{{count}}",
+    "collectibles_count": "解除済みカード",
     "collectibles_hint": "チーム戦でカードを正解しましょう。同じカードを100回正解するとプロフィールのコレクションに追加されます。",
     "collectibles_empty": "コレクションカードはまだありません。同じカードを100回正解すると最初のカードを解除できます。",
     "collectibles_error": "コレクションを読み込めませんでした。後でもう一度お試しください。",
-    "collectibles_guesses": "正解数：{{count}}",
+    "collectibles_guesses": "正解数",
     "collectibles_owned": "コレクション",
     "collectibles_progress_title": "解除まであと少し",
-    "collectibles_progress_remaining": "解除まであと{{count}}回"
+    "collectibles_progress_remaining": "あと必要な正解数"
   },
   "rights": {
     "title": "出典と権利",
