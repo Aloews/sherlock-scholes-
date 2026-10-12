@@ -19,7 +19,7 @@
 // State lives here rather than in HomeScreen: the picker owns the filter
 // it builds and hands the finished DeckFilter back through onStart.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { OptionRow } from '@/shared/ui/OptionRow';
@@ -53,11 +53,12 @@ interface Props {
   onClose: () => void;
   onNeedPro: () => void;
   onStart: (filter: DeckFilter, presetId: string) => void;
+  onBuildWithAI: (prompt: string) => Promise<DeckFilter | null>;
 }
 
 // ─── The screen ──────────────────────────────────────────────────────
 
-export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onStart }: Props) {
+export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onStart, onBuildWithAI }: Props) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.slice(0, 2);
 
@@ -76,6 +77,9 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   const [selSquad, setSelSquad] = useState('');
   const [squads, setSquads] = useState<Squad[]>([]);
   const [countryOpts, setCountryOpts] = useState<string[] | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBuilding, setAiBuilding] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const [deckCount, setDeckCount] = useState<number | null>(null);
   const [presetCounts, setPresetCounts] = useState<Record<string, number> | null>(null);
@@ -228,6 +232,26 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
     onStart(withFloor(preset.filter), preset.id);
   };
 
+  const buildPromptDeck = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const prompt = aiPrompt.trim();
+    if (prompt.length < 3 || aiBuilding) return;
+    setAiBuilding(true);
+    setAiError('');
+    try {
+      const resolved = await onBuildWithAI(prompt);
+      if (!resolved) {
+        setAiError(lang === 'ru' ? 'Не удалось собрать колоду. Уточни запрос.' : 'Could not build the deck. Refine the request.');
+        return;
+      }
+      onStart(resolved, 'ai_prompt');
+    } catch {
+      setAiError(lang === 'ru' ? 'Не удалось собрать колоду. Попробуй ещё раз.' : 'Could not build the deck. Try again.');
+    } finally {
+      setAiBuilding(false);
+    }
+  };
+
   const goNext = () => {
     hapticImpact('light');
     const next = steps[stepIndex + 1];
@@ -265,6 +289,21 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
       </ScreenHeader>
 
       <ScreenBody>
+        <form onSubmit={buildPromptDeck} className="rounded-2xl border border-brand-accent/30 bg-brand-surface p-3 space-y-2">
+          <textarea
+            aria-label={lang === 'ru' ? 'Запрос ИИ для колоды' : 'AI deck request'}
+            value={aiPrompt}
+            onChange={(event) => { setAiPrompt(event.target.value); setAiError(''); }}
+            maxLength={1000}
+            rows={2}
+            placeholder={lang === 'ru' ? 'Например: легенды Реала 2010-х, только вратари' : 'E.g. Real Madrid legends from the 2010s, goalkeepers only'}
+            className="w-full resize-y rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
+          />
+          <Button fullWidth size="md" type="submit" disabled={aiPrompt.trim().length < 3 || aiBuilding} loading={aiBuilding}>
+            {lang === 'ru' ? 'Собрать колоду с ИИ' : 'Build deck with AI'}
+          </Button>
+          {aiError && <p role="alert" className="text-xs text-red-300">{aiError}</p>}
+        </form>
         {onPresets && (
           <Section title={t('home.picker_title')}>
             <div className="space-y-2">
