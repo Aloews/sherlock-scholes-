@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { HomeJoinForm } from './HomeJoinForm';
 import { normalizeCode } from '@/features/lobby/invite';
 
@@ -11,8 +11,9 @@ vi.mock('./OpenRoomsPanel', () => ({ OpenRoomsPanel: () => <div data-testid="ope
 
 function Harness() {
   const [code, setCode] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   return <HomeJoinForm code={code} onCode={setCode} typedCode={normalizeCode(code)}
-    inputRef={{ current: null }} loading={false} onSubmit={vi.fn()} onJoinRoom={vi.fn()}
+    inputRef={inputRef} loading={false} onSubmit={vi.fn()} onJoinRoom={vi.fn()}
     playerId={1} onBack={vi.fn()} />;
 }
 
