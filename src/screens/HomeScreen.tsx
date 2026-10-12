@@ -303,6 +303,7 @@ export function HomeScreen() {
             inputRef={join.inputRef}
             loading={loading}
             onSubmit={() => { void join.submit(); }}
+            onJoinRoom={(roomCode) => { void join.enter(roomCode); }}
             onBack={() => { join.setCode(''); setView('home'); }}
           />
         )}
