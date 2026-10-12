@@ -38,17 +38,25 @@ begin
     'a player with a goal and assist must have cache rows for 7/30/365 days; got '
     || v_days;
 
-  select goals, assists, matches, minutes into v_goals, v_assists, v_matches, v_minutes
-    from public.player_rating_cache
-   where card_id = v_card and days = 7;
+  for v_days in select unnest(array[7, 30, 365]) loop
+    select goals, assists, matches, minutes
+      into v_goals, v_assists, v_matches, v_minutes
+      from public.player_rating_cache
+     where card_id = v_card and days = v_days;
 
-  assert v_matches = 1 and v_minutes = 90,
-    'future fixture must not count as an appearance or minutes; got matches='
-    || v_matches || ', minutes=' || v_minutes;
+    assert v_matches = 1 and v_minutes = 90,
+      'window ' || v_days || ' must exclude future fixtures; got matches='
+      || coalesce(v_matches::text, 'NULL') || ', minutes='
+      || coalesce(v_minutes::text, 'NULL');
 
-  assert v_goals = 1 and v_assists = 1,
-    'cache must preserve fixture stats; got goals=' || v_goals
-    || ', assists=' || v_assists;
+    assert v_goals = 1 and v_assists = 1,
+      'window ' || v_days || ' must preserve fixture stats; got goals='
+      || coalesce(v_goals::text, 'NULL') || ', assists='
+      || coalesce(v_assists::text, 'NULL');
+  end loop;
+
+  assert position('"записано"' in pg_get_functiondef('public.verify_card_data()'::regprocedure)) > 0,
+    'verify_card_data must read the actual Soccer Wiki output column "записано"';
 
   assert v_result is not null and v_result like 'строк:%',
     'refresh must return a row-count summary';
@@ -62,7 +70,7 @@ begin
 
   select r.goals, r.assists, r.matches, r.minutes
     into v_goals, v_assists, v_matches, v_minutes
-    from public.player_ratings(7, 200) r
+    from public.player_ratings(7, 10000) r
    where r.card_id = v_card;
 
   assert v_matches = 1 and v_minutes = 90,
