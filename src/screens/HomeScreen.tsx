@@ -138,14 +138,15 @@ export function HomeScreen() {
     if (prompt.length < 3 || buildingRoomDeck) return;
     setBuildingRoomDeck(true);
     setRoomDeckMessage('');
+    const targetCardCount = view === 'create_1v1' ? 100 : 20;
     try {
       const initData = getRawInitData();
       if (!initData) throw new Error('telegram_auth_required');
       const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
-        body: { prompt, language: i18n.language.startsWith('ru') ? 'ru' : 'en', init_data: initData, current_card_ids: [] },
+        body: { prompt, language: i18n.language.startsWith('ru') ? 'ru' : 'en', init_data: initData, current_card_ids: [], target_card_count: targetCardCount },
       });
       if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
-      const resolved = parseAIResolvedDeck(data);
+      const resolved = parseAIResolvedDeck(data, targetCardCount);
       if (!resolved) throw new Error('not_enough_cards');
       const selectedCategories = resolved.filter.categories ?? [];
       setRoomDeckFilter(resolved.filter);
