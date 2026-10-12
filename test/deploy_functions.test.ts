@@ -172,6 +172,8 @@ describe('AI deck builder safety contract', () => {
   it('allows the Telegram signature header in browser preflight requests', () => {
     expect(src).toContain('x-tg-init-data');
     expect(src).toContain('Access-Control-Allow-Methods');
+    expect(src).toContain('get_user_status');
+    expect(src).toContain('error: \"unauthorized\"');
   });
 
   it('caps user prompts and selects only active canonical player cards', () => {
