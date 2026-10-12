@@ -12,6 +12,7 @@ import { SoundCheckPanel } from '@/features/voice/SoundCheckPanel';
 import { VoiceServicesPanel } from '@/features/voice/VoiceServicesPanel';
 import { HardCardsPanel } from '@/screens/profile/HardCardsPanel';
 import { CollectibleCardsPanel } from '@/screens/profile/CollectibleCardsPanel';
+import { CollectibleTradingPanel } from '@/screens/profile/CollectibleTradingPanel';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -102,6 +103,7 @@ export function ProfileScreen() {
 
           <HardCardsPanel playerId={player?.id ?? null} />
           <CollectibleCardsPanel playerId={player?.id ?? null} />
+          <CollectibleTradingPanel playerId={player?.id ?? null} />
 
           {/* Sound check. Here rather than in the lobby because it is a
               settings-shaped thing you do once on a new phone, and because a
