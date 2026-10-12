@@ -117,7 +117,7 @@ describe('room code contract', () => {
     });
   });
 
-  it('preserves an AI-selected deck in 1v1 without changing the six-character room code', async () => {
+  it('sizes a 1v1 round to the resolved AI deck and preserves the full room code', async () => {
     const deck: DeckFilter = { categories: ['stadium'], card_ids: ['stadium-1', 'stadium-2', 'stadium-3'] };
     mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
 
@@ -131,8 +131,23 @@ describe('room code contract', () => {
         categories: ['stadium'],
         deck,
         total_rounds: 5,
-        cards_per_round: 100,
+        cards_per_round: 3,
       }),
+    });
+  });
+
+  it('keeps 100 cards per round when the AI deck contains 100 cards', async () => {
+    const deck: DeckFilter = {
+      categories: ['player'],
+      card_ids: Array.from({ length: 100 }, (_, index) => `player-${index}`),
+    };
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
+
+    await createRoom(100, { categories: ['player'], deck }, '1v1');
+
+    expect(mocks.rpc).toHaveBeenCalledWith('create_1v1_room', {
+      p_host_id: 100,
+      p_settings: expect.objectContaining({ cards_per_round: 100, deck }),
     });
   });
 
