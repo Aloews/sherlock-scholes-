@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown } from '@tabler/icons-react';
+import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconCheck, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -17,6 +17,7 @@ interface SmartDeck {
   stats?: Array<{ card_id: string; matches: number; goals: number; assists: number }>;
 }
 interface SmartDeckEditorial { id: string; title: string; hook: string; why: string; rank: number }
+interface DeckPlayerRow { id: string; name: string; name_en: string | null; photo_url: string | null; category: string }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
 const NEWS_WINDOW_HOURS = 72;
 const TARGET_DECK_SIZE = 20;
@@ -34,6 +35,11 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [failed, setFailed] = useState(false);
   const [editorials, setEditorials] = useState<Record<string, SmartDeckEditorial>>({});
   const [editorialMode, setEditorialMode] = useState<'loading' | 'ai' | 'deterministic'>('deterministic');
+  const [activeDeck, setActiveDeck] = useState<SmartDeck | null>(null);
+  const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [loadingDeckPlayers, setLoadingDeckPlayers] = useState(false);
+  const [deckLoadError, setDeckLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,10 +180,73 @@ export function SmartDecksPanel({ onStart }: Props) {
             <p className="text-[11px] leading-relaxed text-brand-muted mt-1">{editorials[deck.id]?.hook ?? deck.description}</p>
             {editorials[deck.id]?.why && <p className="text-[10px] leading-relaxed text-white/75 mt-1.5"><span className="text-brand-accent font-semibold">{ru?'Почему сейчас: ':'Why now: '}</span>{editorials[deck.id].why}</p>}</div>
           <div className="flex flex-wrap gap-1.5">{deck.names.map(name=><span key={name} className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-white/90">{name}</span>)}<span className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-brand-muted">{deck.filter.card_ids?.length ?? 0} {ru?'карточек':'cards'}</span></div>
-          <button type="button" onClick={()=>onStart(deck.filter,deck.id)} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
+          <button type="button" onClick={() => {
+            setActiveDeck(deck);
+            setDeckPlayers([]);
+            setSelectedCardIds([...(deck.filter.card_ids ?? [])]);
+            setDeckLoadError(false);
+            setLoadingDeckPlayers(true);
+            void supabase.from('cards').select('id,name,name_en,photo_url,category')
+              .in('id', deck.filter.card_ids ?? [])
+              .then(({ data, error }) => {
+                if (error || !data) { setDeckLoadError(true); setDeckPlayers([]); }
+                else {
+                  const rows = data as DeckPlayerRow[];
+                  const byId = new Map(rows.map((row) => [row.id, row]));
+                  setDeckPlayers((deck.filter.card_ids ?? []).flatMap((id) => {
+                    const row = byId.get(id);
+                    return row ? [row] : [];
+                  }));
+                }
+              })
+              .catch(() => setDeckLoadError(true))
+              .finally(() => setLoadingDeckPlayers(false));
+          }} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Собрать колоду':'Build deck'}</span><IconArrowUpRight size={18}/></button>
         </div>
       </article>;
     })}
+    {activeDeck && <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveDeck(null); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="smart-deck-builder-title" className="w-full max-w-lg max-h-[92dvh] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-brand-border bg-brand-bg shadow-2xl flex flex-col">
+        <header className="flex items-start gap-3 p-4 border-b border-brand-border">
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] uppercase tracking-[0.16em] font-bold text-brand-accent">{ru?'КОНСТРУКТОР КОЛОДЫ':'DECK BUILDER'}</p>
+            <h2 id="smart-deck-builder-title" className="ds-display text-xl font-extrabold text-white mt-1">{editorials[activeDeck.id]?.title ?? activeDeck.title}</h2>
+            <p className="text-xs text-brand-muted mt-1">{ru?'Проверь состав, убери лишние карточки и собери колоду для игры.':'Review the players, remove cards if you like, and build your game deck.'}</p>
+          </div>
+          <button type="button" aria-label={ru?'Закрыть':'Close'} onClick={() => setActiveDeck(null)} className="shrink-0 w-9 h-9 rounded-xl border border-brand-border text-brand-muted flex items-center justify-center"><IconX size={18}/></button>
+        </header>
+        <div className="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-3">
+          <div><p className="text-sm font-bold text-white">{ru?'Карточки игроков':'Player cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
+          <div className="text-right shrink-0"><p className="text-lg font-extrabold text-brand-accent tabular-nums">{selectedCardIds.length}</p><p className="text-[9px] text-brand-muted">{ru?'в колоде':'in deck'}</p></div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          {loadingDeckPlayers && <div className="flex items-center justify-center gap-2 py-8 text-sm text-brand-muted"><IconLoader2 size={18} className="animate-spin"/>{ru?'Загружаем карточки…':'Loading player cards…'}</div>}
+          {!loadingDeckPlayers && deckLoadError && <div className="rounded-xl border border-red-400/30 p-3 text-sm text-red-200">{ru?'Не удалось загрузить карточки. Закрой окно и попробуй ещё раз.':'Could not load cards. Close this window and try again.'}</div>}
+          {!loadingDeckPlayers && !deckLoadError && deckPlayers.map((player) => {
+            const checked = selectedCardIds.includes(player.id);
+            const playerName = lang === 'ru' || !player.name_en ? player.name : player.name_en;
+            return <label key={player.id} className={`flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer transition-colors ${checked ? 'border-brand-accent/60 bg-brand-accent/10' : 'border-brand-border bg-brand-surface'}`}>
+              <input type="checkbox" checked={checked} onChange={() => setSelectedCardIds((current) => checked ? current.filter((id) => id !== player.id) : [...current, player.id])} className="accent-brand-accent w-4 h-4 shrink-0"/>
+              {player.photo_url ? <img src={player.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-brand-border shrink-0"/> : <div className="w-10 h-10 rounded-lg bg-brand-border shrink-0 flex items-center justify-center text-xs text-brand-muted">{playerName.slice(0,1)}</div>}
+              <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">{playerName}</span>
+              {checked && <IconCheck size={16} className="text-brand-accent shrink-0"/>}
+            </label>;
+          })}
+          {!loadingDeckPlayers && !deckLoadError && deckPlayers.length === 0 && <p className="py-6 text-sm text-brand-muted text-center">{ru?'В этой подборке нет доступных карточек.':'No available cards in this deck.'}</p>}
+        </div>
+        <footer className="p-4 border-t border-brand-border bg-brand-surface/80 space-y-2">
+          <button type="button" disabled={loadingDeckPlayers || deckLoadError || selectedCardIds.length === 0} onClick={() => {
+            const filter = { ...activeDeck.filter, card_ids: selectedCardIds };
+            const presetId = activeDeck.id;
+            setActiveDeck(null);
+            onStart(filter, presetId);
+          }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm px-4 py-3 disabled:opacity-40 disabled:cursor-not-allowed">
+            {ru?'Собрать колоду и играть':'Build deck & play'}<IconArrowUpRight size={18}/>
+          </button>
+          <button type="button" onClick={() => setSelectedCardIds(deckPlayers.map((player) => player.id))} disabled={loadingDeckPlayers || deckPlayers.length === 0} className="w-full rounded-xl border border-brand-border text-brand-muted text-xs font-semibold px-4 py-2.5 disabled:opacity-40">{ru?'Выбрать всех игроков':'Select all players'}</button>
+        </footer>
+      </section>
+    </div>}
     {failed && decks.length > 0 && <p className="text-[10px] text-brand-muted">{ru?'Часть источников временно недоступна; показаны только данные, которые удалось проверить.':'Some sources are temporarily unavailable; only successfully verified data is shown.'}</p>}
     {news.length>0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-3 space-y-2">
       <div className="flex items-center gap-2 text-brand-muted"><IconCalendarEvent size={14}/><span className="text-[10px] uppercase tracking-wider font-bold">{ru?'В центре внимания':'In the headlines'}</span></div>
