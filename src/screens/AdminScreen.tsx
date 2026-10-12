@@ -195,7 +195,6 @@ function StaffCabinet({ password, role, onLogout }: {
             ['Таблица лиг', '/table'],
             ['Профиль', '/profile'],
             ['Источники', '/sources'],
-            ['Витрина подписки', '/pro'],
           ].map(([label, path]) => (
             <button
               key={path}
