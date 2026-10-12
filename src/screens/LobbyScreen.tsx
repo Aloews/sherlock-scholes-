@@ -109,6 +109,7 @@ export function LobbyScreen() {
         <div className="flex shrink-0 flex-col items-center min-w-[8rem]">
           <p className="text-brand-muted text-xs">{t('lobby.room_code')}</p>
           <button
+            data-testid="room-code-display"
             className={`whitespace-nowrap text-2xl font-black text-white tracking-widest hover:text-brand-accent transition-colors ${master ? 'ds-display' : ''}`}
             onClick={() => { void copyCode(); }}
           >
