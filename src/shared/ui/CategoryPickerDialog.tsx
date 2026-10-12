@@ -53,9 +53,6 @@ export function CategoryPickerDialog({ selectedCategories, onClose, onApply }: P
             <h2 id="category-picker-title" className="text-lg font-bold text-white">
               {ru ? 'Категории игры' : 'Game categories'}
             </h2>
-            <p className="mt-1 text-sm text-brand-muted">
-              {ru ? 'Выбери, какие карточки попадут в колоду.' : 'Choose which cards can appear in the deck.'}
-            </p>
           </div>
           <button type="button" onClick={onClose} aria-label={ru ? 'Закрыть' : 'Close'} className="rounded-xl p-2 text-brand-muted hover:bg-brand-bg hover:text-white">
             <IconX size={18} />
