@@ -88,8 +88,8 @@ export function SmartDecksPanel({ onStart }: Props) {
       title:ru?'Сейчас на пике':'In form now',
       description:ru?'Не просто громкие имена: эти футболисты набрали реальные матчи и результативные действия в собранной статистике за 30 дней. Проверь, кого ты узнаешь без подсказки.':'Not just famous names: these players recorded actual appearances and contributions in the collected 30-day match data. See who you can recognize without a hint.',
       icon:'bolt', image:form[0]?.photo_url ?? null, names:form.slice(0,3).map(p=>p.name),
-      filter:{ categories:['player'], card_ids:form.map(p=>p.card_id), lang },
-      stats:form.map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
+      filter:{ categories:['player'], card_ids:form.slice(0,12).map(p=>p.card_id), lang },
+      stats:form.slice(0,12).map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
     });
     if (formAndNews.length >= 3) result.push({
       id:'smart-form-meets-headlines', family:'form-news', eyebrow:ru?'ФАКТЫ ВСТРЕЧАЮТСЯ С ХАЙПОМ':'FORM MEETS THE HEADLINES',
@@ -228,7 +228,7 @@ export function SmartDecksPanel({ onStart }: Props) {
             </div>)}
             <p className="text-[9px] leading-relaxed text-brand-muted">{ru?'Сумма показателей из доступной истории карьеры. Для лиги это не только матчи внутри указанного чемпионата.':'Totals from available career history. For league groups, these are not limited to matches in that league.'}</p>
           </div>}
-          <button type="button" onClick={()=>onStart(deck.filter,deck.id) className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
+          <button type="button" onClick={()=>onStart(deck.filter,deck.id)} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
         </div>
       </article>;
     })}
