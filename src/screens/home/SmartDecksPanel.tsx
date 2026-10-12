@@ -67,7 +67,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       filter:{ categories:['player'], card_ids:form.map(p=>p.card_id), lang },
     });
     if (newsMatches.length >= 3) result.push({
-      id:'smart-news-pulse', eyebrow:ru?'ГРОМКИЕ НОВОСТИ · 72 ЧАСА':'NEWS PULSE · 72 HOURS',
+      id:'smart-news-pulse', eyebrow:ru?'СВЕЖИЕ НОВОСТИ · 72 ЧАСА':'NEWS PULSE · 72 HOURS',
       title:ru?'Футбол прямо сейчас':'Football right now',
       description:ru?'Игроки сопоставлены с полными именами в свежих заголовках — без догадок по фамилии.':'Players matched by full canonical names in recent headlines.',
       icon:'calendar', image:newsMatches[0]?.photo_url ?? null, names:newsMatches.slice(0,3).map(p=>p.name),
@@ -112,6 +112,7 @@ export function SmartDecksPanel({ onStart }: Props) {
         </div>
       </article>;
     })}
+    {failed && decks.length > 0 && <p className="text-[10px] text-brand-muted">{ru?'Часть источников временно недоступна; показаны только данные, которые удалось проверить.':'Some sources are temporarily unavailable; only successfully verified data is shown.'}</p>}
     {news.length>0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-3 space-y-2">
       <div className="flex items-center gap-2 text-brand-muted"><IconCalendarEvent size={14}/><span className="text-[10px] uppercase tracking-wider font-bold">{ru?'В центре внимания':'In the headlines'}</span></div>
       {news.slice(0,3).map(item=><button key={item.url} type="button" onClick={()=>openLink(item.url)} className="w-full flex items-start gap-2 text-left"><span className="flex-1 text-[11px] leading-snug text-white/90">{item.title}</span><span className="shrink-0 text-[9px] text-brand-muted">{item.source}<IconArrowUpRight size={10} className="inline ml-1"/></span></button>)}
