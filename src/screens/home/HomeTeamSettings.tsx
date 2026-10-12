@@ -48,7 +48,7 @@ export function HomeTeamSettings({ loading, onCreate, categoriesLabel, onConfigu
         <span className="text-sm font-semibold text-brand-accent">{i18n.language.startsWith('ru') ? 'Настроить' : 'Configure'} →</span>
       </button>
       <RoomDeckIntentPanel prompt={deckPrompt} loading={buildingDeck} message={deckMessage} onPromptChange={onDeckPromptChange} onBuild={onBuildDeck} />
-      <Button fullWidth size="lg" loading={loading} onClick={onCreate}>
+      <Button fullWidth size="lg" loading={loading || buildingDeck} disabled={buildingDeck} onClick={onCreate}>
         {t('home.create_room')}
       </Button>
       <Button fullWidth variant="ghost" onClick={() => { hapticImpact('light'); onBack(); }}>
