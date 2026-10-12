@@ -127,8 +127,8 @@ function latestKnownCareerEndYear(player: CanonicalPlayer): number | null {
   for (const value of candidates) {
     const text = value.trim();
     // An open range such as "2015–" does not prove a retirement year.
-    if (!text || /[-–—]\\s*$/.test(text)) continue;
-    const match = text.match(/(\\d{4})(?:\\D+(\\d{4}))?/);
+    if (!text || /[-–—]\s*$/.test(text)) continue;
+    const match = text.match(/(\d{4})(?:\D+(\d{4}))?/);
     if (!match) continue;
     const end = Number(match[2] ?? match[1]);
     if (end >= 1850 && end <= new Date().getFullYear() + 1) {
