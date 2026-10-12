@@ -44,10 +44,12 @@ interface TradeRow {
   other_player_name: string;
   offered_card_id: string;
   offered_card_name: string;
+  offered_card_name_en: string | null;
   offered_photo_url: string | null;
   offered_tier: Tier | null;
   requested_card_id: string;
   requested_card_name: string;
+  requested_card_name_en: string | null;
   requested_photo_url: string | null;
   requested_tier: Tier | null;
   status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
@@ -275,9 +277,9 @@ export function CollectibleTradingPanel({ playerId }: { playerId: number | null 
                   <span className="text-[10px] text-brand-muted">{t(`profile.trade_status_${trade.status}`)}</span>
                 </div>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                  <TradeCard name={trade.offered_card_name} photo={trade.offered_photo_url} tier={trade.offered_tier} design={design} />
+                  <TradeCard name={isRu || !trade.offered_card_name_en ? trade.offered_card_name : trade.offered_card_name_en} photo={trade.offered_photo_url} tier={trade.offered_tier} design={design} />
                   <span className="text-brand-accent">↔</span>
-                  <TradeCard name={trade.requested_card_name} photo={trade.requested_photo_url} tier={trade.requested_tier} design={design} />
+                  <TradeCard name={isRu || !trade.requested_card_name_en ? trade.requested_card_name : trade.requested_card_name_en} photo={trade.requested_photo_url} tier={trade.requested_tier} design={design} />
                 </div>
                 {trade.status === 'pending' && trade.direction === 'incoming' && (
                   <div className="grid grid-cols-2 gap-2">
