@@ -30,9 +30,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const clean = (value: unknown, max: number) =>
   typeof value === "string" ? value.replace(/[<>]/g, "").trim().slice(0, max) : "";
-const normalize = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-  .toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
-
 function parseModelJson(value: string): Record<string, unknown> | null {
   const trimmed = value.trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
   try {
