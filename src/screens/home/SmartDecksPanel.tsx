@@ -225,7 +225,6 @@ export function SmartDecksPanel({ onStart }: Props) {
     <div>
       <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-brand-accent mb-1">{ru?'ПОД ТВОЙ ФУТБОЛЬНЫЙ МОМЕНТ':'YOUR FOOTBALL MOMENT'}</p>
       <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Подборки с футбольным сюжетом':'A deck with a story'}</h2>
-      <p className="text-[11px] text-brand-muted mt-1">{ru?'Каждая колода должна отвечать на вопрос: что произошло, почему эти игроки связаны и что интересно проверить в игре.':'Every deck should answer: what happened, why these players are connected, and what makes them interesting to play.'}</p>
     </div>
     {loading && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Собираем подборки из свежих данных…':'Building decks from fresh data…'}</div>}
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
