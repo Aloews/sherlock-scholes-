@@ -26,6 +26,7 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
+import { OnlinePanel } from '@/features/social/OnlinePanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
 
@@ -200,6 +201,14 @@ export function HomeScreen() {
         {view === 'home' && (
           <div className="w-full max-w-sm">
             <PendingInvitesPanel onJoin={(invitedCode) => { void join.enter(invitedCode); }} />
+          </div>
+        )}
+
+        {/* Online players are actionable from the landing screen: this is where
+            players decide whether to start a game or invite someone into one. */}
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <OnlinePanel />
           </div>
         )}
 
