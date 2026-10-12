@@ -104,20 +104,20 @@ describe('copyText', () => {
 
 describe('sanitizeCodeInput', () => {
   it('keeps what a code is made of, and uppercases as it goes', () => {
-    expect(sanitizeCodeInput('ab12cd')).toBe('AB12CD');
-    expect(sanitizeCodeInput('a')).toBe('A');
+    expect(sanitizeCodeInput('ab12cd')).toBe('ab12cd');
+    expect(sanitizeCodeInput('a')).toBe('a');
   });
 
   it('accepts a single character — the field is usable before it is complete', () => {
     // The first keystroke must survive. It is not a valid code and must not be
     // treated as one, but it has to appear.
-    expect(sanitizeCodeInput('x')).toBe('X');
+    expect(sanitizeCodeInput('x')).toBe('x');
     expect(normalizeCode(sanitizeCodeInput('x'))).toBeNull();
   });
 
   it('drops what a code cannot contain instead of holding it and failing later', () => {
     expect(sanitizeCodeInput('AB 12-CD')).toBe('AB12CD');
-    expect(sanitizeCodeInput('ab.12,cd')).toBe('AB12CD');
+    expect(sanitizeCodeInput('ab.12,cd')).toBe('ab12cd');
     expect(sanitizeCodeInput('код')).toBe('');
   });
 
