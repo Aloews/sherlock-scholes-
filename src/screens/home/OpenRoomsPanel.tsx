@@ -21,9 +21,11 @@ type State = 'loading' | 'ready' | 'error';
 export function OpenRoomsPanel({
   onJoin,
   loading,
+  playerId,
 }: {
   onJoin: (code: string) => void;
   loading: boolean;
+  playerId: number | null;
 }) {
   const [rooms, setRooms] = useState<OpenRoom[]>([]);
   const [state, setState] = useState<State>('loading');
@@ -41,19 +43,39 @@ export function OpenRoomsPanel({
       return;
     }
 
-    const valid = (rows ?? []).filter((row) => typeof row.code === 'string' && row.code.trim().length > 0);
-    const hostIds = [...new Set(valid.map((row) => row.host_id))];
-    const { data: hosts, error: hostError } = hostIds.length
-      ? await supabase.from('players').select('id, first_name, last_name').in('id', hostIds)
-      : { data: [], error: null };
-
-    if (hostError) {
+    const candidates = (rows ?? []).filter((row) => typeof row.code === 'string' && row.code.trim().length > 0 && row.host_id !== playerId);
+    const candidateIds = candidates.map((row) => row.id);
+    const [hostResult, memberResult] = await Promise.all([
+      candidates.length
+        ? supabase.from('players').select('id, first_name, last_name').in('id', [...new Set(candidates.map((row) => row.host_id))])
+        : Promise.resolve({ data: [], error: null }),
+      playerId !== null && candidateIds.length
+        ? supabase.from('room_players').select('room_id').eq('player_id', playerId).in('room_id', candidateIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    const hosts = hostResult.data;
+    const hostError = hostResult.error;
+    const memberError = memberResult.error;
+    if (hostError || memberError) {
       setState('error');
       return;
     }
-
-    const names = new Map((hosts ?? []).map((p) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(' ')]));
-    setRooms(valid.map((row) => ({
+    const alreadyJoined = new Set((memberResult.data ?? []).map((row) => row.room_id));
+    const valid = candidates.filter((row) => !alreadyJoined.has(row.id));
+    const roomIds = valid.map((row) => row.id);
+    const { data: memberships, error: membershipError } = roomIds.length
+      ? await supabase.from('room_players').select('room_id').in('room_id', roomIds)
+      : { data: [], error: null };
+    if (membershipError) {
+      setState('error');
+      return;
+    }
+    const counts = new Map<string, number>();
+    for (const member of memberships ?? []) counts.set(member.room_id, (counts.get(member.room_id) ?? 0) + 1);
+    const available = valid.filter((row) => row.mode !== '1v1' || (counts.get(row.id) ?? 0) < 2);
+    const hostIds = [...new Set(available.map((row) => row.host_id))];
+    const names = new Map((hosts ?? []).filter((p) => hostIds.includes(p.id)).map((p) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(' ')]));
+    setRooms(available.map((row) => ({
       id: row.id,
       code: row.code.trim(),
       host_id: row.host_id,
@@ -62,7 +84,7 @@ export function OpenRoomsPanel({
       hostName: names.get(row.host_id) || 'Игрок',
     })));
     setState('ready');
-  }, []);
+  }, [playerId]);
 
   useEffect(() => {
     void refresh();
