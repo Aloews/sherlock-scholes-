@@ -74,7 +74,7 @@ describe('AI deck intent in the room lobby', () => {
         current_card_ids: [],
       }),
     });
-    expect(await screen.findByRole('status')).toHaveTextContent('Готово');
+    expect((await screen.findByRole('status')).textContent).toContain('Готово');
   });
 
   it('does not update the room deck when the agent returns fewer than three valid cards', async () => {
@@ -88,7 +88,7 @@ describe('AI deck intent in the room lobby', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не найдено достаточно карточек');
+    expect((await screen.findByRole('alert')).textContent).toContain('Не найдено достаточно карточек');
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -103,7 +103,7 @@ describe('AI deck intent in the room lobby', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Открой приложение через Telegram');
+    expect((await screen.findByRole('alert')).textContent).toContain('Открой приложение через Telegram');
     expect(mocks.invoke).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
   });
