@@ -8,7 +8,7 @@ export interface AIResolvedDeck {
   message: string | null;
 }
 
-export function parseAIResolvedDeck(value: unknown): AIResolvedDeck | null {
+export function parseAIResolvedDeck(value: unknown, maxCards = 20): AIResolvedDeck | null {
   if (!value || typeof value !== 'object' || !Array.isArray((value as { cards?: unknown }).cards)) return null;
   const payload = value as { cards: unknown[]; title?: unknown; message?: unknown };
   const cards = payload.cards.filter((item): item is { id: string; category: CardCategory } => {
@@ -18,7 +18,8 @@ export function parseAIResolvedDeck(value: unknown): AIResolvedDeck | null {
       && typeof card.category === 'string'
       && ALL_CATEGORIES.includes(card.category as CardCategory);
   });
-  const unique = [...new Map(cards.map((card) => [card.id, card])).values()].slice(0, 20);
+  const limit = Math.min(100, Math.max(3, Math.floor(maxCards)));
+  const unique = [...new Map(cards.map((card) => [card.id, card])).values()].slice(0, limit);
   const categories = [...new Set(unique.map((card) => card.category))];
   if (unique.length < 3 || categories.length === 0) return null;
   return {
