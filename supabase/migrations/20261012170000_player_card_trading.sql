@@ -217,6 +217,14 @@ BEGIN
     RAISE EXCEPTION 'UNAUTHORIZED';
   END IF;
 
+  INSERT INTO public.player_card_trade_events
+    (trade_id, actor_player_id, action, offered_card_id, requested_card_id)
+  SELECT t.id, v_me, 'expired', owned.card_id, t.requested_card_id
+  FROM public.player_card_trade_offers t
+  JOIN public.player_card_collectibles owned ON owned.id = t.offered_collectible_id
+  WHERE t.status = 'pending' AND t.expires_at <= now()
+    AND (t.from_player_id = v_me OR t.to_player_id = v_me);
+
   UPDATE public.player_card_trade_offers t
   SET status = 'expired', responded_at = now()
   WHERE t.status = 'pending' AND t.expires_at <= now()
