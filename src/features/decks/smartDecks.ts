@@ -70,7 +70,9 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const matches: NewsCardMatch[] = [];
   const used = new Set<string>();
   for (const headline of headlines) {
-    // Many real football stories mention the player in the summary/body, not in the headline.\n    // Match against all ingested editorial text, while the server still verifies the URL/title.\n    const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
+    // Many real football stories mention the player in the summary/body, not in the headline.
+    // Match against all ingested editorial text, while the server still verifies the URL/title.
+    const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
     if (!articleText) continue;
     for (const entry of normalizedPlayers) {
       if (used.has(entry.player.id) || !entry.names.some((name) => articleText.includes(name))) continue;
