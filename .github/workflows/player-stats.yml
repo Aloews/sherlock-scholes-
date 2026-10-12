@@ -63,10 +63,9 @@ jobs:
     needs: [validate]
     if: ${{ inputs.resolve_only != true }}
     runs-on: ubuntu-latest
-    # ~1200 players at a 1.2 s pause is ~25 minutes of fetching; the slug pass
-    # adds the club crawl. The ceiling is set so a slow night ends by running
-    # out of BUDGET (a number this repo controls) rather than by being cut off
-    # mid-write.
+    # Daily match collection runs before the optional slug discovery job.
+    # The ceiling protects the writer from running indefinitely; a separate
+    # job owns the slower, lower-priority slug crawl.
     timeout-minutes: 180
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -138,7 +137,7 @@ jobs:
       # что двойной запуск ничего не портит, а смерть одного из двух путей не
       # оставляет экран без экспрессов.
       - name: Освежить статистику планировщику и кэш рейтинга
-        if: ${{ always() && steps.parser_tests.conclusion == 'success' }}
+        if: always()
         run: |
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
