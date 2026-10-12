@@ -102,9 +102,11 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
 
 function careerTotals(player: CanonicalPlayer) {
   const rows = Array.isArray(player.career_stats) ? player.career_stats : [];
+  // Compare only rows where both shared metrics are known; a missing goals
+  // value is not silently converted into a zero.
   const valid = rows.filter((row) =>
-    (typeof row.apps === 'number' && Number.isFinite(row.apps) && row.apps >= 0) ||
-    (typeof row.goals === 'number' && Number.isFinite(row.goals) && row.goals >= 0),
+    typeof row.apps === 'number' && Number.isFinite(row.apps) && row.apps >= 0 &&
+    typeof row.goals === 'number' && Number.isFinite(row.goals) && row.goals >= 0,
   );
   if (!valid.length) return null;
   const appearances = valid.reduce((sum, row) => sum + (typeof row.apps === 'number' && Number.isFinite(row.apps) ? row.apps : 0), 0);
