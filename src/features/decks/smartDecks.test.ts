@@ -64,9 +64,9 @@ describe('exact-card deck filter', () => {
 
 describe('cross-era statistical comparisons', () => {
   const cohort: CanonicalPlayer[] = [
-    { ...players[0], top_league: 'Premier League', tags: ['legend'], career_stats: [{ apps: 100, goals: 30 }] },
-    { ...players[1], top_league: 'Premier League', tags: [], career_stats: [{ apps: 90, goals: 25 }] },
-    { ...players[2], top_league: 'Premier League', tags: [], career_stats: [{ apps: 20, goals: 7 }] },
+    { ...players[0], name: 'Historical Example', top_league: 'Premier League', tags: ['legend'], facts: { years_active: '1988–2000' }, career_stats: [{ apps: 100, goals: 30, years: '1988–2000' }] },
+    { ...players[1], name: 'Current Example', top_league: 'Premier League', tags: [], facts: { years_active: '2010–2026' }, career_stats: [{ apps: 90, goals: 25, years: '2010–2026' }] },
+    { ...players[2], name: 'Third Example', top_league: 'Premier League', tags: [], facts: { years_active: '2020–2026' }, career_stats: [{ apps: 20, goals: 7, years: '2020–2026' }] },
   ];
 
   it('builds a league cohort only with comparable career totals and both eras represented', () => {
@@ -87,12 +87,20 @@ describe('cross-era statistical comparisons', () => {
     const birthplace = cohort.map((p) => ({
       ...p,
       top_league: null,
-      facts: { birth_country: 'Argentina' },
+      facts: { ...(p.facts ?? {}), birth_country: 'Argentina' },
     }));
     const result = buildStatisticalComparisons(birthplace, new Set(['salah']));
     expect(result).toHaveLength(1);
     expect(result[0].groupBy).toBe('birth-country');
     expect(result[0].groupKey).toBe('Argentina');
+  });
+
+  it('does not mistake a fame tag for evidence of a past career', () => {
+    const noRetirementEvidence = cohort.map((p) => ({
+      ...p, facts: { years_active: '2010–2026' },
+      career_stats: [{ apps: 100, goals: 20, years: '2010–2026' }],
+    }));
+    expect(buildStatisticalComparisons(noRetirementEvidence, new Set(['salah']))).toEqual([]);
   });
 
   it('does not create a mixed-era comparison without a recent-form player', () => {
