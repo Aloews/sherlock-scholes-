@@ -125,7 +125,10 @@ export function selectBreakoutPlayers(
   const eligible = rows.flatMap((row) => {
     if (
       !row.id ||
-      !row.stats_collected_at ||\n      !Number.isFinite(Date.parse(row.stats_collected_at)) ||\n      Date.parse(row.stats_collected_at) < now - 72 * 60 * 60 * 1000 ||\n      row.recent_matches < minSample ||
+      !row.stats_collected_at ||
+      !Number.isFinite(Date.parse(row.stats_collected_at)) ||
+      Date.parse(row.stats_collected_at) < now - 72 * 60 * 60 * 1000 ||
+      row.recent_matches < minSample ||
       row.previous_matches < minSample ||
       row.recent_points < 12 ||
       row.previous_points < 0
