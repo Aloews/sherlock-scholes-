@@ -33,6 +33,11 @@ interface Candidate {
   era?: { club: string; startYear: number; endYear: number };
   stats?: Array<{ card_id: string; matches: number; goals: number; assists: number }>;
 }
+interface CardDbRow {
+  id: string; name: string; name_en: string | null; active: boolean; category: string;
+  legend_career: { clubs?: Array<{ club?: string; years?: string }> } | null;
+}
+interface NewsDbRow { title: string; url: string; source: string; published_at: string }
 interface Editorial {
   id: string;
   title: string;
@@ -65,11 +70,12 @@ async function validateCandidates(
 ): Promise<Candidate[]> {
   const ids = [...new Set(candidates.flatMap((d) => d.card_ids))];
   if (!ids.length || ids.length > 64) return [];
-  const { data: cardRows, error: cardError } = await supabase.from("cards")
+  const { data: cardData, error: cardError } = await supabase.from("cards")
     .select("id,name,name_en,active,category,legend_career")
     .in("id", ids);
   if (cardError) throw new Error("card_validation_failed");
-  const cards = new Map((cardRows ?? []).map((c) => [c.id, c]));
+  const cardRows = (cardData ?? []) as unknown as CardDbRow[];
+  const cards = new Map<string, CardDbRow>(cardRows.map((c) => [c.id, c]));
   const rating = await supabase.rpc("player_ratings", {
     p_days: 30, p_limit: 200, p_club_key: null, p_league: null, p_country: null,
   });
@@ -99,11 +105,12 @@ async function validateCandidates(
       );
       const urls = [...new Set(evidence.map((e) => e.url))];
       if (new Set(evidence.map((e) => e.card_id)).size < 3 || urls.length === 0) continue;
-      const { data: newsRows, error: newsError } = await supabase.from("news_items")
+      const { data: newsData, error: newsError } = await supabase.from("news_items")
         .select("title,url,source,published_at").in("url", urls)
         .gte("published_at", new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString());
       if (newsError) throw new Error("news_validation_failed");
-      const verified = new Map((newsRows ?? []).map((n) => [n.url, n]));
+      const newsRows = (newsData ?? []) as unknown as NewsDbRow[];
+      const verified = new Map<string, NewsDbRow>(newsRows.map((n) => [n.url, n]));
       const grounded = evidence.filter((e) => {
         const row = verified.get(e.url);
         const card = cards.get(e.card_id);
@@ -127,7 +134,7 @@ async function validateCandidates(
       const club = normalize(era.club);
       const currentYear = new Date().getUTCFullYear();
       const overlapCount = deckCards.filter((card) => {
-        const career = card?.legend_career as { clubs?: Array<{ club?: string; years?: string }> } | null;
+        const career = card?.legend_career;
         return (career?.clubs ?? []).some((entry) => {
           if (!entry.club || normalize(entry.club) !== club || !entry.years) return false;
           const match = entry.years.match(/(\d{4})(?:\D+(\d{4}))?/);
