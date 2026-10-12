@@ -31,7 +31,9 @@ export async function createRoom(
       total_rounds:    3,
       categories:      null,
       ...settings,
-      cards_per_round: 100, // always 100 for 1v1 — override any user setting
+      cards_per_round: settings.deck?.card_ids?.length
+        ? Math.min(100, settings.deck.card_ids.length)
+        : 100,
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await supabase.rpc('create_1v1_room' as any, {
