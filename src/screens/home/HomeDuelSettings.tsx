@@ -7,11 +7,13 @@ interface Props {
   onRounds: (n: number) => void;
   loading: boolean;
   onCreate: () => void;
+  categoriesLabel: string;
+  onConfigureCategories: () => void;
   onBack: () => void;
 }
 
 /** Настройки игры один на один. Раунды здесь выбираются — в отличие от командной. */
-export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, onBack }: Props) {
+export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, categoriesLabel, onConfigureCategories, onBack }: Props) {
   const { t } = useTranslation();
 
   return (
@@ -45,6 +47,10 @@ export function HomeDuelSettings({ rounds, onRounds, loading, onCreate, onBack }
           <span className="text-white">60s</span>
         </div>
       </div>
+      <button type="button" onClick={onConfigureCategories} className="flex w-full items-center justify-between rounded-2xl border border-brand-border bg-brand-surface px-4 py-3 text-left">
+        <span><span className="block text-sm font-semibold text-white">{t('home.step_who')}</span><span className="mt-1 block text-xs text-brand-muted">{categoriesLabel}</span></span>
+        <span className="text-sm font-semibold text-brand-accent">{t('home.reset') === 'Reset' ? 'Configure' : 'Настроить'} →</span>
+      </button>
       <Button fullWidth size="lg" loading={loading} onClick={onCreate}>
         {t('home.create_room')}
       </Button>
