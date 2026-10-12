@@ -26,20 +26,28 @@ const validRoom = {
   settings: { categories: null, cards_per_round: 5, total_rounds: 3, round_seconds: 60 },
 };
 
-function queryBuilder(table: string, result: unknown, calls: Array<{ table: string; method: string; args: unknown[] }>) {
-  const methods: Record<string, unknown> = {};
-  return new Proxy(methods, {
+function queryBuilder(table: string, calls: Array<{ table: string; method: string; args: unknown[] }>) {
+  let proxy: Record<string | symbol, unknown>;
+  proxy = new Proxy({}, {
     get(_target, property) {
       if (property === 'then') {
-        return (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
-          Promise.resolve(result).then(resolve, reject);
+        return (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => {
+          const isStatusCheck = table === 'rooms' && calls.some((call) =>
+            call.table === 'rooms' && call.method === 'select' && call.args[0] === 'status'
+          );
+          const result = table === 'rooms'
+            ? { data: isStatusCheck ? { status: 'waiting' } : validRoom, error: null }
+            : { data: null, error: null };
+          return Promise.resolve(result).then(resolve, reject);
+        };
       }
       return (...args: unknown[]) => {
         calls.push({ table, method: String(property), args });
-        return methods;
+        return proxy;
       };
     },
   });
+  return proxy;
 }
 
 beforeEach(() => {
@@ -58,7 +66,7 @@ describe('room code contract', () => {
 
   it('normalizes and passes the full six-character code into the room lookup', async () => {
     const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
-    mocks.from.mockImplementation((table: string) => queryBuilder(table, { data: validRoom, error: null }, calls));
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls));
     await joinRoom('ab12cd', 200);
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'AB12CD'] });
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['status', 'waiting'] });
