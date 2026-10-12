@@ -196,9 +196,23 @@ def main():
         if not player_entity or "claims" not in player_entity:
             unresolved += 1
             continue
-        resolved = resolve_birth_country(
-            player_entity.get("claims") or {}, place_entities, country_labels,
-        )
+        claims = player_entity.get("claims") or {}
+        places = item_ids(claims, "P19")
+        if places and any(
+            place_id not in place_entities or "claims" not in (place_entities.get(place_id) or {})
+            for place_id in places
+        ):
+            unresolved += 1
+            continue
+        place_country_ids = [
+            country_id
+            for place_id in places
+            for country_id in item_ids((place_entities.get(place_id) or {}).get("claims") or {}, "P17")
+        ]
+        if place_country_ids and any(country_id not in country_labels for country_id in place_country_ids):
+            unresolved += 1
+            continue
+        resolved = resolve_birth_country(claims, place_entities, country_labels)
         facts = dict(card.get("facts") or {})
         facts["birth_country_checked"] = True
         if resolved:
@@ -211,11 +225,9 @@ def main():
             if place_label:
                 facts["birth_place"] = place_label
                 facts["birth_place_qid"] = place_qid
-            checked += 1
-        else:
-            # A successfully read entity with no resolvable P19/P17 is a
-            # known absence, not permission to substitute nationality.
-            checked += 1
+        # No P19/P17 or no published country label is a known absence only
+        # after all required entities/labels were fetched successfully.
+        checked += 1
         if apply and facts != (card.get("facts") or {}):
             response = requests.patch(
                 url.rstrip("/") + "/rest/v1/cards",
