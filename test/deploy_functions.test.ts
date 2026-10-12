@@ -165,3 +165,24 @@ describe('CORS Edge-функций', () => {
     expect([...called].sort()).toEqual([...CALLED_FROM_BROWSER].sort());
   });
 });
+
+describe('AI deck builder safety contract', () => {
+  const src = readFileSync('supabase/functions/smart-deck-builder/index.ts', 'utf8');
+
+  it('allows the Telegram signature header in browser preflight requests', () => {
+    expect(src).toContain('x-tg-init-data');
+    expect(src).toContain('Access-Control-Allow-Methods');
+  });
+
+  it('caps user prompts and selects only active canonical player cards', () => {
+    expect(src).toContain('clean(body?.prompt, 700)');
+    expect(src).toContain('.eq("active", true).eq("category", "player")');
+    expect(src).toContain('allowed.has(id)');
+    expect(src).toContain('new Set(parsed.card_ids');
+  });
+
+  it('rejects undersized or invalid model-generated decks', () => {
+    expect(src).toContain('ids.length < 8');
+    expect(src).toContain('ai_invalid_response');
+  });
+});
