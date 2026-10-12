@@ -12,6 +12,8 @@ import type { CardCategory, ContinentFilter } from './database';
 export interface DeckFilter {
   /** Card categories in the deck. null/[] = every category. */
   categories?: CardCategory[] | null;
+  /** Exact canonical card IDs, for evidence-backed Smart Decks. null/[] = no ID restriction. */
+  card_ids?: string[] | null;
   /** Player continents; 'other' means cards.continent IS NULL. */
   continents?: ContinentFilter[] | null;
   /** Exact player countries (ISO, as in cards.country). */
@@ -170,6 +172,7 @@ export const DECK_PRESETS: DeckPreset[] = [
 export function normalizeFilter(filter: DeckFilter): DeckFilter {
   const out: DeckFilter = {};
   if (filter.categories?.length) out.categories = [...filter.categories].sort();
+  if (filter.card_ids?.length) out.card_ids = [...new Set(filter.card_ids)].sort();
   if (filter.continents?.length) out.continents = [...filter.continents].sort();
   if (filter.countries?.length) out.countries = [...filter.countries].sort();
   if (filter.leagues?.length) out.leagues = [...filter.leagues].sort();
