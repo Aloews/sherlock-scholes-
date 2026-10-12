@@ -41,6 +41,7 @@ export function HardCardsPanel({ playerId }: { playerId: number | null }) {
       .select('card_id, cards!inner(name, category_ru, photo_url), rounds!inner(explainer_id)')
       .eq('rounds.explainer_id', playerId)
       .eq('status', 'skipped')
+      .not('rounds.ended_at', 'is', null)
       .limit(1000)
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -84,7 +85,11 @@ export function HardCardsPanel({ playerId }: { playerId: number | null }) {
         <ol className="space-y-2">
           {cards.map((card) => (
             <li key={card.card_id} className="flex items-center gap-3 rounded-xl bg-brand-bg border border-brand-border px-3 py-2">
-              <PlayerPhoto src={card.photo_url} name={card.name} size="sm" />
+              {card.photo_url ? (
+                <PlayerPhoto src={card.photo_url} alt={card.name} className="w-10 h-10 shrink-0 rounded-full" />
+              ) : (
+                <div aria-hidden="true" className="w-10 h-10 shrink-0 rounded-full bg-brand-surface border border-brand-border flex items-center justify-center text-brand-muted text-xs">⚽</div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-white text-sm font-medium truncate">{card.name}</p>
                 {card.category_ru && <p className="text-brand-muted text-[10px]">{card.category_ru}</p>}
