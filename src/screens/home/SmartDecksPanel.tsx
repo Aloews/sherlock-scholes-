@@ -18,7 +18,7 @@ interface SmartDeck {
 }
 interface SmartDeckEditorial { id: string; title: string; hook: string; why: string; rank: number }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
-const NEWS_WINDOW_HOURS = 72;
+const NEWS_WINDOW_HOURS = 72;\nconst TARGET_DECK_SIZE = 20;\nconst MIN_PUBLISHABLE_DECK_SIZE = 8;
 
 export function SmartDecksPanel({ onStart }: Props) {
   const { i18n } = useTranslation();
@@ -40,9 +40,9 @@ export function SmartDecksPanel({ onStart }: Props) {
       try {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
-      supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
-      supabase.rpc('player_ratings', { p_days: 30, p_limit: 16, p_club_key: null, p_league: null, p_country: null }),
-      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(200),
+      supabase.from('news_items').select('title,url,source,published_at,description,summary_short').gte('published_at', since).order('published_at', { ascending: false }).limit(500),
+      supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),
+      supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
@@ -53,9 +53,9 @@ export function SmartDecksPanel({ onStart }: Props) {
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
     setNews(headlines.slice(0, 4));
-    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, 12));
+    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, TARGET_DECK_SIZE));
     setLegends(legendRows);
-    setNewsMatches(matchNewsToPlayers(headlines, playerPool, 16));
+    setNewsMatches(matchNewsToPlayers(headlines, playerPool, TARGET_DECK_SIZE));
       setLoading(false);
       } catch {
         if (cancelled) return;
@@ -69,41 +69,41 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   const decks = useMemo<SmartDeck[]>(() => {
     const result: SmartDeck[] = [];
-    const goldenEra: GoldenEra | null = buildGoldenEra(legends, 16);
+    const goldenEra: GoldenEra | null = buildGoldenEra(legends, TARGET_DECK_SIZE);
     const formIds = new Set(form.map((p) => p.card_id));
     const formAndNews = newsMatches.filter((p) => formIds.has(p.id));
     const newsSourceCount = new Set(newsMatches.map((p) => p.matchedHeadline.source).filter(Boolean)).size;
-    if (form.length >= 3) result.push({
+    if (form.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-current-form', family:'form', eyebrow:ru?'ФОРМА · 30 ДНЕЙ':'FORM · 30 DAYS',
       title:ru?'Сейчас на пике':'In form now',
       description:ru?'Не просто громкие имена: эти футболисты набрали реальные матчи и результативные действия в собранной статистике за 30 дней. Проверь, кого ты узнаешь без подсказки.':'Not just famous names: these players recorded actual appearances and contributions in the collected 30-day match data. See who you can recognize without a hint.',
-      icon:'bolt', image:form[0]?.photo_url ?? null, names:form.slice(0,3).map(p=>p.name),
+      icon:'bolt', image:form[0]?.photo_url ?? null, names:form.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:form.map(p=>p.card_id), lang },
       stats:form.map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
     });
-    if (formAndNews.length >= 3) result.push({
+    if (formAndNews.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-form-meets-headlines', family:'form-news', eyebrow:ru?'ФАКТЫ ВСТРЕЧАЮТСЯ С ХАЙПОМ':'FORM MEETS THE HEADLINES',
       title:ru?'Шум вокруг них не на пустом месте':'The headlines have a match-day reason',
       description:ru?'Эти игроки одновременно попали в свежие заголовки и в собранную матчевую статистику за последние 30 дней. Здесь новостной интерес пересекается с тем, что действительно происходило на поле.':'These players appear in recent headlines and in the collected match stats from the last 30 days. This deck connects the news cycle to what actually happened on the pitch.',
-      icon:'bolt', image:formAndNews[0]?.photo_url ?? null, names:formAndNews.slice(0,3).map(p=>p.name),
+      icon:'bolt', image:formAndNews[0]?.photo_url ?? null, names:formAndNews.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:formAndNews.map(p=>p.id), lang },
       evidence:formAndNews.map(p=>({ card_id:p.id, title:p.matchedHeadline.title, url:p.matchedHeadline.url, source:p.matchedHeadline.source, published_at:p.matchedHeadline.published_at })),
       stats:form.filter(p=>formAndNews.some(m=>m.id===p.card_id)).map(p=>({ card_id:p.card_id, matches:p.matches, goals:p.goals, assists:p.assists })),
     });
-    if (newsMatches.length >= 3) result.push({
+    if (newsMatches.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-news-pulse', family:'news', eyebrow:ru?'СВЕЖИЕ НОВОСТИ · 72 ЧАСА':'NEWS PULSE · 72 HOURS',
       title:ru?'Кто сейчас в центре футбольного сюжета':'Names behind the latest headlines',
       description:ru?`Эти футболисты найдены в свежих публикациях за 72 часа${newsSourceCount ? ` из ${newsSourceCount} источников` : ''}. Мы связываем заголовки только с полными именами из колоды — попробуй вспомнить контекст раньше, чем откроешь ответ.`:`These players appear in recent coverage from the last 72 hours${newsSourceCount ? ` across ${newsSourceCount} sources` : ''}. Headlines are linked only to full canonical names in the deck — see if you remember the story before revealing the answer.`,
-      icon:'calendar', image:newsMatches[0]?.photo_url ?? null, names:newsMatches.slice(0,3).map(p=>p.name),
+      icon:'calendar', image:newsMatches[0]?.photo_url ?? null, names:newsMatches.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:newsMatches.map(p=>p.id), lang },
       evidence:newsMatches.map(p=>({ card_id:p.id, title:p.matchedHeadline.title, url:p.matchedHeadline.url, source:p.matchedHeadline.source, published_at:p.matchedHeadline.published_at })),
     });
-    if (goldenEra && goldenEra.players.length >= 3) result.push({
+    if (goldenEra && goldenEra.players.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-golden-era', family:'golden-era', eyebrow:ru?'ЗОЛОТАЯ ЭПОХА · ПО КАРЬЕРАМ':'GOLDEN ERA · CAREER OVERLAP',
       title:ru?`Великая эпоха: ${goldenEra.club}`:`Golden era: ${goldenEra.club}`,
       description:ru?`Не просто подборка легенд: их карьеры пересеклись в ${goldenEra.club} в ${goldenEra.startYear}–${goldenEra.endYear}. Попробуй собрать эту команду по памяти.`:`More than a list of legends: their careers overlapped at ${goldenEra.club} in ${goldenEra.startYear}–${goldenEra.endYear}. Try to rebuild that team from memory.`,
       icon:'era', image:goldenEra.players[0]?.photo_url ?? null,
-      names:goldenEra.players.slice(0,3).map(p=>p.name),
+      names:goldenEra.players.slice(0,5).map(p=>p.name),
       filter:{ categories:['player'], card_ids:goldenEra.players.map(p=>p.id), lang },
       era:{ club:goldenEra.club, startYear:goldenEra.startYear, endYear:goldenEra.endYear },
     });
