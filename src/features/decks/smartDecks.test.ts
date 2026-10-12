@@ -16,6 +16,33 @@ describe('smart deck entity matching', () => {
  it('matches full canonical names but not surname-only fragments', () => expect(matchNewsToPlayers(headlines, players).map(x=>x.id)).toEqual(['messi','salah']));
  it('deduplicates a card across multiple headlines', () => expect(matchNewsToPlayers([...headlines, headlines[0]], players).filter(x=>x.id==='messi')).toHaveLength(1));
  it('returns no candidate when a headline only contains a surname', () => expect(matchNewsToPlayers([headlines[2]], players)).toEqual([]));
+ it('matches full player names in verified article summaries, not only headlines', () => {
+   const summaryOnly: NewsHeadline[] = [{
+     title: 'Transfer update ahead of the weekend',
+     url: 'https://example.test/summary',
+     source: 'Example',
+     published_at: '2026-10-12T08:00:00Z',
+     description: 'The report confirms Mohamed Salah returned to training with Liverpool.',
+   }];
+   expect(matchNewsToPlayers(summaryOnly, players).map(x => x.id)).toEqual(['salah']);
+ });
+ it('can fill a 20-card news deck when 20 canonical players are evidenced', () => {
+   const manyPlayers: CanonicalPlayer[] = Array.from({ length: 25 }, (_, i) => ({
+     ...players[0],
+     id: `player-${i}`,
+     name: `Player Number ${i}`,
+     name_en: null,
+   }));
+   const oneStory: NewsHeadline[] = [{
+     title: 'A broad tournament story',
+     url: 'https://example.test/tournament',
+     source: 'Example',
+     published_at: '2026-10-12T08:00:00Z',
+     summary_short: manyPlayers.slice(0, 23).map(p => p.name).join(', '),
+   }];
+   expect(matchNewsToPlayers(oneStory, manyPlayers, 20)).toHaveLength(20);
+ });
+
 });
 
 describe('golden-era deck selection', () => {

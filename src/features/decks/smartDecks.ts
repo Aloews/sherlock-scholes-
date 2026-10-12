@@ -1,4 +1,4 @@
-export interface NewsHeadline { title: string; url: string; source: string; published_at: string }
+export interface NewsHeadline { title: string; url: string; source: string; published_at: string; description?: string | null; summary_short?: string | null }
 export interface LegendClub { club: string; years: string }
 export interface CanonicalPlayer {
   id: string; name: string; name_en: string | null; photo_url: string | null;
@@ -39,29 +39,40 @@ export function buildGoldenEra(players: CanonicalPlayer[], maxPlayers = 16): Gol
     }
   }
   const ranges = byPlayer.filter((row) => !ambiguous.has(row.player.id)).flatMap((row) => row.ranges);
+  // Group by club first. Scanning every career range for every anchor made the
+  // 1,000-player candidate pool quadratic across unrelated clubs and could
+  // stall the home screen. This keeps comparisons inside each club's ranges.
+  const byClub = new Map<string, typeof ranges>();
+  for (const range of ranges) {
+    const group = byClub.get(range.key) ?? [];
+    group.push(range);
+    byClub.set(range.key, group);
+  }
   let best: GoldenEra | null = null;
-  for (const anchor of ranges) {
-    const active = ranges.filter((candidate) =>
-      candidate.key === anchor.key && candidate.start <= anchor.start && candidate.end >= anchor.start,
-    );
-    const unique = [...new Map(active.map((item) => [item.player.id, item])).values()];
-    if (unique.length < 3) continue;
-    const startYear = Math.max(...unique.map((item) => item.start));
-    const endYear = Math.min(...unique.map((item) => item.end));
-    if (startYear > endYear) continue;
-    const era: GoldenEra = {
-      club: anchor.club, startYear, endYear,
-      players: unique.sort((a, b) => (b.player.fame ?? -1) - (a.player.fame ?? -1))
-        .slice(0, maxPlayers).map((item) => item.player),
-    };
-    if (!best || era.players.length > best.players.length
-      || (era.players.length === best.players.length && era.endYear > best.endYear)) best = era;
+  for (const clubRanges of byClub.values()) {
+    for (const anchor of clubRanges) {
+      const active = clubRanges.filter((candidate) =>
+        candidate.start <= anchor.start && candidate.end >= anchor.start,
+      );
+      const unique = [...new Map(active.map((item) => [item.player.id, item])).values()];
+      if (unique.length < 3) continue;
+      const startYear = Math.max(...unique.map((item) => item.start));
+      const endYear = Math.min(...unique.map((item) => item.end));
+      if (startYear > endYear) continue;
+      const era: GoldenEra = {
+        club: anchor.club, startYear, endYear,
+        players: unique.sort((a, b) => (b.player.fame ?? -1) - (a.player.fame ?? -1))
+          .slice(0, maxPlayers).map((item) => item.player),
+      };
+      if (!best || era.players.length > best.players.length
+        || (era.players.length === best.players.length && era.endYear > best.endYear)) best = era;
+    }
   }
   return best;
 }
 
-/** Conservative entity linking: require a full canonical multi-word name in a headline. */
-export function matchNewsToPlayers(headlines: NewsHeadline[], players: CanonicalPlayer[], maxCards = 16): NewsCardMatch[] {
+/** Conservative entity linking: require a full canonical multi-word name in verified article text. */
+export function matchNewsToPlayers(headlines: NewsHeadline[], players: CanonicalPlayer[], maxCards = 20): NewsCardMatch[] {
   const normalizedPlayers = players.map((player) => ({
     player,
     names: [...new Set([player.name, player.name_en ?? ''].map(normalizeFootballText)
@@ -70,10 +81,12 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const matches: NewsCardMatch[] = [];
   const used = new Set<string>();
   for (const headline of headlines) {
-    const title = normalizeFootballText(headline.title);
-    if (!title) continue;
+    // Many real football stories mention the player in the summary/body, not in the headline.
+    // Match against all ingested editorial text, while the server still verifies the URL/title.
+    const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
+    if (!articleText) continue;
     for (const entry of normalizedPlayers) {
-      if (used.has(entry.player.id) || !entry.names.some((name) => title.includes(name))) continue;
+      if (used.has(entry.player.id) || !entry.names.some((name) => articleText.includes(name))) continue;
       used.add(entry.player.id);
       matches.push({ id: entry.player.id, name: entry.player.name, photo_url: entry.player.photo_url, matchedHeadline: headline });
       if (matches.length >= maxCards) return matches;
