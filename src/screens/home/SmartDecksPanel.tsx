@@ -18,7 +18,9 @@ interface SmartDeck {
 }
 interface SmartDeckEditorial { id: string; title: string; hook: string; why: string; rank: number }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
-const NEWS_WINDOW_HOURS = 72;\nconst TARGET_DECK_SIZE = 20;\nconst MIN_PUBLISHABLE_DECK_SIZE = 8;
+const NEWS_WINDOW_HOURS = 72;
+const TARGET_DECK_SIZE = 20;
+const MIN_PUBLISHABLE_DECK_SIZE = 8;
 
 export function SmartDecksPanel({ onStart }: Props) {
   const { i18n } = useTranslation();
