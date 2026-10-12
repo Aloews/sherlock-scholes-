@@ -14,12 +14,12 @@ vi.mock('@/shared/ui/Button', () => ({
 import { HomeTeamSettings } from './HomeTeamSettings';
 import { HomeDuelSettings } from './HomeDuelSettings';
 
-const common = () => ({
+const common = (deckPrompt = '') => ({
   loading: false,
   categoriesLabel: 'Все категории',
   onConfigureCategories: vi.fn(),
   onBack: vi.fn(),
-  deckPrompt: '',
+  deckPrompt,
   buildingDeck: false,
   deckMessage: '',
   onDeckPromptChange: vi.fn(),
@@ -30,13 +30,9 @@ afterEach(() => cleanup());
 
 describe('AI room deck intent', () => {
   it('is available before creating a team room', () => {
-    const props = common();
+    const props = common('Легенды Барселоны');
     const onCreate = vi.fn();
     render(<HomeTeamSettings {...props} onCreate={onCreate} />);
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Запрос ИИ для колоды комнаты' }), {
-      target: { value: 'Легенды Барселоны' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
     expect(props.onBuildDeck).toHaveBeenCalledTimes(1);
 
@@ -45,13 +41,9 @@ describe('AI room deck intent', () => {
   });
 
   it('is available before creating a 1v1 room', () => {
-    const props = common();
+    const props = common('Вратари Серии А');
     const onCreate = vi.fn();
     render(<HomeDuelSettings {...props} rounds={3} onRounds={vi.fn()} onCreate={onCreate} />);
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Запрос ИИ для колоды комнаты' }), {
-      target: { value: 'Вратари Серии А' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
     expect(props.onBuildDeck).toHaveBeenCalledTimes(1);
 
