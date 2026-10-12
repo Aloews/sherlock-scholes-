@@ -39,6 +39,18 @@ describe('AI room deck intent', () => {
     expect(new Set(result?.filter.card_ids).size).toBe(20);
   });
 
+  it('supports up to one hundred cards for 1v1 rooms', () => {
+    const cards = Array.from({ length: 120 }, (_, index) => ({
+      id: `player-${index}`,
+      category: 'player',
+    }));
+
+    const result = parseAIResolvedDeck({ cards }, 100);
+
+    expect(result?.cardCount).toBe(100);
+    expect(result?.filter.card_ids).toHaveLength(100);
+  });
+
   it('rejects malformed responses and decks with fewer than three valid cards', () => {
     expect(parseAIResolvedDeck(null)).toBeNull();
     expect(parseAIResolvedDeck({ cards: [] })).toBeNull();
