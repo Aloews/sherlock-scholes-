@@ -51,7 +51,7 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
     supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
       .order("fame", { ascending: false, nullsFirst: false }).limit(250),
     ...nonPlayerCategories.map((category) => supabase.from("cards").select(fields)
-      .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(80)),
+      .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(65)),
   ]);
   if (playersResult.error || otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
 
@@ -84,7 +84,7 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
     ...named,
     ...current,
   ]) byId.set(row.id, row);
-  return [...byId.values()].slice(0, 1200);
+  return [...byId.values()].slice(0, 1300);
 }
 
 Deno.serve(async (req: Request) => {
