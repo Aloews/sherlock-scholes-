@@ -11,6 +11,7 @@ import { WeeklyQuests } from '@/screens/profile/WeeklyQuests';
 import { SoundCheckPanel } from '@/features/voice/SoundCheckPanel';
 import { VoiceServicesPanel } from '@/features/voice/VoiceServicesPanel';
 import { HardCardsPanel } from '@/screens/profile/HardCardsPanel';
+import { CollectibleCardsPanel } from '@/screens/profile/CollectibleCardsPanel';
 
 // Phase 1 of the progression handoff (docs/PROGRESSION_FEATURES_HANDOFF.md):
 // avatar, level + rank title, xp progress bar. The achievement ribbon and
@@ -100,6 +101,7 @@ export function ProfileScreen() {
           <WeeklyQuests playerId={player?.id ?? null} onClaimed={() => void reload()} />
 
           <HardCardsPanel playerId={player?.id ?? null} />
+          <CollectibleCardsPanel playerId={player?.id ?? null} />
 
           {/* Sound check. Here rather than in the lobby because it is a
               settings-shaped thing you do once on a new phone, and because a
