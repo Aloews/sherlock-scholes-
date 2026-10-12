@@ -40,7 +40,8 @@ export function HomeScreen() {
   const { player } = useAuthStore();
   const { loading } = useGameStore();
   const { soundEnabled, setSoundEnabled } = useSettingsStore();
-  const isPro = useProStore((s) => s.isPro);
+  // Monetization is disabled: all Alias deck options are available to everyone.
+  const isPro = true;
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom } = useRoom();
   const { t } = useTranslation();
