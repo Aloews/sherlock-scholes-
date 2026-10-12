@@ -43,6 +43,37 @@ ALTER TABLE public.player_card_trade_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.player_card_trade_offers FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.player_card_trade_events FROM PUBLIC, anon, authenticated;
 
+CREATE OR REPLACE FUNCTION public.my_card_tradeable_collectibles(p_init_data text)
+RETURNS TABLE (
+  collectible_id uuid,
+  card_id uuid,
+  name text,
+  name_en text,
+  category text,
+  category_ru text,
+  photo_url text,
+  tier text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_me bigint;
+BEGIN
+  v_me := public.tg_validate_init_data(p_init_data);
+  IF v_me IS NULL THEN
+    RAISE EXCEPTION 'UNAUTHORIZED';
+  END IF;
+
+  RETURN QUERY
+  SELECT i.id, c.id, c.name, c.name_en, c.category, c.category_ru, c.photo_url, c.tier
+  FROM public.player_card_collectibles i
+  JOIN public.cards c ON c.id = i.card_id
+  WHERE i.player_id = v_me
+  ORDER BY i.acquired_at DESC, c.name;
+END;
+$function$;
 CREATE OR REPLACE FUNCTION public.friend_collectible_inventory(
   p_init_data text,
   p_friend_id bigint
@@ -254,57 +285,12 @@ BEGIN
 
   SELECT i.card_id INTO v_offered_card_id
   FROM public.player_card_collectibles i
-  WHERE i.id = v_trade.offered_collectible_id AND i.player_id = v_trade.from_player_id;
+  WHERE i.id = v_trade.offered_collectible_id;
   IF v_offered_card_id IS NULL THEN
-    RAISE EXCEPTION 'OFFERED_CARD_NOT_OWNED';
+    RAISE EXCEPTION 'OFFERED_CARD_NOT_FOUND';
   END IF;
 
-  SELECT i.id, i.card_id INTO v_requested_collectible_id, v_requested_card_id
-  FROM public.player_card_collectibles i
-  WHERE i.player_id = v_trade.to_player_id AND i.card_id = v_trade.requested_card_id;
-  IF v_requested_collectible_id IS NULL THEN
-    RAISE EXCEPTION 'REQUESTED_CARD_NOT_OWNED';
-  END IF;
-
-  -- Lock both collectible instances in deterministic order before ownership changes.
-  PERFORM i.id
-  FROM public.player_card_collectibles i
-  WHERE i.id IN (v_trade.offered_collectible_id, v_requested_collectible_id)
-  ORDER BY i.id
-  FOR UPDATE;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM public.player_card_collectibles i
-    WHERE i.id = v_trade.offered_collectible_id
-      AND i.player_id = v_trade.from_player_id AND i.card_id = v_offered_card_id
-  ) OR NOT EXISTS (
-    SELECT 1 FROM public.player_card_collectibles i
-    WHERE i.id = v_requested_collectible_id
-      AND i.player_id = v_trade.to_player_id AND i.card_id = v_trade.requested_card_id
-  ) THEN
-    RAISE EXCEPTION 'TRADE_OWNERSHIP_CHANGED';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM public.player_card_collectibles i
-    WHERE i.player_id = v_trade.to_player_id AND i.card_id = v_offered_card_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.player_card_collectibles i
-    WHERE i.player_id = v_trade.from_player_id AND i.card_id = v_trade.requested_card_id
-  ) THEN
-    RAISE EXCEPTION 'DUPLICATE_CARD';
-  END IF;
-
-  IF NOT p_accept THEN
-    UPDATE public.player_card_trade_offers
-    SET status = 'declined', responded_at = now()
-    WHERE id = v_trade.id;
-    INSERT INTO public.player_card_trade_events
-      (trade_id, actor_player_id, action, offered_card_id, requested_card_id)
-    VALUES (v_trade.id, v_me, 'declined', v_offered_card_id, v_trade.requested_card_id);
-    RETURN true;
-  END IF;
-
+  -- Declining never changes ownership, so it remains possible even if an asset moved.
   UPDATE public.player_card_collectibles
   SET player_id = v_trade.to_player_id, acquired_via = 'trade', acquired_at = now()
   WHERE id = v_trade.offered_collectible_id;
@@ -370,11 +356,13 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.my_card_tradeable_collectibles(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.friend_collectible_inventory(text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.create_player_card_trade(text, bigint, uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.my_player_card_trades(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.respond_player_card_trade(text, uuid, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.cancel_player_card_trade(text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.my_card_tradeable_collectibles(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.friend_collectible_inventory(text, bigint) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_player_card_trade(text, bigint, uuid, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.my_player_card_trades(text) TO anon, authenticated;
