@@ -87,8 +87,9 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
     .single();
 
   if (error || !room) throw new Error('Room not found or game already started');
+  const validRoom = requireRoomCode(room as Room);
 
-  if ((room as Room).mode === '1v1') {
+  if (validRoom.mode === '1v1') {
     // Atomic path (PENDING_SQL 2026-07-18): status + capacity + team +
     // membership in one transaction under a row lock. Two concurrent joins
     // can both pass the client-side count check below, so the RPC is the
@@ -96,7 +97,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
     // prod, then this call always succeeds or raises.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: joined, error: rpcError } = await supabase.rpc('join_1v1_room' as any, {
-      p_room_id:   room.id,
+      p_room_id:   validRoom.id,
       p_player_id: playerId,
     });
     if (!rpcError && joined) return joined as Room;
@@ -112,7 +113,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
       .eq('player_id', playerId)
       .maybeSingle();
 
-    if (existing) return room as Room;
+    if (existing) return validRoom;
 
     // Capacity check
     const { count } = await supabase
@@ -146,7 +147,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
       .insert({ room_id: room.id, player_id: playerId, team_id: (team2 as Team).id });
 
     await backOutIfStarted(room.id, playerId, (team2 as Team).id);
-    return room as Room;
+    return validRoom;
   }
 
   // Team mode. Insert (not upsert) so we know whether the membership is new:
