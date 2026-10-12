@@ -101,9 +101,12 @@ CREATE TABLE public.round_cards (
   status text NOT NULL
 );
 ALTER TABLE public.rounds ADD COLUMN team_id uuid;
+ALTER TABLE public.rounds ADD COLUMN started_at timestamptz;
+ALTER TABLE public.rounds ADD COLUMN ended_at timestamptz;
 ALTER TABLE public.round_cards ADD COLUMN id uuid DEFAULT gen_random_uuid();
 ALTER TABLE public.round_cards ADD CONSTRAINT round_cards_test_id_key UNIQUE (id);
 ALTER TABLE public.round_cards ADD COLUMN card_id uuid;
+ALTER TABLE public.round_cards ADD COLUMN decided_at timestamptz;
 ALTER TABLE public.cards ADD COLUMN category_ru text;
 ALTER TABLE public.cards ADD COLUMN tier text;
 CREATE FUNCTION public.tg_validate_init_data(text)
