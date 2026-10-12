@@ -3,7 +3,7 @@ name: player-stats-sql-regression
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, fix/player-stats-cache-and-nightly-verify]
   workflow_dispatch:
 
 jobs:
