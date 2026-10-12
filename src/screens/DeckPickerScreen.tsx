@@ -276,7 +276,6 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                     key={preset.id}
                     leading={preset.emoji}
                     title={t(preset.labelKey)}
-                    description={t(preset.descKey)}
                     count={n}
                     locked={locked}
                     disabled={n === 0 && !locked}
@@ -295,7 +294,6 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
               <OptionRow
                 leading="⚽"
                 title={t('category.player')}
-                description={t('home.who_players_desc')}
                 selected={withPlayers}
                 onClick={() => { hapticImpact('light'); setWithPlayers((v) => !v); }}
               />
@@ -324,7 +322,6 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                 <OptionRow
                   key={level}
                   title={t(`home.fame_${level}`)}
-                  description={t(`home.fame_${level}_desc`)}
                   count={fameCounts?.[level]}
                   selected={fameLevel === level}
                   onClick={() => {
