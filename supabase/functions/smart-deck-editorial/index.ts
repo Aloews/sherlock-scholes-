@@ -69,7 +69,7 @@ async function validateCandidates(
   candidates: Candidate[],
 ): Promise<Candidate[]> {
   const ids = [...new Set(candidates.flatMap((d) => d.card_ids))];
-  if (!ids.length || ids.length > 64) return [];
+  if (!ids.length || ids.length > 128) return []; // up to four decks × twenty canonical cards, with overlap
   const { data: cardData, error: cardError } = await supabase.from("cards")
     .select("id,name,name_en,active,category,legend_career")
     .in("id", ids);
