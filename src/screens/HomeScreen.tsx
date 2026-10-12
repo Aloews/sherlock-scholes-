@@ -208,59 +208,6 @@ export function HomeScreen() {
             на весь экран отодвигала первое настоящее дело за сгиб. Имя было
             последним, что от этого блока осталось, — теперь нет и его. */}
 
-        {/* THE MENU OF GAMES. Alias is a row like the other three, not a
-            stack of tall buttons above them: once there are four games, one
-            entry shouting while three whisper reads as three afterthoughts.
-            Its own actions live one tap in, under `view === 'alias'`.
-
-            Order is by what brings somebody back. Alias is the game, so it is
-            first; the matches feed is next because it is a reason to open the
-            app on a day nobody wants to play. */}
-        {/* THE MENU OF GAMES. Alias is a row like the other three, not a
-            stack of tall buttons above them: once there are four games, one
-            entry shouting while three whisper reads as three afterthoughts.
-            Its own actions live one tap in, under `view === 'alias'`.
-
-            Order is by what brings somebody back. Alias is the game, so it is
-            first; the matches feed is next because it is a reason to open the
-            app on a day nobody wants to play. */}
-        {/* Ближайшие большие матчи — эмблемы, турнир, время и сумма стоимости
-            обоих составов, по которой матч сюда и попал. Владелец: «самые
-            важные предстоящие матчи выводить на главную с важными данными и
-            эмблемами».
-
-            ⚠️ БЛИЖАЙШИЕ МАТЧИ — ВЫШЕ НОВОСТЕЙ. Владелец: «ближайшие матчи на
-            главной выглядят хорошо, но нужно их перед новостями, выше
-            поднять». У матча единственная на этом экране строка со сроком
-            годности: гол выходных и заголовки будут теми же через час, а
-            «через 25 минут» через час уже неправда.
-
-            ⚠️ ПРИЧИНА, ПО КОТОРОЙ ОН СТОЯЛ ВНИЗУ, НИКУДА НЕ ДЕЛАСЬ: блок
-            приходит по сети и, появляясь, сдвинул бы и превью гола, и все
-            кнопки игр вниз ровно тогда, когда палец летит к «Алиасу». Поэтому
-            TopFixtures на время запроса держит место скелетом из тех же
-            классов — приезд матчей больше ничего не двигает. */}
-        {/* ⚠️ И САМ БЛОК ТОЖЕ ПРЯЧЕТСЯ БЕЗ ПОДПИСКИ: он ведёт на /matches, то
-            есть без неё это витрина в запертую дверь. Если однажды решим, что
-            приманка важнее чистой главной, — снять условие здесь, одна
-            строка. */}
-        {view === 'home' && !hidden('/matches') && (
-          <div className="w-full max-w-sm">
-            <TopFixtures />
-          </div>
-        )}
-
-        {/* Лучший гол выходных — картинкой, а не строкой. Ролики жили за
-            словом «дайджест», которое обещает новости: экран открывали, голов
-            не находили и спрашивали, где они. Строка ниже теперь называет их
-            своим словом, а сам ролик виден отсюда. */}
-        {view === 'home' && !hidden('/digest') && (
-          <div className="w-full max-w-sm">
-            <HomeGoalPreview />
-          </div>
-        )}
-
-
         {view === 'home' && (
           <div className="w-full max-w-sm">
             <HomeGameLink
