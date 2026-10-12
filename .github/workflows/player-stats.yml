@@ -64,6 +64,7 @@ jobs:
       # docs/namesake_fixes.sql); a regression there is exactly the kind of
       # believable-wrong-number bug this step exists to catch before the run.
       - name: Parser tests
+        id: parser_tests
         working-directory: football_scraper
         run: |
           python3 tests/test_sports_ru.py
@@ -83,7 +84,7 @@ jobs:
       # источники независимы, и падение одного не должно уносить второй —
       # иначе редкая поломка sports.ru тихо оставляла бы рейтинг без ESPN.
       - name: Collect (ESPN)
-        if: always()
+        if: ${{ always() && steps.parser_tests.conclusion == 'success' }}
         working-directory: football_scraper
         # Двое суток, а не одни: матч, начавшийся в 23:30 UTC, заканчивается
         # уже «завтра», и обход только за сегодня терял бы его каждый раз.
@@ -127,7 +128,7 @@ jobs:
       # что двойной запуск ничего не портит, а смерть одного из двух путей не
       # оставляет экран без экспрессов.
       - name: Освежить статистику планировщику и кэш рейтинга
-        if: always()
+        if: ${{ always() && steps.parser_tests.conclusion == 'success' }}
         run: |
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
