@@ -70,38 +70,61 @@ beforeEach(() => {
     data: name === 'player_ratings' ? players : [],
     error: null,
   }));
-  mocks.invoke.mockResolvedValue({ data: { editorials: [], mode: 'deterministic' }, error: null });
+  mocks.invoke.mockImplementation((name: string) => Promise.resolve({
+    data: name === 'smart-deck-builder'
+      ? { title: 'AI selected legends', description: 'A playable set of verified players.', card_ids: players.slice(0, 8).map((player) => player.card_id) }
+      : { editorials: [], mode: 'deterministic' },
+    error: null,
+  }));
 });
-
 afterEach(() => cleanup());
 
-describe('SmartDecksPanel deck builder', () => {
-  it('opens a dialog, allows card selection, and starts with the exact selected IDs', async () => {
+describe('SmartDecksPanel AI deck builder', () => {
+  it('sends the user prompt to AI, previews verified player cards, and starts with selected IDs', async () => {
     const onStart = vi.fn();
     render(<SmartDecksPanel onStart={onStart} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Build deck/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Ask AI to build a deck/i }));
     expect(await screen.findByRole('dialog')).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(10));
+    const prompt = screen.getByLabelText(/Your request/i);
+    fireEvent.change(prompt, { target: { value: 'Build a deck of famous World Cup winners' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generate deck with AI/i }));
 
+    expect(await screen.findByText('AI selected legends')).toBeTruthy();
+    expect(mocks.invoke).toHaveBeenCalledWith('smart-deck-builder', {
+      body: { prompt: 'Build a deck of famous World Cup winners', language: 'en' },
+    });
+    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(8));
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
-    expect(screen.getByText('9')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Build deck & play/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Play this deck/i }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
     const [filter, presetId] = onStart.mock.calls[0];
-    expect(presetId).toBe('smart-current-form');
-    expect(filter.card_ids).toHaveLength(9);
+    expect(presetId).toBe('smart-ai-custom');
+    expect(filter.card_ids).toHaveLength(7);
     expect(filter.card_ids).not.toContain('player-0');
+    expect(filter.categories).toEqual(['player']);
   });
 
-  it('does not start an empty deck', async () => {
+  it('does not call AI for a blank request', async () => {
     const onStart = vi.fn();
     render(<SmartDecksPanel onStart={onStart} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Build deck/i }));
-    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(10));
-    for (const checkbox of screen.getAllByRole('checkbox')) fireEvent.click(checkbox);
-    expect(screen.getByRole('button', { name: /Build deck & play/i })).toHaveProperty('disabled', true);
+    fireEvent.click(await screen.findByRole('button', { name: /Ask AI to build a deck/i }));
+    const generate = screen.getByRole('button', { name: /Generate deck with AI/i });
+    expect(generate).toHaveProperty('disabled', true);
+    expect(mocks.invoke).not.toHaveBeenCalledWith('smart-deck-builder', expect.anything());
     expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when AI cannot return a valid deck', async () => {
+    mocks.invoke.mockImplementation((name: string) => Promise.resolve({
+      data: name === 'smart-deck-builder' ? { card_ids: ['invalid'] } : { editorials: [], mode: 'deterministic' },
+      error: null,
+    }));
+    render(<SmartDecksPanel onStart={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Ask AI to build a deck/i }));
+    fireEvent.change(screen.getByLabelText(/Your request/i), { target: { value: 'Build a deck around the Premier League' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generate deck with AI/i }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
   });
 });
