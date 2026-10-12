@@ -39,23 +39,34 @@ export function buildGoldenEra(players: CanonicalPlayer[], maxPlayers = 16): Gol
     }
   }
   const ranges = byPlayer.filter((row) => !ambiguous.has(row.player.id)).flatMap((row) => row.ranges);
+  // Group by club first. Scanning every career range for every anchor made the
+  // 1,000-player candidate pool quadratic across unrelated clubs and could
+  // stall the home screen. This keeps comparisons inside each club's ranges.
+  const byClub = new Map<string, typeof ranges>();
+  for (const range of ranges) {
+    const group = byClub.get(range.key) ?? [];
+    group.push(range);
+    byClub.set(range.key, group);
+  }
   let best: GoldenEra | null = null;
-  for (const anchor of ranges) {
-    const active = ranges.filter((candidate) =>
-      candidate.key === anchor.key && candidate.start <= anchor.start && candidate.end >= anchor.start,
-    );
-    const unique = [...new Map(active.map((item) => [item.player.id, item])).values()];
-    if (unique.length < 3) continue;
-    const startYear = Math.max(...unique.map((item) => item.start));
-    const endYear = Math.min(...unique.map((item) => item.end));
-    if (startYear > endYear) continue;
-    const era: GoldenEra = {
-      club: anchor.club, startYear, endYear,
-      players: unique.sort((a, b) => (b.player.fame ?? -1) - (a.player.fame ?? -1))
-        .slice(0, maxPlayers).map((item) => item.player),
-    };
-    if (!best || era.players.length > best.players.length
-      || (era.players.length === best.players.length && era.endYear > best.endYear)) best = era;
+  for (const clubRanges of byClub.values()) {
+    for (const anchor of clubRanges) {
+      const active = clubRanges.filter((candidate) =>
+        candidate.start <= anchor.start && candidate.end >= anchor.start,
+      );
+      const unique = [...new Map(active.map((item) => [item.player.id, item])).values()];
+      if (unique.length < 3) continue;
+      const startYear = Math.max(...unique.map((item) => item.start));
+      const endYear = Math.min(...unique.map((item) => item.end));
+      if (startYear > endYear) continue;
+      const era: GoldenEra = {
+        club: anchor.club, startYear, endYear,
+        players: unique.sort((a, b) => (b.player.fame ?? -1) - (a.player.fame ?? -1))
+          .slice(0, maxPlayers).map((item) => item.player),
+      };
+      if (!best || era.players.length > best.players.length
+        || (era.players.length === best.players.length && era.endYear > best.endYear)) best = era;
+    }
   }
   return best;
 }
