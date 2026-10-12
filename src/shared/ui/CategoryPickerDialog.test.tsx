@@ -22,7 +22,7 @@ describe('CategoryPickerDialog', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Сбросить' }));
-    expect(screen.getByRole('button', { name: 'Применить' })).toBeDisabled();
+    expect((screen.getByRole('button', { name: 'Применить' }) as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Выбрать все' }));
     fireEvent.click(screen.getByRole('button', { name: 'Применить' }));
