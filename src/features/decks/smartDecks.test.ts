@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
+import { normalizeFilter } from '@/shared/types/deck';
 const players: CanonicalPlayer[] = [
  { id:'messi', name:'Лионель Месси', name_en:'Lionel Messi', photo_url:null, country:'AR', position_ru:'Нападающий', fame:100 },
  { id:'salah', name:'Мохамед Салах', name_en:'Mohamed Salah', photo_url:null, country:'EG', position_ru:'Нападающий', fame:90 },
@@ -38,5 +39,12 @@ describe('golden-era deck selection', () => {
       { ...players[2], legend_career: { clubs: [{ club: 'AC Milan', years: '1989–1993' }] } },
     ];
     expect(buildGoldenEra(squad)).toBeNull();
+  });
+});
+
+describe('exact-card deck filter', () => {
+  it('deduplicates and sorts canonical card IDs before they reach the RPC', () => {
+    expect(normalizeFilter({ categories: ['player'], card_ids: ['b', 'a', 'b'], lang: 'ru' }))
+      .toEqual({ categories: ['player'], card_ids: ['a', 'b'], lang: 'ru' });
   });
 });
