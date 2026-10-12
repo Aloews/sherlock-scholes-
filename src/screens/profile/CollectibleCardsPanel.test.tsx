@@ -70,7 +70,7 @@ describe('CollectibleCardsPanel', () => {
     expect(screen.getByText('Эрлинг Холанд')).toBeTruthy();
     expect(screen.getByText('profile.collectibles_count · 1')).toBeTruthy();
     expect(screen.getByText('73/100')).toBeTruthy();
-    expect(screen.getByText('profile.collectibles_progress_remaining:{"count":27}')).toBeTruthy();
+    expect(screen.getByText('profile.collectibles_progress_remaining: 27')).toBeTruthy();
     expect(mocks.rpc).toHaveBeenCalledWith('my_card_collectibles', { p_init_data: 'signed-init-data' });
     expect(mocks.rpc).toHaveBeenCalledWith('my_card_collectible_progress', { p_init_data: 'signed-init-data' });
   });
