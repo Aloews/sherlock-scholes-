@@ -9,7 +9,19 @@ import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { trackEvent } from '@/shared/lib/analytics';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
+import { normalizeCode } from '@/features/lobby/invite';
 import type { DeckFilter } from '@/shared/types/deck';
+
+
+// Never let a malformed database/RPC response masquerade as a usable invite.
+// A room with a one-character code cannot be joined through the six-character
+// public contract, so fail visibly at creation rather than trapping the host.
+function assertValidCreatedRoomCode(value: unknown): asserts value is Room {
+  const code = (value as { code?: unknown } | null)?.code;
+  if (typeof code !== 'string' || !normalizeCode(code)) {
+    throw new Error('INVALID_CREATED_ROOM_CODE');
+  }
+}
 
 // ─── Room ───────────────────────────────────────────────────
 
@@ -32,6 +44,7 @@ export async function createRoom(
       p_settings: s,
     });
     if (error || !data) throw new Error(error?.message ?? 'Failed to create room');
+    assertValidCreatedRoomCode(data);
     return data as Room;
   }
 
@@ -50,6 +63,7 @@ export async function createRoom(
     p_settings: finalSettings,
   });
   if (error || !room) throw new Error(error?.message ?? 'Failed to create room');
+  assertValidCreatedRoomCode(room);
   return room as Room;
 }
 
@@ -70,10 +84,12 @@ async function backOutIfStarted(
 }
 
 export async function joinRoom(code: string, playerId: number): Promise<Room> {
+  const validCode = normalizeCode(code);
+  if (!validCode) throw new Error('INVALID_ROOM_CODE');
   const { data: room, error } = await supabase
     .from('rooms')
     .select()
-    .eq('code', code.toUpperCase())
+    .eq('code', validCode)
     .eq('status', 'waiting')
     .single();
 
