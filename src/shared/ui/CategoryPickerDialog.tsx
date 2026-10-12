@@ -22,8 +22,6 @@ export function CategoryPickerDialog({ selectedCategories, onClose, onApply }: P
   const [draft, setDraft] = useState<Set<CardCategory>>(
     () => new Set(selectedCategories ?? ALL_CATEGORIES),
   );
-  const allSelected = ALL_CATEGORIES.every((category) => draft.has(category));
-
   const toggle = (category: CardCategory) => {
     setDraft((current) => {
       const next = new Set(current);
