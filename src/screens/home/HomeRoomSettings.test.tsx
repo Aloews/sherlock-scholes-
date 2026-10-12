@@ -14,13 +14,14 @@ vi.mock('@/shared/ui/Button', () => ({
 import { HomeTeamSettings } from './HomeTeamSettings';
 import { HomeDuelSettings } from './HomeDuelSettings';
 
-const common = (deckPrompt = '') => ({
+const common = (deckPrompt = '', hasResolvedDeck = false) => ({
   loading: false,
   categoriesLabel: 'Все категории',
   onConfigureCategories: vi.fn(),
   onBack: vi.fn(),
   deckPrompt,
   buildingDeck: false,
+  hasResolvedDeck,
   deckMessage: '',
   onDeckPromptChange: vi.fn(),
   onBuildDeck: vi.fn(),
@@ -30,7 +31,7 @@ afterEach(() => cleanup());
 
 describe('AI room deck intent', () => {
   it('is available before creating a team room', () => {
-    const props = common('Легенды Барселоны');
+    const props = common('Легенды Барселоны', true);
     const onCreate = vi.fn();
     render(<HomeTeamSettings {...props} onCreate={onCreate} />);
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
@@ -41,7 +42,7 @@ describe('AI room deck intent', () => {
   });
 
   it('is available before creating a 1v1 room', () => {
-    const props = common('Вратари Серии А');
+    const props = common('Вратари Серии А', true);
     const onCreate = vi.fn();
     render(<HomeDuelSettings {...props} rounds={3} onRounds={vi.fn()} onCreate={onCreate} />);
     fireEvent.click(screen.getByRole('button', { name: 'Определить запрос и собрать колоду' }));
@@ -49,6 +50,12 @@ describe('AI room deck intent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'home.create_room' }));
     expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks room creation while a typed AI request has not been resolved', () => {
+    const props = common('Стадионы Италии', false);
+    render(<HomeTeamSettings {...props} onCreate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'home.create_room' })).toHaveProperty('disabled', true);
   });
 
   it('does not submit an empty or short request', () => {
