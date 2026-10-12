@@ -142,10 +142,10 @@ CREATE INDEX IF NOT EXISTS idx_cards_pageviews   ON cards(pageviews) WHERE pagev
 
 -- Unique 6-char room code generator
 CREATE OR REPLACE FUNCTION generate_room_code()
-RETURNS CHAR(6) AS $$
+RETURNS TEXT AS $
 DECLARE
   chars  TEXT    := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  v_code CHAR(6);
+  v_code TEXT;
   taken  BOOLEAN;
 BEGIN
   LOOP
