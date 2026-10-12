@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
+import { OpenRoomsPanel } from './OpenRoomsPanel';
 
 interface Props {
   code: string;
@@ -12,6 +13,7 @@ interface Props {
   inputRef: Ref<HTMLInputElement>;
   loading: boolean;
   onSubmit: () => void;
+  onJoinRoom: (code: string) => void;
   onBack: () => void;
 }
 
@@ -25,12 +27,13 @@ interface Props {
  * только то, что видно.
  */
 export function HomeJoinForm({
-  code, onCode, typedCode, inputRef, loading, onSubmit, onBack,
+  code, onCode, typedCode, inputRef, loading, onSubmit, onJoinRoom, onBack,
 }: Props) {
   const { t } = useTranslation();
 
   return (
     <div className="w-full max-w-sm space-y-4 animate-slide-up">
+      <OpenRoomsPanel onJoin={onJoinRoom} loading={loading} />
       <div className="space-y-2">
         <label className="text-brand-muted text-sm font-medium">
           {t('home.room_code_label')}
