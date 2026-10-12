@@ -8,7 +8,9 @@ DECLARE
 BEGIN
   SELECT id::text INTO v_id FROM public.cards WHERE active AND category = 'player' ORDER BY id LIMIT 1;
   IF v_id IS NULL THEN
-    RAISE EXCEPTION 'Cannot test card_ids: no active cards';
+    INSERT INTO public.cards (name, category, active)
+    VALUES ('ZZTEST Smart Deck Card ID', 'player', true)
+    RETURNING id::text INTO v_id;
   END IF;
 
   SELECT count(*) INTO v_count
