@@ -66,3 +66,40 @@ create function public.fill_current_club_from_soccerwiki()
 returns table("записано" integer) language sql as $$ select 0 $$;
 create function public.card_club_conflicts()
 returns table(card_id uuid) language sql as $$ select null::uuid where false $$;
+
+
+-- Minimal fixtures for the presence/stats privilege regression migration.
+CREATE TABLE public.player_presence (
+  player_id bigint PRIMARY KEY,
+  seen_at timestamptz NOT NULL DEFAULT now(),
+  hidden boolean NOT NULL DEFAULT false
+);
+
+
+CREATE TABLE public.rooms (
+  id uuid PRIMARY KEY,
+  status text NOT NULL,
+  stats_awarded_at timestamptz
+);
+CREATE TABLE public.room_players (
+  room_id uuid NOT NULL,
+  player_id bigint NOT NULL,
+  team_id uuid
+);
+CREATE TABLE public.scores (
+  room_id uuid NOT NULL,
+  team_id uuid NOT NULL,
+  points integer NOT NULL
+);
+CREATE TABLE public.rounds (
+  id uuid PRIMARY KEY,
+  room_id uuid NOT NULL,
+  explainer_id bigint
+);
+CREATE TABLE public.round_cards (
+  round_id uuid NOT NULL,
+  status text NOT NULL
+);
+
+CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
+RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
