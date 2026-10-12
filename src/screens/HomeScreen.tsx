@@ -133,9 +133,9 @@ export function HomeScreen() {
     }
   };
 
-  const buildRoomDeck = async () => {
-    const prompt = roomDeckPrompt.trim();
-    if (prompt.length < 3 || buildingRoomDeck) return;
+  const buildRoomDeck = async (promptOverride?: string): Promise<DeckFilter | null> => {
+    const prompt = (promptOverride ?? roomDeckPrompt).trim();
+    if (prompt.length < 3 || buildingRoomDeck) return null;
     setBuildingRoomDeck(true);
     setRoomDeckMessage('');
     const targetCardCount = view === 'create_1v1' ? 100 : 20;
@@ -154,6 +154,7 @@ export function HomeScreen() {
       setRoomDeckMessage(resolved.message || (i18n.language.startsWith('ru')
         ? `Колода готова: ${resolved.cardCount} карточек.`
         : `Deck ready: ${resolved.cardCount} cards.`));
+      return resolved.filter;
     } catch (error) {
       const ru = i18n.language.startsWith('ru');
       const detail = error instanceof Error ? error.message : '';
@@ -162,6 +163,7 @@ export function HomeScreen() {
         : detail === 'not_enough_cards'
           ? (ru ? 'Не найдено достаточно карточек по запросу. Уточни тему.' : 'Not enough cards matched. Refine the topic.')
           : (ru ? 'Не удалось обработать запрос. Попробуй ещё раз.' : 'Could not process the request. Try again.'));
+      return null;
     } finally {
       setBuildingRoomDeck(false);
     }
@@ -192,6 +194,7 @@ export function HomeScreen() {
         onClose={() => setView('home')}
         onNeedPro={() => navigate('/pro')}
         onStart={startGame}
+        onBuildWithAI={(prompt) => buildRoomDeck(prompt)}
       />
     );
   }
