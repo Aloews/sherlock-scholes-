@@ -220,7 +220,16 @@
     "streak_one": "Sequência: {{count}} dia",
     "streak_other": "Sequência: {{count}} dias",
     "streak_best_one": "recorde: {{count}} dia",
-    "streak_best_other": "recorde: {{count}} dias"
+    "streak_best_other": "recorde: {{count}} dias",
+    "collectibles_title": "Cartas colecionáveis",
+    "collectibles_count": "Desbloqueadas: {{count}}",
+    "collectibles_hint": "Acerte cartas em partidas por equipes. Ao acertar a mesma carta 100 vezes, ela entra na coleção do seu perfil.",
+    "collectibles_empty": "Você ainda não tem cartas colecionáveis. Desbloqueie a primeira ao acertar a mesma carta 100 vezes.",
+    "collectibles_error": "Não foi possível carregar a coleção. Tente novamente mais tarde.",
+    "collectibles_guesses": "Acertos: {{count}}",
+    "collectibles_owned": "Colecionável",
+    "collectibles_progress_title": "Mais perto de desbloquear",
+    "collectibles_progress_remaining": "Faltam {{count}} acertos para desbloquear"
   },
   "rights": {
     "title": "Fontes e direitos",
