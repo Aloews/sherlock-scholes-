@@ -60,8 +60,8 @@ export function buildGoldenEra(players: CanonicalPlayer[], maxPlayers = 16): Gol
   return best;
 }
 
-/** Conservative entity linking: require a full canonical multi-word name in a headline. */
-export function matchNewsToPlayers(headlines: NewsHeadline[], players: CanonicalPlayer[], maxCards = 16): NewsCardMatch[] {
+/** Conservative entity linking: require a full canonical multi-word name in verified article text. */
+export function matchNewsToPlayers(headlines: NewsHeadline[], players: CanonicalPlayer[], maxCards = 20): NewsCardMatch[] {
   const normalizedPlayers = players.map((player) => ({
     player,
     names: [...new Set([player.name, player.name_en ?? ''].map(normalizeFootballText)
@@ -71,7 +71,7 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const used = new Set<string>();
   for (const headline of headlines) {
     // Many real football stories mention the player in the summary/body, not in the headline.\n    // Match against all ingested editorial text, while the server still verifies the URL/title.\n    const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
-    if (!title) continue;
+    if (!articleText) continue;
     for (const entry of normalizedPlayers) {
       if (used.has(entry.player.id) || !entry.names.some((name) => articleText.includes(name))) continue;
       used.add(entry.player.id);
