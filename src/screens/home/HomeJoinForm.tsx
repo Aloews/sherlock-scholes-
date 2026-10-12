@@ -49,7 +49,7 @@ export function HomeJoinForm({
           onChange={(e) => onCode(e.target.value.slice(0, CODE_LENGTH))}
           onPaste={(e) => {
             const pasted = e.clipboardData.getData('text');
-            if (/https?:\\/\\/|[?&](?:startapp|start)=|[\\s-]/i.test(pasted)) {
+            if (/https?:\/\/|[?&](?:startapp|start)=|[\s-]/i.test(pasted)) {
               e.preventDefault();
               onCode(sanitizeCodeInput(pasted));
             }
