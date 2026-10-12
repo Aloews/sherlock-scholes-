@@ -4,7 +4,7 @@ import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown } from '@table
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
 import type { DeckFilter } from '@/shared/types/deck';
-import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
+import { buildGoldenEra, matchNewsToPlayers, selectBreakoutPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra, type PlayerTrendCandidate } from '@/features/decks/smartDecks';
 
 interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; matches: number; goals: number; assists: number }
 interface SmartDeck {
@@ -28,7 +28,7 @@ export function SmartDecksPanel({ onStart }: Props) {
   const lang = i18n.language.slice(0, 2);
   const [news, setNews] = useState<NewsHeadline[]>([]);
   const [newsMatches, setNewsMatches] = useState<NewsCardMatch[]>([]);
-  const [form, setForm] = useState<RatingCandidate[]>([]);
+  const [form, setForm] = useState<RatingCandidate[]>([]);\n  const [breakouts, setBreakouts] = useState<PlayerTrendCandidate[]>([]);
   const [legends, setLegends] = useState<CanonicalPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -41,21 +41,21 @@ export function SmartDecksPanel({ onStart }: Props) {
       setLoading(true); setFailed(false);
       try {
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
-    const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
+    const [newsRes, formRes, trendRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at,description,summary_short').gte('published_at', since).order('published_at', { ascending: false }).limit(500),
-      supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),
+      supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),\n      supabase.rpc('player_smart_deck_trends', { p_limit: 1000 }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
-    const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error);
+    const hasError = !!(newsRes.error || formRes.error || trendRes.error || legendRes.error || playersRes.error);
     setFailed(hasError);
     const headlines = (newsRes.data ?? []) as NewsHeadline[];
-    const formRows = (formRes.data ?? []) as RatingCandidate[];
+    const formRows = (formRes.data ?? []) as RatingCandidate[];\n    const trendRows = (trendRes.data ?? []).map((row: Omit<PlayerTrendCandidate, 'id'> & { card_id: string }) => ({ ...row, id: row.card_id })) as PlayerTrendCandidate[];
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
     setNews(headlines.slice(0, 4));
-    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, TARGET_DECK_SIZE));
+    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, TARGET_DECK_SIZE));\n    setBreakouts(selectBreakoutPlayers(trendRows, TARGET_DECK_SIZE));
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, TARGET_DECK_SIZE));
       setLoading(false);
@@ -71,7 +71,7 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   const decks = useMemo<SmartDeck[]>(() => {
     const result: SmartDeck[] = [];
-    const goldenEra: GoldenEra | null = buildGoldenEra(legends, TARGET_DECK_SIZE);
+    const goldenEra: GoldenEra | null = buildGoldenEra(legends, TARGET_DECK_SIZE);\n    const breakoutRows = breakouts;
     const formIds = new Set(form.map((p) => p.card_id));
     const formAndNews = newsMatches.filter((p) => formIds.has(p.id));
     const newsSourceCount = new Set(newsMatches.map((p) => p.matchedHeadline.source).filter(Boolean)).size;
@@ -100,6 +100,15 @@ export function SmartDecksPanel({ onStart }: Props) {
       filter:{ categories:['player'], card_ids:newsMatches.map(p=>p.id), lang },
       evidence:newsMatches.map(p=>({ card_id:p.id, title:p.matchedHeadline.title, url:p.matchedHeadline.url, source:p.matchedHeadline.source, published_at:p.matchedHeadline.published_at })),
     });
+    if (breakoutRows.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
+      id:'smart-breakout-rise', family:'breakout', eyebrow:ru?'РЫВОК ФОРМЫ · СРАВНЕНИЕ 30 + 30 ДНЕЙ':'BREAKOUT · TWO 30-DAY WINDOWS',
+      title:ru?'Те, кто прибавил по-настоящему':'The players making a real leap',
+      description:ru?'Алгоритм сравнил последние 30 дней с предыдущими 30: в подборку попали только игроки с достаточным числом матчей и подтверждённым ростом результативности на матч.':'The algorithm compares the latest 30 days with the previous 30 and keeps only players with enough matches and a verified rise in goal contributions per match.',
+      icon:'bolt', image:breakoutRows[0]?.photo_url ?? null,
+      names:breakoutRows.slice(0,5).map(p=>p.name),
+      filter:{ categories:['player'], card_ids:breakoutRows.map(p=>p.id), lang },
+      stats:breakoutRows.map(p=>({ card_id:p.id, matches:p.recent_matches, goals:p.recent_goals, assists:p.recent_assists })),
+    });
     if (goldenEra && goldenEra.players.length >= MIN_PUBLISHABLE_DECK_SIZE) result.push({
       id:'smart-golden-era', family:'golden-era', eyebrow:ru?'ЗОЛОТАЯ ЭПОХА · ПО КАРЬЕРАМ':'GOLDEN ERA · CAREER OVERLAP',
       title:ru?`Великая эпоха: ${goldenEra.club}`:`Golden era: ${goldenEra.club}`,
@@ -110,7 +119,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       era:{ club:goldenEra.club, startYear:goldenEra.startYear, endYear:goldenEra.endYear },
     });
     return result;
-  }, [form, legends, newsMatches, lang, ru]);
+  }, [form, breakouts, legends, newsMatches, lang, ru]);
 
   useEffect(() => {
     let cancelled = false;
