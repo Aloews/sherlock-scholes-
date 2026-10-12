@@ -37,7 +37,7 @@ interface CardDbRow {
   id: string; name: string; name_en: string | null; active: boolean; category: string;
   legend_career: { clubs?: Array<{ club?: string; years?: string }> } | null;
 }
-interface NewsDbRow { title: string; url: string; source: string; published_at: string }
+interface NewsDbRow { title: string; url: string; source: string; published_at: string; description?: string | null; summary_short?: string | null }
 interface Editorial {
   id: string;
   title: string;
@@ -106,7 +106,7 @@ async function validateCandidates(
       const urls = [...new Set(evidence.map((e) => e.url))];
       if (new Set(evidence.map((e) => e.card_id)).size < 3 || urls.length === 0) continue;
       const { data: newsData, error: newsError } = await supabase.from("news_items")
-        .select("title,url,source,published_at").in("url", urls)
+        .select("title,url,source,published_at,description,summary_short").in("url", urls)
         .gte("published_at", new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString());
       if (newsError) throw new Error("news_validation_failed");
       const newsRows = (newsData ?? []) as unknown as NewsDbRow[];
@@ -115,10 +115,10 @@ async function validateCandidates(
         const row = verified.get(e.url);
         const card = cards.get(e.card_id);
         if (!row || !card) return false;
-        const title = normalize(row.title ?? "");
+        const articleText = normalize([row.title ?? "", row.summary_short ?? "", row.description ?? ""].join(" "));
         const names = [card.name, card.name_en].filter((x): x is string => !!x)
           .map(normalize).filter((n) => n.length >= 5 && n.includes(" "));
-        return names.some((n) => title.includes(n));
+        return names.some((n) => articleText.includes(n));
       });
       if (new Set(grounded.map((e) => e.card_id)).size < 3) continue;
       candidate.evidence = grounded.map((e) => {
