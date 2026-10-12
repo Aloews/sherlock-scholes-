@@ -22,8 +22,10 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
-  const load = async () => {
-    setLoading(true); setFailed(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true); setFailed(false);
     const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
       supabase.from('news_items').select('title,url,source,published_at').gte('published_at', since).order('published_at', { ascending: false }).limit(100),
@@ -31,6 +33,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').contains('tags', ['legend']).order('fame', { ascending: false, nullsFirst: false }).limit(16),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
+    if (cancelled) return;
     const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error);
     setFailed(hasError);
     const headlines = (newsRes.data ?? []) as NewsHeadline[];
@@ -41,10 +44,11 @@ export function SmartDecksPanel({ onStart }: Props) {
     setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, 12));
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, 16));
-    setLoading(false);
-  };
-
-  useEffect(() => { let cancelled = false; void (async () => { await load(); })(); return () => { cancelled = true; }; }, []);
+      setLoading(false);
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, []);
 
   const decks = useMemo<SmartDeck[]>(() => {
     const result: SmartDeck[] = [];
