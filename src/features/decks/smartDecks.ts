@@ -1,9 +1,27 @@
 export interface NewsHeadline { title: string; url: string; source: string; published_at: string }
 export interface LegendClub { club: string; years: string }
+export interface CareerStatLine {
+  apps?: number | null;
+  goals?: number | null;
+  assists?: number | null;
+  club?: string;
+  years?: string;
+}
 export interface CanonicalPlayer {
   id: string; name: string; name_en: string | null; photo_url: string | null;
   country: string | null; position_ru: string | null; fame: number | null;
+  top_league?: string | null;
+  career_stats?: CareerStatLine[] | null;
+  facts?: Record<string, unknown> | null;
+  tags?: string[] | null;
   legend_career?: { clubs?: LegendClub[] } | null;
+}
+export interface StatisticalComparison {
+  id: string;
+  groupBy: 'league' | 'birth-country';
+  groupKey: string;
+  players: CanonicalPlayer[];
+  careerTotals: Array<{ card_id: string; appearances: number; goals: number; assists: number | null }>;
 }
 export interface GoldenEra { club: string; startYear: number; endYear: number; players: CanonicalPlayer[] }
 export interface NewsCardMatch { id: string; name: string; photo_url: string | null; matchedHeadline: NewsHeadline }
@@ -80,4 +98,77 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
     }
   }
   return matches;
+}
+
+function careerTotals(player: CanonicalPlayer) {
+  const rows = Array.isArray(player.career_stats) ? player.career_stats : [];
+  const valid = rows.filter((row) =>
+    (typeof row.apps === 'number' && Number.isFinite(row.apps) && row.apps >= 0) ||
+    (typeof row.goals === 'number' && Number.isFinite(row.goals) && row.goals >= 0),
+  );
+  if (!valid.length) return null;
+  const appearances = valid.reduce((sum, row) => sum + (typeof row.apps === 'number' && Number.isFinite(row.apps) ? row.apps : 0), 0);
+  const goals = valid.reduce((sum, row) => sum + (typeof row.goals === 'number' && Number.isFinite(row.goals) ? row.goals : 0), 0);
+  const assistsRows = valid.filter((row) => typeof row.assists === 'number' && Number.isFinite(row.assists));
+  const assists = assistsRows.length ? assistsRows.reduce((sum, row) => sum + (row.assists as number), 0) : null;
+  return { appearances, goals, assists };
+}
+
+/**
+ * Build comparisons only when the same cohort contains a recent-form player,
+ * a historical/legend card and career totals for every selected card.
+ * The cards.country field is not used as birthplace: it is nationality in the
+ * current schema. Birth-country cohorts require an explicit sourced facts key.
+ */
+export function buildStatisticalComparisons(
+  players: CanonicalPlayer[],
+  recentFormIds: Set<string>,
+  maxPerGroup = 12,
+): StatisticalComparison[] {
+  const eligible = players.flatMap((player) => {
+    const totals = careerTotals(player);
+    return totals ? [{ player, totals }] : [];
+  });
+  const groups: Array<{ groupBy: 'league' | 'birth-country'; groupKey: string; rows: typeof eligible }> = [];
+  const collect = (groupBy: 'league' | 'birth-country', keyOf: (player: CanonicalPlayer) => string | null) => {
+    const byKey = new Map<string, typeof eligible>();
+    for (const row of eligible) {
+      const raw = keyOf(row.player);
+      if (!raw || !raw.trim()) continue;
+      const key = raw.trim();
+      const normalized = normalizeFootballText(key);
+      if (!normalized) continue;
+      const rows = byKey.get(normalized) ?? [];
+      rows.push(row);
+      byKey.set(normalized, rows);
+    }
+    for (const rows of byKey.values()) {
+      const hasCurrent = rows.some((row) => recentFormIds.has(row.player.id));
+      const hasHistorical = rows.some((row) => row.player.tags?.includes('legend'));
+      if (rows.length >= 3 && hasCurrent && hasHistorical) {
+        groups.push({ groupBy, groupKey: keyOf(rows[0].player)!, rows });
+      }
+    }
+  };
+  collect('league', (player) => player.top_league ?? null);
+  collect('birth-country', (player) => {
+    const facts = player.facts ?? {};
+    const value = facts.birth_country ?? facts.birthCountry ?? facts.place_of_birth_country;
+    return typeof value === 'string' ? value : null;
+  });
+
+  return groups.map((group) => {
+    const ranked = [...group.rows].sort((a, b) =>
+      (b.totals.goals - a.totals.goals) || (b.totals.appearances - a.totals.appearances),
+    ).slice(0, maxPerGroup);
+    return {
+      id: 'smart-comparison-' + group.groupBy + '-' + normalizeFootballText(group.groupKey).replace(/ /g, '-'),
+      groupBy: group.groupBy,
+      groupKey: group.groupKey,
+      players: ranked.map((row) => row.player),
+      careerTotals: ranked.map((row) => ({
+        card_id: row.player.id, appearances: row.totals.appearances, goals: row.totals.goals, assists: row.totals.assists,
+      })),
+    };
+  }).sort((a, b) => b.players.length - a.players.length || a.groupKey.localeCompare(b.groupKey)).slice(0, 4);
 }
