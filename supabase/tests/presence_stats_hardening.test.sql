@@ -1,4 +1,4 @@
-DO $$
+DO $do$
 DECLARE
   v_rls boolean;
 BEGIN
@@ -43,4 +43,4 @@ BEGIN
     RAISE EXCEPTION 'stats award must remain idempotent';
   END IF;
 
-END $;
+END $do$;
