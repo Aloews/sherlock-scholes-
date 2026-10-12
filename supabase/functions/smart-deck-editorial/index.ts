@@ -237,7 +237,8 @@ Deno.serve(async (req: Request) => {
       language,
       candidates: verified.map((d) => ({
         id: d.id, family: d.family, card_ids: d.card_ids, names: d.names,
-        evidence: d.evidence ?? [], era: d.era ?? null, stats: d.stats ?? [],\n        groupBy: d.groupBy ?? null, groupKey: d.groupKey ?? null, careerTotals: d.careerTotals ?? [],
+        evidence: d.evidence ?? [], era: d.era ?? null, stats: d.stats ?? [],
+        groupBy: d.groupBy ?? null, groupKey: d.groupKey ?? null, careerTotals: d.careerTotals ?? [],
       })),
     }));
     const { data: cached } = await supabase.from("smart_deck_editorial_cache")
@@ -265,7 +266,9 @@ Deno.serve(async (req: Request) => {
         title: e.title, source: e.source, published_at: e.published_at,
       })),
       verified_era: d.era ?? null,
-      verified_recent_stats: d.stats ?? [],\n      verified_comparison_group: d.family === "comparison" ? { type: d.groupBy, label: d.groupKey, note: "Career-wide totals; not restricted to the named league." } : null,\n      verified_career_totals: d.careerTotals ?? [],
+      verified_recent_stats: d.stats ?? [],
+      verified_comparison_group: d.family === "comparison" ? { type: d.groupBy, label: d.groupKey, note: "Career-wide totals; not restricted to the named league." } : null,
+      verified_career_totals: d.careerTotals ?? [],
     }));
     const response = await client.messages.create({
       model: LLM_MODEL,
