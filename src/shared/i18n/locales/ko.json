@@ -218,14 +218,14 @@
     "streak_other": "{{count}}일 연속",
     "streak_best_other": "최고 기록 {{count}}일",
     "collectibles_title": "수집 카드",
-    "collectibles_count": "해제됨: {{count}}",
+    "collectibles_count": "해제된 카드",
     "collectibles_hint": "팀 게임에서 카드를 맞혀 보세요. 같은 카드를 100번 맞히면 프로필 컬렉션에 추가됩니다.",
     "collectibles_empty": "아직 수집 카드가 없습니다. 같은 카드를 100번 맞히면 첫 카드를 해제할 수 있습니다.",
     "collectibles_error": "컬렉션을 불러오지 못했습니다. 나중에 다시 시도하세요.",
-    "collectibles_guesses": "정답 횟수: {{count}}",
+    "collectibles_guesses": "정답 횟수",
     "collectibles_owned": "수집 카드",
     "collectibles_progress_title": "해제에 가까운 카드",
-    "collectibles_progress_remaining": "해제까지 {{count}}회 남음"
+    "collectibles_progress_remaining": "남은 정답 횟수"
   },
   "rights": {
     "title": "출처와 권리",
