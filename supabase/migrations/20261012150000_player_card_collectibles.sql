@@ -43,7 +43,7 @@ SELECT rc.id, rp.player_id, rc.card_id,
        coalesce(rc.decided_at, r.ended_at, r.started_at, now())
 FROM public.round_cards rc
 JOIN public.rounds r ON r.id = rc.round_id
-JOIN public.rooms rm ON rm.id = r.room_id AND rm.mode = '1v1'
+JOIN public.rooms rm ON rm.id = r.room_id AND rm."mode" = '1v1'
 JOIN public.room_players rp
   ON rp.room_id = r.room_id
  AND rp.team_id IS NOT NULL
@@ -90,7 +90,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT r.room_id, r.team_id, rm.mode
+  SELECT r.room_id, r.team_id, rm."mode"
     INTO v_room_id, v_explainer_team_id, v_mode
   FROM public.rounds r
   JOIN public.rooms rm ON rm.id = r.room_id
