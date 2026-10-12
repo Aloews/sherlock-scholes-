@@ -118,3 +118,18 @@ $tg$;
 
 CREATE FUNCTION public.increment_player_stats(bigint, integer, integer, integer, integer)
 RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END $$;
+
+-- Minimal player/friend fixtures for collectible trading regression tests.
+CREATE TABLE public.players (
+  id bigint PRIMARY KEY,
+  first_name text NOT NULL,
+  last_name text,
+  username text,
+  avatar_url text
+);
+CREATE TABLE public.friendships (
+  player_id bigint NOT NULL REFERENCES public.players(id),
+  friend_id bigint NOT NULL REFERENCES public.players(id),
+  PRIMARY KEY (player_id, friend_id),
+  CHECK (player_id <> friend_id)
+);
