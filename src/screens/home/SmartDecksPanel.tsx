@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconSparkles } from '@tabler/icons-react';
+import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { openLink } from '@/shared/lib/telegram';
 import type { DeckFilter } from '@/shared/types/deck';
@@ -105,7 +105,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       return <article key={deck.id} className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface">
         <div className="absolute inset-0 opacity-20 pointer-events-none">{deck.image && <img src={deck.image} alt="" className="w-full h-full object-cover blur-sm scale-110"/>}<div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/85 to-transparent"/></div>
         <div className="relative p-4 space-y-3">
-          <div className="flex items-center gap-2 text-brand-accent"><IconSparkles size={14}/><span className="text-[9px] font-bold tracking-[0.13em] uppercase">{deck.eyebrow}</span></div>
+          <div className="flex items-center gap-2 text-brand-accent"><Icon size={14}/><span className="text-[9px] font-bold tracking-[0.13em] uppercase">{deck.eyebrow}</span></div>
           <div><h3 className="ds-display text-lg font-extrabold text-white">{deck.title}</h3><p className="text-[11px] leading-relaxed text-brand-muted mt-1">{deck.description}</p></div>
           <div className="flex flex-wrap gap-1.5">{deck.names.map(name=><span key={name} className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-white/90">{name}</span>)}<span className="rounded-full bg-brand-bg/80 border border-brand-border px-2 py-1 text-[10px] text-brand-muted">{deck.filter.card_ids?.length ?? 0} {ru?'карточек':'cards'}</span></div>
           <button type="button" onClick={()=>onStart(deck.filter,deck.id)} className="w-full flex items-center justify-between rounded-xl bg-brand-accent text-brand-bg font-bold text-sm px-4 py-3 active:scale-[0.99] transition-transform"><span>{ru?'Играть в эту колоду':'Play this deck'}</span><IconArrowUpRight size={18}/></button>
