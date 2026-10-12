@@ -12,7 +12,7 @@ begin
   select count(*) into v_bad_alias
     from public.club_name_seen
    where team = 'Краснодар' and scope = 'Россия'
-     and club_key <> 'krasnodar';
+     and club_key is distinct from 'krasnodar';
   if v_bad_alias <> 0 then
     raise exception 'RPL alias regression: Краснодар maps to % wrong keys', v_bad_alias;
   end if;
@@ -20,7 +20,7 @@ begin
   select count(*) into v_bad_club
     from public.football_club
    where club_key = 'tianjin jinmen tiger'
-     and (country <> 'Китай' or league <> 'Китай. Суперлига');
+     and (country is distinct from 'Китай' or league is distinct from 'Китай. Суперлига');
   if v_bad_club <> 0 then
     raise exception 'Tianjin metadata regression: club is not classified as China';
   end if;
