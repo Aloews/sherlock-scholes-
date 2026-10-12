@@ -30,6 +30,7 @@ import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
+import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
 import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
 
@@ -134,19 +135,15 @@ export function HomeScreen() {
       const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
         body: { prompt, language: i18n.language.startsWith('ru') ? 'ru' : 'en', init_data: initData, current_card_ids: [] },
       });
-      if (error || !data || data.error) throw new Error(String(data?.message ?? data?.error ?? 'request_failed'));
-      const cards = Array.isArray(data.cards) ? data.cards.filter((card: { id?: unknown; category?: unknown }) =>
-        typeof card.id === 'string' && ALL_CATEGORIES.includes(card.category as CardCategory)
-      ) as Array<{ id: string; category: CardCategory }> : [];
-      const uniqueCards = [...new Map(cards.map((card) => [card.id, card])).values()].slice(0, 20);
-      const selectedCategories = [...new Set(uniqueCards.map((card) => card.category))];
-      if (uniqueCards.length < 3 || selectedCategories.length === 0) throw new Error('not_enough_cards');
-      const filter: DeckFilter = { categories: selectedCategories, card_ids: uniqueCards.map((card) => card.id) };
-      setRoomDeckFilter(filter);
+      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      const resolved = parseAIResolvedDeck(data);
+      if (!resolved) throw new Error('not_enough_cards');
+      const selectedCategories = resolved.filter.categories ?? [];
+      setRoomDeckFilter(resolved.filter);
       setCategories(selectedCategories.length === ALL_CATEGORIES.length ? null : selectedCategories);
-      setRoomDeckMessage(data.message || (i18n.language.startsWith('ru')
-        ? `Колода готова: ${uniqueCards.length} карточек.`
-        : `Deck ready: ${uniqueCards.length} cards.`));
+      setRoomDeckMessage(resolved.message || (i18n.language.startsWith('ru')
+        ? `Колода готова: ${resolved.cardCount} карточек.`
+        : `Deck ready: ${resolved.cardCount} cards.`));
     } catch (error) {
       const ru = i18n.language.startsWith('ru');
       const detail = error instanceof Error ? error.message : '';
