@@ -72,6 +72,22 @@ describe('room code contract', () => {
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['status', 'waiting'] });
   });
 
+  it('rejects a room row whose stored code is shorter than six characters', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, code: 'A' }));
+
+    await expect(joinRoom('AB12CD', 200)).rejects.toThrow('INVALID_ROOM_CODE_RETURNED');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 1v1 join response that does not contain the full code', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, mode: '1v1' }));
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1', code: 'A' }, error: null });
+
+    await expect(joinRoom('AB12CD', 200)).rejects.toThrow('INVALID_ROOM_CODE_RETURNED');
+  });
+
   it('does not return a created room unless the generated code has six valid characters', async () => {
     mocks.rpc.mockResolvedValue({
       data: { ...validRoom, code: 'A' },
