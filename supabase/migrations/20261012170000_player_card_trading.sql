@@ -286,6 +286,14 @@ BEGIN
     RAISE EXCEPTION 'TRADE_NOT_PENDING';
   END IF;
   IF v_trade.expires_at <= now() THEN
+    SELECT i.card_id INTO v_offered_card_id
+    FROM public.player_card_collectibles i
+    WHERE i.id = v_trade.offered_collectible_id;
+    IF v_offered_card_id IS NOT NULL THEN
+      INSERT INTO public.player_card_trade_events
+        (trade_id, actor_player_id, action, offered_card_id, requested_card_id)
+      VALUES (v_trade.id, v_me, 'expired', v_offered_card_id, v_trade.requested_card_id);
+    END IF;
     UPDATE public.player_card_trade_offers
     SET status = 'expired', responded_at = now()
     WHERE id = v_trade.id;
