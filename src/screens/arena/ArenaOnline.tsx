@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
@@ -15,12 +15,12 @@ import {
   type InputMessage, type Snapshot,
 } from '@/features/arena/net';
 import { matchOutcome, type RankedStatus } from '@/features/arena/ranked';
-import { clearRoom, readRoom, writeRoom } from '@/features/arena/arenaSession';
+import { clearRoom, readRoom, writeRoom, generateArenaRoomCode } from '@/features/arena/arenaSession';
 import {
   recordArenaResult, fetchArenaLeaderboard, type LeaderboardRow,
 } from '@/features/arena/arenaApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
-import { CODE_LENGTH, sanitizeCodeInput } from '@/features/lobby/invite';
+import { CODE_LENGTH, normalizeCode, sanitizeCodeInput } from '@/features/lobby/invite';
 import {
   fitCanvas, readPalette, render, VIEW_ASPECT, type Palette,
 } from '@/features/arena/render';
@@ -60,10 +60,12 @@ export function ArenaOnline({ onBack }: { onBack: () => void }) {
 
   /** Войти в комнату и запомнить её — иначе перезапуск отдаст код навсегда. */
   const enterRoom = useCallback((next: string, as: NetRole) => {
+    const validCode = normalizeCode(next);
+    if (!validCode) return;
     hapticImpact('light');
     setRole(as);
-    setCode(next);
-    writeRoom({ code: next, role: as });
+    setCode(validCode);
+    writeRoom({ code: validCode, role: as });
   }, []);
 
   /**
@@ -175,18 +177,7 @@ export function ArenaOnline({ onBack }: { onBack: () => void }) {
 
   useEffect(() => { trackEvent('arena_online_open', {}); }, []);
 
-  const newCode = useMemo(
-    () => () => {
-      // Без похожих на вид символов: код диктуют голосом и переписывают руками.
-      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let out = '';
-      for (let i = 0; i < CODE_LENGTH; i++) {
-        out += alphabet[Math.floor(Math.random() * alphabet.length)];
-      }
-      return out;
-    },
-    [],
-  );
+  const newCode = useCallback(() => generateArenaRoomCode(), []);
 
   if (!code) {
     return (
