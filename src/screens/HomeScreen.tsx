@@ -1,14 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  IconUserCircle, IconHelp, IconVolume, IconVolumeOff,
-  IconCrown, IconBallFootball, IconTrophy, IconCards, IconStack2, IconNews,
-  IconSoccerField, IconPlayerPlay, IconChartBar, IconShieldHalf, IconFriends,
-} from '@tabler/icons-react';
-import { Avatar } from '@/shared/ui/Avatar';
+import { IconHelp, IconVolume, IconVolumeOff, IconCards } from '@tabler/icons-react';
 import { IconButton } from '@/shared/ui/IconButton';
-import { hiddenForNonPro } from '@/shared/lib/proGate';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
 import { HomeGameLink } from '@/screens/home/HomeGameLink';
@@ -18,8 +12,6 @@ import { HomeTeamSettings } from '@/screens/home/HomeTeamSettings';
 import { HomeDuelSettings } from '@/screens/home/HomeDuelSettings';
 import { HomeJoinForm } from '@/screens/home/HomeJoinForm';
 import { HomeJoining } from '@/screens/home/HomeJoining';
-import { HomeGoalPreview } from '@/features/digest/HomeGoalPreview';
-import { TopFixtures } from '@/features/fixtures/TopFixtures';
 import { useDesign } from '@/shared/design/useDesign';
 import { QuoteRotator } from '@/shared/ui/QuoteRotator';
 import { useRoom } from '@/features/room/useRoom';
@@ -34,7 +26,6 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { hapticImpact, cloudGet } from '@/shared/lib/telegram';
 import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
-import { FRAME_COLOR } from '@/shared/lib/pro';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import type { DeckFilter } from '@/shared/types/deck';
 
@@ -48,15 +39,8 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { loading } = useGameStore();
-  const { soundEnabled, setSoundEnabled, proFrame } = useSettingsStore();
+  const { soundEnabled, setSoundEnabled } = useSettingsStore();
   const isPro = useProStore((s) => s.isPro);
-  // ⚠️ ЗАМОК РИСУЕТСЯ ТОЛЬКО КОГДА СТАТУС УЖЕ ИЗВЕСТЕН. `isPro` стартует как
-  // false, и без проверки `proLoaded` подписчик на долю секунды видел бы
-  // замки на всём, за что уже заплатил.
-  const proLoaded = useProStore((s) => s.loaded);
-  // Правило «прятать или показывать» живёт в `proGate.ts` — там же, где список
-  // открытых маршрутов, и там же оно проверяется тестом.
-  const hidden = (to: string) => hiddenForNonPro(to, { isPro, proLoaded });
   const gamesPlayed = useProStore((s) => s.gamesPlayed);
   const { createRoom } = useRoom();
   const { t } = useTranslation();
@@ -185,35 +169,8 @@ export function HomeScreen() {
               ? <IconVolume    size={17} stroke={1.75} />
               : <IconVolumeOff size={17} stroke={1.75} />}
           </IconButton>
-          {/* Classic has no tab bar, so these two keep their only entry point. */}
-          {!master && (
-            <IconButton onClick={() => navigate('/pro')} label={t('pro.title')} active={isPro}>
-              <IconCrown size={17} stroke={1.75} />
-            </IconButton>
-          )}
-          {!master && player && (
-            <IconButton onClick={() => navigate('/profile')} label={t('profile.title')}>
-              <IconUserCircle size={17} stroke={1.75} />
-            </IconButton>
-          )}
         </div>
-        {player && (
-          <button
-            type="button"
-            onClick={() => { hapticImpact('light'); navigate('/profile'); }}
-            aria-label={t('profile.title')}
-            className="rounded-full inline-block shrink-0"
-            style={isPro && FRAME_COLOR[proFrame]
-              ? { boxShadow: `0 0 0 2px ${FRAME_COLOR[proFrame]}` }
-              : undefined}
-          >
-            <Avatar
-              name={`${player.first_name} ${player.last_name ?? ''}`.trim()}
-              src={player.avatar_url}
-              size="md"
-            />
-          </button>
-        )}
+
       </div>
 
       {/* Hero. The master design leads with the greeting + action stack
@@ -251,6 +208,14 @@ export function HomeScreen() {
             на весь экран отодвигала первое настоящее дело за сгиб. Имя было
             последним, что от этого блока осталось, — теперь нет и его. */}
 
+        {/* THE MENU OF GAMES. Alias is a row like the other three, not a
+            stack of tall buttons above them: once there are four games, one
+            entry shouting while three whisper reads as three afterthoughts.
+            Its own actions live one tap in, under `view === 'alias'`.
+
+            Order is by what brings somebody back. Alias is the game, so it is
+            first; the matches feed is next because it is a reason to open the
+            app on a day nobody wants to play. */}
         {/* THE MENU OF GAMES. Alias is a row like the other three, not a
             stack of tall buttons above them: once there are four games, one
             entry shouting while three whisper reads as three afterthoughts.
@@ -297,93 +262,12 @@ export function HomeScreen() {
 
 
         {view === 'home' && (
-          <div className="w-full max-w-sm space-y-2.5">
+          <div className="w-full max-w-sm">
             <HomeGameLink
               icon={<IconCards size={20} stroke={1.75} />}
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
-            {!hidden('/matches') && (
-              <HomeGameLink
-                icon={<IconBallFootball size={20} stroke={1.75} />}
-                label={t('home.matches_link')}
-                onClick={() => navigate('/matches')}
-              />
-            )}
-            {!hidden('/digest') && (
-              <HomeGameLink
-                icon={<IconPlayerPlay size={20} stroke={1.75} />}
-                label={t('home.digest_link')}
-                onClick={() => navigate('/digest')}
-              />
-            )}
-            {!hidden('/news') && (
-              <HomeGameLink
-                icon={<IconNews size={20} stroke={1.75} />}
-                label={t('home.news_link')}
-                onClick={() => navigate('/news')}
-              />
-            )}
-            {!hidden('/collection?view=stats') && (
-              <HomeGameLink
-                icon={<IconChartBar size={20} stroke={1.75} />}
-                label={t('home.ratings_link')}
-                onClick={() => navigate('/collection?view=stats')}
-              />
-            )}
-            {/* Команды стоят рядом с рейтингом футболистов намеренно: это два
-                среза одних и тех же собранных матчей — по игроку и по клубу. */}
-            {!hidden('/collection?view=clubs') && (
-              <HomeGameLink
-                icon={<IconShieldHalf size={20} stroke={1.75} />}
-                label={t('home.clubs_link')}
-                onClick={() => navigate('/collection?view=clubs')}
-              />
-            )}
-            {!hidden('/arena') && (
-              <HomeGameLink
-                icon={<IconSoccerField size={20} stroke={1.75} />}
-                label={t('home.arena_link')}
-                onClick={() => navigate('/arena')}
-              />
-            )}
-            {!hidden('/fantasy') && (
-              <HomeGameLink
-                icon={<IconTrophy size={20} stroke={1.75} />}
-                label={t('home.fantasy_link')}
-                onClick={() => navigate('/fantasy')}
-              />
-            )}
-            {/* Любительские лиги — единственный раздел, куда игрок ПИШЕТ:
-                своя лига, своя команда, он сам в составе. */}
-            {!hidden('/amateur') && (
-              <HomeGameLink
-                icon={<IconFriends size={20} stroke={1.75} />}
-                label={t('home.amateur_link')}
-                onClick={() => navigate('/amateur')}
-              />
-            )}
-            {!hidden('/minigames') && (
-              <HomeGameLink
-                icon={<IconHelp size={20} stroke={1.75} />}
-                label={t('home.minigames_link')}
-                onClick={() => navigate('/minigames')}
-              />
-            )}
-            {/* ⚠️ ШАХМАТ ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО НЕ ПОТЕРЯ КНОПКИ. Они
-                лежат в мини-играх — «Мини-игры» выше и есть вход к ним.
-                Владелец просил убрать их с главной дважды: первый раз плитку
-                завели в /minigames, а ссылку отсюда снять забыли, и снаружи
-                это выглядело как «не убрал». */}
-            {/* Classic has no tab bar, so the collection would otherwise have
-                no way in at all once the button stack moved. */}
-            {!master && !hidden('/collection') && (
-              <HomeGameLink
-                icon={<IconStack2 size={20} stroke={1.75} />}
-                label={t('home.collection')}
-                onClick={() => navigate('/collection')}
-              />
-            )}
           </div>
         )}
 
