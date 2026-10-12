@@ -86,7 +86,7 @@ export function CollectibleCardsPanel({ playerId }: { playerId: number | null })
         <span className="text-brand-accent"><IconCards size={19} stroke={1.8} /></span>
         <div className="flex-1 min-w-0">
           <h2 className="ds-display text-base font-bold text-white">{t('profile.collectibles_title')}</h2>
-          <p className="text-[11px] text-brand-muted mt-0.5">{t('profile.collectibles_count', { count: cards.length })}</p>
+          <p className="text-[11px] text-brand-muted mt-0.5">{t('profile.collectibles_count')} · {cards.length}</p>
         </div>
       </div>
       <p className="text-xs leading-relaxed text-brand-muted">{t('profile.collectibles_hint')}</p>
@@ -109,7 +109,7 @@ export function CollectibleCardsPanel({ playerId }: { playerId: number | null })
                 <div key={card.card_id}
                   className="relative min-h-[120px] overflow-hidden rounded-xl border border-brand-border bg-brand-bg flex flex-col justify-end"
                   style={tierCardStyle(card.tier, design)}
-                  title={t('profile.collectibles_guesses', { count: card.correct_guesses })}>
+                  title={`${t('profile.collectibles_guesses')}: ${card.correct_guesses}`}>
                   {card.photo_url && <PlayerPhoto src={card.photo_url} category={card.category} shape="free" aria-hidden className="absolute inset-0 h-full w-full" />}
                   <div className="absolute inset-x-0 bottom-0 h-3/4 pointer-events-none"
                     style={{ background: 'linear-gradient(to top, rgba(8,10,18,0.97), rgba(8,10,18,0.55) 58%, transparent)' }} />
@@ -139,7 +139,7 @@ export function CollectibleCardsPanel({ playerId }: { playerId: number | null })
                       <div className="h-full rounded-full bg-brand-accent transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <p className="mt-1 text-[10px] text-brand-muted">
-                      {t('profile.collectibles_progress_remaining', { count: 100 - card.correct_guesses })}
+                      {`${t('profile.collectibles_progress_remaining')}: ${100 - card.correct_guesses}`}
                     </p>
                   </div>
                 );
