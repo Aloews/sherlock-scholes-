@@ -15,7 +15,7 @@ describe('normalizeCode', () => {
   });
 
   it('rejects anything that is not a room code', () => {
-    for (const bad of ['', '  ', 'ABC', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
+    for (const bad of ['', '  ', 'A', 'ABC', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
       expect(normalizeCode(bad)).toBeNull();
     }
   });
