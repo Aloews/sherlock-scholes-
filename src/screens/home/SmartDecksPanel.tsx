@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconCheck, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
-import { openLink } from '@/shared/lib/telegram';
+import { getRawInitData, openLink } from '@/shared/lib/telegram';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
@@ -19,6 +19,7 @@ interface SmartDeck {
 }
 interface SmartDeckEditorial { id: string; title: string; hook: string; why: string; rank: number }
 interface DeckPlayerRow { id: string; name: string; name_en: string | null; photo_url: string | null; category: string }
+interface DeckChatMessage { role: 'user' | 'assistant'; content: string }
 interface Props { onStart: (filter: DeckFilter, presetId: string) => void }
 const NEWS_WINDOW_HOURS = 72;
 const TARGET_DECK_SIZE = 20;
@@ -41,6 +42,10 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [loadingDeckPlayers, setLoadingDeckPlayers] = useState(false);
   const [deckLoadError, setDeckLoadError] = useState(false);
+  const [chatMessages, setChatMessages] = useState<DeckChatMessage[]>([]);
+  const [deckPrompt, setDeckPrompt] = useState('');
+  const [buildingWithAI, setBuildingWithAI] = useState(false);
+  const [aiBuildError, setAiBuildError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -161,6 +166,59 @@ export function SmartDecksPanel({ onStart }: Props) {
     (editorials[a.id]?.rank ?? 100) - (editorials[b.id]?.rank ?? 100),
   ), [decks, editorials]);
 
+  const sendDeckPrompt = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const prompt = deckPrompt.trim();
+    if (!prompt || buildingWithAI || !activeDeck) return;
+    setBuildingWithAI(true);
+    setAiBuildError('');
+    setChatMessages((current) => [...current, { role: 'user', content: prompt }]);
+    setDeckPrompt('');
+    try {
+      const initData = getRawInitData();
+      if (!initData) throw new Error('auth');
+      const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
+        body: {
+          prompt,
+          language: ru ? 'ru' : 'en',
+          init_data: initData,
+          current_card_ids: selectedCardIds,
+        },
+      });
+      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      const result = data as { message?: string; title?: string; cards?: DeckPlayerRow[] };
+      const cards = Array.isArray(result.cards) ? result.cards.filter((card) =>
+        typeof card.id === 'string' && typeof card.name === 'string' && card.category === 'player'
+      ) : [];
+      if (cards.length < 3) throw new Error('not_enough_cards');
+      const ids = [...new Set(cards.map((card) => card.id))];
+      const selectedCards = cards.filter((card) => ids.includes(card.id));
+      setDeckPlayers(selectedCards);
+      setSelectedCardIds(ids);
+      setActiveDeck((current) => current ? {
+        ...current,
+        title: result.title || current.title,
+        names: selectedCards.slice(0, 5).map((card) => ru || !card.name_en ? card.name : card.name_en),
+        filter: { ...current.filter, categories: ['player'], card_ids: ids, lang },
+      } : current);
+      setChatMessages((current) => [...current, {
+        role: 'assistant',
+        content: result.message || (ru ? `Готово: ${ids.length} карточек добавлено в колоду.` : `Done: ${ids.length} cards added to the deck.`),
+      }]);
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'auth'
+        ? (ru ? 'Открой приложение через Telegram и повтори запрос.' : 'Open the app in Telegram and try again.')
+        : error instanceof Error && error.message === 'not_enough_cards'
+          ? (ru ? 'Не удалось собрать минимум 3 подтверждённые карточки. Уточни запрос.' : 'Could not find at least 3 verified cards. Refine your request.')
+          : (ru ? 'ИИ сейчас не смог собрать колоду. Попробуй переформулировать запрос.' : 'The AI could not build this deck. Try rephrasing your request.');
+      setAiBuildError(message);
+      setChatMessages((current) => [...current, { role: 'assistant', content: message }]);
+    } finally {
+      setBuildingWithAI(false);
+    }
+  };
+
+
   return <section className="w-full max-w-sm space-y-3" aria-labelledby="smart-decks-title">
     <div>
       <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-brand-accent mb-1">{ru?'ПОД ТВОЙ ФУТБОЛЬНЫЙ МОМЕНТ':'YOUR FOOTBALL MOMENT'}</p>
@@ -186,6 +244,10 @@ export function SmartDecksPanel({ onStart }: Props) {
             setDeckPlayers([]);
             setSelectedCardIds([...(deck.filter.card_ids ?? [])]);
             setDeckLoadError(false);
+            setChatMessages([{ role: 'assistant', content: ru ? 'Опиши колоду обычным сообщением. Например: «Легенды Реала 2010-х», «только вратари» или «убери Холанда и добавь Салаха».' : 'Describe your deck in a message. For example: “Real Madrid legends from the 2010s”, “goalkeepers only”, or “remove Haaland and add Salah”.' }]);
+            setDeckPrompt('');
+            setAiBuildError('');
+            setBuildingWithAI(false);
             setLoadingDeckPlayers(true);
             void Promise.resolve(supabase.from('cards').select('id,name,name_en,photo_url,category')
               .in('id', deck.filter.card_ids ?? []))
@@ -216,6 +278,27 @@ export function SmartDecksPanel({ onStart }: Props) {
           </div>
           <button type="button" aria-label={ru?'Закрыть':'Close'} onClick={() => setActiveDeck(null)} className="shrink-0 w-9 h-9 rounded-xl border border-brand-border text-brand-muted flex items-center justify-center"><IconX size={18}/></button>
         </header>
+        <div className="px-4 pt-3 space-y-2">
+          <div className="max-h-36 overflow-y-auto space-y-2" aria-live="polite">
+            {chatMessages.map((message, index) => <div key={index} className={`max-w-[92%] rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'ml-auto bg-brand-accent text-brand-bg' : 'mr-auto bg-brand-surface border border-brand-border text-white'}`}>{message.content}</div>)}
+          </div>
+          <form onSubmit={sendDeckPrompt} className="flex items-end gap-2">
+            <textarea
+              aria-label={ru ? 'Запрос для ИИ' : 'AI deck request'}
+              value={deckPrompt}
+              onChange={(event) => setDeckPrompt(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}
+              rows={2}
+              maxLength={1000}
+              placeholder={ru ? 'Какую колоду собрать?' : 'What deck should I build?'}
+              className="min-w-0 flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
+            />
+            <button type="submit" disabled={!deckPrompt.trim() || buildingWithAI} className="h-10 shrink-0 rounded-xl bg-brand-accent px-3 text-sm font-bold text-brand-bg disabled:opacity-40">
+              {buildingWithAI ? <IconLoader2 size={18} className="animate-spin"/> : <IconArrowUpRight size={18}/>}
+            </button>
+          </form>
+          {aiBuildError && <p role="alert" className="text-[11px] text-red-300">{aiBuildError}</p>}
+        </div>
         <div className="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-3">
           <div><p className="text-sm font-bold text-white">{ru?'Карточки игроков':'Player cards'}</p><p className="text-[11px] text-brand-muted">{ru?'Отметь тех, кого хочешь оставить':'Select the players to include'}</p></div>
           <div className="text-right shrink-0"><p className="text-lg font-extrabold text-brand-accent tabular-nums">{selectedCardIds.length}</p><p className="text-[9px] text-brand-muted">{ru?'в колоде':'in deck'}</p></div>
