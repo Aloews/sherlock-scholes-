@@ -81,6 +81,8 @@ CREATE TABLE public.rooms (
   status text NOT NULL,
   stats_awarded_at timestamptz
 );
+
+ALTER TABLE public.rooms ADD COLUMN mode text NOT NULL DEFAULT 'team';
 CREATE TABLE public.room_players (
   room_id uuid NOT NULL,
   player_id bigint NOT NULL,
