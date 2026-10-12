@@ -134,6 +134,13 @@ that file.
 проверки покраснели ПО КАЛЕНДАРЮ: «6 из 40 матчей с обеими сторонами» в
 международный перерыв. Берите его из `espn_national_league`.
 
+## Production code: no function descriptions
+
+- Do not add explanatory prose to production functions: no descriptive comments, docstrings, or JSDoc that restate what the function does.
+- Do not copy rough user wording into identifiers, UI strings, comments, tests, documentation, or commit messages. Convert requirements into precise technical language.
+- Prefer expressive names, types, contracts, and regression tests over prose descriptions.
+- Keep user-visible copy limited to text the product actually needs; do not add feature explanations or helper descriptions to production UI unless explicitly requested.
+
 ## Checks
 
 ```bash
