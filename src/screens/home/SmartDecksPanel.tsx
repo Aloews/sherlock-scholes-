@@ -74,6 +74,8 @@ export function SmartDecksPanel({ onStart }: Props) {
           .gte('match_date', new Date(Date.now() - 30 * 24 * 3600_000).toISOString().slice(0, 10))
           .lte('match_date', new Date().toISOString().slice(0, 10))
           .eq('disputed', false)
+          .order('match_date', { ascending: false })
+          .limit(1000)
       : { data: [], error: null };
     if (cancelled) return;
     const evidence = (evidenceRes.data ?? []) as RatingMatchEvidence[];
