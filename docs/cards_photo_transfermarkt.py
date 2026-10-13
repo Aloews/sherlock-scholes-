@@ -38,6 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
+import html as html_lib
 import json
 import os
 import re
@@ -53,7 +54,8 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
+META_TAG = re.compile(r"<meta\\b[^>]*>", re.I)
+META_ATTR = re.compile(r"""([:\\w-]+)\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))""")
 # Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
 # адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
 # встретиться по другому поводу.
@@ -91,10 +93,22 @@ def portrait_url(html):
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    m = OG_IMAGE.search(html or "")
-    if not m:
-        return None
-    url = m.group(1).strip()
+    url = None
+    for tag in META_TAG.findall(html or ""):
+        attrs = {}
+        for match in META_ATTR.finditer(tag):
+            key = match.group(1).lower()
+            attrs[key] = next((value for value in match.groups()[1:] if value is not None), "")
+        if attrs.get("property", "").lower() != "og:image":
+            continue
+        candidate = html_lib.unescape(attrs.get("content", "")).strip()
+        if candidate.startswith("//"):
+            candidate = "https:" + candidate
+        parsed = urllib.parse.urlparse(candidate)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            continue
+        url = candidate
+        break
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
@@ -176,7 +190,7 @@ def main():
             for card_id, url in batch:
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "photo_url": "is.null"},
-                   body={"photo_url": url})
+                   body={"photo_url": url, "photo_source": "transfermarkt"})
                 written += 1
         batch = []
 
