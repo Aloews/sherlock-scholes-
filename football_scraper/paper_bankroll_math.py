@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 
-def stake_for(balance: float, probability: float, decimal_odds: float | None) -> float:
+def stake_for(
+    balance: float,
+    probability: float,
+    decimal_odds: float | None,
+    kelly_fraction: float = 0.25,
+    max_stake_fraction: float = 0.02,
+    confidence_floor: float = 0.0,
+) -> float:
     if balance < 1 or decimal_odds is None or decimal_odds <= 1:
         return 0.0
     p = min(1.0, max(0.0, probability))
+    if p < confidence_floor:
+        return 0.0
     kelly = (p * decimal_odds - 1.0) / (decimal_odds - 1.0)
     if kelly <= 0:
         return 0.0
-    stake = round(balance * min(0.02, kelly * 0.25), 2)
+    stake = round(balance * min(max_stake_fraction, kelly * kelly_fraction), 2)
     return stake if stake >= 1.0 else 0.0
 
 
