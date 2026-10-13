@@ -26,6 +26,8 @@ const players = Array.from({ length: 10 }, (_, index) => ({
   matches: 3,
   goals: index,
   assists: 1,
+  club: 'Test Club',
+  club_key: 'test club',
 }));
 
 const cards = players.map((player) => ({
@@ -39,7 +41,7 @@ const cards = players.map((player) => ({
 function queryBuilder(table: string) {
   const filters: Record<string, unknown> = {};
   const builder: Record<string, unknown> = {};
-  for (const method of ['select', 'gte', 'order', 'limit', 'eq', 'not']) {
+  for (const method of ['select', 'gte', 'lte', 'order', 'limit', 'eq', 'not']) {
     builder[method] = (...args: unknown[]) => {
       filters[method] = args;
       return builder;
@@ -55,6 +57,10 @@ function queryBuilder(table: string) {
       data = filters.not ? [] : filters.ids
         ? cards.filter((card) => (filters.ids as string[]).includes(card.id))
         : cards;
+    }
+    if (table === 'player_match_stats') {
+      const ids = (filters.ids as string[] | undefined) ?? [];
+      data = ids.map((card_id) => ({ card_id, home_team: 'Test Club', away_team: 'Opponent', disputed: false }));
     }
     return Promise.resolve({ data, error: null }).then(resolve, reject);
   };

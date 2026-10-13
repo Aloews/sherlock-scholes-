@@ -81,6 +81,7 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const matches: NewsCardMatch[] = [];
   const used = new Set<string>();
   for (const headline of headlines) {
+    if (!isFootballNewsUrl(headline.url)) continue;
     // Many real football stories mention the player in the summary/body, not in the headline.
     // Match against all ingested editorial text, while the server still verifies the URL/title.
     const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
@@ -93,4 +94,49 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
     }
   }
   return matches;
+}
+
+const NON_FOOTBALL_SECTIONS = new Set([
+  'cricket', 'golf', 'nfl', 'racing', 'f1', 'tennis', 'hockey', 'boxing',
+  'basketball', 'swimming', 'synchronized-swimming', 'rhythmic-gymnastics',
+  'artistic-gymnastics', 'figure-skating', 'figureskating', 'olympics',
+  'cybersport', 'martial', 'modalidades', 'record-gaming', 'other',
+  'nba', 'nhl', 'mlb', 'rugby-union', 'rugby-league', 'rugby', 'mma', 'ufc',
+  'darts', 'snooker', 'cycling', 'athletics', 'volleyball', 'handball',
+  'chess', 'biathlon', 'skiing', 'gymnastics', 'motorsport', 'esports',
+  'martial-arts', 'wrestling', 'baseball',
+]);
+
+export function isFootballNewsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const section = url.pathname.split('/').filter(Boolean)[0]?.toLocaleLowerCase() ?? '';
+    return Boolean(section) && !NON_FOOTBALL_SECTIONS.has(section);
+  } catch {
+    return false;
+  }
+}
+
+export interface RatingMatchEvidence {
+  card_id: string;
+  home_team: string | null;
+  away_team: string | null;
+  disputed?: boolean | null;
+}
+
+export function hasCurrentClubEvidence(
+  candidate: { card_id: string; club?: string | null; club_key?: string | null },
+  evidence: RatingMatchEvidence[],
+): boolean {
+  const rawClub = candidate.club_key || candidate.club || '';
+  const club = normalizeFootballText(rawClub);
+  if (!club) return false;
+  const teams = evidence
+    .filter((row) => row.card_id === candidate.card_id && row.disputed !== true)
+    .flatMap((row) => [row.home_team, row.away_team])
+    .filter((team): team is string => typeof team === 'string' && team.trim().length > 0)
+    .map(normalizeFootballText);
+  return teams.some((team) =>
+    team === club || team.startsWith(`${club} `) || team.endsWith(` ${club}`) || team.includes(` ${club} `),
+  );
 }
