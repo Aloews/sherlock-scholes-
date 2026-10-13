@@ -54,8 +54,8 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-META_TAG = re.compile(r"<meta\\b[^>]*>", re.I)
-META_ATTR = re.compile(r"""([:\\w-]+)\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))""")
+META_TAG = re.compile(r"<meta\b[^>]*>", re.I)
+META_ATTR = re.compile(r"""([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
 # Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
 # адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
 # встретиться по другому поводу.
