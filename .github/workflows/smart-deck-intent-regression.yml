@@ -1,0 +1,19 @@
+name: smart-deck-intent-regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smart-deck-intent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Verify category and position constraints
+        run: deno test supabase/tests/smart_deck_intent.test.ts
