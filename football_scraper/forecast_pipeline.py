@@ -1,35 +1,5 @@
 #!/usr/bin/env python3
-"""Ночной круг трёх прогнозистов: назвать — сверить — получить дофамин.
-
-⚠️ ПЯТЬ ШАГОВ, И ПОРЯДОК ВАЖЕН.
-
-    train      подогнать линейную модель и пороги «своего варианта»,
-               поднять память мухи из базы
-    pick       назвать исход КАЖДОГО предстоящего матча всеми тремя —
-               и записать это ДО матча
-    grade      сверить записанное с тем, чем матч кончился
-    calibrate  привести уверенность к правде: подогнать sigmoid(a·logit(p)+b)
-               по размеченному и записать вместе с Brier на отложенной части
-    dopamine   отдать исход мухе: PAM в компартменты сбывшегося исхода,
-               депрессия синапсов KC→MBON у горевших клеток; память — обратно
-               в базу
-
-⚠️ CALIBRATE ИДЁТ ПОСЛЕ GRADE, И ЭТО НЕ ВКУСОВЩИНА: калибровать можно только
-по матчам, у которых известен исход. Он НЕ меняет выбранные исходы — только
-число рядом с ними. Зачем это вообще нужно и почему без него нельзя считать
-экспрессы — в шапке calibration.py.
-
-⚠️ ПРОГНОЗ ПИШЕТСЯ ДО МАТЧА И БОЛЬШЕ НЕ ПРАВИТСЯ. Без этого «история
-прогнозов» превращается в историю объяснений задним числом: строку допишут
-после результата, и она всегда будет выглядеть разумной.
-
-⚠️ ДОФАМИН ПРИХОДИТ НА КАЖДЫЙ ИСХОД, А НЕ ТОЛЬКО НА УГАДАННЫЙ. У мухи
-дофаминовый нейрон отвечает на ПОДКРЕПЛЕНИЕ (сахар, удар), а не на правоту
-предсказания. Поэтому шаг `dopamine` идёт по всем сыгранным матчам, а
-`correct` — это отдельная колонка для человека, а не вход в обучение.
-
-    python3 forecast_pipeline.py [train|pick|grade|dopamine|all]
-"""
+"""Scheduled football forecast generation, grading, calibration, and evaluation."""
 from __future__ import annotations
 
 import json
@@ -42,16 +12,15 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from calibration import evaluate  # noqa: E402
-from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 from forecast_duel import _fetch, _write  # noqa: E402
 from forecast_winner import (  # noqa: E402
     K_FORM_GRID, LAMBDAS, LIN_FEATURES, OUTCOMES, TAU_GRID,
-    accuracy, call_with_bias, design, expected_diff, fit_fly_bias, fit_linear,
+    accuracy, call_with_bias, design, fit_linear,
     fit_own, labels, own_call, venue_diff, venue_form,
 )
 from forecast_duel import split_by_time  # noqa: E402
 
-MODELS = ("llm", "fly", "own")
+MODELS = ("llm", "own")
 
 
 # ─────────────────────────────────────────────────────────────── ввод ────────
@@ -112,19 +81,9 @@ def fit_all(rows) -> dict:
     _, lam, W = best
     th, ta, kf = fit_own(valid)
 
-    # Сдвиг компартментов мухи — на той же проверочной трети. Мозг здесь
-    # ОДНОРАЗОВЫЙ и в базу не идёт: он нужен только чтобы измерить, какой сдвиг
-    # выправляет перекос. Живая память остаётся в `fly_state` нетронутой.
-    probe = FlyBrain.load()
-    probe.depression = 0.02
-    for r in train:
-        probe.learn(row_to_odour(r), actual=r["outcome"])
-    fly_bias = fit_fly_bias([probe.scores(row_to_odour(r)) for r in valid], valid)
-
     return {
         "llm": {"lambda": lam, "W": W.tolist(), "features": list(LIN_FEATURES)},
         "own": {"tau_home": th, "tau_away": ta, "k_form": kf},
-        "fly": {"bias": fly_bias},
         "fitted_at": now_iso(),
         "trained_on": len(train),
     }
@@ -157,24 +116,6 @@ def own_call_conf(params: dict, r) -> tuple[str, float, float]:
     return pick, _conf(abs(edge), 0.6), exp_total
 
 
-def fly_call(fly: FlyBrain, r, bias: dict | None = None) -> tuple[str, float, float]:
-    """Исход по мухе, со сдвигом компартментов.
-
-    ⚠️ СДВИГ ОБЯЗАН ДОЕХАТЬ ДО БОЯ, ИНАЧЕ ЗАМЕР ВРЁТ. Без него муха на тесте
-    даёт 0.4608, с ним 0.4707 — и она перестаёт называть ничью там, где ничья
-    почти никогда не сбывалась. Сдвиг подобран на проверочной трети и лежит в
-    `forecast_model.params`, а не в памяти мухи: веса KC→MBON он не трогает.
-    """
-    sc = fly.scores(row_to_odour(r))
-    if bias:
-        sc = {o: sc[o] - float(bias.get(o, 0.0)) for o in sc}
-    order = sorted(OUTCOMES, key=lambda o: sc[o])
-    margin = sc[order[1]] - sc[order[0]]
-    exp_total = float((r["h_gf"] or 0) + (r["a_ga"] or 0)
-                      + (r["a_gf"] or 0) + (r["h_ga"] or 0)) / 2.0
-    return order[0], _conf(margin, 0.05), exp_total
-
-
 def _conf(margin: float, full: float) -> float:
     """Отрыв первого от второго, сжатый в 0..1.
 
@@ -184,40 +125,6 @@ def _conf(margin: float, full: float) -> float:
     вероятность значило бы врать цифрой.
     """
     return round(float(min(1.0, max(0.0, margin / full))), 4)
-
-
-# ──────────────────────────────────────────────────────── память мухи ────────
-def fly_load(url: str, key: str) -> FlyBrain:
-    fly = FlyBrain.load()
-    rows = _fetch(url, key, "fly_state?select=*&id=eq.mb")
-    if rows:
-        w = np.asarray(rows[0]["weights"], dtype=float)
-        idx = fly.nonzero_index()
-        if w.size == idx[0].size:
-            fly.kc_mbon[idx] = w
-            fly.taught = int(rows[0].get("taught") or 0)
-            fly.depression = float(rows[0].get("depression") or fly.depression)
-        else:
-            print(f"⚠ память мухи не подошла по размеру ({w.size} против "
-                  f"{idx[0].size}) — начинаем с коннектома")
-    return fly
-
-
-def fly_state_exists(url: str, key: str) -> bool:
-    """Есть ли уже сохранённая память. Нужен бэкфиллу, чтобы её не затереть."""
-    return bool(_fetch(url, key, "fly_state?select=id&id=eq.mb"))
-
-
-def fly_save(url: str, key: str, fly: FlyBrain, dopamine: int) -> None:
-    idx = fly.nonzero_index()
-    _write(url, key, "fly_state?on_conflict=id", [{
-        "id": "mb",
-        "weights": [round(float(v), 6) for v in fly.kc_mbon[idx]],
-        "taught": fly.taught,
-        "dopamine": dopamine,
-        "depression": fly.depression,
-        "updated_at": now_iso(),
-    }], method="POST")
 
 
 # ────────────────────────────────────────────────────────────── шаги ─────────
@@ -241,7 +148,6 @@ def load_params(url: str, key: str) -> dict:
 
 def step_pick(url: str, key: str, limit: int = 400) -> int:
     params = load_params(url, key)
-    fly = fly_load(url, key)
     rows = _fetch(url, key,
                   "forecast_inputs?select=*&commence_at=gt." + now_iso()
                   + "&order=commence_at.asc")
@@ -250,8 +156,7 @@ def step_pick(url: str, key: str, limit: int = 400) -> int:
     body = []
     for r in rows[:limit]:
         for model, call in (("llm", lambda x: llm_call(params["llm"], x)),
-                            ("own", lambda x: own_call_conf(params["own"], x)),
-                            ("fly", lambda x: fly_call(fly, x, params.get("fly", {}).get("bias")))):
+                            ("own", lambda x: own_call_conf(params["own"], x))):
             if (r["fixture_id"], model) in have:
                 continue
             pick, conf, total = call(r)
@@ -345,48 +250,6 @@ def step_calibrate(url: str, key: str) -> int:
     return len(body)
 
 
-def step_dopamine(url: str, key: str) -> int:
-    """Отдать мухе сыгранные матчи: подкрепление на КАЖДЫЙ исход.
-
-    ⚠️ ПО ОДНОМУ МАТЧУ РОВНО ОДИН РАЗ. Строка мухи помечается `dopamine_at`, и
-    второй проход её не возьмёт: иначе один и тот же матч подкреплялся бы каждую
-    ночь, и мозг съезжал бы в пол на нескольких старых играх.
-    """
-    hungry = _fetch(url, key,
-                    "forecast_pick?select=fixture_id,actual,commence_at"
-                    "&model=eq.fly&dopamine_at=is.null&actual=not.is.null"
-                    "&order=commence_at.asc")
-    if not hungry:
-        print("дофамин не нужен: новых сыгранных матчей нет")
-        return 0
-    inputs = {r["fixture_id"]: r for r in _fetch(url, key, "forecast_inputs?select=*")}
-    fly = fly_load(url, key)
-    fed = []
-    for p in hungry:
-        r = inputs.get(p["fixture_id"])
-        if not r:
-            continue
-        fly.learn(row_to_odour(r), actual=p["actual"])
-        fed.append({"fixture_id": p["fixture_id"], "model": "fly",
-                    "dopamine_at": now_iso()})
-    if fed:
-        # ⚠️ PATCH, А НЕ UPSERT, И ЭТО ПОЧИНКА 400. `POST ?on_conflict=` — это
-        # ВСТАВКА с разрешением конфликта, поэтому PostgREST требует все колонки
-        # без умолчания: `pick`, `commence_at`, `home_team`, `away_team`. Здесь
-        # их нет и быть не должно — проставляется одна отметка `dopamine_at`.
-        # В бэкфилле тот же вызов проходил, потому что строки там полные.
-        for r in fed:
-            _write(url, key,
-                   f"forecast_pick?fixture_id=eq.{r['fixture_id']}&model=eq.fly",
-                   {"dopamine_at": r["dopamine_at"]}, method="PATCH")
-        prev = _fetch(url, key, "fly_state?select=dopamine&id=eq.mb")
-        total = int(prev[0]["dopamine"]) if prev else 0
-        fly_save(url, key, fly, total + len(fed))
-    print(f"дофамин: {len(fed)} матчей, всего обучено {fly.taught}, "
-          f"ослаблено {fly.learned_fraction() * 100:.2f} % веса")
-    return len(fed)
-
-
 def step_backfill(url: str, key: str) -> int:
     """Заполнить историю задним числом — ТОЛЬКО по тестовой части.
 
@@ -410,22 +273,6 @@ def step_backfill(url: str, key: str) -> int:
     _tr, _va, te = split_by_time(len(rows))
     test = rows[te]
 
-    # Мозг мухи — с нуля, из коннектома, и учится ТОЛЬКО на обучающей части:
-    # ровно так же, как в замере. Иначе история покажет мозг, уже видевший
-    # тестовые матчи.
-    #
-    # ⚠️ ЭТОТ МОЗГ ОДНОРАЗОВЫЙ И В БАЗУ ПОПАДАЕТ ТОЛЬКО ОДИН РАЗ — ПРИ ЗАСЕВЕ.
-    # Раньше шаг безусловно сохранял его в конце, и это СТИРАЛО всю ночную
-    # память: живая муха накопила 3620 учений и 907 подкреплений, а повторный
-    # бэкфилл возвращал её к состоянию «обучена на исторической части и больше
-    # ничего не видела». Снаружи поломка невидима — муха продолжает называть
-    # исходы, просто забыв всё, чему её учил дофамин.
-    seeding = not fly_state_exists(url, key)
-    fly = FlyBrain.load()
-    fly.depression = 0.02
-    for r in rows[_tr]:
-        fly.learn(row_to_odour(r), actual=r["outcome"])
-
     have = {(p["fixture_id"], p["model"])
             for p in _fetch(url, key, "forecast_pick?select=fixture_id,model")}
     body, fed = [], 0
@@ -436,7 +283,6 @@ def step_backfill(url: str, key: str) -> int:
         calls = {
             "llm": llm_call(params["llm"], r),
             "own": own_call_conf(params["own"], r),
-            "fly": fly_call(fly, r, params.get("fly", {}).get("bias")),
         }
         for model, (pick, conf, total) in calls.items():
             if (fid, model) in have:
@@ -448,21 +294,12 @@ def step_backfill(url: str, key: str) -> int:
                 "away_team": r["away_key"], "backfilled": True,
                 "actual": actual, "actual_total": float(r["total"]),
                 "correct": pick == actual, "graded_at": now_iso(),
-                "dopamine_at": now_iso() if model == "fly" else None,
             })
-        # ⚠️ ДОФАМИН ИДЁТ ПО ХОДУ, А НЕ ПОСЛЕ ВСЕГО. Муха учится на матче ПОСЛЕ
-        # того, как назвала его: иначе она отвечала бы, уже зная ответ.
-        fly.learn(row_to_odour(r), actual=actual)
-        fed += 1
 
     for i in range(0, len(body), 500):
         _write(url, key, "forecast_pick?on_conflict=fixture_id,model",
                body[i:i + 500], method="POST")
-    if fed and seeding:
-        fly_save(url, key, fly, fed)
-    print(f"история задним числом: {len(body)} строк на {len(test)} матчей, "
-          f"дофамин {fed}, ослаблено {fly.learned_fraction() * 100:.2f} %"
-          + ("" if seeding else ", живая память НЕ тронута"))
+    print(f"история задним числом: {len(body)} строк на {len(test)} матчей")
     return len(body)
 
 
@@ -478,8 +315,6 @@ def main() -> int:
         step_grade(url, key)
     if step in ("calibrate", "all"):
         step_calibrate(url, key)
-    if step in ("dopamine", "all"):
-        step_dopamine(url, key)
     if step in ("pick", "all"):
         step_pick(url, key)
     return 0
