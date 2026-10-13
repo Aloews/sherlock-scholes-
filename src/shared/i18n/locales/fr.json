@@ -1433,6 +1433,22 @@
     "failed": "Impossible de charger les transferts",
     "note": "Ici une ligne est un transfert, pas un joueur : la même personne peut y figurer plusieurs fois. Le montant d’un transfert et la valeur actuelle du joueur sont deux chiffres différents : Neymar a coûté 222 M € en 2017. Les transferts annoncés mais pas encore effectifs ne sont pas montrés."
   },
+  "expressPortfolio": {
+    "title": "Combinés selon les cotes des bookmakers",
+    "subtitle": "Trois options basées sur les cotes 1X2 disponibles. Le taux historique est distinct et ne garantit pas les résultats futurs.",
+    "safe": "Probabilité de marché plus élevée",
+    "diverse": "Résultats diversifiés",
+    "value": "Écart avec la prévision LLM",
+    "unavailable": "Impossible de charger les combinés",
+    "empty": "Pas assez de cotes et de prévisions adaptées sur la période choisie.",
+    "history": "Historique : {{wins}} combinés réussis sur {{total}} ({{rate}})",
+    "odds": "Cote combinée",
+    "probability": "Probabilité estimée",
+    "expectedReturn": "Retour attendu",
+    "legs": "Matchs",
+    "books": "bookmakers : {{n}}",
+    "disclaimer": "La probabilité utilise le consensus du marché ; la cote combinée utilise les meilleurs prix disponibles. Seul le 1X2 est collecté, pas les totaux ni « les deux équipes marquent »."
+  },
   "paperBankroll": {
     "title": "Capital virtuel du LLM",
     "virtual": "SIMULATION",
