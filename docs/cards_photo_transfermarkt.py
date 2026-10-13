@@ -38,7 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
-import html as html_lib
+from html.parser import HTMLParser
 import json
 import os
 import re
@@ -93,22 +93,9 @@ def portrait_url(html):
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    url = None
-    for tag in META_TAG.findall(html or ""):
-        attrs = {}
-        for match in META_ATTR.finditer(tag):
-            key = match.group(1).lower()
-            attrs[key] = next((value for value in match.groups()[1:] if value is not None), "")
-        if attrs.get("property", "").lower() != "og:image":
-            continue
-        candidate = html_lib.unescape(attrs.get("content", "")).strip()
-        if candidate.startswith("//"):
-            candidate = "https:" + candidate
-        parsed = urllib.parse.urlparse(candidate)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            continue
-        url = candidate
-        break
+    parser = _OGImageParser()
+    parser.feed(html or "")
+    url = parser.url
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
