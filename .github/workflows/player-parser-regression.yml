@@ -1,0 +1,39 @@
+name: player-parser-regression
+
+on:
+  pull_request:
+    paths:
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/cards_photo_from_qid.py'
+      - 'docs/cards_photo_transfermarkt.py'
+      - 'docs/cards_photo_credits.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'docs/test_player_photo_parsers.py'
+      - '.github/workflows/player-parser-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/cards_photo_from_qid.py'
+      - 'docs/cards_photo_transfermarkt.py'
+      - 'docs/cards_photo_credits.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'docs/test_player_photo_parsers.py'
+      - '.github/workflows/player-parser-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test seasonal-stat parser and candidate selection
+        run: python3 docs/test_players_stats_transfermarkt.py
+      - name: Test player-photo parsers
+        run: python3 docs/test_player_photo_parsers.py
