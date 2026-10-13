@@ -196,6 +196,9 @@ returns table (
   placed_positions integer,
   wins integer,
   win_rate numeric,
+  kelly_fraction numeric,
+  confidence_floor numeric,
+  last_policy_update timestamptz,
   last_settled_at timestamptz
 )
 language plpgsql
@@ -222,8 +225,12 @@ begin
          a.placed_positions,
          a.wins,
          round(a.wins::numeric / nullif(a.placed_positions, 0) * 100, 2),
+         p.kelly_fraction,
+         p.confidence_floor,
+         p.last_policy_update,
          (select max(l.settled_at) from public.llm_paper_ledger l)
     from public.llm_paper_bankroll a
+    join public.llm_paper_policy p on p.id = true
    where a.id = true;
 end;
 $$;
