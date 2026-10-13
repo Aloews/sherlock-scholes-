@@ -34,11 +34,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 
 from calibration import apply_platt, fit_platt  # noqa: E402
-from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 from forecast_duel import _fetch, split_by_time  # noqa: E402
-from forecast_pipeline import fit_all, fly_call, llm_call, own_call_conf  # noqa: E402
+from forecast_pipeline import fit_all, llm_call, own_call_conf  # noqa: E402
 
-MODELS = ("llm", "fly", "own")
+MODELS = ("llm", "own")
 
 
 def env() -> tuple[str, str]:
@@ -111,18 +110,12 @@ def predict_block(prefix, block):
     _tr, va, _te = split_by_time(len(prefix))
     valid = prefix[va]
 
-    fly = FlyBrain.load()
-    fly.depression = 0.02
-    for r in prefix:
-        fly.learn(row_to_odour(r), actual=r["outcome"])
-    bias = params.get("fly", {}).get("bias")
-
     def call(model, r):
         if model == "llm":
             return llm_call(params["llm"], r)[:2]
         if model == "own":
             return own_call_conf(params["own"], r)[:2]
-        return fly_call(fly, r, bias)[:2]
+        raise ValueError(f"unknown model: {model}")
 
     ab = {}
     for m in MODELS:
