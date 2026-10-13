@@ -1304,26 +1304,22 @@
     "model": {
       "own": "A nossa variante",
       "llm": "LLM",
-      "fly": "Cérebro da mosca",
+      "fly": "Modelo de reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
     },
     "what": {
       "own": "Mistura dos dois modelos que se cala quando eles discordam",
       "llm": "Uma cabeça linear treinada sobre nove características do jogo",
-      "fly": "Um reservatório: as ligações ficam fixas e só a saída aprende — como se lê o conectoma da mosca",
+      "fly": "Projeção esparsa fixa com saída treinável",
       "median": "Diz sempre o número de golos mais frequente",
       "current": "O que a aplicação mostra hoje; não aprende"
     },
     "short": {
       "own": "Nossa",
       "llm": "LLM",
-      "fly": "Mosca"
+      "fly": "Reservatório"
     },
-    "fly_verdict": "O veredito da mosca",
-    "fly_again": "de novo",
-    "fly_dopamine_one": "dopamina: {{n}} resultado",
-    "fly_dopamine_other": "dopamina: {{n}} resultados",
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
     "agree_other": "{{n}} concordam",
