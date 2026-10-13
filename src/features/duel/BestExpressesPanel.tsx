@@ -130,7 +130,7 @@ export function BestExpressesPanel({ password = null }: { password?: string | nu
                       <div className="text-[11px] text-white leading-snug">{leg.home_team} — {leg.away_team}</div>
                       <div className="text-[10px] text-brand-muted">
                         {new Date(leg.commence_at).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
-                        {' · '}{leg.sport_key.replace(/^soccer_/, '').replaceAll('_', ' ')}
+                        {' · '}{leg.sport_key.replace(/^soccer_/, '') .replace(/_/g, ' ')}
                         {' · '}{t('expressPortfolio.books', { n: leg.books })}
                       </div>
                     </div>
