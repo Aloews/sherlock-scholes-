@@ -1,0 +1,41 @@
+name: room-code-concurrency
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  room-code-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: room_code_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d room_code_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: room_code_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Create room-code schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/room_code_generation_test_setup.sql
+      - name: Apply room-code generator migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261013100000_fix_room_code_generator.sql
+      - name: Verify concurrent room creation
+        run: bash supabase/tests/room_code_concurrency.sh
