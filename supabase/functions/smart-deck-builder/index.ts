@@ -70,7 +70,7 @@ function matchesExplicitIntent(card: CardRow, prompt: string): boolean {
   if (position) {
     if (card.category !== "player") return false;
     const metadata = [card.position_ru ?? "", ...(card.tags ?? [])].join(" ").toLocaleLowerCase();
-    if (/вратар|голкипер|goalkeeper|keeper/i.test(prompt)) return /вратар|голкипер|goalkeeper|keeper|\\bgk\\b/i.test(metadata);
+    if (/вратар|голкипер|goalkeeper|keeper/i.test(prompt)) return /вратар|голкипер|goalkeeper|keeper/i.test(metadata) || metadata.split(/[^a-z0-9]+/i).includes("gk");
     if (/защитник|защитники|defender/i.test(prompt)) return /защит|defender|defence/i.test(metadata);
     if (/полузащитник|опорник|midfielder/i.test(prompt)) return /полузащит|опорник|midfielder|midfield/i.test(metadata);
     return /нападающ|форвард|striker|forward/i.test(metadata);
