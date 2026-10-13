@@ -29,6 +29,54 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status,
   headers: { ...CORS, "Content-Type": "application/json" },
 });
+
+type PositionIntent = { pattern: string; tags: string[] };
+function positionIntent(prompt: string): PositionIntent | null {
+  if (/\\b(goalkeepers?|keepers?)\\b|вратар|голкипер/i.test(prompt)) {
+    return { pattern: "%врат%", tags: ["goalkeeper", "keeper", "вратарь", "вратари", "голкипер"] };
+  }
+  if (/\\b(defenders?)\\b|защитник|защитник|защитники/i.test(prompt)) {
+    return { pattern: "%защит%", tags: ["defender", "defence", "защитник", "защитники"] };
+  }
+  if (/\\b(midfielders?)\\b|полузащитник|опорник/i.test(prompt)) {
+    return { pattern: "%полузащит%", tags: ["midfielder", "midfield", "полузащитник", "опорник"] };
+  }
+  if (/\\b(strikers?|forwards?)\\b|нападающ|форвард/i.test(prompt)) {
+    return { pattern: "%нападающ%", tags: ["striker", "forward", "нападающий", "форвард"] };
+  }
+  return null;
+}
+
+function categoryIntent(prompt: string): string | null {
+  if (/\\bcoaches?\\b|тренер/i.test(prompt)) return "coach";
+  if (/\\breferees?\\b|арбитр|судь[яи]/i.test(prompt)) return "referee";
+  if (/\\bstadiums?\\b|стадион/i.test(prompt)) return "stadium";
+  if (/club nicknames?|прозвищ[а-яё]* клуб|клубн[а-яё]* прозвищ/i.test(prompt)) return "club_nickname";
+  if (/commentators?|комментатор/i.test(prompt)) return "commentator";
+  if (/\\bderbies?\\b|дерби/i.test(prompt)) return "derby";
+  if (/\\btrophies?\\b|кубк[а-яё]*|трофе[йи]/i.test(prompt)) return "trophy";
+  if (/football terms?|terms?\\b|термин[а-яё]*|поняти[а-яё]* футбола/i.test(prompt)) return "term";
+  if (/\\bclubs?\\b|клуб[а-яё]*$/i.test(prompt)) return "club";
+  if (/\\beras?\\b|эпох[а-яё]*/i.test(prompt)) return "era";
+  if (/\\bpositions?\\b|позици[а-яё]* игрок/i.test(prompt)) return "position";
+  if (/\\bwomen|women's football|female players\\b|женщин[а-яё]* футбол|футболистк/i.test(prompt)) return "woman";
+  if (/\\bplayers?\\b|footballers?\\b|игрок[а-яё]*|футболист[а-яё]*/i.test(prompt)) return "player";
+  return null;
+}
+
+function matchesExplicitIntent(card: CardRow, prompt: string): boolean {
+  const position = positionIntent(prompt);
+  const category = categoryIntent(prompt);
+  if (position) {
+    if (card.category !== "player") return false;
+    const metadata = [card.position_ru ?? "", ...(card.tags ?? [])].join(" ").toLocaleLowerCase();
+    if (/вратар|голкипер|goalkeeper|keeper/i.test(prompt)) return /вратар|голкипер|goalkeeper|keeper/i.test(metadata);
+    if (/защитник|защитники|defender/i.test(prompt)) return /защит|defender|defence/i.test(metadata);
+    if (/полузащитник|опорник|midfielder/i.test(prompt)) return /полузащит|опорник|midfielder|midfield/i.test(metadata);
+    return /нападающ|форвард|striker|forward/i.test(metadata);
+  }
+  return !category || card.category === category;
+}
 const clean = (value: unknown, max: number) =>
   typeof value === "string" ? value.replace(/[<>]/g, "").trim().slice(0, max) : "";
 function parseModelJson(value: string): Record<string, unknown> | null {
@@ -47,15 +95,25 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
     "term", "referee", "coach", "stadium", "club_nickname",
     "commentator", "position", "woman", "derby", "trophy", "era",
   ];
-  const [playersResult, clubsResult, ...otherResults] = await Promise.all([
+  const position = positionIntent(prompt);
+  const [playersResult, clubsResult, positionResult, positionTagResult, ...otherResults] = await Promise.all([
     supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
       .order("fame", { ascending: false, nullsFirst: false }).limit(250),
     supabase.from("cards").select(fields).eq("active", true).eq("category", "club")
       .order("fame", { ascending: false, nullsFirst: false }).limit(250),
+    position
+      ? supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
+          .ilike("position_ru", position.pattern).limit(300)
+      : Promise.resolve({ data: [], error: null }),
+    position
+      ? supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
+          .overlaps("tags", position.tags).limit(300)
+      : Promise.resolve({ data: [], error: null }),
     ...nonPlayerCategories.map((category) => supabase.from("cards").select(fields)
       .eq("active", true).eq("category", category).order("name", { ascending: true }).limit(80)),
   ]);
-  if (playersResult.error || clubsResult.error || otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
+  if (playersResult.error || clubsResult.error || positionResult.error || positionTagResult.error ||
+      otherResults.some((result) => result.error)) throw new Error("catalog_unavailable");
 
   const tokens = [...new Set(prompt.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 3))].slice(0, 8);
   let named: CardRow[] = [];
@@ -81,6 +139,8 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
 
   const byId = new Map<string, CardRow>();
   for (const row of [
+    ...(positionResult.data ?? []) as CardRow[],
+    ...(positionTagResult.data ?? []) as CardRow[],
     ...(playersResult.data ?? []) as CardRow[],
     ...(clubsResult.data ?? []) as CardRow[],
     ...otherResults.flatMap((result) => (result.data ?? []) as CardRow[]),
@@ -151,6 +211,7 @@ Deno.serve(async (req: Request) => {
         `Return 8-${targetCardCount} cards when possible, but never fewer than 3. If fewer matching cards exist, return all grounded matches and state the limitation. If the request cannot be satisfied from this catalog, return an empty card_ids array and ask the user to refine the request.`,
         "If the user asks to edit the current deck (add/remove/replace), use current cards as the starting point. Otherwise build a new deck from scratch; do not keep current cards just because they were supplied.",
         "Infer the user intent: requested card category, entities, club, era, country, position, and theme. Use the category and metadata for every card type, not only players. Select only cards that match the request. If the exact theme is not supported by the catalog, say so and offer the closest grounded selection.",
+        "Explicit category or position constraints are strict. Never mix other categories or player positions into a constrained deck. Only return IDs that satisfy every explicit constraint.",
         "Output only JSON: {\"title\":\"short deck title\",\"message\":\"brief response in requested language\",\"card_ids\":[\"exact-id\"]}. Language: " + (language === "ru" ? "Russian" : "English") + ".",
       ].join("\n"),
       messages: [{
@@ -168,7 +229,10 @@ Deno.serve(async (req: Request) => {
 
     const allowedIds = new Set(catalog.map((card) => card.id));
     const selectedIds = [...new Set(parsed.card_ids.filter((id): id is string =>
-      typeof id === "string" && allowedIds.has(id)))].slice(0, targetCardCount);
+      typeof id === "string" && allowedIds.has(id)))].filter((id) => {
+        const card = catalog.find((candidate) => candidate.id === id);
+        return Boolean(card && matchesExplicitIntent(card, prompt));
+      }).slice(0, targetCardCount);
     if (selectedIds.length < 3) {
       return json({
         error: "not_enough_cards",
