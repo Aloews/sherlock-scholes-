@@ -249,7 +249,7 @@ def main():
         if args.include_unvalued:
             cards = filter_candidates(cards, args.min_value, include_unvalued=True)
 
-    if not args.refresh and not args.only:
+    if not args.refresh:
         done = {r["tm_player_id"] for r in all_rows(
             "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
         cards = [c for c in cards if c["transfermarkt_id"] not in done]
