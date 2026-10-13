@@ -59,10 +59,12 @@ class PortraitParserTests(unittest.TestCase):
             "https://img.transfermarkt.technology/portrait/big/123-456.jpg",
         )
 
-    def test_transfermarkt_placeholder_is_rejected(self):
+    def test_transfermarkt_placeholder_is_rejected_and_countable(self):
+        from cards_photo_transfermarkt import og_image_url
         for filename in ("default.jpg", "dummy.png"):
             html = '<meta property="og:image" content="https://img.transfermarkt.technology/portrait/big/%s">' % filename
             self.assertIsNone(portrait_url(html))
+            self.assertIsNotNone(og_image_url(html))
 
     def test_transfermarkt_meta_attributes_can_be_reordered_or_single_quoted(self):
         self.assertEqual(
