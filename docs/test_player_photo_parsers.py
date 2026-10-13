@@ -64,6 +64,19 @@ class PortraitParserTests(unittest.TestCase):
             html = '<meta property="og:image" content="https://img.transfermarkt.technology/portrait/big/%s">' % filename
             self.assertIsNone(portrait_url(html))
 
+    def test_transfermarkt_meta_attributes_can_be_reordered_or_single_quoted(self):
+        self.assertEqual(
+            portrait_url("<META content='https://img.transfermarkt.technology/portrait/big/456-789.jpg' property='og:image'>"),
+            "https://img.transfermarkt.technology/portrait/big/456-789.jpg",
+        )
+        self.assertEqual(
+            portrait_url('<meta content="//img.transfermarkt.technology/portrait/big/456-789.jpg" property="og:image">'),
+            "https://img.transfermarkt.technology/portrait/big/456-789.jpg",
+        )
+
+    def test_transfermarkt_parser_rejects_non_http_image_values(self):
+        self.assertIsNone(portrait_url('<meta property="og:image" content="javascript:alert(1)">'))
+
     def test_wikidata_photo_url_encodes_filename_and_limits_width(self):
         self.assertEqual(
             photo_url("Player Portrait.jpg"),
