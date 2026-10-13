@@ -15,6 +15,6 @@ The forecasting pipeline maintains a simulated account denominated in virtual cr
 
 ## Learning objective
 
-The balance is an evaluation signal, not a gradient for an external language model. It supports walk-forward comparison of calibration and stake-sizing policies. Policy changes must be selected on historical training windows and accepted only after a later untouched evaluation window; optimizing against the same ledger used for reporting would overfit.
+The balance is a reward signal for an adaptive risk policy, not a gradient for an external language model. The policy adjusts position sizing and the confidence floor from realized virtual returns. This does not change the external LLM's weights. Future policy variants must be evaluated walk-forward; optimizing against the same ledger used for reporting would overfit.
 
 No real bets, deposits, withdrawals, payments, or bookmaker orders are executed.
