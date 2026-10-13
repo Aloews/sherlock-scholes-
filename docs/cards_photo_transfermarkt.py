@@ -138,10 +138,22 @@ def get(url):
     return None
 
 
+def rotate_candidates(rows, offset, limit):
+    """Return a bounded cyclic window so repeated failures do not starve later rows."""
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if rows and offset:
+        start = offset % len(rows)
+        rows = rows[start:] + rows[:start]
+    return rows[:limit] if limit else rows
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--offset", type=int, default=0,
+                    help="сдвиг по списку кандидатов; нужен для циклической обработки")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
@@ -180,8 +192,10 @@ def main():
         rows = [r for r in rows if r["id"] not in linked]
         print("Пропущено как «закроет Soccer Wiki»: %d" % (before - len(rows)), flush=True)
 
-    if args.limit:
-        rows = rows[:args.limit]
+    try:
+        rows = rotate_candidates(rows, args.offset, args.limit)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
     print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
           % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
     if not rows:
