@@ -1433,6 +1433,22 @@
     "failed": "Não foi possível carregar as transferências",
     "note": "Aqui cada linha é uma transferência, não um jogador: a mesma pessoa pode aparecer mais do que uma vez. O valor da transferência e o valor atual do jogador são números diferentes: por Neymar pagaram-se 222 M € em 2017. Transferências anunciadas mas ainda não concretizadas não aparecem."
   },
+  "expressPortfolio": {
+    "title": "Múltiplas com base nas odds das casas",
+    "subtitle": "Três opções com as odds 1X2 disponíveis. A taxa histórica aparece separadamente e não garante resultados futuros.",
+    "safe": "Maior probabilidade de mercado",
+    "diverse": "Resultados diversificados",
+    "value": "Diferença em relação à previsão LLM",
+    "unavailable": "Não foi possível carregar as múltiplas",
+    "empty": "Não há odds e previsões adequadas suficientes no período escolhido.",
+    "history": "Histórico: {{wins}} de {{total}} múltiplas acertadas ({{rate}})",
+    "odds": "Odd combinada",
+    "probability": "Probabilidade estimada",
+    "expectedReturn": "Retorno esperado",
+    "legs": "Jogos",
+    "books": "casas: {{n}}",
+    "disclaimer": "A probabilidade usa o consenso do mercado; a odd combinada usa os melhores preços disponíveis. Só recolhemos 1X2, não totais nem ambas marcam."
+  },
   "paperBankroll": {
     "title": "Saldo virtual do LLM",
     "virtual": "SIMULAÇÃO",
