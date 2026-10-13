@@ -215,3 +215,60 @@ delete from public.forecast_pick where model = 'fly';
 delete from public.forecast_calibration where model = 'fly';
 delete from public.forecast_duel_model where model = 'fly';
 drop table if exists public.fly_state;
+
+drop function if exists public.forecast_scoreboard();
+drop function if exists public.forecast_scoreboard(text);
+create function public.forecast_scoreboard(p_password text default null)
+returns table (
+  model text,
+  graded integer,
+  hits integer,
+  accuracy numeric,
+  last30 numeric,
+  streak integer,
+  dopamine integer,
+  backfilled integer
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+set statement_timeout to '4s'
+as $$
+begin
+  if p_password is null or not public.admin_check_password(p_password) then
+    perform public.require_pro();
+  end if;
+  return query
+    with g as (
+      select fp.model, fp.correct, fp.commence_at, fp.backfilled,
+             row_number() over (partition by fp.model order by fp.commence_at desc) as rn
+        from public.forecast_pick fp
+       where fp.correct is not null
+         and fp.model in ('llm', 'own')
+    ), base as (
+      select g.model, count(*)::int as graded,
+             count(*) filter (where g.correct)::int as hits,
+             round(avg(case when g.correct then 1.0 else 0.0 end), 4) as accuracy,
+             round(avg(case when g.correct then 1.0 else 0.0 end)
+                   filter (where g.rn <= 30), 4) as last30,
+             count(*) filter (where g.backfilled)::int as backfilled
+        from g group by g.model
+    ), run as (
+      select q.model, count(*)::int as streak from (
+        select g.model, g.correct,
+               sum(case when g.correct then 0 else 1 end)
+                 over (partition by g.model order by g.commence_at desc
+                       rows between unbounded preceding and current row) as broke
+          from g
+      ) q where q.broke = 0 and q.correct group by q.model
+    )
+    select b.model, b.graded, b.hits, b.accuracy, b.last30,
+           coalesce(r.streak, 0), 0::integer, b.backfilled
+      from base b left join run r on r.model = b.model
+     order by b.accuracy desc nulls last;
+end;
+$$;
+
+revoke all on function public.forecast_scoreboard(text) from public;
+grant execute on function public.forecast_scoreboard(text) to anon, authenticated, service_role;
