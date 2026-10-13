@@ -348,7 +348,8 @@ set search_path = public
 set statement_timeout to '4s'
 as $$
 begin
-  if p_password is null or not public.admin_check_password(p_password) then
+  if coalesce(auth.role(), '') <> 'service_role' and
+     (p_password is null or not public.admin_check_password(p_password)) then
     perform public.require_pro();
   end if;
   return query
@@ -411,7 +412,8 @@ set search_path = public
 set statement_timeout to '4s'
 as $$
 begin
-  if p_password is null or not public.admin_check_password(p_password) then
+  if coalesce(auth.role(), '') <> 'service_role' and
+     (p_password is null or not public.admin_check_password(p_password)) then
     perform public.require_pro();
   end if;
   return query
