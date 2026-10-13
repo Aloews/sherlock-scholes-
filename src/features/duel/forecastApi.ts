@@ -274,12 +274,18 @@ export async function fetchModelAccumulators(
   const res = await supabase.rpc('model_accumulator_history', {
     p_limit: limit, p_model: model,
   });
-  return fromPostgrest<ModelAccumulator[]>(res, 'model_accumulator_history');
+  const state = fromPostgrest<ModelAccumulator[]>(res, 'model_accumulator_history');
+  return state.status === 'ok'
+    ? { ...state, data: state.data.filter((row) => row.model === 'llm' || row.model === 'own') }
+    : state;
 }
 
 export async function fetchAccumulatorScore(): Promise<LoadState<AccumulatorScore[]>> {
   const res = await supabase.rpc('model_accumulator_scoreboard', {});
-  return fromPostgrest<AccumulatorScore[]>(res, 'model_accumulator_scoreboard');
+  const state = fromPostgrest<AccumulatorScore[]>(res, 'model_accumulator_scoreboard');
+  return state.status === 'ok'
+    ? { ...state, data: state.data.filter((row) => row.model === 'llm' || row.model === 'own') }
+    : state;
 }
 
 export interface ModelAccumulatorLeg {
