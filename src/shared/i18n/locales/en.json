@@ -1443,6 +1443,7 @@
     "drawdown": "Max drawdown",
     "positions": "Positions",
     "winRate": "Win rate",
-    "settled": "Forecasts settled: {{n}}"
+    "settled": "Forecasts settled: {{n}}",
+    "policy": "Kelly fraction: {{kelly}}%; confidence floor: {{floor}}%"
   }
 }
