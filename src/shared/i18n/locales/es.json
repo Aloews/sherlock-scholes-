@@ -1433,6 +1433,22 @@
     "failed": "No se pudieron cargar los traspasos",
     "note": "Aquí cada fila es un traspaso, no un jugador: una misma persona puede aparecer varias veces. El precio de un traspaso y el valor actual del jugador son cifras distintas: por Neymar se pagaron 222 M € en 2017. Los traspasos anunciados pero aún no consumados no aparecen."
   },
+  "expressPortfolio": {
+    "title": "Combinadas según cuotas de casas",
+    "subtitle": "Tres opciones creadas con las cuotas 1X2 disponibles. La tasa histórica se muestra por separado y no garantiza resultados futuros.",
+    "safe": "Mayor probabilidad de mercado",
+    "diverse": "Resultados diversificados",
+    "value": "Diferencia con el pronóstico LLM",
+    "unavailable": "No se pudieron cargar las combinadas",
+    "empty": "No hay suficientes cuotas y pronósticos adecuados en el periodo elegido.",
+    "history": "Historial: acertadas {{wins}} de {{total}} combinadas ({{rate}})",
+    "odds": "Cuota total",
+    "probability": "Probabilidad estimada",
+    "expectedReturn": "Retorno esperado",
+    "legs": "Partidos",
+    "books": "casas: {{n}}",
+    "disclaimer": "La probabilidad usa el consenso del mercado; la cuota total usa los mejores precios disponibles. Solo se recopila 1X2, no totales ni ambos equipos marcan."
+  },
   "paperBankroll": {
     "title": "Capital virtual del LLM",
     "virtual": "SIMULACIÓN",
