@@ -265,6 +265,7 @@ as $
 declare
   p public.llm_paper_policy%rowtype;
   v_n integer;
+  v_new integer;
   v_roi numeric;
   v_drawdown numeric;
   v_kelly numeric;
@@ -273,6 +274,15 @@ begin
   select * into p from public.llm_paper_policy where id = true for update;
   if not found then
     raise exception 'paper bankroll policy is not initialized';
+  end if;
+
+  select count(*)::integer into v_new
+    from public.llm_paper_ledger
+   where stake > 0
+     and settled_at > coalesce(p.last_policy_update, '-infinity'::timestamptz);
+  if coalesce(v_new, 0) < 5 then
+    return query select false, p.kelly_fraction, p.confidence_floor, p.last_window_roi, coalesce(v_new, 0);
+    return;
   end if;
 
   with recent as (
