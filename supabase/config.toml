@@ -1,0 +1,4 @@
+project_id = "konoavrduynecxblqfvq"
+
+[functions.smart-deck-builder]
+verify_jwt = false
