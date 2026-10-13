@@ -1436,5 +1436,17 @@
     "hide": "hide",
     "failed": "Could not load transfers",
     "note": "A row here is a transfer, not a player: one person can appear more than once. A transfer fee and a player's value today are different numbers — Neymar cost €222M in 2017. Transfers announced but not yet completed are not shown."
+  },
+  "paperBankroll": {
+    "title": "LLM virtual bankroll",
+    "virtual": "SIMULATION",
+    "unavailable": "Bankroll is unavailable",
+    "balance": "Balance",
+    "profit": "Profit",
+    "roi": "Return",
+    "drawdown": "Max drawdown",
+    "positions": "Positions",
+    "winRate": "Win rate",
+    "settled": "Forecasts settled: {{n}}"
   }
 }
