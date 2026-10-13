@@ -181,7 +181,7 @@ language plpgsql
 stable
 security definer
 set search_path = public
-as $
+as $$
 begin
   if coalesce(auth.role(), '') <> 'service_role' and
      (p_password is null or not public.admin_check_password(p_password)) then
@@ -205,7 +205,7 @@ begin
     from public.llm_paper_bankroll a
    where a.id = true;
 end;
-$;
+$$;
 
 revoke all on function public.llm_paper_bankroll_summary(text) from public;
 grant execute on function public.llm_paper_bankroll_summary(text) to anon, authenticated, service_role;
