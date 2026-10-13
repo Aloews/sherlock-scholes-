@@ -41,7 +41,7 @@ const cards = players.map((player) => ({
 function queryBuilder(table: string) {
   const filters: Record<string, unknown> = {};
   const builder: Record<string, unknown> = {};
-  for (const method of ['select', 'gte', 'order', 'limit', 'eq', 'not']) {
+  for (const method of ['select', 'gte', 'lte', 'order', 'limit', 'eq', 'not']) {
     builder[method] = (...args: unknown[]) => {
       filters[method] = args;
       return builder;
