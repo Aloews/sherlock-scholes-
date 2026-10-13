@@ -2,11 +2,10 @@ import { supabase } from '@/shared/lib/supabase';
 import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
 
 /**
- * Три прогнозиста на ПОБЕДИТЕЛЯ: что назвали, чем кончилось, чему научились.
+ * Прогнозы победителя: что было названо и чем закончился матч.
  *
  * Владелец: «помимо голов указывать победителя», «отдельным экраном дашборд с
- * историями прогнозов от трёх прогнозистов», «продолжать дообучать эти три
- * варианта по мере исходов матчей».
+ * историями прогнозов от трёх прогнозистов», «оценивать прогнозы по мере исходов матчей».
  *
  * ⚠️ ЭКРАН НИЧЕГО НЕ СЧИТАЕТ И НИЧЕМУ НЕ УЧИТ. Прогноз пишется в базу ДО
  * матча ночным прогоном (`football_scraper/forecast_pipeline.py`), сверяется
@@ -14,7 +13,7 @@ import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
  * прогнозов пересчитывается при каждом открытии и всегда выглядит разумной.
  */
 
-export type ForecastModel = 'llm' | 'fly' | 'own';
+export type ForecastModel = 'llm' | 'own';
 export type Outcome = 'H' | 'D' | 'A';
 
 export interface UpcomingPick {
@@ -24,8 +23,6 @@ export interface UpcomingPick {
   away_team: string;
   llm_pick: Outcome | null;
   llm_conf: number | null;
-  fly_pick: Outcome | null;
-  fly_conf: number | null;
   own_pick: Outcome | null;
   own_conf: number | null;
   exp_total: number | null;
@@ -35,10 +32,8 @@ export interface UpcomingPick {
    * Та же уверенность, приведённая к правде.
    *
    * ⚠️ ПОКАЗЫВАТЬ НАДО ЭТО ЧИСЛО, А СЫРОЕ ОСТАВИТЬ РЯДОМ. Замер по 2976
-   * размеченным прогнозам: `own` говорил «уверен на 78.6 %» и попадал в
-   * 46.0 %, `fly` говорил 10.2 % и попадал в те же 46.2 %. Подпись «уверен
-   * на 100 %» под прогнозом, который сбывается в половине случаев, — это не
-   * оптимизм, это неверное число на экране.
+   * размеченным прогнозам: `own` говорил «уверен на 78.6 %» и попадал в 46.0 %. Подпись «уверен на
+   * 100 %» под прогнозом, который сбывается в половине случаев, — это неверное число.
    *
    * Пересчёт монотонный: sigmoid(a·logit(p)+b), подгонка ночная
    * (`forecast_calibration`). Порядок матчей по уверенности НЕ меняется —
@@ -48,7 +43,6 @@ export interface UpcomingPick {
    * сырое и не притворяется.
    */
   llm_cal: number | null;
-  fly_cal: number | null;
   own_cal: number | null;
 }
 
@@ -61,13 +55,6 @@ export interface Scoreboard {
   last30: number | null;
   streak: number;
   /**
-   * Сколько исходов дошло до мухи подкреплением.
-   *
-   * ⚠️ ЭТО НЕ «СКОЛЬКО УГАДАЛА». Дофамин у мухи приходит на КАЖДЫЙ исход, а
-   * не на правоту: дофаминовый нейрон отвечает на событие. Число говорит,
-   * сколько раз мозг вообще получил обратную связь.
-   */
-  dopamine: number;
   /** Сколько строк сделано задним числом — на тестовой части. */
   backfilled: number;
 }
@@ -84,7 +71,6 @@ export interface HistoryRow {
   correct: boolean | null;
   actual_total: number | null;
   exp_total: number | null;
-  dopamine: boolean;
   backfilled: boolean;
 }
 
