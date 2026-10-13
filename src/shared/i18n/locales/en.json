@@ -1433,6 +1433,22 @@
     "failed": "Could not load transfers",
     "note": "A row here is a transfer, not a player: one person can appear more than once. A transfer fee and a player's value today are different numbers — Neymar cost €222M in 2017. Transfers announced but not yet completed are not shown."
   },
+  "expressPortfolio": {
+    "title": "Bookmaker-line accumulators",
+    "subtitle": "Three options built from available 1X2 prices. Historical hit rate is shown separately and does not guarantee future results.",
+    "safe": "Higher market probability",
+    "diverse": "Diversified outcomes",
+    "value": "LLM forecast disagreement",
+    "unavailable": "Could not load accumulator options",
+    "empty": "Not enough suitable odds and forecasts in the selected window.",
+    "history": "History: {{wins}} of {{total}} accumulators landed ({{rate}})",
+    "odds": "Combined odds",
+    "probability": "Estimated hit chance",
+    "expectedReturn": "Expected return",
+    "legs": "Matches",
+    "books": "bookmakers: {{n}}",
+    "disclaimer": "Probability uses market consensus; combined odds use the best available prices. Only 1X2 is collected, not totals or both-teams-to-score."
+  },
   "paperBankroll": {
     "title": "LLM virtual bankroll",
     "virtual": "SIMULATION",
