@@ -38,6 +38,7 @@ begin
            max(o.away_price) as away_price,
            (array_agg(o.bookmaker order by o.away_price desc) filter (where o.away_price > 1))[1] as away_bookmaker
       from public.fixture_odds o
+     where o.home_price > 1 and o.draw_price > 1 and o.away_price > 1
      group by o.fixture_id, o.taken_at
   ),
   market as (
