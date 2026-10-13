@@ -149,6 +149,9 @@ jobs:
             python "$f" || failed="$failed $f"
             echo "::endgroup::"
           done
+          echo "::group::docs/test_players_stats_transfermarkt.py"
+          python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
+          echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
             exit 1
