@@ -55,26 +55,15 @@ jobs:
       - name: Install deps
         run: pip install -r football_scraper/requirements.txt
 
-      # Мозг мухи и правило депрессии проверяются ДО круга: они чистые, сети и
-      # секретов им не нужно. Испорченный мозг назвал бы правдоподобные, но
-      # неверные исходы, а правдоподобно неверное — ровно то, что не должно
-      # попадать в историю прогнозов.
+      # Unit tests run before the scheduled forecast and settlement cycle.
       - name: Tests
         working-directory: football_scraper
         run: |
-          python3 tests/test_fly_brain.py
           python3 tests/test_paper_bankroll.py
           python3 tests/test_forecast_duel.py
           python3 tests/test_calibration.py
 
-      # ⚠️ ПОРЯДОК ВНУТРИ ШАГА — ЭТО И ЕСТЬ ОБУЧЕНИЕ. Сначала сверить названное
-      # с тем, чем матчи кончились, потом отдать исходы мухе (дофамин), и
-      # только потом называть новые: иначе муха назовёт завтрашние матчи
-      # мозгом, который ещё не узнал вчерашних.
-      # ⚠️ CALIBRATE СТОИТ ПОСЛЕ GRADE И ДО PICK, И ОБА СОСЕДСТВА ЗНАЧИМЫ.
-      # После сверки — потому что калибруется по матчам с известным исходом.
-      # До того, как названы новые прогнозы, — чтобы экран сразу отдавал их с
-      # сегодняшней подгонкой, а не с вчерашней.
+      # Settle completed forecasts only after grading and calibration; then create new forecasts.
       - name: Grade, calibrate, settle virtual bankroll, pick
         run: |
           if [ "$(date -u +%u)" = "1" ]; then
@@ -83,7 +72,6 @@ jobs:
           python football_scraper/forecast_pipeline.py grade
           python football_scraper/forecast_pipeline.py calibrate
           python football_scraper/paper_bankroll.py
-          python football_scraper/forecast_pipeline.py dopamine
           python football_scraper/forecast_pipeline.py pick
 
       # Переобучение дуэли — по понедельникам, отдельным шагом и с
