@@ -1443,6 +1443,7 @@
     "drawdown": "Baisse maximale",
     "positions": "Positions",
     "winRate": "Taux de réussite",
-    "settled": "Pronostics réglés : {{n}}"
+    "settled": "Pronostics réglés : {{n}}",
+    "policy": "Fraction de Kelly : {{kelly}} % ; seuil de confiance : {{floor}} %"
   }
 }
