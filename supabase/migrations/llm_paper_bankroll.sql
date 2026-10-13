@@ -163,7 +163,7 @@ $$;
 revoke all on function public.settle_llm_paper_bankroll() from public, anon, authenticated;
 grant execute on function public.settle_llm_paper_bankroll() to service_role;
 
-create or replace function public.llm_paper_bankroll_summary()
+create or replace function public.llm_paper_bankroll_summary(p_password text default null)
 returns table (
   initial_balance numeric,
   balance numeric,
@@ -177,11 +177,17 @@ returns table (
   win_rate numeric,
   last_settled_at timestamptz
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
-as $$
+as $
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and
+     (p_password is null or not public.admin_check_password(p_password)) then
+    perform public.require_pro();
+  end if;
+  return query
   select a.initial_balance,
          a.balance,
          round(a.balance - a.initial_balance, 2),
@@ -198,7 +204,14 @@ as $$
          (select max(l.settled_at) from public.llm_paper_ledger l)
     from public.llm_paper_bankroll a
    where a.id = true;
-$$;
+end;
+$;
 
-revoke all on function public.llm_paper_bankroll_summary() from public;
-grant execute on function public.llm_paper_bankroll_summary() to service_role;
+revoke all on function public.llm_paper_bankroll_summary(text) from public;
+grant execute on function public.llm_paper_bankroll_summary(text) to anon, authenticated, service_role;
+
+-- Remove persisted state for the retired predictor.
+delete from public.forecast_pick where model = 'fly';
+delete from public.forecast_calibration where model = 'fly';
+delete from public.forecast_duel_model where model = 'fly';
+drop table if exists public.fly_state;
