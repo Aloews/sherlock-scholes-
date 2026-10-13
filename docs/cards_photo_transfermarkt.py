@@ -106,15 +106,16 @@ def read_all(path, params):
         offset += PAGE
 
 
-def portrait_url(html):
-    """Адрес портрета со страницы профиля — или None.
-
-    ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
-    в колоду попадёт серый силуэт под видом фотографии.
-    """
+def og_image_url(html):
+    """Validated HTTP(S) Open Graph image URL, before placeholder filtering."""
     parser = _OGImageParser()
     parser.feed(html or "")
-    url = parser.url
+    return parser.url
+
+
+def portrait_url(html):
+    """Адрес настоящего портрета со страницы профиля — или None."""
+    url = og_image_url(html)
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
@@ -209,7 +210,7 @@ def main():
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif OG_IMAGE.search(html):
+            elif og_image_url(html):
                 placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()
