@@ -81,6 +81,7 @@ export function matchNewsToPlayers(headlines: NewsHeadline[], players: Canonical
   const matches: NewsCardMatch[] = [];
   const used = new Set<string>();
   for (const headline of headlines) {
+    if (!isFootballNewsUrl(headline.url)) continue;
     // Many real football stories mention the player in the summary/body, not in the headline.
     // Match against all ingested editorial text, while the server still verifies the URL/title.
     const articleText = normalizeFootballText([headline.title, headline.summary_short ?? '', headline.description ?? ''].join(' '));
