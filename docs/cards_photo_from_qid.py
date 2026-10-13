@@ -190,7 +190,7 @@ def main():
                 # выборке: между чтением и записью мог отработать другой шаг.
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "photo_url": "is.null"},
-                   body={"photo_url": url})
+                   body={"photo_url": url, "photo_source": "wikimedia_commons"})
                 written += 1
         batch = []
 
