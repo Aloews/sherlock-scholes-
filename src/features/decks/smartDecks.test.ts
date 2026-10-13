@@ -31,6 +31,10 @@ describe('football-only news and verified form', () => {
 describe('smart deck entity matching', () => {
  it('normalizes accents and punctuation', () => expect(normalizeFootballText('João-Pedro')).toBe('joao pedro'));
  it('matches full canonical names but not surname-only fragments', () => expect(matchNewsToPlayers(headlines, players).map(x=>x.id)).toEqual(['messi','salah']));
+ it('never links hockey coverage to football player cards', () => {
+   const hockey: NewsHeadline[] = [{ title: 'Lionel Messi mentioned in an NHL story', url: 'https://www.sport-express.ru/hockey/nhl/news/story', source: 'Example', published_at: '2026-10-12T08:00:00Z' }];
+   expect(matchNewsToPlayers(hockey, players)).toEqual([]);
+ });
  it('deduplicates a card across multiple headlines', () => expect(matchNewsToPlayers([...headlines, headlines[0]], players).filter(x=>x.id==='messi')).toHaveLength(1));
  it('returns no candidate when a headline only contains a surname', () => expect(matchNewsToPlayers([headlines[2]], players)).toEqual([]));
  it('matches full player names in verified article summaries, not only headlines', () => {
