@@ -135,7 +135,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: player, error: playerError } = await supabase.from("players")
       .select("id").eq("id", playerId).maybeSingle();
-    if (playerError || !player) return json({ error: "player_not_found" }, 403);
+    if (playerError) {
+      console.error("[smart-deck-builder] player lookup failed", playerError.code, playerError.message);
+      return json({ error: "player_lookup_unavailable" }, 503);
+    }
+    if (!player) return json({ error: "player_not_found" }, 403);
 
     const { data: allowed, error: quotaError } = await supabase.rpc("consume_smart_deck_builder_quota", {
       p_player_id: playerId,
