@@ -19,6 +19,7 @@ describe('AI deck errors', () => {
 
   it('keeps provider and catalog errors actionable without exposing internal details', () => {
     expect(aiDeckErrorMessage('catalog_unavailable', true)).toContain('временно недоступен');
+    expect(aiDeckErrorMessage('player_lookup_unavailable', true)).toContain('временно недоступен');
     expect(aiDeckErrorMessage('deck_build_failed', true)).toContain('Попробуй ещё раз');
   });
 });
