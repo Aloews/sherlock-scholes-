@@ -56,7 +56,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       try {
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
       supabase.rpc('digest_news', { p_lang: ru ? 'ru' : 'en', p_limit: 60, p_hours: NEWS_WINDOW_HOURS }),
-      supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),
+      supabase.rpc('player_ratings', { p_days: 30, p_limit: 80, p_club_key: null, p_league: null, p_country: null }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
