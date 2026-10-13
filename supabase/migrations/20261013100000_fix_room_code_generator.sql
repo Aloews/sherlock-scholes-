@@ -1,3 +1,27 @@
+CREATE OR REPLACE FUNCTION public.generate_room_code()
+RETURNS CHAR(6)
+LANGUAGE plpgsql
+VOLATILE
+SET search_path = public
+AS $$
+DECLARE
+  chars CONSTANT TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_code TEXT;
+  taken BOOLEAN;
+BEGIN
+  LOOP
+    v_code := '';
+    FOR i IN 1..6 LOOP
+      v_code := v_code || substr(chars, (floor(random() * length(chars)) + 1)::INT, 1);
+    END LOOP;
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_code, 0));
+    SELECT EXISTS (SELECT 1 FROM public.rooms WHERE code = v_code) INTO taken;
+    EXIT WHEN NOT taken;
+  END LOOP;
+  RETURN v_code;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.generate_room_code_text()
 RETURNS TEXT
 LANGUAGE plpgsql
