@@ -270,6 +270,7 @@ declare
   v_drawdown numeric;
   v_kelly numeric;
   v_floor numeric;
+  v_latest_position timestamptz;
 begin
   select * into p from public.llm_paper_policy where id = true for update;
   if not found then
@@ -297,7 +298,12 @@ begin
     into v_n, v_roi, v_drawdown
     from recent;
 
-  if coalesce(v_n, 0) < 20 then
+  select max(settled_at) into v_latest_position
+    from public.llm_paper_ledger where stake > 0;
+
+  if coalesce(v_n, 0) < 20
+     or v_latest_position is null
+     or (p.last_policy_update is not null and v_latest_position <= p.last_policy_update) then
     return query select false, p.kelly_fraction, p.confidence_floor, v_roi, coalesce(v_n, 0);
     return;
   end if;
