@@ -81,9 +81,9 @@ def pick_legs(day_rows, model, ab, k, rule, floor):
         prob = apply_platt(ab[0], ab[1], raw) if ab else raw
         if rule == "consensus":
             picks = {v[0] for v in by_model.values()}
-            if len(by_model) < 3 or len(picks) != 1:
+            if len(by_model) < len(MODELS) or len(picks) != 1:
                 continue
-        elif rule == "two_of_three":
+        elif rule == "both":
             same = sum(1 for v in by_model.values() if v[0] == pick)
             if same < 2:
                 continue
@@ -169,12 +169,12 @@ def main() -> int:
         ("топ, порог 0.40", "top", 0.40),
         ("топ, порог 0.45", "top", 0.45),
         ("топ, порог 0.50", "top", 0.50),
-        ("все трое согласны", "consensus", 0.00),
-        ("все трое, порог 0.45", "consensus", 0.45),
-        ("все трое, порог 0.47", "consensus", 0.47),
-        ("все трое, порог 0.50", "consensus", 0.50),
-        ("двое из трёх", "two_of_three", 0.00),
-        ("двое из трёх, 0.45", "two_of_three", 0.45),
+        ("обе модели согласны", "consensus", 0.00),
+        ("обе модели, порог 0.45", "consensus", 0.45),
+        ("обе модели, порог 0.47", "consensus", 0.47),
+        ("обе модели, порог 0.50", "consensus", 0.50),
+        ("совпадение двух моделей", "both", 0.00),
+        ("две модели, порог 0.45", "both", 0.45),
     ]
 
     print(f"\n{'правило':22} {'k':>2} {'модель':>5} "
