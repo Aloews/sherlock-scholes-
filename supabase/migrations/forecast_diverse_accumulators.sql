@@ -117,14 +117,17 @@ begin
   hist_value_candidates as (
     select h.*, public.calibrated_confidence(fp.confidence, 'llm') as model_prob,
            public.calibrated_confidence(fp.confidence, 'llm') - h.fair_prob as edge
-      from historical_market h
+      from market h
       join public.forecast_pick fp
         on fp.fixture_id = h.fixture_id
        and fp.model = 'llm'
        and fp.pick = h.pick
        and not fp.backfilled
        and fp.made_at < fp.commence_at
-     where public.calibrated_confidence(fp.confidence, 'llm') >= h.fair_prob + 0.02
+     where h.completed
+       and h.actual is not null
+       and h.commence_at < now()
+       and public.calibrated_confidence(fp.confidence, 'llm') >= h.fair_prob + 0.02
   ),
   hist_value_sport as (
     select h.*,
@@ -217,14 +220,16 @@ begin
   value_base as (
     select u.*, public.calibrated_confidence(fp.confidence, 'llm') as model_prob,
            public.calibrated_confidence(fp.confidence, 'llm') - u.fair_prob as edge
-      from upcoming_market u
+      from market u
       join public.forecast_pick fp
         on fp.fixture_id = u.fixture_id
        and fp.model = 'llm'
        and fp.pick = u.pick
        and not fp.backfilled
        and fp.made_at < fp.commence_at
-     where public.calibrated_confidence(fp.confidence, 'llm') >= u.fair_prob + 0.02
+     where u.commence_at > now()
+       and u.commence_at < now() + make_interval(hours => greatest(24, least(coalesce(p_hours, 168), 720)))
+       and public.calibrated_confidence(fp.confidence, 'llm') >= u.fair_prob + 0.02
   ),
   value_sport as (
     select v.*,
