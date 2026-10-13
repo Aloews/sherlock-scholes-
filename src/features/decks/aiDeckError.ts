@@ -37,7 +37,7 @@ export function aiDeckErrorMessage(code: string, russian: boolean): string {
       ? 'Не найдено достаточно подходящих карточек. Уточни тему, клуб или период.'
       : 'Not enough matching cards were found. Refine the topic, club, or era.';
   }
-  if (['catalog_unavailable', 'quota_unavailable', 'server_not_configured', 'telegram_auth_unavailable'].includes(code)) {
+  if (['catalog_unavailable', 'quota_unavailable', 'server_not_configured', 'telegram_auth_unavailable', 'player_lookup_unavailable'].includes(code)) {
     return russian
       ? 'Каталог или сервис подбора временно недоступен. Попробуй снова чуть позже.'
       : 'The deck catalog or builder is temporarily unavailable. Try again shortly.';
