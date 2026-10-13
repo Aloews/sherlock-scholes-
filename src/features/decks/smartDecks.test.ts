@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGoldenEra, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
+import { buildGoldenEra, hasCurrentClubEvidence, isFootballNewsUrl, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline } from './smartDecks';
 import { normalizeFilter } from '@/shared/types/deck';
 const players: CanonicalPlayer[] = [
  { id:'messi', name:'Лионель Месси', name_en:'Lionel Messi', photo_url:null, country:'AR', position_ru:'Нападающий', fame:100 },
@@ -11,6 +11,23 @@ const headlines: NewsHeadline[] = [
  { title:'Mohamed Salah returns to training', url:'https://example.test/salah', source:'Example', published_at:'2026-10-12T07:00:00Z' },
  { title:'The match preview discusses Pedro', url:'https://example.test/pedro', source:'Example', published_at:'2026-10-12T06:00:00Z' },
 ];
+describe('football-only news and verified form', () => {
+ it('rejects hockey and other non-football news sections before entity matching', () => {
+   expect(isFootballNewsUrl('https://www.sport-express.ru/hockey/nhl/news/story')).toBe(false);
+   expect(isFootballNewsUrl('https://www.sport-express.ru/basketball/nba/news/story')).toBe(false);
+   expect(isFootballNewsUrl('https://example.test/football/news/story')).toBe(true);
+   expect(isFootballNewsUrl('not-a-url')).toBe(false);
+ });
+ it('requires recent match evidence to agree with the card current club', () => {
+   const evidence = [
+     { card_id: 'farense-card', home_team: 'Santos', away_team: 'Flamengo', disputed: false },
+     { card_id: 'santos-card', home_team: 'Santos', away_team: 'Flamengo', disputed: false },
+   ];
+   expect(hasCurrentClubEvidence({ card_id: 'farense-card', club_key: 'farense' }, evidence)).toBe(false);
+   expect(hasCurrentClubEvidence({ card_id: 'santos-card', club_key: 'santos' }, evidence)).toBe(true);
+ });
+});
+
 describe('smart deck entity matching', () => {
  it('normalizes accents and punctuation', () => expect(normalizeFootballText('João-Pedro')).toBe('joao pedro'));
  it('matches full canonical names but not surname-only fragments', () => expect(matchNewsToPlayers(headlines, players).map(x=>x.id)).toEqual(['messi','salah']));
