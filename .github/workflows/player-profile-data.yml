@@ -1,6 +1,12 @@
 name: player-profile-data
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/player-profile-data.yml'
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/cards_photo_from_qid.py'
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
@@ -45,7 +51,7 @@ jobs:
         run: python3 docs/test_players_stats_transfermarkt.py
 
       - name: Prioritize reported missing player profile
-        if: ${{ github.event_name == 'schedule' && inputs.transfermarkt_id == '' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
         run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590
 
       - name: Collect seasonal player statistics
