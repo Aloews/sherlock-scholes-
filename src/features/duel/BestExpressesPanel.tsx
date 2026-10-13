@@ -12,6 +12,7 @@ interface ExpressLeg {
   away_team: string;
   pick: Outcome;
   price: number;
+  bookmaker: string | null;
   fair_prob: number;
   books: number;
   edge: number;
@@ -137,6 +138,7 @@ export function BestExpressesPanel({ password = null }: { password?: string | nu
                     <div className="shrink-0 text-right tabular-nums">
                       <div className="text-xs font-bold text-white">{PICK[leg.pick]} · {num(leg.price)}</div>
                       <div className="text-[10px] text-brand-muted">{pct(leg.fair_prob)}</div>
+                      {leg.bookmaker && <div className="text-[9px] text-brand-muted">{leg.bookmaker}</div>}
                     </div>
                   </div>
                 ))}
