@@ -367,3 +367,65 @@ $$;
 
 revoke all on function public.forecast_scoreboard(text) from public;
 grant execute on function public.forecast_scoreboard(text) to anon, authenticated, service_role;
+
+drop function if exists public.forecast_upcoming(integer, text);
+create function public.forecast_upcoming(
+  p_limit integer default 20,
+  p_password text default null
+)
+returns table (
+  fixture_id text,
+  commence_at timestamptz,
+  home_team text,
+  away_team text,
+  llm_pick text,
+  llm_conf numeric,
+  own_pick text,
+  own_conf numeric,
+  exp_total numeric,
+  agree integer,
+  llm_cal numeric,
+  own_cal numeric
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+set statement_timeout to '4s'
+as $$
+begin
+  if p_password is null or not public.admin_check_password(p_password) then
+    perform public.require_pro();
+  end if;
+  return query
+    with p as (
+      select k.fixture_id, k.commence_at, k.home_team, k.away_team,
+             max(case when k.model = 'llm' then k.pick end) as llm_pick,
+             max(case when k.model = 'llm' then k.confidence end) as llm_conf,
+             max(case when k.model = 'own' then k.pick end) as own_pick,
+             max(case when k.model = 'own' then k.confidence end) as own_conf,
+             max(k.exp_total) as exp_total,
+             count(*) filter (where k.pick = (
+               select mode() within group (order by k2.pick)
+                 from public.forecast_pick k2
+                where k2.fixture_id = k.fixture_id
+                  and k2.model in ('llm', 'own')
+             ))::integer as agree
+        from public.forecast_pick k
+       where k.commence_at > now()
+         and k.model in ('llm', 'own')
+       group by k.fixture_id, k.commence_at, k.home_team, k.away_team
+    )
+    select p.fixture_id, p.commence_at, p.home_team, p.away_team,
+           p.llm_pick, p.llm_conf, p.own_pick, p.own_conf, p.exp_total, p.agree,
+           public.calibrated_confidence(p.llm_conf, 'llm'),
+           public.calibrated_confidence(p.own_conf, 'own')
+      from p
+     order by p.commence_at asc
+     limit greatest(1, least(coalesce(p_limit, 20), 100));
+end;
+$$;
+
+revoke all on function public.forecast_upcoming(integer, text) from public;
+grant execute on function public.forecast_upcoming(integer, text) to anon, authenticated, service_role;
+
