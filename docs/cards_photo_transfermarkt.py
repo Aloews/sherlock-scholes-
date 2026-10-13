@@ -54,8 +54,27 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-META_TAG = re.compile(r"<meta\b[^>]*>", re.I)
-META_ATTR = re.compile(r"""([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+class _OGImageParser(HTMLParser):
+    """Read Open Graph image metadata independent of attribute order/quoting."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.url = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "meta":
+            return
+        values = {key.lower(): value for key, value in attrs if key}
+        if (values.get("property") or "").lower() != "og:image":
+            return
+        candidate = (values.get("content") or "").strip()
+        if candidate.startswith("//"):
+            candidate = "https:" + candidate
+        parsed = urllib.parse.urlparse(candidate)
+        if parsed.scheme in ("http", "https") and parsed.netloc:
+            self.url = candidate
+
+
 # Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
 # адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
 # встретиться по другому поводу.
