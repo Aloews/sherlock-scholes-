@@ -27,9 +27,14 @@ def main() -> int:
     if not url or not key:
         raise SystemExit("SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
 
-    result = call_rpc("settle_llm_paper_bankroll", url, key)
-    row = result[0] if isinstance(result, list) and result else result
-    print(json.dumps(row, ensure_ascii=False, sort_keys=True))
+    settled = call_rpc("settle_llm_paper_bankroll", url, key)
+    policy = call_rpc("train_llm_paper_policy", url, key)
+    settlement_row = settled[0] if isinstance(settled, list) and settled else settled
+    policy_row = policy[0] if isinstance(policy, list) and policy else policy
+    print(json.dumps({
+        "settlement": settlement_row,
+        "policy": policy_row,
+    }, ensure_ascii=False, sort_keys=True))
     return 0
 
 
