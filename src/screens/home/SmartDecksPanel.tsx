@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowUpRight, IconBolt, IconCalendarEvent, IconCrown, IconX, IconCheck, IconLoader2 } from '@tabler/icons-react';
 import { supabase } from '@/shared/lib/supabase';
 import { getRawInitData, openLink } from '@/shared/lib/telegram';
+import { aiDeckErrorMessage, edgeFunctionErrorCode } from '@/features/decks/aiDeckError';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
@@ -205,7 +206,9 @@ export function SmartDecksPanel({ onStart }: Props) {
           current_card_ids: selectedCardIds,
         },
       });
-      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      if (error) throw new Error(await edgeFunctionErrorCode(error) || 'request_failed');
+      if (!data) throw new Error('request_failed');
+      if (data.error) throw new Error(String(data.error));
       const result = data as { message?: string; title?: string; cards?: DeckPlayerRow[] };
       const cards = Array.isArray(result.cards) ? result.cards.filter((card) =>
         typeof card.id === 'string' && typeof card.name === 'string' && ALL_CATEGORIES.includes(card.category as CardCategory)
@@ -227,11 +230,8 @@ export function SmartDecksPanel({ onStart }: Props) {
         content: result.message || (ru ? `Готово: ${ids.length} карточек добавлено в колоду.` : `Done: ${ids.length} cards added to the deck.`),
       }]);
     } catch (error) {
-      const message = error instanceof Error && error.message === 'auth'
-        ? (ru ? 'Открой приложение через Telegram и повтори запрос.' : 'Open the app in Telegram and try again.')
-        : error instanceof Error && error.message === 'not_enough_cards'
-          ? (ru ? 'Не удалось собрать минимум 3 подтверждённые карточки. Уточни запрос.' : 'Could not find at least 3 verified cards. Refine your request.')
-          : (ru ? 'ИИ сейчас не смог собрать колоду. Попробуй переформулировать запрос.' : 'The AI could not build this deck. Try rephrasing your request.');
+      const code = error instanceof Error ? error.message : '';
+      const message = aiDeckErrorMessage(code, ru);
       setAiBuildError(message);
       setChatMessages((current) => [...current, { role: 'assistant', content: message }]);
     } finally {
