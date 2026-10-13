@@ -32,15 +32,18 @@ begin
   with best_prices as (
     select o.fixture_id, o.taken_at,
            max(o.home_price) as home_price,
+           (array_agg(o.bookmaker order by o.home_price desc) filter (where o.home_price > 1))[1] as home_bookmaker,
            max(o.draw_price) as draw_price,
-           max(o.away_price) as away_price
+           (array_agg(o.bookmaker order by o.draw_price desc) filter (where o.draw_price > 1))[1] as draw_bookmaker,
+           max(o.away_price) as away_price,
+           (array_agg(o.bookmaker order by o.away_price desc) filter (where o.away_price > 1))[1] as away_bookmaker
       from public.fixture_odds o
      group by o.fixture_id, o.taken_at
   ),
   market as (
     select c.fixture_id, f.commence_at, f.sport_key, f.home_team, f.away_team,
            f.home_score, f.away_score, f.completed, c.taken_at, c.books,
-           v.pick, v.fair_prob, v.best_price,
+           v.pick, v.fair_prob, v.best_price, v.best_bookmaker,
            case
              when f.completed and f.home_score is not null and f.away_score is not null
                then case when f.home_score > f.away_score then 'H'
@@ -51,10 +54,10 @@ begin
       join public.fixtures f on f.id = c.fixture_id
       join best_prices b on b.fixture_id = c.fixture_id and b.taken_at = c.taken_at
       cross join lateral (values
-        ('H'::text, c.p_home, b.home_price),
-        ('D'::text, c.p_draw, b.draw_price),
-        ('A'::text, c.p_away, b.away_price)
-      ) as v(pick, fair_prob, best_price)
+        ('H'::text, c.p_home, b.home_price, b.home_bookmaker),
+        ('D'::text, c.p_draw, b.draw_price, b.draw_bookmaker),
+        ('A'::text, c.p_away, b.away_price, b.away_bookmaker)
+      ) as v(pick, fair_prob, best_price, best_bookmaker)
      where v.best_price > 1
        and c.taken_at < f.commence_at
   ),
@@ -252,15 +255,15 @@ begin
   ),
   current_legs as (
     select profile, fixture_id, commence_at, sport_key, home_team, away_team,
-           pick, best_price, fair_prob, books, edge, ticket_rank
+           pick, best_price, best_bookmaker, fair_prob, books, edge, ticket_rank
       from safe_candidates where ticket_rank <= 3
     union all
     select profile, fixture_id, commence_at, sport_key, home_team, away_team,
-           pick, best_price, fair_prob, books, edge, ticket_rank
+           pick, best_price, best_bookmaker, fair_prob, books, edge, ticket_rank
       from diverse_candidates where ticket_rank <= 3
     union all
     select profile, fixture_id, commence_at, sport_key, home_team, away_team,
-           pick, best_price, fair_prob, books, edge, ticket_rank
+           pick, best_price, best_bookmaker, fair_prob, books, edge, ticket_rank
       from value_candidates where ticket_rank <= 3
   ),
   bundles as (
@@ -277,6 +280,7 @@ begin
              'away_team', l.away_team,
              'pick', l.pick,
              'price', l.best_price,
+             'bookmaker', l.best_bookmaker,
              'fair_prob', l.fair_prob,
              'books', l.books,
              'edge', l.edge
