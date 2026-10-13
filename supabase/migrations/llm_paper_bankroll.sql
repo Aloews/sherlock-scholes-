@@ -316,7 +316,6 @@ returns table (
   accuracy numeric,
   last30 numeric,
   streak integer,
-  dopamine integer,
   backfilled integer
 )
 language plpgsql
@@ -354,7 +353,7 @@ begin
       ) q where q.broke = 0 and q.correct group by q.model
     )
     select b.model, b.graded, b.hits, b.accuracy, b.last30,
-           coalesce(r.streak, 0), 0::integer, b.backfilled
+           coalesce(r.streak, 0), b.backfilled
       from base b left join run r on r.model = b.model
      order by b.accuracy desc nulls last;
 end;
