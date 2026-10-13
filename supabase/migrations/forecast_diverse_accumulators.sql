@@ -115,7 +115,9 @@ begin
      where h.sport_rank = 1
   ),
   hist_value_candidates as (
-    select h.*, public.calibrated_confidence(fp.confidence, 'llm') as model_prob,
+    select h.*,
+           date_trunc('week', h.commence_at at time zone 'UTC')::date as week_start,
+           public.calibrated_confidence(fp.confidence, 'llm') as model_prob,
            public.calibrated_confidence(fp.confidence, 'llm') - h.fair_prob as edge
       from market h
       join public.forecast_pick fp
