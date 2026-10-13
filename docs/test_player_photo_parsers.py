@@ -7,9 +7,20 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from players_stats_transfermarkt import parse_seasons
-from cards_photo_transfermarkt import portrait_url
+from cards_photo_transfermarkt import portrait_url, rotate_candidates
 from cards_photo_from_qid import may_use_pageimage, photo_url
 from cards_photo_credits import credit_from_imageinfo, file_title_from_url, plain
+
+
+class CandidateRotationTests(unittest.TestCase):
+    def test_rotation_wraps_and_keeps_batch_size(self):
+        rows = ["a", "b", "c", "d", "e"]
+        self.assertEqual(rotate_candidates(rows, 3, 3), ["d", "e", "a"])
+        self.assertEqual(rotate_candidates(rows, 5, 2), ["a", "b"])
+
+    def test_negative_offset_rejected(self):
+        with self.assertRaises(ValueError):
+            rotate_candidates(["a"], -1, 1)
 
 
 class SeasonParserTests(unittest.TestCase):
