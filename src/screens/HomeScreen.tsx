@@ -31,6 +31,7 @@ import { DeckPickerScreen } from './DeckPickerScreen';
 import { SmartDecksPanel } from './home/SmartDecksPanel';
 import type { DeckFilter } from '@/shared/types/deck';
 import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
+import { aiDeckErrorMessage, edgeFunctionErrorCode } from '@/features/decks/aiDeckError';
 import { CategoryPickerDialog } from '@/shared/ui/CategoryPickerDialog';
 import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
 
@@ -145,7 +146,9 @@ export function HomeScreen() {
       const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
         body: { prompt, language: i18n.language.startsWith('ru') ? 'ru' : 'en', init_data: initData, current_card_ids: [], target_card_count: targetCardCount },
       });
-      if (error || !data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      if (error) throw new Error(await edgeFunctionErrorCode(error) || 'request_failed');
+      if (!data) throw new Error('request_failed');
+      if (data.error) throw new Error(String(data.error));
       const resolved = parseAIResolvedDeck(data, targetCardCount);
       if (!resolved) throw new Error('not_enough_cards');
       const selectedCategories = resolved.filter.categories ?? [];
@@ -157,11 +160,7 @@ export function HomeScreen() {
     } catch (error) {
       const ru = i18n.language.startsWith('ru');
       const detail = error instanceof Error ? error.message : '';
-      setRoomDeckMessage(detail === 'telegram_auth_required'
-        ? (ru ? 'Открой приложение через Telegram.' : 'Open the app through Telegram.')
-        : detail === 'not_enough_cards'
-          ? (ru ? 'Не найдено достаточно карточек по запросу. Уточни тему.' : 'Not enough cards matched. Refine the topic.')
-          : (ru ? 'Не удалось обработать запрос. Попробуй ещё раз.' : 'Could not process the request. Try again.'));
+      setRoomDeckMessage(aiDeckErrorMessage(detail, ru));
     } finally {
       setBuildingRoomDeck(false);
     }
