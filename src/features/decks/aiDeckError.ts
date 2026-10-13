@@ -5,7 +5,9 @@ export async function edgeFunctionErrorCode(error: unknown): Promise<string> {
     try {
       const payload = await context.clone().json() as { error?: unknown; code?: unknown };
       if (typeof payload.error === 'string') return payload.error;
-      if (typeof payload.code === 'string') return payload.code;
+      if (context.status === 401) return 'telegram_auth_invalid';
+      if (typeof payload.code === 'string' && payload.code !== '401') return payload.code;
+      if (context.status === 429) return 'rate_limited';
     } catch {
       return '';
     }
@@ -17,8 +19,8 @@ export async function edgeFunctionErrorCode(error: unknown): Promise<string> {
 export function aiDeckErrorMessage(code: string, russian: boolean): string {
   if (['auth', 'telegram_auth_required', 'telegram_auth_invalid'].includes(code)) {
     return russian
-      ? 'Сессия Telegram устарела. Закрой и заново открой приложение через Telegram.'
-      : 'Your Telegram session has expired. Close and reopen the app through Telegram.';
+      ? 'Не удалось подтвердить данные Telegram. Закрой и заново открой приложение через Telegram.'
+      : 'Could not verify Telegram data. Close and reopen the app through Telegram.';
   }
   if (code === 'player_not_found') {
     return russian
