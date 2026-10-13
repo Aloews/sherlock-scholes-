@@ -1388,6 +1388,7 @@
     "drawdown": "最大回撤",
     "positions": "仓位",
     "winRate": "胜率",
-    "settled": "已结算预测：{{n}}"
+    "settled": "已结算预测：{{n}}",
+    "policy": "凯利比例：{{kelly}}%；最低置信度：{{floor}}%"
   }
 }
