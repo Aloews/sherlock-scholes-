@@ -113,3 +113,23 @@ jobs:
       - name: Collect required Wikimedia photo credits
         if: always()
         run: APPLY=1 python3 docs/cards_photo_credits.py --minutes 12
+  watch:
+    runs-on: ubuntu-latest
+    needs: [season-stats, player-photos]
+    if: always()
+    timeout-minutes: 5
+    env:
+      STATS_RESULT: ${{ needs.season-stats.result }}
+      PHOTOS_RESULT: ${{ needs.player-photos.result }}
+      PHOTOS_EXPECTED: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+    steps:
+      - name: Verify profile-data jobs completed
+        run: |
+          echo "season-stats = $STATS_RESULT"
+          echo "player-photos = $PHOTOS_RESULT (expected=$PHOTOS_EXPECTED)"
+          [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          if [ "$PHOTOS_EXPECTED" = "true" ]; then
+            [ "$PHOTOS_RESULT" = "success" ] || { echo "::error::player-photos: $PHOTOS_RESULT"; exit 1; }
+          else
+            [ "$PHOTOS_RESULT" = "skipped" ] || { echo "::error::player-photos should be skipped for a one-player run, got $PHOTOS_RESULT"; exit 1; }
+          fi
