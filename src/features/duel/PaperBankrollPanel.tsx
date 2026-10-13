@@ -14,6 +14,9 @@ interface PaperBankroll {
   placed_positions: number;
   wins: number;
   win_rate: number | null;
+  kelly_fraction: number;
+  confidence_floor: number;
+  last_policy_update: string | null;
   last_settled_at: string | null;
 }
 
@@ -71,6 +74,7 @@ export function PaperBankrollPanel({ password = null }: { password?: string | nu
           </div>
           <div className="text-[11px] text-brand-muted">
             {t('paperBankroll.settled', { n: row.settled_predictions })}
+            <div className="mt-1">{t('paperBankroll.policy', { kelly: credits(row.kelly_fraction * 100), floor: credits(row.confidence_floor * 100) })}</div>
           </div>
         </>
       )}
