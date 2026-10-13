@@ -1,0 +1,135 @@
+name: player-profile-data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/player-profile-data.yml'
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/cards_photo_from_qid.py'
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      transfermarkt_id:
+        description: 'Optional Transfermarkt ID for one-player backfill'
+        required: false
+        type: string
+        default: ''
+      limit:
+        description: 'Maximum players processed in a scheduled/batch run'
+        required: false
+        type: string
+        default: '800'
+
+concurrency:
+  group: player-profile-data
+  cancel-in-progress: false
+
+jobs:
+  season-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      TM_ID: ${{ inputs.transfermarkt_id }}
+      PLAYER_LIMIT: ${{ inputs.limit }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+
+      - name: Test seasonal-stat candidate selection
+        run: python3 docs/test_players_stats_transfermarkt.py
+
+      - name: Prioritize reported missing player profile
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590
+
+      - name: Collect seasonal player statistics
+        run: |
+          if [ -n "$TM_ID" ]; then
+            APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID"
+          else
+            limit="${PLAYER_LIMIT:-800}"
+            case "$limit" in
+              ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
+            esac
+            if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
+            APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --limit "$limit"
+          fi
+
+      - name: Verify the targeted player's season statistics were stored
+        if: always()
+        env:
+          VERIFY_TM_ID: ${{ inputs.transfermarkt_id }}
+        run: |
+          id="${VERIFY_TM_ID:-236590}"
+          case "$id" in
+            ''|*[!0-9]*) echo "::error::Invalid Transfermarkt ID for verification"; exit 2 ;;
+          esac
+          count=$(curl -fsS --get \
+            --data-urlencode "select=tm_player_id" \
+            --data-urlencode "tm_player_id=eq.$id" \
+            "$SUPABASE_URL/rest/v1/player_season_stat" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+          if [ "$count" -lt 1 ]; then
+            echo "::error::No player_season_stat rows were stored for Transfermarkt ID $id"
+            exit 1
+          fi
+          echo "Verified $count season-stat rows for Transfermarkt ID $id"
+
+  player-photos:
+    if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: football_scraper/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+
+      - name: Backfill player portraits by Wikidata entity ID
+        run: APPLY=1 python3 docs/cards_photo_from_qid.py
+
+      - name: Collect required Wikimedia photo credits
+        if: always()
+        run: APPLY=1 python3 docs/cards_photo_credits.py --minutes 12
+  watch:
+    runs-on: ubuntu-latest
+    needs: [season-stats, player-photos]
+    if: always()
+    timeout-minutes: 5
+    env:
+      STATS_RESULT: ${{ needs.season-stats.result }}
+      PHOTOS_RESULT: ${{ needs.player-photos.result }}
+      PHOTOS_EXPECTED: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+    steps:
+      - name: Verify profile-data jobs completed
+        run: |
+          echo "season-stats = $STATS_RESULT"
+          echo "player-photos = $PHOTOS_RESULT (expected=$PHOTOS_EXPECTED)"
+          [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          if [ "$PHOTOS_EXPECTED" = "true" ]; then
+            [ "$PHOTOS_RESULT" = "success" ] || { echo "::error::player-photos: $PHOTOS_RESULT"; exit 1; }
+          else
+            [ "$PHOTOS_RESULT" = "skipped" ] || { echo "::error::player-photos should be skipped for a one-player run, got $PHOTOS_RESULT"; exit 1; }
+          fi

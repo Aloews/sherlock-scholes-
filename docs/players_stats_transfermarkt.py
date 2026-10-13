@@ -22,8 +22,9 @@
 поэтому дата рождения (её владелец просил показывать у действующих игроков)
 достаётся почти даром: 1768 недостающих — это 18 запросов, а не 1768.
 
-⚠️ ПОРЯДОК ОБХОДА — ПО СТОИМОСТИ, ОТ ДОРОГИХ. Владелец просил именно эту
-категорию и выше; при обрыве прогона сделанным окажется то, что важнее.
+ПОРЯДОК ОБХОДА — ПО СТОИМОСТИ, ОТ ДОРОГИХ. При пакетном сборе можно включить
+и карточки без оценки (`--include-unvalued`): отсутствие рыночной стоимости
+не должно лишать игрока статистики.
 
 ⚠️ ПОТЕРЯННЫЙ ИГРОК СЧИТАЕТСЯ ОТДЕЛЬНО ОТ ПУСТОГО. «Сеть не ответила» и «у
 игрока нет ни одного матча» — разные утверждения, и молчаливое сложение их в
@@ -65,6 +66,24 @@ def _i(value):
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def filter_candidates(cards, min_value=0, include_unvalued=False):
+    """Keep cards at/above the threshold and optionally those without a value."""
+    selected = []
+    for card in cards:
+        value = card.get("market_value_eur")
+        if value is None:
+            if include_unvalued:
+                selected.append(card)
+            continue
+        try:
+            amount = int(value)
+        except (TypeError, ValueError):
+            continue
+        if amount >= min_value:
+            selected.append(card)
+    return selected
 
 
 def parse_seasons(payload):
@@ -201,8 +220,12 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--refresh", action="store_true",
                     help="перезапросить и тех, у кого статистика уже собрана")
+    ap.add_argument("--include-unvalued", action="store_true",
+                    help="включить игроков без рыночной оценки")
     ap.add_argument("--only", default="", help="один id на Transfermarkt, для проверки")
     args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        raise SystemExit("--only должен быть числовым Transfermarkt ID")
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
@@ -210,16 +233,23 @@ def main():
     if args.only:
         cards = sb("cards", params={
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "transfermarkt_id": "eq." + args.only, "limit": 1}) or []
+            "category": "eq.player", "active": "is.true",
+            "transfermarkt_id": "eq." + args.only,
+            "order": "id.asc", "limit": 1}) or []
     else:
-        cards = all_rows("cards", {
+        query = {
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
             "category": "eq.player", "active": "is.true",
             "transfermarkt_id": "not.is.null",
-            "market_value_eur": "gte.%d" % args.min_value,
-            "order": "market_value_eur.desc"})
+            "order": "market_value_eur.desc.nullslast,id.asc",
+        }
+        if not args.include_unvalued:
+            query["market_value_eur"] = "gte.%d" % args.min_value
+        cards = all_rows("cards", query)
+        if args.include_unvalued:
+            cards = filter_candidates(cards, args.min_value, include_unvalued=True)
 
-    if not args.refresh and not args.only:
+    if not args.refresh:
         done = {r["tm_player_id"] for r in all_rows(
             "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
         cards = [c for c in cards if c["transfermarkt_id"] not in done]
