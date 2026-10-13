@@ -1304,26 +1304,22 @@
     "model": {
       "own": "Our own variant",
       "llm": "LLM",
-      "fly": "Fruit-fly brain",
+      "fly": "Reservoir model",
       "median": "Median",
       "current": "Current formula"
     },
     "what": {
       "own": "A blend of the two models that stays silent when they disagree",
       "llm": "A trained linear head over nine match features",
-      "fly": "A reservoir: connections frozen, only the readout learns — how the fly connectome is read",
+      "fly": "Fixed sparse projection with a trainable readout",
       "median": "Always names the most common number of goals",
       "current": "What the app shows today; it does not learn"
     },
     "short": {
       "own": "Ours",
       "llm": "LLM",
-      "fly": "Fly"
+      "fly": "Reservoir"
     },
-    "fly_verdict": "The fly's verdict",
-    "fly_again": "again",
-    "fly_dopamine_one": "dopamine: {{n}} outcome",
-    "fly_dopamine_other": "dopamine: {{n}} outcomes",
     "exp_total": "{{v}} goals expected",
     "agree_one": "{{n}} agrees",
     "agree_other": "{{n}} agree",
