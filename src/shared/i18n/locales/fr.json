@@ -1436,5 +1436,17 @@
     "hide": "masquer",
     "failed": "Impossible de charger les transferts",
     "note": "Ici une ligne est un transfert, pas un joueur : la même personne peut y figurer plusieurs fois. Le montant d’un transfert et la valeur actuelle du joueur sont deux chiffres différents : Neymar a coûté 222 M € en 2017. Les transferts annoncés mais pas encore effectifs ne sont pas montrés."
+  },
+  "paperBankroll": {
+    "title": "Capital virtuel du LLM",
+    "virtual": "SIMULATION",
+    "unavailable": "Capital indisponible",
+    "balance": "Solde",
+    "profit": "Profit",
+    "roi": "Rendement",
+    "drawdown": "Baisse maximale",
+    "positions": "Positions",
+    "winRate": "Taux de réussite",
+    "settled": "Pronostics réglés : {{n}}"
   }
 }
