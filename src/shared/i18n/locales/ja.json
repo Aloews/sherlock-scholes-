@@ -1388,6 +1388,7 @@
     "drawdown": "最大ドローダウン",
     "positions": "ポジション",
     "winRate": "的中率",
-    "settled": "精算済み予測：{{n}}"
+    "settled": "精算済み予測：{{n}}",
+    "policy": "ケリー比率：{{kelly}}%；信頼度下限：{{floor}}%"
   }
 }
