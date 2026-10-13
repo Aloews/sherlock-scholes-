@@ -1436,5 +1436,17 @@
     "hide": "ocultar",
     "failed": "No se pudieron cargar los traspasos",
     "note": "Aquí cada fila es un traspaso, no un jugador: una misma persona puede aparecer varias veces. El precio de un traspaso y el valor actual del jugador son cifras distintas: por Neymar se pagaron 222 M € en 2017. Los traspasos anunciados pero aún no consumados no aparecen."
+  },
+  "paperBankroll": {
+    "title": "Capital virtual del LLM",
+    "virtual": "SIMULACIÓN",
+    "unavailable": "Capital no disponible",
+    "balance": "Saldo",
+    "profit": "Beneficio",
+    "roi": "Rentabilidad",
+    "drawdown": "Caída máxima",
+    "positions": "Posiciones",
+    "winRate": "Tasa de aciertos",
+    "settled": "Pronósticos liquidados: {{n}}"
   }
 }
