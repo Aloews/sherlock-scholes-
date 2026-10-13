@@ -4,6 +4,7 @@ import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
 import { ModelAccumulators } from './ModelAccumulators';
 import { PaperBankrollPanel } from './PaperBankrollPanel';
+import { BestExpressesPanel } from './BestExpressesPanel';
 import {
   fetchForecastHistory, fetchHistoryCount, fetchScoreboard, fetchUpcomingPicks,
   type ForecastModel, type HistoryCursor, type HistoryRow, type Outcome,
@@ -127,6 +128,7 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
   return (
     <div className="space-y-4">
       <PaperBankrollPanel password={password} />
+      <BestExpressesPanel password={password} />
 
       {/* ── итог по каждому прогнозисту ── */}
       {rows.length > 0 && (
