@@ -104,7 +104,7 @@ begin
              order by h.fair_prob desc, h.fixture_id
            ) as sport_rank
       from hist_diverse_pick h
-     where h.pick_rank <= 2
+     where h.pick_rank = 1
   ),
   hist_diverse as (
     select 'diverse'::text as profile, h.*,
@@ -165,7 +165,9 @@ begin
     select profile,
            count(*)::integer as historical_tickets,
            count(*) filter (where won)::integer as historical_wins,
-           round(100.0 * count(*) filter (where won) / nullif(count(*), 0), 2) as historical_hit_rate
+           case when count(*) >= 10
+                then round(100.0 * count(*) filter (where won) / nullif(count(*), 0), 2)
+                else null end as historical_hit_rate
       from hist_tickets
      group by profile
   ),
@@ -206,7 +208,7 @@ begin
              partition by d.sport_key order by d.fair_prob desc, d.commence_at, d.fixture_id
            ) as sport_rank
       from diverse_pick d
-     where d.pick_rank <= 2
+     where d.pick_rank = 1
   ),
   diverse_candidates as (
     select 'diverse'::text as profile, d.*,
@@ -289,7 +291,9 @@ begin
     from bundles b
     left join hist_summary h using (profile)
    where b.leg_count = 3
-   order by case b.profile when 'safe' then 1 when 'diverse' then 2 else 3 end;
+   order by h.historical_hit_rate desc nulls last,
+            h.historical_tickets desc,
+            b.expected_return desc;
 end;
 $$;
 
