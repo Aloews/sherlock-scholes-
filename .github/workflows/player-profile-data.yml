@@ -119,7 +119,7 @@ jobs:
         run: APPLY=1 python3 docs/cards_photo_from_qid.py
 
       - name: Fill remaining player portraits from Transfermarkt
-        run: APPLY=1 python3 docs/cards_photo_transfermarkt.py
+        run: APPLY=1 python3 docs/cards_photo_transfermarkt.py --include-soccerwiki
 
       - name: Collect required Wikimedia photo credits
         if: always()
