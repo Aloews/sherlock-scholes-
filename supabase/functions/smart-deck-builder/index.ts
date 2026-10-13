@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const prompt = clean(body?.prompt, 1000);
-    const initData = clean(body?.init_data, 4096);
+    const initData = typeof body?.init_data === "string" ? body.init_data.slice(0, 4096) : "";
     const language = body?.language === "en" ? "en" : "ru";
     const targetCardCount = Number.isInteger(body?.target_card_count)
       ? Math.min(100, Math.max(3, body.target_card_count as number))
@@ -127,7 +127,11 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data: playerId, error: authError } = await supabase.rpc("tg_validate_init_data", { p_init_data: initData });
-    if (authError || !playerId) return json({ error: "telegram_auth_invalid" }, 401);
+    if (authError) {
+      console.error("[smart-deck-builder] Telegram validation RPC failed", authError.message);
+      return json({ error: "telegram_auth_unavailable" }, 503);
+    }
+    if (!playerId) return json({ error: "telegram_auth_invalid" }, 401);
 
     const { data: player, error: playerError } = await supabase.from("players")
       .select("id").eq("id", playerId).maybeSingle();
@@ -136,7 +140,10 @@ Deno.serve(async (req: Request) => {
     const { data: allowed, error: quotaError } = await supabase.rpc("consume_smart_deck_builder_quota", {
       p_player_id: playerId,
     });
-    if (quotaError) throw new Error("quota_unavailable");
+    if (quotaError) {
+      console.error("[smart-deck-builder] quota RPC failed", quotaError.message);
+      return json({ error: "quota_unavailable" }, 503);
+    }
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
 
     const catalog = await loadCatalog(supabase, prompt, currentIds, targetCardCount);
