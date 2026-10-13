@@ -32,11 +32,11 @@ export function PaperBankrollPanel({ password = null }: { password?: string | nu
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
-          setState({ status: 'error', error });
+          setState({ status: 'error', code: error.code ?? 'unknown' });
           return;
         }
         const row = Array.isArray(data) ? data[0] ?? null : data;
-        setState({ status: 'success', data: row as PaperBankroll | null });
+        setState({ status: 'ok', data: row as PaperBankroll | null });
       });
     return () => { cancelled = true; };
   }, [password]);
