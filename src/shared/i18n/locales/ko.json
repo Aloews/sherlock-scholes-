@@ -1388,6 +1388,7 @@
     "drawdown": "최대 낙폭",
     "positions": "포지션",
     "winRate": "승률",
-    "settled": "정산된 예측: {{n}}"
+    "settled": "정산된 예측: {{n}}",
+    "policy": "켈리 비율: {{kelly}}%; 신뢰도 하한: {{floor}}%"
   }
 }
