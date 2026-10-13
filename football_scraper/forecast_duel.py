@@ -145,7 +145,7 @@ def reservoir_projection(n_in: int, n_units: int, seed: int = 7, density: float 
 
 
 def reservoir_state(X: np.ndarray, W: np.ndarray) -> np.ndarray:
-    """Состояние «нейронов» плюс свободный член для считывателя."""
+    """Состояние «узлов» плюс свободный член для считывателя."""
     S = np.tanh(X @ W)
     return np.hstack([np.ones((len(S), 1)), S])
 
