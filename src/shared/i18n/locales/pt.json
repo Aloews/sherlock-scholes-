@@ -1436,5 +1436,17 @@
     "hide": "ocultar",
     "failed": "Não foi possível carregar as transferências",
     "note": "Aqui cada linha é uma transferência, não um jogador: a mesma pessoa pode aparecer mais do que uma vez. O valor da transferência e o valor atual do jogador são números diferentes: por Neymar pagaram-se 222 M € em 2017. Transferências anunciadas mas ainda não concretizadas não aparecem."
+  },
+  "paperBankroll": {
+    "title": "Saldo virtual do LLM",
+    "virtual": "SIMULAÇÃO",
+    "unavailable": "Saldo indisponível",
+    "balance": "Saldo",
+    "profit": "Lucro",
+    "roi": "Retorno",
+    "drawdown": "Recuo máximo",
+    "positions": "Posições",
+    "winRate": "Taxa de acerto",
+    "settled": "Previsões liquidadas: {{n}}"
   }
 }
