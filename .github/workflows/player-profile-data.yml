@@ -119,7 +119,15 @@ jobs:
         run: APPLY=1 python3 docs/cards_photo_from_qid.py
 
       - name: Fill remaining player portraits from Transfermarkt
-        run: APPLY=1 python3 docs/cards_photo_transfermarkt.py --include-soccerwiki
+        env:
+          PLAYER_LIMIT: ${{ inputs.limit }}
+        run: |
+          limit="${PLAYER_LIMIT:-800}"
+          case "$limit" in
+            ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
+          esac
+          if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
+          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit "$limit"
 
       - name: Collect required Wikimedia photo credits
         if: always()
