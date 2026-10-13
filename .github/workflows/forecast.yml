@@ -63,6 +63,7 @@ jobs:
         working-directory: football_scraper
         run: |
           python3 tests/test_fly_brain.py
+          python3 tests/test_paper_bankroll.py
           python3 tests/test_forecast_duel.py
           python3 tests/test_calibration.py
 
@@ -74,13 +75,14 @@ jobs:
       # После сверки — потому что калибруется по матчам с известным исходом.
       # До того, как названы новые прогнозы, — чтобы экран сразу отдавал их с
       # сегодняшней подгонкой, а не с вчерашней.
-      - name: Grade, calibrate, dopamine, pick
+      - name: Grade, calibrate, settle virtual bankroll, pick
         run: |
           if [ "$(date -u +%u)" = "1" ]; then
             python football_scraper/forecast_pipeline.py train
           fi
           python football_scraper/forecast_pipeline.py grade
           python football_scraper/forecast_pipeline.py calibrate
+          python football_scraper/paper_bankroll.py
           python football_scraper/forecast_pipeline.py dopamine
           python football_scraper/forecast_pipeline.py pick
 
