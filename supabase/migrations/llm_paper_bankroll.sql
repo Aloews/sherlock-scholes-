@@ -213,7 +213,6 @@ grant execute on function public.llm_paper_bankroll_summary(text) to anon, authe
 -- Remove persisted state for the retired predictor.
 delete from public.forecast_pick where model = 'fly';
 delete from public.forecast_calibration where model = 'fly';
-delete from public.forecast_duel_model where model = 'fly';
 drop table if exists public.fly_state;
 
 drop function if exists public.forecast_scoreboard();
