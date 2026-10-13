@@ -6,9 +6,9 @@ import { getRawInitData, openLink } from '@/shared/lib/telegram';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { DeckFilter } from '@/shared/types/deck';
 import { ALL_CATEGORIES, type CardCategory } from '@/shared/types/database';
-import { buildGoldenEra, matchNewsToPlayers, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra } from '@/features/decks/smartDecks';
+import { buildGoldenEra, hasCurrentClubEvidence, isFootballNewsUrl, matchNewsToPlayers, normalizeFootballText, type CanonicalPlayer, type NewsHeadline, type NewsCardMatch, type GoldenEra, type RatingMatchEvidence } from '@/features/decks/smartDecks';
 
-interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; matches: number; goals: number; assists: number }
+interface RatingCandidate { card_id: string; name: string; name_en: string | null; photo_url: string | null; club: string | null; club_key: string | null; matches: number; goals: number; assists: number }
 interface SmartDeck {
   id: string; family: 'form' | 'form-news' | 'news' | 'golden-era';
   eyebrow: string; title: string; description: string;
@@ -53,22 +53,41 @@ export function SmartDecksPanel({ onStart }: Props) {
     const load = async () => {
       setLoading(true); setFailed(false);
       try {
-    const since = new Date(Date.now() - NEWS_WINDOW_HOURS * 3600_000).toISOString();
     const [newsRes, formRes, legendRes, playersRes] = await Promise.all([
-      supabase.from('news_items').select('title,url,source,published_at,description,summary_short').gte('published_at', since).order('published_at', { ascending: false }).limit(500),
+      supabase.rpc('digest_news', { p_lang: ru ? 'ru' : 'en', p_limit: 60, p_hours: NEWS_WINDOW_HOURS }),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 40, p_club_key: null, p_league: null, p_country: null }),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
     if (cancelled) return;
-    const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error);
-    setFailed(hasError);
-    const headlines = (newsRes.data ?? []) as NewsHeadline[];
+    const rawHeadlines = (newsRes.data ?? []) as Array<NewsHeadline & { lead_text?: string | null }>;
+    const headlines = rawHeadlines
+      .filter((headline) => isFootballNewsUrl(headline.url))
+      .map((headline) => ({ ...headline, description: headline.description ?? headline.lead_text ?? null }));
     const formRows = (formRes.data ?? []) as RatingCandidate[];
+    const candidateIds = formRows.map((candidate) => candidate.card_id).filter(Boolean);
+    const evidenceRes = candidateIds.length
+      ? await supabase.from('player_match_stats')
+          .select('card_id,home_team,away_team,disputed')
+          .in('card_id', candidateIds)
+          .gte('match_date', new Date(Date.now() - 30 * 24 * 3600_000).toISOString().slice(0, 10))
+          .lte('match_date', new Date().toISOString().slice(0, 10))
+          .eq('disputed', false)
+      : { data: [], error: null };
+    if (cancelled) return;
+    const evidence = (evidenceRes.data ?? []) as RatingMatchEvidence[];
+    const hasError = !!(newsRes.error || formRes.error || legendRes.error || playersRes.error || evidenceRes.error);
+    setFailed(hasError);
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
+    const supported = formRows
+      .filter((candidate) => candidate.card_id && candidate.matches > 0 && hasCurrentClubEvidence(candidate, evidence))
+      .filter((candidate, index, rows) => rows.findIndex((other) =>
+        normalizeFootballText(other.name_en || other.name) === normalizeFootballText(candidate.name_en || candidate.name),
+      ) === index)
+      .slice(0, TARGET_DECK_SIZE);
     setNews(headlines.slice(0, 4));
-    setForm(formRows.filter((p) => p.card_id && p.matches > 0).slice(0, TARGET_DECK_SIZE));
+    setForm(supported);
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, TARGET_DECK_SIZE));
       setLoading(false);
