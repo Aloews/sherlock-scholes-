@@ -126,7 +126,7 @@ begin
     v_won := p.pick = p.actual;
     v_profit := 0;
 
-    -- Conservative quarter-Kelly, capped at 2% of the current balance.
+    -- Adaptive Kelly fraction, capped at 2% of the current balance.
     -- A prediction without a pre-match price is recorded but cannot place a position.
     if v_odds is not null and v_prob >= policy.confidence_floor then
       v_kelly := (v_prob * v_odds - 1) / (v_odds - 1);
