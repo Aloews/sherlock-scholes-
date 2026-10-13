@@ -127,7 +127,11 @@ jobs:
             ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
           esac
           if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
-          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit "$limit"
+          # Rotate the candidate window daily so transient failures cannot
+          # pin the first batch forever.
+          day=$(( $(date -u +%s) / 86400 ))
+          offset=$(( day * limit ))
+          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit "$limit" --offset "$offset"
 
       - name: Collect required Wikimedia photo credits
         if: always()
