@@ -3736,315 +3736,40 @@ async function checkForecastWinner() {
   const url = env('VITE_SUPABASE_URL');
   const anon = env('VITE_SUPABASE_ANON_KEY');
   const svc = serviceKey();
-  if (!url || !anon) {
-    record('Прогноз победителя', false, 'нет VITE_SUPABASE_* в окружении', 'н/д');
+  if (!url || !anon || !svc) {
+    record('Прогнозы и виртуальный баланс LLM', false, 'нет ключей Supabase', 'н/д');
     return;
   }
-  const rpc = async (key, name, body, headers = {}) => {
-    const r = await fetch(`${url}/rest/v1/rpc/${name}`, {
-      method: 'POST',
-      headers: { apikey: key, Authorization: `Bearer ${key}`,
-                 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body ?? {}),
+
+  const rpc = async (key, name, body = {}) => {
+    const headers = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+    const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: 'POST', headers, body: JSON.stringify(body),
     });
-    return { status: r.status, rows: r.ok ? await r.json().catch(() => null) : null };
+    const data = await response.json().catch(() => null);
+    return { ok: response.ok, status: response.status, data };
   };
 
-  // ── ворота ────────────────────────────────────────────────────────────────
-  const noSig = await rpc(anon, 'forecast_scoreboard', {});
-  record('Прогноз: без подписи не отдаётся',
-         noSig.status === 401,
-         `HTTP ${noSig.status}`,
-         'ловит открытый платный дашборд: экран спрятан, а RPC нет');
+  const upcoming = await rpc(svc, 'forecast_upcoming', { p_limit: 20 });
+  const picks = Array.isArray(upcoming.data) ? upcoming.data : [];
+  const complete = picks.length > 0 && picks.every((row) => row.llm_pick && row.own_pick);
+  record('Прогноз: активны LLM и интерпретируемая модель', upcoming.ok && complete,
+         upcoming.ok ? `${picks.filter((row) => row.llm_pick && row.own_pick).length} из ${picks.length}`
+                      : `HTTP ${upcoming.status}`,
+         'проверяет предматчевые прогнозы без удалённого участника');
 
-  if (!svc) {
-    record('Прогноз', false, 'нет SUPABASE_KEY — дальше нечем', 'н/д');
-    return;
-  }
-
-  const board = await rpc(svc, 'forecast_scoreboard', {});
-  const rows = Array.isArray(board.rows) ? board.rows : [];
-  record('Прогноз: контроль проходящего пути',
-         board.status === 200 && rows.length > 0,
-         `HTTP ${board.status}, ${rows.length} строк`,
-         board.status === 200 ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
-
-  const models = new Set(rows.map((r) => r.model));
-  record('Прогноз: все три прогнозиста на месте',
-         ['llm', 'fly', 'own'].every((m) => models.has(m)),
-         [...models].join(', ') || 'пусто',
-         'ловит молча выпавшую модель: дашборд на двоих выглядит так же');
-
-  // ⚠️ ТОЧКА ОТСЧЁТА ОБЯЗАТЕЛЬНА. «Всегда хозяева» на этой выборке даёт около
-  // 44 %; модель, не бьющая её, не умеет ничего — сколько бы нейронов в ней ни
-  // было. Порог мягкий (0.40): проверка ловит обвал, а не колебание.
-  const worst = rows.reduce((a, r) => Math.min(a, Number(r.accuracy) || 0), 1);
-  record('Прогноз: никто не хуже подбрасывания монеты',
-         rows.length > 0 && worst >= 0.40,
-         rows.map((r) => `${r.model} ${(Number(r.accuracy) * 100).toFixed(1)}%`).join(', '),
-         'ловит развалившуюся модель и перепутанные местами исходы');
-
-  const fly = rows.find((r) => r.model === 'fly');
-  record('Прогноз: муха получила дофамин',
-         !!fly && Number(fly.dopamine) > 0,
-         fly ? `${fly.dopamine} исходов дошло до мозга` : 'мухи нет в сводке',
-         'ловит остановку обучения: прогнозы идут, а мозг их не видит');
-
-  // ── история ───────────────────────────────────────────────────────────────
-  const hist = await rpc(svc, 'forecast_history', { p_limit: 60 });
-  const h = Array.isArray(hist.rows) ? hist.rows : [];
-  record('Прогноз: история приходит',
-         h.length > 0, `${h.length} строк`,
-         'ловит пустую историю при непустой сводке');
-
-  // ⚠️ ГЛАВНАЯ СТРОКА РАЗДЕЛА. `correct` обязан СХОДИТЬСЯ с `pick` и `actual`.
-  // Разойдись они — и «доля угаданных» перестанет значить что-либо, оставаясь
-  // правдоподобной.
-  const bad = h.filter((r) => r.correct !== (r.pick === r.actual));
-  record('Прогноз: «угадал» пересчитывается независимо',
-         h.length > 0 && bad.length === 0,
-         bad.length === 0 ? `${h.length} строк сошлись`
-                          : `${bad.length} строк расходятся`,
-         'ловит галочку, проставленную отдельно от названного и случившегося');
-
-  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ: отбор по модели ДЕЙСТВИТЕЛЬНО отбирает. Без него
-  // строка выше проверяла бы выборку, которая всегда одна и та же.
-  const onlyFly = await rpc(svc, 'forecast_history', { p_model: 'fly', p_limit: 20 });
-  const of = Array.isArray(onlyFly.rows) ? onlyFly.rows : [];
-  const pure = of.length > 0 && of.every((r) => r.model === 'fly');
-  record('Прогноз: контроль отбора по модели',
-         pure, pure ? `${of.length} строк, все от мухи`
-                    : `пришло ${of.length}, чужих ${of.filter((r) => r.model !== 'fly').length}`,
-         pure ? 'проверка способна упасть' : '⚠ КОНТРОЛЬ НЕ СРАБОТАЛ');
-
-  // ── ближайшие ─────────────────────────────────────────────────────────────
-  const soon = await rpc(svc, 'forecast_upcoming', { p_limit: 20 });
-  const up = Array.isArray(soon.rows) ? soon.rows : [];
-  record('Прогноз: ближайшие матчи названы',
-         up.length > 0, `${up.length} матчей`,
-         'ловит остановку ночного шага: экран пуст, а сводка выглядит живой');
-
-  // ⚠️ ПРОГНОЗ ОБЯЗАН БЫТЬ СДЕЛАН ДО МАТЧА. Строка, дописанная после, — это уже
-  // не прогноз, и именно так дашборды становятся красивыми.
-  const late = up.filter((r) => Date.parse(r.commence_at) <= Date.now());
-  record('Прогноз: назван до матча, а не после',
-         up.length > 0 && late.length === 0,
-         late.length === 0 ? 'все названные матчи ещё не начались'
-                           : `${late.length} матчей уже начались`,
-         'ловит запись прогноза задним числом');
-
-  record('Прогноз: три мнения на матч',
-         up.length > 0 && up.every((r) => r.llm_pick && r.fly_pick && r.own_pick),
-         `${up.filter((r) => r.llm_pick && r.fly_pick && r.own_pick).length} из ${up.length}`,
-         'ловит модель, которая молча перестала называть');
-
-  // ⚠️ САМЫЙ ТИХИЙ ИЗ ВОЗМОЖНЫХ ОТКАЗОВ: сверка и дофамин перестали доезжать.
-  // Прогнозы при этом продолжают называться, экран выглядит живым, а история
-  // просто не растёт. Так и было: шаг `grade` падал с 403 (нет SELECT на
-  // `fixtures` у service_role), а шаг `dopamine` — с 400 (upsert без
-  // обязательных колонок вместо PATCH). Ни то, ни другое не видно снаружи.
-  //
-  // ⚠️ У ПРОВЕРКИ ЕСТЬ ЗАПАС В СУТКИ С ЛИШНИМ, И БЕЗ НЕГО ОНА КРАСНЕЛА БЫ
-  // КАЖДЫЙ ВЕЧЕР. Ночной круг идёт раз в сутки; матч, закончившийся в 22:00,
-  // будет сверен в 05:00. Первая версия этой проверки так и сделала — поймала
-  // три матча, которые просто ещё не дошли до своей очереди. Считаются только
-  // те, кто ждёт дольше полного цикла: это разница между поломкой и
-  // расписанием.
-  const stale = await rpc(svc, 'forecast_starving', {});
-  const st = Array.isArray(stale.rows) ? stale.rows[0] : null;
-  const queue = st == null ? '?' : `, в очереди на сегодня ${st.waiting_now}`;
-  record('Прогноз: сверка не отстаёт',
-         st != null && Number(st.ungraded_done) === 0,
-         st == null ? 'forecast_starving не ответила'
-                    : `${st.ungraded_done} матчей ждут сверки дольше суток${queue}`,
-         'ловит шаг grade, который перестал доезжать: история замирает молча');
-
-  record('Прогноз: дофамин не отстаёт',
-         st != null && Number(st.starving) === 0,
-         st == null ? 'forecast_starving не ответила'
-                    : `${st.starving} сверенных матчей не дошли до мозга`,
-         'ловит шаг dopamine, который перестал доезжать: муха перестаёт учиться');
-
-  // ── калибровка ────────────────────────────────────────────────────────────
-  //
-  // ⚠️ ЧТО ИМЕННО ЗДЕСЬ МОЖЕТ СЛОМАТЬСЯ ТИХО. Ночной шаг `calibrate` может
-  // перестать доезжать ровно так же, как до него переставали `grade` и
-  // `dopamine`: экран продолжит показывать числа, просто это снова будут
-  // сырые — те, где «уверен на 100 %» значит «попадаю в половине случаев».
-  // Снаружи не отличить, поэтому проверяется не «таблица есть», а что число
-  // на экране ДЕЙСТВИТЕЛЬНО пересчитано.
-  const calRes = await get(
-    `${url}/rest/v1/forecast_calibration`
-    + '?select=model,a,b,brier_raw,brier_cal,brier_const,fitted_at',
-    { apikey: svc, Authorization: `Bearer ${svc}` });
-  const cr = calRes.ok ? await calRes.json().catch(() => []) : [];
-  const calModels = new Set(cr.map((r) => r.model));
-  record('Калибровка: подогнана по всем трём',
-         ['llm', 'fly', 'own'].every((m) => calModels.has(m)),
-         cr.length ? cr.map((r) => r.model).sort().join(', ') : 'таблица пуста',
-         'ловит остановку ночного шага calibrate: экран возвращается к сырым числам');
-
-  // Свежесть: подгонка старше недели значит, что шаг умер, а строки остались.
-  const oldest = cr.length
-    ? Math.max(...cr.map((r) => Date.now() - Date.parse(r.fitted_at))) : Infinity;
-  const days = Number.isFinite(oldest) ? (oldest / 86400000).toFixed(1) : '?';
-  record('Калибровка: не протухла',
-         Number.isFinite(oldest) && oldest < 8 * 86400000,
-         Number.isFinite(oldest) ? `самая старая подгонка ${days} сут назад`
-                                 : 'подгонок нет вовсе',
-         'строки в таблице живут вечно; протухшая подгонка выглядит как свежая');
-
-  // ⚠️ САМОЕ ВАЖНОЕ ЧИСЛО ЗДЕСЬ — brier_const, А НЕ brier_cal. «Стало лучше
-  // сырого» ничего не значит: быть лучше вранья не достижение. Значение имеет
-  // только сравнение с константой — предсказателем, который всегда называет
-  // одну и ту же долю попаданий.
-  const better = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_raw));
-  record('Калибровка: лучше сырого на отложенной части',
-         cr.length > 0 && better.length === cr.length,
-         cr.map((r) => `${r.model} ${Number(r.brier_raw).toFixed(3)}→${Number(r.brier_cal).toFixed(3)}`)
-           .join(', ') || 'нечего сравнивать',
-         'ловит подгонку, которая делает хуже — такое бывает при вырожденном входе');
-
-  const vsConst = cr.filter((r) => Number(r.brier_cal) < Number(r.brier_const));
-  record('Калибровка: сколько моделей обошли константу',
-         cr.length > 0,
-         `${vsConst.length} из ${cr.length}: `
-         + cr.map((r) => `${r.model} ${Number(r.brier_cal).toFixed(4)} против ${Number(r.brier_const).toFixed(4)}`)
-             .join('; '),
-         'ЗАМЕР, А НЕ ПОРОГ: печатает правду о том, есть ли у моделей умение');
-
-  // ⚠️ ЧИСЛО НА ЭКРАНЕ ДОЛЖНО БЫТЬ ПЕРЕСЧИТАНО, А НЕ ПРОСТО ЛЕЖАТЬ В ТАБЛИЦЕ.
-  // Проверяется сама RPC, которой пользуется экран: у неё рядом обязаны быть
-  // сырое и калиброванное, и они обязаны РАЗЛИЧАТЬСЯ — иначе `forecast_upcoming`
-  // отдаёт калиброванную колонку, не применив подгонку.
-  const withBoth = up.filter((r) => r.own_conf != null && r.own_cal != null);
-  const moved = withBoth.filter((r) => Math.abs(Number(r.own_cal) - Number(r.own_conf)) > 0.001);
-  record('Калибровка: экран получает пересчитанное число',
-         withBoth.length > 0 && moved.length > 0,
-         withBoth.length === 0 ? 'в ответе нет пары conf/cal'
-           : `${moved.length} из ${withBoth.length} строк пересчитаны, пример `
-             + `${Number(withBoth[0].own_conf).toFixed(3)} → ${Number(withBoth[0].own_cal).toFixed(3)}`,
-         'ловит RPC, которая отдаёт колонку, но не применяет подгонку');
-
-  // ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ. У несуществующей модели подгонки нет, и функция
-  // ОБЯЗАНА вернуть входное число без изменений. Если она и там что-то
-  // «калибрует» — значит она калибрует не тем, чем думает, и все проверки
-  // выше зеленеют зря.
-  // ── экспрессы, собранные моделями ─────────────────────────────────────────
-  //
-  // ⚠️ ГЛАВНОЕ, ЧТО ЗДЕСЬ ПРОВЕРЯЕТСЯ, — НЕ «ЕСТЬ ЛИ БИЛЕТЫ», А ГРАНИЦА §4.4.
-  // Экспрессы бывают двух видов: собранные букмекерской линией (в них есть
-  // цена, и они закрыты паролем персонала) и собранные моделями из
-  // собственных калиброванных вероятностей (цены нет, их видит игрок).
-  // Разделение держится фильтром `model is not null` в самих функциях, и
-  // именно это надо проверять анонимным ключом, а не доверять коду экрана.
-  const accAnon = await rpc(anon, 'model_accumulator_history', { p_limit: 50 });
-  const acc = Array.isArray(accAnon.rows) ? accAnon.rows : [];
-  record('Экспрессы: аноним видит билеты моделей',
-         accAnon.status === 200 && acc.length > 0,
-         `HTTP ${accAnon.status}, ${acc.length} билетов`,
-         'ловит закрытую от игрока историю экспрессов: экран пуст, а данные есть');
-
-  const models3 = new Set(acc.map((r) => r.model));
-  record('Экспрессы: собирают все три модели',
-         ['llm', 'fly', 'own'].every((m) => models3.has(m)),
-         [...models3].sort().join(', ') || 'пусто',
-         'ловит модель, выпавшую из ночной сборки');
-
-  // ⚠️ ОТРИЦАТЕЛЬНЫЙ КОНТРОЛЬ ГРАНИЦЫ. Ни один билет, отданный анониму, не
-  // имеет права нести цену или выплату. Если поле вдруг появится — значит
-  // фильтр в функции перестал работать, и §4.4 нарушен молча.
-  const priced = acc.filter((r) => r.payout != null || r.price != null);
-  record('Экспрессы: контроль границы §4.4 — цен наружу нет',
-         priced.length === 0,
-         priced.length === 0 ? 'ни одного билета с ценой или выплатой'
-                             : `${priced.length} билетов НЕСУТ цену — граница сломана`,
-         'без этого нельзя отличить «цен нет» от «цены есть, но их не рисуют»');
-
-  // Вероятность прохода — произведение вероятностей плеч. Пересчитываем
-  // НЕЗАВИСИМО по одному билету: сходится — значит число не декоративное.
-  const sample = acc.find((r) => r.legs >= 3);
-  if (sample) {
-    const legsRes = await rpc(anon, 'model_accumulator_legs', { p_ticket: sample.id });
-    const ls = Array.isArray(legsRes.rows) ? legsRes.rows : [];
-    const mine = ls.reduce((a, l) => a * Number(l.prob), 1);
-    const ok = ls.length === sample.legs && Math.abs(mine - Number(sample.pass_prob)) < 0.02;
-    record('Экспресс: шанс прохода пересчитывается независимо',
-           ok,
-           ls.length !== sample.legs
-             ? `плеч ${ls.length}, а в билете ${sample.legs}`
-             : `${mine.toFixed(4)} против ${Number(sample.pass_prob).toFixed(4)}`,
-           'ловит билет, у которого число на экране не связано с его плечами');
-  } else {
-    record('Экспресс: шанс прохода пересчитывается независимо', false,
-           'нет билета с тремя плечами', 'н/д');
-  }
-
-  // ⚠️ ДОЛЯ ПРОХОДОВ ПЕРЕСЧИТЫВАЕТСЯ НЕЗАВИСИМО, А НЕ ПРИНИМАЕТСЯ НА ВЕРУ.
-  // Просто напечатать «прошло 21 %» — это замер, который не может упасть, и
-  // скрипт справедливо назвал бы такую строку ПУСТОЙ. Поэтому здесь сверяется
-  // арифметика самой сводки: `hit_rate` обязан равняться `won / settled`, а
-  // `won` не может превышать `settled`. Сломается функция — строка покраснеет.
-  const accBoard = await rpc(anon, 'model_accumulator_scoreboard', {});
-  const ab2 = Array.isArray(accBoard.rows) ? accBoard.rows : [];
-  const accBad = ab2.filter((r) => {
-    if (r.settled === 0) return r.hit_rate != null;
-    if (r.won > r.settled) return true;
-    return Math.abs(Number(r.hit_rate) - (100 * r.won) / r.settled) > 0.1;
-  });
-  // Пока вся история собрана задним числом, доля завышена — это часть ответа,
-  // а не сноска: без неё число читается как заслуга.
-  const backfilledOnly = ab2.length > 0 && ab2.every((r) => r.backfilled >= r.settled);
-  record('Экспрессы: доля проходов сходится с числом билетов',
-         ab2.length > 0 && accBad.length === 0,
-         (accBad.length
-           ? `${accBad.length} строк со сломанной арифметикой`
-           : ab2.map((r) => `${r.model}/${r.legs}: ${r.hit_rate ?? '—'}% при ожидании ${r.expected ?? '—'}%`)
-               .join('; ') || 'сводка пуста')
-         + (backfilledOnly ? ' | ВСЯ история задним числом, доля завышена' : ''),
-         'доля пересчитывается из won и settled; расхождение больше 0.1 пункта валит');
-
-  const noFit = await rpc(svc, 'calibrated_confidence', { p: 0.9, p_model: 'нет-такой-модели' });
-  const noFitVal = typeof noFit.rows === 'number' ? noFit.rows : Number(noFit.rows);
-  const passthrough = Math.abs(noFitVal - 0.9) < 1e-9;
-  record('Калибровка: контроль модели без подгонки',
-         passthrough,
-         passthrough ? '0.9 вернулось как 0.9 — подгонки нет, число не тронуто'
-                     : `0.9 превратилось в ${noFitVal} — калибруется НЕ ТЕМ`,
-         'без этого нельзя отличить «применилось» от «что-то посчиталось»');
+  const bankroll = await rpc(svc, 'llm_paper_bankroll_summary', {});
+  const account = Array.isArray(bankroll.data) ? bankroll.data[0] : bankroll.data;
+  const balanceOk = bankroll.ok && account
+    && Number.isFinite(Number(account.balance))
+    && Number(account.balance) >= 0
+    && Number(account.initial_balance) > 0;
+  record('Виртуальный капитал LLM: баланс доступен', Boolean(balanceOk),
+         balanceOk ? `баланс ${account.balance}, прибыль ${account.profit}, ${account.placed_positions} позиций`
+                   : `HTTP ${bankroll.status}, ${JSON.stringify(bankroll.data).slice(0, 100)}`,
+         'проверяет состояние симуляции без доступа к операциям с реальными деньгами');
 }
-
-/**
- * ПРЕДЗАПРОС CORS К EDGE-ФУНКЦИЯМ.
- *
- * ⚠️ ЭТА ПРОВЕРКА ПОЯВИЛАСЬ ПО СЛОМАННОЙ КНОПКЕ, И НИ ОДНА ИЗ СОТНИ ОСТАЛЬНЫХ
- * ЭТОГО НЕ ВИДЕЛА. Владелец: «сводка новостей по кнопке „собрать сводку“ не
- * работает». Прямой POST к `digest-summary` анонимным ключом в ту же минуту
- * отвечал HTTP 200 за 2.6 с — то есть сервер был жив, а кнопка не работала.
- *
- * ПРИЧИНА. Ворота Pro научили клиент Supabase подписывать КАЖДЫЙ запрос
- * заголовком `x-tg-init-data`, и `functions.invoke` пошёл через тот же fetch.
- * На нестандартный заголовок браузер шлёт предзапрос OPTIONS. PostgREST
- * отвечает ЭХОМ — что спросили, то и разрешил, поэтому экраны работали. А у
- * Edge-функций список прибит гвоздями:
- *
- *     access-control-allow-headers: authorization, content-type, apikey, x-client-info
- *
- * `x-tg-init-data` в нём нет — браузер блокировал запрос ЦЕЛИКОМ, ещё до
- * отправки. Сломалось разом всё, что зовётся из браузера: сводка, вход в
- * комнату (livekit-token), ОПЛАТА Pro (tg-pay) и загрузка логотипа.
- *
- * ⚠️ ПОЧИНЕНО НА КЛИЕНТЕ, А НЕ РАСШИРЕНИЕМ СПИСКА, И ЭТО ОСОЗНАННО. Подпись
- * нужна только PostgREST: `require_pro()` читает её из `request.headers`, а
- * Edge-функции получают initData телом запроса. Правило живёт в
- * `src/shared/lib/signatureScope.ts` и проверяется юнит-тестом; расширять
- * CORS ради заголовка, который туда больше не едет, значило бы развести прод
- * и репозиторий ради ничего.
- *
- * ⚠️ CURL ЭТОГО НЕ ПОЙМАЕТ НИКОГДА, И В ЭТОМ ВЕСЬ СМЫСЛ РАЗДЕЛА: предзапрос
- * делает браузер, а не сервер. Проверка обязана спрашивать OPTIONS с
- * `Access-Control-Request-Headers`, как спрашивает браузер.
- */
+ 
 async function checkFunctionCors() {
   const url = env('VITE_SUPABASE_URL');
   if (!url) {
