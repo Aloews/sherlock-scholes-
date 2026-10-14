@@ -12,7 +12,7 @@ import hashlib
 import json
 import pathlib
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 ALLOWED_ROLES = {"system", "user", "assistant"}
@@ -31,13 +31,13 @@ def validate_record(record: Any, line_number: int) -> tuple[str, dict[str, Any]]
     messages = record.get("messages")
     if not isinstance(messages, list) or len(messages) < 2:
         raise ValueError(f"line {line_number}: at least two messages are required")
-    if messages[-1].get("role") != "assistant":
-        raise ValueError(f"line {line_number}: final message must be assistant")
     for message in messages:
         if not isinstance(message, dict) or message.get("role") not in ALLOWED_ROLES:
             raise ValueError(f"line {line_number}: invalid message role")
         if not isinstance(message.get("content"), str) or not message["content"].strip():
             raise ValueError(f"line {line_number}: message content must be non-empty text")
+    if messages[-1]["role"] != "assistant":
+        raise ValueError(f"line {line_number}: final message must be assistant")
     return parsed_date.isoformat(), record
 
 
@@ -90,7 +90,7 @@ def prepare(input_path: pathlib.Path, output_dir: pathlib.Path,
         "counts": {name: len(rows) for name, rows in splits.items()},
         "deduplicated_records": len(records),
         "time_split": True,
-        "created_at_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
