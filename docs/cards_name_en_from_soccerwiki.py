@@ -18,6 +18,10 @@ def clean_name(value):
     name = _SPACE.sub(" ", value).strip()
     if len(name) < 3 or not _LATIN.search(name):
         return None
+    # Soccer Wiki pages have occasionally been decoded with the wrong charset.
+    # Reject common mojibake markers rather than storing a corrupted display name.
+    if any(marker in name for marker in ("Ã", "Â", "â€", "�")):
+        return None
     if name.casefold() in {"unknown", "n/a", "none", "player"}:
         return None
     return name
