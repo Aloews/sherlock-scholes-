@@ -7,6 +7,8 @@ on:
       - '.github/workflows/player-profile-data.yml'
       - 'docs/players_stats_transfermarkt.py'
       - 'docs/cards_photo_from_qid.py'
+      - 'docs/cards_photo_transfermarkt.py'
+      - 'docs/test_cards_photo_transfermarkt.py'
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
@@ -109,6 +111,12 @@ jobs:
 
       - name: Backfill player portraits by Wikidata entity ID
         run: APPLY=1 python3 docs/cards_photo_from_qid.py
+
+      - name: Test Transfermarkt portrait validation
+        run: python3 docs/test_cards_photo_transfermarkt.py
+
+      - name: Backfill missing Transfermarkt portraits, excluding Soccer Wiki coverage
+        run: APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit 500
 
       - name: Collect required Wikimedia photo credits
         if: always()
