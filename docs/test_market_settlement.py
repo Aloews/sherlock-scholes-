@@ -1,6 +1,9 @@
+import os
+import sys
 import unittest
 
-from docs.market_settlement import settle
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from market_settlement import settle
 
 
 class MarketSettlementTests(unittest.TestCase):
