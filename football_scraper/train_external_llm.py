@@ -9,6 +9,9 @@ import math
 import os
 import random
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,6 +52,52 @@ def set_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
+def register_training_run(metrics: dict, output_dir: Path):
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        raise SystemExit("--register-run requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+    payload = {
+        "task": "football_analysis",
+        "provider": "huggingface",
+        "base_model": metrics["base_model"],
+        "method": metrics["method"],
+        "status": "succeeded",
+        "dataset_sha256": metrics["dataset_manifest_sha256"],
+        "dataset_version": metrics["dataset_manifest_sha256"][:16],
+        "train_examples": metrics["examples"]["train"],
+        "validation_examples": metrics["examples"]["validation"],
+        "test_examples": metrics["examples"]["test"],
+        "metrics": metrics,
+        "artifact_uri": "local://" + str(output_dir.resolve()),
+        "started_at": metrics["started_at"],
+        "finished_at": metrics["finished_at"],
+    }
+    request = urllib.request.Request(
+        url + "/rest/v1/model_training_runs",
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "apikey": key, "Authorization": "Bearer " + key,
+            "Content-Type": "application/json", "Prefer": "return=representation",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        inserted = json.loads(response.read() or b"[]")
+    if not inserted or not inserted[0].get("id"):
+        raise RuntimeError("training run insert returned no persisted ID")
+    run_id = inserted[0]["id"]
+    verify_url = url + "/rest/v1/model_training_runs?select=id,status,dataset_sha256&id=eq." + urllib.parse.quote(run_id) + "&limit=1"
+    verify_request = urllib.request.Request(verify_url, headers={
+        "apikey": key, "Authorization": "Bearer " + key,
+    })
+    with urllib.request.urlopen(verify_request, timeout=30) as response:
+        verified = json.loads(response.read() or b"[]")
+    if not verified or verified[0].get("status") != "succeeded" or verified[0].get("dataset_sha256") != payload["dataset_sha256"]:
+        raise RuntimeError("training run registry verification failed")
+    print(json.dumps({"registered_training_run_id": run_id, "persisted_state_verified": True}))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-dir", required=True)
@@ -64,10 +113,12 @@ def main():
     parser.add_argument("--target-modules", default="q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj")
     parser.add_argument("--seed", type=int, default=20261014)
     parser.add_argument("--qlora", action="store_true", help="4-bit base weights; requires bitsandbytes and supported CUDA")
+    parser.add_argument("--register-run", action="store_true", help="record the completed run in Supabase; requires the reviewed migration and service-role credentials")
     args = parser.parse_args()
     if args.max_length < 128 or args.epochs < 1 or args.batch_size < 1:
         raise SystemExit("max-length >= 128, epochs >= 1 and batch-size >= 1 are required")
     dataset_dir, output_dir = Path(args.dataset_dir), Path(args.output_dir)
+    run_started_at = datetime.now(timezone.utc).isoformat()
     output_dir.mkdir(parents=True, exist_ok=True)
     train_rows = load_jsonl(dataset_dir / "train.jsonl")
     validation_rows = load_jsonl(dataset_dir / "validation.jsonl")
@@ -247,13 +298,16 @@ def main():
         "dataset_manifest_sha256": sha256_file(dataset_dir / "manifest.json"),
         "train_history": history,
         "git_sha": os.environ.get("GITHUB_SHA"),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": run_started_at,
+        "finished_at": datetime.now(timezone.utc).isoformat(),
         "note": "This adapter is an experiment; it is not deployed and does not replace the numeric match-outcome model.",
     }
     (output_dir / "run-manifest.json").write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
+    if args.register_run:
+        register_training_run(metrics, output_dir)
 
 
 if __name__ == "__main__":
