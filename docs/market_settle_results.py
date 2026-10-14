@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 import os
 import sys
 import urllib.parse
@@ -48,7 +49,19 @@ def actual_value(rule_type: str, home_score: int, away_score: int) -> float | No
     return None
 
 
-def settle_fixture(fixture: dict[str, Any], rules: dict[str, dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+def parse_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def rule_for_fixture(rules: dict[str, list[dict[str, Any]]], market_key: str,
+                     commence_at: str) -> dict[str, Any] | None:
+    kickoff = parse_timestamp(commence_at)
+    eligible = [rule for rule in rules.get(market_key, [])
+                if parse_timestamp(rule["effective_from"]) <= kickoff]
+    return max(eligible, key=lambda row: (parse_timestamp(row["effective_from"]), row["rule_version"])) if eligible else None
+
+
+def settle_fixture(fixture: dict[str, Any], rules: dict[str, list[dict[str, Any]]]) -> tuple[list[dict[str, Any]], int]:
     commence_at = fixture.get("commence_at")
     if not fixture.get("completed") or fixture.get("home_score") is None or fixture.get("away_score") is None:
         return [], 0
@@ -68,7 +81,7 @@ def settle_fixture(fixture: dict[str, Any], rules: dict[str, dict[str, Any]]) ->
     results = []
     skipped = 0
     for (market_key, selection_key, line_value), sources in candidates.items():
-        rule = rules.get(market_key)
+        rule = rule_for_fixture(rules, market_key, commence_at)
         if not rule:
             skipped += 1
             continue
@@ -102,14 +115,24 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixture-id", default="", help="settle one fixture only")
     parser.add_argument("--limit", type=int, default=100, help="maximum completed fixtures to process (1-500)")
+    parser.add_argument("--confirm-regulation-scores", action="store_true",
+                        help="assert fixture scores are regulation-time scores for the selected competition")
     args = parser.parse_args()
+    if not args.confirm_regulation_scores:
+        parser.error("verify the score source first and pass --confirm-regulation-scores")
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
         parser.error("SUPABASE_URL and SUPABASE_KEY are required")
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
     try:
-        rules_rows = sb("market_settlement_rule", params={"select": "market_key,rule_version,rule_type"})
-        rules = {row["market_key"]: row for row in rules_rows}
+        rules_rows = sb("market_settlement_rule", params={
+            "select": "market_key,rule_version,rule_type,effective_from",
+            "order": "market_key.asc,effective_from.asc,rule_version.asc",
+            "limit": "1000",
+        })
+        rules: dict[str, list[dict[str, Any]]] = {}
+        for row in rules_rows:
+            rules.setdefault(row["market_key"], []).append(row)
         filters = {
             "select": "id,home_score,away_score,completed,scores_at,commence_at",
             "completed": "eq.true",
@@ -135,7 +158,7 @@ def main() -> int:
             "fixtures_checked": len(fixtures),
             "settlement_rows_upserted": total_written,
             "selections_skipped_without_rule_or_player_stat_adapter": total_skipped,
-            "note": "Only pre-kickoff quotes were used; player props require separate stat-result sources.",
+            "note": "Only pre-kickoff quotes and rules effective at kickoff were used; player props require separate stat-result sources.",
         }, indent=2))
         return 0
     except Exception as exc:  # noqa: BLE001
