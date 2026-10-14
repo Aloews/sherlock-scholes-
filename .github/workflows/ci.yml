@@ -167,6 +167,9 @@ jobs:
           echo "::group::ml/finetune/test_prepare_dataset.py"
           python ../ml/finetune/test_prepare_dataset.py || failed="$failed ml/finetune/test_prepare_dataset.py"
           echo "::endgroup::"
+          echo "::group::ml/finetune/test_evaluate_forecasts.py"
+          python ../ml/finetune/test_evaluate_forecasts.py || failed="$failed ml/finetune/test_evaluate_forecasts.py"
+          echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
             exit 1
