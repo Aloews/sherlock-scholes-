@@ -1,0 +1,7 @@
+# Isolated environment for optional GPU fine-tuning. Do not install in app/runtime.
+torch==2.5.1
+transformers==4.46.3
+datasets==3.1.0
+peft==0.13.2
+accelerate==1.1.1
+safetensors==0.4.5
