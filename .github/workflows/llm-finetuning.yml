@@ -33,7 +33,8 @@ jobs:
           python-version: "3.12"
       - name: Offline pipeline tests
         working-directory: ml/llm_finetuning
-        run: python test_pipeline.py
+        run: |
+          python test_pipeline.py
           python test_evaluation.py
       - name: Export settled examples and enforce chronology
         run: |

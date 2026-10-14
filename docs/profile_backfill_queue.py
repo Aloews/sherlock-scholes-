@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -10,6 +11,13 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def usable_photo(url):
+    if not url:
+        return False
+    path = urllib.parse.urlparse(str(url)).path
+    return not re.search(r"/(default|dummy)[^/]*\.[a-z]+$", path, re.I)
 
 
 def classify_result(exit_code, output, verified):
@@ -37,7 +45,7 @@ def rpc(name,payload):
 def verify(job):
     if job["task_type"] in ("photo_tm","photo_qid"):
         rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
-        return bool(rows and rows[0].get("photo_url"))
+        return bool(rows and usable_photo(rows[0].get("photo_url")))
     rows=request("player_season_stat",{"select":"tm_player_id","tm_player_id":"eq."+str(job["transfermarkt_id"]),"limit":"1"})
     return bool(rows)
 

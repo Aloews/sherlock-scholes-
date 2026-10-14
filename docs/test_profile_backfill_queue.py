@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from profile_backfill_queue import classify_result
+from profile_backfill_queue import classify_result, usable_photo
 
 
 class QueueResultTests(unittest.TestCase):
@@ -14,6 +14,10 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(0,"ПРОФИЛЕЙ ПОТЕРЯНО: 1",False),"retry")
     def test_empty_source_is_not_success(self):
         self.assertNotEqual(classify_result(0,"portrait not found",False),"succeeded")
+    def test_placeholder_portraits_are_not_verified(self):
+        self.assertFalse(usable_photo("https://img.example/portrait/big/default.jpg"))
+        self.assertFalse(usable_photo("https://img.example/dummy.png"))
+        self.assertTrue(usable_photo("https://img.example/player/123.jpg"))
 
 
 if __name__=="__main__": unittest.main()

@@ -25,7 +25,7 @@ select source,count(*) filter(where match_date>current_date) as future_rows,
  count(*) filter(where minutes is null and goals=0 and assists=0 and yellow=0 and red=0) as empty_stat_lines,
  count(*) as total_rows from public.player_match_stats group by source order by total_rows desc;
 
--- 5. Per-card report for CSV/export. Keep this bounded for SQL Editor output.
+-- 5. Per-card report for CSV/export. Export this query as CSV to review all affected player cards.
 select c.id,coalesce(nullif(c.name_en,''),c.name) as player_name,c.transfermarkt_id,c.wikidata_qid,
        c.market_value_eur,c.photo_url,c.photo_source,c.born_on,c.country,c.position_ru,
        (nullif(btrim(c.photo_url),'') is null) as missing_photo,
@@ -43,7 +43,7 @@ where c.category='player' and c.active is true
        or (nullif(btrim(c.transfermarkt_id::text),'') is not null
            and not exists(select 1 from public.player_season_stat s where s.tm_player_id=c.transfermarkt_id::text)))
 order by c.market_value_eur desc nulls last,c.name
-limit 5000;
+limit 25000;
 
 -- Optional after migration 20261014140000_profile_backfill_multimarket_finetune.sql:
 -- select task_type,status,count(*) as jobs,min(created_at) as oldest_job,
