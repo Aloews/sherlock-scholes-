@@ -59,3 +59,13 @@ Do not promote an adapter because training loss fell. Require:
 Hosted fine-tuning APIs are provider-specific and depend on account eligibility; this repo pipeline is
 the reproducible self-hosted adapter path. Forecast probabilities remain the responsibility of the
 numerical model and must be evaluated separately with Brier score, log loss and calibration.
+
+
+For a held-out 1X2 prediction export with `actual` and a normalized `probabilities` object, run:
+
+```bash
+python ml/finetune/evaluate_forecasts.py --input artifacts/forecast-test.jsonl --output artifacts/forecast-metrics.json
+```
+
+This reports accuracy, multiclass Brier score, log loss and calibration by maximum predicted probability.
+Compare against a market-implied baseline on the same fixtures and pre-kickoff odds snapshots.
