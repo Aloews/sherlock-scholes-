@@ -37,4 +37,7 @@ jobs:
             --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             --header "Content-Type: application/json" \
-            --data '{"requests": '"$REQUESTS"'}'
+            --data '{"requests": '"$REQUESTS"'}' \
+            --output /tmp/market-response.json
+          cat /tmp/market-response.json
+          jq -e '(.failures // []) | length == 0' /tmp/market-response.json
