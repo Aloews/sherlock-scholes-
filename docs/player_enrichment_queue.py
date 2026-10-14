@@ -16,7 +16,6 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "football_scraper"))
 from _sb import all_rows, sb  # noqa: E402
 import cards_photo_transfermarkt as tm_photo  # noqa: E402
-import cards_photo_from_qid as qid_photo  # noqa: E402
 
 
 def iso_after(minutes: int) -> str:
@@ -52,33 +51,6 @@ def process_photo(task: dict, card: dict) -> tuple[str, int, str | None]:
         url = tm_photo.portrait_url(html)
         if not url:
             return "no_data", 0, "transfermarkt_portrait_missing_or_placeholder"
-        return ("succeeded", 1, None) if patch_if_photo_empty(str(card["id"]), url) else (
-            "retryable", 0, "photo_write_not_verified")
-    if task["source"] == "wikidata":
-        qid = str(card.get("wikidata_qid") or "").strip()
-        if not qid.startswith("Q") or not qid[1:].isdigit():
-            return "no_data", 0, "missing_wikidata_qid"
-        payload = qid_photo.wd({
-            "action": "wbgetentities", "ids": qid, "props": "claims",
-            "languages": "en", "format": "json"
-        })
-        if payload is None:
-            return "retryable", 0, "wikidata_api_unreachable"
-        entity = (payload.get("entities") or {}).get(qid) or {}
-        claims = entity.get("claims") or {}
-        statements = claims.get("P18") or []
-        filename = None
-        for statement in statements:
-            snak = statement.get("mainsnak") or {}
-            data = snak.get("datavalue") or {}
-            if data.get("type") == "string" and data.get("value"):
-                filename = data["value"]
-                break
-        if not filename:
-            return "no_data", 0, "wikidata_has_no_P18_portrait"
-        url = qid_photo.photo_url(filename)
-        if not url:
-            return "no_data", 0, "wikidata_portrait_url_invalid"
         return ("succeeded", 1, None) if patch_if_photo_empty(str(card["id"]), url) else (
             "retryable", 0, "photo_write_not_verified")
     return "failed", 0, "unsupported_photo_source"
