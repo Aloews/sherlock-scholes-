@@ -42,7 +42,7 @@ Season-stat gaps are concentrated among lower-value and unvalued players. The ex
 
 ## Collection and verification policy
 
-1. Queue a separate idempotent task per card and data source.
+1. Queue a separate idempotent task per card for the eligible Transfermarkt photo and season-stat jobs. The existing Wikidata collector remains a separate batch because Wikimedia photo-credit collection is a required follow-up.
 2. Distinguish network/provider failure (retryable) from a successful response with no usable record (no_data).
 3. Never overwrite a non-empty photo URL during backfill.
 4. Mark a write succeeded only after reading the persisted field/rows back from Supabase.
