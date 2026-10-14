@@ -67,13 +67,8 @@ def settle_fixture(fixture: dict[str, Any], rules: dict[str, list[dict[str, Any]
         return [], 0
     if not commence_at:
         return [], 0
-    quotes = sb("market_odds_quote", params={
-        "select": "market_key,selection_key,line_value,provider,bookmaker_key",
-        "fixture_id": f"eq.{fixture['id']}",
-        "snapshot_at": f"lt.{commence_at}",
-        "order": "market_key.asc,selection_key.asc,line_value.asc",
-        "limit": "10000",
-    })
+    quotes = sb("rpc/market_quotes_for_settlement", method="POST",
+                body={"p_fixture_id": fixture["id"]})
     candidates = {}
     for quote in quotes:
         key = (quote["market_key"], quote["selection_key"], quote.get("line_value"))
