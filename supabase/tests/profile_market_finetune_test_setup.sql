@@ -1,0 +1,40 @@
+-- Additional disposable fixtures for profile backfill, multi-market odds and
+-- fine-tuning migration regression. Run only in the isolated CI PostgreSQL DB.
+alter table public.cards add column if not exists transfermarkt_id text;
+alter table public.cards add column if not exists wikidata_qid text;
+alter table public.cards add column if not exists market_value_eur numeric;
+alter table public.cards add column if not exists career_stats jsonb;
+alter table public.cards add column if not exists born_on date;
+alter table public.cards add column if not exists position_ru text;
+alter table public.cards add column if not exists photo_source text;
+
+create table if not exists public.player_season_stat (
+  tm_player_id text not null, card_id uuid references public.cards(id),
+  season_id integer, fetched_at timestamptz default now()
+);
+create table if not exists public.fixtures (
+  id text primary key, sport_key text not null, commence_at timestamptz not null,
+  home_team text not null, away_team text not null,
+  home_score integer, away_score integer, completed boolean not null default false,
+  scores_at timestamptz, updated_at timestamptz not null default now()
+);
+create table if not exists public.fixture_odds (
+  fixture_id text not null references public.fixtures(id) on delete cascade,
+  taken_at timestamptz not null, bookmaker text not null,
+  home_price numeric, draw_price numeric, away_price numeric
+);
+create table if not exists public.forecast_inputs (
+  fixture_id text primary key references public.fixtures(id) on delete cascade,
+  h_gf numeric, h_ga numeric, a_gf numeric, a_ga numeric
+);
+create table if not exists public.forecast_pick (
+  fixture_id text not null references public.fixtures(id) on delete cascade,
+  model text not null, commence_at timestamptz not null,
+  made_at timestamptz not null default now()
+);
+create table if not exists public.odds_api_budget (
+  month date primary key, credits integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+create or replace function public.odds_api_monthly_limit()
+returns integer language sql stable as $$ select 500::integer $$;

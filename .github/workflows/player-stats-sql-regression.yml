@@ -79,3 +79,12 @@ jobs:
 
       - name: AI deck builder quota regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_builder_quota.test.sql
+
+      - name: Prepare disposable profile, odds and fine-tuning schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_market_finetune_test_setup.sql
+
+      - name: Apply profile backfill, multi-market and fine-tuning migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014140000_profile_backfill_multimarket_finetune.sql
+
+      - name: Profile queue, quota, settlement and fine-tuning SQL regressions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
