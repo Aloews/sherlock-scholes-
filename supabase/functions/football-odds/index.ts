@@ -162,8 +162,12 @@ Deno.serve(async (req) => {
   }
 
   const left = await creditsLeft();
-  if (left != null && left < RESERVE) {
-    return reply(200, { skipped: "budget reserve", left });
+  if (left === null) {
+    return reply(503, { error: "budget unavailable; no odds request made" });
+  }
+  const minimumForRun = RESERVE + ODDS_SPORTS.length;
+  if (left < minimumForRun) {
+    return reply(200, { skipped: "shared budget reserve", left, minimum_for_run: minimumForRun });
   }
 
   const takenAt = new Date().toISOString();
