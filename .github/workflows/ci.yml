@@ -152,6 +152,9 @@ jobs:
           echo "::group::docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
           echo "::endgroup::"
+          echo "::group::docs/test_cards_name_en_from_soccerwiki.py"
+          python ../docs/test_cards_name_en_from_soccerwiki.py || failed="$failed docs/test_cards_name_en_from_soccerwiki.py"
+          echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
             exit 1
