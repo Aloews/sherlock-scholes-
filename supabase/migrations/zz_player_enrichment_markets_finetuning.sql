@@ -130,8 +130,8 @@ begin
        and q.next_attempt_at <= now()
        and q.attempts < q.max_attempts
      order by q.priority desc, q.created_at, q.id
-     for update skip locked
      limit least(greatest(coalesce(p_limit, 50), 1), 250)
+     for update skip locked
   )
   update public.player_enrichment_queue q
      set status = 'processing',
