@@ -44,7 +44,13 @@ declare
 begin
   update public.player_enrichment_queue q
      set status = 'succeeded',
-         result_count = greatest(q.result_count, 1),
+         result_count = case
+           when q.task_type = 'photo' then greatest(q.result_count, 1)
+           else greatest(q.result_count, (
+             select count(*)::integer from public.player_season_stat s
+              where s.card_id = c.id or s.tm_player_id = c.transfermarkt_id
+           ))
+         end,
          last_error = null,
          finished_at = now(),
          updated_at = now()
