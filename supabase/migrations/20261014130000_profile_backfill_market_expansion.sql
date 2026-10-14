@@ -55,6 +55,12 @@ BEGIN
     RAISE EXCEPTION 'lease must be between 30 and 3600 seconds';
   END IF;
 
+  UPDATE public.profile_backfill_job
+  SET status = 'failed', lease_owner = NULL, lease_until = NULL,
+      completed_at = now(), updated_at = now(),
+      last_error = COALESCE(last_error, 'retry limit exhausted after lease expiry')
+  WHERE status = 'running' AND lease_until < now() AND attempts >= max_attempts;
+
   RETURN QUERY
   WITH candidates AS (
     SELECT j.id
@@ -233,7 +239,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $budget$
 BEGIN
   IF p_units < 1 THEN RAISE EXCEPTION 'units must be positive'; END IF;
   UPDATE public.provider_api_budget
@@ -244,7 +250,7 @@ BEGIN
     AND period_start = p_period_start AND reserved_units >= p_units;
   RETURN FOUND;
 END;
-$;
+$budget$;
 REVOKE ALL ON FUNCTION public.consume_provider_api_budget(text, text, timestamptz, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_provider_api_budget(text, text, timestamptz, integer) TO service_role;
 
@@ -255,7 +261,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $budget$
 BEGIN
   IF p_units < 1 THEN RAISE EXCEPTION 'units must be positive'; END IF;
   UPDATE public.provider_api_budget
@@ -264,7 +270,7 @@ BEGIN
     AND period_start = p_period_start AND reserved_units >= p_units;
   RETURN FOUND;
 END;
-$;
+$budget$;
 REVOKE ALL ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) TO service_role;
 
