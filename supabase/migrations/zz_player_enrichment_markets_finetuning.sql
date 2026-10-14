@@ -40,7 +40,26 @@ set search_path = public
 as $$
 declare
   v_inserted integer := 0;
+  v_reconciled integer := 0;
 begin
+  update public.player_enrichment_queue q
+     set status = 'succeeded',
+         result_count = greatest(q.result_count, 1),
+         last_error = null,
+         finished_at = now(),
+         updated_at = now()
+    from public.cards c
+   where q.card_id = c.id
+     and q.status in ('pending', 'retryable', 'failed', 'no_data')
+     and (
+       (q.task_type = 'photo' and nullif(btrim(c.photo_url), '') is not null)
+       or (q.task_type = 'season_stats' and exists (
+         select 1 from public.player_season_stat s
+          where s.card_id = c.id or s.tm_player_id = c.transfermarkt_id
+       ))
+     );
+  get diagnostics v_reconciled = row_count;
+
   insert into public.player_enrichment_queue as q
     (card_id, task_type, source, priority)
   select c.id, 'photo', 'transfermarkt',
@@ -80,7 +99,10 @@ begin
            and q.claimed_at < now() - interval '2 hours');
 
   get diagnostics v_inserted = row_count;
-  return jsonb_build_object('inserted', v_inserted);
+  return jsonb_build_object(
+    'queued_or_retried', v_inserted,
+    'reconciled_from_existing_data', v_reconciled
+  );
 end;
 $$;
 
