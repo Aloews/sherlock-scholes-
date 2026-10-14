@@ -1,6 +1,5 @@
 -- Sherlock Scholes: idempotent player-profile backfill queue and multi-market odds storage.
 -- This file is a proposal only. Apply through the normal reviewed migration workflow.
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.profile_backfill_job (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -275,4 +274,3 @@ $budget$;
 REVOKE ALL ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) TO service_role;
 
-COMMIT;
