@@ -30,6 +30,7 @@ create index if not exists player_enrichment_queue_card_idx
   on public.player_enrichment_queue (card_id, task_type, status);
 
 alter table public.player_enrichment_queue enable row level security;
+grant select, update on public.player_enrichment_queue to service_role;
 
 create or replace function public.enqueue_player_enrichment()
 returns jsonb
@@ -68,7 +69,16 @@ begin
         where s.card_id = c.id
            or s.tm_player_id = c.transfermarkt_id
      )
-  on conflict (card_id, task_type, source) do nothing;
+  on conflict (card_id, task_type, source) do update
+    set status = 'pending',
+        attempts = 0,
+        next_attempt_at = now(),
+        last_error = null,
+        finished_at = null,
+        updated_at = now()
+    where public.player_enrichment_queue.status in ('failed', 'retryable')
+       or (public.player_enrichment_queue.status = 'no_data'
+           and public.player_enrichment_queue.updated_at < now() - interval '30 days');
 
   get diagnostics v_inserted = row_count;
   return jsonb_build_object('inserted', v_inserted);
@@ -344,9 +354,11 @@ begin
    for update;
 
   v_take := least(greatest(coalesce(p_limit, 4), 0), v_count);
-  for i in 0..v_take - 1 loop
-    v_out := v_out || jsonb_build_array(p_slots -> ((v_cursor + i) % v_count));
-  end loop;
+  if v_take > 0 then
+    for i in 0..(v_take - 1) loop
+      v_out := v_out || jsonb_build_array(p_slots -> ((v_cursor + i) % v_count));
+    end loop;
+  end if;
 
   update public.market_collection_state
      set next_slot = (v_cursor + v_take) % v_count,
@@ -383,3 +395,4 @@ create table if not exists public.model_training_runs (
 create index if not exists model_training_runs_recent_idx
   on public.model_training_runs (created_at desc, status);
 alter table public.model_training_runs enable row level security;
+grant select, insert, update on public.model_training_runs to service_role;
