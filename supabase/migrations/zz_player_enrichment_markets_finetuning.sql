@@ -78,7 +78,9 @@ begin
         updated_at = now()
     where q.status in ('failed', 'retryable')
        or (q.status = 'no_data'
-           and q.updated_at < now() - interval '30 days');
+           and q.updated_at < now() - interval '30 days')
+       or (q.status = 'processing'
+           and q.claimed_at < now() - interval '2 hours');
 
   get diagnostics v_inserted = row_count;
   return jsonb_build_object('inserted', v_inserted);
