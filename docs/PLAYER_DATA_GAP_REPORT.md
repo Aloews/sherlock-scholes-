@@ -11,7 +11,9 @@ Snapshot taken 14 October 2026 from the connected Supabase project using read-on
 | Cards without a photo URL | 11,449 (44.9%) |
 | Missing photo, Transfermarkt ID present | 11,355 |
 | Missing photo, Wikidata QID present | 6,314 |
-| Missing photo, neither external ID present | 84 |
+| Missing photo, neither Transfermarkt ID nor Wikidata QID present | 84 |
+| Of those 84, linked to Soccer Wiki | 7 |
+| Of those 84, no currently known photo-source mapping | 77 |
 | Cards with at least one season-stat row | 10,756 (42.2%) |
 | Cards without any season-stat row | 14,752 (57.8%) |
 | Season-stat rows | 179,640 |
