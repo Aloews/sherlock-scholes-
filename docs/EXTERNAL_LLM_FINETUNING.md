@@ -47,6 +47,8 @@ For a compatible CUDA environment, install the optional quantization dependency 
 
 The trainer saves the best-validation LoRA adapter and a run manifest with dataset hash, split counts, seed, hyperparameters, per-epoch loss, held-out test loss and test perplexity. It never uploads weights or promotes a model automatically.
 
+For an optional persisted run record, configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, apply the reviewed database migration, and add --register-run. This writes the completed experiment metadata to the internal model_training_runs table and reads it back to verify persistence. The model artifact remains local unless you separately upload it to controlled artifact storage.
+
 ## Promotion gates
 
 - Keep the test partition untouched until model selection is complete.
