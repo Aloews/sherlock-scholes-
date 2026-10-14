@@ -39,7 +39,7 @@ Totals and spreads support whole and half-point lines in the initial implementat
 
 ## Deployment sequence
 
-1. Review and apply supabase/migrations/player_enrichment_markets_finetuning.sql to a non-production project first.
+1. Review and apply supabase/migrations/zz_player_enrichment_markets_finetuning.sql to a non-production project first.
 2. Deploy football-market-expansion with ODDS_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and optionally MARKET_REQUESTS_PER_RUN.
 3. Invoke it using the service-role bearer token only; never from the browser.
 4. Validate returned row counts, unique snapshots, market/selection/line mapping and settlement fixtures before enabling a schedule.
