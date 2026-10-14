@@ -61,8 +61,10 @@ def has_text(value: Any) -> bool:
 
 def make_report(cards: list[dict[str, Any]], seasons: list[dict[str, Any]]) -> dict[str, Any]:
     season_card_ids = {row.get("card_id") for row in seasons if row.get("card_id")}
+    season_tm_ids = {str(row.get("tm_player_id")) for row in seasons if has_text(row.get("tm_player_id"))}
     missing_photo = [c for c in cards if not has_text(c.get("photo_url"))]
-    missing_season = [c for c in cards if has_text(c.get("transfermarkt_id")) and c["id"] not in season_card_ids]
+    missing_season = [c for c in cards if has_text(c.get("transfermarkt_id"))
+                      and str(c["transfermarkt_id"]) not in season_tm_ids]
     missing_tm_id = [c for c in cards if not has_text(c.get("transfermarkt_id"))]
     missing_qid = [c for c in missing_photo if not has_text(c.get("wikidata_qid"))]
     photo_sources = Counter(c.get("photo_source") or "(null)" for c in cards if has_text(c.get("photo_url")))
@@ -163,7 +165,8 @@ def main() -> int:
     try:
         cards = read_all("cards", "id,name,photo_url,photo_source,wikidata_qid,transfermarkt_id,career_stats",
                          {"category": "eq.player", "active": "eq.true", "order": "id.asc"})
-        seasons = read_all("player_season_stat", "card_id", {"card_id": "not.is.null", "order": "card_id.asc"})
+        seasons = read_all("player_season_stat", "card_id,tm_player_id,season_id,competition_id,club_id",
+                           {"order": "tm_player_id.asc,season_id.asc,competition_id.asc,club_id.asc"})
         report = make_report(cards, seasons)
         output = pathlib.Path(args.output_dir)
         output.mkdir(parents=True, exist_ok=True)
