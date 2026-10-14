@@ -12,7 +12,7 @@ on:
         default: 250
 
 concurrency:
-  group: player-enrichment-queue
+  group: player-profile-data
   cancel-in-progress: false
 
 jobs:
