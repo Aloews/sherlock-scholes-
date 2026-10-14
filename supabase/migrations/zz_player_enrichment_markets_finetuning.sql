@@ -6,7 +6,7 @@ create table if not exists public.player_enrichment_queue (
   id bigint generated always as identity primary key,
   card_id uuid not null references public.cards(id) on delete cascade,
   task_type text not null check (task_type in ('photo','season_stats')),
-  source text not null check (source in ('transfermarkt','wikidata')),
+  source text not null check (source = 'transfermarkt'),
   status text not null default 'pending'
     check (status in ('pending','processing','succeeded','no_data','retryable','failed')),
   priority integer not null default 0,
