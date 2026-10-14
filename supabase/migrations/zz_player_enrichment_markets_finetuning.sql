@@ -50,13 +50,9 @@ begin
      and c.active is distinct from false
      and nullif(btrim(c.photo_url), '') is null
      and nullif(btrim(c.transfermarkt_id), '') is not null
-  union all
-  select c.id, 'photo', 'wikidata', 70
-    from public.cards c
-   where c.category = 'player'
-     and c.active is distinct from false
-     and nullif(btrim(c.photo_url), '') is null
-     and nullif(btrim(c.wikidata_qid), '') is not null
+     and not exists (
+       select 1 from public.soccerwiki_player sw where sw.card_id = c.id
+     )
   union all
   select c.id, 'season_stats', 'transfermarkt',
          80 + least(coalesce(c.market_value_eur, 0) / 1000000, 50)::integer
