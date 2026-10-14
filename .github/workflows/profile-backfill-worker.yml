@@ -1,0 +1,49 @@
+name: profile-backfill-worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute_jobs:
+        description: "Claim and execute jobs (false only reports current queue state)"
+        required: true
+        type: boolean
+        default: false
+      limit:
+        description: "Maximum jobs in this run (1-20)"
+        required: true
+        type: string
+        default: "5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: profile-backfill-worker
+  cancel-in-progress: false
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      EXECUTE_JOBS: ${{ inputs.execute_jobs }}
+      JOB_LIMIT: ${{ inputs.limit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate worker limit
+        run: |
+          case "$JOB_LIMIT" in
+            ''|*[!0-9]*) echo "::error::limit must be an integer"; exit 2 ;;
+          esac
+          [ "$JOB_LIMIT" -ge 1 ] && [ "$JOB_LIMIT" -le 20 ] || { echo "::error::limit must be 1-20"; exit 2; }
+      - name: Report queue without changing jobs
+        if: ${{ inputs.execute_jobs == false }}
+        run: python docs/profile_backfill_worker.py
+      - name: Execute a bounded batch with read-back verification
+        if: ${{ inputs.execute_jobs == true }}
+        run: python docs/profile_backfill_worker.py --run --limit "$JOB_LIMIT"
