@@ -79,6 +79,7 @@ def ensure_photo(card_id: str, worker_id: str) -> tuple[str, dict[str, Any]]:
         ok, detail = image_is_valid(card["photo_url"])
         if ok:
             return "succeeded", {"photo_url": card["photo_url"], "verification": detail, "already_present": True}
+        return "retry", {"reason": "existing photo URL failed validation; it was not overwritten", "detail": detail}
 
     outputs = []
     env = dict(os.environ)
@@ -97,6 +98,7 @@ def ensure_photo(card_id: str, worker_id: str) -> tuple[str, dict[str, Any]]:
             ok, detail = image_is_valid(card["photo_url"])
             if ok:
                 return "succeeded", {"photo_url": card["photo_url"], "verification": detail, "source": "wikidata"}
+            return "retry", {"reason": "Wikidata URL failed image verification", "detail": detail}
 
     # Soccer Wiki is preferred when it has a portrait for this exact card.
     sw = sb("soccerwiki_player", params={"select": "photo_url", "card_id": f"eq.{card_id}", "limit": "1"})
@@ -171,7 +173,7 @@ def ensure_season_stats(card_id: str) -> tuple[str, dict[str, Any]]:
                          "latest_season": max(row["season_id"] for row in rows)}
 
 
-def finish_job(job: dict[str, Any], worker_id: str, status: str, result: dict[str, Any]) -> None:
+def finish_job(job: dict[str, Any], worker_id: str, status: str, result: dict[str, Any]) -> str:
     now = datetime.now(timezone.utc)
     attempts = int(job.get("attempts") or 1)
     max_attempts = int(job.get("max_attempts") or 5)
@@ -194,6 +196,7 @@ def finish_job(job: dict[str, Any], worker_id: str, status: str, result: dict[st
                  body=body, prefer="return=representation")
     if not updated:
         raise RuntimeError(f"job {job['id']} lease lost before status update")
+    return status
 
 
 def main() -> int:
@@ -237,12 +240,12 @@ def main() -> int:
                     status, result = ensure_season_stats(job["card_id"])
                 else:
                     status, result = "no_source_data", {"reason": f"unsupported task type: {job['task_type']}"}
-                finish_job(job, worker_id, status, result)
+                status = finish_job(job, worker_id, status, result)
             except Exception as exc:  # noqa: BLE001
                 status = "retry"
                 result = {"reason": f"{type(exc).__name__}: {exc}"}
                 try:
-                    finish_job(job, worker_id, status, result)
+                    status = finish_job(job, worker_id, status, result)
                 except Exception as finish_exc:  # noqa: BLE001
                     result["finish_error"] = str(finish_exc)
                     status = "failed_to_record"
