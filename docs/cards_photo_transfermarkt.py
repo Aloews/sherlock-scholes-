@@ -121,6 +121,7 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--only-card", default="", help="process one cards.id UUID")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
@@ -131,11 +132,12 @@ def main():
     # ⚠️ ТОЛЬКО ИГРОКИ. У клуба на TM своя эмблема, но эмблемы в этом проекте
     # берутся с ESPN и решение это принято владельцем; подменять их отсюда
     # значило бы откатывать его молча.
-    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id",
-                              "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
-                              "transfermarkt_id": "not.is.null",
-                              "order": "id"})
+    filters = {"select": "id,name,name_en,transfermarkt_id",
+               "category": "eq.player", "active": "is.true", "photo_url": "is.null",
+               "transfermarkt_id": "not.is.null", "order": "id"}
+    if args.only_card:
+        filters["id"] = "eq." + args.only_card
+    rows = read_all("cards", filters)
 
     # ⚠️ ТЕХ, КОГО ЗАКРОЕТ SOCCER WIKI, ЗДЕСЬ СПРАШИВАТЬ НЕЗАЧЕМ, И ЭТО ЗАМЕР.
     #
