@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       BATCH_LIMIT: ${{ inputs.limit || 250 }}
       GITHUB_RUN_ID: ${{ github.run_id }}
     steps:
@@ -40,7 +40,7 @@ jobs:
       - name: Validate configuration and batch size
         run: |
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is required"; exit 2; }
-          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY secret is required"; exit 2; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY secret is required"; exit 2; }
           case "$BATCH_LIMIT" in ''|*[!0-9]*) echo "::error::limit must be an integer"; exit 2;; esac
           [ "$BATCH_LIMIT" -ge 1 ] && [ "$BATCH_LIMIT" -le 250 ] || { echo "::error::limit must be between 1 and 250"; exit 2; }
 
