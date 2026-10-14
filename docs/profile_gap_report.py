@@ -132,21 +132,25 @@ def enqueue_jobs(report: dict[str, Any], limit: int) -> int:
     pending = report["jobs"]["photo"] + report["jobs"]["season_stats"]
     if limit > 0:
         pending = pending[:limit]
-    inserted = 0
+    payloads = []
     for item in pending:
-        payload = {
+        payloads.append({
             "card_id": item["card_id"],
             "task_type": "photo" if item["idempotency_key"].startswith("photo:") else "season_stats",
             "provider": item["provider"],
             "idempotency_key": item["idempotency_key"],
             "priority": item["priority"],
             "result": {"display_name": item.get("name"), "transfermarkt_id": item.get("transfermarkt_id")},
-        }
-        result = request_json("profile_backfill_job", method="POST", params={"on_conflict": "idempotency_key"},
-                              body=payload, prefer="resolution=ignore-duplicates,return=representation")
+        })
+    inserted = 0
+    # Batch writes to avoid one REST request per player; conflict handling keeps reruns idempotent.
+    for offset in range(0, len(payloads), 100):
+        result = request_json("profile_backfill_job", method="POST",
+                              params={"on_conflict": "idempotency_key"},
+                              body=payloads[offset:offset + 100],
+                              prefer="resolution=ignore-duplicates,return=representation")
         inserted += len(result) if isinstance(result, list) else 0
     return inserted
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
