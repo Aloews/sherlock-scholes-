@@ -72,7 +72,8 @@ begin
         last_error = null,
         finished_at = null,
         updated_at = now()
-    where q.status in ('failed', 'retryable')
+    where (q.status = 'failed'
+           and q.updated_at < now() - interval '30 days')
        or (q.status = 'no_data'
            and q.updated_at < now() - interval '30 days')
        or (q.status = 'processing'
