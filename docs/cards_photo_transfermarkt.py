@@ -178,7 +178,7 @@ def main():
             for card_id, url in batch:
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "photo_url": "is.null"},
-                   body={"photo_url": url})
+                   body={"photo_url": url, "photo_source": "transfermarkt"})
                 written += 1
         batch = []
 
