@@ -1,0 +1,56 @@
+name: profile-gap-report
+
+on:
+  workflow_dispatch:
+    inputs:
+      enqueue_jobs:
+        description: "Write idempotent jobs (requires the reviewed migration to be applied)"
+        required: true
+        type: boolean
+        default: false
+      enqueue_limit:
+        description: "Maximum new jobs to enqueue; 0 means all candidates"
+        required: true
+        type: string
+        default: "100"
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      ENQUEUE_JOBS: ${{ inputs.enqueue_jobs }}
+      ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate enqueue limit
+        run: |
+          case "$ENQUEUE_LIMIT" in
+            ''|*[!0-9]*) echo "::error::enqueue_limit must be a non-negative integer"; exit 2 ;;
+          esac
+      - name: Generate data-gap report
+        run: |
+          if [ "$ENQUEUE_JOBS" = "true" ]; then
+            if [ "$ENQUEUE_LIMIT" -gt 0 ]; then
+              python docs/profile_gap_report.py --output-dir artifacts/profile-data --enqueue --enqueue-limit "$ENQUEUE_LIMIT"
+            else
+              python docs/profile_gap_report.py --output-dir artifacts/profile-data --enqueue
+            fi
+          else
+            python docs/profile_gap_report.py --output-dir artifacts/profile-data
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: profile-gap-report
+          path: artifacts/profile-data/
+          if-no-files-found: warn
+          retention-days: 30
