@@ -22,9 +22,13 @@
 // меньше RESERVE, обход не начинается вовсе. Счёт важнее котировок — он на
 // экране, а они внутри.
 
+import { parseMarkets, rowsForMarkets, type SupportedMarket } from "./markets.ts";
+
 const ODDS_API_KEY = Deno.env.get("ODDS_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ODDS_MARKETS: SupportedMarket[] = parseMarkets(Deno.env.get("ODDS_MARKETS"));
+const REGION = Deno.env.get("ODDS_REGION") ?? "eu";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -100,15 +104,30 @@ async function creditsLeft(): Promise<number | null> {
   }
 }
 
-async function reserve(credits: number): Promise<boolean> {
+async function reserveRequest(requestKey: string, sport: string): Promise<boolean> {
   try {
-    const r = await rpc("spend_odds_credits", { p_credits: credits });
+    const r = await rpc("reserve_odds_api_request", {
+      p_request_key: requestKey, p_provider: "the-odds-api", p_sport_key: sport,
+      p_region: REGION, p_markets: ODDS_MARKETS, p_credits: ODDS_MARKETS.length,
+    });
     if (!r.ok) return false;
     return (await r.json()) === true;
   } catch {
-    // Отказ при нечитаемом бюджете — безопасная сторона: трата, которую
-    // нельзя сосчитать, это ровно то, ради чего потолок и заведён.
     return false;
+  }
+}
+
+async function finishRequest(
+  requestKey: string, status: "success" | "failed",
+  responseCount: number | null, providerRemaining: number | null, errorCode: string | null,
+): Promise<void> {
+  try {
+    await rpc("finish_odds_api_request", {
+      p_request_key: requestKey, p_status: status, p_response_count: responseCount,
+      p_provider_remaining: providerRemaining, p_error_code: errorCode,
+    });
+  } catch {
+    // The reservation remains auditable as reserved if finalization cannot be recorded.
   }
 }
 
@@ -170,28 +189,50 @@ Deno.serve(async (req) => {
   let written = 0, spent = 0;
   const failed: string[] = [];
 
+  if (ODDS_MARKETS.length === 0) return reply(500, { error: "ODDS_MARKETS must include at least one supported market" });
   for (const sport of ODDS_SPORTS) {
-    // Кредит резервируется ДО запроса: иначе при обрыве ответа потрачено
-    // будет, а посчитано нет, и потолок перестанет быть потолком.
-    if (!(await reserve(1))) { failed.push(`${sport}: budget`); break; }
-    spent += 1;
+    // One idempotent reservation per UTC date, sport and selected market set.
+    // Credits are reserved before the network request and cost scales with market count.
+    const requestKey = `${new Date().toISOString().slice(0, 10)}:${sport}:${REGION}:${ODDS_MARKETS.join(",")}`;
+    if (!(await reserveRequest(requestKey, sport))) {
+      failed.push(`${sport}: budget exhausted or request already reserved today`);
+      break;
+    }
+    spent += ODDS_MARKETS.length;
     try {
       const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds`
-        + `?apiKey=${ODDS_API_KEY}&regions=eu&markets=h2h&oddsFormat=decimal`;
+        + `?apiKey=${ODDS_API_KEY}&regions=${REGION}&markets=${ODDS_MARKETS.join(",")}&oddsFormat=decimal`;
       const r = await fetch(url);
-      if (!r.ok) { failed.push(`${sport}: HTTP ${r.status}`); continue; }
-      const events = (await r.json()) as OddsEvent[];
-      const rows = events.flatMap((e) => rowsFor(e, takenAt));
-      if (rows.length === 0) continue;
-      // Пачками: одна лига может дать сотни строк, а PostgREST на большом теле
-      // отвечает хуже, чем на нескольких средних.
-      for (let i = 0; i < rows.length; i += 200) {
-        const w = await rpc("upsert_fixture_odds", { p_rows: rows.slice(i, i + 200) });
-        if (w.ok) written += Number(await w.json()) || 0;
-        else failed.push(`${sport}: write ${w.status}`);
+      const remainingHeader = r.headers.get("x-requests-remaining");
+      const providerRemaining = remainingHeader && /^\d+$/.test(remainingHeader) ? Number(remainingHeader) : null;
+      if (!r.ok) {
+        await finishRequest(requestKey, "failed", null, providerRemaining, `http_${r.status}`);
+        failed.push(`${sport}: HTTP ${r.status}`);
+        continue;
       }
+      const events = (await r.json()) as OddsEvent[];
+      const quoteRows = events.flatMap((event) => rowsForMarkets(event, takenAt, ODDS_MARKETS, REGION));
+      let writeFailed = false;
+      for (let i = 0; i < quoteRows.length; i += 200) {
+        const w = await rpc("upsert_fixture_market_quotes", { p_rows: quoteRows.slice(i, i + 200) });
+        if (w.ok) written += Number(await w.json()) || 0;
+        else { writeFailed = true; failed.push(`${sport}: market quote write ${w.status}`); }
+      }
+      // Preserve the legacy 1X2 table used by the existing admin forecast board.
+      if (ODDS_MARKETS.includes("h2h")) {
+        const legacyRows = events.flatMap((event) => rowsFor(event, takenAt));
+        for (let i = 0; i < legacyRows.length; i += 200) {
+          const w = await rpc("upsert_fixture_odds", { p_rows: legacyRows.slice(i, i + 200) });
+          if (w.ok) written += Number(await w.json()) || 0;
+          else { writeFailed = true; failed.push(`${sport}: legacy h2h write ${w.status}`); }
+        }
+      }
+      await finishRequest(requestKey, writeFailed ? "failed" : "success", events.length, providerRemaining,
+        writeFailed ? "database_write_failed" : null);
     } catch (e) {
-      failed.push(`${sport}: ${e instanceof Error ? e.message : "error"}`);
+      await finishRequest(requestKey, "failed", null, null, "request_or_parse_failed");
+      const message = e instanceof Error ? e.message : "error";
+      failed.push(`${sport}: ${message.split(ODDS_API_KEY).join("[redacted]")}`);
     }
   }
 

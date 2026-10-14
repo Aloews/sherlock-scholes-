@@ -156,14 +156,17 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only-card-id", default="", help="обработать одну карточку UUID")
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
 
-    rows = read_all("cards", {"select": "id,name,category,wikidata_qid",
+    rows = read_all("cards", {"select": "id,name,category,wikidata_qid,photo_url",
                               "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
                               "wikidata_qid": "not.is.null",
                               "order": "id"})
+    rows = [row for row in rows if not row.get("photo_url")]
+    if args.only_card_id:
+        rows = [row for row in rows if row["id"] == args.only_card_id]
     if args.limit:
         rows = rows[:args.limit]
     print("Карточек без фото, но с QID: %d  (APPLY=%s)"

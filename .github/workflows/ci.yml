@@ -152,6 +152,12 @@ jobs:
           echo "::group::docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
           echo "::endgroup::"
+          echo "::group::profile backfill queue tests"
+          python ../docs/test_profile_backfill_queue.py || failed="$failed docs/test_profile_backfill_queue.py"
+          echo "::endgroup::"
+          echo "::group::LLM fine-tuning data pipeline tests"
+          (cd ../ml/llm_finetuning && python test_pipeline.py && python test_evaluation.py) || failed="$failed ml/llm_finetuning/test_pipeline.py"
+          echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
             exit 1
@@ -189,3 +195,5 @@ jobs:
             echo "::error::типы не сошлись:$failed"
             exit 1
           fi
+      - name: Multi-market quote parser tests
+        run: deno test supabase/functions/football-odds/markets.test.ts

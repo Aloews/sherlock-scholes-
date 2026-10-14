@@ -121,9 +121,12 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        raise SystemExit("--only должен быть числовым Transfermarkt ID")
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
@@ -131,11 +134,15 @@ def main():
     # ⚠️ ТОЛЬКО ИГРОКИ. У клуба на TM своя эмблема, но эмблемы в этом проекте
     # берутся с ESPN и решение это принято владельцем; подменять их отсюда
     # значило бы откатывать его молча.
-    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id",
+    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id,photo_url",
                               "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
                               "transfermarkt_id": "not.is.null",
                               "order": "id"})
+
+    # Existing data can be a blank string as well as SQL NULL.
+    rows = [row for row in rows if not row.get("photo_url")]
+    if args.only:
+        rows = [row for row in rows if str(row.get("transfermarkt_id") or "") == args.only]
 
     # ⚠️ ТЕХ, КОГО ЗАКРОЕТ SOCCER WIKI, ЗДЕСЬ СПРАШИВАТЬ НЕЗАЧЕМ, И ЭТО ЗАМЕР.
     #

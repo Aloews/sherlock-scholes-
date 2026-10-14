@@ -1,0 +1,43 @@
+name: settle-market-quotes
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixture_id:
+        description: "Optional provider fixture ID; blank settles all completed fixtures"
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: settle-market-quotes
+  cancel-in-progress: false
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      FIXTURE_ID: ${{ inputs.fixture_id }}
+    steps:
+      - name: Validate configuration
+        run: |
+          [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ] || {
+            echo "::error::Supabase secrets are required"; exit 2;
+          }
+      - name: Settle only completed fixtures and verify RPC response
+        run: |
+          if [ -n "$FIXTURE_ID" ]; then
+            payload=$(jq -n --arg id "$FIXTURE_ID" '{p_fixture_id:$id}')
+          else
+            payload='{}'
+          fi
+          code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/settle_fixture_market_quotes" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$payload" -o /tmp/settlement.json -w '%{http_code}')
+          [ "$code" = "200" ] || { cat /tmp/settlement.json; exit 1; }
+          cat /tmp/settlement.json
