@@ -1,13 +1,15 @@
 name: player-enrichment-queue
 
 on:
+  schedule:
+    - cron: "17 12 * * *"
   workflow_dispatch:
     inputs:
       limit:
         description: Maximum number of per-player tasks to claim
         required: true
         type: number
-        default: 50
+        default: 250
 
 concurrency:
   group: player-enrichment-queue
@@ -15,12 +17,13 @@ concurrency:
 
 jobs:
   enrich:
+    if: ${{ vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      BATCH_LIMIT: ${{ inputs.limit }}
+      BATCH_LIMIT: ${{ inputs.limit || 250 }}
       GITHUB_RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
