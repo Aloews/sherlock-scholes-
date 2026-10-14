@@ -32,7 +32,7 @@ class FineTuningDataTests(unittest.TestCase):
             self.assertEqual(manifest["counts"]["holdout.jsonl"],2)
             self.assertTrue(manifest["holdout_is_never_uploaded"])
             train=[json.loads(line) for line in (out/"train.jsonl").read_text().splitlines()]
-            self.assertIn("fixture-1",train[0]["messages"][1]["content"])
+            self.assertIn('"home_team": "A"',train[0]["messages"][1]["content"])
 
 
 if __name__=="__main__": unittest.main()
