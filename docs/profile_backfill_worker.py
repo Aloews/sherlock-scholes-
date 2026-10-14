@@ -154,7 +154,8 @@ def ensure_season_stats(card_id: str) -> tuple[str, dict[str, Any]]:
     if proc.returncode:
         return "retry", {"reason": "Transfermarkt season-stat collector failed",
                          "exit_code": proc.returncode, "output_tail": output[-3000:]}
-    if "потеряно" in output.casefold() or "timeout" in output.casefold() or "timed out" in output.casefold():
+    if ("потеряно" in output.casefold() or "запись отклонена" in output.casefold()
+            or "timeout" in output.casefold() or "timed out" in output.casefold()):
         return "retry", {"reason": "source response may be incomplete", "output_tail": output[-3000:]}
     rows = sb("player_season_stat", params={
         "select": "tm_player_id,season_id,competition_id,club_id,apps,minutes,goals,assists",
