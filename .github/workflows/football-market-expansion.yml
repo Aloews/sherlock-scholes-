@@ -1,0 +1,40 @@
+name: football-market-expansion
+
+on:
+  workflow_dispatch:
+    inputs:
+      requests:
+        description: Paid market/competition requests to attempt (hard capped at 8)
+        required: true
+        type: number
+        default: 4
+
+concurrency:
+  group: football-market-expansion
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      REQUESTS: ${{ inputs.requests }}
+    steps:
+      - name: Validate request budget
+        run: |
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is required"; exit 2; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY secret is required"; exit 2; }
+          case "$REQUESTS" in ''|*[!0-9]*) echo "::error::requests must be an integer"; exit 2;; esac
+          [ "$REQUESTS" -ge 1 ] && [ "$REQUESTS" -le 8 ] || { echo "::error::requests must be between 1 and 8"; exit 2; }
+
+      - name: Collect a rotating batch of additional markets
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 180 \
+            --request POST "$SUPABASE_URL/functions/v1/football-market-expansion" \
+            --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{"requests": '"$REQUESTS"'}'
