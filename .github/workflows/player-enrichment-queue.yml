@@ -17,7 +17,6 @@ concurrency:
 
 jobs:
   enrich:
-    if: ${{ vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -38,6 +37,7 @@ jobs:
         run: pip install -r football_scraper/requirements.txt
 
       - name: Validate configuration and batch size
+        if: ${{ vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
         run: |
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is required"; exit 2; }
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY secret is required"; exit 2; }
@@ -45,14 +45,20 @@ jobs:
           [ "$BATCH_LIMIT" -ge 1 ] && [ "$BATCH_LIMIT" -le 250 ] || { echo "::error::limit must be between 1 and 250"; exit 2; }
 
       - name: Audit profile gaps before processing
+        if: ${{ vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
         run: python docs/player_data_audit.py --skip-match-scan --output-dir artifacts/player-data-audit/before
 
       - name: Enqueue gaps, process one batch, verify every task
+        if: ${{ vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
         run: python docs/player_enrichment_queue.py --enqueue --run --limit "$BATCH_LIMIT"
 
       - name: Audit profile gaps after processing
-        if: always()
+        if: ${{ always() && vars.PLAYER_ENRICHMENT_ENABLED == 'true' }}
         run: python docs/player_data_audit.py --skip-match-scan --output-dir artifacts/player-data-audit/after
+
+      - name: Queue disabled until migration is approved
+        if: ${{ vars.PLAYER_ENRICHMENT_ENABLED != 'true' }}
+        run: echo "Queue skipped safely. Apply the migration, verify RLS and set PLAYER_ENRICHMENT_ENABLED=true to enable processing."
 
       - name: Upload audit reports
         if: always()
@@ -62,3 +68,17 @@ jobs:
           path: artifacts/player-data-audit/
           if-no-files-found: warn
           retention-days: 30
+
+  watch:
+    runs-on: ubuntu-latest
+    needs: [enrich]
+    if: always()
+    timeout-minutes: 10
+    env:
+      ENRICH_RESULT: ${{ needs.enrich.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify scheduled enrichment job outcome
+        run: |
+          echo "enrich = $ENRICH_RESULT"
+          [ "$ENRICH_RESULT" = "success" ] || { echo "::error::enrichment workflow job did not succeed: $ENRICH_RESULT"; exit 1; }
