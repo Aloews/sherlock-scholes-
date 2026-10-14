@@ -133,7 +133,13 @@ Deno.serve(async (req) => {
   if (left === null) return reply(503, { error: "budget unavailable; no provider request made" });
   if (left <= RESERVE) return reply(200, { skipped: "shared budget reserve", credits_left: left });
 
-  const configured = Number(Deno.env.get("MARKET_REQUESTS_PER_RUN") ?? DEFAULT_REQUESTS_PER_RUN);
+  let requestBody: { requests?: number } = {};
+  try {
+    requestBody = await req.json() as { requests?: number };
+  } catch {
+    requestBody = {};
+  }
+  const configured = Number(requestBody.requests ?? Deno.env.get("MARKET_REQUESTS_PER_RUN") ?? DEFAULT_REQUESTS_PER_RUN);
   const perRun = Number.isFinite(configured) ? Math.min(8, Math.max(1, Math.floor(configured))) : DEFAULT_REQUESTS_PER_RUN;
   const affordable = Math.min(perRun, Math.max(0, left - RESERVE));
   if (affordable < 1) return reply(200, { skipped: "no credits above reserve", credits_left: left });
