@@ -12,7 +12,7 @@ class ProfileGapReportTests(unittest.TestCase):
             {"id": "a", "name": "A", "photo_url": None, "photo_source": None,
              "wikidata_qid": "Q1", "transfermarkt_id": "11", "career_stats": {}},
             {"id": "b", "name": "B", "photo_url": "https://example.com/b.jpg", "photo_source": "test",
-             "wikidata_qid": None, "transfermarkt_id": "22", "career_stats": {"goals": 2}},
+             "wikidata_qid": None, "transfermarkt_id": "22", "career_stats": [{"club": "B", "years": "2020–2024", "apps": 40, "goals": 2}]},
             {"id": "c", "name": "C", "photo_url": None, "photo_source": None,
              "wikidata_qid": None, "transfermarkt_id": None, "career_stats": None},
         ]
@@ -25,6 +25,7 @@ class ProfileGapReportTests(unittest.TestCase):
         self.assertEqual(report["missing_photo_without_wikidata_qid"], 1)
         self.assertEqual(report["missing_season_stats_with_transfermarkt_id"], 1)
         self.assertEqual(report["missing_transfermarkt_id"], 1)
+        self.assertEqual(report["missing_career_stats_json"], 2)
         self.assertEqual(len(report["jobs"]["photo"]), 2)
         self.assertEqual(len(report["jobs"]["season_stats"]), 1)
 

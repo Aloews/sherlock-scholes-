@@ -72,7 +72,7 @@ def make_report(cards: list[dict[str, Any]], seasons: list[dict[str, Any]]) -> d
     missing_season.sort(key=lambda c: (value(c), has_text(c.get("transfermarkt_id"))), reverse=True)
     missing_tm_id.sort(key=lambda c: value(c), reverse=True)
     photo_sources = Counter(c.get("photo_source") or "(null)" for c in cards if has_text(c.get("photo_url")))
-    career_json_empty = [c for c in cards if not isinstance(c.get("career_stats"), dict) or not c["career_stats"]]
+    career_json_empty = [c for c in cards if not isinstance(c.get("career_stats"), (list, dict)) or not c["career_stats"]]
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "active_player_cards": len(cards),
