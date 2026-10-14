@@ -36,6 +36,7 @@ class SoccerWikiNameFallbackTests(unittest.TestCase):
     def test_rejects_non_latin_and_placeholder_names(self):
         self.assertIsNone(MOD.clean_name("未知の選手"))
         self.assertIsNone(MOD.clean_name("Unknown"))
+        self.assertIsNone(MOD.clean_name("Ângelo Samuel Chaves"))
         self.assertEqual(MOD.clean_name("  James   Santos  "), "James Santos")
 
 
