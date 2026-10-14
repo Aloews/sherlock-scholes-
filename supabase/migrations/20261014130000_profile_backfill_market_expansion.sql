@@ -136,16 +136,16 @@ CREATE TABLE IF NOT EXISTS public.market_settlement_rule (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (market_key, rule_version)
 );
-INSERT INTO public.market_settlement_rule (market_key, rule_version, rule_type, definition)
+INSERT INTO public.market_settlement_rule (market_key, rule_version, rule_type, definition, effective_from)
 VALUES
-  ('three_way_result', 1, 'three_way_result', '{"period":"regulation","selections":["home","draw","away"],"draw":"settle"}'::jsonb),
-  ('two_way_result', 1, 'two_way_result', '{"period":"regulation","selections":["home","away"],"draw":"void"}'::jsonb),
-  ('totals', 1, 'totals', '{"period":"regulation","selections":["over","under"],"line_required":true,"quarter_lines":"split_into_adjacent_half_lines"}'::jsonb),
-  ('both_teams_to_score', 1, 'both_teams_to_score', '{"period":"regulation","selections":["yes","no"]}'::jsonb),
-  ('spread', 1, 'spread', '{"period":"regulation","selections":["home","away"],"line_required":true,"line_perspective":"selected_side","quarter_lines":"split_into_adjacent_half_lines"}'::jsonb),
-  ('draw_no_bet', 1, 'draw_no_bet', '{"period":"regulation","selections":["home","away"],"draw":"push"}'::jsonb),
-  ('double_chance', 1, 'double_chance', '{"period":"regulation","selections":["home_draw","draw_away","home_away"]}'::jsonb),
-  ('correct_score', 1, 'correct_score', '{"period":"regulation","selection_format":"home-away"}'::jsonb)
+  ('three_way_result', 1, 'three_way_result', '{"period":"regulation","selections":["home","draw","away"],"draw":"settle"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('two_way_result', 1, 'two_way_result', '{"period":"regulation","selections":["home","away"],"draw":"void"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('totals', 1, 'totals', '{"period":"regulation","selections":["over","under"],"line_required":true,"quarter_lines":"split_into_adjacent_half_lines"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('both_teams_to_score', 1, 'both_teams_to_score', '{"period":"regulation","selections":["yes","no"]}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('spread', 1, 'spread', '{"period":"regulation","selections":["home","away"],"line_required":true,"line_perspective":"selected_side","quarter_lines":"split_into_adjacent_half_lines"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('draw_no_bet', 1, 'draw_no_bet', '{"period":"regulation","selections":["home","away"],"draw":"push"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('double_chance', 1, 'double_chance', '{"period":"regulation","selections":["home_draw","draw_away","home_away"]}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz),
+  ('correct_score', 1, 'correct_score', '{"period":"regulation","selection_format":"home-away"}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz)
 ON CONFLICT (market_key, rule_version) DO NOTHING;
 
 ALTER TABLE public.market_settlement_rule ENABLE ROW LEVEL SECURITY;
