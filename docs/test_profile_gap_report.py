@@ -16,7 +16,7 @@ class ProfileGapReportTests(unittest.TestCase):
             {"id": "c", "name": "C", "photo_url": None, "photo_source": None,
              "wikidata_qid": None, "transfermarkt_id": None, "career_stats": None},
         ]
-        seasons = [{"card_id": "b"}, {"card_id": "b"}]
+        seasons = [{"card_id": "b", "tm_player_id": "22"}, {"card_id": "b", "tm_player_id": "22"}]
         report = make_report(cards, seasons)
         self.assertEqual(report["active_player_cards"], 3)
         self.assertEqual(report["players_with_season_stats"], 1)
