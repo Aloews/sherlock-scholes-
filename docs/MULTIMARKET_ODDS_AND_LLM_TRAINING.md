@@ -6,7 +6,7 @@ The existing fixture_odds table remains the compatibility store for 1X2. The gen
 
 Settlement uses final scores on fixtures, only after the fixture is completed and kickoff has passed. Results are won, lost, push, half_won, half_lost or void. Quarter-line totals and handicaps are split into adjacent half-lines. Settlement is per quote outcome, not per market as a whole.
 
-The collector defaults to h2h to preserve the current credit profile. Set ODDS_MARKETS to a comma-separated subset of h2h,spreads,totals,btts to opt in. The Edge Function reserves one credit per market per region before the provider request. Request keys are unique per UTC date, sport and market set, preventing duplicate scheduled runs from spending twice. The monthly 500-credit ceiling remains authoritative. Do not enable all four markets for all ten leagues daily without calculating monthly usage.
+The default rotation is quota-neutral: each sport request uses one market; h2h runs in two of every three collection cycles, while spreads, totals and btts rotate through the remaining cycle. With ten leagues and the existing every-other-day schedule this is about the same number of credits as the prior h2h-only collector, while building slower history for all four markets. Set ODDS_MARKETS to a comma-separated subset of h2h,spreads,totals,btts to override the rotation; multi-market requests cost one credit per market and region. The Edge Function and database reserve an 80-credit floor before each request, and the existing monthly 500-credit hard ceiling remains authoritative. Do not enable all four markets across every league daily without calculating monthly usage.
 
 ## Profile backfill queue
 

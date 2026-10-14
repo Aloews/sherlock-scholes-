@@ -141,6 +141,28 @@ alter table public.odds_api_usage enable row level security;
 revoke all on public.fixture_market_quotes,public.odds_market_settlement_rules,public.odds_api_usage from public,anon,authenticated;
 grant all on public.fixture_market_quotes,public.odds_market_settlement_rules,public.odds_api_usage to service_role;
 
+create or replace function public.spend_odds_credits_with_reserve(
+  p_credits integer, p_min_remaining integer default 80
+)
+returns boolean language plpgsql security definer set search_path=public as $fn$
+declare
+  v_month date := date_trunc('month', now() at time zone 'utc')::date;
+  v_after integer;
+begin
+  if p_credits is null or p_credits < 1 or p_min_remaining is null or p_min_remaining < 0 then
+    raise exception 'invalid credits or reserve' using errcode='22023';
+  end if;
+  insert into odds_api_budget(month,credits) values(v_month,0)
+  on conflict(month) do update set month=excluded.month
+  returning credits into v_after;
+  if v_after + p_credits > greatest(0,odds_api_monthly_limit()-p_min_remaining) then
+    return false;
+  end if;
+  update odds_api_budget set credits=credits+p_credits,updated_at=now() where month=v_month;
+  return true;
+end;
+$fn$;
+
 create or replace function public.reserve_odds_api_request(
   p_request_key text,p_provider text,p_sport_key text,p_region text,p_markets text[],p_credits integer
 ) returns boolean language plpgsql security definer set search_path=public as $$
@@ -154,7 +176,7 @@ begin
   on conflict(request_key) do nothing;
   get diagnostics v_rows=row_count;
   if v_rows=0 then return false; end if;
-  if not public.spend_odds_credits(p_credits) then
+  if not public.spend_odds_credits_with_reserve(p_credits,80) then
     delete from odds_api_usage where request_key=p_request_key;
     return false;
   end if;
@@ -210,7 +232,7 @@ begin
     return case when lower(p_outcome)=v_actual then 'won' else 'lost' end;
   elsif p_market='totals' then
     if lower(p_outcome) not in ('over','under') then return null; end if;
-    if abs(p_point*4-round(p_point*4))<0.0001 and mod(round(p_point*4)::integer,2)=1 then
+    if abs(p_point*4-round(p_point*4))<0.0001 and abs(mod(round(p_point*4)::integer,2))=1 then
       v_a:=p_point-0.25; v_b:=p_point+0.25;
       if lower(p_outcome)='over' then
         v_first:=case when v_total>v_a then 'won' when v_total<v_a then 'lost' else 'push' end;
@@ -227,7 +249,7 @@ begin
     if lower(p_outcome)='home' then v_margin:=p_home_score+p_point-p_away_score;
     elsif lower(p_outcome)='away' then v_margin:=p_away_score+p_point-p_home_score;
     else return null; end if;
-    if abs(p_point*4-round(p_point*4))<0.0001 and mod(round(p_point*4)::integer,2)=1 then
+    if abs(p_point*4-round(p_point*4))<0.0001 and abs(mod(round(p_point*4)::integer,2))=1 then
       v_a:=p_point-0.25; v_b:=p_point+0.25;
       if lower(p_outcome)='home' then
         v_first:=case when p_home_score+v_a>p_away_score then 'won' when p_home_score+v_a<p_away_score then 'lost' else 'push' end;
@@ -283,6 +305,8 @@ after update of completed,home_score,away_score,scores_at on public.fixtures
 for each row execute function public.settle_market_quotes_after_fixture_update();
 revoke all on function public.settle_market_quotes_after_fixture_update() from public,anon,authenticated;
 
+revoke all on function public.spend_odds_credits_with_reserve(integer,integer) from public,anon,authenticated;
+grant execute on function public.spend_odds_credits_with_reserve(integer,integer) to service_role;
 revoke all on function public.reserve_odds_api_request(text,text,text,text,text[],integer) from public,anon,authenticated;
 revoke all on function public.finish_odds_api_request(text,text,integer,integer,text) from public,anon,authenticated;
 revoke all on function public.upsert_fixture_market_quotes(jsonb) from public,anon,authenticated;

@@ -1,4 +1,4 @@
-import { parseMarkets, rowsForMarkets, type OddsEventPayload } from "./markets.ts";
+import { parseMarkets, rowsForMarkets, rotatingMarketsForDate, type OddsEventPayload } from "./markets.ts";
 
 Deno.test("market list defaults to h2h and deduplicates explicit markets", () => {
   if (parseMarkets(undefined).join(",") !== "h2h") throw new Error("default market changed");
@@ -40,4 +40,14 @@ Deno.test("team names, not outcome order, determine home and away", () => {
   };
   const rows = rowsForMarkets(event, "2026-10-14T12:00:00Z", ["spreads"]);
   if (rows[0]?.outcome_key !== "away" || rows[1]?.outcome_key !== "home") throw new Error("team mapping depends on order");
+});
+
+Deno.test("default market rotation preserves quota and cycles through secondary markets", () => {
+  const first = rotatingMarketsForDate(new Date("2026-01-01T12:00:00Z"));
+  const second = rotatingMarketsForDate(new Date("2026-01-03T12:00:00Z"));
+  const third = rotatingMarketsForDate(new Date("2026-01-05T12:00:00Z"));
+  const later = rotatingMarketsForDate(new Date("2026-01-17T12:00:00Z"));
+  if (first.join(",") !== "h2h" || second.join(",") !== "h2h") throw new Error("h2h should remain the primary market");
+  if (third.length !== 1 || !["spreads", "totals", "btts"].includes(third[0])) throw new Error("extra cycle must request one market");
+  if (later.join(",") === third.join(",")) throw new Error("extra markets should rotate across cycles");
 });

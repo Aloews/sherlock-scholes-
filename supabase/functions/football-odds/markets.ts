@@ -92,3 +92,13 @@ export function rowsForMarkets(
   }
   return rows;
 }
+
+const ROTATING_EXTRA_MARKETS: SupportedMarket[] = ["spreads", "totals", "btts"];
+
+/** Budget-neutral default: two h2h collection cycles, then one extra market cycle. */
+export function rotatingMarketsForDate(date: Date): SupportedMarket[] {
+  const utcDay = Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
+  const runSlot = Math.floor(utcDay / 2);
+  if (runSlot % 3 !== 2) return ["h2h"];
+  return [ROTATING_EXTRA_MARKETS[Math.floor(runSlot / 3) % ROTATING_EXTRA_MARKETS.length]];
+}
