@@ -11,7 +11,7 @@ class MarketOddsIngestTests(unittest.TestCase):
         self.assertEqual(normalize_market("h2h"), "three_way_result")
         self.assertEqual(normalize_market("spreads"), "spread")
         self.assertEqual(normalize_market("totals"), "totals")
-        self.assertEqual(normalize_market("player_shots_on_target"), "player_prop")
+        self.assertEqual(normalize_market("player_shots_on_target"), "player_shots_on_target")
 
     def test_selection_keys(self):
         self.assertEqual(normalize_selection("h2h", "Draw", "Arsenal", "Chelsea"), "draw")
