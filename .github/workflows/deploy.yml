@@ -62,6 +62,7 @@ jobs:
       # player-stats.yml. Не хватало только этой строки — то есть кнопка
       # просила у владельца ключ, который у неё и так был.
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      MARKET_ODDS_MIGRATION_APPLIED: ${{ vars.MARKET_ODDS_MIGRATION_APPLIED }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -96,7 +97,7 @@ jobs:
             echo "::error::нет секрета SUPABASE_ACCESS_TOKEN — выложить нечем"
             exit 1
           fi
-          KNOWN="amateur-logo assistant-bot digest-summary football-digest football-fixtures football-national football-odds football-scores-espn livekit-token smart-deck-builder smart-deck-editorial tg-pay"
+          KNOWN="amateur-logo assistant-bot digest-summary football-digest football-fixtures football-market-expansion football-national football-odds football-scores-espn livekit-token smart-deck-builder smart-deck-editorial tg-pay"
           ON_DISK=$(ls -1 supabase/functions | sort | tr '\n' ' ')
           EXPECTED=$(echo $KNOWN | tr ' ' '\n' | sort | tr '\n' ' ')
           if [ "$ON_DISK" != "$EXPECTED" ]; then
@@ -106,6 +107,10 @@ jobs:
             exit 1
           fi
           for fn in $KNOWN; do
+            if [ "$fn" = "football-market-expansion" ] && [ "${MARKET_ODDS_MIGRATION_APPLIED:-false}" != "true" ]; then
+              echo "Пропускаю football-market-expansion: сначала примените и проверьте migration zz_player_enrichment_markets_finetuning.sql, затем установите MARKET_ODDS_MIGRATION_APPLIED=true."
+              continue
+            fi
             echo "── $fn"
             npx supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
           done
