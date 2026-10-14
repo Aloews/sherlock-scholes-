@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS public.market_selection_result (
   market_key text NOT NULL,
   selection_key text NOT NULL,
   line_value numeric(12,4),
+  line_key numeric(12,4) GENERATED ALWAYS AS (COALESCE(line_value, -999999::numeric)) STORED,
   rule_version integer NOT NULL,
   status text NOT NULL CHECK (status IN ('pending', 'won', 'lost', 'push', 'void', 'half_won', 'half_lost')),
   actual_value numeric(12,4),
