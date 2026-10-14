@@ -9,6 +9,7 @@
 - `market_settlement_rule`: versioned rule definition by normalized market key.
 - `market_selection_result`: one settled selection per fixture/market/selection/rule version.
 - `provider_api_budget`: provider-wide hard limits with atomic quota reservation before a request.
+- `market_quotes_for_settlement`: server-side selection of the latest pre-kickoff quote per bookmaker, market, selection and line.
   Reservations are consumed after an attempted request, including timeouts, to avoid undercounting.
 
 The migration is not applied by these code changes. Apply it only through the reviewed migration
