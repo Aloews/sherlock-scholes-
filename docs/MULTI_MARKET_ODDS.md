@@ -57,6 +57,14 @@ totals, BTTS, spread, draw-no-bet, double chance and correct score. Quarter-line
 split into two half-lines and can return `half_won` / `half_lost`. Missing scores settle as `void`.
 All settlement assumes regulation time unless a market definition explicitly says otherwise.
 
+Persist outcomes only after the score source has been confirmed to represent regulation-time scores for the target competition:
+
+```bash
+python docs/market_settle_results.py --fixture-id FIXTURE_ID --confirm-regulation-scores
+```
+
+The settler uses only quotes with `snapshot_at < commence_at` and the rule version effective at kickoff. It skips player props until a dedicated player-stat result source is wired in. Do not pass the confirmation flag unless the source semantics have been verified.
+
 Before enabling any new market in production:
 1. Define and version its settlement rule.
 2. Add fixtures covering wins, losses, pushes, voids, half wins and half losses where relevant.
