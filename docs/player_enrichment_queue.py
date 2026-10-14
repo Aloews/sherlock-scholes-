@@ -99,13 +99,15 @@ def process_season_stats(task: dict, card: dict) -> tuple[str, int, str | None]:
     rows = all_rows("player_season_stat", {
         "select": "tm_player_id,card_id,season_id",
         "tm_player_id": "eq." + tm_id,
-        "order": "season_id"
+        "order": "season_id,competition_id,club_id"
     })
-    if rows:
-        return "succeeded", len(rows), None
     detail = ((result.stderr or "") + "\n" + (result.stdout or "")).strip()[-1500:]
     if result.returncode != 0:
         return "retryable", 0, "scraper_exit_%d: %s" % (result.returncode, detail)
+    if "ИГРОКОВ ПОТЕРЯНО" in detail or "ЗАПИСЬ ОТКЛОНЕНА" in detail:
+        return "retryable", len(rows), "provider_or_write_failure: " + detail
+    if rows:
+        return "succeeded", len(rows), None
     return "no_data", 0, "provider_returned_no_season_rows"
 
 
@@ -124,11 +126,18 @@ def finish(task: dict, status: str, count: int, error: str | None):
     sb("player_enrichment_queue", method="PATCH",
        params={"id": "eq." + str(task["id"]), "status": "eq.processing"},
        body=body)
+    persisted = sb("player_enrichment_queue", params={
+        "select": "status,result_count", "id": "eq." + str(task["id"]), "limit": 1
+    }) or []
+    verified = bool(persisted and persisted[0].get("status") == status
+                    and int(persisted[0].get("result_count") or 0) == count)
     print(json.dumps({
         "task_id": task["id"], "card_id": task["card_id"],
         "task_type": task["task_type"], "source": task["source"],
-        "status": status, "result_count": count, "error": error
+        "status": status, "result_count": count, "error": error,
+        "persisted_state_verified": verified
     }, ensure_ascii=False), flush=True)
+    return verified
 
 
 def main():
@@ -165,11 +174,14 @@ def main():
                     status, count, error = process_season_stats(task, card)
                 else:
                     status, count, error = "failed", 0, "unsupported_task_type"
-                finish(task, status, count, error)
+                if not finish(task, status, count, error):
+                    raise SystemExit("queue task persistence verification failed: %s" % task["id"])
             except subprocess.TimeoutExpired:
-                finish(task, "retryable", 0, "season_stats_timeout")
+                if not finish(task, "retryable", 0, "season_stats_timeout"):
+                    raise SystemExit("queue task timeout status could not be verified: %s" % task["id"])
             except Exception as exc:  # noqa: BLE001
-                finish(task, "retryable", 0, "%s: %s" % (type(exc).__name__, str(exc)))
+                if not finish(task, "retryable", 0, "%s: %s" % (type(exc).__name__, str(exc))):
+                    raise SystemExit("queue task error status could not be verified: %s" % task["id"])
             time.sleep(1.0)
 
 
