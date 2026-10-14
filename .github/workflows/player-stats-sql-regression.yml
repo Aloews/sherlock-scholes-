@@ -79,3 +79,12 @@ jobs:
 
       - name: AI deck builder quota regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/smart_deck_builder_quota.test.sql
+
+      - name: Create accumulator migration test stubs
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear_setup.sql
+
+      - name: Apply accumulator temporary-table fix
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014150000_fix_model_accumulator_temp_table_clear.sql
+
+      - name: Verify accumulator temporary-table fix
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear.test.sql
