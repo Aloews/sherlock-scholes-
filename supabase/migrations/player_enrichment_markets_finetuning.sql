@@ -41,7 +41,7 @@ as $$
 declare
   v_inserted integer := 0;
 begin
-  insert into public.player_enrichment_queue
+  insert into public.player_enrichment_queue as q
     (card_id, task_type, source, priority)
   select c.id, 'photo', 'transfermarkt',
          100 + least(coalesce(c.market_value_eur, 0) / 1000000, 50)::integer
@@ -76,9 +76,9 @@ begin
         last_error = null,
         finished_at = null,
         updated_at = now()
-    where public.player_enrichment_queue.status in ('failed', 'retryable')
-       or (public.player_enrichment_queue.status = 'no_data'
-           and public.player_enrichment_queue.updated_at < now() - interval '30 days');
+    where q.status in ('failed', 'retryable')
+       or (q.status = 'no_data'
+           and q.updated_at < now() - interval '30 days');
 
   get diagnostics v_inserted = row_count;
   return jsonb_build_object('inserted', v_inserted);
