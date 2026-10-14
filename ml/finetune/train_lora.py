@@ -139,6 +139,9 @@ def main() -> int:
         eval_dataset=validation_dataset,
         data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
     )
+    # Baseline is measured with adapters disabled on the same held-out test set.
+    with model.disable_adapter():
+        baseline_test_metrics = trainer.evaluate(test_dataset, metric_key_prefix="base_test")
     trainer.train()
     validation_metrics = trainer.evaluate(validation_dataset, metric_key_prefix="validation")
     test_metrics = trainer.evaluate(test_dataset, metric_key_prefix="test")
@@ -156,6 +159,7 @@ def main() -> int:
         "validation_sha256": sha256(validation_path),
         "test_sha256": sha256(test_path),
         "source_manifest": json.loads(manifest_path.read_text(encoding="utf-8")),
+        "base_test_metrics": baseline_test_metrics,
         "validation_metrics": validation_metrics,
         "test_metrics": test_metrics,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
