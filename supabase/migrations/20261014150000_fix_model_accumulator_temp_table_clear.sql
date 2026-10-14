@@ -22,9 +22,12 @@ BEGIN
     'gi'
   );
   IF v_after = v_before THEN
-    RAISE EXCEPTION 'Expected DELETE FROM _legs_tmp in build_model_accumulators was not found';
+    IF position('TRUNCATE TABLE _LEGS_TMP;' IN upper(v_before)) = 0 THEN
+      RAISE EXCEPTION 'Expected temporary-table clear in build_model_accumulators was not found';
+    END IF;
+  ELSE
+    EXECUTE v_after;
   END IF;
-  EXECUTE v_after;
 
   SELECT pg_get_functiondef(
     'public.backfill_model_accumulators(numeric)'::regprocedure
@@ -36,8 +39,11 @@ BEGIN
     'gi'
   );
   IF v_after = v_before THEN
-    RAISE EXCEPTION 'Expected DELETE FROM _bf_tmp in backfill_model_accumulators was not found';
+    IF position('TRUNCATE TABLE _BF_TMP;' IN upper(v_before)) = 0 THEN
+      RAISE EXCEPTION 'Expected temporary-table clear in backfill_model_accumulators was not found';
+    END IF;
+  ELSE
+    EXECUTE v_after;
   END IF;
-  EXECUTE v_after;
 END;
 $fix$;
