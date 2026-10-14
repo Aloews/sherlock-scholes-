@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS public.market_odds_quote (
   market_key text NOT NULL,
   selection_key text NOT NULL,
   line_value numeric(12,4),
+  line_key numeric(12,4) GENERATED ALWAYS AS (COALESCE(line_value, -999999::numeric)) STORED,
   decimal_odds numeric(12,5) NOT NULL CHECK (decimal_odds > 1 AND decimal_odds <= 10000),
   snapshot_at timestamptz NOT NULL,
   commence_at timestamptz NOT NULL,
@@ -104,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.market_odds_quote (
 CREATE UNIQUE INDEX IF NOT EXISTS market_odds_quote_dedupe_idx
   ON public.market_odds_quote (
     fixture_id, provider, bookmaker_key, market_key, selection_key,
-    COALESCE(line_value, -999999::numeric), snapshot_at
+    line_key, snapshot_at
   );
 CREATE INDEX IF NOT EXISTS market_odds_quote_backtest_idx
   ON public.market_odds_quote (market_key, snapshot_at, fixture_id);
@@ -211,5 +212,48 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.reserve_provider_api_budget(text, text, timestamptz, timestamptz, integer, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_provider_api_budget(text, text, timestamptz, timestamptz, integer, integer) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.consume_provider_api_budget(
+  p_provider text, p_budget_key text, p_period_start timestamptz, p_units integer DEFAULT 1
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+BEGIN
+  IF p_units < 1 THEN RAISE EXCEPTION 'units must be positive'; END IF;
+  UPDATE public.provider_api_budget
+  SET reserved_units = reserved_units - p_units,
+      used_units = used_units + p_units,
+      updated_at = now()
+  WHERE provider = p_provider AND budget_key = p_budget_key
+    AND period_start = p_period_start AND reserved_units >= p_units;
+  RETURN FOUND;
+END;
+$;
+REVOKE ALL ON FUNCTION public.consume_provider_api_budget(text, text, timestamptz, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.consume_provider_api_budget(text, text, timestamptz, integer) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.release_provider_api_budget(
+  p_provider text, p_budget_key text, p_period_start timestamptz, p_units integer DEFAULT 1
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+BEGIN
+  IF p_units < 1 THEN RAISE EXCEPTION 'units must be positive'; END IF;
+  UPDATE public.provider_api_budget
+  SET reserved_units = reserved_units - p_units, updated_at = now()
+  WHERE provider = p_provider AND budget_key = p_budget_key
+    AND period_start = p_period_start AND reserved_units >= p_units;
+  RETURN FOUND;
+END;
+$;
+REVOKE ALL ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.release_provider_api_budget(text, text, timestamptz, integer) TO service_role;
 
 COMMIT;
