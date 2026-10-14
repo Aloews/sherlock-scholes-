@@ -44,7 +44,7 @@ begin
   insert into public.fixtures(id,sport_key,commence_at,home_team,away_team)
   values('market-regression-fixture','soccer_epl',now()-interval '2 hours','Home FC','Away FC');
   v_count := public.upsert_fixture_market_quotes(jsonb_build_array(
-    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '90 minutes')::text,
+    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '3 hours')::text,
       'provider','the-odds-api','bookmaker','regression-book','region','eu','market_key','h2h',
       'outcome_key','draw','outcome_name','Draw','point',0,'price',3.2),
     jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '90 minutes')::text,

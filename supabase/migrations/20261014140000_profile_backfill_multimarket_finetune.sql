@@ -282,7 +282,7 @@ begin
    from fixtures f
   where f.id=q.fixture_id and (p_fixture_id is null or f.id=p_fixture_id)
     and f.completed is true and f.home_score is not null and f.away_score is not null
-    and f.commence_at<now() and q.settlement_status is null
+    and f.commence_at<now() and q.taken_at<f.commence_at and q.settlement_status is null
     and exists(select 1 from odds_market_settlement_rules r where r.market_key=q.market_key);
   get diagnostics v_count=row_count;
   return v_count;
