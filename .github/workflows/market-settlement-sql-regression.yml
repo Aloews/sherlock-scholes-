@@ -1,0 +1,45 @@
+name: market-settlement-sql-regression
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/zz_player_enrichment_markets_finetuning.sql"
+      - "supabase/tests/market_settlement.sql"
+      - "supabase/tests/bootstrap_market_migration.sql"
+      - ".github/workflows/market-settlement-sql-regression.yml"
+  workflow_dispatch: {}
+
+jobs:
+  sql-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap disposable dependency tables
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap_market_migration.sql
+      - name: Apply the new migration to disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/zz_player_enrichment_markets_finetuning.sql
+      - name: Verify market settlement, quote storage and queue transitions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/market_settlement.sql
