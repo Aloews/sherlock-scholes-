@@ -156,14 +156,16 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only-card", default="", help="process one cards.id UUID")
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
 
-    rows = read_all("cards", {"select": "id,name,category,wikidata_qid",
-                              "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
-                              "wikidata_qid": "not.is.null",
-                              "order": "id"})
+    filters = {"select": "id,name,category,wikidata_qid",
+               "category": "eq.player", "active": "is.true",
+               "photo_url": "is.null", "wikidata_qid": "not.is.null", "order": "id"}
+    if args.only_card:
+        filters["id"] = "eq." + args.only_card
+    rows = read_all("cards", filters)
     if args.limit:
         rows = rows[:args.limit]
     print("Карточек без фото, но с QID: %d  (APPLY=%s)"
