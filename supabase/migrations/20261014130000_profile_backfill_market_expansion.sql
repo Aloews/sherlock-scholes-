@@ -122,6 +122,33 @@ REVOKE ALL ON public.market_odds_quote FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.market_odds_quote TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.market_odds_quote_id_seq TO service_role;
 
+CREATE OR REPLACE FUNCTION public.market_quotes_for_settlement(p_fixture_id text)
+RETURNS TABLE (
+  market_key text,
+  selection_key text,
+  line_value numeric,
+  provider text,
+  bookmaker_key text,
+  snapshot_at timestamptz
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $quotes$
+  SELECT DISTINCT ON (q.market_key, q.selection_key, q.line_key, q.provider, q.bookmaker_key)
+    q.market_key, q.selection_key, q.line_value, q.provider, q.bookmaker_key, q.snapshot_at
+  FROM public.market_odds_quote AS q
+  JOIN public.fixtures AS f ON f.id = q.fixture_id
+  WHERE q.fixture_id = p_fixture_id
+    AND f.completed IS TRUE
+    AND f.home_score IS NOT NULL
+    AND f.away_score IS NOT NULL
+    AND q.snapshot_at < f.commence_at
+  ORDER BY q.market_key, q.selection_key, q.line_key, q.provider, q.bookmaker_key, q.snapshot_at DESC;
+$quotes$;
+REVOKE ALL ON FUNCTION public.market_quotes_for_settlement(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.market_quotes_for_settlement(text) TO service_role;
+
 -- Versioned settlement rules make historical results reproducible when a rule changes.
 CREATE TABLE IF NOT EXISTS public.market_settlement_rule (
   market_key text NOT NULL,
