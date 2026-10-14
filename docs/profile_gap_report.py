@@ -67,6 +67,10 @@ def make_report(cards: list[dict[str, Any]], seasons: list[dict[str, Any]]) -> d
                       and str(c["transfermarkt_id"]) not in season_tm_ids]
     missing_tm_id = [c for c in cards if not has_text(c.get("transfermarkt_id"))]
     missing_qid = [c for c in missing_photo if not has_text(c.get("wikidata_qid"))]
+    value = lambda card: int(card.get("market_value_eur") or 0)
+    missing_photo.sort(key=lambda c: (value(c), has_text(c.get("transfermarkt_id")), has_text(c.get("wikidata_qid"))), reverse=True)
+    missing_season.sort(key=lambda c: (value(c), has_text(c.get("transfermarkt_id"))), reverse=True)
+    missing_tm_id.sort(key=lambda c: value(c), reverse=True)
     photo_sources = Counter(c.get("photo_source") or "(null)" for c in cards if has_text(c.get("photo_url")))
     career_json_empty = [c for c in cards if not isinstance(c.get("career_stats"), dict) or not c["career_stats"]]
     return {
@@ -83,11 +87,17 @@ def make_report(cards: list[dict[str, Any]], seasons: list[dict[str, Any]]) -> d
         "photo_source_counts": dict(photo_sources.most_common()),
         "jobs": {
             "photo": [{"card_id": c["id"], "name": c.get("name"), "provider": "photo_source_router",
-                       "idempotency_key": f"photo:{c['id']}:v1", "priority": 10 if has_text(c.get("transfermarkt_id")) else 30}
+                       "transfermarkt_id": c.get("transfermarkt_id"), "market_value_eur": value(c),
+                       "idempotency_key": f"photo:{c['id']}:v1",
+                       "priority": 1 if value(c) >= 10000000 and has_text(c.get("transfermarkt_id")) else
+                                   5 if value(c) >= 1000000 and has_text(c.get("transfermarkt_id")) else
+                                   10 if has_text(c.get("transfermarkt_id")) else
+                                   15 if has_text(c.get("wikidata_qid")) else 50}
                       for c in missing_photo],
             "season_stats": [{"card_id": c["id"], "name": c.get("name"), "provider": "transfermarkt",
-                              "transfermarkt_id": c["transfermarkt_id"],
-                              "idempotency_key": f"season_stats:{c['id']}:transfermarkt:v1", "priority": 20}
+                              "transfermarkt_id": c["transfermarkt_id"], "market_value_eur": value(c),
+                              "idempotency_key": f"season_stats:{c['id']}:transfermarkt:v1",
+                              "priority": 1 if value(c) >= 10000000 else 5 if value(c) >= 1000000 else 20}
                              for c in missing_season],
         },
     }
@@ -132,6 +142,7 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 def enqueue_jobs(report: dict[str, Any], limit: int) -> int:
     pending = report["jobs"]["photo"] + report["jobs"]["season_stats"]
+    pending.sort(key=lambda item: (item["priority"], -int(item.get("market_value_eur") or 0), item["card_id"]))
     if limit > 0:
         pending = pending[:limit]
     payloads = []
@@ -142,7 +153,8 @@ def enqueue_jobs(report: dict[str, Any], limit: int) -> int:
             "provider": item["provider"],
             "idempotency_key": item["idempotency_key"],
             "priority": item["priority"],
-            "result": {"display_name": item.get("name"), "transfermarkt_id": item.get("transfermarkt_id")},
+            "result": {"display_name": item.get("name"), "transfermarkt_id": item.get("transfermarkt_id"),
+                       "market_value_eur": item.get("market_value_eur")},
         })
     inserted = 0
     # Batch writes to avoid one REST request per player; conflict handling keeps reruns idempotent.
@@ -163,8 +175,9 @@ def main() -> int:
     if args.enqueue and args.enqueue_limit < 0:
         parser.error("--enqueue-limit must be >= 0")
     try:
-        cards = read_all("cards", "id,name,photo_url,photo_source,wikidata_qid,transfermarkt_id,career_stats",
-                         {"category": "eq.player", "active": "eq.true", "order": "id.asc"})
+        cards = read_all("cards", "id,name,photo_url,photo_source,wikidata_qid,transfermarkt_id,market_value_eur,career_stats",
+                         {"category": "eq.player", "active": "eq.true",
+                          "order": "market_value_eur.desc.nullslast,id.asc"})
         seasons = read_all("player_season_stat", "card_id,tm_player_id,season_id,competition_id,club_id",
                            {"order": "tm_player_id.asc,season_id.asc,competition_id.asc,club_id.asc"})
         report = make_report(cards, seasons)
