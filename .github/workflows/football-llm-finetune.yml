@@ -1,0 +1,95 @@
+name: football-llm-finetune
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset_path:
+        description: "Repository path to a JSONL dataset (must contain only pre-kickoff features)"
+        required: true
+        type: string
+        default: "ml/data/forecast_training.jsonl"
+      train_end:
+        description: "Last date included in training split (YYYY-MM-DD)"
+        required: true
+        type: string
+        default: "2024-12-31"
+      validation_end:
+        description: "Last date included in validation split (YYYY-MM-DD)"
+        required: true
+        type: string
+        default: "2025-12-31"
+      run_training:
+        description: "Run optional LoRA training on a self-hosted GPU runner"
+        required: true
+        type: boolean
+        default: false
+      model_id:
+        description: "Open-weight model identifier"
+        required: true
+        type: string
+        default: "Qwen/Qwen2.5-3B-Instruct"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      artifact_name: finetune-dataset
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate dataset and make temporal split
+        env:
+          DATASET_PATH: ${{ inputs.dataset_path }}
+          TRAIN_END: ${{ inputs.train_end }}
+          VALIDATION_END: ${{ inputs.validation_end }}
+        run: |
+          test -f "$DATASET_PATH" || { echo "::error::Dataset file not found: $DATASET_PATH"; exit 2; }
+          python ml/finetune/prepare_dataset.py \
+            --input "$DATASET_PATH" \
+            --output-dir artifacts/finetune-dataset \
+            --train-end "$TRAIN_END" \
+            --validation-end "$VALIDATION_END"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finetune-dataset
+          path: artifacts/finetune-dataset/
+          retention-days: 30
+
+  train:
+    if: ${{ inputs.run_training == true }}
+    needs: prepare
+    runs-on: [self-hosted, linux, x64, gpu]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: finetune-dataset
+          path: artifacts/finetune-dataset
+      - name: Install isolated training dependencies
+        run: python -m pip install -r ml/finetune/requirements.txt
+      - name: Train LoRA adapter and evaluate held-out test
+        env:
+          MODEL_ID: ${{ inputs.model_id }}
+        run: |
+          python ml/finetune/train_lora.py \
+            --dataset-dir artifacts/finetune-dataset \
+            --output-dir artifacts/football-llm-lora \
+            --model-id "$MODEL_ID" \
+            --seed 1729
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: football-llm-lora
+          path: artifacts/football-llm-lora/
+          if-no-files-found: warn
+          retention-days: 30
