@@ -40,7 +40,7 @@ def patch_if_photo_empty(card_id: str, url: str) -> bool:
 
 def process_photo(task: dict, card: dict) -> tuple[str, int, str | None]:
     if card.get("photo_url"):
-        return "succeeded", 0, None
+        return "succeeded", 1, None
     if task["source"] == "transfermarkt":
         tm_id = str(card.get("transfermarkt_id") or "").strip()
         if not tm_id.isdigit():
