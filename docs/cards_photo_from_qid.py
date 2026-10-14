@@ -163,6 +163,7 @@ def main():
     rows = read_all("cards", {"select": "id,name,category,wikidata_qid,photo_url",
                               "category": "eq.player", "active": "is.true",
                               "wikidata_qid": "not.is.null",
+                              **({"id": "eq." + args.only_card_id} if args.only_card_id else {}),
                               "order": "id"})
     rows = [row for row in rows if not row.get("photo_url")]
     if args.only_card_id:

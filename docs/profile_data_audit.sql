@@ -42,9 +42,7 @@ where c.category='player' and c.active is true
        or not exists(select 1 from public.player_match_stats m where m.card_id=c.id)
        or (nullif(btrim(c.transfermarkt_id::text),'') is not null
            and not exists(select 1 from public.player_season_stat s where s.tm_player_id=c.transfermarkt_id::text)))
-order by c.market_value_eur desc nulls last,c.name
-limit 25000;
-
+order by c.market_value_eur desc nulls last,c.name;
 -- Optional after migration 20261014140000_profile_backfill_multimarket_finetune.sql:
 -- select task_type,status,count(*) as jobs,min(created_at) as oldest_job,
 --        max(updated_at) as latest_update,sum(attempts) as attempts

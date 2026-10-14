@@ -136,7 +136,7 @@ def main():
     # значило бы откатывать его молча.
     rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id,photo_url",
                               "category": "eq.player", "active": "is.true",
-                              "transfermarkt_id": "not.is.null",
+                              "transfermarkt_id": ("eq." + args.only) if args.only else "not.is.null",
                               "order": "id"})
 
     # Existing data can be a blank string as well as SQL NULL.
