@@ -24,8 +24,8 @@ class MarketSettlementTests(unittest.TestCase):
         self.assertEqual(settle("totals", "over", 1, 1, 2.25), "half_lost")
 
     def test_asian_spread_quarter_line_half_outcomes(self):
-        self.assertEqual(settle("spread", "home", 1, 0, -0.25), "half_won")
-        self.assertEqual(settle("spread", "home", 0, 0, -0.25), "half_lost")
+        self.assertEqual(settle("spread", "home", 1, 1, 0.25), "half_won")
+        self.assertEqual(settle("spread", "home", 1, 1, -0.25), "half_lost")
 
     def test_btts(self):
         self.assertEqual(settle("both_teams_to_score", "yes", 1, 1), "won")
