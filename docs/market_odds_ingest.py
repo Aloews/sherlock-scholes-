@@ -78,7 +78,8 @@ def normalize_market(market_key: str) -> str:
         "btts": "both_teams_to_score", "draw_no_bet": "draw_no_bet",
         "double_chance": "double_chance", "correct_score": "correct_score",
     }
-    return known.get(market_key, "player_prop" if market_key.startswith("player_") else market_key)
+    # Keep each provider-specific player prop key distinct for settlement rules.
+    return known.get(market_key, market_key)
 
 
 def normalize_selection(market_key: str, outcome_name: str, home: str, away: str) -> str:
