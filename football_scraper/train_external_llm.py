@@ -246,6 +246,10 @@ def main():
             raise RuntimeError("evaluation produced no finite losses")
         return sum(losses) / len(losses)
 
+    # Baseline is measured before training on the exact same untouched test split.
+    with model.disable_adapter():
+        base_test_loss = evaluate(test_loader)
+
     for epoch in range(1, args.epochs + 1):
         model.train()
         losses = []
@@ -287,8 +291,11 @@ def main():
         "epochs_requested": args.epochs,
         "best_epoch": best_epoch,
         "best_validation_loss": best_val,
+        "base_test_loss": base_test_loss,
+        "base_test_perplexity": math.exp(min(20.0, base_test_loss)),
         "test_loss": final_test_loss,
         "test_perplexity": math.exp(min(20.0, final_test_loss)),
+        "test_loss_delta_vs_base": final_test_loss - base_test_loss,
         "examples": {
             "train": len(train_rows), "validation": len(validation_rows), "test": len(test_rows)
         },
