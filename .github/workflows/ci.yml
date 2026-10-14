@@ -152,6 +152,15 @@ jobs:
           echo "::group::docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
           echo "::endgroup::"
+          echo "::group::docs/test_market_settlement.py"
+          python ../docs/test_market_settlement.py || failed="$failed docs/test_market_settlement.py"
+          echo "::endgroup::"
+          echo "::group::docs/test_market_odds_ingest.py"
+          python ../docs/test_market_odds_ingest.py || failed="$failed docs/test_market_odds_ingest.py"
+          echo "::endgroup::"
+          echo "::group::ml/finetune/test_prepare_dataset.py"
+          python ../ml/finetune/test_prepare_dataset.py || failed="$failed ml/finetune/test_prepare_dataset.py"
+          echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
             exit 1
