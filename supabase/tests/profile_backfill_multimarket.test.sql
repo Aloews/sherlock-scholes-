@@ -55,13 +55,16 @@ begin
   insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
   values('Soccer Wiki linked queue regression','player',true,'tm-sw-queue-regression','Qsw999999',5000)
   returning id into v_sw_card;
-  insert into public.soccerwiki_player(name,card_id) values('Soccer Wiki linked queue regression',v_sw_card);
+  insert into public.soccerwiki_player(name,card_id,photo_url) values('Soccer Wiki linked queue regression',v_sw_card,'https://cdn.soccerwiki.org/images/player/149111.png');
   perform public.enqueue_profile_backfill_jobs(100);
   if exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
     raise exception 'Transfermarkt photo task was enqueued for Soccer Wiki-linked card';
   end if;
   if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_qid') then
     raise exception 'QID fallback was not queued for Soccer Wiki-linked card';
+  end if;
+  if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_sw') then
+    raise exception 'Soccer Wiki photo task was not queued for mapped card with source URL';
   end if;
   insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
   values(v_sw_card,'photo_tm','tm-sw-queue-regression','Qsw999999',1000000000);
