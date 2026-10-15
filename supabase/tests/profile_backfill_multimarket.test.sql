@@ -1,7 +1,7 @@
 -- Run only after profile_market_finetune_test_setup.sql and the migration.
 begin;
 do $$
-declare v_card uuid; v_job record; v_count integer; v_status text; v_row record;
+declare v_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
 begin
   if public.settle_market_outcome('h2h','home',0,2,1) <> 'won' then raise exception 'h2h home'; end if;
   if public.settle_market_outcome('h2h','draw',0,2,1) <> 'lost' then raise exception 'h2h losing outcome'; end if;
@@ -48,6 +48,24 @@ begin
   if v_status <> 'succeeded' then raise exception 'verified queue task did not succeed'; end if;
   if (select count(*) from public.profile_backfill_jobs where card_id=v_card) <> 3 then
     raise exception 'queue did not create three distinct enrichment tasks';
+  end if;
+
+  -- Repeated bounded enqueue calls must advance past already-queued high-priority tasks.
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
+  select 'Batch queue regression ' || g, 'player', true,
+         'tm-batch-' || g, 'Qbatch' || g, 1000000
+    from generate_series(1,12) g;
+  v_first := public.enqueue_profile_backfill_jobs(10);
+  v_second := public.enqueue_profile_backfill_jobs(10);
+  if v_first <> 10 or v_second <> 10 then
+    raise exception 'bounded enqueue did not advance: first %, second %', v_first, v_second;
+  end if;
+  select count(*) into v_count
+    from public.profile_backfill_jobs j
+    join public.cards c on c.id=j.card_id
+   where c.name like 'Batch queue regression %';
+  if v_count <> 20 then
+    raise exception 'bounded enqueue starved later tasks: expected 20, got %', v_count;
   end if;
 
   -- Verify quote writes and explicitly confirmed settlement from final scores.
