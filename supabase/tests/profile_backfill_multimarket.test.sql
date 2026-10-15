@@ -13,6 +13,16 @@ begin
   if public.settle_market_outcome('totals','over',2.25,1,1) <> 'half_lost' then raise exception 'quarter total half loss'; end if;
   if public.settle_market_outcome('spreads','home',0.25,1,1) <> 'half_won' then raise exception 'quarter handicap half win'; end if;
   if public.settle_market_outcome('spreads','home',-0.25,1,1) <> 'half_lost' then raise exception 'quarter handicap half loss'; end if;
+  if public.settle_market_outcome('h2h_2_way','home',0,1,1) <> 'void' then raise exception 'two-way draw void'; end if;
+  if public.settle_market_outcome('draw_no_bet','home',0,1,1) <> 'push' then raise exception 'draw-no-bet draw push'; end if;
+  if public.settle_market_outcome('draw_no_bet','away',0,2,1) <> 'lost' then raise exception 'draw-no-bet losing selection'; end if;
+  if public.settle_market_outcome('double_chance','home_draw',0,1,1) <> 'won' then raise exception 'double chance home draw'; end if;
+  if public.settle_market_outcome('double_chance','draw_away',0,2,0) <> 'lost' then raise exception 'double chance losing selection'; end if;
+  if public.settle_market_outcome('double_chance','home_away',0,0,0) <> 'lost' then raise exception 'double chance excludes draw'; end if;
+  if public.settle_market_outcome('correct_score','2-1',0,2,1) <> 'won' then raise exception 'correct score exact'; end if;
+  if public.settle_market_outcome('correct_score','2-1',0,2,0) <> 'lost' then raise exception 'correct score mismatch'; end if;
+  if public.settle_market_outcome('totals','under',2.25,1,1) <> 'half_won' then raise exception 'quarter total half win'; end if;
+  if public.settle_market_outcome('totals','over',2.25,1,1) <> 'half_lost' then raise exception 'quarter total half loss'; end if;
 
   -- Request reservation is idempotent and never spends the protected reserve.
   if not public.reserve_odds_api_request('regression-idempotency','the-odds-api','soccer_epl','eu',array['h2h'],1) then
