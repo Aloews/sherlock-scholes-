@@ -25,9 +25,29 @@ def usable_photo(url):
 
 
 def classify_result(exit_code, output, verified):
-    if exit_code != 0 or "профилей потеряно" in output.casefold():
+    folded = output.casefold()
+    if exit_code != 0 or any(marker in folded for marker in (
+        "профилей потеряно", "игроков потеряно", "потеряно пачек",
+        "запись отклонена у",
+    )):
         return "retry"
-    return "succeeded" if verified else "no_data"
+    if verified:
+        return "succeeded"
+
+    # A successful process is not proof that the write landed. If a source
+    # reported data but read-after-write cannot see it, retry rather than
+    # silently classifying a write/filter bug as a genuine data gap.
+    if re.search(r"(?:портретов найдено|фото найдено)\s*:\s*[1-9]\d*", folded):
+        return "retry"
+    if re.search(r"строк статистики\s*:\s*[1-9]\d*", folded):
+        return "retry"
+
+    # Mark no_data only when the collector explicitly reports zero source rows.
+    if re.search(r"(?:портретов найдено|фото найдено)\s*:\s*0(?:\D|$)", folded):
+        return "no_data"
+    if re.search(r"строк статистики\s*:\s*0(?:\D|$)", folded):
+        return "no_data"
+    return "retry"
 
 
 def image_reachable(url):
