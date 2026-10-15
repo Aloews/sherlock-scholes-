@@ -10,7 +10,11 @@ on:
       max_jobs:
         description: "Maximum tasks to process in this run"
         type: string
-        default: "20"
+        default: "10"
+      enqueue_limit:
+        description: "Maximum new tasks to enqueue before processing"
+        type: string
+        default: "10"
 
 concurrency:
   group: profile-backfill-queue
@@ -37,12 +41,18 @@ jobs:
           [ "${{ inputs.max_jobs }}" -ge 1 ] && [ "${{ inputs.max_jobs }}" -le 500 ] || {
             echo "::error::max_jobs must be between 1 and 500"; exit 2;
           }
+          case "${{ inputs.enqueue_limit }}" in
+            ''|*[!0-9]*) echo "::error::enqueue_limit must be a non-negative integer"; exit 2 ;;
+          esac
+          [ "${{ inputs.enqueue_limit }}" -ge 1 ] && [ "${{ inputs.enqueue_limit }}" -le 100000 ] || {
+            echo "::error::enqueue_limit must be between 1 and 100000"; exit 2;
+          }
       - name: Enqueue gaps and optionally process a bounded batch
         run: |
           if [ "${{ inputs.enqueue_only }}" = "true" ]; then
-            python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit 50000
+            python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "${{ inputs.enqueue_limit }}"
           else
-            python docs/profile_backfill_queue.py --max-jobs "${{ inputs.max_jobs }}" --batch-size 10
+            python docs/profile_backfill_queue.py --max-jobs "${{ inputs.max_jobs }}" --batch-size 10 --enqueue-limit "${{ inputs.enqueue_limit }}"
           fi
       - name: Upload per-task verification report
         if: always()
