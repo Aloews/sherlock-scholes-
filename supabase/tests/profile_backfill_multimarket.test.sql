@@ -55,7 +55,7 @@ begin
   insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
   values('Soccer Wiki linked queue regression','player',true,'tm-sw-queue-regression','Qsw999999',5000)
   returning id into v_sw_card;
-  insert into public.soccerwiki_player(card_id) values(v_sw_card);
+  insert into public.soccerwiki_player(name,card_id) values('Soccer Wiki linked queue regression',v_sw_card);
   perform public.enqueue_profile_backfill_jobs(100);
   if exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
     raise exception 'Transfermarkt photo task was enqueued for Soccer Wiki-linked card';
