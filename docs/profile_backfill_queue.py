@@ -124,7 +124,7 @@ def rpc_status(value):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--enqueue-only",action="store_true")
-    parser.add_argument("--enqueue-limit",type=int,default=50000)
+    parser.add_argument("--enqueue-limit",type=int,default=10)
     parser.add_argument("--batch-size",type=int,default=10)
     parser.add_argument("--max-jobs",type=int,default=100)
     parser.add_argument("--report",default="profile-backfill-result.jsonl")
