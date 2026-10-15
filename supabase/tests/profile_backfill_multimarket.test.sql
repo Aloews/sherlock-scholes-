@@ -67,6 +67,9 @@ begin
   if v_count <> 3 then raise exception 'quote upsert wrote % rows',v_count; end if;
   update public.fixtures set completed=true,home_score=1,away_score=1,scores_at=now(),updated_at=now()
    where id='market-regression-fixture';
+  if public.settle_fixture_market_quotes('market-regression-fixture',true) <> 3 then
+    raise exception 'explicit settlement did not settle all three quote rows';
+  end if;
   if (select settlement_status from public.fixture_market_quotes where fixture_id='market-regression-fixture' and market_key='h2h') <> 'won' then
     raise exception 'h2h quote was not settled';
   end if;
@@ -79,13 +82,13 @@ begin
 
   -- Capture a real-shaped, immutable pre-kickoff example and label only after settlement.
   insert into public.fixtures(id,sport_key,commence_at,home_team,away_team)
-  values('finetune-regression-fixture','soccer_epl',now()+interval '1 hour','Home FC','Away FC');
+  values('finetune-regression-fixture','soccer_epl',now()-interval '3 hours','Home FC','Away FC');
   insert into public.forecast_inputs(fixture_id,h_gf,h_ga,a_gf,a_ga)
   values('finetune-regression-fixture',1.5,0.8,1.2,1.1);
   insert into public.fixture_odds(fixture_id,taken_at,bookmaker,home_price,draw_price,away_price)
-  values('finetune-regression-fixture',now()-interval '5 minutes','regression-book',2.0,3.2,3.8);
+  values('finetune-regression-fixture',now()-interval '5 hours','regression-book',2.0,3.2,3.8);
   insert into public.forecast_pick(fixture_id,model,commence_at,made_at)
-  values('finetune-regression-fixture','llm',now()+interval '1 hour',now()-interval '1 minute');
+  values('finetune-regression-fixture','llm',now()-interval '3 hours',now()-interval '4 hours');
   if not exists(select 1 from public.llm_finetune_examples where fixture_id='finetune-regression-fixture'
       and odds_snapshot_at < commence_at and feature_cutoff_at < commence_at) then
     raise exception 'pre-match fine-tune snapshot was not captured';

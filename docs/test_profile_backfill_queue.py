@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from profile_backfill_queue import classify_result, usable_photo
+from profile_backfill_queue import classify_result, usable_photo, rpc_status
 
 
 class QueueResultTests(unittest.TestCase):
@@ -19,7 +19,13 @@ class QueueResultTests(unittest.TestCase):
         self.assertFalse(usable_photo("https://img.example/portrait/big/default.jpg"))
         self.assertFalse(usable_photo("https://img.example/dummy.png"))
         self.assertFalse(usable_photo("file:///tmp/player.jpg"))
+        self.assertFalse(usable_photo("javascript:alert(1)"))
+        self.assertFalse(usable_photo("https:///missing-host.jpg"))
         self.assertTrue(usable_photo("https://img.example/player/123.jpg"))
+    def test_rpc_status_unwraps_postgrest_scalar_shapes(self):
+        self.assertEqual(rpc_status("pending"), "pending")
+        self.assertEqual(rpc_status(["pending"]), "pending")
+        self.assertEqual(rpc_status({"finish_profile_backfill_job": ["failed"]}), "failed")
 
 
 if __name__=="__main__": unittest.main()

@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def usable_photo(url):
     if not url:
         return False
-    path = urllib.parse.urlparse(str(url)).path
+    parsed = urllib.parse.urlparse(str(url))
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        return False
+    path = parsed.path
     return not re.search(r"/(default|dummy)[^/]*\.[a-z]+$", path, re.I)
 
 
@@ -86,6 +89,18 @@ def finish(job_id,verified,no_data=False,error=None):
     return rpc("finish_profile_backfill_job",{"p_job_id":job_id,"p_verified":verified,"p_no_data":no_data,"p_error":error})
 
 
+def rpc_status(value):
+    while isinstance(value, list):
+        if not value:
+            return ""
+        value = value[0]
+    if isinstance(value, dict):
+        for key in ("finish_profile_backfill_job", "status", "result"):
+            if key in value:
+                return rpc_status(value[key])
+    return str(value)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--enqueue-only",action="store_true")
@@ -96,11 +111,13 @@ def main():
     args=parser.parse_args()
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
         parser.error("SUPABASE_URL and SUPABASE_KEY are required")
+    if not 1 <= args.enqueue_limit <= 100000:
+        parser.error("--enqueue-limit must be between 1 and 100000")
+    if not 1 <= args.batch_size <= 20 or not 1 <= args.max_jobs <= 500:
+        parser.error("--batch-size must be 1..20 and --max-jobs must be 1..500")
     enqueued=rpc("enqueue_profile_backfill_jobs",{"p_limit":args.enqueue_limit})
     print("New jobs enqueued:",enqueued)
     if args.enqueue_only: return 0
-    if not 1 <= args.batch_size <= 20 or args.max_jobs < 1:
-        parser.error("--batch-size must be 1..20 and --max-jobs must be positive")
     results=[]; processed=0
     while processed<args.max_jobs:
         jobs=rpc("claim_profile_backfill_jobs",{"p_limit":min(args.batch_size,args.max_jobs-processed),"p_lease_minutes":45})
@@ -121,7 +138,7 @@ def main():
                         result["status"]="no_data"; finish(job["id"],False,no_data=True)
             except Exception as exc:
                 result["error"]=str(exc)[:2000]
-                try: result["status"]=str(finish(job["id"],False,error=result["error"]))
+                try: result["status"]=rpc_status(finish(job["id"],False,error=result["error"]))
                 except Exception as finish_exc: result["finish_error"]=str(finish_exc)[:500]
             results.append(result); processed+=1
             print(json.dumps(result,ensure_ascii=False))

@@ -211,7 +211,7 @@ begin
     and nullif(r->>'bookmaker','') is not null and nullif(r->>'outcome_key','') is not null
     and nullif(r->>'outcome_name','') is not null and coalesce(nullif(r->>'price','')::numeric,0)>1
   on conflict(fixture_id,taken_at,provider,bookmaker,region,market_key,outcome_key,point)
-  do update set outcome_name=excluded.outcome_name,price=excluded.price,settlement_status=null,settled_at=null;
+  do nothing;
   get diagnostics v_count=row_count;
   return v_count;
 end;
@@ -304,16 +304,24 @@ begin
 end;
 $$;
 
-create or replace function public.settle_fixture_market_quotes(p_fixture_id text default null)
+create or replace function public.settle_fixture_market_quotes(
+  p_fixture_id text default null,
+  p_confirm_regulation_scores boolean default false
+)
 returns integer language plpgsql security definer set search_path=public as $$
 declare v_count integer;
 begin
+  if p_confirm_regulation_scores is not true then
+    raise exception 'regulation-time score source must be explicitly confirmed'
+      using errcode='22023';
+  end if;
   update fixture_market_quotes q
     set settlement_status=public.settle_market_outcome(q.market_key,q.outcome_key,q.point,f.home_score,f.away_score),
-        settled_at=coalesce(f.scores_at,now())
+        settled_at=f.scores_at
    from fixtures f
   where f.id=q.fixture_id and (p_fixture_id is null or f.id=p_fixture_id)
     and f.completed is true and f.home_score is not null and f.away_score is not null
+    and f.scores_at is not null and f.scores_at>=f.commence_at and f.scores_at<=now()
     and f.commence_at<now() and q.taken_at<f.commence_at and q.settlement_status is null
     and exists(select 1 from odds_market_settlement_rules r where r.market_key=q.market_key);
   get diagnostics v_count=row_count;
@@ -321,33 +329,17 @@ begin
 end;
 $$;
 
-create or replace function public.settle_market_quotes_after_fixture_update()
-returns trigger language plpgsql security definer set search_path=public as $$
-begin
-  if new.completed is true and new.home_score is not null and new.away_score is not null
-     and new.commence_at < now() then
-    perform public.settle_fixture_market_quotes(new.id);
-  end if;
-  return new;
-end;
-$$;
-drop trigger if exists fixtures_settle_market_quotes on public.fixtures;
-create trigger fixtures_settle_market_quotes
-after update of completed,home_score,away_score,scores_at on public.fixtures
-for each row execute function public.settle_market_quotes_after_fixture_update();
-revoke all on function public.settle_market_quotes_after_fixture_update() from public,anon,authenticated;
-
 revoke all on function public.spend_odds_credits_with_reserve(integer,integer) from public,anon,authenticated;
 grant execute on function public.spend_odds_credits_with_reserve(integer,integer) to service_role;
 revoke all on function public.reserve_odds_api_request(text,text,text,text,text[],integer) from public,anon,authenticated;
 revoke all on function public.finish_odds_api_request(text,text,integer,integer,text) from public,anon,authenticated;
 revoke all on function public.upsert_fixture_market_quotes(jsonb) from public,anon,authenticated;
 revoke all on function public.settle_market_outcome(text,text,numeric,integer,integer) from public,anon,authenticated;
-revoke all on function public.settle_fixture_market_quotes(text) from public,anon,authenticated;
+revoke all on function public.settle_fixture_market_quotes(text,boolean) from public,anon,authenticated;
 grant execute on function public.reserve_odds_api_request(text,text,text,text,text[],integer) to service_role;
 grant execute on function public.finish_odds_api_request(text,text,integer,integer,text) to service_role;
 grant execute on function public.upsert_fixture_market_quotes(jsonb) to service_role;
-grant execute on function public.settle_fixture_market_quotes(text) to service_role;
+grant execute on function public.settle_fixture_market_quotes(text,boolean) to service_role;
 
 create table if not exists public.llm_finetune_examples (
   fixture_id text primary key references public.fixtures(id) on delete cascade,
@@ -397,11 +389,13 @@ begin
          settled_at=coalesce(f.scores_at,f.updated_at)
     from fixtures f where f.id=e.fixture_id and f.completed is true
      and f.home_score is not null and f.away_score is not null
-     and coalesce(f.scores_at,f.updated_at)>=f.commence_at and e.target_outcome is null;
+     and f.scores_at is not null and f.scores_at>=f.commence_at and f.scores_at<=now()
+     and f.commence_at<=now() and e.target_outcome is null;
   return query select e.fixture_id,e.commence_at,e.feature_cutoff_at,e.odds_snapshot_at,e.settled_at,e.input_context,e.target_outcome
     from llm_finetune_examples e where e.target_outcome is not null
      and e.feature_cutoff_at<e.commence_at and e.odds_snapshot_at is not null
-     and e.odds_snapshot_at<e.commence_at and e.settled_at>=e.commence_at
+     and e.odds_snapshot_at<=e.feature_cutoff_at and e.odds_snapshot_at<e.commence_at
+     and e.commence_at<=now() and e.settled_at>=e.commence_at and e.settled_at<=now()
     order by e.commence_at,e.fixture_id;
 end;
 $$;

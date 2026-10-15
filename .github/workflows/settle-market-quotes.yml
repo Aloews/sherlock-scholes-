@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: ""
+      confirm_regulation_scores:
+        description: "Confirm this competition's fixture scores are regulation-time scores"
+        type: boolean
+        required: true
+        default: false
 
 concurrency:
   group: settle-market-quotes
@@ -27,12 +32,15 @@ jobs:
           [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ] || {
             echo "::error::Supabase secrets are required"; exit 2;
           }
+          [ "${{ inputs.confirm_regulation_scores }}" = "true" ] || {
+            echo "::error::Confirm regulation-time scores before settlement"; exit 2;
+          }
       - name: Settle only completed fixtures and verify RPC response
         run: |
           if [ -n "$FIXTURE_ID" ]; then
-            payload=$(jq -n --arg id "$FIXTURE_ID" '{p_fixture_id:$id}')
+            payload=$(jq -n --arg id "$FIXTURE_ID" '{p_fixture_id:$id,p_confirm_regulation_scores:true}')
           else
-            payload='{}'
+            payload='{"p_fixture_id":null,"p_confirm_regulation_scores":true}'
           fi
           code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/settle_fixture_market_quotes" \
             -H "apikey: $SUPABASE_KEY" \
