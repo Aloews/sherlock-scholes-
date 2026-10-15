@@ -65,13 +65,13 @@ export function rowsForMarkets(
           else if (name === event.away_team) outcomeKey = "away";
           else if (normalized === "draw") outcomeKey = "draw";
         } else if (key === "double_chance") {
-          const compact = normalized.replace(/[\\s/\\-]+/g, "_");
+          const compact = normalized.replaceAll(" ", "_").replaceAll("/", "_").replaceAll("-", "_");
           if (["home_or_draw", "1x", "home_draw"].includes(compact) || normalized === `${event.home_team.toLowerCase()} or draw`) outcomeKey = "home_draw";
           else if (["draw_or_away", "x2", "draw_away"].includes(compact) || normalized === `draw or ${event.away_team.toLowerCase()}`) outcomeKey = "draw_away";
           else if (["home_or_away", "12", "home_away"].includes(compact) || normalized === `${event.home_team.toLowerCase()} or ${event.away_team.toLowerCase()}`) outcomeKey = "home_away";
         } else if (key === "correct_score") {
-          const score = normalized.replace(":", "-").replace(/\\s+/g, "");
-          if (/^\\d{1,3}-\\d{1,3}$/.test(score)) outcomeKey = score;
+          const score = normalized.replace(":", "-").replaceAll(" ", "");
+          if (/^\d{1,3}-\d{1,3}$/.test(score)) outcomeKey = score;
         } else if (key === "spreads") {
           if (name === event.home_team) outcomeKey = "home";
           else if (name === event.away_team) outcomeKey = "away";
