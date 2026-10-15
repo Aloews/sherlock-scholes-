@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,9 +22,25 @@ def usable_photo(url):
 
 
 def classify_result(exit_code, output, verified):
-    if exit_code != 0 or "ПРОФИЛЕЙ ПОТЕРЯНО" in output:
+    if exit_code != 0 or "профилей потеряно" in output.casefold():
         return "retry"
     return "succeeded" if verified else "no_data"
+
+
+def image_reachable(url):
+    if not usable_photo(url):
+        return False
+    request = urllib.request.Request(str(url), headers={
+        "User-Agent": "SherlockScholes/1.0 (+https://github.com/Aloews/sherlock-scholes-)",
+        "Range": "bytes=0-1023",
+    })
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            response.read(1024)
+            return response.status < 400 and content_type.startswith("image/")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return False
 
 
 def request(path, params=None, method="GET", body=None):
@@ -45,7 +62,7 @@ def rpc(name,payload):
 def verify(job):
     if job["task_type"] in ("photo_tm","photo_qid"):
         rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
-        return bool(rows and usable_photo(rows[0].get("photo_url")))
+        return bool(rows and image_reachable(rows[0].get("photo_url")))
     rows=request("player_season_stat",{"select":"tm_player_id","tm_player_id":"eq."+str(job["transfermarkt_id"]),"limit":"1"})
     return bool(rows)
 
@@ -57,7 +74,7 @@ def run_collector(job):
     elif task=="photo_qid":
         command=[sys.executable,"docs/cards_photo_from_qid.py","--only-card-id",str(job["card_id"])]
     elif task=="season_stats":
-        command=[sys.executable,"docs/players_stats_transfermarkt.py","--only",str(job["transfermarkt_id"])]
+        command=[sys.executable,"docs/players_stats_transfermarkt.py","--only",str(job["transfermarkt_id"]),"--include-unvalued"]
     else:
         raise ValueError("Unsupported task type: "+str(task))
     result=subprocess.run(command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
@@ -82,6 +99,8 @@ def main():
     enqueued=rpc("enqueue_profile_backfill_jobs",{"p_limit":args.enqueue_limit})
     print("New jobs enqueued:",enqueued)
     if args.enqueue_only: return 0
+    if not 1 <= args.batch_size <= 20 or args.max_jobs < 1:
+        parser.error("--batch-size must be 1..20 and --max-jobs must be positive")
     results=[]; processed=0
     while processed<args.max_jobs:
         jobs=rpc("claim_profile_backfill_jobs",{"p_limit":min(args.batch_size,args.max_jobs-processed),"p_lease_minutes":45})
