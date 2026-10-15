@@ -10,15 +10,15 @@ class QueueResultTests(unittest.TestCase):
     def test_only_readback_marks_success(self):
         self.assertEqual(classify_result(0, "written 1", True), "succeeded")
         self.assertEqual(
-            classify_result(0, "Портретов найдено : 0\\nЗаписано : 0", False),
+            classify_result(0, "Портретов найдено : 0\nЗаписано : 0", False),
             "no_data",
         )
         self.assertEqual(
-            classify_result(0, "Портретов найдено : 1\\nЗаписано : 1", False),
+            classify_result(0, "Портретов найдено : 1\nЗаписано : 1", False),
             "retry",
         )
         self.assertEqual(
-            classify_result(0, "Строк статистики : 0\\nБез матчей : 1", False),
+            classify_result(0, "Строк статистики : 0\nБез матчей : 1", False),
             "no_data",
         )
         self.assertEqual(classify_result(0, "Строк статистики : 1", False), "retry")
