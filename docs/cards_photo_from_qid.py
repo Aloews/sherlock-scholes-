@@ -165,7 +165,7 @@ def main():
                               "wikidata_qid": "not.is.null",
                               **({"id": "eq." + args.only_card_id} if args.only_card_id else {}),
                               "order": "id"})
-    rows = [row for row in rows if not row.get("photo_url")]
+    rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
     if args.only_card_id:
         rows = [row for row in rows if row["id"] == args.only_card_id]
     if args.limit:
@@ -193,7 +193,7 @@ def main():
                 # ⚠️ Условие `photo_url is null` СТОИТ В ЗАПРОСЕ, а не только в
                 # выборке: между чтением и записью мог отработать другой шаг.
                 sb("cards", method="PATCH",
-                   params={"id": "eq." + card_id, "photo_url": "is.null"},
+                   params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
                    body={"photo_url": url, "photo_source": "wikimedia_commons"})
                 written += 1
         batch = []
