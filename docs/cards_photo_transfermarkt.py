@@ -38,6 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
+import html as html_lib
 import json
 import os
 import re
@@ -53,11 +54,182 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
-# Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
-# адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
-# встретиться по другому поводу.
-PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+$', re.I)
+META_TAG = re.compile(r"<meta\b[^>]*>", re.I | re.S)
+META_ATTR = re.compile(r"""([a-zA-Z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+
+
+def sb(path, method="GET", body=None, params=None):
+    url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    key = os.environ["SUPABASE_KEY"]
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method, headers={
+        "apikey": key, "Authorization": "Bearer " + key,
+        "Content-Type": "application/json", "Prefer": "return=minimal"})
+    with urllib.request.urlopen(req, timeout=180) as fh:
+        raw = fh.read()
+    return json.loads(raw) if raw else []
+
+
+def read_all(path, params):
+    """PostgREST режет по db-max-rows=1000 — без страниц теряется хвост."""
+    out, offset = [], 0
+    while True:
+        page = sb(path, params=dict(params, limit=PAGE, offset=offset))
+        out.extend(page)
+        if len(page) < PAGE:
+            return out
+        offset += PAGE
+
+
+def portrait_url(html):
+    """Адрес портрета со страницы профиля — или None.
+
+    ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
+    в колоду попадёт серый силуэт под видом фотографии.
+    """
+    url = meta_image_url(html)
+    if not url:
+        return None
+    path = urllib.parse.urlparse(url).path
+    if PLACEHOLDER.search(path):
+        return None
+    return url
+
+
+def get(url):
+    for attempt in range(RETRIES):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": UA, "Accept-Language": "en"})
+            with urllib.request.urlopen(req, timeout=60) as fh:
+                return fh.read().decode("utf-8", "replace")
+        except Exception:                                        # noqa: BLE001
+            if attempt + 1 == RETRIES:
+                return None
+            time.sleep(PAUSE * 3 * (attempt + 1))
+    return None
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
+    ap.add_argument("--include-soccerwiki", action="store_true",
+                    help="не пропускать тех, кого закроет Soccer Wiki")
+    args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        raise SystemExit("--only должен быть числовым Transfermarkt ID")
+    apply_ = os.environ.get("APPLY") == "1"
+    if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
+        raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
+
+    # ⚠️ ТОЛЬКО ИГРОКИ. У клуба на TM своя эмблема, но эмблемы в этом проекте
+    # берутся с ESPN и решение это принято владельцем; подменять их отсюда
+    # значило бы откатывать его молча.
+    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id,photo_url",
+                              "category": "eq.player", "active": "is.true",
+                              "transfermarkt_id": ("eq." + args.only) if args.only else "not.is.null",
+                              "order": "id"})
+
+    # Existing data can be a blank string as well as SQL NULL.
+    rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
+    if args.only:
+        rows = [row for row in rows if str(row.get("transfermarkt_id") or "") == args.only]
+
+    # ⚠️ ТЕХ, КОГО ЗАКРОЕТ SOCCER WIKI, ЗДЕСЬ СПРАШИВАТЬ НЕЗАЧЕМ, И ЭТО ЗАМЕР.
+    #
+    # У Transfermarkt портрета для этого хвоста попросту НЕТ: замер 08.09.2026
+    # — 650 прочитанных профилей, 0 портретов, у всех `portrait/big/default.jpg`.
+    # Проверено вручную на шести подряд. У Soccer Wiki те же люди
+    # сфотографированы: из 912 прочитанных страниц портрет есть у 912.
+    #
+    # Из 13 589 бесфотных карточек с id на TM за 6650 отвечает Soccer Wiki, и
+    # `fill_photo_from_soccerwiki` поставит им портрет сам. Спрашивать про них
+    # ещё и Transfermarkt — это 6650 запросов в секунду каждый ради нуля, и
+    # ровно на столько же позже дойдёт очередь до тех 6939, для кого TM —
+    # ЕДИНСТВЕННЫЙ источник.
+    #
+    # `--include-soccerwiki` возвращает старое поведение: если у источника
+    # однажды появятся портреты, проверить это надо будет без правки кода.
+    if not args.include_soccerwiki:
+        linked = {r["card_id"] for r in read_all(
+            "soccerwiki_player", {"select": "card_id", "card_id": "not.is.null"})}
+        before = len(rows)
+        rows = [r for r in rows if r["id"] not in linked]
+        print("Пропущено как «закроет Soccer Wiki»: %d" % (before - len(rows)), flush=True)
+
+    if args.limit:
+        rows = rows[:args.limit]
+    print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
+          % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
+    if not rows:
+        return
+
+    found = placeholder = lost = written = 0
+    batch = []
+
+    def flush():
+        """Запись ПО ХОДУ: оборванный прогон обязан оставить сделанное."""
+        nonlocal batch, written
+        if apply_:
+            for card_id, url in batch:
+                sb("cards", method="PATCH",
+                   params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
+                   body={"photo_url": url})
+                written += 1
+        batch = []
+
+    for i, card in enumerate(rows, 1):
+        html = get(PROFILE % card["transfermarkt_id"])
+        if html is None:
+            lost += 1
+        else:
+            url = portrait_url(html)
+            if url:
+                found += 1
+                batch.append((card["id"], url))
+            elif meta_image_url(html):
+                placeholder += 1
+        if len(batch) >= WRITE_BATCH:
+            flush()
+        if i % 25 == 0:
+            print("  %d/%d, портретов %d, заглушек %d, потеряно %d"
+                  % (i, len(rows), found, placeholder, lost), flush=True)
+        time.sleep(PAUSE)
+
+    flush()
+    print("-" * 70)
+    print("Портретов найдено : %d" % found)
+    print("Заглушек отвергнуто: %d" % placeholder)
+    print("Записано          : %d" % written)
+    if lost:
+        # ⚠️ Потеря — это НЕ «фото нет». Пустота непрочитанной страницы ничего
+        # не значит, и прогон надо повторить.
+        print("⚠️ ПРОФИЛЕЙ ПОТЕРЯНО: %d — повторить прогон" % lost)
+    if not apply_:
+        print("\nСухой прогон. APPLY=1 — записать.")
+
+
+if __name__ == "__main__":
+    main()
+, re.I)
+
+
+def meta_image_url(html):
+    for tag in META_TAG.findall(html or ""):
+        attrs = {}
+        for match in META_ATTR.finditer(tag):
+            value = next((part for part in match.groups()[1:] if part is not None), "")
+            attrs[match.group(1).lower()] = html_lib.unescape(value).strip()
+        image_key = attrs.get("property", attrs.get("name", "")).casefold()
+        if image_key in {"og:image", "twitter:image", "twitter:image:src"}:
+            value = attrs.get("content", "").replace(r"\/", "/").strip()
+            if value:
+                return value
+    return None
 
 
 def sb(path, method="GET", body=None, params=None):
