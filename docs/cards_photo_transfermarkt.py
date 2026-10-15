@@ -38,6 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
+import html as html_lib
 import json
 import os
 import re
@@ -53,12 +54,23 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
-# Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
-# адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
-# встретиться по другому поводу.
-PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+$', re.I)
+META_TAG = re.compile(r"<meta\b[^>]*>", re.I | re.S)
+META_ATTR = re.compile(r"""([a-zA-Z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+\Z', re.I)
 
+
+def meta_image_url(html):
+    for tag in META_TAG.findall(html or ""):
+        attrs = {}
+        for match in META_ATTR.finditer(tag):
+            value = next((part for part in match.groups()[1:] if part is not None), "")
+            attrs[match.group(1).lower()] = html_lib.unescape(value).strip()
+        image_key = attrs.get("property", attrs.get("name", "")).casefold()
+        if image_key in {"og:image", "twitter:image", "twitter:image:src"}:
+            value = attrs.get("content", "").replace("\\/", "/").strip()
+            if value:
+                return value
+    return None
 
 def sb(path, method="GET", body=None, params=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
@@ -91,10 +103,7 @@ def portrait_url(html):
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    m = OG_IMAGE.search(html or "")
-    if not m:
-        return None
-    url = m.group(1).strip()
+    url = meta_image_url(html)
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
@@ -196,7 +205,7 @@ def main():
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif OG_IMAGE.search(html):
+            elif meta_image_url(html):
                 placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()
