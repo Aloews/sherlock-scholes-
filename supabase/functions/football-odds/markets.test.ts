@@ -51,3 +51,28 @@ Deno.test("default market rotation preserves quota and cycles through secondary 
   if (third.length !== 1 || !["spreads", "totals", "btts"].includes(third[0])) throw new Error("extra cycle must request one market");
   if (later.join(",") === third.join(",")) throw new Error("extra markets should rotate across cycles");
 });
+
+Deno.test("normalizes draw-no-bet, double chance and correct-score markets", () => {
+  const event: OddsEventPayload = {
+    id: "event-3", home_team: "Home FC", away_team: "Away FC",
+    bookmakers: [{ key: "book-b", markets: [
+      { key: "draw_no_bet", outcomes: [
+        { name: "Home FC", price: 1.7 }, { name: "Away FC", price: 2.2 },
+      ] },
+      { key: "double_chance", outcomes: [
+        { name: "Home FC or Draw", price: 1.3 },
+        { name: "Draw or Away FC", price: 1.5 },
+        { name: "Home FC or Away FC", price: 1.2 },
+      ] },
+      { key: "correct_score", outcomes: [
+        { name: "2:1", price: 8.5 }, { name: "0-0", price: 7.0 },
+      ] },
+    ] }],
+  };
+  const rows = rowsForMarkets(event, "2026-10-14T12:00:00Z",
+    ["draw_no_bet", "double_chance", "correct_score"]);
+  if (rows.length !== 7) throw new Error("expected seven expanded-market rows, got " + rows.length);
+  if (!rows.some((row) => row.market_key === "draw_no_bet" && row.outcome_key === "home")) throw new Error("DNB team mapping failed");
+  if (!rows.some((row) => row.market_key === "double_chance" && row.outcome_key === "home_draw")) throw new Error("double-chance mapping failed");
+  if (!rows.some((row) => row.market_key === "correct_score" && row.outcome_key === "2-1")) throw new Error("correct-score normalization failed");
+});
