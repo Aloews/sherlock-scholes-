@@ -140,7 +140,7 @@ def main():
                               "order": "id"})
 
     # Existing data can be a blank string as well as SQL NULL.
-    rows = [row for row in rows if not row.get("photo_url")]
+    rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
     if args.only:
         rows = [row for row in rows if str(row.get("transfermarkt_id") or "") == args.only]
 
@@ -182,7 +182,7 @@ def main():
         if apply_:
             for card_id, url in batch:
                 sb("cards", method="PATCH",
-                   params={"id": "eq." + card_id, "photo_url": "is.null"},
+                   params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
                    body={"photo_url": url})
                 written += 1
         batch = []
