@@ -11,7 +11,8 @@ name: ci
 on:
   push:
     branches: [main]
-  pull_request: {}
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   # Manual re-run. GitHub occasionally drops a `synchronize` event and the
   # push simply never gets a check suite — without this there is no way to
   # ask for one short of pushing an empty commit.
