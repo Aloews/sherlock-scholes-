@@ -1,6 +1,9 @@
 name: profile-backfill-queue
 
 on:
+  push:
+    branches:
+      - release/phase2-profile-worker
   workflow_dispatch:
     inputs:
       enqueue_only:
@@ -34,8 +37,8 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ inputs.max_jobs }}
-          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+          MAX_JOBS: ${{ inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
           case "$MAX_JOBS" in
@@ -52,7 +55,7 @@ jobs:
           }
       - name: Enqueue gaps and optionally process a bounded batch
         env:
-          ENQUEUE_ONLY: ${{ inputs.enqueue_only }}
+          ENQUEUE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.enqueue_only || 'false' }}
           MAX_JOBS: ${{ inputs.max_jobs }}
           ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
         run: |
