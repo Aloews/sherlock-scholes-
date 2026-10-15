@@ -1,7 +1,7 @@
 -- Run only after profile_market_finetune_test_setup.sql and the migration.
 begin;
 do $$
-declare v_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
+declare v_card uuid; v_sw_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
 begin
   if public.settle_market_outcome('h2h','home',0,2,1) <> 'won' then raise exception 'h2h home'; end if;
   if public.settle_market_outcome('h2h','draw',0,2,1) <> 'lost' then raise exception 'h2h losing outcome'; end if;
@@ -48,6 +48,27 @@ begin
   if v_status <> 'succeeded' then raise exception 'verified queue task did not succeed'; end if;
   if (select count(*) from public.profile_backfill_jobs where card_id=v_card) <> 3 then
     raise exception 'queue did not create three distinct enrichment tasks';
+  end if;
+
+  -- Soccer Wiki-linked cards must not be queued for a Transfermarkt photo collector
+  -- that deliberately excludes them. Existing stale photo_tm jobs are retired.
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
+  values('Soccer Wiki linked queue regression','player',true,'tm-sw-queue-regression','Qsw999999',5000)
+  returning id into v_sw_card;
+  insert into public.soccerwiki_player(card_id) values(v_sw_card);
+  perform public.enqueue_profile_backfill_jobs(100);
+  if exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
+    raise exception 'Transfermarkt photo task was enqueued for Soccer Wiki-linked card';
+  end if;
+  if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_qid') then
+    raise exception 'QID fallback was not queued for Soccer Wiki-linked card';
+  end if;
+  insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
+  values(v_sw_card,'photo_tm','tm-sw-queue-regression','Qsw999999',1000000000);
+  perform * from public.claim_profile_backfill_jobs(1,45);
+  if not exists(select 1 from public.profile_backfill_jobs
+                 where card_id=v_sw_card and task_type='photo_tm' and status='no_data') then
+    raise exception 'stale Transfermarkt photo task was not retired';
   end if;
 
   -- Repeated bounded enqueue calls must advance past already-queued high-priority tasks.
