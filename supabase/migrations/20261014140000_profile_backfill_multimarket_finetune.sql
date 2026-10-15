@@ -109,7 +109,7 @@ create table if not exists public.fixture_market_quotes (
   fixture_id text not null references public.fixtures(id) on delete cascade,
   taken_at timestamptz not null, provider text not null default 'the-odds-api',
   bookmaker text not null, region text not null default 'eu',
-  market_key text not null check (market_key in ('h2h','spreads','totals','btts')),
+  market_key text not null check (market_key in ('h2h','h2h_2_way','spreads','totals','btts','draw_no_bet','double_chance','correct_score')),
   outcome_key text not null, outcome_name text not null,
   point numeric(8,3) not null default 0, price numeric(8,3) not null check (price > 1),
   settlement_status text check (settlement_status in ('won','lost','push','half_won','half_lost','void')),
@@ -123,7 +123,7 @@ create table if not exists public.odds_market_settlement_rules (
   updated_at timestamptz not null default now()
 );
 insert into public.odds_market_settlement_rules(market_key,settlement_method)
-values ('h2h','three_way_result'),('spreads','handicap'),('totals','total_goals'),('btts','both_teams_score')
+values ('h2h','three_way_result'),('h2h_2_way','two_way_result'),('spreads','handicap'),('totals','total_goals'),('btts','both_teams_score'),('draw_no_bet','draw_no_bet'),('double_chance','double_chance'),('correct_score','correct_score')
 on conflict(market_key) do update set settlement_method=excluded.settlement_method,version=excluded.version,updated_at=now();
 
 create table if not exists public.odds_api_usage (
@@ -220,18 +220,48 @@ $$;
 create or replace function public.settle_market_outcome(
   p_market text,p_outcome text,p_point numeric,p_home_score integer,p_away_score integer
 ) returns text language plpgsql immutable set search_path=public as $$
-declare v_actual text; v_total numeric:=p_home_score+p_away_score; v_margin numeric;
-        v_a numeric; v_b numeric; v_first text; v_second text;
+declare
+  v_actual text;
+  v_total numeric:=p_home_score+p_away_score;
+  v_margin numeric;
+  v_a numeric; v_b numeric; v_first text; v_second text;
+  v_expected_home integer; v_expected_away integer;
 begin
-  if p_home_score is null or p_away_score is null then return null; end if;
+  if p_home_score is null or p_away_score is null or p_home_score < 0 or p_away_score < 0 then
+    return null;
+  end if;
+
+  v_actual:=case when p_home_score>p_away_score then 'home'
+                 when p_home_score<p_away_score then 'away' else 'draw' end;
+
   if p_market='h2h' then
-    v_actual:=case when p_home_score>p_away_score then 'home' when p_home_score<p_away_score then 'away' else 'draw' end;
     return case when p_outcome=v_actual then 'won' else 'lost' end;
+  elsif p_market='h2h_2_way' then
+    if v_actual='draw' then return 'void'; end if;
+    return case when p_outcome=v_actual then 'won' else 'lost' end;
+  elsif p_market='draw_no_bet' then
+    if lower(p_outcome) not in ('home','away') then return null; end if;
+    if v_actual='draw' then return 'push'; end if;
+    return case when lower(p_outcome)=v_actual then 'won' else 'lost' end;
+  elsif p_market='double_chance' then
+    if lower(p_outcome)='home_draw' then
+      return case when v_actual in ('home','draw') then 'won' else 'lost' end;
+    elsif lower(p_outcome)='draw_away' then
+      return case when v_actual in ('draw','away') then 'won' else 'lost' end;
+    elsif lower(p_outcome)='home_away' then
+      return case when v_actual in ('home','away') then 'won' else 'lost' end;
+    else return null;
+    end if;
+  elsif p_market='correct_score' then
+    if p_outcome !~ '^[0-9]{1,3}-[0-9]{1,3}$' then return null; end if;
+    v_expected_home:=split_part(p_outcome,'-',1)::integer;
+    v_expected_away:=split_part(p_outcome,'-',2)::integer;
+    return case when p_home_score=v_expected_home and p_away_score=v_expected_away then 'won' else 'lost' end;
   elsif p_market='btts' then
     v_actual:=case when p_home_score>0 and p_away_score>0 then 'yes' else 'no' end;
     return case when lower(p_outcome)=v_actual then 'won' else 'lost' end;
   elsif p_market='totals' then
-    if lower(p_outcome) not in ('over','under') then return null; end if;
+    if lower(p_outcome) not in ('over','under') or p_point is null then return null; end if;
     if abs(p_point*4-round(p_point*4))<0.0001 and abs(mod(round(p_point*4)::integer,2))=1 then
       v_a:=p_point-0.25; v_b:=p_point+0.25;
       if lower(p_outcome)='over' then
@@ -249,6 +279,7 @@ begin
     if lower(p_outcome)='home' then v_margin:=p_home_score+p_point-p_away_score;
     elsif lower(p_outcome)='away' then v_margin:=p_away_score+p_point-p_home_score;
     else return null; end if;
+    if p_point is null then return null; end if;
     if abs(p_point*4-round(p_point*4))<0.0001 and abs(mod(round(p_point*4)::integer,2))=1 then
       v_a:=p_point-0.25; v_b:=p_point+0.25;
       if lower(p_outcome)='home' then
@@ -263,6 +294,7 @@ begin
     end if;
   else return null;
   end if;
+
   if v_first='won' and v_second='won' then return 'won'; end if;
   if v_first='lost' and v_second='lost' then return 'lost'; end if;
   if (v_first='won' and v_second='push') or (v_second='won' and v_first='push') then return 'half_won'; end if;
