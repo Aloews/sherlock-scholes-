@@ -1,9 +1,6 @@
 name: profile-backfill-queue
 
 on:
-  push:
-    branches:
-      - release/phase2-profile-worker
   workflow_dispatch:
     inputs:
       enqueue_only:
