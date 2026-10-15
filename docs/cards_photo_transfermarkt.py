@@ -48,7 +48,7 @@ import urllib.request
 
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
-PROFILE = "https://www.transfermarkt.com/x/profil/spieler/%s"
+PROFILE = "https://www.transfermarkt.de/x/profil/spieler/%s"
 PAUSE = 1.5
 RETRIES = 3
 PAGE = 1000
@@ -205,6 +205,9 @@ def main():
         html = get(PROFILE % card["transfermarkt_id"])
         if html is None or not has_profile_content(html):
             lost += 1
+            title_match = re.search(r"<title[^>]*>(.*?)</title>", html or "", re.I | re.S)
+            title = html_lib.unescape(re.sub(r"<[^>]+>", " ", title_match.group(1))).strip()[:120] if title_match else "no title"
+            print("Профиль TM не распознан: id=%s bytes=%d title=%s" % (card["transfermarkt_id"], len(html or ""), title), flush=True)
         else:
             url = portrait_url(html)
             if url:
