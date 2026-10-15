@@ -56,7 +56,21 @@ WRITE_BATCH = 25
 
 META_TAG = re.compile(r"<meta\b[^>]*>", re.I | re.S)
 META_ATTR = re.compile(r"""([a-zA-Z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
-PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+
+PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+\Z', re.I)
+
+
+def meta_image_url(html):
+    for tag in META_TAG.findall(html or ""):
+        attrs = {}
+        for match in META_ATTR.finditer(tag):
+            value = next((part for part in match.groups()[1:] if part is not None), "")
+            attrs[match.group(1).lower()] = html_lib.unescape(value).strip()
+        image_key = attrs.get("property", attrs.get("name", "")).casefold()
+        if image_key in {"og:image", "twitter:image", "twitter:image:src"}:
+            value = attrs.get("content", "").replace("\\/", "/").strip()
+            if value:
+                return value
+    return None
 
 def sb(path, method="GET", body=None, params=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
