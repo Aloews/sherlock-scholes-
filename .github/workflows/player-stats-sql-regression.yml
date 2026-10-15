@@ -84,7 +84,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear_test_setup.sql
 
       - name: Repair accumulator temp-table clear statements
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014150000_fix_model_accumulator_temp_table_clear.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015131120_fix_model_accumulator_temp_table_clear.sql
 
       - name: Accumulator temp-table clear regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear.test.sql
@@ -93,10 +93,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_market_finetune_test_setup.sql
 
       - name: Apply profile backfill, multi-market and fine-tuning migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014140000_profile_backfill_multimarket_finetune.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015131108_profile_backfill_multimarket_finetune.sql
 
       - name: Fix bounded profile queue starvation
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015140000_fix_profile_backfill_enqueue_starvation.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015131830_fix_profile_backfill_enqueue_starvation.sql
 
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
