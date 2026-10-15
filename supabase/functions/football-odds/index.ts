@@ -22,14 +22,14 @@
 // исходной квоты; ODDS_MARKETS явно переопределяет набор, но тратит больше кредитов.
 // Каждый запрос оставляет 80 кредитов для более важных live-score вызовов.
 
-import { parseMarkets, rowsForMarkets, rotatingMarketsForDate, type SupportedMarket } from "./markets.ts";
+import { creditCostForRequest, normalizeRegions, parseMarkets, rowsForMarkets, rotatingMarketsForDate, type SupportedMarket } from "./markets.ts";
 
 const ODDS_API_KEY = Deno.env.get("ODDS_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MARKETS_OVERRIDE = Deno.env.get("ODDS_MARKETS");
 const FIXED_MARKETS: SupportedMarket[] | null = MARKETS_OVERRIDE === undefined ? null : parseMarkets(MARKETS_OVERRIDE);
-const REGION = Deno.env.get("ODDS_REGION") ?? "eu";
+const REGION = normalizeRegions(Deno.env.get("ODDS_REGION") ?? "eu").join(",");
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -124,13 +124,15 @@ async function reserveRequest(
   try {
     const r = await rpc("reserve_odds_api_request", {
       p_request_key: requestKey, p_provider: "the-odds-api", p_sport_key: sport,
-      p_region: REGION, p_markets: requestedMarkets, p_credits: requestedMarkets.length,
+      p_region: REGION, p_markets: requestedMarkets, p_credits: creditCostForRequest(requestedMarkets, REGION),
     });
     if (r.ok) return (await r.json()) === true ? requestedMarkets : null;
     // Safe rollout compatibility before the migration is applied: only retain
     // legacy h2h calls under the old budget RPC. Never request extra markets
     // without the new request ledger and generic quote table.
     if (await isMissingRpc(r)) {
+      // The legacy RPC accounts for one credit only; fail closed for multiple regions.
+      if (normalizeRegions(REGION).length !== 1) return null;
       const legacy = await rpc("spend_odds_credits", { p_credits: 1 });
       return legacy.ok && (await legacy.json()) === true ? ["h2h"] : null;
     }
@@ -219,7 +221,7 @@ Deno.serve(async (req) => {
     // One idempotent reservation per UTC date, sport and market set. Credits are
     // reserved before the provider request; fallback may reduce this to legacy h2h.
     const available = await creditsLeft();
-    if (available !== null && available < RESERVE + requestedMarkets.length) {
+    if (available !== null && available < RESERVE + creditCostForRequest(requestedMarkets, REGION)) {
       failed.push(`${sport}: preserving the ${RESERVE}-credit live-score reserve`);
       break;
     }
@@ -229,7 +231,7 @@ Deno.serve(async (req) => {
       failed.push(`${sport}: budget exhausted or request already reserved today`);
       break;
     }
-    spent += activeMarkets.length;
+    spent += creditCostForRequest(activeMarkets, REGION);
     try {
       const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds`
         + `?apiKey=${ODDS_API_KEY}&regions=${REGION}&markets=${activeMarkets.join(",")}&oddsFormat=decimal`;

@@ -34,6 +34,17 @@ export interface QuoteRow {
 
 const SUPPORTED = new Set<SupportedMarket>(["h2h", "h2h_2_way", "spreads", "totals", "btts", "draw_no_bet", "double_chance", "correct_score"]);
 
+export function normalizeRegions(value: string): string[] {
+  const regions = [...new Set(value.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean))];
+  if (regions.length === 0) throw new Error("At least one odds region is required");
+  return regions;
+}
+
+export function creditCostForRequest(markets: readonly SupportedMarket[], regions: string): number {
+  if (markets.length === 0) throw new Error("At least one odds market is required");
+  return markets.length * normalizeRegions(regions).length;
+}
+
 export function parseMarkets(value: string | undefined): SupportedMarket[] {
   const raw = (value ?? "h2h").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   const invalid = raw.filter((item) => !SUPPORTED.has(item as SupportedMarket));

@@ -1,4 +1,4 @@
-import { parseMarkets, rowsForMarkets, rotatingMarketsForDate, type OddsEventPayload } from "./markets.ts";
+import { creditCostForRequest, normalizeRegions, parseMarkets, rowsForMarkets, rotatingMarketsForDate, type OddsEventPayload } from "./markets.ts";
 
 Deno.test("market list defaults to h2h and deduplicates explicit markets", () => {
   if (parseMarkets(undefined).join(",") !== "h2h") throw new Error("default market changed");
@@ -75,4 +75,12 @@ Deno.test("normalizes draw-no-bet, double chance and correct-score markets", () 
   if (!rows.some((row) => row.market_key === "draw_no_bet" && row.outcome_key === "home")) throw new Error("DNB team mapping failed");
   if (!rows.some((row) => row.market_key === "double_chance" && row.outcome_key === "home_draw")) throw new Error("double-chance mapping failed");
   if (!rows.some((row) => row.market_key === "correct_score" && row.outcome_key === "2-1")) throw new Error("correct-score normalization failed");
+});
+
+Deno.test("API credit cost counts unique regions and each requested market", () => {
+  if (creditCostForRequest(["h2h", "totals"], "eu, uk,eu") !== 4) throw new Error("region-market credit cost was undercounted");
+  if (normalizeRegions(" EU, uk, eu ").join(",") !== "eu,uk") throw new Error("regions were not normalized and deduplicated");
+  let threw = false;
+  try { creditCostForRequest(["h2h"], " , "); } catch { threw = true; }
+  if (!threw) throw new Error("empty region list should fail closed");
 });
