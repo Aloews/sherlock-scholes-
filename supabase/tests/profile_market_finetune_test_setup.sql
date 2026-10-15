@@ -38,3 +38,7 @@ create table if not exists public.odds_api_budget (
 );
 create or replace function public.odds_api_monthly_limit()
 returns integer language sql stable as $$ select 500::integer $$;
+
+create table if not exists public.soccerwiki_player (
+  card_id uuid primary key references public.cards(id) on delete cascade
+);
