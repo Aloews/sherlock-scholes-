@@ -155,7 +155,7 @@ def main():
                     if status=="succeeded":
                         result["status"]="succeeded"; finish(job["id"],True)
                     else:
-                        result["status"]="no_data"; finish(job["id"],False,no_data=True)
+                        result["status"]="no_data"; finish(job["id"],False,no_data=True,error=output[-1000:])
             except Exception as exc:
                 result["error"]=str(exc)[:2000]
                 try: result["status"]=rpc_status(finish(job["id"],False,error=result["error"]))
