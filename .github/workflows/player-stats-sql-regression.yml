@@ -98,5 +98,8 @@ jobs:
       - name: Fix bounded profile queue starvation
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015131830_fix_profile_backfill_enqueue_starvation.sql
 
+      - name: Route profile photos around Soccer Wiki-owned cards
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015194500_route_profile_backfill_around_soccerwiki.sql
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
