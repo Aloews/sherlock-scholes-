@@ -83,7 +83,7 @@ def rpc(name,payload):
 
 
 def verify(job):
-    if job["task_type"] in ("photo_tm","photo_qid"):
+    if job["task_type"] in ("photo_tm","photo_qid","photo_sw"):
         rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
         return bool(rows and image_reachable(rows[0].get("photo_url")))
     rows=request("player_season_stat",{"select":"tm_player_id","tm_player_id":"eq."+str(job["transfermarkt_id"]),"limit":"1"})
@@ -92,6 +92,21 @@ def verify(job):
 
 def run_collector(job):
     task=job["task_type"]
+    if task=="photo_sw":
+        source=request("soccerwiki_player",{"select":"photo_url","card_id":"eq."+job["card_id"],"limit":"1"})
+        url=source[0].get("photo_url") if source else None
+        if not usable_photo(url):
+            return "Фото найдено: 0\\nSoccer Wiki photo URL is empty or a placeholder",0
+        if not image_reachable(url):
+            return "ПРОФИЛЕЙ ПОТЕРЯНО: Soccer Wiki photo URL is unreachable",1
+        request("cards",params={"id":"eq."+job["card_id"],"or":"(photo_url.is.null,photo_url.eq.)"},
+                method="PATCH",body={"photo_url":url})
+        rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
+        if rows and rows[0].get("photo_url")==url and image_reachable(rows[0].get("photo_url")):
+            return "Фото найдено: 1\\nЗаписано: 1\\nИсточник: Soccer Wiki",0
+        if rows and image_reachable(rows[0].get("photo_url")):
+            return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
+        return "Фото найдено: 1\\nRead-after-write verification failed",0
     if task=="photo_tm":
         command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"])]
     elif task=="photo_qid":
