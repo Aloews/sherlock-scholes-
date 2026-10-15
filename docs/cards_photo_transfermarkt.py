@@ -97,6 +97,11 @@ def read_all(path, params):
         offset += PAGE
 
 
+def has_profile_content(html):
+    return bool(re.search(
+        r"data-header__market-value-wrapper|data-header__profile-container|data-header__profile-image|dataBild",
+        html or "", re.I))
+
 def portrait_url(html):
     """Адрес портрета со страницы профиля — или None.
 
@@ -198,7 +203,7 @@ def main():
 
     for i, card in enumerate(rows, 1):
         html = get(PROFILE % card["transfermarkt_id"])
-        if html is None:
+        if html is None or not has_profile_content(html):
             lost += 1
         else:
             url = portrait_url(html)
