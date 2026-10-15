@@ -33,26 +33,33 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
+        env:
+          MAX_JOBS: ${{ inputs.max_jobs }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
         run: |
           python docs/test_profile_backfill_queue.py
-          case "${{ inputs.max_jobs }}" in
+          case "$MAX_JOBS" in
             ''|*[!0-9]*) echo "::error::max_jobs must be a positive integer"; exit 2 ;;
           esac
-          [ "${{ inputs.max_jobs }}" -ge 1 ] && [ "${{ inputs.max_jobs }}" -le 500 ] || {
+          [ "$MAX_JOBS" -ge 1 ] && [ "$MAX_JOBS" -le 500 ] || {
             echo "::error::max_jobs must be between 1 and 500"; exit 2;
           }
-          case "${{ inputs.enqueue_limit }}" in
-            ''|*[!0-9]*) echo "::error::enqueue_limit must be a non-negative integer"; exit 2 ;;
+          case "$ENQUEUE_LIMIT" in
+            ''|*[!0-9]*) echo "::error::enqueue_limit must be a positive integer"; exit 2 ;;
           esac
-          [ "${{ inputs.enqueue_limit }}" -ge 1 ] && [ "${{ inputs.enqueue_limit }}" -le 100000 ] || {
+          [ "$ENQUEUE_LIMIT" -ge 1 ] && [ "$ENQUEUE_LIMIT" -le 100000 ] || {
             echo "::error::enqueue_limit must be between 1 and 100000"; exit 2;
           }
       - name: Enqueue gaps and optionally process a bounded batch
+        env:
+          ENQUEUE_ONLY: ${{ inputs.enqueue_only }}
+          MAX_JOBS: ${{ inputs.max_jobs }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
         run: |
-          if [ "${{ inputs.enqueue_only }}" = "true" ]; then
-            python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "${{ inputs.enqueue_limit }}"
+          if [ "$ENQUEUE_ONLY" = "true" ]; then
+            python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "$ENQUEUE_LIMIT"
           else
-            python docs/profile_backfill_queue.py --max-jobs "${{ inputs.max_jobs }}" --batch-size 10 --enqueue-limit "${{ inputs.enqueue_limit }}"
+            python docs/profile_backfill_queue.py --max-jobs "$MAX_JOBS" --batch-size 10 --enqueue-limit "$ENQUEUE_LIMIT"
           fi
       - name: Upload per-task verification report
         if: always()
