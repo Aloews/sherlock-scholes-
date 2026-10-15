@@ -6,27 +6,6 @@ import {
   type CareerTotalsRow, type ClubCareerRow,
 } from '@/features/ratings/ratingsApi';
 
-/**
- * Статистика карьеры в досье — числами, а не датами.
- *
- * Владелец: «Отображай статистику игрока очень очень красиво, сейчас это
- * просто даты, ничего не понятно».
- *
- * ⚠️ ЧТО БЫЛО НЕ ТАК, И ЭТО НЕ ВОПРОС ОФОРМЛЕНИЯ. Блок «Собранная статистика»
- * показывал строки вида «Премьер-лига · 12.08.2025 — 30.05.2026 · 24 · 7 · 3».
- * Первое, что видит глаз, — две даты, то есть период сбора НАШИМ конвейером;
- * числа стоят третьими и без подписей. Человек спрашивает «сколько он забил»,
- * а получает «когда мы это собирали».
- *
- * Здесь наоборот: сперва ЧЕТЫРЕ ЧИСЛА КАРЬЕРЫ крупно и подписанные, потом
- * клубы — каждый со своими матчами, голами и долей сыгранных минут. Даты
- * остались, но стали подписью к клубу, а не заголовком строки.
- *
- * ⚠️ ПОЛОСА — ЭТО ДОЛЯ ОТ МАКСИМУМА ЭТОГО ЖЕ ИГРОКА, а не от какой-то общей
- * шкалы. Она отвечает на вопрос «где он играл больше всего», и другого смысла
- * у неё нет; сравнивать по ней двух разных игроков нельзя, поэтому и подписи
- * «из 100%» нигде нет.
- */
 export function CareerStats({ cardId }: { cardId: string }) {
   const { t, i18n } = useTranslation();
   const [totals, setTotals] = useState<LoadState<CareerTotalsRow[]>>(LOADING);
@@ -36,72 +15,109 @@ export function CareerStats({ cardId }: { cardId: string }) {
     let cancelled = false;
     setTotals(LOADING);
     setClubs(LOADING);
-    void fetchCareerTotals(cardId).then((r) => { if (!cancelled) setTotals(r); });
-    void fetchClubCareer(cardId).then((r) => { if (!cancelled) setClubs(r); });
+    void fetchCareerTotals(cardId).then((result) => {
+      if (!cancelled) setTotals(result);
+    });
+    void fetchClubCareer(cardId).then((result) => {
+      if (!cancelled) setClubs(result);
+    });
     return () => { cancelled = true; };
   }, [cardId]);
 
   const total = totals.status === 'ok' ? totals.data[0] ?? null : null;
   const rows = clubs.status === 'ok' ? clubs.data : [];
+  const loading = totals.status === 'loading' || clubs.status === 'loading';
 
-  // ⚠️ НЕТ МАТЧЕЙ — НЕТ БЛОКА. Ноль матчей и «мы не собрали его лигу»
-  // выглядят одинаково, а значат разное; пустая таблица утверждала бы первое.
-  if (!total || total.club_apps === 0) return null;
+  if (!total && rows.length === 0) {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-2 gap-2" aria-label={t('digest.loading')}>
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="h-[68px] rounded-2xl border border-brand-border bg-brand-surface animate-pulse" />
+          ))}
+        </div>
+      );
+    }
+    return null;
+  }
 
-  const n = new Intl.NumberFormat(i18n.language);
-  const maxMinutes = Math.max(1, ...rows.map((r) => r.minutes));
+  const number = new Intl.NumberFormat(i18n.language);
+  const maxMinutes = Math.max(1, ...rows.map((row) => row.minutes));
+  const ru = i18n.language.startsWith('ru');
+  const seasonLabel = (row: ClubCareerRow) => row.season_from === row.season_to
+    ? String(row.season_from)
+    : `${row.season_from}–${row.season_to}`;
 
   return (
     <div className="space-y-3">
-      {/* Четыре числа карьеры — то, ради чего сюда смотрят. */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <Tile label={t('career.matches')} value={n.format(total.club_apps)} />
-        <Tile label={t('career.goals')} value={n.format(total.club_goals)} accent />
-        <Tile label={t('career.assists')} value={n.format(total.club_assists)} />
-        <Tile label={t('career.minutes')} value={n.format(total.club_minutes)} />
-      </div>
-
-      {/* Сборная — отдельной строкой: складывать её с клубной суммой нельзя. */}
-      {total.national_team && total.national_apps > 0 && (
-        <p className="text-[11.5px] text-brand-muted">
-          {t('career.national', {
-            team: total.national_team,
-            apps: total.national_apps,
-            goals: total.national_goals,
-          })}
-        </p>
+      {total && total.club_apps > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Tile label={t('career.matches')} value={number.format(total.club_apps)} />
+          <Tile label={t('career.goals')} value={number.format(total.club_goals)} accent />
+          <Tile label={t('career.assists')} value={number.format(total.club_assists)} />
+          <Tile label={t('career.minutes')} value={number.format(total.club_minutes)} />
+        </div>
       )}
 
-      <div className="space-y-1.5">
-        {rows.map((r) => (
-          <div key={r.club_id} className="space-y-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[12.5px] text-white truncate flex-1 min-w-0">
-                {r.club_name}
-              </span>
-              <span className="text-[10.5px] text-brand-muted tabular-nums shrink-0">
-                {r.season_from === r.season_to
-                  ? r.season_from
-                  : `${r.season_from}–${r.season_to}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Доля сыгранных минут — где он играл больше всего. */}
-              <div className="h-1.5 flex-1 rounded-full bg-brand-bg overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-brand-accent/70"
-                  style={{ width: `${Math.round((r.minutes / maxMinutes) * 100)}%` }}
-                />
-              </div>
-              <span className="text-[10.5px] text-brand-muted tabular-nums shrink-0">
-                {t('career.club_line', {
-                  matches: r.apps, goals: r.goals, assists: r.assists,
-                })}
-              </span>
-            </div>
+      {total?.national_team && total.national_apps > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-brand-border bg-brand-surface px-3.5 py-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-bg text-brand-accent" aria-hidden="true">
+            <span className="text-base">◎</span>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-brand-muted">
+              {t('career.national', { team: total.national_team, apps: total.national_apps, goals: total.national_goals })}
+            </p>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="rounded-2xl border border-brand-border bg-brand-surface p-3.5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">
+              {ru ? 'Путь по клубам' : 'Club journey'}
+            </p>
+            <span className="rounded-full border border-brand-border bg-brand-bg px-2.5 py-1 text-[10px] font-semibold tabular-nums text-white">
+              {rows.length} {ru ? 'клубов' : 'clubs'}
+            </span>
+          </div>
+          <ol className="space-y-0">
+            {rows.map((row, index) => {
+              const share = Math.max(3, Math.round((row.minutes / maxMinutes) * 100));
+              return (
+                <li key={row.club_id} className="relative flex gap-3">
+                  <div className="flex w-5 shrink-0 flex-col items-center">
+                    <span className={`z-[1] mt-1.5 h-2.5 w-2.5 rounded-full border-2 ${index === 0 ? 'border-brand-accent bg-brand-accent' : 'border-brand-muted/70 bg-brand-surface'}`} />
+                    {index < rows.length - 1 && <span className="w-px flex-1 bg-brand-border" />}
+                  </div>
+                  <div className="min-w-0 flex-1 pb-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className={`truncate text-[13px] font-semibold ${index === 0 ? 'text-white' : 'text-white/90'}`}>{row.club_name}</p>
+                        <p className="mt-0.5 text-[10px] text-brand-muted tabular-nums">{seasonLabel(row)}</p>
+                      </div>
+                      {index === 0 && (
+                        <span className="shrink-0 rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-accent">
+                          {ru ? 'Последний' : 'Latest'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-bg">
+                      <div className="h-full rounded-full bg-gradient-to-r from-brand-accent/50 to-brand-accent" style={{ width: `${share}%` }} />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-brand-muted">
+                      <span><strong className="font-semibold text-white/90 tabular-nums">{number.format(row.apps)}</strong> {ru ? 'матчей' : 'apps'}</span>
+                      <span><strong className="font-semibold text-brand-accent tabular-nums">{number.format(row.goals)}</strong> {ru ? 'голов' : 'goals'}</span>
+                      <span><strong className="font-semibold text-white/90 tabular-nums">{number.format(row.assists)}</strong> {ru ? 'ассистов' : 'assists'}</span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -110,15 +126,9 @@ function Tile({ label, value, accent = false }: {
   label: string; value: string; accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-brand-bg/60 border border-brand-border px-2 py-2 text-center">
-      <p className={`ds-display text-[15px] font-bold tabular-nums leading-none ${
-        accent ? 'text-brand-accent' : 'text-white'
-      }`}>
-        {value}
-      </p>
-      <p className="text-brand-muted text-[9px] uppercase tracking-wide mt-1 truncate">
-        {label}
-      </p>
+    <div className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface p-3">
+      <p className={`ds-display text-xl font-extrabold leading-none tabular-nums ${accent ? 'text-brand-accent' : 'text-white'}`}>{value}</p>
+      <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-brand-muted">{label}</p>
     </div>
   );
 }
