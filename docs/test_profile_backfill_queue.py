@@ -8,7 +8,7 @@ from profile_backfill_queue import classify_result, usable_photo, rpc_status
 class QueueResultTests(unittest.TestCase):
     def test_only_readback_marks_success(self):
         self.assertEqual(classify_result(0,"written 1",True),"succeeded")
-        self.assertEqual(classify_result(0,"written 0",False),"no_data")
+        self.assertEqual(classify_result(0,"Портретов найдено : 0\\nЗаписано : 0",False),"no_data")\n        self.assertEqual(classify_result(0,"Портретов найдено : 1\\nЗаписано : 1",False),"retry")\n        self.assertEqual(classify_result(0,"Строк статистики : 0\\nБез матчей : 1",False),"no_data")\n        self.assertEqual(classify_result(0,"Строк статистики : 1",False),"retry")
     def test_transport_loss_is_retryable(self):
         self.assertEqual(classify_result(1,"HTTP 503",False),"retry")
         self.assertEqual(classify_result(0,"ПРОФИЛЕЙ ПОТЕРЯНО: 1",False),"retry")
