@@ -50,17 +50,17 @@ begin
     raise exception 'queue did not create three distinct enrichment tasks';
   end if;
 
-  -- Verify generic quote writes and automatic settlement when a final score arrives.
+  -- Verify quote writes and explicitly confirmed settlement from final scores.
   insert into public.fixtures(id,sport_key,commence_at,home_team,away_team)
   values('market-regression-fixture','soccer_epl',now()-interval '2 hours','Home FC','Away FC');
   v_count := public.upsert_fixture_market_quotes(jsonb_build_array(
     jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '3 hours')::text,
       'provider','the-odds-api','bookmaker','regression-book','region','eu','market_key','h2h',
       'outcome_key','draw','outcome_name','Draw','point',0,'price',3.2),
-    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '90 minutes')::text,
+    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '150 minutes')::text,
       'provider','the-odds-api','bookmaker','regression-book','region','eu','market_key','totals',
       'outcome_key','under','outcome_name','Under','point',2.5,'price',1.9),
-    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '90 minutes')::text,
+    jsonb_build_object('fixture_id','market-regression-fixture','taken_at',(now()-interval '150 minutes')::text,
       'provider','the-odds-api','bookmaker','regression-book','region','eu','market_key','btts',
       'outcome_key','yes','outcome_name','Yes','point',0,'price',2.0)
   ));
