@@ -1,4 +1,4 @@
-export type SupportedMarket = "h2h" | "spreads" | "totals" | "btts";
+export type SupportedMarket = "h2h" | "h2h_2_way" | "spreads" | "totals" | "btts" | "draw_no_bet" | "double_chance" | "correct_score";
 
 export interface MarketOutcome {
   name?: string;
@@ -32,7 +32,7 @@ export interface QuoteRow {
   price: number;
 }
 
-const SUPPORTED = new Set<SupportedMarket>(["h2h", "spreads", "totals", "btts"]);
+const SUPPORTED = new Set<SupportedMarket>(["h2h", "h2h_2_way", "spreads", "totals", "btts", "draw_no_bet", "double_chance", "correct_score"]);
 
 export function parseMarkets(value: string | undefined): SupportedMarket[] {
   const raw = (value ?? "h2h").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
@@ -60,10 +60,18 @@ export function rowsForMarkets(
         const name = (outcome.name ?? "").trim();
         const normalized = name.toLowerCase();
         let outcomeKey: string | null = null;
-        if (key === "h2h") {
+        if (key === "h2h" || key === "h2h_2_way" || key === "draw_no_bet") {
           if (name === event.home_team) outcomeKey = "home";
           else if (name === event.away_team) outcomeKey = "away";
           else if (normalized === "draw") outcomeKey = "draw";
+        } else if (key === "double_chance") {
+          const compact = normalized.replace(/[\\s/\\-]+/g, "_");
+          if (["home_or_draw", "1x", "home_draw"].includes(compact) || normalized === `${event.home_team.toLowerCase()} or draw`) outcomeKey = "home_draw";
+          else if (["draw_or_away", "x2", "draw_away"].includes(compact) || normalized === `draw or ${event.away_team.toLowerCase()}`) outcomeKey = "draw_away";
+          else if (["home_or_away", "12", "home_away"].includes(compact) || normalized === `${event.home_team.toLowerCase()} or ${event.away_team.toLowerCase()}`) outcomeKey = "home_away";
+        } else if (key === "correct_score") {
+          const score = normalized.replace(":", "-").replace(/\\s+/g, "");
+          if (/^\\d{1,3}-\\d{1,3}$/.test(score)) outcomeKey = score;
         } else if (key === "spreads") {
           if (name === event.home_team) outcomeKey = "home";
           else if (name === event.away_team) outcomeKey = "away";
