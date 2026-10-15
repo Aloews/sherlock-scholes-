@@ -65,10 +65,20 @@ begin
   end if;
   insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
   values(v_sw_card,'photo_tm','tm-sw-queue-regression','Qsw999999',1000000000);
-  perform * from public.claim_profile_backfill_jobs(1,45);
+  update public.profile_backfill_jobs
+     set priority=999999999999999999999999
+   where card_id=v_sw_card and task_type='photo_qid' and status='pending';
+  select * into v_job from public.claim_profile_backfill_jobs(1,45);
+  if v_job.card_id <> v_sw_card or v_job.task_type <> 'photo_qid' then
+    raise exception 'expected QID fallback to be claimed after retiring stale Transfermarkt task';
+  end if;
   if not exists(select 1 from public.profile_backfill_jobs
                  where card_id=v_sw_card and task_type='photo_tm' and status='no_data') then
     raise exception 'stale Transfermarkt photo task was not retired';
+  end if;
+  v_status := public.finish_profile_backfill_job(v_job.id,false,true,'fixture no-data diagnostic');
+  if v_status <> 'no_data' or (select last_error from public.profile_backfill_jobs where id=v_job.id) <> 'fixture no-data diagnostic' then
+    raise exception 'no-data source diagnostic was not preserved';
   end if;
 
   -- Repeated bounded enqueue calls must advance past already-queued high-priority tasks.
