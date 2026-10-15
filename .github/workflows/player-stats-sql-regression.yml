@@ -101,5 +101,8 @@ jobs:
       - name: Route profile photos around Soccer Wiki-owned cards
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015194500_route_profile_backfill_around_soccerwiki.sql
 
+      - name: Preserve no-data profile queue diagnostics
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015200500_preserve_profile_backfill_no_data_reason.sql
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
