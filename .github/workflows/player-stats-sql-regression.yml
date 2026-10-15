@@ -95,5 +95,8 @@ jobs:
       - name: Apply profile backfill, multi-market and fine-tuning migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261014140000_profile_backfill_multimarket_finetune.sql
 
+      - name: Fix bounded profile queue starvation
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015140000_fix_profile_backfill_enqueue_starvation.sql
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
