@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconHelp, IconVolume, IconVolumeOff, IconCards } from '@tabler/icons-react';
+import { IconHelp, IconVolume, IconVolumeOff, IconCards, IconBolt } from '@tabler/icons-react';
 import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
@@ -264,6 +264,16 @@ export function HomeScreen() {
             же причине: аватар в шапке уже говорит, чей это телефон, а строка
             на весь экран отодвигала первое настоящее дело за сгиб. Имя было
             последним, что от этого блока осталось, — теперь нет и его. */}
+
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <HomeGameLink
+              icon={<IconBolt size={20} stroke={1.75} />}
+              label={i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}
+              onClick={() => setView('smart_decks')}
+            />
+          </div>
+        )}
 
         {view === 'home' && (
           <div className="w-full max-w-sm">
