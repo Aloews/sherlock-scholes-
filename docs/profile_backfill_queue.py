@@ -124,9 +124,23 @@ def finish(job_id,verified,no_data=False,error=None):
     return rpc("finish_profile_backfill_job",{"p_job_id":job_id,"p_verified":verified,"p_no_data":no_data,"p_error":error})
 
 
+def final_job_results(results):
+    """Return the last observed status for each job, preserving anonymous test rows."""
+    latest = {}
+    anonymous = []
+    for index, item in enumerate(results):
+        job_id = item.get("job_id")
+        if job_id is None:
+            anonymous.append((index, item))
+        else:
+            latest[job_id] = item
+    return list(latest.values()) + [item for _, item in anonymous]
+
+
 def result_exit_code(results):
-    """Fail CI when any task still needs retry or ended in a terminal failure."""
-    return 1 if any(item.get("status") in ("pending", "failed") for item in results) else 0
+    """Fail only when a job's final status still needs retry or is terminally failed."""
+    final_results = final_job_results(results)
+    return 1 if any(item.get("status") in ("pending", "failed") for item in final_results) else 0
 
 
 def rpc_status(value):
@@ -184,9 +198,12 @@ def main():
             print(json.dumps(result,ensure_ascii=False))
     with open(args.report,"w",encoding="utf-8") as handle:
         for item in results: handle.write(json.dumps(item,ensure_ascii=False)+"\n")
-    summary={"processed":processed,"succeeded":sum(x["status"]=="succeeded" for x in results),
-      "no_data":sum(x["status"]=="no_data" for x in results),
-      "retry_or_failed":sum(x["status"] in ("pending","failed") for x in results),"report":args.report}
+    final_results=final_job_results(results)
+    summary={"processed":processed,"unique_jobs":len(final_results),
+      "succeeded":sum(x["status"]=="succeeded" for x in final_results),
+      "no_data":sum(x["status"]=="no_data" for x in final_results),
+      "retry_or_failed":sum(x["status"] in ("pending","failed") for x in final_results),
+      "report":args.report}
     print(json.dumps(summary,ensure_ascii=False))
     return result_exit_code(results)
 

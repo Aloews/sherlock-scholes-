@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import profile_backfill_queue as worker
-from profile_backfill_queue import classify_result, usable_photo, rpc_status, result_exit_code
+from profile_backfill_queue import classify_result, usable_photo, rpc_status, result_exit_code, final_job_results
 
 
 class SoccerWikiPhotoTests(unittest.TestCase):
@@ -84,6 +84,20 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(
             result_exit_code([{"status": "succeeded"}, {"status": "pending"}]), 1
         )
+        # A transient failure followed by a successful retry is a success overall.
+        self.assertEqual(result_exit_code([
+            {"job_id": 44, "status": "pending"},
+            {"job_id": 44, "status": "succeeded"},
+        ]), 0)
+        self.assertEqual(result_exit_code([
+            {"job_id": 44, "status": "succeeded"},
+            {"job_id": 44, "status": "pending"},
+        ]), 1)
+        self.assertEqual(len(final_job_results([
+            {"job_id": 44, "status": "pending"},
+            {"job_id": 44, "status": "succeeded"},
+            {"job_id": 45, "status": "no_data"},
+        ])), 2)
 
     def test_empty_source_is_not_success(self):
         self.assertNotEqual(classify_result(0, "portrait not found", False), "succeeded")
