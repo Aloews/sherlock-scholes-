@@ -105,7 +105,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015200557_preserve_profile_backfill_no_data_reason.sql
 
       - name: Add Soccer Wiki photo backfill task type
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015203000_add_soccerwiki_photo_backfill.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261016140000_add_soccerwiki_photo_backfill.sql
 
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
