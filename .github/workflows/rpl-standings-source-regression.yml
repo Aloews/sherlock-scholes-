@@ -1,0 +1,43 @@
+name: rpl-standings-source-regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  rpl-standings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rpl_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rpl_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: rpl_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Create isolated RPL fixtures
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rpl_standings_test_setup.sql
+      - name: Apply source-normalization migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261016100000_normalize_rpl_tournament_sources.sql
+      - name: Assert complete standings and foreign-club exclusion
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rpl_tournament_source_normalization.test.sql
