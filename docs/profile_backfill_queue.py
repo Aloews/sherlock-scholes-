@@ -124,6 +124,11 @@ def finish(job_id,verified,no_data=False,error=None):
     return rpc("finish_profile_backfill_job",{"p_job_id":job_id,"p_verified":verified,"p_no_data":no_data,"p_error":error})
 
 
+def result_exit_code(results):
+    """Fail CI when any task still needs retry or ended in a terminal failure."""
+    return 1 if any(item.get("status") in ("pending", "failed") for item in results) else 0
+
+
 def rpc_status(value):
     while isinstance(value, list):
         if not value:
@@ -183,10 +188,7 @@ def main():
       "no_data":sum(x["status"]=="no_data" for x in results),
       "retry_or_failed":sum(x["status"] in ("pending","failed") for x in results),"report":args.report}
     print(json.dumps(summary,ensure_ascii=False))
-    # A retryable job means this run did not complete its requested work.
-    # Keep the per-job status in the artifact, and make the workflow visibly red
-    # rather than reporting success just because the RPC scheduled another retry.
-    return 1 if any(x["status"] in ("pending", "failed") for x in results) else 0
+    return result_exit_code(results)
 
 
 if __name__=="__main__": raise SystemExit(main())
