@@ -1,4 +1,5 @@
 name: profile-backfill-queue
+# One-job production smoke only; remove the temporary push trigger after verification.
 
 on:
   push:
