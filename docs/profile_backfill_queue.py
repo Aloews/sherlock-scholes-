@@ -183,7 +183,10 @@ def main():
       "no_data":sum(x["status"]=="no_data" for x in results),
       "retry_or_failed":sum(x["status"] in ("pending","failed") for x in results),"report":args.report}
     print(json.dumps(summary,ensure_ascii=False))
-    return 1 if any(x["status"]=="failed" for x in results) else 0
+    # A retryable job means this run did not complete its requested work.
+    # Keep the per-job status in the artifact, and make the workflow visibly red
+    # rather than reporting success just because the RPC scheduled another retry.
+    return 1 if any(x["status"] in ("pending", "failed") for x in results) else 0
 
 
 if __name__=="__main__": raise SystemExit(main())
