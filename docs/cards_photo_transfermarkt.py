@@ -48,7 +48,7 @@ import urllib.request
 
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
-PROFILE = "https://www.transfermarkt.com/x/profil/spieler/%s"
+PROFILE = "https://www.transfermarkt.com/-/profil/spieler/%s"
 PAUSE = 1.5
 RETRIES = 3
 PAGE = 1000
