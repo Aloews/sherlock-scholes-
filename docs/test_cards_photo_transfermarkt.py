@@ -35,6 +35,8 @@ def main():
     placeholder = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1">'
     check("placeholder rejected", collector.portrait_url(placeholder), None)
     check("missing image rejected", collector.portrait_url("<html><head></head></html>"), None)
+    unrelated = '<meta property="og:image" content="https://example.com/player.jpg">'
+    check("unrelated image host rejected", collector.portrait_url(unrelated), None)
     check("empty content rejected", collector.portrait_url('<meta property="og:image" content="">'), None)
     check("valid profile detected", collector.has_profile_content('<div class="data-header__market-value-wrapper"></div>'), True)
     check("interstitial rejected", collector.has_profile_content("<html><title>Just a moment...</title></html>"), False)
