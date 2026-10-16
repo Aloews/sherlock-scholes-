@@ -11,7 +11,7 @@ def check(label, actual, expected):
 
 
 def main():
-    check("current profile URL", collector.PROFILE % "28003", "https://www.transfermarkt.com/x/profil/spieler/28003")
+    check("current profile URL", collector.PROFILE % "28003", "https://www.transfermarkt.com/-/profil/spieler/28003")
     standard = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1">'
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")

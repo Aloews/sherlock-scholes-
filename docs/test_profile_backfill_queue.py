@@ -9,48 +9,96 @@ from profile_backfill_queue import classify_result, usable_photo, rpc_status, re
 
 
 class SoccerWikiPhotoTests(unittest.TestCase):
-    def test_photo_sw_writes_and_verifies_reachable_source(self):
-        url = "https://cdn.soccerwiki.org/images/player/149111.png"
-        card_id = "642fc812-0b0b-4902-8cd1-7e178da734de"
+    card_id = "642fc812-0b0b-4902-8cd1-7e178da734de"
+
+    def run_photo_sw(self, card, profiles, reachable=True):
+        url = next((row["photo_url"] for row in profiles if row.get("photo_url")), None)
+        writes = []
 
         def fake_request(path, params=None, method="GET", body=None):
+            if path == "cards" and method == "GET" and params.get("select") == "id,name,name_en,country,photo_url":
+                return [card]
             if path == "soccerwiki_player":
-                return [{"photo_url": url}]
+                return profiles
             if path == "cards" and method == "PATCH":
-                self.assertEqual(params["or"], "(photo_url.is.null,photo_url.eq.)")
-                self.assertEqual(body, {"photo_url": url})
-                return [{"id": card_id, "photo_url": url}]
+                writes.append(body["photo_url"])
+                return [{"id": self.card_id, "photo_url": body["photo_url"]}]
             if path == "cards":
-                return [{"id": card_id, "photo_url": url}]
-            raise AssertionError(f"unexpected request: {path} {method}")
+                return [{"id": self.card_id, "photo_url": writes[-1] if writes else None}]
+            raise AssertionError(f"unexpected request: {path} {method} {params}")
 
-        job = {"task_type": "photo_sw", "card_id": card_id}
         with patch("profile_backfill_queue.request", side_effect=fake_request), patch(
-            "profile_backfill_queue.image_reachable", return_value=True
+            "profile_backfill_queue.image_reachable", return_value=reachable
         ):
-            output, exit_code = worker.run_collector(job)
+            output, exit_code = worker.run_collector({"task_type": "photo_sw", "card_id": self.card_id})
+        return output, exit_code, writes
+
+    def test_photo_sw_writes_and_verifies_identity_matched_source(self):
+        url = "https://cdn.soccerwiki.org/images/player/149111.png"
+        card = {"id": self.card_id, "name": "Саид Эль-Мала", "name_en": "Saïd El Mala", "country": "DE"}
+        profile = {"name": "Saïd El Mala", "full_name": "Saïd El Mala", "photo_url": url, "nation_code": "GER"}
+        output, exit_code, writes = self.run_photo_sw(card, [profile])
 
         self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [url])
         self.assertIn("Фото найдено: 1", output)
         self.assertIn("Источник: Soccer Wiki", output)
 
+    def test_photo_sw_selects_matching_row_not_first_duplicate(self):
+        url = "https://cdn.soccerwiki.org/images/player/50841.png"
+        card = {"id": self.card_id, "name": "Diego Rodríguez", "name_en": "Diego Rodríguez", "country": "ES"}
+        profiles = [
+            {"name": "Dominik Sarapata", "full_name": "Dominik Sarapata",
+             "photo_url": "https://cdn.soccerwiki.org/images/player/153517.png", "nation_code": "POL"},
+            {"name": "Diego Rodríguez", "full_name": "Diego Martín Rodríguez",
+             "photo_url": url, "nation_code": "ESP"},
+        ]
+        output, exit_code, writes = self.run_photo_sw(card, profiles)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [url])
+        self.assertIn("Источник: Soccer Wiki", output)
+
+    def test_photo_sw_rejects_wrong_person_even_when_photo_is_reachable(self):
+        card = {"id": self.card_id, "name": "Tobias Breum-Harild",
+                "name_en": "Tobias Breum-Harild", "country": "DK"}
+        profiles = [{"name": "Dominik Sarapata", "full_name": "Dominik Sarapata",
+                     "photo_url": "https://cdn.soccerwiki.org/images/player/153517.png",
+                     "nation_code": "POL"}]
+        output, exit_code, writes = self.run_photo_sw(card, profiles)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [])
+        self.assertEqual(classify_result(exit_code, output, False), "no_data")
+
+    def test_photo_sw_rejects_country_conflict(self):
+        card = {"id": self.card_id, "name": "Diego Rodríguez",
+                "name_en": "Diego Rodríguez", "country": "ES"}
+        profiles = [{"name": "Diego Rodríguez", "full_name": "Diego Martín Rodríguez",
+                     "photo_url": "https://cdn.soccerwiki.org/images/player/50841.png",
+                     "nation_code": "ARG"}]
+        output, exit_code, writes = self.run_photo_sw(card, profiles)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [])
+        self.assertEqual(classify_result(exit_code, output, False), "no_data")
+
     def test_photo_sw_unreachable_source_is_retryable(self):
         url = "https://cdn.soccerwiki.org/images/player/149111.png"
-        job = {"task_type": "photo_sw", "card_id": "642fc812-0b0b-4902-8cd1-7e178da734de"}
-        with patch("profile_backfill_queue.request", return_value=[{"photo_url": url}]), patch(
-            "profile_backfill_queue.image_reachable", return_value=False
-        ):
-            output, exit_code = worker.run_collector(job)
+        card = {"id": self.card_id, "name": "Player One", "name_en": "Player One", "country": None}
+        profile = {"name": "Player One", "full_name": "Player One", "photo_url": url, "nation_code": None}
+        output, exit_code, writes = self.run_photo_sw(card, [profile], reachable=False)
 
         self.assertNotEqual(exit_code, 0)
+        self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "retry")
 
     def test_photo_sw_missing_source_is_no_data(self):
-        job = {"task_type": "photo_sw", "card_id": "642fc812-0b0b-4902-8cd1-7e178da734de"}
-        with patch("profile_backfill_queue.request", return_value=[]):
-            output, exit_code = worker.run_collector(job)
+        card = {"id": self.card_id, "name": "Player One", "name_en": "Player One", "country": None}
+        output, exit_code, writes = self.run_photo_sw(card, [])
 
         self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "no_data")
 
 
