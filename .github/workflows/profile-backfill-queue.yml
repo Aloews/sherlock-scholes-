@@ -1,6 +1,9 @@
 name: profile-backfill-queue
+# Temporary bounded batch: at most 10 profile jobs; remove push trigger after this run.
 
 on:
+  push:
+    branches: [ops/profile-backfill-smoke]
   workflow_dispatch:
     inputs:
       enqueue_only:
@@ -37,8 +40,8 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ inputs.max_jobs }}
-          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+          MAX_JOBS: ${{ inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
           case "$MAX_JOBS" in
@@ -55,9 +58,9 @@ jobs:
           }
       - name: Enqueue gaps and optionally process a bounded batch
         env:
-          ENQUEUE_ONLY: ${{ inputs.enqueue_only }}
-          MAX_JOBS: ${{ inputs.max_jobs }}
-          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+          ENQUEUE_ONLY: ${{ inputs.enqueue_only || false }}
+          MAX_JOBS: ${{ inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit || '10' }}
         run: |
           if [ "$ENQUEUE_ONLY" = "true" ]; then
             python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "$ENQUEUE_LIMIT"
