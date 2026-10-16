@@ -9,6 +9,7 @@ import sys
 import urllib.parse
 import urllib.request
 import urllib.error
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,57 @@ def usable_photo(url):
         return False
     path = parsed.path
     return not re.search(r"/(default|dummy)[^/]*\.[a-z]+$", path, re.I)
+
+
+COUNTRY_CODE_EQUIVALENTS = {
+    "ES": {"ESP"}, "BR": {"BRA"}, "AR": {"ARG"}, "MX": {"MEX"},
+    "PT": {"POR"}, "TR": {"TUR"}, "UY": {"URU"}, "FR": {"FRA"},
+    "IT": {"ITA"}, "DK": {"DEN"}, "RS": {"SRB", "SCG"},
+    "ME": {"MNE"}, "CZ": {"CZE"}, "CM": {"CMR"}, "IS": {"ISL"},
+    "CH": {"SUI"}, "SK": {"SVK"}, "BE": {"BEL"}, "CO": {"COL"},
+    "GB": {"ENG", "WAL", "SCO", "NIR", "GBR"}, "GN": {"GUI"},
+    "CL": {"CHI"}, "DE": {"GER"}, "HR": {"CRO"}, "PL": {"POL"},
+    "RU": {"RUS"}, "SN": {"SEN"}, "IE": {"IRL"}, "NG": {"NGA"},
+    "ML": {"MLI"}, "NL": {"NED"}, "NO": {"NOR"}, "SE": {"SWE"},
+    "FI": {"FIN"}, "UA": {"UKR"}, "AT": {"AUT"}, "RO": {"ROU"},
+    "BG": {"BUL"}, "SI": {"SVN"}, "MK": {"MKD"}, "BA": {"BIH"},
+    "AL": {"ALB"}, "GR": {"GRE"}, "US": {"USA"}, "CA": {"CAN"},
+    "AU": {"AUS"}, "NZ": {"NZL"}, "ZA": {"RSA"}, "EG": {"EGY"},
+    "MA": {"MAR"}, "DZ": {"ALG"}, "TN": {"TUN"}, "CI": {"CIV"},
+    "CD": {"COD"}, "GH": {"GHA"}, "BF": {"BFA"}, "PE": {"PER"},
+    "EC": {"ECU"}, "PY": {"PAR"}, "VE": {"VEN"}, "CR": {"CRC"},
+    "HN": {"HON"}, "SV": {"SLV"}, "JM": {"JAM"}, "TT": {"TRI"},
+    "IL": {"ISR"}, "IR": {"IRN"}, "SA": {"KSA"}, "QA": {"QAT"},
+    "AE": {"UAE"}, "CN": {"CHN"}, "KR": {"KOR"}, "IN": {"IND"},
+    "ID": {"IDN"}, "TH": {"THA"}, "MY": {"MAS"}, "SG": {"SGP"},
+    "KZ": {"KAZ"}, "GE": {"GEO"}, "AM": {"ARM"}, "AZ": {"AZE"},
+}
+
+
+def normalized_name_tokens(value):
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return set(re.findall(r"[a-z0-9]+", normalized.casefold()))
+
+
+def profile_matches_card(card, profile):
+    card_country = str(card.get("country") or "").strip().upper()
+    profile_country = str(profile.get("nation_code") or "").strip().upper()
+    expected_codes = COUNTRY_CODE_EQUIVALENTS.get(card_country)
+    if expected_codes and profile_country and profile_country not in expected_codes:
+        return False
+
+    profile_names = (profile.get("full_name"), profile.get("name"))
+    card_names = (card.get("name_en"), card.get("name"))
+    for card_name in card_names:
+        card_tokens = normalized_name_tokens(card_name)
+        if not card_tokens:
+            continue
+        for profile_name in profile_names:
+            profile_tokens = normalized_name_tokens(profile_name)
+            if profile_tokens and card_tokens.issubset(profile_tokens):
+                return True
+    return False
 
 
 def classify_result(exit_code, output, verified):
@@ -93,18 +145,28 @@ def verify(job):
 def run_collector(job):
     task=job["task_type"]
     if task=="photo_sw":
-        source=request("soccerwiki_player",{"select":"photo_url","card_id":"eq."+job["card_id"],"limit":"1"})
-        url=source[0].get("photo_url") if source else None
-        if not usable_photo(url):
-            return "Фото найдено: 0\\nSoccer Wiki photo URL is empty or a placeholder",0
-        if not image_reachable(url):
-            return "ПРОФИЛЕЙ ПОТЕРЯНО: Soccer Wiki photo URL is unreachable",1
+        cards=request("cards",{"select":"id,name,name_en,country,photo_url","id":"eq."+job["card_id"],"limit":"1"})
+        if not cards:
+            return "Фото найдено: 0\\nPlayer card not found",0
+        card=cards[0]
+        source=request("soccerwiki_player",{
+            "select":"name,full_name,photo_url,nation_code",
+            "card_id":"eq."+job["card_id"],"order":"pid.asc"
+        })
+        candidates=[row for row in source
+                    if usable_photo(row.get("photo_url")) and profile_matches_card(card,row)]
+        if not candidates:
+            return "Фото найдено: 0\\nNo identity-verified Soccer Wiki photo matches card",0
+        url=next((row.get("photo_url") for row in candidates
+                  if image_reachable(row.get("photo_url"))),None)
+        if not url:
+            return "ПРОФИЛЕЙ ПОТЕРЯНО: matching Soccer Wiki photo URLs are unreachable",1
         request("cards",params={"id":"eq."+job["card_id"],"or":"(photo_url.is.null,photo_url.eq.)"},
                 method="PATCH",body={"photo_url":url})
         rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
         if rows and rows[0].get("photo_url")==url and image_reachable(rows[0].get("photo_url")):
             return "Фото найдено: 1\\nЗаписано: 1\\nИсточник: Soccer Wiki",0
-        if rows and image_reachable(rows[0].get("photo_url")):
+        if rows and usable_photo(rows[0].get("photo_url")) and image_reachable(rows[0].get("photo_url")):
             return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
         return "Фото найдено: 1\\nRead-after-write verification failed",0
     if task=="photo_tm":
