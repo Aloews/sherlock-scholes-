@@ -43,6 +43,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -111,10 +112,42 @@ def portrait_url(html):
     url = meta_image_url(html)
     if not url:
         return None
-    path = urllib.parse.urlparse(url).path
-    if PLACEHOLDER.search(path):
+    parsed = urllib.parse.urlparse(url)
+    if PLACEHOLDER.search(parsed.path):
+        return None
+    if (parsed.hostname or "").lower() not in {
+        "img.a.transfermarkt.technology", "tmssl.akamaized.net"
+    }:
         return None
     return url
+
+
+def slugify_name(value):
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return re.sub(r"[^a-zA-Z0-9]+", "-", normalized).strip("-").lower()
+
+
+def profile_urls(card):
+    player_id = str(card.get("transfermarkt_id") or "")
+    if not player_id.isdigit():
+        return []
+    urls = []
+    slug = slugify_name(card.get("name_en") or card.get("name"))
+    if slug:
+        urls.append("https://www.transfermarkt.com/%s/profil/spieler/%s" % (slug, player_id))
+        urls.append("https://www.transfermarkt.co.uk/%s/profil/spieler/%s" % (slug, player_id))
+    urls.append(PROFILE % player_id)
+    return list(dict.fromkeys(urls))
+
+
+def get_profile(card):
+    """Try canonical slug URLs first; accept verified profile markup or a real portrait."""
+    for url in profile_urls(card):
+        html = get(url)
+        if html and (has_profile_content(html) or portrait_url(html)):
+            return html
+    return None
 
 
 def get(url):
@@ -202,8 +235,8 @@ def main():
         batch = []
 
     for i, card in enumerate(rows, 1):
-        html = get(PROFILE % card["transfermarkt_id"])
-        if html is None or not has_profile_content(html):
+        html = get_profile(card)
+        if html is None:
             lost += 1
         else:
             url = portrait_url(html)
