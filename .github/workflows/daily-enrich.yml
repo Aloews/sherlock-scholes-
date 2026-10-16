@@ -373,6 +373,12 @@ jobs:
         if: always()
         run: python docs/soccerwiki_link_refresh.py
 
+      # Fill empty English display names only from an existing, linked profile.
+      # No fuzzy matching; the script never overwrites a populated name_en.
+      - name: Backfill missing English player names from linked Soccer Wiki profiles
+        if: always()
+        run: APPLY=1 python docs/cards_name_en_from_soccerwiki.py
+
       # Read-only health report; FAILS the job if any career_stats row still
       # carries wiki markup. Runs even if a prior step failed, and the report is
       # always uploaded.
