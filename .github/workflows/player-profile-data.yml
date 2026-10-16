@@ -7,6 +7,11 @@ on:
       - '.github/workflows/player-profile-data.yml'
       - 'docs/players_stats_transfermarkt.py'
       - 'docs/cards_photo_from_qid.py'
+      - 'docs/cards_photo_transfermarkt.py'
+      - 'docs/cards_photo_credits.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'docs/test_player_photo_parsers.py'
+      - 'docs/WOMENS_FOOTBALL_DATA_SUPPORT.md'
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
@@ -47,8 +52,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r football_scraper/requirements.txt
 
-      - name: Test seasonal-stat candidate selection
+      - name: Test seasonal-stat parser and candidate selection
         run: python3 docs/test_players_stats_transfermarkt.py
+
+      - name: Test player-photo parsers
+        run: python3 docs/test_player_photo_parsers.py
 
       - name: Prioritize reported missing player profile
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
@@ -109,6 +117,21 @@ jobs:
 
       - name: Backfill player portraits by Wikidata entity ID
         run: APPLY=1 python3 docs/cards_photo_from_qid.py
+
+      - name: Fill remaining player portraits from Transfermarkt
+        env:
+          PLAYER_LIMIT: ${{ inputs.limit }}
+        run: |
+          limit="${PLAYER_LIMIT:-800}"
+          case "$limit" in
+            ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
+          esac
+          if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
+          # Rotate the candidate window daily so transient failures cannot
+          # pin the first batch forever.
+          day=$(( $(date -u +%s) / 86400 ))
+          offset=$(( day * limit ))
+          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit "$limit" --offset "$offset"
 
       - name: Collect required Wikimedia photo credits
         if: always()

@@ -38,6 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
+from html.parser import HTMLParser
 import json
 import os
 import re
@@ -53,7 +54,27 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
+class _OGImageParser(HTMLParser):
+    """Read Open Graph image metadata independent of attribute order/quoting."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.url = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "meta":
+            return
+        values = {key.lower(): value for key, value in attrs if key}
+        if (values.get("property") or "").lower() != "og:image":
+            return
+        candidate = (values.get("content") or "").strip()
+        if candidate.startswith("//"):
+            candidate = "https:" + candidate
+        parsed = urllib.parse.urlparse(candidate)
+        if parsed.scheme in ("http", "https") and parsed.netloc:
+            self.url = candidate
+
+
 # Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
 # адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
 # встретиться по другому поводу.
@@ -85,16 +106,16 @@ def read_all(path, params):
         offset += PAGE
 
 
-def portrait_url(html):
-    """Адрес портрета со страницы профиля — или None.
+def og_image_url(html):
+    """Validated HTTP(S) Open Graph image URL, before placeholder filtering."""
+    parser = _OGImageParser()
+    parser.feed(html or "")
+    return parser.url
 
-    ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
-    в колоду попадёт серый силуэт под видом фотографии.
-    """
-    m = OG_IMAGE.search(html or "")
-    if not m:
-        return None
-    url = m.group(1).strip()
+
+def portrait_url(html):
+    """Адрес настоящего портрета со страницы профиля — или None."""
+    url = og_image_url(html)
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
@@ -117,10 +138,22 @@ def get(url):
     return None
 
 
+def rotate_candidates(rows, offset, limit):
+    """Return a bounded cyclic window so repeated failures do not starve later rows."""
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if rows and offset:
+        start = offset % len(rows)
+        rows = rows[start:] + rows[:start]
+    return rows[:limit] if limit else rows
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--offset", type=int, default=0,
+                    help="сдвиг по списку кандидатов; нужен для циклической обработки")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
@@ -159,8 +192,10 @@ def main():
         rows = [r for r in rows if r["id"] not in linked]
         print("Пропущено как «закроет Soccer Wiki»: %d" % (before - len(rows)), flush=True)
 
-    if args.limit:
-        rows = rows[:args.limit]
+    try:
+        rows = rotate_candidates(rows, args.offset, args.limit)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
     print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
           % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
     if not rows:
@@ -176,7 +211,7 @@ def main():
             for card_id, url in batch:
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "photo_url": "is.null"},
-                   body={"photo_url": url})
+                   body={"photo_url": url, "photo_source": "transfermarkt"})
                 written += 1
         batch = []
 
@@ -189,7 +224,7 @@ def main():
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif OG_IMAGE.search(html):
+            elif og_image_url(html):
                 placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()
