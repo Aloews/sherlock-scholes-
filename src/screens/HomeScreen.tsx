@@ -29,6 +29,7 @@ import { useRoomJoin } from '@/features/lobby/useRoomJoin';
 import { PendingInvitesPanel } from '@/features/lobby/PendingInvitesPanel';
 import { DeckPickerScreen } from './DeckPickerScreen';
 import { SmartDecksPanel } from './home/SmartDecksPanel';
+import { OnlinePanel } from '@/features/social/OnlinePanel';
 import type { DeckFilter } from '@/shared/types/deck';
 import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { aiDeckErrorMessage, edgeFunctionErrorCode } from '@/features/decks/aiDeckError';
@@ -306,6 +307,12 @@ export function HomeScreen() {
               ← {t('home.back')}
             </button>
             <SmartDecksPanel onStart={startGame} />
+          </div>
+        )}
+
+        {view === 'home' && (
+          <div className="w-full max-w-sm">
+            <OnlinePanel />
           </div>
         )}
 
