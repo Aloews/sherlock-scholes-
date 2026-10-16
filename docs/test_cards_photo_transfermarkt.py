@@ -11,7 +11,15 @@ def check(label, actual, expected):
 
 
 def main():
-    check("current profile URL", collector.PROFILE % "28003", "https://www.transfermarkt.com/-/profil/spieler/28003")
+    check("slug profile URL", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[0], "https://www.transfermarkt.com/youssef-chermiti/profil/spieler/670688")
+    check("regional fallback", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[1], "https://www.transfermarkt.co.uk/youssef-chermiti/profil/spieler/670688")
+    check("ID-only fallback", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[2], "https://www.transfermarkt.com/-/profil/spieler/670688")
     standard = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1">'
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")
