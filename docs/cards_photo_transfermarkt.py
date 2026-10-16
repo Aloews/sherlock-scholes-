@@ -112,8 +112,12 @@ def portrait_url(html):
     url = meta_image_url(html)
     if not url:
         return None
-    path = urllib.parse.urlparse(url).path
-    if PLACEHOLDER.search(path):
+    parsed = urllib.parse.urlparse(url)
+    if PLACEHOLDER.search(parsed.path):
+        return None
+    if (parsed.hostname or "").lower() not in {
+        "img.a.transfermarkt.technology", "tmssl.akamaized.net"
+    }:
         return None
     return url
 
