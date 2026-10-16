@@ -1,0 +1,43 @@
+name: transfer-refresh-queue-regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  transfer-refresh-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: transfer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d transfer_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: transfer_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Create isolated transfer fixtures
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/transfers_to_refresh_test_setup.sql
+      - name: Apply transfer refresh fix
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261016090000_fix_transfer_refresh_queue_semantics.sql
+      - name: Verify new and stale queues stay separate
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/transfers_to_refresh_queue.test.sql
