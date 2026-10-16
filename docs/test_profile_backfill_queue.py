@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import profile_backfill_queue as worker
-from profile_backfill_queue import classify_result, usable_photo, rpc_status
+from profile_backfill_queue import classify_result, usable_photo, rpc_status, result_exit_code
 
 
 class SoccerWikiPhotoTests(unittest.TestCase):
@@ -77,10 +77,13 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(0, "профилей потеряно: 1", False), "retry")
 
     def test_worker_retry_states_are_not_reported_as_success(self):
-        # The worker's final exit code must be non-zero when read-after-write
-        # failed and the job was returned to pending for a retry.
-        self.assertEqual(classify_result(0, "Фото найдено: 1\\nЗаписано: 1", False), "retry")
-        self.assertEqual(classify_result(1, "HTTP 503", False), "retry")
+        self.assertEqual(result_exit_code([{"status": "succeeded"}]), 0)
+        self.assertEqual(result_exit_code([{"status": "no_data"}]), 0)
+        self.assertEqual(result_exit_code([{"status": "pending"}]), 1)
+        self.assertEqual(result_exit_code([{"status": "failed"}]), 1)
+        self.assertEqual(
+            result_exit_code([{"status": "succeeded"}, {"status": "pending"}]), 1
+        )
 
     def test_empty_source_is_not_success(self):
         self.assertNotEqual(classify_result(0, "portrait not found", False), "succeeded")
