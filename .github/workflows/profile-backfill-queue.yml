@@ -1,0 +1,70 @@
+name: profile-backfill-queue
+
+on:
+  workflow_dispatch:
+    inputs:
+      enqueue_only:
+        description: "Only enqueue missing tasks; do not call external sources"
+        type: boolean
+        default: true
+      max_jobs:
+        description: "Maximum tasks to process in this run"
+        type: string
+        default: "10"
+      enqueue_limit:
+        description: "Maximum new tasks to enqueue before processing"
+        type: string
+        default: "10"
+
+concurrency:
+  group: profile-backfill-queue
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate arguments and queue worker tests
+        env:
+          MAX_JOBS: ${{ inputs.max_jobs }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+        run: |
+          python docs/test_profile_backfill_queue.py
+          case "$MAX_JOBS" in
+            ''|*[!0-9]*) echo "::error::max_jobs must be a positive integer"; exit 2 ;;
+          esac
+          [ "$MAX_JOBS" -ge 1 ] && [ "$MAX_JOBS" -le 500 ] || {
+            echo "::error::max_jobs must be between 1 and 500"; exit 2;
+          }
+          case "$ENQUEUE_LIMIT" in
+            ''|*[!0-9]*) echo "::error::enqueue_limit must be a positive integer"; exit 2 ;;
+          esac
+          [ "$ENQUEUE_LIMIT" -ge 1 ] && [ "$ENQUEUE_LIMIT" -le 100000 ] || {
+            echo "::error::enqueue_limit must be between 1 and 100000"; exit 2;
+          }
+      - name: Enqueue gaps and optionally process a bounded batch
+        env:
+          ENQUEUE_ONLY: ${{ inputs.enqueue_only }}
+          MAX_JOBS: ${{ inputs.max_jobs }}
+          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+        run: |
+          if [ "$ENQUEUE_ONLY" = "true" ]; then
+            python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "$ENQUEUE_LIMIT"
+          else
+            python docs/profile_backfill_queue.py --max-jobs "$MAX_JOBS" --batch-size 10 --enqueue-limit "$ENQUEUE_LIMIT"
+          fi
+      - name: Upload per-task verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-backfill-result
+          path: profile-backfill-result.jsonl
+          if-no-files-found: ignore

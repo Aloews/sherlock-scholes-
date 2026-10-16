@@ -17,14 +17,19 @@
 // около восьми в сутки на живой счёт. Значит на котировки остаётся примерно
 // столько же.
 //
-// Отсюда устройство: ОДИН рынок (h2h), ОДИН регион (eu), десять лиг, один
-// обход в сутки — десять кредитов. Плюс резерв: если до конца месяца остаётся
-// меньше RESERVE, обход не начинается вовсе. Счёт важнее котировок — он на
-// экране, а они внутри.
+// По умолчанию собирается один рынок на запрос: h2h в двух из трёх циклов,
+// затем spreads/totals/btts по очереди. Это расширяет покрытие без увеличения
+// исходной квоты; ODDS_MARKETS явно переопределяет набор, но тратит больше кредитов.
+// Каждый запрос оставляет 80 кредитов для более важных live-score вызовов.
+
+import { creditCostForRequest, normalizeRegions, parseMarkets, rowsForMarkets, rotatingMarketsForDate, type SupportedMarket } from "./markets.ts";
 
 const ODDS_API_KEY = Deno.env.get("ODDS_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const MARKETS_OVERRIDE = Deno.env.get("ODDS_MARKETS");
+const FIXED_MARKETS: SupportedMarket[] | null = MARKETS_OVERRIDE === undefined ? null : parseMarkets(MARKETS_OVERRIDE);
+const REGION = normalizeRegions(Deno.env.get("ODDS_REGION") ?? "eu").join(",");
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +52,9 @@ const ODDS_SPORTS = [
   "soccer_uefa_champs_league",
   "soccer_uefa_europa_league",
 ];
+function marketsForRun(timestamp: string): SupportedMarket[] {
+  return FIXED_MARKETS !== null ? FIXED_MARKETS : rotatingMarketsForDate(new Date(timestamp));
+}
 
 // Ниже этого остатка обход не начинается: живому счёту нужно ~8 кредитов в
 // сутки, и отнять их у него ради котировок значит поменять то, что на экране,
@@ -100,15 +108,51 @@ async function creditsLeft(): Promise<number | null> {
   }
 }
 
-async function reserve(credits: number): Promise<boolean> {
+async function isMissingRpc(response: Response): Promise<boolean> {
+  if (response.status === 404) return true;
   try {
-    const r = await rpc("spend_odds_credits", { p_credits: credits });
-    if (!r.ok) return false;
-    return (await r.json()) === true;
+    const body = await response.clone().json();
+    return body?.code === "PGRST202" || body?.code === "42883";
   } catch {
-    // Отказ при нечитаемом бюджете — безопасная сторона: трата, которую
-    // нельзя сосчитать, это ровно то, ради чего потолок и заведён.
     return false;
+  }
+}
+
+async function reserveRequest(
+  requestKey: string, sport: string, requestedMarkets: SupportedMarket[],
+): Promise<SupportedMarket[] | null> {
+  try {
+    const r = await rpc("reserve_odds_api_request", {
+      p_request_key: requestKey, p_provider: "the-odds-api", p_sport_key: sport,
+      p_region: REGION, p_markets: requestedMarkets, p_credits: creditCostForRequest(requestedMarkets, REGION),
+    });
+    if (r.ok) return (await r.json()) === true ? requestedMarkets : null;
+    // Safe rollout compatibility before the migration is applied: only retain
+    // legacy h2h calls under the old budget RPC. Never request extra markets
+    // without the new request ledger and generic quote table.
+    if (await isMissingRpc(r)) {
+      // The legacy RPC accounts for one credit only; fail closed for multiple regions.
+      if (normalizeRegions(REGION).length !== 1) return null;
+      const legacy = await rpc("spend_odds_credits", { p_credits: 1 });
+      return legacy.ok && (await legacy.json()) === true ? ["h2h"] : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function finishRequest(
+  requestKey: string, status: "success" | "failed",
+  responseCount: number | null, providerRemaining: number | null, errorCode: string | null,
+): Promise<void> {
+  try {
+    await rpc("finish_odds_api_request", {
+      p_request_key: requestKey, p_status: status, p_response_count: responseCount,
+      p_provider_remaining: providerRemaining, p_error_code: errorCode,
+    });
+  } catch {
+    // The reservation remains auditable as reserved if finalization cannot be recorded.
   }
 }
 
@@ -170,28 +214,61 @@ Deno.serve(async (req) => {
   let written = 0, spent = 0;
   const failed: string[] = [];
 
+  if (FIXED_MARKETS !== null && FIXED_MARKETS.length === 0) return reply(500, { error: "ODDS_MARKETS must include at least one supported market" });
   for (const sport of ODDS_SPORTS) {
-    // Кредит резервируется ДО запроса: иначе при обрыве ответа потрачено
-    // будет, а посчитано нет, и потолок перестанет быть потолком.
-    if (!(await reserve(1))) { failed.push(`${sport}: budget`); break; }
-    spent += 1;
+    const requestedMarkets = marketsForRun(takenAt);
+    if (requestedMarkets.length === 0) return reply(500, { error: "ODDS_MARKETS must include at least one supported market" });
+    // One idempotent reservation per UTC date, sport and market set. Credits are
+    // reserved before the provider request; fallback may reduce this to legacy h2h.
+    const available = await creditsLeft();
+    if (available !== null && available < RESERVE + creditCostForRequest(requestedMarkets, REGION)) {
+      failed.push(`${sport}: preserving the ${RESERVE}-credit live-score reserve`);
+      break;
+    }
+    const requestKey = `${new Date().toISOString().slice(0, 10)}:${sport}:${REGION}:${requestedMarkets.join(",")}`;
+    const activeMarkets = await reserveRequest(requestKey, sport, requestedMarkets);
+    if (!activeMarkets) {
+      failed.push(`${sport}: budget exhausted or request already reserved today`);
+      break;
+    }
+    spent += creditCostForRequest(activeMarkets, REGION);
     try {
       const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds`
-        + `?apiKey=${ODDS_API_KEY}&regions=eu&markets=h2h&oddsFormat=decimal`;
+        + `?apiKey=${ODDS_API_KEY}&regions=${REGION}&markets=${activeMarkets.join(",")}&oddsFormat=decimal`;
       const r = await fetch(url);
-      if (!r.ok) { failed.push(`${sport}: HTTP ${r.status}`); continue; }
-      const events = (await r.json()) as OddsEvent[];
-      const rows = events.flatMap((e) => rowsFor(e, takenAt));
-      if (rows.length === 0) continue;
-      // Пачками: одна лига может дать сотни строк, а PostgREST на большом теле
-      // отвечает хуже, чем на нескольких средних.
-      for (let i = 0; i < rows.length; i += 200) {
-        const w = await rpc("upsert_fixture_odds", { p_rows: rows.slice(i, i + 200) });
-        if (w.ok) written += Number(await w.json()) || 0;
-        else failed.push(`${sport}: write ${w.status}`);
+      const remainingHeader = r.headers.get("x-requests-remaining");
+      const providerRemaining = remainingHeader && /^\d+$/.test(remainingHeader) ? Number(remainingHeader) : null;
+      if (!r.ok) {
+        await finishRequest(requestKey, "failed", null, providerRemaining, `http_${r.status}`);
+        failed.push(`${sport}: HTTP ${r.status}`);
+        continue;
       }
+      const events = (await r.json()) as OddsEvent[];
+      const quoteRows = events.flatMap((event) => rowsForMarkets(event, takenAt, activeMarkets, REGION));
+      let writeFailed = false;
+      for (let i = 0; i < quoteRows.length; i += 200) {
+        const w = await rpc("upsert_fixture_market_quotes", { p_rows: quoteRows.slice(i, i + 200) });
+        if (w.ok) written += Number(await w.json()) || 0;
+        else if (!(activeMarkets.length === 1 && activeMarkets[0] === "h2h" && await isMissingRpc(w))) {
+          writeFailed = true;
+          failed.push(`${sport}: market quote write ${w.status}`);
+        }
+      }
+      // Preserve the legacy 1X2 table used by the existing admin forecast board.
+      if (activeMarkets.includes("h2h")) {
+        const legacyRows = events.flatMap((event) => rowsFor(event, takenAt));
+        for (let i = 0; i < legacyRows.length; i += 200) {
+          const w = await rpc("upsert_fixture_odds", { p_rows: legacyRows.slice(i, i + 200) });
+          if (w.ok) written += Number(await w.json()) || 0;
+          else { writeFailed = true; failed.push(`${sport}: legacy h2h write ${w.status}`); }
+        }
+      }
+      await finishRequest(requestKey, writeFailed ? "failed" : "success", events.length, providerRemaining,
+        writeFailed ? "database_write_failed" : null);
     } catch (e) {
-      failed.push(`${sport}: ${e instanceof Error ? e.message : "error"}`);
+      await finishRequest(requestKey, "failed", null, null, "request_or_parse_failed");
+      const message = e instanceof Error ? e.message : "error";
+      failed.push(`${sport}: ${message.split(ODDS_API_KEY).join("[redacted]")}`);
     }
   }
 

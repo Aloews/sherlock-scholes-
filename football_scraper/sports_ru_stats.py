@@ -813,6 +813,22 @@ def resolve_slugs(fetcher, db, dry_run=False, guess=True, reserve=COLLECT_RESERV
     return db.upsert("sports_ru_player", deduped, "card_id")
 
 
+def completed_match_rows(rows, today=None):
+    """Keep only match records dated today or earlier; discard future fixtures."""
+    cutoff = today or date.today()
+    completed = []
+    skipped_future = 0
+    for row in rows:
+        match_date = row.get("date")
+        if type(match_date) is not date:
+            continue
+        if match_date > cutoff:
+            skipped_future += 1
+            continue
+        completed.append(row)
+    return completed, skipped_future
+
+
 def collapse_duplicate_keys(rows):
     """Одна строка на (карточка, дата, турнир) — иначе пачку отвергнут целиком.
 
@@ -911,6 +927,7 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
     # игрока» там, где сорок пять из них не открылись вовсе.
     stats, checked, suspect = [], [], []
     parsed = 0
+    future_rows_skipped = 0
     for p in players:
         try:
             html = fetcher.get("{}/football/person/{}/stat/".format(BASE, p["slug"]))
@@ -951,6 +968,10 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
             suspect.append((p["name_ru"], gap))
             continue
 
+        # Keep the full page for its printed-total integrity check above, but
+        # never persist scheduled future fixtures as played match statistics.
+        rows, skipped_future = completed_match_rows(rows, today=date.today())
+        future_rows_skipped += skipped_future
         for row in rows:
             stats.append(
                 {
@@ -974,6 +995,8 @@ def collect_stats(fetcher, db, limit=None, dry_run=False):
 
     print("parsed {} match rows from {} players ({} pages spent)"
           .format(len(stats), parsed, len(checked)))
+    if future_rows_skipped:
+        print("future schedule rows skipped: {}".format(future_rows_skipped))
     if suspect:
         print("!! {} players disagreed with their own page total:".format(len(suspect)))
         for name, gap in suspect[:10]:

@@ -38,6 +38,7 @@
     APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
+import html as html_lib
 import json
 import os
 import re
@@ -47,18 +48,29 @@ import urllib.request
 
 UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
-PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
+PROFILE = "https://www.transfermarkt.com/x/profil/spieler/%s"
 PAUSE = 1.5
 RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-OG_IMAGE = re.compile(r'<meta property="og:image" content="([^"]+)"')
-# Заглушка у TM называется default/dummy — проверяем ИМЯ ФАЙЛА, а не весь
-# адрес: в адресе есть и `lm=4711`, и путь, где слово «default» может
-# встретиться по другому поводу.
-PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+$', re.I)
+META_TAG = re.compile(r"<meta\b[^>]*>", re.I | re.S)
+META_ATTR = re.compile(r"""([a-zA-Z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+\Z', re.I)
 
+
+def meta_image_url(html):
+    for tag in META_TAG.findall(html or ""):
+        attrs = {}
+        for match in META_ATTR.finditer(tag):
+            value = next((part for part in match.groups()[1:] if part is not None), "")
+            attrs[match.group(1).lower()] = html_lib.unescape(value).strip()
+        image_key = attrs.get("property", attrs.get("name", "")).casefold()
+        if image_key in {"og:image", "twitter:image", "twitter:image:src"}:
+            value = attrs.get("content", "").replace("\\/", "/").strip()
+            if value:
+                return value
+    return None
 
 def sb(path, method="GET", body=None, params=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
@@ -85,16 +97,18 @@ def read_all(path, params):
         offset += PAGE
 
 
+def has_profile_content(html):
+    return bool(re.search(
+        r"data-header__market-value-wrapper|data-header__profile-container|data-header__profile-image|dataBild",
+        html or "", re.I))
+
 def portrait_url(html):
     """Адрес портрета со страницы профиля — или None.
 
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    m = OG_IMAGE.search(html or "")
-    if not m:
-        return None
-    url = m.group(1).strip()
+    url = meta_image_url(html)
     if not url:
         return None
     path = urllib.parse.urlparse(url).path
@@ -121,9 +135,12 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        raise SystemExit("--only должен быть числовым Transfermarkt ID")
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
@@ -131,11 +148,15 @@ def main():
     # ⚠️ ТОЛЬКО ИГРОКИ. У клуба на TM своя эмблема, но эмблемы в этом проекте
     # берутся с ESPN и решение это принято владельцем; подменять их отсюда
     # значило бы откатывать его молча.
-    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id",
+    rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id,photo_url",
                               "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
-                              "transfermarkt_id": "not.is.null",
+                              "transfermarkt_id": ("eq." + args.only) if args.only else "not.is.null",
                               "order": "id"})
+
+    # Existing data can be a blank string as well as SQL NULL.
+    rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
+    if args.only:
+        rows = [row for row in rows if str(row.get("transfermarkt_id") or "") == args.only]
 
     # ⚠️ ТЕХ, КОГО ЗАКРОЕТ SOCCER WIKI, ЗДЕСЬ СПРАШИВАТЬ НЕЗАЧЕМ, И ЭТО ЗАМЕР.
     #
@@ -175,21 +196,21 @@ def main():
         if apply_:
             for card_id, url in batch:
                 sb("cards", method="PATCH",
-                   params={"id": "eq." + card_id, "photo_url": "is.null"},
+                   params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
                    body={"photo_url": url})
                 written += 1
         batch = []
 
     for i, card in enumerate(rows, 1):
         html = get(PROFILE % card["transfermarkt_id"])
-        if html is None:
+        if html is None or not has_profile_content(html):
             lost += 1
         else:
             url = portrait_url(html)
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif OG_IMAGE.search(html):
+            elif meta_image_url(html):
                 placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()

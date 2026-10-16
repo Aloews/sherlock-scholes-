@@ -1,0 +1,60 @@
+name: llm-finetuning
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit_provider_job:
+        description: "Submit an external fine-tuning job (may incur charges)"
+        type: boolean
+        default: false
+      min_examples:
+        description: "Minimum verified examples required"
+        type: string
+        default: "200"
+
+concurrency:
+  group: llm-finetuning
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      FT_BASE_URL: ${{ secrets.FT_BASE_URL }}
+      FT_API_KEY: ${{ secrets.FT_API_KEY }}
+      FT_MODEL: ${{ vars.FT_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Offline pipeline tests
+        working-directory: ml/llm_finetuning
+        run: |
+          python test_pipeline.py
+          python test_evaluation.py
+      - name: Export settled examples and enforce chronology
+        run: |
+          python ml/llm_finetuning/export_dataset.py
+          python ml/llm_finetuning/prepare_dataset.py \
+            --input artifacts/llm-finetuning/raw_examples.jsonl \
+            --output-dir artifacts/llm-finetuning \
+            --min-examples "${{ inputs.min_examples }}"
+      - name: Dry-run provider payload
+        if: ${{ inputs.submit_provider_job != true }}
+        run: python ml/llm_finetuning/submit_job.py --artifact-dir artifacts/llm-finetuning
+      - name: Submit fine-tuning job
+        if: ${{ inputs.submit_provider_job == true }}
+        run: python ml/llm_finetuning/submit_job.py --artifact-dir artifacts/llm-finetuning --submit
+      - name: Upload manifest and holdout for offline evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-finetuning-manifest
+          path: |
+            artifacts/llm-finetuning/manifest.json
+            artifacts/llm-finetuning/holdout.jsonl
+          if-no-files-found: warn

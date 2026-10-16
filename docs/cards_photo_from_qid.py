@@ -156,14 +156,18 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only-card-id", default="", help="обработать одну карточку UUID")
     args = ap.parse_args()
     apply_ = os.environ.get("APPLY") == "1"
 
-    rows = read_all("cards", {"select": "id,name,category,wikidata_qid",
+    rows = read_all("cards", {"select": "id,name,category,wikidata_qid,photo_url",
                               "category": "eq.player", "active": "is.true",
-                              "photo_url": "is.null",
                               "wikidata_qid": "not.is.null",
+                              **({"id": "eq." + args.only_card_id} if args.only_card_id else {}),
                               "order": "id"})
+    rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
+    if args.only_card_id:
+        rows = [row for row in rows if row["id"] == args.only_card_id]
     if args.limit:
         rows = rows[:args.limit]
     print("Карточек без фото, но с QID: %d  (APPLY=%s)"
@@ -189,7 +193,7 @@ def main():
                 # ⚠️ Условие `photo_url is null` СТОИТ В ЗАПРОСЕ, а не только в
                 # выборке: между чтением и записью мог отработать другой шаг.
                 sb("cards", method="PATCH",
-                   params={"id": "eq." + card_id, "photo_url": "is.null"},
+                   params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
                    body={"photo_url": url, "photo_source": "wikimedia_commons"})
                 written += 1
         batch = []

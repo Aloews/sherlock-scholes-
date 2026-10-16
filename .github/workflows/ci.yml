@@ -11,7 +11,8 @@ name: ci
 on:
   push:
     branches: [main]
-  pull_request: {}
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   # Manual re-run. GitHub occasionally drops a `synchronize` event and the
   # push simply never gets a check suite — without this there is no way to
   # ask for one short of pushing an empty commit.
@@ -151,6 +152,16 @@ jobs:
           done
           echo "::group::docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
+          python ../docs/test_cards_photo_transfermarkt.py || failed="$failed docs/test_cards_photo_transfermarkt.py"
+          echo "::endgroup::"
+          echo "::group::market settlement unit tests"
+          python ../docs/test_market_settlement.py || failed="$failed docs/test_market_settlement.py"
+          echo "::endgroup::"
+          echo "::group::profile backfill queue tests"
+          python ../docs/test_profile_backfill_queue.py || failed="$failed docs/test_profile_backfill_queue.py"
+          echo "::endgroup::"
+          echo "::group::LLM fine-tuning data pipeline tests"
+          (cd ../ml/llm_finetuning && python test_pipeline.py && python test_evaluation.py) || failed="$failed ml/llm_finetuning/test_pipeline.py"
           echo "::endgroup::"
           if [ -n "$failed" ]; then
             echo "Failed:$failed"
@@ -189,3 +200,5 @@ jobs:
             echo "::error::типы не сошлись:$failed"
             exit 1
           fi
+      - name: Multi-market quote parser tests
+        run: deno test supabase/functions/football-odds/markets.test.ts
