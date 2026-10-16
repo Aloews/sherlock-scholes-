@@ -453,6 +453,19 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                   <IconChevronLeft size={14} className="rotate-180 text-brand-muted" />
                 </button>
               )}
+              {facts?.national_team && (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-brand-border bg-brand-bg/70 px-3 py-2 text-left text-sm text-white">
+                  <IconFlag size={18} stroke={1.8} className="shrink-0 text-brand-muted" />
+                  <span>
+                    <span className="block text-[9px] uppercase tracking-wider text-brand-muted">
+                      {isRu ? 'Сборная по подтверждённым данным' : 'National team · source data'}
+                    </span>
+                    <span className="block font-semibold">
+                      {isRu ? `Сборная ${facts.national_team}` : facts.national_team}
+                    </span>
+                  </span>
+                </div>
+              )}
               {highlight && (
                 <p className="border-t border-white/10 pt-3 text-[12px] leading-relaxed text-white/80">
                   {highlight.kind === 'national' && t('collection.hl_national', {

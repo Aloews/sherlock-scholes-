@@ -10,6 +10,8 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useTraining, type HistoryEntry, type Team } from '@/features/game/useTraining';
+import { fetchCard } from '@/features/collection/collectionApi';
+import { CardDossier } from '@/screens/collection/CardDossier';
 import { fetchCurrentClubs, type CurrentClub } from '@/features/collection/currentClubApi';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { isoToFlag } from '@/shared/lib/flag';
@@ -25,7 +27,7 @@ import { tierCardStyle, tierRingStyle } from '@/shared/lib/tier';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import { CardWatermark } from '@/shared/ui/CardWatermark';
 import { useDesign } from '@/shared/design/useDesign';
-import type { CardCategory } from '@/shared/types/database';
+import type { Card, CardCategory } from '@/shared/types/database';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CATEGORY_EMOJI } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
@@ -284,6 +286,27 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   // "Report an error" sheet — the history entry being reported, or null.
   const [reporting, setReporting] = useState<HistoryEntry | null>(null);
+  const [profileCard, setProfileCard] = useState<Card | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+
+  const openPlayerProfile = async (entry: HistoryEntry) => {
+    if (profileLoading) return;
+    setProfileLoading(true);
+    setProfileError(false);
+    try {
+      const card = await fetchCard(entry.id);
+      if (card.category !== 'player' && card.category !== 'woman') {
+        setProfileError(true);
+        return;
+      }
+      setProfileCard(card);
+    } catch {
+      setProfileError(true);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   // ⚠️ ТЕКУЩИЙ КЛУБ — ИЗ СОБРАННОГО, А НЕ ИЗ СТАТЬИ. Владелец: «после игры в
   // Элиас написано, что Гарначо в Челси, а он уже перешёл». В `career_stats` у
@@ -568,10 +591,20 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                       )}
                       <button
                         type="button"
-                        onClick={() => { hapticImpact('light'); googleSearch(displayName); }}
-                        className="block w-full text-left text-xl font-medium text-white leading-snug truncate transition-colors hover:text-brand-accent hover:underline"
+                        onClick={() => {
+                          hapticImpact('light');
+                          if (entry.category === 'player' || entry.category === 'woman') void openPlayerProfile(entry);
+                          else googleSearch(displayName);
+                        }}
+                        aria-label={(entry.category === 'player' || entry.category === 'woman')
+                          ? `${displayName} — ${i18n.language.startsWith('ru') ? 'открыть профиль' : 'open player profile'}`
+                          : displayName}
+                        className="flex items-center gap-1.5 w-full text-left text-xl font-medium text-white leading-snug transition-colors hover:text-brand-accent hover:underline"
                       >
-                        {displayName}
+                        <span className="min-w-0 truncate">{displayName}</span>
+                        {(entry.category === 'player' || entry.category === 'woman') && (
+                          <IconUser size={15} stroke={1.8} className="shrink-0 text-brand-muted" aria-hidden="true" />
+                        )}
                       </button>
                       {meta && (
                         <p className="text-brand-muted text-xs leading-snug truncate mt-0.5">
@@ -666,6 +699,25 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
             <ReportSheet entry={reporting} onClose={() => setReporting(null)} />
           )}
         </AnimatePresence>
+
+        {profileLoading && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-brand-bg/85 backdrop-blur-sm" role="status">
+            <div className="rounded-2xl border border-brand-border bg-brand-surface px-5 py-4 text-sm text-white">
+              {i18n.language.startsWith('ru') ? 'Загружаем профиль игрока…' : 'Loading player profile…'}
+            </div>
+          </div>
+        )}
+        {profileError && (
+          <button
+            type="button"
+            onClick={() => setProfileError(false)}
+            className="fixed bottom-5 left-4 right-4 z-40 rounded-xl border border-brand-border bg-brand-surface px-4 py-3 text-left text-sm text-white shadow-xl"
+            role="alert"
+          >
+            {i18n.language.startsWith('ru') ? 'Профиль не удалось загрузить. Нажмите, чтобы закрыть.' : 'Could not load player profile. Tap to dismiss.'}
+          </button>
+        )}
+        {profileCard && <CardDossier card={profileCard} onClose={() => setProfileCard(null)} />}
 
         {/* Actions */}
         <div className="px-4 pb-8 pt-2 space-y-3">
