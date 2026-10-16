@@ -99,10 +99,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015131830_fix_profile_backfill_enqueue_starvation.sql
 
       - name: Route profile photos around Soccer Wiki-owned cards
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015194500_route_profile_backfill_around_soccerwiki.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015194922_route_profile_backfill_around_soccerwiki.sql
 
       - name: Preserve no-data profile queue diagnostics
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015200500_preserve_profile_backfill_no_data_reason.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015200557_preserve_profile_backfill_no_data_reason.sql
 
       - name: Add Soccer Wiki photo backfill task type
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261015203000_add_soccerwiki_photo_backfill.sql
