@@ -20,7 +20,7 @@ import {
   recordArenaResult, fetchArenaLeaderboard, type LeaderboardRow,
 } from '@/features/arena/arenaApi';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
-import { CODE_LENGTH, sanitizeCodeInput } from '@/features/lobby/invite';
+import { CODE_LENGTH, normalizeCode, sanitizeCodeInput } from '@/features/lobby/invite';
 import {
   fitCanvas, readPalette, render, VIEW_ASPECT, type Palette,
 } from '@/features/arena/render';
@@ -60,10 +60,12 @@ export function ArenaOnline({ onBack }: { onBack: () => void }) {
 
   /** Войти в комнату и запомнить её — иначе перезапуск отдаст код навсегда. */
   const enterRoom = useCallback((next: string, as: NetRole) => {
+    const validCode = normalizeCode(next);
+    if (!validCode) return;
     hapticImpact('light');
     setRole(as);
-    setCode(next);
-    writeRoom({ code: next, role: as });
+    setCode(validCode);
+    writeRoom({ code: validCode, role: as });
   }, []);
 
   /**
@@ -219,7 +221,6 @@ export function ArenaOnline({ onBack }: { onBack: () => void }) {
               onChange={(e) => setDraft(sanitizeCodeInput(e.target.value))}
               inputMode="text"
               autoCapitalize="characters"
-              maxLength={CODE_LENGTH}
               placeholder={t('arena.online_code_placeholder')}
               className="w-full bg-brand-bg border border-brand-border rounded-xl px-3 py-2 text-white tracking-[0.3em] text-center uppercase"
             />
