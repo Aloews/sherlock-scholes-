@@ -1304,26 +1304,22 @@
     "model": {
       "own": "A nossa variante",
       "llm": "LLM",
-      "fly": "Cérebro da mosca",
+      "fly": "Modelo de reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
     },
     "what": {
       "own": "Mistura dos dois modelos que se cala quando eles discordam",
       "llm": "Uma cabeça linear treinada sobre nove características do jogo",
-      "fly": "Um reservatório: as ligações ficam fixas e só a saída aprende — como se lê o conectoma da mosca",
+      "fly": "Projeção esparsa fixa com saída treinável",
       "median": "Diz sempre o número de golos mais frequente",
       "current": "O que a aplicação mostra hoje; não aprende"
     },
     "short": {
       "own": "Nossa",
       "llm": "LLM",
-      "fly": "Mosca"
+      "fly": "Reservatório"
     },
-    "fly_verdict": "O veredito da mosca",
-    "fly_again": "de novo",
-    "fly_dopamine_one": "dopamina: {{n}} resultado",
-    "fly_dopamine_other": "dopamina: {{n}} resultados",
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
     "agree_other": "{{n}} concordam",
@@ -1436,5 +1432,34 @@
     "hide": "ocultar",
     "failed": "Não foi possível carregar as transferências",
     "note": "Aqui cada linha é uma transferência, não um jogador: a mesma pessoa pode aparecer mais do que uma vez. O valor da transferência e o valor atual do jogador são números diferentes: por Neymar pagaram-se 222 M € em 2017. Transferências anunciadas mas ainda não concretizadas não aparecem."
+  },
+  "expressPortfolio": {
+    "title": "Múltiplas com base nas odds das casas",
+    "subtitle": "Três opções com as odds 1X2 disponíveis. A taxa histórica aparece separadamente e não garante resultados futuros.",
+    "safe": "Maior probabilidade de mercado",
+    "diverse": "Resultados diversificados",
+    "value": "Diferença em relação à previsão LLM",
+    "unavailable": "Não foi possível carregar as múltiplas",
+    "empty": "Não há odds e previsões adequadas suficientes no período escolhido.",
+    "history": "Histórico: {{wins}} de {{total}} múltiplas acertadas ({{rate}})",
+    "odds": "Odd combinada",
+    "probability": "Probabilidade estimada",
+    "expectedReturn": "Retorno esperado",
+    "legs": "Jogos",
+    "books": "casas: {{n}}",
+    "disclaimer": "A probabilidade usa o consenso do mercado; a odd combinada usa os melhores preços disponíveis. Só recolhemos 1X2, não totais nem ambas marcam."
+  },
+  "paperBankroll": {
+    "title": "Saldo virtual do LLM",
+    "virtual": "SIMULAÇÃO",
+    "unavailable": "Saldo indisponível",
+    "balance": "Saldo",
+    "profit": "Lucro",
+    "roi": "Retorno",
+    "drawdown": "Recuo máximo",
+    "positions": "Posições",
+    "winRate": "Taxa de acerto",
+    "settled": "Previsões liquidadas: {{n}}",
+    "policy": "Fração de Kelly: {{kelly}}%; confiança mínima: {{floor}}%"
   }
 }

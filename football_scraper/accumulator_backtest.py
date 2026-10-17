@@ -34,11 +34,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 
 from calibration import apply_platt, fit_platt  # noqa: E402
-from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 from forecast_duel import _fetch, split_by_time  # noqa: E402
-from forecast_pipeline import fit_all, fly_call, llm_call, own_call_conf  # noqa: E402
+from forecast_pipeline import fit_all, llm_call, own_call_conf  # noqa: E402
 
-MODELS = ("llm", "fly", "own")
+MODELS = ("llm", "own")
 
 
 def env() -> tuple[str, str]:
@@ -82,9 +81,9 @@ def pick_legs(day_rows, model, ab, k, rule, floor):
         prob = apply_platt(ab[0], ab[1], raw) if ab else raw
         if rule == "consensus":
             picks = {v[0] for v in by_model.values()}
-            if len(by_model) < 3 or len(picks) != 1:
+            if len(by_model) < len(MODELS) or len(picks) != 1:
                 continue
-        elif rule == "two_of_three":
+        elif rule == "both":
             same = sum(1 for v in by_model.values() if v[0] == pick)
             if same < 2:
                 continue
@@ -111,18 +110,12 @@ def predict_block(prefix, block):
     _tr, va, _te = split_by_time(len(prefix))
     valid = prefix[va]
 
-    fly = FlyBrain.load()
-    fly.depression = 0.02
-    for r in prefix:
-        fly.learn(row_to_odour(r), actual=r["outcome"])
-    bias = params.get("fly", {}).get("bias")
-
     def call(model, r):
         if model == "llm":
             return llm_call(params["llm"], r)[:2]
         if model == "own":
             return own_call_conf(params["own"], r)[:2]
-        return fly_call(fly, r, bias)[:2]
+        raise ValueError(f"unknown model: {model}")
 
     ab = {}
     for m in MODELS:
@@ -176,12 +169,12 @@ def main() -> int:
         ("топ, порог 0.40", "top", 0.40),
         ("топ, порог 0.45", "top", 0.45),
         ("топ, порог 0.50", "top", 0.50),
-        ("все трое согласны", "consensus", 0.00),
-        ("все трое, порог 0.45", "consensus", 0.45),
-        ("все трое, порог 0.47", "consensus", 0.47),
-        ("все трое, порог 0.50", "consensus", 0.50),
-        ("двое из трёх", "two_of_three", 0.00),
-        ("двое из трёх, 0.45", "two_of_three", 0.45),
+        ("обе модели согласны", "consensus", 0.00),
+        ("обе модели, порог 0.45", "consensus", 0.45),
+        ("обе модели, порог 0.47", "consensus", 0.47),
+        ("обе модели, порог 0.50", "consensus", 0.50),
+        ("совпадение двух моделей", "both", 0.00),
+        ("две модели, порог 0.45", "both", 0.45),
     ]
 
     print(f"\n{'правило':22} {'k':>2} {'модель':>5} "

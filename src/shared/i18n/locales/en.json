@@ -1304,26 +1304,22 @@
     "model": {
       "own": "Our own variant",
       "llm": "LLM",
-      "fly": "Fruit-fly brain",
+      "fly": "Reservoir model",
       "median": "Median",
       "current": "Current formula"
     },
     "what": {
       "own": "A blend of the two models that stays silent when they disagree",
       "llm": "A trained linear head over nine match features",
-      "fly": "A reservoir: connections frozen, only the readout learns — how the fly connectome is read",
+      "fly": "Fixed sparse projection with a trainable readout",
       "median": "Always names the most common number of goals",
       "current": "What the app shows today; it does not learn"
     },
     "short": {
       "own": "Ours",
       "llm": "LLM",
-      "fly": "Fly"
+      "fly": "Reservoir"
     },
-    "fly_verdict": "The fly's verdict",
-    "fly_again": "again",
-    "fly_dopamine_one": "dopamine: {{n}} outcome",
-    "fly_dopamine_other": "dopamine: {{n}} outcomes",
     "exp_total": "{{v}} goals expected",
     "agree_one": "{{n}} agrees",
     "agree_other": "{{n}} agree",
@@ -1436,5 +1432,34 @@
     "hide": "hide",
     "failed": "Could not load transfers",
     "note": "A row here is a transfer, not a player: one person can appear more than once. A transfer fee and a player's value today are different numbers — Neymar cost €222M in 2017. Transfers announced but not yet completed are not shown."
+  },
+  "expressPortfolio": {
+    "title": "Bookmaker-line accumulators",
+    "subtitle": "Three options built from available 1X2 prices. Historical hit rate is shown separately and does not guarantee future results.",
+    "safe": "Higher market probability",
+    "diverse": "Diversified outcomes",
+    "value": "LLM forecast disagreement",
+    "unavailable": "Could not load accumulator options",
+    "empty": "Not enough suitable odds and forecasts in the selected window.",
+    "history": "History: {{wins}} of {{total}} accumulators landed ({{rate}})",
+    "odds": "Combined odds",
+    "probability": "Estimated hit chance",
+    "expectedReturn": "Expected return",
+    "legs": "Matches",
+    "books": "bookmakers: {{n}}",
+    "disclaimer": "Probability uses market consensus; combined odds use the best available prices. Only 1X2 is collected, not totals or both-teams-to-score."
+  },
+  "paperBankroll": {
+    "title": "LLM virtual bankroll",
+    "virtual": "SIMULATION",
+    "unavailable": "Bankroll is unavailable",
+    "balance": "Balance",
+    "profit": "Profit",
+    "roi": "Return",
+    "drawdown": "Max drawdown",
+    "positions": "Positions",
+    "winRate": "Win rate",
+    "settled": "Forecasts settled: {{n}}",
+    "policy": "Kelly fraction: {{kelly}}%; confidence floor: {{floor}}%"
   }
 }
