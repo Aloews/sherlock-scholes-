@@ -251,7 +251,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   p public.llm_paper_policy%rowtype;
   v_n integer;
@@ -320,7 +320,7 @@ begin
   return query select (v_kelly <> p.kelly_fraction or v_floor <> p.confidence_floor),
                       v_kelly, v_floor, v_roi, v_n;
 end;
-$;
+$$;
 
 revoke all on function public.train_llm_paper_policy() from public, anon, authenticated;
 grant execute on function public.train_llm_paper_policy() to service_role;
