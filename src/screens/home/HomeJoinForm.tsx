@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { sanitizeCodeInput, CODE_LENGTH } from '@/features/lobby/invite';
+import { codeFromText, sanitizeCodeInput } from '@/features/lobby/invite';
 import { OpenRoomsPanel } from './OpenRoomsPanel';
 
 interface Props {
@@ -43,18 +43,17 @@ export function HomeJoinForm({
           ref={inputRef}
           id="room-code-input"
           type="text"
-          maxLength={CODE_LENGTH}
           autoComplete="off"
           inputMode="text"
           value={code}
           // Верхний регистр применяется только визуально. Состояние не меняется
           // посреди ввода: полная нормализация происходит при проверке кода.
-          onChange={(e) => onCode(e.currentTarget.value)}
+          onChange={(e) => onCode(sanitizeCodeInput(e.currentTarget.value))}
           onPaste={(e) => {
             const pasted = e.clipboardData.getData('text');
             if (/https?:\/\/|[?&](?:startapp|start)=|[\s-]/i.test(pasted)) {
               e.preventDefault();
-              onCode(sanitizeCodeInput(pasted));
+              onCode(codeFromText(pasted) ?? sanitizeCodeInput(pasted));
             }
           }}
           // Клавиша действия на самой клавиатуре отправляет форму, чтобы

@@ -60,7 +60,7 @@ function extractCode(raw: string): string {
   // продолжают ходить по чатам, и код в них тот же самый.
   const fromLink = /[?&](?:startapp|start)=([^&\s]+)/i.exec(text);
   const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
-  return candidate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return candidate.replace(/[^a-zA-Z0-9]/g, '');
 }
 
 /**

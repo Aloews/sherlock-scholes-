@@ -76,7 +76,7 @@ describe('arenaSession', () => {
   });
 
   it('отвергает код не той формы — той же проверкой, что и ввод с экрана', () => {
-    for (const code of ['AB12C', 'AB12CDE', 'ab12c!', '', 'AB 12C']) {
+    for (const code of ['A', 'AB12C', 'AB12CDE', 'ab12c!', '', 'AB 12C']) {
       localStorage.setItem('arena.room', JSON.stringify({ code, role: 'host', at: 1000 }));
       expect(readRoom(1000), `код ${JSON.stringify(code)} не должен пройти`).toBeNull();
     }
