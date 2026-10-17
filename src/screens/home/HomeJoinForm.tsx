@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { sanitizeCodeInput } from '@/features/lobby/invite';
+import { codeFromText, sanitizeCodeInput } from '@/features/lobby/invite';
 import { OpenRoomsPanel } from './OpenRoomsPanel';
 
 interface Props {
@@ -53,7 +53,7 @@ export function HomeJoinForm({
             const pasted = e.clipboardData.getData('text');
             if (/https?:\/\/|[?&](?:startapp|start)=|[\s-]/i.test(pasted)) {
               e.preventDefault();
-              onCode(sanitizeCodeInput(pasted));
+              onCode(codeFromText(pasted) ?? sanitizeCodeInput(pasted));
             }
           }}
           // Клавиша действия на самой клавиатуре отправляет форму, чтобы

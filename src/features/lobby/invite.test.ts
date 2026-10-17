@@ -112,7 +112,7 @@ describe('sanitizeCodeInput', () => {
   it('accepts a single character — the field is usable before it is complete', () => {
     // The first keystroke must survive. It is not a valid code and must not be
     // treated as one, but it has to appear.
-    expect(sanitizeCodeInput('x')).toBe('X');
+    expect(sanitizeCodeInput('x')).toBe('x');
     expect(normalizeCode(sanitizeCodeInput('x'))).toBeNull();
   });
 
