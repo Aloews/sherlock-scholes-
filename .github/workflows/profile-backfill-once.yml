@@ -1,0 +1,41 @@
+name: one-shot profile backfill
+
+on:
+  push:
+    branches:
+      - ops/profile-backfill-once
+    paths:
+      - .github/workflows/profile-backfill-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: profile-backfill-once
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test queue worker
+        run: python docs/test_profile_backfill_queue.py
+      - name: Process existing profile backfill queue
+        run: python docs/profile_backfill_queue.py --max-jobs 50 --batch-size 10 --enqueue-limit 1
+      - name: Upload backfill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-backfill-once-report
+          path: |
+            profile-backfill-report.json
+            profile-backfill-report.md
+          if-no-files-found: warn
