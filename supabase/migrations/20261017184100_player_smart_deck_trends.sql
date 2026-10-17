@@ -33,7 +33,7 @@ as $$
     where s.match_date > current_date - 60
       and s.match_date <= current_date
       and not coalesce(s.disputed, false)
-    order by s.card_id, s.match_date, (s.minutes is not null) desc, s.source, s.tournament
+    order by s.card_id, s.match_date, (s.minutes is not null) desc, s.source, s.tournament, s.goals desc, s.assists desc
   ),
   source_freshness as (
     select s.card_id, max(s.fetched_at) as stats_collected_at
