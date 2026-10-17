@@ -4,8 +4,8 @@ import re
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "supabase" / "migrations"
-BANKROLL = MIGRATIONS / "20261017182000_llm_paper_bankroll.sql"
-EXPRESSES = MIGRATIONS / "20261017182100_forecast_diverse_accumulators.sql"
+BANKROLL = MIGRATIONS / "20261017183115_llm_paper_bankroll.sql"
+EXPRESSES = MIGRATIONS / "20261017183122_forecast_diverse_accumulators.sql"
 
 
 def test_paper_bankroll_migration_has_balanced_function_bodies():
