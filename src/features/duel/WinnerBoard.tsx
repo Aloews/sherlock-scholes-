@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOADING, dataOr, type LoadState } from '@/shared/lib/loadState';
 import { hapticImpact } from '@/shared/lib/telegram';
-import { FlyVerdict } from './FlyVerdict';
 import { ModelAccumulators } from './ModelAccumulators';
+import { PaperBankrollPanel } from './PaperBankrollPanel';
+import { BestExpressesPanel } from './BestExpressesPanel';
 import {
   fetchForecastHistory, fetchHistoryCount, fetchScoreboard, fetchUpcomingPicks,
   type ForecastModel, type HistoryCursor, type HistoryRow, type Outcome,
@@ -11,7 +12,7 @@ import {
 } from './forecastApi';
 
 /**
- * КТО ПОБЕДИТ — три прогнозиста, их история и муха, садящаяся на ответ.
+ * КТО ПОБЕДИТ — история прогнозов и виртуальный капитал модели.
  *
  * ⚠️ ТРИ ЧИСЛА РЯДОМ, А НЕ ОДНО. «Доля угаданных» за всё время прячет то, что
  * интересно на самом деле: учится модель или сыпется. Поэтому рядом всегда
@@ -27,7 +28,6 @@ import {
 const TINT: Record<ForecastModel, string> = {
   own: 'text-brand-accent',
   llm: 'text-sky-300',
-  fly: 'text-amber-300',
 };
 
 function pct(v: number | null): string {
@@ -111,7 +111,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
   const [soon, setSoon] = useState<LoadState<UpcomingPick[]>>(LOADING);
   const [only, setOnly] = useState<ForecastModel | null>(null);
   const [chosen, setChosen] = useState(0);
-  const [replay, setReplay] = useState(0);
 
   useEffect(() => {
     let dead = false;
@@ -125,62 +124,11 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
   const rows = dataOr(board, []);
   const list = dataOr(soon, []);
   const past = useHistory(only, password);
-  const match = list[Math.min(chosen, Math.max(0, list.length - 1))];
-  const dopamine = rows.find((r) => r.model === 'fly')?.dopamine ?? 0;
 
   return (
     <div className="space-y-4">
-      {/* ── муха над ближайшим матчем ── */}
-      {match && (
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] uppercase tracking-wider text-brand-muted">
-              {t('duel.fly_verdict')}
-            </span>
-            <button
-              type="button"
-              className="text-[11px] text-brand-muted underline decoration-dotted"
-              onClick={() => { hapticImpact('light'); setReplay((n) => n + 1); }}
-            >
-              {t('duel.fly_again')}
-            </button>
-          </div>
-
-          <FlyVerdict
-            home={match.home_team}
-            away={match.away_team}
-            pick={match.fly_pick}
-            /*
-             * ⚠️ КАЛИБРОВАННОЕ ЧИСЛО, А НЕ СЫРОЕ, И ЭТО ИСПРАВЛЕНИЕ ЛЖИ НА
-             * ЭКРАНЕ. Сырая уверенность мухи по 992 размеченным прогнозам —
-             * в среднем 10.2 % при 46.2 % попаданий; у «своего варианта»
-             * 78.6 % при 46.0 %. Подпись под прогнозом обязана значить то,
-             * что говорит.
-             *
-             * Запасной путь на сырое оставлен намеренно: пока ночная
-             * подгонка не отработала, показать прежнее честнее, чем прочерк.
-             */
-            confidence={match.fly_cal ?? match.fly_conf}
-            replayKey={replay}
-          />
-
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-brand-muted tabular-nums pt-1">
-            <span>{t('duel.fly_dopamine', { n: dopamine })}</span>
-            {match.exp_total != null && (
-              <span>{t('duel.exp_total', { v: match.exp_total.toFixed(1) })}</span>
-            )}
-            {match.agree != null && (
-              <span>{t('duel.agree', { n: match.agree })}</span>
-            )}
-            {/*
-              * Подпись появляется ТОЛЬКО когда число действительно
-              * калибровано. Написать её всегда значило бы обещать сверку
-              * там, где её ещё не было.
-              */}
-            {match.fly_cal != null && <span>{t('duel.calibrated')}</span>}
-          </div>
-        </div>
-      )}
+      <PaperBankrollPanel password={password} />
+      <BestExpressesPanel password={password} />
 
       {/* ── итог по каждому прогнозисту ── */}
       {rows.length > 0 && (
@@ -241,7 +189,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                   <th className="text-left font-normal pb-1">{t('duel.col_match')}</th>
                   <th className="px-1 font-normal pb-1 text-brand-accent">{t('duel.short.own')}</th>
                   <th className="px-1 font-normal pb-1 text-sky-300">{t('duel.short.llm')}</th>
-                  <th className="pl-1 font-normal pb-1 text-amber-300">{t('duel.short.fly')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,7 +197,7 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                     key={m.fixture_id}
                     className={`border-t border-white/5 cursor-pointer ${
                       i === chosen ? 'bg-white/5' : ''}`}
-                    onClick={() => { hapticImpact('light'); setChosen(i); setReplay((n) => n + 1); }}
+                    onClick={() => { hapticImpact('light'); setChosen(i); }}
                   >
                     <td className="py-2 pr-2">
                       <div className="text-white leading-tight truncate max-w-[10rem]">
@@ -265,9 +212,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                     </td>
                     <td className="py-2 px-1 text-center">
                       <PickChip pick={m.llm_pick} tint={TINT.llm} />
-                    </td>
-                    <td className="py-2 pl-1 text-center">
-                      <PickChip pick={m.fly_pick} tint={TINT.fly} />
                     </td>
                   </tr>
                 ))}
@@ -293,7 +237,7 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
         {/* Фильтр по прогнозисту. При тысячах строк «показать всех вперемешку»
             перестаёт быть читаемым: вопрос почти всегда про одного. */}
         <div className="flex flex-wrap gap-1.5 px-1 pb-2">
-          {([null, 'own', 'llm', 'fly'] as (ForecastModel | null)[]).map((m) => (
+          {([null, 'own', 'llm'] as (ForecastModel | null)[]).map((m) => (
             <button
               key={m ?? 'all'}
               type="button"
