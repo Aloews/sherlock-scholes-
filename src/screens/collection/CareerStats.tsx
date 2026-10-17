@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { IconBallFootball, IconClock, IconTargetArrow, IconRun } from '@tabler/icons-react';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import {
   fetchCareerTotals, fetchClubCareer,
@@ -15,21 +16,17 @@ export function CareerStats({ cardId }: { cardId: string }) {
     let cancelled = false;
     setTotals(LOADING);
     setClubs(LOADING);
-    void fetchCareerTotals(cardId).then((result) => {
-      if (!cancelled) setTotals(result);
-    });
-    void fetchClubCareer(cardId).then((result) => {
-      if (!cancelled) setClubs(result);
-    });
+    void fetchCareerTotals(cardId).then((r) => { if (!cancelled) setTotals(r); });
+    void fetchClubCareer(cardId).then((r) => { if (!cancelled) setClubs(r); });
     return () => { cancelled = true; };
   }, [cardId]);
 
   const total = totals.status === 'ok' ? totals.data[0] ?? null : null;
   const rows = clubs.status === 'ok' ? clubs.data : [];
-  const loading = totals.status === 'loading' || clubs.status === 'loading';
+  const hasTotals = Boolean(total && total.club_apps > 0);
 
-  if (!total && rows.length === 0) {
-    if (loading) {
+  if (!hasTotals && rows.length === 0) {
+    if (totals.status === 'loading' || clubs.status === 'loading') {
       return (
         <div className="grid grid-cols-2 gap-2" aria-label={t('digest.loading')}>
           {[0, 1, 2, 3].map((item) => (
@@ -41,33 +38,42 @@ export function CareerStats({ cardId }: { cardId: string }) {
     return null;
   }
 
-  const number = new Intl.NumberFormat(i18n.language);
-  const maxMinutes = Math.max(1, ...rows.map((row) => row.minutes));
-  const ru = i18n.language.startsWith('ru');
+  const n = new Intl.NumberFormat(i18n.language);
+  const maxMinutes = Math.max(1, ...rows.map((r) => r.minutes));
+  const compact = (value: number) => n.format(value);
   const seasonLabel = (row: ClubCareerRow) => row.season_from === row.season_to
     ? String(row.season_from)
     : `${row.season_from}–${row.season_to}`;
 
   return (
-    <div className="space-y-3">
-      {total && total.club_apps > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Tile label={t('career.matches')} value={number.format(total.club_apps)} />
-          <Tile label={t('career.goals')} value={number.format(total.club_goals)} accent />
-          <Tile label={t('career.assists')} value={number.format(total.club_assists)} />
-          <Tile label={t('career.minutes')} value={number.format(total.club_minutes)} />
+    <div className="space-y-4">
+      {hasTotals && total && (
+        <div className="grid grid-cols-2 gap-2">
+          <StatTile icon={<IconBallFootball size={17} />} label={t('career.matches')} value={compact(total.club_apps)} />
+          <StatTile icon={<IconTargetArrow size={17} />} label={t('career.goals')} value={compact(total.club_goals)} accent />
+          <StatTile icon={<IconRun size={17} />} label={t('career.assists')} value={compact(total.club_assists)} />
+          <StatTile icon={<IconClock size={17} />} label={t('career.minutes')} value={compact(total.club_minutes)} />
         </div>
       )}
 
       {total?.national_team && total.national_apps > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-brand-border bg-brand-surface px-3.5 py-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-bg text-brand-accent" aria-hidden="true">
-            <span className="text-base">◎</span>
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-bg text-brand-accent">
+            <IconBallFootball size={17} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-brand-muted">
-              {t('career.national', { team: total.national_team, apps: total.national_apps, goals: total.national_goals })}
+              {i18n.language.startsWith('ru') ? 'Национальная сборная' : 'National team'}
             </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-white">{total.national_team}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold tabular-nums text-white">{compact(total.national_apps)}</p>
+            <p className="text-[9px] text-brand-muted">{i18n.language.startsWith('ru') ? 'матчей' : 'apps'}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold tabular-nums text-brand-accent">{compact(total.national_goals)}</p>
+            <p className="text-[9px] text-brand-muted">{i18n.language.startsWith('ru') ? 'голов' : 'goals'}</p>
           </div>
         </div>
       )}
@@ -75,13 +81,16 @@ export function CareerStats({ cardId }: { cardId: string }) {
       {rows.length > 0 && (
         <div className="rounded-2xl border border-brand-border bg-brand-surface p-3.5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">
-              {ru ? 'Путь по клубам' : 'Club journey'}
-            </p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">
+                {i18n.language.startsWith('ru') ? 'Путь по клубам' : 'Club journey'}
+              </p>
+            </div>
             <span className="rounded-full border border-brand-border bg-brand-bg px-2.5 py-1 text-[10px] font-semibold tabular-nums text-white">
-              {rows.length} {ru ? 'клубов' : 'clubs'}
+              {rows.length} {i18n.language.startsWith('ru') ? 'клубов' : 'clubs'}
             </span>
           </div>
+
           <ol className="space-y-0">
             {rows.map((row, index) => {
               const share = Math.max(3, Math.round((row.minutes / maxMinutes) * 100));
@@ -99,7 +108,7 @@ export function CareerStats({ cardId }: { cardId: string }) {
                       </div>
                       {index === 0 && (
                         <span className="shrink-0 rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-accent">
-                          {ru ? 'Последний' : 'Latest'}
+                          {i18n.language.startsWith('ru') ? 'Последний' : 'Latest'}
                         </span>
                       )}
                     </div>
@@ -107,9 +116,9 @@ export function CareerStats({ cardId }: { cardId: string }) {
                       <div className="h-full rounded-full bg-gradient-to-r from-brand-accent/50 to-brand-accent" style={{ width: `${share}%` }} />
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-brand-muted">
-                      <span><strong className="font-semibold text-white/90 tabular-nums">{number.format(row.apps)}</strong> {ru ? 'матчей' : 'apps'}</span>
-                      <span><strong className="font-semibold text-brand-accent tabular-nums">{number.format(row.goals)}</strong> {ru ? 'голов' : 'goals'}</span>
-                      <span><strong className="font-semibold text-white/90 tabular-nums">{number.format(row.assists)}</strong> {ru ? 'ассистов' : 'assists'}</span>
+                      <span><strong className="font-semibold text-white/90 tabular-nums">{compact(row.apps)}</strong> {i18n.language.startsWith('ru') ? 'матчей' : 'apps'}</span>
+                      <span><strong className="font-semibold text-brand-accent tabular-nums">{compact(row.goals)}</strong> {i18n.language.startsWith('ru') ? 'голов' : 'goals'}</span>
+                      <span><strong className="font-semibold text-white/90 tabular-nums">{compact(row.assists)}</strong> {i18n.language.startsWith('ru') ? 'ассистов' : 'assists'}</span>
                     </div>
                   </div>
                 </li>
@@ -122,11 +131,15 @@ export function CareerStats({ cardId }: { cardId: string }) {
   );
 }
 
-function Tile({ label, value, accent = false }: {
-  label: string; value: string; accent?: boolean;
+function StatTile({ icon, label, value, accent = false }: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  accent?: boolean;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface p-3">
+      <div className={`absolute right-3 top-3 ${accent ? 'text-brand-accent' : 'text-brand-muted'}`}>{icon}</div>
       <p className={`ds-display text-xl font-extrabold leading-none tabular-nums ${accent ? 'text-brand-accent' : 'text-white'}`}>{value}</p>
       <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-brand-muted">{label}</p>
     </div>
