@@ -17,7 +17,8 @@ create table public.cards (
   top_league text,
   tags text[],
   langs text[],
-  fame smallint
+  fame smallint,
+  position_ru text
 );
 
 create table public.player_match_stats (
@@ -28,7 +29,8 @@ create table public.player_match_stats (
   goals integer not null default 0,
   assists integer not null default 0,
   source text not null,
-  disputed boolean not null default false
+  disputed boolean not null default false,
+  fetched_at timestamptz not null default now()
 );
 
 create view public.player_match_days as
