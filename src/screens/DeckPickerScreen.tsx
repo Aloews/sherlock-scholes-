@@ -36,7 +36,9 @@ import { countryName } from '@/shared/lib/countryName';
 import { fameFloor, fameStartLevel } from '@/features/game/onboarding';
 import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { trackEvent } from '@/shared/lib/analytics';
-import { hapticImpact } from '@/shared/lib/telegram';
+import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
+import { aiDeckErrorMessage, edgeFunctionErrorCode } from '@/features/decks/aiDeckError';
+import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { ALL_CONTINENT_FILTERS, type CardCategory, type ContinentFilter } from '@/shared/types/database';
 import {
   DECK_LEAGUES, DECK_PRESETS, DECK_TRAITS,
@@ -76,6 +78,9 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   const [selSquad, setSelSquad] = useState('');
   const [squads, setSquads] = useState<Squad[]>([]);
   const [countryOpts, setCountryOpts] = useState<string[] | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBuilding, setAiBuilding] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const [deckCount, setDeckCount] = useState<number | null>(null);
   const [presetCounts, setPresetCounts] = useState<Record<string, number> | null>(null);
@@ -241,6 +246,36 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
     else setStep(stepIndex <= 0 ? 'presets' : steps[stepIndex - 1]);
   };
 
+  const buildAIDeck = async () => {
+    const prompt = aiPrompt.trim();
+    if (prompt.length < 3 || aiBuilding) return;
+    setAiBuilding(true);
+    setAiError('');
+    try {
+      const initData = getRawInitData();
+      if (!initData) throw new Error('telegram_auth_required');
+      const { data, error } = await supabase.functions.invoke('smart-deck-builder', {
+        body: {
+          prompt,
+          language: lang === 'ru' ? 'ru' : 'en',
+          init_data: initData,
+          current_card_ids: [],
+          target_card_count: 20,
+        },
+      });
+      if (error) throw new Error(await edgeFunctionErrorCode(error) || 'request_failed');
+      if (!data || data.error) throw new Error(String(data?.error ?? 'request_failed'));
+      const resolved = parseAIResolvedDeck(data, 20);
+      if (!resolved) throw new Error('not_enough_cards');
+      onStart(resolved.filter, 'ai-prompt');
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '';
+      setAiError(aiDeckErrorMessage(detail, lang === 'ru'));
+    } finally {
+      setAiBuilding(false);
+    }
+  };
+
   const onPresets = step === 'presets';
 
   return (
@@ -267,6 +302,34 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
       <ScreenBody>
         {onPresets && (
           <Section title={t('home.picker_title')}>
+            <div className="mb-4 space-y-3 rounded-2xl border border-brand-accent/30 bg-brand-surface p-4">
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true">✨</span>
+                <h2 className="text-sm font-bold text-white">
+                  {lang === 'ru' ? 'Колода по запросу' : 'Build a deck from a prompt'}
+                </h2>
+              </div>
+              <textarea
+                value={aiPrompt}
+                onChange={(event) => { setAiPrompt(event.currentTarget.value); setAiError(''); }}
+                rows={2}
+                maxLength={240}
+                placeholder={lang === 'ru'
+                  ? 'Например: легенды «Реала» 2000-х, нападающие Франции'
+                  : 'e.g. Real Madrid legends from the 2000s, France forwards'}
+                className="w-full resize-none rounded-xl border border-brand-border bg-brand-bg px-3 py-3 text-sm text-white placeholder:text-brand-muted focus:border-brand-accent focus:outline-none"
+                aria-label={lang === 'ru' ? 'Запрос для ИИ-колоды' : 'AI deck prompt'}
+              />
+              {aiError && <p role="alert" className="text-xs text-red-300">{aiError}</p>}
+              <Button
+                fullWidth
+                loading={aiBuilding}
+                disabled={aiPrompt.trim().length < 3 || aiBuilding}
+                onClick={() => { void buildAIDeck(); }}
+              >
+                {lang === 'ru' ? 'Собрать колоду' : 'Build deck'}
+              </Button>
+            </div>
             <div className="space-y-2">
               {DECK_PRESETS.map((preset) => {
                 const n = presetCounts?.[preset.id];
