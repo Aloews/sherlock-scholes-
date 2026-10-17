@@ -238,16 +238,6 @@ $$;
 revoke all on function public.llm_paper_bankroll_summary(text) from public;
 grant execute on function public.llm_paper_bankroll_summary(text) to anon, authenticated, service_role;
 
--- Remove persisted state for the retired predictor.
-delete from public.forecast_pick where model = 'fly';
-delete from public.forecast_calibration where model = 'fly';
-alter table public.forecast_pick drop constraint if exists forecast_pick_model_check;
-alter table public.forecast_pick
-  add constraint forecast_pick_model_check check (model in ('llm', 'own'));
-alter table public.forecast_calibration drop constraint if exists forecast_calibration_model_check;
-alter table public.forecast_calibration
-  add constraint forecast_calibration_model_check check (model in ('llm', 'own'));
-drop table if exists public.fly_state;
 
 
 create or replace function public.train_llm_paper_policy()
