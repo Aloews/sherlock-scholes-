@@ -93,5 +93,3 @@ $$;
 revoke all on function public.player_smart_deck_trends(integer) from public;
 grant execute on function public.player_smart_deck_trends(integer) to anon, authenticated, service_role;
 
-comment on function public.player_smart_deck_trends(integer) is
-'Deterministic Smart Deck input from existing match stats: recent 30 days versus previous 30 days. Canonical card IDs only; source rows deduplicated by player/date; disputed/future matches excluded. LLM is not used to discover players.';
