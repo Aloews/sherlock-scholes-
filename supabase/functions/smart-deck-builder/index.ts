@@ -151,8 +151,10 @@ Deno.serve(async (req: Request) => {
     }
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
 
+    let discoveredCardIds: string[] = [];
     try {
       const discovery = await discoverFootballPlayers(supabase, prompt);
+      discoveredCardIds = discovery.cardIds;
       if (discovery.discovered > 0) {
         console.info("[smart-deck-builder] source-backed discovery", {
           discovered: discovery.discovered,
@@ -165,7 +167,7 @@ Deno.serve(async (req: Request) => {
         discoveryError instanceof Error ? discoveryError.message : "unknown");
     }
 
-    const catalog = await loadCatalog(supabase, prompt, currentIds, targetCardCount);
+    const catalog = await loadCatalog(supabase, prompt, [...discoveredCardIds, ...currentIds], targetCardCount);
     if (catalog.length < 3) return json({ error: "catalog_unavailable" }, 503);
 
     const compactCatalog = catalog.map((card) => ({
