@@ -41,11 +41,11 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /интер[а]?|inter milan/i, query: "Inter Milan" },
 ];
 const PLAYER_REQUEST = /футболист|игрок|вратар|голкипер|защитник|полузащитник|нападающ|форвард|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
-const WOMEN_REQUEST = /футболистк|женщин\w*\s+футбол|женск\w*\s+футбол|women'?s football|female players?|women players?/i;
+const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\s+футбол|women\x27?s football|female players?|women players?/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
-  const ageMatch = prompt.match(/\b(1[0-9]|[1-9])\s*[- ]?(?:летн\w*|лет|years?\s*old|yo)\b/i);
+  const ageMatch = prompt.match(/\b(1[0-9]|[1-9])\s*[- ]?(?:летн[а-яё]*|лет|years?\s*old|yo)\b/i);
   const age = ageMatch ? Number(ageMatch[1]) : null;
   const country = COUNTRIES.find((entry) => entry.pattern.test(prompt)) ?? null;
   const club = CLUB_ALIASES.find((entry) => entry.pattern.test(prompt));
