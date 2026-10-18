@@ -55,11 +55,10 @@ export function SmartDecksPanel({ onStart }: Props) {
     const load = async () => {
       setLoading(true); setFailed(false);
       try {
-    const [newsRes, formRes, trendRes, freshnessRes, legendRes, playersRes] = await Promise.all([
+    const [newsRes, formRes, trendRes, legendRes, playersRes] = await Promise.all([
       supabase.rpc('digest_news', { p_lang: ru ? 'ru' : 'en', p_limit: 60, p_hours: NEWS_WINDOW_HOURS }),
       supabase.rpc('player_ratings', { p_days: 30, p_limit: 80, p_club_key: null, p_league: null, p_country: null }),
       supabase.rpc('player_smart_deck_trends', { p_limit: 1000 }),
-      supabase.rpc('player_stats_freshness'),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame,legend_career').eq('active', true).eq('category', 'player').not('legend_career', 'is', null).order('fame', { ascending: false, nullsFirst: false }).limit(1000),
       supabase.from('cards').select('id,name,name_en,photo_url,country,position_ru,fame').eq('active', true).eq('category', 'player').order('fame', { ascending: false, nullsFirst: false }).limit(1000),
     ]);
@@ -82,13 +81,11 @@ export function SmartDecksPanel({ onStart }: Props) {
       : { data: [], error: null };
     if (cancelled) return;
     const evidence = (evidenceRes.data ?? []) as RatingMatchEvidence[];
-    const hasError = !!(newsRes.error || formRes.error || trendRes.error || freshnessRes.error || legendRes.error || playersRes.error || evidenceRes.error);
+    const hasError = !!(newsRes.error || formRes.error || trendRes.error || legendRes.error || playersRes.error || evidenceRes.error);
     setFailed(hasError);
     const legendRows = (legendRes.data ?? []) as CanonicalPlayer[];
     const playerPool = (playersRes.data ?? []) as CanonicalPlayer[];
     const trendRows = (trendRes.data ?? []).map((row: Omit<PlayerTrendCandidate, 'id'> & { card_id: string }) => ({ ...row, id: row.card_id })) as PlayerTrendCandidate[];
-    const freshness = (freshnessRes.data ?? [])[0] as { collected_at?: string | null } | undefined;
-    const statsFresh = !!freshness?.collected_at && Date.parse(freshness.collected_at) >= Date.now() - 72 * 60 * 60 * 1000;
     const supported = formRows
       .filter((candidate) => candidate.card_id && candidate.matches > 0 && hasCurrentClubEvidence(candidate, evidence))
       .filter((candidate, index, rows) => rows.findIndex((other) =>
@@ -96,7 +93,7 @@ export function SmartDecksPanel({ onStart }: Props) {
       ) === index)
       .slice(0, TARGET_DECK_SIZE);
     setNews(headlines.slice(0, 4));
-    setForm(statsFresh ? supported : []);
+    setForm(supported);
     setBreakouts(selectBreakoutPlayers(trendRows, TARGET_DECK_SIZE));
     setLegends(legendRows);
     setNewsMatches(matchNewsToPlayers(headlines, playerPool, TARGET_DECK_SIZE));
