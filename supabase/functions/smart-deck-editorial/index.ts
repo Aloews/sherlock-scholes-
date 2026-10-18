@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     const language = body?.language === "en" ? "en" : "ru";
-    const input = Array.isArray(body?.candidates) ? body.candidates.slice(0, 4) as Candidate[] : [];
+    const input = Array.isArray(body?.candidates) ? body.candidates.slice(0, 5) as Candidate[] : [];
     if (!input.length) return json({ editorials: {}, mode: "deterministic" });
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
