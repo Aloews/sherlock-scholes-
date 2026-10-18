@@ -17,7 +17,7 @@ BEGIN
     ORDER BY active DESC NULLS LAST, created_at ASC LIMIT 1 FOR UPDATE;
   IF v_id IS NULL AND p_born_on IS NOT NULL AND p_country IS NOT NULL THEN
     SELECT id INTO v_id FROM public.cards
-     WHERE category IN ('player', 'woman') AND born_on = p_born_on AND lower(country) = lower(p_country)
+     WHERE category IN ('player', 'woman') AND wikidata_qid IS NULL AND born_on = p_born_on AND lower(country) = lower(p_country)
        AND (lower(name) = lower(p_name)
          OR (p_name_en IS NOT NULL AND lower(name) = lower(p_name_en))
          OR (name_en IS NOT NULL AND lower(name_en) = lower(p_name))
