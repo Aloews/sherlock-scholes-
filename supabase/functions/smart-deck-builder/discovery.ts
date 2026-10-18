@@ -129,13 +129,13 @@ async function resolveClubQid(query: string): Promise<string | null> {
   );
   return club?.id ?? null;
 }
-export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number }> {
+export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[] }> {
   const intent = parseDiscoveryIntent(prompt);
-  if (!intent) return { discovered: 0, created: 0, matched: 0 };
+  if (!intent) return { discovered: 0, created: 0, matched: 0, cardIds: [] };
   let clubQid: string | null = null;
   if (intent.clubQuery) {
     clubQid = await resolveClubQid(intent.clubQuery);
-    if (!clubQid) return { discovered: 0, created: 0, matched: 0 };
+    if (!clubQid) return { discovered: 0, created: 0, matched: 0, cardIds: [] };
   }
   const response = await fetch("https://query.wikidata.org/sparql", {
     method: "POST",
@@ -145,7 +145,7 @@ export async function discoverFootballPlayers(supabase: any, prompt: string): Pr
   });
   if (!response.ok) throw new Error(\`wikidata_sparql_http_\${response.status}\`);
   const candidates = parseWikidataResults(await response.json(), intent);
-  let created = 0; let matched = 0;
+  let created = 0; let matched = 0; const cardIds = new Set<string>();
   for (let i = 0; i < candidates.length; i += 8) {
     await Promise.all(candidates.slice(i, i + 8).map(async (candidate) => {
       const { data: existing, error: lookupError } = await supabase.from("cards").select("id")
@@ -158,8 +158,9 @@ export async function discoverFootballPlayers(supabase: any, prompt: string): Pr
         p_facts: { source: "wikidata", source_url: candidate.sourceUrl, verified_at: new Date().toISOString() },
       });
       if (error || !data) throw new Error("canonical_card_upsert_failed");
+      cardIds.add(String(data));
       if (existing) matched++; else created++;
     }));
   }
-  return { discovered: candidates.length, created, matched };
+  return { discovered: candidates.length, created, matched, cardIds: [...cardIds] };
 }
