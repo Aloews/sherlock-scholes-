@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { matchesExplicitIntent, positionIntent } from "./intent.ts";
+import { discoverFootballPlayers } from "./discovery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -150,7 +151,43 @@ Deno.serve(async (req: Request) => {
     }
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
 
-    const catalog = await loadCatalog(supabase, prompt, currentIds, targetCardCount);
+    let discoveredCardIds: string[] = [];
+    let discoveryConstrained = false;
+    let discoveryUnavailable = false;
+    try {
+      const discovery = await discoverFootballPlayers(supabase, prompt);
+      discoveredCardIds = discovery.cardIds;
+      discoveryConstrained = discovery.constrained;
+      if (discovery.discovered > 0) {
+        console.info("[smart-deck-builder] source-backed discovery", {
+          discovered: discovery.discovered,
+          created: discovery.created,
+          matched: discovery.matched,
+        });
+      }
+    } catch (discoveryError) {
+      discoveryUnavailable = true;
+      console.error("[smart-deck-builder] external player discovery unavailable",
+        discoveryError instanceof Error ? discoveryError.message : "unknown");
+    }
+
+    if (discoveryConstrained && discoveryUnavailable) {
+      return json({ error: "player_discovery_unavailable" }, 503);
+    }
+    if (discoveryConstrained && discoveredCardIds.length < 3) {
+      return json({
+        error: "not_enough_cards",
+        message: language === "ru"
+          ? "Не удалось подтвердить достаточно футболистов по этому запросу. Уточни клуб, возраст или страну."
+          : "Not enough verified players matched this request. Try refining the club, age, or country.",
+      }, 422);
+    }
+
+    let catalog = await loadCatalog(supabase, prompt, [...discoveredCardIds, ...currentIds], targetCardCount);
+    if (discoveryConstrained) {
+      const discoveredIds = new Set(discoveredCardIds);
+      catalog = catalog.filter((card) => discoveredIds.has(card.id));
+    }
     if (catalog.length < 3) return json({ error: "catalog_unavailable" }, 503);
 
     const compactCatalog = catalog.map((card) => ({

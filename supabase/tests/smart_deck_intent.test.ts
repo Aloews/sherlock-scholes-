@@ -14,3 +14,9 @@ Deno.test("explicit categories are enforced", () => {
   if (!matchesExplicitIntent({ category: "coach", position_ru: null, tags: [] }, prompt)) throw new Error("coach rejected");
   if (matchesExplicitIntent({ category: "player", position_ru: "Вратарь", tags: [] }, prompt)) throw new Error("player accepted");
 });
+
+Deno.test("women footballer prompts resolve to player cards and reject men's cards", () => {
+  if (categoryIntent("Футболистки России") !== "player") throw new Error("women intent must be players");
+  if (!matchesExplicitIntent({ category: "player", position_ru: null, tags: ["women", "female"] }, "Футболистки России")) throw new Error("verified women player rejected");
+  if (matchesExplicitIntent({ category: "player", position_ru: null, tags: ["footballer"] }, "Футболистки России")) throw new Error("unverified gender accepted");
+});
