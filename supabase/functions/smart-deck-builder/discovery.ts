@@ -45,7 +45,7 @@ const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбо�
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
-  const ageMatch = prompt.match(/\b(1[0-9]|[1-9])\s*[- ]?(?:летн[а-яё]*|лет|years?\s*old|yo)\b/i);
+  const ageMatch = prompt.match(/\b(1[0-9]|[1-9])\s*[- ]?(?:летн[а-яё]*|лет|years?\s*old|yo)(?=\s|$|[.,!?])/i);
   const age = ageMatch ? Number(ageMatch[1]) : null;
   const country = COUNTRIES.find((entry) => entry.pattern.test(prompt)) ?? null;
   const club = CLUB_ALIASES.find((entry) => entry.pattern.test(prompt));
