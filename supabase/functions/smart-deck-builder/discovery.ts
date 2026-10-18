@@ -71,16 +71,16 @@ export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: stri
     "OPTIONAL { ?item rdfs:label ?nameRu. FILTER(LANG(?nameRu) = \"ru\") }",
     "OPTIONAL { ?item rdfs:label ?nameEn. FILTER(LANG(?nameEn) = \"en\") }",
   ];
-  if (intent.country) clauses.push(\`?item wdt:P27 wd:\${intent.country.qid}.\`);
+  if (intent.country) clauses.push(`?item wdt:P27 wd:${intent.country.qid}.`);
   if (intent.women) clauses.push("?item wdt:P21 wd:Q6581072.");
-  if (clubQid) clauses.push(\`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:\${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }\`);
+  if (clubQid) clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }`);
   if (intent.age !== null) {
     const range = exactAgeBirthRange(intent.age, now);
-    if (range) clauses.push(\`FILTER(?dob > "\${range.after}"^^xsd:dateTime && ?dob < "\${range.before}T23:59:59Z"^^xsd:dateTime)\`);
+    if (range) clauses.push(`FILTER(?dob > "${range.after}"^^xsd:dateTime && ?dob < "${range.before}T23:59:59Z"^^xsd:dateTime)`);
   }
-  return \`SELECT DISTINCT ?item ?nameRu ?nameEn ?dob ?countryLabel ?positionRu ?image WHERE {
-  \${clauses.join("\\n  ")}
-} LIMIT 100\`;
+  return `SELECT DISTINCT ?item ?nameRu ?nameEn ?dob ?countryLabel ?positionRu ?image WHERE {
+  ${clauses.join("\n  ")}
+} LIMIT 100`;
 }
 function toDate(value: unknown): string | null {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
@@ -98,7 +98,7 @@ export function parseWikidataResults(payload: unknown, intent: DiscoveryIntent, 
     if (!qid || !name || name.length > 160) continue;
     if (intent.age !== null) {
       if (!bornOn) continue;
-      const date = new Date(\`\${bornOn}T00:00:00Z\`);
+      const date = new Date(`${bornOn}T00:00:00Z`);
       let actualAge = now.getUTCFullYear() - date.getUTCFullYear();
       if (now.getUTCMonth() < date.getUTCMonth() ||
           (now.getUTCMonth() === date.getUTCMonth() && now.getUTCDate() < date.getUTCDate())) actualAge--;
@@ -106,13 +106,13 @@ export function parseWikidataResults(payload: unknown, intent: DiscoveryIntent, 
     }
     const image = row.image?.value;
     const photoUrl = image?.startsWith("http://") || image?.startsWith("https://")
-      ? \`https://commons.wikimedia.org/wiki/Special:FilePath/\${encodeURIComponent(image.split("/").pop() ?? "")}\`
+      ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(image.split("/").pop() ?? "")}`
       : null;
     out.set(qid, {
       qid, name, nameEn: row.nameEn?.value?.trim() || null, bornOn,
       country: row.countryLabel?.value?.trim() || intent.country?.label || null,
       positionRu: row.positionRu?.value?.trim() || null, photoUrl,
-      women: intent.women, sourceUrl: \`https://www.wikidata.org/wiki/\${qid}\`,
+      women: intent.women, sourceUrl: `https://www.wikidata.org/wiki/${qid}`,
     });
   }
   return [...out.values()].slice(0, 50);
@@ -121,7 +121,7 @@ async function resolveClubQid(query: string): Promise<string | null> {
   const url = new URL("https://www.wikidata.org/w/api.php");
   url.search = new URLSearchParams({ action: "wbsearchentities", search: query, language: "en", uselang: "en", type: "item", limit: "8", format: "json" }).toString();
   const response = await fetch(url, { headers: { "User-Agent": "SherlockScholes/1.0 (football player discovery; contact via GitHub)" }, signal: AbortSignal.timeout(10000) });
-  if (!response.ok) throw new Error(\`wikidata_search_http_\${response.status}\`);
+  if (!response.ok) throw new Error(`wikidata_search_http_${response.status}`);
   const payload = await response.json() as { search?: Array<{ id?: string; label?: string; description?: string }> };
   const club = (payload.search ?? []).find((entry) =>
     /^Q[1-9][0-9]*$/.test(entry.id ?? "") &&
@@ -143,7 +143,7 @@ export async function discoverFootballPlayers(supabase: any, prompt: string): Pr
     body: new URLSearchParams({ query: buildPlayerDiscoveryQuery(intent, clubQid), format: "json" }),
     signal: AbortSignal.timeout(15000),
   });
-  if (!response.ok) throw new Error(\`wikidata_sparql_http_\${response.status}\`);
+  if (!response.ok) throw new Error(`wikidata_sparql_http_${response.status}`);
   const candidates = parseWikidataResults(await response.json(), intent);
   let created = 0; let matched = 0; const cardIds = new Set<string>();
   for (let i = 0; i < candidates.length; i += 8) {
