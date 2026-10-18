@@ -40,7 +40,7 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /милан[а]?|ac milan/i, query: "AC Milan" },
   { pattern: /интер[а]?|inter milan/i, query: "Inter Milan" },
 ];
-const PLAYER_REQUEST = /футболист|игрок|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b/i;
+const PLAYER_REQUEST = /футболист|игрок|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
 const WOMEN_REQUEST = /футболистк|женщин\w*\s+футбол|женск\w*\s+футбол|women'?s football|female players?|women players?/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
@@ -54,7 +54,7 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
     : /защитник|защитники|defender/i.test(prompt) ? "defender"
     : /полузащитник|опорник|midfielder/i.test(prompt) ? "midfielder"
     : /нападающ|форвард|striker|forward/i.test(prompt) ? "forward" : null;
-  const decade = prompt.match(/\\b(19|20)(\\d)0(?:-?х|s)\\b/i);
+  const decade = prompt.match(/\b(19|20)(\d)0(?:-?х|s)\b/i);
   const era = decade ? { start: Number(`${decade[1]}${decade[2]}0`), end: Number(`${decade[1]}${decade[2]}9`) } : null;
   if (!clubQuery) {
     const match = prompt.match(/(?:игроки|игроков|футболисты|футболистки|footballers|players)\s+(?:клуба\s+|of\s+)?[«"']?([\p{L}\p{N} .'-]{2,60})/iu);
