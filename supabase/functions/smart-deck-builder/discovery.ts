@@ -40,7 +40,7 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /милан[а]?|ac milan/i, query: "AC Milan" },
   { pattern: /интер[а]?|inter milan/i, query: "Inter Milan" },
 ];
-const PLAYER_REQUEST = /футболист|игрок|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
+const PLAYER_REQUEST = /футболист|игрок|вратар|голкипер|защитник|полузащитник|нападающ|форвард|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
 const WOMEN_REQUEST = /футболистк|женщин\w*\s+футбол|женск\w*\s+футбол|women'?s football|female players?|women players?/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
