@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { matchesExplicitIntent, positionIntent } from "./intent.ts";
+import { discoverFootballPlayers } from "./discovery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -149,6 +150,20 @@ Deno.serve(async (req: Request) => {
       return json({ error: "quota_unavailable" }, 503);
     }
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
+
+    try {
+      const discovery = await discoverFootballPlayers(supabase, prompt);
+      if (discovery.discovered > 0) {
+        console.info("[smart-deck-builder] source-backed discovery", {
+          discovered: discovery.discovered,
+          created: discovery.created,
+          matched: discovery.matched,
+        });
+      }
+    } catch (discoveryError) {
+      console.error("[smart-deck-builder] external player discovery unavailable; using verified catalog",
+        discoveryError instanceof Error ? discoveryError.message : "unknown");
+    }
 
     const catalog = await loadCatalog(supabase, prompt, currentIds, targetCardCount);
     if (catalog.length < 3) return json({ error: "catalog_unavailable" }, 503);
