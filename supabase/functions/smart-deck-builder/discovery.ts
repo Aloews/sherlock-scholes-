@@ -72,7 +72,7 @@ export function exactAgeBirthRange(age: number, now = new Date()): { after: stri
 }
 export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: string | null, now = new Date()): string {
   const clauses = [
-    "?item wdt:P106/wdt:P279* wd:Q937857.", "?item wdt:P569 ?dob.",
+    "?item wdt:P106/wdt:P279* wd:Q937857.", "?item p:P569 ?dobStatement. ?dobStatement ps:P569 ?dob; wikibase:timePrecision ?dobPrecision. FILTER(?dobPrecision >= 11).",
     "OPTIONAL { ?item wdt:P413 ?position. ?position rdfs:label ?positionRu. FILTER(LANG(?positionRu) = \"ru\") }",
     "OPTIONAL { ?item wdt:P18 ?image. }",
     "OPTIONAL { ?item wdt:P27 ?citizenship. ?citizenship rdfs:label ?countryLabel. FILTER(LANG(?countryLabel) = \"ru\") }",
