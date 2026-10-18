@@ -3,6 +3,8 @@ export type DiscoveryIntent = {
   women: boolean;
   country: { label: string; qid: string } | null;
   clubQuery: string | null;
+  position: "goalkeeper" | "defender" | "midfielder" | "forward" | null;
+  era: { start: number; end: number } | null;
 };
 export type DiscoveredPlayer = {
   qid: string; name: string; nameEn: string | null; bornOn: string | null;
@@ -48,13 +50,19 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   const country = COUNTRIES.find((entry) => entry.pattern.test(prompt)) ?? null;
   const club = CLUB_ALIASES.find((entry) => entry.pattern.test(prompt));
   let clubQuery = club?.query ?? null;
-  if (!clubQuery && !country) {
+  const position = /вратар|голкипер|goalkeeper|keeper/i.test(prompt) ? "goalkeeper"
+    : /защитник|защитники|defender/i.test(prompt) ? "defender"
+    : /полузащитник|опорник|midfielder/i.test(prompt) ? "midfielder"
+    : /нападающ|форвард|striker|forward/i.test(prompt) ? "forward" : null;
+  const decade = prompt.match(/\\b(19|20)(\\d)0(?:-?х|s)\\b/i);
+  const era = decade ? { start: Number(`${decade[1]}${decade[2]}0`), end: Number(`${decade[1]}${decade[2]}9`) } : null;
+  if (!clubQuery) {
     const match = prompt.match(/(?:игроки|игроков|футболисты|футболистки|footballers|players)\s+(?:клуба\s+|of\s+)?[«"']?([\p{L}\p{N} .'-]{2,60})/iu);
     const candidate = match?.[1]?.replace(/\b(?:в возрасте|возрастом|лет|years?|aged|under|over)\b.*$/i, "")
       .replace(/\b20\d{2}(?:[-/–]\d{2,4})?\b.*$/i, "").trim();
     if (candidate && candidate.length >= 2 && !COUNTRIES.some((entry) => entry.pattern.test(candidate))) clubQuery = candidate;
   }
-  return { age, women: WOMEN_REQUEST.test(prompt), country, clubQuery };
+  return { age, women: WOMEN_REQUEST.test(prompt), country, clubQuery, position, era };
 }
 export function exactAgeBirthRange(age: number, now = new Date()): { after: string; before: string } | null {
   if (!Number.isInteger(age) || age < 1 || age > 99) return null;
@@ -73,7 +81,20 @@ export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: stri
   ];
   if (intent.country) clauses.push(`?item wdt:P27 wd:${intent.country.qid}.`);
   if (intent.women) clauses.push("?item wdt:P21 wd:Q6581072.");
-  if (clubQid) clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }`);
+  if (clubQid && intent.era) {
+    const nextYear = intent.era.end + 1;
+    clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}.
+      OPTIONAL { ?clubStatement pq:P580 ?clubStart. }
+      OPTIONAL { ?clubStatement pq:P582 ?clubEnd. }
+      FILTER((!BOUND(?clubStart) || ?clubStart < "${nextYear}-01-01T00:00:00Z"^^xsd:dateTime)
+        && (!BOUND(?clubEnd) || ?clubEnd >= "${intent.era.start}-01-01T00:00:00Z"^^xsd:dateTime))`);
+  } else if (clubQid) {
+    clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }`);
+  }
+  if (intent.position) {
+    const patterns = { goalkeeper: "вратар|голкипер", defender: "защит|defender", midfielder: "полузащит|опорник|midfield", forward: "нападающ|форвард|striker|forward" };
+    clauses.push(`FILTER(BOUND(?positionRu) && REGEX(LCASE(STR(?positionRu)), "${patterns[intent.position]}"))`);
+  }
   if (intent.age !== null) {
     const range = exactAgeBirthRange(intent.age, now);
     if (range) clauses.push(`FILTER(?dob > "${range.after}T00:00:00Z"^^xsd:dateTime && ?dob < "${range.before}T23:59:59Z"^^xsd:dateTime)`);
