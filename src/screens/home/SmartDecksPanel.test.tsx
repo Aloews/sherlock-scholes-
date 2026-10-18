@@ -73,11 +73,7 @@ beforeEach(() => {
   mocks.invoke.mockReset();
   mocks.from.mockImplementation((table: string) => queryBuilder(table));
   mocks.rpc.mockImplementation((name: string) => Promise.resolve({
-    data: name === 'player_ratings'
-      ? players
-      : name === 'player_stats_freshness'
-        ? [{ collected_at: new Date().toISOString() }]
-        : [],
+    data: name === 'player_ratings' ? players : [],
     error: null,
   }));
   mocks.invoke.mockResolvedValue({ data: { editorials: [], mode: 'deterministic' }, error: null });
