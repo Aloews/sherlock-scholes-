@@ -150,13 +150,15 @@ async function resolveClubQid(query: string): Promise<string | null> {
   );
   return club?.id ?? null;
 }
-export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[] }> {
+export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[]; constrained: boolean }> {
   const intent = parseDiscoveryIntent(prompt);
-  if (!intent) return { discovered: 0, created: 0, matched: 0, cardIds: [] };
+  if (!intent) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
+  const constrained = intent.age !== null || intent.women || intent.country !== null || intent.clubQuery !== null || intent.position !== null || intent.era !== null;
+  if (!constrained) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
   let clubQid: string | null = null;
   if (intent.clubQuery) {
     clubQid = await resolveClubQid(intent.clubQuery);
-    if (!clubQid) return { discovered: 0, created: 0, matched: 0, cardIds: [] };
+    if (!clubQid) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: true };
   }
   const response = await fetch("https://query.wikidata.org/sparql", {
     method: "POST",
@@ -183,5 +185,5 @@ export async function discoverFootballPlayers(supabase: any, prompt: string): Pr
       if (existing) matched++; else created++;
     }));
   }
-  return { discovered: candidates.length, created, matched, cardIds: [...cardIds] };
+  return { discovered: candidates.length, created, matched, cardIds: [...cardIds], constrained: true };
 }
