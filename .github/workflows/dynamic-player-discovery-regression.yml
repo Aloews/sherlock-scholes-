@@ -1,0 +1,41 @@
+name: dynamic-player-discovery-regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  dynamic-player-discovery-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dynamic_discovery_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d dynamic_discovery_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: dynamic_discovery_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Create isolated canonical-card schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/dynamic_player_discovery_test_setup.sql
+      - name: Apply canonical player upsert migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018120000_dynamic_player_discovery.sql
+      - name: Verify idempotency, source fields and RPC permissions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/dynamic_player_discovery.test.sql
