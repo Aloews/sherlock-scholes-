@@ -76,7 +76,7 @@ export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: stri
   if (clubQid) clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }`);
   if (intent.age !== null) {
     const range = exactAgeBirthRange(intent.age, now);
-    if (range) clauses.push(`FILTER(?dob > "${range.after}"^^xsd:dateTime && ?dob < "${range.before}T23:59:59Z"^^xsd:dateTime)`);
+    if (range) clauses.push(`FILTER(?dob > "${range.after}T00:00:00Z"^^xsd:dateTime && ?dob < "${range.before}T23:59:59Z"^^xsd:dateTime)`);
   }
   return `SELECT DISTINCT ?item ?nameRu ?nameEn ?dob ?countryLabel ?positionRu ?image WHERE {
   ${clauses.join("\n  ")}
