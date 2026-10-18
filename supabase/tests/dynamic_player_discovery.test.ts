@@ -8,7 +8,7 @@ Deno.test("young Rubin players constrain age and club", () => {
   const intent = parseDiscoveryIntent("16-летние игроки Рубина");
   if (intent?.age !== 16 || intent.clubQuery !== "FC Rubin Kazan") throw new Error("age/club intent missing");
   const query = buildPlayerDiscoveryQuery(intent, "Q123456", new Date("2026-10-18T12:00:00Z"));
-  if (!query.includes("wd:Q123456") || !query.includes("wdt:P569") || !query.includes("FILTER(?dob")) throw new Error("source query misses constraints");
+  if (!query.includes("wd:Q123456") || !query.includes("wikibase:timePrecision") || !query.includes("FILTER(?dob")) throw new Error("source query misses constraints");
 });
 Deno.test("age range is date-aware", () => {
   const range = exactAgeBirthRange(16, new Date("2026-10-18T12:00:00Z"));
