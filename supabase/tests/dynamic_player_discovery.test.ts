@@ -22,3 +22,18 @@ Deno.test("only real Wikidata player entities with stable QIDs are returned", ()
   ] } }, intent, new Date("2026-10-18T12:00:00Z"));
   if (rows.length !== 1 || rows[0].qid !== "Q123" || !rows[0].photoUrl?.includes("Special:FilePath")) throw new Error("source validation failed");
 });
+
+Deno.test("historical club requests capture decade constraints", () => {
+  const intent = parseDiscoveryIntent("Real Madrid legends 2000s");
+  if (intent?.clubQuery !== "Real Madrid CF" || intent.era?.start !== 2000 || intent.era.end !== 2009) {
+    throw new Error("historical club intent missing");
+  }
+  const query = buildPlayerDiscoveryQuery(intent, "Q123456", new Date("2026-10-18T12:00:00Z"));
+  if (!query.includes("pq:P580") || !query.includes("pq:P582") || !query.includes("2000-01-01")) {
+    throw new Error("historical club period is not enforced");
+  }
+});
+Deno.test("Russian position-only prompts are discoverable", () => {
+  const intent = parseDiscoveryIntent("Вратари России");
+  if (intent?.position !== "goalkeeper" || intent.country?.qid !== "Q159") throw new Error("position/country intent missing");
+});
