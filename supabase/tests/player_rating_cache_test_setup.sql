@@ -25,6 +25,8 @@ create table public.player_match_stats (
   card_id uuid not null references public.cards(id),
   match_date date not null,
   tournament text not null,
+  home_team text,
+  away_team text,
   minutes integer,
   goals integer not null default 0,
   assists integer not null default 0,
