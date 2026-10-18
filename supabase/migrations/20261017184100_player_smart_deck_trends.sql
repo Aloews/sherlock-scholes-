@@ -28,7 +28,7 @@ set search_path = public
 as $$
   with per_day as (
     select distinct on (s.card_id, s.match_date)
-      s.card_id, s.match_date, s.minutes, s.goals, s.assists, s.fetched_at
+      s.card_id, s.match_date, s.home_team, s.away_team, s.minutes, s.goals, s.assists, s.fetched_at
     from public.player_match_stats s
     where s.match_date > current_date - 60
       and s.match_date <= current_date
