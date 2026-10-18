@@ -36,6 +36,6 @@ jobs:
       - name: Create isolated canonical-card schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/dynamic_player_discovery_test_setup.sql
       - name: Apply canonical player upsert migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018120000_dynamic_player_discovery.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018143317_dynamic_player_discovery.sql
       - name: Verify idempotency, source fields and RPC permissions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/dynamic_player_discovery.test.sql
