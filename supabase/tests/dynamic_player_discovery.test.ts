@@ -93,7 +93,7 @@ Deno.test("teammate queries require overlapping verified club tenures", () => {
   const query = buildPlayerDiscoveryQuery(intent, null, new Date("2026-10-18T12:00:00Z"), "Q11571");
   if (!query.includes("wd:Q11571 p:P54") || !query.includes("?sharedClub") ||
       !query.includes("?teammateClubStart") || !query.includes("?candidateClubStart") ||
-      !query.includes("FILTER(?item != wd:Q11571)")) {
+      !query.includes("FILTER(?item != wd:Q11571")) {
     throw new Error("teammate query does not enforce overlapping club tenures");
   }
   if (!query.includes("OPTIONAL { ?item p:P569")) {
