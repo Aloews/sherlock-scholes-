@@ -78,13 +78,15 @@ def profile_matches_card(card, profile):
 
 def classify_result(exit_code, output, verified):
     folded = output.casefold()
+    # A successful read-after-write check is authoritative: an earlier source
+    # may have failed after another fallback already persisted a valid photo.
+    if verified:
+        return "succeeded"
     if exit_code != 0 or any(marker in folded for marker in (
         "профилей потеряно", "игроков потеряно", "потеряно пачек",
         "запись отклонена у",
     )):
         return "retry"
-    if verified:
-        return "succeeded"
 
     # A successful process is not proof that the write landed. If a source
     # reported data but read-after-write cannot see it, retry rather than
