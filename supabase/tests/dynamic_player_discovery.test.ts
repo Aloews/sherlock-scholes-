@@ -87,7 +87,7 @@ Deno.test("EPL goal thresholds use verified competition statistics", () => {
 
 Deno.test("teammate queries require overlapping verified club tenures", () => {
   const intent = parseDiscoveryIntent("Футболисты, выступавшие вместе с Роналду");
-  if (intent?.teammateName !== "Cristiano Ronaldo" || intent.clubQuery !== null) {
+  if (!intent || intent.teammateName !== "Cristiano Ronaldo" || intent.clubQuery !== null) {
     throw new Error("teammate intent was mistaken for a club query");
   }
   const query = buildPlayerDiscoveryQuery(intent, null, new Date("2026-10-18T12:00:00Z"), "Q11571");
