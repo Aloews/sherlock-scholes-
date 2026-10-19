@@ -103,7 +103,6 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
     ? { value: goalValue, inclusive: /(?:at least|не менее|>=)/i.test(prompt) }
     : null;
   const competitionId = /\b(?:epl|english premier league)\b|апл|премьер-лиг[а-яё]* англи/i.test(prompt) ? "GB1" : null;
-    ? "GB1" : null;
   const teammateName = /(?:выступавш[а-яё]*\s+вместе\s+с|игравш[а-яё]*\s+вместе\s+с|вместе\s+с|played\s+with|played\s+alongside|teammates?\s+with)\s+(?:криштиану\s+)?(?:роналду|ronaldo|назарио)/i.test(prompt)
     ? (/(?:роналдо\s+)?назарио|nazario|brazilian\s+ronaldo/i.test(prompt) ? "Ronaldo Nazário" : "Cristiano Ronaldo")
     : null;
