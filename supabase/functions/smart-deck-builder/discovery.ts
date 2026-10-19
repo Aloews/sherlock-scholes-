@@ -87,7 +87,8 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
   const ageMatch = prompt.match(/\b(1[0-9]|[1-9])\s*[- ]?(?:летн[а-яё]*|лет|years?\s*old|yo)(?=\s|$|[.,!?])/i);
   const age = ageMatch ? Number(ageMatch[1]) : null;
-  const country = COUNTRIES.find((entry) => entry.pattern.test(prompt)) ?? null;
+  const countryPrompt = prompt.replace(/\benglish premier league\b/ig, " ").replace(/премьер-лиг[а-яё]*\s+англи[а-яё]*/ig, " ");
+  const country = COUNTRIES.find((entry) => entry.pattern.test(countryPrompt)) ?? null;
   const club = CLUB_ALIASES.find((entry) => entry.pattern.test(prompt));
   let clubQuery = club?.query ?? null;
   const position = /вратар|голкипер|goalkeeper|keeper/i.test(prompt) ? "goalkeeper"
@@ -101,12 +102,12 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   const goalThreshold = goalValue !== null && Number.isFinite(goalValue)
     ? { value: goalValue, inclusive: /(?:at least|не менее|>=)/i.test(prompt) }
     : null;
-  const competitionId = goalThreshold && /\b(?:epl|english premier league)\b|апл|премьер-лиг[а-яё]* англи/i.test(prompt)
+  const competitionId = /\b(?:epl|english premier league)\b|апл|премьер-лиг[а-яё]* англи/i.test(prompt) ? "GB1" : null;
     ? "GB1" : null;
   const teammateName = /(?:выступавш[а-яё]*\s+вместе\s+с|игравш[а-яё]*\s+вместе\s+с|вместе\s+с|played\s+with|played\s+alongside|teammates?\s+with)\s+(?:криштиану\s+)?(?:роналду|ronaldo|назарио)/i.test(prompt)
     ? (/(?:роналдо\s+)?назарио|nazario|brazilian\s+ronaldo/i.test(prompt) ? "Ronaldo Nazário" : "Cristiano Ronaldo")
     : null;
-  if (!clubQuery && !goalThreshold && !teammateName) {
+  if (!clubQuery && !goalThreshold && !teammateName && !competitionId) {
     const match = prompt.match(/(?:игроки|игроков|футболисты|футболистки|footballers|players)\s+(?:клуба\s+|of\s+)?[«"']?([\p{L}\p{N} .'-]{2,60})/iu);
     const candidate = match?.[1]?.replace(/\b(?:в возрасте|возрастом|лет|years?|aged|under|over)\b.*$/i, "")
       .replace(/\b20\d{2}(?:[-/–]\d{2,4})?\b.*$/i, "").trim();
@@ -259,16 +260,35 @@ export function aggregateGoalThresholdRows(
     .filter((row) => inclusive ? row.goals >= threshold : row.goals > threshold)
     .sort((a, b) => b.goals - a.goals);
 }
-async function discoverByCompetitionGoals(supabase: any, intent: DiscoveryIntent) {
+export function aggregateCompetitionRows(
+  rows: Array<{ card_id?: unknown; goals?: unknown; apps?: unknown }>,
+  threshold: { value: number; inclusive: boolean } | null,
+): Array<{ cardId: string; goals: number; apps: number }> {
+  const totals = new Map<string, { goals: number; apps: number }>();
+  for (const row of rows) {
+    if (typeof row.card_id !== "string" || !row.card_id) continue;
+    const goals = Number(row.goals ?? 0);
+    const apps = Number(row.apps ?? 0);
+    if (!Number.isFinite(goals) || goals < 0 || !Number.isFinite(apps) || apps <= 0) continue;
+    const total = totals.get(row.card_id) ?? { goals: 0, apps: 0 };
+    total.goals += goals;
+    total.apps += apps;
+    totals.set(row.card_id, total);
+  }
+  return [...totals.entries()]
+    .map(([cardId, total]) => ({ cardId, ...total }))
+    .filter((row) => !threshold || (threshold.inclusive ? row.goals >= threshold.value : row.goals > threshold.value))
+    .sort((a, b) => threshold ? b.goals - a.goals : b.apps - a.apps || b.goals - a.goals);
+}
+async function discoverByCompetitionStats(supabase: any, intent: DiscoveryIntent) {
   const empty = { discovered: 0, created: 0, matched: 0, cardIds: [] as string[], constrained: true };
-  const threshold = intent.goalThreshold;
-  if (!threshold || intent.competitionId !== "GB1" || intent.teammateName ||
+  if (intent.competitionId !== "GB1" || intent.teammateName ||
       intent.age !== null || intent.women || intent.country || intent.clubQuery || intent.position || intent.era) return empty;
   const { data, error } = await supabase.from("player_season_stat").select("card_id,goals,apps")
     .eq("competition_id", intent.competitionId).gt("apps", 0).limit(10000);
   if (error) throw new Error("player_stats_discovery_failed");
   if (!Array.isArray(data) || data.length >= 10000) return empty;
-  const ranked = aggregateGoalThresholdRows(data, threshold.value, threshold.inclusive);
+  const ranked = aggregateCompetitionRows(data, intent.goalThreshold);
   if (!ranked.length) return empty;
   const { data: cards, error: cardsError } = await supabase.from("cards").select("id")
     .eq("active", true).eq("category", "player").in("id", ranked.map((row) => row.cardId));
@@ -280,9 +300,9 @@ async function discoverByCompetitionGoals(supabase: any, intent: DiscoveryIntent
 export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[]; constrained: boolean }> {
   const intent = parseDiscoveryIntent(prompt);
   if (!intent) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
-  const constrained = intent.age !== null || intent.women || intent.country !== null || intent.clubQuery !== null || intent.position !== null || intent.era !== null || intent.goalThreshold !== null || intent.teammateName !== null;
+  const constrained = intent.age !== null || intent.women || intent.country !== null || intent.clubQuery !== null || intent.position !== null || intent.era !== null || intent.goalThreshold !== null || intent.competitionId !== null || intent.teammateName !== null;
   if (!constrained) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
-  if (intent.goalThreshold) return discoverByCompetitionGoals(supabase, intent);
+  if (intent.competitionId) return discoverByCompetitionStats(supabase, intent);
   let teammateQid: string | null = null;
   if (intent.teammateName) {
     teammateQid = await resolvePlayerQid(intent.teammateName);
