@@ -19,7 +19,32 @@ const COUNTRIES: Array<{ pattern: RegExp; label: string; qid: string }> = [
   { pattern: /бразил|brazilian/i, label: "Бразилия", qid: "Q155" },
   { pattern: /аргентин|argentina/i, label: "Аргентина", qid: "Q414" },
   { pattern: /герман|germany|german/i, label: "Германия", qid: "Q183" },
-  { pattern: /американ|usa|united states/i, label: "США", qid: "Q30" },
+  { pattern: /американ|usa|united states|\\bunited states of america\\b/i, label: "США", qid: "Q30" },
+  { pattern: /португал|portugal|portuguese/i, label: "Португалия", qid: "Q45" },
+  { pattern: /нидерланд|голланд|netherlands|dutch/i, label: "Нидерланды", qid: "Q55" },
+  { pattern: /бельги|belgium|belgian/i, label: "Бельгия", qid: "Q31" },
+  { pattern: /хорват|croatia|croatian/i, label: "Хорватия", qid: "Q224" },
+  { pattern: /уругва|uruguay|uruguayan/i, label: "Уругвай", qid: "Q77" },
+  { pattern: /мексик|mexico|mexican/i, label: "Мексика", qid: "Q96" },
+  { pattern: /япон|japan|japanese/i, label: "Япония", qid: "Q17" },
+  { pattern: /южн(?:ая|ой) коре|south korea|south korean/i, label: "Южная Корея", qid: "Q884" },
+  { pattern: /нигери|nigeria|nigerian/i, label: "Нигерия", qid: "Q1033" },
+  { pattern: /швед|sweden|swedish/i, label: "Швеция", qid: "Q34" },
+  { pattern: /норвег|norway|norwegian/i, label: "Норвегия", qid: "Q20" },
+  { pattern: /датчан|дания|denmark|danish/i, label: "Дания", qid: "Q35" },
+  { pattern: /польш|poland|polish/i, label: "Польша", qid: "Q36" },
+  { pattern: /украин|ukraine|ukrainian/i, label: "Украина", qid: "Q212" },
+  { pattern: /марокк|morocco|moroccan/i, label: "Марокко", qid: "Q1028" },
+  { pattern: /египет|egypt|egyptian/i, label: "Египет", qid: "Q79" },
+  { pattern: /сенегал|senegalese/i, label: "Сенегал", qid: "Q1041" },
+  { pattern: /кот-д.?иву|ivory coast|ivorian|côte d.?ivoire/i, label: "Кот-д’Ивуар", qid: "Q1008" },
+  { pattern: /ган[ае]|ghana|ghanaian/i, label: "Гана", qid: "Q117" },
+  { pattern: /камерун|cameroon|cameroonian/i, label: "Камерун", qid: "Q1009" },
+  { pattern: /колумби|colombia|colombian/i, label: "Колумбия", qid: "Q739" },
+  { pattern: /чили|chile|chilean/i, label: "Чили", qid: "Q298" },
+  { pattern: /турци|турция|turkey|turkish/i, label: "Турция", qid: "Q43" },
+  { pattern: /швейцар|switzerland|swiss/i, label: "Швейцария", qid: "Q39" },
+  { pattern: /австри|austria|austrian/i, label: "Австрия", qid: "Q40" },
 ];
 const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /рубин(а|у|ом)?|rubin kazan/i, query: "FC Rubin Kazan" },
@@ -39,9 +64,21 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /ювентус[а]?|juventus/i, query: "Juventus FC" },
   { pattern: /милан[а]?|ac milan/i, query: "AC Milan" },
   { pattern: /интер[а]?|inter milan/i, query: "Inter Milan" },
+  { pattern: /атлетико мадрид|атлетико|atlético madrid|atletico madrid/i, query: "Atlético Madrid" },
+  { pattern: /тоттенх[эе]м|tottenham/i, query: "Tottenham Hotspur" },
+  { pattern: /борусси[яи] дортмунд|дортмунд|borussia dortmund/i, query: "Borussia Dortmund" },
+  { pattern: /аякс|ajax/i, query: "AFC Ajax" },
+  { pattern: /наполи|napoli/i, query: "SSC Napoli" },
+  { pattern: /рома|as roma/i, query: "AS Roma" },
+  { pattern: /порту(?:гал)?|fc porto/i, query: "FC Porto" },
+  { pattern: /бенфика|benfica/i, query: "SL Benfica" },
+  { pattern: /севилья|sevilla/i, query: "Sevilla FC" },
+  { pattern: /валенсия|valencia cf/i, query: "Valencia CF" },
+  { pattern: /лион|olympique lyonnais|lyon/i, query: "Olympique Lyonnais" },
+  { pattern: /марсель|olympique de marseille|marseille/i, query: "Olympique de Marseille" },
 ];
 const PLAYER_REQUEST = /футболист|игрок|вратар|голкипер|защитник|полузащитник|нападающ|форвард|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
-const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\s+футбол|women\x27?s football|female players?|women players?/i;
+const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\\s+футбол|женск[а-яё]*\\s+футбол|women\\x27?s football|female (?:footballers?|players?)|women (?:footballers?|players?)/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
@@ -73,7 +110,7 @@ export function exactAgeBirthRange(age: number, now = new Date()): { after: stri
 export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: string | null, now = new Date()): string {
   const clauses = [
     "?item wdt:P106/wdt:P279* wd:Q937857.", "?item p:P569 ?dobStatement. ?dobStatement ps:P569 ?dob; wikibase:timePrecision ?dobPrecision. FILTER(?dobPrecision >= 11).",
-    "OPTIONAL { ?item wdt:P413 ?position. ?position rdfs:label ?positionRu. FILTER(LANG(?positionRu) = \"ru\") }",
+    "OPTIONAL { ?item wdt:P413 ?position. OPTIONAL { ?position rdfs:label ?positionRu. FILTER(LANG(?positionRu) = \\"ru\\") } OPTIONAL { ?position rdfs:label ?positionEn. FILTER(LANG(?positionEn) = \\"en\\") } }",
     "OPTIONAL { ?item wdt:P18 ?image. }",
     "OPTIONAL { ?item wdt:P27 ?citizenship. ?citizenship rdfs:label ?countryLabel. FILTER(LANG(?countryLabel) = \"ru\") }",
     "OPTIONAL { ?item rdfs:label ?nameRu. FILTER(LANG(?nameRu) = \"ru\") }",
@@ -93,7 +130,7 @@ export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: stri
   }
   if (intent.position) {
     const patterns = { goalkeeper: "вратар|голкипер", defender: "защит|defender", midfielder: "полузащит|опорник|midfield", forward: "нападающ|форвард|striker|forward" };
-    clauses.push(`FILTER(BOUND(?positionRu) && REGEX(LCASE(STR(?positionRu)), "${patterns[intent.position]}"))`);
+    clauses.push(`FILTER((BOUND(?positionRu) && REGEX(LCASE(STR(?positionRu)), "${patterns[intent.position]}")) || (BOUND(?positionEn) && REGEX(LCASE(STR(?positionEn)), "${patterns[intent.position]}")))`);
   }
   if (intent.age !== null) {
     const range = exactAgeBirthRange(intent.age, now);
@@ -138,16 +175,25 @@ export function parseWikidataResults(payload: unknown, intent: DiscoveryIntent, 
   }
   return [...out.values()].slice(0, 50);
 }
+function normalizeClubName(value: string): string[] {
+  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim().split(/\\s+/)
+    .filter((token) => !["fc", "cf", "afc", "sc", "pfc", "club", "football", "the"].includes(token));
+}
 async function resolveClubQid(query: string): Promise<string | null> {
   const url = new URL("https://www.wikidata.org/w/api.php");
   url.search = new URLSearchParams({ action: "wbsearchentities", search: query, language: "en", uselang: "en", type: "item", limit: "8", format: "json" }).toString();
   const response = await fetch(url, { headers: { "User-Agent": "SherlockScholes/1.0 (football player discovery; contact via GitHub)" }, signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error(`wikidata_search_http_${response.status}`);
   const payload = await response.json() as { search?: Array<{ id?: string; label?: string; description?: string }> };
-  const club = (payload.search ?? []).find((entry) =>
-    /^Q[1-9][0-9]*$/.test(entry.id ?? "") &&
-    /football club|association football club|women.s football club/i.test(entry.description ?? "")
-  );
+  const queryTokens = normalizeClubName(query);
+  const club = (payload.search ?? []).find((entry) => {
+    if (!/^Q[1-9][0-9]*$/.test(entry.id ?? "") ||
+      !/football club|association football club|women.s football club/i.test(entry.description ?? "")) return false;
+    const labelTokens = normalizeClubName(entry.label ?? "");
+    return labelTokens.length > 0 && labelTokens.length === queryTokens.length &&
+      labelTokens.every((token) => queryTokens.includes(token));
+  });
   return club?.id ?? null;
 }
 export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[]; constrained: boolean }> {
