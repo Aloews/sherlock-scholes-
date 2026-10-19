@@ -279,14 +279,27 @@ export function aggregateCompetitionRows(
     .filter((row) => !threshold || (threshold.inclusive ? row.goals >= threshold.value : row.goals > threshold.value))
     .sort((a, b) => threshold ? b.goals - a.goals : b.apps - a.apps || b.goals - a.goals);
 }
+async function loadCompetitionStatRows(supabase: any, competitionId: string) {
+  const rows: Array<{ card_id?: unknown; goals?: unknown; apps?: unknown }> = [];
+  const pageSize = 1000;
+  for (let offset = 0; offset < 10000; offset += pageSize) {
+    const { data, error } = await supabase.from("player_season_stat").select("card_id,goals,apps")
+      .eq("competition_id", competitionId).gt("apps", 0)
+      .order("tm_player_id", { ascending: true }).order("season_id", { ascending: true })
+      .order("club_id", { ascending: true }).range(offset, offset + pageSize - 1);
+    if (error) throw new Error("player_stats_discovery_failed");
+    if (!Array.isArray(data)) return null;
+    rows.push(...data);
+    if (data.length < pageSize) return rows;
+  }
+  return null;
+}
 async function discoverByCompetitionStats(supabase: any, intent: DiscoveryIntent) {
   const empty = { discovered: 0, created: 0, matched: 0, cardIds: [] as string[], constrained: true };
   if (intent.competitionId !== "GB1" || intent.teammateName ||
       intent.age !== null || intent.women || intent.country || intent.clubQuery || intent.position || intent.era) return empty;
-  const { data, error } = await supabase.from("player_season_stat").select("card_id,goals,apps")
-    .eq("competition_id", intent.competitionId).gt("apps", 0).limit(10000);
-  if (error) throw new Error("player_stats_discovery_failed");
-  if (!Array.isArray(data) || data.length >= 10000) return empty;
+  const data = await loadCompetitionStatRows(supabase, intent.competitionId);
+  if (!data) return empty;
   const ranked = aggregateCompetitionRows(data, intent.goalThreshold);
   if (!ranked.length) return empty;
   const candidates = ranked.slice(0, 100);
