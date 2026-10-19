@@ -19,7 +19,7 @@ const COUNTRIES: Array<{ pattern: RegExp; label: string; qid: string }> = [
   { pattern: /бразил|brazilian/i, label: "Бразилия", qid: "Q155" },
   { pattern: /аргентин|argentina/i, label: "Аргентина", qid: "Q414" },
   { pattern: /герман|germany|german/i, label: "Германия", qid: "Q183" },
-  { pattern: /американ|usa|united states|\\bunited states of america\\b/i, label: "США", qid: "Q30" },
+  { pattern: /американ|usa|united states|\bunited states of america\\b/i, label: "США", qid: "Q30" },
   { pattern: /португал|portugal|portuguese/i, label: "Португалия", qid: "Q45" },
   { pattern: /нидерланд|голланд|netherlands|dutch/i, label: "Нидерланды", qid: "Q55" },
   { pattern: /бельги|belgium|belgian/i, label: "Бельгия", qid: "Q31" },
@@ -78,7 +78,7 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /марсель|olympique de marseille|marseille/i, query: "Olympique de Marseille" },
 ];
 const PLAYER_REQUEST = /футболист|игрок|вратар|голкипер|защитник|полузащитник|нападающ|форвард|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
-const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\\s+футбол|женск[а-яё]*\\s+футбол|women\\x27?s football|female (?:footballers?|players?)|women (?:footballers?|players?)/i;
+const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\\s+футбол|women\x27?s football|female (?:footballers?|players?)|women (?:footballers?|players?)/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
@@ -110,7 +110,7 @@ export function exactAgeBirthRange(age: number, now = new Date()): { after: stri
 export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: string | null, now = new Date()): string {
   const clauses = [
     "?item wdt:P106/wdt:P279* wd:Q937857.", "?item p:P569 ?dobStatement. ?dobStatement ps:P569 ?dob; wikibase:timePrecision ?dobPrecision. FILTER(?dobPrecision >= 11).",
-    "OPTIONAL { ?item wdt:P413 ?position. OPTIONAL { ?position rdfs:label ?positionRu. FILTER(LANG(?positionRu) = \\"ru\\") } OPTIONAL { ?position rdfs:label ?positionEn. FILTER(LANG(?positionEn) = \\"en\\") } }",
+    "OPTIONAL { ?item wdt:P413 ?position. OPTIONAL { ?position rdfs:label ?positionRu. FILTER(LANG(?positionRu) = \"ru\") } OPTIONAL { ?position rdfs:label ?positionEn. FILTER(LANG(?positionEn) = \"en\") } }",
     "OPTIONAL { ?item wdt:P18 ?image. }",
     "OPTIONAL { ?item wdt:P27 ?citizenship. ?citizenship rdfs:label ?countryLabel. FILTER(LANG(?countryLabel) = \"ru\") }",
     "OPTIONAL { ?item rdfs:label ?nameRu. FILTER(LANG(?nameRu) = \"ru\") }",
@@ -176,7 +176,7 @@ export function parseWikidataResults(payload: unknown, intent: DiscoveryIntent, 
   return [...out.values()].slice(0, 50);
 }
 function normalizeClubName(value: string): string[] {
-  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase()
+  return value.normalize("NFD").replace(/[\u0300-\\u036f]/g, "").toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, " ").trim().split(/\\s+/)
     .filter((token) => !["fc", "cf", "afc", "sc", "pfc", "club", "football", "the"].includes(token));
 }
