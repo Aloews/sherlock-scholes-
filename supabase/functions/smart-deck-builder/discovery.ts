@@ -302,6 +302,9 @@ export async function discoverFootballPlayers(supabase: any, prompt: string): Pr
   if (!intent) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
   const constrained = intent.age !== null || intent.women || intent.country !== null || intent.clubQuery !== null || intent.position !== null || intent.era !== null || intent.goalThreshold !== null || intent.competitionId !== null || intent.teammateName !== null;
   if (!constrained) return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: false };
+  if (intent.goalThreshold && !intent.competitionId) {
+    return { discovered: 0, created: 0, matched: 0, cardIds: [], constrained: true };
+  }
   if (intent.competitionId) return discoverByCompetitionStats(supabase, intent);
   let teammateQid: string | null = null;
   if (intent.teammateName) {
