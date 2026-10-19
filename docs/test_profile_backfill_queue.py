@@ -1,4 +1,5 @@
 import sys
+import subprocess
 import unittest
 from unittest.mock import patch
 from pathlib import Path
@@ -100,6 +101,25 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "no_data")
+
+
+
+class TransfermarktFallbackTests(unittest.TestCase):
+    def test_queued_transfermarkt_job_bypasses_soccwerwiki_bulk_skip(self):
+        completed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Портретов найдено : 0\\n"
+        )
+        job = {
+            "task_type": "photo_tm",
+            "transfermarkt_id": "273236",
+            "card_id": "642fc812-0b0b-4902-8cd1-7e178da734de",
+        }
+        with patch("profile_backfill_queue.subprocess.run", return_value=completed) as run:
+            output, exit_code = worker.run_collector(job)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("--include-soccerwiki", run.call_args.args[0])
+        self.assertIn("Портретов найдено", output)
 
 
 class QueueResultTests(unittest.TestCase):
