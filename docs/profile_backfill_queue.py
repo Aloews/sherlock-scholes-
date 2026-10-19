@@ -170,7 +170,7 @@ def run_collector(job):
             return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
         return "Фото найдено: 1\\nRead-after-write verification failed",0
     if task=="photo_tm":
-        command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"]),"--include-soccerwiki"]
+        command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"])]
     elif task=="photo_qid":
         command=[sys.executable,"docs/cards_photo_from_qid.py","--only-card-id",str(job["card_id"])]
     elif task=="season_stats":
@@ -179,7 +179,24 @@ def run_collector(job):
         raise ValueError("Unsupported task type: "+str(task))
     result=subprocess.run(command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
       stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
-    return result.stdout[-12000:],result.returncode
+    output=result.stdout[-12000:]
+
+    # Transfermarkt can be unavailable even for a valid player ID. When its
+    # profile could not be read, try the card's already-verified Wikidata QID
+    # before leaving the job retryable. A QID miss does not erase the TM error.
+    if (task=="photo_tm" and job.get("wikidata_qid") and
+            "профилей потеряно" in output.casefold()):
+        fallback_command=[sys.executable,"docs/cards_photo_from_qid.py",
+                          "--only-card-id",str(job["card_id"])]
+        fallback=subprocess.run(fallback_command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
+          stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
+        fallback_output=fallback.stdout[-12000:]
+        if (fallback.returncode==0 and
+                re.search(r"фото найдено\s*:\s*[1-9]\\d*",fallback_output.casefold())):
+            return fallback_output+"\\nИсточник: Wikidata fallback после недоступности Transfermarkt",0
+        return (output+"\\nWikidata fallback attempt:\\n"+fallback_output)[-12000:],(
+            fallback.returncode if fallback.returncode else 1)
+    return output,result.returncode
 
 
 def finish(job_id,verified,no_data=False,error=None):
