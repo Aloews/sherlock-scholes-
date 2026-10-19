@@ -19,7 +19,7 @@ const COUNTRIES: Array<{ pattern: RegExp; label: string; qid: string }> = [
   { pattern: /бразил|brazilian/i, label: "Бразилия", qid: "Q155" },
   { pattern: /аргентин|argentina/i, label: "Аргентина", qid: "Q414" },
   { pattern: /герман|germany|german/i, label: "Германия", qid: "Q183" },
-  { pattern: /американ|usa|united states|\bunited states of america\\b/i, label: "США", qid: "Q30" },
+  { pattern: /американ|usa|united states|\bunited states of america\b/i, label: "США", qid: "Q30" },
   { pattern: /португал|portugal|portuguese/i, label: "Португалия", qid: "Q45" },
   { pattern: /нидерланд|голланд|netherlands|dutch/i, label: "Нидерланды", qid: "Q55" },
   { pattern: /бельги|belgium|belgian/i, label: "Бельгия", qid: "Q31" },
@@ -78,7 +78,7 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /марсель|olympique de marseille|marseille/i, query: "Olympique de Marseille" },
 ];
 const PLAYER_REQUEST = /футболист|игрок|вратар|голкипер|защитник|полузащитник|нападающ|форвард|footballer|players?\b|strikers?\b|goalkeepers?\b|midfielders?\b|defenders?\b|легенд[а-яё]*|legends?\b/i;
-const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\\s+футбол|women\x27?s football|female (?:footballers?|players?)|women (?:footballers?|players?)/i;
+const WOMEN_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\s+футбол|women\x27?s football|female (?:footballers?|players?)|women (?:footballers?|players?)/i;
 
 export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   if (!PLAYER_REQUEST.test(prompt)) return null;
@@ -176,8 +176,8 @@ export function parseWikidataResults(payload: unknown, intent: DiscoveryIntent, 
   return [...out.values()].slice(0, 50);
 }
 function normalizeClubName(value: string): string[] {
-  return value.normalize("NFD").replace(/[\u0300-\\u036f]/g, "").toLocaleLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").trim().split(/\\s+/)
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/)
     .filter((token) => !["fc", "cf", "afc", "sc", "pfc", "club", "football", "the"].includes(token));
 }
 async function resolveClubQid(query: string): Promise<string | null> {
