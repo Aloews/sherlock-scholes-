@@ -289,11 +289,12 @@ async function discoverByCompetitionStats(supabase: any, intent: DiscoveryIntent
   if (!Array.isArray(data) || data.length >= 10000) return empty;
   const ranked = aggregateCompetitionRows(data, intent.goalThreshold);
   if (!ranked.length) return empty;
+  const candidates = ranked.slice(0, 100);
   const { data: cards, error: cardsError } = await supabase.from("cards").select("id")
-    .eq("active", true).eq("category", "player").in("id", ranked.map((row) => row.cardId));
+    .eq("active", true).eq("category", "player").in("id", candidates.map((row) => row.cardId));
   if (cardsError) throw new Error("player_stats_card_lookup_failed");
   const activeIds = new Set((cards ?? []).map((card: { id: string }) => card.id));
-  const cardIds = ranked.filter((row) => activeIds.has(row.cardId)).map((row) => row.cardId).slice(0, 100);
+  const cardIds = candidates.filter((row) => activeIds.has(row.cardId)).map((row) => row.cardId);
   return { discovered: cardIds.length, created: 0, matched: cardIds.length, cardIds, constrained: true };
 }
 export async function discoverFootballPlayers(supabase: any, prompt: string): Promise<{ discovered: number; created: number; matched: number; cardIds: string[]; constrained: boolean }> {
