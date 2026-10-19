@@ -104,7 +104,7 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   const competitionId = goalThreshold && /\b(?:epl|english premier league)\b|апл|премьер-лиг[а-яё]* англи/i.test(prompt)
     ? "GB1" : null;
   const teammateName = /(?:выступавш[а-яё]*\s+вместе\s+с|игравш[а-яё]*\s+вместе\s+с|вместе\s+с|played\s+with|played\s+alongside|teammates?\s+with)\s+(?:криштиану\s+)?(?:роналду|ronaldo|назарио)/i.test(prompt)
-    ? (/назарио|nazario|brazilian/i.test(prompt) ? "Ronaldo Nazário" : "Cristiano Ronaldo")
+    ? (/(?:роналдо\s+)?назарио|nazario|brazilian\s+ronaldo/i.test(prompt) ? "Ronaldo Nazário" : "Cristiano Ronaldo")
     : null;
   if (!clubQuery && !goalThreshold && !teammateName) {
     const match = prompt.match(/(?:игроки|игроков|футболисты|футболистки|footballers|players)\s+(?:клуба\s+|of\s+)?[«"']?([\p{L}\p{N} .'-]{2,60})/iu);
