@@ -178,8 +178,8 @@ Deno.serve(async (req: Request) => {
       return json({
         error: "not_enough_cards",
         message: language === "ru"
-          ? "Не удалось подтвердить достаточно футболистов по этому запросу. Уточни клуб, возраст или страну."
-          : "Not enough verified players matched this request. Try refining the club, age, or country.",
+          ? "Не удалось подтвердить достаточно футболистов по этим условиям. Уточни запрос."
+          : "Not enough verified players matched these criteria. Refine the request.",
       }, 422);
     }
 
