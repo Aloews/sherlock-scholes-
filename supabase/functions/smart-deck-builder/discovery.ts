@@ -99,7 +99,7 @@ export function parseDiscoveryIntent(prompt: string): DiscoveryIntent | null {
   const goalMatch = prompt.match(/\b(?:more than|over|greater than|at least)\s+(\d{1,4})\s+goals?\b|(?:более(?:\s+чем)?|свыше|больше(?:\s+чем)?|не менее)\s*(\d{1,4})\s*гол(?:а|ов|ами)?/i);
   const goalValue = goalMatch ? Number(goalMatch[1] ?? goalMatch[2]) : null;
   const goalThreshold = goalValue !== null && Number.isFinite(goalValue)
-    ? { value: goalValue, inclusive: /\b(?:at least|не менее)\b|>=/i.test(prompt) }
+    ? { value: goalValue, inclusive: /(?:at least|не менее|>=)/i.test(prompt) }
     : null;
   const competitionId = goalThreshold && /\b(?:epl|english premier league)\b|апл|премьер-лиг[а-яё]* англи/i.test(prompt)
     ? "GB1" : null;
@@ -261,13 +261,14 @@ export function aggregateGoalThresholdRows(
 }
 async function discoverByCompetitionGoals(supabase: any, intent: DiscoveryIntent) {
   const empty = { discovered: 0, created: 0, matched: 0, cardIds: [] as string[], constrained: true };
-  if (!intent.goalThreshold || intent.competitionId !== "GB1" || intent.teammateName ||
+  const threshold = intent.goalThreshold;
+  if (!threshold || intent.competitionId !== "GB1" || intent.teammateName ||
       intent.age !== null || intent.women || intent.country || intent.clubQuery || intent.position || intent.era) return empty;
   const { data, error } = await supabase.from("player_season_stat").select("card_id,goals,apps")
     .eq("competition_id", intent.competitionId).gt("apps", 0).limit(10000);
   if (error) throw new Error("player_stats_discovery_failed");
   if (!Array.isArray(data) || data.length >= 10000) return empty;
-  const ranked = aggregateGoalThresholdRows(data, intent.goalThreshold.value, intent.goalThreshold.inclusive);
+  const ranked = aggregateGoalThresholdRows(data, threshold.value, threshold.inclusive);
   if (!ranked.length) return empty;
   const { data: cards, error: cardsError } = await supabase.from("cards").select("id")
     .eq("active", true).eq("category", "player").in("id", ranked.map((row) => row.cardId));
