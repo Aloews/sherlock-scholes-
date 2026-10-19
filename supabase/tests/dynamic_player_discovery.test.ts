@@ -1,4 +1,4 @@
-import { aggregateGoalThresholdRows, buildPlayerDiscoveryQuery, exactAgeBirthRange, parseDiscoveryIntent, parseWikidataResults } from "../functions/smart-deck-builder/discovery.ts";
+import { aggregateCompetitionRows, aggregateGoalThresholdRows, buildPlayerDiscoveryQuery, exactAgeBirthRange, parseDiscoveryIntent, parseWikidataResults } from "../functions/smart-deck-builder/discovery.ts";
 Deno.test("Russian women footballer request extracts country and gender", () => {
   const intent = parseDiscoveryIntent("Футболистки России");
   if (!intent?.women || intent.country?.qid !== "Q159") throw new Error("women/Russia intent missing");
@@ -113,5 +113,21 @@ Deno.test("Brazil country names and national adjectives are both recognized", ()
   const adjective = parseDiscoveryIntent("Brazilian footballers");
   if (fromBrazil?.country?.qid !== "Q155" || adjective?.country?.qid !== "Q155") {
     throw new Error("Brazil nationality alias missing");
+  }
+});
+
+Deno.test("English Premier League is not misread as English nationality", () => {
+  const league = parseDiscoveryIntent("Players in the English Premier League");
+  if (!league || league.competitionId !== "GB1" || league.country !== null || league.clubQuery !== null) {
+    throw new Error("league intent was misclassified as nationality or club");
+  }
+  const rows = aggregateCompetitionRows([
+    { card_id: "a", goals: 10, apps: 20 },
+    { card_id: "a", goals: 5, apps: 10 },
+    { card_id: "b", goals: 3, apps: 50 },
+    { card_id: "c", goals: 2, apps: 0 },
+  ], null);
+  if (rows.length !== 2 || rows[0].cardId !== "b" || rows[0].apps !== 50 || rows[1].goals !== 15) {
+    throw new Error("competition aggregate ranking failed");
   }
 });
