@@ -192,7 +192,7 @@ def run_collector(job):
           stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
         fallback_output=fallback.stdout[-12000:]
         if (fallback.returncode==0 and
-                re.search(r"фото найдено\s*:\s*[1-9]\\d*",fallback_output.casefold())):
+                re.search(r"фото найдено\s*:\s*[1-9]\d*",fallback_output.casefold())):
             return fallback_output+"\\nИсточник: Wikidata fallback после недоступности Transfermarkt",0
         return (output+"\\nWikidata fallback attempt:\\n"+fallback_output)[-12000:],(
             fallback.returncode if fallback.returncode else 1)
