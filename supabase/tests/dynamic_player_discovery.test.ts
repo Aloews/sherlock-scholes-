@@ -37,3 +37,28 @@ Deno.test("Russian position-only prompts are discoverable", () => {
   const intent = parseDiscoveryIntent("Вратари России");
   if (intent?.position !== "goalkeeper" || intent.country?.qid !== "Q159") throw new Error("position/country intent missing");
 });
+
+Deno.test("English women's-player prompts and additional nationalities remain constrained", () => {
+  const intent = parseDiscoveryIntent("women footballers from England");
+  if (!intent?.women || intent.country?.qid !== "Q21") {
+    throw new Error("English women's-player intent missing");
+  }
+  const brazil = parseDiscoveryIntent("Brazilian footballers");
+  if (brazil?.country?.qid !== "Q155") throw new Error("Brazilian nationality intent missing");
+});
+
+Deno.test("English Wikidata position labels can satisfy explicit position filters", () => {
+  const intent = parseDiscoveryIntent("Вратари России");
+  if (!intent) throw new Error("goalkeeper intent missing");
+  const query = buildPlayerDiscoveryQuery(intent, null, new Date("2026-10-18T12:00:00Z"));
+  if (!query.includes('LANG(?positionEn) = "en"') || !query.includes("BOUND(?positionEn)")) {
+    throw new Error("position filter only supports Russian Wikidata labels");
+  }
+});
+
+Deno.test("additional club aliases resolve to canonical search labels", () => {
+  const intent = parseDiscoveryIntent("Tottenham players");
+  if (intent?.clubQuery !== "Tottenham Hotspur") throw new Error("Tottenham alias missing");
+  const madrid = parseDiscoveryIntent("Игроки Атлетико Мадрид");
+  if (madrid?.clubQuery !== "Atlético Madrid") throw new Error("Atletico Madrid alias missing");
+});
