@@ -175,6 +175,7 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(1, "HTTP 503", False), "retry")
         self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", False), "retry")
         self.assertEqual(classify_result(0, "профилей потеряно: 1", False), "retry")
+        self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", True), "succeeded")
 
     def test_worker_retry_states_are_not_reported_as_success(self):
         self.assertEqual(result_exit_code([{"status": "succeeded"}]), 0)
