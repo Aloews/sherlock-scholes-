@@ -44,6 +44,7 @@ import os
 import re
 import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -135,8 +136,8 @@ def profile_urls(card):
     urls = []
     slug = slugify_name(card.get("name_en") or card.get("name"))
     if slug:
-        urls.append("https://www.transfermarkt.com/%s/profil/spieler/%s" % (slug, player_id))
-        urls.append("https://www.transfermarkt.co.uk/%s/profil/spieler/%s" % (slug, player_id))
+        for domain in ("transfermarkt.com", "transfermarkt.co.uk", "transfermarkt.world", "transfermarkt.us"):
+            urls.append("https://www.%s/%s/profil/spieler/%s" % (domain, slug, player_id))
     urls.append(PROFILE % player_id)
     return list(dict.fromkeys(urls))
 
@@ -157,6 +158,12 @@ def get(url):
                 "User-Agent": UA, "Accept-Language": "en"})
             with urllib.request.urlopen(req, timeout=60) as fh:
                 return fh.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            # Permanent client errors (including anti-bot 403 and missing 404)
+            # will not improve with retries; let get_profile try another region.
+            if exc.code in {403, 404, 410} or attempt + 1 == RETRIES:
+                return None
+            time.sleep(PAUSE * 3 * (attempt + 1))
         except Exception:                                        # noqa: BLE001
             if attempt + 1 == RETRIES:
                 return None

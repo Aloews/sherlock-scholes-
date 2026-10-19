@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cards_photo_transfermarkt as collector
@@ -17,9 +18,15 @@ def main():
     check("regional fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
     })[1], "https://www.transfermarkt.co.uk/youssef-chermiti/profil/spieler/670688")
+    check("world fallback", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[2], "https://www.transfermarkt.world/youssef-chermiti/profil/spieler/670688")
+    check("US fallback", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[3], "https://www.transfermarkt.us/youssef-chermiti/profil/spieler/670688")
     check("ID-only fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
-    })[2], "https://www.transfermarkt.com/-/profil/spieler/670688")
+    })[4], "https://www.transfermarkt.com/-/profil/spieler/670688")
     standard = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1">'
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")
@@ -40,6 +47,17 @@ def main():
     check("empty content rejected", collector.portrait_url('<meta property="og:image" content="">'), None)
     check("valid profile detected", collector.has_profile_content('<div class="data-header__market-value-wrapper"></div>'), True)
     check("interstitial rejected", collector.has_profile_content("<html><title>Just a moment...</title></html>"), False)
+
+    forbidden = collector.urllib.error.HTTPError(
+        "https://www.transfermarkt.com/marlon/profil/spieler/273236", 403, "Forbidden", {}, None
+    )
+    with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=forbidden), patch(
+        "cards_photo_transfermarkt.time.sleep"
+    ) as sleep:
+        check("permanent HTTP 403 rejected", collector.get(
+            "https://www.transfermarkt.com/marlon/profil/spieler/273236"
+        ), None)
+        check("permanent HTTP 403 is not retried", sleep.call_count, 0)
     print("ok: Transfermarkt portrait metadata parser")
 
 
