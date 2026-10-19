@@ -101,6 +101,13 @@ Deno.test("teammate queries require overlapping verified club tenures", () => {
   }
 });
 
+Deno.test("nationality constraints do not change Ronaldo identity resolution", () => {
+  const intent = parseDiscoveryIntent("Brazilian footballers who played with Ronaldo");
+  if (!intent || intent.teammateName !== "Cristiano Ronaldo" || intent.country?.qid !== "Q155") {
+    throw new Error("nationality was mistaken for Ronaldo Nazário");
+  }
+});
+
 Deno.test("Brazil country names and national adjectives are both recognized", () => {
   const fromBrazil = parseDiscoveryIntent("Players from Brazil");
   const adjective = parseDiscoveryIntent("Brazilian footballers");
