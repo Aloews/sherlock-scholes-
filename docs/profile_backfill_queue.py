@@ -170,7 +170,7 @@ def run_collector(job):
             return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
         return "Фото найдено: 1\\nRead-after-write verification failed",0
     if task=="photo_tm":
-        command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"])]
+        command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"]),"--include-soccerwiki"]
     elif task=="photo_qid":
         command=[sys.executable,"docs/cards_photo_from_qid.py","--only-card-id",str(job["card_id"])]
     elif task=="season_stats":
