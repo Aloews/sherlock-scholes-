@@ -1,10 +1,10 @@
 type PositionIntent = { pattern: string; tags: string[] };
 const WOMEN_PLAYER_REQUEST = /футболистк|женщин[а-яё]*\s+футбол|женск[а-яё]*\s+футбол|women'?s football|female players?|women players?/i;
 export function positionIntent(prompt: string): PositionIntent | null {
-  if (/\b(goalkeepers?|keepers?)\b|вратар|голкипер/i.test(prompt)) return { pattern: "%врат%", tags: ["goalkeeper", "keeper", "gk", "вратарь", "вратари", "голкипер"] };
-  if (/\b(defenders?)\b|защитник|защитники/i.test(prompt)) return { pattern: "%защит%", tags: ["defender", "defence", "защитник", "защитники"] };
-  if (/\b(midfielders?)\b|полузащитник|опорник/i.test(prompt)) return { pattern: "%полузащит%", tags: ["midfielder", "midfield", "полузащитник", "опорник"] };
-  if (/\b(strikers?|forwards?)\b|нападающ|форвард/i.test(prompt)) return { pattern: "%нападающ%", tags: ["striker", "forward", "нападающий", "форвард"] };
+  if (/\b(goalkeepers?|keepers?)\b|вратар|голкипер/i.test(prompt)) return { pattern: "position_ru.ilike.%врат%,position_ru.ilike.%goalkeeper%,position_ru.ilike.%keeper%", tags: ["goalkeeper", "keeper", "gk", "вратарь", "вратари", "голкипер"] };
+  if (/\b(defenders?)\b|защитник|защитники/i.test(prompt)) return { pattern: "position_ru.ilike.%защит%,position_ru.ilike.%defend%,position_ru.ilike.%back%,position_ru.ilike.%centre-back%,position_ru.ilike.%center-back%,position_ru.ilike.%full-back%", tags: ["defender", "defence", "defense", "centre-back", "center-back", "full-back", "fullback", "left-back", "right-back", "wing-back", "cb", "lb", "rb", "lwb", "rwb", "защитник", "защитники"] };
+  if (/\b(midfielders?)\b|полузащитник|опорник/i.test(prompt)) return { pattern: "position_ru.ilike.%полузащит%,position_ru.ilike.%midfield%,position_ru.ilike.%defensive midfield%", tags: ["midfielder", "midfield", "defensive midfielder", "central midfielder", "attacking midfielder", "dm", "cm", "am", "полузащитник", "опорник"] };
+  if (/\b(strikers?|forwards?)\b|нападающ|форвард/i.test(prompt)) return { pattern: "position_ru.ilike.%нападающ%,position_ru.ilike.%forward%,position_ru.ilike.%striker%,position_ru.ilike.%winger%", tags: ["striker", "forward", "centre-forward", "center-forward", "winger", "cf", "st", "lw", "rw", "нападающий", "форвард"] };
   return null;
 }
 export function categoryIntent(prompt: string): string | null {
@@ -38,9 +38,9 @@ export function matchesExplicitIntent(card: { category: string; position_ru: str
     if (card.category !== "player") return false;
     const metadata = [card.position_ru ?? "", ...(card.tags ?? [])].join(" ").toLocaleLowerCase();
     if (/вратар|голкипер|goalkeeper|keeper/i.test(prompt)) return /вратар|голкипер|goalkeeper|keeper/i.test(metadata) || metadata.split(/[^a-z0-9]+/i).includes("gk");
-    if (/защитник|защитники|defender/i.test(prompt)) return /защит|defender|defence/i.test(metadata);
-    if (/полузащитник|опорник|midfielder/i.test(prompt)) return /полузащит|опорник|midfielder|midfield/i.test(metadata);
-    return /нападающ|форвард|striker|forward/i.test(metadata);
+    if (/защитник|защитники|defender/i.test(prompt)) return /защит|defend|defence|defense|centre.?back|center.?back|full.?back|left.?back|right.?back|wing.?back|\b(cb|lb|rb|lwb|rwb)\b/i.test(metadata);
+    if (/полузащитник|опорник|midfielder/i.test(prompt)) return /полузащит|опорник|midfielder|midfield|\b(dm|cm|am)\b/i.test(metadata);
+    return /нападающ|форвард|striker|forward|centre.?forward|center.?forward|winger|\b(cf|st|lw|rw)\b/i.test(metadata);
   }
   return !category || card.category === category || (womenRequested && category === "player" && card.category === "woman");
 }
