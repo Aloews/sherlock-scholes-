@@ -42,3 +42,8 @@ def test_non_player_cannot_be_promoted_by_market_value():
         "market_value_at": "2026-10-01",
     }
     assert tier_for(card, today=date(2026, 10, 20)) == "common"
+
+
+def test_manually_curated_icon_tier_is_preserved():
+    card = {"category": "player", "tier": "icon", "born_on": "2007-01-01", "market_value_eur": 60_000_000, "market_value_at": "2026-10-01"}
+    assert tier_for(card, today=date(2026, 10, 20)) == "icon"
