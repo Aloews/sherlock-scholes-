@@ -105,21 +105,53 @@ class SoccerWikiPhotoTests(unittest.TestCase):
 
 
 class TransfermarktFallbackTests(unittest.TestCase):
-    def test_queued_transfermarkt_job_bypasses_soccwerwiki_bulk_skip(self):
-        completed = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Портретов найдено : 0\\n"
+    def test_unreachable_transfermarkt_falls_back_to_card_wikidata_qid(self):
+        tm_failed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
+        )
+        qid_found = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1, первая картинка статьи 0)\\nЗаписано : 1"
         )
         job = {
             "task_type": "photo_tm",
-            "transfermarkt_id": "273236",
-            "card_id": "642fc812-0b0b-4902-8cd1-7e178da734de",
+            "transfermarkt_id": "1288921",
+            "wikidata_qid": "Q133865873",
+            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
         }
-        with patch("profile_backfill_queue.subprocess.run", return_value=completed) as run:
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_found]) as run:
             output, exit_code = worker.run_collector(job)
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("--include-soccerwiki", run.call_args.args[0])
-        self.assertIn("Портретов найдено", output)
+        self.assertEqual(run.call_count, 2)
+        tm_command = run.call_args_list[0].args[0]
+        qid_command = run.call_args_list[1].args[0]
+        self.assertNotIn("--include-soccerwiki", tm_command)
+        self.assertIn("cards_photo_transfermarkt.py", tm_command[1])
+        self.assertIn("cards_photo_from_qid.py", qid_command[1])
+        self.assertIn("--only-card-id", qid_command)
+        self.assertIn(job["card_id"], qid_command)
+        self.assertIn("Wikidata fallback", output)
+        self.assertIn("Фото найдено : 1", output)
+
+    def test_wikidata_miss_does_not_hide_transfermarkt_failure(self):
+        tm_failed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
+        )
+        qid_empty = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0, первая картинка статьи 0)"
+        )
+        job = {
+            "task_type": "photo_tm",
+            "transfermarkt_id": "1288921",
+            "wikidata_qid": "Q133865873",
+            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
+        }
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_empty]):
+            output, exit_code = worker.run_collector(job)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("ПРОФИЛЕЙ ПОТЕРЯНО", output)
+        self.assertIn("Фото найдено : 0", output)
 
 
 class QueueResultTests(unittest.TestCase):
@@ -143,6 +175,7 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(1, "HTTP 503", False), "retry")
         self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", False), "retry")
         self.assertEqual(classify_result(0, "профилей потеряно: 1", False), "retry")
+        self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", True), "succeeded")
 
     def test_worker_retry_states_are_not_reported_as_success(self):
         self.assertEqual(result_exit_code([{"status": "succeeded"}]), 0)
