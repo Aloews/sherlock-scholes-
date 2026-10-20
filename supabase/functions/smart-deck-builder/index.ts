@@ -3,6 +3,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { matchesExplicitIntent, positionIntent } from "./intent.ts";
 import { discoverFootballPlayers } from "./discovery.ts";
+import { discoverCityFootballCards } from "./cityfootball.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -154,16 +155,28 @@ Deno.serve(async (req: Request) => {
     let discoveredCardIds: string[] = [];
     let discoveryConstrained = false;
     let discoveryUnavailable = false;
+    let cityFootballMatched = false;
     try {
-      const discovery = await discoverFootballPlayers(supabase, prompt);
-      discoveredCardIds = discovery.cardIds;
-      discoveryConstrained = discovery.constrained;
-      if (discovery.discovered > 0) {
-        console.info("[smart-deck-builder] source-backed discovery", {
-          discovered: discovery.discovered,
-          created: discovery.created,
-          matched: discovery.matched,
+      const cityFootball = await discoverCityFootballCards(supabase, prompt);
+      if (cityFootball) {
+        cityFootballMatched = true;
+        discoveredCardIds = cityFootball.cardIds;
+        discoveryConstrained = true;
+        console.info("[smart-deck-builder] CityFootball source-backed import", {
+          discovered: cityFootball.cardIds.length,
+          created: cityFootball.created,
         });
+      } else {
+        const discovery = await discoverFootballPlayers(supabase, prompt);
+        discoveredCardIds = discovery.cardIds;
+        discoveryConstrained = discovery.constrained;
+        if (discovery.discovered > 0) {
+          console.info("[smart-deck-builder] source-backed discovery", {
+            discovered: discovery.discovered,
+            created: discovery.created,
+            matched: discovery.matched,
+          });
+        }
       }
     } catch (discoveryError) {
       discoveryUnavailable = true;
