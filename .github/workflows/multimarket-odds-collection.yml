@@ -1,0 +1,81 @@
+name: multimarket-odds-collection
+
+on:
+  schedule:
+    - cron: '20 7 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: multimarket-odds-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - name: Validate credentials
+        run: |
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 2; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 2; }
+
+      - name: Collect one quota-guarded market across supported leagues
+        run: |
+          response=$(curl --fail-with-body --silent --show-error --max-time 300 \
+            --request POST "$SUPABASE_URL/functions/v1/football-odds" \
+            --header "apikey: $SUPABASE_KEY" \
+            --header "Authorization: Bearer $SUPABASE_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}')
+          printf '%s\n' "$response" | jq .
+          if printf '%s' "$response" | jq -e 'has("skipped")' >/dev/null; then
+            echo "::error::Odds collection skipped by the API budget guard"
+            exit 1
+          fi
+          failed=$(printf '%s' "$response" | jq -r '(.failed // []) | length')
+          if [ "$failed" -gt 0 ]; then
+            echo "::error::Odds collection reported $failed failed league requests"
+            exit 1
+          fi
+          written=$(printf '%s' "$response" | jq -r '.written // 0')
+          if [ "$written" -lt 1 ]; then
+            echo "::error::No odds rows were written"
+            exit 1
+          fi
+          spent=$(printf '%s' "$response" | jq -r '.spent // 0')
+          left=$(printf '%s' "$response" | jq -r '.left // "unknown"')
+          echo "written=$written credits_spent=$spent credits_left=$left"
+
+      - name: Verify today's market quotes are readable after write
+        run: |
+          today=$(date -u +%F)
+          response=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --get "$SUPABASE_URL/rest/v1/fixture_market_quotes" \
+            --data-urlencode "select=fixture_id,market_key,price,taken_at" \
+            --data-urlencode "taken_at=gte.${today}T00:00:00Z" \
+            --data-urlencode "order=taken_at.desc" \
+            --data-urlencode "limit=1" \
+            --header "apikey: $SUPABASE_KEY" \
+            --header "Authorization: Bearer $SUPABASE_KEY")
+          count=$(printf '%s' "$response" | jq 'length')
+          if [ "$count" -lt 1 ]; then
+            echo "::error::No quote rows are readable for today after collection"
+            exit 1
+          fi
+          printf '%s\n' "$response" | jq .
+
+  watch:
+    runs-on: ubuntu-latest
+    needs: [collect]
+    if: always()
+    timeout-minutes: 2
+    env:
+      COLLECT_RESULT: ${{ needs.collect.result }}
+    steps:
+      - name: Verify scheduled collection succeeded
+        run: |
+          echo "collect = $COLLECT_RESULT"
+          [ "$COLLECT_RESULT" = "success" ] || { echo "::error::multimarket odds collection: $COLLECT_RESULT"; exit 1; }
