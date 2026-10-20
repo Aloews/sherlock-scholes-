@@ -89,8 +89,8 @@ def signals(card, today=None):
     }
 
 
-def tier_for(card, leg_pv=LEG_PV, epic_wc_pv=EPIC_WC_PV, rare_pv=RARE_PV):
-    s = signals(card)
+def tier_for(card, leg_pv=LEG_PV, epic_wc_pv=EPIC_WC_PV, rare_pv=RARE_PV, today=None):
+    s = signals(card, today=today)
     # Historical achievements outrank youth-market signals.
     if s["ballon"] or s["star"] or (s["pv"] >= leg_pv and (s["wc"] or s["title"])):
         return "legendary"
