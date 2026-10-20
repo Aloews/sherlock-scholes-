@@ -54,7 +54,7 @@ describe('tierCardStyle', () => {
   });
 
   it('scales the glow radius by rarity (legendary > epic > rare)', () => {
-    const radius = (t: 'legendary' | 'epic' | 'rare') => {
+    const radius = (t: 'legendary' | 'epic' | 'prospect' | 'rare') => {
       const shadow = String(tierCardStyle(t)!.boxShadow);
       // boxShadow holds an inset border (…1px) plus the outward glow (0 0 Npx);
       // the glow is the larger radius, so take the max across both segments.
