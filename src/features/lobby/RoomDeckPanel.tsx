@@ -21,6 +21,7 @@ import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { isWholeDeck } from '@/features/room/roomDeck';
 import { IconChevronDown } from '@tabler/icons-react';
+import { VoicePromptButton } from '@/shared/ui/VoicePromptButton';
 import type { CardCategory } from '@/shared/types/database';
 import {
   CATEGORY_GROUPS, DECK_LEAGUES, FAME_LEVELS, FAME_MIN, NON_PLAYER_CATEGORIES,
@@ -248,6 +249,7 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
               placeholder={i18n.language.startsWith('ru') ? 'Например: легенды Реала 2010-х, только вратари' : 'E.g. Real Madrid legends from the 2010s, goalkeepers only'}
               className="w-full resize-none rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
             />
+            <VoicePromptButton value={deckPrompt} language={i18n.language} disabled={buildingDeck} onChange={setDeckPrompt} />
             <button type="submit" disabled={deckPrompt.trim().length < 3 || buildingDeck} className="w-full rounded-xl bg-brand-accent px-4 py-2.5 text-sm font-bold text-brand-bg disabled:opacity-40">
               {buildingDeck ? (i18n.language.startsWith('ru') ? 'Собираем…' : 'Building…') : (i18n.language.startsWith('ru') ? 'Определить запрос и собрать колоду' : 'Understand request and build deck')}
             </button>
