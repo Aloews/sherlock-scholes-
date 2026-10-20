@@ -42,14 +42,20 @@ Deno.test("team names, not outcome order, determine home and away", () => {
   if (rows[0]?.outcome_key !== "away" || rows[1]?.outcome_key !== "home") throw new Error("team mapping depends on order");
 });
 
-Deno.test("default market rotation preserves quota and cycles through secondary markets", () => {
-  const first = rotatingMarketsForDate(new Date("2026-01-01T12:00:00Z"));
-  const second = rotatingMarketsForDate(new Date("2026-01-03T12:00:00Z"));
-  const third = rotatingMarketsForDate(new Date("2026-01-05T12:00:00Z"));
-  const later = rotatingMarketsForDate(new Date("2026-01-17T12:00:00Z"));
-  if (first.join(",") !== "h2h" || second.join(",") !== "h2h") throw new Error("h2h should remain the primary market");
-  if (third.length !== 1 || !["spreads", "totals", "btts"].includes(third[0])) throw new Error("extra cycle must request one market");
-  if (later.join(",") === third.join(",")) throw new Error("extra markets should rotate across cycles");
+Deno.test("daily market rotation covers all four core markets without raising per-run cost", () => {
+  const markets = [
+    rotatingMarketsForDate(new Date("2026-01-01T12:00:00Z"))[0],
+    rotatingMarketsForDate(new Date("2026-01-02T12:00:00Z"))[0],
+    rotatingMarketsForDate(new Date("2026-01-03T12:00:00Z"))[0],
+    rotatingMarketsForDate(new Date("2026-01-04T12:00:00Z"))[0],
+  ];
+  if (new Set(markets).size !== 4) throw new Error("core markets must rotate each day");
+  if (!["h2h", "spreads", "totals", "btts"].every((market) => markets.includes(market as typeof markets[number]))) {
+    throw new Error("one of the core markets is missing");
+  }
+  if (rotatingMarketsForDate(new Date("2026-01-05T12:00:00Z"))[0] !== markets[0]) {
+    throw new Error("market rotation must repeat deterministically every four days");
+  }
 });
 
 Deno.test("normalizes draw-no-bet, double chance and correct-score markets", () => {
