@@ -171,10 +171,20 @@ def get(url):
     return None
 
 
+def rotate_candidates(rows, offset, limit):
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if rows and offset:
+        start = offset % len(rows)
+        rows = rows[start:] + rows[:start]
+    return rows[:limit] if limit else rows
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--offset", type=int, default=0, help="сдвиг окна кандидатов для ежедневной ротации")
     ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
     ap.add_argument("--include-soccerwiki", action="store_true",
                     help="не пропускать тех, кого закроет Soccer Wiki")
@@ -220,8 +230,10 @@ def main():
         rows = [r for r in rows if r["id"] not in linked]
         print("Пропущено как «закроет Soccer Wiki»: %d" % (before - len(rows)), flush=True)
 
-    if args.limit:
-        rows = rows[:args.limit]
+    try:
+        rows = rotate_candidates(rows, args.offset, args.limit)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
     print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
           % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
     if not rows:
@@ -237,7 +249,7 @@ def main():
             for card_id, url in batch:
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
-                   body={"photo_url": url})
+                   body={"photo_url": url, "photo_source": "transfermarkt"})
                 written += 1
         batch = []
 
