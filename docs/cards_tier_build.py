@@ -1,19 +1,17 @@
-"""Card RARITY TIERS (cards.tier) — foundation for the future collectible
-mechanic. DRY-RUN by default: computes a tier for every card from data we
-ALREADY have (pageviews + facts.titles/tournaments + tags), prints the
-distribution (should be a pyramid), pageviews percentiles, a threshold sweep,
-and example cards per tier. Set APPLY=1 to PATCH cards.tier (needs the ALTER in
-supabase/migrations/cards_tier.sql). 0 Wikidata budget — pure DB read.
+"""Card RARITY TIERS (cards.tier), computed only from verified football data.
 
-Four tiers, most-rare first:
-  legendary  Ballon d'Or (tag/ title "Золотой мяч") OR mega-fame pageviews
-  epic       any prestige title, OR World Cup + high pageviews, OR star tag,
-             OR high pageviews
-  rare       played a major tournament, OR has national-team facts, OR
-             mid pageviews
-  common     everyone else (incl. non-player cards: no player signals)
+Six tiers, from most exceptional to ordinary:
+  icon       reserved for manually curated all-time icons
+  legendary  Ballon d'Or or proven historic elite
+  epic       prestige titles / major tournament plus strong fame
+  prospect   age <=20 with current value >= EUR 20m, or age <=23 with value >= EUR 40m
+  rare       major tournament or meaningful fame
+  common     everyone else
 
-Run from football_scraper/:  python ../docs/cards_tier_build.py
+The prospect tier rewards exceptional potential and current market value; it does
+not claim the player is already a legend. It requires a verified birth date and
+a Transfermarkt valuation updated within 18 months. DRY-RUN by default. Set
+APPLY=1 only after reviewing the proposed distribution and examples.
 """
 import os, sys, json, statistics
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
