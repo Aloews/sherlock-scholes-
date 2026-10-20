@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconHelp, IconVolume, IconVolumeOff, IconCards, IconBolt } from '@tabler/icons-react';
+import { IconHelp, IconVolume, IconVolumeOff, IconCards, IconBolt, IconUser } from '@tabler/icons-react';
 import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
@@ -226,6 +226,12 @@ export function HomeScreen() {
             {soundEnabled
               ? <IconVolume    size={17} stroke={1.75} />
               : <IconVolumeOff size={17} stroke={1.75} />}
+          </IconButton>
+          <IconButton
+            onClick={() => navigate('/profile')}
+            label={t('tabs.profile')}
+          >
+            <IconUser size={17} stroke={1.75} />
           </IconButton>
         </div>
 
