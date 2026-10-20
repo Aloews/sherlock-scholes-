@@ -120,7 +120,7 @@ function normalized(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 }
 
-function teamIdFromPrompt(prompt: string): string | null {
+export function teamIdFromPrompt(prompt: string): string | null {
   const explicit = prompt.match(/https?:\/\/(?:www\.)?league\.cityfootball\.ru\/team\/(\d+)(?:\/profile\/info)?/i);
   if (explicit) return explicit[1];
   // Archived profile confirmed by the user; it is absent from the current-season team directory.
@@ -128,7 +128,7 @@ function teamIdFromPrompt(prompt: string): string | null {
   return null;
 }
 
-function parseCityFootballTeamPage(html: string, teamId: string) {
+export function parseCityFootballTeamPage(html: string, teamId: string) {
   if (!/^\d{1,12}$/.test(teamId)) return null;
   const heading = plainText(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
   const title = plainText(meta(html, "og:title") ?? html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
