@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { matchesExplicitIntent, positionIntent } from "./intent.ts";
-import { discoverFootballPlayers } from "./discovery.ts";
+import { discoverFootballPlayers, parseDiscoveryIntent } from "./discovery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -42,6 +42,44 @@ function parseModelJson(value: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function normalizeClubLabel(value: string): string[] {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase()
+    .replace(/&/g, " ").replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/)
+    .filter((token) => !["fc", "cf", "afc", "sc", "pfc", "club", "football", "the", "and"].includes(token));
+}
+
+async function discoverCurrentSquadCardIds(supabase: any, prompt: string): Promise<string[]> {
+  const intent = parseDiscoveryIntent(prompt);
+  if (!intent?.clubQuery) return [];
+  const queryTokens = normalizeClubLabel(intent.clubQuery);
+  if (!queryTokens.length) return [];
+  const searchToken = queryTokens[0];
+  const { data: candidates, error: clubError } = await supabase.from("football_club")
+    .select("club_key,name,name_en")
+    .eq("kind", "club")
+    .or(`name.ilike.%${searchToken}%,name_en.ilike.%${searchToken}%`)
+    .limit(100);
+  if (clubError) throw new Error("current_squad_club_lookup_failed");
+  const scored = ((candidates ?? []) as Array<{club_key:string;name:string|null;name_en:string|null}>)
+    .map((club) => {
+      const ru = normalizeClubLabel(club.name ?? "");
+      const en = normalizeClubLabel(club.name_en ?? "");
+      const score = Math.max(
+        queryTokens.filter((token) => ru.includes(token)).length / queryTokens.length,
+        queryTokens.filter((token) => en.includes(token)).length / queryTokens.length,
+      );
+      return { club, score };
+    })
+    .filter((entry) => entry.score >= 0.75)
+    .sort((a, b) => b.score - a.score);
+  if (!scored.length || (scored.length > 1 && scored[0].score === scored[1].score)) return [];
+  const clubKey = scored[0].club.club_key;
+  const { data: squad, error: squadError } = await supabase.from("card_current_club")
+    .select("card_id").eq("club_key", clubKey).limit(100);
+  if (squadError) throw new Error("current_squad_card_lookup_failed");
+  return [...new Set(((squad ?? []) as Array<{card_id:string}>).map((row) => row.card_id).filter(Boolean))];
 }
 
 async function loadCatalog(supabase: any, prompt: string, currentIds: string[], targetCardCount: number) {
@@ -171,7 +209,21 @@ Deno.serve(async (req: Request) => {
         discoveryError instanceof Error ? discoveryError.message : "unknown");
     }
 
-    if (discoveryConstrained && discoveryUnavailable) {
+    if (!prompt.match(/https?:\/\/(?:www\.)?league\.cityfootball\.ru\//i)) {
+      try {
+        const localSquadIds = await discoverCurrentSquadCardIds(supabase, prompt);
+        if (localSquadIds.length) {
+          discoveredCardIds = [...new Set([...localSquadIds, ...discoveredCardIds])];
+          discoveryConstrained = true;
+          console.info("[smart-deck-builder] current roster matched", { cards: localSquadIds.length });
+        }
+      } catch (squadError) {
+        console.error("[smart-deck-builder] current squad lookup unavailable",
+          squadError instanceof Error ? squadError.message : "unknown");
+      }
+    }
+
+    if (discoveryConstrained && discoveryUnavailable && discoveredCardIds.length === 0) {
       return json({ error: "player_discovery_unavailable" }, 503);
     }
     if (discoveryConstrained && discoveredCardIds.length < 3) {
