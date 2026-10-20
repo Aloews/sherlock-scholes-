@@ -39,7 +39,6 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [editorials, setEditorials] = useState<Record<string, SmartDeckEditorial>>({});
-  const [editorialMode, setEditorialMode] = useState<'loading' | 'ai' | 'deterministic'>('deterministic');
   const [activeDeck, setActiveDeck] = useState<SmartDeck | null>(null);
   const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
@@ -167,8 +166,7 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!decks.length) { setEditorials({}); setEditorialMode('deterministic'); return; }
-    setEditorialMode('loading');
+    if (!decks.length) { setEditorials({}); return; }
     const candidates = decks.map((deck) => ({
       id: deck.id,
       family: deck.family,
@@ -186,7 +184,6 @@ export function SmartDecksPanel({ onStart }: Props) {
       if (cancelled) return;
       if (error || !data || typeof data !== 'object') {
         setEditorials({});
-        setEditorialMode('deterministic');
         return;
       }
       const next: Record<string, SmartDeckEditorial> = {};
@@ -194,11 +191,9 @@ export function SmartDecksPanel({ onStart }: Props) {
         if (decks.some((deck) => deck.id === row.id) && row.title && row.hook) next[row.id] = row;
       }
       setEditorials(next);
-      setEditorialMode(data.mode === 'ai' || data.mode === 'cached-ai' ? 'ai' : 'deterministic');
     }).catch(() => {
       if (cancelled) return;
       setEditorials({});
-      setEditorialMode('deterministic');
     });
     return () => { cancelled = true; };
   }, [decks, ru]);
