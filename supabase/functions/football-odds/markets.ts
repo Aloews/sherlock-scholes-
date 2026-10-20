@@ -112,12 +112,11 @@ export function rowsForMarkets(
   return rows;
 }
 
-const ROTATING_EXTRA_MARKETS: SupportedMarket[] = ["spreads", "totals", "btts"];
+const DAILY_MARKETS: SupportedMarket[] = ["h2h", "spreads", "totals", "btts"];
 
-/** Budget-neutral default: two h2h collection cycles, then one extra market cycle. */
+/** One market per league per day: four core markets rotate daily without
+ * increasing the per-run credit cost. The scheduled collector must run daily. */
 export function rotatingMarketsForDate(date: Date): SupportedMarket[] {
   const utcDay = Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
-  const runSlot = Math.floor(utcDay / 2);
-  if (runSlot % 3 !== 2) return ["h2h"];
-  return [ROTATING_EXTRA_MARKETS[Math.floor(runSlot / 3) % ROTATING_EXTRA_MARKETS.length]];
+  return [DAILY_MARKETS[((utcDay % DAILY_MARKETS.length) + DAILY_MARKETS.length) % DAILY_MARKETS.length]];
 }
