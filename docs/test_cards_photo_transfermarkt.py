@@ -12,6 +12,10 @@ def check(label, actual, expected):
 
 
 def main():
+    candidates = [{"id": str(i)} for i in range(5)]
+    check("candidate rotation", [row["id"] for row in collector.rotate_candidates(candidates, 2, 2)], ["2", "3"])
+    check("candidate rotation wraps", [row["id"] for row in collector.rotate_candidates(candidates, 4, 3)], ["4", "0", "1"])
+    check("candidate rotation empty", collector.rotate_candidates([], 9, 3), [])
     check("slug profile URL", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
     })[0], "https://www.transfermarkt.com/youssef-chermiti/profil/spieler/670688")
