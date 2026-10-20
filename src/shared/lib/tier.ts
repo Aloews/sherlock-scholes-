@@ -56,6 +56,7 @@ export function tierCardStyle(tier?: string | null, design: DesignId = getDesign
     t === 'icon'      ? (master ? [40, 35] : [24, 35])
     : t === 'legendary' ? (master ? [34, 50] : [18, 40])
     : t === 'epic'    ? (master ? [26, 44] : [14, 33])
+    : t === 'prospect' ? (master ? [24, 38] : [12, 30])
     :                   (master ? [22, 33] : [10, 25]);
   return {
     borderColor: c,
@@ -72,8 +73,8 @@ export function tierFrameStyle(tier?: string | null, design: DesignId = getDesig
   const t = asTier(tier);
   if (!t || t === 'common') return undefined;
   const c = tierColor(t);
-  const pad = t === 'icon' ? '2px' : '1.5px';
-  const blur = t === 'icon' ? 40 : t === 'legendary' ? 34 : t === 'epic' ? 26 : 22;
+  const pad = t === 'icon' ? '2px' : t === 'prospect' ? '1.75px' : '1.5px';
+  const blur = t === 'icon' ? 40 : t === 'legendary' ? 34 : t === 'epic' ? 26 : t === 'prospect' ? 24 : 22;
   return {
     padding: pad,
     // bf→75, 1f→12, 8c→55, 47→28.
@@ -90,6 +91,9 @@ export function tierRingStyle(tier?: string | null, design: DesignId = getDesign
   // 99→60, 88→53, 66→40.
   if (t === 'icon') {
     return { boxShadow: `0 0 0 2px ${c}, 0 0 ${design === 'master' ? 16 : 10}px ${fade(c, 60)}` };
+  }
+  if (t === 'prospect') {
+    return { boxShadow: `0 0 0 2px ${c}, 0 0 ${design === 'master' ? 14 : 8}px ${fade(c, 48)}` };
   }
   return design === 'master'
     ? { boxShadow: `0 0 0 2px ${c}, 0 0 12px ${fade(c, 53)}` }
