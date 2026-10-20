@@ -50,7 +50,9 @@ function absoluteUrl(raw: string | null): string | null {
     const validSite = ["league.cityfootball.ru", "cityfootball.ru", "www.cityfootball.ru"].includes(url.hostname);
     const validTeamLogo = url.hostname === "hb.bizmrg.com" &&
       /^\/st\.cityfootball\.ru\/team\/\d+\/logo\//i.test(url.pathname);
-    if (url.protocol !== "https:" || (!validSite && !validTeamLogo)) return null;
+    const validPlayerPhoto = url.hostname === "hb.bizmrg.com" &&
+      /^\/st\.cityfootball\.ru\/player\/\d+\//i.test(url.pathname);
+    if (url.protocol !== "https:" || (!validSite && !validTeamLogo && !validPlayerPhoto)) return null;
     return url.toString();
   } catch {
     return null;
