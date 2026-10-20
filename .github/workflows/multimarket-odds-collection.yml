@@ -66,3 +66,16 @@ jobs:
             exit 1
           fi
           printf '%s\n' "$response" | jq .
+
+  watch:
+    runs-on: ubuntu-latest
+    needs: [collect]
+    if: always()
+    timeout-minutes: 2
+    env:
+      COLLECT_RESULT: ${{ needs.collect.result }}
+    steps:
+      - name: Verify scheduled collection succeeded
+        run: |
+          echo "collect = $COLLECT_RESULT"
+          [ "$COLLECT_RESULT" = "success" ] || { echo "::error::multimarket odds collection: $COLLECT_RESULT"; exit 1; }
