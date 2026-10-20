@@ -282,12 +282,13 @@ export const SPECIAL_TAGS: SpecialTag[] = [
 // 'icon' sits above legendary — the game's most iconic cards. fame_tier()
 // does not produce it yet; until something does, no card carries it and the
 // tier is simply unused (every consumer keys off TIER_COLOR/TIERS).
-export type Tier = 'icon' | 'legendary' | 'epic' | 'rare' | 'common';
-export const TIERS: Tier[] = ['icon', 'legendary', 'epic', 'rare', 'common'];
+export type Tier = 'icon' | 'legendary' | 'epic' | 'prospect' | 'rare' | 'common';
+export const TIERS: Tier[] = ['icon', 'legendary', 'epic', 'prospect', 'rare', 'common'];
 export const TIER_COLOR: Record<Tier, string> = {
   icon:      '#F4EEE6', // near-white
   legendary: '#FFD24A', // gold
   epic:      '#B47AFF', // purple
+  prospect:  '#35D0B0', // teal — elite young talent
   rare:      '#4A9EFF', // blue
   common:    '#7A8499', // muted grey
 };
@@ -295,6 +296,7 @@ export const TIER_LABEL_RU: Record<Tier, string> = {
   icon:      'Икона',
   legendary: 'Легендарная',
   epic:      'Эпическая',
+  prospect:  'Перспективная',
   rare:      'Редкая',
   common:    'Обычная',
 };
@@ -302,6 +304,7 @@ export const TIER_LABEL_EN: Record<Tier, string> = {
   icon:      'Icon',
   legendary: 'Legendary',
   epic:      'Epic',
+  prospect:  'Prospect',
   rare:      'Rare',
   common:    'Common',
 };
