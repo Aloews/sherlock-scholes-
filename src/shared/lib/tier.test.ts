@@ -26,7 +26,7 @@ describe('tierCardStyle', () => {
     // `icon` там #F4EEE6 и на кремовой бумаге исчезает целиком. Но в тестах
     // и при серверном рендере переменных нет вовсе, поэтому hex обязан
     // остаться запасным значением внутри var().
-    for (const t of ['legendary', 'epic', 'rare'] as const) {
+    for (const t of ['legendary', 'epic', 'prospect', 'rare'] as const) {
       const style = tierCardStyle(t);
       expect(style).toBeDefined();
       expect(style!.borderColor).toBe(`var(--tier-${t}, ${TIER_COLOR[t]})`);
@@ -40,7 +40,7 @@ describe('tierCardStyle', () => {
     // получается `var(--tier-epic, #B47AFF)80` — мусор, который браузер
     // молча выбрасывает ВМЕСТЕ СО ВСЕЙ ТЕНЬЮ. Ни один тест на радиус этого
     // не заметит: числа-то на месте.
-    for (const t of ['icon', 'legendary', 'epic', 'rare'] as const) {
+    for (const t of ['icon', 'legendary', 'epic', 'prospect', 'rare'] as const) {
       for (const d of ['master', 'classic'] as const) {
         for (const style of [tierCardStyle(t, d), tierRingStyle(t, d), tierFrameStyle(t, d)]) {
           if (!style) continue;
@@ -54,7 +54,7 @@ describe('tierCardStyle', () => {
   });
 
   it('scales the glow radius by rarity (legendary > epic > rare)', () => {
-    const radius = (t: 'legendary' | 'epic' | 'rare') => {
+    const radius = (t: 'legendary' | 'epic' | 'prospect' | 'rare') => {
       const shadow = String(tierCardStyle(t)!.boxShadow);
       // boxShadow holds an inset border (…1px) plus the outward glow (0 0 Npx);
       // the glow is the larger radius, so take the max across both segments.
@@ -62,7 +62,8 @@ describe('tierCardStyle', () => {
       return Math.max(...nums);
     };
     expect(radius('legendary')).toBeGreaterThan(radius('epic'));
-    expect(radius('epic')).toBeGreaterThan(radius('rare'));
+    expect(radius('epic')).toBeGreaterThan(radius('prospect'));
+    expect(radius('prospect')).toBeGreaterThan(radius('rare'));
   });
 });
 
@@ -137,6 +138,7 @@ describe('tierFrameStyle', () => {
     const pad = (t: string) => parseFloat(String(tierFrameStyle(t, 'master')!.padding));
     expect(pad('icon')).toBeGreaterThan(pad('legendary'));
     expect(pad('legendary')).toBe(pad('rare'));
+    expect(pad('prospect')).toBeGreaterThan(pad('rare'));
   });
 
   it('scales the glow by rarity (icon > legendary > epic > rare)', () => {

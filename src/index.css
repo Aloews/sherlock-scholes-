@@ -71,6 +71,7 @@
     --tier-icon:      #F4EEE6;
     --tier-legendary: #FFD24A;
     --tier-epic:      #B47AFF;
+    --tier-prospect:  #35D0B0;
     --tier-rare:      #4A9EFF;
     --tier-common:    #7A8499;
 
@@ -128,6 +129,7 @@
     --tier-icon:      #F4EEE6;
     --tier-legendary: #FFD24A;
     --tier-epic:      #B47AFF;
+    --tier-prospect:  #35D0B0;
     --tier-rare:      #4A9EFF;
     --tier-common:    #7A8499;
 
@@ -220,6 +222,7 @@
     --tier-icon:      #6E6045;         /* 5.13:1 */
     --tier-legendary: #855C12;         /* 4.97:1 */
     --tier-epic:      #6B3FA0;         /* 6.18:1 */
+    --tier-prospect:  #176C5B;         /* contrast-safe teal */
     --tier-rare:      #2C5F8F;         /* 5.59:1 */
     --tier-common:    #6B6359;         /* 4.94:1 */
 

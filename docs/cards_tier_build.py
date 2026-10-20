@@ -1,19 +1,17 @@
-"""Card RARITY TIERS (cards.tier) — foundation for the future collectible
-mechanic. DRY-RUN by default: computes a tier for every card from data we
-ALREADY have (pageviews + facts.titles/tournaments + tags), prints the
-distribution (should be a pyramid), pageviews percentiles, a threshold sweep,
-and example cards per tier. Set APPLY=1 to PATCH cards.tier (needs the ALTER in
-supabase/migrations/cards_tier.sql). 0 Wikidata budget — pure DB read.
+"""Card RARITY TIERS (cards.tier), computed only from verified football data.
 
-Four tiers, most-rare first:
-  legendary  Ballon d'Or (tag/ title "Золотой мяч") OR mega-fame pageviews
-  epic       any prestige title, OR World Cup + high pageviews, OR star tag,
-             OR high pageviews
-  rare       played a major tournament, OR has national-team facts, OR
-             mid pageviews
-  common     everyone else (incl. non-player cards: no player signals)
+Six tiers, from most exceptional to ordinary:
+  icon       reserved for manually curated all-time icons
+  legendary  Ballon d'Or or proven historic elite
+  epic       prestige titles / major tournament plus strong fame
+  prospect   age <=20 with current value >= EUR 20m, or age <=23 with value >= EUR 40m
+  rare       major tournament or meaningful fame
+  common     everyone else
 
-Run from football_scraper/:  python ../docs/cards_tier_build.py
+The prospect tier rewards exceptional potential and current market value; it does
+not claim the player is already a legend. It requires a verified birth date and
+a Transfermarkt valuation updated within 18 months. DRY-RUN by default. Set
+APPLY=1 only after reviewing the proposed distribution and examples.
 """
 import os, sys, json, statistics
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -24,12 +22,15 @@ HERE = os.path.dirname(__file__)
 SCRAPER = os.path.join(HERE, "..", "football_scraper")
 APPLY = os.environ.get("APPLY") == "1"
 
-TIERS = ("legendary", "epic", "rare", "common")
+TIERS = ("icon", "legendary", "epic", "prospect", "rare", "common")
 
 # Tunable pageviews thresholds (Wikipedia pageviews; players only, others NULL).
 LEG_PV = 90000     # mega-fame -> legendary, but only with a WC/title (anti-spike)
 EPIC_WC_PV = 18000 # a World Cup / Euro player above this -> epic
 RARE_PV = 10000    # top-level regular -> rare (above the median crowd)
+PROSPECT_VALUE_20 = 20_000_000
+PROSPECT_VALUE_23 = 40_000_000
+VALUE_MAX_AGE_DAYS = 548
 
 
 def fetch_all(url, key, table, sel, extra=None):
@@ -48,11 +49,33 @@ def fetch_all(url, key, table, sel, extra=None):
     return out
 
 
-def signals(card):
+def signals(card, today=None):
+    from datetime import date
+    today = today or date.today()
     facts = card.get("facts") or {}
     tags = set(card.get("tags") or [])
     titles = facts.get("titles") or []
     tours = facts.get("tournaments") or []
+    age = None
+    try:
+        born = date.fromisoformat(str(card.get("born_on"))[:10])
+        age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    except (TypeError, ValueError):
+        pass
+    value_is_current = False
+    try:
+        updated = date.fromisoformat(str(card.get("market_value_at"))[:10])
+        value_is_current = 0 <= (today - updated).days <= VALUE_MAX_AGE_DAYS
+    except (TypeError, ValueError):
+        pass
+    value = card.get("market_value_eur") or 0
+    prospect = (
+        card.get("category") in ("player", "woman")
+        and age is not None and 16 <= age <= 23
+        and value_is_current
+        and ((age <= 20 and value >= PROSPECT_VALUE_20)
+             or (age <= 23 and value >= PROSPECT_VALUE_23))
+    )
     return {
         "pv": card.get("pageviews") or 0,
         "ballon": "ballon_dor" in tags or any("Золотой мяч" in t for t in titles),
@@ -60,26 +83,22 @@ def signals(card):
         "wc": "world_cup" in tags or any(t.startswith("ЧМ") or t.startswith("Евро") for t in tours),
         "star": "star" in tags,
         "nat": bool(facts.get("national_team") or facts.get("national_caps")),
+        "prospect": prospect,
     }
 
 
-def tier_for(card, leg_pv=LEG_PV, epic_wc_pv=EPIC_WC_PV, rare_pv=RARE_PV):
-    s = signals(card)
-    # legendary: a Ballon d'Or, or mega pageviews BACKED by a real football
-    # signal (World Cup/Euro or a prestige title). The wc/title gate keeps
-    # recency spikes out — a backup keeper or a transfer-saga journeyman can
-    # outscore Pelé on raw pageviews, but has no tournament/title.
-    # ("star" reserved for a future composite-fame backfill; empty today.)
+def tier_for(card, leg_pv=LEG_PV, epic_wc_pv=EPIC_WC_PV, rare_pv=RARE_PV, today=None):
+    if card.get("tier") == "icon":
+        return "icon"
+    s = signals(card, today=today)
+    # Historical achievements outrank youth-market signals.
     if s["ballon"] or s["star"] or (s["pv"] >= leg_pv and (s["wc"] or s["title"])):
         return "legendary"
-    # epic: a prestige individual title (Ballon d'Or etc.), or a notable
-    # World Cup / Euro player. Pure pageviews does NOT promote to epic —
-    # Wikipedia hits are too recency-biased (Лунин/Мудрик outscore legends);
-    # mega-famous-but-no-tournament names are curated up by hand in the admin.
     if s["title"] or (s["wc"] and s["pv"] >= epic_wc_pv):
         return "epic"
-    # rare: a major-tournament player, or a mid-fame regular. ("nat" — having a
-    # national team — is NOT used: nearly every player has one, so it floods.)
+    # Prospect tier requires verified birth date and a current market value.
+    if s["prospect"]:
+        return "prospect"
     if s["wc"] or s["pv"] >= rare_pv:
         return "rare"
     return "common"
@@ -100,7 +119,7 @@ def main():
     patch_h = {"apikey": key, "Authorization": "Bearer " + key,
                "Content-Type": "application/json", "Prefer": "return=minimal"}
 
-    sel = "id,name,category,pageviews,facts,tags" + (",tier" if APPLY else "")
+    sel = "id,name,category,pageviews,facts,tags,born_on,market_value_eur,market_value_at,tier"
     cards = fetch_all(url, key, "cards", sel)
     players = [c for c in cards if c.get("category") in ("player", "woman")]
     total = len(cards)
