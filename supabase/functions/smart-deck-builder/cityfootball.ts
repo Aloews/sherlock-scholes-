@@ -47,7 +47,10 @@ function absoluteUrl(raw: string | null): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw, BASE);
-    if (url.protocol !== "https:" || !["league.cityfootball.ru", "cityfootball.ru", "www.cityfootball.ru"].includes(url.hostname)) return null;
+    const validSite = ["league.cityfootball.ru", "cityfootball.ru", "www.cityfootball.ru"].includes(url.hostname);
+    const validTeamLogo = url.hostname === "hb.bizmrg.com" &&
+      /^\/st\.cityfootball\.ru\/team\/\d+\/logo\//i.test(url.pathname);
+    if (url.protocol !== "https:" || (!validSite && !validTeamLogo)) return null;
     return url.toString();
   } catch {
     return null;
@@ -112,61 +115,147 @@ export function cityFootballTeamUrlFromPage(html: string): string | null {
   return href ? `${BASE}${href}` : null;
 }
 
+function normalized(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("ru")
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
+}
+
+function teamIdFromPrompt(prompt: string): string | null {
+  const explicit = prompt.match(/https?:\/\/(?:www\.)?league\.cityfootball\.ru\/team\/(\d+)(?:\/profile\/info)?/i);
+  if (explicit) return explicit[1];
+  // Archived profile confirmed by the user; it is absent from the current-season team directory.
+  if (/\bSMB\b/i.test(prompt) && /city\s*football|cityfootball|любительск/i.test(prompt)) return "25194";
+  return null;
+}
+
+function parseCityFootballTeamPage(html: string, teamId: string) {
+  if (!/^\d{1,12}$/.test(teamId)) return null;
+  const heading = plainText(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "");
+  const title = plainText(meta(html, "og:title") ?? html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
+  const name = (heading || title.replace(/\s*[|—-].*$/, "")).trim();
+  if (name.length < 2 || name.length > 160 || /^(команды|участники|cityfootball)$/i.test(name)) return null;
+  const logoRaw = html.match(/(?:src|data-src)=["']([^"']*\/team\/\d+\/logo\/[^"']+)["']/i)?.[1] ??
+    html.match(/(?:src|data-src)=["']([^"']*logo[^"']*400x400[^"']*)["']/i)?.[1] ?? null;
+  const logoUrl = absoluteUrl(logoRaw);
+  const text = plainText(html);
+  const stats: Record<string, string | number> = {};
+  const patterns: Array<[string, RegExp]> = [
+    ["matches", /(?:Матчей|Игры|Matches)\s*:?\s*(\d{1,4})/i],
+    ["wins", /(?:Победы|Выигрыши|Wins)\s*:?\s*(\d{1,4})/i],
+    ["draws", /(?:Ничьи|Draws)\s*:?\s*(\d{1,4})/i],
+    ["losses", /(?:Поражения|Losses)\s*:?\s*(\d{1,4})/i],
+    ["goals_for", /(?:Забито|Голы забитые|Goals for)\s*:?\s*(\d{1,4})/i],
+    ["goals_against", /(?:Пропущено|Goals against)\s*:?\s*(\d{1,4})/i],
+    ["points", /(?:Очки|Points)\s*:?\s*(\d{1,4})/i],
+  ];
+  for (const [key, pattern] of patterns) {
+    const match = text.match(pattern);
+    if (match) stats[key] = Number(match[1]);
+  }
+  return {
+    sourceKey: "cityfootball:team:" + teamId, name, logoUrl,
+    sourceUrl: BASE + "/team/" + teamId + "/profile/info",
+    description: meta(html, "description") ?? meta(html, "og:description"),
+    stats,
+  };
+}
+
+async function findTeamProfile(fetchPage: (url: string) => Promise<string>, prompt: string) {
+  const directId = teamIdFromPrompt(prompt);
+  if (directId) return { id: directId, html: await fetchPage(BASE + "/team/" + directId + "/profile/info") };
+  if (!/city\s*football|cityfootball|любительск/i.test(prompt)) return null;
+  const query = normalized(prompt
+    .replace(/любительск(?:ая|ую|ой|их)?/ig, " ")
+    .replace(/футбольн(?:ая|ую|ой|ых)?/ig, " ")
+    .replace(/команд(?:а|у|ы|е)?/ig, " ")
+    .replace(/лиги|лига|из|для|в|the|team|city\s*football|cityfootball/ig, " "));
+  if (!query) return null;
+  const directory = await fetchPage(BASE + "/season/teams");
+  const links = [...directory.matchAll(/<a\b[^>]*href=["'](?:https?:\/\/league\.cityfootball\.ru)?\/team\/(\d+)\/profile\/info[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
+  const candidates = links.map((m) => ({ id: m[1], name: plainText(m[2]) })).filter((x) => x.name.length > 1);
+  const q = normalized(query);
+  const matches = candidates.map((x) => {
+    const name = normalized(x.name);
+    const score = name === q ? 1 : (name.includes(q) || q.includes(name)) ? Math.min(name.length, q.length) / Math.max(name.length, q.length) : 0;
+    return { ...x, score };
+  }).filter((x) => x.score >= 0.55).sort((a, b) => b.score - a.score);
+  if (!matches.length || (matches.length > 1 && matches[0].score === matches[1].score)) return null;
+  return { id: matches[0].id, html: await fetchPage(BASE + "/team/" + matches[0].id + "/profile/info") };
+}
+
 export async function discoverCityFootballCards(supabase: any, prompt: string): Promise<{ cardIds: string[]; created: number } | null> {
-  const profile = prompt.match(/https?:\/\/(?:www\.)?league\.cityfootball\.ru\/(player|team)\/(\d+)(?:\/profile\/info)?(?:[/?#][^\s]*)?/i);
-  if (!profile) return null;
-  const requestedType = profile[1].toLowerCase();
-  const requestedId = profile[2];
-  const requestedUrl = requestedType === "player"
-    ? `${BASE}/player/${requestedId}`
-    : `${BASE}/team/${requestedId}/profile/info`;
+  const playerProfile = prompt.match(/https?:\/\/(?:www\.)?league\.cityfootball\.ru\/player\/(\d+)(?:\/[?#][^\s]*)?/i);
   const fetchPage = async (url: string): Promise<string> => {
     const response = await fetch(url, {
       headers: { "User-Agent": USER_AGENT, "Accept-Language": "ru,en;q=0.8" },
       signal: AbortSignal.timeout(12000),
     });
-    if (!response.ok) throw new Error(`cityfootball_source_http_${response.status}`);
+    if (!response.ok) throw new Error("cityfootball_source_http_" + response.status);
     return response.text();
   };
 
-  const firstPage = await fetchPage(requestedUrl);
-  const teamUrl = requestedType === "team" ? requestedUrl : cityFootballTeamUrlFromPage(firstPage);
-  let rosterHtml = requestedType === "team" ? firstPage : "";
-  if (teamUrl && requestedType === "player") {
-    try { rosterHtml = await fetchPage(teamUrl); } catch { /* keep the verified player page */ }
+  let team: ReturnType<typeof parseCityFootballTeamPage> = null;
+  let rosterHtml = "";
+  let firstPlayerHtml = "";
+  let requestedPlayerId: string | null = null;
+  if (playerProfile) {
+    requestedPlayerId = playerProfile[1];
+    firstPlayerHtml = await fetchPage(BASE + "/player/" + requestedPlayerId);
+    const teamUrl = cityFootballTeamUrlFromPage(firstPlayerHtml);
+    if (teamUrl) {
+      try {
+        rosterHtml = await fetchPage(teamUrl);
+        const teamId = teamUrl.match(/\/team\/(\d+)\//)?.[1];
+        if (teamId) team = parseCityFootballTeamPage(rosterHtml, teamId);
+      } catch { /* preserve verified player page */ }
+    }
+  } else {
+    const resolved = await findTeamProfile(fetchPage, prompt);
+    if (!resolved) return null;
+    rosterHtml = resolved.html;
+    team = parseCityFootballTeamPage(rosterHtml, resolved.id);
+    if (!team) throw new Error("cityfootball_team_profile_unparseable");
   }
-  const playerIds = new Set<string>([...(requestedType === "player" ? [requestedId] : []), ...cityFootballPlayerIdsFromPage(rosterHtml)]);
-  const cappedIds = [...playerIds].slice(0, 25);
+
+  const playerIds = new Set<string>([
+    ...(requestedPlayerId ? [requestedPlayerId] : []),
+    ...cityFootballPlayerIdsFromPage(rosterHtml),
+  ]);
+  const cappedIds = [...playerIds].slice(0, 40);
   const rows: CityFootballPlayer[] = [];
   for (let i = 0; i < cappedIds.length; i += 5) {
     const batch = await Promise.all(cappedIds.slice(i, i + 5).map(async (id) => {
-      if (requestedType === "player" && id === requestedId) return parseCityFootballPlayerPage(firstPage, id);
-      try { return parseCityFootballPlayerPage(await fetchPage(`${BASE}/player/${id}`), id); }
+      if (requestedPlayerId && id === requestedPlayerId) return parseCityFootballPlayerPage(firstPlayerHtml, id);
+      try { return parseCityFootballPlayerPage(await fetchPage(BASE + "/player/" + id), id); }
       catch { return null; }
     }));
     rows.push(...batch.filter((row): row is CityFootballPlayer => row !== null));
   }
-  if (!rows.length) throw new Error("cityfootball_no_verified_players");
+  if (!rows.length && !team) throw new Error("cityfootball_no_verified_players_or_team");
+
   const cardIds: string[] = [];
   let created = 0;
+  if (team) {
+    const { data: existing } = await supabase.from("cards").select("id").eq("external_source_key", team.sourceKey).maybeSingle();
+    const { data, error } = await supabase.rpc("upsert_cityfootball_team_card", {
+      p_source_key: team.sourceKey, p_name: team.name, p_logo_url: team.logoUrl,
+      p_source_url: team.sourceUrl, p_description: team.description, p_stats: team.stats,
+    });
+    if (error || !data) throw new Error("cityfootball_team_card_upsert_failed");
+    cardIds.push(String(data));
+    if (!existing) created++;
+  }
   for (const row of rows) {
-    const { data: existing } = await supabase.from("cards").select("id")
-      .eq("external_source_key", row.sourceKey).maybeSingle();
+    const { data: existing } = await supabase.from("cards").select("id").eq("external_source_key", row.sourceKey).maybeSingle();
     const { data, error } = await supabase.rpc("upsert_cityfootball_player_card", {
-      p_source_key: row.sourceKey,
-      p_name: row.name,
-      p_name_en: row.nameEn,
-      p_born_on: row.bornOn,
-      p_position_ru: row.positionRu,
-      p_photo_url: row.photoUrl,
-      p_source_url: row.sourceUrl,
-      p_team_name: row.teamName,
-      p_description: row.description,
-      p_stats: row.stats,
+      p_source_key: row.sourceKey, p_name: row.name, p_name_en: row.nameEn, p_born_on: row.bornOn,
+      p_position_ru: row.positionRu, p_photo_url: row.photoUrl, p_source_url: row.sourceUrl,
+      p_team_name: row.teamName, p_description: row.description, p_stats: row.stats,
     });
     if (error || !data) throw new Error("cityfootball_canonical_card_upsert_failed");
     cardIds.push(String(data));
     if (!existing) created++;
   }
+  if (!cardIds.length) throw new Error("cityfootball_no_cards_imported");
   return { cardIds: [...new Set(cardIds)], created };
 }
