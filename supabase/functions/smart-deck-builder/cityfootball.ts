@@ -50,7 +50,9 @@ function absoluteUrl(raw: string | null): string | null {
     const validSite = ["league.cityfootball.ru", "cityfootball.ru", "www.cityfootball.ru"].includes(url.hostname);
     const validTeamLogo = url.hostname === "hb.bizmrg.com" &&
       /^\/st\.cityfootball\.ru\/team\/\d+\/logo\//i.test(url.pathname);
-    if (url.protocol !== "https:" || (!validSite && !validTeamLogo)) return null;
+    const validPlayerPhoto = url.hostname === "hb.bizmrg.com" &&
+      /^\/st\.cityfootball\.ru\/player\/\d+\//i.test(url.pathname);
+    if (url.protocol !== "https:" || (!validSite && !validTeamLogo && !validPlayerPhoto)) return null;
     return url.toString();
   } catch {
     return null;
@@ -60,7 +62,7 @@ function absoluteUrl(raw: string | null): string | null {
 export function parseCityFootballPlayerPage(html: string, playerId: string): CityFootballPlayer | null {
   if (!/^\d{1,12}$/.test(playerId)) return null;
   const title = plainText(meta(html, "og:title") ?? html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
-  const name = title.replace(/\s*[|—-]\s*(?:CityFootball|Лига CityFootball|Любительская футбольная лига).*$/i, "").trim();
+  const name = title.replace(/\s*[|—-]\s*(?:(?:страница\s+игрока\s+)?лиг[аи]\s*city\s*football|city\s*football|cityfootball|любительская\s+футбольная\s+лига).*$/i, "").trim();
   if (name.length < 2 || name.length > 160 || /^(игрок|player|cityfootball)$/i.test(name)) return null;
 
   const photoUrl = absoluteUrl(meta(html, "og:image") ??
@@ -78,9 +80,9 @@ export function parseCityFootballPlayerPage(html: string, playerId: string): Cit
   const stats: Record<string, string | number> = {};
   const text = plainText(html);
   for (const [label, pattern] of [
-    ["matches", /(?:Матчей|Игры|Matches)\s*:?\s*(\d{1,4})/i],
-    ["goals", /(?:Голы|Забито|Goals)\s*:?\s*(\d{1,4})/i],
-    ["assists", /(?:Голевые передачи|Ассисты|Assists)\s*:?\s*(\d{1,4})/i],
+    ["matches", /(?:Матчей|Матчи|Матч|Игры|Игр|Matches|Appearances)\s*:?\s*(\d{1,4})/i],
+    ["goals", /(?:Голы|Гол|Забито|Goals)\s*:?\s*(\d{1,4})/i],
+    ["assists", /(?:Голевые передачи|Голевых передач|Ассисты|Ассист|Assists)\s*:?\s*(\d{1,4})/i],
     ["yellow_cards", /(?:Жёлтые карточки|Желтые карточки|Yellow cards)\s*:?\s*(\d{1,4})/i],
     ["red_cards", /(?:Красные карточки|Red cards)\s*:?\s*(\d{1,4})/i],
   ] as Array<[string, RegExp]>) {
@@ -229,7 +231,9 @@ export async function discoverCityFootballCards(supabase: any, prompt: string): 
       try { return parseCityFootballPlayerPage(await fetchPage(BASE + "/player/" + id), id); }
       catch { return null; }
     }));
-    rows.push(...batch.filter((row): row is CityFootballPlayer => row !== null));
+    rows.push(...batch
+      .filter((row): row is CityFootballPlayer => row !== null)
+      .map((row) => team && !row.teamName ? { ...row, teamName: team.name } : row));
   }
   if (!rows.length && !team) throw new Error("cityfootball_no_verified_players_or_team");
 

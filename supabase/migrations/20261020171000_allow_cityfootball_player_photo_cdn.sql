@@ -36,7 +36,7 @@ BEGIN
   IF p_source_url IS NULL OR p_source_url !~ ('^https://league\.cityfootball\.ru/player/' || v_player_id || '/?$') THEN
     RAISE EXCEPTION 'invalid_cityfootball_source_url';
   END IF;
-  IF p_photo_url IS NOT NULL AND p_photo_url !~ '^https://([A-Za-z0-9-]+\.)*cityfootball\.ru/' AND p_photo_url !~ '^https://hb\\.bizmrg\\.com/st\\.cityfootball\\.ru/player/' THEN
+  IF p_photo_url IS NOT NULL AND p_photo_url !~ '^https://([A-Za-z0-9-]+\.)*cityfootball\.ru/' AND p_photo_url !~ '^https://hb\.bizmrg\.com/st\.cityfootball\.ru/player/' THEN
     RAISE EXCEPTION 'invalid_cityfootball_photo_url';
   END IF;
 

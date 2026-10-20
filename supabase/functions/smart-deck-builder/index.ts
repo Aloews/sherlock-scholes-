@@ -153,11 +153,13 @@ Deno.serve(async (req: Request) => {
     if (allowed !== true) return json({ error: "rate_limited" }, 429);
 
     let discoveredCardIds: string[] = [];
+    let cityFootballImport = false;
     let discoveryConstrained = false;
     let discoveryUnavailable = false;
     try {
       const cityFootball = await discoverCityFootballCards(supabase, prompt);
       if (cityFootball) {
+        cityFootballImport = true;
         discoveredCardIds = cityFootball.cardIds;
         discoveryConstrained = true;
         console.info("[smart-deck-builder] CityFootball source-backed import", {
@@ -200,6 +202,29 @@ Deno.serve(async (req: Request) => {
       catalog = catalog.filter((card) => discoveredIds.has(card.id));
     }
     if (catalog.length < 3) return json({ error: "catalog_unavailable" }, 503);
+
+    // A team-profile request is a source import, not a semantic search for a
+    // single club card. Return the imported team plus its verified roster so
+    // the model cannot reduce the entire squad to one matching team card.
+    if (cityFootballImport) {
+      const cards = catalog.filter((card) => discoveredCardIds.includes(card.id))
+        .slice(0, targetCardCount)
+        .map((card) => ({
+          id: card.id,
+          name: card.name,
+          name_en: card.name_en,
+          photo_url: card.photo_url,
+          category: card.category,
+        }));
+      if (cards.length >= 3) {
+        const title = cards.find((card) => card.category === "club")?.name ?? "CityFootball";
+        return json({
+          title,
+          message: language === "ru" ? `Готово: ${cards.length} карточек` : `Ready: ${cards.length} cards`,
+          cards,
+        });
+      }
+    }
 
     const compactCatalog = catalog.map((card) => ({
       id: card.id,
