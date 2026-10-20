@@ -250,6 +250,9 @@ def main():
                 sb("cards", method="PATCH",
                    params={"id": "eq." + card_id, "or": "(photo_url.is.null,photo_url.eq.)"},
                    body={"photo_url": url, "photo_source": "transfermarkt"})
+                stored = sb("cards", params={"select": "id,photo_url", "id": "eq." + card_id})
+                if not stored or stored[0].get("photo_url") != url:
+                    raise RuntimeError("photo write verification failed for card " + card_id)
                 written += 1
         batch = []
 
