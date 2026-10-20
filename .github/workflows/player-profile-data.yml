@@ -108,6 +108,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r football_scraper/requirements.txt
 
+      - name: Test Transfermarkt portrait parser and candidate rotation
+        run: python3 docs/test_cards_photo_transfermarkt.py
+
       - name: Backfill player portraits by Wikidata entity ID
         run: APPLY=1 python3 docs/cards_photo_from_qid.py
 
