@@ -58,7 +58,7 @@ async function loadCatalog(supabase: any, prompt: string, currentIds: string[], 
       .order("fame", { ascending: false, nullsFirst: false }).limit(250),
     position
       ? supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
-          .ilike("position_ru", position.pattern).limit(300)
+          .or(position.pattern).limit(600)
       : Promise.resolve({ data: [], error: null }),
     position
       ? supabase.from("cards").select(fields).eq("active", true).eq("category", "player")
