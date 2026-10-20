@@ -285,6 +285,8 @@ def main():
         print("⚠️ ПРОФИЛЕЙ ПОТЕРЯНО: %d — повторить прогон" % lost)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
+    elif written == 0:
+        raise SystemExit("No player portraits were written; investigate source access or candidate selection.")
 
 
 if __name__ == "__main__":
