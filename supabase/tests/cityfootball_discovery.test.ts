@@ -10,7 +10,7 @@ Deno.test("parses a verified CityFootball player profile without inventing missi
       <head>
         <title>Иван Иванов | CityFootball</title>
         <meta property="og:title" content="Иван Иванов | CityFootball" />
-        <meta property="og:image" content="https://league.cityfootball.ru/uploads/player/143154.jpg" />
+        <meta property="og:image" content="https://hb.bizmrg.com/st.cityfootball.ru/player/143154/photo/143154.jpg" />
         <meta name="description" content="Игрок команды Тест ФК" />
       </head>
       <body>
