@@ -155,11 +155,9 @@ Deno.serve(async (req: Request) => {
     let discoveredCardIds: string[] = [];
     let discoveryConstrained = false;
     let discoveryUnavailable = false;
-    let cityFootballMatched = false;
     try {
       const cityFootball = await discoverCityFootballCards(supabase, prompt);
       if (cityFootball) {
-        cityFootballMatched = true;
         discoveredCardIds = cityFootball.cardIds;
         discoveryConstrained = true;
         console.info("[smart-deck-builder] CityFootball source-backed import", {
