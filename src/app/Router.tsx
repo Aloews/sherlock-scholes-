@@ -153,7 +153,7 @@ export function Router() {
       <Route path="/training"  element={<PageTransition><TrainingScreen /></PageTransition>} />
       <Route path="/tutorial"  element={<PageTransition><TutorialScreen /></PageTransition>} />
       <Route path="/collection" element={<AdminOnly><PageTransition><CollectionScreen /></PageTransition></AdminOnly>} />
-      <Route path="/profile"   element={<AdminOnly><PageTransition><ProfileScreen /></PageTransition></AdminOnly>} />
+      <Route path="/profile"   element={<PageTransition><ProfileScreen /></PageTransition>} />
       {/* ⚠️ БЕЗ ProOnly НАМЕРЕННО. Экран источников — это выполнение лицензий
           (CC BY-SA требует НАЗВАТЬ источник), а не возможность подписки:
           спрятать его за подписку значило бы не выполнить условие для тех,

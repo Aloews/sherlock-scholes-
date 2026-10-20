@@ -39,7 +39,6 @@ export function SmartDecksPanel({ onStart }: Props) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [editorials, setEditorials] = useState<Record<string, SmartDeckEditorial>>({});
-  const [editorialMode, setEditorialMode] = useState<'loading' | 'ai' | 'deterministic'>('deterministic');
   const [activeDeck, setActiveDeck] = useState<SmartDeck | null>(null);
   const [deckPlayers, setDeckPlayers] = useState<DeckPlayerRow[]>([]);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
@@ -167,8 +166,7 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!decks.length) { setEditorials({}); setEditorialMode('deterministic'); return; }
-    setEditorialMode('loading');
+    if (!decks.length) { setEditorials({}); return; }
     const candidates = decks.map((deck) => ({
       id: deck.id,
       family: deck.family,
@@ -186,7 +184,6 @@ export function SmartDecksPanel({ onStart }: Props) {
       if (cancelled) return;
       if (error || !data || typeof data !== 'object') {
         setEditorials({});
-        setEditorialMode('deterministic');
         return;
       }
       const next: Record<string, SmartDeckEditorial> = {};
@@ -194,11 +191,9 @@ export function SmartDecksPanel({ onStart }: Props) {
         if (decks.some((deck) => deck.id === row.id) && row.title && row.hook) next[row.id] = row;
       }
       setEditorials(next);
-      setEditorialMode(data.mode === 'ai' || data.mode === 'cached-ai' ? 'ai' : 'deterministic');
     }).catch(() => {
       if (cancelled) return;
       setEditorials({});
-      setEditorialMode('deterministic');
     });
     return () => { cancelled = true; };
   }, [decks, ru]);
@@ -262,13 +257,11 @@ export function SmartDecksPanel({ onStart }: Props) {
 
   return <section className="w-full max-w-sm space-y-3" aria-labelledby="smart-decks-title">
     <div>
-      <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-brand-accent mb-1">{ru?'ПОД ТВОЙ ФУТБОЛЬНЫЙ МОМЕНТ':'YOUR FOOTBALL MOMENT'}</p>
-      <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Подборки с футбольным сюжетом':'A deck with a story'}</h2>
+      <h2 id="smart-decks-title" className="ds-display text-xl font-extrabold text-white">{ru?'Умные подборки':'Smart decks'}</h2>
     </div>
     {loading && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Собираем подборки из свежих данных…':'Building decks from fresh data…'}</div>}
     {!loading && failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Не удалось проверить все источники. Попробуй позже.':'Could not verify sources. Try again later.'}</div>}
     {!loading && !failed && decks.length===0 && <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 text-sm text-brand-muted">{ru?'Пока недостаточно подтверждённых данных для тематической колоды.':'Not enough verified data for a themed deck yet.'}</div>}
-    {editorialMode === 'ai' && <p className="text-[9px] uppercase tracking-[0.12em] text-brand-accent">{ru?'ИИ-редактор · факты проверены':'AI editor · facts verified'}</p>}
     {orderedDecks.map(deck => {
       const Icon = deck.icon==='bolt'?IconBolt:deck.icon==='calendar'||deck.icon==='era'?IconCalendarEvent:IconCrown;
       return <article key={deck.id} className="relative overflow-hidden rounded-2xl border border-brand-border bg-brand-surface">
