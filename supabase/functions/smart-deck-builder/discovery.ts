@@ -70,6 +70,7 @@ const CLUB_ALIASES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /атлетико мадрид|атлетико|atlético madrid|atletico madrid/i, query: "Atlético Madrid" },
   { pattern: /тоттенх[эе]м|tottenham/i, query: "Tottenham Hotspur" },
   { pattern: /борусси[яи] дортмунд|дортмунд|borussia dortmund/i, query: "Borussia Dortmund" },
+  { pattern: /brighton|брайтон/i, query: "Brighton & Hove Albion FC" },
   { pattern: /аякс|ajax/i, query: "AFC Ajax" },
   { pattern: /наполи|napoli/i, query: "SSC Napoli" },
   { pattern: /рома|as roma/i, query: "AS Roma" },
@@ -158,7 +159,7 @@ export function buildPlayerDiscoveryQuery(intent: DiscoveryIntent, clubQid: stri
     clauses.push(`?item p:P54 ?clubStatement. ?clubStatement ps:P54 wd:${clubQid}. FILTER NOT EXISTS { ?clubStatement pq:P582 ?clubEnd. }`);
   }
   if (intent.position) {
-    const patterns = { goalkeeper: "вратар|голкипер", defender: "защит|defender", midfielder: "полузащит|опорник|midfield", forward: "нападающ|форвард|striker|forward" };
+    const patterns = { goalkeeper: "вратар|голкипер", defender: "защит|defend|defence|defense|centre.?back|center.?back|full.?back|left.?back|right.?back|wing.?back", midfielder: "полузащит|опорник|midfield", forward: "нападающ|форвард|striker|forward" };
     clauses.push(`FILTER((BOUND(?positionRu) && REGEX(LCASE(STR(?positionRu)), "${patterns[intent.position]}")) || (BOUND(?positionEn) && REGEX(LCASE(STR(?positionEn)), "${patterns[intent.position]}")))`);
   }
   if (intent.age !== null) {
