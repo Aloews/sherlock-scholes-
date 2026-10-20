@@ -115,7 +115,7 @@ jobs:
         run: |
           day=$(date -u +%j)
           offset=$((10#$day * 80))
-          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit 80 --offset "$offset" --include-soccerwiki
+          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit 80 --offset "$offset"
 
       - name: Backfill player portraits by Wikidata entity ID
         if: always()
