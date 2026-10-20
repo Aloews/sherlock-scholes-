@@ -39,3 +39,15 @@ Deno.test("extracts unique player links and the canonical team page", () => {
   if (ids.length !== 2 || ids[0] !== "143154" || ids[1] !== "143155") throw new Error("player IDs not deduplicated");
   if (cityFootballTeamUrlFromPage(html) !== "https://league.cityfootball.ru/team/25480/profile/info") throw new Error("team URL not parsed");
 });
+
+Deno.test("removes the generic CityFootball suffix from a real player name", () => {
+  const html = "<html><head><title>Даниил Брюхов — страница игрока Лиги City Football</title>" +
+    "<meta property=\"og:title\" content=\"Даниил Брюхов — страница игрока Лиги City Football\" />" +
+    "<meta property=\"og:image\" content=\"https://hb.bizmrg.com/st.cityfootball.ru/player/143154/photo/143154.jpg\" />" +
+    "</head><body><p>Матчи: 9</p><p>Голы: 2</p></body></html>";
+  const player = parseCityFootballPlayerPage(html, "143154");
+  if (!player) throw new Error("profile not parsed");
+  if (player.name !== "Даниил Брюхов") throw new Error("generic source suffix leaked into player name");
+  if (player.photoUrl !== "https://hb.bizmrg.com/st.cityfootball.ru/player/143154/photo/143154.jpg") throw new Error("official CDN portrait not accepted");
+  if (player.stats.matches !== 9 || player.stats.goals !== 2) throw new Error("localized player stats not parsed");
+});
