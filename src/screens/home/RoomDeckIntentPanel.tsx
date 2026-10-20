@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { IconLoader2, IconSparkles } from '@tabler/icons-react';
+import { VoicePromptButton } from '@/shared/ui/VoicePromptButton';
 
 interface Props {
   prompt: string;
@@ -29,6 +30,7 @@ export function RoomDeckIntentPanel({ prompt, loading, message, onPromptChange, 
           placeholder={ru ? 'Например: вратари АПЛ, легенды Барселоны, стадионы Италии' : 'For example: Premier League goalkeepers, Barcelona legends, stadiums in Italy'}
           className="w-full resize-y rounded-xl border border-brand-border bg-brand-bg px-3 py-3 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-accent"
         />
+        <VoicePromptButton value={prompt} language={i18n.language} disabled={loading} onChange={onPromptChange} />
         <button
           type="submit"
           disabled={prompt.trim().length < 3 || loading}
