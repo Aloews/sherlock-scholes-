@@ -11,6 +11,8 @@ on:
       - 'docs/cards_photo_credits.py'
       - 'docs/profile_backfill_queue.py'
       - 'docs/soccerwiki_link_refresh.py'
+      - 'docs/soccerwiki_players.py'
+      - 'football_scraper/tests/test_soccerwiki_player.py'
       - 'docs/test_profile_backfill_queue.py'
       - 'docs/test_soccerwiki_link_refresh.py'
       - 'docs/test_cards_photo_transfermarkt.py'
@@ -99,7 +101,7 @@ jobs:
   player-photos:
     if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -126,6 +128,12 @@ jobs:
 
       - name: Refresh Soccer Wiki player-to-card links and ratings
         run: python3 docs/soccerwiki_link_refresh.py --skip-photo-fill
+
+      - name: Test Soccer Wiki player detail parser
+        run: python3 football_scraper/tests/test_soccerwiki_player.py
+
+      - name: Collect Soccer Wiki player detail photos
+        run: APPLY=1 python3 docs/soccerwiki_players.py --minutes 90
 
       - name: Enqueue and process verified player-photo backfill
         run: |
