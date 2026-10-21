@@ -44,5 +44,6 @@ create table if not exists public.soccerwiki_player (
   name text not null,
   card_id uuid references public.cards(id) on delete cascade,
   photo_url text,
-  fetched_at timestamptz not null default now()
+  fetched_at timestamptz not null default now(),
+  detail_at timestamptz
 );
