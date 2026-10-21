@@ -1,0 +1,51 @@
+name: card-tier-market-value-regression
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*card_tier_market_value_sync.sql'
+      - 'supabase/tests/card_tier_market_value*'
+      - '.github/workflows/card-tier-market-value-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*card_tier_market_value_sync.sql'
+      - 'supabase/tests/card_tier_market_value*'
+      - '.github/workflows/card-tier-market-value-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tier-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sherlock_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sherlock_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: sherlock_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Prepare isolated card schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value_test_setup.sql
+      - name: Apply value-aware card tier migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_card_tier_market_value_sync.sql
+      - name: Verify value-aware tier rules and update trigger
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value.test.sql
