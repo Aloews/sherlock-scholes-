@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlayerCard } from './PlayerCard';
+
+afterEach(() => cleanup());
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
