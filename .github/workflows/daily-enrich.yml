@@ -371,7 +371,7 @@ jobs:
       # игроков, а рейтинг стоял у 6301 карточки.
       - name: Re-link Soccer Wiki squads to the deck
         if: always()
-        run: python docs/soccerwiki_link_refresh.py
+        run: python docs/soccerwiki_link_refresh.py --skip-photo-fill
 
       # Fill empty English display names only from an existing, linked profile.
       # No fuzzy matching; the script never overwrites a populated name_en.

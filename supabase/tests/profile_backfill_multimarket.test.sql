@@ -1,7 +1,7 @@
 -- Run only after profile_market_finetune_test_setup.sql and the migration.
 begin;
 do $$
-declare v_card uuid; v_sw_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
+declare v_card uuid; v_sw_card uuid; v_retry_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
 begin
   if public.settle_market_outcome('h2h','home',0,2,1) <> 'won' then raise exception 'h2h home'; end if;
   if public.settle_market_outcome('h2h','draw',0,2,1) <> 'lost' then raise exception 'h2h losing outcome'; end if;
@@ -50,15 +50,16 @@ begin
     raise exception 'queue did not create three distinct enrichment tasks';
   end if;
 
-  -- Soccer Wiki-linked cards must not be queued for a Transfermarkt photo collector
-  -- that deliberately excludes them. Existing stale photo_tm jobs are retired.
+  -- A Soccer Wiki link must not suppress Transfermarkt fallback. The linked
+  -- source URL is only a candidate; the worker still verifies identity/reachability.
   insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
   values('Soccer Wiki linked queue regression','player',true,'tm-sw-queue-regression','Qsw999999',5000)
   returning id into v_sw_card;
-  insert into public.soccerwiki_player(name,card_id,photo_url) values('Soccer Wiki linked queue regression',v_sw_card,'https://cdn.soccerwiki.org/images/player/149111.png');
+  insert into public.soccerwiki_player(name,card_id,photo_url)
+  values('Soccer Wiki linked queue regression',v_sw_card,'https://cdn.soccerwiki.org/images/player/149111.png');
   perform public.enqueue_profile_backfill_jobs(100);
-  if exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
-    raise exception 'Transfermarkt photo task was enqueued for Soccer Wiki-linked card';
+  if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
+    raise exception 'Transfermarkt fallback was not enqueued for Soccer Wiki-linked card';
   end if;
   if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_qid') then
     raise exception 'QID fallback was not queued for Soccer Wiki-linked card';
@@ -66,22 +67,39 @@ begin
   if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_sw') then
     raise exception 'Soccer Wiki photo task was not queued for mapped card with source URL';
   end if;
-  insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
-  values(v_sw_card,'photo_tm','tm-sw-queue-regression','Qsw999999',1000000000);
   update public.profile_backfill_jobs
      set priority=999999999999999999999999
-   where card_id=v_sw_card and task_type='photo_qid' and status='pending';
+   where card_id=v_sw_card and task_type='photo_tm' and status='pending';
   select * into v_job from public.claim_profile_backfill_jobs(1,45);
-  if v_job.card_id <> v_sw_card or v_job.task_type <> 'photo_qid' then
-    raise exception 'expected QID fallback to be claimed after retiring stale Transfermarkt task';
-  end if;
-  if not exists(select 1 from public.profile_backfill_jobs
-                 where card_id=v_sw_card and task_type='photo_tm' and status='no_data') then
-    raise exception 'stale Transfermarkt photo task was not retired';
+  if v_job.card_id <> v_sw_card or v_job.task_type <> 'photo_tm' or v_job.status <> 'running' then
+    raise exception 'Transfermarkt fallback was skipped for Soccer Wiki-linked card';
   end if;
   v_status := public.finish_profile_backfill_job(v_job.id,false,true,'fixture no-data diagnostic');
   if v_status <> 'no_data' or (select last_error from public.profile_backfill_jobs where id=v_job.id) <> 'fixture no-data diagnostic' then
     raise exception 'no-data source diagnostic was not preserved';
+  end if;
+  perform public.enqueue_profile_backfill_jobs(100);
+  if (select status from public.profile_backfill_jobs where id=v_job.id) <> 'no_data' then
+    raise exception 'recent no-data job ignored its retry cooldown';
+  end if;
+  update public.profile_backfill_jobs set updated_at=now()-interval '8 days' where id=v_job.id;
+  perform public.enqueue_profile_backfill_jobs(100);
+  if (select status from public.profile_backfill_jobs where id=v_job.id) <> 'pending'
+     or (select attempts from public.profile_backfill_jobs where id=v_job.id) <> 0 then
+    raise exception 'stale no-data job was not requeued after cooldown';
+  end if;
+
+  -- Jobs retired by the old Soccer Wiki skip rule are eligible for immediate retry.
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
+  values('Legacy skipped photo queue regression','player',true,'tm-legacy-skip-regression','Qlegacy999',4000)
+  returning id into v_retry_card;
+  insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,last_error,verified_at)
+  values(v_retry_card,'photo_tm','tm-legacy-skip-regression','Qlegacy999',1000000000,
+         'no_data',1,'Transfermarkt photo collector skips cards linked to Soccer Wiki; deferred to the Soccer Wiki enrichment path.',now());
+  perform public.enqueue_profile_backfill_jobs(100);
+  if (select status from public.profile_backfill_jobs where card_id=v_retry_card and task_type='photo_tm') <> 'pending'
+     or (select attempts from public.profile_backfill_jobs where card_id=v_retry_card and task_type='photo_tm') <> 0 then
+    raise exception 'legacy Soccer Wiki skip job was not immediately requeued';
   end if;
 
   -- Repeated bounded enqueue calls must advance past already-queued high-priority tasks.

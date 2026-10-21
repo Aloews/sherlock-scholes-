@@ -163,6 +163,7 @@ jobs:
           echo "::endgroup::"
           echo "::group::profile backfill queue tests"
           python ../docs/test_profile_backfill_queue.py || failed="$failed docs/test_profile_backfill_queue.py"
+          python ../docs/test_soccerwiki_link_refresh.py || failed="$failed docs/test_soccerwiki_link_refresh.py"
           echo "::endgroup::"
           echo "::group::LLM fine-tuning data pipeline tests"
           (cd ../ml/llm_finetuning && python test_pipeline.py && python test_evaluation.py) || failed="$failed ml/llm_finetuning/test_pipeline.py"

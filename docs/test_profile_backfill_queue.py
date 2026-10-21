@@ -72,6 +72,26 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "no_data")
 
+    def test_profile_match_rejects_ambiguous_single_token_namesake(self):
+        card = {"name": "Ramires", "name_en": "Ramires", "country": "BR"}
+        profile = {
+            "name": "Ramires Barbosa",
+            "full_name": "Ramires Barbosa",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/123.png",
+            "nation_code": "BRA",
+        }
+        self.assertFalse(worker.profile_matches_card(card, profile))
+
+    def test_profile_match_accepts_exact_single_token_name(self):
+        card = {"name": "Neymar", "name_en": "Neymar", "country": "BR"}
+        profile = {
+            "name": "Neymar",
+            "full_name": "Neymar",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/456.png",
+            "nation_code": "BRA",
+        }
+        self.assertTrue(worker.profile_matches_card(card, profile))
+
     def test_photo_sw_rejects_country_conflict(self):
         card = {"id": self.card_id, "name": "Diego Rodríguez",
                 "name_en": "Diego Rodríguez", "country": "ES"}
@@ -93,6 +113,20 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         self.assertNotEqual(exit_code, 0)
         self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "retry")
+
+    def test_photo_sw_rejects_single_token_name_matching_longer_identity(self):
+        card = {"id": self.card_id, "name": "Ronaldo", "name_en": "Ronaldo", "country": None}
+        profiles = [{
+            "name": "Cristiano Ronaldo",
+            "full_name": "Cristiano Ronaldo dos Santos Aveiro",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/149111.png",
+            "nation_code": None,
+        }]
+        output, exit_code, writes = self.run_photo_sw(card, profiles)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [])
+        self.assertEqual(classify_result(exit_code, output, False), "no_data")
 
     def test_photo_sw_missing_source_is_no_data(self):
         card = {"id": self.card_id, "name": "Player One", "name_en": "Player One", "country": None}

@@ -62,7 +62,33 @@ def main():
             "https://www.transfermarkt.com/marlon/profil/spieler/273236"
         ), None)
         check("permanent HTTP 403 is not retried", sleep.call_count, 0)
-    print("ok: Transfermarkt portrait metadata parser")
+    test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
+    print("ok: Transfermarkt portrait metadata parser and linked-player fallback")
+
+
+def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
+    rows = [{
+        "id": "player-card-id",
+        "name": "Example Player",
+        "name_en": "Example Player",
+        "transfermarkt_id": "123456",
+        "photo_url": None,
+    }]
+    portrait = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg">'
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "test-key",
+        "APPLY": "0",
+    }), patch.object(collector, "read_all", return_value=rows) as read_all, patch.object(
+        collector, "get_profile", return_value=portrait
+    ) as get_profile, patch.object(collector.time, "sleep"), patch(
+        "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
+    ):
+        collector.main()
+
+    check("only the card table is queried; Soccer Wiki linkage does not suppress fallback",
+          read_all.call_count, 1)
+    check("Transfermarkt profile attempted for linked player", get_profile.call_count, 1)
 
 
 if __name__ == "__main__":
