@@ -47,3 +47,5 @@ create table if not exists public.soccerwiki_player (
   fetched_at timestamptz not null default now(),
   detail_at timestamptz
 );
+
+alter table public.soccerwiki_player add column if not exists detail_at timestamptz;
