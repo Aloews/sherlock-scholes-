@@ -17,7 +17,7 @@ on:
       - 'supabase/migrations/**'
   schedule:
     - cron: '0 11 * * *'
-    - cron: '0 5,17 * * *'
+    - cron: '0 3,19 * * *'
   workflow_dispatch:
     inputs:
       transfermarkt_id:
