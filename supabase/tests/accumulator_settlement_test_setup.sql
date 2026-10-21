@@ -14,12 +14,12 @@ CREATE TABLE cron.job (
   command text NOT NULL
 );
 
-CREATE OR REPLACE FUNCTION cron.schedule(jobname text, schedule text, command text)
+CREATE OR REPLACE FUNCTION cron.schedule(p_jobname text, p_schedule text, p_command text)
 RETURNS bigint LANGUAGE plpgsql AS $$
 DECLARE v_jobid bigint;
 BEGIN
   INSERT INTO cron.job(jobname, schedule, command)
-  VALUES (jobname, schedule, command)
+  VALUES (p_jobname, p_schedule, p_command)
   RETURNING jobid INTO v_jobid;
   RETURN v_jobid;
 END;
