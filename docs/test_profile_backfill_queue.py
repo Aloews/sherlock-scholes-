@@ -284,15 +284,15 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(0, "профилей потеряно: 1", False), "retry")
         self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", True), "succeeded")
 
-    def test_worker_retry_states_are_not_reported_as_success(self):
+    def test_only_terminal_failures_fail_the_run(self):
         self.assertEqual(result_exit_code([{"status": "succeeded"}]), 0)
         self.assertEqual(result_exit_code([{"status": "no_data"}]), 0)
-        self.assertEqual(result_exit_code([{"status": "pending"}]), 1)
+        self.assertEqual(result_exit_code([{"status": "pending"}]), 0)
         self.assertEqual(result_exit_code([{"status": "failed"}]), 1)
         self.assertEqual(
-            result_exit_code([{"status": "succeeded"}, {"status": "pending"}]), 1
+            result_exit_code([{"status": "succeeded"}, {"status": "pending"}]), 0
         )
-        # A transient failure followed by a successful retry is a success overall.
+        # A retryable task remains pending for a later scheduled run.
         self.assertEqual(result_exit_code([
             {"job_id": 44, "status": "pending"},
             {"job_id": 44, "status": "succeeded"},
@@ -300,7 +300,7 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(result_exit_code([
             {"job_id": 44, "status": "succeeded"},
             {"job_id": 44, "status": "pending"},
-        ]), 1)
+        ]), 0)
         self.assertEqual(len(final_job_results([
             {"job_id": 44, "status": "pending"},
             {"job_id": 44, "status": "succeeded"},

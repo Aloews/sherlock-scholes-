@@ -254,9 +254,9 @@ def final_job_results(results):
 
 
 def result_exit_code(results):
-    """Fail only when a job's final status still needs retry or is terminally failed."""
+    """Fail only when a job reaches terminal failure; pending retries are expected."""
     final_results = final_job_results(results)
-    return 1 if any(item.get("status") in ("pending", "failed") for item in final_results) else 0
+    return 1 if any(item.get("status") == "failed" for item in final_results) else 0
 
 
 def rpc_status(value):
