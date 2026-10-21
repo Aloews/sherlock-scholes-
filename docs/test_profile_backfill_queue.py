@@ -94,6 +94,20 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "retry")
 
+    def test_photo_sw_rejects_single_token_name_matching_longer_identity(self):
+        card = {"id": self.card_id, "name": "Ronaldo", "name_en": "Ronaldo", "country": None}
+        profiles = [{
+            "name": "Cristiano Ronaldo",
+            "full_name": "Cristiano Ronaldo dos Santos Aveiro",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/149111.png",
+            "nation_code": None,
+        }]
+        output, exit_code, writes = self.run_photo_sw(card, profiles)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [])
+        self.assertEqual(classify_result(exit_code, output, False), "no_data")
+
     def test_photo_sw_missing_source_is_no_data(self):
         card = {"id": self.card_id, "name": "Player One", "name_en": "Player One", "country": None}
         output, exit_code, writes = self.run_photo_sw(card, [])
