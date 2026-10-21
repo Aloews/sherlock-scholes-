@@ -110,6 +110,9 @@ jobs:
       - name: Fix photo source fallback and queue retry semantics
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021110602_fix_photo_backfill_pipeline_20261021.sql
 
+      - name: Disable unverified legacy photo bulk writes
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021111500_disable_unverified_photo_bulk_write.sql
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
 
