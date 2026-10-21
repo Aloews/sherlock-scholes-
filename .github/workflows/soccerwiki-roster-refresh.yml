@@ -1,6 +1,12 @@
 name: soccerwiki-roster-refresh
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/soccerwiki-roster-refresh.yml"
+      - "docs/soccerwiki_squads.py"
+      - "docs/soccerwiki_players.py"
   schedule:
     # Incremental refresh: only clubs older than seven days are revisited.
     - cron: "10 0 * * *"
