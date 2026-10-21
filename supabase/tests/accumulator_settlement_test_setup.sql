@@ -135,7 +135,8 @@ $fixtures$;
 INSERT INTO public.cards(id, born_on) VALUES
   ('00000000-0000-0000-0000-000000000001', '1990-01-01'),
   ('00000000-0000-0000-0000-000000000002', '1991-01-01'),
-  ('00000000-0000-0000-0000-000000000003', '1992-01-01');
+  ('00000000-0000-0000-0000-000000000003', '1992-01-01'),
+  ('00000000-0000-0000-0000-000000000004', '1993-01-01');
 
 INSERT INTO public.football_club(club_key) VALUES
   ('fresh-club'), ('stale-club');
@@ -147,8 +148,10 @@ INSERT INTO public.soccerwiki_club(club_id, club_key, name, fetched_at) VALUES
 INSERT INTO public.soccerwiki_player(pid, card_id, club_id, born_on, fetched_at) VALUES
   ('fresh-pid', '00000000-0000-0000-0000-000000000001', 'fresh-source-club', '1990-01-01', now() - interval '1 hour'),
   ('stale-pid', '00000000-0000-0000-0000-000000000002', 'stale-source-club', '1991-01-01', now() - interval '45 days'),
-  ('stale-new-pid', '00000000-0000-0000-0000-000000000003', 'stale-source-club', '1992-01-01', now() - interval '45 days');
+  ('stale-new-pid', '00000000-0000-0000-0000-000000000003', 'stale-source-club', '1992-01-01', now() - interval '45 days'),
+  ('stale-cached-pid', '00000000-0000-0000-0000-000000000004', 'stale-source-club', '1993-01-01', now() - interval '45 days');
 
 INSERT INTO public.card_current_club(card_id, club, club_key, resolved_key, apps, source, fetched_at) VALUES
   ('00000000-0000-0000-0000-000000000001', 'Old Club', 'old-club', 'old-club', NULL, 'career_stats', now() - interval '2 days'),
-  ('00000000-0000-0000-0000-000000000002', 'Trusted Club', 'trusted-club', 'trusted-club', NULL, 'career_stats', now() - interval '1 day');
+  ('00000000-0000-0000-0000-000000000002', 'Trusted Club', 'trusted-club', 'trusted-club', NULL, 'career_stats', now() - interval '1 day'),
+  ('00000000-0000-0000-0000-000000000004', 'Stale Cached Club', 'stale-club', 'stale-club', NULL, 'soccerwiki', now());
