@@ -87,11 +87,21 @@ check(sw.parse_detail(UNKNOWN_FOOT)["foot"] is None, "«Unknown» — не но�
 blank = sw.parse_detail("<html><body>ничего</body></html>")
 check(all(v is None for v in blank.values()), "пустая страница — все поля пусты")
 
-# Порядок деталей зависит от задачи: фото-backfill сначала обслуживает
-# уже связанные карточки, обычное обогащение — очередь талантов.
+# Photo-only detail pages must be saved so the source URL can enter the
+# separate identity/reachability-checked photo queue.
+photo_only = {"photo_url": "https://cdn.soccerwiki.org/images/player/999.png"}
+check(sw.has_detail_payload(photo_only), "photo-only profile remains actionable")
+check(not sw.has_detail_payload({"photo_url": None, "full_name": None, "born_on": None, "height_cm": None}),
+      "empty profile remains unprocessed")
+
+# Missing-photo profiles are processed before the general talent/link queues.
+priority = [{"pid": 9}, {"pid": 3}]
+ordered = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}], priority)
+check([row["pid"] for row in ordered] == [9, 3, 2, 1],
+      "photo priority wins and duplicates are removed")
 linked_first = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}], linked_first=True)
 check([row["pid"] for row in linked_first] == [1, 3, 2],
-      "linked-first photo pass prioritizes linked cards and deduplicates")
+      "linked-first mode remains supported")
 talents_first = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}])
 check([row["pid"] for row in talents_first] == [2, 3, 1],
       "default enrichment still prioritizes talents")
