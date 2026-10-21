@@ -237,8 +237,12 @@ def main():
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif meta_image_url(html):
-                placeholder += 1
+            else:
+                # A valid profile with a default silhouette or no image is a
+                # confirmed source miss, not a transport failure.
+                no_profile += 1
+                if meta_image_url(html):
+                    placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()
         if i % 25 == 0:
@@ -260,8 +264,7 @@ def main():
         print("\nСухой прогон. APPLY=1 — записать.")
     elif lost and written == 0:
         raise SystemExit("Profile fetches were lost; retry this job after backoff.")
-    elif written == 0 and no_profile == 0:
-        raise SystemExit("No player portraits were written and no permanent no-data result was confirmed.")
+
 
 
 if __name__ == "__main__":
