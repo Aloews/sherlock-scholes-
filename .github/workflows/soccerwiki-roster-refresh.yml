@@ -130,7 +130,8 @@ jobs:
           {
             echo "## SoccerWiki refresh"
             echo "- Club rows read back in the last 2 hours: $clubs"
-            echo "- Player detail rows read back in the last 2 hours: $players\n            echo "- Current-club rows updated from fresh SoccerWiki data in the last 2 hours: $current""
+            echo "- Player detail rows read back in the last 2 hours: $players"
+            echo "- Current-club rows updated from fresh SoccerWiki data in the last 2 hours: $current"
             echo "- Squad crawl limit: $SQUAD_MINUTES minutes"
             echo "- Player detail crawl limit: $DETAIL_MINUTES minutes"
           } >> "$GITHUB_STEP_SUMMARY"
