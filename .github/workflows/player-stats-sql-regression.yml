@@ -122,6 +122,9 @@ jobs:
       - name: Verify legacy photo no-data requeue
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/photo_backfill_requeue_no_data.test.sql
 
+      - name: Verify Soccer Wiki detail timestamp for photo refresh regression
+        run: psql -v ON_ERROR_STOP=1 -c "select detail_at from public.soccerwiki_player limit 0"
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
 
