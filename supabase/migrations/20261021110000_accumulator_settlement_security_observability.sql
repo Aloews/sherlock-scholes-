@@ -214,6 +214,38 @@ BEGIN
 END;
 $function$;
 
+-- Correct legacy copy timestamps for SoccerWiki-backed current-club rows.
+-- Earlier versions wrote now() on every cache rebuild, even when the source
+-- roster had not been fetched recently. Backdate only unambiguous, linked rows.
+WITH linked AS (
+  SELECT p.card_id, p.club_id, p.born_on, p.fetched_at AS player_fetched_at,
+         count(*) OVER (PARTITION BY p.card_id) AS links,
+         row_number() OVER (
+           PARTITION BY p.card_id
+           ORDER BY (c.born_on IS NOT NULL AND p.born_on = c.born_on) DESC,
+                    p.fetched_at DESC, p.born_on NULLS LAST, p.pid
+         ) AS rn
+    FROM public.soccerwiki_player p
+    JOIN public.cards c ON c.id = p.card_id
+   WHERE p.card_id IS NOT NULL
+), source_times AS (
+  SELECT l.card_id, least(l.player_fetched_at, k.fetched_at) AS source_fetched_at
+    FROM linked l
+    JOIN public.soccerwiki_club k ON k.club_id = l.club_id
+   WHERE l.rn = 1
+     AND (l.links = 1 OR l.born_on IS NOT NULL)
+     AND l.player_fetched_at IS NOT NULL
+     AND k.fetched_at IS NOT NULL
+     AND EXISTS (SELECT 1 FROM public.football_club f WHERE f.club_key = k.club_key)
+)
+UPDATE public.card_current_club AS cc
+   SET fetched_at = s.source_fetched_at
+  FROM source_times s
+ WHERE cc.card_id = s.card_id
+   AND cc.source = 'soccerwiki'
+   AND cc.fetched_at IS NOT NULL
+   AND cc.fetched_at > s.source_fetched_at;
+
 -- RLS is defense in depth. These tables are internal and currently have no
 -- anon/authenticated table grants; keep that boundary explicit as well.
 DO $security$
