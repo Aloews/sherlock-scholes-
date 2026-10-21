@@ -8,6 +8,12 @@ on:
       - 'docs/players_stats_transfermarkt.py'
       - 'docs/cards_photo_from_qid.py'
       - 'docs/cards_photo_transfermarkt.py'
+      - 'docs/cards_photo_credits.py'
+      - 'docs/profile_backfill_queue.py'
+      - 'docs/soccerwiki_link_refresh.py'
+      - 'docs/test_profile_backfill_queue.py'
+      - 'docs/test_cards_photo_transfermarkt.py'
+      - 'supabase/migrations/**'
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
@@ -111,19 +117,33 @@ jobs:
       - name: Test Transfermarkt portrait parser and candidate rotation
         run: python3 docs/test_cards_photo_transfermarkt.py
 
-      - name: Backfill missing player portraits from Transfermarkt
-        run: |
-          day=$(date -u +%j)
-          offset=$((10#$day * 80))
-          APPLY=1 python3 docs/cards_photo_transfermarkt.py --limit 80 --offset "$offset"
+      - name: Test profile backfill queue and source identity checks
+        run: python3 docs/test_profile_backfill_queue.py
 
-      - name: Backfill player portraits by Wikidata entity ID
+      - name: Refresh Soccer Wiki player-to-card links and photo data
+        run: python3 docs/soccerwiki_link_refresh.py
+
+      - name: Enqueue and process verified player-photo backfill
+        run: |
+          APPLY=1 python3 docs/profile_backfill_queue.py \
+            --enqueue-limit 50000 \
+            --batch-size 5 \
+            --max-jobs 400 \
+            --report "$RUNNER_TEMP/profile-backfill-result.jsonl"
+
+      - name: Upload backfill audit report
         if: always()
-        run: APPLY=1 python3 docs/cards_photo_from_qid.py
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-backfill-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/profile-backfill-result.jsonl
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Collect required Wikimedia photo credits
         if: always()
         run: APPLY=1 python3 docs/cards_photo_credits.py --minutes 12
+
   watch:
     runs-on: ubuntu-latest
     needs: [season-stats, player-photos]
