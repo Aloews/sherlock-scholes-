@@ -177,6 +177,16 @@ def get(url):
     return None
 
 
+def rotate_rows(rows, offset):
+    """Rotate a stable candidate list so repeated time-boxed crawls reach its tail."""
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if not rows:
+        return []
+    start = offset % len(rows)
+    return list(rows[start:]) + list(rows[:start])
+
+
 def order_todo(talents, linked, photo_priority=(), linked_first=False):
     """Merge missing-photo profiles, talent candidates and linked rows without duplicates."""
     first, second = (linked, talents) if linked_first else (talents, linked)
@@ -196,6 +206,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="сколько игроков за прогон")
     ap.add_argument("--minutes", type=float, default=0,
                     help="потолок по часам: дойдя до него, дописать пачку и выйти")
+    ap.add_argument("--offset", type=int, default=0, help="сдвиг очереди фото для ротации между прогонами")
     ap.add_argument("--refresh", action="store_true",
                     help="перечитать и тех, у кого страница уже прочитана")
     ap.add_argument("--linked-first", action="store_true",
@@ -238,10 +249,16 @@ def main():
         linked = [r for r in linked if r["pid"] in fresh]
 
     # Missing-photo profiles must be revisited even if detail_at is already set.
-    missing_photo_card_ids = {r["id"] for r in all_rows(
-        "cards", {"select": "id", "category": "eq.player", "active": "is.true",
-                  "or": "(photo_url.is.null,photo_url.eq.)"})}
+    missing_photo_cards = all_rows(
+        "cards", {"select": "id,market_value_eur", "category": "eq.player", "active": "is.true",
+                  "or": "(photo_url.is.null,photo_url.eq.)"})
+    missing_photo_card_ids = {r["id"] for r in missing_photo_cards}
+    market_value_by_card = {r["id"]: int(r.get("market_value_eur") or 0) for r in missing_photo_cards}
     photo_priority = [r for r in linked if r.get("card_id") in missing_photo_card_ids]
+    # Keep the most valuable 500 missing-photo cards at the front; rotate the
+    # remaining tail between runs so a fixed 90-minute budget cannot starve it.
+    photo_priority.sort(key=lambda r: (-market_value_by_card.get(r.get("card_id"), 0), r["pid"]))
+    photo_priority = photo_priority[:500] + rotate_rows(photo_priority[500:], args.offset)
     todo = order_todo(talents, linked, photo_priority, linked_first=args.linked_first)
     print("очередь без фото: %d, талантов: %d, связанных: %d"
           % (len(photo_priority), len(talents), len(linked)))
