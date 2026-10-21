@@ -20,7 +20,7 @@ DECLARE v_jobid bigint;
 BEGIN
   INSERT INTO cron.job(jobname, schedule, command)
   VALUES (jobname, schedule, command)
-  RETURNING cron.job.jobid INTO v_jobid;
+  RETURNING jobid INTO v_jobid;
   RETURN v_jobid;
 END;
 $$;
