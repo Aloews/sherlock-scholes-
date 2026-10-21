@@ -99,3 +99,16 @@ jobs:
             soccerwiki-squads.log
             soccerwiki-details.log
           if-no-files-found: ignore
+
+  watch:
+    needs: [refresh]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REFRESH_RESULT: ${{ needs.refresh.result }}
+    steps:
+      - name: Verify SoccerWiki refresh completed
+        run: |
+          echo "refresh = $REFRESH_RESULT"
+          [ "$REFRESH_RESULT" = "success" ] || { echo "::error::refresh: $REFRESH_RESULT"; exit 1; }
