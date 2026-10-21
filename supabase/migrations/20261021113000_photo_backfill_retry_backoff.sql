@@ -31,7 +31,7 @@ begin
      limit p_limit
   )
   update public.profile_backfill_jobs j
-     set status='running',attempts=j.attempts+1,updated_at=now(),last_error=null
+     set status='running',attempts=least(j.attempts+1,j.max_attempts),updated_at=now(),last_error=null
     from candidates c
    where j.id=c.id
   returning j.*;
