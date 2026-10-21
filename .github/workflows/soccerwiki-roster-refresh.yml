@@ -1,0 +1,101 @@
+name: soccerwiki-roster-refresh
+
+on:
+  schedule:
+    # Incremental refresh: only clubs older than seven days are revisited.
+    - cron: "10 0 * * *"
+  workflow_dispatch:
+    inputs:
+      squad_minutes:
+        description: "Maximum minutes for the roster crawl (1–90)"
+        required: false
+        type: string
+        default: "70"
+      detail_minutes:
+        description: "Maximum minutes for player profile details (1–45)"
+        required: false
+        type: string
+        default: "30"
+
+concurrency:
+  group: soccerwiki-roster-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SQUAD_MINUTES: ${{ github.event_name == 'schedule' && '70' || inputs.squad_minutes || '70' }}
+      DETAIL_MINUTES: ${{ github.event_name == 'schedule' && '30' || inputs.detail_minutes || '30' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate credentials, limits, and parsers
+        run: |
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is missing"; exit 2; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY secret is missing"; exit 2; }
+          case "$SQUAD_MINUTES" in ''|*[!0-9]*) echo "::error::SQUAD_MINUTES must be an integer"; exit 2;; esac
+          case "$DETAIL_MINUTES" in ''|*[!0-9]*) echo "::error::DETAIL_MINUTES must be an integer"; exit 2;; esac
+          [ "$SQUAD_MINUTES" -ge 1 ] && [ "$SQUAD_MINUTES" -le 90 ] || { echo "::error::SQUAD_MINUTES must be 1–90"; exit 2; }
+          [ "$DETAIL_MINUTES" -ge 1 ] && [ "$DETAIL_MINUTES" -le 45 ] || { echo "::error::DETAIL_MINUTES must be 1–45"; exit 2; }
+          python3 football_scraper/tests/test_soccerwiki_manager.py
+          python3 football_scraper/tests/test_soccerwiki_parse.py
+          python3 football_scraper/tests/test_soccerwiki_player.py
+          python3 docs/test_cards_name_en_from_soccerwiki.py
+
+      - name: Refresh stale club squads with source-backed data
+        run: |
+          set -o pipefail
+          APPLY=1 python3 docs/soccerwiki_squads.py --minutes "$SQUAD_MINUTES" --stale-days 7 2>&1 | tee soccerwiki-squads.log
+          if grep -Eiq 'потеряно[[:space:]:]+[1-9][0-9]*' soccerwiki-squads.log; then
+            echo "::error::SoccerWiki roster crawl had failed pages; the partial import is retained and failed pages must be retried."
+            exit 1
+          fi
+
+      - name: Refresh player profile details for new and undetailed roster entries
+        run: |
+          set -o pipefail
+          APPLY=1 python3 docs/soccerwiki_players.py --minutes "$DETAIL_MINUTES" 2>&1 | tee soccerwiki-details.log
+          if grep -Eiq 'потеряно[[:space:]:]+[1-9][0-9]*' soccerwiki-details.log; then
+            echo "::error::SoccerWiki detail crawl had failed pages; the partial import is retained and failed pages must be retried."
+            exit 1
+          fi
+
+      - name: Verify source read-after-write and publish crawl metrics
+        run: |
+          cutoff=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          clubs=$(curl -fsS --get \
+            --data-urlencode "select=club_id" \
+            --data-urlencode "fetched_at=gte.$cutoff" \
+            "$SUPABASE_URL/rest/v1/soccerwiki_club" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+          players=$(curl -fsS --get \
+            --data-urlencode "select=pid" \
+            --data-urlencode "detail_at=gte.$cutoff" \
+            "$SUPABASE_URL/rest/v1/soccerwiki_player" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+          echo "SoccerWiki clubs read back in last 2h: $clubs"
+          echo "SoccerWiki player details read back in last 2h: $players"
+          {
+            echo "## SoccerWiki refresh"
+            echo "- Club rows read back in the last 2 hours: $clubs"
+            echo "- Player detail rows read back in the last 2 hours: $players"
+            echo "- Squad crawl limit: $SQUAD_MINUTES minutes"
+            echo "- Player detail crawl limit: $DETAIL_MINUTES minutes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload parser/import logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soccerwiki-refresh-logs
+          path: |
+            soccerwiki-squads.log
+            soccerwiki-details.log
+          if-no-files-found: ignore
