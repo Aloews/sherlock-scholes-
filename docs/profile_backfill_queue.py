@@ -63,6 +63,12 @@ def profile_matches_card(card, profile):
     if expected_codes and profile_country and profile_country not in expected_codes:
         return False
 
+    card_born = str(card.get("born_on") or "")[:10]
+    profile_born = str(profile.get("born_on") or "")[:10]
+    birth_match = bool(card_born and profile_born and card_born == profile_born)
+    if card_born and profile_born and card_born != profile_born:
+        return False
+
     profile_names = (profile.get("full_name"), profile.get("name"))
     card_names = (card.get("name_en"), card.get("name"))
     for card_name in card_names:
@@ -71,10 +77,16 @@ def profile_matches_card(card, profile):
             continue
         for profile_name in profile_names:
             profile_tokens = normalized_name_tokens(profile_name)
-            if profile_tokens and (
-                card_tokens == profile_tokens
-                or (len(card_tokens) >= 2 and card_tokens.issubset(profile_tokens))
-            ):
+            if not profile_tokens:
+                continue
+            if card_tokens == profile_tokens:
+                return True
+            if len(card_tokens) >= 2 and card_tokens.issubset(profile_tokens):
+                return True
+            # Soccer Wiki can prepend a family name (e.g. "Júnior Neymar")
+            # while the card uses a mononym. A shared token plus an exact
+            # birth date is strong evidence; without the date, reject namesakes.
+            if birth_match and card_tokens.intersection(profile_tokens):
                 return True
     return False
 
@@ -150,12 +162,12 @@ def verify(job):
 def run_collector(job):
     task=job["task_type"]
     if task=="photo_sw":
-        cards=request("cards",{"select":"id,name,name_en,country,photo_url","id":"eq."+job["card_id"],"limit":"1"})
+        cards=request("cards",{"select":"id,name,name_en,country,photo_url,born_on","id":"eq."+job["card_id"],"limit":"1"})
         if not cards:
             return "Фото найдено: 0\\nPlayer card not found",0
         card=cards[0]
         source=request("soccerwiki_player",{
-            "select":"name,full_name,photo_url,nation_code",
+            "select":"name,full_name,photo_url,nation_code,born_on",
             "card_id":"eq."+job["card_id"],"order":"pid.asc"
         })
         candidates=[row for row in source
