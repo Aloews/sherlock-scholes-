@@ -108,6 +108,19 @@ begin
     raise exception 'legacy Soccer Wiki skip job was not immediately requeued';
   end if;
 
+  -- A newer verified Soccer Wiki detail read must reopen an earlier no-data photo task.
+  update public.profile_backfill_jobs
+     set status='no_data', attempts=1, updated_at=now()-interval '1 minute',
+         last_error='fixture photo not available yet', verified_at=now()
+   where card_id=v_sw_card and task_type='photo_sw';
+  update public.soccerwiki_player
+     set detail_at=now(), photo_url='https://cdn.soccerwiki.org/images/player/149112.png'
+   where card_id=v_sw_card;
+  perform public.enqueue_profile_backfill_jobs(100);
+  if (select status from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_sw') <> 'pending' then
+    raise exception 'fresh Soccer Wiki details did not requeue a prior no-data photo task';
+  end if;
+
   -- Repeated bounded enqueue calls must advance past already-queued high-priority tasks.
   insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
   select 'Batch queue regression ' || g, 'player', true,
