@@ -195,14 +195,14 @@ begin
      set updated_at=now()-interval '61 minutes'
    where id=v_backoff_job_id;
   select * into v_job from public.claim_profile_backfill_jobs(1,45);
-  if v_job.id <> v_backoff_job_id then
+  if v_job.id is distinct from v_backoff_job_id then
     raise exception 'photo retry was not claimed after the backoff elapsed';
   end if;
   update public.profile_backfill_jobs
      set status='running',attempts=max_attempts,updated_at=now()-interval '46 minutes'
    where id=v_backoff_job_id;
   select * into v_job from public.claim_profile_backfill_jobs(1,45);
-  if v_job.id <> v_backoff_job_id or v_job.attempts <> v_job.max_attempts then
+  if v_job.id is distinct from v_backoff_job_id or v_job.attempts <> v_job.max_attempts then
     raise exception 'stale running photo job at max attempts was not reclaimed';
   end if;
 end $$;
