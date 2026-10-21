@@ -1,6 +1,9 @@
 name: profile-backfill-queue
 
 on:
+  schedule:
+    # Bounded daily enrichment; manual runs remain available for larger batches.
+    - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:
       enqueue_only:
@@ -34,10 +37,12 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ inputs.max_jobs }}
-          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+          MAX_JOBS: ${{ github.event_name == 'schedule' && '25' || inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ github.event_name == 'schedule' && '25' || inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is missing"; exit 2; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY secret is missing"; exit 2; }
           case "$MAX_JOBS" in
             ''|*[!0-9]*) echo "::error::max_jobs must be a positive integer"; exit 2 ;;
           esac
@@ -50,11 +55,11 @@ jobs:
           [ "$ENQUEUE_LIMIT" -ge 1 ] && [ "$ENQUEUE_LIMIT" -le 100000 ] || {
             echo "::error::enqueue_limit must be between 1 and 100000"; exit 2;
           }
-      - name: Enqueue gaps and optionally process a bounded batch
+      - name: Enqueue gaps and process a bounded batch
         env:
-          ENQUEUE_ONLY: ${{ inputs.enqueue_only }}
-          MAX_JOBS: ${{ inputs.max_jobs }}
-          ENQUEUE_LIMIT: ${{ inputs.enqueue_limit }}
+          ENQUEUE_ONLY: ${{ github.event_name == 'schedule' && 'false' || inputs.enqueue_only }}
+          MAX_JOBS: ${{ github.event_name == 'schedule' && '25' || inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ github.event_name == 'schedule' && '25' || inputs.enqueue_limit || '10' }}
         run: |
           if [ "$ENQUEUE_ONLY" = "true" ]; then
             python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "$ENQUEUE_LIMIT"
