@@ -167,6 +167,47 @@ class TransfermarktFallbackTests(unittest.TestCase):
         self.assertIn("Wikidata fallback", output)
         self.assertIn("Фото найдено : 1", output)
 
+    def test_english_transfermarkt_fetch_loss_triggers_wikidata_fallback(self):
+        tm_failed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Portraits found : 0\\nPROFILE FETCHES LOST: 1"
+        )
+        qid_found = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 1\\nЗаписано : 1"
+        )
+        job = {
+            "task_type": "photo_tm",
+            "transfermarkt_id": "1288921",
+            "wikidata_qid": "Q133865873",
+            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
+        }
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_found]) as run:
+            output, exit_code = worker.run_collector(job)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(run.call_count, 2)
+        self.assertIn("Wikidata fallback", output)
+
+    def test_transfermarkt_placeholder_uses_qid_and_reports_true_no_data(self):
+        tm_placeholder = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout="Portraits found : 0\\nPlaceholders rejected: 1\\nWritten: 0",
+        )
+        qid_empty = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0, первая картинка статьи 0)"
+        )
+        job = {
+            "task_type": "photo_tm",
+            "transfermarkt_id": "1288921",
+            "wikidata_qid": "Q133865873",
+            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
+        }
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_placeholder, qid_empty]) as run:
+            output, exit_code = worker.run_collector(job)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(worker.classify_result(exit_code, output, False), "no_data")
+
     def test_wikidata_miss_does_not_hide_transfermarkt_failure(self):
         tm_failed = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
