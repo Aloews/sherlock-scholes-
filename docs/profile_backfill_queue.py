@@ -198,21 +198,41 @@ def run_collector(job):
       stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
     output=result.stdout[-12000:]
 
-    # Transfermarkt can be unavailable even for a valid player ID. When its
-    # profile could not be read, try the card's already-verified Wikidata QID
-    # before leaving the job retryable. A QID miss does not erase the TM error.
-    if (task=="photo_tm" and job.get("wikidata_qid") and
-            "профилей потеряно" in output.casefold()):
-        fallback_command=[sys.executable,"docs/cards_photo_from_qid.py",
-                          "--only-card-id",str(job["card_id"])]
-        fallback=subprocess.run(fallback_command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
-          stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
-        fallback_output=fallback.stdout[-12000:]
-        if (fallback.returncode==0 and
-                re.search(r"фото найдено\s*:\s*[1-9]\d*",fallback_output.casefold())):
-            return fallback_output+"\\nИсточник: Wikidata fallback после недоступности Transfermarkt",0
-        return (output+"\\nWikidata fallback attempt:\\n"+fallback_output)[-12000:],(
-            fallback.returncode if fallback.returncode else 1)
+    # Transfermarkt may return a valid profile with only its generic silhouette,
+    # or the profile fetch may fail. In both cases, try the card's canonical QID
+    # now instead of leaving the QID job behind the entire Transfermarkt backlog.
+    if task=="photo_tm" and job.get("wikidata_qid"):
+        folded=output.casefold()
+        has_portrait=bool(
+            re.search(r"portraits found\s*:\s*[1-9]\d*",folded)
+            or re.search(r"портретов найдено\s*:\s*[1-9]\d*",folded)
+        )
+        if not has_portrait:
+            fallback_command=[sys.executable,"docs/cards_photo_from_qid.py",
+                              "--only-card-id",str(job["card_id"])]
+            fallback=subprocess.run(fallback_command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
+              stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
+            fallback_output=fallback.stdout[-12000:]
+            fallback_folded=fallback_output.casefold()
+            if (fallback.returncode==0 and
+                    re.search(r"фото найдено\s*:\s*[1-9]\d*",fallback_folded)):
+                return fallback_output+"\nИсточник: Wikidata fallback после отсутствия пригодного портрета Transfermarkt",0
+
+            combined=(output+"\nWikidata fallback attempt:\n"+fallback_output)[-12000:]
+            tm_fetch_lost=any(marker in folded for marker in (
+                "профилей потеряно", "profile fetches lost"
+            ))
+            tm_zero=bool(re.search(
+                r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",folded
+            ))
+            qid_zero=bool(re.search(
+                r"фото найдено\s*:\s*0(?:\D|$)",fallback_folded
+            ))
+            if result.returncode!=0 or tm_fetch_lost or fallback.returncode!=0:
+                return combined,(fallback.returncode if fallback.returncode else 1)
+            if tm_zero and qid_zero:
+                return combined,0
+            return combined,1
     return output,result.returncode
 
 
