@@ -15,7 +15,7 @@ from calibration import evaluate  # noqa: E402
 from forecast_duel import _fetch, _write  # noqa: E402
 from forecast_winner import (  # noqa: E402
     K_FORM_GRID, LAMBDAS, LIN_FEATURES, OUTCOMES, TAU_GRID,
-    accuracy, design, fit_linear,
+    accuracy, design, expected_diff, fit_linear,
     fit_own, labels, own_call, venue_diff, venue_form,
 )
 from forecast_duel import split_by_time  # noqa: E402
