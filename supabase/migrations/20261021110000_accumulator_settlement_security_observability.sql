@@ -142,6 +142,78 @@ $function$;
 REVOKE ALL ON FUNCTION public.run_model_accumulator_generation() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.run_model_accumulator_generation() TO service_role;
 
+-- Do not make a stale cached SoccerWiki roster look freshly verified.
+-- A roster row is eligible only when both the player link and club source were
+-- actually fetched within the last seven days. The cache keeps source time,
+-- not the time this copy operation happened.
+CREATE OR REPLACE FUNCTION public.fill_current_club_from_soccerwiki()
+RETURNS TABLE("записано" integer, "сменили_клуб" integer, "отказано_неоднозначных" integer)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+SET statement_timeout TO '300s'
+AS $function$
+DECLARE
+  v_all integer;
+  v_moved integer;
+  v_skipped integer;
+BEGIN
+  CREATE TEMPORARY TABLE _sw ON COMMIT DROP AS
+  WITH linked AS (
+    SELECT p.card_id, p.club_id, p.born_on,
+           p.fetched_at AS player_fetched_at,
+           count(*) OVER (PARTITION BY p.card_id) AS links,
+           row_number() OVER (
+             PARTITION BY p.card_id
+             ORDER BY (c.born_on IS NOT NULL AND p.born_on = c.born_on) DESC,
+                      p.fetched_at DESC, p.born_on NULLS LAST, p.pid
+           ) AS rn
+      FROM public.soccerwiki_player p
+      JOIN public.cards c ON c.id = p.card_id
+     WHERE p.card_id IS NOT NULL
+       AND p.fetched_at >= now() - interval '7 days'
+  )
+  SELECT l.card_id, k.club_key, k.name AS club_name,
+         least(l.player_fetched_at, k.fetched_at) AS source_fetched_at
+    FROM linked l
+    JOIN public.soccerwiki_club k ON k.club_id = l.club_id
+   WHERE l.rn = 1
+     AND (l.links = 1 OR l.born_on IS NOT NULL)
+     AND k.fetched_at >= now() - interval '7 days'
+     AND EXISTS (
+       SELECT 1 FROM public.football_club f WHERE f.club_key = k.club_key
+     );
+
+  SELECT count(distinct p.card_id) INTO v_skipped
+    FROM public.soccerwiki_player p
+   WHERE p.card_id IS NOT NULL
+     AND p.fetched_at >= now() - interval '7 days'
+     AND NOT EXISTS (SELECT 1 FROM _sw s WHERE s.card_id = p.card_id);
+
+  SELECT count(*) INTO v_moved
+    FROM _sw s
+    JOIN public.card_current_club cc ON cc.card_id = s.card_id
+   WHERE cc.club_key <> s.club_key
+     AND (cc.fetched_at IS NULL OR s.source_fetched_at >= cc.fetched_at);
+
+  INSERT INTO public.card_current_club
+    (card_id, club, club_key, resolved_key, apps, source, fetched_at)
+  SELECT s.card_id, s.club_name, s.club_key, s.club_key, NULL, 'soccerwiki', s.source_fetched_at
+    FROM _sw s
+  ON CONFLICT (card_id) DO UPDATE SET
+    club = EXCLUDED.club,
+    club_key = EXCLUDED.club_key,
+    resolved_key = EXCLUDED.resolved_key,
+    source = 'soccerwiki',
+    fetched_at = EXCLUDED.fetched_at
+  WHERE public.card_current_club.fetched_at IS NULL
+     OR EXCLUDED.fetched_at >= public.card_current_club.fetched_at;
+
+  GET DIAGNOSTICS v_all = ROW_COUNT;
+  RETURN QUERY SELECT v_all, v_moved, v_skipped;
+END;
+$function$;
+
 -- RLS is defense in depth. These tables are internal and currently have no
 -- anon/authenticated table grants; keep that boundary explicit as well.
 DO $security$
