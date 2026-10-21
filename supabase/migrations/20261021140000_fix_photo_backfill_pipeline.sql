@@ -37,7 +37,6 @@ begin
       from cards c
      where c.category='player' and c.active is true
        and nullif(btrim(c.photo_url),'') is null
-       and nullif(btrim(c.transfermarkt_id::text),'') is null
        and nullif(btrim(c.wikidata_qid::text),'') is not null
     union all
     select c.id, 'season_stats', c.transfermarkt_id::text, c.wikidata_qid::text,
