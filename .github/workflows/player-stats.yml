@@ -141,7 +141,7 @@ jobs:
         run: |
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
-          for fn in refresh_stats_planner refresh_player_rating_cache build_model_accumulators settle_accumulators; do
+          for fn in refresh_stats_planner refresh_player_rating_cache run_model_accumulator_generation settle_accumulators; do
             code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
               -H "apikey: $SUPABASE_KEY" \
               -H "Authorization: Bearer $SUPABASE_KEY" \
