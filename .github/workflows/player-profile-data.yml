@@ -17,6 +17,7 @@ on:
       - 'supabase/migrations/**'
   schedule:
     - cron: '0 11 * * *'
+    - cron: '0 5,17 * * *'
   workflow_dispatch:
     inputs:
       transfermarkt_id:
@@ -36,6 +37,7 @@ concurrency:
 
 jobs:
   season-stats:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '0 11 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -156,13 +158,18 @@ jobs:
     env:
       STATS_RESULT: ${{ needs.season-stats.result }}
       PHOTOS_RESULT: ${{ needs.player-photos.result }}
+      STATS_EXPECTED: ${{ github.event_name != 'schedule' || github.event.schedule == '0 11 * * *' }}
       PHOTOS_EXPECTED: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
     steps:
       - name: Verify profile-data jobs completed
         run: |
           echo "season-stats = $STATS_RESULT"
           echo "player-photos = $PHOTOS_RESULT (expected=$PHOTOS_EXPECTED)"
-          [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          if [ "$STATS_EXPECTED" = "true" ]; then
+            [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          else
+            [ "$STATS_RESULT" = "skipped" ] || { echo "::error::season-stats should be skipped for a photo-only schedule, got $STATS_RESULT"; exit 1; }
+          fi
           if [ "$PHOTOS_EXPECTED" = "true" ]; then
             [ "$PHOTOS_RESULT" = "success" ] || { echo "::error::player-photos: $PHOTOS_RESULT"; exit 1; }
           else
