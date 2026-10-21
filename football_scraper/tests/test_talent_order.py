@@ -70,6 +70,20 @@ check("пустая очередь талантов не ломает слиян
       [r["pid"] for r in order_todo([], linked)] == [100, 7],
       str([r["pid"] for r in order_todo([], linked)]))
 
+# ── приоритет закрытия фото в существующей колоде ───────────────────────────
+photo_priority = [{"pid": 200, "name": "игрок без фото", "card_id": "card-200"}]
+priority_out = order_todo(talents, linked, photo_priority)
+check("связанный игрок без фото идёт первым",
+      [r["pid"] for r in priority_out][0] == 200,
+      str([r["pid"] for r in priority_out]))
+check("приоритет не создаёт повторных страниц",
+      len([r["pid"] for r in priority_out]) == len({r["pid"] for r in priority_out}),
+      str([r["pid"] for r in priority_out]))
+check("очередь ищет карточки без фото",
+      '"or": "(photo_url.is.null,photo_url.eq.)"' in open(SRC, encoding="utf-8").read()
+      and "photo_priority" in open(SRC, encoding="utf-8").read(),
+      "профили без портрета должны обходиться раньше талантов")
+
 # ── сам отбор ────────────────────────────────────────────────────────────────
 src = open(SRC, encoding="utf-8").read()
 
