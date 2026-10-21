@@ -1,3 +1,5 @@
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 import sys
 from unittest.mock import patch
@@ -62,8 +64,47 @@ def main():
             "https://www.transfermarkt.com/marlon/profil/spieler/273236"
         ), None)
         check("permanent HTTP 403 is not retried", sleep.call_count, 0)
+
+    with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=forbidden), patch(
+        "cards_photo_transfermarkt.time.sleep"
+    ):
+        check("all permanent profile responses yield confirmed no-data",
+              collector.get_profile({"name_en": "Marlon", "transfermarkt_id": "273236"}), None)
+        check("permanent profile failure classification",
+              collector.get_profile.last_failure, "no_data")
+
+    test_no_portrait_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
-    print("ok: Transfermarkt portrait metadata parser and linked-player fallback")
+    print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
+
+
+def test_no_portrait_is_confirmed_no_data():
+    rows = [{
+        "id": "player-card-id",
+        "name": "Unavailable Player",
+        "name_en": "Unavailable Player",
+        "transfermarkt_id": "123456",
+        "photo_url": None,
+    }]
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "test-key",
+        "APPLY": "1",
+    }), patch.object(collector, "read_all", return_value=rows), patch.object(
+        collector, "get_profile", return_value=None
+    ) as get_profile, patch.object(collector.time, "sleep"), patch(
+        "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
+    ):
+        get_profile.last_failure = "no_data"
+        output = StringIO()
+        with redirect_stdout(output):
+            collector.main()
+
+    text = output.getvalue()
+    check("no-data result does not exhaust the queue retry budget",
+          "ПРОФИЛЕЙ ПОТЕРЯНО" in text, False)
+    check("permanent no-data count", "Профилей без доступного портрета: 1" in text, True)
+    check("explicit zero-photo result", "Портретов найдено : 0" in text, True)
 
 
 def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
