@@ -66,7 +66,15 @@ describe('сторож у прогонов по расписанию', () => {
     expect(all.length).toBeGreaterThan(3);
     expect(byCron.length).toBeGreaterThanOrEqual(3);
     expect(byCron.map((w) => w.name).sort())
-      .toEqual(['daily-enrich.yml', 'forecast.yml', 'multimarket-odds-collection.yml', 'player-profile-data.yml', 'player-stats.yml']);
+      .toEqual([
+        'daily-enrich.yml',
+        'forecast.yml',
+        'multimarket-odds-collection.yml',
+        'player-profile-data.yml',
+        'player-stats.yml',
+        'profile-backfill-queue.yml',
+        'soccerwiki-roster-refresh.yml',
+      ]);
   });
 
   it('у каждого есть job `watch`, который идёт ВСЕГДА', () => {
