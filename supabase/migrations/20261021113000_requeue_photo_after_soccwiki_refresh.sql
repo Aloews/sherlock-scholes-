@@ -64,18 +64,16 @@ begin
             or (j.status='succeeded' and j.updated_at > now()-interval '30 days')
             or (
               j.status='no_data'
-              and (
-                -- A newer Soccer Wiki detail read can make a previously empty
-                -- photo task actionable immediately; do not wait for cooldown.
-                (j.task_type='photo_sw' and exists (
+              and coalesce(j.last_error,'') not like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
+              and j.updated_at > now()-interval '7 days'
+              and not (
+                -- A newer Soccer Wiki detail read makes this task actionable
+                -- immediately, so it must not be blocked by the generic cooldown.
+                j.task_type='photo_sw' and exists (
                   select 1 from soccerwiki_player sw
                    where sw.card_id=c.card_id
                      and nullif(btrim(sw.photo_url),'') is not null
                      and sw.detail_at > j.updated_at
-                ))
-                or (
-                  coalesce(j.last_error,'') not like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
-                  and j.updated_at > now()-interval '7 days'
                 )
               )
             )
