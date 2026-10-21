@@ -196,7 +196,7 @@ BEGIN
    WHERE cc.club_key <> s.club_key
      AND (cc.fetched_at IS NULL OR s.source_fetched_at >= cc.fetched_at);
 
-  INSERT INTO public.card_current_club
+  INSERT INTO public.card_current_club AS current_club
     (card_id, club, club_key, resolved_key, apps, source, fetched_at)
   SELECT s.card_id, s.club_name, s.club_key, s.club_key, NULL, 'soccerwiki', s.source_fetched_at
     FROM _sw s
@@ -206,8 +206,8 @@ BEGIN
     resolved_key = EXCLUDED.resolved_key,
     source = 'soccerwiki',
     fetched_at = EXCLUDED.fetched_at
-  WHERE public.card_current_club.fetched_at IS NULL
-     OR EXCLUDED.fetched_at >= public.card_current_club.fetched_at;
+  WHERE current_club.fetched_at IS NULL
+     OR EXCLUDED.fetched_at >= current_club.fetched_at;
 
   GET DIAGNOSTICS v_all = ROW_COUNT;
   RETURN QUERY SELECT v_all, v_moved, v_skipped;
