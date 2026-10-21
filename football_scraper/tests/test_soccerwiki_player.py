@@ -87,6 +87,15 @@ check(sw.parse_detail(UNKNOWN_FOOT)["foot"] is None, "«Unknown» — не но�
 blank = sw.parse_detail("<html><body>ничего</body></html>")
 check(all(v is None for v in blank.values()), "пустая страница — все поля пусты")
 
+# Порядок деталей зависит от задачи: фото-backfill сначала обслуживает
+# уже связанные карточки, обычное обогащение — очередь талантов.
+linked_first = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}], linked_first=True)
+check([row["pid"] for row in linked_first] == [1, 3, 2],
+      "linked-first photo pass prioritizes linked cards and deduplicates")
+talents_first = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}])
+check([row["pid"] for row in talents_first] == [2, 3, 1],
+      "default enrichment still prioritizes talents")
+
 # Возраст БЕЗ даты не превращается в дату: вычисленная дата рождения на экране
 # выглядит точно так же, как настоящая.
 check(sw.parse_born("25") is None, "возраст без даты — не дата")
