@@ -61,6 +61,7 @@ jobs:
         run: |
           python3 tests/test_paper_bankroll.py
           python3 tests/test_forecast_duel.py
+          python3 tests/test_forecast_pipeline.py
           python3 tests/test_calibration.py
 
       # Settle completed forecasts only after grading and calibration; then create new forecasts.
