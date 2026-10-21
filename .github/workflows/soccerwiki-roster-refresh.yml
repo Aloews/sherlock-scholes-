@@ -92,8 +92,8 @@ jobs:
             "$SUPABASE_URL/rest/v1/soccerwiki_player" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
             -H "Prefer: count=exact"
-          clubs=$(grep -i '^content-range:' "$club_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\\*)\\r?$#\\1#')
-          players=$(grep -i '^content-range:' "$player_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\\*)\\r?$#\\1#')
+          clubs=$(grep -i '^content-range:' "$club_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\*)\r?$#\1#')
+          players=$(grep -i '^content-range:' "$player_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\*)\r?$#\1#')
           [ -n "$clubs" ] || { echo "::error::missing exact count for SoccerWiki club read-after-write"; exit 1; }
           [ -n "$players" ] || { echo "::error::missing exact count for SoccerWiki player read-after-write"; exit 1; }
           rm -f "$club_headers" "$player_headers"
