@@ -72,6 +72,26 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         self.assertEqual(writes, [])
         self.assertEqual(classify_result(exit_code, output, False), "no_data")
 
+    def test_profile_match_rejects_ambiguous_single_token_namesake(self):
+        card = {"name": "Ramires", "name_en": "Ramires", "country": "BR"}
+        profile = {
+            "name": "Ramires Barbosa",
+            "full_name": "Ramires Barbosa",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/123.png",
+            "nation_code": "BRA",
+        }
+        self.assertFalse(worker.profile_matches_card(card, profile))
+
+    def test_profile_match_accepts_exact_single_token_name(self):
+        card = {"name": "Neymar", "name_en": "Neymar", "country": "BR"}
+        profile = {
+            "name": "Neymar",
+            "full_name": "Neymar",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/456.png",
+            "nation_code": "BRA",
+        }
+        self.assertTrue(worker.profile_matches_card(card, profile))
+
     def test_photo_sw_rejects_country_conflict(self):
         card = {"id": self.card_id, "name": "Diego Rodríguez",
                 "name_en": "Diego Rodríguez", "country": "ES"}
