@@ -94,6 +94,13 @@ check(sw.has_detail_payload(photo_only), "photo-only profile remains actionable"
 check(not sw.has_detail_payload({"photo_url": None, "full_name": None, "born_on": None, "height_cm": None}),
       "empty profile remains unprocessed")
 
+# Candidate rotation lets later profiles progress when a time-boxed crawl ends.
+check([row["pid"] for row in sw.rotate_rows([{"pid": i} for i in range(5)], 2)] == [2, 3, 4, 0, 1],
+      "photo candidate rotation advances through the queue")
+check(sw.rotate_rows([], 10) == [], "empty photo queue rotates safely")
+check([row["pid"] for row in sw.rotate_rows([{"pid": 1}], 100)] == [1],
+      "rotation wraps safely for a one-row queue")
+
 # Missing-photo profiles are processed before the general talent/link queues.
 priority = [{"pid": 9}, {"pid": 3}]
 ordered = sw.order_todo([{"pid": 2}, {"pid": 3}], [{"pid": 1}, {"pid": 3}], priority)
