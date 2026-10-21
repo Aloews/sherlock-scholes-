@@ -71,7 +71,10 @@ def profile_matches_card(card, profile):
             continue
         for profile_name in profile_names:
             profile_tokens = normalized_name_tokens(profile_name)
-            if profile_tokens and card_tokens.issubset(profile_tokens):
+            if profile_tokens and (
+                card_tokens == profile_tokens
+                or (len(card_tokens) >= 2 and card_tokens.issubset(profile_tokens))
+            ):
                 return True
     return False
 
