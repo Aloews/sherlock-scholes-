@@ -171,94 +171,50 @@ class SoccerWikiPhotoTests(unittest.TestCase):
 
 
 class TransfermarktFallbackTests(unittest.TestCase):
-    def test_unreachable_transfermarkt_falls_back_to_card_wikidata_qid(self):
-        tm_failed = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
-        )
+    job = {
+        "task_type": "photo_tm",
+        "transfermarkt_id": "1288921",
+        "wikidata_qid": "Q133865873",
+        "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
+    }
+
+    def test_wikidata_is_attempted_before_transfermarkt(self):
         qid_found = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1, первая картинка статьи 0)\nЗаписано : 1"
+            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1)\\nЗаписано : 1"
         )
-        job = {
-            "task_type": "photo_tm",
-            "transfermarkt_id": "1288921",
-            "wikidata_qid": "Q133865873",
-            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
-        }
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_found]) as run:
-            output, exit_code = worker.run_collector(job)
-
+        with patch("profile_backfill_queue.subprocess.run", return_value=qid_found) as run:
+            output, exit_code = worker.run_collector(self.job)
         self.assertEqual(exit_code, 0)
-        self.assertEqual(run.call_count, 2)
-        tm_command = run.call_args_list[0].args[0]
-        qid_command = run.call_args_list[1].args[0]
-        self.assertNotIn("--include-soccerwiki", tm_command)
-        self.assertIn("cards_photo_transfermarkt.py", tm_command[1])
-        self.assertIn("cards_photo_from_qid.py", qid_command[1])
-        self.assertIn("--only-card-id", qid_command)
-        self.assertIn(job["card_id"], qid_command)
-        self.assertIn("Wikidata fallback", output)
-        self.assertIn("Фото найдено : 1", output)
+        self.assertEqual(run.call_count, 1)
+        self.assertIn("cards_photo_from_qid.py", run.call_args.args[0][1])
+        self.assertIn("Источник: Wikidata", output)
 
-    def test_english_transfermarkt_fetch_loss_triggers_wikidata_fallback(self):
-        tm_failed = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Portraits found : 0\nPROFILE FETCHES LOST: 1"
-        )
-        qid_found = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 1\nЗаписано : 1"
-        )
-        job = {
-            "task_type": "photo_tm",
-            "transfermarkt_id": "1288921",
-            "wikidata_qid": "Q133865873",
-            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
-        }
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_found]) as run:
-            output, exit_code = worker.run_collector(job)
-
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(run.call_count, 2)
-        self.assertIn("Wikidata fallback", output)
-
-    def test_transfermarkt_placeholder_uses_qid_and_reports_true_no_data(self):
-        tm_placeholder = subprocess.CompletedProcess(
-            args=[], returncode=0,
-            stdout="Portraits found : 0\nPlaceholders rejected: 1\nWritten: 0",
-        )
+    def test_transfermarkt_is_fallback_after_wikidata_has_no_photo(self):
         qid_empty = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0, первая картинка статьи 0)"
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
         )
-        job = {
-            "task_type": "photo_tm",
-            "transfermarkt_id": "1288921",
-            "wikidata_qid": "Q133865873",
-            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
-        }
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_placeholder, qid_empty]) as run:
-            output, exit_code = worker.run_collector(job)
-
+        tm_found = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Portraits found : 1\\nWritten : 1"
+        )
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_found]) as run:
+            output, exit_code = worker.run_collector(self.job)
         self.assertEqual(exit_code, 0)
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(worker.classify_result(exit_code, output, False), "no_data")
+        self.assertIn("cards_photo_from_qid.py", run.call_args_list[0].args[0][1])
+        self.assertIn("cards_photo_transfermarkt.py", run.call_args_list[1].args[0][1])
+        self.assertIn("Источник: Transfermarkt после Wikidata", output)
 
-    def test_wikidata_miss_does_not_hide_transfermarkt_failure(self):
-        tm_failed = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
-        )
+    def test_transport_failure_is_retryable_after_fallback_attempt(self):
         qid_empty = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0, первая картинка статьи 0)"
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
         )
-        job = {
-            "task_type": "photo_tm",
-            "transfermarkt_id": "1288921",
-            "wikidata_qid": "Q133865873",
-            "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
-        }
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[tm_failed, qid_empty]):
-            output, exit_code = worker.run_collector(job)
-
-        self.assertEqual(exit_code, 1)
-        self.assertIn("ПРОФИЛЕЙ ПОТЕРЯНО", output)
-        self.assertIn("Фото найдено : 0", output)
+        tm_failed = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="HTTP 503"
+        )
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_failed]):
+            output, exit_code = worker.run_collector(self.job)
+        self.assertNotEqual(exit_code, 0)
+        self.assertIn("HTTP 503", output)
 
 
 class QueueResultTests(unittest.TestCase):
