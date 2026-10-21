@@ -1,7 +1,7 @@
 -- Run only after profile_market_finetune_test_setup.sql and the migration.
 begin;
 do $$
-declare v_card uuid; v_sw_card uuid; v_retry_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
+declare v_card uuid; v_sw_card uuid; v_retry_card uuid; v_backoff_card uuid; v_backoff_job_id bigint; v_found boolean; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
 begin
   if public.settle_market_outcome('h2h','home',0,2,1) <> 'won' then raise exception 'h2h home'; end if;
   if public.settle_market_outcome('h2h','draw',0,2,1) <> 'lost' then raise exception 'h2h losing outcome'; end if;
@@ -174,6 +174,36 @@ begin
    where id='finetune-regression-fixture';
   if not exists(select 1 from public.export_llm_finetune_examples() where fixture_id='finetune-regression-fixture' and target_outcome='home') then
     raise exception 'settled fine-tuning example was not exported';
+  end if;
+  -- A failed photo task must not be reclaimed immediately in the same run.
+  -- Stale running jobs remain recoverable even after their attempt counter is exhausted.
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
+  values('Photo retry backoff regression','player',true,'tm-retry-backoff','Qretrybackoff',999999999)
+  returning id into v_backoff_card;
+  insert into public.profile_backfill_jobs(
+    card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,max_attempts
+  )
+  values(v_backoff_card,'photo_tm','tm-retry-backoff','Qretrybackoff',999999999999999999999999,'pending',1,3)
+  returning id into v_backoff_job_id;
+  select exists(
+    select 1 from public.claim_profile_backfill_jobs(100,45) where id=v_backoff_job_id
+  ) into v_found;
+  if v_found then
+    raise exception 'photo retry was claimed immediately instead of respecting backoff';
+  end if;
+  update public.profile_backfill_jobs
+     set updated_at=now()-interval '61 minutes'
+   where id=v_backoff_job_id;
+  select * into v_job from public.claim_profile_backfill_jobs(1,45);
+  if v_job.id <> v_backoff_job_id then
+    raise exception 'photo retry was not claimed after the backoff elapsed';
+  end if;
+  update public.profile_backfill_jobs
+     set status='running',attempts=max_attempts,updated_at=now()-interval '46 minutes'
+   where id=v_backoff_job_id;
+  select * into v_job from public.claim_profile_backfill_jobs(1,45);
+  if v_job.id <> v_backoff_job_id or v_job.attempts <= v_job.max_attempts then
+    raise exception 'stale running photo job at max attempts was not reclaimed';
   end if;
 end $$;
 rollback;
