@@ -192,8 +192,8 @@ def run_collector(job):
     if task=="photo_tm" and job.get("wikidata_qid"):
         folded=output.casefold()
         has_portrait=bool(
-            re.search(r"portraits found\\s*:\\s*[1-9]\\d*",folded)
-            or re.search(r"портретов найдено\\s*:\\s*[1-9]\\d*",folded)
+            re.search(r"portraits found\s*:\s*[1-9]\d*",folded)
+            or re.search(r"портретов найдено\s*:\s*[1-9]\d*",folded)
         )
         if not has_portrait:
             fallback_command=[sys.executable,"docs/cards_photo_from_qid.py",
@@ -203,18 +203,18 @@ def run_collector(job):
             fallback_output=fallback.stdout[-12000:]
             fallback_folded=fallback_output.casefold()
             if (fallback.returncode==0 and
-                    re.search(r"фото найдено\\s*:\\s*[1-9]\\d*",fallback_folded)):
-                return fallback_output+"\\nИсточник: Wikidata fallback после отсутствия пригодного портрета Transfermarkt",0
+                    re.search(r"фото найдено\s*:\s*[1-9]\d*",fallback_folded)):
+                return fallback_output+"\nИсточник: Wikidata fallback после отсутствия пригодного портрета Transfermarkt",0
 
-            combined=(output+"\\nWikidata fallback attempt:\\n"+fallback_output)[-12000:]
+            combined=(output+"\nWikidata fallback attempt:\n"+fallback_output)[-12000:]
             tm_fetch_lost=any(marker in folded for marker in (
                 "профилей потеряно", "profile fetches lost"
             ))
             tm_zero=bool(re.search(
-                r"(?:portraits found|портретов найдено)\\s*:\\s*0(?:\\D|$)",folded
+                r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",folded
             ))
             qid_zero=bool(re.search(
-                r"фото найдено\\s*:\\s*0(?:\\D|$)",fallback_folded
+                r"фото найдено\s*:\s*0(?:\D|$)",fallback_folded
             ))
             if result.returncode!=0 or tm_fetch_lost or fallback.returncode!=0:
                 return combined,(fallback.returncode if fallback.returncode else 1)
