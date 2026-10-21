@@ -1,8 +1,41 @@
 # -*- coding: utf-8 -*-
-"""Read a player's portrait from their Transfermarkt profile by canonical ID.
+"""Фото игрока — портрет с его профиля на Transfermarkt, по id.
 
-The profile URL is read from the source page; it is never guessed from an image ID.
-Default/dummy portraits are rejected. Writes only fill blank card photo fields.
+ИСТОЧНИК НАЗВАН ПРЯМО, И ЭТО НАМЕРЕННО. Портреты берутся с transfermarkt.com,
+ссылка ведёт на их же CDN (`img.a.transfermarkt.technology`) — то есть
+происхождение видно прямо в адресе картинки и не спрятано. Владелец решение по
+этому источнику принимал осознанно и повторял: «бери рейтинг и важную
+информацию с трансфермаркет», «маскировать происхождение данных НЕ НАДО».
+Точно так же в этом проекте уже показываются эмблемы клубов с CDN ESPN.
+
+ЗАЧЕМ ЕЩЁ ОДИН СБОРЩИК ФОТО. Викиданные закрывают меньшинство: замер
+06.09.2026 — активных игроков 19 115, фото у 4391 (23%). Вторая картинка из
+Википедии («первая картинка статьи») дыру НЕ закрывает, и это тоже замер, а не
+догадка: из 132 статей игроков без P18 картинка нашлась в ОДНОЙ. Причина
+понятна — P18 в Викиданных заполняется ботами из картинки статьи, так что
+«нет P18» почти всегда значит «в статье её тоже нет».
+
+Профиль на Transfermarkt есть у 8812 карточек (у них проставлен
+`transfermarkt_id`), и портрет там почти всегда: проба на 12 безвестных
+игроках из ростера — 11 портретов и одна заглушка.
+
+⚠️ ЗАГЛУШКА ОТСЕИВАЕТСЯ, А НЕ ЗАПИСЫВАЕТСЯ. У игрока без фотографии TM отдаёт
+`portrait/big/default.jpg` — один и тот же силуэт на всех. Записать его значит
+объявить, что фото есть: карточка выглядела бы заполненной, а в игре стоял бы
+серый человечек, и починить это потом было бы нечем — по URL уже не отличить
+«не собрали» от «собрали заглушку».
+
+⚠️ АДРЕС НЕ КОНСТРУИРУЕТСЯ, А ЧИТАЕТСЯ. В имени файла стоит отметка времени
+(`574671-1757664768.jpg`), и угадать её нельзя — поэтому один запрос на игрока.
+Отсюда и темп: 1.5 с между запросами, как у сборщика составов.
+
+⚠️ ПУСТОЕ ПОЛЕ ЧЕСТНЕЕ ЧУЖОГО ФОТО. Ничего не перезаписывается: пишем только
+туда, где `photo_url is null`, и условие стоит В ЗАПРОСЕ на запись, а не
+только в выборке.
+
+ЗАПУСК (сухой по умолчанию; APPLY=1 пишет):
+    python docs/cards_photo_transfermarkt.py --limit 50
+    APPLY=1 python docs/cards_photo_transfermarkt.py
 """
 import argparse
 import html as html_lib
@@ -23,9 +56,9 @@ RETRIES = 3
 PAGE = 1000
 WRITE_BATCH = 25
 
-META_TAG = re.compile(r"<meta\\b[^>]*>", re.I | re.S)
-META_ATTR = re.compile(r"""([a-zA-Z_:][\\w:.-]*)\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))""")
-PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\\.[a-z]+\\Z', re.I)
+META_TAG = re.compile(r"<meta\b[^>]*>", re.I | re.S)
+META_ATTR = re.compile(r"""([a-zA-Z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+PLACEHOLDER = re.compile(r'/(default|dummy)[^/]*\.[a-z]+\Z', re.I)
 
 
 def meta_image_url(html):
@@ -36,11 +69,10 @@ def meta_image_url(html):
             attrs[match.group(1).lower()] = html_lib.unescape(value).strip()
         image_key = attrs.get("property", attrs.get("name", "")).casefold()
         if image_key in {"og:image", "twitter:image", "twitter:image:src"}:
-            value = attrs.get("content", "").replace("\\\\/", "/").strip()
+            value = attrs.get("content", "").replace("\\/", "/").strip()
             if value:
                 return value
     return None
-
 
 def sb(path, method="GET", body=None, params=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
@@ -57,6 +89,7 @@ def sb(path, method="GET", body=None, params=None):
 
 
 def read_all(path, params):
+    """PostgREST режет по db-max-rows=1000 — без страниц теряется хвост."""
     out, offset = [], 0
     while True:
         page = sb(path, params=dict(params, limit=PAGE, offset=offset))
@@ -71,8 +104,12 @@ def has_profile_content(html):
         r"data-header__market-value-wrapper|data-header__profile-container|data-header__profile-image|dataBild",
         html or "", re.I))
 
-
 def portrait_url(html):
+    """Адрес портрета со страницы профиля — или None.
+
+    ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
+    в колоду попадёт серый силуэт под видом фотографии.
+    """
     url = meta_image_url(html)
     if not url:
         return None
@@ -106,6 +143,7 @@ def profile_urls(card):
 
 
 def get_profile(card):
+    """Try canonical slug URLs first; accept verified profile markup or a real portrait."""
     for url in profile_urls(card):
         html = get(url)
         if html and (has_profile_content(html) or portrait_url(html)):
@@ -121,10 +159,12 @@ def get(url):
             with urllib.request.urlopen(req, timeout=60) as fh:
                 return fh.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
+            # Permanent client errors (including anti-bot 403 and missing 404)
+            # will not improve with retries; let get_profile try another region.
             if exc.code in {403, 404, 410} or attempt + 1 == RETRIES:
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
-        except Exception:
+        except Exception:                                        # noqa: BLE001
             if attempt + 1 == RETRIES:
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
@@ -141,28 +181,45 @@ def rotate_candidates(rows, offset, limit):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--limit", type=int, default=0, help="how many cards (0 means all)")
-    ap.add_argument("--offset", type=int, default=0, help="candidate window offset")
-    ap.add_argument("--only", default="", help="process one Transfermarkt ID")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
+    ap.add_argument("--offset", type=int, default=0, help="сдвиг окна кандидатов для ежедневной ротации")
+    ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
+    ap.add_argument("--include-soccerwiki", action="store_true",
+                    help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
     if args.only and not args.only.isdigit():
-        raise SystemExit("--only must be a numeric Transfermarkt ID")
+        raise SystemExit("--only должен быть числовым Transfermarkt ID")
     apply_ = os.environ.get("APPLY") == "1"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
-        raise SystemExit("SUPABASE_URL and SUPABASE_KEY are required")
+        raise SystemExit("нужны SUPABASE_URL и SUPABASE_KEY")
 
+    # ⚠️ ТОЛЬКО ИГРОКИ. У клуба на TM своя эмблема, но эмблемы в этом проекте
+    # берутся с ESPN и решение это принято владельцем; подменять их отсюда
+    # значило бы откатывать его молча.
     rows = read_all("cards", {"select": "id,name,name_en,transfermarkt_id,photo_url",
                               "category": "eq.player", "active": "is.true",
                               "transfermarkt_id": ("eq." + args.only) if args.only else "not.is.null",
                               "order": "id"})
+
+    # Existing data can be a blank string as well as SQL NULL.
     rows = [row for row in rows if not str(row.get("photo_url") or "").strip()]
     if args.only:
         rows = [row for row in rows if str(row.get("transfermarkt_id") or "") == args.only]
 
-    rows = rotate_candidates(rows, args.offset, args.limit)
-    print("Cards without a photo and with a Transfermarkt ID: %d (APPLY=%s)"
-          % (len(rows), "yes" if apply_ else "dry-run"), flush=True)
+    # The queue tries Soccer Wiki first and verifies its write. A linked Soccer Wiki
+    # row is not proof that it contains a usable portrait: if its URL is empty,
+    # a placeholder, or unreachable, Transfermarkt must remain a valid fallback.
+    # The per-card worker calls this collector only after checking whether the
+    # card already received a reachable portrait from an earlier source.
+
+    try:
+        rows = rotate_candidates(rows, args.offset, args.limit)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+    print("Карточек без фото, где Transfermarkt — единственный источник: %d  (APPLY=%s)"
+          % (len(rows), "да" if apply_ else "нет — сухой прогон"), flush=True)
     if not rows:
         return
 
@@ -170,6 +227,7 @@ def main():
     batch = []
 
     def flush():
+        """Запись ПО ХОДУ: оборванный прогон обязан оставить сделанное."""
         nonlocal batch, written
         if apply_:
             for card_id, url in batch:
@@ -196,21 +254,23 @@ def main():
         if len(batch) >= WRITE_BATCH:
             flush()
         if i % 25 == 0:
-            print("  %d/%d, portraits %d, placeholders %d, lost %d"
+            print("  %d/%d, портретов %d, заглушек %d, потеряно %d"
                   % (i, len(rows), found, placeholder, lost), flush=True)
         time.sleep(PAUSE)
 
     flush()
     print("-" * 70)
-    print("Portraits found : %d" % found)
-    print("Placeholders rejected: %d" % placeholder)
-    print("Written         : %d" % written)
+    print("Портретов найдено : %d" % found)
+    print("Заглушек отвергнуто: %d" % placeholder)
+    print("Записано          : %d" % written)
     if lost:
-        print("PROFILE FETCHES LOST: %d — retry on next run" % lost)
+        # ⚠️ Потеря — это НЕ «фото нет». Пустота непрочитанной страницы ничего
+        # не значит, и прогон надо повторить.
+        print("⚠️ ПРОФИЛЕЙ ПОТЕРЯНО: %d — повторить прогон" % lost)
     if not apply_:
-        print("Dry run. Set APPLY=1 to write.")
-    elif written == 0 and found:
-        raise SystemExit("Portraits were found but no writes were verified.")
+        print("\nСухой прогон. APPLY=1 — записать.")
+    elif written == 0:
+        raise SystemExit("No player portraits were written; investigate source access or candidate selection.")
 
 
 if __name__ == "__main__":
