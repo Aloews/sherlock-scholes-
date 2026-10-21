@@ -64,9 +64,10 @@ begin
             or (j.status='succeeded' and j.updated_at > now()-interval '30 days')
             or (
               j.status='no_data'
-              and j.last_error like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
+              and j.last_error not like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
+              and j.updated_at > now()-interval '7 days'
             )
-            or (j.status in ('no_data','failed') and j.updated_at > now()-interval '7 days')
+            or (j.status='failed' and j.updated_at > now()-interval '7 days')
           )
      )
   ), limited as (
