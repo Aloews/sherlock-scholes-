@@ -74,6 +74,7 @@ def main():
               collector.get_profile.last_failure, "no_data")
 
     test_no_portrait_is_confirmed_no_data()
+    test_placeholder_profile_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
     print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
 
@@ -105,6 +106,40 @@ def test_no_portrait_is_confirmed_no_data():
           "ПРОФИЛЕЙ ПОТЕРЯНО" in text, False)
     check("permanent no-data count", "Профилей без доступного портрета: 1" in text, True)
     check("explicit zero-photo result", "Портретов найдено : 0" in text, True)
+
+
+def test_placeholder_profile_is_confirmed_no_data():
+    rows = [{
+        "id": "player-card-id",
+        "name": "Placeholder Player",
+        "name_en": "Placeholder Player",
+        "transfermarkt_id": "123456",
+        "photo_url": None,
+    }]
+    valid_profile_with_silhouette = (
+        '<div class="data-header__market-value-wrapper"></div>'
+        '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1">'
+    )
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "test-key",
+        "APPLY": "1",
+    }), patch.object(collector, "read_all", return_value=rows), patch.object(
+        collector, "get_profile", return_value=valid_profile_with_silhouette
+    ), patch.object(collector.time, "sleep"), patch(
+        "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
+    ):
+        output = StringIO()
+        with redirect_stdout(output):
+            collector.main()
+
+    text = output.getvalue()
+    check("placeholder-only profile does not fail the queue job",
+          "ПРОФИЛЕЙ ПОТЕРЯНО" in text, False)
+    check("placeholder is explicitly rejected", "Заглушек отвергнуто: 1" in text, True)
+    check("placeholder-only profile is no-data",
+          "Профилей без доступного портрета: 1" in text, True)
+    check("zero portraits are reported", "Портретов найдено : 0" in text, True)
 
 
 def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
