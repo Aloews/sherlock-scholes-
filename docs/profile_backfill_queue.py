@@ -198,10 +198,10 @@ def run_collector(job):
             qid_result = subprocess.run(qid_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
             qid_output = qid_result.stdout[-12000:]
-            outputs.append("Wikidata attempt:\\n" + qid_output)
+            outputs.append("Wikidata attempt:\n" + qid_output)
             qid_exit = qid_result.returncode
-            if qid_exit == 0 and re.search(r"фото найдено\\s*:\\s*[1-9]\\d*", qid_output.casefold()):
-                return qid_output + "\\nИсточник: Wikidata", 0
+            if qid_exit == 0 and re.search(r"фото найдено\s*:\s*[1-9]\d*", qid_output.casefold()):
+                return qid_output + "\nИсточник: Wikidata", 0
             if qid_exit != 0:
                 failures.append(qid_exit)
 
@@ -212,19 +212,19 @@ def run_collector(job):
             tm_result = subprocess.run(tm_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
             tm_output = tm_result.stdout[-12000:]
-            outputs.append("Transfermarkt attempt:\\n" + tm_output)
+            outputs.append("Transfermarkt attempt:\n" + tm_output)
             if tm_result.returncode == 0 and (
-                re.search(r"portraits found\\s*:\\s*[1-9]\\d*", tm_output.casefold())
-                or re.search(r"портретов найдено\\s*:\\s*[1-9]\\d*", tm_output.casefold())
+                re.search(r"portraits found\s*:\s*[1-9]\d*", tm_output.casefold())
+                or re.search(r"портретов найдено\s*:\s*[1-9]\d*", tm_output.casefold())
             ):
-                return tm_output + "\\nИсточник: Transfermarkt после Wikidata", 0
+                return tm_output + "\nИсточник: Transfermarkt после Wikidata", 0
             if tm_result.returncode != 0:
                 failures.append(tm_result.returncode)
 
-        combined = "\\n".join(outputs)[-12000:]
-        qid_zero = bool(re.search(r"фото найдено\\s*:\\s*0(?:\\D|$)", qid_output.casefold()))
+        combined = "\n".join(outputs)[-12000:]
+        qid_zero = bool(re.search(r"фото найдено\s*:\s*0(?:\D|$)", qid_output.casefold()))
         tm_zero = bool(re.search(
-            r"(?:portraits found|портретов найдено)\\s*:\\s*0(?:\\D|$)",
+            r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",
             combined.casefold()
         ))
         if failures:
