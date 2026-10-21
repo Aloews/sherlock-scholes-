@@ -116,6 +116,12 @@ jobs:
       - name: Defer photo queue retries and reclaim stale leases
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021113947_photo_backfill_retry_backoff_20261021.sql
 
+      - name: Requeue legacy photo jobs misclassified as transport failures
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021171000_requeue_photo_tm_no_data_failures.sql
+
+      - name: Verify legacy photo no-data requeue
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/photo_backfill_requeue_no_data.test.sql
+
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
 
