@@ -65,7 +65,7 @@ def main():
     print("ok: Transfermarkt portrait metadata parser")
 
 
-def test_transfermarkt_remains_fallback_for_soccwerwiki_linked_players():
+def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
     rows = [{
         "id": "player-card-id",
         "name": "Example Player",
