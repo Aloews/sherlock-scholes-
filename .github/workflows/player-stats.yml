@@ -154,6 +154,11 @@ jobs:
               cat "$response_file"
               exit 1
             fi
+            if [ "$fn" = "run_model_accumulator_generation" ] && grep -q 'generation failed' "$response_file"; then
+              echo "::error::model accumulator generation failed despite HTTP $code"
+              cat "$response_file"
+              exit 1
+            fi
             echo "$fn: HTTP $code"
           done
 
