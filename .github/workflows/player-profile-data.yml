@@ -12,6 +12,7 @@ on:
       - 'docs/profile_backfill_queue.py'
       - 'docs/soccerwiki_link_refresh.py'
       - 'docs/test_profile_backfill_queue.py'
+      - 'docs/test_soccerwiki_link_refresh.py'
       - 'docs/test_cards_photo_transfermarkt.py'
       - 'supabase/migrations/**'
   schedule:
@@ -120,8 +121,11 @@ jobs:
       - name: Test profile backfill queue and source identity checks
         run: python3 docs/test_profile_backfill_queue.py
 
-      - name: Refresh Soccer Wiki player-to-card links and photo data
-        run: python3 docs/soccerwiki_link_refresh.py
+      - name: Test verified-only Soccer Wiki photo writes
+        run: python3 docs/test_soccerwiki_link_refresh.py
+
+      - name: Refresh Soccer Wiki player-to-card links and ratings
+        run: python3 docs/soccerwiki_link_refresh.py --skip-photo-fill
 
       - name: Enqueue and process verified player-photo backfill
         run: |
