@@ -172,19 +172,16 @@ def get(url):
     return None
 
 
-def order_todo(talents, linked):
-    """Слить два списка, сохранив порядок и выбросив повторы.
+def order_todo(talents, linked, photo_priority=()):
+    """Слить приоритетные профили, таланты и связанные строки без повторов.
 
-    ⚠️ ТАЛАНТЫ ИДУТ ПЕРВЫМИ, И ЭТО ВЕСЬ СМЫСЛ ФУНКЦИИ. Прогон длинный и может
-    оборваться на любом месте; кто прочитан раньше — тот и получит дату
-    рождения, а без неё игрока нечем связать с карточкой.
-
-    ⚠️ ПОВТОР ВЫБРАСЫВАЕТСЯ ПО ПЕРВОМУ ВХОЖДЕНИЮ. Игрок может быть и в очереди
-    талантов, и среди связанных; прочитать его дважды значит потратить запрос
-    впустую и сдвинуть остальных.
+    В первую очередь идут уже связанные игроки, у карточек которых нет фото:
+    это непосредственно закрывает пробелы в игровой колоде. Затем идут
+    таланты, после них — остальные связанные игроки. Порядок сохраняется,
+    а повторный pid выбрасывается по первому вхождению.
     """
     seen, out = set(), []
-    for r in list(talents) + list(linked):
+    for r in list(photo_priority) + list(talents) + list(linked):
         pid = r["pid"]
         if pid in seen:
             continue
@@ -228,7 +225,7 @@ def main():
     talents = all_rows("player_talent_queue",
                        {"select": "pid,name,rating,place", "order": "place.asc"})
     linked = all_rows("soccerwiki_player",
-                      {"select": "pid,name,rating", "card_id": "not.is.null",
+                      {"select": "pid,name,rating,card_id", "card_id": "not.is.null",
                        "order": "rating.desc.nullslast,pid.asc"})
     if not args.refresh:
         # `detail_at` нет во взгляде очереди, поэтому непрочитанные отбираются
@@ -238,9 +235,16 @@ def main():
         talents = [r for r in talents if r["pid"] in fresh]
         linked = [r for r in linked if r["pid"] in fresh]
 
-    todo = order_todo(talents, linked)
-    print("очередь талантов: %d, связанных с колодой: %d"
-          % (len(talents), len(linked)))
+    # Prioritize linked players whose active deck card still lacks a portrait.
+    # The Soccer Wiki detail crawl has a strict time budget; without this list,
+    # the talent queue consumes the whole run before missing deck portraits are read.
+    missing_photo_card_ids = {r["id"] for r in all_rows(
+        "cards", {"select": "id", "category": "eq.player", "active": "is.true",
+                  "or": "(photo_url.is.null,photo_url.eq.)"})}
+    photo_priority = [r for r in linked if r.get("card_id") in missing_photo_card_ids]
+    todo = order_todo(talents, linked, photo_priority)
+    print("очередь без фото: %d, талантов: %d, связанных: %d"
+          % (len(photo_priority), len(talents), len(linked)))
     if args.limit > 0:
         todo = todo[:args.limit]
     print("страниц к чтению: %d%s" % (len(todo), "" if apply else "  (СУХОЙ ПРОГОН)"))
