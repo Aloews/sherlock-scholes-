@@ -131,8 +131,8 @@ jobs:
         run: |
           APPLY=1 python3 docs/profile_backfill_queue.py \
             --enqueue-limit 50000 \
-            --batch-size 5 \
-            --max-jobs 400 \
+            --batch-size 10 \
+            --max-jobs 500 \
             --report "$RUNNER_TEMP/profile-backfill-result.jsonl"
 
       - name: Upload backfill audit report
