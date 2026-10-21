@@ -73,3 +73,16 @@ jobs:
           name: profile-backfill-result
           path: profile-backfill-result.jsonl
           if-no-files-found: ignore
+
+  watch:
+    needs: [backfill]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BACKFILL_RESULT: ${{ needs.backfill.result }}
+    steps:
+      - name: Verify bounded profile enrichment completed
+        run: |
+          echo "backfill = $BACKFILL_RESULT"
+          [ "$BACKFILL_RESULT" = "success" ] || { echo "::error::backfill: $BACKFILL_RESULT"; exit 1; }
