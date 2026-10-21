@@ -95,6 +95,10 @@ BEGIN
        WHERE card_id = '00000000-0000-0000-0000-000000000003') THEN
     RAISE EXCEPTION 'stale SoccerWiki source created a new current-club record';
   END IF;
+  IF (SELECT fetched_at FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000004') >= now() - interval '7 days' THEN
+    RAISE EXCEPTION 'legacy SoccerWiki copy timestamp was not corrected to source time';
+  END IF;
 END;
 $assert$;
 
