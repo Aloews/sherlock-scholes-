@@ -1,7 +1,7 @@
 -- Run only after profile_market_finetune_test_setup.sql and the migration.
 begin;
 do $$
-declare v_card uuid; v_sw_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
+declare v_card uuid; v_sw_card uuid; v_retry_card uuid; v_job record; v_count integer; v_status text; v_row record; v_first integer; v_second integer;
 begin
   if public.settle_market_outcome('h2h','home',0,2,1) <> 'won' then raise exception 'h2h home'; end if;
   if public.settle_market_outcome('h2h','draw',0,2,1) <> 'lost' then raise exception 'h2h losing outcome'; end if;
