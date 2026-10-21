@@ -17,7 +17,7 @@ class SoccerWikiPhotoTests(unittest.TestCase):
         writes = []
 
         def fake_request(path, params=None, method="GET", body=None):
-            if path == "cards" and method == "GET" and params.get("select") == "id,name,name_en,country,photo_url":
+            if path == "cards" and method == "GET" and params.get("select") == "id,name,name_en,country,photo_url,born_on":
                 return [card]
             if path == "soccerwiki_player":
                 return profiles
@@ -78,6 +78,38 @@ class SoccerWikiPhotoTests(unittest.TestCase):
             "name": "Ramires Barbosa",
             "full_name": "Ramires Barbosa",
             "photo_url": "https://cdn.soccerwiki.org/images/player/123.png",
+            "nation_code": "BRA",
+        }
+        self.assertFalse(worker.profile_matches_card(card, profile))
+
+    def test_photo_sw_accepts_surname_first_mononym_when_birth_date_matches(self):
+        url = "https://cdn.soccerwiki.org/images/player/456.png"
+        card = {
+            "id": self.card_id, "name": "Neymar", "name_en": "Neymar",
+            "country": "BR", "born_on": "1992-02-05",
+        }
+        profile = {
+            "name": "Júnior Neymar",
+            "full_name": "Neymar da Silva Santos Júnior",
+            "born_on": "1992-02-05",
+            "photo_url": url,
+            "nation_code": "BRA",
+        }
+        output, exit_code, writes = self.run_photo_sw(card, [profile])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(writes, [url])
+        self.assertIn("Источник: Soccer Wiki", output)
+
+    def test_profile_match_rejects_conflicting_birth_dates(self):
+        card = {
+            "name": "Neymar", "name_en": "Neymar",
+            "country": "BR", "born_on": "1992-02-05",
+        }
+        profile = {
+            "name": "Neymar", "full_name": "Neymar",
+            "born_on": "1985-02-05",
+            "photo_url": "https://cdn.soccerwiki.org/images/player/456.png",
             "nation_code": "BRA",
         }
         self.assertFalse(worker.profile_matches_card(card, profile))
