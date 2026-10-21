@@ -113,15 +113,25 @@ def profile_urls(card):
 
 
 def get_profile(card):
-    """Try canonical slug URLs first; accept verified profile markup or a real portrait."""
+    """Try regional profile URLs; distinguish unavailable profiles from transport loss."""
+    transient = False
     for url in profile_urls(card):
         html = get(url)
         if html and (has_profile_content(html) or portrait_url(html)):
+            get_profile.last_failure = None
             return html
+        # A 200 response with no expected profile markup can be an interstitial
+        # or a parser regression, so keep it retryable rather than calling it no-data.
+        if html:
+            transient = True
+        elif str(get.last_failure or "").startswith("transient"):
+            transient = True
+    get_profile.last_failure = "transient" if transient else "no_data"
     return None
 
 
 def get(url):
+    get.last_failure = None
     for attempt in range(RETRIES):
         try:
             req = urllib.request.Request(url, headers={
@@ -129,15 +139,22 @@ def get(url):
             with urllib.request.urlopen(req, timeout=60) as fh:
                 return fh.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
-            # Permanent client errors (including anti-bot 403 and missing 404)
-            # will not improve with retries; let get_profile try another region.
-            if exc.code in {403, 404, 410} or attempt + 1 == RETRIES:
+            # 403/404/410 are permanent for this URL; get_profile tries other
+            # regional hosts. Do not turn a complete set of permanent responses
+            # into a transport failure that exhausts the queue's retry budget.
+            if exc.code in {403, 404, 410}:
+                get.last_failure = "permanent_http"
+                return None
+            if attempt + 1 == RETRIES:
+                get.last_failure = "transient_http"
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
         except Exception:                                        # noqa: BLE001
             if attempt + 1 == RETRIES:
+                get.last_failure = "transient"
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
+    get.last_failure = "transient"
     return None
 
 
@@ -191,7 +208,7 @@ def main():
     if not rows:
         return
 
-    found = placeholder = lost = written = 0
+    found = placeholder = lost = no_profile = written = 0
     batch = []
 
     def flush():
@@ -211,14 +228,21 @@ def main():
     for i, card in enumerate(rows, 1):
         html = get_profile(card)
         if html is None:
-            lost += 1
+            if getattr(get_profile, "last_failure", "transient") == "transient":
+                lost += 1
+            else:
+                no_profile += 1
         else:
             url = portrait_url(html)
             if url:
                 found += 1
                 batch.append((card["id"], url))
-            elif meta_image_url(html):
-                placeholder += 1
+            else:
+                # A valid profile with a default silhouette or no image is a
+                # confirmed source miss, not a transport failure.
+                no_profile += 1
+                if meta_image_url(html):
+                    placeholder += 1
         if len(batch) >= WRITE_BATCH:
             flush()
         if i % 25 == 0:
@@ -231,14 +255,16 @@ def main():
     print("Портретов найдено : %d" % found)
     print("Заглушек отвергнуто: %d" % placeholder)
     print("Записано          : %d" % written)
+    print("Профилей без доступного портрета: %d" % no_profile)
     if lost:
-        # ⚠️ Потеря — это НЕ «фото нет». Пустота непрочитанной страницы ничего
-        # не значит, и прогон надо повторить.
+        # ⚠️ Потеря — это НЕ «фото нет». Транспортный сбой или неожиданный
+        # HTML требует повтора; подтверждённые 403/404/410 — нет данных сейчас.
         print("⚠️ ПРОФИЛЕЙ ПОТЕРЯНО: %d — повторить прогон" % lost)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
-    elif written == 0:
-        raise SystemExit("No player portraits were written; investigate source access or candidate selection.")
+    elif lost and written == 0:
+        raise SystemExit("Profile fetches were lost; retry this job after backoff.")
+
 
 
 if __name__ == "__main__":

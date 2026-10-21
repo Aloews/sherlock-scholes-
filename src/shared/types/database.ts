@@ -275,13 +275,10 @@ export const SPECIAL_TAGS: SpecialTag[] = [
 ];
 
 // ─── Rarity tiers (cards.tier) ───────────────────────────────────
-// PURELY COSMETIC: the coloured card frame. cards.tier is derived from
-// cards.fame by fame_tier() (supabase/migrations/deck_fame.sql), so a card
-// can no longer be "легендарная" on the frame and "малоизвестная" in the
-// picker — which is exactly what the old tier-based chips produced.
-// 'icon' sits above legendary — the game's most iconic cards. fame_tier()
-// does not produce it yet; until something does, no card carries it and the
-// tier is simply unused (every consumer keys off TIER_COLOR/TIERS).
+// Cosmetic card frame synchronized from fame plus a verified, recent
+// Transfermarkt valuation. Historic fame wins; market value can lift a current
+// player to epic/rare or qualify a young player as a prospect. Stale valuations
+// are ignored. 'icon' is manually curated and is never overwritten.
 export type Tier = 'icon' | 'legendary' | 'epic' | 'prospect' | 'rare' | 'common';
 export const TIERS: Tier[] = ['icon', 'legendary', 'epic', 'prospect', 'rare', 'common'];
 export const TIER_COLOR: Record<Tier, string> = {
@@ -367,7 +364,7 @@ export interface Card {
   wikidata_qid?: string | null;
   /** Идентификатор на transfermarkt.com из Викиданных (P2446). */
   transfermarkt_id?: string | null;
-  tier?: Tier | null;                   // cosmetic frame, derived from fame
+  tier?: Tier | null;                   // cosmetic frame, derived from fame + current verified valuation
   descriptions?: Record<string, string> | null; // short per-language blurbs for non-player cards (terms, positions…); absent until the descriptions column ships
   ovr?: number | null;                  // overall rating 0–100 (FIFA-style); absent until cards_attributes_column.sql runs and is backfilled
   attributes?: CardAttributes | null;   // six 0–100 sub-ratings; same as above
