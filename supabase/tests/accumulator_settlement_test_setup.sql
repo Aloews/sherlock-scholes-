@@ -39,6 +39,34 @@ INSERT INTO cron.job(jobname, schedule, command) VALUES
   ('build-model-accumulators', '10 7 * * *', 'SELECT public.build_model_accumulators()'),
   ('settle-model-accumulators', '0 7 * * *', 'SELECT public.settle_accumulators()');
 
+CREATE TABLE public.cards (
+  id uuid PRIMARY KEY,
+  born_on date
+);
+CREATE TABLE public.soccerwiki_player (
+  pid text,
+  card_id uuid,
+  club_id text,
+  born_on date,
+  fetched_at timestamptz
+);
+CREATE TABLE public.soccerwiki_club (
+  club_id text,
+  club_key text,
+  name text,
+  fetched_at timestamptz
+);
+CREATE TABLE public.football_club (club_key text PRIMARY KEY);
+CREATE TABLE public.card_current_club (
+  card_id uuid PRIMARY KEY,
+  club text,
+  club_key text,
+  resolved_key text,
+  apps integer,
+  source text,
+  fetched_at timestamptz
+);
+
 CREATE TABLE public.forecast_pick (
   fixture_id text NOT NULL,
   commence_at timestamptz NOT NULL,
@@ -103,3 +131,24 @@ BEGIN
   END LOOP;
 END;
 $fixtures$;
+
+INSERT INTO public.cards(id, born_on) VALUES
+  ('00000000-0000-0000-0000-000000000001', '1990-01-01'),
+  ('00000000-0000-0000-0000-000000000002', '1991-01-01'),
+  ('00000000-0000-0000-0000-000000000003', '1992-01-01');
+
+INSERT INTO public.football_club(club_key) VALUES
+  ('fresh-club'), ('stale-club');
+
+INSERT INTO public.soccerwiki_club(club_id, club_key, name, fetched_at) VALUES
+  ('fresh-source-club', 'fresh-club', 'Fresh Club', now() - interval '1 hour'),
+  ('stale-source-club', 'stale-club', 'Stale Club', now() - interval '45 days');
+
+INSERT INTO public.soccerwiki_player(pid, card_id, club_id, born_on, fetched_at) VALUES
+  ('fresh-pid', '00000000-0000-0000-0000-000000000001', 'fresh-source-club', '1990-01-01', now() - interval '1 hour'),
+  ('stale-pid', '00000000-0000-0000-0000-000000000002', 'stale-source-club', '1991-01-01', now() - interval '45 days'),
+  ('stale-new-pid', '00000000-0000-0000-0000-000000000003', 'stale-source-club', '1992-01-01', now() - interval '45 days');
+
+INSERT INTO public.card_current_club(card_id, club, club_key, resolved_key, apps, source, fetched_at) VALUES
+  ('00000000-0000-0000-0000-000000000001', 'Old Club', 'old-club', 'old-club', NULL, 'career_stats', now() - interval '2 days'),
+  ('00000000-0000-0000-0000-000000000002', 'Trusted Club', 'trusted-club', 'trusted-club', NULL, 'career_stats', now() - interval '1 day');
