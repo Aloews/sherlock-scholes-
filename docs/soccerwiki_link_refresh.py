@@ -4,39 +4,19 @@
 ТРИ ШАГА, И ПОРЯДОК У НИХ ОБЯЗАТЕЛЬНЫЙ:
 
     1) fill_current_club_resolved_key()  ключ «карточка → клуб»
-    2) link_soccerwiki_cards()           состав источника → карточки колоды
+    2) link_soccerwiki_cards()           состав источника → карточки
     3) fill_sw_rating()                  рейтинг источника → cards.sw_rating
     4) fill_photo_from_soccerwiki()      портрет источника → cards.photo_url
 
-⚠️ ПЕРВЫЙ ШАГ — НЕ ПРО SOCCER WIKI, И ИМЕННО ПОЭТОМУ ОН ЗДЕСЬ ПЕРВЫЙ.
-Связывание идёт `card_current_club.resolved_key = soccerwiki_club.club_key`.
-07.09.2026 оказалось, что `resolved_key` пуст у 23 548 строк из 24 807:
-`fill_current_club_from_roster()` не писал эту колонку вовсе. Пока она пуста,
-шаг 2 находит четверть того, что мог бы, — и находит МОЛЧА.
-
-⚠️ ВТОРОЙ ШАГ НУЖЕН ОТДЕЛЬНО ОТ СБОРА. `apply_soccerwiki_squad` связывает в
-момент записи клуба, то есть по состоянию колоды на тот момент. Всё, что
-появилось позже — новая карточка, доехавший `name_en`, починенный ключ, —
-остаётся несвязанным навсегда: клуб уже записан и второй раз не пишется.
-
-⚠️ ТРЕТИЙ ШАГ НЕ ЗАПУСКАЛСЯ ПОСЛЕ СБОРА НИ РАЗУ. Замер 07.09.2026: связано
-13 129 игроков, а рейтинг стоял у 6301 карточки — ровно столько, сколько было
-на день, когда `fill_sw_rating` звали руками.
-
-⚠️ ЧЕТВЁРТЫЙ ШАГ СТАВИТ ФОТО ТОЛЬКО ТАМ, ГДЕ ЕГО НЕТ. Замер 07.09.2026:
-`cards_photo_transfermarkt.py` прошёл 850 карточек и нашёл ОДИН портрет — у
-остальных на профиле `portrait/big/default.jpg`, серый силуэт. У игроков малых
-лиг фотографии на Transfermarkt нет вовсе. У Soccer Wiki те же люди
-сфотографированы: из 912 прочитанных страниц портрет есть у 912. Уже стоящий
-снимок не трогается: этот проект однажды заменил 165 портретов ревизией и в
-первой её версии ошибся.
-
-Пишет ВСЕГДА (это четыре идемпотентные функции базы, каждая — одна транзакция),
-поэтому APPLY здесь не спрашивается: сухого варианта у него нет.
+По умолчанию выполняются все четыре шага. Для фото-конвейера используется
+--skip-photo-fill: фотографии проходят через очередь, проверку URL и
+read-after-write, а не записываются напрямую без проверки доступности.
 
 ЗАПУСК:
     python docs/soccerwiki_link_refresh.py
+    python docs/soccerwiki_link_refresh.py --skip-photo-fill
 """
+import argparse
 import os
 import sys
 
@@ -71,16 +51,22 @@ def number(res):
     return None
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-photo-fill",
+        action="store_true",
+        help="leave photo writes to the verified profile backfill queue",
+    )
+    args = parser.parse_args(argv)
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY")):
         raise SystemExit("SUPABASE_URL/SUPABASE_KEY не заданы")
+    steps = STEPS[:-1] if args.skip_photo_fill else STEPS
     failed = 0
-    for name, what in STEPS:
+    for name, what in steps:
         res = sb("rpc/" + name, method="POST", body={})
         n = number(res)
         if n is None:
-            # ⚠️ ОТКАЗ НАЗЫВАЕТСЯ ОТКАЗОМ. Молчаливый пропуск шага выглядит на
-            # экране так же, как «связывать было нечего», а это разные ответы.
             print("✗ %-34s ОТКАЗ" % name, flush=True)
             failed += 1
         else:
