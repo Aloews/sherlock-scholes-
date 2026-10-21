@@ -186,53 +186,58 @@ def run_collector(job):
         if rows and usable_photo(rows[0].get("photo_url")) and image_reachable(rows[0].get("photo_url")):
             return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
         return "Фото найдено: 1\\nRead-after-write verification failed",0
-    if task=="photo_tm":
-        command=[sys.executable,"docs/cards_photo_transfermarkt.py","--only",str(job["transfermarkt_id"])]
-    elif task=="photo_qid":
-        command=[sys.executable,"docs/cards_photo_from_qid.py","--only-card-id",str(job["card_id"])]
-    elif task=="season_stats":
+    if task in ("photo_qid", "photo_tm"):
+        outputs = []
+        failures = []
+        qid_output = ""
+        qid_exit = 0
+        if job.get("wikidata_qid") or task == "photo_qid":
+            qid_command = [sys.executable, "docs/cards_photo_from_qid.py",
+                           "--only-card-id", str(job["card_id"])]
+            qid_result = subprocess.run(qid_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
+            qid_output = qid_result.stdout[-12000:]
+            outputs.append("Wikidata attempt:\\n" + qid_output)
+            qid_exit = qid_result.returncode
+            if qid_exit == 0 and re.search(r"фото найдено\\s*:\\s*[1-9]\\d*", qid_output.casefold()):
+                return qid_output + "\\nИсточник: Wikidata", 0
+            if qid_exit != 0:
+                failures.append(qid_exit)
+
+        if task == "photo_tm" or job.get("transfermarkt_id"):
+            tm_command = [sys.executable, "docs/cards_photo_transfermarkt.py",
+                          "--only", str(job["transfermarkt_id"])]
+            tm_result = subprocess.run(tm_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
+            tm_output = tm_result.stdout[-12000:]
+            outputs.append("Transfermarkt attempt:\\n" + tm_output)
+            if tm_result.returncode == 0 and (
+                re.search(r"portraits found\\s*:\\s*[1-9]\\d*", tm_output.casefold())
+                or re.search(r"портретов найдено\\s*:\\s*[1-9]\\d*", tm_output.casefold())
+            ):
+                return tm_output + "\\nИсточник: Transfermarkt после Wikidata", 0
+            if tm_result.returncode != 0:
+                failures.append(tm_result.returncode)
+
+        combined = "\\n".join(outputs)[-12000:]
+        qid_zero = bool(re.search(r"фото найдено\\s*:\\s*0(?:\\D|$)", qid_output.casefold()))
+        tm_zero = bool(re.search(
+            r"(?:portraits found|портретов найдено)\\s*:\\s*0(?:\\D|$)",
+            combined.casefold()
+        ))
+        if failures:
+            return combined, failures[-1]
+        if (not qid_output or qid_zero) and tm_zero:
+            return combined, 0
+        return combined, 1
+
+    if task=="season_stats":
         command=[sys.executable,"docs/players_stats_transfermarkt.py","--only",str(job["transfermarkt_id"]),"--include-unvalued"]
     else:
         raise ValueError("Unsupported task type: "+str(task))
     result=subprocess.run(command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
       stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
     output=result.stdout[-12000:]
-
-    # Transfermarkt may return a valid profile with only its generic silhouette,
-    # or the profile fetch may fail. In both cases, try the card's canonical QID
-    # now instead of leaving the QID job behind the entire Transfermarkt backlog.
-    if task=="photo_tm" and job.get("wikidata_qid"):
-        folded=output.casefold()
-        has_portrait=bool(
-            re.search(r"portraits found\s*:\s*[1-9]\d*",folded)
-            or re.search(r"портретов найдено\s*:\s*[1-9]\d*",folded)
-        )
-        if not has_portrait:
-            fallback_command=[sys.executable,"docs/cards_photo_from_qid.py",
-                              "--only-card-id",str(job["card_id"])]
-            fallback=subprocess.run(fallback_command,cwd=ROOT,env=dict(os.environ,APPLY="1"),text=True,
-              stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=360)
-            fallback_output=fallback.stdout[-12000:]
-            fallback_folded=fallback_output.casefold()
-            if (fallback.returncode==0 and
-                    re.search(r"фото найдено\s*:\s*[1-9]\d*",fallback_folded)):
-                return fallback_output+"\nИсточник: Wikidata fallback после отсутствия пригодного портрета Transfermarkt",0
-
-            combined=(output+"\nWikidata fallback attempt:\n"+fallback_output)[-12000:]
-            tm_fetch_lost=any(marker in folded for marker in (
-                "профилей потеряно", "profile fetches lost"
-            ))
-            tm_zero=bool(re.search(
-                r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",folded
-            ))
-            qid_zero=bool(re.search(
-                r"фото найдено\s*:\s*0(?:\D|$)",fallback_folded
-            ))
-            if result.returncode!=0 or tm_fetch_lost or fallback.returncode!=0:
-                return combined,(fallback.returncode if fallback.returncode else 1)
-            if tm_zero and qid_zero:
-                return combined,0
-            return combined,1
     return output,result.returncode
 
 
