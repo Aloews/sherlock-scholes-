@@ -1,41 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Фото игрока — портрет с его профиля на Transfermarkt, по id.
+"""Collect verified player portraits from canonical Transfermarkt profiles.
 
-ИСТОЧНИК НАЗВАН ПРЯМО, И ЭТО НАМЕРЕННО. Портреты берутся с transfermarkt.com,
-ссылка ведёт на их же CDN (`img.a.transfermarkt.technology`) — то есть
-происхождение видно прямо в адресе картинки и не спрятано. Владелец решение по
-этому источнику принимал осознанно и повторял: «бери рейтинг и важную
-информацию с трансфермаркет», «маскировать происхождение данных НЕ НАДО».
-Точно так же в этом проекте уже показываются эмблемы клубов с CDN ESPN.
-
-ЗАЧЕМ ЕЩЁ ОДИН СБОРЩИК ФОТО. Викиданные закрывают меньшинство: замер
-06.09.2026 — активных игроков 19 115, фото у 4391 (23%). Вторая картинка из
-Википедии («первая картинка статьи») дыру НЕ закрывает, и это тоже замер, а не
-догадка: из 132 статей игроков без P18 картинка нашлась в ОДНОЙ. Причина
-понятна — P18 в Викиданных заполняется ботами из картинки статьи, так что
-«нет P18» почти всегда значит «в статье её тоже нет».
-
-Профиль на Transfermarkt есть у 8812 карточек (у них проставлен
-`transfermarkt_id`), и портрет там почти всегда: проба на 12 безвестных
-игроках из ростера — 11 портретов и одна заглушка.
-
-⚠️ ЗАГЛУШКА ОТСЕИВАЕТСЯ, А НЕ ЗАПИСЫВАЕТСЯ. У игрока без фотографии TM отдаёт
-`portrait/big/default.jpg` — один и тот же силуэт на всех. Записать его значит
-объявить, что фото есть: карточка выглядела бы заполненной, а в игре стоял бы
-серый человечек, и починить это потом было бы нечем — по URL уже не отличить
-«не собрали» от «собрали заглушку».
-
-⚠️ АДРЕС НЕ КОНСТРУИРУЕТСЯ, А ЧИТАЕТСЯ. В имени файла стоит отметка времени
-(`574671-1757664768.jpg`), и угадать её нельзя — поэтому один запрос на игрока.
-Отсюда и темп: 1.5 с между запросами, как у сборщика составов.
-
-⚠️ ПУСТОЕ ПОЛЕ ЧЕСТНЕЕ ЧУЖОГО ФОТО. Ничего не перезаписывается: пишем только
-туда, где `photo_url is null`, и условие стоит В ЗАПРОСЕ на запись, а не
-только в выборке.
-
-ЗАПУСК (сухой по умолчанию; APPLY=1 пишет):
-    python docs/cards_photo_transfermarkt.py --limit 50
-    APPLY=1 python docs/cards_photo_transfermarkt.py
+The persistent backfill worker invokes this collector per card after checking
+whether an earlier source has already written a reachable photo. The profile
+URL is read from the source page; default/dummy portraits are rejected, and
+writes only fill blank card photo fields. Source linkage to Soccer Wiki does
+not suppress this fallback because a linked source row may have no usable image.
 """
 import argparse
 import html as html_lib
@@ -186,8 +156,6 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="сколько карточек (0 — все)")
     ap.add_argument("--offset", type=int, default=0, help="сдвиг окна кандидатов для ежедневной ротации")
     ap.add_argument("--only", default="", help="обработать один Transfermarkt ID")
-    ap.add_argument("--include-soccerwiki", action="store_true",
-                    help="не пропускать тех, кого закроет Soccer Wiki")
     args = ap.parse_args()
     if args.only and not args.only.isdigit():
         raise SystemExit("--only должен быть числовым Transfermarkt ID")
