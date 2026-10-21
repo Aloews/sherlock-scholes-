@@ -172,19 +172,17 @@ def get(url):
     return None
 
 
-def order_todo(talents, linked):
-    """Слить два списка, сохранив порядок и выбросив повторы.
+def order_todo(talents, linked, linked_first=False):
+    """Слить два списка без дублей; при photo-backfill сначала читать карточки.
 
-    ⚠️ ТАЛАНТЫ ИДУТ ПЕРВЫМИ, И ЭТО ВЕСЬ СМЫСЛ ФУНКЦИИ. Прогон длинный и может
-    оборваться на любом месте; кто прочитан раньше — тот и получит дату
-    рождения, а без неё игрока нечем связать с карточкой.
-
-    ⚠️ ПОВТОР ВЫБРАСЫВАЕТСЯ ПО ПЕРВОМУ ВХОЖДЕНИЮ. Игрок может быть и в очереди
-    талантов, и среди связанных; прочитать его дважды значит потратить запрос
-    впустую и сдвинуть остальных.
+    Для обычного обогащения сначала идут таланты: дата рождения помогает
+    связать новые записи. Для массового сбора фотографий приоритет меняется:
+    сначала уже связанные с карточками игроки, иначе весь временной бюджет
+    уйдёт на записи без card_id и новые фото не попадут в игровую колоду.
     """
+    first, second = (linked, talents) if linked_first else (talents, linked)
     seen, out = set(), []
-    for r in list(talents) + list(linked):
+    for r in list(first) + list(second):
         pid = r["pid"]
         if pid in seen:
             continue
@@ -201,6 +199,8 @@ def main():
                     help="потолок по часам: дойдя до него, дописать пачку и выйти")
     ap.add_argument("--refresh", action="store_true",
                     help="перечитать и тех, у кого страница уже прочитана")
+    ap.add_argument("--linked-first", action="store_true",
+                    help="сначала страницы уже связанных с карточками игроков (для фото-backfill)")
     args = ap.parse_args()
     apply = os.environ.get("APPLY") == "1"
     deadline = time.time() + args.minutes * 60 if args.minutes > 0 else None
@@ -238,7 +238,7 @@ def main():
         talents = [r for r in talents if r["pid"] in fresh]
         linked = [r for r in linked if r["pid"] in fresh]
 
-    todo = order_todo(talents, linked)
+    todo = order_todo(talents, linked, linked_first=args.linked_first)
     print("очередь талантов: %d, связанных с колодой: %d"
           % (len(talents), len(linked)))
     if args.limit > 0:
