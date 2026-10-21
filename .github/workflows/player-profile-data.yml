@@ -135,7 +135,7 @@ jobs:
         run: python3 football_scraper/tests/test_soccerwiki_player.py
 
       - name: Collect Soccer Wiki player detail photos
-        run: APPLY=1 python3 docs/soccerwiki_players.py --minutes 90 --linked-first --refresh
+        run: APPLY=1 python3 docs/soccerwiki_players.py --minutes 90 --linked-first --refresh --offset "$((GITHUB_RUN_NUMBER * 5000))"
 
       - name: Enqueue and process verified player-photo backfill
         run: |
