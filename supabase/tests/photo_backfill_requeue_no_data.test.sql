@@ -21,9 +21,9 @@ begin
     now()
   )
   returning id into v_job_id;
-end $;
+end $$;
 
-do $
+do $$
 declare
   v_card uuid;
   v_job_id bigint;
@@ -43,7 +43,7 @@ begin
     'No identity-verified Soccer Wiki photo matches card',now()-interval '2 minutes'
   )
   returning id into v_job_id;
-end $;
+end $$;
 
 \ir ../migrations/20261021171000_requeue_photo_tm_no_data_failures.sql
 
@@ -57,9 +57,9 @@ begin
      or v_job.verified_at is not null or v_job.updated_at >= now()-interval '60 minutes' then
     raise exception 'legacy terminal no-data job was not safely requeued: %', row_to_json(v_job);
   end if;
-end $;
+end $$;
 
-do $
+do $$
 declare
   v_card uuid;
   v_job public.profile_backfill_jobs%rowtype;
@@ -75,6 +75,6 @@ begin
   if v_job.status <> 'pending' or v_job.attempts <> 0 then
     raise exception 'new Soccer Wiki detail/photo was not requeued immediately: %', row_to_json(v_job);
   end if;
-end $;
+end $$;
 
 rollback;
