@@ -144,7 +144,7 @@ class TransfermarktFallbackTests(unittest.TestCase):
             args=[], returncode=0, stdout="ПРОФИЛЕЙ ПОТЕРЯНО: 1 — повторить прогон"
         )
         qid_found = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1, первая картинка статьи 0)\\nЗаписано : 1"
+            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1, первая картинка статьи 0)\nЗаписано : 1"
         )
         job = {
             "task_type": "photo_tm",
@@ -169,10 +169,10 @@ class TransfermarktFallbackTests(unittest.TestCase):
 
     def test_english_transfermarkt_fetch_loss_triggers_wikidata_fallback(self):
         tm_failed = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Portraits found : 0\\nPROFILE FETCHES LOST: 1"
+            args=[], returncode=0, stdout="Portraits found : 0\nPROFILE FETCHES LOST: 1"
         )
         qid_found = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 1\\nЗаписано : 1"
+            args=[], returncode=0, stdout="Фото найдено : 1\nЗаписано : 1"
         )
         job = {
             "task_type": "photo_tm",
@@ -190,7 +190,7 @@ class TransfermarktFallbackTests(unittest.TestCase):
     def test_transfermarkt_placeholder_uses_qid_and_reports_true_no_data(self):
         tm_placeholder = subprocess.CompletedProcess(
             args=[], returncode=0,
-            stdout="Portraits found : 0\\nPlaceholders rejected: 1\\nWritten: 0",
+            stdout="Portraits found : 0\nPlaceholders rejected: 1\nWritten: 0",
         )
         qid_empty = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="Фото найдено : 0 (P18 0, первая картинка статьи 0)"
