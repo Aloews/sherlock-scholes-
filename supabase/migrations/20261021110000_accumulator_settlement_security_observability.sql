@@ -157,7 +157,8 @@ BEGIN
        AND (
          c.relname = ANY (ARRAY[
            'accumulator_ticket', 'accumulator_leg', 'llm_budget',
-           'llm_auto_switch', 'espn_league_slug', 'fan_club', 'fan_club_member'
+           'llm_auto_switch', 'espn_league_slug', 'fan_club', 'fan_club_member',
+           'profile_backfill_jobs'
          ])
          OR left(c.relname, 5) = '_bak_'
        )
