@@ -76,16 +76,27 @@ jobs:
       - name: Verify source read-after-write and publish crawl metrics
         run: |
           cutoff=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          clubs=$(curl -fsS --get \
+          club_headers=$(mktemp)
+          player_headers=$(mktemp)
+          curl -fsS -D "$club_headers" -o /dev/null --get \
             --data-urlencode "select=club_id" \
             --data-urlencode "fetched_at=gte.$cutoff" \
+            --data-urlencode "limit=1" \
             "$SUPABASE_URL/rest/v1/soccerwiki_club" \
-            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
-          players=$(curl -fsS --get \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Prefer: count=exact"
+          curl -fsS -D "$player_headers" -o /dev/null --get \
             --data-urlencode "select=pid" \
             --data-urlencode "detail_at=gte.$cutoff" \
+            --data-urlencode "limit=1" \
             "$SUPABASE_URL/rest/v1/soccerwiki_player" \
-            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Prefer: count=exact"
+          clubs=$(grep -i '^content-range:' "$club_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\\*)\\r?$#\\1#')
+          players=$(grep -i '^content-range:' "$player_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\\*)\\r?$#\\1#')
+          [ -n "$clubs" ] || { echo "::error::missing exact count for SoccerWiki club read-after-write"; exit 1; }
+          [ -n "$players" ] || { echo "::error::missing exact count for SoccerWiki player read-after-write"; exit 1; }
+          rm -f "$club_headers" "$player_headers"
           echo "SoccerWiki clubs read back in last 2h: $clubs"
           echo "SoccerWiki player details read back in last 2h: $players"
           {
