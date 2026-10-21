@@ -152,6 +152,11 @@ def parse_detail(html):
     }
 
 
+def has_detail_payload(fact):
+    """A photo-only Soccer Wiki read is useful even without biography fields."""
+    return any(fact.get(k) for k in ("full_name", "born_on", "height_cm", "photo_url"))
+
+
 def get(url):
     """Страница, '' на 404 или None на потере. Потеря считается отдельно."""
     for attempt in range(RETRIES):
@@ -172,17 +177,11 @@ def get(url):
     return None
 
 
-def order_todo(talents, linked, linked_first=False):
-    """Слить два списка без дублей; при photo-backfill сначала читать карточки.
-
-    Для обычного обогащения сначала идут таланты: дата рождения помогает
-    связать новые записи. Для массового сбора фотографий приоритет меняется:
-    сначала уже связанные с карточками игроки, иначе весь временной бюджет
-    уйдёт на записи без card_id и новые фото не попадут в игровую колоду.
-    """
+def order_todo(talents, linked, photo_priority=(), linked_first=False):
+    """Merge missing-photo profiles, talent candidates and linked rows without duplicates."""
     first, second = (linked, talents) if linked_first else (talents, linked)
     seen, out = set(), []
-    for r in list(first) + list(second):
+    for r in list(photo_priority) + list(first) + list(second):
         pid = r["pid"]
         if pid in seen:
             continue
@@ -228,7 +227,7 @@ def main():
     talents = all_rows("player_talent_queue",
                        {"select": "pid,name,rating,place", "order": "place.asc"})
     linked = all_rows("soccerwiki_player",
-                      {"select": "pid,name,rating", "card_id": "not.is.null",
+                      {"select": "pid,name,rating,card_id", "card_id": "not.is.null",
                        "order": "rating.desc.nullslast,pid.asc"})
     if not args.refresh:
         # `detail_at` нет во взгляде очереди, поэтому непрочитанные отбираются
@@ -238,9 +237,14 @@ def main():
         talents = [r for r in talents if r["pid"] in fresh]
         linked = [r for r in linked if r["pid"] in fresh]
 
-    todo = order_todo(talents, linked, linked_first=args.linked_first)
-    print("очередь талантов: %d, связанных с колодой: %d"
-          % (len(talents), len(linked)))
+    # Missing-photo profiles must be revisited even if detail_at is already set.
+    missing_photo_card_ids = {r["id"] for r in all_rows(
+        "cards", {"select": "id", "category": "eq.player", "active": "is.true",
+                  "or": "(photo_url.is.null,photo_url.eq.)"})}
+    photo_priority = [r for r in linked if r.get("card_id") in missing_photo_card_ids]
+    todo = order_todo(talents, linked, photo_priority, linked_first=args.linked_first)
+    print("очередь без фото: %d, талантов: %d, связанных: %d"
+          % (len(photo_priority), len(talents), len(linked)))
     if args.limit > 0:
         todo = todo[:args.limit]
     print("страниц к чтению: %d%s" % (len(todo), "" if apply else "  (СУХОЙ ПРОГОН)"))
@@ -271,7 +275,7 @@ def main():
             fact = parse_detail(html)
             # Пустая страница по фактам — тоже пустая: писать десять NULL и
             # ставить detail_at значило бы «прочитано» там, где не прочитано.
-            if any(fact.get(k) for k in ("full_name", "born_on", "height_cm")):
+            if has_detail_payload(fact):
                 fact["pid"] = pid
                 batch.append(fact)
             else:
