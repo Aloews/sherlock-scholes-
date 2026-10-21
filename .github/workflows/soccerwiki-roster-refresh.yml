@@ -73,11 +73,26 @@ jobs:
             exit 1
           fi
 
+      - name: Refresh current-club cache from freshly verified SoccerWiki rows
+        run: |
+          result=$(curl -fsS -X POST \
+            "$SUPABASE_URL/rest/v1/rpc/fill_current_club_from_soccerwiki" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "$result" | jq .
+          echo "$result" | jq -e 'length == 1 and (.[0] | has("записано") and has("сменили_клуб") and has("отказано_неоднозначных"))' >/dev/null || {
+            echo "::error::current-club refresh RPC did not return its verification counters"
+            exit 1
+          }
+
       - name: Verify source read-after-write and publish crawl metrics
         run: |
           cutoff=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           club_headers=$(mktemp)
           player_headers=$(mktemp)
+          current_headers=$(mktemp)
           curl -fsS -D "$club_headers" -o /dev/null --get \
             --data-urlencode "select=club_id" \
             --data-urlencode "fetched_at=gte.$cutoff" \
@@ -92,17 +107,30 @@ jobs:
             "$SUPABASE_URL/rest/v1/soccerwiki_player" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
             -H "Prefer: count=exact"
+          curl -fsS -D "$current_headers" -o /dev/null --get \
+            --data-urlencode "select=card_id" \
+            --data-urlencode "source=eq.soccerwiki" \
+            --data-urlencode "fetched_at=gte.$cutoff" \
+            --data-urlencode "limit=1" \
+            "$SUPABASE_URL/rest/v1/card_current_club" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Prefer: count=exact"
           clubs=$(grep -i '^content-range:' "$club_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\*)\r?$#\1#')
           players=$(grep -i '^content-range:' "$player_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\*)\r?$#\1#')
+          current=$(grep -i '^content-range:' "$current_headers" | tail -n 1 | sed -E 's#.*\/([0-9]+|\*)\r?$#\1#')
           [ -n "$clubs" ] || { echo "::error::missing exact count for SoccerWiki club read-after-write"; exit 1; }
           [ -n "$players" ] || { echo "::error::missing exact count for SoccerWiki player read-after-write"; exit 1; }
-          rm -f "$club_headers" "$player_headers"
+          [ -n "$current" ] || { echo "::error::missing exact count for current-club read-after-write"; exit 1; }
+          [ "$clubs" != "0" ] || { echo "::error::no SoccerWiki club rows were read back after the refresh"; exit 1; }
+          [ "$current" != "0" ] || { echo "::error::no current-club rows were updated from fresh SoccerWiki data"; exit 1; }
+          rm -f "$club_headers" "$player_headers" "$current_headers"
           echo "SoccerWiki clubs read back in last 2h: $clubs"
           echo "SoccerWiki player details read back in last 2h: $players"
+          echo "Current-club rows updated from fresh SoccerWiki data in last 2h: $current"
           {
             echo "## SoccerWiki refresh"
             echo "- Club rows read back in the last 2 hours: $clubs"
-            echo "- Player detail rows read back in the last 2 hours: $players"
+            echo "- Player detail rows read back in the last 2 hours: $players\n            echo "- Current-club rows updated from fresh SoccerWiki data in the last 2 hours: $current""
             echo "- Squad crawl limit: $SQUAD_MINUTES minutes"
             echo "- Player detail crawl limit: $DETAIL_MINUTES minutes"
           } >> "$GITHUB_STEP_SUMMARY"
