@@ -84,9 +84,13 @@ begin
 end;
 $$;
 
-drop trigger if exists cards_sync_tier_from_signals on public.cards;
-create trigger cards_sync_tier_from_signals
-before insert or update of tier, fame, market_value_eur, market_value_at, born_on, category
+drop trigger if exists cards_sync_tier_on_insert on public.cards;
+drop trigger if exists cards_sync_tier_on_update on public.cards;
+create trigger cards_sync_tier_on_insert
+before insert on public.cards
+for each row execute function public.sync_card_tier_from_signals();
+create trigger cards_sync_tier_on_update
+before update of tier, fame, market_value_eur, market_value_at, born_on, category
 on public.cards
 for each row execute function public.sync_card_tier_from_signals();
 
