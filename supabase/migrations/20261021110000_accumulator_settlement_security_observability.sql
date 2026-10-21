@@ -186,8 +186,11 @@ BEGIN
 
   SELECT count(distinct p.card_id) INTO v_skipped
     FROM public.soccerwiki_player p
+    JOIN public.cards c ON c.id = p.card_id
+    JOIN public.soccerwiki_club k ON k.club_id = p.club_id
    WHERE p.card_id IS NOT NULL
      AND p.fetched_at >= now() - interval '7 days'
+     AND k.fetched_at >= now() - interval '7 days'
      AND NOT EXISTS (SELECT 1 FROM _sw s WHERE s.card_id = p.card_id);
 
   SELECT count(*) INTO v_moved
