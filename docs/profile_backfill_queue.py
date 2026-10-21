@@ -150,7 +150,7 @@ def verify(job):
 def run_collector(job):
     task=job["task_type"]
     if task=="photo_sw":
-        cards=request("cards",{"select":"id,name,name_en,country,photo_url","id":"eq."+job["card_id"],"limit":"1"})
+        cards=request("cards",{"select":"id,name,name_en,country,photo_url,born_on","id":"eq."+job["card_id"],"limit":"1"})
         if not cards:
             return "Фото найдено: 0\\nPlayer card not found",0
         card=cards[0]
