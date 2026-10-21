@@ -14,7 +14,7 @@ row.update({
     "h_gf": 1.4, "h_ga": 0.8, "a_gf": 1.1, "a_ga": 1.2,
     "h_dr": 0.2, "a_dr": 0.3,
 })
-params = {"features": list(LIN_FEATURES), "W": np.zeros(len(LIN_FEATURES) + 2).tolist()}
+params = {"features": list(LIN_FEATURES), "W": np.zeros((len(LIN_FEATURES) + 2, 3)).tolist()}
 pick, confidence, expected_total = pipeline.llm_call(params, row)
 assert pick in {"H", "D", "A"}, pick
 assert 0.0 <= confidence <= 1.0, confidence
