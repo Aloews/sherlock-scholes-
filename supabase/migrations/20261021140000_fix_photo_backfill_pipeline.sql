@@ -1,0 +1,126 @@
+-- Keep the photo backfill queue moving across all three sources.
+-- A Soccer Wiki row is not proof that a usable photo exists; Transfermarkt
+-- remains a fallback. Retry empty/failed results after a cooldown.
+create or replace function public.enqueue_profile_backfill_jobs(p_limit integer default 50000)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_inserted integer := 0;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100000 then
+    raise exception 'p_limit must be between 1 and 100000' using errcode = '22023';
+  end if;
+
+  with raw_candidates as (
+    select c.id card_id, 'photo_sw'::text task_type,
+           c.transfermarkt_id::text transfermarkt_id,
+           c.wikidata_qid::text wikidata_qid,
+           coalesce(c.market_value_eur,0)::numeric + 1500000000 priority
+      from cards c
+      join soccerwiki_player sw on sw.card_id=c.id
+     where c.category='player' and c.active is true
+       and nullif(btrim(c.photo_url),'') is null
+       and nullif(btrim(sw.photo_url),'') is not null
+    union all
+    select c.id, 'photo_tm', c.transfermarkt_id::text, c.wikidata_qid::text,
+           coalesce(c.market_value_eur,0)::numeric + 1000000000
+      from cards c
+     where c.category='player' and c.active is true
+       and nullif(btrim(c.photo_url),'') is null
+       and nullif(btrim(c.transfermarkt_id::text),'') is not null
+    union all
+    select c.id, 'photo_qid', c.transfermarkt_id::text, c.wikidata_qid::text,
+           coalesce(c.market_value_eur,0)::numeric + 500000000
+      from cards c
+     where c.category='player' and c.active is true
+       and nullif(btrim(c.photo_url),'') is null
+       and nullif(btrim(c.transfermarkt_id::text),'') is null
+       and nullif(btrim(c.wikidata_qid::text),'') is not null
+    union all
+    select c.id, 'season_stats', c.transfermarkt_id::text, c.wikidata_qid::text,
+           coalesce(c.market_value_eur,0)::numeric
+      from cards c
+     where c.category='player' and c.active is true
+       and nullif(btrim(c.transfermarkt_id::text),'') is not null
+       and not exists (
+         select 1 from player_season_stat s
+          where s.tm_player_id=c.transfermarkt_id::text
+       )
+  ), candidates as (
+    select distinct on (card_id, task_type)
+           card_id, task_type, transfermarkt_id, wikidata_qid, priority
+      from raw_candidates
+     order by card_id, task_type, priority desc
+  ), eligible as (
+    select c.*
+      from candidates c
+     where not exists (
+       select 1 from profile_backfill_jobs j
+        where j.card_id=c.card_id and j.task_type=c.task_type
+          and (
+            j.status in ('pending','running')
+            or (j.status='succeeded' and j.updated_at > now()-interval '30 days')
+            or (j.status in ('no_data','failed') and j.updated_at > now()-interval '7 days')
+          )
+     )
+  ), limited as (
+    select * from eligible
+     order by priority desc, card_id, task_type
+     limit p_limit
+  ), inserted as (
+    insert into profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
+    select card_id,task_type,transfermarkt_id,wikidata_qid,priority from limited
+    on conflict(card_id,task_type) do update
+      set status='pending', attempts=0, max_attempts=3,
+          last_error=null, verified_at=null, priority=excluded.priority,
+          transfermarkt_id=excluded.transfermarkt_id,
+          wikidata_qid=excluded.wikidata_qid, updated_at=now()
+      where profile_backfill_jobs.status in ('no_data','failed','succeeded')
+      returning 1
+  )
+  select count(*) into v_inserted from inserted;
+
+  return v_inserted;
+end;
+$$;
+
+create or replace function public.claim_profile_backfill_jobs(
+  p_limit integer default 20,
+  p_lease_minutes integer default 45
+)
+returns setof public.profile_backfill_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100
+     or p_lease_minutes is null or p_lease_minutes < 5 or p_lease_minutes > 240 then
+    raise exception 'invalid claim limits' using errcode = '22023';
+  end if;
+
+  return query
+  with candidates as (
+    select j.id
+      from public.profile_backfill_jobs j
+     where j.attempts < j.max_attempts
+       and (j.status='pending' or (j.status='running' and j.updated_at < now()-make_interval(mins=>p_lease_minutes)))
+     order by j.priority desc,j.created_at,j.id
+     for update skip locked
+     limit p_limit
+  )
+  update public.profile_backfill_jobs j
+     set status='running',attempts=j.attempts+1,updated_at=now(),last_error=null
+    from candidates c
+   where j.id=c.id
+  returning j.*;
+end;
+$$;
+
+revoke all on function public.enqueue_profile_backfill_jobs(integer) from public, anon, authenticated;
+grant execute on function public.enqueue_profile_backfill_jobs(integer) to service_role;
+revoke all on function public.claim_profile_backfill_jobs(integer,integer) from public, anon, authenticated;
+grant execute on function public.claim_profile_backfill_jobs(integer,integer) to service_role;
