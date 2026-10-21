@@ -1,6 +1,7 @@
 \set ON_ERROR_STOP on
 
 SELECT public.run_model_accumulator_generation();
+SELECT * FROM public.fill_current_club_from_soccerwiki();
 
 DO $assert$
 DECLARE
@@ -69,6 +70,30 @@ BEGIN
   END IF;
   IF (v_run.metrics->>'tickets_created')::integer <> 0 THEN
     RAISE EXCEPTION 'stub builder should not create tickets in this test: %', v_run.metrics;
+  END IF;
+  IF (SELECT club_key FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000001') <> 'fresh-club' THEN
+    RAISE EXCEPTION 'fresh SoccerWiki source did not update current club';
+  END IF;
+  IF (SELECT source FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000001') <> 'soccerwiki' THEN
+    RAISE EXCEPTION 'fresh SoccerWiki source provenance was not recorded';
+  END IF;
+  IF (SELECT fetched_at FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000001') >= now() - interval '30 minutes' THEN
+    RAISE EXCEPTION 'current-club cache timestamp was replaced with copy time instead of source time';
+  END IF;
+  IF (SELECT club_key FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000002') <> 'trusted-club' THEN
+    RAISE EXCEPTION 'stale SoccerWiki source overwrote a newer trusted club record';
+  END IF;
+  IF (SELECT source FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000002') <> 'career_stats' THEN
+    RAISE EXCEPTION 'stale SoccerWiki source overwrote the trusted source provenance';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.card_current_club
+       WHERE card_id = '00000000-0000-0000-0000-000000000003') THEN
+    RAISE EXCEPTION 'stale SoccerWiki source created a new current-club record';
   END IF;
 END;
 $assert$;
