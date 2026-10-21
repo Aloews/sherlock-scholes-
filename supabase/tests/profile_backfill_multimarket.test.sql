@@ -57,6 +57,12 @@ begin
   returning id into v_sw_card;
   insert into public.soccerwiki_player(name,card_id,photo_url)
   values('Soccer Wiki linked queue regression',v_sw_card,'https://cdn.soccerwiki.org/images/player/149111.png');
+  if public.fill_photo_from_soccerwiki() <> 0 then
+    raise exception 'legacy bulk photo RPC must not bypass verified queue writes';
+  end if;
+  if (select photo_url from public.cards where id=v_sw_card) is not null then
+    raise exception 'legacy bulk photo RPC wrote an unverified photo';
+  end if;
   perform public.enqueue_profile_backfill_jobs(100);
   if not exists(select 1 from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_tm') then
     raise exception 'Transfermarkt fallback was not enqueued for Soccer Wiki-linked card';
