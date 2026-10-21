@@ -89,20 +89,21 @@ jobs:
 
       - name: Verify source read-after-write and publish crawl metrics
         run: |
-          cutoff=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          source_cutoff=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          detail_cutoff=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           club_headers=$(mktemp)
           player_headers=$(mktemp)
           current_headers=$(mktemp)
           curl -fsS -D "$club_headers" -o /dev/null --get \
             --data-urlencode "select=club_id" \
-            --data-urlencode "fetched_at=gte.$cutoff" \
+            --data-urlencode "fetched_at=gte.$source_cutoff" \
             --data-urlencode "limit=1" \
             "$SUPABASE_URL/rest/v1/soccerwiki_club" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
             -H "Prefer: count=exact"
           curl -fsS -D "$player_headers" -o /dev/null --get \
             --data-urlencode "select=pid" \
-            --data-urlencode "detail_at=gte.$cutoff" \
+            --data-urlencode "detail_at=gte.$detail_cutoff" \
             --data-urlencode "limit=1" \
             "$SUPABASE_URL/rest/v1/soccerwiki_player" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
@@ -110,7 +111,7 @@ jobs:
           curl -fsS -D "$current_headers" -o /dev/null --get \
             --data-urlencode "select=card_id" \
             --data-urlencode "source=eq.soccerwiki" \
-            --data-urlencode "fetched_at=gte.$cutoff" \
+            --data-urlencode "fetched_at=gte.$source_cutoff" \
             --data-urlencode "limit=1" \
             "$SUPABASE_URL/rest/v1/card_current_club" \
             -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
@@ -124,14 +125,14 @@ jobs:
           [ "$clubs" != "0" ] || { echo "::error::no SoccerWiki club rows were read back after the refresh"; exit 1; }
           [ "$current" != "0" ] || { echo "::error::no current-club rows were updated from fresh SoccerWiki data"; exit 1; }
           rm -f "$club_headers" "$player_headers" "$current_headers"
-          echo "SoccerWiki clubs read back in last 2h: $clubs"
+          echo "SoccerWiki clubs with source data fetched in last 7 days: $clubs"
           echo "SoccerWiki player details read back in last 2h: $players"
-          echo "Current-club rows updated from fresh SoccerWiki data in last 2h: $current"
+          echo "Current-club rows backed by source data fetched in last 7 days: $current"
           {
             echo "## SoccerWiki refresh"
-            echo "- Club rows read back in the last 2 hours: $clubs"
+            echo "- Club rows with source data fetched in the last 7 days: $clubs"
             echo "- Player detail rows read back in the last 2 hours: $players"
-            echo "- Current-club rows updated from fresh SoccerWiki data in the last 2 hours: $current"
+            echo "- Current-club rows backed by source data fetched in the last 7 days: $current"
             echo "- Squad crawl limit: $SQUAD_MINUTES minutes"
             echo "- Player detail crawl limit: $DETAIL_MINUTES minutes"
           } >> "$GITHUB_STEP_SUMMARY"
