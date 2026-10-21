@@ -191,6 +191,7 @@ def run_collector(job):
         failures = []
         qid_output = ""
         qid_exit = 0
+        tm_attempted = False
         if job.get("wikidata_qid") or task == "photo_qid":
             qid_command = [sys.executable, "docs/cards_photo_from_qid.py",
                            "--only-card-id", str(job["card_id"])]
@@ -205,6 +206,7 @@ def run_collector(job):
                 failures.append(qid_exit)
 
         if task == "photo_tm" or job.get("transfermarkt_id"):
+            tm_attempted = True
             tm_command = [sys.executable, "docs/cards_photo_transfermarkt.py",
                           "--only", str(job["transfermarkt_id"])]
             tm_result = subprocess.run(tm_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
@@ -227,7 +229,7 @@ def run_collector(job):
         ))
         if failures:
             return combined, failures[-1]
-        if (not qid_output or qid_zero) and tm_zero:
+        if (not qid_output or qid_zero) and (tm_zero or not tm_attempted):
             return combined, 0
         return combined, 1
 
