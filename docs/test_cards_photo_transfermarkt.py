@@ -62,7 +62,8 @@ def main():
             "https://www.transfermarkt.com/marlon/profil/spieler/273236"
         ), None)
         check("permanent HTTP 403 is not retried", sleep.call_count, 0)
-    print("ok: Transfermarkt portrait metadata parser")
+    test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
+    print("ok: Transfermarkt portrait metadata parser and linked-player fallback")
 
 
 def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
