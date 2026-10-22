@@ -1311,7 +1311,7 @@
     "what": {
       "own": "Mistura dos dois modelos que se cala quando eles discordam",
       "llm": "Uma cabeça linear treinada sobre nove características do jogo",
-      "fly": "Conectoma hemibrain v1.2 com aprendizagem por reforço",
+      "fly": "Rede de reservatório",
       "median": "Diz sempre o número de golos mais frequente",
       "current": "O que a aplicação mostra hoje; não aprende"
     },
