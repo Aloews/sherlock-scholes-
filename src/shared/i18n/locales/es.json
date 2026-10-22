@@ -1303,22 +1303,22 @@
     "failed": "No se pudo cargar la medición.",
     "model": {
       "own": "Nuestra variante",
-      "llm": "LLM",
-      "fly": "Modelo de conectoma del cuerpo pedunculado",
+      "llm": "Modelo lineal",
+      "fly": "Modelo de reservorio",
       "median": "Mediana",
       "current": "Fórmula actual"
     },
     "what": {
       "own": "Mezcla de los dos modelos que calla cuando discrepan",
       "llm": "Una cabeza lineal entrenada sobre nueve rasgos del partido",
-      "fly": "Conectoma hemibrain v1.2 con aprendizaje por refuerzo",
+      "fly": "Proyección aleatoria dispersa fija; solo se entrena la capa de lectura",
       "median": "Siempre dice el número de goles más frecuente",
       "current": "Lo que muestra hoy la aplicación; no aprende"
     },
     "short": {
       "own": "Nuestra",
-      "llm": "LLM",
-      "fly": "Conectoma"
+      "llm": "Lineal",
+      "fly": "Reservorio"
     },
     "exp_total": "{{v}} goles esperados",
     "agree_one": "{{n}} coincide",
