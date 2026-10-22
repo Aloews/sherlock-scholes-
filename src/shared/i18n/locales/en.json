@@ -1311,7 +1311,7 @@
     "what": {
       "own": "A blend of the two models that stays silent when they disagree",
       "llm": "A trained linear head over nine match features",
-      "fly": "hemibrain v1.2 connectome with reward-modulated learning",
+      "fly": "Reservoir network",
       "median": "Always names the most common number of goals",
       "current": "What the app shows today; it does not learn"
     },
