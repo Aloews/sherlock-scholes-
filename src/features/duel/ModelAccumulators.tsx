@@ -100,8 +100,9 @@ export function ModelAccumulators() {
     void Promise.all([fetchModelAccumulators(null, 40), fetchAccumulatorScore()])
       .then(([h, s]) => {
         if (dead) return;
-        setRows(dataOr(h, []));
-        setScore(dataOr(s, []));
+        // Legacy connectome tickets stay in the database for audit but are not active advice.
+        setRows(dataOr(h, []).filter((r) => r.model !== 'fly'));
+        setScore(dataOr(s, []).filter((r) => r.model !== 'fly'));
         setBusy(false);
       });
     return () => { dead = true; };
