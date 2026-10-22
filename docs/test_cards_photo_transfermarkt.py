@@ -88,6 +88,7 @@ def main():
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
+    test_unreachable_portrait_is_not_written()
     print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
 
 
@@ -152,6 +153,42 @@ def test_placeholder_profile_is_confirmed_no_data():
     check("placeholder-only profile is no-data",
           "Профилей без доступного портрета: 1" in text, True)
     check("zero portraits are reported", "Портретов найдено : 0" in text, True)
+
+
+def test_unreachable_portrait_is_not_written():
+    rows = [{
+        "id": "player-card-id",
+        "name": "Unreachable Player",
+        "name_en": "Unreachable Player",
+        "transfermarkt_id": "123456",
+        "photo_url": None,
+    }]
+    portrait = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg">'
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "test-key",
+        "APPLY": "1",
+    }), patch.object(collector, "read_all", return_value=rows), patch.object(
+        collector, "get_profile", return_value=portrait
+    ), patch.object(collector, "image_reachable", return_value=False), patch.object(
+        collector, "sb"
+    ) as sb, patch.object(collector.time, "sleep"), patch(
+        "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
+    ):
+        output = StringIO()
+        try:
+            with redirect_stdout(output):
+                collector.main()
+        except SystemExit as exc:
+            check("unreachable portrait fails as retryable", exc.code != 0, True)
+        else:
+            raise AssertionError("unreachable portrait should request a retry")
+
+    check("unreachable portrait never writes photo fields",
+          not any(call.args and call.args[0] == "cards" and call.kwargs.get("method") == "PATCH"
+                  for call in sb.call_args_list), True)
+    check("unreachable portrait is reported as lost",
+          "ПРОФИЛЕЙ ПОТЕРЯНО: 1" in output.getvalue(), True)
 
 
 def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():
