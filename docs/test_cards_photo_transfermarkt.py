@@ -37,6 +37,17 @@ def main():
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")
 
+    profile_img = '<img class="data-header__profile-image" src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg">'
+    check("profile image element fallback", collector.portrait_url(profile_img),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    lazy_profile_img = '<img data-src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg" class="data-header__profile-image">'
+    check("lazy profile image fallback", collector.portrait_url(lazy_profile_img),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    unrelated_img = '<img class="team-logo" src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg">'
+    check("unrelated image element rejected", collector.portrait_url(unrelated_img), None)
+    placeholder_profile_img = '<img class="data-header__profile-image" src="https://img.a.transfermarkt.technology/portrait/big/default.jpg">'
+    check("placeholder profile element rejected", collector.portrait_url(placeholder_profile_img), None)
+
     reversed_attrs = "<meta content='https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg' property='og:image'>"
     check("reversed attrs and single quotes", collector.portrait_url(reversed_attrs),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
