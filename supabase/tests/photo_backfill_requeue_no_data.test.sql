@@ -77,4 +77,83 @@ begin
   end if;
 end $$;
 
+
+-- Requeue only Transfermarkt no-data jobs whose cards still have no photo.
+do $$
+declare
+  v_missing_card uuid;
+  v_photo_card uuid;
+  v_missing_job bigint;
+  v_photo_job bigint;
+  v_qid_job bigint;
+begin
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,photo_url,photo_source)
+  values('Transfermarkt collector retry missing-photo regression','player',true,'tm-retry-missing-photo','Qtmretrymissing',null,null)
+  returning id into v_missing_card;
+
+  insert into public.profile_backfill_jobs(
+    card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,max_attempts,last_error,verified_at
+  ) values (
+    v_missing_card,'photo_tm','tm-retry-missing-photo','Qtmretrymissing',1000,'no_data',2,3,
+    E'Карточек без фото: 1\nПортретов найдено : 0',now()
+  ) returning id into v_missing_job;
+
+  insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,photo_url,photo_source)
+  values('Transfermarkt collector retry existing-photo regression','player',true,'tm-retry-existing-photo','Qtmretryexisting',
+         'https://img.a.transfermarkt.technology/portrait/big/12345-123456.jpg','transfermarkt')
+  returning id into v_photo_card;
+
+  insert into public.profile_backfill_jobs(
+    card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,max_attempts,last_error,verified_at
+  ) values (
+    v_photo_card,'photo_tm','tm-retry-existing-photo','Qtmretryexisting',1000,'no_data',2,3,
+    'old diagnostic must remain unchanged',now()
+  ) returning id into v_photo_job;
+
+  insert into public.profile_backfill_jobs(
+    card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,max_attempts,last_error
+  ) values (
+    v_missing_card,'photo_qid','tm-retry-missing-photo','Qtmretrymissing',1000,'no_data',2,3,
+    'QID task is outside this migration'
+  ) returning id into v_qid_job;
+end $$;
+
+\ir ../migrations/20261022083000_profile_backfill_retry_tm_no_data_after_collector_fix.sql
+
+do $$
+declare
+  v_missing public.profile_backfill_jobs%rowtype;
+  v_existing public.profile_backfill_jobs%rowtype;
+  v_qid public.profile_backfill_jobs%rowtype;
+  v_photo_url text;
+  v_photo_source text;
+begin
+  select * into v_missing from public.profile_backfill_jobs
+   where transfermarkt_id='tm-retry-missing-photo' and task_type='photo_tm';
+  if v_missing.status <> 'pending' or v_missing.attempts <> 0
+     or v_missing.verified_at is not null
+     or v_missing.last_error not like 'requeued_after_transfermarkt_collector_fix_2026-10-22; previous_reason=%'
+     or v_missing.updated_at >= now()-interval '60 minutes' then
+    raise exception 'missing-photo Transfermarkt job was not safely requeued: %', row_to_json(v_missing);
+  end if;
+
+  select * into v_existing from public.profile_backfill_jobs
+   where transfermarkt_id='tm-retry-existing-photo' and task_type='photo_tm';
+  select photo_url,photo_source into v_photo_url,v_photo_source
+    from public.cards where transfermarkt_id='tm-retry-existing-photo';
+  if v_existing.status <> 'no_data' or v_existing.attempts <> 2
+     or v_existing.last_error <> 'old diagnostic must remain unchanged'
+     or v_photo_url <> 'https://img.a.transfermarkt.technology/portrait/big/12345-123456.jpg'
+     or v_photo_source <> 'transfermarkt' then
+    raise exception 'existing photo or its job was changed: %', row_to_json(v_existing);
+  end if;
+
+  select * into v_qid from public.profile_backfill_jobs
+   where transfermarkt_id='tm-retry-missing-photo' and task_type='photo_qid';
+  if v_qid.status <> 'no_data' or v_qid.attempts <> 2
+     or v_qid.last_error <> 'QID task is outside this migration' then
+    raise exception 'non-Transfermarkt job was changed: %', row_to_json(v_qid);
+  end if;
+end $$;
+
 rollback;

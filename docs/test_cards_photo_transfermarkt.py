@@ -37,6 +37,17 @@ def main():
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")
 
+    profile_img = '<img class="data-header__profile-image" src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg">'
+    check("profile image element fallback", collector.portrait_url(profile_img),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    lazy_profile_img = '<img data-src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg" class="data-header__profile-image">'
+    check("lazy profile image fallback", collector.portrait_url(lazy_profile_img),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    unrelated_img = '<img class="team-logo" src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg">'
+    check("unrelated image element rejected", collector.portrait_url(unrelated_img), None)
+    placeholder_profile_img = '<img class="data-header__profile-image" src="https://img.a.transfermarkt.technology/portrait/big/default.jpg">'
+    check("placeholder profile element rejected", collector.portrait_url(placeholder_profile_img), None)
+
     reversed_attrs = "<meta content='https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg' property='og:image'>"
     check("reversed attrs and single quotes", collector.portrait_url(reversed_attrs),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
@@ -63,19 +74,21 @@ def main():
         check("permanent HTTP 403 rejected", collector.get(
             "https://www.transfermarkt.com/marlon/profil/spieler/273236"
         ), None)
-        check("permanent HTTP 403 is not retried", sleep.call_count, 0)
+        check("HTTP 403 is classified as blocked", collector.get.last_failure, "blocked_http")
+        check("HTTP 403 is not retried immediately", sleep.call_count, 0)
 
     with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=forbidden), patch(
         "cards_photo_transfermarkt.time.sleep"
     ):
-        check("all permanent profile responses yield confirmed no-data",
+        check("all blocked profile responses yield no page",
               collector.get_profile({"name_en": "Marlon", "transfermarkt_id": "273236"}), None)
-        check("permanent profile failure classification",
-              collector.get_profile.last_failure, "no_data")
+        check("blocked profile remains retryable",
+              collector.get_profile.last_failure, "transient")
 
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
+    test_unreachable_portrait_is_not_written()
     print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
 
 
@@ -140,6 +153,42 @@ def test_placeholder_profile_is_confirmed_no_data():
     check("placeholder-only profile is no-data",
           "Профилей без доступного портрета: 1" in text, True)
     check("zero portraits are reported", "Портретов найдено : 0" in text, True)
+
+
+def test_unreachable_portrait_is_not_written():
+    rows = [{
+        "id": "player-card-id",
+        "name": "Unreachable Player",
+        "name_en": "Unreachable Player",
+        "transfermarkt_id": "123456",
+        "photo_url": None,
+    }]
+    portrait = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg">'
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "test-key",
+        "APPLY": "1",
+    }), patch.object(collector, "read_all", return_value=rows), patch.object(
+        collector, "get_profile", return_value=portrait
+    ), patch.object(collector, "image_reachable", return_value=False), patch.object(
+        collector, "sb"
+    ) as sb, patch.object(collector.time, "sleep"), patch(
+        "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
+    ):
+        output = StringIO()
+        try:
+            with redirect_stdout(output):
+                collector.main()
+        except SystemExit as exc:
+            check("unreachable portrait fails as retryable", exc.code != 0, True)
+        else:
+            raise AssertionError("unreachable portrait should request a retry")
+
+    check("unreachable portrait never writes photo fields",
+          not any(call.args and call.args[0] == "cards" and call.kwargs.get("method") == "PATCH"
+                  for call in sb.call_args_list), True)
+    check("unreachable portrait is reported as lost",
+          "ПРОФИЛЕЙ ПОТЕРЯНО: 1" in output.getvalue(), True)
 
 
 def test_transfermarkt_remains_fallback_for_soccerwiki_linked_players():

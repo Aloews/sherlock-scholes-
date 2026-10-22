@@ -9,6 +9,7 @@ not suppress this fallback because a linked source row may have no usable image.
 """
 import argparse
 import html as html_lib
+from html.parser import HTMLParser
 import json
 import os
 import re
@@ -74,23 +75,76 @@ def has_profile_content(html):
         r"data-header__market-value-wrapper|data-header__profile-container|data-header__profile-image|dataBild",
         html or "", re.I))
 
+class ProfileImageParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "img":
+            return
+        values = {key.lower(): html_lib.unescape(value or "").strip()
+                  for key, value in attrs}
+        classes = values.get("class", "").casefold().split()
+        marked_profile = (
+            "data-header__profile-image" in classes
+            or "data-bild" in values
+            or "databild" in values
+        )
+        if not marked_profile:
+            return
+        for key in ("src", "data-src", "data-bild", "databild"):
+            value = values.get(key, "")
+            if value:
+                self.urls.append(value)
+
+
+def profile_image_urls(html):
+    parser = ProfileImageParser()
+    try:
+        parser.feed(html or "")
+    except Exception:
+        return []
+    return parser.urls
+
+
+def image_reachable(url):
+    """Проверяет, что URL реально отдаёт изображение до записи в карточку."""
+    if not url:
+        return False
+    req = urllib.request.Request(url, headers={
+        "User-Agent": UA, "Range": "bytes=0-1023", "Accept": "image/*"
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            response.read(1024)
+            return response.status < 400 and content_type.startswith("image/")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return False
+
+
 def portrait_url(html):
     """Адрес портрета со страницы профиля — или None.
 
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    url = meta_image_url(html)
-    if not url:
-        return None
-    parsed = urllib.parse.urlparse(url)
-    if PLACEHOLDER.search(parsed.path):
-        return None
-    if (parsed.hostname or "").lower() not in {
-        "img.a.transfermarkt.technology", "tmssl.akamaized.net"
-    }:
-        return None
-    return url
+    candidates = [meta_image_url(html), *profile_image_urls(html)]
+    for url in candidates:
+        if not url:
+            continue
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            continue
+        if PLACEHOLDER.search(parsed.path):
+            continue
+        if (parsed.hostname or "").lower() not in {
+            "img.a.transfermarkt.technology", "tmssl.akamaized.net"
+        }:
+            continue
+        return url
+    return None
 
 
 def slugify_name(value):
@@ -124,7 +178,7 @@ def get_profile(card):
         # or a parser regression, so keep it retryable rather than calling it no-data.
         if html:
             transient = True
-        elif str(get.last_failure or "").startswith("transient"):
+        elif str(get.last_failure or "").startswith(("transient", "blocked")):
             transient = True
     get_profile.last_failure = "transient" if transient else "no_data"
     return None
@@ -142,8 +196,11 @@ def get(url):
             # 403/404/410 are permanent for this URL; get_profile tries other
             # regional hosts. Do not turn a complete set of permanent responses
             # into a transport failure that exhausts the queue's retry budget.
-            if exc.code in {403, 404, 410}:
+            if exc.code in {404, 410}:
                 get.last_failure = "permanent_http"
+                return None
+            if exc.code == 403:
+                get.last_failure = "blocked_http"
                 return None
             if attempt + 1 == RETRIES:
                 get.last_failure = "transient_http"
@@ -228,13 +285,17 @@ def main():
     for i, card in enumerate(rows, 1):
         html = get_profile(card)
         if html is None:
-            if getattr(get_profile, "last_failure", "transient") == "transient":
+            if str(getattr(get_profile, "last_failure", "transient")).startswith(("transient", "blocked")):
                 lost += 1
             else:
                 no_profile += 1
         else:
             url = portrait_url(html)
-            if url:
+            if url and not image_reachable(url):
+                # Не записываем битый URL в карточку: иначе повторная задача
+                # увидит непустой photo_url и может оставить его навсегда.
+                lost += 1
+            elif url:
                 found += 1
                 batch.append((card["id"], url))
             else:
