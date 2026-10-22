@@ -234,7 +234,6 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         ?? (card.position_ru ?? facts?.position),
     },
     facts?.height_cm && { label: t('collection.f_height'), value: `${facts.height_cm} cm` },
-    facts?.years_active && { label: t('collection.f_years'), value: facts.years_active },
     facts?.national_caps && { label: t('collection.f_caps'), value: String(facts.national_caps) },
     facts?.clubs_count && { label: t('collection.f_clubs'), value: String(facts.clubs_count) },
   ].filter(Boolean).slice(0, 4) as { label: string; value: string }[];
