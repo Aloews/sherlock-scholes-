@@ -9,6 +9,7 @@ not suppress this fallback because a linked source row may have no usable image.
 """
 import argparse
 import html as html_lib
+from html.parser import HTMLParser
 import json
 import os
 import re
@@ -74,23 +75,60 @@ def has_profile_content(html):
         r"data-header__market-value-wrapper|data-header__profile-container|data-header__profile-image|dataBild",
         html or "", re.I))
 
+class ProfileImageParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "img":
+            return
+        values = {key.lower(): html_lib.unescape(value or "").strip()
+                  for key, value in attrs}
+        classes = values.get("class", "").casefold().split()
+        marked_profile = (
+            "data-header__profile-image" in classes
+            or "data-bild" in values
+            or "databild" in values
+        )
+        if not marked_profile:
+            return
+        for key in ("src", "data-src", "data-bild", "databild"):
+            value = values.get(key, "")
+            if value:
+                self.urls.append(value)
+
+
+def profile_image_urls(html):
+    parser = ProfileImageParser()
+    try:
+        parser.feed(html or "")
+    except Exception:
+        return []
+    return parser.urls
+
+
 def portrait_url(html):
     """Адрес портрета со страницы профиля — или None.
 
     ЧИСТАЯ ФУНКЦИЯ, и её проверяет тест: заглушку она обязана отвергать, иначе
     в колоду попадёт серый силуэт под видом фотографии.
     """
-    url = meta_image_url(html)
-    if not url:
-        return None
-    parsed = urllib.parse.urlparse(url)
-    if PLACEHOLDER.search(parsed.path):
-        return None
-    if (parsed.hostname or "").lower() not in {
-        "img.a.transfermarkt.technology", "tmssl.akamaized.net"
-    }:
-        return None
-    return url
+    candidates = [meta_image_url(html), *profile_image_urls(html)]
+    for url in candidates:
+        if not url:
+            continue
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            continue
+        if PLACEHOLDER.search(parsed.path):
+            continue
+        if (parsed.hostname or "").lower() not in {
+            "img.a.transfermarkt.technology", "tmssl.akamaized.net"
+        }:
+            continue
+        return url
+    return None
 
 
 def slugify_name(value):
