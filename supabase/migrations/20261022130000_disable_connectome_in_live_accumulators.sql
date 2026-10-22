@@ -58,9 +58,9 @@ begin
            and p.commence_at > now()
            and (p.commence_at at time zone 'utc')::date = v_day
            and (select count(distinct p2.pick) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 1
+                 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 1
            and (select count(*) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 2
+                 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 2
            and calibrated_confidence(p.confidence, p.model) >= coalesce(p_floor, 0.47)
          -- ⚠️ ДОБОР ПО commence_at И fixture_id ОБЯЗАТЕЛЕН, и это видно на
          -- живых данных: у `own` калибровка сжала почти всё к 0.5500, то есть
@@ -149,6 +149,7 @@ BEGIN
           FROM public.forecast_pick p
          WHERE p.commence_at > now()
            AND p.commence_at < now() + interval '14 days'
+           AND p.model IN ('llm', 'own')
          GROUP BY p.fixture_id
         HAVING count(*) = 2 AND count(DISTINCT p.pick) = 1
       ) q
@@ -159,8 +160,9 @@ BEGIN
           FROM public.forecast_pick p
          WHERE p.commence_at > now()
            AND p.commence_at < now() + interval '14 days'
-           AND (SELECT count(*) FROM public.forecast_pick p2 WHERE p2.fixture_id = p.fixture_id) = 2
-           AND (SELECT count(DISTINCT p2.pick) FROM public.forecast_pick p2 WHERE p2.fixture_id = p.fixture_id) = 1
+           AND p.model IN ('llm', 'own')
+           AND (SELECT count(*) FROM public.forecast_pick p2 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 2
+           AND (SELECT count(DISTINCT p2.pick) FROM public.forecast_pick p2 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 1
            AND public.calibrated_confidence(p.confidence, p.model) >= 0.47
          GROUP BY (p.commence_at AT TIME ZONE 'UTC')::date, p.model
         HAVING count(*) >= 3
@@ -172,8 +174,9 @@ BEGIN
           FROM public.forecast_pick p
          WHERE p.commence_at > now()
            AND p.commence_at < now() + interval '14 days'
-           AND (SELECT count(*) FROM public.forecast_pick p2 WHERE p2.fixture_id = p.fixture_id) = 2
-           AND (SELECT count(DISTINCT p2.pick) FROM public.forecast_pick p2 WHERE p2.fixture_id = p.fixture_id) = 1
+           AND p.model IN ('llm', 'own')
+           AND (SELECT count(*) FROM public.forecast_pick p2 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 2
+           AND (SELECT count(DISTINCT p2.pick) FROM public.forecast_pick p2 where p2.fixture_id = p.fixture_id and p2.model in ('llm', 'own')) = 1
            AND public.calibrated_confidence(p.confidence, p.model) >= 0.47
          GROUP BY (p.commence_at AT TIME ZONE 'UTC')::date, p.model
         HAVING count(*) >= 4
