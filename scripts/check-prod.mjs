@@ -3745,13 +3745,13 @@ async function checkForecastWinner() {
     return { ok: response.ok, status: response.status, data };
   };
 
-  const upcoming = await rpc(svc, 'forecast_upcoming', { p_limit: 20 });
+  const upcoming = await rpc(svc, 'forecast_upcoming_v2', { p_limit: 20 });
   const picks = Array.isArray(upcoming.data) ? upcoming.data : [];
-  const complete = picks.length > 0 && picks.every((row) => row.llm_pick && row.own_pick);
-  record('Прогноз: активны LLM и интерпретируемая модель', upcoming.ok && complete,
-         upcoming.ok ? `${picks.filter((row) => row.llm_pick && row.own_pick).length} из ${picks.length}`
+  const complete = picks.length > 0 && picks.every((row) => row.llm_pick && row.fly_pick && row.own_pick);
+  record('Прогноз: активны три модели, включая коннектом', upcoming.ok && complete,
+         upcoming.ok ? `${picks.filter((row) => row.llm_pick && row.fly_pick && row.own_pick).length} из ${picks.length}`
                       : `HTTP ${upcoming.status}`,
-         'проверяет предматчевые прогнозы без удалённого участника');
+         'проверяет предматчевые прогнозы LLM, коннектома и собственной модели');
 
   const bankroll = await rpc(svc, 'llm_paper_bankroll_summary', {});
   const account = Array.isArray(bankroll.data) ? bankroll.data[0] : bankroll.data;
