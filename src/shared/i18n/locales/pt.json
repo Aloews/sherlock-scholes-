@@ -1304,7 +1304,7 @@
     "model": {
       "own": "A nossa variante",
       "llm": "LLM",
-      "fly": "Modelo de conectoma do corpo pedunculado",
+      "fly": "Reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
     },
@@ -1318,7 +1318,7 @@
     "short": {
       "own": "Nossa",
       "llm": "LLM",
-      "fly": "Conectoma"
+      "fly": "Reservatório"
     },
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
