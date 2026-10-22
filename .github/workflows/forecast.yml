@@ -62,6 +62,7 @@ jobs:
           python3 tests/test_paper_bankroll.py
           python3 tests/test_forecast_duel.py
           python3 tests/test_forecast_pipeline.py
+          python3 tests/test_fly_brain.py
           python3 tests/test_calibration.py
 
       # Grade outcomes, apply one-time connectome reinforcement, calibrate, then pick new forecasts.
