@@ -1,6 +1,12 @@
 name: profile-backfill-queue
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/profile-backfill-queue.yml"
+      - "docs/profile_backfill_queue.py"
+      - "supabase/migrations/*profile_backfill*"
   workflow_run:
     workflows: ["soccerwiki-roster-refresh"]
     types: [completed]
@@ -40,7 +46,7 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.max_jobs || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '100' || inputs.max_jobs || '10' }}
           ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
