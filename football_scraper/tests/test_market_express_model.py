@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from market_express_model import (  # noqa: E402
-    apply_platt, fit_platt, probability_metrics, settled_examples, train_market_model,
+    apply_platt, fit_platt, legacy_h2h_rows, probability_metrics, settled_examples, train_market_model,
 )
 
 
@@ -42,6 +42,14 @@ def quote_rows():
     return rows
 
 
+legacy = legacy_h2h_rows([{
+    "fixture_id": "legacy-1", "taken_at": "2025-02-01T10:00:00Z",
+    "bookmaker": "legacy-book", "home_price": 2.0, "draw_price": 3.0, "away_price": 4.0,
+    "fixtures": {"commence_at": "2025-02-01T15:00:00Z", "sport_key": "soccer_test",
+                 "home_score": 2, "away_score": 0, "completed": True,
+                 "scores_at": "2025-02-01T17:00:00Z"},
+}])
+assert len(legacy) == 3 and sum(r["settlement_status"] == "won" for r in legacy) == 1
 rows = quote_rows()
 examples = settled_examples(rows)
 assert len(examples) == 120 * (3 + 2 + 2 + 2), len(examples)
