@@ -223,3 +223,105 @@ BEGIN
   END;
 END;
 $function$;
+
+-- Disable the old connectome predictor on the active winner board while
+-- retaining the legacy RPC columns for older clients. No new fly picks are
+-- written by the Python pipeline; the three legacy fields are always NULL.
+CREATE OR REPLACE FUNCTION public.forecast_scoreboard(p_password text DEFAULT NULL)
+RETURNS TABLE(
+  model text, graded integer, hits integer, accuracy numeric,
+  last30 numeric, streak integer, backfilled integer
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'public'
+SET statement_timeout TO '4s'
+AS $function$
+BEGIN
+  IF coalesce(auth.role(), '') <> 'service_role' AND
+     (p_password IS NULL OR NOT public.admin_check_password(p_password)) THEN
+    PERFORM public.require_pro();
+  END IF;
+
+  RETURN QUERY
+    WITH g AS (
+      SELECT fp.model, fp.correct, fp.commence_at, fp.backfilled,
+             row_number() OVER (PARTITION BY fp.model ORDER BY fp.commence_at DESC) AS rn
+        FROM public.forecast_pick fp
+       WHERE fp.correct IS NOT NULL
+         AND fp.model IN ('llm', 'own')
+    ), base AS (
+      SELECT g.model, count(*)::int AS graded,
+             count(*) FILTER (WHERE g.correct)::int AS hits,
+             round(avg(CASE WHEN g.correct THEN 1.0 ELSE 0.0 END), 4) AS accuracy,
+             round(avg(CASE WHEN g.correct THEN 1.0 ELSE 0.0 END)
+                   FILTER (WHERE g.rn <= 30), 4) AS last30,
+             count(*) FILTER (WHERE g.backfilled)::int AS backfilled
+        FROM g GROUP BY g.model
+    ), run AS (
+      SELECT q.model, count(*)::int AS streak FROM (
+        SELECT g.model, g.correct,
+               sum(CASE WHEN g.correct THEN 0 ELSE 1 END)
+                 OVER (PARTITION BY g.model ORDER BY g.commence_at DESC
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS broke
+          FROM g
+      ) q WHERE q.broke = 0 AND q.correct GROUP BY q.model
+    )
+    SELECT b.model, b.graded, b.hits, b.accuracy, b.last30,
+           coalesce(r.streak, 0), b.backfilled
+      FROM base b LEFT JOIN run r ON r.model = b.model
+     ORDER BY b.accuracy DESC NULLS LAST;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.forecast_upcoming_v2(
+  p_limit integer DEFAULT 20,
+  p_password text DEFAULT NULL
+)
+RETURNS TABLE(
+  fixture_id text, commence_at timestamptz, home_team text, away_team text,
+  llm_pick text, llm_conf numeric, own_pick text, own_conf numeric,
+  exp_total numeric, agree integer, llm_cal numeric, own_cal numeric,
+  fly_pick text, fly_conf numeric, fly_cal numeric
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'public'
+SET statement_timeout TO '4s'
+AS $function$
+BEGIN
+  IF coalesce(auth.role(), '') <> 'service_role' AND
+     (p_password IS NULL OR NOT public.admin_check_password(p_password)) THEN
+    PERFORM public.require_pro();
+  END IF;
+
+  RETURN QUERY
+    WITH p AS (
+      SELECT k.fixture_id, k.commence_at, k.home_team, k.away_team,
+             max(CASE WHEN k.model = 'llm' THEN k.pick END) AS llm_pick,
+             max(CASE WHEN k.model = 'llm' THEN k.confidence END) AS llm_conf,
+             max(CASE WHEN k.model = 'own' THEN k.pick END) AS own_pick,
+             max(CASE WHEN k.model = 'own' THEN k.confidence END) AS own_conf,
+             max(k.exp_total) AS exp_total,
+             count(*) FILTER (WHERE k.pick = (
+               SELECT mode() WITHIN GROUP (ORDER BY k2.pick)
+                 FROM public.forecast_pick k2
+                WHERE k2.fixture_id = k.fixture_id
+                  AND k2.model IN ('llm', 'own')
+             ))::integer AS agree
+        FROM public.forecast_pick k
+       WHERE k.commence_at > now()
+         AND k.model IN ('llm', 'own')
+       GROUP BY k.fixture_id, k.commence_at, k.home_team, k.away_team
+    )
+    SELECT p.fixture_id, p.commence_at, p.home_team, p.away_team,
+           p.llm_pick, p.llm_conf, p.own_pick, p.own_conf, p.exp_total, p.agree,
+           public.calibrated_confidence(p.llm_conf, 'llm'),
+           public.calibrated_confidence(p.own_conf, 'own'),
+           NULL::text, NULL::numeric, NULL::numeric
+      FROM p
+     ORDER BY p.commence_at ASC
+     LIMIT greatest(1, least(coalesce(p_limit, 20), 100));
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.forecast_upcoming_v2(integer, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.forecast_upcoming_v2(integer, text) TO anon, authenticated, service_role;
