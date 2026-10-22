@@ -64,6 +64,7 @@ jobs:
           python3 tests/test_forecast_pipeline.py
           python3 tests/test_fly_brain.py
           python3 tests/test_calibration.py
+          python3 tests/test_market_express_model.py
 
       # Grade outcomes, calibrate, settle virtual bankroll, then pick new forecasts.
       - name: Grade, calibrate, settle virtual bankroll, pick
@@ -75,6 +76,7 @@ jobs:
           python football_scraper/forecast_pipeline.py calibrate
           python football_scraper/paper_bankroll.py
           python football_scraper/forecast_pipeline.py pick
+          python football_scraper/market_express_model.py train
 
       # Переобучение дуэли — по понедельникам, отдельным шагом и с
       # `if: always()`: оно независимо от круга выше, и его падение не должно
