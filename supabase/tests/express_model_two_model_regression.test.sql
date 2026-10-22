@@ -12,6 +12,9 @@ BEGIN
   IF position(') = 2' in v_builder) = 0 THEN
     RAISE EXCEPTION 'accumulator builder must require two active model rows';
   END IF;
+  IF position('p2.model in (''llm'', ''own'')' in v_builder) = 0 THEN
+    RAISE EXCEPTION 'legacy fly rows must not affect active-model consensus';
+  END IF;
   IF position(') = 3' in v_builder) > 0 THEN
     RAISE EXCEPTION 'accumulator builder still requires three model rows';
   END IF;
