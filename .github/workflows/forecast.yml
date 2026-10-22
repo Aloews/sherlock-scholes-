@@ -1,6 +1,6 @@
 name: forecast
 
-# Ночной круг трёх прогнозистов, ОТДЕЛЬНО от обогащения колоды.
+# Ночной круг двух активных прогнозистов, ОТДЕЛЬНО от обогащения колоды.
 #
 # ⚠️ ОН БЫЛ ЧАСТЬЮ `daily-enrich` И ПЯТЬ СУТОК НЕ ЗАПУСКАЛСЯ. Там он стоял
 # двадцатым шагом из тридцати одного, а первый шаг — обогащение — идёт пять с
@@ -65,14 +65,13 @@ jobs:
           python3 tests/test_fly_brain.py
           python3 tests/test_calibration.py
 
-      # Grade outcomes, apply one-time connectome reinforcement, calibrate, then pick new forecasts.
+      # Grade outcomes, calibrate, settle virtual bankroll, then pick new forecasts.
       - name: Grade, calibrate, settle virtual bankroll, pick
         run: |
           if [ "$(date -u +%u)" = "1" ]; then
             python football_scraper/forecast_pipeline.py train
           fi
           python football_scraper/forecast_pipeline.py grade
-          python football_scraper/forecast_pipeline.py dopamine
           python football_scraper/forecast_pipeline.py calibrate
           python football_scraper/paper_bankroll.py
           python football_scraper/forecast_pipeline.py pick
