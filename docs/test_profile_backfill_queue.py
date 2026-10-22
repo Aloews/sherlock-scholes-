@@ -9,6 +9,24 @@ import profile_backfill_queue as worker
 from profile_backfill_queue import classify_result, usable_photo, rpc_status, result_exit_code, final_job_results
 
 
+class SupabaseRequestDiagnosticsTests(unittest.TestCase):
+    def test_http_error_includes_safe_status_and_response_body(self):
+        error_body = b'{"message":"statement timeout","hint":"query exceeded limit"}'
+        error = urllib.error.HTTPError(
+            "https://example.supabase.co/rest/v1/rpc/test", 500,
+            "Internal Server Error", {}, __import__("io").BytesIO(error_body)
+        )
+        with patch.dict("os.environ", {"SUPABASE_URL":"https://example.supabase.co",
+                                      "SUPABASE_KEY":"test-secret-key"}), patch(
+            "urllib.request.urlopen", side_effect=error
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Supabase HTTP 500") as caught:
+                worker.request("rpc/test", method="POST", body={"p_limit": 1})
+        self.assertIn("statement timeout", str(caught.exception))
+        self.assertNotIn("test-secret-key", str(caught.exception))
+        self.assertNotIn("Authorization", str(caught.exception))
+
+
 class SoccerWikiPhotoTests(unittest.TestCase):
     card_id = "642fc812-0b0b-4902-8cd1-7e178da734de"
 
