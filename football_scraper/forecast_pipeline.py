@@ -12,6 +12,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from calibration import evaluate  # noqa: E402
+from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 from forecast_duel import _fetch, _write  # noqa: E402
 from forecast_winner import (  # noqa: E402
     K_FORM_GRID, LAMBDAS, LIN_FEATURES, OUTCOMES, TAU_GRID,
@@ -20,7 +21,7 @@ from forecast_winner import (  # noqa: E402
 )
 from forecast_duel import split_by_time  # noqa: E402
 
-MODELS = ("llm", "own")
+MODELS = ("llm", "fly", "own")
 
 
 # ─────────────────────────────────────────────────────────────── ввод ────────
@@ -116,6 +117,16 @@ def own_call_conf(params: dict, r) -> tuple[str, float, float]:
     return pick, _conf(abs(edge), 0.6), exp_total
 
 
+def fly_call(fly: FlyBrain, r) -> tuple[str, float, float]:
+    sc = fly.scores(row_to_odour(r))
+    order = sorted(OUTCOMES, key=lambda o: sc[o])
+    margin = sc[order[1]] - sc[order[0]]
+    exp_total = float((r["h_gf"] or 0) + (r["a_ga"] or 0)
+                      + (r["a_gf"] or 0) + (r["h_ga"] or 0)) / 2.0
+    return order[0], _conf(margin, 0.05), exp_total
+
+
+
 def _conf(margin: float, full: float) -> float:
     """Отрыв первого от второго, сжатый в 0..1.
 
@@ -128,6 +139,35 @@ def _conf(margin: float, full: float) -> float:
 
 
 # ────────────────────────────────────────────────────────────── шаги ─────────
+def fly_load(url: str, key: str) -> FlyBrain:
+    fly = FlyBrain.load()
+    rows = _fetch(url, key, "fly_state?select=*&id=eq.mb")
+    if rows:
+        w = np.asarray(rows[0]["weights"], dtype=float)
+        idx = fly.nonzero_index()
+        if w.size == idx[0].size:
+            fly.kc_mbon[idx] = w
+            fly.taught = int(rows[0].get("taught") or 0)
+            fly.depression = float(rows[0].get("depression") or fly.depression)
+        else:
+            print(f"⚠ память мухи не подошла по размеру ({w.size} против "
+                  f"{idx[0].size}) — начинаем с коннектома")
+    return fly
+
+
+def fly_save(url: str, key: str, fly: FlyBrain, dopamine: int) -> None:
+    idx = fly.nonzero_index()
+    _write(url, key, "fly_state?on_conflict=id", [{
+        "id": "mb",
+        "weights": [round(float(v), 6) for v in fly.kc_mbon[idx]],
+        "taught": fly.taught,
+        "dopamine": dopamine,
+        "depression": fly.depression,
+        "updated_at": now_iso(),
+    }], method="POST")
+
+
+
 def step_train(url: str, key: str) -> dict:
     rows = _fetch(url, key, "duel_features?select=*&order=match_date.asc")
     params = fit_all(rows)
@@ -148,6 +188,7 @@ def load_params(url: str, key: str) -> dict:
 
 def step_pick(url: str, key: str, limit: int = 400) -> int:
     params = load_params(url, key)
+    fly = fly_load(url, key)
     rows = _fetch(url, key,
                   "forecast_inputs?select=*&commence_at=gt." + now_iso()
                   + "&order=commence_at.asc")
@@ -156,6 +197,7 @@ def step_pick(url: str, key: str, limit: int = 400) -> int:
     body = []
     for r in rows[:limit]:
         for model, call in (("llm", lambda x: llm_call(params["llm"], x)),
+                            ("fly", lambda x: fly_call(fly, x)),
                             ("own", lambda x: own_call_conf(params["own"], x))):
             if (r["fixture_id"], model) in have:
                 continue
@@ -190,6 +232,42 @@ def step_grade(url: str, key: str) -> int:
     graded = int(row.get("graded") or 0)
     print(f"сверено прогнозов: {graded}, матчей: {row.get('matches')}")
     return graded
+
+
+def step_dopamine(url: str, key: str) -> int:
+    """Отдать мухе сыгранные матчи: подкрепление на КАЖДЫЙ исход.
+
+    ⚠️ ПО ОДНОМУ МАТЧУ РОВНО ОДИН РАЗ. Строка мухи помечается `dopamine_at`, и
+    второй проход её не возьмёт: иначе один и тот же матч подкреплялся бы каждую
+    ночь, и мозг съезжал бы в пол на нескольких старых играх.
+    """
+    hungry = _fetch(url, key,
+                    "forecast_pick?select=fixture_id,actual,commence_at"
+                    "&model=eq.fly&dopamine_at=is.null&actual=not.is.null"
+                    "&order=commence_at.asc")
+    if not hungry:
+        print("дофамин не нужен: новых сыгранных матчей нет")
+        return 0
+    inputs = {r["fixture_id"]: r for r in _fetch(url, key, "forecast_inputs?select=*")}
+    fly = fly_load(url, key)
+    fed = []
+    for p in hungry:
+        r = inputs.get(p["fixture_id"])
+        if not r:
+            continue
+        fly.learn(row_to_odour(r), actual=p["actual"])
+        fed.append({"fixture_id": p["fixture_id"], "model": "fly",
+                    "dopamine_at": now_iso()})
+    if fed:
+        _write(url, key, "forecast_pick?on_conflict=fixture_id,model", fed,
+               method="POST")
+        prev = _fetch(url, key, "fly_state?select=dopamine&id=eq.mb")
+        total = int(prev[0]["dopamine"]) if prev else 0
+        fly_save(url, key, fly, total + len(fed))
+    print(f"дофамин: {len(fed)} матчей, всего обучено {fly.taught}, "
+          f"ослаблено {fly.learned_fraction() * 100:.2f} % веса")
+    return len(fed)
+
 
 
 def step_calibrate(url: str, key: str) -> int:
@@ -269,8 +347,12 @@ def step_backfill(url: str, key: str) -> int:
     rows = _fetch(url, key, "duel_features?select=*&order=match_date.asc")
     rows = [r for r in rows if r.get("outcome")]
     rows.sort(key=lambda r: (r["match_date"], r["home_key"], r["away_key"]))
-    _tr, _va, te = split_by_time(len(rows))
+    tr, _va, te = split_by_time(len(rows))
     test = rows[te]
+    fly = FlyBrain.load()
+    fly.depression = 0.02
+    for train_row in rows[tr]:
+        fly.learn(row_to_odour(train_row), actual=train_row["outcome"])
 
     have = {(p["fixture_id"], p["model"])
             for p in _fetch(url, key, "forecast_pick?select=fixture_id,model")}
@@ -281,6 +363,7 @@ def step_backfill(url: str, key: str) -> int:
         actual = r["outcome"]
         calls = {
             "llm": llm_call(params["llm"], r),
+            "fly": fly_call(fly, r),
             "own": own_call_conf(params["own"], r),
         }
         for model, (pick, conf, total) in calls.items():
@@ -293,12 +376,17 @@ def step_backfill(url: str, key: str) -> int:
                 "away_team": r["away_key"], "backfilled": True,
                 "actual": actual, "actual_total": float(r["total"]),
                 "correct": pick == actual, "graded_at": now_iso(),
+                "dopamine_at": now_iso() if model == "fly" else None,
             })
+        fly.learn(row_to_odour(r), actual=actual)
 
     for i in range(0, len(body), 500):
         _write(url, key, "forecast_pick?on_conflict=fixture_id,model",
                body[i:i + 500], method="POST")
-    print(f"история задним числом: {len(body)} строк на {len(test)} матчей")
+    if test:
+        fly_save(url, key, fly, len(test))
+    print(f"история задним числом: {len(body)} строк на {len(test)} матчей, "
+          f"дофамин {len(test)}, ослаблено {fly.learned_fraction() * 100:.2f} %")
     return len(body)
 
 
@@ -312,6 +400,8 @@ def main() -> int:
         step_train(url, key)
     if step in ("grade", "all"):
         step_grade(url, key)
+    if step in ("dopamine", "all"):
+        step_dopamine(url, key)
     if step in ("calibrate", "all"):
         step_calibrate(url, key)
     if step in ("pick", "all"):
