@@ -1303,22 +1303,22 @@
     "failed": "Could not load the measurement.",
     "model": {
       "own": "Our own variant",
-      "llm": "LLM",
-      "fly": "Mushroom-body connectome model",
+      "llm": "Linear model",
+      "fly": "Fixed reservoir model",
       "median": "Median",
       "current": "Current formula"
     },
     "what": {
       "own": "A blend of the two models that stays silent when they disagree",
       "llm": "A trained linear head over nine match features",
-      "fly": "hemibrain v1.2 connectome with reward-modulated learning",
+      "fly": "Fixed sparse random projection; only the readout layer is trained",
       "median": "Always names the most common number of goals",
       "current": "What the app shows today; it does not learn"
     },
     "short": {
       "own": "Ours",
-      "llm": "LLM",
-      "fly": "Connectome"
+      "llm": "Linear",
+      "fly": "Reservoir"
     },
     "exp_total": "{{v}} goals expected",
     "agree_one": "{{n}} agrees",
