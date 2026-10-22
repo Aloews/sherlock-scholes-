@@ -1,4 +1,5 @@
 import sys
+import urllib.error
 import subprocess
 import unittest
 from unittest.mock import patch
