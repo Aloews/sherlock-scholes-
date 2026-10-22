@@ -94,7 +94,7 @@ export async function fetchUpcomingPicks(
   const res = await supabase.rpc('forecast_upcoming_v2', {
     p_limit: limit, p_password: password,
   });
-  return fromPostgrest<UpcomingPick[]>(res, 'forecast_upcoming');
+  return fromPostgrest<UpcomingPick[]>(res, 'forecast_upcoming_v2');
 }
 
 export async function fetchScoreboard(
