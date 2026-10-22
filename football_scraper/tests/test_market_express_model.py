@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from market_express_model import (  # noqa: E402
-    apply_platt, fit_platt, legacy_h2h_rows, probability_metrics, settled_examples, train_market_model,
+    apply_platt, calibrated_outcomes, fit_platt, legacy_h2h_rows, probability_metrics, settled_examples, train_market_model,
 )
 
 
@@ -55,6 +55,13 @@ examples = settled_examples(rows)
 assert len(examples) == 120 * (3 + 2 + 2 + 2), len(examples)
 h2h = [e for e in examples if e["fixture_id"] == "fixture-000" and e["market"] == "h2h"]
 assert abs(sum(e["raw_prob"] for e in h2h) - 1.0) < 1e-9
+calibrators = {market: {"a": 1.0, "b": 0.0} for market in ("h2h", "totals", "spreads", "btts")}
+normalized = calibrated_outcomes(examples, calibrators)
+groups = {}
+for row in normalized:
+    key = (row["fixture_id"], row["market"], row["line"], row["provider"], row["bookmaker"], row["region"])
+    groups[key] = groups.get(key, 0.0) + row["prob"]
+assert groups and all(abs(total - 1.0) < 1e-9 for total in groups.values())
 a, b = fit_platt([e["raw_prob"] for e in examples], [e["label"] for e in examples])
 assert 0.0 < apply_platt(0.5, a, b) < 1.0
 metrics = probability_metrics([0.2, 0.8], [0.0, 1.0])
