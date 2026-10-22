@@ -39,3 +39,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021110000_accumulator_settlement_security_observability.sql
       - name: Verify generation diagnostics, cron jobs, and RLS
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/accumulator_settlement_regression.test.sql
+      - name: Apply two-model express migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261022130000_disable_connectome_in_live_accumulators.sql
+      - name: Verify two-model express selection
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/express_model_two_model_regression.test.sql
