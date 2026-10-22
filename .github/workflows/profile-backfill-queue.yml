@@ -1,12 +1,18 @@
 name: profile-backfill-queue
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/profile-backfill-queue.yml"
+      - "docs/profile_backfill_queue.py"
+      - "supabase/migrations/*profile_backfill*"
   workflow_run:
     workflows: ["soccerwiki-roster-refresh"]
     types: [completed]
   schedule:
-    # Bounded daily enrichment; manual runs remain available for larger batches.
-    - cron: "17 3 * * *"
+    # Bounded, resumable batches throughout the day; concurrency prevents overlapping workers.
+    - cron: "17 */4 * * *"
   workflow_dispatch:
     inputs:
       enqueue_only:
@@ -40,8 +46,8 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '50' || inputs.max_jobs || '10' }}
-          ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '50' || inputs.enqueue_limit || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '100' || inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is missing"; exit 2; }
@@ -61,8 +67,8 @@ jobs:
       - name: Enqueue gaps and process a bounded batch
         env:
           ENQUEUE_ONLY: ${{ github.event_name == 'schedule' && 'false' || inputs.enqueue_only }}
-          MAX_JOBS: ${{ github.event_name == 'schedule' && '25' || inputs.max_jobs || '10' }}
-          ENQUEUE_LIMIT: ${{ github.event_name == 'schedule' && '25' || inputs.enqueue_limit || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           if [ "$ENQUEUE_ONLY" = "true" ]; then
             python docs/profile_backfill_queue.py --enqueue-only --enqueue-limit "$ENQUEUE_LIMIT"

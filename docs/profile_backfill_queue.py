@@ -142,8 +142,29 @@ def request(path, params=None, method="GET", body=None):
     data=json.dumps(body).encode() if body is not None else None
     req=urllib.request.Request(url,data=data,method=method,headers={
       "apikey":key,"Authorization":"Bearer "+key,"Content-Type":"application/json","Prefer":"return=representation"})
-    with urllib.request.urlopen(req,timeout=90) as response:
-        raw=response.read()
+    try:
+        with urllib.request.urlopen(req,timeout=90) as response:
+            raw=response.read()
+    except urllib.error.HTTPError as exc:
+        # Include the upstream PostgREST/Postgres diagnostic, but never echo
+        # credentials or authorization headers into Actions logs.
+        try:
+            detail = exc.read(4096).decode("utf-8", errors="replace")
+        except Exception:
+            detail = ""
+        detail = re.sub(r"(?i)(authorization\\s*[:=]\\s*bearer\\s+)\\S+", r"\\1[REDACTED]", detail)
+        for secret in (key, os.environ.get("SUPABASE_KEY", "")):
+            if secret:
+                detail = detail.replace(secret, "[REDACTED]")
+        detail = re.sub(r"(?i)(service_role|sb_secret)_[A-Za-z0-9_-]{8,}", "[REDACTED]", detail)
+        detail = re.sub(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token)(\\s*[:=]\\s*)[^,\\s\\\"]+", r"\\1\\2[REDACTED]", detail)
+        detail = " ".join(detail.split())[:2500]
+        raise RuntimeError(
+            f"Supabase HTTP {exc.code} for {method} {path}: "
+            f"{detail or exc.reason}"
+        ) from None
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Supabase network error for {method} {path}: {exc.reason}") from None
     return json.loads(raw) if raw else []
 
 
