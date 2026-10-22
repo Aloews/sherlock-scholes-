@@ -63,15 +63,16 @@ def main():
         check("permanent HTTP 403 rejected", collector.get(
             "https://www.transfermarkt.com/marlon/profil/spieler/273236"
         ), None)
-        check("permanent HTTP 403 is not retried", sleep.call_count, 0)
+        check("HTTP 403 is classified as blocked", collector.get.last_failure, "blocked_http")
+        check("HTTP 403 is not retried immediately", sleep.call_count, 0)
 
     with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=forbidden), patch(
         "cards_photo_transfermarkt.time.sleep"
     ):
-        check("all permanent profile responses yield confirmed no-data",
+        check("all blocked profile responses yield no page",
               collector.get_profile({"name_en": "Marlon", "transfermarkt_id": "273236"}), None)
-        check("permanent profile failure classification",
-              collector.get_profile.last_failure, "no_data")
+        check("blocked profile remains retryable",
+              collector.get_profile.last_failure, "transient")
 
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
