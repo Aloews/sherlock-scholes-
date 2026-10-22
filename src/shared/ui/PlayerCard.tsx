@@ -1,6 +1,6 @@
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
-import type { Card } from '@/shared/types/database';
+import { TIER_COLOR, TIER_LABEL_EN, TIER_LABEL_RU, type Card } from '@/shared/types/database';
 import { cardDisplayName } from '@/shared/lib/cardName';
 import { tierCardStyle, tierFrameStyle } from '@/shared/lib/tier';
 import { CardWatermark } from '@/shared/ui/CardWatermark';
@@ -57,6 +57,11 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
   // as the quick-game summary).
   const name     = cardDisplayName(card, i18n.language);
   const master   = design === 'master';
+  const tierLabel = card.tier
+    ? (i18n.language.startsWith('ru') ? TIER_LABEL_RU : TIER_LABEL_EN)[card.tier]
+    : null;
+  const showTier = Boolean(card.tier && card.tier !== 'common' && tierLabel);
+  const tierColor = card.tier ? TIER_COLOR[card.tier] : undefined;
 
   // Master: the prototype's composition — gradient rarity frame around a
   // gradient-filled card, centred category badge, big Playfair name, category
@@ -74,6 +79,15 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
             <CardWatermark src={card.photo_url} category={card.category} />
           )}
           <div className="relative px-5 pt-6 pb-7 flex flex-col items-center text-center">
+            {showTier && (
+              <span
+                className="absolute right-3 top-3 rounded-full border px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.12em]"
+                style={{ color: tierColor, borderColor: tierColor, backgroundColor: 'rgb(0 0 0 / 28%)' }}
+                data-testid="card-rarity"
+              >
+                {tierLabel}
+              </span>
+            )}
             <span
               className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
               style={{ backgroundColor: 'rgb(var(--brand-accent) / 0.08)', border: `1px solid ${catColor}66` }}
@@ -106,6 +120,17 @@ export function PlayerCard({ card, mode, className }: PlayerCardProps) {
     >
       {/* Thin category colour strip */}
       <div className="h-1" style={{ backgroundColor: catColor }} />
+      {showTier && (
+        <div className="relative flex justify-end px-3 pt-2">
+          <span
+            className="rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wider"
+            style={{ color: tierColor, borderColor: tierColor, backgroundColor: 'rgb(0 0 0 / 18%)' }}
+            data-testid="card-rarity"
+          >
+            {tierLabel}
+          </span>
+        </div>
+      )}
 
       {/* The card's own wiki photo, ghosted behind the name — a hint for the
           explainer that costs no layout space. Preloaded a card ahead

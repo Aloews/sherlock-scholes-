@@ -19,6 +19,7 @@ on:
       - 'supabase/migrations/**'
   schedule:
     - cron: '0 11 * * *'
+    - cron: '0 3,19 * * *'
   workflow_dispatch:
     inputs:
       transfermarkt_id:
@@ -38,6 +39,7 @@ concurrency:
 
 jobs:
   season-stats:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '0 11 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -133,7 +135,7 @@ jobs:
         run: python3 football_scraper/tests/test_soccerwiki_player.py
 
       - name: Collect Soccer Wiki player detail photos
-        run: APPLY=1 python3 docs/soccerwiki_players.py --minutes 90 --linked-first
+        run: APPLY=1 python3 docs/soccerwiki_players.py --minutes 90 --linked-first --refresh --offset "$((GITHUB_RUN_NUMBER * 5000))"
 
       - name: Enqueue and process verified player-photo backfill
         run: |
@@ -163,6 +165,7 @@ jobs:
     timeout-minutes: 5
     env:
       STATS_RESULT: ${{ needs.season-stats.result }}
+      STATS_EXPECTED: ${{ github.event_name != 'schedule' || github.event.schedule == '0 11 * * *' }}
       PHOTOS_RESULT: ${{ needs.player-photos.result }}
       PHOTOS_EXPECTED: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
     steps:
@@ -170,7 +173,11 @@ jobs:
         run: |
           echo "season-stats = $STATS_RESULT"
           echo "player-photos = $PHOTOS_RESULT (expected=$PHOTOS_EXPECTED)"
-          [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          if [ "$STATS_EXPECTED" = "true" ]; then
+            [ "$STATS_RESULT" = "success" ] || { echo "::error::season-stats: $STATS_RESULT"; exit 1; }
+          else
+            [ "$STATS_RESULT" = "skipped" ] || { echo "::error::season-stats should be skipped for a photo-only schedule, got $STATS_RESULT"; exit 1; }
+          fi
           if [ "$PHOTOS_EXPECTED" = "true" ]; then
             [ "$PHOTOS_RESULT" = "success" ] || { echo "::error::player-photos: $PHOTOS_RESULT"; exit 1; }
           else
