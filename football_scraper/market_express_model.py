@@ -151,7 +151,7 @@ def _fixture_split(examples):
     return set(ordered[:cut]), set(ordered[cut:])
 
 
-def express_holdout(examples, calibrators, k):
+def express_holdout(examples, calibrators):
     """Chronological holdout: select positive-EV legs, at most one per fixture."""
     best_by_fixture = {}
     for row in examples:
@@ -232,14 +232,13 @@ def train_market_model(rows, min_fixtures=MIN_FIXTURES):
             "settled_fixtures": fixture_count, "trained_examples": len(market_rows),
             "holdout": metrics,
         }
-    holdout_rows = [e for e in examples if e["fixture_id"] in set().union(*[
-        _fixture_split([x for x in examples if x["market"] == m])[1]
-        for m in model_market
-    ])] if model_market else []
+    holdout_rows = []
     holdout_calibrators = {}
-    for market, params in model_market.items():
-        train_ids, _ = _fixture_split([e for e in examples if e["market"] == market])
-        train = [e for e in examples if e["market"] == market and e["fixture_id"] in train_ids]
+    for market in model_market:
+        market_rows = [e for e in examples if e["market"] == market]
+        train_ids, test_ids = _fixture_split(market_rows)
+        train = [e for e in market_rows if e["fixture_id"] in train_ids]
+        holdout_rows.extend(e for e in market_rows if e["fixture_id"] in test_ids)
         try:
             a, b = fit_platt([e["raw_prob"] for e in train], [e["label"] for e in train])
             holdout_calibrators[market] = {"a": a, "b": b}
@@ -250,7 +249,7 @@ def train_market_model(rows, min_fixtures=MIN_FIXTURES):
         "fitted_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "markets": model_market,
         "skipped": skipped,
-        "express_holdout": express_holdout(holdout_rows, holdout_calibrators, 3),
+        "express_holdout": express_holdout(holdout_rows, holdout_calibrators),
         "data": {"settled_quote_rows": len(rows), "usable_examples": len(examples)},
     }
 
