@@ -46,6 +46,6 @@ jobs:
       - name: Prepare isolated card schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value_test_setup.sql
       - name: Apply value-aware card tier migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_card_tier_market_value_sync.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021140422_card_tier_market_value_sync.sql
       - name: Verify value-aware tier rules and update trigger
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value.test.sql
