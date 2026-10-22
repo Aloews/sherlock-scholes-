@@ -190,7 +190,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                   <th className="text-left font-normal pb-1">{t('duel.col_match')}</th>
                   <th className="px-1 font-normal pb-1 text-brand-accent">{t('duel.short.own')}</th>
                   <th className="px-1 font-normal pb-1 text-sky-300">{t('duel.short.llm')}</th>
-                  <th className="px-1 font-normal pb-1 text-violet-300">{t('duel.short.fly')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,9 +213,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                     </td>
                     <td className="py-2 px-1 text-center">
                       <PickChip pick={m.llm_pick} tint={TINT.llm} />
-                    </td>
-                    <td className="py-2 px-1 text-center">
-                      <PickChip pick={m.fly_pick} tint={TINT.fly} />
                     </td>
                   </tr>
                 ))}
