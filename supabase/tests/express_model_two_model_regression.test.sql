@@ -1,9 +1,9 @@
 DO $$
 DECLARE
-  v_builder text := pg_get_functiondef('public.build_model_accumulators(integer,integer[],numeric)'::regprocedure);
-  v_runner text := pg_get_functiondef('public.run_model_accumulator_generation()'::regprocedure);
-  v_scoreboard text := pg_get_functiondef('public.forecast_scoreboard(text)'::regprocedure);
-  v_upcoming text := pg_get_functiondef('public.forecast_upcoming_v2(integer,text)'::regprocedure);
+  v_builder text := lower(pg_get_functiondef('public.build_model_accumulators(integer,integer[],numeric)'::regprocedure));
+  v_runner text := lower(pg_get_functiondef('public.run_model_accumulator_generation()'::regprocedure));
+  v_scoreboard text := lower(pg_get_functiondef('public.forecast_scoreboard(text)'::regprocedure));
+  v_upcoming text := lower(pg_get_functiondef('public.forecast_upcoming_v2(integer,text)'::regprocedure));
 BEGIN
   IF position('array[''llm'', ''own'']' in v_builder) = 0 THEN
     RAISE EXCEPTION 'accumulator builder must generate only llm and own models';
