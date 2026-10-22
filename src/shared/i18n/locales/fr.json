@@ -1304,7 +1304,7 @@
     "model": {
       "own": "Notre variante",
       "llm": "LLM",
-      "fly": "Modèle de connectome du corps pédonculé",
+      "fly": "Réservoir",
       "median": "Médiane",
       "current": "Formule actuelle"
     },
@@ -1318,7 +1318,7 @@
     "short": {
       "own": "Nôtre",
       "llm": "LLM",
-      "fly": "Connectome"
+      "fly": "Réservoir"
     },
     "exp_total": "{{v}} buts attendus",
     "agree_one": "{{n}} d'accord",
