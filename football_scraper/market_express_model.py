@@ -138,6 +138,8 @@ def settled_examples(rows):
                 "market": row["market_key"],
                 "outcome": outcome,
                 "line": line,
+                "provider": row.get("provider") or "",
+                "region": row.get("region") or "",
                 "bookmaker": row.get("bookmaker") or "",
                 "price": price,
                 "raw_prob": inverse[outcome] / total,
@@ -198,21 +200,43 @@ def _fixture_split(examples):
     return set(ordered[:cut]), set(ordered[cut:])
 
 
-def express_holdout(examples, calibrators):
-    """Chronological holdout: select positive-EV legs, at most one per fixture."""
-    best_by_fixture = {}
+def calibrated_outcomes(examples, calibrators):
+    """Normalize calibrated probabilities within each mutually-exclusive market line."""
+    groups = defaultdict(list)
     for row in examples:
         model = calibrators.get(row["market"])
         if not model:
             continue
-        p = apply_platt(row["raw_prob"], model["a"], model["b"])
-        ev = p * row["price"] - 1.0
-        if ev < MIN_EV:
+        key = (
+            row["fixture_id"], row["market"], row["line"],
+            row.get("provider", ""), row.get("bookmaker", ""), row.get("region", ""),
+        )
+        groups[key].append((row, apply_platt(row["raw_prob"], model["a"], model["b"])))
+
+    normalized = []
+    for entries in groups.values():
+        total = sum(prob for _, prob in entries)
+        if total <= 0 or not math.isfinite(total):
             continue
-        candidate = {**row, "prob": p, "ev": ev}
-        prev = best_by_fixture.get(row["fixture_id"])
+        for row, calibrated in entries:
+            probability = calibrated / total
+            normalized.append({
+                **row,
+                "prob": probability,
+                "ev": probability * row["price"] - 1.0,
+            })
+    return normalized
+
+
+def express_holdout(examples, calibrators):
+    """Chronological holdout: choose positive-EV legs, at most one per fixture."""
+    best_by_fixture = {}
+    for candidate in calibrated_outcomes(examples, calibrators):
+        if candidate["ev"] < MIN_EV:
+            continue
+        prev = best_by_fixture.get(candidate["fixture_id"])
         if prev is None or (candidate["ev"], candidate["price"]) > (prev["ev"], prev["price"]):
-            best_by_fixture[row["fixture_id"]] = candidate
+            best_by_fixture[candidate["fixture_id"]] = candidate
     days = defaultdict(list)
     for row in best_by_fixture.values():
         day = row["commence_at"][:10]
