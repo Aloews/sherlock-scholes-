@@ -35,6 +35,7 @@ import {
 const TINT: Record<ForecastModel, string> = {
   own: 'text-brand-accent',
   llm: 'text-sky-300',
+  fly: 'text-violet-300',
 };
 
 const PICK_RE = /\(([HDA])\)/g;

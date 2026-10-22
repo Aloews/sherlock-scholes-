@@ -13,7 +13,7 @@ import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
  * прогнозов пересчитывается при каждом открытии и всегда выглядит разумной.
  */
 
-export type ForecastModel = 'llm' | 'own';
+export type ForecastModel = 'llm' | 'fly' | 'own';
 export type Outcome = 'H' | 'D' | 'A';
 
 export interface UpcomingPick {
@@ -23,6 +23,8 @@ export interface UpcomingPick {
   away_team: string;
   llm_pick: Outcome | null;
   llm_conf: number | null;
+  fly_pick: Outcome | null;
+  fly_conf: number | null;
   own_pick: Outcome | null;
   own_conf: number | null;
   exp_total: number | null;
@@ -43,6 +45,7 @@ export interface UpcomingPick {
    * сырое и не притворяется.
    */
   llm_cal: number | null;
+  fly_cal: number | null;
   own_cal: number | null;
 }
 
@@ -88,10 +91,10 @@ export interface HistoryRow {
 export async function fetchUpcomingPicks(
   limit = 20, password: string | null = null,
 ): Promise<LoadState<UpcomingPick[]>> {
-  const res = await supabase.rpc('forecast_upcoming', {
+  const res = await supabase.rpc('forecast_upcoming_v2', {
     p_limit: limit, p_password: password,
   });
-  return fromPostgrest<UpcomingPick[]>(res, 'forecast_upcoming');
+  return fromPostgrest<UpcomingPick[]>(res, 'forecast_upcoming_v2');
 }
 
 export async function fetchScoreboard(
@@ -275,17 +278,13 @@ export async function fetchModelAccumulators(
     p_limit: limit, p_model: model,
   });
   const state = fromPostgrest<ModelAccumulator[]>(res, 'model_accumulator_history');
-  return state.status === 'ok'
-    ? { ...state, data: state.data.filter((row) => row.model === 'llm' || row.model === 'own') }
-    : state;
+  return state;
 }
 
 export async function fetchAccumulatorScore(): Promise<LoadState<AccumulatorScore[]>> {
   const res = await supabase.rpc('model_accumulator_scoreboard', {});
   const state = fromPostgrest<AccumulatorScore[]>(res, 'model_accumulator_scoreboard');
-  return state.status === 'ok'
-    ? { ...state, data: state.data.filter((row) => row.model === 'llm' || row.model === 'own') }
-    : state;
+  return state;
 }
 
 export interface ModelAccumulatorLeg {
