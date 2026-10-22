@@ -1,0 +1,27 @@
+name: profile-backfill-queue-tests
+
+on:
+  pull_request:
+    paths:
+      - "docs/profile_backfill_queue.py"
+      - "docs/test_profile_backfill_queue.py"
+      - "supabase/migrations/*profile_backfill*"
+      - ".github/workflows/profile-backfill-queue.yml"
+      - ".github/workflows/profile-backfill-queue-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  queue-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile worker and tests
+        run: python -m py_compile docs/profile_backfill_queue.py docs/test_profile_backfill_queue.py
+      - name: Run offline queue regression tests
+        run: python docs/test_profile_backfill_queue.py
