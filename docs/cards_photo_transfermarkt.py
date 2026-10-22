@@ -108,6 +108,22 @@ def profile_image_urls(html):
     return parser.urls
 
 
+def image_reachable(url):
+    """Проверяет, что URL реально отдаёт изображение до записи в карточку."""
+    if not url:
+        return False
+    req = urllib.request.Request(url, headers={
+        "User-Agent": UA, "Range": "bytes=0-1023", "Accept": "image/*"
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            response.read(1024)
+            return response.status < 400 and content_type.startswith("image/")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return False
+
+
 def portrait_url(html):
     """Адрес портрета со страницы профиля — или None.
 
@@ -275,7 +291,11 @@ def main():
                 no_profile += 1
         else:
             url = portrait_url(html)
-            if url:
+            if url and not image_reachable(url):
+                # Не записываем битый URL в карточку: иначе повторная задача
+                # увидит непустой photo_url и может оставить его навсегда.
+                lost += 1
+            elif url:
                 found += 1
                 batch.append((card["id"], url))
             else:
