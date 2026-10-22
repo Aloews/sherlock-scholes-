@@ -40,8 +40,8 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '50' || inputs.max_jobs || '10' }}
-          ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '50' || inputs.enqueue_limit || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.max_jobs || '10' }}
+          ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL secret is missing"; exit 2; }
