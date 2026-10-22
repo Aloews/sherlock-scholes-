@@ -46,14 +46,15 @@ function HitBar({ value, tint }: { value: number; tint: string }) {
 function ModelCard({ row }: { row: DuelRow }) {
   const { t } = useTranslation();
   const tint = TINT[row.model] ?? 'text-brand-muted';
+  const modelKey = row.model === 'fly' ? 'reservoir' : row.model;
   const silent = row.coverage < 0.999;
   return (
     <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <div className={`font-black ds-display ${tint}`}>{t(`duel.model.${row.model}`)}</div>
+          <div className={`font-black ds-display ${tint}`}>{t(`duel.model.${modelKey}`)}</div>
           <div className="text-[11px] text-brand-muted leading-snug mt-0.5">
-            {t(`duel.what.${row.model}`)}
+            {t(`duel.what.${modelKey}`)}
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -194,7 +195,7 @@ export function DuelScreen() {
                     <th className="px-1 font-normal pb-1">{t('duel.col_total')}</th>
                     <th className="px-1 font-normal pb-1 text-brand-accent">{t('duel.short.own')}</th>
                     <th className="px-1 font-normal pb-1 text-sky-300">{t('duel.short.llm')}</th>
-                    <th className="pl-1 font-normal pb-1 text-amber-300">{t('duel.short.fly')}</th>
+                    <th className="pl-1 font-normal pb-1 text-amber-300">{t('duel.short.reservoir')}</th>
                   </tr>
                 </thead>
                 <tbody>{list.map((m, i) => <MatchRow key={`${m.match_date}-${i}`} m={m} />)}</tbody>
