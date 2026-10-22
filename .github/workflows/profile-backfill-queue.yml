@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/profile-backfill-queue.yml"
       - "docs/profile_backfill_queue.py"
+      - "docs/cards_photo_transfermarkt.py"
+      - "docs/test_cards_photo_transfermarkt.py"
       - "supabase/migrations/*profile_backfill*"
   workflow_run:
     workflows: ["soccerwiki-roster-refresh"]
