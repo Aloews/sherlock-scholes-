@@ -1304,7 +1304,7 @@
     "model": {
       "own": "Our own variant",
       "llm": "LLM",
-      "fly": "Mushroom-body connectome model",
+      "fly": "Reservoir",
       "median": "Median",
       "current": "Current formula"
     },
@@ -1318,7 +1318,7 @@
     "short": {
       "own": "Ours",
       "llm": "LLM",
-      "fly": "Connectome"
+      "fly": "Reservoir"
     },
     "exp_total": "{{v}} goals expected",
     "agree_one": "{{n}} agrees",
