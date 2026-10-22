@@ -64,13 +64,14 @@ jobs:
           python3 tests/test_forecast_pipeline.py
           python3 tests/test_calibration.py
 
-      # Settle completed forecasts only after grading and calibration; then create new forecasts.
+      # Grade outcomes, apply one-time connectome reinforcement, calibrate, then pick new forecasts.
       - name: Grade, calibrate, settle virtual bankroll, pick
         run: |
           if [ "$(date -u +%u)" = "1" ]; then
             python football_scraper/forecast_pipeline.py train
           fi
           python football_scraper/forecast_pipeline.py grade
+          python football_scraper/forecast_pipeline.py dopamine
           python football_scraper/forecast_pipeline.py calibrate
           python football_scraper/paper_bankroll.py
           python football_scraper/forecast_pipeline.py pick
