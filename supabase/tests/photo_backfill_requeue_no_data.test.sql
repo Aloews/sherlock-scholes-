@@ -79,7 +79,7 @@ end $$;
 
 
 -- Requeue only Transfermarkt no-data jobs whose cards still have no photo.
-do $
+do $$
 declare
   v_missing_card uuid;
   v_photo_card uuid;
@@ -95,7 +95,7 @@ begin
     card_id,task_type,transfermarkt_id,wikidata_qid,priority,status,attempts,max_attempts,last_error,verified_at
   ) values (
     v_missing_card,'photo_tm','tm-retry-missing-photo','Qtmretrymissing',1000,'no_data',2,3,
-    E'Карточек без фото: 1\\nПортретов найдено : 0',now()
+    E'Карточек без фото: 1\nПортретов найдено : 0',now()
   ) returning id into v_missing_job;
 
   insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,photo_url,photo_source)
@@ -116,11 +116,11 @@ begin
     v_missing_card,'photo_qid','tm-retry-missing-photo','Qtmretrymissing',1000,'no_data',2,3,
     'QID task is outside this migration'
   ) returning id into v_qid_job;
-end $;
+end $$;
 
-\\ir ../migrations/20261022083000_profile_backfill_retry_tm_no_data_after_collector_fix.sql
+\ir ../migrations/20261022083000_profile_backfill_retry_tm_no_data_after_collector_fix.sql
 
-do $
+do $$
 declare
   v_missing public.profile_backfill_jobs%rowtype;
   v_existing public.profile_backfill_jobs%rowtype;
@@ -154,6 +154,6 @@ begin
      or v_qid.last_error <> 'QID task is outside this migration' then
     raise exception 'non-Transfermarkt job was changed: %', row_to_json(v_qid);
   end if;
-end $;
+end $$;
 
 rollback;
