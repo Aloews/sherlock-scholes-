@@ -124,7 +124,7 @@ def get_profile(card):
         # or a parser regression, so keep it retryable rather than calling it no-data.
         if html:
             transient = True
-        elif str(get.last_failure or "").startswith("transient"):
+        elif str(get.last_failure or "").startswith(("transient", "blocked")):
             transient = True
     get_profile.last_failure = "transient" if transient else "no_data"
     return None
@@ -142,8 +142,11 @@ def get(url):
             # 403/404/410 are permanent for this URL; get_profile tries other
             # regional hosts. Do not turn a complete set of permanent responses
             # into a transport failure that exhausts the queue's retry budget.
-            if exc.code in {403, 404, 410}:
+            if exc.code in {404, 410}:
                 get.last_failure = "permanent_http"
+                return None
+            if exc.code == 403:
+                get.last_failure = "blocked_http"
                 return None
             if attempt + 1 == RETRIES:
                 get.last_failure = "transient_http"
@@ -228,7 +231,7 @@ def main():
     for i, card in enumerate(rows, 1):
         html = get_profile(card)
         if html is None:
-            if getattr(get_profile, "last_failure", "transient") == "transient":
+            if str(getattr(get_profile, "last_failure", "transient")).startswith(("transient", "blocked")):
                 lost += 1
             else:
                 no_profile += 1
