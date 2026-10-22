@@ -32,7 +32,7 @@ BEGIN
   IF position('k.model in (''llm'', ''own'')' in v_upcoming) = 0 THEN
     RAISE EXCEPTION 'upcoming forecast RPC must use active models only';
   END IF;
-  IF position('NULL::text, NULL::numeric, NULL::numeric' in v_upcoming) = 0 THEN
+  IF position('null::text, null::numeric, null::numeric' in v_upcoming) = 0 THEN
     RAISE EXCEPTION 'legacy connectome fields must be empty in upcoming forecasts';
   END IF;
 END $$;
