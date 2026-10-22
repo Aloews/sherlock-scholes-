@@ -30,6 +30,53 @@ def _fixture(row):
     return fixture if isinstance(fixture, dict) else {}
 
 
+def _parse_time(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def legacy_h2h_rows(rows):
+    """Convert settled, pre-kickoff 1X2 snapshots into the shared quote ledger format."""
+    converted = []
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        fixture = _fixture(row)
+        kickoff = _parse_time(fixture.get("commence_at"))
+        scores_at = _parse_time(fixture.get("scores_at"))
+        taken_at = _parse_time(row.get("taken_at"))
+        home_score, away_score = fixture.get("home_score"), fixture.get("away_score")
+        if not fixture.get("completed") or home_score is None or away_score is None:
+            continue
+        if not kickoff or not scores_at or not taken_at or kickoff > now or scores_at < kickoff or scores_at > now or taken_at >= kickoff:
+            continue
+        try:
+            home_score, away_score = int(home_score), int(away_score)
+        except (TypeError, ValueError):
+            continue
+        actual = "home" if home_score > away_score else "away" if home_score < away_score else "draw"
+        for outcome, field in (("home", "home_price"), ("draw", "draw_price"), ("away", "away_price")):
+            price = row.get(field)
+            try:
+                price = float(price)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(price) or price <= 1:
+                continue
+            converted.append({
+                "fixture_id": row["fixture_id"], "taken_at": row["taken_at"],
+                "provider": "legacy-fixture-odds", "bookmaker": row.get("bookmaker") or "unknown",
+                "region": "eu", "market_key": "h2h", "outcome_key": outcome,
+                "point": 0, "price": price,
+                "settlement_status": "won" if outcome == actual else "lost",
+                "fixtures": fixture,
+            })
+    return converted
+
+
 def _line_key(market, point):
     point = float(point or 0.0)
     if market == "spreads":
@@ -261,6 +308,9 @@ def main():
         raise SystemExit("нет SUPABASE_URL / SUPABASE_KEY")
     rows = _fetch(url, key,
         "fixture_market_quotes?select=fixture_id,taken_at,provider,bookmaker,region,market_key,outcome_key,point,price,settlement_status,fixtures!inner(commence_at,sport_key)&settlement_status=not.is.null&order=taken_at.asc,fixture_id.asc,market_key.asc")
+    legacy = _fetch(url, key,
+        "fixture_odds?select=fixture_id,taken_at,bookmaker,home_price,draw_price,away_price,fixtures!inner(commence_at,sport_key,home_score,away_score,completed,scores_at)&fixtures.completed=eq.true&fixtures.home_score=not.is.null&fixtures.away_score=not.is.null&order=taken_at.asc,fixture_id.asc")
+    rows.extend(legacy_h2h_rows(legacy))
     params = train_market_model(rows)
     if not params["markets"]:
         print("market-express: недостаточно подтверждённых settled-котировок; модель не перезаписана")
