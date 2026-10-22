@@ -1304,21 +1304,24 @@
     "model": {
       "own": "A nossa variante",
       "llm": "LLM",
-      "fly": "Reservatório",
+      "fly": "Modelo arquivado",
+      "reservoir": "Reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
     },
     "what": {
       "own": "Mistura dos dois modelos que se cala quando eles discordam",
       "llm": "Uma cabeça linear treinada sobre nove características do jogo",
-      "fly": "Rede de reservatório",
+      "fly": "Previsões históricas",
+      "reservoir": "Rede de reservatório",
       "median": "Diz sempre o número de golos mais frequente",
       "current": "O que a aplicação mostra hoje; não aprende"
     },
     "short": {
       "own": "Nossa",
       "llm": "LLM",
-      "fly": "Reservatório"
+      "fly": "Arquivo",
+      "reservoir": "Reservatório"
     },
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",
