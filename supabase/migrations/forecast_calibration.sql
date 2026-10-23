@@ -85,8 +85,7 @@ grant execute on function public.calibrated_confidence(numeric, text)
 -- колонки в `returns table` («cannot change return type of existing
 -- function»). Это безопасно ровно потому, что drop и create идут одной
 -- транзакцией миграции, а вызывают функцию ПО ИМЕНАМ аргументов
--- (p_limit, p_password) — то есть выкаченный фронтенд просто получит три
--- новые колонки и не заметит их. Тот случай, когда drop не повторяет историю
+-- (p_limit, p_password) — то есть выкаченный фронтенд получит актуальный набор колонок и не заметит их. Тот случай, когда drop не повторяет историю
 -- легаси-шима `pick_random_cards`: там функцию убирали НАСОВСЕМ.
 drop function if exists public.forecast_upcoming(integer, text);
 
