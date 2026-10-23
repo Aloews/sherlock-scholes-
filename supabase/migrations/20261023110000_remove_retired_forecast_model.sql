@@ -133,6 +133,7 @@ grant execute on function public.forecast_upcoming(integer, text) to anon, authe
 revoke all on function public.forecast_upcoming_v2(integer, text) from public;
 grant execute on function public.forecast_upcoming_v2(integer, text) to anon, authenticated, service_role;
 
+drop function if exists public.forecast_history(text, integer, timestamptz, text, text);
 drop function if exists public.forecast_history(text, integer);
 create function public.forecast_history(
   p_model text default null,
@@ -370,5 +371,55 @@ $backfill_model$;
 
 revoke all on function public.backfill_model_accumulators(numeric) from public;
 grant execute on function public.backfill_model_accumulators(numeric) to service_role;
+
+create function public.forecast_history(
+  p_model text default null,
+  p_limit integer default 40,
+  p_before_at timestamptz default null,
+  p_before_id text default null,
+  p_password text default null
+)
+returns table (
+  fixture_id text,
+  commence_at timestamptz,
+  home_team text,
+  away_team text,
+  model text,
+  pick text,
+  confidence numeric,
+  actual text,
+  correct boolean,
+  actual_total numeric,
+  exp_total numeric,
+  backfilled boolean
+)
+language plpgsql
+stable
+security definer
+set search_path to 'public'
+set statement_timeout to '4s'
+as $function$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and
+     (p_password is null or not public.admin_check_password(p_password)) then
+    perform public.require_pro();
+  end if;
+
+  return query
+    select p.fixture_id, p.commence_at, p.home_team, p.away_team, p.model,
+           p.pick, p.confidence, p.actual, p.correct, p.actual_total,
+           p.exp_total, p.backfilled
+      from public.forecast_pick p
+     where p.correct is not null
+       and (p_model is null or p.model = p_model)
+       and (p_before_at is null or p_before_id is null
+            or (p.commence_at, p.fixture_id) < (p_before_at, p_before_id))
+     order by p.commence_at desc, p.fixture_id desc
+     limit greatest(1, least(coalesce(p_limit, 40), 200));
+end;
+$function$;
+
+revoke all on function public.forecast_history(text, integer, timestamptz, text, text) from public;
+grant execute on function public.forecast_history(text, integer, timestamptz, text, text) to anon, authenticated, service_role;
 
 commit;
