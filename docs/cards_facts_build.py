@@ -131,7 +131,7 @@ def main():
         except (KeyError, IndexError, TypeError, ValueError): return None
 
     fill = {k: 0 for k in ("position","height_cm","birth_year","clubs_count",
-                           "years_active","national_team","national_caps",
+                           "national_team","national_caps",
                            "tournaments","titles")}
     tagc = {k: 0 for k in ("goalkeeper","world_cup","ballon_dor","veteran","wanderer")}
     samples = {}
