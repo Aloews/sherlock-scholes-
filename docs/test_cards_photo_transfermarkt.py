@@ -122,6 +122,8 @@ def test_regional_fallback_after_portraitless_shell():
     check("nested profile container portrait", collector.portrait_url(html),
           "https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg")
     check("regional fallback result is not a retryable failure", collector.get_profile.last_failure, None)
+    check("regional attempt diagnostics", len(collector.get_profile.last_attempts), 2)
+    check("regional diagnostics record portrait hit", any("portrait=1" in item for item in collector.get_profile.last_attempts), True)
 
 
 def test_no_portrait_is_confirmed_no_data():
