@@ -43,6 +43,12 @@ def main():
     lazy_profile_img = '<img data-src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg" class="data-header__profile-image">'
     check("lazy profile image fallback", collector.portrait_url(lazy_profile_img),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    nested_srcset = '<div class="data-header__profile-image"><picture><source srcset="//img.a.transfermarkt.technology/portrait/big/670688-123456.jpg 1x, //img.a.transfermarkt.technology/portrait/big/670688-654321.jpg 2x"><img src="https://img.a.transfermarkt.technology/portrait/big/default.jpg"></picture></div>'
+    check("nested picture srcset with protocol-relative URLs", collector.portrait_url(nested_srcset),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
+    lazy_srcset = '<div class="data-header__profile-image"><img data-srcset="//img.a.transfermarkt.technology/portrait/big/670688-123456.jpg 1x" src="/portrait/big/default.jpg"></div>'
+    check("lazy srcset normalized", collector.portrait_url(lazy_srcset),
+          "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg")
     unrelated_img = '<img class="team-logo" src="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg">'
     check("unrelated image element rejected", collector.portrait_url(unrelated_img), None)
     placeholder_profile_img = '<img class="data-header__profile-image" src="https://img.a.transfermarkt.technology/portrait/big/default.jpg">'
