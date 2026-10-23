@@ -13,7 +13,9 @@ update public.profile_backfill_jobs j
  where c.id = j.card_id
    and j.task_type in ('photo_qid', 'photo_tm')
    and j.status = 'no_data'
-   and coalesce(nullif(btrim(j.transfermarkt_id), ''), nullif(btrim(c.transfermarkt_id), '')) is not null
-   and nullif(btrim(c.photo_url), '') is null;
+   and (
+       nullif(btrim(c.photo_url), '') is not null
+       or coalesce(nullif(btrim(j.transfermarkt_id), ''), nullif(btrim(c.transfermarkt_id), '')) is not null
+   );
 
 commit;
