@@ -1304,21 +1304,24 @@
     "model": {
       "own": "Notre variante",
       "llm": "LLM",
-      "fly": "Modèle de connectome du corps pédonculé",
+      "fly": "Modèle archivé",
+      "reservoir": "Réservoir",
       "median": "Médiane",
       "current": "Formule actuelle"
     },
     "what": {
       "own": "Un mélange des deux modèles qui se tait quand ils divergent",
       "llm": "Une tête linéaire entraînée sur neuf caractéristiques du match",
-      "fly": "Connectome hemibrain v1.2 avec apprentissage par renforcement",
+      "fly": "Prédictions historiques",
+      "reservoir": "Réseau réservoir",
       "median": "Annonce toujours le nombre de buts le plus fréquent",
       "current": "Ce que l’application affiche aujourd’hui ; elle n’apprend pas"
     },
     "short": {
       "own": "Nôtre",
       "llm": "LLM",
-      "fly": "Connectome"
+      "fly": "Archive",
+      "reservoir": "Réservoir"
     },
     "exp_total": "{{v}} buts attendus",
     "agree_one": "{{n}} d'accord",

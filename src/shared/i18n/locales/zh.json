@@ -1257,21 +1257,24 @@
     "model": {
       "own": "自有方案",
       "llm": "大语言模型",
-      "fly": "蘑菇体连接组模型",
+      "fly": "已归档模型",
+      "reservoir": "储备池",
       "median": "中位数",
       "current": "现行公式"
     },
     "what": {
       "own": "两个模型的混合，意见相左时保持沉默",
       "llm": "在比赛的九个特征上训练的线性读出",
-      "fly": "采用奖励学习的 hemibrain v1.2 连接组",
+      "fly": "历史预测",
+      "reservoir": "储备池网络",
       "median": "总是说出最常见的进球数",
       "current": "应用今天展示的算法；它不学习"
     },
     "short": {
       "own": "自有",
       "llm": "语言",
-      "fly": "连接组"
+      "fly": "归档",
+      "reservoir": "储备池"
     },
     "exp_total": "预计 {{v}} 球",
     "agree_other": "{{n}} 位一致",

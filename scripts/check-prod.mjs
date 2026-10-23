@@ -3747,11 +3747,13 @@ async function checkForecastWinner() {
 
   const upcoming = await rpc(svc, 'forecast_upcoming_v2', { p_limit: 20 });
   const picks = Array.isArray(upcoming.data) ? upcoming.data : [];
-  const complete = picks.length > 0 && picks.every((row) => row.llm_pick && row.fly_pick && row.own_pick);
-  record('Прогноз: активны три модели, включая коннектом', upcoming.ok && complete,
-         upcoming.ok ? `${picks.filter((row) => row.llm_pick && row.fly_pick && row.own_pick).length} из ${picks.length}`
+  const complete = picks.length > 0 && picks.every((row) => row.llm_pick && row.own_pick
+    && row.fly_pick == null && row.fly_conf == null && row.fly_cal == null);
+  record('Прогноз: активны две проверяемые модели', upcoming.ok && complete,
+         upcoming.ok ? `${picks.filter((row) => row.llm_pick && row.own_pick
+           && row.fly_pick == null && row.fly_conf == null && row.fly_cal == null).length} из ${picks.length}`
                       : `HTTP ${upcoming.status}`,
-         'проверяет предматчевые прогнозы LLM, коннектома и собственной модели');
+         'проверяет LLM и собственную модель; архивная connectome-модель не предлагается');
 
   const bankroll = await rpc(svc, 'llm_paper_bankroll_summary', {});
   const account = Array.isArray(bankroll.data) ? bankroll.data[0] : bankroll.data;
