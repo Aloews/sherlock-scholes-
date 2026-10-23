@@ -23,7 +23,7 @@ UA = ("SherlockScholesBot/1.0 "
       "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
 PROFILE = "https://www.transfermarkt.com/-/profil/spieler/%s"
 PAUSE = 1.5
-RETRIES = 3
+RETRIES = 2
 PAGE = 1000
 WRITE_BATCH = 25
 
@@ -241,7 +241,7 @@ def get(url):
         try:
             req = urllib.request.Request(url, headers={
                 "User-Agent": UA, "Accept-Language": "en"})
-            with urllib.request.urlopen(req, timeout=60) as fh:
+            with urllib.request.urlopen(req, timeout=10) as fh:
                 return fh.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
             # 403/404/410 are permanent for this URL; get_profile tries other
