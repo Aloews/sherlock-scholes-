@@ -398,7 +398,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
         ? ` · ${t('career.n_matches', { count: apps })}` +
           (goals != null ? `, ${t('career.n_goals', { count: goals })}` : '')
         : '';
-      return `${club}${y}${stats}`.trim();
+      return `${club}${stats}`.trim();
     };
     // Club names follow the interface language where a translation exists:
     // career_stats come from the ENGLISH wiki (club_ru is the nightly-collected
