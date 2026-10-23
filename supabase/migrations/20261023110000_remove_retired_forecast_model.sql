@@ -176,7 +176,7 @@ create function public.build_model_accumulators(
   p_floor numeric default 0.47
 )
 returns text
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $build_model$
 declare
   v_model text;
   v_k     int;
@@ -228,7 +228,8 @@ begin
            and p.commence_at > now()
            and (p.commence_at at time zone 'utc')::date = v_day
            and (select count(distinct p2.pick) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 1
+                 where p2.fixture_id = p.fixture_id
+                    and p2.model in ('llm', 'own')) = 1
            and (select count(*) from forecast_pick p2
                  where p2.fixture_id = p.fixture_id
                    and p2.model in ('llm', 'own')) = 2
@@ -268,14 +269,14 @@ begin
   return format('экспрессов собрано: %s, уже были: %s, не хватило плеч: %s',
                 v_made, v_skip, v_thin);
 end;
-$;
+$build_model$;
 
 revoke all on function public.build_model_accumulators(integer, integer[], numeric) from public;
 grant execute on function public.build_model_accumulators(integer, integer[], numeric) to service_role;
 
 create or replace function public.backfill_model_accumulators(p_floor numeric default 0.47)
 returns text
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $backfill_model$
 declare
   v_model text;
   v_k     int;
@@ -317,7 +318,8 @@ begin
            and p.correct is not null
            and (p.commence_at at time zone 'utc')::date = v_day
            and (select count(distinct p2.pick) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 1
+                 where p2.fixture_id = p.fixture_id
+                    and p2.model in ('llm', 'own')) = 1
            and (select count(*) from forecast_pick p2
                  where p2.fixture_id = p.fixture_id
                    and p2.model in ('llm', 'own')) = 2
@@ -357,7 +359,7 @@ begin
 
   return format('задним числом собрано: %s, не хватило плеч: %s', v_made, v_thin);
 end;
-$;
+$backfill_model$;
 
 revoke all on function public.backfill_model_accumulators(numeric) from public;
 grant execute on function public.backfill_model_accumulators(numeric) to service_role;
