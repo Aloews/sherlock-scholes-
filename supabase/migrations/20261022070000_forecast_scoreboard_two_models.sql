@@ -1,4 +1,4 @@
--- the legacy forecast_upcoming RPC contract used by older clients.
+-- Forecast scoreboard and upcoming fixtures for active models.
 
 create or replace function public.forecast_scoreboard(p_password text default null)
 returns table(
@@ -69,7 +69,6 @@ returns table(
   agree integer,
   llm_cal numeric,
   own_cal numeric,
-  fly_cal numeric
 )
 language plpgsql
 stable
