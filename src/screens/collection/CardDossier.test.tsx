@@ -184,4 +184,14 @@ describe('CardDossier', () => {
     expect(screen.getByText('Test Player')).toBeTruthy();
     expect(screen.getAllByText('collection.value').length).toBeGreaterThan(0);
   });
+  it('не показывает непроверенные годы активности или годы клубной карьеры', async () => {
+    await mount({
+      ...bare,
+      facts: { years_active: '1900–1903' },
+      legend_career: { clubs: [{ club: 'Old Club', years: '1900–1903' }] },
+    });
+    expect(screen.queryByText('collection.f_years')).toBeNull();
+    expect(screen.queryByText('1900–1903')).toBeNull();
+  });
+
 });
