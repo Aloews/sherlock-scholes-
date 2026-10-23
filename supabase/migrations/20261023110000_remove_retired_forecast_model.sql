@@ -4,6 +4,7 @@ delete from public.forecast_pick where model = 'fly';
 delete from public.forecast_calibration where model = 'fly';
 
 drop function if exists public.forecast_upcoming_v2(integer, text);
+drop function if exists public.forecast_scoreboard();
 drop function if exists public.forecast_upcoming(integer);
 
 drop index if exists public.forecast_pick_hungry;
