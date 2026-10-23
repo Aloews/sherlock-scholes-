@@ -47,7 +47,7 @@ create or replace function public.forecast_history(
 returns table(fixture_id text, commence_at timestamptz, home_team text,
               away_team text, model text, pick text, confidence numeric,
               actual text, correct boolean, actual_total numeric,
-              exp_total numeric, dopamine boolean, backfilled boolean)
+              exp_total numeric, backfilled boolean)
 language plpgsql stable security definer set search_path to 'public'
 set statement_timeout to '4s'
 as $function$
@@ -56,7 +56,7 @@ begin
   return query
     select p.fixture_id, p.commence_at, p.home_team, p.away_team, p.model,
            p.pick, p.confidence, p.actual, p.correct, p.actual_total,
-           p.exp_total, p.dopamine_at is not null, p.backfilled
+           p.exp_total, p.backfilled
       from forecast_pick p
      where p.correct is not null
        and (p_model is null or p.model = p_model)
