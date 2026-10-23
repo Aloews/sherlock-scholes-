@@ -207,7 +207,6 @@ def profile_urls(card):
 
 
 def get_profile(card):
-    """Try regional URLs until a verified portrait is found."""
     transient = False
     profile_without_portrait = None
     for url in profile_urls(card):
