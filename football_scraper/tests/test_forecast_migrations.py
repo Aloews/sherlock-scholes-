@@ -16,7 +16,7 @@ def test_paper_bankroll_migration_has_balanced_function_bodies():
 
 
 def test_removed_forecast_model_is_cleaned_up_by_dedicated_migration():
-    cleanup = MIGRATIONS / "20261023110000_remove_connectome_forecast_model.sql"
+    cleanup = MIGRATIONS / "20261023110000_remove_retired_forecast_model.sql"
     sql = cleanup.read_text(encoding="utf-8").lower()
     assert "delete from public.forecast_pick where model = 'fly'" in sql
     assert "delete from public.forecast_calibration where model = 'fly'" in sql
