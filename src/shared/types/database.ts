@@ -237,7 +237,6 @@ export interface CardFacts {
   height_cm?: number | null;
   birth_year?: number | null;
   clubs_count?: number | null;
-  years_active?: string | null;   // "2003–2019" | "2003–"
   national_team?: string | null;  // short genitive ("Аргентины") -> "за сборную X"
   national_caps?: number | null;
   tournaments?: string[] | null;  // ["ЧМ-2018", "Евро-2016", …]
