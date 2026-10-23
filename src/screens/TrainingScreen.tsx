@@ -380,8 +380,8 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   //   legend_career: "Реал Мадрид 2002–07"                    (no apps known)
   //   clubs_minutes: "Спартак"                                (name only)
   const clubChips = (entry: HistoryEntry): string[] => {
-    const line = (rawClub: string, years?: string | null,
-                  apps?: number | null, goals?: number | null): string | null => {
+    const line = (rawClub: string, apps?: number | null,
+                  goals?: number | null): string | null => {
       const club = cleanClub(rawClub);
       if (!club) return null;
       // ⚠️ `career.n_matches`, А НЕ `career.matches`. Второй — ЗАГОЛОВОК
@@ -407,12 +407,12 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
       lines = [...entry.career_stats]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.years, c.apps, c.goals));
+        .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.apps, c.goals));
     } else if (entry.legend_career?.clubs?.length) {
       lines = [...entry.legend_career.clubs]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(ru ? c.club : (c.club_en ?? c.club), c.years));
+        .map((c) => line(ru ? c.club : (c.club_en ?? c.club)));
     } else if (entry.clubs_minutes?.length) {
       // The club NAMES in clubs_minutes are real (he did play there in
       // 2022-24) — only the minute totals lie, so names without numbers.
