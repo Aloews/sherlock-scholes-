@@ -108,7 +108,8 @@ begin
            and (select count(distinct p2.pick) from forecast_pick p2
                  where p2.fixture_id = p.fixture_id) = 1
            and (select count(*) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 3
+                 where p2.fixture_id = p.fixture_id
+                   and p2.model in ('llm', 'own')) = 2
            and calibrated_confidence(p.confidence, p.model) >= coalesce(p_floor, 0.47)
          -- ⚠️ ДОБОР ПО commence_at И fixture_id ОБЯЗАТЕЛЕН, и это видно на
          -- живых данных: у `own` калибровка сжала почти всё к 0.5500, то есть
@@ -215,7 +216,8 @@ begin
            and (select count(distinct p2.pick) from forecast_pick p2
                  where p2.fixture_id = p.fixture_id) = 1
            and (select count(*) from forecast_pick p2
-                 where p2.fixture_id = p.fixture_id) = 3
+                 where p2.fixture_id = p.fixture_id
+                   and p2.model in ('llm', 'own')) = 2
            and calibrated_confidence(p.confidence, p.model) >= coalesce(p_floor, 0.47)
          order by calibrated_confidence(p.confidence, p.model) desc,
                   p.commence_at asc, p.fixture_id asc
