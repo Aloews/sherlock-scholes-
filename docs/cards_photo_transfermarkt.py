@@ -76,13 +76,19 @@ def has_profile_content(html):
         html or "", re.I))
 
 class ProfileImageParser(HTMLParser):
+    VOID_TAGS = {
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
+        "meta", "param", "source", "track", "wbr",
+    }
+
     def __init__(self):
         super().__init__()
         self.urls = []
+        self.stack = []
+        self.profile_depth = 0
 
     def handle_starttag(self, tag, attrs):
-        if tag.lower() != "img":
-            return
+        tag = tag.lower()
         values = {key.lower(): html_lib.unescape(value or "").strip()
                   for key, value in attrs}
         classes = values.get("class", "").casefold().split()
@@ -91,12 +97,41 @@ class ProfileImageParser(HTMLParser):
             or "data-bild" in values
             or "databild" in values
         )
-        if not marked_profile:
-            return
-        for key in ("src", "data-src", "data-bild", "databild"):
-            value = values.get(key, "")
-            if value:
-                self.urls.append(value)
+        in_profile = self.profile_depth > 0 or marked_profile
+
+        # Recent Transfermarkt layouts can put the marker on a wrapping div and
+        # expose the actual portrait on a nested picture/source or srcset.
+        if tag in {"img", "source"} and in_profile:
+            for key in (
+                "src", "data-src", "data-bild", "databild",
+                "data-original", "data-lazy-src",
+            ):
+                value = values.get(key, "")
+                if value:
+                    self.urls.append(value)
+            for key in ("srcset", "data-srcset"):
+                value = values.get(key, "")
+                if not value:
+                    continue
+                for candidate in value.split(","):
+                    url = candidate.strip().split()
+                    if url:
+                        self.urls.append(url[0])
+
+        if tag not in self.VOID_TAGS:
+            self.stack.append((tag, marked_profile))
+            if marked_profile:
+                self.profile_depth += 1
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        for index in range(len(self.stack) - 1, -1, -1):
+            if self.stack[index][0] == tag:
+                for _, marked_profile in self.stack[index:]:
+                    if marked_profile:
+                        self.profile_depth = max(0, self.profile_depth - 1)
+                del self.stack[index:]
+                break
 
 
 def profile_image_urls(html):
@@ -134,6 +169,9 @@ def portrait_url(html):
     for url in candidates:
         if not url:
             continue
+        # Transfermarkt uses protocol-relative and lazy-loaded URLs in some
+        # profile layouts. Normalize them before applying the host allowlist.
+        url = urllib.parse.urljoin("https://www.transfermarkt.com/", url.strip())
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme.lower() not in {"http", "https"}:
             continue
