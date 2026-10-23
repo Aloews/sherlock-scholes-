@@ -96,11 +96,6 @@ def main():
                 club_spans.append((int(s) if s else None,int(e) if e else None))
         cc=len(set(qid for qid,_ in iq(cl,"P54") if not (lab(qid) and NAT_RE.search(lab(qid)))))
         if cc: f["clubs_count"]=cc
-        starts=[s for s,e in club_spans if s]; ends=[e for s,e in club_spans if e]
-        span=0
-        if starts:
-            lo=min(starts); hi=max(ends) if ends else THIS_YEAR; span=hi-lo
-            f["years_active"]=f"{lo}–{hi}" if ends else f"{lo}–"
         if nat:
             team=max(nat,key=lambda k:nat[k]); f["national_team"]=short_nat(team)
             if nat[team]: f["national_caps"]=nat[team]
