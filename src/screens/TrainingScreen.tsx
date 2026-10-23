@@ -352,10 +352,6 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
     return parts.length ? parts.join(' · ') : null;
   };
 
-  // "1984–1991" -> "1984–91"; "1984–" stays open-ended.
-  const shortYears = (years: string): string =>
-    years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
-
   // Parses "1984–1991" | "1984–" -> a number for recency sorting (by END year).
   // An open range ("1984–", still playing) must sort first, so it maps to
   // Infinity. A bare/unparseable value maps to -1 so it sinks to the bottom.
