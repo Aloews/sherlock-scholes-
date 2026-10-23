@@ -68,7 +68,7 @@ returns table(
   exp_total numeric,
   agree integer,
   llm_cal numeric,
-  own_cal numeric,
+  own_cal numeric
 )
 language plpgsql
 stable
@@ -94,6 +94,7 @@ begin
                select mode() within group (order by k2.pick)
                  from public.forecast_pick k2
                 where k2.fixture_id = k.fixture_id
+                  and k2.model in ('llm', 'own')
              ))::integer as agree
         from public.forecast_pick k
        where k.commence_at > now()
@@ -102,7 +103,7 @@ begin
     select p.fixture_id, p.commence_at, p.home_team, p.away_team,
            p.llm_pick, p.llm_conf, p.own_pick, p.own_conf, p.exp_total, p.agree,
            public.calibrated_confidence(p.llm_conf, 'llm'),
-           public.calibrated_confidence(p.own_conf, 'own'),
+           public.calibrated_confidence(p.own_conf, 'own')
       from p
      order by p.commence_at asc
      limit greatest(1, least(coalesce(p_limit, 20), 100));
