@@ -189,7 +189,7 @@ grant select on forecast_inputs to service_role;
 -- результата, и она всегда будет выглядеть разумной.
 create table if not exists forecast_pick (
   fixture_id   text        not null,
-  model        text        not null check (model in ('llm', 'fly', 'own')),
+  model        text        not null check (model in ('llm', 'own')),
   pick         text        not null check (pick in ('H', 'D', 'A')),
   confidence   numeric     not null default 0,
   exp_total    numeric,
@@ -201,11 +201,6 @@ create table if not exists forecast_pick (
   actual_total numeric,
   correct      boolean,
   graded_at    timestamptz,
-  -- ⚠️ ОБРАТНАЯ СВЯЗЬ ЗАПИСЫВАЕТСЯ ОТДЕЛЬНО ОТ «УГАДАЛ». Модель получает обратную связь на
-  -- КАЖДЫЙ исход, а не только на угаданный: механизм обратной связи отвечает на
-  -- событие, а не на правоту. Без этой колонки «обучение идёт» нечем
-  -- подтвердить, и один матч подкреплялся бы каждую ночь заново.
-  dopamine_at  timestamptz,
   -- Строка, сделанная задним числом на тестовой части. Утечки там нет, но
   -- «назвал до матча» и «назвал задним числом» — разные вещи.
   backfilled   boolean     not null default false,
@@ -215,8 +210,6 @@ create table if not exists forecast_pick (
 create index if not exists forecast_pick_commence on forecast_pick (commence_at desc);
 create index if not exists forecast_pick_ungraded on forecast_pick (commence_at)
   where correct is null;
-create index if not exists forecast_pick_hungry on forecast_pick (graded_at)
-  where dopamine_at is null;
 
 alter table forecast_pick enable row level security;
 grant select, insert, update on forecast_pick to service_role;
@@ -228,22 +221,6 @@ create table if not exists forecast_model (
 );
 alter table forecast_model enable row level security;
 grant select, insert, update on forecast_model to service_role;
-
--- ── 4. Память модели ──────────────────────────────────────────────────────────
--- ⚠️ ХРАНЯТСЯ ТОЛЬКО СУЩЕСТВУЮЩИЕ СВЯЗИ. Матрица связи модели — 1927 × 68, но связей
--- в ней 30 496: остальное — нули, которых у модели нет вовсе. Сохранять нули
--- значило бы позволить им однажды стать ненулями и завести связь модели, которого в
--- в состоянии модели отсутствует. Порядок берётся из самого параметров.
-create table if not exists fly_state (
-  id         text        primary key default 'mb',
-  weights    real[]      not null,
-  taught     integer     not null default 0,
-  dopamine   integer     not null default 0,
-  depression numeric     not null default 0.02,
-  updated_at timestamptz not null default now()
-);
-alter table fly_state enable row level security;
-grant select, insert, update on fly_state to service_role;
 
 -- ── 5. Что видит приложение ─────────────────────────────────────────────────
 -- ⚠️ ВСЕ ТРИ ЗА ВОРОТАМИ Pro. Экран прячется от неподписанного целиком, но
@@ -257,7 +234,6 @@ create or replace function forecast_upcoming(p_limit integer default 20)
 returns table (fixture_id text, commence_at timestamptz,
                home_team text, away_team text,
                llm_pick text, llm_conf numeric,
-               fly_pick text, fly_conf numeric,
                own_pick text, own_conf numeric,
                exp_total numeric, agree integer)
 language plpgsql stable security definer
@@ -269,8 +245,6 @@ begin
     select p.fixture_id, min(p.commence_at), min(p.home_team), min(p.away_team),
            max(p.pick)       filter (where p.model = 'llm'),
            max(p.confidence) filter (where p.model = 'llm'),
-           max(p.pick)       filter (where p.model = 'fly'),
-           max(p.confidence) filter (where p.model = 'fly'),
            max(p.pick)       filter (where p.model = 'own'),
            max(p.confidence) filter (where p.model = 'own'),
            round(avg(p.exp_total), 1),
@@ -288,7 +262,7 @@ $$;
 drop function if exists forecast_scoreboard();
 create function forecast_scoreboard()
 returns table (model text, graded integer, hits integer, accuracy numeric,
-               last30 numeric, streak integer, dopamine integer,
+               last30 numeric, streak integer,
                backfilled integer)
 language plpgsql stable security definer
 set search_path to 'public' set statement_timeout to '4s'
@@ -319,7 +293,6 @@ begin
     )
     select b.model, b.graded, b.hits, b.accuracy, b.last30,
            coalesce(r.streak, 0),
-           coalesce((select f.dopamine from fly_state f where f.id = 'mb'), 0),
            b.backfilled
       from base b left join run r on r.model = b.model
      order by b.accuracy desc nulls last;
@@ -332,7 +305,7 @@ create function forecast_history(p_model text default null,
 returns table (fixture_id text, commence_at timestamptz,
                home_team text, away_team text, model text,
                pick text, confidence numeric, actual text, correct boolean,
-               actual_total numeric, exp_total numeric, dopamine boolean,
+               actual_total numeric, exp_total numeric,
                backfilled boolean)
 language plpgsql stable security definer
 set search_path to 'public' set statement_timeout to '4s'
@@ -342,7 +315,6 @@ begin
   return query
     select p.fixture_id, p.commence_at, p.home_team, p.away_team, p.model,
            p.pick, p.confidence, p.actual, p.correct, p.actual_total,
-           p.exp_total, p.dopamine_at is not null, p.backfilled
       from forecast_pick p
      where p.correct is not null
        and (p_model is null or p.model = p_model)
