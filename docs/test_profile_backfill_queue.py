@@ -299,5 +299,18 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(rpc_status({"finish_profile_backfill_job": ["failed"]}), "failed")
 
 
+class BackfillMigrationSafetyTests(unittest.TestCase):
+    def test_retry_migration_only_requeues_missing_photo_tasks_with_transfermarkt_id(self):
+        migration = (Path(__file__).resolve().parents[1] / "supabase" / "migrations" /
+                     "20261023120000_profile_backfill_retry_no_data_after_regional_fallback.sql")
+        sql = migration.read_text(encoding="utf-8").lower()
+        self.assertIn("j.status = 'no_data'", sql)
+        self.assertIn("j.task_type in ('photo_qid', 'photo_tm')", sql)
+        self.assertIn("nullif(btrim(j.transfermarkt_id), '') is not null", sql)
+        self.assertIn("nullif(btrim(c.photo_url), '') is null", sql)
+        self.assertIn("attempts = 0", sql)
+        self.assertNotIn("status = 'succeeded'", sql)
+
+
 if __name__ == "__main__":
     unittest.main()
