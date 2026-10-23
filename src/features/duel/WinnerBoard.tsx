@@ -28,7 +28,6 @@ import {
 const TINT: Record<ForecastModel, string> = {
   own: 'text-brand-accent',
   llm: 'text-sky-300',
-  fly: 'text-violet-300',
 };
 
 function pct(v: number | null): string {
@@ -190,7 +189,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                   <th className="text-left font-normal pb-1">{t('duel.col_match')}</th>
                   <th className="px-1 font-normal pb-1 text-brand-accent">{t('duel.short.own')}</th>
                   <th className="px-1 font-normal pb-1 text-sky-300">{t('duel.short.llm')}</th>
-                  <th className="px-1 font-normal pb-1 text-violet-300">{t('duel.short.fly')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,9 +212,6 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
                     </td>
                     <td className="py-2 px-1 text-center">
                       <PickChip pick={m.llm_pick} tint={TINT.llm} />
-                    </td>
-                    <td className="py-2 px-1 text-center">
-                      <PickChip pick={m.fly_pick} tint={TINT.fly} />
                     </td>
                   </tr>
                 ))}
@@ -242,7 +237,7 @@ export function WinnerBoard({ password = null }: { password?: string | null }) {
         {/* Фильтр по прогнозисту. При тысячах строк «показать всех вперемешку»
             перестаёт быть читаемым: вопрос почти всегда про одного. */}
         <div className="flex flex-wrap gap-1.5 px-1 pb-2">
-          {([null, 'own', 'llm', 'fly'] as (ForecastModel | null)[]).map((m) => (
+          {([null, 'own', 'llm'] as (ForecastModel | null)[]).map((m) => (
             <button
               key={m ?? 'all'}
               type="button"
