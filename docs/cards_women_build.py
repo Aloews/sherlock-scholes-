@@ -13,7 +13,7 @@ Pipeline per name (RU given; EN guessed for a reliable search):
      P54/P413/P166/P1344/P27 QIDs.
   4. build:
        facts          position, height_cm, birth_year, clubs_count,
-                      years_active, national_team, national_caps,
+                      national_team, national_caps,
                       tournaments[] (women's WC/Euro/Olympics), titles[]
                       (Ballon d'Or Féminin Q66815410, FIFA/UEFA women player
                       of the year, women's WC/Euro/UCL won)
