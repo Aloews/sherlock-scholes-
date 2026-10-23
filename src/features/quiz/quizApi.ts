@@ -12,7 +12,6 @@ export interface PlayerFacts {
   height_cm?: number;
   birth_year?: number;
   clubs_count?: number;
-  years_active?: string;
   national_team?: string;
   national_caps?: number;
   tournaments?: string[];

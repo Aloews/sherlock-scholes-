@@ -13,7 +13,7 @@ Pipeline per name (RU given; EN guessed for a reliable search):
      P54/P413/P166/P1344/P27 QIDs.
   4. build:
        facts          position, height_cm, birth_year, clubs_count,
-                      years_active, national_team, national_caps,
+                      national_team, national_caps,
                       tournaments[] (women's WC/Euro/Olympics), titles[]
                       (Ballon d'Or Féminin Q66815410, FIFA/UEFA women player
                       of the year, women's WC/Euro/UCL won)
@@ -382,16 +382,6 @@ def main():
             del c["_s"], c["_d"]
         if clubs:
             f["clubs_count"] = len(spans)
-            starts = [s for s, _ in spans.values() if s]
-            ends = [e for _, e in spans.values() if e]
-            ongoing = any(s and not e for s, e in spans.values())
-            if starts:
-                lo = min(starts)
-                if ongoing or not ends:
-                    f["years_active"] = "{}–".format(lo)
-                else:
-                    f["years_active"] = "{}–{}".format(lo, max(ends))
-
         # national team + caps
         if nat:
             team = max(nat, key=lambda k: nat[k])
@@ -527,7 +517,7 @@ def main():
 
     # facts fill across all resolved
     keys = ("position", "height_cm", "birth_year", "clubs_count",
-            "years_active", "national_team", "national_caps",
+            "national_team", "national_caps",
             "tournaments", "titles")
     n = len(cards)
     print("FACTS fill (of {} resolved):".format(n))

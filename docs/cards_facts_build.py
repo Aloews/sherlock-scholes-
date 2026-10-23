@@ -10,7 +10,7 @@ writes NOTHING. Set APPLY=1 to PATCH cards.facts/tags (needs the ALTER:
 facts JSONB, tags TEXT[]). Idempotent — PATCH only when the value changed.
 
 Facts per card (keys present only when known):
-  position, height_cm, birth_year, clubs_count, years_active,
+  position, height_cm, birth_year, clubs_count,
   national_team, national_caps, tournaments[], titles[]
 Tags: goalkeeper, world_cup, ballon_dor, veteran (>15y), wanderer (>8 clubs)
 
@@ -131,7 +131,7 @@ def main():
         except (KeyError, IndexError, TypeError, ValueError): return None
 
     fill = {k: 0 for k in ("position","height_cm","birth_year","clubs_count",
-                           "years_active","national_team","national_caps",
+                           "national_team","national_caps",
                            "tournaments","titles")}
     tagc = {k: 0 for k in ("goalkeeper","world_cup","ballon_dor","veteran","wanderer")}
     samples = {}
@@ -168,7 +168,6 @@ def main():
         starts = [s for s, e in club_spans if s]; ends = [e for s, e in club_spans if e]
         if starts:
             lo = min(starts); hi = max(ends) if ends else THIS_YEAR
-            f["years_active"] = f"{lo}–{hi if hi != THIS_YEAR else ''}".rstrip("–") or str(lo)
             span = (hi - lo)
         else:
             span = 0

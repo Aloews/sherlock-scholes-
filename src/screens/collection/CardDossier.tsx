@@ -183,14 +183,14 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     }
   })();
 
-  // Правая колонка строки карьеры. Числа, если они есть; годы, если чисел нет.
+  // В строке карьеры показываем только подтверждённые матчи и голы.
   const rowMeta = (row: { years?: string | null; apps?: number | null; goals?: number | null }) => {
     const m = careerRowMeta(row);
     // ⚠️ СВОЙ КЛЮЧ, А НЕ `career.club_line`. Тот несёт ещё и пасы, а в
     // `career_stats` из инфобокса Википедии пасов нет вовсе — подставлять туда
     // ноль значило бы утверждать «ни одной передачи за двадцать лет».
     if (m.kind === 'numbers') return t('career.row_numbers', { matches: m.apps, goals: m.goals });
-    return m.kind === 'years' ? m.years : '';
+    return '';
   };
 
   const name     = cardDisplayName(card, lang);
@@ -234,7 +234,6 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
         ?? (card.position_ru ?? facts?.position),
     },
     facts?.height_cm && { label: t('collection.f_height'), value: `${facts.height_cm} cm` },
-    facts?.years_active && { label: t('collection.f_years'), value: facts.years_active },
     facts?.national_caps && { label: t('collection.f_caps'), value: String(facts.national_caps) },
     facts?.clubs_count && { label: t('collection.f_clubs'), value: String(facts.clubs_count) },
   ].filter(Boolean).slice(0, 4) as { label: string; value: string }[];
@@ -263,8 +262,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   // поменял, на лучшие достижения игрока». Матчи и голы за клуб лежат в той же
   // строке `career_stats` и до сих пор не показывались вовсе; годы отвечали на
   // вопрос «когда», а карьеру открывают ради «чего добился». Правило — в
-  // `careerRowMeta`, и второй его копии здесь нет: у легенды чисел не бывает,
-  // и там годы остаются.
+  // `careerRowMeta`; если подтверждённых матчей и голов нет, метаданные скрыты.
   const career: { club: string; meta: string }[] = byLatestFirst(
     card.legend_career?.clubs?.map((c) => ({
       club: (!isRu && c.club_en) ? c.club_en : c.club,

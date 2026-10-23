@@ -352,10 +352,6 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
     return parts.length ? parts.join(' · ') : null;
   };
 
-  // "1984–1991" -> "1984–91"; "1984–" stays open-ended.
-  const shortYears = (years: string): string =>
-    years.replace(/(\d{4})–(\d{2})(\d{2})/, '$1–$3');
-
   // Parses "1984–1991" | "1984–" -> a number for recency sorting (by END year).
   // An open range ("1984–", still playing) must sort first, so it maps to
   // Infinity. A bare/unparseable value maps to -1 so it sinks to the bottom.
@@ -384,11 +380,10 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
   //   legend_career: "Реал Мадрид 2002–07"                    (no apps known)
   //   clubs_minutes: "Спартак"                                (name only)
   const clubChips = (entry: HistoryEntry): string[] => {
-    const line = (rawClub: string, years?: string | null,
-                  apps?: number | null, goals?: number | null): string | null => {
+    const line = (rawClub: string, apps?: number | null,
+                  goals?: number | null): string | null => {
       const club = cleanClub(rawClub);
       if (!club) return null;
-      const y = years ? ` ${shortYears(years)}` : '';
       // ⚠️ `career.n_matches`, А НЕ `career.matches`. Второй — ЗАГОЛОВОК
       // СТОЛБЦА («Матчи»), в нём нет ни `{{count}}`, ни форм множественного
       // числа. Строка звала его со счётчиком и печатала голое «Матчи, Голы»
@@ -399,7 +394,7 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
         ? ` · ${t('career.n_matches', { count: apps })}` +
           (goals != null ? `, ${t('career.n_goals', { count: goals })}` : '')
         : '';
-      return `${club}${y}${stats}`.trim();
+      return `${club}${stats}`.trim();
     };
     // Club names follow the interface language where a translation exists:
     // career_stats come from the ENGLISH wiki (club_ru is the nightly-collected
@@ -412,12 +407,12 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
       lines = [...entry.career_stats]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.years, c.apps, c.goals));
+        .map((c) => line(ru ? (c.club_ru ?? c.club) : c.club, c.apps, c.goals));
     } else if (entry.legend_career?.clubs?.length) {
       lines = [...entry.legend_career.clubs]
         .sort((a, b) => yearKey(b.years) - yearKey(a.years))
         .slice(0, 4)
-        .map((c) => line(ru ? c.club : (c.club_en ?? c.club), c.years));
+        .map((c) => line(ru ? c.club : (c.club_en ?? c.club)));
     } else if (entry.clubs_minutes?.length) {
       // The club NAMES in clubs_minutes are real (he did play there in
       // 2022-24) — only the minute totals lie, so names without numbers.
