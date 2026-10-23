@@ -307,7 +307,8 @@ class BackfillMigrationSafetyTests(unittest.TestCase):
         self.assertNotIn("set status = 'succeeded'", sql)
         self.assertIn("j.status = 'no_data'", sql)
         self.assertIn("j.task_type in ('photo_qid', 'photo_tm')", sql)
-        self.assertIn("nullif(btrim(c.photo_url), '') is null", sql)
+        self.assertIn("nullif(btrim(c.photo_url), '') is not null", sql)
+        self.assertIn("or coalesce(nullif(btrim(j.transfermarkt_id), ''), nullif(btrim(c.transfermarkt_id), '')) is not null", sql)
         self.assertIn("attempts = 0", sql)
         self.assertIn("transfermarkt_id = coalesce", sql)
 
