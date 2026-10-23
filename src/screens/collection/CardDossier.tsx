@@ -183,7 +183,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     }
   })();
 
-  // Правая колонка строки карьеры. Числа, если они есть; годы, если чисел нет.
+  // В строке карьеры показываем только подтверждённые матчи и голы.
   const rowMeta = (row: { years?: string | null; apps?: number | null; goals?: number | null }) => {
     const m = careerRowMeta(row);
     // ⚠️ СВОЙ КЛЮЧ, А НЕ `career.club_line`. Тот несёт ещё и пасы, а в
@@ -262,8 +262,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   // поменял, на лучшие достижения игрока». Матчи и голы за клуб лежат в той же
   // строке `career_stats` и до сих пор не показывались вовсе; годы отвечали на
   // вопрос «когда», а карьеру открывают ради «чего добился». Правило — в
-  // `careerRowMeta`, и второй его копии здесь нет: у легенды чисел не бывает,
-  // и там годы остаются.
+  // `careerRowMeta`; если подтверждённых матчей и голов нет, метаданные скрыты.
   const career: { club: string; meta: string }[] = byLatestFirst(
     card.legend_career?.clubs?.map((c) => ({
       club: (!isRu && c.club_en) ? c.club_en : c.club,
