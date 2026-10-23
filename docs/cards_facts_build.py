@@ -10,7 +10,7 @@ writes NOTHING. Set APPLY=1 to PATCH cards.facts/tags (needs the ALTER:
 facts JSONB, tags TEXT[]). Idempotent — PATCH only when the value changed.
 
 Facts per card (keys present only when known):
-  position, height_cm, birth_year, clubs_count, years_active,
+  position, height_cm, birth_year, clubs_count,
   national_team, national_caps, tournaments[], titles[]
 Tags: goalkeeper, world_cup, ballon_dor, veteran (>15y), wanderer (>8 clubs)
 
