@@ -304,6 +304,8 @@ class BackfillMigrationSafetyTests(unittest.TestCase):
         migration = (Path(__file__).resolve().parents[1] / "supabase" / "migrations" /
                      "20261023130000_profile_backfill_retry_after_nl_fallback.sql")
         sql = migration.read_text(encoding="utf-8").lower()
+        self.assertIn("set status = 'succeeded'", sql)
+        self.assertIn("nullif(btrim(c.photo_url), '') is not null", sql)
         self.assertIn("j.status = 'no_data'", sql)
         self.assertIn("j.task_type in ('photo_qid', 'photo_tm')", sql)
         self.assertIn("nullif(btrim(c.photo_url), '') is null", sql)
