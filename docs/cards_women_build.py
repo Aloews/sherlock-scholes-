@@ -388,7 +388,6 @@ def main():
             if starts:
                 lo = min(starts)
                 if ongoing or not ends:
-                    f["years_active"] = "{}–".format(lo)
                 else:
                     f["years_active"] = "{}–{}".format(lo, max(ends))
 
