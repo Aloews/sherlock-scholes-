@@ -19,6 +19,7 @@ alter table public.forecast_pick
 alter table public.forecast_pick drop column if exists dopamine_at;
 
 drop table if exists public.fly_state;
+drop function if exists public.forecast_starving();
 
 create function public.forecast_upcoming(
   p_limit integer default 20,
