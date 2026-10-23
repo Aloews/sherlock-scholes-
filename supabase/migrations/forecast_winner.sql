@@ -230,7 +230,8 @@ grant select, insert, update on forecast_model to service_role;
 -- ⚠️ `require_pro()` ВОЗВРАЩАЕТ void И БРОСАЕТ, а не отдаёт «истину». Значит
 -- функции обязаны быть plpgsql с `perform`: в `where require_pro()` СУБД
 -- отвечает «argument of AND must be type boolean, not type void».
-create or replace function forecast_upcoming(p_limit integer default 20)
+drop function if exists forecast_upcoming(integer);
+create function forecast_upcoming(p_limit integer default 20)
 returns table (fixture_id text, commence_at timestamptz,
                home_team text, away_team text,
                llm_pick text, llm_conf numeric,
