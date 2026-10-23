@@ -23,6 +23,8 @@ def test_removed_forecast_model_is_cleaned_up_by_dedicated_migration():
     assert "drop table if exists public.fly_state" in sql
     assert "drop column if exists dopamine_at" in sql
     assert "check (model in ('llm', 'own'))" in sql
+    assert "delete from public.accumulator_ticket where model = 'fly'" in sql
+    assert "array['llm', 'own']" in sql
 
 
 def test_paper_bankroll_tables_are_not_publicly_writable():
