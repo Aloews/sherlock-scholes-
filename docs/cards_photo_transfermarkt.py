@@ -200,7 +200,7 @@ def profile_urls(card):
     urls = []
     slug = slugify_name(card.get("name_en") or card.get("name"))
     if slug:
-        for domain in ("transfermarkt.com", "transfermarkt.co.uk", "transfermarkt.world", "transfermarkt.us"):
+        for domain in ("transfermarkt.com", "transfermarkt.nl", "transfermarkt.co.uk", "transfermarkt.world", "transfermarkt.us"):
             urls.append("https://www.%s/%s/profil/spieler/%s" % (domain, slug, player_id))
     urls.append(PROFILE % player_id)
     return list(dict.fromkeys(urls))
