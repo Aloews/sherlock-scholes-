@@ -168,7 +168,6 @@ def main():
         starts = [s for s, e in club_spans if s]; ends = [e for s, e in club_spans if e]
         if starts:
             lo = min(starts); hi = max(ends) if ends else THIS_YEAR
-            f["years_active"] = f"{lo}–{hi if hi != THIS_YEAR else ''}".rstrip("–") or str(lo)
             span = (hi - lo)
         else:
             span = 0
