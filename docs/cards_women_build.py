@@ -525,7 +525,7 @@ def main():
 
     # facts fill across all resolved
     keys = ("position", "height_cm", "birth_year", "clubs_count",
-            "years_active", "national_team", "national_caps",
+            "national_team", "national_caps",
             "tournaments", "titles")
     n = len(cards)
     print("FACTS fill (of {} resolved):".format(n))
