@@ -389,7 +389,6 @@ def main():
                 lo = min(starts)
                 if ongoing or not ends:
                 else:
-                    f["years_active"] = "{}–{}".format(lo, max(ends))
 
         # national team + caps
         if nat:
