@@ -388,7 +388,6 @@ function TrainingGame({ filter, onPlayAgain }: TrainingGameProps) {
                   apps?: number | null, goals?: number | null): string | null => {
       const club = cleanClub(rawClub);
       if (!club) return null;
-      const y = years ? ` ${shortYears(years)}` : '';
       // ⚠️ `career.n_matches`, А НЕ `career.matches`. Второй — ЗАГОЛОВОК
       // СТОЛБЦА («Матчи»), в нём нет ни `{{count}}`, ни форм множественного
       // числа. Строка звала его со счётчиком и печатала голое «Матчи, Голы»
