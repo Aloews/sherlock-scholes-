@@ -190,7 +190,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
     // `career_stats` из инфобокса Википедии пасов нет вовсе — подставлять туда
     // ноль значило бы утверждать «ни одной передачи за двадцать лет».
     if (m.kind === 'numbers') return t('career.row_numbers', { matches: m.apps, goals: m.goals });
-    return m.kind === 'years' ? m.years : '';
+    return '';
   };
 
   const name     = cardDisplayName(card, lang);
