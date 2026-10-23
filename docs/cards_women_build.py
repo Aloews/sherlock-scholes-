@@ -382,14 +382,6 @@ def main():
             del c["_s"], c["_d"]
         if clubs:
             f["clubs_count"] = len(spans)
-            starts = [s for s, _ in spans.values() if s]
-            ends = [e for _, e in spans.values() if e]
-            ongoing = any(s and not e for s, e in spans.values())
-            if starts:
-                lo = min(starts)
-                if ongoing or not ends:
-                else:
-
         # national team + caps
         if nat:
             team = max(nat, key=lambda k: nat[k])
