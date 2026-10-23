@@ -1,5 +1,4 @@
--- Restore the existing connectome model to the forecast board without changing
--- the legacy forecast_upcoming RPC contract used by older clients.
+-- Forecast scoreboard and upcoming fixtures for active models.
 
 create or replace function public.forecast_scoreboard(p_password text default null)
 returns table(
@@ -29,7 +28,6 @@ begin
              row_number() over (partition by fp.model order by fp.commence_at desc) as rn
         from public.forecast_pick fp
        where fp.correct is not null
-         and fp.model in ('llm', 'fly', 'own')
     ), base as (
       select g.model, count(*)::int as graded,
              count(*) filter (where g.correct)::int as hits,
@@ -70,10 +68,7 @@ returns table(
   exp_total numeric,
   agree integer,
   llm_cal numeric,
-  own_cal numeric,
-  fly_pick text,
-  fly_conf numeric,
-  fly_cal numeric
+  own_cal numeric
 )
 language plpgsql
 stable
@@ -94,26 +89,21 @@ begin
              max(case when k.model = 'llm' then k.confidence end) as llm_conf,
              max(case when k.model = 'own' then k.pick end) as own_pick,
              max(case when k.model = 'own' then k.confidence end) as own_conf,
-             max(case when k.model = 'fly' then k.pick end) as fly_pick,
-             max(case when k.model = 'fly' then k.confidence end) as fly_conf,
              max(k.exp_total) as exp_total,
              count(*) filter (where k.pick = (
                select mode() within group (order by k2.pick)
                  from public.forecast_pick k2
                 where k2.fixture_id = k.fixture_id
-                  and k2.model in ('llm', 'fly', 'own')
+                  and k2.model in ('llm', 'own')
              ))::integer as agree
         from public.forecast_pick k
        where k.commence_at > now()
-         and k.model in ('llm', 'fly', 'own')
        group by k.fixture_id, k.commence_at, k.home_team, k.away_team
     )
     select p.fixture_id, p.commence_at, p.home_team, p.away_team,
            p.llm_pick, p.llm_conf, p.own_pick, p.own_conf, p.exp_total, p.agree,
            public.calibrated_confidence(p.llm_conf, 'llm'),
-           public.calibrated_confidence(p.own_conf, 'own'),
-           p.fly_pick, p.fly_conf,
-           public.calibrated_confidence(p.fly_conf, 'fly')
+           public.calibrated_confidence(p.own_conf, 'own')
       from p
      order by p.commence_at asc
      limit greatest(1, least(coalesce(p_limit, 20), 100));

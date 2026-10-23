@@ -1304,21 +1304,21 @@
     "model": {
       "own": "A nossa variante",
       "llm": "LLM",
-      "fly": "Modelo de conectoma do corpo pedunculado",
+      "fly": "Modelo de reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
     },
     "what": {
       "own": "Mistura dos dois modelos que se cala quando eles discordam",
       "llm": "Uma cabeça linear treinada sobre nove características do jogo",
-      "fly": "Conectoma hemibrain v1.2 com aprendizagem por reforço",
+      "fly": "Modelo de reservatório para comparar previsões",
       "median": "Diz sempre o número de golos mais frequente",
       "current": "O que a aplicação mostra hoje; não aprende"
     },
     "short": {
       "own": "Nossa",
       "llm": "LLM",
-      "fly": "Conectoma"
+      "fly": "Reservatório"
     },
     "exp_total": "{{v}} gols esperados",
     "agree_one": "{{n}} concorda",

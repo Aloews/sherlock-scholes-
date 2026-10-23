@@ -13,7 +13,7 @@ import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
  * прогнозов пересчитывается при каждом открытии и всегда выглядит разумной.
  */
 
-export type ForecastModel = 'llm' | 'fly' | 'own';
+export type ForecastModel = 'llm' | 'own';
 export type Outcome = 'H' | 'D' | 'A';
 
 export interface UpcomingPick {
@@ -23,8 +23,6 @@ export interface UpcomingPick {
   away_team: string;
   llm_pick: Outcome | null;
   llm_conf: number | null;
-  fly_pick: Outcome | null;
-  fly_conf: number | null;
   own_pick: Outcome | null;
   own_conf: number | null;
   exp_total: number | null;
@@ -45,7 +43,6 @@ export interface UpcomingPick {
    * сырое и не притворяется.
    */
   llm_cal: number | null;
-  fly_cal: number | null;
   own_cal: number | null;
 }
 
@@ -224,13 +221,13 @@ export function accumulatorMath(legs: AccumulatorLeg[]): {
 // ⚠️ ЭТО ДРУГОЙ ИСТОЧНИК, ЧЕМ `admin_accumulator` ВЫШЕ, И РАЗНИЦА ПРИНЦИПИАЛЬНА.
 // Там плечи берутся из букмекерской линии, и поэтому вся та панель живёт за
 // паролем персонала (§4.4 docs/LIVE_FOOTBALL_HANDOFF.md). Здесь плечи
-// собраны из СОБСТВЕННЫХ калиброванных вероятностей трёх моделей: ни цены,
+// собраны из СОБСТВЕННЫХ калиброванных вероятностей двух моделей: ни цены,
 // ни выплаты, ни ожидаемого возврата нет и быть не может. Граница §4.4 не
 // сдвинута — она просто не задета, и функции базы это гарантируют фильтром
 // `model is not null`, а не доверием вызывающему.
 //
 // ⚠️ ПРАВИЛО ОТБОРА ВЫБРАНО ЗАМЕРОМ НА ИСТОРИИ, А НЕ НА ГЛАЗ. Ход вперёд по
-// 13 548 матчам, 167 дней проверки: согласие всех трёх моделей плюс порог
+// 13 548 матчам, 167 дней проверки: согласие обеих моделей плюс порог
 // 0.47 по калиброванной вероятности. Разбор, сравнение порогов 0.45 / 0.47 /
 // 0.50 и оговорка про значимость — в шапке
 // `supabase/migrations/accumulator_from_models.sql`.

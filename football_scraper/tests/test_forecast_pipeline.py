@@ -8,7 +8,6 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import forecast_pipeline as pipeline  # noqa: E402
 from forecast_winner import LIN_FEATURES  # noqa: E402
-from fly_brain import FlyBrain, row_to_odour  # noqa: E402
 
 row = {name: 1.0 for name in LIN_FEATURES}
 row.update({
@@ -20,8 +19,4 @@ pick, confidence, expected_total = pipeline.llm_call(params, row)
 assert pick in {"H", "D", "A"}, pick
 assert 0.0 <= confidence <= 1.0, confidence
 assert expected_total >= 0.0, expected_total
-brain = FlyBrain.load()
-odour = row_to_odour(row)
-assert brain.predict(odour) in {"H", "D", "A"}
-assert 0.0 <= pipeline.fly_call(brain, row)[1] <= 1.0
-print("ok: forecast pipeline and connectome model produce valid predictions")
+print("ok: forecast pipeline models produce valid predictions")
