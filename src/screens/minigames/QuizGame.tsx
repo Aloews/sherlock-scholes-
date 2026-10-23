@@ -147,7 +147,6 @@ function factLines(facts: PlayerFacts, t: (key: string, opts?: Record<string, un
   if (facts.birth_year)    lines.push(t('quiz.fact_born', { value: facts.birth_year }));
   if (facts.height_cm)     lines.push(t('quiz.fact_height', { value: facts.height_cm }));
   if (facts.clubs_count)   lines.push(t('quiz.fact_clubs', { value: facts.clubs_count }));
-  if (facts.years_active)  lines.push(t('quiz.fact_years', { value: facts.years_active }));
   if (facts.national_team) lines.push(t('quiz.fact_national', { value: facts.national_team }));
   if (facts.national_caps) lines.push(t('quiz.fact_caps', { value: facts.national_caps }));
   if (facts.tournaments?.length) {
