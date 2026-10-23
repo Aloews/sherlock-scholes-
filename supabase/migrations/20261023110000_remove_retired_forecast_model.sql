@@ -10,6 +10,7 @@ delete from public.accumulator_ticket where model = 'fly';
 drop function if exists public.forecast_upcoming_v2(integer, text);
 drop function if exists public.forecast_scoreboard();
 drop function if exists public.forecast_upcoming(integer);
+drop function if exists public.forecast_upcoming(integer, text);
 
 drop index if exists public.forecast_pick_hungry;
 alter table public.forecast_pick drop constraint if exists forecast_pick_model_check;
@@ -19,7 +20,10 @@ alter table public.forecast_pick drop column if exists dopamine_at;
 
 drop table if exists public.fly_state;
 
-create function public.forecast_upcoming(p_limit integer default 20)
+create function public.forecast_upcoming(
+  p_limit integer default 20,
+  p_password text default null
+)
 returns table (
   fixture_id text,
   commence_at timestamptz,
@@ -39,7 +43,10 @@ set search_path to 'public'
 set statement_timeout to '4s'
 as $function$
 begin
-  perform public.require_pro();
+  if coalesce(auth.role(), '') <> 'service_role' and
+     (p_password is null or not public.admin_check_password(p_password)) then
+    perform public.require_pro();
+  end if;
   return query
     select p.fixture_id, min(p.commence_at), min(p.home_team), min(p.away_team),
            max(p.pick) filter (where p.model = 'llm'),
@@ -121,8 +128,8 @@ begin
 end;
 $function$;
 
-revoke all on function public.forecast_upcoming(integer) from public;
-grant execute on function public.forecast_upcoming(integer) to anon, authenticated, service_role;
+revoke all on function public.forecast_upcoming(integer, text) from public;
+grant execute on function public.forecast_upcoming(integer, text) to anon, authenticated, service_role;
 revoke all on function public.forecast_upcoming_v2(integer, text) from public;
 grant execute on function public.forecast_upcoming_v2(integer, text) to anon, authenticated, service_role;
 
