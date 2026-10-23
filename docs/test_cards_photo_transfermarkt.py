@@ -91,11 +91,34 @@ def main():
         check("blocked profile remains retryable",
               collector.get_profile.last_failure, "transient")
 
+    test_regional_fallback_after_portraitless_shell()
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
     test_unreachable_portrait_is_not_written()
     print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
+
+
+def test_regional_fallback_after_portraitless_shell():
+    first_page = '<div class="data-header__profile-container"><span>Player profile</span></div>'
+    second_page = '<div class="data-header__profile-container"><img class="header-photo" src="//img.a.transfermarkt.technology/portrait/big/123456-123.jpg"></div>'
+    requested = []
+
+    def fake_get(url):
+        requested.append(url)
+        fake_get.last_failure = None
+        return first_page if url == "first" else second_page
+
+    fake_get.last_failure = None
+    with patch.object(collector, "get", fake_get), patch.object(
+        collector, "profile_urls", return_value=["first", "second"]
+    ):
+        html = collector.get_profile({"name_en": "Test Player", "transfermarkt_id": "123456"})
+
+    check("regional fallback continues after profile shell", requested, ["first", "second"])
+    check("nested profile container portrait", collector.portrait_url(html),
+          "https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg")
+    check("regional fallback result is not a retryable failure", collector.get_profile.last_failure, None)
 
 
 def test_no_portrait_is_confirmed_no_data():
