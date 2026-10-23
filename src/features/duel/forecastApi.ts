@@ -13,7 +13,7 @@ import { fromPostgrest, type LoadState } from '@/shared/lib/loadState';
  * прогнозов пересчитывается при каждом открытии и всегда выглядит разумной.
  */
 
-export type ForecastModel = 'llm' | 'fly' | 'own';
+export type ForecastModel = 'llm' | 'own';
 export type Outcome = 'H' | 'D' | 'A';
 
 export interface UpcomingPick {
@@ -23,8 +23,6 @@ export interface UpcomingPick {
   away_team: string;
   llm_pick: Outcome | null;
   llm_conf: number | null;
-  fly_pick: Outcome | null;
-  fly_conf: number | null;
   own_pick: Outcome | null;
   own_conf: number | null;
   exp_total: number | null;
@@ -45,7 +43,6 @@ export interface UpcomingPick {
    * сырое и не притворяется.
    */
   llm_cal: number | null;
-  fly_cal: number | null;
   own_cal: number | null;
 }
 
