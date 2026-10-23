@@ -94,6 +94,8 @@ class ProfileImageParser(HTMLParser):
         classes = values.get("class", "").casefold().split()
         marked_profile = (
             "data-header__profile-image" in classes
+            or "data-header__profile-container" in classes
+            or any("profile-image" in value for value in classes)
             or "data-bild" in values
             or "databild" in values
         )
@@ -205,20 +207,32 @@ def profile_urls(card):
 
 
 def get_profile(card):
-    """Try regional profile URLs; distinguish unavailable profiles from transport loss."""
+    """Try regional URLs until a verified portrait is found."""
     transient = False
+    profile_without_portrait = None
     for url in profile_urls(card):
         html = get(url)
-        if html and (has_profile_content(html) or portrait_url(html)):
+        if html and portrait_url(html):
             get_profile.last_failure = None
             return html
-        # A 200 response with no expected profile markup can be an interstitial
-        # or a parser regression, so keep it retryable rather than calling it no-data.
-        if html:
+        # Do not stop at the first regional page that only contains the profile
+        # shell. Another regional host may expose the actual portrait markup.
+        if html and has_profile_content(html):
+            profile_without_portrait = html
+        elif html:
+            # A 200 response without expected profile markup may be an interstitial
+            # or parser regression, so keep it retryable rather than calling it no-data.
             transient = True
         elif str(get.last_failure or "").startswith(("transient", "blocked")):
             transient = True
-    get_profile.last_failure = "transient" if transient else "no_data"
+
+    if transient:
+        get_profile.last_failure = "transient"
+        return None
+    if profile_without_portrait:
+        get_profile.last_failure = "no_data"
+        return profile_without_portrait
+    get_profile.last_failure = "no_data"
     return None
 
 
