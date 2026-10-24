@@ -20,6 +20,10 @@ name: forecast
 # больше не может отнять время у прогнозов, потому что время у них своё.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "football_scraper/forecast_pipeline.py"
   schedule:
     # 05:40 UTC — после того, как player-stats (04:40) дособрал вчерашние
     # матчи, но задолго до того, как daily-enrich (05:00) доберётся до конца.
