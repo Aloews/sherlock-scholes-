@@ -1303,7 +1303,7 @@
     "failed": "Could not load the measurement.",
     "model": {
       "own": "Our own variant",
-      "llm": "LLM",
+      "llm": "Linear model",
       "fly": "Reservoir model",
       "median": "Median",
       "current": "Current formula"
@@ -1317,7 +1317,7 @@
     },
     "short": {
       "own": "Ours",
-      "llm": "LLM",
+      "llm": "Linear",
       "fly": "Reservoir"
     },
     "exp_total": "{{v}} goals expected",
