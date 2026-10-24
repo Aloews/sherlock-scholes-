@@ -1303,7 +1303,7 @@
     "failed": "Impossible de charger la mesure.",
     "model": {
       "own": "Notre variante",
-      "llm": "LLM",
+      "llm": "Modèle linéaire",
       "fly": "Modèle à réservoir",
       "median": "Médiane",
       "current": "Formule actuelle"
@@ -1317,7 +1317,7 @@
     },
     "short": {
       "own": "Nôtre",
-      "llm": "LLM",
+      "llm": "Linéaire",
       "fly": "Réservoir"
     },
     "exp_total": "{{v}} buts attendus",
