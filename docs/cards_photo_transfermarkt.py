@@ -350,6 +350,9 @@ def main():
                 lost += 1
             else:
                 no_profile += 1
+            attempts = getattr(get_profile, "last_attempts", [])
+            if attempts:
+                print("  Regional portrait requests: " + " | ".join(attempts), flush=True)
         else:
             url = portrait_url(html)
             if url and not image_reachable(url):
