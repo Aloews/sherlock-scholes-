@@ -300,18 +300,18 @@ class QueueResultTests(unittest.TestCase):
 
 
 class BackfillMigrationSafetyTests(unittest.TestCase):
-    def test_nl_fallback_retry_migration_does_not_touch_existing_photos(self):
+    def test_nl_fallback_retry_migration_requeues_only_missing_photo_tasks(self):
         migration = (Path(__file__).resolve().parents[1] / "supabase" / "migrations" /
                      "20261023130000_profile_backfill_retry_after_nl_fallback.sql")
         sql = migration.read_text(encoding="utf-8").lower()
-        self.assertNotIn("set status = 'succeeded'", sql)
+        self.assertIn("set status = 'pending'", sql)
         self.assertIn("j.status = 'no_data'", sql)
         self.assertIn("j.task_type in ('photo_qid', 'photo_tm')", sql)
-        self.assertIn("nullif(btrim(c.photo_url), '') is not null", sql)
-        self.assertIn("or coalesce(nullif(btrim(j.transfermarkt_id), ''), nullif(btrim(c.transfermarkt_id), '')) is not null", sql)
+        self.assertIn("nullif(btrim(c.photo_url), '') is null", sql)
+        self.assertIn("coalesce(nullif(btrim(j.transfermarkt_id), ''), nullif(btrim(c.transfermarkt_id), '')) is not null", sql)
         self.assertIn("attempts = 0", sql)
         self.assertIn("transfermarkt_id = coalesce", sql)
-
+        self.assertNotIn("set status = 'succeeded'", sql)
 
     def test_retry_migration_only_requeues_missing_photo_tasks_with_transfermarkt_id(self):
         migration = (Path(__file__).resolve().parents[1] / "supabase" / "migrations" /
