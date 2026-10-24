@@ -20,6 +20,9 @@ from forecast_winner import (  # noqa: E402
 )
 from forecast_duel import split_by_time  # noqa: E402
 
+# Models retained in the active H/D/A forecast pipeline.
+MODELS = ("llm", "own")
+
 # ─────────────────────────────────────────────────────────────── ввод ────────
 def env() -> tuple[str, str]:
     url = os.environ.get("SUPABASE_URL")
