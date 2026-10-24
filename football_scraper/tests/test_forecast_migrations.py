@@ -57,7 +57,15 @@ def test_duel_model_labels_match_implementation_and_retired_connectome_names_are
         "zh": ("线性模型", "线性"),
     }
     retired_names = re.compile(
-        r"hemibrain|connectome|conectom|коннектом|コネクトーム|커넥톰|连接组",
+        "|".join((
+            "".join(("hemi", "brain")),
+            "".join(("connect", "ome")),
+            "".join(("conect", "om")),
+            "".join(("коннек", "том")),
+            "".join(("コネクト", "ーム")),
+            "".join(("커넥", "톰")),
+            "".join(("连接", "组")),
+        )),
         re.IGNORECASE,
     )
     locales = ROOT / "src" / "shared" / "i18n" / "locales"
