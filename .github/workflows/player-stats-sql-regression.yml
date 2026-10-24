@@ -89,6 +89,15 @@ jobs:
       - name: Accumulator temp-table clear regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear.test.sql
 
+      - name: Recreate later accumulator migration regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear_test_setup.sql
+
+      - name: Repair temp-table clears after forecast-model retirement
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261024120000_fix_accumulator_temp_table_clear_after_model_retirement.sql
+
+      - name: Verify accumulator temp-table clears after model retirement
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/model_accumulator_temp_table_clear.test.sql
+
       - name: Prepare disposable profile, odds and fine-tuning schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_market_finetune_test_setup.sql
 
