@@ -144,6 +144,10 @@ def test_no_portrait_is_confirmed_no_data():
         "sys.argv", ["cards_photo_transfermarkt.py", "--only", "123456"]
     ):
         get_profile.last_failure = "no_data"
+        get_profile.last_attempts = [
+            "transfermarkt.com:permanent_http",
+            "transfermarkt.nl:permanent_http",
+        ]
         output = StringIO()
         with redirect_stdout(output):
             collector.main()
@@ -153,6 +157,9 @@ def test_no_portrait_is_confirmed_no_data():
           "ПРОФИЛЕЙ ПОТЕРЯНО" in text, False)
     check("permanent no-data count", "Профилей без доступного портрета: 1" in text, True)
     check("explicit zero-photo result", "Портретов найдено : 0" in text, True)
+    check("regional HTTP diagnostics are retained",
+          "Regional portrait requests: transfermarkt.com:permanent_http | transfermarkt.nl:permanent_http" in text,
+          True)
 
 
 def test_placeholder_profile_is_confirmed_no_data():
