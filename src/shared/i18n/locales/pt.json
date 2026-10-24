@@ -1303,7 +1303,7 @@
     "failed": "Não foi possível carregar a medição.",
     "model": {
       "own": "A nossa variante",
-      "llm": "LLM",
+      "llm": "Modelo linear",
       "fly": "Modelo de reservatório",
       "median": "Mediana",
       "current": "Fórmula atual"
@@ -1317,7 +1317,7 @@
     },
     "short": {
       "own": "Nossa",
-      "llm": "LLM",
+      "llm": "Linear",
       "fly": "Reservatório"
     },
     "exp_total": "{{v}} gols esperados",

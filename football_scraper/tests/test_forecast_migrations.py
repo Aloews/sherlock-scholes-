@@ -40,3 +40,63 @@ def test_diverse_accumulator_rpc_checks_admin_password():
     assert "security definer" in sql
     assert "public.admin_check_password(p_password)" in sql
     assert "revoke all on function public.admin_diverse_accumulators(text, integer) from public" in sql
+
+
+def test_duel_model_labels_match_implementation_and_retired_connectome_names_are_absent():
+    import json
+
+    labels = {
+        "ar": ("نموذج خطي", "خطي"),
+        "en": ("Linear model", "Linear"),
+        "es": ("Modelo lineal", "Lineal"),
+        "fr": ("Modèle linéaire", "Linéaire"),
+        "ja": ("線形モデル", "線形"),
+        "ko": ("선형 모델", "선형"),
+        "pt": ("Modelo linear", "Linear"),
+        "ru": ("Линейная модель", "Линейная"),
+        "zh": ("线性模型", "线性"),
+    }
+    retired_names = re.compile(
+        "|".join((
+            "".join(("hemi", "brain")),
+            "".join(("connect", "ome")),
+            "".join(("conect", "om")),
+            "".join(("коннек", "том")),
+            "".join(("コネクト", "ーム")),
+            "".join(("커넥", "톰")),
+            "".join(("连接", "组")),
+        )),
+        re.IGNORECASE,
+    )
+    locales = ROOT / "src" / "shared" / "i18n" / "locales"
+    for lang, (model_label, short_label) in labels.items():
+        raw = (locales / f"{lang}.json").read_text(encoding="utf-8")
+        assert not retired_names.search(raw), f"retired model name remains in {lang}"
+        data = json.loads(raw)
+
+        def find_duel(node):
+            if isinstance(node, dict):
+                model = node.get("model")
+                short = node.get("short")
+                if (
+                    isinstance(model, dict)
+                    and isinstance(short, dict)
+                    and all(k in model for k in ("own", "llm", "fly", "median", "current"))
+                    and all(k in short for k in ("own", "llm", "fly"))
+                ):
+                    return model, short
+                for value in node.values():
+                    found = find_duel(value)
+                    if found:
+                        return found
+            elif isinstance(node, list):
+                for value in node:
+                    found = find_duel(value)
+                    if found:
+                        return found
+            return None
+
+        duel = find_duel(data)
+        assert duel is not None, f"duel model labels missing in {lang}"
+        assert duel[0]["llm"] == model_label, f"wrong linear model label in {lang}"
+        assert duel[1]["llm"] == short_label, f"wrong short linear label in {lang}"
