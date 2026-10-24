@@ -23,16 +23,19 @@ def main():
     })[0], "https://www.transfermarkt.com/youssef-chermiti/profil/spieler/670688")
     check("regional fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
-    })[1], "https://www.transfermarkt.co.uk/youssef-chermiti/profil/spieler/670688")
+    })[2], "https://www.transfermarkt.co.uk/youssef-chermiti/profil/spieler/670688")
+    check("Dutch fallback", collector.profile_urls({
+        "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
+    })[1], "https://www.transfermarkt.nl/youssef-chermiti/profil/spieler/670688")
     check("world fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
-    })[2], "https://www.transfermarkt.world/youssef-chermiti/profil/spieler/670688")
+    })[3], "https://www.transfermarkt.world/youssef-chermiti/profil/spieler/670688")
     check("US fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
-    })[3], "https://www.transfermarkt.us/youssef-chermiti/profil/spieler/670688")
+    })[4], "https://www.transfermarkt.us/youssef-chermiti/profil/spieler/670688")
     check("ID-only fallback", collector.profile_urls({
         "name_en": "Youssef Chermiti", "transfermarkt_id": "670688"
-    })[4], "https://www.transfermarkt.com/-/profil/spieler/670688")
+    })[5], "https://www.transfermarkt.com/-/profil/spieler/670688")
     standard = '<meta property="og:image" content="https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1">'
     check("standard og:image", collector.portrait_url(standard),
           "https://img.a.transfermarkt.technology/portrait/big/670688-123456.jpg?lm=1")
@@ -119,6 +122,8 @@ def test_regional_fallback_after_portraitless_shell():
     check("nested profile container portrait", collector.portrait_url(html),
           "https://img.a.transfermarkt.technology/portrait/big/123456-123.jpg")
     check("regional fallback result is not a retryable failure", collector.get_profile.last_failure, None)
+    check("regional attempt diagnostics", len(collector.get_profile.last_attempts), 2)
+    check("regional diagnostics record portrait hit", any("portrait=1" in item for item in collector.get_profile.last_attempts), True)
 
 
 def test_no_portrait_is_confirmed_no_data():

@@ -200,7 +200,7 @@ def profile_urls(card):
     urls = []
     slug = slugify_name(card.get("name_en") or card.get("name"))
     if slug:
-        for domain in ("transfermarkt.com", "transfermarkt.co.uk", "transfermarkt.world", "transfermarkt.us"):
+        for domain in ("transfermarkt.com", "transfermarkt.nl", "transfermarkt.co.uk", "transfermarkt.world", "transfermarkt.us"):
             urls.append("https://www.%s/%s/profil/spieler/%s" % (domain, slug, player_id))
     urls.append(PROFILE % player_id)
     return list(dict.fromkeys(urls))
@@ -209,21 +209,31 @@ def profile_urls(card):
 def get_profile(card):
     transient = False
     profile_without_portrait = None
+    get_profile.last_attempts = []
     for url in profile_urls(card):
+        host = urllib.parse.urlparse(url).hostname or "unknown-host"
         html = get(url)
-        if html and portrait_url(html):
-            get_profile.last_failure = None
-            return html
-        # Do not stop at the first regional page that only contains the profile
-        # shell. Another regional host may expose the actual portrait markup.
-        if html and has_profile_content(html):
-            profile_without_portrait = html
-        elif html:
-            # A 200 response without expected profile markup may be an interstitial
-            # or parser regression, so keep it retryable rather than calling it no-data.
-            transient = True
-        elif str(get.last_failure or "").startswith(("transient", "blocked")):
-            transient = True
+        if html:
+            found_portrait = portrait_url(html)
+            shell = has_profile_content(html)
+            get_profile.last_attempts.append(
+                "%s:shell=%s,meta=%s,img_candidates=%s,portrait=%s"
+                % (host, int(shell), int(bool(meta_image_url(html))),
+                   len(profile_image_urls(html)), int(bool(found_portrait)))
+            )
+            if found_portrait:
+                get_profile.last_failure = None
+                return html
+            # Do not stop at a regional profile shell without a portrait.
+            if shell:
+                profile_without_portrait = html
+            else:
+                transient = True
+        else:
+            failure = str(get.last_failure or "no_response")
+            get_profile.last_attempts.append("%s:%s" % (host, failure[:60]))
+            if failure.startswith(("transient", "blocked")):
+                transient = True
 
     if transient:
         get_profile.last_failure = "transient"
@@ -350,11 +360,12 @@ def main():
                 found += 1
                 batch.append((card["id"], url))
             else:
-                # A valid profile with a default silhouette or no image is a
-                # confirmed source miss, not a transport failure.
                 no_profile += 1
                 if meta_image_url(html):
                     placeholder += 1
+                attempts = getattr(get_profile, "last_attempts", [])
+                if attempts:
+                    print("  Regional portrait checks: " + " | ".join(attempts), flush=True)
         if len(batch) >= WRITE_BATCH:
             flush()
         if i % 25 == 0:
