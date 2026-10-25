@@ -252,7 +252,15 @@ def get(url):
             req = urllib.request.Request(url, headers={
                 "User-Agent": UA, "Accept-Language": "en"})
             with urllib.request.urlopen(req, timeout=10) as fh:
-                return fh.read().decode("utf-8", "replace")
+                body = fh.read().decode("utf-8", "replace")
+                if body.strip():
+                    return body
+                # HTTP 200 with an empty body is not evidence that the player
+                # has no portrait; it is commonly a transient edge/bot response.
+                get.last_failure = "transient_empty_response"
+                if attempt + 1 == RETRIES:
+                    return None
+                time.sleep(PAUSE * 3 * (attempt + 1))
         except urllib.error.HTTPError as exc:
             # 403/404/410 are permanent for this URL; get_profile tries other
             # regional hosts. Do not turn a complete set of permanent responses

@@ -275,6 +275,22 @@ class QueueResultTests(unittest.TestCase):
         self.assertEqual(classify_result(0, "профилей потеряно: 1", False), "retry")
         self.assertEqual(classify_result(0, "ПРОФИЛЕЙ ПОТЕРЯНО: 1", True), "succeeded")
 
+    def test_regional_transfermarkt_no_response_is_retryable_not_no_data(self):
+        output = (
+            "Портретов найдено : 0\\n"
+            "Regional portrait requests: www.transfermarkt.com:no_response | "
+            "www.transfermarkt.nl:no_response | www.transfermarkt.co.uk:no_response"
+        )
+        self.assertEqual(classify_result(0, output, False), "retry")
+
+    def test_regional_transfermarkt_throttling_is_retryable_not_no_data(self):
+        output = (
+            "Портретов найдено : 0\\n"
+            "Regional portrait requests: www.transfermarkt.com:http_429 | "
+            "www.transfermarkt.nl:http_503"
+        )
+        self.assertEqual(classify_result(0, output, False), "retry")
+
     def test_only_terminal_failures_fail_the_run(self):
         self.assertEqual(result_exit_code([{"status": "succeeded"}]), 0)
         self.assertEqual(result_exit_code([{"status": "no_data"}]), 0)
