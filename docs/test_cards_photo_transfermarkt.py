@@ -106,7 +106,7 @@ def main():
 def test_empty_regional_responses_are_retryable():
     with patch.object(collector, "RETRIES", 1), patch(
         "cards_photo_transfermarkt.urllib.request.urlopen",
-        return_value=BytesIO(b""),
+        side_effect=lambda *args, **kwargs: BytesIO(b""),
     ), patch.object(collector.time, "sleep"), patch.object(
         collector, "profile_urls", return_value=["https://www.transfermarkt.com/one", "https://www.transfermarkt.nl/one"]
     ):
