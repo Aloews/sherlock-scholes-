@@ -1,5 +1,5 @@
 from contextlib import redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 import sys
 from unittest.mock import patch
@@ -94,12 +94,28 @@ def main():
         check("blocked profile remains retryable",
               collector.get_profile.last_failure, "transient")
 
+    test_empty_regional_responses_are_retryable()
     test_regional_fallback_after_portraitless_shell()
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
     test_transfermarkt_remains_fallback_for_soccerwiki_linked_players()
     test_unreachable_portrait_is_not_written()
     print("ok: Transfermarkt portrait parser, permanent no-data classification and fallback")
+
+
+def test_empty_regional_responses_are_retryable():
+    with patch.object(collector, "RETRIES", 1), patch(
+        "cards_photo_transfermarkt.urllib.request.urlopen",
+        return_value=BytesIO(b""),
+    ), patch.object(collector.time, "sleep"), patch.object(
+        collector, "profile_urls", return_value=["https://www.transfermarkt.com/one", "https://www.transfermarkt.nl/one"]
+    ):
+        html = collector.get_profile({"name_en": "Empty Response Player", "transfermarkt_id": "123456"})
+
+    check("empty HTTP responses return no profile", html, None)
+    check("empty HTTP responses remain retryable", collector.get_profile.last_failure, "transient")
+    check("empty HTTP response diagnostics are explicit",
+          all("transient_empty_response" in item for item in collector.get_profile.last_attempts), True)
 
 
 def test_regional_fallback_after_portraitless_shell():
