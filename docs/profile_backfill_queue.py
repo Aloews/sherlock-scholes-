@@ -259,21 +259,18 @@ def run_collector(job):
             r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",
             combined.casefold()
         ))
+        sw_output, sw_exit = run_collector({**job, "task_type": "photo_sw"})
+        outputs.append("Soccer Wiki fallback:\n" + sw_output)
+        if sw_exit != 0:
+            failures.append(sw_exit)
+        combined = "\n".join(outputs)[-12000:]
+        if ("Источник: Soccer Wiki" in sw_output
+                or "Карточка уже содержит доступное фото" in sw_output):
+            return combined, 0
         if failures:
             return combined, failures[-1]
-
-        # Keep a single source pipeline: after Wikidata and Transfermarkt have
-        # explicitly returned no portrait, try the existing identity-checked
-        # Soccer Wiki collector as a final fallback. It only writes blank cards.
         if (not qid_output or qid_zero) and (tm_zero or not tm_attempted):
-            sw_output, sw_exit = run_collector({**job, "task_type": "photo_sw"})
-            outputs.append("Soccer Wiki fallback:\n" + sw_output)
-            if sw_exit != 0:
-                return "\n".join(outputs)[-12000:], sw_exit
-            if ("Источник: Soccer Wiki" in sw_output
-                    or "Карточка уже содержит доступное фото" in sw_output):
-                return "\n".join(outputs)[-12000:], 0
-            return "\n".join(outputs)[-12000:], 0
+            return combined, 0
         return combined, 1
 
     if task=="season_stats":
