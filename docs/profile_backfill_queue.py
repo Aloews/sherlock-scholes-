@@ -106,10 +106,10 @@ def classify_result(exit_code, output, verified):
     # A zero-photo result is not genuine absence when all regional hosts failed
     # to respond or reported throttling/temporary access errors. Keep the task
     # retryable so a transient source outage cannot strand the card in no_data.
-    regional = re.search(r"regional portrait requests?:\\s*([^\\n]+)", folded)
+    regional = re.search(r"regional portrait requests?:\s*([^\n]+)", folded)
     if regional and re.search(
         r"no_response|timeout|connection[_ ]?(?:error|reset)|"
-        r"http[_ ]?(?:403|429|5\\d\\d)|\\b(?:403|429|5\\d\\d)\\b|robot|blocked",
+        r"http[_ ]?(?:403|429|5\d\d)|\b(?:403|429|5\d\d)\b|robot|blocked",
         regional.group(1),
     ):
         return "retry"
