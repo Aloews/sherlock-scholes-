@@ -242,10 +242,10 @@ def run_collector(job):
             if tm_result.returncode != 0:
                 failures.append(tm_result.returncode)
 
-        combined = "\\n".join(outputs)[-12000:]
-        qid_zero = bool(re.search(r"фото найдено\\s*:\\s*0(?:\\D|$)", qid_output.casefold()))
+        combined = "\n".join(outputs)[-12000:]
+        qid_zero = bool(re.search(r"фото найдено\s*:\s*0(?:\D|$)", qid_output.casefold()))
         tm_zero = bool(re.search(
-            r"(?:portraits found|портретов найдено)\\s*:\\s*0(?:\\D|$)",
+            r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",
             combined.casefold()
         ))
         if failures:
@@ -256,13 +256,13 @@ def run_collector(job):
         # Soccer Wiki collector as a final fallback. It only writes blank cards.
         if (not qid_output or qid_zero) and (tm_zero or not tm_attempted):
             sw_output, sw_exit = run_collector({**job, "task_type": "photo_sw"})
-            outputs.append("Soccer Wiki fallback:\\n" + sw_output)
+            outputs.append("Soccer Wiki fallback:\n" + sw_output)
             if sw_exit != 0:
-                return "\\n".join(outputs)[-12000:], sw_exit
+                return "\n".join(outputs)[-12000:], sw_exit
             if ("Источник: Soccer Wiki" in sw_output
                     or "Карточка уже содержит доступное фото" in sw_output):
-                return "\\n".join(outputs)[-12000:], 0
-            return "\\n".join(outputs)[-12000:], 0
+                return "\n".join(outputs)[-12000:], 0
+            return "\n".join(outputs)[-12000:], 0
         return combined, 1
 
     if task=="season_stats":
