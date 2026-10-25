@@ -223,6 +223,22 @@ class TransfermarktFallbackTests(unittest.TestCase):
         self.assertIn("cards_photo_transfermarkt.py", run.call_args_list[1].args[0][1])
         self.assertIn("Источник: Transfermarkt после Wikidata", output)
 
+    def test_soccwerwiki_is_final_fallback_after_qid_and_transfermarkt(self):
+        qid_empty = subprocess.CompletedProcess(args=[], returncode=0, stdout='Фото найдено : 0 (P18 0)')
+        tm_empty = subprocess.CompletedProcess(args=[], returncode=0, stdout='Портретов найдено : 0\\nЗаписано : 0')
+        original = worker.run_collector
+        calls = []
+        def fallback(job):
+            calls.append(job['task_type'])
+            if job['task_type'] == 'photo_sw':
+                return 'Фото найдено: 1\\nЗаписано: 1\\nИсточник: Soccer Wiki', 0
+            return original(job)
+        with patch('profile_backfill_queue.subprocess.run', side_effect=[qid_empty, tm_empty]), patch('profile_backfill_queue.run_collector', side_effect=fallback):
+            output, exit_code = original(self.job)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(calls, ['photo_sw'])
+        self.assertIn('Soccer Wiki fallback', output)
+        self.assertIn('Источник: Soccer Wiki', output)
     def test_transport_failure_is_retryable_after_fallback_attempt(self):
         qid_empty = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
