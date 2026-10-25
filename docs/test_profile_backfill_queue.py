@@ -265,6 +265,31 @@ class TransfermarktFallbackTests(unittest.TestCase):
         self.assertIn("Soccer Wiki fallback", output)
         self.assertIn("transient_empty_response", output)
 
+    def test_soccwerwiki_fills_photo_after_transient_transfermarkt_failure(self):
+        qid_empty = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
+        )
+        tm_failed = subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout="Портретов найдено: 0\\nRegional portrait requests: www.transfermarkt.com:transient_empty_response\\nПРОФИЛЕЙ ПОТЕРЯНО: 1"
+        )
+        original = worker.run_collector
+        calls = []
+
+        def fallback(job):
+            calls.append(job["task_type"])
+            if job["task_type"] == "photo_sw":
+                return "Фото найдено: 1\\nЗаписано: 1\\nИсточник: Soccer Wiki", 0
+            return original(job)
+
+        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_failed]), patch(
+            "profile_backfill_queue.run_collector", side_effect=fallback
+        ):
+            output, exit_code = original(self.job)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(calls, ["photo_sw"])
+        self.assertIn("Источник: Soccer Wiki", output)
+
 
 class QueueResultTests(unittest.TestCase):
     def test_only_readback_marks_success(self):
