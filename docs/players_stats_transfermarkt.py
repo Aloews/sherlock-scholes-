@@ -404,7 +404,7 @@ def main():
     # игроков идёт часами и уже дважды обрывался молча; справочник, записанный
     # последней строкой, при обрыве не записывается вовсе — и вся собранная
     # статистика остаётся с кодами «A1» и «2446» вместо названий.
-    written = empty = lost = refused = 0
+    written = season_written = empty = season_empty = lost = season_lost = refused = 0
     clubs_seen, comps_seen = set(), set()
     known_clubs = {r["id"] for r in all_rows("tm_club", {"select": "id", "order": "id"})}
     known_comps = {r["id"] for r in all_rows("tm_competition", {"select": "id", "order": "id"})}
@@ -431,31 +431,51 @@ def main():
 
     for i, card in enumerate(cards, 1):
         tm = card["transfermarkt_id"]
-        payload = get_json("%s/player/%s/performance-competition"
-                           % (API, urllib.parse.quote(tm)))
-        if payload is None:
+        career_payload = get_json("%s/player/%s/performance-competition"
+                                  % (API, urllib.parse.quote(tm)))
+        career_rows = parse_seasons(career_payload)
+        career_status = payload_status(career_payload, career_rows, "career")
+        if career_status == "empty":
+            empty += 1
+        elif career_status == "error":
             lost += 1
-        else:
-            rows = parse_seasons(payload)
-            if not rows:
-                empty += 1
+        clubs_seen.update(r["club_id"] for r in career_rows)
+        comps_seen.update(r["competition_id"] for r in career_rows)
+
+        # One-second spacing between provider endpoints; do not burst requests.
+        time.sleep(PAUSE)
+        season_url = "https://www.transfermarkt.com/ceapi/player/%s/performance" % urllib.parse.quote(tm)
+        season_payload = get_json(season_url)
+        season_rows = parse_season_competition_stats(season_payload, tm)
+        season_status = payload_status(season_payload, season_rows, "season")
+        if season_status == "empty":
+            season_empty += 1
+        elif season_status == "error":
+            season_lost += 1
+        comps_seen.update(r["competition_id"] for r in season_rows)
+
+        if apply_:
+            res = sb("rpc/apply_player_stats_bundle", method="POST", body={
+                "p_tm_id": tm,
+                "p_career_rows": career_rows,
+                "p_season_rows": season_rows,
+                "p_career_status": career_status,
+                "p_season_status": season_status,
+            })
+            if res is None:
+                refused += 1
             else:
-                clubs_seen.update(r["club_id"] for r in rows)
-                comps_seen.update(r["competition_id"] for r in rows)
-                if apply_:
-                    res = sb("rpc/apply_player_season_stats", method="POST",
-                             body={"p_tm_id": tm, "p_rows": rows})
-                    # Отказ записи — не «нет статистики»: считаем отдельно,
-                    # иначе повторный прогон пропустит несохранённого игрока.
-                    if res is None:
-                        refused += 1
-                    else:
-                        written += (res[0].get("written", 0) if res else 0)
-                else:
-                    written += len(rows)
+                result = res[0] if isinstance(res, list) and res else (res if isinstance(res, dict) else {})
+                written += int(result.get("career_written") or 0)
+                season_written += int(result.get("season_written") or 0)
+        else:
+            written += len(career_rows)
+            season_written += len(season_rows)
+
         if i % 25 == 0:
-            print("  %d/%d, строк %d, пусто %d, потеряно %d, отказов %d"
-                  % (i, len(cards), written, empty, lost, refused), flush=True)
+            print("  %d/%d, career %d, seasons %d, empty %d/%d, failed %d/%d, write refusals %d"
+                  % (i, len(cards), written, season_written, empty, season_empty,
+                     lost, season_lost, refused), flush=True)
         if i % 250 == 0:
             flush_directory()
         time.sleep(PAUSE)
@@ -463,8 +483,11 @@ def main():
     flush_directory()
 
     print("-" * 70)
-    print("Строк статистики : %d" % written)
-    print("Без матчей       : %d" % empty)
+    print("Career competition rows : %d" % written)
+    print("Season competition rows : %d" % season_written)
+    print("Career empty responses  : %d" % empty)
+    print("Season empty responses  : %d" % season_empty)
+    print("Season source failures  : %d" % season_lost)
     if lost:
         print("⚠️ ИГРОКОВ ПОТЕРЯНО: %d — их пустота НИЧЕГО не значит, повторить" % lost)
     if refused:
