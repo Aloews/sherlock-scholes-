@@ -94,17 +94,19 @@ jobs:
             ''|*[!0-9]*) echo "::error::Invalid Transfermarkt ID for verification"; exit 2 ;;
           esac
           count=$(curl -fsS --get \
-            --data-urlencode "select=tm_player_id" \
+            --data-urlencode "select=source_key,status,last_attempt_at" \
             --data-urlencode "tm_player_id=eq.$id" \
-            --data-urlencode "fetched_at=gte.$STARTED_AT" \
-            "$SUPABASE_URL/rest/v1/player_season_stat" \
+            --data-urlencode "source_key=in.(tm_career_competition,tm_season_competition)" \
+            --data-urlencode "status=in.(ok,empty)" \
+            --data-urlencode "last_attempt_at=gte.$STARTED_AT" \
+            "$SUPABASE_URL/rest/v1/player_stats_source_state" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
-          if [ "$count" -lt 1 ]; then
-            echo "::error::No fresh player statistics rows were stored for Transfermarkt ID $id since $STARTED_AT"
+          if [ "$count" -ne 2 ]; then
+            echo "::error::Both career and season sources must have fresh success/empty states for Transfermarkt ID $id since $STARTED_AT; got $count"
             exit 1
           fi
-          echo "Verified $count fresh competition-stat rows for Transfermarkt ID $id"
+          echo "Verified fresh career and season source attempts for Transfermarkt ID $id"
 
   player-photos:
     if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}
