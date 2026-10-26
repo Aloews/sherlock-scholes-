@@ -32,7 +32,7 @@ interface HomeAliasActionsProps {
 export function HomeAliasActions({
   onQuickGame, onCompetitive, onJoin, onBack,
 }: HomeAliasActionsProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <div className="w-full max-w-sm space-y-2.5 animate-slide-up">
