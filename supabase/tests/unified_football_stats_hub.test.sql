@@ -21,8 +21,7 @@ do $$
 declare v record;
 begin
   select * into v from public.player_stats_freshness where tm_player_id='568177';
-  if v.source_rows <> 5 then raise exception 'freshness source_rows mismatch: %', v.source_rows; end if;
-  if v.latest_fetched_at < now()-interval '1 minute' then raise exception 'freshness timestamp mismatch'; end if;
+  if v.source_rows <> 4 then raise exception 'career freshness source_rows mismatch: %', v.source_rows; end if;
   select * into v from public.football_player_competition_totals
    where tm_player_id='568177' and competition_id='GB1' and club_id='club-a';
   if v.appearances <> 118 or v.goals <> 49 or v.assists <> 23 or v.source_rows <> 2 then
@@ -39,6 +38,11 @@ begin
   if v.goals <> 14 or v.appearances <> 24 or v.start_eleven_percent <> 91.67
      or v.source <> 'transfermarkt_ceapi' then
     raise exception 'season competition facts mismatch: %', row_to_json(v);
+  end if;
+  select * into v from public.player_stats_freshness where tm_player_id='568177';
+  if v.source_rows <> 5 or v.latest_fetched_at is null
+     or v.latest_fetched_at < now()-interval '1 minute' then
+    raise exception 'combined source freshness mismatch: %', row_to_json(v);
   end if;
   select * into v from public.football_player_stats
    where grain='match' and card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8'
