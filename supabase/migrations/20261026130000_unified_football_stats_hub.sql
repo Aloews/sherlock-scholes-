@@ -4,6 +4,50 @@
 -- grouping rather than a verified calendar season. Career views therefore aggregate
 -- across competition/club and do not expose season_id as a verified season grain.
 
+create table if not exists public.player_season_competition_stats (
+  tm_player_id text not null,
+  season_id smallint not null,
+  competition_id text not null,
+  card_id uuid,
+  apps smallint not null default 0,
+  possible_games smallint,
+  goals smallint not null default 0,
+  assists smallint not null default 0,
+  minutes integer not null default 0,
+  yellow smallint not null default 0,
+  yellow_red smallint not null default 0,
+  red smallint not null default 0,
+  start_eleven_percent numeric(5,2),
+  minutes_played_percent numeric(6,2),
+  goals_contributed_percent numeric(6,2),
+  goalkeeper boolean,
+  source_url text not null,
+  source_payload jsonb not null default '{}'::jsonb,
+  fetched_at timestamptz not null default now(),
+  primary key (tm_player_id, season_id, competition_id)
+);
+create index if not exists player_season_competition_card_idx
+  on public.player_season_competition_stats(card_id, season_id desc);
+alter table public.player_season_competition_stats enable row level security;
+drop policy if exists player_season_competition_stats_read on public.player_season_competition_stats;
+create policy player_season_competition_stats_read
+  on public.player_season_competition_stats for select using (true);
+grant select on public.player_season_competition_stats to anon, authenticated, service_role;
+grant all on public.player_season_competition_stats to service_role;
+
+create table if not exists public.player_stats_source_state (
+  tm_player_id text not null,
+  source_key text not null,
+  last_attempt_at timestamptz not null default now(),
+  status text not null check (status in ('ok','empty','error')),
+  rows_written integer not null default 0,
+  last_error text,
+  primary key (tm_player_id, source_key)
+);
+alter table public.player_stats_source_state enable row level security;
+revoke all on public.player_stats_source_state from public, anon, authenticated;
+grant all on public.player_stats_source_state to service_role;
+
 create or replace view public.player_stats_freshness
 with (security_invoker = true) as
 select tm_player_id,
