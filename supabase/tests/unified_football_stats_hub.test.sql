@@ -5,6 +5,11 @@ insert into public.tm_club(id,name,is_national_team) values
  ('club-a','Chelsea',false), ('nat-a','England',true);
 insert into public.tm_competition(id,name,type_id,country_id) values
  ('GB1','Premier League',1,189), ('FAC','FA Cup',8,189);
+insert into public.player_match_stats(
+ card_id,match_date,tournament,home_team,away_team,home_score,away_score,minutes,goals,assists,source,disputed,fetched_at
+) values (
+ 'd6dc13cc-0944-4e0e-a887-93fa3747dab8','2026-10-25','Premier League','Chelsea','Arsenal',2,1,90,1,0,'sportsru',false,now()
+);
 insert into public.player_season_stat(
  tm_player_id,season_id,competition_id,club_id,card_id,apps,goals,assists,minutes,fetched_at
 ) values
