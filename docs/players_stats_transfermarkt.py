@@ -148,6 +148,12 @@ def parse_seasons(payload):
             continue
         if not any(key in t for key in ("appearancesCount", "playedMinutesSum", "startingCount")):
             continue
+        # Core nulls mean "unknown", not zero. Do not overwrite a previously
+        # verified row with fabricated zeroes when the provider response is partial.
+        if any(g.get(key) is None for key in ("goalsSum", "assistsSum")):
+            continue
+        if any(t.get(key) is None for key in ("appearancesCount", "playedMinutesSum")):
+            continue
         out.append({
             "season_id": int(season),
             "competition_id": str(comp),
