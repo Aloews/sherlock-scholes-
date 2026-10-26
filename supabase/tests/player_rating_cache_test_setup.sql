@@ -9,6 +9,7 @@ create table public.cards (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   name_en text,
+  transfermarkt_id text,
   category text not null,
   active boolean not null default true,
   photo_url text,
