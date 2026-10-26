@@ -28,6 +28,8 @@ create table public.player_match_stats (
   tournament text not null,
   home_team text,
   away_team text,
+  home_score smallint,
+  away_score smallint,
   minutes smallint,
   goals smallint not null default 0,
   assists smallint not null default 0,
