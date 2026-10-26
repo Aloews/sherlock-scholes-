@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { IconBallFootball, IconBolt, IconUsers, IconDoorEnter, IconArrowLeft } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 
 /**
@@ -42,19 +43,19 @@ export function HomeAliasActions({
       {/* The tall gradient CTA is the design's signature and stays on the
           action that starts a game fastest. */}
       <Button fullWidth size="lg" className="h-[58px]" onClick={onQuickGame}>
-        {t('home.mode_training_title')}
+        <span className="flex w-full items-center justify-center gap-2.5"><IconBallFootball size={19} stroke={1.9} />{t('home.mode_training_title')}</span>
       </Button>
       <Button fullWidth size="lg" variant="secondary" onClick={onSmartDecks}>
-        {i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}
+        <span className="flex w-full items-center justify-center gap-2.5"><IconBolt size={18} stroke={1.9} />{i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}</span>
       </Button>
       <Button fullWidth size="lg" variant="secondary" onClick={onCompetitive}>
-        {t('home.competitive_mode')}
+        <span className="flex w-full items-center justify-center gap-2.5"><IconUsers size={18} stroke={1.9} />{t('home.competitive_mode')}</span>
       </Button>
       <Button fullWidth size="lg" variant="secondary" onClick={onJoin}>
-        {t('home.join_game')}
+        <span className="flex w-full items-center justify-center gap-2.5"><IconDoorEnter size={18} stroke={1.9} />{t('home.join_game')}</span>
       </Button>
       <Button fullWidth variant="ghost" onClick={onBack}>
-        {t('home.back')}
+        <span className="flex w-full items-center justify-center gap-2"><IconArrowLeft size={17} stroke={1.9} />{t('home.back')}</span>
       </Button>
     </div>
   );
