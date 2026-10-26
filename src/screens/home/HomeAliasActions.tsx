@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { IconBallFootball, IconBolt, IconUsers, IconDoorEnter, IconArrowLeft } from '@tabler/icons-react';
+import { IconBallFootball, IconUsers, IconDoorEnter, IconArrowLeft } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 
 /**
@@ -26,12 +26,11 @@ interface HomeAliasActionsProps {
   onQuickGame(): void;
   onCompetitive(): void;
   onJoin(): void;
-  onSmartDecks(): void;
   onBack(): void;
 }
 
 export function HomeAliasActions({
-  onQuickGame, onCompetitive, onJoin, onSmartDecks, onBack,
+  onQuickGame, onCompetitive, onJoin, onBack,
 }: HomeAliasActionsProps) {
   const { t, i18n } = useTranslation();
 
@@ -44,9 +43,6 @@ export function HomeAliasActions({
           action that starts a game fastest. */}
       <Button fullWidth size="lg" className="h-[58px]" onClick={onQuickGame}>
         <span className="flex w-full items-center justify-center gap-2.5"><IconBallFootball size={19} stroke={1.9} />{t('home.mode_training_title')}</span>
-      </Button>
-      <Button fullWidth size="lg" variant="secondary" onClick={onSmartDecks}>
-        <span className="flex w-full items-center justify-center gap-2.5"><IconBolt size={18} stroke={1.9} />{i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}</span>
       </Button>
       <Button fullWidth size="lg" variant="secondary" onClick={onCompetitive}>
         <span className="flex w-full items-center justify-center gap-2.5"><IconUsers size={18} stroke={1.9} />{t('home.competitive_mode')}</span>
