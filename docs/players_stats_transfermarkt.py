@@ -209,6 +209,7 @@ def parse_season_competition_stats(payload, tm_id):
         out.append({
             "season_id": int(match.group(2)),
             "competition_id": match.group(1),
+            "competition_name": row.get("competitionDescription"),
             "apps": _i(row.get("gamesPlayed")),
             "possible_games": row.get("possibleGames"),
             "goals": _i(row.get("goalsScored")),
