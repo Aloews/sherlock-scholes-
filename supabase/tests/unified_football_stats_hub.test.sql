@@ -28,6 +28,18 @@ begin
   if v.appearances <> 118 or v.goals <> 49 or v.assists <> 23 or v.source_rows <> 2 then
     raise exception 'competition totals mismatch: %', row_to_json(v);
   end if;
+  perform 1 from public.apply_player_season_competition_stats(
+    '568177',
+    '[{"season_id":2025,"competition_id":"GB1","apps":24,"possible_games":38,"goals":14,"assists":3,"minutes":1980,"yellow":4,"yellow_red":0,"red":0,"start_eleven_percent":91.67,"minutes_played_percent":82.5,"goals_contributed_percent":60.0,"goalkeeper":false,"source_url":"https://www.transfermarkt.com/ceapi/player/568177/performance","source_payload":{"nameSeason":"25/26"}}]'::jsonb,
+    'ok'
+  );
+  select * into v from public.football_player_stats
+   where grain='season_competition' and card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8'
+     and season_id=2025 and competition_id='GB1';
+  if v.goals <> 14 or v.appearances <> 24 or v.start_eleven_percent <> 91.67
+     or v.source <> 'transfermarkt_ceapi' then
+    raise exception 'season competition facts mismatch: %', row_to_json(v);
+  end if;
   select * into v from public.football_player_stats
    where grain='match' and card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8'
      and match_date='2026-10-25';
