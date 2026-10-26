@@ -235,6 +235,7 @@ begin
       select distinct on (r->>'season_id', r->>'competition_id')
         (r->>'season_id')::smallint as season_id,
         r->>'competition_id' as competition_id,
+        nullif(r->>'competition_name','') as competition_name,
         coalesce((r->>'apps')::smallint,0) as apps,
         nullif(r->>'possible_games','')::smallint as possible_games,
         coalesce((r->>'goals')::smallint,0) as goals,
@@ -260,18 +261,19 @@ begin
       order by r->>'season_id', r->>'competition_id'
     ), ins as (
       insert into public.player_season_competition_stats (
-        tm_player_id, season_id, competition_id, card_id, apps, possible_games,
+        tm_player_id, season_id, competition_id, competition_name, card_id, apps, possible_games,
         goals, assists, minutes, yellow, yellow_red, red, start_eleven_percent,
         minutes_played_percent, goals_contributed_percent, goalkeeper,
         source_url, source_payload, fetched_at
       )
-      select p_tm_id, season_id, competition_id, v_card, apps, possible_games,
+      select p_tm_id, season_id, competition_id, competition_name, v_card, apps, possible_games,
         goals, assists, minutes, yellow, yellow_red, red, start_eleven_percent,
         minutes_played_percent, goals_contributed_percent, goalkeeper,
         source_url, source_payload, now()
       from src
       on conflict (tm_player_id, season_id, competition_id) do update set
-        card_id=excluded.card_id, apps=excluded.apps, possible_games=excluded.possible_games,
+        competition_name=excluded.competition_name, card_id=excluded.card_id,
+        apps=excluded.apps, possible_games=excluded.possible_games,
         goals=excluded.goals, assists=excluded.assists, minutes=excluded.minutes,
         yellow=excluded.yellow, yellow_red=excluded.yellow_red, red=excluded.red,
         start_eleven_percent=excluded.start_eleven_percent,
