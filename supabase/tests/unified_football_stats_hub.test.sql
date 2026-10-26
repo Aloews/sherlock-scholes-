@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 begin;
-insert into public.cards(id,name,transfermarkt_id,category,active) values ('d6dc13cc-0944-4e0e-a887-93fa3747dab8','Cole Palmer','568177','player',true) on conflict (id) do nothing;
+insert into public.cards(id,name,transfermarkt_id,category,active) values ('d6dc13cc-0944-4e0e-a887-93fa3747dab8','Cole Palmer','568177','player',true) on conflict (id) do update set transfermarkt_id=excluded.transfermarkt_id, category=excluded.category, active=excluded.active, name=excluded.name;
 insert into public.tm_club(id,name,is_national_team) values
  ('club-a','Chelsea',false), ('nat-a','England',true);
 insert into public.tm_competition(id,name,type_id,country_id) values
