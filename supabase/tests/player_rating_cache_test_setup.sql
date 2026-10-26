@@ -27,9 +27,9 @@ create table public.player_match_stats (
   tournament text not null,
   home_team text,
   away_team text,
-  minutes integer,
-  goals integer not null default 0,
-  assists integer not null default 0,
+  minutes smallint,
+  goals smallint not null default 0,
+  assists smallint not null default 0,
   source text not null,
   disputed boolean not null default false,
   fetched_at timestamptz not null default now()
