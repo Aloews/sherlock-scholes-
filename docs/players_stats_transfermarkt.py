@@ -306,6 +306,8 @@ def get_json(url):
                 return json.loads(raw)
         except urllib.error.HTTPError as e:
             if e.code == 404:
+                if "/ceapi/player/" in url and url.endswith("/performance"):
+                    return []
                 return {"success": True, "data": {"performance": []}}
             if e.code not in (429, 500, 502, 503, 504):
                 return None
