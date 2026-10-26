@@ -32,9 +32,9 @@ export function HomeGameLink({ icon, label, onClick, locked }: HomeGameLinkProps
     <button
       type="button"
       onClick={() => { hapticImpact('light'); onClick(); }}
-      className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 transition-colors"
+      className="w-full max-w-sm ds-panel bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-brand-accent/50 active:scale-[0.99] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
     >
-      <span className="text-brand-muted shrink-0 flex items-center">{icon}</span>
+      <span className="w-10 h-10 rounded-xl bg-brand-border/60 flex items-center justify-center text-brand-muted shrink-0">{icon}</span>
       <span className="flex-1 text-white text-sm">{label}</span>
       {/* Not an icon: the chevron is a text glyph so it takes the row's own
           colour and baseline, and it is decorative — the label is the name of
