@@ -83,7 +83,7 @@ jobs:
             APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --stale-days 7 --limit "$limit"
           fi
 
-      - name: Verify the targeted player's competition statistics were freshly stored
+      - name: Verify fresh career and season statistics for the targeted player
         if: always()
         env:
           VERIFY_TM_ID: ${{ inputs.transfermarkt_id }}
