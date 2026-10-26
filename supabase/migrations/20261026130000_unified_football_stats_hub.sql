@@ -219,7 +219,7 @@ create or replace function public.apply_player_season_competition_stats(
   p_tm_id text, p_rows jsonb, p_status text
 )
 returns table (written integer, linked integer, status text)
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $$
 declare
   v_written integer := 0;
   v_card uuid;
@@ -295,7 +295,7 @@ begin
 
   return query select v_written, (case when v_card is null then 0 else 1 end), v_status;
 end;
-$;
+$$;
 revoke all on function public.apply_player_season_competition_stats(text,jsonb,text) from public;
 grant execute on function public.apply_player_season_competition_stats(text,jsonb,text) to service_role;
 
@@ -313,7 +313,7 @@ returns table (
   career_status text,
   season_status text
 )
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $$
 declare
   v_career_written integer := 0;
   v_season_written integer := 0;
@@ -349,7 +349,7 @@ begin
   return query select v_career_written, v_season_written, v_linked,
                       v_career_status, v_season_status;
 end;
-$;
+$$;
 revoke all on function public.apply_player_stats_bundle(text,jsonb,jsonb,text,text) from public;
 grant execute on function public.apply_player_stats_bundle(text,jsonb,jsonb,text,text) to service_role;
 
