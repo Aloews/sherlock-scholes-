@@ -56,23 +56,36 @@ with career as (
 ), season as (
   select tm_player_id, max(fetched_at) as latest_at, count(*)::integer as source_rows
     from public.player_season_competition_stats group by tm_player_id
+), state_latest as (
+  select distinct on (tm_player_id, source_key)
+         tm_player_id, source_key, last_attempt_at, status
+    from public.player_stats_source_state
+   order by tm_player_id, source_key, last_attempt_at desc
 ), state as (
   select tm_player_id,
          max(last_attempt_at) filter (
            where source_key='tm_career_competition' and status in ('ok','empty')
          ) as career_attempt_at,
+         bool_or(status='error') filter (
+           where source_key='tm_career_competition'
+         ) as career_error,
          max(last_attempt_at) filter (
            where source_key='tm_season_competition' and status in ('ok','empty')
-         ) as season_attempt_at
-    from public.player_stats_source_state group by tm_player_id
+         ) as season_attempt_at,
+         bool_or(status='error') filter (
+           where source_key='tm_season_competition'
+         ) as season_error
+    from state_latest group by tm_player_id
 ), all_ids as (
   select tm_player_id from career
   union select tm_player_id from season
   union select tm_player_id from state
 ), resolved as (
   select ids.tm_player_id,
-         greatest(c.latest_at, st.career_attempt_at) as career_at,
-         greatest(s.latest_at, st.season_attempt_at) as season_at,
+         case when coalesce(st.career_error,false) then null
+              else greatest(c.latest_at, st.career_attempt_at) end as career_at,
+         case when coalesce(st.season_error,false) then null
+              else greatest(s.latest_at, st.season_attempt_at) end as season_at,
          coalesce(c.source_rows,0)+coalesce(s.source_rows,0) as source_rows
     from all_ids ids
     left join career c using (tm_player_id)
