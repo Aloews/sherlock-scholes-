@@ -133,3 +133,12 @@ jobs:
 
       - name: Smart Deck trend analytics regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_smart_deck_trends.test.sql
+
+      - name: Prepare shared football statistics schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/unified_football_stats_hub_test_setup.sql
+
+      - name: Apply shared football statistics read layer
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026130000_unified_football_stats_hub.sql
+
+      - name: Shared football statistics regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/unified_football_stats_hub.test.sql
