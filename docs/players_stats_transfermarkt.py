@@ -130,10 +130,20 @@ def parse_seasons(payload):
         club = info.get("clubId")
         if season in (None, "") or not comp or not club:
             continue
-        st = row.get("statistics") or {}
-        g = st.get("goalStatistics") or {}
+        st = row.get("statistics")
+        if not isinstance(st, dict):
+            continue
+        g = st.get("goalStatistics")
+        t = st.get("playingTimeStatistics")
         c = st.get("cardStatistics") or {}
-        t = st.get("playingTimeStatistics") or {}
+        # Missing statistic blocks mean an incomplete provider payload, not zero.
+        # Skipping the row prevents an upstream shape change from overwriting good data.
+        if not isinstance(g, dict) or not isinstance(t, dict):
+            continue
+        if not any(key in g for key in ("goalsSum", "assistsSum", "ownGoalsSum")):
+            continue
+        if not any(key in t for key in ("appearancesCount", "playedMinutesSum", "startingCount")):
+            continue
         out.append({
             "season_id": int(season),
             "competition_id": str(comp),
