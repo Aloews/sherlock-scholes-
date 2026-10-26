@@ -43,6 +43,7 @@ import datetime as dt
 import gzip
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -174,6 +175,74 @@ def parse_seasons(payload):
             "opponent_goals": _i(g.get("opponentGoalsOnThePitch")),
         })
     return out
+
+
+def _f(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_season_competition_stats(payload, tm_id):
+    """Parse true season-by-competition rows from the CEAPI performance endpoint."""
+    if isinstance(payload, list):
+        source_rows = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("data"), list):
+        source_rows = payload["data"]
+    else:
+        return []
+    source_url = "https://www.transfermarkt.com/ceapi/player/%s/performance" % tm_id
+    out = []
+    for row in source_rows:
+        if not isinstance(row, dict):
+            continue
+        link = str(row.get("detailedStatsLink") or "")
+        match = re.search(r"/wettbewerb/([^/?#]+)/saison/(\d{4})(?:[/?#]|$)", link)
+        if not match:
+            continue
+        core = (row.get("gamesPlayed"), row.get("goalsScored"),
+                row.get("assists"), row.get("minutesPlayed"))
+        if any(value is None for value in core):
+            continue
+        out.append({
+            "season_id": int(match.group(2)),
+            "competition_id": match.group(1),
+            "apps": _i(row.get("gamesPlayed")),
+            "possible_games": row.get("possibleGames"),
+            "goals": _i(row.get("goalsScored")),
+            "assists": _i(row.get("assists")),
+            "minutes": _i(row.get("minutesPlayed")),
+            "yellow": _i(row.get("yellowCards")),
+            "yellow_red": _i(row.get("secondYellowCards")),
+            "red": _i(row.get("redCards")),
+            "start_eleven_percent": _f(row.get("startElevenPercent")),
+            "minutes_played_percent": _f(row.get("minutesPlayedPercent")),
+            "goals_contributed_percent": _f(row.get("goalsContributedPercent")),
+            "goalkeeper": row.get("goalkeeper") if isinstance(row.get("goalkeeper"), bool) else None,
+            "source_url": source_url,
+            "source_payload": row,
+        })
+    return out
+
+
+def payload_status(payload, rows, endpoint):
+    """Distinguish a valid empty response from a failed or changed payload."""
+    if payload is None:
+        return "error"
+    if rows:
+        return "ok"
+    if endpoint == "career":
+        if (isinstance(payload, dict) and isinstance(payload.get("data"), dict)
+                and isinstance(payload["data"].get("performance"), list)
+                and not payload["data"]["performance"]):
+            return "empty"
+    elif endpoint == "season":
+        if isinstance(payload, list) and not payload:
+            return "empty"
+        if isinstance(payload, dict) and isinstance(payload.get("data"), list) and not payload["data"]:
+            return "empty"
+    return "error"
 
 
 def parse_birth(player):
