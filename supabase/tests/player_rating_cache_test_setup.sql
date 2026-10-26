@@ -33,6 +33,8 @@ create table public.player_match_stats (
   minutes smallint,
   goals smallint not null default 0,
   assists smallint not null default 0,
+  yellow smallint not null default 0,
+  red smallint not null default 0,
   source text not null,
   disputed boolean not null default false,
   fetched_at timestamptz not null default now()
