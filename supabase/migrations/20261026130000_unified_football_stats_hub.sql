@@ -124,7 +124,9 @@ select 'match'::text as grain,
 create or replace view public.player_match_days as
   select distinct on (card_id, match_date)
          card_id, match_date, tournament, home_team, away_team,
-         home_score, away_score, minutes, goals, assists, yellow, red, source
+         home_score, away_score, minutes::smallint as minutes,
+         goals::smallint as goals, assists::smallint as assists,
+         yellow_cards::smallint as yellow, red_cards::smallint as red, source
     from public.football_player_stats s
    where s.grain = 'match' and not s.disputed
    order by card_id, match_date,
