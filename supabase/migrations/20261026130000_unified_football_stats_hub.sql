@@ -355,8 +355,8 @@ comment on view public.football_player_competition_totals is
 comment on view public.football_player_career_totals is
   'Canonical club and national-team career totals from the shared competition totals layer. Youth and senior national teams remain combined here; use the detailed view when separation is required.';
 
-grant select on public.player_stats_freshness,
-                public.football_player_competition_totals,
+grant select on public.player_stats_freshness to service_role;
+grant select on public.football_player_competition_totals,
                 public.football_player_career_totals,
                 public.football_player_stats
 to anon, authenticated, service_role;
