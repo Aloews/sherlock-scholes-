@@ -145,6 +145,7 @@ class TrueSeasonStatisticsTests(unittest.TestCase):
         self.assertEqual(payload_status([], [], "season"), "empty")
         self.assertEqual(payload_status(None, [], "season"), "error")
         self.assertEqual(payload_status({"html": "challenge"}, [], "season"), "error")
+        self.assertEqual(payload_status([{"a": 1}, {"b": 2}], [{"a": 1}], "season"), "error")
 
 
 if __name__ == "__main__":
