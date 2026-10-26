@@ -313,6 +313,7 @@ declare
   v_career_written integer := 0;
   v_season_written integer := 0;
   v_linked integer := 0;
+  v_card uuid;
   v_career_status text := case when p_career_status in ('ok','empty','error') then p_career_status else 'error' end;
   v_season_status text;
 begin
@@ -321,9 +322,9 @@ begin
       from public.apply_player_season_stats(p_tm_id, coalesce(p_career_rows,'[]'::jsonb)) r;
     if v_career_written = 0 then v_career_status := 'error'; end if;
   else
-    select id into v_linked from public.cards
+    select id into v_card from public.cards
      where transfermarkt_id=p_tm_id and active and category='player' limit 1;
-    v_linked := case when v_linked is null then 0 else 1 end;
+    v_linked := case when v_card is null then 0 else 1 end;
   end if;
 
   insert into public.player_stats_source_state
