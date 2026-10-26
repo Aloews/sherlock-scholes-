@@ -37,13 +37,13 @@ create or replace view public.football_player_career_totals
 with (security_invoker = true) as
 select x.card_id,
        x.tm_player_id,
-       sum(x.appearances) filter (where not coalesce(k.is_national_team, false))::integer as club_appearances,
-       sum(x.goals) filter (where not coalesce(k.is_national_team, false))::integer as club_goals,
-       sum(x.assists) filter (where not coalesce(k.is_national_team, false))::integer as club_assists,
-       sum(x.minutes) filter (where not coalesce(k.is_national_team, false))::bigint as club_minutes,
-       count(distinct x.club_id) filter (where not coalesce(k.is_national_team, false))::integer as club_count,
-       sum(x.appearances) filter (where coalesce(k.is_national_team, false))::integer as national_appearances_all_levels,
-       sum(x.goals) filter (where coalesce(k.is_national_team, false))::integer as national_goals_all_levels,
+       (sum(x.appearances) filter (where not coalesce(k.is_national_team, false)))::integer as club_appearances,
+       (sum(x.goals) filter (where not coalesce(k.is_national_team, false)))::integer as club_goals,
+       (sum(x.assists) filter (where not coalesce(k.is_national_team, false)))::integer as club_assists,
+       (sum(x.minutes) filter (where not coalesce(k.is_national_team, false)))::bigint as club_minutes,
+       (count(distinct x.club_id) filter (where not coalesce(k.is_national_team, false)))::integer as club_count,
+       (sum(x.appearances) filter (where coalesce(k.is_national_team, false)))::integer as national_appearances_all_levels,
+       (sum(x.goals) filter (where coalesce(k.is_national_team, false)))::integer as national_goals_all_levels,
        max(x.last_fetched_at) as last_fetched_at
   from public.football_player_competition_totals x
   left join public.tm_club k on k.id = x.club_id
