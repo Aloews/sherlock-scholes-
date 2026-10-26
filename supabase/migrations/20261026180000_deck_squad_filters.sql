@@ -1,4 +1,4 @@
--- Expose the league metadata used to narrow the squad picker.
+-- Expose canonical league metadata for the squad picker.
 create or replace function public.deck_squad_filters(p_min integer default 8)
 returns table (
   club_key text,
@@ -32,9 +32,17 @@ as $$
              and public.club_match_key(k.name_en) = n.club_key
            limit 1) as card_id,
          n.fetched_at,
-         fc.league
+         (select p.top_league
+            from public.card_current_club cc2
+            join public.cards p on p.id = cc2.card_id
+           where cc2.club_key = n.club_key
+             and p.active
+             and p.category = 'player'
+             and p.top_league = any(public.deck_leagues())
+           group by p.top_league
+           order by count(*) desc, p.top_league
+           limit 1) as league
     from counted n
-    left join public.football_club fc on fc.club_key = n.club_key
    where n.players >= greatest(coalesce(p_min, 8), 1)
    order by n.players desc, n.club;
 $$;
