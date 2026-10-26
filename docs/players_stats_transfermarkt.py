@@ -228,21 +228,23 @@ def parse_season_competition_stats(payload, tm_id):
 
 
 def payload_status(payload, rows, endpoint):
-    """Distinguish a valid empty response from a failed or changed payload."""
+    """Distinguish valid empty responses from failures and partially parsed payloads."""
     if payload is None:
         return "error"
-    if rows:
-        return "ok"
     if endpoint == "career":
-        if (isinstance(payload, dict) and isinstance(payload.get("data"), dict)
-                and isinstance(payload["data"].get("performance"), list)
-                and not payload["data"]["performance"]):
-            return "empty"
-    elif endpoint == "season":
-        if isinstance(payload, list) and not payload:
-            return "empty"
-        if isinstance(payload, dict) and isinstance(payload.get("data"), list) and not payload["data"]:
-            return "empty"
+        source_rows = (
+            payload.get("data", {}).get("performance")
+            if isinstance(payload, dict) and isinstance(payload.get("data"), dict)
+            else None
+        )
+    else:
+        source_rows = payload if isinstance(payload, list) else (
+            payload.get("data") if isinstance(payload, dict) else None
+        )
+    if isinstance(source_rows, list) and not source_rows:
+        return "empty"
+    if rows and isinstance(source_rows, list) and len(rows) == len(source_rows):
+        return "ok"
     return "error"
 
 
