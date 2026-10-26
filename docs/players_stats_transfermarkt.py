@@ -35,6 +35,7 @@
     APPLY=1 python docs/players_stats_transfermarkt.py --min-value 600000
 """
 import argparse
+import datetime as dt
 import gzip
 import json
 import os
@@ -66,6 +67,29 @@ def _i(value):
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def select_stale_candidates(cards, freshness, stale_days=7, now=None):
+    """Return missing or stale players; freshness maps Transfermarkt IDs to ISO timestamps."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    cutoff = now - dt.timedelta(days=max(0, int(stale_days)))
+    selected = []
+    for card in cards:
+        tm_id = str(card.get("transfermarkt_id") or "")
+        raw = freshness.get(tm_id)
+        if not raw:
+            selected.append(card)
+            continue
+        try:
+            fetched = dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if fetched.tzinfo is None:
+                fetched = fetched.replace(tzinfo=dt.timezone.utc)
+        except (TypeError, ValueError):
+            selected.append(card)
+            continue
+        if fetched < cutoff:
+            selected.append(card)
+    return selected
 
 
 def filter_candidates(cards, min_value=0, include_unvalued=False):
@@ -219,7 +243,9 @@ def main():
     ap.add_argument("--min-value", type=int, default=600000)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--refresh", action="store_true",
-                    help="перезапросить и тех, у кого статистика уже собрана")
+                    help="перезапросить всех выбранных игроков независимо от свежести")
+    ap.add_argument("--stale-days", type=int, default=7,
+                    help="обновлять статистику старше указанного числа дней (по умолчанию 7)")
     ap.add_argument("--include-unvalued", action="store_true",
                     help="включить игроков без рыночной оценки")
     ap.add_argument("--only", default="", help="один id на Transfermarkt, для проверки")
@@ -249,10 +275,15 @@ def main():
         if args.include_unvalued:
             cards = filter_candidates(cards, args.min_value, include_unvalued=True)
 
-    if not args.refresh:
-        done = {r["tm_player_id"] for r in all_rows(
-            "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
-        cards = [c for c in cards if c["transfermarkt_id"] not in done]
+    if not args.only and not args.refresh:
+        freshness_rows = all_rows(
+            "player_stats_freshness",
+            {"select": "tm_player_id,latest_fetched_at", "order": "tm_player_id"})
+        freshness = {
+            str(row["tm_player_id"]): row.get("latest_fetched_at")
+            for row in freshness_rows
+        }
+        cards = select_stale_candidates(cards, freshness, args.stale_days)
     if args.limit:
         cards = cards[:args.limit]
 
