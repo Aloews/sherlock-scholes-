@@ -42,11 +42,12 @@ create table public.player_match_stats (
 
 create view public.player_match_days as
 select distinct on (card_id, match_date)
-       card_id, match_date, tournament, minutes, goals, assists, source
+       card_id, match_date, tournament, home_team, away_team,
+       home_score, away_score, minutes, goals, assists, yellow, red, source
   from public.player_match_stats
  where not disputed
  order by card_id, match_date, (minutes is not null) desc,
-          source, tournament, goals desc, assists desc;
+          source, tournament, home_team, away_team, goals desc, assists desc;
 
 create table public.player_rating_cache (
   days smallint not null,
