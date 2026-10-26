@@ -14,24 +14,35 @@ select tm_player_id,
 
 create or replace view public.football_player_competition_totals
 with (security_invoker = true) as
-select s.card_id,
-       s.tm_player_id,
-       s.competition_id,
-       s.club_id,
-       sum(s.apps)::integer as appearances,
-       sum(s.starts)::integer as starts,
-       sum(s.minutes)::bigint as minutes,
-       sum(s.goals)::integer as goals,
-       sum(s.assists)::integer as assists,
-       sum(s.own_goals)::integer as own_goals,
-       sum(s.penalty_goals)::integer as penalty_goals,
-       sum(s.yellow)::integer as yellow_cards,
-       sum(s.yellow_red)::integer as second_yellow_red_cards,
-       sum(s.red)::integer as red_cards,
-       max(s.fetched_at) as last_fetched_at,
-       count(*)::integer as source_rows
-  from public.player_season_stat s
- group by s.card_id, s.tm_player_id, s.competition_id, s.club_id;
+with ranked as (
+  select s.*,
+         row_number() over (
+           partition by s.tm_player_id, s.competition_id, s.club_id
+           order by s.fetched_at desc, s.season_id desc
+         ) as freshness_rank,
+         count(*) over (
+           partition by s.tm_player_id, s.competition_id, s.club_id
+         )::integer as source_rows
+    from public.player_season_stat s
+)
+select card_id,
+       tm_player_id,
+       competition_id,
+       club_id,
+       apps::integer as appearances,
+       starts::integer as starts,
+       minutes::bigint as minutes,
+       goals::integer as goals,
+       assists::integer as assists,
+       own_goals::integer as own_goals,
+       penalty_goals::integer as penalty_goals,
+       yellow::integer as yellow_cards,
+       yellow_red::integer as second_yellow_red_cards,
+       red::integer as red_cards,
+       fetched_at as last_fetched_at,
+       source_rows
+  from ranked
+ where freshness_rank = 1;
 
 create or replace view public.football_player_career_totals
 with (security_invoker = true) as
@@ -52,7 +63,7 @@ select x.card_id,
 comment on view public.player_stats_freshness is
   'Latest successful source-row fetch per Transfermarkt player ID; used for freshness-aware scheduling.';
 comment on view public.football_player_competition_totals is
-  'Canonical career totals by player, club and competition. Does not claim that provider season_id is a verified season.';
+  'Latest provider aggregate by player, club and competition. Does not claim that provider season_id is a verified season; duplicate groupings resolve to the latest fetch.';
 comment on view public.football_player_career_totals is
   'Canonical club and national-team career totals from the shared competition totals layer. Youth and senior national teams remain combined here; use the detailed view when separation is required.';
 
@@ -63,6 +74,37 @@ to anon, authenticated, service_role;
 
 -- Keep the existing RPC contract, but route its numerical totals through the
 -- shared canonical layer rather than re-aggregating the raw provider rows.
+drop function if exists public.player_club_career(uuid);
+create function public.player_club_career(p_card_id uuid)
+returns table (
+  club_id text,
+  club_name text,
+  season_from smallint,
+  season_to smallint,
+  apps integer,
+  goals integer,
+  assists integer,
+  minutes bigint
+)
+language sql stable security definer set search_path = public as $$
+  select x.club_id,
+         coalesce(k.name, x.club_id),
+         null::smallint,
+         null::smallint,
+         sum(x.appearances)::integer,
+         sum(x.goals)::integer,
+         sum(x.assists)::integer,
+         sum(x.minutes)::bigint
+    from public.football_player_competition_totals x
+    left join public.tm_club k on k.id = x.club_id
+   where x.card_id = p_card_id
+     and not coalesce(k.is_national_team, false)
+   group by x.club_id, coalesce(k.name, x.club_id)
+   order by max(x.last_fetched_at) desc, sum(x.appearances) desc;
+$$;
+revoke all on function public.player_club_career(uuid) from public;
+grant execute on function public.player_club_career(uuid) to anon, authenticated, service_role;
+
 drop function if exists public.player_career_totals(uuid);
 create function public.player_career_totals(p_card_id uuid)
 returns table (
@@ -81,23 +123,23 @@ returns table (
 )
 language sql stable security definer set search_path = public as $$
   with rows as (
-    select s.*, coalesce(k.is_national_team, false) as nat,
+    select x.*, coalesce(k.is_national_team, false) as nat,
            k.name as club_name, t.type_id, t.country_id
-      from public.player_season_stat s
-      left join public.tm_club k on k.id = s.club_id
-      left join public.tm_competition t on t.id = s.competition_id
-     where s.card_id = p_card_id
+      from public.football_player_competition_totals x
+      left join public.tm_club k on k.id = x.club_id
+      left join public.tm_competition t on t.id = x.competition_id
+     where x.card_id = p_card_id
   ),
   totals as (
     select * from public.football_player_career_totals
      where card_id = p_card_id
   ),
   team as (
-    select r.club_name, sum(r.apps)::integer as apps, sum(r.goals)::integer as goals
+    select r.club_name, sum(r.appearances)::integer as apps, sum(r.goals)::integer as goals
       from rows r
      where r.nat and r.club_name is not null
      group by r.club_name
-     order by sum(r.apps) desc
+     order by sum(r.appearances) desc
      limit 1
   )
   select coalesce(t.club_appearances, 0),
@@ -105,8 +147,8 @@ language sql stable security definer set search_path = public as $$
          coalesce(t.club_assists, 0),
          coalesce(t.club_minutes, 0),
          coalesce(t.club_count, 0),
-         min(r.season_id),
-         max(r.season_id),
+         null::smallint,
+         null::smallint,
          coalesce((select apps from team), 0),
          coalesce((select goals from team), 0),
          (select club_name from team),
@@ -116,6 +158,5 @@ language sql stable security definer set search_path = public as $$
     left join totals t on t.card_id = r.card_id
    group by t.club_appearances, t.club_goals, t.club_assists, t.club_minutes, t.club_count;
 $$;
-
 revoke all on function public.player_career_totals(uuid) from public;
 grant execute on function public.player_career_totals(uuid) to anon, authenticated, service_role;
