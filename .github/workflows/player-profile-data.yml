@@ -96,6 +96,7 @@ jobs:
           count=$(curl -fsS --get \
             --data-urlencode "select=tm_player_id" \
             --data-urlencode "tm_player_id=eq.$id" \
+            --data-urlencode "fetched_at=gte.$STARTED_AT" \
             "$SUPABASE_URL/rest/v1/player_season_stat" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
