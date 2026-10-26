@@ -60,6 +60,79 @@ select x.card_id,
   left join public.tm_club k on k.id = x.club_id
  group by x.card_id, x.tm_player_id;
 
+create or replace view public.football_player_stats
+with (security_invoker = true) as
+select 'competition_career'::text as grain,
+       x.card_id,
+       x.tm_player_id,
+       null::smallint as season_id,
+       x.competition_id,
+       x.club_id,
+       null::date as match_date,
+       t.name as tournament,
+       null::text as home_team,
+       null::text as away_team,
+       null::smallint as home_score,
+       null::smallint as away_score,
+       x.appearances,
+       x.starts,
+       x.minutes::integer as minutes,
+       x.goals,
+       x.assists,
+       x.own_goals,
+       x.penalty_goals,
+       x.yellow_cards,
+       x.second_yellow_red_cards,
+       x.red_cards,
+       'transfermarkt'::text as source,
+       false as disputed,
+       x.last_fetched_at as fetched_at
+  from public.football_player_competition_totals x
+  left join public.tm_competition t on t.id = x.competition_id
+union all
+select 'match'::text as grain,
+       m.card_id,
+       c.transfermarkt_id as tm_player_id,
+       null::smallint as season_id,
+       null::text as competition_id,
+       null::text as club_id,
+       m.match_date,
+       m.tournament,
+       m.home_team,
+       m.away_team,
+       m.home_score,
+       m.away_score,
+       1::integer as appearances,
+       null::integer as starts,
+       m.minutes::integer as minutes,
+       m.goals::integer as goals,
+       m.assists::integer as assists,
+       null::integer as own_goals,
+       null::integer as penalty_goals,
+       m.yellow::integer as yellow_cards,
+       null::integer as second_yellow_red_cards,
+       m.red::integer as red_cards,
+       m.source,
+       m.disputed,
+       m.fetched_at
+  from public.player_match_stats m
+  left join public.cards c on c.id = m.card_id;
+
+-- Keep the legacy read contract while routing rating/fantasy consumers through
+-- the shared canonical facts layer. Deterministic tie-breakers match the existing
+-- production rule so this migration does not change which duplicate wins.
+create or replace view public.player_match_days as
+  select distinct on (card_id, match_date)
+         card_id, match_date, tournament, home_team, away_team,
+         home_score, away_score, minutes, goals, assists, yellow, red, source
+    from public.football_player_stats s
+   where s.grain = 'match' and not s.disputed
+   order by card_id, match_date,
+            (minutes is not null) desc,
+            source,
+            tournament, home_team, away_team,
+            goals desc, assists desc;
+
 comment on view public.player_stats_freshness is
   'Latest successful source-row fetch per Transfermarkt player ID; used for freshness-aware scheduling.';
 comment on view public.football_player_competition_totals is
