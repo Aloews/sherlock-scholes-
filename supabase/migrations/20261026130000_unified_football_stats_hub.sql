@@ -170,7 +170,7 @@ union all
 select 'season_competition'::text as grain,
        s.card_id, s.tm_player_id, s.season_id,
        s.competition_id, null::text as club_id, null::date as match_date,
-       t.name as tournament, null::text as home_team, null::text as away_team,
+       coalesce(t.name,s.competition_name,s.competition_id) as tournament, null::text as home_team, null::text as away_team,
        null::smallint as home_score, null::smallint as away_score,
        s.apps::integer as appearances, null::integer as starts,
        s.minutes::integer as minutes, s.goals::integer as goals,
