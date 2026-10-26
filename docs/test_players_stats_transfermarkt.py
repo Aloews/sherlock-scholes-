@@ -5,7 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from players_stats_transfermarkt import filter_candidates, select_stale_candidates, parse_seasons  # noqa: E402
+from players_stats_transfermarkt import filter_candidates, select_stale_candidates, parse_seasons, parse_season_competition_stats, payload_status  # noqa: E402
 from datetime import datetime, timezone
 
 
@@ -102,6 +102,49 @@ class ProviderPayloadSafetyTests(unittest.TestCase):
     def test_failed_or_empty_payload_is_not_treated_as_statistics(self):
         self.assertEqual(parse_seasons(None), [])
         self.assertEqual(parse_seasons({"success": False, "data": {}}), [])
+
+
+
+class TrueSeasonStatisticsTests(unittest.TestCase):
+    def test_parses_season_and_competition_from_detailed_link(self):
+        payload = [{
+            "detailedStatsLink": "/cole-palmer/leistungsdatendetails/spieler/568177/wettbewerb/GB1/saison/2025",
+            "competitionDescription": "Premier League",
+            "nameSeason": "25/26",
+            "possibleGames": 38,
+            "gamesPlayed": 24,
+            "goalsScored": 14,
+            "assists": 3,
+            "yellowCards": 4,
+            "secondYellowCards": 0,
+            "redCards": 0,
+            "startElevenPercent": 91.67,
+            "minutesPlayedPercent": 82.5,
+            "goalsContributedPercent": 60.0,
+            "goalkeeper": False,
+            "minutesPlayed": 1980,
+        }]
+        rows = parse_season_competition_stats(payload, "568177")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["season_id"], 2025)
+        self.assertEqual(rows[0]["competition_id"], "GB1")
+        self.assertEqual(rows[0]["apps"], 24)
+        self.assertEqual(rows[0]["goals"], 14)
+        self.assertEqual(rows[0]["minutes"], 1980)
+        self.assertEqual(rows[0]["goalkeeper"], False)
+        self.assertIn("/ceapi/player/568177/performance", rows[0]["source_url"])
+
+    def test_missing_core_season_fields_are_skipped(self):
+        payload = [{
+            "detailedStatsLink": "/player/568177/wettbewerb/GB1/saison/2025",
+            "gamesPlayed": None, "goalsScored": 1, "assists": 0, "minutesPlayed": 90,
+        }]
+        self.assertEqual(parse_season_competition_stats(payload, "568177"), [])
+
+    def test_distinguishes_empty_response_from_bad_payload(self):
+        self.assertEqual(payload_status([], [], "season"), "empty")
+        self.assertEqual(payload_status(None, [], "season"), "error")
+        self.assertEqual(payload_status({"html": "challenge"}, [], "season"), "error")
 
 
 if __name__ == "__main__":
