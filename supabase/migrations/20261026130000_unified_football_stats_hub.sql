@@ -148,8 +148,7 @@ to anon, authenticated, service_role;
 
 -- Keep the existing RPC contract, but route its numerical totals through the
 -- shared canonical layer rather than re-aggregating the raw provider rows.
-drop function if exists public.player_club_career(uuid);
-create function public.player_club_career(p_card_id uuid)
+create or replace function public.player_club_career(p_card_id uuid)
 returns table (
   club_id text,
   club_name text,
@@ -179,8 +178,7 @@ $$;
 revoke all on function public.player_club_career(uuid) from public;
 grant execute on function public.player_club_career(uuid) to anon, authenticated, service_role;
 
-drop function if exists public.player_career_totals(uuid);
-create function public.player_career_totals(p_card_id uuid)
+create or replace function public.player_career_totals(p_card_id uuid)
 returns table (
   club_apps integer,
   club_goals integer,
