@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 begin;
-insert into public.cards(id,name,category,active) values ('d6dc13cc-0944-4e0e-a887-93fa3747dab8','Cole Palmer','player',true) on conflict (id) do nothing;
+insert into public.cards(id,name,transfermarkt_id,category,active) values ('d6dc13cc-0944-4e0e-a887-93fa3747dab8','Cole Palmer','568177','player',true) on conflict (id) do nothing;
 insert into public.tm_club(id,name,is_national_team) values
  ('club-a','Chelsea',false), ('nat-a','England',true);
 insert into public.tm_competition(id,name,type_id,country_id) values
@@ -21,7 +21,7 @@ do $$
 declare v record;
 begin
   select * into v from public.player_stats_freshness where tm_player_id='568177';
-  if v.source_rows <> 4 then raise exception 'freshness source_rows mismatch: %', v.source_rows; end if;
+  if v.source_rows <> 5 then raise exception 'freshness source_rows mismatch: %', v.source_rows; end if;
   if v.latest_fetched_at < now()-interval '1 minute' then raise exception 'freshness timestamp mismatch'; end if;
   select * into v from public.football_player_competition_totals
    where tm_player_id='568177' and competition_id='GB1' and club_id='club-a';
