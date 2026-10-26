@@ -128,6 +128,7 @@ class TrueSeasonStatisticsTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["season_id"], 2025)
         self.assertEqual(rows[0]["competition_id"], "GB1")
+        self.assertEqual(rows[0]["competition_name"], "Premier League")
         self.assertEqual(rows[0]["apps"], 24)
         self.assertEqual(rows[0]["goals"], 14)
         self.assertEqual(rows[0]["minutes"], 1980)
