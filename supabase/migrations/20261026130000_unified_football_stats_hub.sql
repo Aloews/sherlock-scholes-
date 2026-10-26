@@ -142,7 +142,8 @@ comment on view public.football_player_career_totals is
 
 grant select on public.player_stats_freshness,
                 public.football_player_competition_totals,
-                public.football_player_career_totals
+                public.football_player_career_totals,
+                public.football_player_stats
 to anon, authenticated, service_role;
 
 -- Keep the existing RPC contract, but route its numerical totals through the
