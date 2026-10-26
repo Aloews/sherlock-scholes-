@@ -5,7 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from players_stats_transfermarkt import filter_candidates, select_stale_candidates  # noqa: E402
+from players_stats_transfermarkt import filter_candidates, select_stale_candidates, parse_seasons  # noqa: E402
 from datetime import datetime, timezone
 
 
@@ -82,6 +82,26 @@ class FreshnessSelectionTests(unittest.TestCase):
             select_stale_candidates(self.cards, self.freshness, 0, self.now),
             self.cards,
         )
+
+
+
+class ProviderPayloadSafetyTests(unittest.TestCase):
+    def test_incomplete_statistics_are_not_converted_to_zero_rows(self):
+        payload = {"success": True, "data": {"performance": [
+            {"generalInformation": {"seasonId": 2025, "competitionId": "GB1", "clubId": "281"},
+             "statistics": {"goalStatistics": {}, "playingTimeStatistics": {}}},
+            {"generalInformation": {"seasonId": 2025, "competitionId": "FAC", "clubId": "281"},
+             "statistics": {"goalStatistics": {"goalsSum": 0, "assistsSum": 0},
+                            "playingTimeStatistics": {"appearancesCount": 0, "playedMinutesSum": 0}}},
+        ]}}
+        rows = parse_seasons(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["competition_id"], "FAC")
+        self.assertEqual(rows[0]["goals"], 0)
+
+    def test_failed_or_empty_payload_is_not_treated_as_statistics(self):
+        self.assertEqual(parse_seasons(None), [])
+        self.assertEqual(parse_seasons({"success": False, "data": {}}), [])
 
 
 if __name__ == "__main__":
