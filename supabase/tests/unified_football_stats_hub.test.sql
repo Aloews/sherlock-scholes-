@@ -27,6 +27,17 @@ begin
   if v.appearances <> 118 or v.goals <> 49 or v.assists <> 23 then
     raise exception 'competition totals mismatch: %', row_to_json(v);
   end if;
+  select * into v from public.football_player_stats
+   where grain='match' and card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8'
+     and match_date='2026-10-25';
+  if v.goals <> 1 or v.appearances <> 1 or v.source <> 'sportsru' then
+    raise exception 'canonical match facts mismatch: %', row_to_json(v);
+  end if;
+  select * into v from public.player_match_days
+   where card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8' and match_date='2026-10-25';
+  if v.goals <> 1 or v.home_team <> 'Chelsea' then
+    raise exception 'rating/fantasy read contract mismatch: %', row_to_json(v);
+  end if;
   select * into v from public.football_player_career_totals
    where tm_player_id='568177';
   if v.club_appearances <> 123 or v.club_goals <> 51 then
