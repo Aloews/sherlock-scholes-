@@ -59,6 +59,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r football_scraper/requirements.txt
 
+      - name: Record player statistics refresh start time
+        id: stats_start
+        run: echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Test freshness-aware player-stat candidate selection
         run: python3 docs/test_players_stats_transfermarkt.py
 
@@ -79,10 +83,11 @@ jobs:
             APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --stale-days 7 --limit "$limit"
           fi
 
-      - name: Verify the targeted player's competition statistics were stored
+      - name: Verify the targeted player's competition statistics were freshly stored
         if: always()
         env:
           VERIFY_TM_ID: ${{ inputs.transfermarkt_id }}
+          STARTED_AT: ${{ steps.stats_start.outputs.started_at }}
         run: |
           id="${VERIFY_TM_ID:-236590}"
           case "$id" in
@@ -95,10 +100,10 @@ jobs:
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
           if [ "$count" -lt 1 ]; then
-            echo "::error::No player_season_stat rows were stored for Transfermarkt ID $id"
+            echo "::error::No fresh player statistics rows were stored for Transfermarkt ID $id since $STARTED_AT"
             exit 1
           fi
-          echo "Verified $count competition-stat rows for Transfermarkt ID $id"
+          echo "Verified $count fresh competition-stat rows for Transfermarkt ID $id"
 
   player-photos:
     if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}
