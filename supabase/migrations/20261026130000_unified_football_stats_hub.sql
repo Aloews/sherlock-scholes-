@@ -210,6 +210,143 @@ create or replace view public.player_match_days as
             tournament, home_team, away_team,
             goals desc, assists desc;
 
+create or replace function public.apply_player_season_competition_stats(
+  p_tm_id text, p_rows jsonb, p_status text
+)
+returns table (written integer, linked integer, status text)
+language plpgsql security definer set search_path = public as $
+declare
+  v_written integer := 0;
+  v_card uuid;
+  v_status text := case when p_status in ('ok','empty','error') then p_status else 'error' end;
+begin
+  select id into v_card from public.cards
+   where transfermarkt_id = p_tm_id and active and category = 'player'
+   limit 1;
+
+  if v_status = 'ok' then
+    with src as (
+      select distinct on (r->>'season_id', r->>'competition_id')
+        (r->>'season_id')::smallint as season_id,
+        r->>'competition_id' as competition_id,
+        coalesce((r->>'apps')::smallint,0) as apps,
+        nullif(r->>'possible_games','')::smallint as possible_games,
+        coalesce((r->>'goals')::smallint,0) as goals,
+        coalesce((r->>'assists')::smallint,0) as assists,
+        coalesce((r->>'minutes')::integer,0) as minutes,
+        coalesce((r->>'yellow')::smallint,0) as yellow,
+        coalesce((r->>'yellow_red')::smallint,0) as yellow_red,
+        coalesce((r->>'red')::smallint,0) as red,
+        nullif(r->>'start_eleven_percent','')::numeric(5,2) as start_eleven_percent,
+        nullif(r->>'minutes_played_percent','')::numeric(6,2) as minutes_played_percent,
+        nullif(r->>'goals_contributed_percent','')::numeric(6,2) as goals_contributed_percent,
+        nullif(r->>'goalkeeper','')::boolean as goalkeeper,
+        coalesce(nullif(r->>'source_url',''),
+          'https://www.transfermarkt.com/ceapi/player/' || p_tm_id || '/performance') as source_url,
+        coalesce(r->'source_payload','{}'::jsonb) as source_payload
+      from jsonb_array_elements(coalesce(p_rows,'[]'::jsonb)) r
+      where coalesce(r->>'season_id','') <> ''
+        and coalesce(r->>'competition_id','') <> ''
+        and coalesce(r->>'apps','') <> ''
+        and coalesce(r->>'goals','') <> ''
+        and coalesce(r->>'assists','') <> ''
+        and coalesce(r->>'minutes','') <> ''
+      order by r->>'season_id', r->>'competition_id'
+    ), ins as (
+      insert into public.player_season_competition_stats (
+        tm_player_id, season_id, competition_id, card_id, apps, possible_games,
+        goals, assists, minutes, yellow, yellow_red, red, start_eleven_percent,
+        minutes_played_percent, goals_contributed_percent, goalkeeper,
+        source_url, source_payload, fetched_at
+      )
+      select p_tm_id, season_id, competition_id, v_card, apps, possible_games,
+        goals, assists, minutes, yellow, yellow_red, red, start_eleven_percent,
+        minutes_played_percent, goals_contributed_percent, goalkeeper,
+        source_url, source_payload, now()
+      from src
+      on conflict (tm_player_id, season_id, competition_id) do update set
+        card_id=excluded.card_id, apps=excluded.apps, possible_games=excluded.possible_games,
+        goals=excluded.goals, assists=excluded.assists, minutes=excluded.minutes,
+        yellow=excluded.yellow, yellow_red=excluded.yellow_red, red=excluded.red,
+        start_eleven_percent=excluded.start_eleven_percent,
+        minutes_played_percent=excluded.minutes_played_percent,
+        goals_contributed_percent=excluded.goals_contributed_percent,
+        goalkeeper=excluded.goalkeeper, source_url=excluded.source_url,
+        source_payload=excluded.source_payload, fetched_at=now()
+      returning 1
+    )
+    select count(*) into v_written from ins;
+    if v_written = 0 then v_status := 'error'; end if;
+  end if;
+
+  insert into public.player_stats_source_state
+    (tm_player_id,source_key,last_attempt_at,status,rows_written,last_error)
+  values
+    (p_tm_id,'tm_season_competition',now(),v_status,v_written,
+     case when v_status='error' then 'invalid_or_failed_payload' else null end)
+  on conflict (tm_player_id,source_key) do update set
+    last_attempt_at=now(), status=excluded.status,
+    rows_written=excluded.rows_written, last_error=excluded.last_error;
+
+  return query select v_written, (case when v_card is null then 0 else 1 end), v_status;
+end;
+$;
+revoke all on function public.apply_player_season_competition_stats(text,jsonb,text) from public;
+grant execute on function public.apply_player_season_competition_stats(text,jsonb,text) to service_role;
+
+create or replace function public.apply_player_stats_bundle(
+  p_tm_id text,
+  p_career_rows jsonb,
+  p_season_rows jsonb,
+  p_career_status text,
+  p_season_status text
+)
+returns table (
+  career_written integer,
+  season_written integer,
+  linked integer,
+  career_status text,
+  season_status text
+)
+language plpgsql security definer set search_path = public as $
+declare
+  v_career_written integer := 0;
+  v_season_written integer := 0;
+  v_linked integer := 0;
+  v_career_status text := case when p_career_status in ('ok','empty','error') then p_career_status else 'error' end;
+  v_season_status text;
+begin
+  if v_career_status = 'ok' then
+    select r.written, r.linked into v_career_written, v_linked
+      from public.apply_player_season_stats(p_tm_id, coalesce(p_career_rows,'[]'::jsonb)) r;
+    if v_career_written = 0 then v_career_status := 'error'; end if;
+  else
+    select id into v_linked from public.cards
+     where transfermarkt_id=p_tm_id and active and category='player' limit 1;
+    v_linked := case when v_linked is null then 0 else 1 end;
+  end if;
+
+  insert into public.player_stats_source_state
+    (tm_player_id,source_key,last_attempt_at,status,rows_written,last_error)
+  values
+    (p_tm_id,'tm_career_competition',now(),v_career_status,v_career_written,
+     case when v_career_status='error' then 'invalid_or_failed_payload' else null end)
+  on conflict (tm_player_id,source_key) do update set
+    last_attempt_at=now(), status=excluded.status,
+    rows_written=excluded.rows_written, last_error=excluded.last_error;
+
+  select r.written, r.status into v_season_written, v_season_status
+    from public.apply_player_season_competition_stats(
+      p_tm_id, coalesce(p_season_rows,'[]'::jsonb), p_season_status
+    ) r;
+
+  return query select v_career_written, v_season_written, v_linked,
+                      v_career_status, v_season_status;
+end;
+$;
+revoke all on function public.apply_player_stats_bundle(text,jsonb,jsonb,text,text) from public;
+grant execute on function public.apply_player_stats_bundle(text,jsonb,jsonb,text,text) to service_role;
+
 comment on view public.player_stats_freshness is
   'Latest successful source-row fetch per Transfermarkt player ID; used for freshness-aware scheduling.';
 comment on view public.football_player_competition_totals is
