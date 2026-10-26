@@ -31,7 +31,7 @@ on:
         description: 'Maximum players processed in a scheduled/batch run'
         required: false
         type: string
-        default: '800'
+        default: '2500'
 
 concurrency:
   group: player-profile-data
@@ -71,12 +71,12 @@ jobs:
           if [ -n "$TM_ID" ]; then
             APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID"
           else
-            limit="${PLAYER_LIMIT:-800}"
+            limit="${PLAYER_LIMIT:-2500}"
             case "$limit" in
               ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
             esac
             if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
-            APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --limit "$limit"
+            APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --stale-days 7 --limit "$limit"
           fi
 
       - name: Verify the targeted player's season statistics were stored
