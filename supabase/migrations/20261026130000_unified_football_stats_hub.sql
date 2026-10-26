@@ -8,6 +8,7 @@ create table if not exists public.player_season_competition_stats (
   tm_player_id text not null,
   season_id smallint not null,
   competition_id text not null,
+  competition_name text,
   card_id uuid,
   apps smallint not null default 0,
   possible_games smallint,
