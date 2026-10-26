@@ -85,9 +85,8 @@ check("нет ключа performance — пустой разбор",
 bad = season(2021, "A1", "2446")
 bad["statistics"]["playingTimeStatistics"]["appearancesCount"] = None
 bad["statistics"]["goalStatistics"]["goalsSum"] = None
-one = parse_seasons(wrap([bad]))[0]
-check("null в матчах → 0", one["apps"], 0)
-check("null в голах → 0", one["goals"], 0)
+check("null в основных полях не обнуляет сохранённые значения",
+      parse_seasons(wrap([bad])), [])
 
 nostat = {"generalInformation": {"seasonId": 2021, "competitionId": "A1", "clubId": "1"}}
 check("строка совсем без statistics пропускается",
