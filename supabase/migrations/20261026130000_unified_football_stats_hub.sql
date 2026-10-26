@@ -50,11 +50,42 @@ grant all on public.player_stats_source_state to service_role;
 
 create or replace view public.player_stats_freshness
 with (security_invoker = true) as
+with career as (
+  select tm_player_id, max(fetched_at) as latest_at, count(*)::integer as source_rows
+    from public.player_season_stat group by tm_player_id
+), season as (
+  select tm_player_id, max(fetched_at) as latest_at, count(*)::integer as source_rows
+    from public.player_season_competition_stats group by tm_player_id
+), state as (
+  select tm_player_id,
+         max(last_attempt_at) filter (
+           where source_key='tm_career_competition' and status in ('ok','empty')
+         ) as career_attempt_at,
+         max(last_attempt_at) filter (
+           where source_key='tm_season_competition' and status in ('ok','empty')
+         ) as season_attempt_at
+    from public.player_stats_source_state group by tm_player_id
+), all_ids as (
+  select tm_player_id from career
+  union select tm_player_id from season
+  union select tm_player_id from state
+), resolved as (
+  select ids.tm_player_id,
+         greatest(c.latest_at, st.career_attempt_at) as career_at,
+         greatest(s.latest_at, st.season_attempt_at) as season_at,
+         coalesce(c.source_rows,0)+coalesce(s.source_rows,0) as source_rows
+    from all_ids ids
+    left join career c using (tm_player_id)
+    left join season s using (tm_player_id)
+    left join state st using (tm_player_id)
+)
 select tm_player_id,
-       max(fetched_at) as latest_fetched_at,
-       count(*)::integer as source_rows
-  from public.player_season_stat
- group by tm_player_id;
+       case when career_at is null or season_at is null then null
+            else least(career_at, season_at) end as latest_fetched_at,
+       career_at as latest_career_fetched_at,
+       season_at as latest_season_fetched_at,
+       source_rows
+  from resolved;
 
 create or replace view public.football_player_competition_totals
 with (security_invoker = true) as
