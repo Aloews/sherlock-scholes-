@@ -66,3 +66,26 @@ jobs:
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
       - name: Build and store candidate snapshots
         run: python docs/award_candidates_build.py
+
+  watch:
+    needs: [validate, refresh]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      REFRESH_RESULT: ${{ needs.refresh.result }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Verify candidate pipeline completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate = $VALIDATE_RESULT"
+          echo "refresh = $REFRESH_RESULT (expected=$REFRESH_EXPECTED)"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation: $VALIDATE_RESULT"; exit 1; }
+          if [ "$REFRESH_EXPECTED" = "true" ]; then
+            [ "$REFRESH_RESULT" = "success" ] || { echo "::error::production refresh: $REFRESH_RESULT"; exit 1; }
+          else
+            [ "$REFRESH_RESULT" = "skipped" ] || { echo "::error::refresh should be skipped on pull requests, got $REFRESH_RESULT"; exit 1; }
+          fi
