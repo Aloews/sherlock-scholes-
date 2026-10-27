@@ -110,7 +110,7 @@ class CandidateRankingTests(unittest.TestCase):
         delta = next(row for row in rows if row["tournament"] == "National Cup" and row["team_key"] == "club-d")
         self.assertEqual(delta["score_components"]["club_elo_percentile"], 50.0)
 
-    def test_team_candidates_ignore_duplicate_matches_and_skip_unobserved_competitions(self):
+    def test_team_candidates_deduplicate_results_and_keep_sparse_competitions_low_confidence(self):
         match = {"tournament": "League A", "match_date": "2026-08-01", "home_key": "a",
                  "away_key": "b", "home_team": "A", "away_team": "B", "home_score": 1,
                  "away_score": 0, "fetched_at": "2026-10-26T00:00:00Z"}
@@ -118,7 +118,9 @@ class CandidateRankingTests(unittest.TestCase):
             [match, match, {**match, "tournament": "Single match cup"}],
             {}, date(2026, 10, 27),
         )
-        self.assertEqual(rows, [])
+        self.assertEqual({row["tournament"] for row in rows}, {"League A", "Single match cup"})
+        self.assertEqual(len(rows), 4)  # two teams per competition; duplicate source row counted once
+        self.assertTrue(all(row["confidence"] == "low" for row in rows))
 
     def test_competition_format_distinguishes_leagues_and_knockout_cups(self):
         self.assertEqual(competition_format("Англия. Премьер-лига"), "league_standings_proxy")
