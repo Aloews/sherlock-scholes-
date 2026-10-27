@@ -261,7 +261,7 @@ def main():
     else:
         query = {
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "category": "eq.player", "active": "is.true",
+            "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "market_value_eur.desc.nullslast,id.asc",
         }
