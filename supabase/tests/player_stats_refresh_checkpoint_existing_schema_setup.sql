@@ -25,7 +25,7 @@ create table if not exists public.player_season_stat (
   opponent_goals smallint not null default 0,
   fetched_at timestamptz not null default now(),
   unique (tm_player_id, season_id, competition_id, club_id)
-)
+);
 
 insert into public.cards (id, name, category, active, transfermarkt_id, market_value_eur)
 values
