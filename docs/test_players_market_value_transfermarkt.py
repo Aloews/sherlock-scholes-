@@ -56,6 +56,17 @@ class MarketValueRefreshTests(unittest.TestCase):
     def test_json_api_no_valuation_stays_null_instead_of_becoming_zero(self):
         self.assertEqual(parse_api_market_value({"marketValue": None}), (None, None))
 
+    def test_explicit_null_current_value_does_not_fall_back_to_old_history(self):
+        self.assertEqual(
+            parse_api_market_value({
+                "marketValue": None,
+                "marketValueHistory": [
+                    {"date": "2026-06-03", "marketValue": 65000000},
+                ],
+            }),
+            (None, "2026-06-03"),
+        )
+
     def test_unknown_valuation_date_is_never_written(self):
         self.assertTrue(should_write_market_value(65_000_000, "2026-06-03"))
         self.assertFalse(should_write_market_value(65_000_000, None))
