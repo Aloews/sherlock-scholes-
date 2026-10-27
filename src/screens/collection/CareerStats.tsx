@@ -44,9 +44,11 @@ export function CareerStats({ cardId }: { cardId: string }) {
   const number = new Intl.NumberFormat(i18n.language);
   const maxMinutes = Math.max(1, ...rows.map((row) => row.minutes));
   const ru = i18n.language.startsWith('ru');
-  const seasonLabel = (row: ClubCareerRow) => row.season_from === row.season_to
-    ? String(row.season_from)
-    : `${row.season_from}–${row.season_to}`;
+  const seasonLabel = (row: ClubCareerRow): string | null => row.season_from == null || row.season_to == null
+    ? null
+    : row.season_from === row.season_to
+      ? String(row.season_from)
+      : `${row.season_from}–${row.season_to}`;
 
   return (
     <div className="space-y-3">
@@ -95,7 +97,7 @@ export function CareerStats({ cardId }: { cardId: string }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className={`truncate text-[13px] font-semibold ${index === 0 ? 'text-white' : 'text-white/90'}`}>{row.club_name}</p>
-                        <p className="mt-0.5 text-[10px] text-brand-muted tabular-nums">{seasonLabel(row)}</p>
+                        {seasonLabel(row) && <p className="mt-0.5 text-[10px] text-brand-muted tabular-nums">{seasonLabel(row)}</p>}
                       </div>
                       {index === 0 && (
                         <span className="shrink-0 rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-accent">
