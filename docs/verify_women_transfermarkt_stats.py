@@ -26,7 +26,7 @@ def main() -> int:
         print(json.dumps({"status": "insufficient", "reason": "no women's Transfermarkt IDs"}))
         return 1
 
-    latest = sb("player_season_stat", {
+    latest = sb("player_season_stat", params={
         "select": "season_id", "order": "season_id.desc", "limit": "1",
     })
     if latest is None or not latest or latest[0].get("season_id") is None:
