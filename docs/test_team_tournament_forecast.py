@@ -21,19 +21,20 @@ class TeamTournamentForecastTests(unittest.TestCase):
     def test_ranked_teams_have_evidence_and_no_fake_probability(self):
         matches = []
         teams = [("alpha", "Alpha", 2, 0), ("beta", "Beta", 1, 0), ("gamma", "Gamma", 0, 1), ("delta", "Delta", 0, 2)]
-        for idx, (home, home_name, hs, aws) in enumerate(teams):
-            away = teams[(idx + 1) % len(teams)][0]
-            away_name = teams[(idx + 1) % len(teams)][1]
+        for idx in range(8):
+            home, home_name, hs, aws = teams[idx % len(teams)]
+            away, away_name = teams[(idx + 1) % len(teams)][0:2]
+            match_day = 10 + idx
             matches.append({
                 "tournament": "League A",
-                "match_date": f"2026-10-{10 + idx:02d}",
+                "match_date": f"2026-10-{match_day:02d}",
                 "home_key": home,
                 "away_key": away,
                 "home_team": home_name,
                 "away_team": away_name,
                 "home_score": hs,
                 "away_score": aws,
-                "fetched_at": f"2026-10-{10 + idx:02d}T12:00:00+00:00",
+                "fetched_at": f"2026-10-{match_day:02d}T12:00:00+00:00",
             })
         ratings = {
             "alpha": {"elo": 1700, "played": 30},
