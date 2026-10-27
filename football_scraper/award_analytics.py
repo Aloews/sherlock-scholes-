@@ -20,6 +20,8 @@ def _percentile(values: list[float], value: float | None) -> float | None:
     ordered = sorted(v for v in values if isfinite(v))
     if not ordered:
         return None
+    if len(ordered) == 1:
+        return 50.0
     # Mid-rank percentile handles ties deterministically.
     less = sum(v < value for v in ordered)
     equal = sum(v == value for v in ordered)
@@ -104,6 +106,8 @@ def rank_candidates(
         if not stat or stat["apps"] < 5 or stat["minutes"] < 180:
             continue
         if award_key == "golden_boy":
+            if card.get("category") == "woman":
+                continue
             age = _age_on(card.get("born_on"), date(season_id, 12, 31))
             if age is None or age > 21:
                 continue
