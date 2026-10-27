@@ -257,6 +257,16 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
 
     payloads = []
     for tournament, matches in competitions.items():
+        matches = sorted(matches, key=lambda match: match["commence_at"])
+        # Separate the current season from older matches using a long off-season gap.
+        # The inferred date is recorded as a proxy; it is not treated as an official fixture.
+        season_start_index = 0
+        for index in range(1, len(matches)):
+            previous = date.fromisoformat(str(matches[index - 1]["commence_at"])[:10])
+            current_day = date.fromisoformat(str(matches[index]["commence_at"])[:10])
+            if (current_day - previous).days > 75:
+                season_start_index = index
+        matches = matches[season_start_index:]
         by_team: dict[str, dict] = {}
         first_date, last_updated = None, None
         for match in matches:
@@ -316,7 +326,8 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
                     "goal_difference_per_game": round((item["gf"] - item["ga"]) / item["played"], 4),
                     "recent_form_last_5": round(sum(recent) / len(recent), 4) if recent else None,
                     "score_is_probability": False,
-                    "limitation": "Uses completed fixtures in the last 365 days. Knockout brackets, remaining schedule, injuries and squad availability are not fully modeled.",
+                    "season_start_basis": "inferred from the latest >75-day gap between completed fixtures",
+                    "limitation": "Uses the current fixture segment inferred from completed fixtures in the last 365 days. Knockout brackets, remaining schedule, injuries and squad availability are not fully modeled.",
                 },
                 "source_fetched_at": last_updated, "model_version": MODEL_VERSION,
             })
