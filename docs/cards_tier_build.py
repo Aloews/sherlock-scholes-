@@ -76,30 +76,60 @@ def signals(card, today=None):
         and ((age <= 20 and value >= PROSPECT_VALUE_20)
              or (age <= 23 and value >= PROSPECT_VALUE_23))
     )
+    value_tier = "common"
+    if card.get("category") in ("player", "woman") and value_is_current:
+        if value >= 100_000_000:
+            value_tier = "epic"
+        elif prospect:
+            value_tier = "prospect"
+        elif value >= 50_000_000:
+            value_tier = "rare"
     return {
         "pv": card.get("pageviews") or 0,
+        "fame": card.get("fame") or 0,
+        "fame_tier": fame_tier(card.get("fame")),
         "ballon": "ballon_dor" in tags or any("Золотой мяч" in t for t in titles),
         "title": bool(titles),
         "wc": "world_cup" in tags or any(t.startswith("ЧМ") or t.startswith("Евро") for t in tours),
         "star": "star" in tags,
         "nat": bool(facts.get("national_team") or facts.get("national_caps")),
+        "value_is_current": value_is_current,
+        "value_tier": value_tier,
         "prospect": prospect,
     }
+
+
+def fame_tier(fame):
+    try:
+        fame = int(fame)
+    except (TypeError, ValueError):
+        fame = 0
+    if fame >= 99:
+        return "legendary"
+    if fame >= 95:
+        return "epic"
+    if fame >= 75:
+        return "rare"
+    return "common"
 
 
 def tier_for(card, leg_pv=LEG_PV, epic_wc_pv=EPIC_WC_PV, rare_pv=RARE_PV, today=None):
     if card.get("tier") == "icon":
         return "icon"
+    base = fame_tier(card.get("fame"))
+    if card.get("category") not in ("player", "woman"):
+        return base
     s = signals(card, today=today)
-    # Historical achievements outrank youth-market signals.
-    if s["ballon"] or s["star"] or (s["pv"] >= leg_pv and (s["wc"] or s["title"])):
+    if not s["value_is_current"]:
+        return base
+    value_tier = s["value_tier"]
+    if base == "legendary":
         return "legendary"
-    if s["title"] or (s["wc"] and s["pv"] >= epic_wc_pv):
+    if base == "epic" or value_tier == "epic":
         return "epic"
-    # Prospect tier requires verified birth date and a current market value.
-    if s["prospect"]:
+    if base == "prospect" or value_tier == "prospect":
         return "prospect"
-    if s["wc"] or s["pv"] >= rare_pv:
+    if base == "rare" or value_tier == "rare":
         return "rare"
     return "common"
 
