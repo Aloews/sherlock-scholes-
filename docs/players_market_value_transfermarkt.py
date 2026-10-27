@@ -49,7 +49,7 @@ update: 02/06/2026»; подставить сегодняшнее число з�
 """
 import argparse
 import gzip
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import urllib.error
 import importlib.util
 import io
@@ -445,6 +445,60 @@ def market_value_refresh_key(card):
     )
 
 
+def select_market_value_refresh_candidates(players, limit, priority_limit=100, now=None):
+    """Refresh the most valuable current players daily, then rotate stale catalogue rows.
+
+    The high-value cohort is checked at most once per 20 hours. Recent targeted
+    refreshes (for example Ødegaard and Kane) are therefore not requested twice in
+    the same workflow run. Remaining slots are filled by the least recently
+    attempted source values, including cards without any valuation.
+    """
+    if limit <= 0:
+        return []
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    def checked_recently(card):
+        raw = card.get("market_value_checked_at")
+        if not raw:
+            return False
+        try:
+            checked = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if checked.tzinfo is None:
+                checked = checked.replace(tzinfo=timezone.utc)
+            return timedelta(0) <= now - checked.astimezone(timezone.utc) < timedelta(hours=20)
+        except (TypeError, ValueError):
+            return False
+
+    def current_value(card):
+        try:
+            return int(card.get("market_value_eur") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    priority = [
+        card for card in players
+        if current_value(card) >= 20_000_000 and not checked_recently(card)
+    ]
+    priority.sort(key=lambda card: (
+        -current_value(card),
+        str(card.get("market_value_at") or "0000-00-00"),
+        str(card.get("id") or card.get("transfermarkt_id") or ""),
+    ))
+    priority = priority[:max(0, priority_limit)]
+    priority_keys = {
+        str(card.get("id") or card.get("transfermarkt_id") or "")
+        for card in priority
+    }
+    remainder = [
+        card for card in players
+        if str(card.get("id") or card.get("transfermarkt_id") or "") not in priority_keys
+    ]
+    remainder.sort(key=market_value_refresh_key)
+    return (priority + remainder)[:limit]
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -486,9 +540,10 @@ def main():
         players = [p for p in players if p.get("market_value_eur") is None]
         players.sort(key=lambda p: (p.get("name") or "").casefold())
     else:
-        # Refresh all values, not only NULLs. Sort by the last attempt so
-        # missing prices or old source dates cannot monopolize the daily batch.
-        players.sort(key=market_value_refresh_key)
+        # Refresh a daily high-value cohort, then fill remaining slots with the
+        # oldest attempted prices so low-value/unvalued cards still rotate.
+        players = select_market_value_refresh_candidates(
+            players, args.limit or len(players), priority_limit=100)
     if args.limit:
         players = players[:args.limit]
     print("Игроков для обновления стоимости: %d  (refresh=%s, APPLY=%s)"
