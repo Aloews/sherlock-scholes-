@@ -126,6 +126,16 @@ def refresh_priority_key(card, latest_by_tm):
     return (checked_at, fetched_at, -value, str(card.get("id") or ""))
 
 
+def valid_season_payload(payload):
+    """Only a valid TMAPI success envelope can advance the attempt checkpoint."""
+    return (
+        isinstance(payload, dict)
+        and payload.get("success") is True
+        and isinstance(payload.get("data"), dict)
+        and isinstance(payload["data"].get("performance"), list)
+    )
+
+
 def parse_seasons(payload):
     """JSON игрока → строки для `apply_player_season_stats`. ЧИСТАЯ ФУНКЦИЯ.
 
@@ -379,9 +389,9 @@ def main():
         tm = card["transfermarkt_id"]
         payload = get_json("%s/player/%s/performance-competition"
                            % (API, urllib.parse.quote(tm)))
-        source_ok = payload is not None
+        source_ok = valid_season_payload(payload)
         write_ok = True
-        if payload is None:
+        if not source_ok:
             lost += 1
         else:
             rows = parse_seasons(payload)
