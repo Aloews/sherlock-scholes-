@@ -65,3 +65,19 @@ jobs:
             exit 2
           fi
           APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --limit "$limit"
+  
+  watch:
+    runs-on: ubuntu-latest
+    needs: [refresh]
+    if: always()
+    timeout-minutes: 5
+    env:
+      REFRESH_RESULT: ${{ needs.refresh.result }}
+    steps:
+      - name: Verify market value refresh completed
+        run: |
+          echo "refresh = $REFRESH_RESULT"
+          [ "$REFRESH_RESULT" = "success" ] || {
+            echo "::error::refresh: $REFRESH_RESULT"
+            exit 1
+          }
