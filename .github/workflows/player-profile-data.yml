@@ -76,8 +76,10 @@ jobs:
         run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 132098 --refresh
 
       - name: Collect seasonal player statistics
+        id: stats_batch
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
         run: |
+          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           if [ -n "$TM_ID" ]; then
             APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID" --refresh
           else
@@ -136,6 +138,36 @@ jobs:
             exit 1
           fi
           echo "Verified $count season-stat rows for Transfermarkt ID $id"
+
+      - name: Verify full stats batch advanced production checkpoints
+        if: ${{ steps.stats_batch.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '') }}
+        env:
+          BATCH_STARTED_AT: ${{ steps.stats_batch.outputs.started_at }}
+        run: |
+          count_since() {
+            column="$1"
+            curl -fsS --get \
+              --data-urlencode "select=id" \
+              --data-urlencode "category=in.(player,woman)" \
+              --data-urlencode "active=eq.true" \
+              --data-urlencode "$column=gte.$BATCH_STARTED_AT" \
+              --data-urlencode "limit=1000" \
+              "$SUPABASE_URL/rest/v1/cards" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length'
+          }
+          attempts="$(count_since player_stats_checked_at)"
+          synced="$(count_since player_stats_data_synced_at)"
+          echo "Player stats attempts written during batch: $attempts"
+          echo "Verified player snapshots written during batch: $synced"
+          [ "$attempts" -ge 600 ] || {
+            echo "::error::Expected at least 600 player refresh attempts; found $attempts"
+            exit 1
+          }
+          [ "$synced" -ge 500 ] || {
+            echo "::error::Expected at least 500 verified player snapshots; found $synced"
+            exit 1
+          }
 
       - name: Refresh individual-award and team-tournament analytics after stats
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
