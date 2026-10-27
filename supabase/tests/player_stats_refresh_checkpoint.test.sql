@@ -58,4 +58,4 @@ begin
   if exists (select 1 from public.player_season_stat where tm_player_id='101') then
     raise exception 'a valid empty history snapshot must clear obsolete season rows';
   end if;
-end $;
+end $$;
