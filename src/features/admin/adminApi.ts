@@ -152,3 +152,29 @@ export async function adminListTeamTournamentCandidates(
   if (error) throw new Error(error.message);
   return (data ?? []) as TeamTournamentCandidate[];
 }
+
+export interface PersonalAwardCandidate {
+  award_key: string;
+  season_id: number;
+  snapshot_date: string;
+  card_id: string;
+  card_name: string;
+  category: string;
+  candidate_score: number;
+  candidate_rank: number;
+  confidence: 'low' | 'medium' | 'high';
+  data_coverage: number;
+  score_components: Record<string, number>;
+  evidence: Record<string, unknown>;
+  model_version: string;
+}
+
+export async function adminListAwardCandidates(
+  password: string,
+): Promise<PersonalAwardCandidate[]> {
+  const { data, error } = await supabase.rpc('admin_list_award_candidates', {
+    p_password: password,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PersonalAwardCandidate[];
+}
