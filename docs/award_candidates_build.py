@@ -430,6 +430,16 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
     payloads = build_team_candidate_payloads(matches, ratings, snapshot)
     if not payloads:
         raise RuntimeError("No sufficiently observed team competitions; refusing empty team snapshots")
+    # The source model changed from betting-feed sport keys to canonical tracked
+    # competitions. Replace today's snapshot atomically at the logical level so
+    # old rows from the previous model cannot remain visible beside new rankings.
+    delete_response = requests.delete(
+        f"{base.rstrip('/')}/rest/v1/team_tournament_candidate_snapshot",
+        headers=api_headers(key),
+        params={"snapshot_date": f"eq.{snapshot.isoformat()}"},
+        timeout=TIMEOUT,
+    )
+    delete_response.raise_for_status()
     return upsert_rows(base, key, "team_tournament_candidate_snapshot", payloads,
                        "tournament,season_start,snapshot_date,team_key")
 
