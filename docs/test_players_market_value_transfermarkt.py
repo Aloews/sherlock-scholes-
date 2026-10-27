@@ -6,6 +6,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_market_value_transfermarkt import (  # noqa: E402
     market_value_refresh_key,
+    parse_api_market_value,
     should_write_market_value,
 )
 
@@ -30,6 +31,30 @@ class MarketValueRefreshTests(unittest.TestCase):
             ["Never checked", "Old check, old high", "Old check, old low",
              "Old check, newer value", "Recently checked"],
         )
+
+    def test_json_api_market_value_keeps_exact_euros_and_source_date(self):
+        value, valued_at = parse_api_market_value({
+            "id": "316264",
+            "marketValue": 65000000,
+            "marketValueDetails": {"lastUpdated": "2026-06-03"},
+            "marketValueHistory": [
+                {"date": "2025-12-15", "marketValue": 70000000},
+                {"date": "2026-06-03", "marketValue": 65000000},
+            ],
+        })
+        self.assertEqual((value, valued_at), (65000000, "2026-06-03"))
+
+    def test_json_api_market_value_parses_display_string_and_history_fallback(self):
+        value, valued_at = parse_api_market_value({
+            "marketValue": "€ 70.00m",
+            "marketValueHistory": [
+                {"date": "2026-07-22", "marketValue": 70000000},
+            ],
+        })
+        self.assertEqual((value, valued_at), (70000000, "2026-07-22"))
+
+    def test_json_api_no_valuation_stays_null_instead_of_becoming_zero(self):
+        self.assertEqual(parse_api_market_value({"marketValue": None}), (None, None))
 
     def test_unknown_valuation_date_is_never_written(self):
         self.assertTrue(should_write_market_value(65_000_000, "2026-06-03"))
