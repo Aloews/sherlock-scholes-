@@ -130,12 +130,12 @@ def rank_candidates(
         p = percentiles
         pid = str(card["id"])
         parts: dict[str, tuple[float | None, float]] = {
-            "goal_contributions": (p["goal_contributions"][pid], 0.30),
+            "goal_contributions": (p["goal_contributions"][pid], 0.35),
             "contributions_per_90": (p["contributions_per_90"][pid], 0.15),
             "minutes_played": (p["minutes"][pid], 0.20),
             "team_goal_difference": (p["team_goal_diff_per_app"][pid], 0.15),
             "recognition": (p["fame"][pid], 0.10),
-            "market_value_proxy": (p["market_value_eur"][pid], 0.10),
+            "market_value_proxy": (p["market_value_eur"][pid], 0.05),
         }
         if award_key == "golden_boot":
             parts = {
