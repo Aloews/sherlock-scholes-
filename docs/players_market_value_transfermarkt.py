@@ -42,7 +42,9 @@ update: 02/06/2026»; подставить сегодняшнее число з�
 Читает анонимным ключом (VITE_SUPABASE_*), пишет служебным (SUPABASE_KEY).
 """
 import argparse
+import gzip
 from datetime import date
+import urllib.error
 import importlib.util
 import io
 import json
@@ -68,6 +70,7 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
+TMAPI = "https://tmapi.transfermarkt.technology"
 # ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
 # «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
 # запроса, а не вежливость, и она противоречит тому, ради чего источник
@@ -122,6 +125,120 @@ def parse_market_value(html):
         day, month, year = d.group(1), d.group(2), d.group(3)
         at = "%s-%s-%s" % (year, month, day)
     return euros, at
+
+
+API_VALUE_RE = re.compile(r"^\s*€?\s*([\d.,]+)\s*(bn|m|k)?\s*$", re.I)
+
+
+def normalize_source_date(value):
+    if not value:
+        return None
+    raw = str(value).strip()
+    if re.match(r"^\d{4}-\d{2}-\d{2}", raw):
+        return raw[:10]
+    match = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", raw)
+    if match:
+        day, month, year = match.groups()
+        return f"{year}-{month}-{day}"
+    return None
+
+
+def parse_api_market_value(payload):
+    """Return exact euro value and the source's valuation date from TMAPI JSON."""
+    if not isinstance(payload, dict):
+        return None, None
+    value = payload.get("marketValue")
+    details = payload.get("marketValueDetails") or {}
+    history = payload.get("marketValueHistory") or []
+    source_date = (
+        details.get("lastUpdated") or payload.get("marketValueDate")
+        or payload.get("lastUpdated")
+    )
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("amount")
+    if isinstance(value, str):
+        match = API_VALUE_RE.match(value)
+        if match:
+            amount = float(match.group(1).replace(",", ""))
+            unit = (match.group(2) or "").lower()
+            euros = int(round(amount * UNITS.get(unit, 1)))
+        else:
+            euros = None
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        euros = int(round(value))
+    else:
+        euros = None
+
+    if isinstance(history, list) and history:
+        dated = [
+            row for row in history
+            if isinstance(row, dict) and normalize_source_date(
+                row.get("date") or row.get("updatedAt") or row.get("lastUpdated")
+            )
+        ]
+        if dated:
+            dated.sort(key=lambda row: normalize_source_date(
+                row.get("date") or row.get("updatedAt") or row.get("lastUpdated")
+            ))
+            latest = dated[-1]
+            if source_date is None:
+                source_date = latest.get("date") or latest.get("updatedAt") or latest.get("lastUpdated")
+            if euros is None:
+                historic_value = latest.get("marketValue", latest.get("value"))
+                if isinstance(historic_value, dict):
+                    historic_value = historic_value.get("value") or historic_value.get("amount")
+                if isinstance(historic_value, (int, float)) and not isinstance(historic_value, bool):
+                    euros = int(round(historic_value))
+                elif isinstance(historic_value, str):
+                    match = API_VALUE_RE.match(historic_value)
+                    if match:
+                        euros = int(round(
+                            float(match.group(1).replace(",", "")) *
+                            UNITS.get((match.group(2) or "").lower(), 1)
+                        ))
+    at = normalize_source_date(source_date)
+    if euros is None or euros <= 0:
+        return None, at
+    return euros, at
+
+
+def fetch_api_market_value(tm_id, tries=3):
+    """Fetch a player valuation from the same public JSON API used for season stats.
+
+    Transfermarkt's HTML pages can return a small HTTP-200 interstitial from
+    GitHub-hosted runners. That is not an empty valuation; it is an unusable
+    response and must not advance market_value_checked_at.
+    """
+    url = f"{TMAPI}/players/{urllib.parse.quote(str(tm_id))}/market_value"
+    for attempt in range(1, tries + 1):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": TM_UA,
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+            })
+            with urllib.request.urlopen(req, timeout=60) as fh:
+                raw = fh.read()
+                if fh.headers.get("Content-Encoding") == "gzip":
+                    raw = gzip.decompress(raw)
+            payload = json.loads(raw)
+            if not isinstance(payload, dict) or payload.get("success") is not True:
+                return None, None, False
+            data = payload.get("data")
+            if not isinstance(data, dict):
+                return None, None, False
+            value, at = parse_api_market_value(data)
+            return value, at, True
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                return None, None, False
+            if error.code not in (429, 500, 502, 503, 504):
+                return None, None, False
+        except Exception:  # noqa: BLE001
+            pass
+        if attempt < tries:
+            time.sleep(TM_PAUSE * 3 * attempt)
+    return None, None, False
 
 
 def fetch_profile(tm_id, tries=3):
@@ -388,7 +505,7 @@ def main():
               "значит, повторить прогон" % lost, flush=True)
 
     # --- шаг 3: id → стоимость ------------------------------------------
-    found, no_value, no_id = [], 0, 0
+    found, no_value, no_id, invalid_profiles = [], 0, 0, 0
     pending, written = [], 0
     for i, card in enumerate(players, 1):
         qid = qid_of.get(card["id"])
@@ -396,7 +513,14 @@ def main():
         if not tm_id:
             no_id += 1
             continue
-        euros, at = parse_market_value(fetch_profile(tm_id))
+        euros, at, valid_profile = fetch_api_market_value(tm_id)
+        if not valid_profile:
+            # Do not update checked_at on blocked, missing or malformed API
+            # responses; the card must remain eligible for the next retry.
+            invalid_profiles += 1
+            print("  ⚠️ no usable TMAPI market-value response for %s (%s)"
+                  % (card.get("name") or card["id"], tm_id), flush=True)
+            continue
         has_source_value = should_write_market_value(euros, at)
         row = {
             "id": card["id"], "name": card.get("name"),
@@ -404,16 +528,13 @@ def main():
             "eur": euros if has_source_value else None,
             "at": at if has_source_value else None,
         }
-        # Every attempted profile is recorded in checked_at, even when TM has
-        # no valuation or omits its valuation date. Otherwise those rows would
-        # remain at the front of every batch and starve the rest of the cards.
+        # A valid source response without a published value is different from
+        # a failed/interstitial response. Only the former advances checked_at.
         pending.append(row)
         if has_source_value:
             found.append(row)
         else:
             no_value += 1
-        # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
-        # пачка, а не вся ночь; и каждая пачка — одна транзакция.
         if apply and len(pending) >= MV_BATCH:
             written += write_batch(url, write_key, pending)
             print("    checked %d (value changes so far %d)" % (len(pending), written),
@@ -428,7 +549,14 @@ def main():
     print("Стоимость найдена : %d" % len(found))
     print("id есть, суммы нет: %d   (на TM стоит «-» — поле остаётся пустым)" % no_value)
     print("нет id на TM      : %d" % no_id)
+    print("ответ источника непригоден: %d" % invalid_profiles)
     print("-" * 78)
+    if invalid_profiles >= max(5, int(len(players) * 0.1)):
+        raise SystemExit(
+            "TMAPI returned unusable market-value responses for %d/%d profiles; "
+            "those cards were not marked checked and will be retried"
+            % (invalid_profiles, len(players))
+        )
     for f in sorted(found, key=lambda x: -x["eur"])[:25]:
         print("  %-26s %11s €  %s  %s"
               % ((f["name"] or "")[:26], "{:,}".format(f["eur"]), f["at"] or "—", f["tm_id"]))
