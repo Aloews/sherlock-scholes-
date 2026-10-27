@@ -236,6 +236,11 @@ def unwrap_api_market_value_payload(payload, expected_id):
     return data
 
 
+def should_retry_market_value_status(status_code: int) -> bool:
+    """Retry transient transport/server errors, but not upstream-blocked 503s."""
+    return status_code in (429, 500, 502, 504)
+
+
 def fetch_api_market_value(tm_id, tries=3):
     """Fetch a player valuation from the same public JSON API used for season stats.
 
@@ -244,6 +249,13 @@ def fetch_api_market_value(tm_id, tries=3):
     response and must not advance market_value_checked_at.
     """
     url = f"{TMAPI}/players/{urllib.parse.quote(str(tm_id))}/market_value"
+    diagnostics = os.environ.get("TMAPI_DIAGNOSTICS") == "1"
+    # Diagnostic probes should fail quickly and make one request per priority
+    # player. The public service maps upstream blocks to 503; retries only add
+    # load and delay without repairing that condition.
+    if diagnostics:
+        tries = 1
+    timeout = 15 if diagnostics else 60
     for attempt in range(1, tries + 1):
         try:
             req = urllib.request.Request(url, headers={
@@ -251,7 +263,7 @@ def fetch_api_market_value(tm_id, tries=3):
                 "Accept": "application/json",
                 "Accept-Encoding": "gzip",
             })
-            with urllib.request.urlopen(req, timeout=60) as fh:
+            with urllib.request.urlopen(req, timeout=timeout) as fh:
                 raw = fh.read()
                 if fh.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.decompress(raw)
@@ -280,7 +292,7 @@ def fetch_api_market_value(tm_id, tries=3):
                 print(f"TMAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
             if error.code == 404:
                 return None, None, False
-            if error.code not in (429, 500, 502, 503, 504):
+            if not should_retry_market_value_status(error.code):
                 return None, None, False
         except Exception as error:  # noqa: BLE001
             if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
