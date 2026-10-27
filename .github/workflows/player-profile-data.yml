@@ -97,7 +97,7 @@ jobs:
               --data-urlencode "select=tm_player_id,season_id,fetched_at" \
               --data-urlencode "tm_player_id=eq.$id" \
               --data-urlencode "season_id=eq.2026" \
-              --order "fetched_at.desc" \
+              --data-urlencode "order=fetched_at.desc" \
               --data-urlencode "limit=1" \
               "$SUPABASE_URL/rest/v1/player_season_stat" \
               -H "apikey: $SUPABASE_KEY" \
