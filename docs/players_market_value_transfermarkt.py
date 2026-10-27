@@ -282,7 +282,10 @@ def main():
                     help="перезапросить и тех, у кого стоимость уже стоит")
     ap.add_argument("--from-cards", action="store_true",
                     help="брать карточки с готовым transfermarkt_id, минуя Викиданные")
+    ap.add_argument("--only", default="", help="один Transfermarkt ID")
     args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        ap.error("--only must be a numeric Transfermarkt ID")
     apply = os.environ.get("APPLY") == "1"
 
     url = env("VITE_SUPABASE_URL") or env("SUPABASE_URL")
@@ -303,6 +306,10 @@ def main():
         players = read_all_cards(url, read_key)
     else:
         players = squad_players(url, read_key)
+    if args.only:
+        players = [p for p in players if str(p.get("transfermarkt_id") or "") == args.only]
+        if not players:
+            raise SystemExit("No active player card found for Transfermarkt ID " + args.only)
     if not args.refresh:
         players = [p for p in players if p.get("market_value_eur") is None]
         players.sort(key=lambda p: (p.get("name") or "").casefold())
