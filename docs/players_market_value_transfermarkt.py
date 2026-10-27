@@ -42,6 +42,7 @@ update: 02/06/2026»; подставить сегодняшнее число з�
 Читает анонимным ключом (VITE_SUPABASE_*), пишет служебным (SUPABASE_KEY).
 """
 import argparse
+from datetime import date
 import importlib.util
 import io
 import json
@@ -234,9 +235,9 @@ def squad_players(url, key):
     for i in range(0, len(todo), 60):
         chunk = todo[i:i + 60]
         out.extend(sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at,market_value_checked_at",
             "id": "in.(%s)" % ",".join(chunk),
-            "category": "eq.player", "active": "is.true", "limit": 1000}))
+            "category": "in.(player,woman)", "active": "is.true", "limit": 1000}))
     return out
 
 
@@ -249,14 +250,39 @@ def read_all_cards(url, key):
     out, offset = [], 0
     while True:
         page = sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur",
-            "category": "eq.player", "active": "is.true",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at,market_value_checked_at",
+            "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "id", "limit": 1000, "offset": offset})
         out.extend(page)
         if len(page) < 1000:
             return out
         offset += 1000
+
+
+def should_write_market_value(euros, valued_at):
+    if not euros or not valued_at:
+        return False
+    try:
+        return date.fromisoformat(str(valued_at)[:10]) <= date.today()
+    except ValueError:
+        return False
+
+
+def market_value_refresh_key(card):
+    """Least recently attempted first; source valuation date breaks ties."""
+    checked_at = str(card.get("market_value_checked_at") or "")[:19]
+    valued_at = str(card.get("market_value_at") or "")[:10]
+    try:
+        value = int(card.get("market_value_eur") or 0)
+    except (TypeError, ValueError):
+        value = 0
+    return (
+        checked_at or "0000-00-00T00:00:00",
+        valued_at or "0000-00-00",
+        -value,
+        str(card.get("name") or "").casefold(),
+    )
 
 
 def main():
@@ -268,7 +294,10 @@ def main():
                     help="перезапросить и тех, у кого стоимость уже стоит")
     ap.add_argument("--from-cards", action="store_true",
                     help="брать карточки с готовым transfermarkt_id, минуя Викиданные")
+    ap.add_argument("--only", default="", help="один Transfermarkt ID")
     args = ap.parse_args()
+    if args.only and not args.only.isdigit():
+        ap.error("--only must be a numeric Transfermarkt ID")
     apply = os.environ.get("APPLY") == "1"
 
     url = env("VITE_SUPABASE_URL") or env("SUPABASE_URL")
@@ -289,13 +318,21 @@ def main():
         players = read_all_cards(url, read_key)
     else:
         players = squad_players(url, read_key)
+    if args.only:
+        players = [p for p in players if str(p.get("transfermarkt_id") or "") == args.only]
+        if not players:
+            raise SystemExit("No active player card found for Transfermarkt ID " + args.only)
     if not args.refresh:
         players = [p for p in players if p.get("market_value_eur") is None]
-    players.sort(key=lambda p: (p.get("name") or ""))
+        players.sort(key=lambda p: (p.get("name") or "").casefold())
+    else:
+        # Refresh all values, not only NULLs. Sort by the last attempt so
+        # missing prices or old source dates cannot monopolize the daily batch.
+        players.sort(key=market_value_refresh_key)
     if args.limit:
         players = players[:args.limit]
-    print("Игроков составов без стоимости: %d  (APPLY=%s)"
-          % (len(players), "да" if apply else "нет — сухой прогон"), flush=True)
+    print("Игроков для обновления стоимости: %d  (refresh=%s, APPLY=%s)"
+          % (len(players), args.refresh, "да" if apply else "нет — сухой прогон"), flush=True)
     if not players:
         return
 
@@ -360,20 +397,28 @@ def main():
             no_id += 1
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
-        if euros:
-            row = {"id": card["id"], "name": card.get("name"),
-                   "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
+        has_source_value = should_write_market_value(euros, at)
+        row = {
+            "id": card["id"], "name": card.get("name"),
+            "qid": qid, "tm_id": tm_id,
+            "eur": euros if has_source_value else None,
+            "at": at if has_source_value else None,
+        }
+        # Every attempted profile is recorded in checked_at, even when TM has
+        # no valuation or omits its valuation date. Otherwise those rows would
+        # remain at the front of every batch and starve the rest of the cards.
+        pending.append(row)
+        if has_source_value:
             found.append(row)
-            pending.append(row)
-            # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
-            # пачка, а не вся ночь; и каждая пачка — одна транзакция.
-            if apply and len(pending) >= MV_BATCH:
-                written += write_batch(url, write_key, pending)
-                print("    записано %d (всего %d)" % (len(pending), written),
-                      flush=True)
-                pending = []
         else:
             no_value += 1
+        # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
+        # пачка, а не вся ночь; и каждая пачка — одна транзакция.
+        if apply and len(pending) >= MV_BATCH:
+            written += write_batch(url, write_key, pending)
+            print("    checked %d (value changes so far %d)" % (len(pending), written),
+                  flush=True)
+            pending = []
         time.sleep(TM_PAUSE)
         if len(found) and len(found) % 25 == 0 and i % 5 == 0:
             print("  шаг 3: %d/%d, со стоимостью %d" % (i, len(players), len(found)),
@@ -408,9 +453,15 @@ def main():
         written += write_batch(url, write_key, pending)
         pending = []
         # «Прогон прошёл» без числа ничего не значит.
-        print("Записано по ходу прогона: %d из %d снятых" % (written, len(found)))
+        print("Изменено оценок: %d; получено оценок с датой источника: %d"
+              % (written, len(found)))
     elif found:
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с APPLY=1.")
+
+    if args.only and not found:
+        raise SystemExit(
+            "No source-dated market valuation returned for Transfermarkt ID " + args.only
+        )
 
 
 if __name__ == "__main__":

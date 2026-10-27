@@ -5,7 +5,11 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from players_stats_transfermarkt import filter_candidates  # noqa: E402
+from players_stats_transfermarkt import (  # noqa: E402
+    filter_candidates,
+    latest_stat_fetch_by_tm,
+    refresh_priority_key,
+)
 
 
 class CandidateSelectionTests(unittest.TestCase):
@@ -34,6 +38,28 @@ class CandidateSelectionTests(unittest.TestCase):
                 cards, 0, include_unvalued=True)],
             ["1", "2"],
         )
+
+
+    def test_refresh_prioritizes_missing_and_oldest_stats(self):
+        cards = [
+            {"id": "1", "transfermarkt_id": "1", "market_value_eur": 120000000},
+            {"id": "2", "transfermarkt_id": "2", "market_value_eur": 60000000},
+            {"id": "3", "transfermarkt_id": "3", "market_value_eur": 90000000},
+        ]
+        latest = latest_stat_fetch_by_tm([
+            {"tm_player_id": "1", "fetched_at": "2026-10-26T10:00:00Z"},
+            {"tm_player_id": "2", "fetched_at": "2026-09-07T03:00:00Z"},
+        ])
+        ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
+        self.assertEqual([card["transfermarkt_id"] for card in ordered], ["3", "2", "1"])
+
+    def test_latest_stats_timestamp_uses_most_recent_row(self):
+        latest = latest_stat_fetch_by_tm([
+            {"tm_player_id": "316264", "fetched_at": "2026-09-07T03:00:00Z"},
+            {"tm_player_id": "316264", "fetched_at": "2026-10-26T13:15:00Z"},
+            {"tm_player_id": None, "fetched_at": "2026-10-27T00:00:00Z"},
+        ])
+        self.assertEqual(latest, {"316264": "2026-10-26T13:15:00Z"})
 
     def test_invalid_values_do_not_break_the_queue(self):
         cards = [

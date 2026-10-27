@@ -8,6 +8,7 @@ declare
   v_stale uuid;
   v_club uuid;
   v_icon uuid;
+  v_checked uuid;
 begin
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
   values ('Khvicha regression', 'player', 99, 140000000, current_date - 30, date '2001-02-12')
@@ -67,6 +68,33 @@ begin
   update public.cards set fame=99 where id=v_elite;
   if (select tier from public.cards where id=v_elite) <> 'legendary' then
     raise exception 'fame updates must keep tier synchronized';
+  end if;
+
+  insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
+  values ('Checked valuation', 'player', 50, 10000000, current_date - 30, date '1998-01-01')
+  returning id into v_checked;
+
+  perform * from public.apply_card_market_values(jsonb_build_array(jsonb_build_object(
+    'card_id', v_checked::text,
+    'value_eur', 5000000,
+    'valued_at', (current_date - 90)::text
+  )));
+  if (select market_value_eur from public.cards where id=v_checked) <> 10000000
+     or (select market_value_at from public.cards where id=v_checked) <> current_date - 30 then
+    raise exception 'older source valuation must not overwrite a newer stored value';
+  end if;
+  if (select market_value_checked_at from public.cards where id=v_checked) is null then
+    raise exception 'a checked profile must record the attempt even when its source date is older';
+  end if;
+
+  perform * from public.apply_card_market_values(jsonb_build_array(jsonb_build_object(
+    'card_id', v_checked::text,
+    'value_eur', null,
+    'valued_at', null
+  )));
+  if (select market_value_eur from public.cards where id=v_checked) <> 10000000
+     or (select market_value_at from public.cards where id=v_checked) <> current_date - 30 then
+    raise exception 'a source response without a valuation date must not clear stored price data';
   end if;
 end $$;
 rollback;

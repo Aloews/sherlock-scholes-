@@ -86,6 +86,28 @@ def filter_candidates(cards, min_value=0, include_unvalued=False):
     return selected
 
 
+def latest_stat_fetch_by_tm(rows):
+    """Latest persisted source timestamp per Transfermarkt player ID."""
+    latest = {}
+    for row in rows:
+        tm_id = str(row.get("tm_player_id") or "")
+        fetched_at = str(row.get("fetched_at") or "")
+        if tm_id and fetched_at and fetched_at > latest.get(tm_id, ""):
+            latest[tm_id] = fetched_at
+    return latest
+
+
+def refresh_priority_key(card, latest_by_tm):
+    """Refresh never/least recently fetched players first; value breaks ties."""
+    tm_id = str(card.get("transfermarkt_id") or "")
+    fetched_at = latest_by_tm.get(tm_id, "")
+    try:
+        value = int(card.get("market_value_eur") or 0)
+    except (TypeError, ValueError):
+        value = 0
+    return (fetched_at, -value, str(card.get("id") or ""))
+
+
 def parse_seasons(payload):
     """JSON игрока → строки для `apply_player_season_stats`. ЧИСТАЯ ФУНКЦИЯ.
 
@@ -233,13 +255,13 @@ def main():
     if args.only:
         cards = sb("cards", params={
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "category": "eq.player", "active": "is.true",
+            "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "eq." + args.only,
             "order": "id.asc", "limit": 1}) or []
     else:
         query = {
             "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "category": "eq.player", "active": "is.true",
+            "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "market_value_eur.desc.nullslast,id.asc",
         }
@@ -249,7 +271,16 @@ def main():
         if args.include_unvalued:
             cards = filter_candidates(cards, args.min_value, include_unvalued=True)
 
-    if not args.refresh:
+    if args.refresh:
+        if args.only:
+            latest_by_tm = {}
+        else:
+            stored_stats = all_rows(
+                "player_season_stat",
+                {"select": "tm_player_id,fetched_at", "order": "tm_player_id"})
+            latest_by_tm = latest_stat_fetch_by_tm(stored_stats)
+        cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
+    else:
         done = {r["tm_player_id"] for r in all_rows(
             "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
         cards = [c for c in cards if c["transfermarkt_id"] not in done]
