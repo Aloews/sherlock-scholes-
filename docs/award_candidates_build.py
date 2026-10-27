@@ -18,7 +18,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-MODEL_VERSION = "candidate-rank-v1"
+MODEL_VERSION = "candidate-rank-v2"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
@@ -92,6 +92,28 @@ def normal_key(value: str) -> str:
     return re.sub(r"[^\w]+", "-", value.lower(), flags=re.UNICODE).strip("-_") or "unknown"
 
 
+def competition_strength(name: str | None, short_name: str | None = None) -> float:
+    """Conservative competition-quality prior; unknown competitions stay neutral."""
+    value = f"{name or ''} {short_name or ''}".lower()
+    if re.search(r"world cup|champions league|fifa intercontinental|european championship|euros\b|copa america|africa cup of nations|asian cup|чемпионат мира|лига чемпионов", value):
+        return 1.0
+    if re.search(r"premier league|laliga|la liga|bundesliga|serie a\b|ligue 1|fifa club world cup|uefa euro", value):
+        return 0.95
+    if re.search(r"europa league|conference league|qualifying|qualification|квалификац", value):
+        return 0.82 if "qualif" not in value and "квалификац" not in value else 0.68
+    if re.search(r"saudi pro league|süper lig|super lig|eredivisie|primeira liga|liga portugal|mls|brasileirão|brasileirao|liga profesional|j1 league|k league 1|russian premier league|премьер-лига|высшая лига", value):
+        return 0.82
+    if re.search(r"youth|u19|u20|u21|u23|reserve|amateur|youth league|молодёж|молодеж|резерв", value):
+        return 0.38
+    if re.search(r"second|2\. bundesliga|championship|serie b|liga 2|ligue 2|1\.lig|2\.lig|division 2|division 3|д2|д3|д4|д5|д6|первая лига|чемпионшип", value):
+        return 0.56
+    if re.search(r"cup|copa|coupe|pokal|coppa|кубок|supercup|суперкубок", value):
+        return 0.72
+    if re.search(r"league|liga|ligue|division|serie|лига|дивизион|чемпионат", value):
+        return 0.64
+    return 0.5
+
+
 def score_population(population: list[dict], weights: dict[str, float], award_key: str,
                      season: int, snapshot: date, competition_id: str = "*") -> list[dict]:
     eligible = [p for p in population if p.get("active") and (
@@ -105,7 +127,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
 
     percentiles: dict[str, dict[str, float]] = {}
     for metric in weights:
-        measured = [p for p in eligible if metric != "sw_rating" or p.get("sw_rating") is not None]
+        # Unknown market values/ratings stay neutral instead of being treated as zero.
+        measured = [p for p in eligible if p.get(metric) is not None]
         ranks = percentile([number(p, metric) for p in measured])
         percentiles[metric] = {p["card_id"]: 50.0 for p in eligible}
         percentiles[metric].update({p["card_id"]: rank for p, rank in zip(measured, ranks)})
