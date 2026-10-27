@@ -282,10 +282,37 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 and number(p, "competition_strength") >= 0.82
             )
         ]
+    # The current season feed does not include saves, clean sheets, tackles,
+    # interceptions or other defensive actions. Do not present a famous/high-value
+    # player with almost no attacking production as a serious overall-award candidate
+    # merely because those priors are strong. A very high rating over a substantial
+    # sample remains a narrow exception for non-attacking roles.
+    overall_awards = {"ballon_dor", "the_best", "ballon_dor_feminin", "the_best_female"}
+    if award_key in overall_awards:
+        eligible = [
+            p for p in eligible
+            if p["goals"] + p["assists"] >= 5
+            or (
+                p.get("minutes_known") is not False
+                and p["minutes"] >= 900
+                and number(p, "sw_rating") >= 93
+            )
+        ]
+    elif award_key == "golden_boy":
+        eligible = [
+            p for p in eligible
+            if p["goals"] + p["assists"] >= 4
+            or (
+                p.get("minutes_known") is not False
+                and p["minutes"] >= 600
+                and number(p, "sw_rating") >= 90
+            )
+        ]
+
     if not eligible:
         return []
 
-    percentiles: dict[str, dict[str, float]] = {}
+    percentiles: dict[str, dict[str, float]] = {};
     for metric in weights:
         # Unknown market values/ratings stay neutral instead of being treated as zero.
         # Reference percentiles include all sample-qualified players in this award's
@@ -336,10 +363,12 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 else "at least 5 appearances and 300 minutes; if minutes are unavailable, at least 8 appearances"
             ),
             "award_quality_gate": (
-                "market value >= EUR 20m or fame >= 75 or rating >= 90; alternatively >=15 goal involvements in a strong competition"
-                if award_key in {"ballon_dor", "the_best"}
-                else "U21 plus market value >= EUR 10m or fame >= 60 or rating >= 85; alternatively >=10 goal involvements in a strong competition"
+                "elite prior (market value >= EUR 20m or fame >= 75 or rating >= 90, or >=15 goal involvements in a strong competition); additionally >=5 current-season goal involvements, or rating >=93 over >=900 minutes"
+                if award_key in overall_awards and award_key in {"ballon_dor", "the_best"}
+                else "U21 plus market value >= EUR 10m or fame >= 60 or rating >= 85, or >=10 goal involvements in a strong competition; additionally >=4 current-season goal involvements, or rating >=90 over >=600 minutes"
                 if award_key == "golden_boy"
+                else "at least 5 current-season goal involvements, or rating >=93 over >=900 minutes; detailed defensive/goalkeeping metrics are not yet available"
+                if award_key in overall_awards
                 else "not applied; ranking uses available season statistics"
             ),
             "competition_id": competition_id, "ranking_scope": (
