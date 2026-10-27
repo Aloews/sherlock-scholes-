@@ -130,7 +130,7 @@ LEAGUES = {
     "esp.w.1": "Spanish Liga F",
     "fra.w.1": "French Premiere Ligue",
     "ned.w.1": "Dutch Vrouwen Eredivisie",
-    "usa.nwsl": "National Women's Soccer League",
+    "usa.nwsl": "NWSL",
     "usa.w.usl.1": "USL Super League",
     "uefa.wchampions": "UEFA Women's Champions League",
     "uefa.weuro": "UEFA Women's European Championship",
