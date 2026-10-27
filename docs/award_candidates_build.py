@@ -18,7 +18,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-AWARD_MODEL_VERSION = "award-candidate-rank-v5"
+AWARD_MODEL_VERSION = "award-candidate-rank-v6"
 TEAM_MODEL_VERSION = "team-candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
