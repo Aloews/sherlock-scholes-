@@ -22,12 +22,13 @@
 
     1. карточка → QID     ruwiki + гарды P31/P106 (как в остальных сборщиках)
     2. QID → id на TM     P2446, пачками по 50
-    3. id → стоимость     публичный JSON /players/{id}/market_value:
-                           точная сумма и дата последнего изменения
+    3. id → стоимость     Transfermarkt CEAPI /ceapi/marketValueDevelopment/graph/{id}:
+                           последняя сумма из истории и дата её изменения
 
-HTML-профили больше не являются рабочим источником для GitHub Actions: они
-могут вернуть маленькую interstitial-страницу с HTTP 200. Такой ответ не считается
-отсутствующей стоимостью и не обновляет market_value_checked_at.
+HTML-профили не используются как источник стоимости в GitHub Actions: они
+могут вернуть маленькую interstitial-страницу с HTTP 200. Используется native
+Transfermarkt CEAPI chart endpoint; HTTP errors и malformed JSON не считаются
+отсутствующей стоимостью и не обновляют market_value_checked_at.
 
 ⚠️ ДАТА БЕРЁТСЯ СО СТРАНИЦЫ, А НЕ `current_date`. На профиле стоит «Last
 update: 02/06/2026»; подставить сегодняшнее число значило бы объявить оценку
