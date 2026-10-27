@@ -10,6 +10,7 @@ from players_market_value_transfermarkt import (  # noqa: E402
     should_write_market_value,
     unwrap_api_market_value_payload,
     should_retry_market_value_status,
+    TMAPI, TM_PAUSE,
 )
 
 
@@ -59,6 +60,10 @@ class MarketValueRefreshTests(unittest.TestCase):
         self.assertEqual(unwrap_api_market_value_payload({"data": direct}, "316264"), direct)
         self.assertIsNone(unwrap_api_market_value_payload({"success": False}, "316264"))
         self.assertIsNone(unwrap_api_market_value_payload({**direct, "id": "132098"}, "316264"))
+
+    def test_market_value_api_uses_the_documented_service_host_and_safe_pacing(self):
+        self.assertEqual(TMAPI, "https://transfermarkt-api.fly.dev")
+        self.assertGreaterEqual(TM_PAUSE, 1.6)
 
     def test_upstream_blocked_status_is_not_retried(self):
         self.assertTrue(should_retry_market_value_status(429))
