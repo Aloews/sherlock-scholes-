@@ -21,11 +21,6 @@ FOOTBALLER_QID = "Q937857"
 TM_ID_PROPERTY = "P2020"
 PAUSE = 1.0
 BATCH_SIZE = 50
-MANUAL_ALIASES = {
-    "sophiawilson": {"sophia smith"},
-    "marta": {"marta vieira da silva"},
-    "debinha": {"debora cristiane de oliveira"},
-}
 
 
 def normalize_name(value: str | None) -> str:
@@ -76,8 +71,6 @@ def entity_matches_card(card: dict[str, Any], entity: dict[str, Any]) -> bool:
         for alias in (entity.get("aliases") or {}).get("en", [])
     ]
     normalized_names = {normalize_name(labels), *(normalize_name(alias) for alias in aliases)}
-    manual = MANUAL_ALIASES.get(normalize_name(card.get("name_en") or card.get("name")), set())
-    normalized_names.update(normalize_name(alias) for alias in manual)
     return card_name in normalized_names
 
 
@@ -187,6 +180,15 @@ def main() -> int:
             "card_id": str(card["id"]), "name": card.get("name_en") or card.get("name"),
             "wikidata_qid": qid, "transfermarkt_id": tm_id,
         })
+
+    tm_count = sum(1 for item in proposed if item["transfermarkt_id"])
+    if apply and len(cards) >= 20 and tm_count < 12:
+        print(json.dumps({
+            "status": "insufficient_identity_matches",
+            "cards_checked": len(cards), "transfermarkt_ids": tm_count,
+            "minimum_required": 12,
+        }), file=sys.stderr)
+        return 1
 
     written = 0
     for item in proposed:
