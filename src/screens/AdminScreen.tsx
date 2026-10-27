@@ -11,6 +11,7 @@ import {
 import { AccumulatorPanel } from '@/features/duel/AccumulatorPanel';
 import { RightsPanel } from '@/features/rights/RightsPanel';
 import { WinnerBoard } from '@/features/duel/WinnerBoard';
+import { CandidateAnalyticsPanel } from '@/features/admin/CandidateAnalyticsPanel';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
@@ -126,10 +127,10 @@ export function AdminScreen() {
   );
 }
 
-type Tab = 'cards' | 'reports' | 'forecast';
+type Tab = 'cards' | 'reports' | 'forecast' | 'candidates';
 
 const TAB_LABEL: Record<Tab, string> = {
-  reports: 'Репорты', cards: 'Карточки', forecast: 'Прогнозисты',
+  reports: 'Репорты', cards: 'Карточки', forecast: 'Прогнозисты', candidates: 'Награды и турниры',
 };
 
 function StaffCabinet({ password, role, onLogout }: {
@@ -216,7 +217,7 @@ function StaffCabinet({ password, role, onLogout }: {
             а точность у них 46–48 % при 44 % у «всегда хозяева»: показывать
             такое игроку значит выдавать шум за подсказку. Модератору тоже не
             нужно — это не инструмент разбора жалоб. */}
-        {(['reports', 'cards', ...(isAdmin ? ['forecast' as Tab] : [])] as Tab[]).map((tb) => (
+        {(['reports', 'cards', ...(isAdmin ? ['forecast' as Tab, 'candidates' as Tab] : [])] as Tab[]).map((tb) => (
           <Chip
             key={tb}
             label={TAB_LABEL[tb]}
@@ -238,6 +239,8 @@ function StaffCabinet({ password, role, onLogout }: {
           {isAdmin && <RightsPanel password={password} />}
         </div>
       )}
+      {tab === 'candidates' && isAdmin && <CandidateAnalyticsPanel password={password} />}
+
       {tab === 'forecast' && isAdmin && (
         <div className="space-y-4">
           {/* Экспресс выше истории: открывая эту вкладку, смотрят «что сейчас»,

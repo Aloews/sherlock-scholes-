@@ -113,6 +113,13 @@ class ParseHonoursTests(unittest.TestCase):
         )
         self.assertEqual(merged, ["Золотой мяч 2026", "Чемпион Германии ×2"])
 
+    def test_legacy_title_label_preserves_balanced_internal_quotes(self):
+        merged = merge_legacy_titles(
+            [],
+            [{"title": "Игрок года в «Тоттенхэм Хотспур»", "count": 3, "kind": "personal"}],
+        )
+        self.assertEqual(merged, ["Игрок года в «Тоттенхэм Хотспур» ×3"])
+
     def test_non_numeric_parenthetical_is_preserved(self):
         source = """
 == Достижения ==

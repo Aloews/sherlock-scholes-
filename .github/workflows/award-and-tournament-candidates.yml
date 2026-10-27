@@ -1,0 +1,91 @@
+name: award-and-tournament-candidates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/award-and-tournament-candidates.yml'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+      - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
+  pull_request:
+    paths:
+      - '.github/workflows/award-and-tournament-candidates.yml'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+      - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
+  schedule:
+    - cron: '35 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: award-and-tournament-candidates
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test candidate ranking
+        run: python docs/test_award_candidates_build.py
+      - name: Compile candidate generator
+        run: python -m py_compile docs/award_candidates_build.py
+
+  refresh:
+    if: github.event_name != 'pull_request'
+    needs: [validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: \${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Build and store candidate snapshots
+        run: python docs/award_candidates_build.py
+
+  watch:
+    needs: [validate, refresh]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      REFRESH_RESULT: ${{ needs.refresh.result }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Verify candidate pipeline completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate = $VALIDATE_RESULT"
+          echo "refresh = $REFRESH_RESULT (expected=$REFRESH_EXPECTED)"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation: $VALIDATE_RESULT"; exit 1; }
+          if [ "$REFRESH_EXPECTED" = "true" ]; then
+            [ "$REFRESH_RESULT" = "success" ] || { echo "::error::production refresh: $REFRESH_RESULT"; exit 1; }
+          else
+            [ "$REFRESH_RESULT" = "skipped" ] || { echo "::error::refresh should be skipped on pull requests, got $REFRESH_RESULT"; exit 1; }
+          fi
