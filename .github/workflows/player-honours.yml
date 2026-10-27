@@ -109,3 +109,25 @@ jobs:
         if: always()
         run: |
           echo "Player honours sync finished. Check the preceding step summaries for processed, changed, unchanged, missing-source and failed counts."
+  watch:
+    needs: [validate, sync]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      SYNC_RESULT: ${{ needs.sync.result }}
+      SYNC_EXPECTED: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Verify honours pipeline completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate = $VALIDATE_RESULT"
+          echo "sync = $SYNC_RESULT (expected=$SYNC_EXPECTED)"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation: $VALIDATE_RESULT"; exit 1; }
+          if [ "$SYNC_EXPECTED" = "true" ]; then
+            [ "$SYNC_RESULT" = "success" ] || { echo "::error::production sync: $SYNC_RESULT"; exit 1; }
+          else
+            [ "$SYNC_RESULT" = "skipped" ] || { echo "::error::sync should be skipped on pull requests, got $SYNC_RESULT"; exit 1; }
+          fi
