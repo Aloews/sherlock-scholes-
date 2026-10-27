@@ -194,13 +194,13 @@ def test_leagues():
     )
     ok &= check("ни одна прежняя лига не потеряна",
                 [c for c in were if c not in LEAGUES], [])
-    women's = (
+    women_codes = (
         "eng.w.1", "esp.w.1", "fra.w.1", "ned.w.1", "usa.nwsl",
         "usa.w.usl.1", "uefa.wchampions", "uefa.weuro", "fifa.wwc",
         "conmebol.america.femenina", "concacaf.w.gold",
     )
     ok &= check("женские лиги и турниры присутствуют",
-                [c for c in women's if c not in LEAGUES], [])
+                [c for c in women_codes if c not in LEAGUES], [])
     return ok
 
 
