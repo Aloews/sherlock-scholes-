@@ -139,7 +139,11 @@ def valid_season_payload(payload):
     return not games or all(
         isinstance(game, dict)
         and isinstance(game.get("gameInformation"), dict)
+        and game["gameInformation"].get("seasonId") not in (None, "")
+        and bool(game["gameInformation"].get("competitionId"))
         and isinstance(game.get("clubsInformation"), dict)
+        and isinstance(game["clubsInformation"].get("club"), dict)
+        and game["clubsInformation"]["club"].get("clubId") not in (None, "")
         and isinstance(game.get("statistics"), dict)
         for game in games
     )
