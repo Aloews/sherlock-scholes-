@@ -58,9 +58,9 @@ function queryBuilder(table: string) {
         ? cards.filter((card) => (filters.ids as string[]).includes(card.id))
         : cards;
     }
-    if (table === 'player_match_stats') {
+    if (table === 'football_player_stats') {
       const ids = (filters.ids as string[] | undefined) ?? [];
-      data = ids.map((card_id) => ({ card_id, home_team: 'Test Club', away_team: 'Opponent', disputed: false }));
+      data = ids.map((card_id) => ({ card_id, home_team: 'Test Club', away_team: 'Opponent', match_date: new Date().toISOString().slice(0, 10), disputed: false, grain: 'match' }));
     }
     return Promise.resolve({ data, error: null }).then(resolve, reject);
   };
