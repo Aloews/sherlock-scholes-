@@ -10,6 +10,7 @@ from players_stats_transfermarkt import (  # noqa: E402
     latest_stat_fetch_by_tm,
     parse_seasons,
     refresh_priority_key,
+    select_refresh_candidates,
     valid_season_payload,
 )
 
@@ -54,6 +55,28 @@ class CandidateSelectionTests(unittest.TestCase):
         ])
         ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
         self.assertEqual([card["transfermarkt_id"] for card in ordered], ["3", "2", "1"])
+
+    def test_daily_top_value_cohort_precedes_the_rolling_queue(self):
+        cards = [
+            {"id": "daily-star", "category": "player", "transfermarkt_id": "1",
+             "market_value_eur": 100000000, "market_value_at": "2026-10-07",
+             "born_on": "2000-01-01", "fame": 97,
+             "player_stats_checked_at": "2026-10-26T00:00:00Z"},
+            {"id": "stale-price", "category": "player", "transfermarkt_id": "2",
+             "market_value_eur": 80000000, "market_value_at": "2025-01-01",
+             "born_on": "2000-01-01"},
+            {"id": "rotating", "category": "player", "transfermarkt_id": "3",
+             "market_value_eur": 50000000, "market_value_at": "2026-10-01",
+             "born_on": "2000-01-01"},
+            {"id": "woman", "category": "woman", "transfermarkt_id": "4",
+             "market_value_eur": 60000000, "market_value_at": "2026-10-01",
+             "born_on": "2000-01-01"},
+        ]
+        selected = select_refresh_candidates(
+            cards, {"3": "2026-10-20T00:00:00Z"},
+            limit=2, priority_limit=1, today=date(2026, 10, 27),
+        )
+        self.assertEqual([card["id"] for card in selected], ["daily-star", "stale-price"])
 
     def test_match_level_payload_is_aggregated_by_actual_season_competition_and_club(self):
         def game(season, competition, club, minutes, goals=0, assists=0,
