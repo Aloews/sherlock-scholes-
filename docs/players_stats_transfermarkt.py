@@ -127,12 +127,21 @@ def refresh_priority_key(card, latest_by_tm):
 
 
 def valid_season_payload(payload):
-    """Only a valid TMAPI success envelope can advance the attempt checkpoint."""
-    return (
+    """Only a valid match-level TMAPI success envelope can advance the checkpoint."""
+    if not (
         isinstance(payload, dict)
         and payload.get("success") is True
         and isinstance(payload.get("data"), dict)
         and isinstance(payload["data"].get("performance"), list)
+    ):
+        return False
+    games = payload["data"]["performance"]
+    return not games or all(
+        isinstance(game, dict)
+        and isinstance(game.get("gameInformation"), dict)
+        and isinstance(game.get("clubsInformation"), dict)
+        and isinstance(game.get("statistics"), dict)
+        for game in games
     )
 
 
