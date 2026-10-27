@@ -86,10 +86,21 @@ def filter_candidates(cards, min_value=0, include_unvalued=False):
     return selected
 
 
-def latest_stat_fetch_by_tm(rows):
-    """Latest persisted source timestamp per Transfermarkt player ID."""
+def latest_stat_fetch_by_tm(rows, season_id=None):
+    """Latest source timestamp per player in the requested season only.
+
+    Historical career rows must not make a player look current-season-complete.
+    Without this filter, stars whose last fetch only contains older seasons can
+    be skipped by every rolling batch even while their current-season row is absent.
+    """
     latest = {}
     for row in rows:
+        if season_id is not None:
+            try:
+                if int(row.get("season_id") or 0) != int(season_id):
+                    continue
+            except (TypeError, ValueError):
+                continue
         tm_id = str(row.get("tm_player_id") or "")
         fetched_at = str(row.get("fetched_at") or "")
         if tm_id and fetched_at and fetched_at > latest.get(tm_id, ""):
@@ -275,10 +286,27 @@ def main():
         if args.only:
             latest_by_tm = {}
         else:
-            stored_stats = all_rows(
+            newest_season_rows = sb(
                 "player_season_stat",
-                {"select": "tm_player_id,fetched_at", "order": "tm_player_id"})
-            latest_by_tm = latest_stat_fetch_by_tm(stored_stats)
+                params={"select": "season_id", "order": "season_id.desc", "limit": 1})
+            if newest_season_rows is None:
+                raise SystemExit("could not determine active season for stats refresh")
+            current_season = (
+                int(newest_season_rows[0]["season_id"])
+                if newest_season_rows and newest_season_rows[0].get("season_id") is not None
+                else None
+            )
+            # Fetch timestamps only for the active season. Reading the full
+            # multi-year table on every refresh wastes requests and time.
+            current_season_query = {
+                "select": "tm_player_id,season_id,fetched_at",
+                "order": "tm_player_id",
+            }
+            if current_season is not None:
+                current_season_query["season_id"] = "eq.%d" % current_season
+            stored_stats = all_rows("player_season_stat", current_season_query)
+            latest_by_tm = latest_stat_fetch_by_tm(
+                stored_stats, season_id=current_season)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
     else:
         done = {r["tm_player_id"] for r in all_rows(

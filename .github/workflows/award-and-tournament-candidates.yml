@@ -14,14 +14,22 @@ on:
   pull_request:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
+      - '.github/workflows/player-market-value-refresh.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'docs/players_market_value_transfermarkt.py'
+      - 'docs/test_players_market_value_transfermarkt.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
       - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
   schedule:
     - cron: '35 6 * * *'
+  workflow_run:
+    workflows: ["player-profile-data"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -44,11 +52,15 @@ jobs:
         run: pip install -r football_scraper/requirements.txt
       - name: Test candidate ranking
         run: python docs/test_award_candidates_build.py
+      - name: Test current-season refresh priority
+        run: python docs/test_players_stats_transfermarkt.py
+      - name: Test source-date guard and market-value refresh rotation
+        run: python docs/test_players_market_value_transfermarkt.py
       - name: Compile candidate generator
         run: python -m py_compile docs/award_candidates_build.py
 
   refresh:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     needs: [validate]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -81,7 +93,7 @@ jobs:
     env:
       VALIDATE_RESULT: ${{ needs.validate.result }}
       REFRESH_RESULT: ${{ needs.refresh.result }}
-      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Verify candidate pipeline completed
         shell: bash

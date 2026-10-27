@@ -97,6 +97,76 @@ def upsert_rows(base: str, key: str, table: str, rows: list[dict], conflict: str
     return len(rows)
 
 
+AWARD_YEAR_RE = re.compile(r"\b(20\d{2})\b")
+
+
+def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
+    """Extract only winner claims whose card title explicitly names the award year.
+
+    The card honours collector records achievements, not nominations. An explicit
+    year is required so an undated career honour is never assigned to the wrong
+    award cycle. Source provenance comes from the card's honours source URL.
+    """
+    outcomes: dict[tuple[str, int, str], dict] = {}
+    for card in cards:
+        card_id = str(card.get("id") or "")
+        facts = card.get("facts") or {}
+        source_url = str(facts.get("honours_source") or "").strip()
+        if not card_id or not source_url.startswith(("https://", "http://")):
+            continue
+        titles = facts.get("titles") or []
+        if not isinstance(titles, list):
+            continue
+        for raw_title in titles:
+            if not isinstance(raw_title, str):
+                continue
+            title = raw_title.strip()
+            year_match = AWARD_YEAR_RE.search(title)
+            if not year_match:
+                continue
+            lowered = title.casefold()
+            if re.search(r"ballon\s+d[’']or\s+féminin|золот(?:ой|ого)\s+мяч\s+(?:среди\s+женщин|женский)", lowered):
+                award_key = "ballon_dor_feminin"
+            elif re.search(r"the\s+best.*(?:women|female)|лучш(?:ая|ему)\s+футболистк\w*\s+мира", lowered):
+                award_key = "the_best_female"
+            elif re.search(r"golden\s+boy|золот(?:ой|ого)\s+мальчик", lowered):
+                award_key = "golden_boy"
+            elif re.search(r"golden\s+boot|золот(?:ая|ой)\s+бутс\w*", lowered):
+                award_key = "golden_boot"
+            elif re.search(r"the\s+best(?:\s+fifa)?(?:\s+men'?s)?\s+(?:player|footballer)|премия\s+the\s+best", lowered):
+                award_key = "the_best"
+            elif re.search(r"ballon\s+d[’']or|золот(?:ой|ого)\s+мяч", lowered):
+                award_key = "ballon_dor"
+            else:
+                continue
+            year = int(year_match.group(1))
+            identity = (award_key, year, card_id)
+            outcomes[identity] = {
+                "award_key": award_key,
+                "award_year": year,
+                "card_id": card_id,
+                "competition_id": "*",
+                "result": "winner",
+                "source_url": source_url,
+                "verified_by": "explicit_year_card_honours_sync",
+            }
+    return list(outcomes.values())
+
+
+def sync_explicit_award_outcomes(base: str, key: str) -> int:
+    """Persist historical winners only when the source title contains an award year."""
+    cards = get_rows(base, key, "cards", {
+        "select": "id,category,active,facts",
+        "category": "eq.player", "active": "eq.true", "facts": "not.is.null",
+        "order": "id.asc",
+    })
+    outcomes = extract_explicit_award_outcomes(cards)
+    return upsert_rows(
+        base, key, "award_outcome", outcomes,
+        "award_key,award_year,card_id,result,competition_id",
+    )
+
+
 def remove_stale_award_snapshot_rows(base: str, key: str, snapshot: date) -> int:
     """Remove rows from superseded model versions after the replacement upsert succeeds."""
     response = requests.delete(
@@ -418,6 +488,53 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     return rows
 
 
+def current_player_stats_coverage(
+    cards: list[dict], stat_card_ids: set[str], snapshot: date, limit: int = 100
+) -> dict[str, Any]:
+    """Measure current-season coverage for today's highest-valued active players."""
+    candidates = []
+    for card in cards:
+        if not card.get("active") or card.get("category") != "player" or not card.get("transfermarkt_id"):
+            continue
+        try:
+            value = int(card.get("market_value_eur") or 0)
+            valued_at = date.fromisoformat(str(card.get("market_value_at") or "")[:10])
+        except (TypeError, ValueError):
+            continue
+        age = None
+        born = card.get("born_on")
+        if born:
+            try:
+                birth_date = date.fromisoformat(str(born)[:10])
+                age = snapshot.year - birth_date.year - (
+                    (birth_date.month, birth_date.day) > (snapshot.month, snapshot.day)
+                )
+            except ValueError:
+                pass
+        if value < 20_000_000 or not 0 <= (snapshot - valued_at).days <= 180:
+            continue
+        if age is not None and (age < 16 or age > 40):
+            continue
+        candidates.append(card)
+    candidates.sort(key=lambda card: (
+        -int(card.get("market_value_eur") or 0),
+        -int(card.get("fame") or 0),
+        str(card.get("id") or ""),
+    ))
+    top = candidates[:limit]
+    covered = sum(1 for card in top if str(card.get("id") or "") in stat_card_ids)
+    return {
+        "sample_size": len(top),
+        "covered": covered,
+        "missing": len(top) - covered,
+        "coverage": covered / len(top) if top else 0.0,
+        "missing_names": [
+            str(card.get("name") or card.get("id") or "unknown")
+            for card in top if str(card.get("id") or "") not in stat_card_ids
+        ],
+    }
+
+
 def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, int]:
     response = requests.get(f"{base.rstrip('/')}/rest/v1/player_season_stat",
                             headers=api_headers(key),
@@ -434,6 +551,30 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     })
     if not stats:
         raise RuntimeError(f"No player-season statistics found for season_id={season}")
+
+    # A plausible-looking shortlist built from a small, biased subset is worse
+    # than a stale snapshot. Require broad coverage of current high-value players
+    # before publishing individual-award candidates; team tournament rankings can
+    # still refresh independently when this gate is not met.
+    current_value_cards = get_rows(base, key, "cards", {
+        "select": "id,name,category,active,transfermarkt_id,market_value_eur,market_value_at,born_on,fame",
+        "category": "eq.player", "active": "eq.true",
+        "transfermarkt_id": "not.is.null", "market_value_eur": "gte.20000000",
+        "market_value_at": f"gte.{(snapshot - timedelta(days=180)).isoformat()}",
+        "order": "market_value_eur.desc",
+    })
+    coverage = current_player_stats_coverage(
+        current_value_cards, {str(row.get("card_id")) for row in stats if row.get("card_id")}, snapshot
+    )
+    if coverage["sample_size"] >= 50 and coverage["coverage"] < 0.75:
+        print(
+            "WARNING: skipping individual-award snapshot; current-season stats cover "
+            f"{coverage['covered']}/{coverage['sample_size']} high-value active players "
+            f"({coverage['coverage']:.0%}). Missing examples: "
+            + ", ".join(coverage["missing_names"][:12]),
+            file=sys.stderr,
+        )
+        return season, 0, 0
 
     competition_rows = get_rows(base, key, "tm_competition", {
         "select": "id,name,short_name,type_id,updated_at", "order": "id.asc",
@@ -796,6 +937,7 @@ def main() -> int:
         return 2
     snapshot = date.today()
     try:
+        award_outcomes_written = sync_explicit_award_outcomes(base, key)
         season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
         team_writes = build_team_candidates(base, key, snapshot)
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
@@ -803,6 +945,7 @@ def main() -> int:
         return 1
     print(json.dumps({
         "snapshot_date": snapshot.isoformat(), "season_id": season,
+        "explicit_year_award_outcomes_upserted": award_outcomes_written,
         "award_candidate_rows_upserted": award_writes,
         "stale_award_candidate_rows_removed": stale_award_rows_removed,
         "team_tournament_candidate_rows_upserted": team_writes,
