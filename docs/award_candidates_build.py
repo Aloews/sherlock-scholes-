@@ -92,7 +92,7 @@ def build_award_candidates(
         if award_key == "golden_boy":
             born = parse_date(card.get("born_on"))
             # 2026 Golden Boy eligibility is under 21 at the end of the award year.
-            if not born or born < date(award_year, 1, 1):
+            if not born or born < date(award_year - 20, 1, 1):
                 continue
         row = {
             "card": card,
