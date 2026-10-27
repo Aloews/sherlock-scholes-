@@ -55,6 +55,7 @@ class MarketValueRefreshTests(unittest.TestCase):
         wrapped = {"success": True, "data": direct}
         self.assertEqual(unwrap_api_market_value_payload(direct, "316264"), direct)
         self.assertEqual(unwrap_api_market_value_payload(wrapped, "316264"), direct)
+        self.assertEqual(unwrap_api_market_value_payload({"data": direct}, "316264"), direct)
         self.assertIsNone(unwrap_api_market_value_payload({"success": False}, "316264"))
         self.assertIsNone(unwrap_api_market_value_payload({**direct, "id": "132098"}, "316264"))
 

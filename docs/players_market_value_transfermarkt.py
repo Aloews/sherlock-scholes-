@@ -222,6 +222,9 @@ def unwrap_api_market_value_payload(payload, expected_id):
         if payload.get("success") is not True:
             return None
         data = payload.get("data")
+    elif isinstance(payload.get("data"), dict):
+        # Some deployments wrap the player object in `data` without a success flag.
+        data = payload["data"]
     else:
         data = payload
     if not isinstance(data, dict):
@@ -255,16 +258,37 @@ def fetch_api_market_value(tm_id, tries=3):
             payload = json.loads(raw)
             data = unwrap_api_market_value_payload(payload, tm_id)
             if data is None:
+                if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+                    top_keys = sorted(payload.keys())[:16] if isinstance(payload, dict) else []
+                    nested = payload.get("data") if isinstance(payload, dict) else None
+                    nested_keys = sorted(nested.keys())[:16] if isinstance(nested, dict) else []
+                    returned_id = (
+                        (nested if isinstance(nested, dict) else payload).get("id")
+                        if isinstance(nested, dict) or isinstance(payload, dict) else None
+                    )
+                    print(
+                        "TMAPI market-value response rejected: "
+                        f"requested_id={tm_id} top_keys={top_keys} "
+                        f"data_keys={nested_keys} returned_id={returned_id!r}",
+                        flush=True,
+                    )
                 return None, None, False
             value, at = parse_api_market_value(data)
             return value, at, True
         except urllib.error.HTTPError as error:
+            if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+                print(f"TMAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
             if error.code == 404:
                 return None, None, False
             if error.code not in (429, 500, 502, 503, 504):
                 return None, None, False
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as error:  # noqa: BLE001
+            if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+                print(
+                    f"TMAPI market-value request failed for id={tm_id}: "
+                    f"{type(error).__name__}",
+                    flush=True,
+                )
         if attempt < tries:
             time.sleep(TM_PAUSE * 3 * attempt)
     return None, None, False
