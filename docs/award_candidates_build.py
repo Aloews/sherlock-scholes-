@@ -259,7 +259,6 @@ def run() -> int:
     stats_by_card = aggregate_stats(match_rows)
     snapshots = []
     counts = {}
-    latest_fetch = max((str(row.get("fetched_at")) for row in match_rows if row.get("fetched_at")), default=None)
     for award_key in AWARD_WEIGHTS:
         ranked = build_award_candidates(award_key, cards, stats_by_card, today, year)
         counts[award_key] = len(ranked)
@@ -275,7 +274,7 @@ def run() -> int:
                 "data_coverage": row["data_coverage"],
                 "score_components": row["score_components"],
                 "evidence": row["evidence"],
-                "source_fetched_at": row["source_fetched_at"] or latest_fetch,
+                "source_fetched_at": row["source_fetched_at"],
                 "model_version": MODEL_VERSION,
             })
     upsert_rows(session, rest + "/award_candidate_snapshot", snapshots)
