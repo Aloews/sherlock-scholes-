@@ -23,4 +23,29 @@ begin
   if not v_index_exists then
     raise exception 'stats refresh queue index must exist';
   end if;
-end $$;
+
+  perform * from public.apply_player_season_stats('101', jsonb_build_array(
+    jsonb_build_object(
+      'season_id', 2026, 'competition_id', 'GB1', 'club_id', '11',
+      'apps', 8, 'minutes', 647, 'goals', 2, 'assists', 0
+    )
+  ));
+  if exists (
+    select 1 from public.player_season_stat
+     where tm_player_id='101' and season_id=2020 and competition_id='GB1'
+  ) then
+    raise exception 'obsolete aggregate-as-season rows must be deleted by a full match-feed refresh';
+  end if;
+  if not exists (
+    select 1 from public.player_season_stat
+     where tm_player_id='101' and season_id=2026 and competition_id='GB1'
+       and apps=8 and minutes=647 and goals=2 and assists=0
+  ) then
+    raise exception 'current-season totals must replace stale aggregate rows';
+  end if;
+
+  perform * from public.apply_player_season_stats('101', '[]'::jsonb);
+  if exists (select 1 from public.player_season_stat where tm_player_id='101') then
+    raise exception 'a valid empty history snapshot must clear obsolete season rows';
+  end if;
+end $;
