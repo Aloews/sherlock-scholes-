@@ -96,6 +96,25 @@ def upsert_rows(base: str, key: str, table: str, rows: list[dict], conflict: str
     return len(rows)
 
 
+def remove_stale_award_snapshot_rows(base: str, key: str, snapshot: date) -> int:
+    """Remove rows from superseded model versions after the replacement upsert succeeds."""
+    response = requests.delete(
+        f"{base.rstrip('/')}/rest/v1/award_candidate_snapshot",
+        headers={**api_headers(key), "Prefer": "return=representation"},
+        params={
+            "snapshot_date": f"eq.{snapshot.isoformat()}",
+            "model_version": f"neq.{MODEL_VERSION}",
+        },
+        timeout=TIMEOUT,
+    )
+    response.raise_for_status()
+    try:
+        deleted = response.json()
+    except ValueError:
+        return 0
+    return len(deleted) if isinstance(deleted, list) else 0
+
+
 def number(row: dict, key: str) -> float:
     try:
         value = float(row.get(key) or 0)
@@ -323,7 +342,10 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         payloads.extend(score_population(comp_population, GOLDEN_BOOT_WEIGHTS, "golden_boot", season, snapshot, competition))
     written = upsert_rows(base, key, "award_candidate_snapshot", payloads,
                           "award_key,season_id,snapshot_date,card_id,competition_id")
-    return season, written
+    # A model upgrade can stop producing rows that the previous version emitted.
+    # Remove those stale rows only after all replacement rows were written.
+    stale_removed = remove_stale_award_snapshot_rows(base, key, snapshot)
+    return season, written, stale_removed
 
 
 def competition_format(tournament: str) -> str:
@@ -545,7 +567,7 @@ def main() -> int:
         return 2
     snapshot = date.today()
     try:
-        season, award_writes = build_award_candidates(base, key, snapshot)
+        season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
         team_writes = build_team_candidates(base, key, snapshot)
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"candidate build failed: {error}", file=sys.stderr)
@@ -553,6 +575,7 @@ def main() -> int:
     print(json.dumps({
         "snapshot_date": snapshot.isoformat(), "season_id": season,
         "award_candidate_rows_upserted": award_writes,
+        "stale_award_candidate_rows_removed": stale_award_rows_removed,
         "team_tournament_candidate_rows_upserted": team_writes,
         "model_version": MODEL_VERSION,
         "interpretation": "candidate scores are relative ranking indices, not probabilities",

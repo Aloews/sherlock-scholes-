@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, score_population)
+from award_candidates_build import (OVERALL_SPECS, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -160,6 +161,42 @@ class CandidateRankingTests(unittest.TestCase):
             50.0,
         )
 
+
+    @patch("award_candidates_build.requests.delete")
+    def test_stale_award_rows_are_removed_only_for_the_current_snapshot(self, delete):
+        response = Mock()
+        response.json.return_value = [{"card_id": "stale-1"}, {"card_id": "stale-2"}]
+        delete.return_value = response
+
+        removed = remove_stale_award_snapshot_rows(
+            "https://project.supabase.co/", "service-key", date(2026, 10, 27)
+        )
+
+        self.assertEqual(removed, 2)
+        args, kwargs = delete.call_args
+        self.assertEqual(
+            args[0],
+            "https://project.supabase.co/rest/v1/award_candidate_snapshot",
+        )
+        self.assertEqual(
+            kwargs["params"],
+            {
+                "snapshot_date": "eq.2026-10-27",
+                "model_version": "neq.candidate-rank-v2",
+            },
+        )
+        self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
+        response.raise_for_status.assert_called_once_with()
+
+    @patch("award_candidates_build.requests.delete")
+    def test_stale_award_cleanup_propagates_database_errors(self, delete):
+        response = Mock()
+        response.raise_for_status.side_effect = RuntimeError("database unavailable")
+        delete.return_value = response
+        with self.assertRaisesRegex(RuntimeError, "database unavailable"):
+            remove_stale_award_snapshot_rows(
+                "https://project.supabase.co", "service-key", date(2026, 10, 27)
+            )
 
 if __name__ == "__main__":
     unittest.main()
