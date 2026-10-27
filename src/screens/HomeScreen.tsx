@@ -286,6 +286,7 @@ export function HomeScreen() {
         {view === 'alias' && (
           <HomeAliasActions
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
+            onSmartDecks={() => { hapticImpact('light'); setView('smart_decks'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
             onBack={() => { hapticImpact('light'); setView('home'); }}
