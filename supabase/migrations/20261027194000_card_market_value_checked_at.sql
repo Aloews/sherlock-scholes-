@@ -6,7 +6,7 @@ ALTER TABLE public.cards
   ADD COLUMN IF NOT EXISTS market_value_checked_at timestamptz;
 
 COMMENT ON COLUMN public.cards.market_value_checked_at IS
-  'Last time the Transfermarkt valuation profile was checked. Separate from market_value_at, which is the source valuation date.';
+  'Last time the pipeline attempted to fetch the Transfermarkt valuation profile. Separate from market_value_at, which is the source valuation date.';
 
 CREATE OR REPLACE FUNCTION public.apply_card_market_values(p_rows jsonb)
 RETURNS TABLE(written integer, seen integer)
