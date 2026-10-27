@@ -286,9 +286,11 @@ def main():
         if args.only:
             latest_by_tm = {}
         else:
-            newest_season_rows = all_rows(
+            newest_season_rows = sb(
                 "player_season_stat",
-                {"select": "season_id", "order": "season_id.desc", "limit": 1})
+                params={"select": "season_id", "order": "season_id.desc", "limit": 1})
+            if newest_season_rows is None:
+                raise SystemExit("could not determine active season for stats refresh")
             current_season = (
                 int(newest_season_rows[0]["season_id"])
                 if newest_season_rows and newest_season_rows[0].get("season_id") is not None
