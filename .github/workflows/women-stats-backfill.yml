@@ -21,10 +21,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: women-stats-backfill
-  cancel-in-progress: false
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -50,6 +46,9 @@ jobs:
           python -m py_compile docs/award_candidates_build.py
 
   backfill:
+    concurrency:
+      group: women-stats-backfill
+      cancel-in-progress: false
     needs: [validate]
     if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
