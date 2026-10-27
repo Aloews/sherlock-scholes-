@@ -1734,7 +1734,8 @@ t = 1.95, а читалось это как «кто играет — почти
 Production read-only snapshot from Supabase:
 - Active player cards: **25,637**; non-empty `photo_url`: **15,872**; missing: **9,765**.
 - Queue: `photo_qid` — 4,293 pending / 6 running / 144 failed / 242 no_data / 1,000 succeeded; `photo_tm` — 10,649 pending / 14 no_data / 188 succeeded; `photo_sw` — 39 no_data / 709 succeeded; `season_stats` — 5,874 pending.
-- `photo_qid` tasks have fresh updates on 27 Oct, while `photo_tm` pending tasks were last updated on 26 Oct. The queue is processing work, but photo coverage remains incomplete and no increase is claimed from these status counts alone.
+- `photo_qid` tasks have fresh updates on 27 Oct, while `photo_tm` pending tasks were last updated on 26 Oct. The queue is processing work, but photo coverage remains incomplete: a repeated live count stayed at 15,872 / 25,637 with photos (9,765 missing). No photo increase is claimed from queue status alone. Recent `photo_qid` jobs marked `succeeded` often point to already-present Soccer Wiki URLs, so those successes are not evidence of newly filled cards.
+- Recent `last_error` samples show the repeated failure sequence explicitly: Wikidata reports no P18/article image; all tested regional Transfermarkt hosts return `transient_empty_response`/`no_response`; Soccer Wiki has no identity-verified linked photo. This means source isolation removes duplicate requests, but the still-missing cards need reliable source-specific retry/fallback and a measurable before/after count.
 
 **Confirmed worker inefficiency:** `docs/profile_backfill_queue.py` ran Wikidata, Transfermarkt and Soccer Wiki fallback from both `photo_qid` and `photo_tm` tasks. The enqueue RPC can create both tasks for the same missing card. If all sources return no photo, the same card/source sequence is repeated by the next task; this burns HTTP requests and makes source-level retries harder to interpret.
 
