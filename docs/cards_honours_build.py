@@ -175,7 +175,7 @@ def fetch_cards(url: str, key: str, limit: int, offset: int = 0,
 
 def _legacy_title_identity(value: str) -> tuple[str, int]:
     """Canonical key/count for the legacy string list still read by old clients."""
-    count_match = COUNT.search(value)
+    count_match = COUNT.search(value) or re.search(r"\s*(?:×|x)\s*(\d+)\s*$", value, re.I)
     count = int(count_match.group(1)) if count_match else 1
     title = value[:count_match.start()].strip() if count_match else value.strip()
     title = re.sub(r"\s*[×x]\s*\d+\s*$", "", title, flags=re.I).strip()
