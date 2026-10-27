@@ -52,6 +52,33 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertFalse(rows[0]["evidence"]["score_is_probability"])
         self.assertEqual(rows[0]["evidence"]["ranking_scope"], "tracked competition competition-1")
 
+    def test_overall_award_percentiles_use_the_broad_sample_qualified_population(self):
+        population = [
+            {
+                "card_id": "elite-low-output", "name": "Elite Low Output", "category": "player", "active": True,
+                "apps": 8, "starts": 7, "minutes": 600, "goals": 2, "assists": 1,
+                "goals_per_90": 0.3, "assists_per_90": 0.15, "weighted_goals": 1.8,
+                "weighted_assists": 0.9, "sw_rating": 91, "market_value_eur": 30000000,
+                "fame": 80, "age": 25, "stats_rows": 2, "competition_strength": 0.9,
+                "starts_known": True, "minutes_known": True, "last_fetched": None,
+            },
+            {
+                "card_id": "high-output-low-prior", "name": "High Output Low Prior", "category": "player", "active": True,
+                "apps": 10, "starts": 9, "minutes": 700, "goals": 10, "assists": 0,
+                "goals_per_90": 1.29, "assists_per_90": 0.0, "weighted_goals": 6.5,
+                "weighted_assists": 0.0, "sw_rating": 78, "market_value_eur": 2000000,
+                "fame": 10, "age": 24, "stats_rows": 4, "competition_strength": 0.65,
+                "starts_known": True, "minutes_known": True, "last_fetched": None,
+            },
+        ]
+        rows = score_population(
+            population, {"goals": 1.0}, "ballon_dor", 2026, date(2026, 10, 27)
+        )
+        self.assertEqual([row["card_id"] for row in rows], ["elite-low-output"])
+        self.assertEqual(rows[0]["score_components"]["goals"], 0.0)
+        self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
+        self.assertEqual(rows[0]["evidence"]["score_reference_population_size"], 2)
+
     def test_award_candidates_exclude_tiny_samples_and_shrink_early_form(self):
         population = [
             {"card_id": "tiny", "name": "Tiny Sample", "category": "player", "active": True,
