@@ -244,6 +244,14 @@ def fetch_api_market_value(tm_id, tries=3):
                 )
             return value, valued_at, valid_profile
         except urllib.error.HTTPError as error:
+            if error.code == 404:
+                if diagnostics:
+                    print(
+                        f"Transfermarkt TMAPI has no record for id={tm_id}; "
+                        "recording a checked no-value result without replacing the stored price",
+                        flush=True,
+                    )
+                return None, None, True
             if diagnostics:
                 print(f"Transfermarkt TMAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
             if not should_retry_market_value_status(error.code):
@@ -427,9 +435,11 @@ def market_value_refresh_key(card):
         value = int(card.get("market_value_eur") or 0)
     except (TypeError, ValueError):
         value = 0
+    has_source_value = value > 0 and bool(valued_at)
     return (
         checked_at or "0000-00-00T00:00:00",
-        valued_at or "0000-00-00",
+        0 if has_source_value else 1,
+        valued_at if has_source_value else "9999-99-99",
         -value,
         str(card.get("name") or "").casefold(),
     )
