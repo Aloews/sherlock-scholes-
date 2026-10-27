@@ -146,6 +146,10 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
                 </p>
+                <details className="mt-1 text-[11px] text-brand-muted">
+                  <summary className="cursor-pointer">Факторы оценки</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(row.score_components, null, 2)}</pre>
+                </details>
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-semibold">{Number(row.candidate_score).toFixed(1)}</p>
@@ -174,6 +178,10 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
                 </p>
+                <details className="mt-1 text-[11px] text-brand-muted">
+                  <summary className="cursor-pointer">Факторы оценки</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(row.evidence, null, 2)}</pre>
+                </details>
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-semibold">{Number(row.candidate_score).toFixed(1)}</p>
