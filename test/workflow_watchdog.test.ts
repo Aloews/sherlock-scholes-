@@ -70,11 +70,13 @@ describe('сторож у прогонов по расписанию', () => {
         'daily-enrich.yml',
         'forecast.yml',
         'multimarket-odds-collection.yml',
+        'personal-award-candidates.yml',
         'player-honours.yml',
         'player-profile-data.yml',
         'player-stats.yml',
         'profile-backfill-queue.yml',
         'soccerwiki-roster-refresh.yml',
+        'team-tournament-forecast.yml',
       ]);
   });
 
