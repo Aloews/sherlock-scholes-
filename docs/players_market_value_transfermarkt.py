@@ -558,6 +558,9 @@ def main():
     print("ответ источника непригоден: %d" % invalid_profiles)
     print("-" * 78)
     if invalid_profiles >= max(5, int(len(players) * 0.1)):
+        if apply and pending:
+            written += write_batch(url, write_key, pending)
+            pending = []
         raise SystemExit(
             "TMAPI returned unusable market-value responses for %d/%d profiles; "
             "those cards were not marked checked and will be retried"
