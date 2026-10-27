@@ -189,7 +189,7 @@ def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -
         if match_day < window_start or match_day > snapshot:
             continue
         item = totals.setdefault(str(card_id), {
-            "card_id": str(card_id), "apps": 0, "starts": 0, "minutes": 0,
+            "card_id": str(card_id), "apps": 0, "starts": 0, "minutes": 0, "starts_known": False,
             "goals": 0, "assists": 0, "weighted_goals": 0.0,
             "weighted_assists": 0.0, "strength_minutes": 0.0,
             "minutes_for_strength": 0, "competition_strength": 0.5,
@@ -258,7 +258,9 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "competition_id": competition_id, "ranking_scope": (
                 f"tracked competition {competition_id}" if award_key == "golden_boot"
                 else "all tracked competitions in selected season"),
-            "age": p.get("age"), "apps": p["apps"], "starts": p["starts"], "minutes": p["minutes"],
+            "age": p.get("age"), "apps": p["apps"],
+            "starts": p["starts"] if p.get("starts_known") is not False else None,
+            "minutes": p["minutes"] if p.get("minutes_known") is not False and p["minutes"] > 0 else None,
             "goals": p["goals"], "assists": p["assists"],
             "goals_per_90": round(p["goals_per_90"], 4) if p.get("goals_per_90") is not None else None,
             "assists_per_90": round(p["assists_per_90"], 4) if p.get("assists_per_90") is not None else None,
@@ -272,6 +274,7 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "source_stats_rows": p["stats_rows"],
             "stats_window_start": p.get("stats_window_start"),
             "stats_source": p.get("stats_source", "player_season_stat"),
+            "starts_available": p.get("starts_known") is not False,
             "minutes_available": p.get("minutes_known") is not False and p["minutes"] > 0,
             "score_is_probability": False,
         }
