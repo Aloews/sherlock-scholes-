@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from women_stats_backfill import needs_backfill
 
 
-class Women'sStatsBackfillTests(unittest.TestCase):
+class WomensStatsBackfillTests(unittest.TestCase):
     def test_empty_data_requires_backfill(self):
         self.assertTrue(needs_backfill([]))
 
