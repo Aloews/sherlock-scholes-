@@ -90,6 +90,8 @@ create table if not exists public.team_tournament_outcome (
 
 create index if not exists award_candidate_latest_idx
   on public.award_candidate_snapshot (award_key, season_id, snapshot_date desc, candidate_rank);
+create index if not exists award_candidate_competition_latest_idx
+  on public.award_candidate_snapshot (award_key, competition_id, season_id, snapshot_date desc, candidate_rank);
 create index if not exists team_tournament_candidate_latest_idx
   on public.team_tournament_candidate_snapshot (tournament, snapshot_date desc, candidate_rank);
 create index if not exists award_outcome_year_idx on public.award_outcome (award_year, award_key, result);
@@ -148,8 +150,9 @@ begin
    )
      and (p_award_key is null or s.award_key = p_award_key)
      and (p_competition_id is null or s.competition_id = p_competition_id)
+     and (s.award_key <> 'golden_boot' or p_competition_id is not null or s.candidate_rank <= 5)
    order by s.award_key, s.competition_id, s.candidate_rank
-   limit 1000;
+   limit 2500;
 end;
 $$;
 
