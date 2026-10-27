@@ -56,12 +56,14 @@ describe('CareerStats', () => {
     expect(screen.getByText('Current season')).toBeTruthy();
     expect(screen.getByText(`${seasonStartYear}/${String(seasonStartYear + 1).slice(-2)}`)).toBeTruthy();
     expect(screen.getByText('Premier League')).toBeTruthy();
+    const goalsText = (_content: string, element: Element | null) =>
+      element?.tagName === 'SPAN' && (element.textContent ?? '').replace(/\s+/g, ' ').trim() === '4 goals';
     const seasonSection = screen.getByText('Current season').parentElement?.parentElement;
     expect(seasonSection).toBeTruthy();
-    expect(within(seasonSection as HTMLElement).getByText(/4 goals/)).toBeTruthy();
+    expect(within(seasonSection as HTMLElement).getByText(goalsText)).toBeTruthy();
     const chelseaRow = screen.getByText('Chelsea').closest('li');
     expect(chelseaRow).toBeTruthy();
-    expect(within(chelseaRow as HTMLElement).getByText(/4 goals/)).toBeTruthy();
+    expect(within(chelseaRow as HTMLElement).getByText(goalsText)).toBeTruthy();
     expect(screen.getByText('24')).toBeTruthy();
     expect(screen.queryByText('null')).toBeNull();
     expect(screen.queryByText('null–null')).toBeNull();
