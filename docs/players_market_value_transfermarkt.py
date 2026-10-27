@@ -75,7 +75,7 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
-TMAPI = "https://tmapi.transfermarkt.technology"
+TMAPI = os.environ.get("TM_MARKET_VALUE_API_BASE", "https://transfermarkt-api.fly.dev").rstrip("/")
 # ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
 # «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
 # запроса, а не вежливость, и она противоречит тому, ради чего источник
@@ -86,7 +86,7 @@ TMAPI = "https://tmapi.transfermarkt.technology"
 # той, что блокировали, а не хитрее.
 TM_UA = ("SherlockScholesBot/1.0 "
          "(+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)")
-TM_PAUSE = 1.5
+TM_PAUSE = 1.6
 UNITS = {"bn": 1_000_000_000, "m": 1_000_000, "k": 1_000}
 
 # Сумма на профиле размечена так:
