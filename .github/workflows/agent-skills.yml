@@ -1,0 +1,38 @@
+name: Agent skills
+
+on:
+  pull_request:
+    paths:
+      - '.agents/skills/**'
+      - 'docs/AI_AGENT_TOOLS.md'
+      - 'docs/FREE_AI_AGENT_SETUP.md'
+      - 'scripts/check-agent-skills.mjs'
+      - '.github/workflows/agent-skills.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.agents/skills/**'
+      - 'docs/AI_AGENT_TOOLS.md'
+      - 'docs/FREE_AI_AGENT_SETUP.md'
+      - 'scripts/check-agent-skills.mjs'
+      - '.github/workflows/agent-skills.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-skills-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate repository agent skills
+        run: node scripts/check-agent-skills.mjs
