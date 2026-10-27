@@ -170,6 +170,9 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
+                  {row.score_components.sample_reliability != null
+                    ? ' · надёжность выборки ' + Math.round(row.score_components.sample_reliability * 100) + '%'
+                    : ''}
                 </p>
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
