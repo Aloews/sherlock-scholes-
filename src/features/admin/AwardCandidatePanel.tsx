@@ -22,9 +22,9 @@ function metric(evidence: Record<string, unknown>, key: string): string {
 }
 
 const confidenceLabel: Record<PersonalAwardCandidate['confidence'], string> = {
-  high: 'данные: высокая полнота',
-  medium: 'данные: средняя полнота',
-  low: 'данные: низкая полнота',
+  high: 'объём данных: высокий',
+  medium: 'объём данных: средний',
+  low: 'объём данных: низкий',
 };
 
 export function AwardCandidatePanel({ password }: { password: string }) {
