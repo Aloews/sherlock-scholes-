@@ -91,7 +91,7 @@ def build_award_candidates(
             continue
         if award_key == "golden_boy":
             born = parse_date(card.get("born_on"))
-            # 2026 Golden Boy eligibility is under 21 at the end of the award year.
+            # Eligibility is under 21 at the end of the target award year.
             if not born or born < date(award_year - 20, 1, 1):
                 continue
         row = {
@@ -242,7 +242,7 @@ def run() -> int:
     })
     rest = base_url + "/rest/v1"
     today = date.today()
-    year = today.year
+    year = today.year + 1  # Forecast the next award cycle, not the ceremony that has already passed.
     from_date = today - timedelta(days=WINDOW_DAYS)
     cards = get_rows(session, rest + "/cards", {
         "select": "id,name,category,active,born_on",
@@ -281,7 +281,7 @@ def run() -> int:
     upsert_rows(session, rest + "/award_candidate_snapshot", snapshots)
     print(json.dumps({
         "snapshot_date": today.isoformat(),
-        "award_year": year,
+        "target_award_year": year,
         "cards_loaded": len(cards),
         "match_rows_loaded": len(match_rows),
         "players_with_stats": len(stats_by_card),
