@@ -297,6 +297,28 @@ def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -
     return totals
 
 
+def get_player_match_rows(
+    base: str, key: str, card_ids: list[str], season: int, snapshot: date, chunk_size: int = 100
+) -> list[dict]:
+    """Fetch current-season match rows only for the high-value candidate cohort.
+
+    The full match table is large; pulling every player's history just to validate
+    the top-value candidate population is unnecessary and makes the refresh slow.
+    """
+    rows: list[dict] = []
+    ids = [str(card_id) for card_id in card_ids if card_id]
+    for offset in range(0, len(ids), max(1, chunk_size)):
+        chunk = ids[offset:offset + max(1, chunk_size)]
+        rows.extend(get_rows(base, key, "player_match_stats", {
+            "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at,source,disputed",
+            "card_id": "in.(" + ",".join(chunk) + ")",
+            "match_date": f"gte.{date(season, 7, 1).isoformat()}",
+            "source": "in.(espn,sports.ru)", "disputed": "eq.false",
+            "order": "card_id.asc,match_date.asc,tournament.asc,source.asc",
+        }))
+    return [row for row in rows if str(row.get("match_date") or "")[:10] <= snapshot.isoformat()]
+
+
 def canonical_match_competition(tournament: str) -> str:
     """Collapse common English/Russian labels so one match from two feeds counts once."""
     value = str(tournament or "").casefold()
@@ -686,12 +708,8 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
     })
     women_ids = {str(card["id"]) for card in women_cards if card.get("id")}
-    match_rows = get_rows(base, key, "player_match_stats", {
-        "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at,source,disputed",
-        "match_date": f"gte.{date(season, 7, 1).isoformat()}",
-        "source": "in.(espn,sports.ru)", "disputed": "eq.false",
-        "order": "card_id.asc,match_date.asc,tournament.asc,source.asc",
-    })
+    match_card_ids = [str(card["id"]) for card in current_value_cards if card.get("id")]
+    match_rows = get_player_match_rows(base, key, match_card_ids, season, snapshot)
     match_totals = aggregate_player_match_stats(match_rows, season, snapshot, women_ids)
     usable_match_ids = {
         card_id for card_id, item in match_totals.items() if item["apps"] >= 3
