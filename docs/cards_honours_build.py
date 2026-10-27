@@ -131,13 +131,16 @@ def parse_honours(wikitext: str) -> list[dict]:
         if not item:
             continue
 
-        count, m = 1, COUNT.search(item)
+        # Strip nested citation templates before splitting on a colon: URLs
+        # inside templates contain colons too and must not become part of a title.
+        item = strip_markup(item)
+        # Everything before the first colon is the honour; after it are years.
+        award_text = item.split(":", 1)[0]
+        count, m = 1, COUNT.search(award_text)
         if m:
             count = int(m.group(1))
-            item = item[:m.start()] + item[m.end():]
-
-        # Everything before the first colon is the honour; after it are years.
-        title = strip_markup(item.split(":", 1)[0])
+            award_text = award_text[:m.start()] + award_text[m.end():]
+        title = strip_markup(award_text)
         # Reject template/citation fragments and generic placeholders rather than
         # polluting a player's trophy list with parser artefacts.
         if len(title) < 3 or re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I):
