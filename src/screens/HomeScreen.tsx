@@ -288,7 +288,6 @@ export function HomeScreen() {
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
-            onSmartDecks={() => { hapticImpact('light'); setView('smart_decks'); }}
             onBack={() => { hapticImpact('light'); setView('home'); }}
           />
         )}
