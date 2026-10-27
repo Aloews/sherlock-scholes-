@@ -167,6 +167,27 @@ def sync_explicit_award_outcomes(base: str, key: str) -> int:
     )
 
 
+def remove_award_snapshot_rows_for_date(
+    base: str, key: str, snapshot: date, season_id: int
+) -> int:
+    """Clear same-day award rows when the current source-coverage gate rejects them."""
+    response = requests.delete(
+        f"{base.rstrip('/')}/rest/v1/award_candidate_snapshot",
+        headers={**api_headers(key), "Prefer": "return=representation"},
+        params={
+            "snapshot_date": f"eq.{snapshot.isoformat()}",
+            "season_id": f"eq.{season_id}",
+        },
+        timeout=TIMEOUT,
+    )
+    response.raise_for_status()
+    try:
+        deleted = response.json()
+    except ValueError:
+        return 0
+    return len(deleted) if isinstance(deleted, list) else 0
+
+
 def remove_stale_award_snapshot_rows(base: str, key: str, snapshot: date) -> int:
     """Remove rows from superseded model versions after the replacement upsert succeeds."""
     response = requests.delete(
@@ -567,14 +588,17 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         current_value_cards, {str(row.get("card_id")) for row in stats if row.get("card_id")}, snapshot
     )
     if coverage["sample_size"] >= 50 and coverage["coverage"] < 0.75:
+        removed = remove_award_snapshot_rows_for_date(base, key, snapshot, season)
         print(
             "WARNING: skipping individual-award snapshot; current-season stats cover "
             f"{coverage['covered']}/{coverage['sample_size']} high-value active players "
             f"({coverage['coverage']:.0%}). Missing examples: "
-            + ", ".join(coverage["missing_names"][:12]),
+            + ", ".join(coverage["missing_names"][:12])
+            + f". Removed {removed} same-day candidate rows to avoid leaving an older "
+              "low-coverage shortlist visible.",
             file=sys.stderr,
         )
-        return season, 0, 0
+        return season, 0, removed
 
     competition_rows = get_rows(base, key, "tm_competition", {
         "select": "id,name,short_name,type_id,updated_at", "order": "id.asc",
