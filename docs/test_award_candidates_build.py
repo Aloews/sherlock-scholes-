@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -253,6 +253,16 @@ class CandidateRankingTests(unittest.TestCase):
         rows = score_population(players, {"goals": .5, "assists": .5},
                                 "golden_boy", 2026, date(2026, 10, 27))
         self.assertEqual([row["card_id"] for row in rows], ["young"])
+
+    def test_match_competition_aliases_do_not_merge_different_premier_leagues(self):
+        self.assertEqual(
+            canonical_match_competition("English Premier League"),
+            canonical_match_competition("Англия. Премьер-лига"),
+        )
+        self.assertNotEqual(
+            canonical_match_competition("English Premier League"),
+            canonical_match_competition("Россия. Премьер-лига"),
+        )
 
     def test_player_match_stats_deduplicate_sources_and_exclude_friendlies(self):
         rows = [
