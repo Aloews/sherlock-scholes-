@@ -3,6 +3,7 @@ declare
   v_backfilled timestamptz;
   v_unchecked timestamptz;
   v_index_exists boolean;
+  v_data_synced_exists boolean;
 begin
   select player_stats_checked_at into v_backfilled
     from public.cards where id='00000000-0000-0000-0000-000000000101';
@@ -22,6 +23,15 @@ begin
   ) into v_index_exists;
   if not v_index_exists then
     raise exception 'stats refresh queue index must exist';
+  end if;
+
+  select exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='cards'
+      and column_name='player_stats_data_synced_at'
+  ) into v_data_synced_exists;
+  if not v_data_synced_exists then
+    raise exception 'verified stats snapshot timestamp must exist separately from attempt timestamp';
   end if;
 
   perform * from public.apply_player_season_stats('101', jsonb_build_array(
