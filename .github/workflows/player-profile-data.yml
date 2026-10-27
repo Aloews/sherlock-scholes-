@@ -76,6 +76,7 @@ jobs:
         run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 132098 --refresh
 
       - name: Collect seasonal player statistics
+        if: ${{ github.event_name != 'push' || contains(github.event.head_commit.modified, 'docs/players_stats_transfermarkt.py') }}
         run: |
           if [ -n "$TM_ID" ]; then
             APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID" --refresh
@@ -102,11 +103,43 @@ jobs:
               "$SUPABASE_URL/rest/v1/player_season_stat" \
               -H "apikey: $SUPABASE_KEY" \
               -H "Authorization: Bearer $SUPABASE_KEY")
-            echo "$rows" | jq .
-            echo "$rows" | jq -e 'length > 0' >/dev/null || {
-              echo "::error::Transfermarkt ID $id has no stored 2026/27 season row after refresh"
+            if echo "$rows" | jq -e 'length > 0' >/dev/null; then
+              echo "Transfermarkt ID $id has a current-season player_season_stat row"
+              echo "$rows" | jq .
+              continue
+            fi
+
+            card=$(curl -fsS --get \
+              --data-urlencode "select=id" \
+              --data-urlencode "transfermarkt_id=eq.$id" \
+              --data-urlencode "active=eq.true" \
+              --data-urlencode "limit=1" \
+              "$SUPABASE_URL/rest/v1/cards" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY")
+            card_id=$(echo "$card" | jq -r '.[0].id // empty')
+            [ -n "$card_id" ] || {
+              echo "::error::No active card mapped to Transfermarkt ID $id"
               exit 1
             }
+            matches=$(curl -fsS --get \
+              --data-urlencode "select=card_id,match_date,tournament,source" \
+              --data-urlencode "card_id=eq.$card_id" \
+              --data-urlencode "match_date=gte.2026-07-01" \
+              --data-urlencode "source=in.(espn,sports.ru)" \
+              --data-urlencode "disputed=eq.false" \
+              --data-urlencode "order=match_date.desc" \
+              --data-urlencode "limit=100" \
+              "$SUPABASE_URL/rest/v1/player_match_stats" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY")
+            competitive=$(echo "$matches" | jq '[.[] | select((((.tournament // "") | test("friendly|pre.?season|exhibition|товарищеск|контрольн"; "i")) | not))]')
+            echo "$competitive" | jq .
+            echo "$competitive" | jq -e 'length > 0' >/dev/null || {
+              echo "::error::Transfermarkt ID $id has neither current-season stats nor competitive match-level stats"
+              exit 1
+            }
+            echo "Transfermarkt ID $id verified through current-season match-level stats"
           done
 
       - name: Verify the targeted player's season statistics were stored
