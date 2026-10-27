@@ -34,7 +34,7 @@ begin
     raise exception 'Spotlight scoring must read the canonical football stats view';
   end if;
 
-  v_definition := pg_get_functiondef('public.player_match_days'::regclass);
+  v_definition := pg_get_viewdef('public.player_match_days'::regclass, true);
   if position('football_player_stats' in lower(v_definition)) = 0 then
     raise exception 'Rating/fantasy compatibility view must read the canonical football stats view';
   end if;
