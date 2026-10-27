@@ -23,7 +23,7 @@ on:
       season:
         description: 'Season ID to rank'
         required: false
-        default: '2026'
+        default: ''
 
 permissions:
   contents: read
@@ -72,5 +72,10 @@ jobs:
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
       - name: Refresh award candidate snapshots
         env:
-          SEASON_INPUT: ${{ github.event.inputs.season || '2026' }}
-        run: python docs/award_candidates_build.py --season "$SEASON_INPUT" --limit 50 --apply
+          SEASON_INPUT: ${{ github.event.inputs.season }}
+        run: |
+          if [ -n "$SEASON_INPUT" ]; then
+            python docs/award_candidates_build.py --season "$SEASON_INPUT" --limit 50 --apply
+          else
+            python docs/award_candidates_build.py --limit 50 --apply
+          fi
