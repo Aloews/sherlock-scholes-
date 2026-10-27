@@ -75,7 +75,7 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
-TMAPI = "https://tmapi.transfermarkt.technology"
+TM_VALUE_URL = "https://www.transfermarkt.com/ceapi/marketValueDevelopment/graph/%s"
 # ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
 # «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
 # запроса, а не вежливость, и она противоречит тому, ради чего источник
@@ -141,104 +141,50 @@ def normalize_source_date(value):
     raw = str(value).strip()
     if re.match(r"^\d{4}-\d{2}-\d{2}", raw):
         return raw[:10]
-    match = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", raw)
+    match = re.match(r"^(\d{2})[./](\d{2})[./](\d{4})$", raw)
     if match:
         day, month, year = match.groups()
         return f"{year}-{month}-{day}"
     return None
 
 
-def parse_api_market_value(payload):
-    """Return exact euro value and the source's valuation date from TMAPI JSON."""
-    if not isinstance(payload, dict):
-        return None, None
-    value_present = "marketValue" in payload
-    value = payload.get("marketValue")
-    details = payload.get("marketValueDetails") or {}
-    history = payload.get("marketValueHistory") or []
-    # `updatedAt`/top-level `lastUpdated` can mean "response fetched at",
-    # not "valuation changed at". Never promote a fetch timestamp into a
-    # valuation date; use the explicit valuation date or the dated history.
-    source_date = details.get("lastUpdated") or payload.get("marketValueDate")
-    if isinstance(value, dict):
-        value = value.get("value") or value.get("amount")
-    if isinstance(value, str):
-        match = API_VALUE_RE.match(value)
-        if match:
-            amount = float(match.group(1).replace(",", ""))
-            unit = (match.group(2) or "").lower()
-            euros = int(round(amount * UNITS.get(unit, 1)))
-        else:
-            euros = None
-    elif isinstance(value, (int, float)) and not isinstance(value, bool):
-        euros = int(round(value))
-    else:
-        euros = None
+def parse_ceapi_market_value(payload):
+    """Parse Transfermarkt's native market-value chart response.
 
-    if isinstance(history, list) and history:
-        dated = [
-            row for row in history
-            if isinstance(row, dict) and normalize_source_date(
-                row.get("date") or row.get("updatedAt") or row.get("lastUpdated")
-            )
-        ]
-        if dated:
-            dated.sort(key=lambda row: normalize_source_date(
-                row.get("date") or row.get("updatedAt") or row.get("lastUpdated")
-            ))
-            latest = dated[-1]
-            if source_date is None:
-                source_date = latest.get("date") or latest.get("updatedAt") or latest.get("lastUpdated")
-            if euros is None and not value_present:
-                historic_value = latest.get("marketValue", latest.get("value"))
-                if isinstance(historic_value, dict):
-                    historic_value = historic_value.get("value") or historic_value.get("amount")
-                if isinstance(historic_value, (int, float)) and not isinstance(historic_value, bool):
-                    euros = int(round(historic_value))
-                elif isinstance(historic_value, str):
-                    match = API_VALUE_RE.match(historic_value)
-                    if match:
-                        euros = int(round(
-                            float(match.group(1).replace(",", "")) *
-                            UNITS.get((match.group(2) or "").lower(), 1)
-                        ))
-    at = normalize_source_date(source_date)
-    if euros is None or euros <= 0:
-        return None, at
-    return euros, at
-
-
-def unwrap_api_market_value_payload(payload, expected_id):
-    """Accept both the older {success, data} envelope and the public API model.
-
-    The Transfermarkt API service's current response model is the player object
-    itself ({id, marketValue, marketValueHistory, ...}); older deployments wrap
-    it in {success: true, data: {...}}. Reject errors, malformed objects and a
-    mismatched player ID instead of treating them as a valid missing valuation.
+    The chart endpoint returns {"list": [{"datum_mw": "...", "mw": "..."}]}.
+    An empty list is a valid profile without a published valuation; a malformed
+    top-level response is not evidence that the player has no market value.
     """
-    if not isinstance(payload, dict):
-        return None
-    if "success" in payload:
-        if payload.get("success") is not True:
-            return None
-        data = payload.get("data")
-    elif isinstance(payload.get("data"), dict):
-        # Some deployments wrap the player object in `data` without a success flag.
-        data = payload["data"]
-    else:
-        data = payload
-    if not isinstance(data, dict):
-        return None
-    if str(data.get("id") or "") != str(expected_id):
-        return None
-    if not any(key in data for key in ("marketValue", "marketValueDetails", "marketValueHistory")):
-        return None
-    return data
+    if not isinstance(payload, dict) or not isinstance(payload.get("list"), list):
+        return None, None, False
 
+    dated_values = []
+    for row in payload["list"]:
+        if not isinstance(row, dict):
+            continue
+        valued_at = normalize_source_date(
+            row.get("datum_mw") or row.get("date") or row.get("updatedAt")
+        )
+        raw_value = row.get("mw", row.get("marketValue", row.get("value")))
+        if isinstance(raw_value, dict):
+            raw_value = raw_value.get("value") or raw_value.get("amount")
+        euros = None
+        if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool):
+            euros = int(round(raw_value))
+        elif isinstance(raw_value, str):
+            match = API_VALUE_RE.match(raw_value)
+            if match:
+                euros = int(round(
+                    float(match.group(1).replace(",", "")) *
+                    UNITS.get((match.group(2) or "").lower(), 1)
+                ))
+        if valued_at and euros and euros > 0:
+            dated_values.append((valued_at, euros))
 
-def should_retry_market_value_status(status_code: int) -> bool:
-    """Retry transient transport/server errors, but not upstream-blocked 503s."""
-    return status_code in (429, 500, 502, 504)
+    if not dated_values:
+        return None, None, True
+    valued_at, euros = max(dated_values, key=lambda item: item[0])
+    return euros, valued_at, True
 
 
 def fetch_api_market_value(tm_id, tries=3):
@@ -248,7 +194,7 @@ def fetch_api_market_value(tm_id, tries=3):
     GitHub-hosted runners. That is not an empty valuation; it is an unusable
     response and must not advance market_value_checked_at.
     """
-    url = f"{TMAPI}/players/{urllib.parse.quote(str(tm_id))}/market_value"
+    url = TM_VALUE_URL % urllib.parse.quote(str(tm_id))
     diagnostics = os.environ.get("TMAPI_DIAGNOSTICS") == "1"
     # Diagnostic probes should fail quickly and make one request per priority
     # player. The public service maps upstream blocks to 503; retries only add
@@ -285,11 +231,14 @@ def fetch_api_market_value(tm_id, tries=3):
                         flush=True,
                     )
                 return None, None, False
-            value, at = parse_api_market_value(data)
-            return value, at, True
+            value, at, valid_profile = parse_ceapi_market_value(payload)
+            if not valid_profile and os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+                top_keys = sorted(payload.keys())[:16] if isinstance(payload, dict) else []
+                print(f"Transfermarkt CEAPI response shape rejected: top_keys={top_keys}", flush=True)
+            return value, at, valid_profile
         except urllib.error.HTTPError as error:
             if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
-                print(f"TMAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
+                print(f"Transfermarkt CEAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
             if error.code == 404:
                 return None, None, False
             if not should_retry_market_value_status(error.code):
@@ -297,7 +246,7 @@ def fetch_api_market_value(tm_id, tries=3):
         except Exception as error:  # noqa: BLE001
             if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
                 print(
-                    f"TMAPI market-value request failed for id={tm_id}: "
+                    f"Transfermarkt CEAPI market-value request failed for id={tm_id}: "
                     f"{type(error).__name__}",
                     flush=True,
                 )
