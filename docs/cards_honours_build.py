@@ -41,7 +41,6 @@ The scheduled workflow uses the service-role key from GitHub Secrets. Never put
 that key in the repository or client app.
 """
 import argparse
-import io
 import json
 import os
 import re
@@ -84,9 +83,13 @@ def fetch_wikitext(title: str, session: requests.Session) -> str | None:
         "action": "parse", "page": title, "prop": "wikitext",
         "format": "json", "formatversion": "2", "redirects": "1",
     }, timeout=30)
-    if r.status_code != 200:
+    if r.status_code == 404:
         return None
-    return r.json().get("parse", {}).get("wikitext")
+    r.raise_for_status()
+    payload = r.json()
+    if payload.get("error"):
+        return None
+    return payload.get("parse", {}).get("wikitext")
 
 
 # ru-wiki does not use one heading for this. Real examples from the deck:
