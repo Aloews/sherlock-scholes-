@@ -8,14 +8,14 @@ on:
       - 'docs/award_candidates_build.py'
       - 'football_scraper/award_analytics.py'
       - 'football_scraper/test_award_analytics.py'
-      - 'supabase/migrations/*award_candidate_snapshot.sql'
+      - 'supabase/migrations/*award_candidate*.sql'
   pull_request:
     paths:
       - '.github/workflows/award-candidate-analytics.yml'
       - 'docs/award_candidates_build.py'
       - 'football_scraper/award_analytics.py'
       - 'football_scraper/test_award_analytics.py'
-      - 'supabase/migrations/*award_candidate_snapshot.sql'
+      - 'supabase/migrations/*award_candidate*.sql'
   schedule:
     - cron: '40 6 * * *'
   workflow_dispatch:
