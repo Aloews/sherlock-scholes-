@@ -65,7 +65,11 @@ jobs:
 
       - name: Prioritize reported missing player profile
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
-        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590
+        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590 --refresh
+
+      - name: Refresh Martin Odegaard seasonal statistics
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 316264 --refresh
 
       - name: Collect seasonal player statistics
         run: |
@@ -79,6 +83,24 @@ jobs:
             if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
             APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --refresh --limit "$limit"
           fi
+
+      - name: Verify Martin Odegaard has current-season statistics
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '')
+        run: |
+          rows=$(curl -fsS --get \
+            --data-urlencode "select=tm_player_id,season_id,fetched_at" \
+            --data-urlencode "tm_player_id=eq.316264" \
+            --data-urlencode "season_id=eq.2026" \
+            --data-urlencode "order=fetched_at.desc" \
+            --data-urlencode "limit=1" \
+            "$SUPABASE_URL/rest/v1/player_season_stat" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "$rows" | jq .
+          echo "$rows" | jq -e 'length > 0' >/dev/null || {
+            echo "::error::Transfermarkt ID 316264 has no stored 2026/27 season row after refresh"
+            exit 1
+          }
 
       - name: Verify the targeted player's season statistics were stored
         if: always()
