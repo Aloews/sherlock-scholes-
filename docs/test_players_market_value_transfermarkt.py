@@ -4,6 +4,7 @@ import os
 import urllib.error
 import sys
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +12,7 @@ from players_market_value_transfermarkt import (  # noqa: E402
     fetch_api_market_value,
     invalid_profile_threshold,
     market_value_refresh_key,
+    select_market_value_refresh_candidates,
     parse_tmapi_market_value,
     should_write_market_value,
     should_retry_market_value_status,
@@ -52,6 +54,47 @@ class MarketValueRefreshTests(unittest.TestCase):
             ["Never checked", "Never valued", "Old check, old high",
              "Old check, old low", "Old check, newer value", "Recently checked"],
         )
+
+    def test_refresh_keeps_daily_high_value_cohort_and_rotates_the_rest(self):
+        now = datetime(2026, 10, 28, 12, tzinfo=timezone.utc)
+        cards = [
+            {"id": "elite", "name": "Elite", "transfermarkt_id": "1",
+             "market_value_eur": 100_000_000, "market_value_at": "2026-10-01",
+             "market_value_checked_at": "2026-10-27T10:00:00+00:00"},
+            {"id": "star", "name": "Star", "transfermarkt_id": "2",
+             "market_value_eur": 80_000_000, "market_value_at": "2026-09-01",
+             "market_value_checked_at": "2026-10-27T10:00:00+00:00"},
+            {"id": "recent", "name": "Recently checked star", "transfermarkt_id": "3",
+             "market_value_eur": 70_000_000, "market_value_at": "2026-10-01",
+             "market_value_checked_at": "2026-10-28T11:00:00+00:00"},
+            {"id": "old-low", "name": "Old low", "transfermarkt_id": "4",
+             "market_value_eur": 10_000_000, "market_value_at": "2025-01-01",
+             "market_value_checked_at": "2026-09-01T00:00:00+00:00"},
+            {"id": "unvalued", "name": "Unvalued", "transfermarkt_id": "5",
+             "market_value_eur": None, "market_value_at": None,
+             "market_value_checked_at": None},
+        ]
+        selected = select_market_value_refresh_candidates(
+            cards, limit=4, priority_limit=2, now=now
+        )
+        self.assertEqual(
+            [card["id"] for card in selected],
+            ["elite", "star", "unvalued", "old-low"],
+        )
+        # A high-value card checked an hour ago is not repeatedly prioritized.
+        self.assertNotIn("recent", [card["id"] for card in selected])
+
+    def test_priority_refresh_handles_zero_limit_and_recent_timestamp_formats(self):
+        now = datetime(2026, 10, 28, 12, tzinfo=timezone.utc)
+        self.assertEqual(select_market_value_refresh_candidates([], 0, now=now), [])
+        recent = {"id": "recent", "market_value_eur": 50_000_000,
+                  "market_value_checked_at": "2026-10-28T11:00:00Z"}
+        stale = {"id": "stale", "market_value_eur": 60_000_000,
+                 "market_value_checked_at": "2026-10-27T10:00:00+00:00"}
+        selected = select_market_value_refresh_candidates(
+            [recent, stale], limit=1, priority_limit=1, now=now
+        )
+        self.assertEqual(selected, [stale])
 
     @patch("players_market_value_transfermarkt.urllib.request.urlopen")
     def test_404_marks_source_checked_without_replacing_price(self, urlopen):
