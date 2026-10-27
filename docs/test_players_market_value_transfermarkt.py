@@ -9,6 +9,7 @@ from players_market_value_transfermarkt import (  # noqa: E402
     parse_api_market_value,
     should_write_market_value,
     unwrap_api_market_value_payload,
+    should_retry_market_value_status,
 )
 
 
@@ -58,6 +59,14 @@ class MarketValueRefreshTests(unittest.TestCase):
         self.assertEqual(unwrap_api_market_value_payload({"data": direct}, "316264"), direct)
         self.assertIsNone(unwrap_api_market_value_payload({"success": False}, "316264"))
         self.assertIsNone(unwrap_api_market_value_payload({**direct, "id": "132098"}, "316264"))
+
+    def test_upstream_blocked_status_is_not_retried(self):
+        self.assertTrue(should_retry_market_value_status(429))
+        self.assertTrue(should_retry_market_value_status(500))
+        self.assertTrue(should_retry_market_value_status(502))
+        self.assertTrue(should_retry_market_value_status(504))
+        self.assertFalse(should_retry_market_value_status(503))
+        self.assertFalse(should_retry_market_value_status(404))
 
     def test_fetch_timestamp_is_not_used_as_valuation_date(self):
         value, valued_at = parse_api_market_value({
