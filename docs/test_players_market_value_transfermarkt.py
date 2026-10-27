@@ -28,6 +28,8 @@ class MarketValueRefreshTests(unittest.TestCase):
     def test_unknown_valuation_date_is_never_written(self):
         self.assertTrue(should_write_market_value(65_000_000, "2026-06-03"))
         self.assertFalse(should_write_market_value(65_000_000, None))
+        self.assertFalse(should_write_market_value(65_000_000, "not-a-date"))
+        self.assertFalse(should_write_market_value(65_000_000, "2999-01-01"))
         self.assertFalse(should_write_market_value(None, "2026-06-03"))
         self.assertFalse(should_write_market_value(0, "2026-06-03"))
 
