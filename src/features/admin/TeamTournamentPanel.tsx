@@ -17,9 +17,9 @@ function signed(value: number | null): string {
 }
 
 const confidenceLabel: Record<TeamTournamentCandidate['confidence'], string> = {
-  high: 'высокая',
-  medium: 'средняя',
-  low: 'низкая',
+  high: 'объём данных: высокий',
+  medium: 'объём данных: средний',
+  low: 'объём данных: низкий',
 };
 
 export function TeamTournamentPanel({ password }: { password: string }) {
