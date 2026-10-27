@@ -256,7 +256,7 @@ def get_json(url):
                 return json.loads(raw)
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return {"success": True, "data": {"performance": []}}
+                return {"success": True, "data": {"performance": []}, "_source_not_found": True}
             if e.code not in (429, 500, 502, 503, 504):
                 return None
         except Exception:
@@ -417,19 +417,22 @@ def main():
             else:
                 clubs_seen.update(r["club_id"] for r in rows)
                 comps_seen.update(r["competition_id"] for r in rows)
-                if apply_:
-                    res = sb("rpc/apply_player_season_stats", method="POST",
-                             body={"p_tm_id": tm, "p_rows": rows})
-                    # Отказ записи — не «нет статистики»: считаем отдельно,
-                    # иначе повторный прогон пропустит несохранённого игрока.
-                    if res is None:
-                        refused += 1
-                        write_ok = False
-                    else:
-                        write_ok = True
-                        written += (res[0].get("written", 0) if res else 0)
+
+            # The match-level endpoint is a complete history snapshot. Replace
+            # the player's rows so obsolete aggregate-as-season records disappear.
+            # A definitive 404 is different: preserve existing stats for an ID
+            # that the upstream no longer resolves.
+            if apply_ and not payload.get("_source_not_found"):
+                res = sb("rpc/apply_player_season_stats", method="POST",
+                         body={"p_tm_id": tm, "p_rows": rows})
+                if res is None:
+                    refused += 1
+                    write_ok = False
                 else:
-                    written += len(rows)
+                    write_ok = True
+                    written += (res[0].get("written", 0) if res else 0)
+            elif not apply_:
+                written += len(rows)
 
         # A valid source response is an attempt even when it contains no season
         # rows (for example, a retired player or a definitive 404). Failed
