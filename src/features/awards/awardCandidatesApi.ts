@@ -17,12 +17,20 @@ export interface AwardCandidate {
   candidate_rank: number;
   confidence: 'low' | 'medium' | 'high';
   data_coverage: number;
+  evidence: {
+    apps: number;
+    minutes: number;
+    goals: number;
+    assists: number;
+    age_at_season_end: number | null;
+    score_is_probability: false;
+  };
 }
 
 export async function fetchAwardCandidates(cardId: string): Promise<LoadState<AwardCandidate[]>> {
   const response = await supabase
     .from('award_candidate_snapshot')
-    .select('award_key,season_id,snapshot_date,candidate_score,candidate_rank,confidence,data_coverage')
+    .select('award_key,season_id,snapshot_date,candidate_score,candidate_rank,confidence,data_coverage,evidence')
     .eq('card_id', cardId)
     .order('snapshot_date', { ascending: false })
     .limit(50);
