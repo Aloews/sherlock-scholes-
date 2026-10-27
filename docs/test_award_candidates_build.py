@@ -94,7 +94,7 @@ class CandidateRankingTests(unittest.TestCase):
             "weighted_goals": 3.2, "weighted_assists": 1.2, "competition_strength": 0.64,
             "goals_per_90": None, "assists_per_90": None, "stats_rows": 10,
             "stats_window_start": "2026-07-01", "stats_source": "espn_player_match_stats",
-            "minutes_known": False, "sw_rating": None, "market_value_eur": None,
+            "starts_known": False, "minutes_known": False, "sw_rating": None, "market_value_eur": None,
             "fame": 50, "age": 28, "last_fetched": "2026-10-26T00:00:00Z",
         }]
         rows = score_population(population, OVERALL_SPECS["ballon_dor_feminin"],
