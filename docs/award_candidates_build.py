@@ -321,6 +321,17 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     for competition, source in by_competition.items():
         comp_population = population_from(source)
         payloads.extend(score_population(comp_population, GOLDEN_BOOT_WEIGHTS, "golden_boot", season, snapshot, competition))
+    if not payloads:
+        raise RuntimeError("No award candidate rows generated; refusing to erase today's previous snapshot")
+    # Replacing the date/season snapshot prevents candidates who fell out of the
+    # new top 50 (or were scored by an older model) from remaining visible.
+    delete_response = requests.delete(
+        f"{base.rstrip('/')}/rest/v1/award_candidate_snapshot",
+        headers=api_headers(key),
+        params={"snapshot_date": f"eq.{snapshot.isoformat()}", "season_id": f"eq.{season}"},
+        timeout=TIMEOUT,
+    )
+    delete_response.raise_for_status()
     written = upsert_rows(base, key, "award_candidate_snapshot", payloads,
                           "award_key,season_id,snapshot_date,card_id,competition_id")
     return season, written
