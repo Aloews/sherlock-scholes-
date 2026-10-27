@@ -196,9 +196,13 @@ jobs:
       # Дозой, а не всем скопом: у шага общий с фотографиями бюджет Wikimedia,
       # а у Transfermarkt — своя вежливая пауза. Кто уже с ценой, того шаг
       # пропускает, поэтому за несколько ночей состав закрывается целиком.
-      - name: Player market value from Transfermarkt
+      - name: Refresh oldest player market values from Transfermarkt
         if: always()
-        run: APPLY=1 python docs/players_market_value_transfermarkt.py --limit 400
+        # The previous job only filled NULL values and sorted by name, so
+        # existing valuations never changed and the same alphabetical slice
+        # kept winning the 400-player cap. Refresh source-dated values oldest
+        # first; 800/day rotates the catalogue without bursts against TM.
+        run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --limit 800
 
       # ИСТОРИЯ ТРАНСФЕРОВ — ДВА ШАГА, И ВТОРОЙ ВАЖНЕЕ ПЕРВОГО.
       #
