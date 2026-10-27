@@ -36,6 +36,7 @@
 """
 import argparse
 import gzip
+from datetime import datetime, timezone
 import json
 import os
 import sys
@@ -109,14 +110,20 @@ def latest_stat_fetch_by_tm(rows, season_id=None):
 
 
 def refresh_priority_key(card, latest_by_tm):
-    """Refresh never/least recently fetched players first; value breaks ties."""
+    """Refresh never/least recently attempted players first.
+
+    A valid source response with no season rows is still an attempt. Without a
+    card-level attempt timestamp, a repeated 404/empty profile would stay first
+    forever and starve the rest of the rolling catalogue.
+    """
     tm_id = str(card.get("transfermarkt_id") or "")
     fetched_at = latest_by_tm.get(tm_id, "")
+    checked_at = str(card.get("player_stats_checked_at") or "")
     try:
         value = int(card.get("market_value_eur") or 0)
     except (TypeError, ValueError):
         value = 0
-    return (fetched_at, -value, str(card.get("id") or ""))
+    return (checked_at, fetched_at, -value, str(card.get("id") or ""))
 
 
 def parse_seasons(payload):
@@ -265,7 +272,7 @@ def main():
 
     if args.only:
         cards = sb("cards", params={
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
+            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on,player_stats_checked_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "eq." + args.only,
             "order": "id.asc", "limit": 1}) or []
@@ -343,7 +350,7 @@ def main():
     # игроков идёт часами и уже дважды обрывался молча; справочник, записанный
     # последней строкой, при обрыве не записывается вовсе — и вся собранная
     # статистика остаётся с кодами «A1» и «2446» вместо названий.
-    written = empty = lost = refused = 0
+    written = empty = lost = refused = check_refused = 0
     clubs_seen, comps_seen = set(), set()
     known_clubs = {r["id"] for r in all_rows("tm_club", {"select": "id", "order": "id"})}
     known_comps = {r["id"] for r in all_rows("tm_competition", {"select": "id", "order": "id"})}
@@ -372,6 +379,8 @@ def main():
         tm = card["transfermarkt_id"]
         payload = get_json("%s/player/%s/performance-competition"
                            % (API, urllib.parse.quote(tm)))
+        source_ok = payload is not None
+        write_ok = not apply_
         if payload is None:
             lost += 1
         else:
@@ -389,9 +398,22 @@ def main():
                     if res is None:
                         refused += 1
                     else:
+                        write_ok = True
                         written += (res[0].get("written", 0) if res else 0)
                 else:
                     written += len(rows)
+
+        # A valid source response is an attempt even when it contains no season
+        # rows (for example, a retired player or a definitive 404). Failed
+        # network responses and failed stats writes must remain eligible to retry.
+        if apply_ and source_ok and write_ok:
+            check_result = sb(
+                "cards", method="PATCH",
+                body={"player_stats_checked_at": datetime.now(timezone.utc).isoformat()},
+                params={"id": "eq." + str(card["id"])},
+            )
+            if check_result is None:
+                check_refused += 1
         if i % 25 == 0:
             print("  %d/%d, строк %d, пусто %d, потеряно %d, отказов %d"
                   % (i, len(cards), written, empty, lost, refused), flush=True)
@@ -404,10 +426,14 @@ def main():
     print("-" * 70)
     print("Строк статистики : %d" % written)
     print("Без матчей       : %d" % empty)
+    print("Отметка попытки обновления записана: %d" % max(0, len(cards) - lost - refused - check_refused), flush=True)
     if lost:
         print("⚠️ ИГРОКОВ ПОТЕРЯНО: %d — их пустота НИЧЕГО не значит, повторить" % lost)
     if refused:
         print("⚠️ ЗАПИСЬ ОТКЛОНЕНА У %d — причина напечатана выше, повторить" % refused)
+    if check_refused:
+        print("⚠️ НЕ УДАЛОСЬ ЗАПИСАТЬ ВРЕМЯ ПОПЫТКИ У %d — повторить" % check_refused)
+        raise SystemExit(1)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
 
