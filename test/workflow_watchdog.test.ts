@@ -72,6 +72,7 @@ describe('сторож у прогонов по расписанию', () => {
         'forecast.yml',
         'multimarket-odds-collection.yml',
         'player-honours.yml',
+        'player-market-value-refresh.yml',
         'player-profile-data.yml',
         'player-stats.yml',
         'profile-backfill-queue.yml',
