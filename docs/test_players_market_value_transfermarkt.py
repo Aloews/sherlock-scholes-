@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 import unittest
@@ -6,6 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_market_value_transfermarkt import (  # noqa: E402
+    fetch_api_market_value,
     invalid_profile_threshold,
     market_value_refresh_key,
     parse_ceapi_market_value,
@@ -47,6 +49,30 @@ class MarketValueRefreshTests(unittest.TestCase):
             ["Never checked", "Old check, old high", "Old check, old low",
              "Old check, newer value", "Recently checked"],
         )
+
+    @patch("players_market_value_transfermarkt.urllib.request.urlopen")
+    def test_fetch_uses_native_transfermarkt_chart_endpoint(self, urlopen):
+        response = urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps({
+            "list": [
+                {"datum_mw": "22.07.2026", "mw": "€70.00m"},
+            ],
+        }).encode()
+        response.headers.get.return_value = None
+        with patch.dict(os.environ, {
+            "TMAPI_DIAGNOSTICS": "1",
+            "TMAPI_DIAGNOSTIC_FAST": "1",
+        }):
+            self.assertEqual(
+                fetch_api_market_value("316264"),
+                (70_000_000, "2026-07-22", True),
+            )
+        request = urlopen.call_args.args[0]
+        self.assertEqual(
+            request.full_url,
+            "https://www.transfermarkt.com/ceapi/marketValueDevelopment/graph/316264",
+        )
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 15)
 
     def test_ceapi_history_uses_latest_dated_source_value(self):
         value, valued_at, valid = parse_ceapi_market_value({
