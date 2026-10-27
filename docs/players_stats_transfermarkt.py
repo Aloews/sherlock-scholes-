@@ -43,7 +43,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 # ⚠️ СВОЙ КАТАЛОГ В ПУТЬ — ЯВНО. При запуске `python3 docs/x.py` он там и так
 # оказывается, а вот тесты грузят файл ПО ПУТИ (spec_from_file_location), и
@@ -124,6 +124,53 @@ def refresh_priority_key(card, latest_by_tm):
     except (TypeError, ValueError):
         value = 0
     return (checked_at, fetched_at, -value, str(card.get("id") or ""))
+
+
+def _fresh_high_value_player(card, today):
+    """Match the award candidate's high-value current-player cohort."""
+    if card.get("category") != "player":
+        return False
+    try:
+        value = int(card.get("market_value_eur") or 0)
+        valued_at = date.fromisoformat(str(card.get("market_value_at") or "")[:10])
+    except (TypeError, ValueError):
+        return False
+    if value < 20_000_000 or not 0 <= (today - valued_at).days <= 180:
+        return False
+    born = card.get("born_on")
+    if born:
+        try:
+            birth_date = date.fromisoformat(str(born)[:10])
+            age = today.year - birth_date.year - (
+                (birth_date.month, birth_date.day) > (today.month, today.day)
+            )
+            if age < 16 or age > 40:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def select_refresh_candidates(cards, latest_by_tm, limit, priority_limit=100, today=None):
+    """Refresh the current high-value cohort daily, then rotate the full catalogue."""
+    today = today or datetime.now(timezone.utc).date()
+    queue = sorted(cards, key=lambda card: refresh_priority_key(card, latest_by_tm))
+    if priority_limit <= 0 or limit <= 0:
+        return queue[:limit] if limit > 0 else queue
+
+    priority = [card for card in cards if _fresh_high_value_player(card, today)]
+    priority.sort(key=lambda card: (
+        -_i(card.get("market_value_eur")),
+        -_i(card.get("fame")),
+        str(card.get("id") or ""),
+    ))
+    priority = priority[:priority_limit]
+    priority_ids = {str(card.get("id") or "") for card in priority}
+    remainder = [
+        card for card in queue
+        if str(card.get("id") or "") not in priority_ids
+    ]
+    return priority[:limit] + remainder[:max(0, limit - len(priority))]
 
 
 def valid_season_payload(payload):
@@ -294,6 +341,8 @@ def main():
     ap.add_argument("--include-unvalued", action="store_true",
                     help="включить игроков без рыночной оценки")
     ap.add_argument("--only", default="", help="один id на Transfermarkt, для проверки")
+    ap.add_argument("--priority-limit", type=int, default=100,
+                    help="ежедневный лимит топ-игроков по актуальной рыночной стоимости")
     args = ap.parse_args()
     if args.only and not args.only.isdigit():
         raise SystemExit("--only должен быть числовым Transfermarkt ID")
@@ -303,13 +352,13 @@ def main():
 
     if args.only:
         cards = sb("cards", params={
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on,player_stats_checked_at",
+            "select": "id,name_en,category,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_checked_at,player_stats_data_synced_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "eq." + args.only,
             "order": "id.asc", "limit": 1}) or []
     else:
         query = {
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
+            "select": "id,name_en,category,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_checked_at,player_stats_data_synced_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "market_value_eur.desc.nullslast,id.asc",
@@ -346,6 +395,12 @@ def main():
             latest_by_tm = latest_stat_fetch_by_tm(
                 stored_stats, season_id=current_season)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
+        if not args.only:
+            cards = select_refresh_candidates(
+                cards, latest_by_tm, args.limit or len(cards),
+                priority_limit=max(0, args.priority_limit),
+                today=datetime.now(timezone.utc).date(),
+            )
     else:
         done = {r["tm_player_id"] for r in all_rows(
             "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
@@ -442,9 +497,13 @@ def main():
         # rows (for example, a retired player or a definitive 404). Failed
         # network responses and failed stats writes must remain eligible to retry.
         if apply_ and source_ok and write_ok:
+            checked_at = datetime.now(timezone.utc).isoformat()
+            checkpoint = {"player_stats_checked_at": checked_at}
+            if not payload.get("_source_not_found"):
+                checkpoint["player_stats_data_synced_at"] = checked_at
             check_result = sb(
                 "cards", method="PATCH",
-                body={"player_stats_checked_at": datetime.now(timezone.utc).isoformat()},
+                body=checkpoint,
                 params={"id": "eq." + str(card["id"])},
             )
             if check_result is None:
