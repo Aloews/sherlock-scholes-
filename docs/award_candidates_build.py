@@ -249,6 +249,12 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             )
         ]
 
+    # Keep a broad reference population for metric percentiles. If percentiles
+    # are calculated only among already-elite candidates, a modest season can look
+    # world-leading simply because most of the population was filtered out first.
+    # The final candidate list remains award-gated; only its scoring baseline is broad.
+    reference_population = list(eligible)
+
     # Ballon d'Or and The Best are not generic season-stat leaderboards. Require
     # an elite-level prior (market value, fame, or rating) or an exceptional
     # season in a strong competition. Golden Boy uses a lower prospect threshold.
@@ -282,7 +288,9 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     percentiles: dict[str, dict[str, float]] = {}
     for metric in weights:
         # Unknown market values/ratings stay neutral instead of being treated as zero.
-        measured = [p for p in eligible if p.get(metric) is not None]
+        # Reference percentiles include all sample-qualified players in this award's
+        # population, not only the small elite-prior subset that survives the final gate.
+        measured = [p for p in reference_population if p.get(metric) is not None]
         ranks = percentile([number(p, metric) for p in measured])
         percentiles[metric] = {p["card_id"]: 50.0 for p in eligible}
         percentiles[metric].update({p["card_id"]: rank for p, rank in zip(measured, ranks)})
@@ -309,6 +317,11 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "name": p["name"], "target_award_year": target_year, "source_season_id": season,
             "candidate_pool_size": len(eligible),
             "candidate_pool_scope": "eligible active cards after sample-size and award-specific quality gates",
+            "score_reference_population_size": len(reference_population),
+            "score_reference_population_scope": (
+                "active cards in the award category passing minimum appearance/minute gates, "
+                "before the elite-award prior gate"
+            ),
             "sample_reliability": round(sample_reliability, 3),
             "elite_prior": {
                 "market_value_eur": p.get("market_value_eur"),
