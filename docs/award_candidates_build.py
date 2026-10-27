@@ -58,12 +58,17 @@ def write_snapshots(session: requests.Session, base: str, key: str, rows: list[d
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
     # Small batches keep REST payloads well below gateway limits.
-    for start in range(0, len(rows), 100):
+    normalized_rows = []
+    for row in rows:
+        normalized = dict(row)
+        normalized["candidate_rank"] = normalized.pop("rank")
+        normalized_rows.append(normalized)
+    for start in range(0, len(normalized_rows), 100):
         response = session.post(
             url,
             params={"on_conflict": "award_key,season_id,snapshot_date,card_id"},
             headers=headers,
-            json=rows[start:start + 100],
+            json=normalized_rows[start:start + 100],
             timeout=60,
         )
         response.raise_for_status()
