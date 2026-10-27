@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_market_value_transfermarkt import (  # noqa: E402
+    invalid_profile_threshold,
     market_value_refresh_key,
     parse_api_market_value,
     should_write_market_value,
@@ -15,6 +16,12 @@ from players_market_value_transfermarkt import (  # noqa: E402
 
 
 class MarketValueRefreshTests(unittest.TestCase):
+    def test_invalid_source_threshold_fails_early_without_penalizing_small_targeted_runs(self):
+        self.assertEqual(invalid_profile_threshold(1), 5)
+        self.assertEqual(invalid_profile_threshold(20), 5)
+        self.assertEqual(invalid_profile_threshold(80), 8)
+        self.assertEqual(invalid_profile_threshold(800), 80)
+
     def test_refresh_prioritizes_oldest_attempt_and_source_date_breaks_ties(self):
         cards = [
             {"name": "Recently checked", "market_value_eur": 90_000_000,
