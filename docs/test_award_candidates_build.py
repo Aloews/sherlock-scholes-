@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -157,6 +157,21 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual([row["card_id"] for row in rows], ["real-scorer"])
         self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
                          "golden_boot: at least 3 appearances and 1 goal in this competition")
+
+    def test_player_age_rejects_conflicting_birth_year_sources(self):
+        self.assertIsNone(player_age_from_card(
+            {"born_on": "2008-11-05", "facts": {"birth_year": 1986}},
+            2026, date(2026, 10, 27),
+        ))
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2005-01-01", "facts": {"birth_year": 2005}},
+            2026, date(2026, 10, 27),
+        ), 21)
+        self.assertEqual(player_age_from_card(
+            {"facts": {"birth_year": 2006}},
+            2026, date(2026, 10, 27),
+        ), 20)
+        self.assertIsNone(player_age_from_card({}, 2026, date(2026, 10, 27)))
 
     def test_golden_boy_keeps_credible_early_season_prospects(self):
         population = [
