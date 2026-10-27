@@ -1,11 +1,34 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
+
+    def test_current_season_coverage_counts_only_fresh_high_value_active_players(self):
+        snapshot = date(2026, 10, 27)
+        cards = [
+            {"id": "a", "name": "A", "active": True, "category": "player",
+             "transfermarkt_id": "1", "market_value_eur": 100000000,
+             "market_value_at": "2026-07-22", "born_on": "2000-01-01", "fame": 95},
+            {"id": "b", "name": "B", "active": True, "category": "player",
+             "transfermarkt_id": "2", "market_value_eur": 80000000,
+             "market_value_at": "2026-06-01", "born_on": "1998-01-01", "fame": 90},
+            {"id": "stale", "name": "Stale value", "active": True, "category": "player",
+             "transfermarkt_id": "3", "market_value_eur": 70000000,
+             "market_value_at": "2025-01-01", "born_on": "2000-01-01", "fame": 90},
+            {"id": "retired", "name": "Retired", "active": True, "category": "player",
+             "transfermarkt_id": "4", "market_value_eur": 60000000,
+             "market_value_at": "2026-07-22", "born_on": "1970-01-01", "fame": 100},
+        ]
+        coverage = current_player_stats_coverage(cards, {"a"}, snapshot, limit=100)
+        self.assertEqual(coverage["sample_size"], 2)
+        self.assertEqual(coverage["covered"], 1)
+        self.assertEqual(coverage["missing"], 1)
+        self.assertEqual(coverage["missing_names"], ["B"])
+        self.assertEqual(coverage["coverage"], 0.5)
 
     def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
         cards = [
