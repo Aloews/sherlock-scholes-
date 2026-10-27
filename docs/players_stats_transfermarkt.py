@@ -484,12 +484,17 @@ def main():
             if apply_ and not payload.get("_source_not_found"):
                 res = sb("rpc/apply_player_season_stats", method="POST",
                          body={"p_tm_id": tm, "p_rows": rows})
-                if res is None:
+                linked = (
+                    _i(res[0].get("linked"))
+                    if isinstance(res, list) and res and isinstance(res[0], dict)
+                    else 0
+                )
+                if res is None or linked != 1:
                     refused += 1
                     write_ok = False
                 else:
                     write_ok = True
-                    written += (res[0].get("written", 0) if res else 0)
+                    written += _i(res[0].get("written"))
             elif not apply_:
                 written += len(rows)
 
