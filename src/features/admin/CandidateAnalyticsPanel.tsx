@@ -204,6 +204,12 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                   Игр {String(row.evidence.matches_played ?? '—')} · очки/игру {String(row.evidence.points_per_game ?? '—')} · разница/игру {String(row.evidence.goal_difference_per_game ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
+                  Последний результат: {String(row.evidence.latest_match_date ?? '—')}
+                  {row.evidence.days_since_last_match != null
+                    ? ' · ' + String(row.evidence.days_since_last_match) + ' дн. назад'
+                    : ''}
+                </p>
+                <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
                 </p>
                 <details className="mt-1 text-[11px] text-brand-muted">
