@@ -5,6 +5,7 @@ create table if not exists public.award_candidate_snapshot (
   season_id smallint not null,
   snapshot_date date not null,
   card_id uuid not null references public.cards(id) on delete cascade,
+  competition_id text not null default '*',
   candidate_score numeric not null check (candidate_score between 0 and 100),
   candidate_rank smallint not null check (candidate_rank between 1 and 50),
   confidence text not null check (confidence in ('low','medium','high')),
@@ -14,8 +15,16 @@ create table if not exists public.award_candidate_snapshot (
   source_fetched_at timestamptz,
   model_version text not null,
   created_at timestamptz not null default now(),
-  primary key (award_key, season_id, snapshot_date, card_id)
+  primary key (award_key, season_id, snapshot_date, card_id, competition_id)
 );
+
+-- Production initially had season-wide snapshots only. Extend the natural key so
+-- Golden Boot can be ranked separately per tracked competition without collisions.
+alter table public.award_candidate_snapshot add column if not exists competition_id text not null default '*';
+alter table public.award_candidate_snapshot drop constraint if exists award_candidate_snapshot_pkey;
+alter table public.award_candidate_snapshot
+  add constraint award_candidate_snapshot_pkey
+  primary key (award_key, season_id, snapshot_date, card_id, competition_id);
 
 create table if not exists public.award_candidate_evaluation (
   award_key text not null,
@@ -93,15 +102,18 @@ alter table public.award_outcome enable row level security;
 alter table public.team_tournament_candidate_snapshot enable row level security;
 alter table public.team_tournament_outcome enable row level security;
 
+drop function if exists public.admin_list_award_candidates(text, text);
 create or replace function public.admin_list_award_candidates(
   p_password text,
-  p_award_key text default null
+  p_award_key text default null,
+  p_competition_id text default null
 )
 returns table (
   award_key text,
   season_id smallint,
   snapshot_date date,
   card_id uuid,
+  competition_id text,
   card_name text,
   photo_url text,
   category text,
@@ -124,7 +136,7 @@ begin
   end if;
 
   return query
-  select s.award_key, s.season_id, s.snapshot_date, s.card_id, c.name, c.photo_url,
+  select s.award_key, s.season_id, s.snapshot_date, s.card_id, s.competition_id, c.name, c.photo_url,
          c.category, c.position_ru, s.candidate_score, s.candidate_rank, s.confidence,
          s.data_coverage, s.score_components, s.evidence, s.model_version
     from public.award_candidate_snapshot s
@@ -135,11 +147,12 @@ begin
       where latest.award_key = s.award_key and latest.season_id = s.season_id
    )
      and (p_award_key is null or s.award_key = p_award_key)
-   order by s.award_key, s.candidate_rank
+     and (p_competition_id is null or s.competition_id = p_competition_id)
+   order by s.award_key, s.competition_id, s.candidate_rank
    limit 1000;
 end;
 $$;
 
-revoke all on function public.admin_list_award_candidates(text, text) from public;
-grant execute on function public.admin_list_award_candidates(text, text) to anon, authenticated;
+revoke all on function public.admin_list_award_candidates(text, text, text) from public;
+grant execute on function public.admin_list_award_candidates(text, text, text) to anon, authenticated;
 notify pgrst, 'reload schema';
