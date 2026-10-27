@@ -71,7 +71,13 @@ COUNT = re.compile(r"\(\s*'{0,3}(\d+)'{0,3}\s*\)")
 
 def strip_markup(s: str) -> str:
     s = LINK.sub(r"\1", s)
-    s = re.sub(r"\{\{[^{}]*\}\}", "", s)
+    # MediaWiki citation templates can contain nested templates. Remove innermost
+    # templates repeatedly instead of leaving fragments such as "{{cite web |url=...".
+    for _ in range(10):
+        cleaned = re.sub(r"\{\{[^{}]*\}\}", "", s)
+        if cleaned == s:
+            break
+        s = cleaned
     s = re.sub(r"<ref[^>]*>.*?</ref>", "", s, flags=re.S)
     s = re.sub(r"<[^>]+>", "", s)
     s = s.replace("'''", "").replace("''", "")
@@ -132,7 +138,14 @@ def parse_honours(wikitext: str) -> list[dict]:
 
         # Everything before the first colon is the honour; after it are years.
         title = strip_markup(item.split(":", 1)[0])
-        if len(title) < 3:
+        # Reject template/citation fragments and generic placeholders rather than
+        # polluting a player's trophy list with parser artefacts.
+        if len(title) < 3 or re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I):
+            continue
+        placeholder = title.lower().strip(" «»„“”\".,:;!?")
+        if placeholder in {"награда", "награды", "награда «»"}:
+            continue
+        if not re.search(r"[A-Za-zА-Яа-яЁё0-9]", title):
             continue
         out.append({"title": title, "count": count, "kind": kind or "team"})
 
@@ -222,7 +235,16 @@ def legacy_title_label(honour: dict) -> str:
 def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]:
     """Merge the new source into legacy facts.titles without losing curated entries."""
     source_titles = existing if isinstance(existing, list) else []
-    titles = [item for item in source_titles if isinstance(item, str) and item.strip()]
+    titles = []
+    for item in source_titles:
+        if not isinstance(item, str) or not item.strip():
+            continue
+        if re.search(r"\{\{|\}\}|\|url\s*=|https?://", item, re.I):
+            continue
+        placeholder = item.strip().lower().strip(" «»„“”\".,:;!?")
+        if placeholder in {"награда", "награды", "награда «»"}:
+            continue
+        titles.append(item)
     for honour in honours:
         label = legacy_title_label(honour)
         key, count = _legacy_title_identity(label)
