@@ -358,7 +358,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at",
             "card_id": "in.(" + ",".join(women_ids) + ")",
             "match_date": f"gte.{date(season, 1, 1).isoformat()}",
-            "disputed": "eq.false",
+            "source": "eq.espn", "disputed": "eq.false",
             "order": "match_date.asc",
         })
         women_totals = aggregate_women_match_stats(match_rows, season, snapshot)
