@@ -163,7 +163,7 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
         self.assertEqual(
             rows[0]["evidence"]["candidate_pool_scope"],
-            "active cards with stats available in tracked sources",
+            "eligible active cards with tracked season statistics; minimum appearance/minute gates applied",
         )
         self.assertEqual(rows[0]["confidence"], "low")
 
@@ -333,7 +333,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.candidate-rank-v2",
+                "model_version": "neq.candidate-rank-v3",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
