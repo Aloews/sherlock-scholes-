@@ -8,6 +8,7 @@ from players_market_value_transfermarkt import (  # noqa: E402
     market_value_refresh_key,
     parse_api_market_value,
     should_write_market_value,
+    unwrap_api_market_value_payload,
 )
 
 
@@ -43,6 +44,28 @@ class MarketValueRefreshTests(unittest.TestCase):
             ],
         })
         self.assertEqual((value, valued_at), (65000000, "2026-06-03"))
+
+    def test_public_api_direct_response_and_legacy_envelope_are_both_supported(self):
+        direct = {
+            "id": "316264",
+            "marketValue": 65000000,
+            "marketValueDetails": {"lastUpdated": "2026-06-03"},
+            "updatedAt": "2026-10-27T18:00:00",
+        }
+        wrapped = {"success": True, "data": direct}
+        self.assertEqual(unwrap_api_market_value_payload(direct, "316264"), direct)
+        self.assertEqual(unwrap_api_market_value_payload(wrapped, "316264"), direct)
+        self.assertIsNone(unwrap_api_market_value_payload({"success": False}, "316264"))
+        self.assertIsNone(unwrap_api_market_value_payload({**direct, "id": "132098"}, "316264"))
+
+    def test_fetch_timestamp_is_not_used_as_valuation_date(self):
+        value, valued_at = parse_api_market_value({
+            "id": "316264",
+            "marketValue": 65000000,
+            "updatedAt": "2026-10-27T18:00:00",
+        })
+        self.assertEqual(value, 65000000)
+        self.assertIsNone(valued_at)
 
     def test_json_api_market_value_parses_display_string_and_history_fallback(self):
         value, valued_at = parse_api_market_value({
