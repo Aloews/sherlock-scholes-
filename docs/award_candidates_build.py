@@ -77,9 +77,7 @@ def percentile(values: list[float]) -> list[float]:
         return [50.0]
     result = []
     for value in values:
-        left = next((i for i, item in enumerate(ordered) if item >= value), n - 1)
-        right = n - 1 - next((i for i, item in enumerate(reversed(ordered)) if item >= value), n - 1)
-        # The bounds above are awkward for duplicates; calculate the exact tie interval.
+        # Exact tie interval gives equal scores to equal values.
         first = next(i for i, item in enumerate(ordered) if item == value)
         last = n - 1 - next(i for i, item in enumerate(reversed(ordered)) if item == value)
         result.append(100.0 * ((first + last) / 2) / (n - 1))
@@ -185,9 +183,10 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             continue
         percentiles: dict[str, dict[str, float]] = {}
         for metric in weights:
-            values = [number(p, metric) for p in eligible]
-            ranks = percentile(values)
-            percentiles[metric] = {p["card_id"]: rank for p, rank in zip(eligible, ranks)}
+            measured = [p for p in eligible if metric != "sw_rating" or p.get("sw_rating") is not None]
+            ranks = percentile([number(p, metric) for p in measured])
+            percentiles[metric] = {p["card_id"]: 50.0 for p in eligible}
+            percentiles[metric].update({p["card_id"]: rank for p, rank in zip(measured, ranks)}
         scored = []
         for p in eligible:
             components = {metric: round(percentiles[metric][p["card_id"]], 2) for metric in weights}
@@ -196,8 +195,12 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             confidence = "high" if p["apps"] >= 18 and p["minutes"] >= 1200 else ("medium" if p["apps"] >= 8 and p["minutes"] >= 450 else "low")
             if award_key == "golden_boy" and p.get("age") is None:
                 continue
+            target_year = season if award_key == "golden_boot" else season + 1
             evidence = {
-                "name": p["name"], "age": p.get("age"), "apps": p["apps"], "starts": p["starts"],
+                "name": p["name"], "target_award_year": target_year,
+                "source_season_id": season,
+                "ranking_scope": "all tracked competitions in the selected season",
+                "age": p.get("age"), "apps": p["apps"], "starts": p["starts"],
                 "minutes": p["minutes"], "goals": p["goals"], "assists": p["assists"],
                 "goal_involvements": p["goal_involvements"], "team_win_rate": round(p["team_win_rate"], 4),
                 "sw_rating": p.get("sw_rating"), "market_value_eur": p.get("market_value_eur"),
