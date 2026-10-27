@@ -455,3 +455,204 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.player_career_totals(uuid) from public;
 grant execute on function public.player_career_totals(uuid) to anon, authenticated, service_role;
+
+
+-- Route production analytics through the canonical match-grain view.
+create or replace function public.player_smart_deck_trends(p_limit integer default 100)
+returns table (
+  card_id uuid,
+  name text,
+  name_en text,
+  photo_url text,
+  country text,
+  position_ru text,
+  fame smallint,
+  recent_matches integer,
+  recent_goals integer,
+  recent_assists integer,
+  previous_matches integer,
+  previous_goals integer,
+  previous_assists integer,
+  recent_points integer,
+  previous_points integer,
+  recent_last_match date,
+  stats_collected_at timestamptz
+)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  with per_day as (
+    select distinct on (s.card_id, s.match_date)
+      s.card_id, s.match_date, s.home_team, s.away_team, s.tournament, s.source, s.minutes, s.goals, s.assists, s.fetched_at
+    from public.football_player_stats s
+    where s.grain = 'match'
+      and s.match_date > current_date - 60
+      and s.match_date <= current_date
+      and not coalesce(s.disputed, false)
+    order by s.card_id, s.match_date, (s.minutes is not null) desc, s.source, s.tournament, s.home_team, s.away_team, s.goals desc, s.assists desc
+  ),
+  source_freshness as (
+    select s.card_id, max(s.fetched_at) as stats_collected_at
+    from public.football_player_stats s
+    where s.grain = 'match'
+      and s.match_date > current_date - 60
+      and s.match_date <= current_date
+      and not coalesce(s.disputed, false)
+    group by s.card_id
+  ),
+  aggregates as (
+    select
+      d.card_id,
+      count(*) filter (where d.match_date > current_date - 30)::integer as recent_matches,
+      coalesce(sum(d.goals) filter (where d.match_date > current_date - 30), 0)::integer as recent_goals,
+      coalesce(sum(d.assists) filter (where d.match_date > current_date - 30), 0)::integer as recent_assists,
+      count(*) filter (where d.match_date <= current_date - 30)::integer as previous_matches,
+      coalesce(sum(d.goals) filter (where d.match_date <= current_date - 30), 0)::integer as previous_goals,
+      coalesce(sum(d.assists) filter (where d.match_date <= current_date - 30), 0)::integer as previous_assists,
+      max(d.match_date) filter (where d.match_date > current_date - 30) as recent_last_match
+    from per_day d
+    group by d.card_id
+  )
+  select
+    c.id, c.name, c.name_en, c.photo_url, c.country, c.position_ru, c.fame,
+    a.recent_matches, a.recent_goals, a.recent_assists,
+    a.previous_matches, a.previous_goals, a.previous_assists,
+    (a.recent_goals * 4 + a.recent_assists * 3)::integer,
+    (a.previous_goals * 4 + a.previous_assists * 3)::integer,
+    a.recent_last_match, sf.stats_collected_at
+  from aggregates a
+  join source_freshness sf on sf.card_id = a.card_id
+  join public.cards c on c.id = a.card_id
+  where c.active and c.category = 'player'
+    and a.recent_matches >= 3
+    and a.previous_matches >= 3
+    and (a.recent_goals * 4 + a.recent_assists * 3) >= 12
+    and sf.stats_collected_at >= now() - interval '72 hours'
+    and (
+      ((a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches)
+      - ((a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches)
+    ) >= 1
+    and (
+      (a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches
+    ) >= (
+      (a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches
+    ) * 1.5
+  order by
+    (
+      ((a.recent_goals * 4 + a.recent_assists * 3)::numeric / a.recent_matches)
+      - ((a.previous_goals * 4 + a.previous_assists * 3)::numeric / a.previous_matches)
+    ) desc,
+    (a.recent_goals * 4 + a.recent_assists * 3) desc,
+    c.name
+  limit greatest(1, least(coalesce(p_limit, 100), 1000));
+$$;
+
+revoke all on function public.player_smart_deck_trends(integer) from public;
+grant execute on function public.player_smart_deck_trends(integer) to anon, authenticated, service_role;
+
+revoke all on function public.player_smart_deck_trends(integer) from public;
+grant execute on function public.player_smart_deck_trends(integer) to anon, authenticated, service_role;
+
+create or replace function public.player_spotlight_scored(p_days integer default 365)
+returns table (
+  card_id          uuid,
+  name             text,
+  name_en          text,
+  photo_url        text,
+  club_key         text,
+  league           text,
+  age              integer,
+  band             text,
+  player_position  text,
+  attention        numeric,
+  output           numeric,
+  apps             integer,
+  minutes          integer,
+  goals            integer,
+  assists          integer,
+  market_value_eur bigint,
+  pageviews        integer,
+  peers            integer
+)
+language sql stable security definer set search_path = public
+set statement_timeout to '30s'
+as $$
+  with played as (
+    select s.card_id,
+           count(*)::int as apps,
+           -- ⚠️ МИНУТЫ — ДОБАВКА, А НЕ ОСНОВА. Из 85 684 строк статистики за
+           -- год минуты заполнены в 43 984, то есть у половины их нет. Игровое
+           -- время меряется ЧИСЛОМ МАТЧЕЙ, которое есть всегда; минуты идут на
+           -- экран как уточнение и не участвуют в сравнении.
+           nullif(sum(coalesce(s.minutes, 0)), 0)::int as minutes,
+           sum(coalesce(s.goals, 0))::int   as goals,
+           sum(coalesce(s.assists, 0))::int as assists
+      from public.football_player_stats s
+     where s.grain = 'match'
+       and s.match_date >= current_date - greatest(coalesce(p_days, 365), 30)
+     group by s.card_id
+  ),
+  base as (
+    select c.id, c.name, c.name_en, c.photo_url, c.market_value_eur, c.pageviews,
+           cc.club_key, fc.league,
+           extract(year from age(c.born_on))::int as age,
+           case when extract(year from age(c.born_on)) <= 19 then 'u19'
+                when extract(year from age(c.born_on)) <= 23 then 'u23'
+                when extract(year from age(c.born_on)) <= 28 then 'prime'
+                else 'senior' end as band,
+           -- ⚠️ АМПЛУА ОБЯЗАТЕЛЬНО, И ЭТО НЕ ПРИДИРКА. Без него у вратаря и
+           -- защитника голы структурно равны нулю, и КАЖДЫЙ вратарь попадал в
+           -- список «о нём пишут больше, чем он играет». Так и вышло в первом
+           -- прогоне: Диогу Кошта и Диант Рамай, оба вратари, стояли в первой
+           -- пятёрке. Список, обвиняющий человека за то, что он вратарь, —
+           -- это не измерение.
+           pos.position as player_position,
+           p.apps, p.minutes, p.goals, p.assists
+      from cards c
+      join card_current_club cc on cc.card_id = c.id
+      join football_club fc on fc.club_key = cc.club_key
+      -- ⚠️ INNER JOIN, А НЕ LEFT. Статистика матчей собрана у 9 348 игроков из
+      -- 25 508; у остальных ноль означает «не собрали», а не «не играл». Первая
+      -- версия звала left join — и первые восемь строк оказались игроками с
+      -- нулём минут, среди них Эсекьель Барко, который весь год играет. Это был
+      -- список дыр в нашем сборе, и он называл людей в лицо.
+      join played p on p.card_id = c.id
+      join card_position pos on pos.card_id = c.id
+     where c.active and c.category = 'player'
+       and c.born_on is not null
+       and c.market_value_eur is not null
+       and c.pageviews is not null
+       and fc.league is not null and fc.league <> ''
+  ),
+  -- ⚠️ СРАВНЕНИЕ ТОЛЬКО ВНУТРИ ЛИГИ, ВОЗРАСТА И АМПЛУА. Деньги и внимание
+  -- различаются между лигами на порядки; юниор и ветеран несравнимы по
+  -- игровому времени; вратарь и нападающий — по голам.
+  ranked as (
+    select b.*,
+           count(*) over w as peers,
+           percent_rank() over (partition by b.league, b.band, b.player_position order by b.market_value_eur) as r_value,
+           percent_rank() over (partition by b.league, b.band, b.player_position order by b.pageviews)        as r_views,
+           percent_rank() over (partition by b.league, b.band, b.player_position order by b.apps)             as r_apps,
+           percent_rank() over (partition by b.league, b.band, b.player_position order by (b.goals + b.assists)) as r_ga
+      from base b
+    window w as (partition by b.league, b.band, b.player_position)
+  )
+  select r.id, r.name, r.name_en, r.photo_url, r.club_key, r.league,
+         r.age, r.band, r.player_position,
+         round(((r.r_value + r.r_views) / 2)::numeric, 3),
+         round(((r.r_apps  + r.r_ga)    / 2)::numeric, 3),
+         r.apps, r.minutes, r.goals, r.assists,
+         r.market_value_eur, r.pageviews, r.peers::int
+    from ranked r
+   -- Меньше восьми ровесников того же амплуа в лиге — перцентиль считать
+   -- не из чего.
+   where r.peers >= 8
+$$;
+
+revoke all on function public.player_spotlight_scored(integer) from public;
+grant execute on function public.player_spotlight_scored(integer) to service_role;
+
+revoke all on function public.player_spotlight_scored(integer) from public;
+grant execute on function public.player_spotlight_scored(integer) to service_role;
