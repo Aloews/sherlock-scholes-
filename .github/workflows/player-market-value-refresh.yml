@@ -49,16 +49,26 @@ jobs:
       - name: Test source-date guard and stale-first rotation
         run: python docs/test_players_market_value_transfermarkt.py
 
-      - name: Verify production credentials
+      - name: Verify production credentials and target
         run: |
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+          host="$(python -c 'import os, urllib.parse; print(urllib.parse.urlparse(os.environ["SUPABASE_URL"]).hostname or "")')"
+          [ "$host" = "konoavrduynecxblqfvq.supabase.co" ] || {
+            echo "::error::SUPABASE_URL does not target the configured production project"
+            exit 1
+          }
+
+      - name: Record production write verification cutoff
+        id: refresh_start
+        run: echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Refresh Martin Odegaard's source valuation first
         id: odegaard
         continue-on-error: true
         env:
           TMAPI_DIAGNOSTICS: '1'
+          TMAPI_DIAGNOSTIC_FAST: '1'
         run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --only 316264
 
       - name: Refresh Harry Kane's source valuation first
@@ -66,6 +76,7 @@ jobs:
         continue-on-error: true
         env:
           TMAPI_DIAGNOSTICS: '1'
+          TMAPI_DIAGNOSTIC_FAST: '1'
         run: APPLY=1 python3 docs/players_market_value_transfermarkt.py --from-cards --refresh --only 132098
 
       - name: Require working source before the full batch
@@ -73,6 +84,7 @@ jobs:
         env:
           ODEGAARD_OUTCOME: ${{ steps.odegaard.outcome }}
           KANE_OUTCOME: ${{ steps.kane.outcome }}
+          REFRESH_STARTED_AT: ${{ steps.refresh_start.outputs.started_at }}
         run: |
           echo "Ødegaard source outcome = $ODEGAARD_OUTCOME"
           echo "Kane source outcome = $KANE_OUTCOME"
@@ -85,7 +97,34 @@ jobs:
             exit 1
           }
 
+          verify_written() {
+            tm_id="$1"
+            player="$2"
+            rows="$(curl -fsS --get \
+              --data-urlencode "select=id,market_value_eur,market_value_at,market_value_checked_at" \
+              --data-urlencode "transfermarkt_id=eq.$tm_id" \
+              --data-urlencode "category=in.(player,woman)" \
+              --data-urlencode "active=eq.true" \
+              --data-urlencode "market_value_eur=not.is.null" \
+              --data-urlencode "market_value_at=not.is.null" \
+              --data-urlencode "market_value_checked_at=gte.$REFRESH_STARTED_AT" \
+              --data-urlencode "limit=2" \
+              "$SUPABASE_URL/rest/v1/cards" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY")"
+            echo "$rows" | jq -e 'length >= 1' >/dev/null || {
+              echo "::error::Source lookup passed but $player valuation was not confirmed in production after $REFRESH_STARTED_AT; skipping the batch."
+              exit 1
+            }
+            echo "$player: production write verified"
+          }
+
+          verify_written 316264 "Martin Odegaard"
+          verify_written 132098 "Harry Kane"
+
       - name: Refresh oldest market valuations from Transfermarkt
+        env:
+          TMAPI_DIAGNOSTICS: '1'
         run: |
           limit="${{ inputs.limit || '800' }}"
           case "$limit" in

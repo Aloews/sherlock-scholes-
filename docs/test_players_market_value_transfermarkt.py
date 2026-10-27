@@ -1,19 +1,35 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_market_value_transfermarkt import (  # noqa: E402
+    fetch_api_market_value,
+    invalid_profile_threshold,
     market_value_refresh_key,
-    parse_api_market_value,
+    parse_ceapi_market_value,
     should_write_market_value,
-    unwrap_api_market_value_payload,
     should_retry_market_value_status,
 )
 
 
 class MarketValueRefreshTests(unittest.TestCase):
+    def test_retryable_http_statuses_are_explicit(self):
+        self.assertTrue(should_retry_market_value_status(429))
+        self.assertTrue(should_retry_market_value_status(500))
+        self.assertTrue(should_retry_market_value_status(503))
+        self.assertFalse(should_retry_market_value_status(400))
+        self.assertFalse(should_retry_market_value_status(404))
+
+    def test_invalid_source_threshold_fails_early_without_penalizing_small_targeted_runs(self):
+        self.assertEqual(invalid_profile_threshold(1), 5)
+        self.assertEqual(invalid_profile_threshold(20), 5)
+        self.assertEqual(invalid_profile_threshold(80), 8)
+        self.assertEqual(invalid_profile_threshold(800), 80)
+
     def test_refresh_prioritizes_oldest_attempt_and_source_date_breaks_ties(self):
         cards = [
             {"name": "Recently checked", "market_value_eur": 90_000_000,
@@ -34,70 +50,58 @@ class MarketValueRefreshTests(unittest.TestCase):
              "Old check, newer value", "Recently checked"],
         )
 
-    def test_json_api_market_value_keeps_exact_euros_and_source_date(self):
-        value, valued_at = parse_api_market_value({
-            "id": "316264",
-            "marketValue": 65000000,
-            "marketValueDetails": {"lastUpdated": "2026-06-03"},
-            "marketValueHistory": [
-                {"date": "2025-12-15", "marketValue": 70000000},
-                {"date": "2026-06-03", "marketValue": 65000000},
+    @patch("players_market_value_transfermarkt.urllib.request.urlopen")
+    def test_fetch_uses_native_transfermarkt_chart_endpoint(self, urlopen):
+        response = urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps({
+            "list": [
+                {"datum_mw": "22.07.2026", "mw": "€70.00m"},
             ],
-        })
-        self.assertEqual((value, valued_at), (65000000, "2026-06-03"))
-
-    def test_public_api_direct_response_and_legacy_envelope_are_both_supported(self):
-        direct = {
-            "id": "316264",
-            "marketValue": 65000000,
-            "marketValueDetails": {"lastUpdated": "2026-06-03"},
-            "updatedAt": "2026-10-27T18:00:00",
-        }
-        wrapped = {"success": True, "data": direct}
-        self.assertEqual(unwrap_api_market_value_payload(direct, "316264"), direct)
-        self.assertEqual(unwrap_api_market_value_payload(wrapped, "316264"), direct)
-        self.assertEqual(unwrap_api_market_value_payload({"data": direct}, "316264"), direct)
-        self.assertIsNone(unwrap_api_market_value_payload({"success": False}, "316264"))
-        self.assertIsNone(unwrap_api_market_value_payload({**direct, "id": "132098"}, "316264"))
-
-    def test_upstream_blocked_status_is_not_retried(self):
-        self.assertTrue(should_retry_market_value_status(429))
-        self.assertTrue(should_retry_market_value_status(500))
-        self.assertTrue(should_retry_market_value_status(502))
-        self.assertTrue(should_retry_market_value_status(504))
-        self.assertFalse(should_retry_market_value_status(503))
-        self.assertFalse(should_retry_market_value_status(404))
-
-    def test_fetch_timestamp_is_not_used_as_valuation_date(self):
-        value, valued_at = parse_api_market_value({
-            "id": "316264",
-            "marketValue": 65000000,
-            "updatedAt": "2026-10-27T18:00:00",
-        })
-        self.assertEqual(value, 65000000)
-        self.assertIsNone(valued_at)
-
-    def test_json_api_market_value_parses_display_string_and_history_fallback(self):
-        value, valued_at = parse_api_market_value({
-            "marketValue": "€ 70.00m",
-            "marketValueHistory": [
-                {"date": "2026-07-22", "marketValue": 70000000},
-            ],
-        })
-        self.assertEqual((value, valued_at), (70000000, "2026-07-22"))
-
-    def test_json_api_no_valuation_stays_null_instead_of_becoming_zero(self):
-        self.assertEqual(parse_api_market_value({"marketValue": None}), (None, None))
-
-    def test_explicit_null_current_value_does_not_fall_back_to_old_history(self):
+        }).encode()
+        response.headers.get.return_value = None
+        with patch.dict(os.environ, {
+            "TMAPI_DIAGNOSTICS": "1",
+            "TMAPI_DIAGNOSTIC_FAST": "1",
+        }):
+            self.assertEqual(
+                fetch_api_market_value("316264"),
+                (70_000_000, "2026-07-22", True),
+            )
+        request = urlopen.call_args.args[0]
         self.assertEqual(
-            parse_api_market_value({
-                "marketValue": None,
-                "marketValueHistory": [
-                    {"date": "2026-06-03", "marketValue": 65000000},
-                ],
-            }),
-            (None, "2026-06-03"),
+            request.full_url,
+            "https://www.transfermarkt.com/ceapi/marketValueDevelopment/graph/316264",
+        )
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 15)
+
+    def test_ceapi_history_uses_latest_dated_source_value(self):
+        value, valued_at, valid = parse_ceapi_market_value({
+            "list": [
+                {"datum_mw": "03.06.2026", "mw": "€65.00m"},
+                {"datum_mw": "22.07.2026", "mw": "€70.00m"},
+                {"datum_mw": "15.12.2025", "mw": "€75.00m"},
+            ],
+        })
+        self.assertTrue(valid)
+        self.assertEqual((value, valued_at), (70_000_000, "2026-07-22"))
+
+    def test_ceapi_empty_history_is_a_valid_profile_without_a_published_value(self):
+        self.assertEqual(parse_ceapi_market_value({"list": []}), (None, None, True))
+
+    def test_ceapi_profile_with_undated_value_does_not_fabricate_a_date(self):
+        self.assertEqual(
+            parse_ceapi_market_value({"list": [{"mw": "€65.00m"}]}),
+            (None, None, True),
+        )
+
+    def test_ceapi_rejects_malformed_top_level_payload(self):
+        self.assertEqual(parse_ceapi_market_value({"error": "not found"}), (None, None, False))
+        self.assertEqual(parse_ceapi_market_value([]), (None, None, False))
+
+    def test_ceapi_accepts_numeric_euros_and_slash_dates(self):
+        self.assertEqual(
+            parse_ceapi_market_value({"list": [{"datum_mw": "03/06/2026", "mw": 65_000_000}]}),
+            (65_000_000, "2026-06-03", True),
         )
 
     def test_unknown_valuation_date_is_never_written(self):
