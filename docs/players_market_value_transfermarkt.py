@@ -156,10 +156,10 @@ def parse_api_market_value(payload):
     value = payload.get("marketValue")
     details = payload.get("marketValueDetails") or {}
     history = payload.get("marketValueHistory") or []
-    source_date = (
-        details.get("lastUpdated") or payload.get("marketValueDate")
-        or payload.get("lastUpdated")
-    )
+    # `updatedAt`/top-level `lastUpdated` can mean "response fetched at",
+    # not "valuation changed at". Never promote a fetch timestamp into a
+    # valuation date; use the explicit valuation date or the dated history.
+    source_date = details.get("lastUpdated") or payload.get("marketValueDate")
     if isinstance(value, dict):
         value = value.get("value") or value.get("amount")
     if isinstance(value, str):
@@ -208,6 +208,31 @@ def parse_api_market_value(payload):
     return euros, at
 
 
+def unwrap_api_market_value_payload(payload, expected_id):
+    """Accept both the older {success, data} envelope and the public API model.
+
+    The Transfermarkt API service's current response model is the player object
+    itself ({id, marketValue, marketValueHistory, ...}); older deployments wrap
+    it in {success: true, data: {...}}. Reject errors, malformed objects and a
+    mismatched player ID instead of treating them as a valid missing valuation.
+    """
+    if not isinstance(payload, dict):
+        return None
+    if "success" in payload:
+        if payload.get("success") is not True:
+            return None
+        data = payload.get("data")
+    else:
+        data = payload
+    if not isinstance(data, dict):
+        return None
+    if str(data.get("id") or "") != str(expected_id):
+        return None
+    if not any(key in data for key in ("marketValue", "marketValueDetails", "marketValueHistory")):
+        return None
+    return data
+
+
 def fetch_api_market_value(tm_id, tries=3):
     """Fetch a player valuation from the same public JSON API used for season stats.
 
@@ -228,10 +253,8 @@ def fetch_api_market_value(tm_id, tries=3):
                 if fh.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.decompress(raw)
             payload = json.loads(raw)
-            if not isinstance(payload, dict) or payload.get("success") is not True:
-                return None, None, False
-            data = payload.get("data")
-            if not isinstance(data, dict):
+            data = unwrap_api_market_value_payload(payload, tm_id)
+            if data is None:
                 return None, None, False
             value, at = parse_api_market_value(data)
             return value, at, True
