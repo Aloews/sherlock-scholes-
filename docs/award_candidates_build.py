@@ -239,7 +239,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     for start in range(0, len(ids), 100):
         joined = ",".join(ids[start:start + 100])
         r = requests.get(card_url, headers=api_headers(key), params={
-            "select": "id,name,category,born_on,sw_rating,market_value_eur,position_ru,active",
+            "select": "id,name,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
             "id": f"in.({joined})",
         }, timeout=TIMEOUT)
         r.raise_for_status()
@@ -255,6 +255,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             row = {**stat, **card}
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 row[field] = max(0, stat[field])
+            row["weighted_goals"] = max(0.0, stat.get("weighted_goals", stat["goals"]))
+            row["weighted_assists"] = max(0.0, stat.get("weighted_assists", stat["assists"]))
+            row["competition_strength"] = (
+                stat["strength_minutes"] / stat["minutes_for_strength"]
+                if stat.get("minutes_for_strength", 0) > 0 else 0.5
+            )
+            row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
+            row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
             row["age"] = None
             born = card.get("born_on")
             if born:
@@ -272,16 +280,39 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         raise RuntimeError("No active cards matched current season statistics; refusing empty snapshots")
 
     overall_specs = {
-        "ballon_dor": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "the_best": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "ballon_dor_feminin": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "the_best_female": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "golden_boy": {"goals": .34, "assists": .22, "minutes": .18, "apps": .12, "sw_rating": .14},
+        # Award-specific weights avoid publishing identical rankings for different awards.
+        # Competition-weighted output suppresses raw totals from weaker divisions; SW rating,
+        # market value and fame are separate priors, not substitutes for match performance.
+        "ballon_dor": {
+            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+            "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+            "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+        },
+        "the_best": {
+            "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+            "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+            "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+        },
+        "ballon_dor_feminin": {
+            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+            "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+            "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+        },
+        "the_best_female": {
+            "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+            "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+            "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+        },
+        "golden_boy": {
+            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .10,
+            "assists_per_90": .06, "minutes": .08, "apps": .05, "sw_rating": .16,
+            "market_value_eur": .15, "fame": .03, "competition_strength": .07,
+        },
     }
     payloads = []
     for award_key, weights in overall_specs.items():
         payloads.extend(score_population(population, weights, award_key, season, snapshot))
-    boot_weights = {"goals": .72, "minutes": .10, "apps": .08, "assists": .10}
+    boot_weights = {"goals": .68, "goals_per_90": .12, "assists": .08, "minutes": .07, "apps": .05}
     for competition, source in by_competition.items():
         comp_population = population_from(source)
         payloads.extend(score_population(comp_population, boot_weights, "golden_boot", season, snapshot, competition))
