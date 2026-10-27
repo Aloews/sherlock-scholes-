@@ -218,58 +218,49 @@ def run_collector(job):
         if rows and usable_photo(rows[0].get("photo_url")) and image_reachable(rows[0].get("photo_url")):
             return "Фото найдено: 1\\nКарточка уже содержит доступное фото",0
         return "Фото найдено: 1\\nRead-after-write verification failed",0
-    if task in ("photo_qid", "photo_tm"):
-        outputs = []
-        failures = []
-        qid_output = ""
-        qid_exit = 0
-        tm_attempted = False
-        if job.get("wikidata_qid") or task == "photo_qid":
-            qid_command = [sys.executable, "docs/cards_photo_from_qid.py",
-                           "--only-card-id", str(job["card_id"])]
-            qid_result = subprocess.run(qid_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
-                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
-            qid_output = qid_result.stdout[-12000:]
-            outputs.append("Wikidata attempt:\n" + qid_output)
-            qid_exit = qid_result.returncode
-            if qid_exit == 0 and re.search(r"фото найдено\s*:\s*[1-9]\d*", qid_output.casefold()):
-                return qid_output + "\nИсточник: Wikidata", 0
-            if qid_exit != 0:
-                failures.append(qid_exit)
+    if task == "photo_qid":
+        # One queue item owns one source. Do not repeat Transfermarkt and
+        # Soccer Wiki here: separate photo_tm/photo_sw jobs provide the ordered
+        # fallbacks and keep transient failures independently retryable.
+        command = [sys.executable, "docs/cards_photo_from_qid.py",
+                   "--only-card-id", str(job["card_id"])]
+        result = subprocess.run(command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
+        output = result.stdout[-12000:]
+        if result.returncode == 0 and re.search(r"фото найдено\s*:\s*[1-9]\d*", output.casefold()):
+            return output + "\nИсточник: Wikidata", 0
+        return output, result.returncode
 
-        if task == "photo_tm" or job.get("transfermarkt_id"):
-            tm_attempted = True
-            tm_command = [sys.executable, "docs/cards_photo_transfermarkt.py",
-                          "--only", str(job["transfermarkt_id"])]
-            tm_result = subprocess.run(tm_command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
-                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
-            tm_output = tm_result.stdout[-12000:]
-            outputs.append("Transfermarkt attempt:\n" + tm_output)
-            if tm_result.returncode == 0 and (
-                re.search(r"portraits found\s*:\s*[1-9]\d*", tm_output.casefold())
-                or re.search(r"портретов найдено\s*:\s*[1-9]\d*", tm_output.casefold())
-            ):
-                return tm_output + "\nИсточник: Transfermarkt после Wikidata", 0
-            if tm_result.returncode != 0:
-                failures.append(tm_result.returncode)
+    if task == "photo_tm":
+        # Wikidata is handled by photo_qid. Re-running it for every Transfermarkt
+        # job multiplied source requests and kept the same cards in fallback
+        # loops when a source had no result.
+        command = [sys.executable, "docs/cards_photo_transfermarkt.py",
+                   "--only", str(job["transfermarkt_id"])]
+        result = subprocess.run(command, cwd=ROOT, env=dict(os.environ, APPLY="1"),
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=360)
+        tm_output = result.stdout[-12000:]
+        if result.returncode == 0 and (
+            re.search(r"portraits found\s*:\s*[1-9]\d*", tm_output.casefold())
+            or re.search(r"портретов найдено\s*:\s*[1-9]\d*", tm_output.casefold())
+        ):
+            return tm_output + "\nИсточник: Transfermarkt", 0
 
-        combined = "\n".join(outputs)[-12000:]
-        qid_zero = bool(re.search(r"фото найдено\s*:\s*0(?:\D|$)", qid_output.casefold()))
-        tm_zero = bool(re.search(
-            r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",
-            combined.casefold()
-        ))
         sw_output, sw_exit = run_collector({**job, "task_type": "photo_sw"})
-        outputs.append("Soccer Wiki fallback:\n" + sw_output)
-        if sw_exit != 0:
-            failures.append(sw_exit)
-        combined = "\n".join(outputs)[-12000:]
+        combined = ("Transfermarkt attempt:\n" + tm_output
+                    + "\nSoccer Wiki fallback:\n" + sw_output)[-12000:]
         if ("Источник: Soccer Wiki" in sw_output
                 or "Карточка уже содержит доступное фото" in sw_output):
             return combined, 0
-        if failures:
-            return combined, failures[-1]
-        if (not qid_output or qid_zero) and (tm_zero or not tm_attempted):
+        if result.returncode != 0:
+            return combined, result.returncode
+        if sw_exit != 0:
+            return combined, sw_exit
+        tm_zero = bool(re.search(
+            r"(?:portraits found|портретов найдено)\s*:\s*0(?:\D|$)",
+            tm_output.casefold()
+        ))
+        if tm_zero:
             return combined, 0
         return combined, 1
 
