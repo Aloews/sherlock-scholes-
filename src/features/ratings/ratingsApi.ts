@@ -131,8 +131,8 @@ export async function fetchCollectedTotals(
 export interface ClubCareerRow {
   club_id: string;
   club_name: string;
-  season_from: number;
-  season_to: number;
+  season_from: number | null;
+  season_to: number | null;
   apps: number;
   goals: number;
   assists: number;
