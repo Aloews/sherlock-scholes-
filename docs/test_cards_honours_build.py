@@ -1,6 +1,6 @@
 import unittest
 
-from cards_honours_build import parse_honours
+from cards_honours_build import merge_legacy_titles, parse_honours
 
 
 class ParseHonoursTests(unittest.TestCase):
@@ -55,6 +55,30 @@ class ParseHonoursTests(unittest.TestCase):
     def test_empty_source_does_not_create_honours(self):
         self.assertEqual(parse_honours(""), [])
         self.assertEqual(parse_honours("== Биография ==\nТекст"), [])
+
+    def test_legacy_titles_keep_new_awards_visible_to_deployed_clients(self):
+        merged = merge_legacy_titles(
+            [],
+            [{"title": "Обладатель «Золотого мяча» по версии France Football",
+              "count": 1, "kind": "personal"}],
+        )
+        self.assertEqual(merged, ["Золотой мяч"])
+
+    def test_legacy_award_count_is_updated_without_duplicates(self):
+        merged = merge_legacy_titles(
+            ["Золотой мяч ×2", "Чемпион Германии ×2"],
+            [{"title": "Обладатель «Золотого мяча» по версии France Football",
+              "count": 3, "kind": "personal"}],
+        )
+        self.assertEqual(merged, ["Золотой мяч ×3", "Чемпион Германии ×2"])
+
+    def test_existing_year_label_is_preserved_when_award_count_is_unchanged(self):
+        merged = merge_legacy_titles(
+            ["Золотой мяч 2026"],
+            [{"title": "Обладатель «Золотого мяча» по версии France Football",
+              "count": 1, "kind": "personal"}],
+        )
+        self.assertEqual(merged, ["Золотой мяч 2026"])
 
     def test_non_numeric_parenthetical_is_preserved(self):
         source = """
