@@ -107,6 +107,11 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertIsNone(rows[0]["evidence"]["minutes"])
         self.assertIsNone(rows[0]["evidence"]["starts"])
         self.assertEqual(rows[0]["evidence"]["stats_source"], "espn_player_match_stats")
+        self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
+        self.assertEqual(
+            rows[0]["evidence"]["candidate_pool_scope"],
+            "active cards with stats available in tracked sources",
+        )
         self.assertEqual(rows[0]["confidence"], "low")
 
     def test_team_key_is_stable_and_url_safe(self):
