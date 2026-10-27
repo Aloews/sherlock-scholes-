@@ -286,15 +286,23 @@ def main():
         if args.only:
             latest_by_tm = {}
         else:
-            stored_stats = all_rows(
+            newest_season_rows = all_rows(
                 "player_season_stat",
-                {"select": "tm_player_id,season_id,fetched_at", "order": "tm_player_id"})
-            # The newest season represented in production is the active season.
-            # Rank refresh priority against that season, not any old career row.
-            current_season = max(
-                (int(row.get("season_id") or 0) for row in stored_stats),
-                default=None,
+                {"select": "season_id", "order": "season_id.desc", "limit": 1})
+            current_season = (
+                int(newest_season_rows[0]["season_id"])
+                if newest_season_rows and newest_season_rows[0].get("season_id") is not None
+                else None
             )
+            # Fetch timestamps only for the active season. Reading the full
+            # multi-year table on every refresh wastes requests and time.
+            current_season_query = {
+                "select": "tm_player_id,season_id,fetched_at",
+                "order": "tm_player_id",
+            }
+            if current_season is not None:
+                current_season_query["season_id"] = "eq.%d" % current_season
+            stored_stats = all_rows("player_season_stat", current_season_query)
             latest_by_tm = latest_stat_fetch_by_tm(
                 stored_stats, season_id=current_season)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
