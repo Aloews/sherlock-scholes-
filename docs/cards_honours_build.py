@@ -2,18 +2,19 @@
 """Build real trophies for player cards from the ru-Wikipedia «Достижения»
 section — WITH counts, so a card can say «Чемпион Испании ×9».
 
-WHY THIS EXISTS. The dossier's "Трофеи" list was `facts.titles` +
-`facts.tournaments` concatenated, and only **39 of 2524** active players have
-any `facts.titles` at all. So for 98.5 % of the deck the trophy list was made
-of tournaments a player merely APPEARED at — the app was crediting real
-footballers with honours they never won. Splitting the two (shared/lib/
-honours.ts) made the list honest but empty; this fills it for real.
+WHY THIS EXISTS. The dossier originally mixed trophies won with tournaments
+attended. The current active catalogue has more than 25,000 player cards, and
+the source collector was only generating a SQL preview. It never wrote the
+results to production; the dossier also ignored the structured `facts.honours`
+field. The current sync writes verified data idempotently and the dossier now
+renders it without confusing participation with an award.
 
-WHY WIKIPEDIA AND NOT A STATS API. It is the source the rest of this pipeline
-already uses: free, open-licence, no request budget to buy, no ToS grey area,
-and it carries the one thing paid football APIs charge most for — a curated,
-human-checked honours list per player. One request per player (~2500 total)
-fits the existing nightly Wikimedia budget of 5000.
+WHY WIKIPEDIA AND NOT A STATS API. It is the source this project already uses
+for curated honours. It is free and carries a human-edited list of trophies and
+individual awards. Since the catalogue exceeds 25,000 players, the scheduled
+workflow refreshes the 800 highest-fame cards daily plus an 800-card rolling
+window. The high-profile cards are checked every day; the wider catalogue
+rotates over roughly a month.
 
 WHAT IT PARSES. ru-wiki wikitext, section «== Достижения ==», its «Командные»
 and «Личные» subsections. Lines look like
