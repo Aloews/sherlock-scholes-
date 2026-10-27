@@ -369,8 +369,6 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
             )
             component_map[team["team_key"]] = {key: round(value, 2) for key, value in components.items()}
         ordered = sorted(teams, key=lambda team: (-raw_scores[team["team_key"]], -team["played"], team["team_key"]))
-        max_score = max(raw_scores.values())
-        min_score = min(raw_scores.values())
         comp_format = competition_format(tournament)
         for rank, team in enumerate(ordered[:100], 1):
             key = team["team_key"]
@@ -393,6 +391,7 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                     "goal_difference_per_game": round((team["gf"] - team["ga"]) / team["played"], 4),
                     "recent_form_last_5": round(sum(recent) / len(recent), 4) if recent else None,
                     "club_elo": ratings.get(key, {}).get("elo"),
+                    "coverage_basis": "share of maximum matches observed for a team in this competition snapshot; not source completeness",
                     "score_is_probability": False,
                     "ranking_method": "current competition results + recent form + cross-competition club Elo",
                     "season_start_basis": "inferred from the latest >75-day gap between recorded results",
