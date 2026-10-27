@@ -11,18 +11,24 @@ from players_market_value_transfermarkt import (  # noqa: E402
 
 
 class MarketValueRefreshTests(unittest.TestCase):
-    def test_refresh_prioritizes_missing_and_old_source_dates(self):
+    def test_refresh_prioritizes_oldest_attempt_and_source_date_breaks_ties(self):
         cards = [
-            {"name": "Newest", "market_value_eur": 90_000_000, "market_value_at": "2026-10-01"},
-            {"name": "No date", "market_value_eur": 40_000_000, "market_value_at": None},
-            {"name": "Old low", "market_value_eur": 10_000_000, "market_value_at": "2025-01-01"},
-            {"name": "Old high", "market_value_eur": 70_000_000, "market_value_at": "2025-01-01"},
-            {"name": "Mid", "market_value_eur": 50_000_000, "market_value_at": "2026-01-01"},
+            {"name": "Recently checked", "market_value_eur": 90_000_000,
+             "market_value_at": "2025-01-01", "market_value_checked_at": "2026-10-20T00:00:00+00:00"},
+            {"name": "Never checked", "market_value_eur": 40_000_000,
+             "market_value_at": "2026-10-01", "market_value_checked_at": None},
+            {"name": "Old check, newer value", "market_value_eur": 50_000_000,
+             "market_value_at": "2026-01-01", "market_value_checked_at": "2026-09-01T00:00:00+00:00"},
+            {"name": "Old check, old low", "market_value_eur": 10_000_000,
+             "market_value_at": "2025-01-01", "market_value_checked_at": "2026-09-01T00:00:00+00:00"},
+            {"name": "Old check, old high", "market_value_eur": 70_000_000,
+             "market_value_at": "2025-01-01", "market_value_checked_at": "2026-09-01T00:00:00+00:00"},
         ]
         ordered = sorted(cards, key=market_value_refresh_key)
         self.assertEqual(
             [card["name"] for card in ordered],
-            ["No date", "Old high", "Old low", "Mid", "Newest"],
+            ["Never checked", "Old check, old high", "Old check, old low",
+             "Old check, newer value", "Recently checked"],
         )
 
     def test_unknown_valuation_date_is_never_written(self):
