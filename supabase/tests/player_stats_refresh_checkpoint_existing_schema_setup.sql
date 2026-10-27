@@ -27,6 +27,28 @@ create table if not exists public.player_season_stat (
   unique (tm_player_id, season_id, competition_id, club_id)
 );
 
+alter table public.player_season_stat
+  add column if not exists tm_player_id text,
+  add column if not exists season_id smallint,
+  add column if not exists competition_id text,
+  add column if not exists club_id text,
+  add column if not exists card_id uuid references public.cards(id),
+  add column if not exists apps smallint not null default 0,
+  add column if not exists starts smallint not null default 0,
+  add column if not exists sub_in smallint not null default 0,
+  add column if not exists sub_out smallint not null default 0,
+  add column if not exists minutes integer not null default 0,
+  add column if not exists goals smallint not null default 0,
+  add column if not exists assists smallint not null default 0,
+  add column if not exists own_goals smallint not null default 0,
+  add column if not exists penalty_goals smallint not null default 0,
+  add column if not exists yellow smallint not null default 0,
+  add column if not exists yellow_red smallint not null default 0,
+  add column if not exists red smallint not null default 0,
+  add column if not exists team_goals smallint not null default 0,
+  add column if not exists opponent_goals smallint not null default 0,
+  add column if not exists fetched_at timestamptz not null default now();
+
 insert into public.cards (id, name, category, active, transfermarkt_id, market_value_eur)
 values
   ('00000000-0000-0000-0000-000000000101', 'Stats checkpoint existing', 'player', true, '101', 90000000),
