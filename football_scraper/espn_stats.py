@@ -123,6 +123,20 @@ LEAGUES = {
     "uefa.europa.conf": "UEFA Conference League",
     "conmebol.libertadores": "CONMEBOL Libertadores",
     "conmebol.sudamericana": "CONMEBOL Sudamericana",
+
+    # Женские лиги и международные турниры. Статистика идёт в ту же таблицу
+    # матчей; женские карточки сопоставляются только по уникальному точному имени.
+    "eng.w.1": "English Women's Super League",
+    "esp.w.1": "Spanish Liga F",
+    "fra.w.1": "French Premiere Ligue",
+    "ned.w.1": "Dutch Vrouwen Eredivisie",
+    "usa.nwsl": "National Women's Soccer League",
+    "usa.w.usl.1": "USL Super League",
+    "uefa.wchampions": "UEFA Women's Champions League",
+    "uefa.weuro": "UEFA Women's European Championship",
+    "fifa.wwc": "FIFA Women's World Cup",
+    "conmebol.america.femenina": "Copa America Femenina",
+    "concacaf.w.gold": "Concacaf W Gold Cup",
     "concacaf.champions": "Concacaf Champions Cup",
     "afc.champions": "AFC Champions League Elite",
 }
@@ -289,29 +303,23 @@ def match_card(name, cards_by_key):
 
 
 def active_cards_by_key(cards, current_club_ids):
-    """Карточки, годные для сопоставления по имени ESPN, ключ — card_key().
-
-    Тот же барьер, что и active_cards_by_key в sports_ru_stats.py, и по той же
-    причине: ESPN тоже достаёт игрока по имени, а не по ID, а состав матча —
-    это РЕАЛЬНЫЕ, СЕЙЧАС ИГРАЮЩИЕ футболисты. Карточка легенды с голым именем
-    (без строки в card_current_club) не обязана участвовать в этом
-    сопоставлении только потому, что ключ совпал с чьим-то ещё.
-
-    ИЗМЕРЕНО, А НЕ ГИПОТЕТИЧНО: Роналдо (р.1976, закончил ~2011, имя карточки
-    — голое «Роналдо») получил чужие голы и с этой стороны тоже — две строки
-    от ныне играющего бразильца из Серии A, найдено на боевой базе 24.08.2026
-    рядом с той же коллизией у sports.ru (docs/namesake_fixes.sql). Барьер для
-    sports.ru уже стоит; это — та же защита для второго источника.
-
-    Пропущенный матч активного игрока, чей card_current_club ещё не подъехал,
-    — безопасное направление ошибки; приписать голы чужого человека карточке
-    легенды — нет. Тот же выбор, что и в sports_ru_stats.py.
-    """
     by_key = {}
+    key_counts = {}
     for c in cards:
-        if c["id"] not in current_club_ids:
+        name = c.get("name_en")
+        if not name:
             continue
-        by_key.setdefault(card_key(c["name_en"]), c)
+        key = card_key(name)
+        key_counts[key] = key_counts.get(key, 0) + 1
+    for c in cards:
+        name = c.get("name_en")
+        if not name:
+            continue
+        key = card_key(name)
+        if c["id"] in current_club_ids:
+            by_key.setdefault(key, c)
+        elif c.get("category") == "woman" and key_counts.get(key) == 1:
+            by_key.setdefault(key, c)
     return by_key
 
 
@@ -384,7 +392,7 @@ def collect(days, dry_run=False, only=None):
     session.headers.update({"User-Agent": USER_AGENT})
 
     cards = db.select(
-        "/cards?select=id,name,name_en&active=eq.true&category=eq.player"
+        "/cards?select=id,name,name_en,category&active=eq.true&category=in.(player,woman)"
         "&name_en=not.is.null&order=id"
     )
     current_club_ids = {
