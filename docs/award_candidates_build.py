@@ -628,10 +628,25 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     return rows
 
 
+def filter_verified_season_stats(
+    stats: list[dict], verified_card_ids: set[str]
+) -> list[dict]:
+    """Exclude legacy rows until the player has a verified match-feed snapshot."""
+    return [
+        row for row in stats
+        if str(row.get("card_id") or "") in verified_card_ids
+    ]
+
+
 def current_player_stats_coverage(
-    cards: list[dict], stat_card_ids: set[str], snapshot: date, limit: int = 100
+    cards: list[dict],
+    stat_card_ids: set[str],
+    snapshot: date,
+    limit: int = 100,
+    match_card_ids: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Measure current-season coverage for today's highest-valued active players."""
+    """Measure recent verified season-feed or match-level coverage for top players."""
+    match_card_ids = match_card_ids or set()
     candidates = []
     for card in cards:
         if not card.get("active") or card.get("category") != "player" or not card.get("transfermarkt_id"):
@@ -662,7 +677,22 @@ def current_player_stats_coverage(
         str(card.get("id") or ""),
     ))
     top = candidates[:limit]
-    covered = sum(1 for card in top if str(card.get("id") or "") in stat_card_ids)
+
+    def is_recent_verified(card: dict) -> bool:
+        raw = str(card.get("player_stats_data_synced_at") or "")[:10]
+        try:
+            checked = date.fromisoformat(raw)
+        except ValueError:
+            return False
+        return 0 <= (snapshot - checked).days <= 7
+
+    def is_covered(card: dict) -> bool:
+        card_id = str(card.get("id") or "")
+        return card_id in match_card_ids or (
+            card_id in stat_card_ids and is_recent_verified(card)
+        )
+
+    covered = sum(1 for card in top if is_covered(card))
     return {
         "sample_size": len(top),
         "covered": covered,
@@ -670,7 +700,7 @@ def current_player_stats_coverage(
         "coverage": covered / len(top) if top else 0.0,
         "missing_names": [
             str(card.get("name") or card.get("id") or "unknown")
-            for card in top if str(card.get("id") or "") not in stat_card_ids
+            for card in top if not is_covered(card)
         ],
     }
 
@@ -689,15 +719,30 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         "select": "card_id,season_id,competition_id,apps,starts,minutes,goals,assists,team_goals,opponent_goals,fetched_at",
         "season_id": f"eq.{season}", "card_id": "not.is.null", "order": "card_id.asc",
     })
+    verified_cards = get_rows(base, key, "cards", {
+        "select": "id,player_stats_data_synced_at",
+        "category": "in.(player,woman)", "active": "eq.true",
+        "player_stats_data_synced_at": f"gte.{(snapshot - timedelta(days=45)).isoformat()}T00:00:00Z",
+        "order": "id.asc",
+    })
+    verified_stat_card_ids = {
+        str(card.get("id")) for card in verified_cards
+        if card.get("id") and card.get("player_stats_data_synced_at")
+    }
+    stats = filter_verified_season_stats(stats, verified_stat_card_ids)
     if not stats:
-        raise RuntimeError(f"No player-season statistics found for season_id={season}")
+        print(
+            "WARNING: skipping individual-award snapshot; no source-verified season rows yet",
+            file=sys.stderr,
+        )
+        return season, 0, 0
 
     # A plausible-looking shortlist built from a small, biased subset is worse
     # than a stale snapshot. Require broad coverage of current high-value players
     # before publishing individual-award candidates; team tournament rankings can
     # still refresh independently when this gate is not met.
     current_value_cards = get_rows(base, key, "cards", {
-        "select": "id,name,category,active,transfermarkt_id,market_value_eur,market_value_at,born_on,fame",
+        "select": "id,name,category,active,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_data_synced_at",
         "category": "eq.player", "active": "eq.true",
         "transfermarkt_id": "not.is.null", "market_value_eur": "gte.20000000",
         "market_value_at": f"gte.{(snapshot - timedelta(days=180)).isoformat()}",
@@ -716,7 +761,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     }
     season_stat_ids = {str(row.get("card_id")) for row in stats if row.get("card_id")}
     coverage = current_player_stats_coverage(
-        current_value_cards, season_stat_ids | usable_match_ids, snapshot
+        current_value_cards, season_stat_ids, snapshot, match_card_ids=usable_match_ids
     )
     if coverage["sample_size"] >= 50 and coverage["coverage"] < 0.75:
         print(
