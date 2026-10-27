@@ -196,9 +196,10 @@ def fetch_api_market_value(tm_id, tries=3):
     """Read the native Transfermarkt valuation-history chart."""
     url = TM_VALUE_URL % urllib.parse.quote(str(tm_id))
     diagnostics = os.environ.get("TMAPI_DIAGNOSTICS") == "1"
-    if diagnostics:
+    diagnostic_fast = diagnostics and os.environ.get("TMAPI_DIAGNOSTIC_FAST") == "1"
+    if diagnostic_fast:
         tries = 1
-    timeout = 15 if diagnostics else 60
+    timeout = 15 if diagnostic_fast else 60
     for attempt in range(1, tries + 1):
         try:
             req = urllib.request.Request(url, headers={
