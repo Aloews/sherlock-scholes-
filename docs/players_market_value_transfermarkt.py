@@ -235,7 +235,7 @@ def squad_players(url, key):
     for i in range(0, len(todo), 60):
         chunk = todo[i:i + 60]
         out.extend(sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at,market_value_checked_at",
             "id": "in.(%s)" % ",".join(chunk),
             "category": "in.(player,woman)", "active": "is.true", "limit": 1000}))
     return out
@@ -250,7 +250,7 @@ def read_all_cards(url, key):
     out, offset = [], 0
     while True:
         page = sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at,market_value_checked_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "id", "limit": 1000, "offset": offset})
@@ -326,9 +326,8 @@ def main():
         players = [p for p in players if p.get("market_value_eur") is None]
         players.sort(key=lambda p: (p.get("name") or "").casefold())
     else:
-        # Refresh all values, not only NULLs. Sorting alphabetically starved
-        # most cards forever because the daily limit always selected the same
-        # first names. Missing/old source dates now rotate to the front.
+        # Refresh all values, not only NULLs. Sort by the last attempt so
+        # missing prices or old source dates cannot monopolize the daily batch.
         players.sort(key=market_value_refresh_key)
     if args.limit:
         players = players[:args.limit]
