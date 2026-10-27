@@ -58,7 +58,7 @@ describe('CareerStats', () => {
     expect(screen.getByText('Premier League')).toBeTruthy();
     expect(screen.getByText(/4 goals/)).toBeTruthy();
     expect(screen.getByText('24')).toBeTruthy();
-    expect(screen.getByText('4')).toBeTruthy();
+    expect(screen.getAllByText('4').length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText('null')).toBeNull();
     expect(screen.queryByText('null–null')).toBeNull();
   });
