@@ -118,8 +118,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "age": p.get("age"), "apps": p["apps"], "starts": p["starts"], "minutes": p["minutes"],
             "goals": p["goals"], "assists": p["assists"],
             "goal_involvements": p["goals"] + p["assists"],
-            "team_win_rate": round(p["team_win_rate"], 4),
             "sw_rating": p.get("sw_rating"), "market_value_eur": p.get("market_value_eur"),
+            "coverage_basis": "player apps/minutes exposure proxy, not source-feed completeness",
             "source_stats_rows": p["stats_rows"],
             "score_is_probability": False,
         }
@@ -173,15 +173,11 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         for target, target_key in keys:
             item = target.setdefault(target_key, {
                 "card_id": card_id, "apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0,
-                "team_wins": 0, "team_matches": 0, "last_fetched": None, "stats_rows": 0,
+                "last_fetched": None, "stats_rows": 0,
             })
             item["stats_rows"] += 1
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 item[field] += int(number(row, field))
-            if row.get("team_goals") is not None and row.get("opponent_goals") is not None and number(row, "apps") > 0:
-                item["team_matches"] += int(number(row, "apps"))
-                if number(row, "team_goals") > number(row, "opponent_goals"):
-                    item["team_wins"] += int(number(row, "apps"))
             fetched = row.get("fetched_at")
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
@@ -208,7 +204,6 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             row = {**stat, **card}
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 row[field] = max(0, stat[field])
-            row["team_win_rate"] = stat["team_wins"] / stat["team_matches"] if stat["team_matches"] else 0.5
             row["age"] = None
             born = card.get("born_on")
             if born:
@@ -226,10 +221,10 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         raise RuntimeError("No active cards matched current season statistics; refusing empty snapshots")
 
     overall_specs = {
-        "ballon_dor": {"goals": .30, "assists": .18, "minutes": .18, "apps": .12, "sw_rating": .12, "team_win_rate": .10},
-        "the_best": {"goals": .30, "assists": .18, "minutes": .18, "apps": .12, "sw_rating": .12, "team_win_rate": .10},
-        "ballon_dor_feminin": {"goals": .30, "assists": .18, "minutes": .18, "apps": .12, "sw_rating": .12, "team_win_rate": .10},
-        "the_best_female": {"goals": .30, "assists": .18, "minutes": .18, "apps": .12, "sw_rating": .12, "team_win_rate": .10},
+        "ballon_dor": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
+        "the_best": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
+        "ballon_dor_feminin": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
+        "the_best_female": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
         "golden_boy": {"goals": .34, "assists": .22, "minutes": .18, "apps": .12, "sw_rating": .14},
     }
     payloads = []
