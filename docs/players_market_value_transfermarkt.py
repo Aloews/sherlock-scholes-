@@ -383,6 +383,16 @@ def write_batch(url, key, rows):
                  {"p_rows": [{"card_id": r["id"], "value_eur": r["eur"],
                               "valued_at": r["at"]} for r in rows]})
     r0 = res[0] if isinstance(res, list) else res
+    try:
+        seen = int(r0.get("seen", -1))
+    except (AttributeError, TypeError, ValueError):
+        seen = -1
+    if seen != len(rows):
+        raise RuntimeError(
+            "Market-value write mismatch: expected %d production cards, "
+            "RPC matched %d; refusing to mark the refresh successful"
+            % (len(rows), seen)
+        )
     ids = sb_rpc(url, key, "apply_card_wikidata_ids",
                  {"p_rows": [{"card_id": r["id"], "qid": r["qid"],
                               "transfermarkt_id": r["tm_id"]} for r in rows]})
