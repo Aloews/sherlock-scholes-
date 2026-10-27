@@ -57,12 +57,33 @@ jobs:
       - name: Refresh Martin Odegaard's source valuation first
         id: odegaard
         continue-on-error: true
+        env:
+          TMAPI_DIAGNOSTICS: '1'
         run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --only 316264
 
       - name: Refresh Harry Kane's source valuation first
         id: kane
         continue-on-error: true
+        env:
+          TMAPI_DIAGNOSTICS: '1'
         run: APPLY=1 python3 docs/players_market_value_transfermarkt.py --from-cards --refresh --only 132098
+
+      - name: Require working source before the full batch
+        if: always()
+        env:
+          ODEGAARD_OUTCOME: ${{ steps.odegaard.outcome }}
+          KANE_OUTCOME: ${{ steps.kane.outcome }}
+        run: |
+          echo "Ødegaard source outcome = $ODEGAARD_OUTCOME"
+          echo "Kane source outcome = $KANE_OUTCOME"
+          [ "$ODEGAARD_OUTCOME" = "success" ] || {
+            echo "::error::Market-value source check failed for Ødegaard; skipping the 800-player batch."
+            exit 1
+          }
+          [ "$KANE_OUTCOME" = "success" ] || {
+            echo "::error::Market-value source check failed for Kane; skipping the 800-player batch."
+            exit 1
+          }
 
       - name: Refresh oldest market valuations from Transfermarkt
         run: |
