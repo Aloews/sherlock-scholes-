@@ -18,7 +18,8 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-MODEL_VERSION = "candidate-rank-v4"
+AWARD_MODEL_VERSION = "award-candidate-rank-v5"
+TEAM_MODEL_VERSION = "team-candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
@@ -103,7 +104,7 @@ def remove_stale_award_snapshot_rows(base: str, key: str, snapshot: date) -> int
         headers={**api_headers(key), "Prefer": "return=representation"},
         params={
             "snapshot_date": f"eq.{snapshot.isoformat()}",
-            "model_version": f"neq.{MODEL_VERSION}",
+            "model_version": f"neq.{AWARD_MODEL_VERSION}",
         },
         timeout=TIMEOUT,
     )
@@ -409,7 +410,7 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "candidate_rank": rank, "confidence": item["confidence"],
             "data_coverage": round(item["coverage"], 4), "score_components": item["components"],
             "evidence": item["evidence"], "source_fetched_at": item["last_fetched"],
-            "model_version": MODEL_VERSION,
+            "model_version": AWARD_MODEL_VERSION,
         })
     return rows
 
@@ -737,7 +738,7 @@ def build_team_candidate_payloads(
                     ),
                 },
                 "source_fetched_at": last_updated or ratings.get(key, {}).get("computed_at"),
-                "model_version": MODEL_VERSION,
+                "model_version": TEAM_MODEL_VERSION,
             })
     return payloads
 
@@ -802,7 +803,8 @@ def main() -> int:
         "award_candidate_rows_upserted": award_writes,
         "stale_award_candidate_rows_removed": stale_award_rows_removed,
         "team_tournament_candidate_rows_upserted": team_writes,
-        "model_version": MODEL_VERSION,
+        "award_model_version": AWARD_MODEL_VERSION,
+        "team_model_version": TEAM_MODEL_VERSION,
         "interpretation": "candidate scores are relative ranking indices, not probabilities",
     }, ensure_ascii=False))
     return 0
