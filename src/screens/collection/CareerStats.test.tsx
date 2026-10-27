@@ -39,10 +39,13 @@ describe('CareerStats', () => {
       }],
     });
 
+    const seasonStartYear = new Date().getUTCMonth() >= 6
+      ? new Date().getUTCFullYear()
+      : new Date().getUTCFullYear() - 1;
     mocks.fetchCurrentSeasonCompetitionStats.mockResolvedValue({
       status: 'ok',
       data: [{
-        season_id: 2026, competition_id: 'GB1', tournament: 'Premier League',
+        season_id: seasonStartYear, competition_id: 'GB1', tournament: 'Premier League',
         appearances: 8, goals: 4, assists: 1, minutes: 620, fetched_at: new Date().toISOString(),
       }],
     });
@@ -51,7 +54,7 @@ describe('CareerStats', () => {
 
     expect(await screen.findByText('Chelsea')).toBeTruthy();
     expect(screen.getByText('Current season')).toBeTruthy();
-    expect(screen.getByText('2026/27')).toBeTruthy();
+    expect(screen.getByText(`${seasonStartYear}/${String(seasonStartYear + 1).slice(-2)}`)).toBeTruthy();
     expect(screen.getByText('Premier League')).toBeTruthy();
     expect(screen.getByText(/4 goals/)).toBeTruthy();
     expect(screen.getByText('24')).toBeTruthy();
