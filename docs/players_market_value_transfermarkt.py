@@ -22,7 +22,7 @@
 
     1. карточка → QID     ruwiki + гарды P31/P106 (как в остальных сборщиках)
     2. QID → id на TM     P2446, пачками по 50
-    3. id → стоимость     Transfermarkt CEAPI /ceapi/marketValueDevelopment/graph/{id}:
+    3. id → стоимость     Transfermarkt TMAPI /player/{id}/market-value-history:
                            последняя сумма из истории и дата её изменения
 
 HTML-профили не используются как источник стоимости в GitHub Actions: они
@@ -76,7 +76,7 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
-TM_VALUE_URL = "https://www.transfermarkt.com/ceapi/marketValueDevelopment/graph/%s"
+TMAPI_BASE_URL = "https://tmapi.transfermarkt.technology"
 # ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
 # «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
 # запроса, а не вежливость, и она противоречит тому, ради чего источник
@@ -149,43 +149,63 @@ def normalize_source_date(value):
     return None
 
 
-def parse_ceapi_market_value(payload):
-    """Parse Transfermarkt's native market-value chart response.
+def _money_value_eur(money):
+    if not isinstance(money, dict):
+        return None
+    raw = money.get("value", money.get("amount"))
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        value = int(round(raw))
+        return value if value > 0 else None
+    if isinstance(raw, str):
+        match = API_VALUE_RE.match(raw)
+        if match:
+            value = int(round(
+                float(match.group(1).replace(",", "")) *
+                UNITS.get((match.group(2) or "").lower(), 1)
+            ))
+            return value if value > 0 else None
+    return None
 
-    The chart endpoint returns {"list": [{"datum_mw": "...", "mw": "..."}]}.
-    An empty list is a valid profile without a published valuation; a malformed
-    top-level response is not evidence that the player has no market value.
-    """
-    if not isinstance(payload, dict) or not isinstance(payload.get("list"), list):
+
+def parse_tmapi_market_value(payload):
+    """Parse the upstream market-value-history envelope without inventing a date."""
+    if (
+        not isinstance(payload, dict)
+        or payload.get("success") is not True
+        or not isinstance(payload.get("data"), dict)
+    ):
         return None, None, False
 
-    dated_values = []
-    for row in payload["list"]:
-        if not isinstance(row, dict):
-            continue
-        valued_at = normalize_source_date(
-            row.get("datum_mw") or row.get("date") or row.get("updatedAt")
-        )
-        raw_value = row.get("mw", row.get("marketValue", row.get("value")))
-        if isinstance(raw_value, dict):
-            raw_value = raw_value.get("value") or raw_value.get("amount")
-        euros = None
-        if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool):
-            euros = int(round(raw_value))
-        elif isinstance(raw_value, str):
-            match = API_VALUE_RE.match(raw_value)
-            if match:
-                euros = int(round(
-                    float(match.group(1).replace(",", "")) *
-                    UNITS.get((match.group(2) or "").lower(), 1)
-                ))
-        if valued_at and euros and euros > 0:
-            dated_values.append((valued_at, euros))
+    data = payload["data"]
+    current = data.get("current") or {}
+    current_money = current.get("marketValue") if isinstance(current, dict) else None
+    current_value = _money_value_eur(current_money)
+    current_date = normalize_source_date(
+        (current_money or {}).get("determined") or (current_money or {}).get("date")
+        if isinstance(current_money, dict) else None
+    )
+    if current_value and current_date:
+        return current_value, current_date, True
 
-    if not dated_values:
-        return None, None, True
-    valued_at, euros = max(dated_values, key=lambda item: item[0])
-    return euros, valued_at, True
+    history = data.get("history") or []
+    dated_values = []
+    if isinstance(history, list):
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            money = entry.get("marketValue")
+            value = _money_value_eur(money)
+            valued_at = normalize_source_date(
+                (money or {}).get("determined") or (money or {}).get("date") or entry.get("date")
+                if isinstance(money, dict) else entry.get("date")
+            )
+            if value and valued_at:
+                dated_values.append((valued_at, value))
+
+    if dated_values:
+        valued_at, value = max(dated_values, key=lambda item: item[0])
+        return value, valued_at, True
+    return None, None, True
 
 
 def should_retry_market_value_status(status_code):
@@ -193,8 +213,8 @@ def should_retry_market_value_status(status_code):
 
 
 def fetch_api_market_value(tm_id, tries=3):
-    """Read the native Transfermarkt valuation-history chart."""
-    url = TM_VALUE_URL % urllib.parse.quote(str(tm_id))
+    """Read the upstream Transfermarkt market-value-history route."""
+    url = f"{TMAPI_BASE_URL}/player/{urllib.parse.quote(str(tm_id))}/market-value-history"
     diagnostics = os.environ.get("TMAPI_DIAGNOSTICS") == "1"
     diagnostic_fast = diagnostics and os.environ.get("TMAPI_DIAGNOSTIC_FAST") == "1"
     if diagnostic_fast:
@@ -212,27 +232,26 @@ def fetch_api_market_value(tm_id, tries=3):
                 if fh.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.decompress(raw)
             payload = json.loads(raw)
-            value, valued_at, valid_profile = parse_ceapi_market_value(payload)
+            value, valued_at, valid_profile = parse_tmapi_market_value(payload)
             if not valid_profile and diagnostics:
                 top_keys = sorted(payload.keys())[:16] if isinstance(payload, dict) else []
-                list_value = payload.get("list") if isinstance(payload, dict) else None
-                list_type = type(list_value).__name__
-                list_length = len(list_value) if isinstance(list_value, list) else None
+                data = payload.get("data") if isinstance(payload, dict) else None
+                data_keys = sorted(data.keys())[:16] if isinstance(data, dict) else []
                 print(
-                    "Transfermarkt CEAPI response shape rejected: "
-                    f"top_keys={top_keys} list_type={list_type} list_length={list_length}",
+                    "Transfermarkt TMAPI response shape rejected: "
+                    f"top_keys={top_keys} data_keys={data_keys}",
                     flush=True,
                 )
             return value, valued_at, valid_profile
         except urllib.error.HTTPError as error:
             if diagnostics:
-                print(f"Transfermarkt CEAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
+                print(f"Transfermarkt TMAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
             if not should_retry_market_value_status(error.code):
                 return None, None, False
         except Exception as error:  # noqa: BLE001
             if diagnostics:
                 print(
-                    f"Transfermarkt CEAPI market-value request failed for id={tm_id}: "
+                    f"Transfermarkt TMAPI market-value request failed for id={tm_id}: "
                     f"{type(error).__name__}",
                     flush=True,
                 )

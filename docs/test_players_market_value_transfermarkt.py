@@ -10,7 +10,7 @@ from players_market_value_transfermarkt import (  # noqa: E402
     fetch_api_market_value,
     invalid_profile_threshold,
     market_value_refresh_key,
-    parse_ceapi_market_value,
+    parse_tmapi_market_value,
     should_write_market_value,
     should_retry_market_value_status,
 )
@@ -51,12 +51,14 @@ class MarketValueRefreshTests(unittest.TestCase):
         )
 
     @patch("players_market_value_transfermarkt.urllib.request.urlopen")
-    def test_fetch_uses_native_transfermarkt_chart_endpoint(self, urlopen):
+    def test_fetch_uses_native_tmapi_market_value_history_route(self, urlopen):
         response = urlopen.return_value.__enter__.return_value
         response.read.return_value = json.dumps({
-            "list": [
-                {"datum_mw": "22.07.2026", "mw": "€70.00m"},
-            ],
+            "success": True,
+            "data": {
+                "current": {"marketValue": {"value": 70_000_000, "currency": "EUR", "determined": "2026-07-22"}},
+                "history": [],
+            },
         }).encode()
         response.headers.get.return_value = None
         with patch.dict(os.environ, {
@@ -70,37 +72,45 @@ class MarketValueRefreshTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(
             request.full_url,
-            "https://www.transfermarkt.com/ceapi/marketValueDevelopment/graph/316264",
+            "https://tmapi.transfermarkt.technology/player/316264/market-value-history",
         )
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 15)
 
-    def test_ceapi_history_uses_latest_dated_source_value(self):
-        value, valued_at, valid = parse_ceapi_market_value({
-            "list": [
-                {"datum_mw": "03.06.2026", "mw": "€65.00m"},
-                {"datum_mw": "22.07.2026", "mw": "€70.00m"},
-                {"datum_mw": "15.12.2025", "mw": "€75.00m"},
-            ],
-        })
-        self.assertTrue(valid)
-        self.assertEqual((value, valued_at), (70_000_000, "2026-07-22"))
+    def test_tmapi_history_uses_current_value_and_dated_history_fallback(self):
+        payload = {
+            "success": True,
+            "data": {
+                "current": {"marketValue": {"value": 70_000_000, "currency": "EUR", "determined": "2026-07-22"}},
+                "history": [
+                    {"marketValue": {"value": 65_000_000, "currency": "EUR", "determined": "2026-06-03"}},
+                ],
+            },
+        }
+        self.assertEqual(parse_tmapi_market_value(payload), (70_000_000, "2026-07-22", True))
+        payload["data"]["current"]["marketValue"]["determined"] = None
+        self.assertEqual(parse_tmapi_market_value(payload), (65_000_000, "2026-06-03", True))
 
-    def test_ceapi_empty_history_is_a_valid_profile_without_a_published_value(self):
-        self.assertEqual(parse_ceapi_market_value({"list": []}), (None, None, True))
-
-    def test_ceapi_profile_with_undated_value_does_not_fabricate_a_date(self):
+    def test_tmapi_empty_history_is_a_valid_profile_without_a_published_value(self):
         self.assertEqual(
-            parse_ceapi_market_value({"list": [{"mw": "€65.00m"}]}),
+            parse_tmapi_market_value({"success": True, "data": {"current": {}, "history": []}}),
             (None, None, True),
         )
 
-    def test_ceapi_rejects_malformed_top_level_payload(self):
-        self.assertEqual(parse_ceapi_market_value({"error": "not found"}), (None, None, False))
-        self.assertEqual(parse_ceapi_market_value([]), (None, None, False))
+    def test_tmapi_rejects_malformed_top_level_payload(self):
+        self.assertEqual(parse_tmapi_market_value({"error": "not found"}), (None, None, False))
+        self.assertEqual(parse_tmapi_market_value([]), (None, None, False))
 
-    def test_ceapi_accepts_numeric_euros_and_slash_dates(self):
+    def test_tmapi_accepts_string_money_and_slash_dates(self):
         self.assertEqual(
-            parse_ceapi_market_value({"list": [{"datum_mw": "03/06/2026", "mw": 65_000_000}]}),
+            parse_tmapi_market_value({
+                "success": True,
+                "data": {
+                    "current": {},
+                    "history": [
+                        {"marketValue": {"value": "€65.00m", "determined": "03/06/2026"}},
+                    ],
+                },
+            }),
             (65_000_000, "2026-06-03", True),
         )
 

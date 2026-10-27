@@ -123,7 +123,11 @@ DECLARE i integer;
 BEGIN
   FOR i IN 1..4 LOOP
     v_fixture := 'fixture-' || i;
-    v_start := now() + interval '2 days' + make_interval(hours => i);
+    v_start := (
+      date_trunc('day', now() AT TIME ZONE 'UTC')
+      + interval '2 days 10 hours'
+      + make_interval(hours => i)
+    ) AT TIME ZONE 'UTC';
     FOREACH v_model IN ARRAY ARRAY['llm','own','fly'] LOOP
       INSERT INTO public.forecast_pick(fixture_id, commence_at, model, pick, confidence)
       VALUES (v_fixture, v_start, v_model, 'H', 0.80);
