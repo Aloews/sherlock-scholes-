@@ -21,7 +21,7 @@ insert into public.player_season_stat(
  ('568177',2018,'GB1','club-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',200,80,50,14000,now()-interval '2 days'),
  ('568177',2020,'FAC','club-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',5,2,1,350,now()),
  ('568177',2021,'INT','nat-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',10,3,2,700,now());
-do $
+do $$
 declare
   v record;
   v_definition text;
