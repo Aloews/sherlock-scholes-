@@ -9,6 +9,7 @@ from players_stats_transfermarkt import (  # noqa: E402
     filter_candidates,
     latest_stat_fetch_by_tm,
     refresh_priority_key,
+    valid_season_payload,
 )
 
 
@@ -52,6 +53,16 @@ class CandidateSelectionTests(unittest.TestCase):
         ])
         ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
         self.assertEqual([card["transfermarkt_id"] for card in ordered], ["3", "2", "1"])
+
+    def test_only_valid_tmapi_success_envelopes_are_checkpointable(self):
+        self.assertTrue(valid_season_payload({
+            "success": True, "data": {"performance": []}
+        }))
+        self.assertFalse(valid_season_payload({"error": "temporary upstream failure"}))
+        self.assertFalse(valid_season_payload({
+            "success": True, "data": {"unexpected": []}
+        }))
+        self.assertFalse(valid_season_payload(None))
 
     def test_empty_source_attempts_rotate_behind_never_checked_players(self):
         cards = [
