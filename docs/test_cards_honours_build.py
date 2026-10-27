@@ -80,6 +80,38 @@ class ParseHonoursTests(unittest.TestCase):
         )
         self.assertEqual(merged, ["Золотой мяч 2026"])
 
+    def test_nested_citation_templates_do_not_pollute_award_titles(self):
+        source = """
+== Достижения ==
+=== Личные достижения ===
+* Игрок месяца английской Премьер-лиги (7): {{cite web |url=https://example.com |title={{lang|en|Player of the Month}}}}
+* Награда {{cite web |url=https://example.com}}
+* Награда «Личность года» по версии Kicker
+"""
+        honours = parse_honours(source)
+        self.assertIn(
+            {"title": "Игрок месяца английской Премьер-лиги", "count": 7, "kind": "personal"},
+            honours,
+        )
+        self.assertIn(
+            {"title": "Награда «Личность года» по версии Kicker", "count": 1, "kind": "personal"},
+            honours,
+        )
+        self.assertFalse(any("{{" in item["title"] or "|url=" in item["title"] for item in honours))
+        self.assertFalse(any(item["title"].strip() == "Награда" for item in honours))
+
+    def test_legacy_title_merge_removes_old_template_fragments(self):
+        merged = merge_legacy_titles(
+            [
+                "Золотой мяч 2026",
+                "Игрок месяца {{cite web |url=https ×7",
+                "Награда",
+                "Чемпион Германии ×2",
+            ],
+            [{"title": "Золотой мяч", "count": 1, "kind": "personal"}],
+        )
+        self.assertEqual(merged, ["Золотой мяч 2026", "Чемпион Германии ×2"])
+
     def test_non_numeric_parenthetical_is_preserved(self):
         source = """
 == Достижения ==
