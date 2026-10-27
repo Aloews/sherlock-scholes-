@@ -86,6 +86,7 @@ class ParseHonoursTests(unittest.TestCase):
 === Личные достижения ===
 * Игрок месяца английской Премьер-лиги (7): {{cite web |url=https://example.com |title={{lang|en|Player of the Month}}}}
 * Награда {{cite web |url=https://example.com}}
+* Узбекистон ифтихори (6 июня 2025 года){{Cite web |url=https
 * Награда «Личность года» по версии Kicker
 """
         honours = parse_honours(source)
@@ -97,21 +98,34 @@ class ParseHonoursTests(unittest.TestCase):
             {"title": "Награда «Личность года» по версии Kicker", "count": 1, "kind": "personal"},
             honours,
         )
+        self.assertIn(
+            {"title": "Узбекистон ифтихори (6 июня 2025 года)", "count": 1, "kind": "personal"},
+            honours,
+        )
         self.assertFalse(any("{{" in item["title"] or "|url=" in item["title"] for item in honours))
         self.assertFalse(any(item["title"].strip() == "Награда" for item in honours))
 
-    def test_legacy_title_merge_removes_old_template_fragments(self):
+    def test_legacy_title_merge_salvages_titles_before_truncated_citations(self):
         merged = merge_legacy_titles(
             [
                 "Золотой мяч 2026",
                 "Игрок месяца {{cite web |url=https ×7",
+                "Орден Хорватской звезды с ликом Франьо Бучара (15 ноября 2023 года){{Cite web |url=https",
                 "Игрок года в «Тоттенхэм Хотспур",
                 "Награда",
                 "Чемпион Германии ×2",
             ],
             [{"title": "Золотой мяч", "count": 1, "kind": "personal"}],
         )
-        self.assertEqual(merged, ["Золотой мяч 2026", "Чемпион Германии ×2"])
+        self.assertEqual(
+            merged,
+            [
+                "Золотой мяч 2026",
+                "Игрок месяца",
+                "Орден Хорватской звезды с ликом Франьо Бучара (15 ноября 2023 года)",
+                "Чемпион Германии ×2",
+            ],
+        )
 
     def test_legacy_title_label_preserves_balanced_internal_quotes(self):
         merged = merge_legacy_titles(

@@ -71,6 +71,9 @@ COUNT = re.compile(r"\(\s*'{0,3}(\d+)'{0,3}\s*\)")
 
 def strip_markup(s: str) -> str:
     s = LINK.sub(r"\1", s)
+    # Wikimedia pages sometimes end a citation template mid-line or mid-response.
+    # Remove the incomplete trailing citation but preserve the actual award title.
+    s = re.sub(r"\{\{\s*(?:cite|citation|ref|web)\b.*$", "", s, flags=re.I | re.S)
     # MediaWiki citation templates can contain nested templates. Remove innermost
     # templates repeatedly instead of leaving fragments such as "{{cite web |url=...".
     for _ in range(10):
@@ -250,7 +253,10 @@ def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]
     for item in source_titles:
         if not isinstance(item, str) or not item.strip():
             continue
-        if re.search(r"\{\{|\}\}|\|url\s*=|https?://", item, re.I):
+        # Salvage a valid title prefix when the old parser stored a truncated
+        # trailing citation; do not throw away the award together with the markup.
+        item = strip_markup(item)
+        if not item or re.search(r"\{\{|\}\}|\|url\s*=|https?://", item, re.I):
             continue
         placeholder = item.strip().lower().strip(" «»„“”\".,:;!?")
         if placeholder in {"награда", "награды", "награда «»"}:

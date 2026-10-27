@@ -18,7 +18,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-MODEL_VERSION = "candidate-rank-v2"
+MODEL_VERSION = "candidate-rank-v3"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
@@ -234,6 +234,20 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     )]
     if award_key == "golden_boy":
         eligible = [p for p in eligible if p.get("age") is not None and p["age"] < 21]
+
+    # Do not label a two-appearance hot streak a serious season award contender.
+    # Women may have no minutes in the upstream feed; keep them only with a larger
+    # appearance sample and explicitly preserve the missing-minutes limitation.
+    if award_key == "golden_boot":
+        eligible = [p for p in eligible if p["apps"] >= 3 and p["goals"] > 0]
+    else:
+        eligible = [
+            p for p in eligible
+            if p["apps"] >= 5 and (
+                (p.get("minutes_known") is False and p["apps"] >= 8)
+                or (p.get("minutes_known") is not False and p["minutes"] >= 300)
+            )
+        ]
     if not eligible:
         return []
 
@@ -248,7 +262,17 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     scored = []
     for p in eligible:
         components = {metric: round(percentiles[metric][p["card_id"]], 2) for metric in weights}
-        score = sum(components[m] * weight for m, weight in weights.items())
+        unshrunk_score = sum(components[m] * weight for m, weight in weights.items())
+        minutes_known = p.get("minutes_known") is not False and p["minutes"] > 0
+        sample_reliability = min(1.0, max(
+            p["apps"] / 12.0,
+            p["minutes"] / 1080.0 if minutes_known else 0.0,
+        ))
+        # Early-season performance is pulled toward neutral until enough match
+        # exposure exists. This is a reliability adjustment, not a probability.
+        score = 50.0 + (unshrunk_score - 50.0) * sample_reliability
+        components["unshrunk_relative_index"] = round(unshrunk_score, 2)
+        components["sample_reliability"] = round(sample_reliability, 3)
         coverage = min(1.0, max(p["apps"] / 25.0, p["minutes"] / 2250.0))
         confidence = "high" if p["apps"] >= 18 and p["minutes"] >= 1200 else (
             "medium" if p["apps"] >= 8 and p["minutes"] >= 450 else "low")
@@ -256,7 +280,14 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
         evidence = {
             "name": p["name"], "target_award_year": target_year, "source_season_id": season,
             "candidate_pool_size": len(eligible),
-            "candidate_pool_scope": "active cards with stats available in tracked sources",
+            "candidate_pool_scope": "eligible active cards with tracked season statistics; minimum appearance/minute gates applied",
+            "sample_reliability": round(sample_reliability, 3),
+            "unshrunk_relative_index": round(unshrunk_score, 4),
+            "eligibility_rule": (
+                "golden_boot: at least 3 appearances and 1 goal in this competition"
+                if award_key == "golden_boot"
+                else "at least 5 appearances and 300 minutes; if minutes are unavailable, at least 8 appearances"
+            ),
             "competition_id": competition_id, "ranking_scope": (
                 f"tracked competition {competition_id}" if award_key == "golden_boot"
                 else "all tracked competitions in selected season"),
@@ -452,7 +483,7 @@ def competition_format(tournament: str) -> str:
     value = tournament.lower()
     # Check international competitions before the generic "league" token:
     # "Лига чемпионов" is a tournament, not a domestic league table.
-    if re.search(r"\b(champions|champions league|europa|conference league|world cup|euro|мир|европы|чемпионов)\b", value):
+    if re.search(r"\b(champions|champions league|europa|conference league|world cup|euro|чемпионат мира|кубок мира|мира|миров|европы|чемпионов)\b", value):
         return "international_tournament_form_proxy"
     if re.search(r"\b(cup|copa|coupe|pokal|coppa|кубок|суперкубок)\b", value):
         return "knockout_form_proxy"
@@ -461,7 +492,12 @@ def competition_format(tournament: str) -> str:
     return "competition_form_proxy"
 
 
-def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict], snapshot: date) -> list[dict]:
+def build_team_candidate_payloads(
+    matches: list[dict],
+    ratings: dict[str, dict],
+    snapshot: date,
+    max_days_since_last_match: int | None = None,
+) -> list[dict]:
     """Create dated rankings for every sufficiently observed tracked competition."""
     grouped: dict[str, list[dict]] = defaultdict(list)
     seen = set()
@@ -487,6 +523,11 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
     payloads: list[dict] = []
     for tournament, all_matches in grouped.items():
         all_matches.sort(key=lambda item: item["match_date"])
+        latest_match_day = date.fromisoformat(all_matches[-1]["match_date"])
+        if max_days_since_last_match is not None and (snapshot - latest_match_day).days > max_days_since_last_match:
+            # Preserve historical snapshots for evaluation, but do not keep an old
+            # completed tournament in today's "who can still win?" shortlist.
+            continue
         # Keep the current competition cycle. The boundary is explicitly marked
         # as inferred unless an upstream source provides an official season ID.
         segment_start = 0
@@ -593,6 +634,8 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                 "evidence": {
                     "competition_format": comp_format,
                     "matches_played": team["played"], "max_matches_played_by_team": max_played,
+                    "latest_match_date": all_matches[-1]["match_date"],
+                    "days_since_last_match": max(0, (snapshot - date.fromisoformat(all_matches[-1]["match_date"])).days),
                     "wins": team["wins"], "draws": team["draws"], "losses": team["losses"],
                     "goals_for": team["gf"], "goals_against": team["ga"],
                     "points_per_game": round(team["points"] / team["played"], 4),
@@ -637,7 +680,7 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
         }
         for row in rating_rows if row.get("club_key")
     }
-    payloads = build_team_candidate_payloads(matches, ratings, snapshot)
+    payloads = build_team_candidate_payloads(matches, ratings, snapshot, max_days_since_last_match=75)
     if not payloads:
         raise RuntimeError("No sufficiently observed team competitions; refusing empty team snapshots")
     # The source model changed from betting-feed sport keys to canonical tracked

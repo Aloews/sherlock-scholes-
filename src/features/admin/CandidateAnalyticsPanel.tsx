@@ -159,6 +159,9 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 : <span className="h-10 w-10 rounded-full bg-brand-border shrink-0" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{row.card_name}</p>
+                <p className="mt-1 text-[11px] text-brand-muted">
+                  Сезон {row.season_id} · год награды {String(row.evidence.target_award_year ?? row.season_id)}
+                </p>
                 {row.award_key === 'golden_boot' && (
                   <p className="truncate text-xs text-brand-muted">Турнир ID: {row.competition_id}</p>
                 )}
@@ -166,7 +169,13 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                   Голы {String(row.evidence.goals ?? '—')} · передачи {String(row.evidence.assists ?? '—')} · минуты {String(row.evidence.minutes ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
+                  В выборке: {String(row.evidence.candidate_pool_size ?? '—')} · источник: {String(row.evidence.stats_source ?? '—')}
+                </p>
+                <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
+                  {row.score_components.sample_reliability != null
+                    ? ' · надёжность выборки ' + Math.round(row.score_components.sample_reliability * 100) + '%'
+                    : ''}
                 </p>
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
@@ -196,6 +205,12 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 <p className="truncate text-xs text-brand-muted">{row.tournament}</p>
                 <p className="mt-1 text-xs text-brand-muted">
                   Игр {String(row.evidence.matches_played ?? '—')} · очки/игру {String(row.evidence.points_per_game ?? '—')} · разница/игру {String(row.evidence.goal_difference_per_game ?? '—')}
+                </p>
+                <p className="mt-1 text-[11px] text-brand-muted">
+                  Последний результат: {String(row.evidence.latest_match_date ?? '—')}
+                  {row.evidence.days_since_last_match != null
+                    ? ' · ' + String(row.evidence.days_since_last_match) + ' дн. назад'
+                    : ''}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
