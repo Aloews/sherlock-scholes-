@@ -1725,3 +1725,28 @@ t = 1.95, а читалось это как «кто играет — почти
 - Открытые PR #281/#279/#275 касаются генерации экспрессов, PR #258 — синхронизации имён миграций, PR #208 — старого фото-пайплайна. Они не объединялись в рамках этой операции, чтобы не дублировать уже внедрённые исправления и не обходить обязательные проверки.
 
 **Остаток:** подтвердить следующий workflow run, фактическое увеличение `cards.photo_url`, и повторно измерить очередь/источники; отдельно проверить backup/restore и определить утверждённый срок хранения `cron.job_run_details`. До этого цель полного восстановления фото-сборщика и оптимизации физического размера БД не считается завершённой.
+
+
+## Единый слой футбольных данных — 26.10.2026
+
+- Единый слой чтения `football_player_stats` объединяет факты матчевого уровня с карьерными агрегатами по турнирам; `football_player_competition_totals` и `football_player_career_totals` дают типизированные представления карьеры. `player_match_days` сохранён как совместимый интерфейс рейтинга/фэнтези, но теперь читает матчевые факты из общего слоя. Исходные таблицы не удаляются и остаются источниками происхождения.
+- `player_stats_freshness` вычисляет свежесть отдельно по карьерному и сезонному источникам; `player_stats_source_state` различает `ok`, корректный `empty` и `error`. Ошибочный ответ не считается свежим и возвращает игрока в повторную очередь. Ежедневная пачка ограничена 1800 игроками с учётом двух запросов на игрока.
+- Исправлена логика обхода: наличие хотя бы одной старой строки больше не исключает игрока из последующих обновлений. По умолчанию повторно собираются отсутствующие или устаревшие более чем на 7 дней данные; `--refresh` принудительно обновляет весь выбранный набор, `--stale-days` меняет порог.
+- Парсер пропускает неполные блоки статистики источника вместо преобразования отсутствующих полей в нули. Корректные нулевые значения сохраняются.
+- Регрессионные тесты покрывают ротацию свежих/устаревших данных и защиту от неполного ответа источника.
+- Важно: `player_season_stat.season_id` не считается подтверждённым сезоном: у Палмера строка `GB1` с `season_id=2019` содержит 118 матчей и 49 голов за несколько сезонов. Карьерные агрегаты остаются в `player_season_stat`; истинная детализация сезон × турнир собирается отдельно из `/ceapi/player/{id}/performance` в `player_season_competition_stats`, с сохранением исходного payload, URL, времени сбора и процентов источника. `football_player_stats` предоставляет оба зерна раздельно (`competition_career`, `season_competition`, `match`) без их смешивания.
+- Статус этой записи — реализация в PR, а не подтверждение production: перед включением требуется зелёный CI, применение миграции, проверка RPC и production-прогон коллектора.
+
+
+---
+
+## Unified statistics — production consumers (2026-10-27)
+
+The shared read layer now replaces raw-source reads in the production consumers changed in the unified-statistics PR:
+- `player_match_days` remains the compatibility contract for rating/fantasy RPCs, but reads the canonical `football_player_stats` match grain.
+- `player_smart_deck_trends` and `player_spotlight_scored` read the same canonical match grain rather than independently querying `player_match_stats`.
+- Competition-based Smart Deck discovery reads `football_player_competition_totals`, which resolves duplicate provider snapshots before ranking career goals/appearances; it no longer sums raw `player_season_stat` snapshots.
+- Smart Deck recent-match evidence reads the canonical match view.
+- The scheduled player-stat refresh now explicitly refreshes Cole Palmer (TM ID `568177`) and verifies a fresh 2026 Premier League row exists, logging the source-derived goals total. This checks the reported four-goal figure without baking a volatile tally into a daily assertion.
+
+Regression coverage verifies that the server-side analytics functions use the canonical view and that Smart Deck discovery queries canonical career totals. Production still needs the migration and a real scheduled refresh before the actual Palmer tally or cross-feature parity can be claimed.

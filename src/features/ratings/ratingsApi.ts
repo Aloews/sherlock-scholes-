@@ -127,12 +127,42 @@ export async function fetchCollectedTotals(
   return fromPostgrest<CollectedTotals[]>(res, 'player_collected_totals');
 }
 
+export interface SeasonCompetitionRow {
+  season_id: number;
+  competition_id: string;
+  tournament: string;
+  appearances: number;
+  goals: number;
+  assists: number;
+  minutes: number | null;
+  fetched_at: string | null;
+}
+
+export async function fetchCurrentSeasonCompetitionStats(
+  cardId: string,
+): Promise<LoadState<SeasonCompetitionRow[]>> {
+  const now = new Date();
+  const seasonStartYear = now.getUTCMonth() >= 6
+    ? now.getUTCFullYear()
+    : now.getUTCFullYear() - 1;
+  const freshAfter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const res = await supabase.from('football_player_stats')
+    .select('season_id,competition_id,tournament,appearances,goals,assists,minutes,fetched_at')
+    .eq('grain', 'season_competition')
+    .eq('card_id', cardId)
+    .eq('season_id', seasonStartYear)
+    .gte('fetched_at', freshAfter)
+    .order('goals', { ascending: false })
+    .order('tournament', { ascending: true });
+  return fromPostgrest<SeasonCompetitionRow[]>(res, 'football_player_stats(current-season)');
+}
+
 /** Клубная карьера из статистики Transfermarkt: один клуб — одна строка. */
 export interface ClubCareerRow {
   club_id: string;
   club_name: string;
-  season_from: number;
-  season_to: number;
+  season_from: number | null;
+  season_to: number | null;
   apps: number;
   goals: number;
   assists: number;

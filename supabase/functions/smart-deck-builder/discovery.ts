@@ -284,9 +284,9 @@ async function loadCompetitionStatRows(supabase: any, competitionId: string) {
   const rows: Array<{ card_id?: unknown; goals?: unknown; apps?: unknown }> = [];
   const pageSize = 1000;
   for (let offset = 0; offset < 10000; offset += pageSize) {
-    const { data, error } = await supabase.from("player_season_stat").select("card_id,goals,apps")
-      .eq("competition_id", competitionId).gt("apps", 0)
-      .order("tm_player_id", { ascending: true }).order("season_id", { ascending: true })
+    const { data, error } = await supabase.from("football_player_competition_totals").select("card_id,goals,apps:appearances")
+      .eq("competition_id", competitionId).gt("appearances", 0)
+      .order("tm_player_id", { ascending: true }).order("competition_id", { ascending: true })
       .order("club_id", { ascending: true }).range(offset, offset + pageSize - 1);
     if (error) throw new Error("player_stats_discovery_failed");
     if (!Array.isArray(data)) return null;

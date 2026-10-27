@@ -9,6 +9,7 @@ create table public.cards (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   name_en text,
+  transfermarkt_id text,
   category text not null,
   active boolean not null default true,
   photo_url text,
@@ -27,9 +28,13 @@ create table public.player_match_stats (
   tournament text not null,
   home_team text,
   away_team text,
-  minutes integer,
-  goals integer not null default 0,
-  assists integer not null default 0,
+  home_score smallint,
+  away_score smallint,
+  minutes smallint,
+  goals smallint not null default 0,
+  assists smallint not null default 0,
+  yellow smallint not null default 0,
+  red smallint not null default 0,
   source text not null,
   disputed boolean not null default false,
   fetched_at timestamptz not null default now()
@@ -37,11 +42,12 @@ create table public.player_match_stats (
 
 create view public.player_match_days as
 select distinct on (card_id, match_date)
-       card_id, match_date, tournament, minutes, goals, assists, source
+       card_id, match_date, tournament, home_team, away_team,
+       home_score, away_score, minutes, goals, assists, yellow, red, source
   from public.player_match_stats
  where not disputed
  order by card_id, match_date, (minutes is not null) desc,
-          source, tournament, goals desc, assists desc;
+          source, tournament, home_team, away_team, goals desc, assists desc;
 
 create table public.player_rating_cache (
   days smallint not null,

@@ -49,6 +49,7 @@ vi.mock('@/features/ratings/ratingsApi', () => ({
   fetchMetricChanges: vi.fn(async () => ({ status: 'ok', data: [] })),
   fetchCareerTotals: (...a: unknown[]) => careerTotals(...(a as [])),
   fetchClubCareer: vi.fn(async () => ({ status: 'ok', data: [] })),
+  fetchCurrentSeasonCompetitionStats: vi.fn(async () => ({ status: 'ok', data: [] })),
 }));
 
 vi.mock('@/features/clubs/clubsApi', () => ({

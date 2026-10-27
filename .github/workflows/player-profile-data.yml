@@ -31,7 +31,7 @@ on:
         description: 'Maximum players processed in a scheduled/batch run'
         required: false
         type: string
-        default: '800'
+        default: '1800'
 
 concurrency:
   group: player-profile-data
@@ -59,46 +59,94 @@ jobs:
       - name: Install dependencies
         run: pip install -r football_scraper/requirements.txt
 
-      - name: Test seasonal-stat candidate selection
+      - name: Record player statistics refresh start time
+        id: stats_start
+        run: echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Test freshness-aware player-stat candidate selection
         run: python3 docs/test_players_stats_transfermarkt.py
 
       - name: Prioritize reported missing player profile
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
         run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590
+      - name: Refresh Cole Palmer current competition statistics
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 568177 --include-unvalued
 
-      - name: Collect seasonal player statistics
+      - name: Collect player competition aggregates
         run: |
           if [ -n "$TM_ID" ]; then
             APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID"
           else
-            limit="${PLAYER_LIMIT:-800}"
+            limit="${PLAYER_LIMIT:-1800}"
             case "$limit" in
               ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
             esac
             if [ "$limit" -lt 1 ]; then echo "::error::PLAYER_LIMIT must be positive"; exit 2; fi
-            APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --limit "$limit"
+            APPLY=1 python3 docs/players_stats_transfermarkt.py --min-value 0 --include-unvalued --stale-days 7 --limit "$limit"
           fi
 
-      - name: Verify the targeted player's season statistics were stored
+      - name: Verify fresh career and season statistics for the targeted player
         if: always()
         env:
           VERIFY_TM_ID: ${{ inputs.transfermarkt_id }}
+          STARTED_AT: ${{ steps.stats_start.outputs.started_at }}
         run: |
           id="${VERIFY_TM_ID:-236590}"
           case "$id" in
             ''|*[!0-9]*) echo "::error::Invalid Transfermarkt ID for verification"; exit 2 ;;
           esac
           count=$(curl -fsS --get \
-            --data-urlencode "select=tm_player_id" \
+            --data-urlencode "select=source_key,status,last_attempt_at" \
             --data-urlencode "tm_player_id=eq.$id" \
-            "$SUPABASE_URL/rest/v1/player_season_stat" \
+            --data-urlencode "source_key=in.(tm_career_competition,tm_season_competition)" \
+            --data-urlencode "status=in.(ok,empty)" \
+            --data-urlencode "last_attempt_at=gte.$STARTED_AT" \
+            "$SUPABASE_URL/rest/v1/player_stats_source_state" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
-          if [ "$count" -lt 1 ]; then
-            echo "::error::No player_season_stat rows were stored for Transfermarkt ID $id"
+          if [ "$count" -ne 2 ]; then
+            echo "::error::Both career and season sources must have fresh success/empty states for Transfermarkt ID $id since $STARTED_AT; got $count"
             exit 1
           fi
-          echo "Verified $count season-stat rows for Transfermarkt ID $id"
+          echo "Verified fresh career and season source attempts for Transfermarkt ID $id"
+
+      - name: Verify and report Cole Palmer current Premier League season goals
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '') && always() }}
+        env:
+          STARTED_AT: ${{ steps.stats_start.outputs.started_at }}
+        run: |
+          state_count=$(curl -fsS --get \
+            --data-urlencode "select=source_key,status,last_attempt_at" \
+            --data-urlencode "tm_player_id=eq.568177" \
+            --data-urlencode "source_key=eq.tm_season_competition" \
+            --data-urlencode "status=eq.ok" \
+            --data-urlencode "last_attempt_at=gte.$STARTED_AT" \
+            "$SUPABASE_URL/rest/v1/player_stats_source_state" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+          if [ "$state_count" -ne 1 ]; then
+            echo "::error::Cole Palmer season statistics were not freshly verified in this run"
+            exit 1
+          fi
+          rows=$(curl -fsS --get \
+            --data-urlencode "select=season_id,competition_id,goals,fetched_at" \
+            --data-urlencode "tm_player_id=eq.568177" \
+            --data-urlencode "season_id=eq.2026" \
+            --data-urlencode "competition_id=eq.GB1" \
+            --data-urlencode "fetched_at=gte.$STARTED_AT" \
+            --data-urlencode "order=fetched_at.desc" \
+            --data-urlencode "limit=1" \
+            "$SUPABASE_URL/rest/v1/player_season_competition_stats" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          count=$(printf '%s' "$rows" | jq 'length')
+          if [ "$count" -ne 1 ]; then
+            echo "::error::No fresh 2026 Premier League row found for Cole Palmer"
+            exit 1
+          fi
+          goals=$(printf '%s' "$rows" | jq -r '.[0].goals')
+          echo "Verified Cole Palmer 2026 Premier League goals=$goals (source Transfermarkt CEAPI)"
 
   player-photos:
     if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}

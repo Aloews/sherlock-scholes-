@@ -2,19 +2,24 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOADING, type LoadState } from '@/shared/lib/loadState';
 import {
-  fetchCareerTotals, fetchClubCareer,
-  type CareerTotalsRow, type ClubCareerRow,
+  fetchCareerTotals, fetchClubCareer, fetchCurrentSeasonCompetitionStats,
+  type CareerTotalsRow, type ClubCareerRow, type SeasonCompetitionRow,
 } from '@/features/ratings/ratingsApi';
 
 export function CareerStats({ cardId }: { cardId: string }) {
   const { t, i18n } = useTranslation();
   const [totals, setTotals] = useState<LoadState<CareerTotalsRow[]>>(LOADING);
   const [clubs, setClubs] = useState<LoadState<ClubCareerRow[]>>(LOADING);
+  const [season, setSeason] = useState<LoadState<SeasonCompetitionRow[]>>(LOADING);
 
   useEffect(() => {
     let cancelled = false;
     setTotals(LOADING);
     setClubs(LOADING);
+    setSeason(LOADING);
+    void fetchCurrentSeasonCompetitionStats(cardId).then((result) => {
+      if (!cancelled) setSeason(result);
+    });
     void fetchCareerTotals(cardId).then((result) => {
       if (!cancelled) setTotals(result);
     });
@@ -26,9 +31,14 @@ export function CareerStats({ cardId }: { cardId: string }) {
 
   const total = totals.status === 'ok' ? totals.data[0] ?? null : null;
   const rows = clubs.status === 'ok' ? clubs.data : [];
-  const loading = totals.status === 'loading' || clubs.status === 'loading';
+  const seasonRows = season.status === 'ok' ? season.data : [];
+  const seasonStartYear = new Date().getUTCMonth() >= 6
+    ? new Date().getUTCFullYear()
+    : new Date().getUTCFullYear() - 1;
+  const seasonLabelCurrent = `${seasonStartYear}/${String(seasonStartYear + 1).slice(-2)}`;
+  const loading = totals.status === 'loading' || clubs.status === 'loading' || season.status === 'loading';
 
-  if (!total && rows.length === 0) {
+  if (!total && rows.length === 0 && seasonRows.length === 0) {
     if (loading) {
       return (
         <div className="grid grid-cols-2 gap-2" aria-label={t('digest.loading')}>
@@ -44,9 +54,11 @@ export function CareerStats({ cardId }: { cardId: string }) {
   const number = new Intl.NumberFormat(i18n.language);
   const maxMinutes = Math.max(1, ...rows.map((row) => row.minutes));
   const ru = i18n.language.startsWith('ru');
-  const seasonLabel = (row: ClubCareerRow) => row.season_from === row.season_to
-    ? String(row.season_from)
-    : `${row.season_from}–${row.season_to}`;
+  const seasonLabel = (row: ClubCareerRow): string | null => row.season_from == null || row.season_to == null
+    ? null
+    : row.season_from === row.season_to
+      ? String(row.season_from)
+      : `${row.season_from}–${row.season_to}`;
 
   return (
     <div className="space-y-3">
@@ -56,6 +68,31 @@ export function CareerStats({ cardId }: { cardId: string }) {
           <Tile label={t('career.goals')} value={number.format(total.club_goals)} accent />
           <Tile label={t('career.assists')} value={number.format(total.club_assists)} />
           <Tile label={t('career.minutes')} value={number.format(total.club_minutes)} />
+        </div>
+      )}
+
+      {seasonRows.length > 0 && (
+        <div className="rounded-2xl border border-brand-border bg-brand-surface p-3.5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">
+              {ru ? 'Текущий сезон' : 'Current season'}
+            </p>
+            <span className="rounded-full border border-brand-border bg-brand-bg px-2.5 py-1 text-[10px] font-semibold tabular-nums text-white">
+              {seasonLabelCurrent}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {seasonRows.map((row) => (
+              <div key={`${row.season_id}-${row.competition_id}`} className="flex items-center justify-between gap-3 rounded-xl bg-brand-bg px-3 py-2">
+                <span className="min-w-0 truncate text-[12px] font-semibold text-white">{row.tournament}</span>
+                <div className="flex shrink-0 gap-3 text-[10px] text-brand-muted tabular-nums">
+                  <span>{number.format(row.appearances)} {ru ? 'матчей' : 'apps'}</span>
+                  <span className="font-semibold text-brand-accent">{number.format(row.goals)} {ru ? 'голов' : 'goals'}</span>
+                  <span>{number.format(row.assists)} {ru ? 'ассистов' : 'assists'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -95,7 +132,7 @@ export function CareerStats({ cardId }: { cardId: string }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className={`truncate text-[13px] font-semibold ${index === 0 ? 'text-white' : 'text-white/90'}`}>{row.club_name}</p>
-                        <p className="mt-0.5 text-[10px] text-brand-muted tabular-nums">{seasonLabel(row)}</p>
+                        {seasonLabel(row) && <p className="mt-0.5 text-[10px] text-brand-muted tabular-nums">{seasonLabel(row)}</p>}
                       </div>
                       {index === 0 && (
                         <span className="shrink-0 rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-accent">
