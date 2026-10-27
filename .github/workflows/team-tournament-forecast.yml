@@ -8,12 +8,20 @@ on:
       - 'docs/team_tournament_forecast.py'
       - 'docs/test_team_tournament_forecast.py'
       - 'supabase/migrations/*team_tournament_forecasts.sql'
+      - 'supabase/migrations/*admin_team_tournament_candidates.sql'
+      - 'src/features/admin/TeamTournamentPanel.tsx'
+      - 'src/features/admin/adminApi.ts'
+      - 'src/screens/AdminScreen.tsx'
   pull_request:
     paths:
       - '.github/workflows/team-tournament-forecast.yml'
       - 'docs/team_tournament_forecast.py'
       - 'docs/test_team_tournament_forecast.py'
       - 'supabase/migrations/*team_tournament_forecasts.sql'
+      - 'supabase/migrations/*admin_team_tournament_candidates.sql'
+      - 'src/features/admin/TeamTournamentPanel.tsx'
+      - 'src/features/admin/adminApi.ts'
+      - 'src/screens/AdminScreen.tsx'
   schedule:
     - cron: '35 6 * * *'
   workflow_dispatch:
