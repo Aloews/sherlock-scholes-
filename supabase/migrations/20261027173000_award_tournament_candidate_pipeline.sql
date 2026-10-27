@@ -104,6 +104,7 @@ alter table public.award_outcome enable row level security;
 alter table public.team_tournament_candidate_snapshot enable row level security;
 alter table public.team_tournament_outcome enable row level security;
 
+drop function if exists public.admin_list_award_candidates(text);
 drop function if exists public.admin_list_award_candidates(text, text);
 create or replace function public.admin_list_award_candidates(
   p_password text,
