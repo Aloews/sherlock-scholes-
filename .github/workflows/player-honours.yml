@@ -102,18 +102,20 @@ jobs:
           case "$count" in
             ''|*[!0-9]*) echo "::error::Could not read active player-card count"; exit 1 ;;
           esac
-          if [ "$count" -le 1600 ]; then
-            echo "count=$count" >> "$GITHUB_OUTPUT"
-            echo "offset=0" >> "$GITHUB_OUTPUT"
+          if [ "$count" -le 800 ]; then
+            offset=0
+          elif [ "$count" -le 1600 ]; then
+            offset=800
           else
-            offset=$((800 + (GITHUB_RUN_NUMBER * 800) % (count - 800)))
-            echo "count=$count" >> "$GITHUB_OUTPUT"
-            echo "offset=$offset" >> "$GITHUB_OUTPUT"
+            windows=$(((count - 800 + 799) / 800))
+            offset=$((800 + ((GITHUB_RUN_NUMBER - 1) % windows) * 800))
           fi
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "offset=$offset" >> "$GITHUB_OUTPUT"
           echo "Active player cards: $count; rolling window starts at offset $offset"
 
       - name: Refresh the rolling player-card catalogue window
-        if: steps.window.outputs.count > 1600
+        if: steps.window.outputs.count > 800
         run: python docs/cards_honours_build.py --limit 800 --offset "${{ steps.window.outputs.offset }}" --apply
 
       - name: Report sync completion
