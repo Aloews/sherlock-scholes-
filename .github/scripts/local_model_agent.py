@@ -5,8 +5,9 @@ ROOT = Path.cwd()
 MODEL = "qwen2.5-coder:3b"
 ALLOWED = ("src/", "test/", "tests/", "scripts/", "docs/", "supabase/functions/", "supabase/migrations/", "football_scraper/", "ml/")
 def allowed(p):
-    p = p.replace("\\", "/").lower()
-    return p.startswith(ALLOWED) and not any(x in p for x in (".env", "credentials", "service-account")) and not p.endswith((".lock", ".min.js", ".map"))
+    p = p.replace("\\", "/")
+    lower = p.lower()
+    return p.startswith(ALLOWED) and not any(x in lower for x in (".env", "credentials", "service-account")) and not lower.endswith((".lock", ".min.js", ".map"))
 def run(a, check=True):
     return subprocess.run(a, cwd=ROOT, check=check, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 def main():
