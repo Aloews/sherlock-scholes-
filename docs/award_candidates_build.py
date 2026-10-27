@@ -87,7 +87,7 @@ def percentile(values: list[float]) -> list[float]:
 
 
 def normal_key(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "unknown"
+    return re.sub(r"[^\w]+", "-", value.lower(), flags=re.UNICODE).strip("-_") or "unknown"
 
 
 def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, int]:
