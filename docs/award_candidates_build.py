@@ -437,11 +437,11 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
 
 def is_rankable_competition(tournament: str) -> bool:
     """Exclude exhibitions and friendlies from trophy/tournament candidate rankings."""
-    value = re.sub(r"[^\\w]+", " ", str(tournament or "").lower(), flags=re.UNICODE)
+    value = re.sub(r"[^\w]+", " ", str(tournament or "").lower(), flags=re.UNICODE)
     return not bool(re.search(
-        r"\\b(friendlies|friendly|friendly match|club friendly|international friendly|"
-        r"pre season friendly|exhibition|exhibition match|товарищеск\\w*|"
-        r"контрольн\\w* матч\\w*)\\b",
+        r"\b(friendlies|friendly|friendly match|club friendly|international friendly|"
+        r"pre season friendly|exhibition|exhibition match|товарищеск\w*|"
+        r"контрольн\w* матч\w*)\b",
         value,
         re.IGNORECASE,
     ))
