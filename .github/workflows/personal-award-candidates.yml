@@ -1,0 +1,74 @@
+name: personal-award-candidates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/personal-award-candidates.yml'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+      - 'supabase/migrations/*personal_award_candidates.sql'
+      - 'src/features/admin/AwardCandidatePanel.tsx'
+      - 'src/features/admin/adminApi.ts'
+      - 'src/screens/AdminScreen.tsx'
+  pull_request:
+    paths:
+      - '.github/workflows/personal-award-candidates.yml'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+      - 'supabase/migrations/*personal_award_candidates.sql'
+      - 'src/features/admin/AwardCandidatePanel.tsx'
+      - 'src/features/admin/adminApi.ts'
+      - 'src/screens/AdminScreen.tsx'
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test personal award ranking
+        working-directory: docs
+        run: python -m unittest -v test_award_candidates_build.py
+      - name: Compile personal award pipeline
+        run: python -m py_compile docs/award_candidates_build.py
+
+  sync:
+    if: github.event_name != 'pull_request'
+    needs: [validate]
+    concurrency:
+      group: personal-award-candidates
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: \${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Build and persist personal award candidate rankings
+        run: python docs/award_candidates_build.py
