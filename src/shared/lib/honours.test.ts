@@ -49,6 +49,41 @@ describe('splitHonours', () => {
     expect(tournaments).toEqual(['ЧМ-2018']);
   });
 
+  it('shows refreshed honours stored by the automatic source sync', () => {
+    const result = splitHonours({
+      honours: [
+        { title: 'Обладатель «Золотого мяча» по версии France Football', count: 1, kind: 'personal' },
+        { title: 'Трофей Герда Мюллера', count: 1, kind: 'personal' },
+      ],
+      tournaments: ['ЧМ-2026'],
+    });
+
+    expect(result.trophies).toEqual(['Золотой мяч', 'Трофей Герда Мюллера']);
+    expect(result.tournaments).toEqual(['ЧМ-2026']);
+  });
+
+  it('merges the latest award count with legacy title strings without duplicates', () => {
+    const result = splitHonours({
+      titles: ['Золотой мяч ×2'],
+      honours: [
+        { title: 'Обладатель «Золотого мяча» по версии France Football', count: 3, kind: 'personal' },
+      ],
+    });
+
+    expect(result.trophies).toEqual(['Золотой мяч ×3']);
+  });
+
+  it('does not show an award twice when its source uses a longer label', () => {
+    const result = splitHonours({
+      titles: ['Золотой мяч ×1'],
+      honours: [
+        { title: 'Обладатель «Золотого мяча» по версии France Football', count: 1, kind: 'personal' },
+      ],
+    });
+
+    expect(result.trophies).toEqual(['Золотой мяч']);
+  });
+
   it('survives missing, null and blank entries', () => {
     expect(splitHonours({})).toEqual({ trophies: [], tournaments: [] });
     expect(splitHonours({ titles: null, tournaments: null }))
