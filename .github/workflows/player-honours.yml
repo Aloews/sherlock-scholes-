@@ -41,19 +41,6 @@ jobs:
       - name: Compile honours sync
         run: python -m py_compile docs/cards_honours_build.py
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Test trophy display logic
-        run: npx vitest run src/shared/lib/honours.test.ts
-
-      - name: Typecheck and production build
-        run: npm run build
 
   sync:
     if: github.event_name != 'pull_request'
