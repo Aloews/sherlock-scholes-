@@ -380,7 +380,7 @@ def main():
         payload = get_json("%s/player/%s/performance-competition"
                            % (API, urllib.parse.quote(tm)))
         source_ok = payload is not None
-        write_ok = not apply_
+        write_ok = True
         if payload is None:
             lost += 1
         else:
@@ -397,6 +397,7 @@ def main():
                     # иначе повторный прогон пропустит несохранённого игрока.
                     if res is None:
                         refused += 1
+                        write_ok = False
                     else:
                         write_ok = True
                         written += (res[0].get("written", 0) if res else 0)
