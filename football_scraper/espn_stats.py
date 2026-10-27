@@ -405,9 +405,9 @@ def collect(days, dry_run=False, only=None):
     current_club_ids = {
         c["card_id"] for c in db.select("/card_current_club?select=card_id&order=card_id")
     }
-    # Ключ строится по ЛАТИНСКОМУ имени: ESPN пишет «Miguel Almirón», а не
-    # «Мигель Альмирон», и сопоставлять надо в одном алфавите. Только карточки
-    # с известным текущим клубом — active_cards_by_key выше объясняет, зачем.
+    # Сопоставление строгое: мужчины требуют текущий клуб, женские карточки
+    # без клубной связи допускаются только при уникальном английском имени.
+    # Списки разделены по типу лиги, чтобы однофамильцы не смешивали категории.
     male_cards_by_key = active_cards_by_key(
         [card for card in cards if card.get("category") == "player"], current_club_ids
     )
