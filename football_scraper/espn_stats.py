@@ -133,18 +133,13 @@ LEAGUES = {
     "usa.nwsl": "NWSL",
     "usa.w.usl.1": "USL Super League",
     "uefa.wchampions": "UEFA Women's Champions League",
-    "uefa.weuro": "UEFA Women's European Championship",
-    "fifa.wwc": "FIFA Women's World Cup",
-    "conmebol.america.femenina": "Copa America Femenina",
-    "concacaf.w.gold": "Concacaf W Gold Cup",
     "concacaf.champions": "Concacaf Champions Cup",
     "afc.champions": "AFC Champions League Elite",
 }
 
 WOMEN_LEAGUES = {
     "eng.w.1", "esp.w.1", "fra.w.1", "ned.w.1", "usa.nwsl",
-    "usa.w.usl.1", "uefa.wchampions", "uefa.weuro", "fifa.wwc",
-    "conmebol.america.femenina", "concacaf.w.gold",
+    "usa.w.usl.1", "uefa.wchampions",
 }
 
 
