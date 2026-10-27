@@ -10,10 +10,16 @@ on:
       - 'football_scraper/tests/test_women_stats_backfill.py'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
-  workflow_run:
-    workflows: ["award-and-tournament-candidates"]
-    types: [completed]
+  push:
     branches: [main]
+    paths:
+      - '.github/workflows/women-stats-backfill.yml'
+      - 'football_scraper/espn_stats.py'
+      - 'football_scraper/women_stats_backfill.py'
+      - 'football_scraper/tests/test_espn_stats.py'
+      - 'football_scraper/tests/test_women_stats_backfill.py'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
   schedule:
     - cron: '0 1 * * *'
   workflow_dispatch:
@@ -47,10 +53,10 @@ jobs:
 
   backfill:
     concurrency:
-      group: women-stats-backfill
+      group: award-and-tournament-candidates
       cancel-in-progress: false
     needs: [validate]
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
