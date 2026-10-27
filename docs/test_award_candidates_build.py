@@ -1,11 +1,46 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
+
+    def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
+        cards = [
+            {
+                "id": "kane",
+                "category": "player",
+                "facts": {
+                    "titles": ["Золотой мяч 2026", "Чемпион Германии ×2", "Игрок месяца"],
+                    "honours_source": "https://ru.wikipedia.org/wiki/Гарри_Кейн",
+                },
+            },
+            {
+                "id": "player-no-source",
+                "category": "player",
+                "facts": {"titles": ["Золотой мяч 2026"]},
+            },
+            {
+                "id": "other-player",
+                "category": "player",
+                "facts": {
+                    "titles": ["Golden Boy 2025", "The Best FIFA Men's Player 2024"],
+                    "honours_source": "https://example.org/player",
+                },
+            },
+        ]
+        outcomes = extract_explicit_award_outcomes(cards)
+        identity = {(row["award_key"], row["award_year"], row["card_id"]) for row in outcomes}
+        self.assertEqual(identity, {
+            ("ballon_dor", 2026, "kane"),
+            ("golden_boy", 2025, "other-player"),
+            ("the_best", 2024, "other-player"),
+        })
+        self.assertTrue(all(row["result"] == "winner" for row in outcomes))
+        self.assertTrue(all(row["source_url"].startswith("https://") for row in outcomes))
+        self.assertFalse(any(row["award_year"] == 2026 and row["card_id"] == "player-no-source" for row in outcomes))
 
     def test_normalize_supabase_url_removes_accidental_escape_and_trailing_slash(self):
         self.assertEqual(normalize_base_url("\\\\https://project.supabase.co/"), "https://project.supabase.co")
