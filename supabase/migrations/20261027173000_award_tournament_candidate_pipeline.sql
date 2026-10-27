@@ -26,34 +26,24 @@ alter table public.award_candidate_snapshot
   add constraint award_candidate_snapshot_pkey
   primary key (award_key, season_id, snapshot_date, card_id, competition_id);
 
-create table if not exists public.award_candidate_evaluation (
-  award_key text not null,
-  award_year smallint not null,
-  card_id uuid not null references public.cards(id) on delete cascade,
-  result text not null check (result in ('winner','nominee','runner_up')),
-  announced_at timestamptz,
-  source_url text,
-  last_pre_award_snapshot date,
-  winner_rank_before_award smallint,
-  winner_score_before_award numeric,
-  winner_data_coverage numeric,
-  predicted_top_1 boolean,
-  predicted_top_5 boolean,
-  primary key (award_key, award_year, card_id, result)
-);
-
 create table if not exists public.award_outcome (
   award_key text not null check (award_key in ('ballon_dor','ballon_dor_feminin','the_best','the_best_female','golden_boy','golden_boot')),
   award_year smallint not null,
   card_id uuid not null references public.cards(id) on delete cascade,
+  competition_id text not null default '*',
   result text not null check (result in ('winner','nominee','runner_up')),
   announced_at timestamptz,
   source_url text not null check (source_url ~ '^https?://'),
   verified_at timestamptz not null default now(),
   verified_by text not null,
   created_at timestamptz not null default now(),
-  primary key (award_key, award_year, card_id, result)
+  primary key (award_key, award_year, card_id, result, competition_id)
 );
+
+alter table public.award_outcome add column if not exists competition_id text not null default '*';
+alter table public.award_outcome drop constraint if exists award_outcome_pkey;
+alter table public.award_outcome
+  add constraint award_outcome_pkey primary key (award_key, award_year, card_id, result, competition_id);
 
 create table if not exists public.team_tournament_candidate_snapshot (
   tournament text not null,
@@ -88,6 +78,52 @@ create table if not exists public.team_tournament_outcome (
   unique (tournament, season_start, result, team_key)
 );
 
+
+-- The evaluation view compares a verified outcome with the last snapshot strictly
+-- before announcement and within the same award cycle / competition.
+create or replace view public.award_candidate_evaluation as
+select o.award_key, o.award_year, o.card_id, o.result, o.announced_at, o.source_url,
+       p.snapshot_date as last_pre_award_snapshot,
+       p.candidate_rank as winner_rank_before_award,
+       p.candidate_score as winner_score_before_award,
+       p.data_coverage as winner_data_coverage,
+       case when p.candidate_rank is null then null else p.candidate_rank = 1 end as predicted_top_1,
+       case when p.candidate_rank is null then null else p.candidate_rank <= 5 end as predicted_top_5,
+       o.competition_id
+  from public.award_outcome o
+  left join lateral (
+    select s.snapshot_date, s.candidate_rank, s.candidate_score, s.data_coverage
+      from public.award_candidate_snapshot s
+     where s.award_key = o.award_key
+       and s.card_id = o.card_id
+       and s.competition_id = o.competition_id
+       and s.season_id = case when o.award_key = 'golden_boot' then o.award_year else o.award_year - 1 end
+       and o.announced_at is not null
+       and s.snapshot_date < (o.announced_at at time zone 'UTC')::date
+     order by s.snapshot_date desc
+     limit 1
+  ) p on true
+ where o.result = 'winner';
+
+create or replace view public.team_tournament_candidate_evaluation as
+select o.tournament, o.season_start, o.team_key, o.team_name, o.result,
+       o.announced_at, o.source_url, p.snapshot_date as last_pre_outcome_snapshot,
+       p.candidate_rank as rank_before_outcome, p.candidate_score as score_before_outcome,
+       p.data_coverage, p.candidate_rank = 1 as predicted_top_1,
+       p.candidate_rank <= 5 as predicted_top_5
+  from public.team_tournament_outcome o
+  left join lateral (
+    select s.snapshot_date, s.candidate_rank, s.candidate_score, s.data_coverage
+      from public.team_tournament_candidate_snapshot s
+     where s.tournament = o.tournament
+       and s.season_start = o.season_start
+       and s.team_key = o.team_key
+       and o.announced_at is not null
+       and s.snapshot_date < (o.announced_at at time zone 'UTC')::date
+     order by s.snapshot_date desc
+     limit 1
+  ) p on true;
+
 create index if not exists award_candidate_latest_idx
   on public.award_candidate_snapshot (award_key, season_id, snapshot_date desc, candidate_rank);
 create index if not exists award_candidate_competition_latest_idx
@@ -99,7 +135,6 @@ create index if not exists team_tournament_outcome_season_idx
   on public.team_tournament_outcome (tournament, season_start, result);
 
 alter table public.award_candidate_snapshot enable row level security;
-alter table public.award_candidate_evaluation enable row level security;
 alter table public.award_outcome enable row level security;
 alter table public.team_tournament_candidate_snapshot enable row level security;
 alter table public.team_tournament_outcome enable row level security;
