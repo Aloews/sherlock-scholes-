@@ -176,6 +176,7 @@ def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -
             "minutes_for_strength": 0, "competition_strength": 0.5,
             "strength_sum": 0.0, "strength_count": 0, "minutes_known": True,
             "last_fetched": None, "stats_rows": 0, "stats_window_start": window_start.isoformat(),
+            "stats_source": "espn_player_match_stats",
         })
         item["apps"] += 1
         item["stats_rows"] += 1
@@ -251,6 +252,7 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "coverage_basis": "player apps/minutes exposure proxy, not source-feed completeness",
             "source_stats_rows": p["stats_rows"],
             "stats_window_start": p.get("stats_window_start"),
+            "stats_source": p.get("stats_source", "player_season_stat"),
             "minutes_available": p.get("minutes_known") is not False and p["minutes"] > 0,
             "score_is_probability": False,
         }
