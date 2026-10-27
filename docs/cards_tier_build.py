@@ -13,7 +13,7 @@ not claim the player is already a legend. It requires a verified birth date and
 a Transfermarkt valuation updated within 18 months. DRY-RUN by default. Set
 APPLY=1 only after reviewing the proposed distribution and examples.
 """
-import os, sys, json, statistics
+import os, sys, json, statistics, re
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import requests
 from dotenv import load_dotenv
@@ -60,7 +60,7 @@ def signals(card, today=None):
     # season", a youth prize or a generic parsed label is not enough to make a
     # collectible epic. Only verified major honours count for this signal.
     title_text = " | ".join(str(title) for title in titles if title)
-    prestige_title = bool(__import__("re").search(
+    prestige_title = bool(re.search(
         r"золот(?:ой|ого) мяч|the best|golden boy|золотая бутса|"
         r"игрок сезона английской премьер-лиги|игрок года по версии футболистов пфа|"
         r"футболист года по версии ассоциации футбольных журналистов|"
@@ -70,7 +70,7 @@ def signals(card, today=None):
         r"чемпион испании|чемпион италии|чемпион германии|чемпион франции|"
         r"победитель чемпионата европы",
         title_text,
-        flags=__import__("re").I,
+        flags=re.I,
     ))
     age = None
     try:
