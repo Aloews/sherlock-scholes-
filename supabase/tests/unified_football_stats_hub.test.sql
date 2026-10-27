@@ -7,9 +7,13 @@ insert into public.tm_competition(id,name,type_id,country_id) values
  ('GB1','Premier League',1,189), ('FAC','FA Cup',8,189);
 insert into public.player_match_stats(
  card_id,match_date,tournament,home_team,away_team,home_score,away_score,minutes,goals,assists,source,disputed,fetched_at
-) values (
- 'd6dc13cc-0944-4e0e-a887-93fa3747dab8','2026-10-25','Premier League','Chelsea','Arsenal',2,1,90,1,0,'sportsru',false,now()
-);
+) values
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-2,'Premier League','Chelsea','Arsenal',2,1,90,1,0,'sportsru',false,now()),
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-5,'Premier League','Chelsea','Brighton',3,0,90,1,0,'sportsru',false,now()),
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-10,'Premier League','Chelsea','West Ham',2,0,90,1,0,'sportsru',false,now()),
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-35,'Premier League','Chelsea','Arsenal',0,0,90,0,0,'sportsru',false,now()),
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-40,'Premier League','Chelsea','Liverpool',1,1,90,0,0,'sportsru',false,now()),
+ ('d6dc13cc-0944-4e0e-a887-93fa3747dab8',current_date-50,'Premier League','Chelsea','Everton',1,0,90,0,0,'sportsru',false,now());
 insert into public.player_season_stat(
  tm_player_id,season_id,competition_id,club_id,card_id,apps,goals,assists,minutes,fetched_at
 ) values
@@ -21,6 +25,7 @@ do $
 declare
   v record;
   v_definition text;
+  v_trend record;
 begin
   v_definition := pg_get_functiondef('public.player_smart_deck_trends(integer)'::regprocedure);
   if position('football_player_stats' in lower(v_definition)) = 0
@@ -65,12 +70,12 @@ begin
   end if;
   select * into v from public.football_player_stats
    where grain='match' and card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8'
-     and match_date='2026-10-25';
+     and match_date=current_date-2;
   if v.goals <> 1 or v.appearances <> 1 or v.source <> 'sportsru' then
     raise exception 'canonical match facts mismatch: %', row_to_json(v);
   end if;
   select * into v from public.player_match_days
-   where card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8' and match_date='2026-10-25';
+   where card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8' and match_date=current_date-2;
   if v.goals <> 1 or v.home_team <> 'Chelsea' then
     raise exception 'rating/fantasy read contract mismatch: %', row_to_json(v);
   end if;
@@ -82,5 +87,13 @@ begin
   if v.national_appearances_all_levels <> 10 or v.national_goals_all_levels <> 3 then
     raise exception 'national totals mismatch: %', row_to_json(v);
   end if;
-end $$;
+
+  select * into v_trend from public.player_smart_deck_trends(1000)
+   where card_id='d6dc13cc-0944-4e0e-a887-93fa3747dab8';
+  if not found then raise exception 'canonical Smart Deck trend query returned no qualifying player'; end if;
+  if v_trend.recent_matches <> 3 or v_trend.recent_goals <> 3
+     or v_trend.previous_matches <> 3 or v_trend.previous_goals <> 0 then
+    raise exception 'canonical Smart Deck trend aggregates mismatch: %', row_to_json(v_trend);
+  end if;
+end $;
 rollback;
