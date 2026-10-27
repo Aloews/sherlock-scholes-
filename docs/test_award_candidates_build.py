@@ -158,6 +158,27 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
                          "golden_boot: at least 3 appearances and 1 goal in this competition")
 
+    def test_golden_boy_keeps_credible_early_season_prospects(self):
+        population = [
+            {"card_id": "young-two-contributions", "name": "Young Prospect", "category": "player", "active": True,
+             "apps": 5, "starts": 4, "minutes": 320, "goals": 1, "assists": 1,
+             "weighted_goals": 0.8, "weighted_assists": 0.8, "goals_per_90": 0.28,
+             "assists_per_90": 0.28, "sw_rating": 82, "market_value_eur": 15000000,
+             "fame": 70, "age": 20, "stats_rows": 5, "competition_strength": 0.8,
+             "starts_known": True, "minutes_known": True},
+            {"card_id": "young-zero-output", "name": "Young Zero Output", "category": "player", "active": True,
+             "apps": 8, "starts": 6, "minutes": 500, "goals": 0, "assists": 0,
+             "weighted_goals": 0, "weighted_assists": 0, "goals_per_90": 0,
+             "assists_per_90": 0, "sw_rating": 80, "market_value_eur": 15000000,
+             "fame": 70, "age": 20, "stats_rows": 8, "competition_strength": 0.8,
+             "starts_known": True, "minutes_known": True},
+        ]
+        rows = score_population(
+            population, OVERALL_SPECS["golden_boy"], "golden_boy", 2026, date(2026, 10, 27)
+        )
+        self.assertEqual([row["card_id"] for row in rows], ["young-two-contributions"])
+        self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
+
     def test_golden_boy_only_includes_eligible_male_cards(self):
         players = [
             {"card_id": "young", "name": "Young", "category": "player", "active": True,
