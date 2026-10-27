@@ -599,6 +599,14 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                     <p className="text-[10px] text-brand-muted mt-0.5">
                       #{candidate.candidate_rank} · {t('collection.award_index', { value: Math.round(candidate.candidate_score) })}
                       {' · '}{t(`collection.award_confidence_${candidate.confidence}`)}
+                      {' · '}{dateFmt(candidate.snapshot_date)}
+                    </p>
+                    <p className="text-[10px] text-brand-muted mt-0.5">
+                      {t('collection.award_evidence', {
+                        goals: candidate.evidence.goals,
+                        assists: candidate.evidence.assists,
+                        matches: candidate.evidence.apps,
+                      })}
                     </p>
                   </div>
                 </div>
