@@ -42,6 +42,7 @@ update: 02/06/2026»; подставить сегодняшнее число з�
 Читает анонимным ключом (VITE_SUPABASE_*), пишет служебным (SUPABASE_KEY).
 """
 import argparse
+from datetime import date
 import importlib.util
 import io
 import json
@@ -260,7 +261,12 @@ def read_all_cards(url, key):
 
 
 def should_write_market_value(euros, valued_at):
-    return bool(euros and valued_at)
+    if not euros or not valued_at:
+        return False
+    try:
+        return date.fromisoformat(str(valued_at)[:10]) <= date.today()
+    except ValueError:
+        return False
 
 
 def market_value_refresh_key(card):
