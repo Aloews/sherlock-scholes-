@@ -86,10 +86,21 @@ def filter_candidates(cards, min_value=0, include_unvalued=False):
     return selected
 
 
-def latest_stat_fetch_by_tm(rows):
-    """Latest persisted source timestamp per Transfermarkt player ID."""
+def latest_stat_fetch_by_tm(rows, season_id=None):
+    """Latest source timestamp per player in the requested season only.
+
+    Historical career rows must not make a player look current-season-complete.
+    Without this filter, stars whose last fetch only contains older seasons can
+    be skipped by every rolling batch even while their current-season row is absent.
+    """
     latest = {}
     for row in rows:
+        if season_id is not None:
+            try:
+                if int(row.get("season_id") or 0) != int(season_id):
+                    continue
+            except (TypeError, ValueError):
+                continue
         tm_id = str(row.get("tm_player_id") or "")
         fetched_at = str(row.get("fetched_at") or "")
         if tm_id and fetched_at and fetched_at > latest.get(tm_id, ""):
@@ -277,8 +288,15 @@ def main():
         else:
             stored_stats = all_rows(
                 "player_season_stat",
-                {"select": "tm_player_id,fetched_at", "order": "tm_player_id"})
-            latest_by_tm = latest_stat_fetch_by_tm(stored_stats)
+                {"select": "tm_player_id,season_id,fetched_at", "order": "tm_player_id"})
+            # The newest season represented in production is the active season.
+            # Rank refresh priority against that season, not any old career row.
+            current_season = max(
+                (int(row.get("season_id") or 0) for row in stored_stats),
+                default=None,
+            )
+            latest_by_tm = latest_stat_fetch_by_tm(
+                stored_stats, season_id=current_season)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
     else:
         done = {r["tm_player_id"] for r in all_rows(
