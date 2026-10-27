@@ -1,0 +1,88 @@
+name: award-analytics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/award-analytics.yml'
+      - 'docs/award_analytics_build.py'
+      - 'docs/test_award_analytics_build.py'
+  pull_request:
+    paths:
+      - '.github/workflows/award-analytics.yml'
+      - 'docs/award_analytics_build.py'
+      - 'docs/test_award_analytics_build.py'
+  schedule:
+    # Player stats finish first; candidate snapshots follow them daily.
+    - cron: '20 6 * * *'
+  workflow_dispatch:
+    inputs:
+      top:
+        description: 'Candidates retained per award and tournament'
+        type: string
+        default: '100'
+      dry_run:
+        description: 'Fetch and score production data without writing snapshots'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: award-analytics
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test candidate scoring
+        run: python docs/test_award_analytics_build.py
+      - name: Test honours parser
+        run: python docs/test_cards_honours_build.py
+      - name: Compile analytics scripts
+        run: python -m py_compile docs/award_analytics_build.py docs/cards_honours_build.py
+
+  sync:
+    if: github.event_name != 'pull_request'
+    needs: [validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Score and persist daily snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOP="${{ inputs.top || '100' }}"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python docs/award_analytics_build.py --top "$TOP" --dry-run
+          else
+            python docs/award_analytics_build.py --top "$TOP" --apply
+          fi
