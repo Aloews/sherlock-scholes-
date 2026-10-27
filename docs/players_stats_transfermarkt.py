@@ -6,8 +6,8 @@
 «leistungsdaten» сама ходит в этот адрес — таблицы в её разметке НЕТ ВООБЩЕ,
 её рисует svelte-компонент.
 
-    /player/<id>/performance-competition — сезон × турнир × клуб, по одному
-                                           запросу на игрока
+    /player/<id>/performance-game — матчи по сезонам, турнирам и клубам;
+                                       collector aggregates match records per season
     /players?ids[]=…                     — паспортные данные, СОТНЯ за запрос
     /clubs?ids[]=…, /competitions?ids[]=… — справочники, тоже сотнями
 
@@ -36,7 +36,6 @@
 """
 import argparse
 import gzip
-from datetime import datetime, timezone
 import json
 import os
 import sys
@@ -44,6 +43,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 # ⚠️ СВОЙ КАТАЛОГ В ПУТЬ — ЯВНО. При запуске `python3 docs/x.py` он там и так
 # оказывается, а вот тесты грузят файл ПО ПУТИ (spec_from_file_location), и
