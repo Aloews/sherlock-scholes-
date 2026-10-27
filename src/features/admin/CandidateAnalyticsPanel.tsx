@@ -148,7 +148,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
       {mode === 'awards' && (
         <div className="space-y-2">
           {awards.length === 0 && !loading && !error && (
-            <p className="text-sm text-brand-muted">Снимков пока нет. После первого успешного ежедневного обновления кандидаты появятся здесь.</p>
+            <p className="text-sm text-brand-muted">Нет сезонной статистики для этой категории в подключённом источнике.</p>
           )}
           {awards.map((row) => (
             <article key={[row.award_key, row.season_id, row.snapshot_date, row.card_id, row.competition_id].join(':')}
@@ -170,7 +170,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 </p>
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
-                  <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(row.score_components, null, 2)}</pre>
+                  <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify({ components: row.score_components, evidence: row.evidence }, null, 2)}</pre>
                 </details>
               </div>
               <div className="shrink-0 text-right">
