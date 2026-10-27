@@ -95,5 +95,5 @@ begin
      or v_trend.previous_matches <> 3 or v_trend.previous_goals <> 0 then
     raise exception 'canonical Smart Deck trend aggregates mismatch: %', row_to_json(v_trend);
   end if;
-end $;
+end $$;
 rollback;
