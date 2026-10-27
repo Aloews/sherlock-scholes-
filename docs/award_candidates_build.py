@@ -439,14 +439,22 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                 "club_elo_percentile": elo_rank[i],
             }
             # Relative form/standings plus an independent cross-competition team-strength prior.
-            raw_scores[team["team_key"]] = (
+            unshrunk_score = (
                 .30 * components["points_per_game_percentile"]
                 + .20 * components["goal_difference_percentile"]
                 + .15 * components["win_rate_percentile"]
                 + .20 * components["recent_form_percentile"]
                 + .15 * components["club_elo_percentile"]
             )
-            component_map[team["team_key"]] = {key: round(value, 2) for key, value in components.items()}
+            # Shrink tiny samples toward neutral so a perfect 2–3 match run
+            # cannot outrank a full-season contender on form alone.
+            reliability = min(1.0, team["played"] / 12.0)
+            raw_scores[team["team_key"]] = 50.0 + (unshrunk_score - 50.0) * reliability
+            component_map[team["team_key"]] = {
+                **{key: round(value, 2) for key, value in components.items()},
+                "unshrunk_relative_index": round(unshrunk_score, 2),
+                "sample_reliability": round(reliability, 3),
+            }
         ordered = sorted(teams, key=lambda team: (-raw_scores[team["team_key"]], -team["played"], team["team_key"]))
         comp_format = competition_format(tournament)
         for rank, team in enumerate(ordered[:100], 1):
@@ -470,6 +478,7 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                     "goal_difference_per_game": round((team["gf"] - team["ga"]) / team["played"], 4),
                     "recent_form_last_5": round(sum(recent) / len(recent), 4) if recent else None,
                     "club_elo": ratings.get(key, {}).get("elo"),
+                    "sample_reliability": round(min(1.0, team["played"] / 12.0), 3),
                     "coverage_basis": "share of maximum matches observed for a team in this competition snapshot; not source completeness",
                     "score_is_probability": False,
                     "ranking_method": "current competition results + recent form + cross-competition club Elo",
