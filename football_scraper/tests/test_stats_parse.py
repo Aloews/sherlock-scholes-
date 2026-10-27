@@ -23,24 +23,22 @@ def check(name, got, want):
         print("✓ %s" % name)
 
 
-def season(sid, comp, club, **stats):
+def game(sid, comp, club, *, played=True, minutes=90, goals=0, assists=0,
+         own=0, pen=0, yellow=False, yellow_red=False, red=False, tg=1, og=0):
     return {
-        "generalInformation": {"seasonId": sid, "competitionId": comp, "clubId": club},
+        "gameInformation": {"seasonId": sid, "competitionId": comp},
+        "clubsInformation": {"club": {"clubId": club}},
         "statistics": {
-            "goalStatistics": {"goalsSum": stats.get("goals", 0),
-                               "assistsSum": stats.get("assists", 0),
-                               "ownGoalsSum": stats.get("own", 0),
-                               "penaltyShooterGoalsScored": stats.get("pen", 0),
-                               "teamGoalsOnThePitchSum": stats.get("tg", 0),
-                               "opponentGoalsOnThePitch": stats.get("og", 0)},
-            "cardStatistics": {"yellowCardNetSum": stats.get("yellow", 0),
-                               "yellowRedCardsCount": stats.get("yr", 0),
-                               "redCardsCount": stats.get("red", 0)},
-            "playingTimeStatistics": {"appearancesCount": stats.get("apps", 0),
-                                      "startingCount": stats.get("starts", 0),
-                                      "substitutedInCount": stats.get("in", 0),
-                                      "substitutedOutCount": stats.get("out", 0),
-                                      "playedMinutesSum": stats.get("minutes", 0)},
+            "generalStatistics": {"participationState": "played" if played else "notPlayed"},
+            "goalStatistics": {
+                "goalsScoredTotal": goals, "assists": assists,
+                "ownGoalsScored": own, "penaltyGoalsScored": pen,
+                "teamGoalsOnThePitch": tg, "opponentGoalsOnThePitch": og,
+            },
+            "cardStatistics": {
+                "yellowCard": yellow, "yellowRedCard": yellow_red, "redCard": red,
+            },
+            "playingTimeStatistics": {"playedMinutes": minutes},
         },
     }
 
@@ -49,62 +47,66 @@ def wrap(rows):
     return {"success": True, "data": {"playerId": "1", "performance": rows}}
 
 
-# --- ключ ------------------------------------------------------------------
-# ⚠️ ГЛАВНАЯ ПРОВЕРКА ЭТОГО ФАЙЛА. Классен сезон 2021 начал в «Тироле» (2446),
-# а закончил в «Спартаке» (232). Если клуб выпадет из ключа, одна строка
-# затрёт другую и год исчезнет из карьеры — карточка будет выглядеть полной.
-rows = parse_seasons(wrap([season(2021, "A1", "2446", apps=37, minutes=3144),
-                           season(2021, "RU1", "232", apps=18, minutes=657)]))
-check("две строки одного сезона за разные клубы не схлопываются", len(rows), 2)
+# --- match-level season aggregation -----------------------------------------
+# Two clubs in the same season must remain distinct.
+rows = parse_seasons(wrap([
+    game(2021, "A1", "2446", minutes=90, goals=1),
+    game(2021, "RU1", "232", minutes=60, assists=1),
+]))
+check("две команды одного сезона не схлопываются", len(rows), 2)
 check("ключи различаются клубом",
       sorted((r["season_id"], r["competition_id"], r["club_id"]) for r in rows),
       [(2021, "A1", "2446"), (2021, "RU1", "232")])
 
-rows = parse_seasons(wrap([season(2021, "RU1", "232", apps=18),
-                           season(2021, "RUP", "232", apps=14)]))
-check("лига и кубок одного клуба — две строки, а не одна", len(rows), 2)
+rows = parse_seasons(wrap([
+    game(2021, "RU1", "232", minutes=90),
+    game(2021, "RUP", "232", minutes=30),
+]))
+check("лига и кубок одного клуба — две строки", len(rows), 2)
 
-# --- неполный ключ ---------------------------------------------------------
-check("строка без клуба выброшена",
-      parse_seasons(wrap([season(2021, "A1", None, apps=9)])), [])
-check("строка без турнира выброшена",
-      parse_seasons(wrap([season(2021, None, "232", apps=9)])), [])
-check("строка без сезона выброшена",
-      parse_seasons(wrap([season(None, "A1", "232", apps=9)])), [])
+# --- incomplete keys are rejected ------------------------------------------
+check("строка без клуба отклонена",
+      parse_seasons(wrap([game(2021, "A1", None)])), [])
+check("строка без турнира отклонена",
+      parse_seasons(wrap([game(2021, None, "232")])), [])
+check("строка без сезона отклонена",
+      parse_seasons(wrap([game(None, "A1", "232")])), [])
 
-# --- пустота и мусор -------------------------------------------------------
+# --- empty and malformed payloads ------------------------------------------
 check("пустой список — пустой разбор", parse_seasons(wrap([])), [])
 check("не словарь — пустой разбор", parse_seasons("не json"), [])
 check("нет ключа data — пустой разбор", parse_seasons({"success": True}), [])
 check("нет ключа performance — пустой разбор",
       parse_seasons({"success": True, "data": {}}), [])
+check("ошибка API не считается валидной пустой историей",
+      parse_seasons({"success": False, "data": {"performance": []}}), [])
 
-# --- null вместо числа -----------------------------------------------------
-# Источник иногда отдаёт null там, где всегда стояло число. Падать нельзя, и
-# выдумывать тоже: ноль здесь — то, что и означает отсутствие событий.
-bad = season(2021, "A1", "2446")
-bad["statistics"]["playingTimeStatistics"]["appearancesCount"] = None
-bad["statistics"]["goalStatistics"]["goalsSum"] = None
-one = parse_seasons(wrap([bad]))[0]
-check("null в матчах → 0", one["apps"], 0)
+# --- null numeric values are zero, but a played match remains an appearance -
+one = parse_seasons(wrap([game(2021, "A1", "2446", minutes=None, goals=None) ]))[0]
+check("сыгранный матч учитывается", one["apps"], 1)
+check("null в минутах → 0", one["minutes"], 0)
 check("null в голах → 0", one["goals"], 0)
 
-nostat = {"generalInformation": {"seasonId": 2021, "competitionId": "A1", "clubId": "1"}}
-check("строка совсем без statistics не роняет разбор",
-      parse_seasons(wrap([nostat]))[0]["minutes"], 0)
-
-# --- поля не перепутаны ----------------------------------------------------
-one = parse_seasons(wrap([season(2021, "A1", "2446", apps=37, starts=36, minutes=3144,
-                                 goals=1, assists=7, yellow=7, red=0, out=9)]))[0]
-check("матчи", one["apps"], 37)
-check("в старте", one["starts"], 36)
-check("минуты", one["minutes"], 3144)
-check("голы", one["goals"], 1)
-check("передачи", one["assists"], 7)
-check("жёлтые", one["yellow"], 7)
-check("заменён", one["sub_out"], 9)
+# --- aggregate multiple match records ---------------------------------------
+one = parse_seasons(wrap([
+    game(2021, "A1", "2446", minutes=90, goals=1, assists=1, yellow=True, tg=2, og=1),
+    game(2021, "A1", "2446", minutes=35, goals=0, assists=2, red=True, tg=1, og=0),
+]))[0]
+check("матчи агрегируются", one["apps"], 2)
+check("минуты агрегируются", one["minutes"], 125)
+check("голы агрегируются", one["goals"], 1)
+check("передачи агрегируются", one["assists"], 3)
+check("жёлтые агрегируются", one["yellow"], 1)
+check("красные агрегируются", one["red"], 1)
+check("командные голы на поле", one["team_goals"], 3)
+check("голы соперника на поле", one["opponent_goals"], 1)
 check("сезон числом, а не строкой", one["season_id"], 2021)
 check("клуб строкой, а не числом", one["club_id"], "2446")
+
+# An unplayed row must not increase any player totals.
+one = parse_seasons(wrap([game(2021, "A1", "2446", played=False, minutes=90, goals=2)]))[0]
+check("не сыгранная запись не увеличивает матчи", one["apps"], 0)
+check("не сыгранная запись не увеличивает голы", one["goals"], 0)
 
 # --- дата рождения ---------------------------------------------------------
 check("дата рождения",
