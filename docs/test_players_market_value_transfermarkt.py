@@ -2,6 +2,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_market_value_transfermarkt import (  # noqa: E402
@@ -99,6 +100,39 @@ class MarketValueRefreshTests(unittest.TestCase):
             }),
             (None, "2026-06-03"),
         )
+
+    @patch("players_market_value_transfermarkt.sb_rpc")
+    def test_batch_fails_if_production_rpc_matches_no_cards(self, rpc):
+        rpc.return_value = {"written": 0, "seen": 0}
+        rows = [{
+            "id": "card-id",
+            "eur": 65_000_000,
+            "at": "2026-10-01",
+            "qid": "Q123",
+            "tm_id": "316264",
+        }]
+        with self.assertRaisesRegex(RuntimeError, "expected 1 production cards, RPC matched 0"):
+            write_batch("https://example.supabase.co", "test-key", rows)
+        self.assertEqual(rpc.call_count, 1)
+        self.assertEqual(rpc.call_args.args[2], "apply_card_market_values")
+
+    @patch("players_market_value_transfermarkt.sb_rpc")
+    def test_batch_links_ids_only_after_market_value_rows_are_matched(self, rpc):
+        rpc.side_effect = [
+            {"written": 0, "seen": 1},
+            {"linked": 1, "conflicts": 0},
+        ]
+        rows = [{
+            "id": "card-id",
+            "eur": 65_000_000,
+            "at": "2026-10-01",
+            "qid": "Q123",
+            "tm_id": "316264",
+        }]
+        self.assertEqual(write_batch("https://example.supabase.co", "test-key", rows), 0)
+        self.assertEqual(rpc.call_count, 2)
+        self.assertEqual(rpc.call_args_list[0].args[2], "apply_card_market_values")
+        self.assertEqual(rpc.call_args_list[1].args[2], "apply_card_wikidata_ids")
 
     def test_unknown_valuation_date_is_never_written(self):
         self.assertTrue(should_write_market_value(65_000_000, "2026-06-03"))
