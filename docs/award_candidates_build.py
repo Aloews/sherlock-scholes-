@@ -148,8 +148,14 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 else "all tracked competitions in selected season"),
             "age": p.get("age"), "apps": p["apps"], "starts": p["starts"], "minutes": p["minutes"],
             "goals": p["goals"], "assists": p["assists"],
+            "goals_per_90": round(p.get("goals_per_90", 0), 4),
+            "assists_per_90": round(p.get("assists_per_90", 0), 4),
+            "weighted_goals": round(p.get("weighted_goals", p["goals"]), 3),
+            "weighted_assists": round(p.get("weighted_assists", p["assists"]), 3),
+            "competition_strength": round(p.get("competition_strength", 0.5), 3),
             "goal_involvements": p["goals"] + p["assists"],
             "sw_rating": p.get("sw_rating"), "market_value_eur": p.get("market_value_eur"),
+            "fame": p.get("fame"),
             "coverage_basis": "player apps/minutes exposure proxy, not source-feed completeness",
             "source_stats_rows": p["stats_rows"],
             "score_is_probability": False,
@@ -191,6 +197,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     if not stats:
         raise RuntimeError(f"No player-season statistics found for season_id={season}")
 
+    competition_rows = get_rows(base, key, "tm_competition", {
+        "select": "id,name,short_name,type_id,updated_at", "order": "id.asc",
+    })
+    strength_by_competition = {
+        str(item["id"]): competition_strength(item.get("name"), item.get("short_name"))
+        for item in competition_rows if item.get("id")
+    }
+
     totals: dict[str, dict[str, Any]] = {}
     by_competition: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     for row in stats:
@@ -204,11 +218,17 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         for target, target_key in keys:
             item = target.setdefault(target_key, {
                 "card_id": card_id, "apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0,
-                "last_fetched": None, "stats_rows": 0,
+                "weighted_goals": 0.0, "weighted_assists": 0.0, "strength_minutes": 0.0,
+                "minutes_for_strength": 0, "last_fetched": None, "stats_rows": 0,
             })
             item["stats_rows"] += 1
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 item[field] += int(number(row, field))
+            strength = strength_by_competition.get(competition, 0.5)
+            item["weighted_goals"] += number(row, "goals") * strength
+            item["weighted_assists"] += number(row, "assists") * strength
+            item["strength_minutes"] += number(row, "minutes") * strength
+            item["minutes_for_strength"] += int(number(row, "minutes"))
             fetched = row.get("fetched_at")
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
