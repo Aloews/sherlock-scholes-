@@ -16,4 +16,4 @@ jobs:
         with:
           deno-version: v2.x
       - name: Verify category and position constraints
-        run: deno test supabase/tests/smart_deck_intent.test.ts supabase/tests/dynamic_player_discovery.test.ts
+        run: deno test supabase/tests/smart_deck_intent.test.ts supabase/tests/dynamic_player_discovery.test.ts supabase/tests/smart_deck_stats_source.test.ts
