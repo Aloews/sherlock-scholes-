@@ -114,6 +114,14 @@ class CandidateSelectionTests(unittest.TestCase):
             "success": True,
             "data": {"performance": [{"generalInformation": {"seasonId": 2026}}]},
         }))
+        self.assertFalse(valid_season_payload({
+            "success": True,
+            "data": {"performance": [{
+                "gameInformation": {"competitionId": "GB1"},
+                "clubsInformation": {"club": {"clubId": "11"}},
+                "statistics": {},
+            }]},
+        }))
         self.assertFalse(valid_season_payload(None))
 
     def test_empty_source_attempts_rotate_behind_never_checked_players(self):
