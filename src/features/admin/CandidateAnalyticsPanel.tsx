@@ -172,7 +172,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                   В выборке: {String(row.evidence.candidate_pool_size ?? '—')} · источник: {String(row.evidence.stats_source ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
-                  Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
+                  Уверенность: {confidenceLabel(row.confidence)} · объём выборки {Math.round(row.data_coverage * 100)}%
                   {row.score_components.sample_reliability != null
                     ? ' · надёжность выборки ' + Math.round(row.score_components.sample_reliability * 100) + '%'
                     : ''}
@@ -204,7 +204,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 <p className="truncate text-sm font-medium">{row.team_name}</p>
                 <p className="truncate text-xs text-brand-muted">{row.tournament}</p>
                 <p className="mt-1 text-xs text-brand-muted">
-                  Игр {String(row.evidence.matches_played ?? '—')} · очки/игру {String(row.evidence.points_per_game ?? '—')} · разница/игру {String(row.evidence.goal_difference_per_game ?? '—')}
+                  Игр {String(row.evidence.matches_played ?? '—')} · максимум в выборке {String(row.evidence.max_matches_played_by_team ?? '—')} · очки/игру {String(row.evidence.points_per_game ?? '—')} · разница/игру {String(row.evidence.goal_difference_per_game ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Последний результат: {String(row.evidence.latest_match_date ?? '—')}
@@ -213,7 +213,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                     : ''}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
-                  Уверенность: {confidenceLabel(row.confidence)} · покрытие {Math.round(row.data_coverage * 100)}%
+                  Уверенность: {confidenceLabel(row.confidence)} · доля матчей от максимума в выборке {Math.round(row.data_coverage * 100)}%
                 </p>
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
