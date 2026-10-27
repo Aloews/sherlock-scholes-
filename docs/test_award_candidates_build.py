@@ -1,6 +1,6 @@
 import unittest
 
-from award_candidates_build import (build_team_candidate_payloads, competition_format, normal_key, normalize_base_url, percentile, score_population)
+from award_candidates_build import (OVERALL_SPECS, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, score_population)
 from datetime import date
 
 
@@ -121,11 +121,44 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual({row["tournament"] for row in rows}, {"League A", "Single match cup"})
         self.assertEqual(len(rows), 4)  # two teams per competition; duplicate source row counted once
         self.assertTrue(all(row["confidence"] == "low" for row in rows))
+        self.assertTrue(all(row["candidate_score"] < 60 for row in rows))
+        self.assertTrue(all(row["score_components"]["sample_reliability"] < 0.2 for row in rows))
 
     def test_competition_format_distinguishes_leagues_and_knockout_cups(self):
         self.assertEqual(competition_format("Англия. Премьер-лига"), "league_standings_proxy")
         self.assertEqual(competition_format("Англия. Кубок"), "knockout_form_proxy")
         self.assertEqual(competition_format("Лига чемпионов"), "international_tournament_form_proxy")
+
+
+    def test_competition_strength_downweights_lower_divisions(self):
+        self.assertGreater(competition_strength("UEFA Champions League"), competition_strength("1.Lig"))
+        self.assertGreater(competition_strength("Premier League"), competition_strength("1.Lig"))
+        self.assertGreater(competition_strength("Premier League"), competition_strength("Russian Premier League"))
+        self.assertEqual(competition_strength("Unmapped competition"), 0.5)
+
+    def test_ballondor_and_the_best_use_distinct_weight_profiles(self):
+        self.assertNotEqual(OVERALL_SPECS["ballon_dor"], OVERALL_SPECS["the_best"])
+        self.assertNotEqual(OVERALL_SPECS["ballon_dor"], OVERALL_SPECS["golden_boy"])
+        self.assertAlmostEqual(sum(OVERALL_SPECS["ballon_dor"].values()), 1.0)
+        self.assertAlmostEqual(sum(OVERALL_SPECS["the_best"].values()), 1.0)
+        self.assertAlmostEqual(sum(OVERALL_SPECS["golden_boy"].values()), 1.0)
+
+
+    def test_missing_market_value_is_neutral_not_zero(self):
+        players = [
+            {"card_id": "unknown", "name": "Unknown value", "category": "player", "active": True,
+             "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
+             "market_value_eur": None, "stats_rows": 1},
+            {"card_id": "known", "name": "Known value", "category": "player", "active": True,
+             "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
+             "market_value_eur": 100000000, "stats_rows": 1},
+        ]
+        rows = score_population(players, {"market_value_eur": 0.5, "goals": 0.5},
+                                "ballon_dor", 2026, date(2026, 10, 27))
+        self.assertEqual(
+            next(row for row in rows if row["card_id"] == "unknown")["score_components"]["market_value_eur"],
+            50.0,
+        )
 
 
 if __name__ == "__main__":

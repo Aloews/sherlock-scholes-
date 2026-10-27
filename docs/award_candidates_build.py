@@ -18,9 +18,41 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-MODEL_VERSION = "candidate-rank-v1"
+MODEL_VERSION = "candidate-rank-v2"
 PAGE_SIZE = 1000
 TIMEOUT = 45
+
+OVERALL_SPECS = {
+    # Award-specific weights avoid publishing identical rankings for different awards.
+    # Competition-weighted output suppresses raw totals from weaker divisions; SW rating,
+    # market value and fame are separate priors, not substitutes for match performance.
+    "ballon_dor": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+        "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+        "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+    },
+    "the_best": {
+        "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+        "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+        "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+    },
+    "ballon_dor_feminin": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+        "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+        "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+    },
+    "the_best_female": {
+        "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+        "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+        "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+    },
+    "golden_boy": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .10,
+        "assists_per_90": .06, "minutes": .08, "apps": .05, "sw_rating": .16,
+        "market_value_eur": .15, "fame": .03, "competition_strength": .07,
+    },
+}
+GOLDEN_BOOT_WEIGHTS = {"goals": .68, "goals_per_90": .12, "assists": .08, "minutes": .07, "apps": .05}
 
 
 def normalize_base_url(value: str) -> str:
@@ -92,6 +124,32 @@ def normal_key(value: str) -> str:
     return re.sub(r"[^\w]+", "-", value.lower(), flags=re.UNICODE).strip("-_") or "unknown"
 
 
+def competition_strength(name: str | None, short_name: str | None = None) -> float:
+    """Conservative competition-quality prior; unknown competitions stay neutral."""
+    value = f"{name or ''} {short_name or ''}".lower()
+    if re.search(r"world cup|champions league|fifa intercontinental|european championship|euros\b|copa america|africa cup of nations|asian cup|чемпионат мира|лига чемпионов", value):
+        return 1.0
+    if re.search(r"russian premier league|россия\. премьер-лига", value):
+        return 0.78
+    if re.search(r"brazilian serie a|campeonato brasileiro|liga mx|major league soccer|a-league", value):
+        return 0.82
+    if re.search(r"premier league|laliga|la liga|bundesliga|serie a\b|ligue 1|fifa club world cup|uefa euro", value):
+        return 0.95
+    if re.search(r"europa league|conference league|qualifying|qualification|квалификац", value):
+        return 0.82 if "qualif" not in value and "квалификац" not in value else 0.68
+    if re.search(r"saudi pro league|süper lig|super lig|eredivisie|primeira liga|liga portugal|mls|brasileirão|brasileirao|liga profesional|j1 league|k league 1|russian premier league|премьер-лига|высшая лига", value):
+        return 0.82
+    if re.search(r"youth|u19|u20|u21|u23|reserve|amateur|youth league|молодёж|молодеж|резерв", value):
+        return 0.38
+    if re.search(r"second|2\. bundesliga|championship|serie b|liga 2|ligue 2|1\.lig|2\.lig|division 2|division 3|д2|д3|д4|д5|д6|первая лига|чемпионшип", value):
+        return 0.56
+    if re.search(r"cup|copa|coupe|pokal|coppa|кубок|supercup|суперкубок", value):
+        return 0.72
+    if re.search(r"league|liga|ligue|division|serie|лига|дивизион|чемпионат", value):
+        return 0.64
+    return 0.5
+
+
 def score_population(population: list[dict], weights: dict[str, float], award_key: str,
                      season: int, snapshot: date, competition_id: str = "*") -> list[dict]:
     eligible = [p for p in population if p.get("active") and (
@@ -105,7 +163,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
 
     percentiles: dict[str, dict[str, float]] = {}
     for metric in weights:
-        measured = [p for p in eligible if metric != "sw_rating" or p.get("sw_rating") is not None]
+        # Unknown market values/ratings stay neutral instead of being treated as zero.
+        measured = [p for p in eligible if p.get(metric) is not None]
         ranks = percentile([number(p, metric) for p in measured])
         percentiles[metric] = {p["card_id"]: 50.0 for p in eligible}
         percentiles[metric].update({p["card_id"]: rank for p, rank in zip(measured, ranks)})
@@ -125,8 +184,14 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 else "all tracked competitions in selected season"),
             "age": p.get("age"), "apps": p["apps"], "starts": p["starts"], "minutes": p["minutes"],
             "goals": p["goals"], "assists": p["assists"],
+            "goals_per_90": round(p.get("goals_per_90", 0), 4),
+            "assists_per_90": round(p.get("assists_per_90", 0), 4),
+            "weighted_goals": round(p.get("weighted_goals", p["goals"]), 3),
+            "weighted_assists": round(p.get("weighted_assists", p["assists"]), 3),
+            "competition_strength": round(p.get("competition_strength", 0.5), 3),
             "goal_involvements": p["goals"] + p["assists"],
             "sw_rating": p.get("sw_rating"), "market_value_eur": p.get("market_value_eur"),
+            "fame": p.get("fame"),
             "coverage_basis": "player apps/minutes exposure proxy, not source-feed completeness",
             "source_stats_rows": p["stats_rows"],
             "score_is_probability": False,
@@ -168,6 +233,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     if not stats:
         raise RuntimeError(f"No player-season statistics found for season_id={season}")
 
+    competition_rows = get_rows(base, key, "tm_competition", {
+        "select": "id,name,short_name,type_id,updated_at", "order": "id.asc",
+    })
+    strength_by_competition = {
+        str(item["id"]): competition_strength(item.get("name"), item.get("short_name"))
+        for item in competition_rows if item.get("id")
+    }
+
     totals: dict[str, dict[str, Any]] = {}
     by_competition: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     for row in stats:
@@ -181,11 +254,17 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         for target, target_key in keys:
             item = target.setdefault(target_key, {
                 "card_id": card_id, "apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0,
-                "last_fetched": None, "stats_rows": 0,
+                "weighted_goals": 0.0, "weighted_assists": 0.0, "strength_minutes": 0.0,
+                "minutes_for_strength": 0, "last_fetched": None, "stats_rows": 0,
             })
             item["stats_rows"] += 1
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 item[field] += int(number(row, field))
+            strength = strength_by_competition.get(competition, 0.5)
+            item["weighted_goals"] += number(row, "goals") * strength
+            item["weighted_assists"] += number(row, "assists") * strength
+            item["strength_minutes"] += number(row, "minutes") * strength
+            item["minutes_for_strength"] += int(number(row, "minutes"))
             fetched = row.get("fetched_at")
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
@@ -196,7 +275,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     for start in range(0, len(ids), 100):
         joined = ",".join(ids[start:start + 100])
         r = requests.get(card_url, headers=api_headers(key), params={
-            "select": "id,name,category,born_on,sw_rating,market_value_eur,position_ru,active",
+            "select": "id,name,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
             "id": f"in.({joined})",
         }, timeout=TIMEOUT)
         r.raise_for_status()
@@ -212,6 +291,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             row = {**stat, **card}
             for field in ("apps", "starts", "minutes", "goals", "assists"):
                 row[field] = max(0, stat[field])
+            row["weighted_goals"] = max(0.0, stat.get("weighted_goals", stat["goals"]))
+            row["weighted_assists"] = max(0.0, stat.get("weighted_assists", stat["assists"]))
+            row["competition_strength"] = (
+                stat["strength_minutes"] / stat["minutes_for_strength"]
+                if stat.get("minutes_for_strength", 0) > 0 else 0.5
+            )
+            row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
+            row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
             row["age"] = None
             born = card.get("born_on")
             if born:
@@ -228,20 +315,12 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     if not population:
         raise RuntimeError("No active cards matched current season statistics; refusing empty snapshots")
 
-    overall_specs = {
-        "ballon_dor": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "the_best": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "ballon_dor_feminin": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "the_best_female": {"goals": .33, "assists": .20, "minutes": .20, "apps": .13, "sw_rating": .14},
-        "golden_boy": {"goals": .34, "assists": .22, "minutes": .18, "apps": .12, "sw_rating": .14},
-    }
     payloads = []
-    for award_key, weights in overall_specs.items():
+    for award_key, weights in OVERALL_SPECS.items():
         payloads.extend(score_population(population, weights, award_key, season, snapshot))
-    boot_weights = {"goals": .72, "minutes": .10, "apps": .08, "assists": .10}
     for competition, source in by_competition.items():
         comp_population = population_from(source)
-        payloads.extend(score_population(comp_population, boot_weights, "golden_boot", season, snapshot, competition))
+        payloads.extend(score_population(comp_population, GOLDEN_BOOT_WEIGHTS, "golden_boot", season, snapshot, competition))
     written = upsert_rows(base, key, "award_candidate_snapshot", payloads,
                           "award_key,season_id,snapshot_date,card_id,competition_id")
     return season, written
@@ -360,14 +439,22 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                 "club_elo_percentile": elo_rank[i],
             }
             # Relative form/standings plus an independent cross-competition team-strength prior.
-            raw_scores[team["team_key"]] = (
+            unshrunk_score = (
                 .30 * components["points_per_game_percentile"]
                 + .20 * components["goal_difference_percentile"]
                 + .15 * components["win_rate_percentile"]
                 + .20 * components["recent_form_percentile"]
                 + .15 * components["club_elo_percentile"]
             )
-            component_map[team["team_key"]] = {key: round(value, 2) for key, value in components.items()}
+            # Shrink tiny samples toward neutral so a perfect 2–3 match run
+            # cannot outrank a full-season contender on form alone.
+            reliability = min(1.0, team["played"] / 12.0)
+            raw_scores[team["team_key"]] = 50.0 + (unshrunk_score - 50.0) * reliability
+            component_map[team["team_key"]] = {
+                **{key: round(value, 2) for key, value in components.items()},
+                "unshrunk_relative_index": round(unshrunk_score, 2),
+                "sample_reliability": round(reliability, 3),
+            }
         ordered = sorted(teams, key=lambda team: (-raw_scores[team["team_key"]], -team["played"], team["team_key"]))
         comp_format = competition_format(tournament)
         for rank, team in enumerate(ordered[:100], 1):
@@ -391,6 +478,7 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
                     "goal_difference_per_game": round((team["gf"] - team["ga"]) / team["played"], 4),
                     "recent_form_last_5": round(sum(recent) / len(recent), 4) if recent else None,
                     "club_elo": ratings.get(key, {}).get("elo"),
+                    "sample_reliability": round(min(1.0, team["played"] / 12.0), 3),
                     "coverage_basis": "share of maximum matches observed for a team in this competition snapshot; not source completeness",
                     "score_is_probability": False,
                     "ranking_method": "current competition results + recent form + cross-competition club Elo",
