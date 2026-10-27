@@ -2,7 +2,8 @@
 -- Without this checkpoint, profiles with a definitive empty response/404 remain at
 -- the head of the 800-player rotation forever and starve the rest of the catalogue.
 alter table public.cards
-  add column if not exists player_stats_checked_at timestamptz;
+  add column if not exists player_stats_checked_at timestamptz,
+  add column if not exists player_stats_data_synced_at timestamptz;
 
 -- Do not infer an attempt from old season rows: the former collector could label
 -- competition aggregates as seasons. All cards start unchecked and are advanced
