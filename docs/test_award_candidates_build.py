@@ -131,6 +131,7 @@ class CandidateRankingTests(unittest.TestCase):
     def test_competition_strength_downweights_lower_divisions(self):
         self.assertGreater(competition_strength("UEFA Champions League"), competition_strength("1.Lig"))
         self.assertGreater(competition_strength("Premier League"), competition_strength("1.Lig"))
+        self.assertGreater(competition_strength("Premier League"), competition_strength("Russian Premier League"))
         self.assertEqual(competition_strength("Unmapped competition"), 0.5)
 
     def test_ballondor_and_the_best_use_distinct_weight_profiles(self):
