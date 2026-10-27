@@ -38,7 +38,7 @@ export function CareerStats({ cardId }: { cardId: string }) {
   const seasonLabelCurrent = `${seasonStartYear}/${String(seasonStartYear + 1).slice(-2)}`;
   const loading = totals.status === 'loading' || clubs.status === 'loading' || season.status === 'loading';
 
-  if (!total && rows.length === 0) {
+  if (!total && rows.length === 0 && seasonRows.length === 0) {
     if (loading) {
       return (
         <div className="grid grid-cols-2 gap-2" aria-label={t('digest.loading')}>
