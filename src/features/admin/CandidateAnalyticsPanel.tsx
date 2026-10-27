@@ -169,7 +169,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                   Голы {String(row.evidence.goals ?? '—')} · передачи {String(row.evidence.assists ?? '—')} · минуты {String(row.evidence.minutes ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
-                  В выборке: {String(row.evidence.candidate_pool_size ?? '—')} · источник: {String(row.evidence.stats_source ?? '—')}
+                  Кандидатов: {String(row.evidence.candidate_pool_size ?? '—')} · база сравнения: {String(row.evidence.score_reference_population_size ?? '—')} · источник: {String(row.evidence.stats_source ?? '—')}
                 </p>
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · объём выборки {Math.round(row.data_coverage * 100)}%
