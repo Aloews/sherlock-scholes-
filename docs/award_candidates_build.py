@@ -23,6 +23,14 @@ PAGE_SIZE = 1000
 TIMEOUT = 45
 
 
+def normalize_base_url(value: str) -> str:
+    # Repository secrets may accidentally include a leading escape backslash.
+    base = value.strip().lstrip("\\\\").rstrip("/")
+    if not base.startswith(("https://", "http://")):
+        raise ValueError("SUPABASE_URL must be an absolute HTTP(S) URL")
+    return base
+
+
 def api_headers(key: str) -> dict[str, str]:
     return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
@@ -337,9 +345,14 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
 
 def main() -> int:
     load_dotenv()
-    base, key = os.environ.get("SUPABASE_URL", "").strip(), os.environ.get("SUPABASE_KEY", "").strip()
-    if not base or not key:
+    raw_base, key = os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", "").strip()
+    if not raw_base.strip() or not key:
         print("SUPABASE_URL and SUPABASE_KEY are required", file=sys.stderr)
+        return 2
+    try:
+        base = normalize_base_url(raw_base)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
         return 2
     snapshot = date.today()
     try:

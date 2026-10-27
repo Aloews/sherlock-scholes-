@@ -1,10 +1,18 @@
 import unittest
 
-from award_candidates_build import normal_key, percentile, score_population
+from award_candidates_build import normal_key, normalize_base_url, percentile, score_population
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
+
+    def test_normalize_supabase_url_removes_accidental_escape_and_trailing_slash(self):
+        self.assertEqual(normalize_base_url("\\\\https://project.supabase.co/"), "https://project.supabase.co")
+
+    def test_normalize_supabase_url_rejects_non_absolute_url(self):
+        with self.assertRaises(ValueError):
+            normalize_base_url("project.supabase.co")
+
     def test_percentile_is_monotonic(self):
         values = [10.0, 30.0, 20.0]
         ranks = percentile(values)
