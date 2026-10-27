@@ -297,6 +297,121 @@ def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -
     return totals
 
 
+def canonical_match_competition(tournament: str) -> str:
+    """Collapse common English/Russian labels so one match from two feeds counts once."""
+    value = str(tournament or "").casefold()
+    aliases = (
+        (r"premier league|премьер-лиг", "premier-league"),
+        (r"champions league|лига чемпионов", "champions-league"),
+        (r"europa league|лига европы", "europa-league"),
+        (r"conference league|лига конференций", "conference-league"),
+        (r"nations league|лига наций", "nations-league"),
+        (r"fa cup|кубок англии", "fa-cup"),
+        (r"league cup|efl cup|кубок лиги", "league-cup"),
+        (r"community shield|суперкубок англии", "community-shield"),
+        (r"bundesliga|бундеслиг", "bundesliga"),
+        (r"la liga|laliga|примера дивизион|чемпионат испании", "la-liga"),
+        (r"serie a|серия а|чемпионат италии", "serie-a"),
+        (r"ligue 1|лига 1", "ligue-1"),
+        (r"world cup|чемпионат мира", "world-cup"),
+    )
+    for pattern, key in aliases:
+        if re.search(pattern, value, re.I):
+            return key
+    return normal_key(value)
+
+
+def is_friendly_or_exhibition(tournament: str) -> bool:
+    value = str(tournament or "")
+    return bool(re.search(
+        r"\bfriendly\b|pre[- ]?season|exhibition|товарищеск|контрольн\w* матч",
+        value, re.I,
+    ))
+
+
+def aggregate_player_match_stats(
+    rows: list[dict], season: int, snapshot: date, exclude_card_ids: set[str] | None = None
+) -> dict[str, dict[str, Any]]:
+    """Build current-season male-player totals from match rows without double counting feeds.
+
+    Where ESPN and sports.ru describe the same player/competition/date, prefer a row
+    with minutes; ties prefer sports.ru. Friendly and disputed rows are excluded.
+    """
+    excluded = exclude_card_ids or set()
+    selected: dict[tuple[str, str, str], dict] = {}
+    selected_priority: dict[tuple[str, str, str], tuple[int, int]] = {}
+    window_start = date(season, 7, 1)
+    for row in rows:
+        card_id = str(row.get("card_id") or "")
+        tournament = str(row.get("tournament") or "").strip()
+        raw_day = str(row.get("match_date") or "")[:10]
+        source = str(row.get("source") or "").casefold()
+        if not card_id or card_id in excluded or not tournament or not raw_day:
+            continue
+        if source not in {"espn", "sports.ru"} or row.get("disputed") is True:
+            continue
+        if is_friendly_or_exhibition(tournament):
+            continue
+        try:
+            match_day = date.fromisoformat(raw_day)
+        except ValueError:
+            continue
+        if match_day < window_start or match_day > snapshot:
+            continue
+        competition = canonical_match_competition(tournament)
+        identity = (card_id, raw_day, competition)
+        has_minutes = row.get("minutes") is not None
+        priority = (0 if has_minutes else 1, 0 if source == "sports.ru" else 1)
+        previous = selected.get(identity)
+        previous_priority = selected_priority.get(identity)
+        if previous is None or priority < previous_priority or (
+            priority == previous_priority
+            and str(row.get("fetched_at") or "") > str(previous.get("fetched_at") or "")
+        ):
+            selected[identity] = row
+            selected_priority[identity] = priority
+
+    totals: dict[str, dict[str, Any]] = {}
+    for (card_id, raw_day, _competition), row in selected.items():
+        tournament = str(row.get("tournament") or "")
+        item = totals.setdefault(card_id, {
+            "card_id": card_id, "apps": 0, "starts": 0, "starts_known": False,
+            "minutes": 0, "goals": 0, "assists": 0,
+            "weighted_goals": 0.0, "weighted_assists": 0.0,
+            "strength_minutes": 0.0, "minutes_for_strength": 0,
+            "competition_strength": 0.5, "strength_sum": 0.0, "strength_count": 0,
+            "minutes_known": True, "last_fetched": None, "stats_rows": 0,
+            "stats_window_start": window_start.isoformat(),
+            "stats_source": "player_match_stats",
+        })
+        item["apps"] += 1
+        item["stats_rows"] += 1
+        for field in ("goals", "assists"):
+            item[field] += int(number(row, field))
+        strength = competition_strength(tournament)
+        item["weighted_goals"] += number(row, "goals") * strength
+        item["weighted_assists"] += number(row, "assists") * strength
+        item["strength_sum"] += strength
+        item["strength_count"] += 1
+        raw_minutes = row.get("minutes")
+        if raw_minutes is None:
+            item["minutes_known"] = False
+        else:
+            minutes = max(0, int(number(row, "minutes")))
+            item["minutes"] += minutes
+            item["strength_minutes"] += minutes * strength
+            item["minutes_for_strength"] += minutes
+        fetched = row.get("fetched_at")
+        if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
+            item["last_fetched"] = fetched
+    for item in totals.values():
+        if item["minutes_for_strength"] > 0 and item["minutes_known"]:
+            item["competition_strength"] = item["strength_minutes"] / item["minutes_for_strength"]
+        elif item["strength_count"]:
+            item["competition_strength"] = item["strength_sum"] / item["strength_count"]
+    return totals
+
+
 def score_population(population: list[dict], weights: dict[str, float], award_key: str,
                      season: int, snapshot: date, competition_id: str = "*") -> list[dict]:
     eligible = [p for p in population if p.get("active") and (
@@ -563,8 +678,24 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         "market_value_at": f"gte.{(snapshot - timedelta(days=180)).isoformat()}",
         "order": "market_value_eur.desc",
     })
+    women_cards = get_rows(base, key, "cards", {
+        "select": "id,name,name_en,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+        "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
+    })
+    women_ids = {str(card["id"]) for card in women_cards if card.get("id")}
+    match_rows = get_rows(base, key, "player_match_stats", {
+        "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at,source,disputed",
+        "match_date": f"gte.{date(season, 7, 1).isoformat()}",
+        "source": "in.(espn,sports.ru)", "disputed": "eq.false",
+        "order": "card_id.asc,match_date.asc,tournament.asc,source.asc",
+    })
+    match_totals = aggregate_player_match_stats(match_rows, season, snapshot, women_ids)
+    usable_match_ids = {
+        card_id for card_id, item in match_totals.items() if item["apps"] >= 3
+    }
+    season_stat_ids = {str(row.get("card_id")) for row in stats if row.get("card_id")}
     coverage = current_player_stats_coverage(
-        current_value_cards, {str(row.get("card_id")) for row in stats if row.get("card_id")}, snapshot
+        current_value_cards, season_stat_ids | usable_match_ids, snapshot
     )
     if coverage["sample_size"] >= 50 and coverage["coverage"] < 0.75:
         print(
@@ -612,15 +743,15 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
 
-    women_cards = get_rows(base, key, "cards", {
-        "select": "id,name,name_en,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
-        "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
-    })
-    women_ids = [str(card["id"]) for card in women_cards if card.get("id")]
-    if women_ids:
+    for card_id, match_stat in match_totals.items():
+        if match_stat["apps"] >= 3:
+            totals[card_id] = match_stat
+
+    women_id_list = sorted(women_ids)
+    if women_id_list:
         match_rows = get_rows(base, key, "player_match_stats", {
             "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at",
-            "card_id": "in.(" + ",".join(women_ids) + ")",
+            "card_id": "in.(" + ",".join(women_id_list) + ")",
             "match_date": f"gte.{date(season, 1, 1).isoformat()}",
             "source": "eq.espn", "disputed": "eq.false",
             "order": "match_date.asc",
