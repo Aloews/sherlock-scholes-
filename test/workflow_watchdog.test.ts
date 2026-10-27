@@ -67,6 +67,7 @@ describe('сторож у прогонов по расписанию', () => {
     expect(byCron.length).toBeGreaterThanOrEqual(3);
     expect(byCron.map((w) => w.name).sort())
       .toEqual([
+        'award-and-tournament-candidates.yml',
         'daily-enrich.yml',
         'forecast.yml',
         'multimarket-odds-collection.yml',
