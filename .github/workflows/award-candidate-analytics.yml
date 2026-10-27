@@ -1,0 +1,76 @@
+name: award-candidate-analytics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/award-candidate-analytics.yml'
+      - 'docs/award_candidates_build.py'
+      - 'football_scraper/award_analytics.py'
+      - 'football_scraper/test_award_analytics.py'
+      - 'supabase/migrations/*award_candidate_snapshot.sql'
+  pull_request:
+    paths:
+      - '.github/workflows/award-candidate-analytics.yml'
+      - 'docs/award_candidates_build.py'
+      - 'football_scraper/award_analytics.py'
+      - 'football_scraper/test_award_analytics.py'
+      - 'supabase/migrations/*award_candidate_snapshot.sql'
+  schedule:
+    - cron: '40 6 * * *'
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season ID to rank'
+        required: false
+        default: '2026'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test award analytics
+        run: python -m unittest discover -s football_scraper -p 'test_award_analytics.py' -v
+      - name: Compile candidate builder
+        run: python -m py_compile football_scraper/award_analytics.py docs/award_candidates_build.py
+
+  sync:
+    if: github.event_name != 'pull_request'
+    needs: [validate]
+    concurrency:
+      group: award-candidate-analytics
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production secrets are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Refresh award candidate snapshots
+        env:
+          SEASON_INPUT: ${{ github.event.inputs.season || '2026' }}
+        run: python docs/award_candidates_build.py --season "$SEASON_INPUT" --limit 50 --apply
