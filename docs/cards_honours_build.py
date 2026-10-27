@@ -173,14 +173,83 @@ def fetch_cards(url: str, key: str, limit: int, offset: int = 0,
     return rows[:limit] if limit else rows
 
 
+def _legacy_title_identity(value: str) -> tuple[str, int]:
+    """Canonical key/count for the legacy string list still read by old clients."""
+    count_match = COUNT.search(value)
+    count = int(count_match.group(1)) if count_match else 1
+    title = value[:count_match.start()].strip() if count_match else value.strip()
+    title = re.sub(r"\s*[×x]\s*\d+\s*$", "", title, flags=re.I).strip()
+    title = re.sub(r"\s*\(\d+\)\s*$", "", title).strip()
+    normalized = strip_markup(title).lower()
+    if "золотого мяча" in normalized or "золотой мяч" in normalized:
+        return "золотой мяч", count
+    if "трофей копа" in normalized or "кубок копа" in normalized:
+        return "трофей копа", count
+    if "трофей яшина" in normalized or "яшина" in normalized:
+        return "трофей яшина", count
+    if "герда мюллера" in normalized or "герд мюллер" in normalized:
+        return "трофей герда мюллера", count
+    if "сократес" in normalized:
+        return "приз сократеса", count
+    normalized = re.sub(r"^обладатель\s+", "", normalized)
+    normalized = re.sub(r"\s+по версии\s+.+$", "", normalized)
+    normalized = re.sub(r"[«»„“”\".,:;!?]", "", normalized)
+    return re.sub(r"\s+", " ", normalized).strip(), count
+
+
+def legacy_title_label(honour: dict) -> str:
+    """Produce a readable string for deployed clients that predate facts.honours."""
+    title = strip_markup(str(honour.get("title") or ""))
+    lower = title.lower()
+    if "золотого мяча" in lower or "золотой мяч" in lower:
+        title = "Золотой мяч"
+    elif "трофей копа" in lower or "кубок копа" in lower:
+        title = "Трофей Копа"
+    elif "трофей яшина" in lower or "яшина" in lower:
+        title = "Трофей Яшина"
+    elif "герда мюллера" in lower or "герд мюллер" in lower:
+        title = "Трофей Герда Мюллера"
+    elif "сократес" in lower:
+        title = "Приз Сократеса"
+    else:
+        title = re.sub(r"^обладатель\s+", "", title, flags=re.I)
+        title = re.sub(r"\s+по версии\s+.+$", "", title, flags=re.I)
+        title = title.strip(" «»„“”\"")
+    count = max(1, int(honour.get("count") or 1))
+    return title + (f" ×{count}" if count > 1 else "")
+
+
+def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]:
+    """Merge the new source into legacy facts.titles without losing curated entries."""
+    titles = [item for item in (existing or []) if isinstance(item, str) and item.strip()]
+    for honour in honours:
+        label = legacy_title_label(honour)
+        key, count = _legacy_title_identity(label)
+        matches = [i for i, old in enumerate(titles) if _legacy_title_identity(old)[0] == key]
+        if not matches:
+            titles.append(label)
+            continue
+        best_index = max(matches, key=lambda i: _legacy_title_identity(titles[i])[1])
+        if count > _legacy_title_identity(titles[best_index])[1]:
+            titles[best_index] = label
+        for i in reversed(matches):
+            if i != best_index:
+                titles.pop(i)
+                if i < best_index:
+                    best_index -= 1
+    return titles
+
+
 def apply_honours(url: str, key: str, card: dict, honours: list[dict]) -> bool:
     """Merge verified honours into one card without overwriting unrelated facts."""
     existing_facts = card.get("facts")
     facts = dict(existing_facts) if isinstance(existing_facts, dict) else {}
-    if facts.get("honours") == honours:
+    legacy_titles = merge_legacy_titles(facts.get("titles"), honours)
+    if facts.get("honours") == honours and facts.get("titles") == legacy_titles:
         return False
 
     facts["honours"] = honours
+    facts["titles"] = legacy_titles
     facts["honours_source"] = "https://ru.wikipedia.org/wiki/" + urllib.parse.quote(
         card["name"].replace(" ", "_"), safe="()_,"
     )
@@ -260,9 +329,15 @@ def main() -> None:
             print(f"  {i:4}/{len(cards)}  {card['name'][:34]:34}  {len(honours):3} "
                   + ", ".join(f"{h['title']}×{h['count']}" for h in top))
 
+            legacy_titles = merge_legacy_titles(
+                (card.get("facts") or {}).get("titles") if isinstance(card.get("facts"), dict) else [],
+                honours,
+            )
             lines.append(
-                f"UPDATE cards SET facts = jsonb_set(coalesce(facts, '{{}}'::jsonb), "
-                f"'{{honours}}', {sql_quote(json.dumps(honours, ensure_ascii=False))}::jsonb, true) "
+                f"UPDATE cards SET facts = jsonb_set("
+                f"jsonb_set(coalesce(facts, '{{}}'::jsonb), '{{honours}}', "
+                f"{sql_quote(json.dumps(honours, ensure_ascii=False))}::jsonb, true), "
+                f"'{{titles}}', {sql_quote(json.dumps(legacy_titles, ensure_ascii=False))}::jsonb, true) "
                 f"WHERE id = '{card['id']}'; -- {card['name']}"
             )
             if args.apply:
