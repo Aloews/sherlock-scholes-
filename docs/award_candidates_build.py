@@ -18,7 +18,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-MODEL_VERSION = "candidate-rank-v3"
+MODEL_VERSION = "candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
@@ -248,6 +248,34 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 or (p.get("minutes_known") is not False and p["minutes"] >= 300)
             )
         ]
+
+    # Ballon d'Or and The Best are not generic season-stat leaderboards. Require
+    # an elite-level prior (market value, fame, or rating) or an exceptional
+    # season in a strong competition. Golden Boy uses a lower prospect threshold.
+    if award_key in {"ballon_dor", "the_best"}:
+        eligible = [
+            p for p in eligible
+            if number(p, "market_value_eur") >= 20_000_000
+            or number(p, "fame") >= 75
+            or number(p, "sw_rating") >= 90
+            or (
+                p["apps"] >= 8 and p["minutes"] >= 450
+                and p["goals"] + p["assists"] >= 15
+                and number(p, "competition_strength") >= 0.82
+            )
+        ]
+    elif award_key == "golden_boy":
+        eligible = [
+            p for p in eligible
+            if number(p, "market_value_eur") >= 10_000_000
+            or number(p, "fame") >= 60
+            or number(p, "sw_rating") >= 85
+            or (
+                p["apps"] >= 8 and p["minutes"] >= 450
+                and p["goals"] + p["assists"] >= 10
+                and number(p, "competition_strength") >= 0.82
+            )
+        ]
     if not eligible:
         return []
 
@@ -280,13 +308,26 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
         evidence = {
             "name": p["name"], "target_award_year": target_year, "source_season_id": season,
             "candidate_pool_size": len(eligible),
-            "candidate_pool_scope": "eligible active cards with tracked season statistics; minimum appearance/minute gates applied",
+            "candidate_pool_scope": "eligible active cards after sample-size and award-specific quality gates",
             "sample_reliability": round(sample_reliability, 3),
+            "elite_prior": {
+                "market_value_eur": p.get("market_value_eur"),
+                "fame": p.get("fame"),
+                "sw_rating": p.get("sw_rating"),
+                "competition_strength": round(p.get("competition_strength", 0.5), 3),
+            },
             "unshrunk_relative_index": round(unshrunk_score, 4),
             "eligibility_rule": (
                 "golden_boot: at least 3 appearances and 1 goal in this competition"
                 if award_key == "golden_boot"
                 else "at least 5 appearances and 300 minutes; if minutes are unavailable, at least 8 appearances"
+            ),
+            "award_quality_gate": (
+                "market value >= EUR 20m or fame >= 75 or rating >= 90; alternatively >=15 goal involvements in a strong competition"
+                if award_key in {"ballon_dor", "the_best"}
+                else "U21 plus market value >= EUR 10m or fame >= 60 or rating >= 85; alternatively >=10 goal involvements in a strong competition"
+                if award_key == "golden_boy"
+                else "not applied; ranking uses available season statistics"
             ),
             "competition_id": competition_id, "ranking_scope": (
                 f"tracked competition {competition_id}" if award_key == "golden_boot"
