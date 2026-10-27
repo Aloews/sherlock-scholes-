@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -113,6 +113,31 @@ class CandidateRankingTests(unittest.TestCase):
             "active cards with stats available in tracked sources",
         )
         self.assertEqual(rows[0]["confidence"], "low")
+
+    def test_exhibition_and_friendly_matches_are_not_tournament_candidates(self):
+        self.assertFalse(is_rankable_competition("Товарищеские матчи (клубы)"))
+        self.assertFalse(is_rankable_competition("Товарищеские матчи (сборные)"))
+        self.assertFalse(is_rankable_competition("International Friendlies"))
+        self.assertFalse(is_rankable_competition("Pre-season friendly"))
+        self.assertTrue(is_rankable_competition("Россия. Премьер-лига"))
+        self.assertTrue(is_rankable_competition("Россия. FONBET Кубок России"))
+        self.assertTrue(is_rankable_competition("UEFA Nations League"))
+
+    def test_team_candidates_exclude_friendlies_but_keep_real_competitions(self):
+        matches = [
+            {"tournament": "League A", "match_date": "2026-08-01", "home_key": "a",
+             "away_key": "b", "home_team": "Alpha", "away_team": "Beta",
+             "home_score": 2, "away_score": 0},
+            {"tournament": "International Friendlies", "match_date": "2026-08-02", "home_key": "a",
+             "away_key": "c", "home_team": "Alpha", "away_team": "Gamma",
+             "home_score": 8, "away_score": 0},
+            {"tournament": "National Cup", "match_date": "2026-08-03", "home_key": "b",
+             "away_key": "c", "home_team": "Beta", "away_team": "Gamma",
+             "home_score": 1, "away_score": 0},
+        ]
+        rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 27))
+        self.assertEqual({row["tournament"] for row in rows}, {"League A", "National Cup"})
+        self.assertFalse(any("Friendly" in row["tournament"] for row in rows))
 
     def test_team_key_is_stable_and_url_safe(self):
         self.assertEqual(normal_key("Manchester City"), "manchester-city")
