@@ -53,19 +53,19 @@ BEGIN
   IF v_run.status <> 'no_new_tickets' THEN
     RAISE EXCEPTION 'unexpected generation status: %', v_run.status;
   END IF;
-  IF (v_run.metrics->>'future_forecast_rows')::integer <> 12 THEN
+  IF (v_run.metrics->>'future_forecast_rows')::integer <> 8 THEN
     RAISE EXCEPTION 'future forecast count missing/incorrect: %', v_run.metrics;
   END IF;
   IF (v_run.metrics->>'future_fixtures')::integer <> 4 THEN
     RAISE EXCEPTION 'future fixture count missing/incorrect: %', v_run.metrics;
   END IF;
   IF (v_run.metrics->>'unanimous_fixtures')::integer <> 4 THEN
-    RAISE EXCEPTION 'unanimous fixture count missing/incorrect: %', v_run.metrics;
+    RAISE EXCEPTION 'active-model unanimous fixture count missing/incorrect (retired fly rows must be ignored): %', v_run.metrics;
   END IF;
-  IF (v_run.metrics->>'eligible_model_days_3_legs')::integer <> 3 THEN
+  IF (v_run.metrics->>'eligible_model_days_3_legs')::integer <> 2 THEN
     RAISE EXCEPTION '3-leg eligible model/day count missing/incorrect: %', v_run.metrics;
   END IF;
-  IF (v_run.metrics->>'eligible_model_days_4_legs')::integer <> 3 THEN
+  IF (v_run.metrics->>'eligible_model_days_4_legs')::integer <> 2 THEN
     RAISE EXCEPTION '4-leg eligible model/day count missing/incorrect: %', v_run.metrics;
   END IF;
   IF (v_run.metrics->>'tickets_created')::integer <> 0 THEN
