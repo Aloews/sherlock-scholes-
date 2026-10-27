@@ -272,10 +272,13 @@ def main():
             cards = filter_candidates(cards, args.min_value, include_unvalued=True)
 
     if args.refresh:
-        stored_stats = all_rows(
-            "player_season_stat",
-            {"select": "tm_player_id,fetched_at", "order": "tm_player_id"})
-        latest_by_tm = latest_stat_fetch_by_tm(stored_stats)
+        if args.only:
+            latest_by_tm = {}
+        else:
+            stored_stats = all_rows(
+                "player_season_stat",
+                {"select": "tm_player_id,fetched_at", "order": "tm_player_id"})
+            latest_by_tm = latest_stat_fetch_by_tm(stored_stats)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
     else:
         done = {r["tm_player_id"] for r in all_rows(
