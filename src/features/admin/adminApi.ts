@@ -126,3 +126,29 @@ export function buildForbiddenWords(name: string): string[] {
   const tokens = full.split(/[\s-]+/).filter((w) => w.length > 1);
   return Array.from(new Set([full, ...tokens]));
 }
+
+export interface TeamTournamentCandidate {
+  tournament: string;
+  season_start: string;
+  snapshot_date: string;
+  team_key: string;
+  team_name: string;
+  candidate_score: number;
+  candidate_rank: number;
+  confidence: 'low' | 'medium' | 'high';
+  data_coverage: number;
+  score_components: Record<string, number>;
+  evidence: Record<string, unknown>;
+  model_version: string;
+}
+
+export async function adminListTeamTournamentCandidates(
+  password: string,
+): Promise<TeamTournamentCandidate[]> {
+  const { data, error } = await supabase.rpc('admin_list_team_tournament_candidates', {
+    p_password: password,
+    p_tournament: null,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TeamTournamentCandidate[];
+}
