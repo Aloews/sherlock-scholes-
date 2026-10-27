@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import urllib.error
 import sys
 import unittest
 from unittest.mock import patch
@@ -36,6 +37,8 @@ class MarketValueRefreshTests(unittest.TestCase):
              "market_value_at": "2025-01-01", "market_value_checked_at": "2026-10-20T00:00:00+00:00"},
             {"name": "Never checked", "market_value_eur": 40_000_000,
              "market_value_at": "2026-10-01", "market_value_checked_at": None},
+            {"name": "Never valued", "market_value_eur": None,
+             "market_value_at": None, "market_value_checked_at": None},
             {"name": "Old check, newer value", "market_value_eur": 50_000_000,
              "market_value_at": "2026-01-01", "market_value_checked_at": "2026-09-01T00:00:00+00:00"},
             {"name": "Old check, old low", "market_value_eur": 10_000_000,
@@ -46,9 +49,22 @@ class MarketValueRefreshTests(unittest.TestCase):
         ordered = sorted(cards, key=market_value_refresh_key)
         self.assertEqual(
             [card["name"] for card in ordered],
-            ["Never checked", "Old check, old high", "Old check, old low",
-             "Old check, newer value", "Recently checked"],
+            ["Never checked", "Never valued", "Old check, old high",
+             "Old check, old low", "Old check, newer value", "Recently checked"],
         )
+
+    @patch("players_market_value_transfermarkt.urllib.request.urlopen")
+    def test_404_marks_source_checked_without_replacing_price(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError(
+            "https://tmapi.transfermarkt.technology/player/999/market-value-history",
+            404, "Not Found", {}, None,
+        )
+        with patch.dict(os.environ, {
+            "TMAPI_DIAGNOSTICS": "1",
+            "TMAPI_DIAGNOSTIC_FAST": "1",
+        }):
+            self.assertEqual(fetch_api_market_value("999"), (None, None, True))
+        self.assertEqual(urlopen.call_count, 1)
 
     @patch("players_market_value_transfermarkt.urllib.request.urlopen")
     def test_fetch_uses_native_tmapi_market_value_history_route(self, urlopen):
