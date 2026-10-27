@@ -72,7 +72,7 @@ def read_women_stats(base: str, key: str, today: date) -> list[dict[str, Any]]:
     if not ids:
         raise RuntimeError("No active women's cards with English names")
     return fetch_all(base, key, "player_match_stats", {
-        "select": "card_id,match_date,source",
+        "select": "card_id,match_date,source,tournament",
         "card_id": "in.(" + ",".join(ids) + ")",
         "source": "eq.espn", "disputed": "eq.false",
         "match_date": f"gte.{(today - timedelta(days=365)).isoformat()}",
@@ -110,10 +110,14 @@ def main() -> int:
     try:
         existing = read_women_stats(base, key, today)
         if not needs_backfill(existing):
+            tournaments = sorted({str(r.get("tournament")) for r in existing if r.get("tournament")})
             print(json.dumps({
-                "status": "skipped", "reason": "women's match-stat coverage is sufficient",
+                "status": "skipped",
+                "reason": "basic ESPN match-stat coverage is sufficient",
                 "rows": len(existing), "players": len({r.get("card_id") for r in existing}),
-            }))
+                "tournaments": tournaments,
+                "espn_competition_coverage": "sufficient" if len(tournaments) >= 3 else "partial",
+            }, ensure_ascii=False))
             return 0
 
         codes = ",".join(sorted(WOMEN_LEAGUES))
@@ -140,13 +144,17 @@ def main() -> int:
         if build.returncode != 0:
             return build.returncode
         candidate_counts = verify_women_award_candidates(base, key, today)
+        tournaments = sorted({str(r.get("tournament")) for r in refreshed if r.get("tournament")})
         print(json.dumps({
-            "status": "success", "rows": len(refreshed),
+            "status": "success" if len(tournaments) >= 3 else "partial_source_coverage",
+            "rows": len(refreshed),
             "players": len({r.get("card_id") for r in refreshed}),
             "date_span_days": (max(date.fromisoformat(str(r["match_date"])[:10]) for r in refreshed)
                                - min(date.fromisoformat(str(r["match_date"])[:10]) for r in refreshed)).days,
+            "tournaments": tournaments,
+            "espn_competition_coverage": "sufficient" if len(tournaments) >= 3 else "partial",
             "candidate_rows": candidate_counts,
-        }))
+        }, ensure_ascii=False))
         return 0
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"women stats backfill failed: {error}", file=sys.stderr)
