@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(ROOT, "football_scraper"))
 from award_analytics import aggregate_player_seasons, rank_candidates  # noqa: E402
 
 PAGE_SIZE = 1000
-AWARDS = ("ballon_dor", "ballon_dor_feminin", "the_best", "the_best_female", "golden_boy", "golden_boot")
+AWARDS = ("ballon_dor", "ballon_dor_feminin", "the_best", "the_best_female", "golden_boy")
 YOUTH_COMPETITION = re.compile(r"\b(u\s*1[789]|u\s*2[013]|under\s*\d{2}|youth|junior|academy|reserve|primavera|jeugd|juvenil)\b", re.I)
 RESERVE_CLUB = re.compile(r"\b(reserves?|u\s*2[13]|b team|ii|primavera|academy)\b", re.I)
 
