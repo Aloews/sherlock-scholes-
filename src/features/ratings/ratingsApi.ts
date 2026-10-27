@@ -138,7 +138,6 @@ export interface SeasonCompetitionRow {
   fetched_at: string | null;
 }
 
-/** Только подтверждённые строки текущего сезона; устаревшие строки не выдаются за актуальные. */
 export async function fetchCurrentSeasonCompetitionStats(
   cardId: string,
 ): Promise<LoadState<SeasonCompetitionRow[]>> {
