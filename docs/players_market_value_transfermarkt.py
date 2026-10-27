@@ -187,18 +187,14 @@ def parse_ceapi_market_value(payload):
     return euros, valued_at, True
 
 
-def fetch_api_market_value(tm_id, tries=3):
-    """Fetch a player valuation from the same public JSON API used for season stats.
+def should_retry_market_value_status(status_code):
+    return status_code in (429, 500, 502, 503, 504)
 
-    Transfermarkt's HTML pages can return a small HTTP-200 interstitial from
-    GitHub-hosted runners. That is not an empty valuation; it is an unusable
-    response and must not advance market_value_checked_at.
-    """
+
+def fetch_api_market_value(tm_id, tries=3):
+    """Read the native Transfermarkt valuation-history chart."""
     url = TM_VALUE_URL % urllib.parse.quote(str(tm_id))
     diagnostics = os.environ.get("TMAPI_DIAGNOSTICS") == "1"
-    # Diagnostic probes should fail quickly and make one request per priority
-    # player. The public service maps upstream blocks to 503; retries only add
-    # load and delay without repairing that condition.
     if diagnostics:
         tries = 1
     timeout = 15 if diagnostics else 60
@@ -214,37 +210,25 @@ def fetch_api_market_value(tm_id, tries=3):
                 if fh.headers.get("Content-Encoding") == "gzip":
                     raw = gzip.decompress(raw)
             payload = json.loads(raw)
-            data = unwrap_api_market_value_payload(payload, tm_id)
-            if data is None:
-                if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
-                    top_keys = sorted(payload.keys())[:16] if isinstance(payload, dict) else []
-                    nested = payload.get("data") if isinstance(payload, dict) else None
-                    nested_keys = sorted(nested.keys())[:16] if isinstance(nested, dict) else []
-                    returned_id = (
-                        (nested if isinstance(nested, dict) else payload).get("id")
-                        if isinstance(nested, dict) or isinstance(payload, dict) else None
-                    )
-                    print(
-                        "TMAPI market-value response rejected: "
-                        f"requested_id={tm_id} top_keys={top_keys} "
-                        f"data_keys={nested_keys} returned_id={returned_id!r}",
-                        flush=True,
-                    )
-                return None, None, False
-            value, at, valid_profile = parse_ceapi_market_value(payload)
-            if not valid_profile and os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+            value, valued_at, valid_profile = parse_ceapi_market_value(payload)
+            if not valid_profile and diagnostics:
                 top_keys = sorted(payload.keys())[:16] if isinstance(payload, dict) else []
-                print(f"Transfermarkt CEAPI response shape rejected: top_keys={top_keys}", flush=True)
-            return value, at, valid_profile
+                list_value = payload.get("list") if isinstance(payload, dict) else None
+                list_type = type(list_value).__name__
+                list_length = len(list_value) if isinstance(list_value, list) else None
+                print(
+                    "Transfermarkt CEAPI response shape rejected: "
+                    f"top_keys={top_keys} list_type={list_type} list_length={list_length}",
+                    flush=True,
+                )
+            return value, valued_at, valid_profile
         except urllib.error.HTTPError as error:
-            if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+            if diagnostics:
                 print(f"Transfermarkt CEAPI market-value HTTP {error.code} for id={tm_id}", flush=True)
-            if error.code == 404:
-                return None, None, False
             if not should_retry_market_value_status(error.code):
                 return None, None, False
         except Exception as error:  # noqa: BLE001
-            if os.environ.get("TMAPI_DIAGNOSTICS") == "1":
+            if diagnostics:
                 print(
                     f"Transfermarkt CEAPI market-value request failed for id={tm_id}: "
                     f"{type(error).__name__}",

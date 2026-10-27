@@ -15,6 +15,13 @@ from players_market_value_transfermarkt import (  # noqa: E402
 
 
 class MarketValueRefreshTests(unittest.TestCase):
+    def test_retryable_http_statuses_are_explicit(self):
+        self.assertTrue(should_retry_market_value_status(429))
+        self.assertTrue(should_retry_market_value_status(500))
+        self.assertTrue(should_retry_market_value_status(503))
+        self.assertFalse(should_retry_market_value_status(400))
+        self.assertFalse(should_retry_market_value_status(404))
+
     def test_invalid_source_threshold_fails_early_without_penalizing_small_targeted_runs(self):
         self.assertEqual(invalid_profile_threshold(1), 5)
         self.assertEqual(invalid_profile_threshold(20), 5)
