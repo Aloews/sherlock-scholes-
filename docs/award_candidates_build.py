@@ -247,101 +247,184 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     return season, written
 
 
-def build_team_candidates(base: str, key: str, snapshot: date) -> int:
-    cutoff = (snapshot - timedelta(days=365)).isoformat()
-    fixtures = get_rows(base, key, "fixtures", {
-        "select": "sport_key,commence_at,home_team,away_team,home_score,away_score,completed,updated_at",
-        "completed": "eq.true", "home_score": "not.is.null", "away_score": "not.is.null",
-        "commence_at": f"gte.{cutoff}T00:00:00Z", "order": "commence_at.asc",
-    })
-    if not fixtures:
-        raise RuntimeError("No completed, scored fixtures in the last 365 days; refusing empty team snapshots")
-    competitions: dict[str, list[dict]] = defaultdict(list)
-    for fixture in fixtures:
-        tournament = str(fixture.get("sport_key") or "").strip()
-        home, away = str(fixture.get("home_team") or "").strip(), str(fixture.get("away_team") or "").strip()
-        if tournament and home and away and home != away:
-            competitions[tournament].append(fixture)
+def competition_format(tournament: str) -> str:
+    """Classify only the ranking interpretation; never claim a cup is a league table."""
+    value = tournament.lower()
+    if re.search(r"\b(league|liga|ligue|division|división|bundesliga|serie [ab]|premier|championship|чемпионат|лига|дивизион|д[1-6]|высшая лига|первая лига|суперлига)\b", value):
+        return "league_standings_proxy"
+    if re.search(r"\b(cup|copa|coupe|pokal|coppa|кубок|суперкубок)\b", value):
+        return "knockout_form_proxy"
+    if re.search(r"\b(champions|champions league|europa|conference league|world cup|euro|мир|европы|чемпионов)\b", value):
+        return "international_tournament_form_proxy"
+    return "competition_form_proxy"
 
-    payloads = []
-    for tournament, matches in competitions.items():
-        matches = sorted(matches, key=lambda match: match["commence_at"])
-        # Separate the current season from older matches using a long off-season gap.
-        # The inferred date is recorded as a proxy; it is not treated as an official fixture.
-        season_start_index = 0
-        for index in range(1, len(matches)):
-            previous = date.fromisoformat(str(matches[index - 1]["commence_at"])[:10])
-            current_day = date.fromisoformat(str(matches[index]["commence_at"])[:10])
-            if (current_day - previous).days > 75:
-                season_start_index = index
-        matches = matches[season_start_index:]
+
+def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict], snapshot: date) -> list[dict]:
+    """Create dated rankings for every sufficiently observed tracked competition."""
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    seen = set()
+    for match in matches:
+        tournament = str(match.get("tournament") or "").strip()
+        day = str(match.get("match_date") or "")[:10]
+        home, away = str(match.get("home_team") or "").strip(), str(match.get("away_team") or "").strip()
+        if not tournament or not day or not home or not away or home == away:
+            continue
+        if match.get("home_score") is None or match.get("away_score") is None:
+            continue
+        home_key = str(match.get("home_key") or normal_key(home)).strip()
+        away_key = str(match.get("away_key") or normal_key(away)).strip()
+        if not home_key or not away_key or home_key == away_key:
+            continue
+        identity = (tournament, day, home_key, away_key, int(match["home_score"]), int(match["away_score"]))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        grouped[tournament].append({**match, "match_date": day, "home_key": home_key, "away_key": away_key,
+                                    "home_team": home, "away_team": away})
+
+    payloads: list[dict] = []
+    for tournament, all_matches in grouped.items():
+        all_matches.sort(key=lambda item: item["match_date"])
+        # Keep the current competition cycle. The boundary is explicitly marked
+        # as inferred unless an upstream source provides an official season ID.
+        segment_start = 0
+        for index in range(1, len(all_matches)):
+            previous = date.fromisoformat(all_matches[index - 1]["match_date"])
+            current = date.fromisoformat(all_matches[index]["match_date"])
+            if (current - previous).days > 75:
+                segment_start = index
+        current_matches = all_matches[segment_start:]
+        if len(current_matches) < 3:
+            continue
+
         by_team: dict[str, dict] = {}
-        first_date, last_updated = None, None
-        for match in matches:
-            day = str(match["commence_at"])[:10]
-            first_date = min(first_date, day) if first_date else day
-            if match.get("updated_at"):
-                last_updated = max(last_updated, match["updated_at"]) if last_updated else match["updated_at"]
-            home, away = match["home_team"], match["away_team"]
+        first_date = current_matches[0]["match_date"]
+        last_updated = None
+        for match in current_matches:
+            if match.get("fetched_at"):
+                last_updated = max(last_updated, match["fetched_at"]) if last_updated else match["fetched_at"]
+            home_key, away_key = match["home_key"], match["away_key"]
+            home_name, away_name = match["home_team"], match["away_team"]
             hs, aws = int(match["home_score"]), int(match["away_score"])
-            for name in (home, away):
-                by_team.setdefault(name, {"played": 0, "points": 0, "wins": 0, "draws": 0, "losses": 0,
-                                          "gf": 0, "ga": 0, "recent": []})
-            h, a = by_team[home], by_team[away]
-            h["played"] += 1; a["played"] += 1
-            h["gf"] += hs; h["ga"] += aws; a["gf"] += aws; a["ga"] += hs
+            for team_key, team_name in ((home_key, home_name), (away_key, away_name)):
+                by_team.setdefault(team_key, {
+                    "team_key": team_key, "team_name": team_name, "played": 0, "points": 0,
+                    "wins": 0, "draws": 0, "losses": 0, "gf": 0, "ga": 0, "recent": [],
+                })
+                # Prefer the latest display name while preserving stable entity key.
+                by_team[team_key]["team_name"] = team_name
+            home, away = by_team[home_key], by_team[away_key]
+            home["played"] += 1; away["played"] += 1
+            home["gf"] += hs; home["ga"] += aws
+            away["gf"] += aws; away["ga"] += hs
             if hs > aws:
-                h["wins"] += 1; h["points"] += 3; a["losses"] += 1
-                h["recent"].append(1); a["recent"].append(0)
+                home["wins"] += 1; home["points"] += 3; away["losses"] += 1
+                home["recent"].append(1.0); away["recent"].append(0.0)
             elif hs < aws:
-                a["wins"] += 1; a["points"] += 3; h["losses"] += 1
-                h["recent"].append(0); a["recent"].append(1)
+                away["wins"] += 1; away["points"] += 3; home["losses"] += 1
+                home["recent"].append(0.0); away["recent"].append(1.0)
             else:
-                h["draws"] += 1; a["draws"] += 1; h["points"] += 1; a["points"] += 1
-                h["recent"].append(.5); a["recent"].append(.5)
+                home["draws"] += 1; away["draws"] += 1
+                home["points"] += 1; away["points"] += 1
+                home["recent"].append(0.5); away["recent"].append(0.5)
 
         if len(by_team) < 2:
             continue
-        max_played = max(item["played"] for item in by_team.values())
-        raw = {}
-        for name, item in by_team.items():
-            ppg = item["points"] / (3 * item["played"]) if item["played"] else 0
-            gdpg = (item["gf"] - item["ga"]) / item["played"] if item["played"] else 0
-            win_rate = item["wins"] / item["played"] if item["played"] else 0
-            recent = item["recent"][-5:]
-            form = sum(recent) / len(recent) if recent else 0
-            raw[name] = .45 * ppg + .25 * max(-1, min(1, gdpg / 2)) + .20 * win_rate + .10 * form
-        low, high = min(raw.values()), max(raw.values())
-        season_start = first_date or snapshot.isoformat()
-        for rank, name in enumerate(sorted(by_team, key=lambda team: (-raw[team], team))[:100], 1):
-            item = by_team[name]
-            coverage = min(1.0, item["played"] / max(1, max_played))
-            confidence = "high" if item["played"] >= 12 and coverage >= .7 else (
-                "medium" if item["played"] >= 6 and coverage >= .4 else "low")
-            score = 50.0 if high == low else 100.0 * (raw[name] - low) / (high - low)
-            recent = item["recent"][-5:]
+        teams = list(by_team.values())
+        max_played = max(team["played"] for team in teams)
+        # Percentiles prevent goal-rich competitions from dominating a ranking.
+        ppg_values = [team["points"] / team["played"] for team in teams]
+        gd_values = [max(-2.0, min(2.0, (team["gf"] - team["ga"]) / team["played"])) for team in teams]
+        win_values = [team["wins"] / team["played"] for team in teams]
+        form_values = [sum(team["recent"][-5:]) / len(team["recent"][-5:]) for team in teams]
+        elo_values = [number(ratings.get(team["team_key"], {}), "elo") for team in teams]
+        ppg_rank = percentile(ppg_values)
+        gd_rank = percentile(gd_values)
+        win_rank = percentile(win_values)
+        form_rank = percentile(form_values)
+        elo_rank = percentile(elo_values)
+        raw_scores: dict[str, float] = {}
+        component_map: dict[str, dict[str, float]] = {}
+        for i, team in enumerate(teams):
+            components = {
+                "points_per_game_percentile": ppg_rank[i],
+                "goal_difference_percentile": gd_rank[i],
+                "win_rate_percentile": win_rank[i],
+                "recent_form_percentile": form_rank[i],
+                "club_elo_percentile": elo_rank[i],
+            }
+            # Relative form/standings plus an independent cross-competition team-strength prior.
+            raw_scores[team["team_key"]] = (
+                .30 * components["points_per_game_percentile"]
+                + .20 * components["goal_difference_percentile"]
+                + .15 * components["win_rate_percentile"]
+                + .20 * components["recent_form_percentile"]
+                + .15 * components["club_elo_percentile"]
+            )
+            component_map[team["team_key"]] = {key: round(value, 2) for key, value in components.items()}
+        ordered = sorted(teams, key=lambda team: (-raw_scores[team["team_key"]], -team["played"], team["team_key"]))
+        max_score = max(raw_scores.values())
+        min_score = min(raw_scores.values())
+        comp_format = competition_format(tournament)
+        for rank, team in enumerate(ordered[:100], 1):
+            key = team["team_key"]
+            coverage = min(1.0, team["played"] / max(1, max_played))
+            confidence = "high" if team["played"] >= 12 and coverage >= .7 else (
+                "medium" if team["played"] >= 6 and coverage >= .4 else "low")
+            recent = team["recent"][-5:]
             payloads.append({
-                "tournament": tournament, "season_start": season_start, "snapshot_date": snapshot.isoformat(),
-                "team_key": normal_key(name), "team_name": name,
-                "candidate_score": round(max(0, min(100, score)), 4), "candidate_rank": rank,
-                "confidence": confidence, "data_coverage": round(coverage, 4),
-                "score_components": {"relative_form_index": round(raw[name], 6)},
+                "tournament": tournament, "season_start": first_date, "snapshot_date": snapshot.isoformat(),
+                "team_key": key, "team_name": team["team_name"],
+                "candidate_score": round(max(0, min(100, raw_scores[key])), 4),
+                "candidate_rank": rank, "confidence": confidence, "data_coverage": round(coverage, 4),
+                "score_components": component_map[key],
                 "evidence": {
-                    "matches_played": item["played"], "max_matches_in_tournament_sample": max_played,
-                    "wins": item["wins"], "draws": item["draws"], "losses": item["losses"],
-                    "goals_for": item["gf"], "goals_against": item["ga"],
-                    "points_per_game": round(item["points"] / item["played"], 4),
-                    "goal_difference_per_game": round((item["gf"] - item["ga"]) / item["played"], 4),
+                    "competition_format": comp_format,
+                    "matches_played": team["played"], "max_matches_played_by_team": max_played,
+                    "wins": team["wins"], "draws": team["draws"], "losses": team["losses"],
+                    "goals_for": team["gf"], "goals_against": team["ga"],
+                    "points_per_game": round(team["points"] / team["played"], 4),
+                    "goal_difference_per_game": round((team["gf"] - team["ga"]) / team["played"], 4),
                     "recent_form_last_5": round(sum(recent) / len(recent), 4) if recent else None,
+                    "club_elo": ratings.get(key, {}).get("elo"),
                     "score_is_probability": False,
-                    "season_start_basis": "inferred from the latest >75-day gap between completed fixtures",
-                    "limitation": "Uses the current fixture segment inferred from completed fixtures in the last 365 days. Knockout brackets, remaining schedule, injuries and squad availability are not fully modeled.",
+                    "ranking_method": "current competition results + recent form + cross-competition club Elo",
+                    "season_start_basis": "inferred from the latest >75-day gap between recorded results",
+                    "limitations": (
+                        "Relative ranking index, not a calibrated probability. Cup and international-tournament "
+                        "rankings use observed results/form and club Elo; bracket paths, remaining fixtures, injuries, "
+                        "lineups and official qualification rules are not fully modeled."
+                    ),
                 },
-                "source_fetched_at": last_updated, "model_version": MODEL_VERSION,
+                "source_fetched_at": last_updated or ratings.get(key, {}).get("computed_at"),
+                "model_version": MODEL_VERSION,
             })
+    return payloads
+
+
+def build_team_candidates(base: str, key: str, snapshot: date) -> int:
+    cutoff = (snapshot - timedelta(days=365)).isoformat()
+    # club_match is the broad competition feed: it currently covers hundreds of
+    # competitions and more than 30k scored matches per rolling year. The betting
+    # fixtures feed is intentionally not the source of truth for tournament coverage.
+    matches = get_rows(base, key, "club_match", {
+        "select": "match_date,tournament,home_key,away_key,home_team,away_team,home_score,away_score,fetched_at",
+        "match_date": f"gte.{cutoff}", "order": "match_date.asc",
+    })
+    if not matches:
+        raise RuntimeError("No tracked club_match results in the last 365 days; refusing empty team snapshots")
+    rating_rows = get_rows(base, key, "club_rating", {
+        "select": "club_key,elo,computed_at", "order": "club_key.asc",
+    })
+    ratings = {
+        str(row.get("club_key") or ""): {"elo": number(row, "elo"), "computed_at": row.get("computed_at")}
+        for row in rating_rows if row.get("club_key")
+    }
+    payloads = build_team_candidate_payloads(matches, ratings, snapshot)
+    if not payloads:
+        raise RuntimeError("No sufficiently observed team competitions; refusing empty team snapshots")
     return upsert_rows(base, key, "team_tournament_candidate_snapshot", payloads,
                        "tournament,season_start,snapshot_date,team_key")
-
 
 def main() -> int:
     load_dotenv()
