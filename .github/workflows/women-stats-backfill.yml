@@ -79,3 +79,25 @@ jobs:
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
       - name: Backfill if coverage is incomplete
         run: python3 football_scraper/women_stats_backfill.py
+  watch:
+    needs: [validate, backfill]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      BACKFILL_RESULT: ${{ needs.backfill.result }}
+      BACKFILL_EXPECTED: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Verify statistics pipeline completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate = $VALIDATE_RESULT"
+          echo "backfill = $BACKFILL_RESULT (expected=$BACKFILL_EXPECTED)"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation: $VALIDATE_RESULT"; exit 1; }
+          if [ "$BACKFILL_EXPECTED" = "true" ]; then
+            [ "$BACKFILL_RESULT" = "success" ] || { echo "::error::statistics backfill: $BACKFILL_RESULT"; exit 1; }
+          else
+            [ "$BACKFILL_RESULT" = "skipped" ] || { echo "::error::backfill should be skipped on pull requests, got $BACKFILL_RESULT"; exit 1; }
+          fi
