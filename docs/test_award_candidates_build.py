@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -254,6 +254,23 @@ class CandidateRankingTests(unittest.TestCase):
         rows = score_population(players, {"goals": .5, "assists": .5},
                                 "golden_boy", 2026, date(2026, 10, 27))
         self.assertEqual([row["card_id"] for row in rows], ["young"])
+
+    def test_match_rows_are_fetched_in_bounded_card_id_chunks(self):
+        with patch("award_candidates_build.get_rows") as mocked:
+            mocked.side_effect = [
+                [{"card_id": "a", "match_date": "2026-08-01"}],
+                [{"card_id": "b", "match_date": "2026-08-02"}],
+            ]
+            rows = get_player_match_rows(
+                "https://example.supabase.co", "test-key", ["a", "b", "c"],
+                2026, date(2026, 10, 27), chunk_size=2,
+            )
+        self.assertEqual([row["card_id"] for row in rows], ["a", "b"])
+        self.assertEqual(mocked.call_count, 2)
+        first_params = mocked.call_args_list[0].args[3]
+        second_params = mocked.call_args_list[1].args[3]
+        self.assertEqual(first_params["card_id"], "in.(a,b)")
+        self.assertEqual(second_params["card_id"], "in.(c)")
 
     def test_match_competition_aliases_do_not_merge_different_premier_leagues(self):
         self.assertEqual(
