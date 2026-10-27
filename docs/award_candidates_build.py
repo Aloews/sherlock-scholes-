@@ -435,6 +435,18 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     return season, written, stale_removed
 
 
+def is_rankable_competition(tournament: str) -> bool:
+    """Exclude exhibitions and friendlies from trophy/tournament candidate rankings."""
+    value = re.sub(r"[^\\w]+", " ", str(tournament or "").lower(), flags=re.UNICODE)
+    return not bool(re.search(
+        r"\\b(friendlies|friendly|friendly match|club friendly|international friendly|"
+        r"pre season friendly|exhibition|exhibition match|товарищеск\\w*|"
+        r"контрольн\\w* матч\\w*)\\b",
+        value,
+        re.IGNORECASE,
+    ))
+
+
 def competition_format(tournament: str) -> str:
     """Classify only the ranking interpretation; never claim a cup is a league table."""
     value = tournament.lower()
@@ -457,7 +469,7 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
         tournament = str(match.get("tournament") or "").strip()
         day = str(match.get("match_date") or "")[:10]
         home, away = str(match.get("home_team") or "").strip(), str(match.get("away_team") or "").strip()
-        if not tournament or not day or not home or not away or home == away:
+        if not tournament or not is_rankable_competition(tournament) or not day or not home or not away or home == away:
             continue
         if match.get("home_score") is None or match.get("away_score") is None:
             continue
