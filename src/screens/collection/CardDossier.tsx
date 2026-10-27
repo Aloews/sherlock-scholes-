@@ -245,6 +245,7 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   const { trophies, tournaments } = splitHonours({
     titles: facts?.titles,
     legendTitles: card.legend_career?.titles,
+    honours: facts?.honours,
     tournaments: facts?.tournaments,
   });
 
