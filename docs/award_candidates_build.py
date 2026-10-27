@@ -250,12 +250,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
 def competition_format(tournament: str) -> str:
     """Classify only the ranking interpretation; never claim a cup is a league table."""
     value = tournament.lower()
-    if re.search(r"\b(league|liga|ligue|division|división|bundesliga|serie [ab]|premier|championship|чемпионат|лига|дивизион|д[1-6]|высшая лига|первая лига|суперлига)\b", value):
-        return "league_standings_proxy"
-    if re.search(r"\b(cup|copa|coupe|pokal|coppa|кубок|суперкубок)\b", value):
-        return "knockout_form_proxy"
+    # Check international competitions before the generic "league" token:
+    # "Лига чемпионов" is a tournament, not a domestic league table.
     if re.search(r"\b(champions|champions league|europa|conference league|world cup|euro|мир|европы|чемпионов)\b", value):
         return "international_tournament_form_proxy"
+    if re.search(r"\b(cup|copa|coupe|pokal|coppa|кубок|суперкубок)\b", value):
+        return "knockout_form_proxy"
+    if re.search(r"\b(league|liga|ligue|division|división|bundesliga|serie [ab]|premier|championship|чемпионат|лига|дивизион|д[1-6]|высшая лига|первая лига|суперлига)\b", value):
+        return "league_standings_proxy"
     return "competition_form_proxy"
 
 
