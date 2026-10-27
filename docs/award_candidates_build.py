@@ -150,6 +150,62 @@ def competition_strength(name: str | None, short_name: str | None = None) -> flo
     return 0.5
 
 
+def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -> dict[str, dict[str, Any]]:
+    """Aggregate exact-match women's player rows for the active award window."""
+    totals: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        card_id = row.get("card_id")
+        raw_day = str(row.get("match_date") or "")[:10]
+        tournament = str(row.get("tournament") or "").strip()
+        if not card_id or not raw_day or not tournament:
+            continue
+        try:
+            match_day = date.fromisoformat(raw_day)
+        except ValueError:
+            continue
+        calendar_competition = bool(re.search(
+            r"\bnwsl\b|national women.s soccer league", tournament, re.I
+        ))
+        window_start = date(season, 1, 1) if calendar_competition else date(season, 7, 1)
+        if match_day < window_start or match_day > snapshot:
+            continue
+        item = totals.setdefault(str(card_id), {
+            "card_id": str(card_id), "apps": 0, "starts": 0, "minutes": 0,
+            "goals": 0, "assists": 0, "weighted_goals": 0.0,
+            "weighted_assists": 0.0, "strength_minutes": 0.0,
+            "minutes_for_strength": 0, "competition_strength": 0.5,
+            "strength_sum": 0.0, "strength_count": 0, "minutes_known": True,
+            "last_fetched": None, "stats_rows": 0, "stats_window_start": window_start.isoformat(),
+        })
+        item["apps"] += 1
+        item["stats_rows"] += 1
+        for field in ("goals", "assists"):
+            item[field] += int(number(row, field))
+        strength = competition_strength(tournament)
+        item["weighted_goals"] += number(row, "goals") * strength
+        item["weighted_assists"] += number(row, "assists") * strength
+        item["strength_sum"] += strength
+        item["strength_count"] += 1
+        raw_minutes = row.get("minutes")
+        if raw_minutes is None:
+            item["minutes_known"] = False
+        else:
+            minutes = max(0, int(number(row, "minutes")))
+            item["minutes"] += minutes
+            item["strength_minutes"] += minutes * strength
+            item["minutes_for_strength"] += minutes
+        item["stats_window_start"] = min(item["stats_window_start"], window_start.isoformat())
+        fetched = row.get("fetched_at")
+        if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
+            item["last_fetched"] = fetched
+    for item in totals.values():
+        if item["minutes_for_strength"] > 0 and item["minutes_known"]:
+            item["competition_strength"] = item["strength_minutes"] / item["minutes_for_strength"]
+        elif item["strength_count"]:
+            item["competition_strength"] = item["strength_sum"] / item["strength_count"]
+    return totals
+
+
 def score_population(population: list[dict], weights: dict[str, float], award_key: str,
                      season: int, snapshot: date, competition_id: str = "*") -> list[dict]:
     eligible = [p for p in population if p.get("active") and (
@@ -184,8 +240,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
                 else "all tracked competitions in selected season"),
             "age": p.get("age"), "apps": p["apps"], "starts": p["starts"], "minutes": p["minutes"],
             "goals": p["goals"], "assists": p["assists"],
-            "goals_per_90": round(p.get("goals_per_90", 0), 4),
-            "assists_per_90": round(p.get("assists_per_90", 0), 4),
+            "goals_per_90": round(p["goals_per_90"], 4) if p.get("goals_per_90") is not None else None,
+            "assists_per_90": round(p["assists_per_90"], 4) if p.get("assists_per_90") is not None else None,
             "weighted_goals": round(p.get("weighted_goals", p["goals"]), 3),
             "weighted_assists": round(p.get("weighted_assists", p["assists"]), 3),
             "competition_strength": round(p.get("competition_strength", 0.5), 3),
@@ -194,6 +250,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "fame": p.get("fame"),
             "coverage_basis": "player apps/minutes exposure proxy, not source-feed completeness",
             "source_stats_rows": p["stats_rows"],
+            "stats_window_start": p.get("stats_window_start"),
+            "minutes_available": p.get("minutes_known") is not False and p["minutes"] > 0,
             "score_is_probability": False,
         }
         scored.append({
@@ -269,8 +327,26 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
 
+    women_cards = get_rows(base, key, "cards", {
+        "select": "id,name,name_en,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+        "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
+    })
+    women_ids = [str(card["id"]) for card in women_cards if card.get("id")]
+    if women_ids:
+        match_rows = get_rows(base, key, "player_match_stats", {
+            "select": "card_id,match_date,tournament,minutes,goals,assists,fetched_at",
+            "card_id": "in.(" + ",".join(women_ids) + ")",
+            "match_date": f"gte.{date(season, 1, 1).isoformat()}",
+            "disputed": "eq.false",
+            "order": "match_date.asc",
+        })
+        women_totals = aggregate_women_match_stats(match_rows, season, snapshot)
+        for card_id, stats_row in women_totals.items():
+            if card_id not in totals:
+                totals[card_id] = stats_row
+
     ids = list(totals)
-    cards: dict[str, dict] = {}
+    cards: dict[str, dict] = {str(card["id"]): card for card in women_cards if card.get("id")}
     card_url = f"{base.rstrip('/')}/rest/v1/cards"
     for start in range(0, len(ids), 100):
         joined = ",".join(ids[start:start + 100])
@@ -295,10 +371,14 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             row["weighted_assists"] = max(0.0, stat.get("weighted_assists", stat["assists"]))
             row["competition_strength"] = (
                 stat["strength_minutes"] / stat["minutes_for_strength"]
-                if stat.get("minutes_for_strength", 0) > 0 else 0.5
+                if stat.get("minutes_for_strength", 0) > 0 else stat.get("competition_strength", 0.5)
             )
-            row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
-            row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
+            if stat.get("minutes_known") is False or row["minutes"] <= 0:
+                row["goals_per_90"] = None
+                row["assists_per_90"] = None
+            else:
+                row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
+                row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
             row["age"] = None
             born = card.get("born_on")
             if born:
