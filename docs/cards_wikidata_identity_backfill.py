@@ -23,7 +23,7 @@ TM_ID_PROPERTY = "P2020"
 PAUSE = 1.0
 BATCH_SIZE = 50
 MANUAL_ALIASES = {
-    "sophia wilson": {"sophia smith"},
+    "sophiawilson": {"sophia smith"},
     "marta": {"marta vieira da silva"},
     "debinha": {"debora cristiane de oliveira"},
 }
@@ -177,13 +177,10 @@ def main() -> int:
             entities[qid] for qid in queries.get(str(card["id"]), [])
             if qid in entities and entity_matches_card(card, entities[qid])
         ]
-        matches_with_id = [entity for entity in matches if transfermarkt_id(entity)]
-        if len(matches_with_id) == 1:
-            entity = matches_with_id[0]
-        elif len(matches) == 1:
+        if len(matches) == 1:
             entity = matches[0]
         else:
-            if len(matches) > 1 or len(matches_with_id) > 1:
+            if matches:
                 ambiguous.append(str(card.get("name_en") or card.get("name")))
             continue
 
