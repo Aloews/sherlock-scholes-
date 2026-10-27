@@ -159,6 +159,9 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 : <span className="h-10 w-10 rounded-full bg-brand-border shrink-0" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{row.card_name}</p>
+                <p className="mt-1 text-[11px] text-brand-muted">
+                  Сезон {row.season_id} · год награды {String(row.evidence.target_award_year ?? row.season_id)}
+                </p>
                 {row.award_key === 'golden_boot' && (
                   <p className="truncate text-xs text-brand-muted">Турнир ID: {row.competition_id}</p>
                 )}
