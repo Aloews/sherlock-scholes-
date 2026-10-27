@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StatLine } from '@/shared/ui/StatLine';
 import { useTranslation } from 'react-i18next';
-import { IconSend } from '@tabler/icons-react';
+import { IconSend, IconReload } from '@tabler/icons-react';
 import { useGameStore } from '@/shared/store/gameStore';
 import { Button } from '@/shared/ui/Button';
 import { hapticImpact } from '@/shared/lib/telegram';
@@ -329,14 +329,14 @@ export function EndScreen() {
       <div className={`px-4 py-8 mt-auto space-y-3 transition-all duration-700 delay-500 ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}>
-        <Button fullWidth size="lg" onClick={handleShare}>
+        <Button fullWidth size="lg" onClick={handlePlayAgain} className="h-[60px]">
+          <span className="flex w-full items-center justify-center gap-2.5"><IconReload size={19} stroke={1.9} />{t('end.play_again')}</span>
+        </Button>
+        <Button fullWidth size="lg" variant="secondary" onClick={handleShare} className="h-[56px]">
           <span className="flex items-center justify-center gap-2">
             <IconSend size={18} stroke={2} />
             {t('share.button')}
           </span>
-        </Button>
-        <Button fullWidth size="lg" variant="secondary" onClick={handlePlayAgain}>
-          {t('end.play_again')}
         </Button>
       </div>
     </div>

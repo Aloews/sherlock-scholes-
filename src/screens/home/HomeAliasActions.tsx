@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { IconBallFootball, IconUsers, IconDoorEnter, IconArrowLeft, IconChevronRight, IconBolt } from '@tabler/icons-react';
 import { Button } from '@/shared/ui/Button';
 
 /**
@@ -23,14 +24,14 @@ import { Button } from '@/shared/ui/Button';
  */
 interface HomeAliasActionsProps {
   onQuickGame(): void;
+  onSmartDecks(): void;
   onCompetitive(): void;
   onJoin(): void;
-  onSmartDecks(): void;
   onBack(): void;
 }
 
 export function HomeAliasActions({
-  onQuickGame, onCompetitive, onJoin, onSmartDecks, onBack,
+  onQuickGame, onSmartDecks, onCompetitive, onJoin, onBack,
 }: HomeAliasActionsProps) {
   const { t, i18n } = useTranslation();
 
@@ -41,20 +42,20 @@ export function HomeAliasActions({
       </p>
       {/* The tall gradient CTA is the design's signature and stays on the
           action that starts a game fastest. */}
-      <Button fullWidth size="lg" className="h-[58px]" onClick={onQuickGame}>
-        {t('home.mode_training_title')}
+      <Button fullWidth size="lg" className="h-[64px] px-4" onClick={onQuickGame}>
+        <span className="flex w-full items-center gap-3 text-left"><span className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center shrink-0"><IconBallFootball size={20} stroke={1.9} /></span><span className="flex-1">{t('home.mode_training_title')}</span><IconChevronRight size={18} stroke={2} /></span>
       </Button>
-      <Button fullWidth size="lg" variant="secondary" onClick={onSmartDecks}>
-        {i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}
+      <Button fullWidth size="lg" variant="secondary" onClick={onSmartDecks} className="h-[64px] px-4">
+        <span className="flex w-full items-center gap-3 text-left"><span className="w-10 h-10 rounded-xl bg-brand-border/60 flex items-center justify-center text-brand-muted shrink-0"><IconBolt size={19} stroke={1.9} /></span><span className="flex-1">{i18n.language.startsWith('ru') ? 'Умные подборки' : 'Smart Decks'}</span><IconChevronRight size={18} stroke={2} className="text-brand-muted" /></span>
       </Button>
-      <Button fullWidth size="lg" variant="secondary" onClick={onCompetitive}>
-        {t('home.competitive_mode')}
+      <Button fullWidth size="lg" variant="secondary" onClick={onCompetitive} className="h-[64px] px-4">
+        <span className="flex w-full items-center gap-3 text-left"><span className="w-10 h-10 rounded-xl bg-brand-border/60 flex items-center justify-center text-brand-muted shrink-0"><IconUsers size={19} stroke={1.9} /></span><span className="flex-1">{t('home.competitive_mode')}</span><IconChevronRight size={18} stroke={2} className="text-brand-muted" /></span>
       </Button>
-      <Button fullWidth size="lg" variant="secondary" onClick={onJoin}>
-        {t('home.join_game')}
+      <Button fullWidth size="lg" variant="secondary" onClick={onJoin} className="h-[64px] px-4">
+        <span className="flex w-full items-center gap-3 text-left"><span className="w-10 h-10 rounded-xl bg-brand-border/60 flex items-center justify-center text-brand-muted shrink-0"><IconDoorEnter size={19} stroke={1.9} /></span><span className="flex-1">{t('home.join_game')}</span><IconChevronRight size={18} stroke={2} className="text-brand-muted" /></span>
       </Button>
       <Button fullWidth variant="ghost" onClick={onBack}>
-        {t('home.back')}
+        <span className="flex w-full items-center justify-center gap-2"><IconArrowLeft size={17} stroke={1.9} />{t('home.back')}</span>
       </Button>
     </div>
   );

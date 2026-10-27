@@ -21,6 +21,7 @@ export interface Squad {
   cardId: string | null;
   /** When the underlying articles were last read. */
   asOf: string | null;
+  league: string | null;
 }
 
 /**
@@ -43,7 +44,7 @@ export function formatSquadAsOf(iso: string | null, lang: string): string {
 }
 
 export async function fetchSquads(min = MIN_SQUAD): Promise<Squad[]> {
-  const { data, error } = await supabase.rpc('deck_squads', { p_min: min });
+  const { data, error } = await supabase.rpc('deck_squad_filters', { p_min: min });
   if (error || !Array.isArray(data)) return [];
 
   return (data as Array<Record<string, unknown>>).map((row) => ({
@@ -52,5 +53,6 @@ export async function fetchSquads(min = MIN_SQUAD): Promise<Squad[]> {
     players: Number(row.players ?? 0),
     cardId: (row.card_id as string | null) ?? null,
     asOf: (row.fetched_at as string | null) ?? null,
+    league: (row.league as string | null) ?? null,
   })).filter((s) => s.key.length > 0);
 }

@@ -19,7 +19,7 @@
 // State lives here rather than in HomeScreen: the picker owns the filter
 // it builds and hands the finished DeckFilter back through onStart.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { OptionRow } from '@/shared/ui/OptionRow';
@@ -89,6 +89,16 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   // The squads are a short list that changes once a night, so it is fetched
   // when the picker opens rather than on every keystroke of the filter.
   useEffect(() => { void fetchSquads().then(setSquads); }, []);
+
+  const visibleSquads = useMemo(() => {
+    if (!selLeague) return squads;
+    const selectedLeague = selLeague.trim().toLocaleLowerCase();
+    return squads.filter((s) => (s.league ?? '').trim().toLocaleLowerCase() === selectedLeague);
+  }, [squads, selLeague]);
+
+  useEffect(() => {
+    if (selSquad && !visibleSquads.some((s) => s.key === selSquad)) setSelSquad('');
+  }, [selSquad, visibleSquads]);
 
   // ── The filter under construction ────────────────────────────────
   // Player-only dimensions are dropped when players are not in the deck,
@@ -456,7 +466,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                     label={t('home.filter_all_squads')}
                     value={selSquad}
                     onChange={setSelSquad}
-                    options={squads.map((s) => ({
+                    options={visibleSquads.map((s) => ({
                       value: s.key,
                       // The count is part of the choice: a squad of nine plays
                       // very differently from one of twenty-three, and the
@@ -472,7 +482,7 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
                     <p className="text-[10.5px] text-brand-muted px-1">
                       {t('home.squad_as_of', {
                         date: formatSquadAsOf(
-                          squads.find((s) => s.key === selSquad)?.asOf ?? null,
+                          visibleSquads.find((s) => s.key === selSquad)?.asOf ?? null,
                           i18n.language,
                         ),
                       })}

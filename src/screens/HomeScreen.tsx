@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconHelp, IconVolume, IconVolumeOff, IconCards, IconUser } from '@tabler/icons-react';
+import { IconHelp, IconVolume, IconVolumeOff, IconBallFootball, IconUser } from '@tabler/icons-react';
 import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
@@ -275,7 +275,7 @@ export function HomeScreen() {
         {view === 'home' && (
           <div className="w-full max-w-sm">
             <HomeGameLink
-              icon={<IconCards size={20} stroke={1.75} />}
+              icon={<IconBallFootball size={20} stroke={1.75} />}
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
@@ -286,9 +286,9 @@ export function HomeScreen() {
         {view === 'alias' && (
           <HomeAliasActions
             onQuickGame={() => { hapticImpact('light'); setView('create_training'); }}
+            onSmartDecks={() => { hapticImpact('light'); setView('smart_decks'); }}
             onCompetitive={() => { hapticImpact('light'); setView('mode_select'); }}
             onJoin={() => { hapticImpact('light'); setView('join'); }}
-            onSmartDecks={() => { hapticImpact('light'); setView('smart_decks'); }}
             onBack={() => { hapticImpact('light'); setView('home'); }}
           />
         )}
