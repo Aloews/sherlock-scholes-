@@ -69,6 +69,9 @@ jobs:
       - name: Prioritize reported missing player profile
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
         run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 236590
+      - name: Refresh Cole Palmer current competition statistics
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
+        run: APPLY=1 python3 docs/players_stats_transfermarkt.py --only 568177 --include-unvalued
 
       - name: Collect player competition aggregates
         run: |
@@ -107,6 +110,43 @@ jobs:
             exit 1
           fi
           echo "Verified fresh career and season source attempts for Transfermarkt ID $id"
+
+      - name: Verify and report Cole Palmer current Premier League season goals
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '') && always() }}
+        env:
+          STARTED_AT: ${{ steps.stats_start.outputs.started_at }}
+        run: |
+          state_count=$(curl -fsS --get \
+            --data-urlencode "select=source_key,status,last_attempt_at" \
+            --data-urlencode "tm_player_id=eq.568177" \
+            --data-urlencode "source_key=eq.tm_season_competition" \
+            --data-urlencode "status=eq.ok" \
+            --data-urlencode "last_attempt_at=gte.$STARTED_AT" \
+            "$SUPABASE_URL/rest/v1/player_stats_source_state" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" | jq 'length')
+          if [ "$state_count" -ne 1 ]; then
+            echo "::error::Cole Palmer season statistics were not freshly verified in this run"
+            exit 1
+          fi
+          rows=$(curl -fsS --get \
+            --data-urlencode "select=season_id,competition_id,goals,fetched_at" \
+            --data-urlencode "tm_player_id=eq.568177" \
+            --data-urlencode "season_id=eq.2026" \
+            --data-urlencode "competition_id=eq.GB1" \
+            --data-urlencode "fetched_at=gte.$STARTED_AT" \
+            --data-urlencode "order=fetched_at.desc" \
+            --data-urlencode "limit=1" \
+            "$SUPABASE_URL/rest/v1/player_season_competition_stats" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          count=$(printf '%s' "$rows" | jq 'length')
+          if [ "$count" -ne 1 ]; then
+            echo "::error::No fresh 2026 Premier League row found for Cole Palmer"
+            exit 1
+          fi
+          goals=$(printf '%s' "$rows" | jq -r '.[0].goals')
+          echo "Verified Cole Palmer 2026 Premier League goals=$goals (source Transfermarkt CEAPI)"
 
   player-photos:
     if: ${{ github.event_name == 'schedule' || inputs.transfermarkt_id == '' }}
