@@ -56,6 +56,22 @@ def signals(card, today=None):
     tags = set(card.get("tags") or [])
     titles = facts.get("titles") or []
     tours = facts.get("tournaments") or []
+    # Most cards have some titles: a monthly award, a club's "player of the
+    # season", a youth prize or a generic parsed label is not enough to make a
+    # collectible epic. Only verified major honours count for this signal.
+    title_text = " | ".join(str(title) for title in titles if title)
+    prestige_title = bool(__import__("re").search(
+        r"золот(?:ой|ого) мяч|the best|golden boy|золотая бутса|"
+        r"игрок сезона английской премьер-лиги|игрок года по версии футболистов пфа|"
+        r"футболист года по версии ассоциации футбольных журналистов|"
+        r"лучший игрок европы по версии уефа|игрок года уефа|"
+        r"победитель лиги чемпионов|победитель чемпионата мира(?!.*до \s*\d)|"
+        r"чемпион мира(?!.*до \s*\d)|чемпион европы|чемпион англии|"
+        r"чемпион испании|чемпион италии|чемпион германии|чемпион франции|"
+        r"победитель чемпионата европы",
+        title_text,
+        flags=__import__("re").I,
+    ))
     age = None
     try:
         born = date.fromisoformat(str(card.get("born_on"))[:10])
@@ -79,7 +95,7 @@ def signals(card, today=None):
     return {
         "pv": card.get("pageviews") or 0,
         "ballon": "ballon_dor" in tags or any("Золотой мяч" in t for t in titles),
-        "title": bool(titles),
+        "title": prestige_title,
         "wc": "world_cup" in tags or any(t.startswith("ЧМ") or t.startswith("Евро") for t in tours),
         "star": "star" in tags,
         "nat": bool(facts.get("national_team") or facts.get("national_caps")),
