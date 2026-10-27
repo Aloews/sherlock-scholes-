@@ -42,8 +42,8 @@ def fame_tier(fame):
         fame = 0
     if fame >= 99:
         return "legendary"
-    if fame >= 95:
-        return "epic"
+    # Fame is a recognisability floor, not proof of current elite market value.
+    # Only a current source-backed valuation should grant the epic tier.
     if fame >= 75:
         return "rare"
     return "common"

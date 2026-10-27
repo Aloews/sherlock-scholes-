@@ -5,6 +5,7 @@ declare
   v_elite uuid;
   v_prospect uuid;
   v_rare uuid;
+  v_odegaard uuid;
   v_stale uuid;
   v_club uuid;
   v_icon uuid;
@@ -36,6 +37,13 @@ begin
   returning id into v_rare;
   if (select tier from public.cards where id=v_rare) <> 'rare' then
     raise exception 'current EUR 50m+ valuation must lift a senior player to rare';
+  end if;
+
+  insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
+  values ('Odegaard rarity regression', 'player', 97, 80000000, current_date - 20, date '1998-12-17')
+  returning id into v_odegaard;
+  if (select tier from public.cards where id=v_odegaard) <> 'rare' then
+    raise exception 'fame 97 and current EUR 80m valuation must be rare, not epic';
   end if;
 
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)

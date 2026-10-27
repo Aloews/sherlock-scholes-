@@ -37,16 +37,26 @@ def test_prospect_does_not_override_historic_legend_signals():
 
 
 
-def test_odegaard_epic_tier_is_fame_driven_not_just_market_value():
+def test_odegaard_80m_market_value_is_rare_even_with_high_fame():
     card = {
         "category": "player",
         "fame": 97,
         "born_on": "1998-12-17",
-        "market_value_eur": 70_000_000,
-        "market_value_at": "2026-07-22",
+        "market_value_eur": 80_000_000,
+        "market_value_at": "2026-10-07",
     }
-    assert tier_for(card, today=date(2026, 10, 27)) == "epic"
+    assert tier_for(card, today=date(2026, 10, 27)) == "rare"
     assert signals(card, today=date(2026, 10, 27))["value_tier"] == "rare"
+
+
+def test_high_fame_without_current_value_does_not_grant_epic():
+    card = {"category": "player", "fame": 97, "market_value_eur": 80_000_000,
+            "market_value_at": "2024-01-01"}
+    assert tier_for(card, today=date(2026, 10, 27)) == "rare"
+
+
+def test_legendary_fame_is_preserved_without_market_value():
+    assert tier_for({"category": "player", "fame": 99}) == "legendary"
 
 
 def test_one_award_does_not_promote_a_low_fame_player_to_epic():
