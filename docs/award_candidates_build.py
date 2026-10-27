@@ -328,7 +328,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     delete_response = requests.delete(
         f"{base.rstrip('/')}/rest/v1/award_candidate_snapshot",
         headers=api_headers(key),
-        params={"snapshot_date": f"eq.{snapshot.isoformat()}", "season_id": f"eq.{season}"},
+        params={"snapshot_date": f"eq.{snapshot.isoformat()}"},
         timeout=TIMEOUT,
     )
     delete_response.raise_for_status()
