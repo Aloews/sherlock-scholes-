@@ -12,7 +12,7 @@ import os
 import re
 import sys
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import requests
@@ -628,10 +628,21 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     return rows
 
 
+def _parse_source_timestamp(value: Any) -> datetime | None:
+    """Parse a PostgREST ISO timestamp into a timezone-aware value."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
 def filter_verified_season_stats(
     stats: list[dict], verified_card_ids: set[str]
 ) -> list[dict]:
-    """Exclude legacy rows until the player has a verified match-feed snapshot."""
+    """Exclude legacy rows until the player's latest source attempt succeeded."""
     return [
         row for row in stats
         if str(row.get("card_id") or "") in verified_card_ids
@@ -679,12 +690,12 @@ def current_player_stats_coverage(
     top = candidates[:limit]
 
     def is_recent_verified(card: dict) -> bool:
-        raw = str(card.get("player_stats_data_synced_at") or "")[:10]
-        try:
-            checked = date.fromisoformat(raw)
-        except ValueError:
+        synced_at = _parse_source_timestamp(card.get("player_stats_data_synced_at"))
+        checked_at = _parse_source_timestamp(card.get("player_stats_checked_at"))
+        if not synced_at or not checked_at or synced_at < checked_at:
             return False
-        return 0 <= (snapshot - checked).days <= 7
+        age_days = (snapshot - synced_at.date()).days
+        return 0 <= age_days <= 7
 
     def is_covered(card: dict) -> bool:
         card_id = str(card.get("id") or "")
@@ -720,15 +731,17 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         "season_id": f"eq.{season}", "card_id": "not.is.null", "order": "card_id.asc",
     })
     verified_cards = get_rows(base, key, "cards", {
-        "select": "id,player_stats_data_synced_at",
+        "select": "id,player_stats_data_synced_at,player_stats_checked_at",
         "category": "in.(player,woman)", "active": "eq.true",
         "player_stats_data_synced_at": f"gte.{(snapshot - timedelta(days=45)).isoformat()}T00:00:00Z",
         "order": "id.asc",
     })
-    verified_stat_card_ids = {
-        str(card.get("id")) for card in verified_cards
-        if card.get("id") and card.get("player_stats_data_synced_at")
-    }
+    verified_stat_card_ids = set()
+    for card in verified_cards:
+        synced_at = _parse_source_timestamp(card.get("player_stats_data_synced_at"))
+        checked_at = _parse_source_timestamp(card.get("player_stats_checked_at"))
+        if card.get("id") and synced_at and checked_at and synced_at >= checked_at:
+            verified_stat_card_ids.add(str(card["id"]))
     stats = filter_verified_season_stats(stats, verified_stat_card_ids)
     if not stats:
         print(
