@@ -307,10 +307,10 @@ class CandidateRankingTests(unittest.TestCase):
         players = [
             {"card_id": "unknown", "name": "Unknown value", "category": "player", "active": True,
              "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
-             "market_value_eur": None, "stats_rows": 1},
+             "market_value_eur": None, "fame": 80, "stats_rows": 1},
             {"card_id": "known", "name": "Known value", "category": "player", "active": True,
              "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
-             "market_value_eur": 100000000, "stats_rows": 1},
+             "market_value_eur": 100000000, "fame": 50, "stats_rows": 1},
         ]
         rows = score_population(players, {"market_value_eur": 0.5, "goals": 0.5},
                                 "ballon_dor", 2026, date(2026, 10, 27))
@@ -340,7 +340,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.candidate-rank-v3",
+                "model_version": "neq.candidate-rank-v4",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
