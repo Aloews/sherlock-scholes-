@@ -41,7 +41,7 @@ def main():
     messages = [{"role":"system","content":system},{"role":"user","content":prompt}]
     for attempt in range(3):
         req = urllib.request.Request("http://127.0.0.1:11434/api/chat",
-          data=json.dumps({"model":MODEL,"stream":False,"messages":messages,"options":{"temperature":0.1,"num_ctx":8192}}).encode(),
+          data=json.dumps({"model":MODEL,"stream":False,"messages":messages,"options":{"temperature":0.1,"num_ctx":6144,"num_predict":1200}}).encode(),
           headers={"Content-Type":"application/json"})
         with urllib.request.urlopen(req, timeout=900) as res: answer = json.loads(res.read())["message"]["content"]
         patch = answer.strip()
@@ -53,10 +53,10 @@ def main():
             if not paths or any(not allowed(p) for p in paths) or len(set(paths)) > 8:
                 err = "patch touches restricted paths or too many files"
             else:
-                check = subprocess.run(["git","apply","--check","--"],input=patch,text=True,cwd=ROOT,capture_output=True)
+                check = subprocess.run(["git","apply","--recount","--check","--"],input=patch,text=True,cwd=ROOT,capture_output=True)
                 if check.returncode: err = check.stderr[-1000:]
                 else:
-                    apply = subprocess.run(["git","apply","--"],input=patch,text=True,cwd=ROOT,capture_output=True)
+                    apply = subprocess.run(["git","apply","--recount","--"],input=patch,text=True,cwd=ROOT,capture_output=True)
                     if apply.returncode: err = apply.stderr[-1000:]
                     else: break
         messages.extend([{"role":"assistant","content":answer},{"role":"user","content":"Patch rejected: "+err+". Return corrected unified git diff only."}])
