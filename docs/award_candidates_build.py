@@ -255,6 +255,8 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
         target_year = season if award_key == "golden_boot" else season + 1
         evidence = {
             "name": p["name"], "target_award_year": target_year, "source_season_id": season,
+            "candidate_pool_size": len(eligible),
+            "candidate_pool_scope": "active cards with stats available in tracked sources",
             "competition_id": competition_id, "ranking_scope": (
                 f"tracked competition {competition_id}" if award_key == "golden_boot"
                 else "all tracked competitions in selected season"),
