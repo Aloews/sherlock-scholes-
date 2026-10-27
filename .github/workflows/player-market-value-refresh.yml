@@ -121,6 +121,8 @@ jobs:
           verify_written 132098 "Harry Kane"
 
       - name: Refresh oldest market valuations from Transfermarkt
+        env:
+          TMAPI_DIAGNOSTICS: '1'
         run: |
           limit="${{ inputs.limit || '800' }}"
           case "$limit" in
