@@ -240,7 +240,10 @@ export interface CardFacts {
   national_team?: string | null;  // short genitive ("Аргентины") -> "за сборную X"
   national_caps?: number | null;
   tournaments?: string[] | null;  // ["ЧМ-2018", "Евро-2016", …]
-  titles?: string[] | null;       // ["Золотой мяч 2009", …]
+  titles?: string[] | null;       // legacy curated title strings
+  honours?: { title: string; count: number; kind: 'team' | 'personal' }[] | null;
+  honours_source?: string | null;
+  honours_synced_at?: string | null;
 }
 
 // Six FIFA-style 0–100 sub-ratings for the dossier's "Характеристики" bars
