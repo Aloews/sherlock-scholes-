@@ -427,6 +427,11 @@ def player_age_from_card(card: dict[str, Any], season: int, snapshot: date) -> i
         facts_year = int(facts_year) if facts_year is not None else None
     except (TypeError, ValueError):
         facts_year = None
+    # The legacy facts parser occasionally stores unrelated numbers as birth_year
+    # (e.g. 39, 1450 or 1515). Such values are not credible dates and must not
+    # override a valid structured birth date.
+    if facts_year is not None and not (1880 <= facts_year <= snapshot.year):
+        facts_year = None
 
     born_date = None
     if born:
