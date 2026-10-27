@@ -59,7 +59,7 @@ function canonicalKey(value: string): string {
 }
 
 function formatTitle(title: string, count: number): string {
-  return count > 1 ? \`${title} ×${count}\` : title;
+  return count > 1 ? title + ' ×' + count : title;
 }
 
 export function splitHonours({ titles, legendTitles, honours, tournaments }: HonourSources): Honours {
