@@ -86,6 +86,14 @@ def filter_candidates(cards, min_value=0, include_unvalued=False):
     return selected
 
 
+def category_filter(category):
+    if category == "both":
+        return "in.(player,woman)"
+    if category not in {"player", "woman"}:
+        raise ValueError("category must be player, woman or both")
+    return "eq." + category
+
+
 def parse_seasons(payload):
     """JSON игрока → строки для `apply_player_season_stats`. ЧИСТАЯ ФУНКЦИЯ.
 
@@ -223,6 +231,7 @@ def main():
     ap.add_argument("--include-unvalued", action="store_true",
                     help="включить игроков без рыночной оценки")
     ap.add_argument("--only", default="", help="один id на Transfermarkt, для проверки")
+    ap.add_argument("--category", choices=("player", "woman", "both"), default="player")
     args = ap.parse_args()
     if args.only and not args.only.isdigit():
         raise SystemExit("--only должен быть числовым Transfermarkt ID")
@@ -232,14 +241,14 @@ def main():
 
     if args.only:
         cards = sb("cards", params={
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "category": "eq.player", "active": "is.true",
+            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on,category",
+            "category": category_filter(args.category), "active": "is.true",
             "transfermarkt_id": "eq." + args.only,
             "order": "id.asc", "limit": 1}) or []
     else:
         query = {
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
-            "category": "eq.player", "active": "is.true",
+            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on,category",
+            "category": category_filter(args.category), "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "market_value_eur.desc.nullslast,id.asc",
         }
