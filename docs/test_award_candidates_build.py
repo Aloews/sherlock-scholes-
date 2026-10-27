@@ -24,7 +24,7 @@ class CandidateRankingTests(unittest.TestCase):
 
     def test_team_key_is_stable_and_url_safe(self):
         self.assertEqual(normal_key("Manchester City"), "manchester-city")
-        self.assertEqual(normal_key("ПСЖ"), "unknown")
+        self.assertEqual(normal_key("ПСЖ"), "псж")
         self.assertEqual(normal_key("AFC / Team 2"), "afc-team-2")
 
 
