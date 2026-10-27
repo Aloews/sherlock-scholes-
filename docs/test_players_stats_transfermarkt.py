@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_stats_transfermarkt import (  # noqa: E402
     filter_candidates,
     latest_stat_fetch_by_tm,
+    parse_seasons,
     refresh_priority_key,
     valid_season_payload,
 )
@@ -54,6 +55,53 @@ class CandidateSelectionTests(unittest.TestCase):
         ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
         self.assertEqual([card["transfermarkt_id"] for card in ordered], ["3", "2", "1"])
 
+    def test_match_level_payload_is_aggregated_by_actual_season_competition_and_club(self):
+        def game(season, competition, club, minutes, goals=0, assists=0,
+                 participation="played", yellow=False, red=False):
+            return {
+                "gameInformation": {
+                    "seasonId": season,
+                    "competitionId": competition,
+                    "competitionTypeId": 1,
+                },
+                "clubsInformation": {"club": {"clubId": club}},
+                "statistics": {
+                    "generalStatistics": {"participationState": participation},
+                    "goalStatistics": {
+                        "goalsScoredTotal": goals,
+                        "assists": assists,
+                        "ownGoalsScored": 0,
+                        "penaltyGoalsScored": 0,
+                        "teamGoalsOnThePitch": 2,
+                        "opponentGoalsOnThePitch": 1,
+                    },
+                    "cardStatistics": {
+                        "yellowCard": yellow,
+                        "yellowRedCard": False,
+                        "redCard": red,
+                    },
+                    "playingTimeStatistics": {"playedMinutes": minutes},
+                },
+            }
+
+        rows = parse_seasons({"success": True, "data": {"performance": [
+            game(2026, "GB1", "11", 90, goals=1, assists=1, yellow=True),
+            game(2026, "GB1", "11", 35, goals=0, assists=1),
+            game(2026, "CL", "11", 80, goals=1, red=True),
+            game(2025, "GB1", "11", 90, goals=2),
+            game(2026, "GB1", "11", 90, goals=9, participation="unusedSubstitute"),
+        ]}})
+        by_key = {(r["season_id"], r["competition_id"], r["club_id"]): r for r in rows}
+        premier_league = by_key[(2026, "GB1", "11")]
+        self.assertEqual(
+            (premier_league["apps"], premier_league["minutes"],
+             premier_league["goals"], premier_league["assists"], premier_league["yellow"]),
+            (2, 125, 1, 2, 1),
+        )
+        self.assertEqual(by_key[(2026, "CL", "11")]["apps"], 1)
+        self.assertEqual(by_key[(2025, "GB1", "11")]["goals"], 2)
+        self.assertFalse(any(row["goals"] == 9 for row in rows))
+
     def test_only_valid_tmapi_success_envelopes_are_checkpointable(self):
         self.assertTrue(valid_season_payload({
             "success": True, "data": {"performance": []}
@@ -61,6 +109,10 @@ class CandidateSelectionTests(unittest.TestCase):
         self.assertFalse(valid_season_payload({"error": "temporary upstream failure"}))
         self.assertFalse(valid_season_payload({
             "success": True, "data": {"unexpected": []}
+        }))
+        self.assertFalse(valid_season_payload({
+            "success": True,
+            "data": {"performance": [{"generalInformation": {"seasonId": 2026}}]},
         }))
         self.assertFalse(valid_season_payload(None))
 
