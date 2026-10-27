@@ -141,5 +141,22 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertAlmostEqual(sum(OVERALL_SPECS["golden_boy"].values()), 1.0)
 
 
+    def test_missing_market_value_is_neutral_not_zero(self):
+        players = [
+            {"card_id": "unknown", "name": "Unknown value", "category": "player", "active": True,
+             "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
+             "market_value_eur": None, "stats_rows": 1},
+            {"card_id": "known", "name": "Known value", "category": "player", "active": True,
+             "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
+             "market_value_eur": 100000000, "stats_rows": 1},
+        ]
+        rows = score_population(players, {"market_value_eur": 0.5, "goals": 0.5},
+                                "ballon_dor", 2026, date(2026, 10, 27))
+        self.assertEqual(
+            next(row for row in rows if row["card_id"] == "unknown")["components"]["market_value_eur"],
+            50.0,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
