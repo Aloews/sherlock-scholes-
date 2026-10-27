@@ -153,7 +153,7 @@ class CandidateRankingTests(unittest.TestCase):
         rows = score_population(players, {"market_value_eur": 0.5, "goals": 0.5},
                                 "ballon_dor", 2026, date(2026, 10, 27))
         self.assertEqual(
-            next(row for row in rows if row["card_id"] == "unknown")["components"]["market_value_eur"],
+            next(row for row in rows if row["card_id"] == "unknown")["score_components"]["market_value_eur"],
             50.0,
         )
 
