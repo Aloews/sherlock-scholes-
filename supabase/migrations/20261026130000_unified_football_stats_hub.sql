@@ -552,9 +552,6 @@ $$;
 revoke all on function public.player_smart_deck_trends(integer) from public;
 grant execute on function public.player_smart_deck_trends(integer) to anon, authenticated, service_role;
 
-revoke all on function public.player_smart_deck_trends(integer) from public;
-grant execute on function public.player_smart_deck_trends(integer) to anon, authenticated, service_role;
-
 create or replace function public.player_spotlight_scored(p_days integer default 365)
 returns table (
   card_id          uuid,
