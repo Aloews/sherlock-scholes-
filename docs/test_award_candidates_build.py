@@ -52,6 +52,54 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertFalse(rows[0]["evidence"]["score_is_probability"])
         self.assertEqual(rows[0]["evidence"]["ranking_scope"], "tracked competition competition-1")
 
+    def test_award_candidates_exclude_tiny_samples_and_shrink_early_form(self):
+        population = [
+            {"card_id": "tiny", "name": "Tiny Sample", "category": "player", "active": True,
+             "apps": 2, "starts": 2, "minutes": 150, "goals": 5, "assists": 2,
+             "weighted_goals": 5, "weighted_assists": 2, "goals_per_90": 3.0,
+             "assists_per_90": 1.2, "sw_rating": 99, "market_value_eur": 150000000,
+             "fame": 99, "age": 24, "stats_rows": 1},
+            {"card_id": "eligible", "name": "Eligible Sample", "category": "player", "active": True,
+             "apps": 8, "starts": 7, "minutes": 600, "goals": 6, "assists": 4,
+             "weighted_goals": 4.8, "weighted_assists": 3.2, "goals_per_90": .9,
+             "assists_per_90": .6, "sw_rating": 82, "market_value_eur": 60000000,
+             "fame": 70, "age": 24, "stats_rows": 8},
+        ]
+        rows = score_population(
+            population, OVERALL_SPECS["ballon_dor"], "ballon_dor", 2026, date(2026, 10, 27)
+        )
+        self.assertEqual([row["card_id"] for row in rows], ["eligible"])
+        self.assertLess(rows[0]["candidate_score"], rows[0]["score_components"]["unshrunk_relative_index"])
+        self.assertLess(rows[0]["score_components"]["sample_reliability"], 1)
+        self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
+                         "at least 5 appearances and 300 minutes; if minutes are unavailable, at least 8 appearances")
+
+    def test_golden_boot_requires_goals_and_a_minimum_appearance_sample(self):
+        population = [
+            {"card_id": "zero-goals", "name": "Zero Goals", "category": "player", "active": True,
+             "apps": 15, "starts": 10, "minutes": 900, "goals": 0, "assists": 5,
+             "weighted_goals": 0, "weighted_assists": 3, "goals_per_90": 0,
+             "assists_per_90": .5, "sw_rating": 80, "market_value_eur": 10000000,
+             "fame": 40, "age": 25, "stats_rows": 15},
+            {"card_id": "tiny-scorer", "name": "Tiny Scorer", "category": "player", "active": True,
+             "apps": 2, "starts": 2, "minutes": 180, "goals": 7, "assists": 0,
+             "weighted_goals": 7, "weighted_assists": 0, "goals_per_90": 3.5,
+             "assists_per_90": 0, "sw_rating": 70, "market_value_eur": 1000000,
+             "fame": 10, "age": 20, "stats_rows": 2},
+            {"card_id": "real-scorer", "name": "Real Scorer", "category": "player", "active": True,
+             "apps": 5, "starts": 5, "minutes": 450, "goals": 4, "assists": 1,
+             "weighted_goals": 3.2, "weighted_assists": .8, "goals_per_90": .8,
+             "assists_per_90": .2, "sw_rating": 75, "market_value_eur": 5000000,
+             "fame": 20, "age": 22, "stats_rows": 5},
+        ]
+        rows = score_population(
+            population, {"goals": .68, "goals_per_90": .12, "assists": .08, "minutes": .07, "apps": .05},
+            "golden_boot", 2026, date(2026, 10, 27), "league-x"
+        )
+        self.assertEqual([row["card_id"] for row in rows], ["real-scorer"])
+        self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
+                         "golden_boot: at least 3 appearances and 1 goal in this competition")
+
     def test_golden_boy_only_includes_eligible_male_cards(self):
         players = [
             {"card_id": "young", "name": "Young", "category": "player", "active": True,
@@ -138,6 +186,33 @@ class CandidateRankingTests(unittest.TestCase):
         rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 27))
         self.assertEqual({row["tournament"] for row in rows}, {"League A", "National Cup"})
         self.assertFalse(any("Friendly" in row["tournament"] for row in rows))
+
+    def test_world_cup_is_classified_as_a_tournament_not_a_league(self):
+        self.assertEqual(competition_format("Чемпионат мира"), "international_tournament_form_proxy")
+        self.assertEqual(competition_format("Чемпионат мира U-17"), "international_tournament_form_proxy")
+
+    def test_stale_tournaments_are_not_current_contender_shortlists(self):
+        matches = [
+            {"tournament": "Active League", "match_date": "2026-10-01", "home_key": "a",
+             "away_key": "b", "home_team": "Alpha", "away_team": "Beta",
+             "home_score": 2, "away_score": 0},
+            {"tournament": "Active League", "match_date": "2026-10-08", "home_key": "b",
+             "away_key": "c", "home_team": "Beta", "away_team": "Gamma",
+             "home_score": 1, "away_score": 1},
+            {"tournament": "Active League", "match_date": "2026-10-15", "home_key": "c",
+             "away_key": "a", "home_team": "Gamma", "away_team": "Alpha",
+             "home_score": 0, "away_score": 1},
+            {"tournament": "Completed Cup", "match_date": "2026-07-20", "home_key": "x",
+             "away_key": "y", "home_team": "X", "away_team": "Y",
+             "home_score": 2, "away_score": 0},
+            {"tournament": "Completed Cup", "match_date": "2026-07-25", "home_key": "y",
+             "away_key": "z", "home_team": "Y", "away_team": "Z",
+             "home_score": 1, "away_score": 0},
+        ]
+        rows = build_team_candidate_payloads(
+            matches, {}, date(2026, 10, 27), max_days_since_last_match=75
+        )
+        self.assertEqual({row["tournament"] for row in rows}, {"Active League"})
 
     def test_team_key_is_stable_and_url_safe(self):
         self.assertEqual(normal_key("Manchester City"), "manchester-city")
