@@ -148,6 +148,8 @@ def parse_honours(wikitext: str) -> list[dict]:
         placeholder = title.lower().strip(" «»„“”\".,:;!?")
         if placeholder in {"награда", "награды", "награда «»"}:
             continue
+        if title.count("«") != title.count("»"):
+            continue
         if not re.search(r"[A-Za-zА-Яа-яЁё0-9]", title):
             continue
         out.append({"title": title, "count": count, "kind": kind or "team"})
@@ -246,6 +248,8 @@ def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]
             continue
         placeholder = item.strip().lower().strip(" «»„“”\".,:;!?")
         if placeholder in {"награда", "награды", "награда «»"}:
+            continue
+        if item.count("«") != item.count("»"):
             continue
         titles.append(item)
     for honour in honours:
