@@ -1779,3 +1779,10 @@ t = 1.95, а читалось это как «кто играет — почти
 - The reader previously accepted only an envelope shaped like `{success: true, data: {...}}`. The current public Transfermarkt API model can return the player object directly (`id`, `marketValue`, `marketValueHistory`, etc.). The parser now supports both shapes, requires the response player ID to match the requested ID, and rejects malformed/error payloads.
 - A top-level `updatedAt` may mean the response was fetched, not that the valuation changed. It is no longer used as a valuation date. The pipeline writes a price only when the source supplies an explicit valuation date or dated market-value history; missing dates never become today's date.
 - Production values were intentionally not overwritten while the source parser was rejecting responses. After the corrected job runs, verify the stored source date/value for Martin Ødegaard (Transfermarkt ID `316264`) and Harry Kane (`132098`) before declaring the refresh recovered.
+
+
+## Market-value recovery guard follow-up (2026-10-27)
+
+- After PR [#319](https://github.com/Aloews/sherlock-scholes-/pull/319), the targeted refresh steps completed but the production records for Ødegaard and Kane still had no new `market_value_checked_at`. Therefore the response-shape change alone has not yet demonstrated a successful live source read.
+- The follow-up accepts a data-only response envelope as well as direct and `success/data` payloads. When diagnostics are enabled, it logs HTTP status or JSON key names (not response bodies or credentials) to distinguish an API error from a schema mismatch.
+- The workflow now checks the two priority players before starting the full 800-card batch. If either source check fails, the run stops early rather than issuing hundreds of repeat requests to a failing endpoint. Production valuations remain unchanged until a valid source value and source date are returned.
