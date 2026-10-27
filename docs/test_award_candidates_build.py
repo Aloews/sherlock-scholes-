@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -106,6 +106,7 @@ class CandidateRankingTests(unittest.TestCase):
                                 "golden_boot", 2026, date(2026, 10, 27), "competition-1")
         self.assertEqual(rows[0]["card_id"], "a")
         self.assertEqual(rows[0]["candidate_rank"], 1)
+        self.assertEqual(rows[0]["model_version"], AWARD_MODEL_VERSION)
         self.assertEqual(rows[0]["competition_id"], "competition-1")
         self.assertFalse(rows[0]["evidence"]["score_is_probability"])
         self.assertEqual(rows[0]["evidence"]["ranking_scope"], "tracked competition competition-1")
@@ -253,6 +254,55 @@ class CandidateRankingTests(unittest.TestCase):
         rows = score_population(players, {"goals": .5, "assists": .5},
                                 "golden_boy", 2026, date(2026, 10, 27))
         self.assertEqual([row["card_id"] for row in rows], ["young"])
+
+    def test_match_competition_aliases_do_not_merge_different_premier_leagues(self):
+        self.assertEqual(
+            canonical_match_competition("English Premier League"),
+            canonical_match_competition("Англия. Премьер-лига"),
+        )
+        self.assertNotEqual(
+            canonical_match_competition("English Premier League"),
+            canonical_match_competition("Россия. Премьер-лига"),
+        )
+
+    def test_player_match_stats_deduplicate_sources_and_exclude_friendlies(self):
+        rows = [
+            {"card_id": "odegaard", "match_date": "2026-08-15",
+             "tournament": "English Premier League", "source": "espn",
+             "minutes": None, "goals": 1, "assists": 0,
+             "fetched_at": "2026-08-16T00:00:00Z", "disputed": False},
+            {"card_id": "odegaard", "match_date": "2026-08-15",
+             "tournament": "Англия. Премьер-лига", "source": "sports.ru",
+             "minutes": 90, "goals": 1, "assists": 0,
+             "fetched_at": "2026-08-17T00:00:00Z", "disputed": False},
+            {"card_id": "odegaard", "match_date": "2026-08-20",
+             "tournament": "UEFA Champions League", "source": "espn",
+             "minutes": 75, "goals": 0, "assists": 1,
+             "fetched_at": "2026-08-21T00:00:00Z", "disputed": False},
+            {"card_id": "odegaard", "match_date": "2026-08-25",
+             "tournament": "International Friendly", "source": "sports.ru",
+             "minutes": 90, "goals": 5, "assists": 5,
+             "fetched_at": "2026-08-26T00:00:00Z", "disputed": False},
+            {"card_id": "odegaard", "match_date": "2026-06-15",
+             "tournament": "Premier League", "source": "sports.ru",
+             "minutes": 90, "goals": 4, "assists": 4,
+             "fetched_at": "2026-06-16T00:00:00Z", "disputed": False},
+            {"card_id": "woman-a", "match_date": "2026-08-15",
+             "tournament": "English Premier League", "source": "sports.ru",
+             "minutes": 90, "goals": 2, "assists": 2,
+             "fetched_at": "2026-08-16T00:00:00Z", "disputed": False},
+        ]
+        totals = aggregate_player_match_stats(
+            rows, 2026, date(2026, 10, 27), exclude_card_ids={"woman-a"}
+        )
+        self.assertEqual(set(totals), {"odegaard"})
+        self.assertEqual(totals["odegaard"]["apps"], 2)
+        self.assertEqual(totals["odegaard"]["minutes"], 165)
+        self.assertEqual(totals["odegaard"]["goals"], 1)
+        self.assertEqual(totals["odegaard"]["assists"], 1)
+        self.assertEqual(totals["odegaard"]["stats_rows"], 2)
+        self.assertEqual(totals["odegaard"]["stats_source"], "player_match_stats")
+        self.assertFalse(totals["odegaard"]["starts_known"])
 
     def test_womens_match_stats_use_competition_season_windows_and_keep_unknown_minutes(self):
         rows = [
@@ -466,7 +516,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.award-candidate-rank-v6",
+                "model_version": "neq.award-candidate-rank-v7",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
