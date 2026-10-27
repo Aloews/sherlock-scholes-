@@ -755,7 +755,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     # before publishing individual-award candidates; team tournament rankings can
     # still refresh independently when this gate is not met.
     current_value_cards = get_rows(base, key, "cards", {
-        "select": "id,name,category,active,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_data_synced_at",
+        "select": "id,name,category,active,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_checked_at,player_stats_data_synced_at",
         "category": "eq.player", "active": "eq.true",
         "transfermarkt_id": "not.is.null", "market_value_eur": "gte.20000000",
         "market_value_at": f"gte.{(snapshot - timedelta(days=180)).isoformat()}",
