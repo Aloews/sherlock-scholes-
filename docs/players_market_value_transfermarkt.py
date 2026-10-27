@@ -152,10 +152,13 @@ def parse_api_market_value(payload):
     """Return exact euro value and the source's valuation date from TMAPI JSON."""
     if not isinstance(payload, dict):
         return None, None
-    value_present = "marketValue" in payload
-    value = payload.get("marketValue")
-    details = payload.get("marketValueDetails") or {}
-    history = payload.get("marketValueHistory") or []
+    value_present = "marketValue" in payload or "market_value" in payload
+    value = payload.get("marketValue", payload.get("market_value"))
+    details = payload.get("marketValueDetails") or payload.get("market_value_details") or {}
+    history = (
+        payload.get("marketValueHistory") or payload.get("market_value_history")
+        or payload.get("history") or []
+    )
     source_date = (
         details.get("lastUpdated") or payload.get("marketValueDate")
         or payload.get("lastUpdated")
@@ -215,7 +218,7 @@ def fetch_api_market_value(tm_id, tries=3):
     GitHub-hosted runners. That is not an empty valuation; it is an unusable
     response and must not advance market_value_checked_at.
     """
-    url = f"{TMAPI}/players/{urllib.parse.quote(str(tm_id))}/market_value"
+    url = f"{TMAPI}/player/{urllib.parse.quote(str(tm_id))}/market-value-history"
     for attempt in range(1, tries + 1):
         try:
             req = urllib.request.Request(url, headers={
@@ -231,6 +234,8 @@ def fetch_api_market_value(tm_id, tries=3):
             if not isinstance(payload, dict) or payload.get("success") is not True:
                 return None, None, False
             data = payload.get("data")
+            if isinstance(data, list):
+                data = {"marketValueHistory": data}
             if not isinstance(data, dict):
                 return None, None, False
             value, at = parse_api_market_value(data)
@@ -511,7 +516,7 @@ def main():
               "значит, повторить прогон" % lost, flush=True)
 
     # --- шаг 3: id → стоимость ------------------------------------------
-    found, no_value, no_id, invalid_profiles = [], 0, 0, 0
+    found, no_value, no_id, invalid_profiles, valid_profiles = [], 0, 0, 0, 0
     pending, written = [], 0
     for i, card in enumerate(players, 1):
         qid = qid_of.get(card["id"])
@@ -526,8 +531,14 @@ def main():
             invalid_profiles += 1
             print("  ⚠️ no usable TMAPI market-value response for %s (%s)"
                   % (card.get("name") or card["id"], tm_id), flush=True)
+            if invalid_profiles >= 5 and valid_profiles == 0:
+                raise SystemExit(
+                    "TMAPI returned no usable market-value payload for the first five "
+                    "player IDs; aborting early without marking those cards checked"
+                )
             time.sleep(TM_PAUSE)
             continue
+        valid_profiles += 1
         has_source_value = should_write_market_value(euros, at)
         row = {
             "id": card["id"], "name": card.get("name"),
