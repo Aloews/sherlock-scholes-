@@ -63,6 +63,8 @@ def main():
             print("::error::Could not produce a valid patch: "+err)
             return 1
     changed = run(["git","diff","--name-only"]).stdout.splitlines()
+    untracked = run(["git","ls-files","--others","--exclude-standard"]).stdout.splitlines()
+    changed = sorted(set(changed + untracked))
     if not changed or any(not allowed(p) for p in changed): return 1
     check = run(["git","diff","--check"], check=False)
     if check.returncode: print(check.stderr); return 1
