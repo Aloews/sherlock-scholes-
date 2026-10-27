@@ -296,7 +296,7 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
             if (current - previous).days > 75:
                 segment_start = index
         current_matches = all_matches[segment_start:]
-        if len(current_matches) < 3:
+        if not current_matches:
             continue
 
         by_team: dict[str, dict] = {}
