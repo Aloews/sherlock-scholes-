@@ -50,7 +50,7 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
         }),
         supabase.rpc('admin_list_team_tournament_candidates', {
           p_password: password,
-          p_tournament: tournament.trim() || null,
+          p_tournament: null,
         }),
       ]);
       if (awardResult.error) throw new Error(awardResult.error.message);
