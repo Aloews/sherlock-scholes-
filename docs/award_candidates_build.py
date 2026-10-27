@@ -129,6 +129,10 @@ def competition_strength(name: str | None, short_name: str | None = None) -> flo
     value = f"{name or ''} {short_name or ''}".lower()
     if re.search(r"world cup|champions league|fifa intercontinental|european championship|euros\b|copa america|africa cup of nations|asian cup|чемпионат мира|лига чемпионов", value):
         return 1.0
+    if re.search(r"russian premier league|россия\. премьер-лига", value):
+        return 0.78
+    if re.search(r"brazilian serie a|campeonato brasileiro|liga mx|major league soccer|a-league", value):
+        return 0.82
     if re.search(r"premier league|laliga|la liga|bundesliga|serie a\b|ligue 1|fifa club world cup|uefa euro", value):
         return 0.95
     if re.search(r"europa league|conference league|qualifying|qualification|квалификац", value):
