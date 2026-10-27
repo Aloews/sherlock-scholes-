@@ -12,6 +12,7 @@ import { AccumulatorPanel } from '@/features/duel/AccumulatorPanel';
 import { RightsPanel } from '@/features/rights/RightsPanel';
 import { WinnerBoard } from '@/features/duel/WinnerBoard';
 import { TeamTournamentPanel } from '@/features/admin/TeamTournamentPanel';
+import { AwardCandidatePanel } from '@/features/admin/AwardCandidatePanel';
 import { wakeSupabase } from '@/features/game/cardRandomizer';
 import { ALL_CATEGORIES, CATEGORY_LABEL_RU, type Card } from '@/shared/types/database';
 import { Button } from '@/shared/ui/Button';
@@ -241,6 +242,7 @@ function StaffCabinet({ password, role, onLogout }: {
       )}
       {tab === 'forecast' && isAdmin && (
         <div className="space-y-4">
+          <AwardCandidatePanel password={password} />
           <TeamTournamentPanel password={password} />
           {/* Экспресс выше истории: открывая эту вкладку, смотрят «что сейчас»,
               а не «что было». */}
