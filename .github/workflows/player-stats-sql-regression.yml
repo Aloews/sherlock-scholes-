@@ -140,7 +140,10 @@ jobs:
       - name: Apply player stats refresh checkpoint migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027213000_player_stats_refresh_checkpoint.sql
 
-      - name: Verify player stats refresh checkpoint
+      - name: Apply match-level stats replacement migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027214000_replace_player_season_stats_from_match_feed.sql
+
+      - name: Verify player stats refresh checkpoint and row replacement
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_stats_refresh_checkpoint.test.sql
 
       - name: Test player stats refresh queue
