@@ -634,6 +634,8 @@ def build_team_candidate_payloads(
                 "evidence": {
                     "competition_format": comp_format,
                     "matches_played": team["played"], "max_matches_played_by_team": max_played,
+                    "latest_match_date": all_matches[-1]["match_date"],
+                    "days_since_last_match": max(0, (snapshot - date.fromisoformat(all_matches[-1]["match_date"])).days),
                     "wins": team["wins"], "draws": team["draws"], "losses": team["losses"],
                     "goals_for": team["gf"], "goals_against": team["ga"],
                     "points_per_game": round(team["points"] / team["played"], 4),
