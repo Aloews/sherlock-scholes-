@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -106,6 +106,7 @@ class CandidateRankingTests(unittest.TestCase):
                                 "golden_boot", 2026, date(2026, 10, 27), "competition-1")
         self.assertEqual(rows[0]["card_id"], "a")
         self.assertEqual(rows[0]["candidate_rank"], 1)
+        self.assertEqual(rows[0]["model_version"], AWARD_MODEL_VERSION)
         self.assertEqual(rows[0]["competition_id"], "competition-1")
         self.assertFalse(rows[0]["evidence"]["score_is_probability"])
         self.assertEqual(rows[0]["evidence"]["ranking_scope"], "tracked competition competition-1")
