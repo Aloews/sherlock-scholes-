@@ -137,50 +137,58 @@ def valid_season_payload(payload):
 
 
 def parse_seasons(payload):
-    """JSON игрока → строки для `apply_player_season_stats`. ЧИСТАЯ ФУНКЦИЯ.
+    """Match-level TMAPI payload → one row per season/competition/club.
 
-    ⚠️ КЛЮЧ СОБИРАЕТСЯ ИЗ ТРЁХ ПОЛЕЙ, И КЛУБ В НЁМ ОБЯЗАТЕЛЕН. Сезон 2021
-    Классен начал в «Тироле», а закончил в «Спартаке»: без клуба одна строка
-    затёрла бы другую, и год просто исчез бы из карьеры.
-
-    ⚠️ СТРОКА БЕЗ КЛУБА ИЛИ БЕЗ ТУРНИРА ВЫБРАСЫВАЕТСЯ. Такая запись не «ноль
-    матчей», а запись, которую некуда положить: ключ неполон.
+    The `performance-competition` route is a competition-level aggregate and
+    must not be relabelled as a season. The `performance-game` route exposes
+    match records; aggregating their actual `seasonId` is the source of truth
+    for seasonal totals.
     """
-    if not isinstance(payload, dict):
+    if not valid_season_payload(payload):
         return []
-    data = payload.get("data") or {}
-    out = []
-    for row in data.get("performance") or []:
-        info = row.get("generalInformation") or {}
-        season, comp = info.get("seasonId"), info.get("competitionId")
-        club = info.get("clubId")
-        if season in (None, "") or not comp or not club:
+
+    totals = {}
+    for game in payload["data"]["performance"]:
+        info = game.get("gameInformation") or {}
+        clubs = game.get("clubsInformation") or {}
+        club = clubs.get("club") or {}
+        season, comp, club_id = info.get("seasonId"), info.get("competitionId"), club.get("clubId")
+        if season in (None, "") or not comp or not club_id:
             continue
-        st = row.get("statistics") or {}
-        g = st.get("goalStatistics") or {}
-        c = st.get("cardStatistics") or {}
-        t = st.get("playingTimeStatistics") or {}
-        out.append({
+
+        key = (str(season), str(comp), str(club_id))
+        row = totals.setdefault(key, {
             "season_id": int(season),
             "competition_id": str(comp),
-            "club_id": str(club),
-            "apps": _i(t.get("appearancesCount")),
-            "starts": _i(t.get("startingCount")),
-            "sub_in": _i(t.get("substitutedInCount")),
-            "sub_out": _i(t.get("substitutedOutCount")),
-            "minutes": _i(t.get("playedMinutesSum")),
-            "goals": _i(g.get("goalsSum")),
-            "assists": _i(g.get("assistsSum")),
-            "own_goals": _i(g.get("ownGoalsSum")),
-            "penalty_goals": _i(g.get("penaltyShooterGoalsScored")),
-            "yellow": _i(c.get("yellowCardNetSum")),
-            "yellow_red": _i(c.get("yellowRedCardsCount")),
-            "red": _i(c.get("redCardsCount")),
-            "team_goals": _i(g.get("teamGoalsOnThePitchSum")),
-            "opponent_goals": _i(g.get("opponentGoalsOnThePitch")),
+            "club_id": str(club_id),
+            "apps": 0, "starts": 0, "sub_in": 0, "sub_out": 0,
+            "minutes": 0, "goals": 0, "assists": 0,
+            "own_goals": 0, "penalty_goals": 0,
+            "yellow": 0, "yellow_red": 0, "red": 0,
+            "team_goals": 0, "opponent_goals": 0,
         })
-    return out
 
+        stats = game.get("statistics") or {}
+        general = stats.get("generalStatistics") or {}
+        if general.get("participationState") != "played":
+            continue
+
+        goals = stats.get("goalStatistics") or {}
+        cards = stats.get("cardStatistics") or {}
+        playing = stats.get("playingTimeStatistics") or {}
+        row["apps"] += 1
+        row["minutes"] += _i(playing.get("playedMinutes"))
+        row["goals"] += _i(goals.get("goalsScoredTotal"))
+        row["assists"] += _i(goals.get("assists"))
+        row["own_goals"] += _i(goals.get("ownGoalsScored"))
+        row["penalty_goals"] += _i(goals.get("penaltyGoalsScored"))
+        row["yellow"] += 1 if cards.get("yellowCard") else 0
+        row["yellow_red"] += 1 if cards.get("yellowRedCard") else 0
+        row["red"] += 1 if cards.get("redCard") else 0
+        row["team_goals"] += _i(goals.get("teamGoalsOnThePitch"))
+        row["opponent_goals"] += _i(goals.get("opponentGoalsOnThePitch"))
+
+    return list(totals.values())
 
 def parse_birth(player):
     """Паспорт игрока → дата рождения или None. ЧИСТАЯ ФУНКЦИЯ.
@@ -387,7 +395,7 @@ def main():
 
     for i, card in enumerate(cards, 1):
         tm = card["transfermarkt_id"]
-        payload = get_json("%s/player/%s/performance-competition"
+        payload = get_json("%s/player/%s/performance-game"
                            % (API, urllib.parse.quote(tm)))
         source_ok = valid_season_payload(payload)
         write_ok = True
