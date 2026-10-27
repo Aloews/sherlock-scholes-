@@ -28,6 +28,8 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      odegaard_outcome: ${{ steps.odegaard.outcome }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -52,6 +54,8 @@ jobs:
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
 
       - name: Refresh Martin Odegaard's source valuation first
+        id: odegaard
+        continue-on-error: true
         run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --only 316264
 
       - name: Refresh oldest market valuations from Transfermarkt
@@ -73,11 +77,16 @@ jobs:
     timeout-minutes: 5
     env:
       REFRESH_RESULT: ${{ needs.refresh.result }}
+      ODEGAARD_RESULT: ${{ needs.refresh.outputs.odegaard_outcome }}
     steps:
       - name: Verify market value refresh completed
         run: |
           echo "refresh = $REFRESH_RESULT"
           [ "$REFRESH_RESULT" = "success" ] || {
             echo "::error::refresh: $REFRESH_RESULT"
+            exit 1
+          }
+          [ "$ODEGAARD_RESULT" = "success" ] || {
+            echo "::error::Martin Odegaard's source valuation refresh failed: $ODEGAARD_RESULT"
             exit 1
           }
