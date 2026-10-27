@@ -61,6 +61,34 @@ class CandidateSelectionTests(unittest.TestCase):
         ])
         self.assertEqual(latest, {"316264": "2026-10-26T13:15:00Z"})
 
+    def test_old_career_rows_do_not_count_as_current_season_refresh(self):
+        stored = [
+            {"tm_player_id": "316264", "season_id": 2025, "fetched_at": "2026-10-26T13:15:00Z"},
+            {"tm_player_id": "132098", "season_id": 2024, "fetched_at": "2026-10-26T13:15:00Z"},
+            {"tm_player_id": "2", "season_id": 2026, "fetched_at": "2026-10-27T10:00:00Z"},
+        ]
+        latest = latest_stat_fetch_by_tm(stored, season_id=2026)
+        self.assertEqual(latest, {"2": "2026-10-27T10:00:00Z"})
+
+        cards = [
+            {"id": "odegaard", "transfermarkt_id": "316264", "market_value_eur": 70000000},
+            {"id": "kane", "transfermarkt_id": "132098", "market_value_eur": 60000000},
+            {"id": "refreshed", "transfermarkt_id": "2", "market_value_eur": 100000000},
+        ]
+        ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
+        self.assertEqual(
+            [card["transfermarkt_id"] for card in ordered],
+            ["316264", "132098", "2"],
+        )
+
+    def test_current_season_timestamp_wins_over_newer_historical_timestamp(self):
+        latest = latest_stat_fetch_by_tm([
+            {"tm_player_id": "316264", "season_id": 2025, "fetched_at": "2026-10-27T12:00:00Z"},
+            {"tm_player_id": "316264", "season_id": 2026, "fetched_at": "2026-10-20T12:00:00Z"},
+            {"tm_player_id": "316264", "season_id": 2026, "fetched_at": "2026-10-26T13:15:00Z"},
+        ], season_id=2026)
+        self.assertEqual(latest, {"316264": "2026-10-26T13:15:00Z"})
+
     def test_invalid_values_do_not_break_the_queue(self):
         cards = [
             {"transfermarkt_id": "1", "market_value_eur": "unknown"},
