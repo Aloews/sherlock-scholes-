@@ -121,6 +121,8 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual({row["tournament"] for row in rows}, {"League A", "Single match cup"})
         self.assertEqual(len(rows), 4)  # two teams per competition; duplicate source row counted once
         self.assertTrue(all(row["confidence"] == "low" for row in rows))
+        self.assertTrue(all(row["candidate_score"] < 60 for row in rows))
+        self.assertTrue(all(row["score_components"]["sample_reliability"] < 0.2 for row in rows))
 
     def test_competition_format_distinguishes_leagues_and_knockout_cups(self):
         self.assertEqual(competition_format("Англия. Премьер-лига"), "league_standings_proxy")
