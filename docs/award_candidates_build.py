@@ -300,13 +300,16 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             )
         ]
     elif award_key == "golden_boy":
+        # Golden Boy is an early-career award: a smaller current-season sample is
+        # expected. Keep a modest production floor without emptying the shortlist
+        # during the first months of the season.
         eligible = [
             p for p in eligible
-            if p["goals"] + p["assists"] >= 4
+            if p["goals"] + p["assists"] >= 2
             or (
                 p.get("minutes_known") is not False
-                and p["minutes"] >= 600
-                and number(p, "sw_rating") >= 90
+                and p["minutes"] >= 450
+                and number(p, "sw_rating") >= 85
             )
         ]
 
@@ -366,7 +369,7 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
             "award_quality_gate": (
                 "elite prior (market value >= EUR 20m or fame >= 75 or rating >= 90, or >=15 goal involvements in a strong competition); additionally >=5 current-season goal involvements, or rating >=93 over >=900 minutes"
                 if award_key in overall_awards and award_key in {"ballon_dor", "the_best"}
-                else "U21 plus market value >= EUR 10m or fame >= 60 or rating >= 85, or >=10 goal involvements in a strong competition; additionally >=4 current-season goal involvements, or rating >=90 over >=600 minutes"
+                else "U21 plus market value >= EUR 10m or fame >= 60 or rating >= 85, or >=10 goal involvements in a strong competition; additionally >=2 current-season goal involvements, or rating >=85 over >=450 minutes"
                 if award_key == "golden_boy"
                 else "at least 5 current-season goal involvements, or rating >=93 over >=900 minutes; detailed defensive/goalkeeping metrics are not yet available"
                 if award_key in overall_awards
