@@ -171,6 +171,14 @@ class CandidateRankingTests(unittest.TestCase):
             {"facts": {"birth_year": 2006}},
             2026, date(2026, 10, 27),
         ), 20)
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2001-02-26", "facts": {"birth_year": 39}},
+            2026, date(2026, 10, 27),
+        ), 25)
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2003-06-17", "facts": {"birth_year": 1450}},
+            2026, date(2026, 10, 27),
+        ), 23)
         self.assertIsNone(player_age_from_card({}, 2026, date(2026, 10, 27)))
 
     def test_golden_boy_keeps_credible_early_season_prospects(self):
