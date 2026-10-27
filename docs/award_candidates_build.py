@@ -300,8 +300,11 @@ def aggregate_women_match_stats(rows: list[dict], season: int, snapshot: date) -
 def canonical_match_competition(tournament: str) -> str:
     """Collapse common English/Russian labels so one match from two feeds counts once."""
     value = str(tournament or "").casefold()
+    if re.search(r"russian premier league|россия.*премьер-лиг|российская премьер-лиг", value, re.I):
+        return "russian-premier-league"
+    if re.search(r"english premier league|premier league|англия.*премьер-лиг|премьер-лига англии", value, re.I):
+        return "english-premier-league"
     aliases = (
-        (r"premier league|премьер-лиг", "premier-league"),
         (r"champions league|лига чемпионов", "champions-league"),
         (r"europa league|лига европы", "europa-league"),
         (r"conference league|лига конференций", "conference-league"),
