@@ -1725,3 +1725,12 @@ t = 1.95, а читалось это как «кто играет — почти
 - Открытые PR #281/#279/#275 касаются генерации экспрессов, PR #258 — синхронизации имён миграций, PR #208 — старого фото-пайплайна. Они не объединялись в рамках этой операции, чтобы не дублировать уже внедрённые исправления и не обходить обязательные проверки.
 
 **Остаток:** подтвердить следующий workflow run, фактическое увеличение `cards.photo_url`, и повторно измерить очередь/источники; отдельно проверить backup/restore и определить утверждённый срок хранения `cron.job_run_details`. До этого цель полного восстановления фото-сборщика и оптимизации физического размера БД не считается завершённой.
+
+---
+
+## Production incident — player honours refresh (2026-10-27)
+
+- Production inspection found the active card **Гарри Кейн** (`d9dbb003-e10b-4cbe-8945-86fc2355e6fd`) had no `facts.honours` field. UEFA confirmed Harry Kane won the 2026 Ballon d'Or on 26 October; the Russian Wikipedia player page had also been updated with the award.
+- Root cause: `docs/cards_honours_build.py` only emitted a SQL preview and never wrote parsed honours to Supabase; no scheduled honours workflow existed. Separately, `CardDossier` read only legacy `facts.titles` and `legend_career.titles`, ignoring structured `facts.honours`. The collector also excluded the separate `woman` card category.
+- PR [#294](https://github.com/Aloews/sherlock-scholes-/pull/294) adds guarded, idempotent writes preserving unrelated `facts`, structured honour rendering and count deduplication, parser/UI tests, and a daily workflow: top 800 by fame plus an 800-card rolling window. Source failures and empty parses never clear existing data.
+- **Release state at map update:** implementation and production backfill are pending PR checks/merge. Do not mark the incident resolved until the 2026 award is visible on the active Harry Kane card in production and the first scheduled sync reports its processed/changed/failed counts. Numeric match-performance rating remains based on match statistics; award display is a separate honours field and does not invent rating points.
