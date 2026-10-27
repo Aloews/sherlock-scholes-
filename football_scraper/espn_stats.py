@@ -141,6 +141,13 @@ LEAGUES = {
     "afc.champions": "AFC Champions League Elite",
 }
 
+WOMEN_LEAGUES = {
+    "eng.w.1", "esp.w.1", "fra.w.1", "ned.w.1", "usa.nwsl",
+    "usa.w.usl.1", "uefa.wchampions", "uefa.weuro", "fifa.wwc",
+    "conmebol.america.femenina", "concacaf.w.gold",
+}
+
+
 # ⚠️ ШЕСТЬ КОДОВ ОТВЕЧАЛИ 200 СВОИМ НАСТОЯЩИМ ИМЕНЕМ И НЕ ПУБЛИКОВАЛИ НИЧЕГО.
 #
 # Их пришлось СНЯТЬ со списка, и находка стоит того, чтобы остаться записанной:
@@ -401,8 +408,15 @@ def collect(days, dry_run=False, only=None):
     # Ключ строится по ЛАТИНСКОМУ имени: ESPN пишет «Miguel Almirón», а не
     # «Мигель Альмирон», и сопоставлять надо в одном алфавите. Только карточки
     # с известным текущим клубом — active_cards_by_key выше объясняет, зачем.
-    cards_by_key = active_cards_by_key(cards, current_club_ids)
-    print("cards with a latin name and a current club: {}".format(len(cards_by_key)))
+    male_cards_by_key = active_cards_by_key(
+        [card for card in cards if card.get("category") == "player"], current_club_ids
+    )
+    women_cards_by_key = active_cards_by_key(
+        [card for card in cards if card.get("category") == "woman"], current_club_ids
+    )
+    print("cards eligible for exact matching: men={}, women={}".format(
+        len(male_cards_by_key), len(women_cards_by_key)
+    ))
 
     today = date.today()
     first_day = today - timedelta(days=days - 1)
@@ -419,6 +433,8 @@ def collect(days, dry_run=False, only=None):
     total_rows, seen_events, unmatched, written_total = 0, 0, 0, 0
     failed = []
     for league in leagues:
+        # Do not let a same-named player from the other category receive a goal.
+        cards_by_key = women_cards_by_key if league in WOMEN_LEAGUES else male_cards_by_key
         # ⚠️ СОБЫТИЯ СОБИРАЮТСЯ МНОЖЕСТВОМ, А НЕ СПИСКОМ. Соседние окна
         # смыкаются встык, но ESPN относит матч к дате НАЧАЛА по своему
         # часовому поясу, и матч на стыке попадает в оба ответа. Дубль стоил бы
