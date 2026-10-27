@@ -9,6 +9,8 @@ on:
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
+      - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
+      - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
   pull_request:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
@@ -16,6 +18,8 @@ on:
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
+      - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
+      - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
   schedule:
     - cron: '35 6 * * *'
   workflow_dispatch:
