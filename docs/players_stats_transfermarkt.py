@@ -6,8 +6,8 @@
 «leistungsdaten» сама ходит в этот адрес — таблицы в её разметке НЕТ ВООБЩЕ,
 её рисует svelte-компонент.
 
-    /player/<id>/performance-competition — сезон × турнир × клуб, по одному
-                                           запросу на игрока
+    /player/<id>/performance-game — матчи по сезонам, турнирам и клубам;
+                                       collector aggregates match records per season
     /players?ids[]=…                     — паспортные данные, СОТНЯ за запрос
     /clubs?ids[]=…, /competitions?ids[]=… — справочники, тоже сотнями
 
@@ -43,6 +43,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import date, datetime, timezone
 
 # ⚠️ СВОЙ КАТАЛОГ В ПУТЬ — ЯВНО. При запуске `python3 docs/x.py` он там и так
 # оказывается, а вот тесты грузят файл ПО ПУТИ (spec_from_file_location), и
@@ -109,61 +110,145 @@ def latest_stat_fetch_by_tm(rows, season_id=None):
 
 
 def refresh_priority_key(card, latest_by_tm):
-    """Refresh never/least recently fetched players first; value breaks ties."""
+    """Refresh never/least recently attempted players first.
+
+    A valid source response with no season rows is still an attempt. Without a
+    card-level attempt timestamp, a repeated 404/empty profile would stay first
+    forever and starve the rest of the rolling catalogue.
+    """
     tm_id = str(card.get("transfermarkt_id") or "")
     fetched_at = latest_by_tm.get(tm_id, "")
+    checked_at = str(card.get("player_stats_checked_at") or "")
     try:
         value = int(card.get("market_value_eur") or 0)
     except (TypeError, ValueError):
         value = 0
-    return (fetched_at, -value, str(card.get("id") or ""))
+    return (checked_at, fetched_at, -value, str(card.get("id") or ""))
+
+
+def _fresh_high_value_player(card, today):
+    """Match the award candidate's high-value current-player cohort."""
+    if card.get("category") != "player":
+        return False
+    try:
+        value = int(card.get("market_value_eur") or 0)
+        valued_at = date.fromisoformat(str(card.get("market_value_at") or "")[:10])
+    except (TypeError, ValueError):
+        return False
+    if value < 20_000_000 or not 0 <= (today - valued_at).days <= 180:
+        return False
+    born = card.get("born_on")
+    if born:
+        try:
+            birth_date = date.fromisoformat(str(born)[:10])
+            age = today.year - birth_date.year - (
+                (birth_date.month, birth_date.day) > (today.month, today.day)
+            )
+            if age < 16 or age > 40:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def select_refresh_candidates(cards, latest_by_tm, limit, priority_limit=100, today=None):
+    """Refresh the current high-value cohort daily, then rotate the full catalogue."""
+    today = today or datetime.now(timezone.utc).date()
+    queue = sorted(cards, key=lambda card: refresh_priority_key(card, latest_by_tm))
+    if priority_limit <= 0 or limit <= 0:
+        return queue[:limit] if limit > 0 else queue
+
+    priority = [card for card in cards if _fresh_high_value_player(card, today)]
+    priority.sort(key=lambda card: (
+        -_i(card.get("market_value_eur")),
+        -_i(card.get("fame")),
+        str(card.get("id") or ""),
+    ))
+    priority = priority[:priority_limit]
+    priority_ids = {str(card.get("id") or "") for card in priority}
+    remainder = [
+        card for card in queue
+        if str(card.get("id") or "") not in priority_ids
+    ]
+    return priority[:limit] + remainder[:max(0, limit - len(priority))]
+
+
+def valid_season_payload(payload):
+    """Only a valid match-level TMAPI success envelope can advance the checkpoint."""
+    if not (
+        isinstance(payload, dict)
+        and payload.get("success") is True
+        and isinstance(payload.get("data"), dict)
+        and isinstance(payload["data"].get("performance"), list)
+    ):
+        return False
+    games = payload["data"]["performance"]
+    return not games or all(
+        isinstance(game, dict)
+        and isinstance(game.get("gameInformation"), dict)
+        and game["gameInformation"].get("seasonId") not in (None, "")
+        and bool(game["gameInformation"].get("competitionId"))
+        and isinstance(game.get("clubsInformation"), dict)
+        and isinstance(game["clubsInformation"].get("club"), dict)
+        and game["clubsInformation"]["club"].get("clubId") not in (None, "")
+        and isinstance(game.get("statistics"), dict)
+        for game in games
+    )
 
 
 def parse_seasons(payload):
-    """JSON игрока → строки для `apply_player_season_stats`. ЧИСТАЯ ФУНКЦИЯ.
+    """Match-level TMAPI payload → one row per season/competition/club.
 
-    ⚠️ КЛЮЧ СОБИРАЕТСЯ ИЗ ТРЁХ ПОЛЕЙ, И КЛУБ В НЁМ ОБЯЗАТЕЛЕН. Сезон 2021
-    Классен начал в «Тироле», а закончил в «Спартаке»: без клуба одна строка
-    затёрла бы другую, и год просто исчез бы из карьеры.
-
-    ⚠️ СТРОКА БЕЗ КЛУБА ИЛИ БЕЗ ТУРНИРА ВЫБРАСЫВАЕТСЯ. Такая запись не «ноль
-    матчей», а запись, которую некуда положить: ключ неполон.
+    The `performance-competition` route is a competition-level aggregate and
+    must not be relabelled as a season. The `performance-game` route exposes
+    match records; aggregating their actual `seasonId` is the source of truth
+    for seasonal totals.
     """
-    if not isinstance(payload, dict):
+    if not valid_season_payload(payload):
         return []
-    data = payload.get("data") or {}
-    out = []
-    for row in data.get("performance") or []:
-        info = row.get("generalInformation") or {}
-        season, comp = info.get("seasonId"), info.get("competitionId")
-        club = info.get("clubId")
-        if season in (None, "") or not comp or not club:
+
+    totals = {}
+    for game in payload["data"]["performance"]:
+        info = game.get("gameInformation") or {}
+        clubs = game.get("clubsInformation") or {}
+        club = clubs.get("club") or {}
+        season, comp, club_id = info.get("seasonId"), info.get("competitionId"), club.get("clubId")
+        if season in (None, "") or not comp or not club_id:
             continue
-        st = row.get("statistics") or {}
-        g = st.get("goalStatistics") or {}
-        c = st.get("cardStatistics") or {}
-        t = st.get("playingTimeStatistics") or {}
-        out.append({
+
+        key = (str(season), str(comp), str(club_id))
+        row = totals.setdefault(key, {
             "season_id": int(season),
             "competition_id": str(comp),
-            "club_id": str(club),
-            "apps": _i(t.get("appearancesCount")),
-            "starts": _i(t.get("startingCount")),
-            "sub_in": _i(t.get("substitutedInCount")),
-            "sub_out": _i(t.get("substitutedOutCount")),
-            "minutes": _i(t.get("playedMinutesSum")),
-            "goals": _i(g.get("goalsSum")),
-            "assists": _i(g.get("assistsSum")),
-            "own_goals": _i(g.get("ownGoalsSum")),
-            "penalty_goals": _i(g.get("penaltyShooterGoalsScored")),
-            "yellow": _i(c.get("yellowCardNetSum")),
-            "yellow_red": _i(c.get("yellowRedCardsCount")),
-            "red": _i(c.get("redCardsCount")),
-            "team_goals": _i(g.get("teamGoalsOnThePitchSum")),
-            "opponent_goals": _i(g.get("opponentGoalsOnThePitch")),
+            "club_id": str(club_id),
+            "apps": 0, "starts": 0, "sub_in": 0, "sub_out": 0,
+            "minutes": 0, "goals": 0, "assists": 0,
+            "own_goals": 0, "penalty_goals": 0,
+            "yellow": 0, "yellow_red": 0, "red": 0,
+            "team_goals": 0, "opponent_goals": 0,
         })
-    return out
 
+        stats = game.get("statistics") or {}
+        general = stats.get("generalStatistics") or {}
+        if general.get("participationState") != "played":
+            continue
+
+        goals = stats.get("goalStatistics") or {}
+        cards = stats.get("cardStatistics") or {}
+        playing = stats.get("playingTimeStatistics") or {}
+        row["apps"] += 1
+        row["minutes"] += _i(playing.get("playedMinutes"))
+        row["goals"] += _i(goals.get("goalsScoredTotal"))
+        row["assists"] += _i(goals.get("assists"))
+        row["own_goals"] += _i(goals.get("ownGoalsScored"))
+        row["penalty_goals"] += _i(goals.get("penaltyGoalsScored"))
+        row["yellow"] += 1 if cards.get("yellowCard") else 0
+        row["yellow_red"] += 1 if cards.get("yellowRedCard") else 0
+        row["red"] += 1 if cards.get("redCard") else 0
+        row["team_goals"] += _i(goals.get("teamGoalsOnThePitch"))
+        row["opponent_goals"] += _i(goals.get("opponentGoalsOnThePitch"))
+
+    return list(totals.values())
 
 def parse_birth(player):
     """Паспорт игрока → дата рождения или None. ЧИСТАЯ ФУНКЦИЯ.
@@ -222,7 +307,7 @@ def get_json(url):
                 return json.loads(raw)
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return {"success": True, "data": {"performance": []}}
+                return {"success": True, "data": {"performance": []}, "_source_not_found": True}
             if e.code not in (429, 500, 502, 503, 504):
                 return None
         except Exception:
@@ -256,6 +341,8 @@ def main():
     ap.add_argument("--include-unvalued", action="store_true",
                     help="включить игроков без рыночной оценки")
     ap.add_argument("--only", default="", help="один id на Transfermarkt, для проверки")
+    ap.add_argument("--priority-limit", type=int, default=100,
+                    help="ежедневный лимит топ-игроков по актуальной рыночной стоимости")
     args = ap.parse_args()
     if args.only and not args.only.isdigit():
         raise SystemExit("--only должен быть числовым Transfermarkt ID")
@@ -265,13 +352,13 @@ def main():
 
     if args.only:
         cards = sb("cards", params={
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
+            "select": "id,name_en,category,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_checked_at,player_stats_data_synced_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "eq." + args.only,
             "order": "id.asc", "limit": 1}) or []
     else:
         query = {
-            "select": "id,name_en,transfermarkt_id,market_value_eur,born_on",
+            "select": "id,name_en,category,transfermarkt_id,market_value_eur,market_value_at,born_on,fame,player_stats_checked_at,player_stats_data_synced_at",
             "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "market_value_eur.desc.nullslast,id.asc",
@@ -308,6 +395,12 @@ def main():
             latest_by_tm = latest_stat_fetch_by_tm(
                 stored_stats, season_id=current_season)
         cards.sort(key=lambda card: refresh_priority_key(card, latest_by_tm))
+        if not args.only:
+            cards = select_refresh_candidates(
+                cards, latest_by_tm, args.limit or len(cards),
+                priority_limit=max(0, args.priority_limit),
+                today=datetime.now(timezone.utc).date(),
+            )
     else:
         done = {r["tm_player_id"] for r in all_rows(
             "player_season_stat", {"select": "tm_player_id", "order": "tm_player_id"})}
@@ -343,7 +436,7 @@ def main():
     # игроков идёт часами и уже дважды обрывался молча; справочник, записанный
     # последней строкой, при обрыве не записывается вовсе — и вся собранная
     # статистика остаётся с кодами «A1» и «2446» вместо названий.
-    written = empty = lost = refused = 0
+    written = empty = lost = refused = check_refused = 0
     clubs_seen, comps_seen = set(), set()
     known_clubs = {r["id"] for r in all_rows("tm_club", {"select": "id", "order": "id"})}
     known_comps = {r["id"] for r in all_rows("tm_competition", {"select": "id", "order": "id"})}
@@ -370,9 +463,11 @@ def main():
 
     for i, card in enumerate(cards, 1):
         tm = card["transfermarkt_id"]
-        payload = get_json("%s/player/%s/performance-competition"
+        payload = get_json("%s/player/%s/performance-game"
                            % (API, urllib.parse.quote(tm)))
-        if payload is None:
+        source_ok = valid_season_payload(payload)
+        write_ok = True
+        if not source_ok:
             lost += 1
         else:
             rows = parse_seasons(payload)
@@ -381,17 +476,43 @@ def main():
             else:
                 clubs_seen.update(r["club_id"] for r in rows)
                 comps_seen.update(r["competition_id"] for r in rows)
-                if apply_:
-                    res = sb("rpc/apply_player_season_stats", method="POST",
-                             body={"p_tm_id": tm, "p_rows": rows})
-                    # Отказ записи — не «нет статистики»: считаем отдельно,
-                    # иначе повторный прогон пропустит несохранённого игрока.
-                    if res is None:
-                        refused += 1
-                    else:
-                        written += (res[0].get("written", 0) if res else 0)
+
+            # The match-level endpoint is a complete history snapshot. Replace
+            # the player's rows so obsolete aggregate-as-season records disappear.
+            # A definitive 404 is different: preserve existing stats for an ID
+            # that the upstream no longer resolves.
+            if apply_ and not payload.get("_source_not_found"):
+                res = sb("rpc/apply_player_season_stats", method="POST",
+                         body={"p_tm_id": tm, "p_rows": rows})
+                linked = (
+                    _i(res[0].get("linked"))
+                    if isinstance(res, list) and res and isinstance(res[0], dict)
+                    else 0
+                )
+                if res is None or linked != 1:
+                    refused += 1
+                    write_ok = False
                 else:
-                    written += len(rows)
+                    write_ok = True
+                    written += _i(res[0].get("written"))
+            elif not apply_:
+                written += len(rows)
+
+        # A valid source response is an attempt even when it contains no season
+        # rows (for example, a retired player or a definitive 404). Failed
+        # network responses and failed stats writes must remain eligible to retry.
+        if apply_ and source_ok and write_ok:
+            checked_at = datetime.now(timezone.utc).isoformat()
+            checkpoint = {"player_stats_checked_at": checked_at}
+            if not payload.get("_source_not_found"):
+                checkpoint["player_stats_data_synced_at"] = checked_at
+            check_result = sb(
+                "cards", method="PATCH",
+                body=checkpoint,
+                params={"id": "eq." + str(card["id"])},
+            )
+            if check_result is None:
+                check_refused += 1
         if i % 25 == 0:
             print("  %d/%d, строк %d, пусто %d, потеряно %d, отказов %d"
                   % (i, len(cards), written, empty, lost, refused), flush=True)
@@ -404,10 +525,14 @@ def main():
     print("-" * 70)
     print("Строк статистики : %d" % written)
     print("Без матчей       : %d" % empty)
+    print("Отметка попытки обновления записана: %d" % max(0, len(cards) - lost - refused - check_refused), flush=True)
     if lost:
         print("⚠️ ИГРОКОВ ПОТЕРЯНО: %d — их пустота НИЧЕГО не значит, повторить" % lost)
     if refused:
         print("⚠️ ЗАПИСЬ ОТКЛОНЕНА У %d — причина напечатана выше, повторить" % refused)
+    if check_refused:
+        print("⚠️ НЕ УДАЛОСЬ ЗАПИСАТЬ ВРЕМЯ ПОПЫТКИ У %d — повторить" % check_refused)
+        raise SystemExit(1)
     if not apply_:
         print("\nСухой прогон. APPLY=1 — записать.")
 
