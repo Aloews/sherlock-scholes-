@@ -1,0 +1,68 @@
+name: team-tournament-forecast
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/team-tournament-forecast.yml'
+      - 'docs/team_tournament_forecast.py'
+      - 'docs/test_team_tournament_forecast.py'
+      - 'supabase/migrations/*team_tournament_forecasts.sql'
+  pull_request:
+    paths:
+      - '.github/workflows/team-tournament-forecast.yml'
+      - 'docs/team_tournament_forecast.py'
+      - 'docs/test_team_tournament_forecast.py'
+      - 'supabase/migrations/*team_tournament_forecasts.sql'
+  schedule:
+    - cron: '35 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test team tournament ranking
+        working-directory: docs
+        run: python -m unittest -v test_team_tournament_forecast.py
+      - name: Compile forecast pipeline
+        run: python -m py_compile docs/team_tournament_forecast.py
+
+  sync:
+    if: github.event_name != 'pull_request'
+    needs: [validate]
+    concurrency:
+      group: team-tournament-forecast
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: \${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install scraper dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Build and persist current contender rankings
+        run: python docs/team_tournament_forecast.py
