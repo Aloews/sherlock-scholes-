@@ -417,6 +417,11 @@ def main():
         print("  %-26s %11s €  %s  %s"
               % ((f["name"] or "")[:26], "{:,}".format(f["eur"]), f["at"] or "—", f["tm_id"]))
 
+    if args.only and not found:
+        raise SystemExit(
+            "No source-dated market valuation returned for Transfermarkt ID " + args.only
+        )
+
     if args.sql_out and found:
         def q(v):
             return "'" + str(v).replace("'", "''") + "'"
