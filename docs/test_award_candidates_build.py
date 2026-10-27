@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -67,6 +67,44 @@ class CandidateRankingTests(unittest.TestCase):
         rows = score_population(players, {"goals": .5, "assists": .5},
                                 "golden_boy", 2026, date(2026, 10, 27))
         self.assertEqual([row["card_id"] for row in rows], ["young"])
+
+    def test_womens_match_stats_use_competition_season_windows_and_keep_unknown_minutes(self):
+        rows = [
+            {"card_id": "woman-a", "match_date": "2026-08-15", "tournament": "English Women's Super League",
+             "minutes": None, "goals": 1, "assists": 1, "fetched_at": "2026-08-16T00:00:00Z"},
+            {"card_id": "woman-a", "match_date": "2026-06-15", "tournament": "English Women's Super League",
+             "minutes": None, "goals": 4, "assists": 0, "fetched_at": "2026-06-16T00:00:00Z"},
+            {"card_id": "woman-b", "match_date": "2026-03-10", "tournament": "National Women's Soccer League",
+             "minutes": None, "goals": 2, "assists": 0, "fetched_at": "2026-03-11T00:00:00Z"},
+        ]
+        totals = aggregate_women_match_stats(rows, 2026, date(2026, 10, 27))
+        self.assertEqual(totals["woman-a"]["apps"], 1)
+        self.assertEqual(totals["woman-a"]["goals"], 1)
+        self.assertEqual(totals["woman-a"]["stats_window_start"], "2026-07-01")
+        self.assertEqual(totals["woman-a"]["minutes"], 0)
+        self.assertFalse(totals["woman-a"]["minutes_known"])
+        self.assertEqual(totals["woman-b"]["apps"], 1)
+        self.assertEqual(totals["woman-b"]["goals"], 2)
+        self.assertEqual(totals["woman-b"]["stats_window_start"], "2026-01-01")
+
+    def test_womens_award_ranking_does_not_fabricate_per90_when_minutes_are_missing(self):
+        population = [{
+            "card_id": "woman-a", "name": "Player A", "category": "woman", "active": True,
+            "apps": 10, "starts": 0, "minutes": 0, "goals": 5, "assists": 2,
+            "weighted_goals": 3.2, "weighted_assists": 1.2, "competition_strength": 0.64,
+            "goals_per_90": None, "assists_per_90": None, "stats_rows": 10,
+            "stats_window_start": "2026-07-01", "stats_source": "espn_player_match_stats",
+            "minutes_known": False, "sw_rating": None, "market_value_eur": None,
+            "fame": 50, "age": 28, "last_fetched": "2026-10-26T00:00:00Z",
+        }]
+        rows = score_population(population, OVERALL_SPECS["ballon_dor_feminin"],
+                                "ballon_dor_feminin", 2026, date(2026, 10, 27))
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0]["evidence"]["goals_per_90"])
+        self.assertIsNone(rows[0]["evidence"]["assists_per_90"])
+        self.assertFalse(rows[0]["evidence"]["minutes_available"])
+        self.assertEqual(rows[0]["evidence"]["stats_source"], "espn_player_match_stats")
+        self.assertEqual(rows[0]["confidence"], "low")
 
     def test_team_key_is_stable_and_url_safe(self):
         self.assertEqual(normal_key("Manchester City"), "manchester-city")
