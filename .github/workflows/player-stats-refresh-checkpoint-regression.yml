@@ -1,0 +1,57 @@
+name: player-stats-refresh-checkpoint-regression
+
+on:
+  pull_request:
+    paths:
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'supabase/migrations/*player_stats_refresh_checkpoint.sql'
+      - 'supabase/tests/player_stats_refresh_checkpoint*'
+      - '.github/workflows/player-stats-refresh-checkpoint-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/players_stats_transfermarkt.py'
+      - 'docs/test_players_stats_transfermarkt.py'
+      - 'supabase/migrations/*player_stats_refresh_checkpoint.sql'
+      - 'supabase/tests/player_stats_refresh_checkpoint*'
+      - '.github/workflows/player-stats-refresh-checkpoint-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  checkpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sherlock_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sherlock_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: sherlock_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Prepare minimal stats-refresh schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_stats_refresh_checkpoint_test_setup.sql
+      - name: Apply stats refresh checkpoint migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027213000_player_stats_refresh_checkpoint.sql
+      - name: Verify existing and unchecked profiles are queued correctly
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_stats_refresh_checkpoint.test.sql
+      - name: Test seasonal refresh queue ordering
+        run: python3 docs/test_players_stats_transfermarkt.py
