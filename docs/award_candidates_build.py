@@ -22,6 +22,38 @@ MODEL_VERSION = "candidate-rank-v2"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
+OVERALL_SPECS = {
+    # Award-specific weights avoid publishing identical rankings for different awards.
+    # Competition-weighted output suppresses raw totals from weaker divisions; SW rating,
+    # market value and fame are separate priors, not substitutes for match performance.
+    "ballon_dor": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+        "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+        "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+    },
+    "the_best": {
+        "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+        "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+        "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+    },
+    "ballon_dor_feminin": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
+        "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
+        "market_value_eur": .12, "fame": .05, "competition_strength": .07,
+    },
+    "the_best_female": {
+        "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
+        "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
+        "market_value_eur": .06, "fame": .08, "competition_strength": .06,
+    },
+    "golden_boy": {
+        "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .10,
+        "assists_per_90": .06, "minutes": .08, "apps": .05, "sw_rating": .16,
+        "market_value_eur": .15, "fame": .03, "competition_strength": .07,
+    },
+}
+GOLDEN_BOOT_WEIGHTS = {"goals": .68, "goals_per_90": .12, "assists": .08, "minutes": .07, "apps": .05}
+
 
 def normalize_base_url(value: str) -> str:
     # Repository secrets may accidentally include a leading escape backslash.
@@ -279,43 +311,12 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     if not population:
         raise RuntimeError("No active cards matched current season statistics; refusing empty snapshots")
 
-    overall_specs = {
-        # Award-specific weights avoid publishing identical rankings for different awards.
-        # Competition-weighted output suppresses raw totals from weaker divisions; SW rating,
-        # market value and fame are separate priors, not substitutes for match performance.
-        "ballon_dor": {
-            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
-            "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
-            "market_value_eur": .12, "fame": .05, "competition_strength": .07,
-        },
-        "the_best": {
-            "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
-            "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
-            "market_value_eur": .06, "fame": .08, "competition_strength": .06,
-        },
-        "ballon_dor_feminin": {
-            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .08,
-            "assists_per_90": .05, "minutes": .08, "apps": .05, "sw_rating": .20,
-            "market_value_eur": .12, "fame": .05, "competition_strength": .07,
-        },
-        "the_best_female": {
-            "weighted_goals": .18, "weighted_assists": .14, "goals_per_90": .10,
-            "assists_per_90": .08, "minutes": .08, "apps": .05, "sw_rating": .17,
-            "market_value_eur": .06, "fame": .08, "competition_strength": .06,
-        },
-        "golden_boy": {
-            "weighted_goals": .18, "weighted_assists": .12, "goals_per_90": .10,
-            "assists_per_90": .06, "minutes": .08, "apps": .05, "sw_rating": .16,
-            "market_value_eur": .15, "fame": .03, "competition_strength": .07,
-        },
-    }
     payloads = []
-    for award_key, weights in overall_specs.items():
+    for award_key, weights in OVERALL_SPECS.items():
         payloads.extend(score_population(population, weights, award_key, season, snapshot))
-    boot_weights = {"goals": .68, "goals_per_90": .12, "assists": .08, "minutes": .07, "apps": .05}
     for competition, source in by_competition.items():
         comp_population = population_from(source)
-        payloads.extend(score_population(comp_population, boot_weights, "golden_boot", season, snapshot, competition))
+        payloads.extend(score_population(comp_population, GOLDEN_BOOT_WEIGHTS, "golden_boot", season, snapshot, competition))
     written = upsert_rows(base, key, "award_candidate_snapshot", payloads,
                           "award_key,season_id,snapshot_date,card_id,competition_id")
     return season, written
