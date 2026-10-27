@@ -106,6 +106,9 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertIn("club_elo_percentile", alpha["score_components"])
         self.assertFalse(alpha["evidence"]["score_is_probability"])
         self.assertEqual(alpha["evidence"]["competition_format"], "league_standings_proxy")
+        # A missing rating is unknown, not zero strength.
+        delta = next(row for row in rows if row["tournament"] == "National Cup" and row["team_key"] == "club-d")
+        self.assertEqual(delta["score_components"]["club_elo_percentile"], 50.0)
 
     def test_team_candidates_ignore_duplicate_matches_and_skip_unobserved_competitions(self):
         match = {"tournament": "League A", "match_date": "2026-08-01", "home_key": "a",
