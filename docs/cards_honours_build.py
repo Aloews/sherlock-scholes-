@@ -63,7 +63,7 @@ OUT_SQL = os.path.join(HERE, "cards_honours.sql")
 # scrapers hard without one. See players-db-methodology.md §6.
 UA = "SherlockScholesBot/1.0 (giafreec@gmail.com)"
 API = "https://ru.wikipedia.org/w/api.php"
-PAUSE_S = 0.4          # polite: well under the 1 req/s ceiling for bursts
+PAUSE_S = 1.1          # stay below one Wikimedia request per second
 
 LINK = re.compile(r"\[\[(?:[^\]|]*\|)?([^\]|]+)\]\]")
 COUNT = re.compile(r"\(\s*'{0,3}(\d+)'{0,3}\s*\)")
