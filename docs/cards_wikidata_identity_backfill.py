@@ -17,7 +17,6 @@ from _sb import all_rows, sb  # noqa: E402
 
 API = "https://www.wikidata.org/w/api.php"
 USER_AGENT = "SherlockScholesBot/1.0 (+https://github.com/Aloews/sherlock-scholes-; giafreec@gmail.com)"
-FEMALE_QID = "Q6581072"
 FOOTBALLER_QID = "Q937857"
 TM_ID_PROPERTY = "P2020"
 PAUSE = 1.0
@@ -53,14 +52,7 @@ def transfermarkt_id(entity: dict[str, Any]) -> str | None:
     return None
 
 
-def is_female_footballer(entity: dict[str, Any]) -> bool:
-    genders = {
-        str(value.get("id"))
-        for value in claim_values(entity, "P21")
-        if isinstance(value, dict) and value.get("id")
-    }
-    if FEMALE_QID not in genders:
-        return False
+def is_footballer(entity: dict[str, Any]) -> bool:
     occupations = {
         str(value.get("id"))
         for value in claim_values(entity, "P106")
@@ -71,7 +63,7 @@ def is_female_footballer(entity: dict[str, Any]) -> bool:
 
 
 def entity_matches_card(card: dict[str, Any], entity: dict[str, Any]) -> bool:
-    if not is_female_footballer(entity):
+    if not is_footballer(entity):
         return False
     card_name = normalize_name(card.get("name_en") or card.get("name"))
     if not card_name:
