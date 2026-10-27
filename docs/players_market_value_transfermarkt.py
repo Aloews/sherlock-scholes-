@@ -21,8 +21,13 @@
 ТРИ ШАГА, И КАЖДЫЙ ПРОВЕРЯЕМ ОТДЕЛЬНО:
 
     1. карточка → QID     ruwiki + гарды P31/P106 (как в остальных сборщиках)
-    2. QID → id на TM     P2446, пачками по 50 (28 запросов вместо 1362)
-    3. id → стоимость     профиль игрока, оттуда сумма И ДАТА ОЦЕНКИ
+    2. QID → id на TM     P2446, пачками по 50
+    3. id → стоимость     публичный JSON /players/{id}/market_value:
+                           точная сумма и дата последнего изменения
+
+HTML-профили больше не являются рабочим источником для GitHub Actions: они
+могут вернуть маленькую interstitial-страницу с HTTP 200. Такой ответ не считается
+отсутствующей стоимостью и не обновляет market_value_checked_at.
 
 ⚠️ ДАТА БЕРЁТСЯ СО СТРАНИЦЫ, А НЕ `current_date`. На профиле стоит «Last
 update: 02/06/2026»; подставить сегодняшнее число значило бы объявить оценку
@@ -520,6 +525,7 @@ def main():
             invalid_profiles += 1
             print("  ⚠️ no usable TMAPI market-value response for %s (%s)"
                   % (card.get("name") or card["id"], tm_id), flush=True)
+            time.sleep(TM_PAUSE)
             continue
         has_source_value = should_write_market_value(euros, at)
         row = {
