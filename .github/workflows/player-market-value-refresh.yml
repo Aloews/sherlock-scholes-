@@ -30,6 +30,7 @@ jobs:
     timeout-minutes: 45
     outputs:
       odegaard_outcome: ${{ steps.odegaard.outcome }}
+      kane_outcome: ${{ steps.kane.outcome }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -58,6 +59,11 @@ jobs:
         continue-on-error: true
         run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --only 316264
 
+      - name: Refresh Harry Kane's source valuation first
+        id: kane
+        continue-on-error: true
+        run: APPLY=1 python3 docs/players_market_value_transfermarkt.py --from-cards --refresh --only 132098
+
       - name: Refresh oldest market valuations from Transfermarkt
         run: |
           limit="${{ inputs.limit || '800' }}"
@@ -78,6 +84,7 @@ jobs:
     env:
       REFRESH_RESULT: ${{ needs.refresh.result }}
       ODEGAARD_RESULT: ${{ needs.refresh.outputs.odegaard_outcome }}
+      KANE_RESULT: ${{ needs.refresh.outputs.kane_outcome }}
     steps:
       - name: Verify market value refresh completed
         run: |
@@ -88,5 +95,9 @@ jobs:
           }
           [ "$ODEGAARD_RESULT" = "success" ] || {
             echo "::error::Martin Odegaard's source valuation refresh failed: $ODEGAARD_RESULT"
+            exit 1
+          }
+          [ "$KANE_RESULT" = "success" ] || {
+            echo "::error::Harry Kane's source valuation refresh failed: $KANE_RESULT"
             exit 1
           }
