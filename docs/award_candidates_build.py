@@ -337,12 +337,16 @@ def build_team_candidate_payloads(matches: list[dict], ratings: dict[str, dict],
         gd_values = [max(-2.0, min(2.0, (team["gf"] - team["ga"]) / team["played"])) for team in teams]
         win_values = [team["wins"] / team["played"] for team in teams]
         form_values = [sum(team["recent"][-5:]) / len(team["recent"][-5:]) for team in teams]
-        elo_values = [number(ratings.get(team["team_key"], {}), "elo") for team in teams]
+        elo_raw = [ratings.get(team["team_key"], {}).get("elo") for team in teams]
+        rated_indices = [i for i, value in enumerate(elo_raw) if value is not None]
+        rated_percentiles = percentile([float(elo_raw[i]) for i in rated_indices])
+        elo_rank = [50.0] * len(teams)
+        for index, value in zip(rated_indices, rated_percentiles):
+            elo_rank[index] = value
         ppg_rank = percentile(ppg_values)
         gd_rank = percentile(gd_values)
         win_rank = percentile(win_values)
         form_rank = percentile(form_values)
-        elo_rank = percentile(elo_values)
         raw_scores: dict[str, float] = {}
         component_map: dict[str, dict[str, float]] = {}
         for i, team in enumerate(teams):
