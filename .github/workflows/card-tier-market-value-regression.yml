@@ -5,12 +5,14 @@ on:
     paths:
       - 'supabase/migrations/*card_tier_market_value_sync.sql'
       - 'supabase/migrations/*card_market_value_checked_at.sql'
+      - 'supabase/migrations/*card_tier_value_primary.sql'
       - 'supabase/tests/card_tier_market_value*'
       - '.github/workflows/card-tier-market-value-regression.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/migrations/*card_tier_market_value_sync.sql'
+      - 'supabase/migrations/*card_tier_value_primary.sql'
       - 'supabase/tests/card_tier_market_value*'
       - '.github/workflows/card-tier-market-value-regression.yml'
 
@@ -50,5 +52,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021170000_card_tier_market_value_sync.sql
       - name: Apply market value check timestamp migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027194000_card_market_value_checked_at.sql
+      - name: Apply current-value-first tier migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027210000_card_tier_value_primary.sql
       - name: Verify value-aware tier rules and update trigger
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value.test.sql
