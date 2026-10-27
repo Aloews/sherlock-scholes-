@@ -64,11 +64,16 @@ class CandidateRankingTests(unittest.TestCase):
              "weighted_goals": 4.8, "weighted_assists": 3.2, "goals_per_90": .9,
              "assists_per_90": .6, "sw_rating": 82, "market_value_eur": 60000000,
              "fame": 70, "age": 24, "stats_rows": 8},
+            {"card_id": "eligible-low", "name": "Eligible Lower Sample", "category": "player", "active": True,
+             "apps": 5, "starts": 4, "minutes": 320, "goals": 1, "assists": 1,
+             "weighted_goals": .8, "weighted_assists": .8, "goals_per_90": .28,
+             "assists_per_90": .28, "sw_rating": 65, "market_value_eur": 12000000,
+             "fame": 25, "age": 23, "stats_rows": 5},
         ]
         rows = score_population(
             population, OVERALL_SPECS["ballon_dor"], "ballon_dor", 2026, date(2026, 10, 27)
         )
-        self.assertEqual([row["card_id"] for row in rows], ["eligible"])
+        self.assertEqual([row["card_id"] for row in rows], ["eligible", "eligible-low"])
         self.assertLess(rows[0]["candidate_score"], rows[0]["score_components"]["unshrunk_relative_index"])
         self.assertLess(rows[0]["score_components"]["sample_reliability"], 1)
         self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
