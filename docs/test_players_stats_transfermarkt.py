@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from players_stats_transfermarkt import (  # noqa: E402
