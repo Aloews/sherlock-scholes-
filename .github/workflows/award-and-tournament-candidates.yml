@@ -14,10 +14,13 @@ on:
   pull_request:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
+      - '.github/workflows/player-market-value-refresh.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'docs/players_stats_transfermarkt.py'
       - 'docs/test_players_stats_transfermarkt.py'
+      - 'docs/players_market_value_transfermarkt.py'
+      - 'docs/test_players_market_value_transfermarkt.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
@@ -51,6 +54,8 @@ jobs:
         run: python docs/test_award_candidates_build.py
       - name: Test current-season refresh priority
         run: python docs/test_players_stats_transfermarkt.py
+      - name: Test source-date guard and market-value refresh rotation
+        run: python docs/test_players_market_value_transfermarkt.py
       - name: Compile candidate generator
         run: python -m py_compile docs/award_candidates_build.py
 
