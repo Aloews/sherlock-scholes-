@@ -1,6 +1,6 @@
 import unittest
 
-from award_candidates_build import (build_team_candidate_payloads, competition_format, normal_key, normalize_base_url, percentile, score_population)
+from award_candidates_build import (OVERALL_SPECS, build_team_candidate_payloads, competition_format, competition_strength, normal_key, normalize_base_url, percentile, score_population)
 from datetime import date
 
 
@@ -126,6 +126,19 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(competition_format("Англия. Премьер-лига"), "league_standings_proxy")
         self.assertEqual(competition_format("Англия. Кубок"), "knockout_form_proxy")
         self.assertEqual(competition_format("Лига чемпионов"), "international_tournament_form_proxy")
+
+
+    def test_competition_strength_downweights_lower_divisions(self):
+        self.assertGreater(competition_strength("UEFA Champions League"), competition_strength("1.Lig"))
+        self.assertGreater(competition_strength("Premier League"), competition_strength("1.Lig"))
+        self.assertEqual(competition_strength("Unmapped competition"), 0.5)
+
+    def test_ballondor_and_the_best_use_distinct_weight_profiles(self):
+        self.assertNotEqual(OVERALL_SPECS["ballon_dor"], OVERALL_SPECS["the_best"])
+        self.assertNotEqual(OVERALL_SPECS["ballon_dor"], OVERALL_SPECS["golden_boy"])
+        self.assertAlmostEqual(sum(OVERALL_SPECS["ballon_dor"].values()), 1.0)
+        self.assertAlmostEqual(sum(OVERALL_SPECS["the_best"].values()), 1.0)
+        self.assertAlmostEqual(sum(OVERALL_SPECS["golden_boy"].values()), 1.0)
 
 
 if __name__ == "__main__":
