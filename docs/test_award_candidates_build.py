@@ -176,7 +176,7 @@ class CandidateRankingTests(unittest.TestCase):
             2026, date(2026, 10, 27),
         ), 25)
         self.assertEqual(player_age_from_card(
-            {"born_on": "2003-06-17", "facts": {"birth_year": 1450}},
+            {"born_on": "2003-06-17", "facts": {"birth_year": 1897}},
             2026, date(2026, 10, 27),
         ), 23)
         self.assertIsNone(player_age_from_card({}, 2026, date(2026, 10, 27)))
