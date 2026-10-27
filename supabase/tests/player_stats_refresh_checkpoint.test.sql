@@ -5,15 +5,15 @@ declare
   v_index_exists boolean;
 begin
   select player_stats_checked_at into v_backfilled
-    from public.cards where id='00000000-0000-0000-0000-000000000001';
-  if v_backfilled is distinct from '2026-10-25T12:00:00Z'::timestamptz then
-    raise exception 'existing current-season row must backfill the stats attempt checkpoint';
+    from public.cards where id='00000000-0000-0000-0000-000000000101';
+  if v_backfilled is not null then
+    raise exception 'legacy season rows are not trustworthy attempt checkpoints';
   end if;
 
   select player_stats_checked_at into v_unchecked
-    from public.cards where id='00000000-0000-0000-0000-000000000002';
+    from public.cards where id='00000000-0000-0000-0000-000000000102';
   if v_unchecked is not null then
-    raise exception 'player without current-season rows must remain first in the queue';
+    raise exception 'never-checked player must remain first in the queue';
   end if;
 
   select exists (
