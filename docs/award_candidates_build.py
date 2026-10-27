@@ -421,7 +421,10 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
         "select": "club_key,elo,computed_at", "order": "club_key.asc",
     })
     ratings = {
-        str(row.get("club_key") or ""): {"elo": number(row, "elo"), "computed_at": row.get("computed_at")}
+        str(row.get("club_key") or ""): {
+            "elo": float(row["elo"]) if row.get("elo") is not None else None,
+            "computed_at": row.get("computed_at"),
+        }
         for row in rating_rows if row.get("club_key")
     }
     payloads = build_team_candidate_payloads(matches, ratings, snapshot)
