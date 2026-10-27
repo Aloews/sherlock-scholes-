@@ -151,7 +151,7 @@ def rank_candidates(
                 "team_goal_difference": (p["team_goal_diff_per_app"][pid], 0.10),
                 "recognition": (p["fame"][pid], 0.10),
             }
-        elif award_key == "the_best":
+        elif award_key in ("the_best", "the_best_female"):
             parts["recognition"] = (p["fame"][pid], 0.20)
             parts["market_value_proxy"] = (p["market_value_eur"][pid], 0.05)
 
