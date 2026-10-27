@@ -76,6 +76,7 @@ describe('сторож у прогонов по расписанию', () => {
         'player-stats.yml',
         'profile-backfill-queue.yml',
         'soccerwiki-roster-refresh.yml',
+        'women-stats-backfill.yml',
       ]);
   });
 

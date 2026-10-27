@@ -1,0 +1,103 @@
+name: women-stats-backfill
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/women-stats-backfill.yml'
+      - 'football_scraper/espn_stats.py'
+      - 'football_scraper/women_stats_backfill.py'
+      - 'football_scraper/tests/test_espn_stats.py'
+      - 'football_scraper/tests/test_women_stats_backfill.py'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/women-stats-backfill.yml'
+      - 'football_scraper/espn_stats.py'
+      - 'football_scraper/women_stats_backfill.py'
+      - 'football_scraper/tests/test_espn_stats.py'
+      - 'football_scraper/tests/test_women_stats_backfill.py'
+      - 'docs/award_candidates_build.py'
+      - 'docs/test_award_candidates_build.py'
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Test women's matching and backfill guard
+        working-directory: football_scraper
+        run: |
+          python3 tests/test_espn_stats.py
+          python3 tests/test_women_stats_backfill.py
+          python3 -m py_compile espn_stats.py women_stats_backfill.py
+      - name: Test award candidate builder
+        run: |
+          python docs/test_award_candidates_build.py
+          python -m py_compile docs/award_candidates_build.py
+
+  backfill:
+    concurrency:
+      group: award-and-tournament-candidates
+      cancel-in-progress: false
+    needs: [validate]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football_scraper/requirements.txt
+      - name: Install dependencies
+        run: pip install -r football_scraper/requirements.txt
+      - name: Verify production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
+      - name: Backfill if coverage is incomplete
+        run: python3 football_scraper/women_stats_backfill.py
+  watch:
+    needs: [validate, backfill]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      BACKFILL_RESULT: ${{ needs.backfill.result }}
+      BACKFILL_EXPECTED: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Verify statistics pipeline completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validate = $VALIDATE_RESULT"
+          echo "backfill = $BACKFILL_RESULT (expected=$BACKFILL_EXPECTED)"
+          [ "$VALIDATE_RESULT" = "success" ] || { echo "::error::validation: $VALIDATE_RESULT"; exit 1; }
+          if [ "$BACKFILL_EXPECTED" = "true" ]; then
+            [ "$BACKFILL_RESULT" = "success" ] || { echo "::error::statistics backfill: $BACKFILL_RESULT"; exit 1; }
+          else
+            [ "$BACKFILL_RESULT" = "skipped" ] || { echo "::error::backfill should be skipped on pull requests, got $BACKFILL_RESULT"; exit 1; }
+          fi
