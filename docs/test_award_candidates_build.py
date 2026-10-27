@@ -103,6 +103,9 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertIsNone(rows[0]["evidence"]["goals_per_90"])
         self.assertIsNone(rows[0]["evidence"]["assists_per_90"])
         self.assertFalse(rows[0]["evidence"]["minutes_available"])
+        self.assertFalse(rows[0]["evidence"]["starts_available"])
+        self.assertIsNone(rows[0]["evidence"]["minutes"])
+        self.assertIsNone(rows[0]["evidence"]["starts"])
         self.assertEqual(rows[0]["evidence"]["stats_source"], "espn_player_match_stats")
         self.assertEqual(rows[0]["confidence"], "low")
 
