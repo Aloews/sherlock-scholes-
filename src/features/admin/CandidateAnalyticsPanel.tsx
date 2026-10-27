@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
 import type { CardCategory } from '@/shared/types/database';
@@ -35,43 +35,65 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
   const [tournament, setTournament] = useState('');
   const [awards, setAwards] = useState<AwardCandidate[]>([]);
   const [teams, setTeams] = useState<TeamCandidate[]>([]);
+  const [teamTournamentNames, setTeamTournamentNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [snapshotDate, setSnapshotDate] = useState('');
+  const requestId = useRef(0);
 
-  const load = async () => {
+  const load = async (
+    selectedAward: AwardKey = award,
+    selectedCompetition: string = competition,
+    selectedTournament: string = tournament,
+  ) => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
     setError('');
     try {
-      const [awardResult, teamResult] = await Promise.all([
+      const [awardResult, teamSummaryResult, teamDetailResult] = await Promise.all([
         supabase.rpc('admin_list_award_candidates', {
           p_password: password,
-          p_award_key: award,
-          p_competition_id: award === 'golden_boot' && competition.trim() ? competition.trim() : null,
+          p_award_key: selectedAward,
+          p_competition_id: selectedAward === 'golden_boot' && selectedCompetition.trim() ? selectedCompetition.trim() : null,
         }),
         supabase.rpc('admin_list_team_tournament_candidates', {
           p_password: password,
           p_tournament: null,
         }),
+        selectedTournament
+          ? supabase.rpc('admin_list_team_tournament_candidates', {
+              p_password: password,
+              p_tournament: selectedTournament,
+            })
+          : Promise.resolve({ data: null, error: null }),
       ]);
+      if (currentRequest !== requestId.current) return;
       if (awardResult.error) throw new Error(awardResult.error.message);
-      if (teamResult.error) throw new Error(teamResult.error.message);
+      if (teamSummaryResult.error) throw new Error(teamSummaryResult.error.message);
+      if (teamDetailResult.error) throw new Error(teamDetailResult.error.message);
       const awardRows = (awardResult.data ?? []) as AwardCandidate[];
-      const teamRows = (teamResult.data ?? []) as TeamCandidate[];
+      const summaryRows = (teamSummaryResult.data ?? []) as TeamCandidate[];
+      const detailRows = (teamDetailResult.data ?? []) as TeamCandidate[];
+      const teamRows = selectedTournament ? detailRows : summaryRows;
       setAwards(awardRows);
       setTeams(teamRows);
-      const dates = [...awardRows.map((row) => row.snapshot_date), ...teamRows.map((row) => row.snapshot_date)].sort();
+      setTeamTournamentNames([...new Set(summaryRows.map((row) => row.tournament))].sort());
+      const dates = [...awardRows.map((row) => row.snapshot_date), ...summaryRows.map((row) => row.snapshot_date)].sort();
       setSnapshotDate(dates[dates.length - 1] ?? '');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (currentRequest === requestId.current) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Re-query the award when the selector changes. Tournament ID remains explicit:
+  // the user can finish typing it and press Update rather than firing per keystroke.
+  useEffect(() => { void load(award, competition, tournament); }, [award, tournament, password]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tournaments = useMemo(() => [...new Set(teams.map((row) => row.tournament))].sort(), [teams]);
+  const tournaments = teamTournamentNames;
   const shownTeams = useMemo(
     () => teams.filter((row) => !tournament || row.tournament === tournament),
     [teams, tournament],

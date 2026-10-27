@@ -8,12 +8,14 @@ on:
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
+      - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
   pull_request:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
+      - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
   schedule:
     - cron: '35 6 * * *'
   workflow_dispatch:
@@ -47,8 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: \${{ secrets.SUPABASE_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
