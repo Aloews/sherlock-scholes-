@@ -63,6 +63,8 @@ def is_footballer(entity: dict[str, Any]) -> bool:
 
 
 def entity_matches_card(card: dict[str, Any], entity: dict[str, Any]) -> bool:
+    if card.get("category") not in (None, "woman"):
+        return False
     if not is_footballer(entity):
         return False
     card_name = normalize_name(card.get("name_en") or card.get("name"))
@@ -124,7 +126,7 @@ def main() -> int:
         return 2
     apply = os.environ.get("APPLY") == "1"
     cards = all_rows("cards", {
-        "select": "id,name,name_en,wikidata_qid,transfermarkt_id,active,fame",
+        "select": "id,name,name_en,wikidata_qid,transfermarkt_id,active,fame,category",
         "category": "eq.woman", "active": "is.true",
         "transfermarkt_id": "is.null", "name_en": "not.is.null",
         "order": "fame.desc.nullslast,id.asc",
