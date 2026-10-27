@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { PlayerPhoto } from '@/shared/ui/PlayerPhoto';
+import type { CardCategory } from '@/shared/types/database';
 
 type AwardKey = 'ballon_dor' | 'ballon_dor_feminin' | 'the_best' | 'the_best_female' | 'golden_boy' | 'golden_boot';
 type AwardCandidate = {
   award_key: AwardKey; season_id: number; snapshot_date: string; card_id: string; competition_id: string;
-  card_name: string; photo_url: string | null; category: string; position_ru: string | null;
+  card_name: string; photo_url: string | null; category: CardCategory; position_ru: string | null;
   candidate_score: number; candidate_rank: number; confidence: 'low' | 'medium' | 'high'; data_coverage: number;
   score_components: Record<string, number>; evidence: Record<string, unknown>; model_version: string;
 };
