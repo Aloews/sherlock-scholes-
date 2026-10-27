@@ -1725,3 +1725,23 @@ t = 1.95, а читалось это как «кто играет — почти
 - Открытые PR #281/#279/#275 касаются генерации экспрессов, PR #258 — синхронизации имён миграций, PR #208 — старого фото-пайплайна. Они не объединялись в рамках этой операции, чтобы не дублировать уже внедрённые исправления и не обходить обязательные проверки.
 
 **Остаток:** подтвердить следующий workflow run, фактическое увеличение `cards.photo_url`, и повторно измерить очередь/источники; отдельно проверить backup/restore и определить утверждённый срок хранения `cron.job_run_details`. До этого цель полного восстановления фото-сборщика и оптимизации физического размера БД не считается завершённой.
+
+
+---
+
+## Photo backfill — source duplication investigation (2026-10-27)
+
+Production read-only snapshot from Supabase:
+- Active player cards: **25,637**; non-empty `photo_url`: **15,872**; missing: **9,765**.
+- Queue: `photo_qid` — 4,293 pending / 6 running / 144 failed / 242 no_data / 1,000 succeeded; `photo_tm` — 10,649 pending / 14 no_data / 188 succeeded; `photo_sw` — 39 no_data / 709 succeeded; `season_stats` — 5,874 pending.
+- `photo_qid` tasks have fresh updates on 27 Oct, while `photo_tm` pending tasks were last updated on 26 Oct. The queue is processing work, but photo coverage remains incomplete: a repeated live count stayed at 15,872 / 25,637 with photos (9,765 missing). No photo increase is claimed from queue status alone. Recent `photo_qid` jobs marked `succeeded` often point to already-present Soccer Wiki URLs, so those successes are not evidence of newly filled cards.
+- Recent `last_error` samples show the repeated failure sequence explicitly: Wikidata reports no P18/article image; all tested regional Transfermarkt hosts return `transient_empty_response`/`no_response`; Soccer Wiki has no identity-verified linked photo. This means source isolation removes duplicate requests, but the still-missing cards need reliable source-specific retry/fallback and a measurable before/after count.
+
+**Confirmed worker inefficiency:** `docs/profile_backfill_queue.py` ran Wikidata, Transfermarkt and Soccer Wiki fallback from both `photo_qid` and `photo_tm` tasks. The enqueue RPC can create both tasks for the same missing card. If all sources return no photo, the same card/source sequence is repeated by the next task; this burns HTTP requests and makes source-level retries harder to interpret.
+
+**Fix prepared on branch `fix/photo-backfill-source-dedup-20261027`:**
+- `photo_qid` invokes only the Wikidata collector; `photo_tm` invokes Transfermarkt then the identity-checked Soccer Wiki fallback; `photo_sw` remains source-specific.
+- Temporary Transfermarkt failures remain retryable; existing photos are not overwritten; source tasks retain read-after-write verification.
+- Replaced fallback-coupled unit tests with regression coverage for source isolation, Transfermarkt → Soccer Wiki fallback and retryable transport failure.
+
+**Release status:** changes are not yet merged or deployed. Require green CI, inspect the full diff, then verify production worker runs and actual before/after counts of unique cards with reachable images. Do not reset or delete queue rows wholesale; do not apply unrelated migrations as part of this fix.
