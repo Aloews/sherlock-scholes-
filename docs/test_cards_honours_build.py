@@ -105,6 +105,7 @@ class ParseHonoursTests(unittest.TestCase):
             [
                 "Золотой мяч 2026",
                 "Игрок месяца {{cite web |url=https ×7",
+                "Игрок года в «Тоттенхэм Хотспур",
                 "Награда",
                 "Чемпион Германии ×2",
             ],
