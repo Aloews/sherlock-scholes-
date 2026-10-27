@@ -28,15 +28,17 @@ RESOLUTION. cards.name is passed straight to the API with redirects=1: ru-wiki
 redirects «Садио Мане» to «Мане, Садио», so no separate title lookup is
 needed. Verified on Mané, Ronaldo, Lunin, Seaman.
 
-OUTPUT. Dry run by default: prints per-player counts and writes
-docs/cards_honours.sql, which is NOT executed. Nothing is written to the
-database from here — apply the SQL after reading it, the same way
-dups_exact.sql works.
+OUTPUT. Dry run by default: writes docs/cards_honours.sql without touching the
+database. With --apply, it merges honours into cards.facts through the Supabase
+REST API, preserving every unrelated facts key. Empty/failed source responses
+never erase existing honours.
 
-    python docs/cards_honours_build.py --limit 20      # dry run, 20 players
-    python docs/cards_honours_build.py --limit 0       # whole deck
+    python docs/cards_honours_build.py --limit 20                # dry run
+    APPLY=1 python docs/cards_honours_build.py --limit 800 --apply
+    APPLY=1 python docs/cards_honours_build.py --only-name "Гарри Кейн" --apply
 
-Needs SUPABASE_URL + SUPABASE_KEY (anon is enough — it only reads).
+The scheduled workflow uses the service-role key from GitHub Secrets. Never put
+that key in the repository or client app.
 """
 import argparse
 import io
@@ -46,11 +48,12 @@ import re
 import sys
 import time
 import urllib.parse
+from datetime import datetime, timezone
 
 import requests
 from dotenv import load_dotenv
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# Encoding is configured in main(), not on import, so parser tests can import this module.
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPER = os.path.join(os.path.dirname(HERE), "football_scraper")
@@ -139,23 +142,60 @@ def parse_honours(wikitext: str) -> list[dict]:
     return list(merged.values())
 
 
-def fetch_cards(url: str, key: str, limit: int) -> list[dict]:
+def fetch_cards(url: str, key: str, limit: int, offset: int = 0,
+                only_name: str | None = None) -> list[dict]:
     endpoint = url.rstrip("/") + "/rest/v1/cards"
     headers = {"apikey": key, "Authorization": "Bearer " + key}
-    rows, offset, page = [], 0, 1000
+    rows, page_offset = [], max(0, offset)
     while True:
-        r = requests.get(endpoint, headers=headers, params={
-            "select": "id,name,fame,facts", "category": "eq.player",
-            "active": "eq.true", "order": "fame.desc.nullslast",
-            "limit": page, "offset": offset,
-        }, timeout=60)
+        page_size = 1000 if not limit else min(1000, limit - len(rows))
+        params = {
+            "select": "id,name,fame,facts,category",
+            "category": "in.(player,woman)",
+            "active": "eq.true",
+            "order": "fame.desc.nullslast,id.asc",
+            "limit": page_size,
+            "offset": page_offset,
+        }
+        if only_name:
+            params["name"] = "eq." + only_name
+        r = requests.get(endpoint, headers=headers, params=params, timeout=60)
         r.raise_for_status()
         batch = r.json()
         rows.extend(batch)
-        if len(batch) < page or (limit and len(rows) >= limit):
+        if only_name or len(batch) < page_size or (limit and len(rows) >= limit):
             break
-        offset += page
+        page_offset += len(batch)
     return rows[:limit] if limit else rows
+
+
+def apply_honours(url: str, key: str, card: dict, honours: list[dict]) -> bool:
+    """Merge verified honours into one card without overwriting unrelated facts."""
+    existing_facts = card.get("facts")
+    facts = dict(existing_facts) if isinstance(existing_facts, dict) else {}
+    if facts.get("honours") == honours:
+        return False
+
+    facts["honours"] = honours
+    facts["honours_source"] = "https://ru.wikipedia.org/wiki/" + urllib.parse.quote(
+        card["name"].replace(" ", "_"), safe="()_,"
+    )
+    facts["honours_synced_at"] = datetime.now(timezone.utc).isoformat()
+    endpoint = url.rstrip("/") + "/rest/v1/cards"
+    response = requests.patch(
+        endpoint,
+        params={"id": "eq." + str(card["id"]), "active": "eq.true"},
+        headers={
+            "apikey": key,
+            "Authorization": "Bearer " + key,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        },
+        json={"facts": facts},
+        timeout=60,
+    )
+    response.raise_for_status()
+    return True
 
 
 def sql_quote(s: str) -> str:
@@ -165,59 +205,85 @@ def sql_quote(s: str) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=20, help="players to process (0 = all)")
+    ap.add_argument("--offset", type=int, default=0, help="offset in fame-ordered active player catalogue")
+    ap.add_argument("--only-name", help="process one exact active player card name")
+    ap.add_argument("--apply", action="store_true", help="write changed honours to Supabase")
     args = ap.parse_args()
+
+    if args.limit < 0 or args.offset < 0:
+        raise SystemExit("--limit and --offset must be non-negative")
+    if args.only_name and args.offset:
+        raise SystemExit("--offset cannot be combined with --only-name")
 
     load_dotenv(os.path.join(SCRAPER, ".env"))
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not (url and key):
-        raise SystemExit("SUPABASE_URL / SUPABASE_KEY not set (.env)")
+        raise SystemExit("SUPABASE_URL / SUPABASE_KEY not set (.env or environment)")
+    if args.apply and os.environ.get("APPLY", "").strip() not in ("1", "true", "TRUE"):
+        raise SystemExit("--apply requires APPLY=1 as a second explicit write guard")
 
-    cards = fetch_cards(url, key, args.limit)
+    cards = fetch_cards(url, key, args.limit, args.offset, args.only_name)
     session = requests.Session()
     session.headers["User-Agent"] = UA
 
     lines = [
         "-- Real trophies parsed from ru-Wikipedia «Достижения»",
-        "-- (docs/cards_honours_build.py). NOT EXECUTED — read it first.",
-        "--",
-        "-- Only 39 of 2524 active players had any facts.titles, so the dossier's",
-        "-- trophy list was almost entirely tournament APPEARANCES. This fills the",
-        "-- real thing, with counts.",
+        "-- Generated by docs/cards_honours_build.py. Dry run unless --apply is used.",
+        "-- Source failures and empty parses never clear previously stored honours.",
         "",
     ]
-    found = missing = 0
-    total_honours = 0
+    found = missing = total_honours = updated = unchanged = failures = 0
 
-    for i, c in enumerate(cards, 1):
-        wt = fetch_wikitext(c["name"], session)
-        time.sleep(PAUSE_S)
-        honours = parse_honours(wt) if wt else []
-        if not honours:
-            missing += 1
-            print(f"  {i:4}/{len(cards)}  {c['name'][:34]:34}  —")
-            continue
-        found += 1
-        total_honours += len(honours)
-        team = [h for h in honours if h["kind"] == "team"]
-        top = sorted(team, key=lambda h: -h["count"])[:3]
-        print(f"  {i:4}/{len(cards)}  {c['name'][:34]:34}  {len(honours):3} "
-              + ", ".join(f"{h['title']}×{h['count']}" for h in top))
-        lines.append(
-            f"UPDATE cards SET facts = coalesce(facts, '{{}}'::jsonb) || "
-            f"jsonb_build_object('honours', {sql_quote(json.dumps(honours, ensure_ascii=False))}::jsonb) "
-            f"WHERE id = '{c['id']}';  -- {c['name']}")
+    for i, card in enumerate(cards, 1):
+        try:
+            wikitext = fetch_wikitext(card["name"], session)
+            time.sleep(PAUSE_S)
+            if not wikitext:
+                missing += 1
+                print(f"  {i:4}/{len(cards)}  {card['name'][:34]:34}  source page/section unavailable; kept existing data")
+                continue
+
+            honours = parse_honours(wikitext)
+            if not honours:
+                missing += 1
+                print(f"  {i:4}/{len(cards)}  {card['name'][:34]:34}  no parsed honours; kept existing data")
+                continue
+
+            found += 1
+            total_honours += len(honours)
+            team = [h for h in honours if h["kind"] == "team"]
+            top = sorted(team, key=lambda h: -h["count"])[:3]
+            print(f"  {i:4}/{len(cards)}  {card['name'][:34]:34}  {len(honours):3} "
+                  + ", ".join(f"{h['title']}×{h['count']}" for h in top))
+
+            lines.append(
+                f"UPDATE cards SET facts = jsonb_set(coalesce(facts, '{{}}'::jsonb), "
+                f"'{{honours}}', {sql_quote(json.dumps(honours, ensure_ascii=False))}::jsonb, true) "
+                f"WHERE id = '{card['id']}'; -- {card['name']}"
+            )
+            if args.apply:
+                if apply_honours(url, key, card, honours):
+                    updated += 1
+                else:
+                    unchanged += 1
+        except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+            failures += 1
+            print(f"  {i:4}/{len(cards)}  {card.get('name', '?')[:34]:34}  ERROR: {error}")
 
     with open(OUT_SQL, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
 
     print("\n" + "=" * 64)
-    print(f"players processed     : {len(cards)}")
-    print(f"  with honours        : {found}")
-    print(f"  none found          : {missing}")
-    print(f"  honours total       : {total_honours}")
-    if found:
-        print(f"  average per player  : {total_honours / found:.1f}")
-    print(f"\nSQL written to {OUT_SQL} (NOT executed).")
+    print(f"players selected      : {len(cards)}")
+    print(f"with parsed honours   : {found}")
+    print(f"source/no-honours     : {missing} (existing data preserved)")
+    print(f"honours parsed        : {total_honours}")
+    print(f"records changed       : {updated}")
+    print(f"records unchanged     : {unchanged}")
+    print(f"errors                : {failures}")
+    print(f"SQL preview           : {OUT_SQL} (not executed)")
+    if args.apply and failures:
+        raise SystemExit(f"{failures} player record(s) failed; inspect the log and retry safely")
 
 
 if __name__ == "__main__":
