@@ -343,7 +343,11 @@ def sb_get(url, key, path, params):
         return json.load(fh)
 
 
-MV_BATCH = 100        # обрыв теряет не больше сотни оценок
+MV_BATCH = 25         # сохранять проверки и цены небольшими идемпотентными пачками
+
+
+def invalid_profile_threshold(total):
+    return max(5, int(total * 0.1))
 
 
 def sb_rpc(url, key, name, body):
@@ -595,6 +599,15 @@ def main():
             invalid_profiles += 1
             print("  ⚠️ no usable TMAPI market-value response for %s (%s)"
                   % (card.get("name") or card["id"], tm_id), flush=True)
+            if invalid_profiles >= invalid_profile_threshold(len(players)):
+                if apply and pending:
+                    written += write_batch(url, write_key, pending)
+                    pending = []
+                raise SystemExit(
+                    "TMAPI returned unusable market-value responses for %d/%d profiles; "
+                    "aborting early after flushing %d valid checks"
+                    % (invalid_profiles, len(players), written)
+                )
             time.sleep(TM_PAUSE)
             continue
         has_source_value = should_write_market_value(euros, at)
@@ -627,15 +640,6 @@ def main():
     print("нет id на TM      : %d" % no_id)
     print("ответ источника непригоден: %d" % invalid_profiles)
     print("-" * 78)
-    if invalid_profiles >= max(5, int(len(players) * 0.1)):
-        if apply and pending:
-            written += write_batch(url, write_key, pending)
-            pending = []
-        raise SystemExit(
-            "TMAPI returned unusable market-value responses for %d/%d profiles; "
-            "those cards were not marked checked and will be retried"
-            % (invalid_profiles, len(players))
-        )
     for f in sorted(found, key=lambda x: -x["eur"])[:25]:
         print("  %-26s %11s €  %s  %s"
               % ((f["name"] or "")[:26], "{:,}".format(f["eur"]), f["at"] or "—", f["tm_id"]))
