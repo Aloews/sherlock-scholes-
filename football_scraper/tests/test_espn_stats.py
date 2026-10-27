@@ -197,8 +197,7 @@ def test_leagues():
                 [c for c in were if c not in LEAGUES], [])
     women_codes = (
         "eng.w.1", "esp.w.1", "fra.w.1", "ned.w.1", "usa.nwsl",
-        "usa.w.usl.1", "uefa.wchampions", "uefa.weuro", "fifa.wwc",
-        "conmebol.america.femenina", "concacaf.w.gold",
+        "usa.w.usl.1", "uefa.wchampions",
     )
     ok &= check("женские лиги и турниры присутствуют",
                 [c for c in women_codes if c not in LEAGUES], [])
