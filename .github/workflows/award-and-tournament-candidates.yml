@@ -22,6 +22,9 @@ on:
       - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
   schedule:
     - cron: '35 6 * * *'
+  workflow_run:
+    workflows: ["player-profile-data"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -48,7 +51,7 @@ jobs:
         run: python -m py_compile docs/award_candidates_build.py
 
   refresh:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     needs: [validate]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -81,7 +84,7 @@ jobs:
     env:
       VALIDATE_RESULT: ${{ needs.validate.result }}
       REFRESH_RESULT: ${{ needs.refresh.result }}
-      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Verify candidate pipeline completed
         shell: bash
