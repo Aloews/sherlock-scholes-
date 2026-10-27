@@ -270,13 +270,19 @@ def should_write_market_value(euros, valued_at):
 
 
 def market_value_refresh_key(card):
-    """Oldest/missing valuation first; break ties by larger value then name."""
+    """Least recently attempted first; source valuation date breaks ties."""
+    checked_at = str(card.get("market_value_checked_at") or "")[:19]
     valued_at = str(card.get("market_value_at") or "")[:10]
     try:
         value = int(card.get("market_value_eur") or 0)
     except (TypeError, ValueError):
         value = 0
-    return (valued_at or "0000-00-00", -value, str(card.get("name") or "").casefold())
+    return (
+        checked_at or "0000-00-00T00:00:00",
+        valued_at or "0000-00-00",
+        -value,
+        str(card.get("name") or "").casefold(),
+    )
 
 
 def main():
@@ -392,23 +398,28 @@ def main():
             no_id += 1
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
-        if should_write_market_value(euros, at):
-            row = {"id": card["id"], "name": card.get("name"),
-                   "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
+        has_source_value = should_write_market_value(euros, at)
+        row = {
+            "id": card["id"], "name": card.get("name"),
+            "qid": qid, "tm_id": tm_id,
+            "eur": euros if has_source_value else None,
+            "at": at if has_source_value else None,
+        }
+        # Every attempted profile is recorded in checked_at, even when TM has
+        # no valuation or omits its valuation date. Otherwise those rows would
+        # remain at the front of every batch and starve the rest of the cards.
+        pending.append(row)
+        if has_source_value:
             found.append(row)
-            pending.append(row)
-            # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
-            # пачка, а не вся ночь; и каждая пачка — одна транзакция.
-            if apply and len(pending) >= MV_BATCH:
-                written += write_batch(url, write_key, pending)
-                print("    записано %d (всего %d)" % (len(pending), written),
-                      flush=True)
-                pending = []
         else:
-            # A value without its source valuation date is not safe to write:
-            # the DB RPC would clear market_value_at and could make stale data
-            # look current. Leave the existing value untouched and retry later.
             no_value += 1
+        # ⚠️ ПИШЕМ ПО ХОДУ, ПАЧКАМИ. Оборвётся здесь — потеряется одна
+        # пачка, а не вся ночь; и каждая пачка — одна транзакция.
+        if apply and len(pending) >= MV_BATCH:
+            written += write_batch(url, write_key, pending)
+            print("    checked %d (value changes so far %d)" % (len(pending), written),
+                  flush=True)
+            pending = []
         time.sleep(TM_PAUSE)
         if len(found) and len(found) % 25 == 0 and i % 5 == 0:
             print("  шаг 3: %d/%d, со стоимостью %d" % (i, len(players), len(found)),
@@ -422,11 +433,6 @@ def main():
     for f in sorted(found, key=lambda x: -x["eur"])[:25]:
         print("  %-26s %11s €  %s  %s"
               % ((f["name"] or "")[:26], "{:,}".format(f["eur"]), f["at"] or "—", f["tm_id"]))
-
-    if args.only and not found:
-        raise SystemExit(
-            "No source-dated market valuation returned for Transfermarkt ID " + args.only
-        )
 
     if args.sql_out and found:
         def q(v):
@@ -448,9 +454,15 @@ def main():
         written += write_batch(url, write_key, pending)
         pending = []
         # «Прогон прошёл» без числа ничего не значит.
-        print("Записано по ходу прогона: %d из %d снятых" % (written, len(found)))
+        print("Изменено оценок: %d; получено оценок с датой источника: %d"
+              % (written, len(found)))
     elif found:
         print("\nСУХОЙ ПРОГОН — ничего не записано. Повторить с APPLY=1.")
+
+    if args.only and not found:
+        raise SystemExit(
+            "No source-dated market valuation returned for Transfermarkt ID " + args.only
+        )
 
 
 if __name__ == "__main__":
