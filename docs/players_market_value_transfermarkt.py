@@ -152,6 +152,7 @@ def parse_api_market_value(payload):
     """Return exact euro value and the source's valuation date from TMAPI JSON."""
     if not isinstance(payload, dict):
         return None, None
+    value_present = "marketValue" in payload
     value = payload.get("marketValue")
     details = payload.get("marketValueDetails") or {}
     history = payload.get("marketValueHistory") or []
@@ -188,7 +189,7 @@ def parse_api_market_value(payload):
             latest = dated[-1]
             if source_date is None:
                 source_date = latest.get("date") or latest.get("updatedAt") or latest.get("lastUpdated")
-            if euros is None:
+            if euros is None and not value_present:
                 historic_value = latest.get("marketValue", latest.get("value"))
                 if isinstance(historic_value, dict):
                     historic_value = historic_value.get("value") or historic_value.get("amount")
