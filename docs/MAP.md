@@ -1725,3 +1725,20 @@ t = 1.95, а читалось это как «кто играет — почти
 - Открытые PR #281/#279/#275 касаются генерации экспрессов, PR #258 — синхронизации имён миграций, PR #208 — старого фото-пайплайна. Они не объединялись в рамках этой операции, чтобы не дублировать уже внедрённые исправления и не обходить обязательные проверки.
 
 **Остаток:** подтвердить следующий workflow run, фактическое увеличение `cards.photo_url`, и повторно измерить очередь/источники; отдельно проверить backup/restore и определить утверждённый срок хранения `cron.job_run_details`. До этого цель полного восстановления фото-сборщика и оптимизации физического размера БД не считается завершённой.
+
+
+---
+
+## Экспрессы — исправление метрик после вывода fly-модели (2026-10-27)
+
+Production evidence:
+- Generation run **#15** completed as `no_new_tickets`, not as a generation failure. It created 0 tickets; 37 future model tickets already exist. The newest `accumulator_ticket.placed_at` is 26 Oct 2026.
+- Read-only inspection found 219 upcoming fixtures with both active models (`llm`, `own`); 197 have matching picks, and 75 have both calibrated confidences at or above 0.47. Today (27 Oct UTC) has only two qualifying agreed fixtures, fewer than the three legs required for a 3-leg express. Later dates already have model/day/rule tickets, which the builder intentionally does not duplicate.
+- **Confirmed observability defect:** `run_model_accumulator_generation()` counted three forecast rows per fixture and required three matching models. That assumes the retired `fly` model still emits a live row, so `unanimous_fixtures` and eligible-day metrics falsely reported zero after fly was removed. The active builder itself uses only `llm` and `own`.
+
+**Fix prepared on branch `fix/accumulator-active-model-metrics-20261027`:**
+- Adds a forward migration for the observability function, counting only `llm` and `own` and requiring exactly one row per active model.
+- Updates the isolated PostgreSQL regression to retain historical `fly` rows while asserting active-model-only metrics.
+- Extends the regression workflow to apply the forward migration after the original schema fixture.
+
+No production migration was applied. Require the regression workflow to pass before merging; then release together with the rest of the planned backend changes and verify a new production run's metrics. Do not force extra tickets for dates already covered or weaken the 3-leg minimum merely to make the count nonzero.

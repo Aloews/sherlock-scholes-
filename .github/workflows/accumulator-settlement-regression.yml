@@ -37,5 +37,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/accumulator_settlement_test_setup.sql
       - name: Apply accumulator settlement/security migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021110000_accumulator_settlement_security_observability.sql
+      - name: Apply active-model observability correction
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027110000_accumulator_active_model_metrics.sql
       - name: Verify generation diagnostics, cron jobs, and RLS
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/accumulator_settlement_regression.test.sql
