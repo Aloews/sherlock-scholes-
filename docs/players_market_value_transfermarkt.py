@@ -234,9 +234,9 @@ def squad_players(url, key):
     for i in range(0, len(todo), 60):
         chunk = todo[i:i + 60]
         out.extend(sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at",
             "id": "in.(%s)" % ",".join(chunk),
-            "category": "eq.player", "active": "is.true", "limit": 1000}))
+            "category": "in.(player,woman)", "active": "is.true", "limit": 1000}))
     return out
 
 
@@ -249,14 +249,24 @@ def read_all_cards(url, key):
     out, offset = [], 0
     while True:
         page = sb_get(url, key, "cards", {
-            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur",
-            "category": "eq.player", "active": "is.true",
+            "select": "id,name,name_en,category,wikidata_qid,transfermarkt_id,market_value_eur,market_value_at",
+            "category": "in.(player,woman)", "active": "is.true",
             "transfermarkt_id": "not.is.null",
             "order": "id", "limit": 1000, "offset": offset})
         out.extend(page)
         if len(page) < 1000:
             return out
         offset += 1000
+
+
+def market_value_refresh_key(card):
+    """Oldest/missing valuation first; break ties by larger value then name."""
+    valued_at = str(card.get("market_value_at") or "")[:10]
+    try:
+        value = int(card.get("market_value_eur") or 0)
+    except (TypeError, ValueError):
+        value = 0
+    return (valued_at or "0000-00-00", -value, str(card.get("name") or "").casefold())
 
 
 def main():
@@ -291,11 +301,16 @@ def main():
         players = squad_players(url, read_key)
     if not args.refresh:
         players = [p for p in players if p.get("market_value_eur") is None]
-    players.sort(key=lambda p: (p.get("name") or ""))
+        players.sort(key=lambda p: (p.get("name") or "").casefold())
+    else:
+        # Refresh all values, not only NULLs. Sorting alphabetically starved
+        # most cards forever because the daily limit always selected the same
+        # first names. Missing/old source dates now rotate to the front.
+        players.sort(key=market_value_refresh_key)
     if args.limit:
         players = players[:args.limit]
-    print("Игроков составов без стоимости: %d  (APPLY=%s)"
-          % (len(players), "да" if apply else "нет — сухой прогон"), flush=True)
+    print("Игроков для обновления стоимости: %d  (refresh=%s, APPLY=%s)"
+          % (len(players), args.refresh, "да" if apply else "нет — сухой прогон"), flush=True)
     if not players:
         return
 
