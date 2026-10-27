@@ -653,6 +653,3 @@ $$;
 
 revoke all on function public.player_spotlight_scored(integer) from public;
 grant execute on function public.player_spotlight_scored(integer) to service_role;
-
-revoke all on function public.player_spotlight_scored(integer) from public;
-grant execute on function public.player_spotlight_scored(integer) to service_role;
