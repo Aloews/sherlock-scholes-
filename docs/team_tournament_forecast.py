@@ -226,8 +226,9 @@ def score_tournament(
                 "latest_competition_match": row["last_match"],
                 "competition_format_hint": "knockout_or_cup" if is_cup else "league_or_points",
                 "data_source": ["club_match", "club_rating"],
+                "rating_computed_at": rating.get("computed_at"),
             },
-            "source_fetched_at": row["last_fetched"] or rating.get("computed_at"),
+            "source_fetched_at": row["last_fetched"],
         })
     ranked.sort(key=lambda x: (-x["candidate_score"], x["team_name"].casefold()))
     for rank, row in enumerate(ranked[:100], start=1):
