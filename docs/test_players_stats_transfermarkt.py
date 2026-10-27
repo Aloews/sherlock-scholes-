@@ -53,6 +53,18 @@ class CandidateSelectionTests(unittest.TestCase):
         ordered = sorted(cards, key=lambda card: refresh_priority_key(card, latest))
         self.assertEqual([card["transfermarkt_id"] for card in ordered], ["3", "2", "1"])
 
+    def test_empty_source_attempts_rotate_behind_never_checked_players(self):
+        cards = [
+            {"id": "never", "transfermarkt_id": "1", "market_value_eur": 10_000_000,
+             "player_stats_checked_at": None},
+            {"id": "empty-old", "transfermarkt_id": "2", "market_value_eur": 20_000_000,
+             "player_stats_checked_at": "2026-10-01T00:00:00Z"},
+            {"id": "empty-new", "transfermarkt_id": "3", "market_value_eur": 30_000_000,
+             "player_stats_checked_at": "2026-10-26T00:00:00Z"},
+        ]
+        ordered = sorted(cards, key=lambda card: refresh_priority_key(card, {}))
+        self.assertEqual([card["id"] for card in ordered], ["never", "empty-old", "empty-new"])
+
     def test_latest_stats_timestamp_uses_most_recent_row(self):
         latest = latest_stat_fetch_by_tm([
             {"tm_player_id": "316264", "fetched_at": "2026-09-07T03:00:00Z"},
