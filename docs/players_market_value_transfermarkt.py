@@ -259,6 +259,10 @@ def read_all_cards(url, key):
         offset += 1000
 
 
+def should_write_market_value(euros, valued_at):
+    return bool(euros and valued_at)
+
+
 def market_value_refresh_key(card):
     """Oldest/missing valuation first; break ties by larger value then name."""
     valued_at = str(card.get("market_value_at") or "")[:10]
@@ -375,7 +379,7 @@ def main():
             no_id += 1
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
-        if euros and at:
+        if should_write_market_value(euros, at):
             row = {"id": card["id"], "name": card.get("name"),
                    "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
             found.append(row)
