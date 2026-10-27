@@ -221,7 +221,8 @@ def legacy_title_label(honour: dict) -> str:
 
 def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]:
     """Merge the new source into legacy facts.titles without losing curated entries."""
-    titles = [item for item in (existing or []) if isinstance(item, str) and item.strip()]
+    source_titles = existing if isinstance(existing, list) else []
+    titles = [item for item in source_titles if isinstance(item, str) and item.strip()]
     for honour in honours:
         label = legacy_title_label(honour)
         key, count = _legacy_title_identity(label)
