@@ -232,7 +232,13 @@ def legacy_title_label(honour: dict) -> str:
     else:
         title = re.sub(r"^обладатель\s+", "", title, flags=re.I)
         title = re.sub(r"\s+по версии\s+.+$", "", title, flags=re.I)
-        title = title.strip(" «»„“”\"")
+        title = title.strip()
+        # Remove wrapping quotes only when they form a matched pair. A generic
+        # strip("«»") also removes a valid trailing » from an internal quoted name.
+        for opening, closing in (("«", "»"), ("„", "“"), ('"', '"')):
+            if len(title) > 1 and title.startswith(opening) and title.endswith(closing):
+                title = title[1:-1].strip()
+                break
     count = max(1, int(honour.get("count") or 1))
     return title + (f" ×{count}" if count > 1 else "")
 
@@ -254,6 +260,8 @@ def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]
         titles.append(item)
     for honour in honours:
         label = legacy_title_label(honour)
+        if label.count("«") != label.count("»") or re.search(r"\{\{|\}\}|\|url\s*=|https?://", label, re.I):
+            continue
         key, count = _legacy_title_identity(label)
         matches = [i for i, old in enumerate(titles) if _legacy_title_identity(old)[0] == key]
         if not matches:
