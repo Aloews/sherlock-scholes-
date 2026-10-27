@@ -375,7 +375,7 @@ def main():
             no_id += 1
             continue
         euros, at = parse_market_value(fetch_profile(tm_id))
-        if euros:
+        if euros and at:
             row = {"id": card["id"], "name": card.get("name"),
                    "qid": qid, "tm_id": tm_id, "eur": euros, "at": at}
             found.append(row)
@@ -388,6 +388,9 @@ def main():
                       flush=True)
                 pending = []
         else:
+            # A value without its source valuation date is not safe to write:
+            # the DB RPC would clear market_value_at and could make stale data
+            # look current. Leave the existing value untouched and retry later.
             no_value += 1
         time.sleep(TM_PAUSE)
         if len(found) and len(found) % 25 == 0 and i % 5 == 0:
