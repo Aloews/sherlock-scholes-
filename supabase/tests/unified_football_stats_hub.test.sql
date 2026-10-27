@@ -17,9 +17,28 @@ insert into public.player_season_stat(
  ('568177',2018,'GB1','club-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',200,80,50,14000,now()-interval '2 days'),
  ('568177',2020,'FAC','club-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',5,2,1,350,now()),
  ('568177',2021,'INT','nat-a','d6dc13cc-0944-4e0e-a887-93fa3747dab8',10,3,2,700,now());
-do $$
-declare v record;
+do $
+declare
+  v record;
+  v_definition text;
 begin
+  v_definition := pg_get_functiondef('public.player_smart_deck_trends(integer)'::regprocedure);
+  if position('football_player_stats' in lower(v_definition)) = 0
+     or position('player_match_stats' in lower(v_definition)) > 0 then
+    raise exception 'Smart Deck trends must read the canonical football stats view';
+  end if;
+
+  v_definition := pg_get_functiondef('public.player_spotlight_scored(integer)'::regprocedure);
+  if position('football_player_stats' in lower(v_definition)) = 0
+     or position('player_match_stats' in lower(v_definition)) > 0 then
+    raise exception 'Spotlight scoring must read the canonical football stats view';
+  end if;
+
+  v_definition := pg_get_functiondef('public.player_match_days'::regclass);
+  if position('football_player_stats' in lower(v_definition)) = 0 then
+    raise exception 'Rating/fantasy compatibility view must read the canonical football stats view';
+  end if;
+
   select * into v from public.player_stats_freshness where tm_player_id='568177';
   if v.source_rows <> 4 then raise exception 'career freshness source_rows mismatch: %', v.source_rows; end if;
   select * into v from public.football_player_competition_totals
