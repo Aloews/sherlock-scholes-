@@ -115,11 +115,19 @@ def build_candidates(base: str, key: str, season: int, snapshot_day: date,
         if club and RESERVE_CLUB.search(str(club.get("name") or "")):
             continue
         clean_stats.append(row)
-    aggregated = aggregate_player_seasons(clean_stats)
-    day_cards = [card_by_id[pid] for pid in aggregated if pid in card_by_id]
     output: list[dict[str, Any]] = []
 
     for award in AWARDS:
+        award_stats_rows = clean_stats
+        if award == "golden_boot":
+            # Golden Boot is a club-scoring award; national-team goals are not
+            # mixed into the league scoring shortlist.
+            award_stats_rows = [
+                row for row in clean_stats
+                if not club_by_id.get(str(row.get("club_id") or ""), {}).get("is_national_team", False)
+            ]
+        aggregated = aggregate_player_seasons(award_stats_rows)
+        day_cards = [card_by_id[pid] for pid in aggregated if pid in card_by_id]
         eligible_cards = []
         for card in day_cards:
             category = card.get("category")
