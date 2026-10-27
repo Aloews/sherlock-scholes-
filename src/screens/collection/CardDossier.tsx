@@ -34,6 +34,9 @@ import {
 import {
   fetchPlayerNews, fetchPlayerClips, type PlayerNewsItem, type PlayerClip,
 } from '@/features/collection/playerMediaApi';
+import {
+  fetchAwardCandidates, type AwardCandidate, type AwardKey,
+} from '@/features/awards/awardCandidatesApi';
 
 // Full-screen card dossier, opened from the Collection grid. Follows the
 // prototype's `isPlayer` overlay: framed hero card, quick-fact tiles, OVR
@@ -45,6 +48,15 @@ import {
 // ratings are a separate data project, see docs/PROGRESSION_FEATURES_HANDOFF.md).
 // Inventing numbers on a screen that reads as factual would be a lie, so
 // absent data means the badge/bars are simply omitted, not faked.
+const AWARD_LABELS: Record<AwardKey, { ru: string; en: string }> = {
+  ballon_dor: { ru: 'Золотой мяч', en: "Ballon d'Or" },
+  ballon_dor_feminin: { ru: 'Золотой мяч Féminin', en: "Ballon d'Or Féminin" },
+  the_best: { ru: 'The Best', en: 'The Best' },
+  the_best_female: { ru: 'The Best (женщины)', en: 'The Best (Women)' },
+  golden_boy: { ru: 'Golden Boy', en: 'Golden Boy' },
+  golden_boot: { ru: 'Золотая бутса', en: 'Golden Boot' },
+};
+
 const ATTRIBUTE_ROWS: { key: keyof CardAttributes; labelKey: string }[] = [
   { key: 'pace',      labelKey: 'collection.attr_pace' },
   { key: 'shooting',  labelKey: 'collection.attr_shooting' },
@@ -158,6 +170,15 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
   // столько и живёт, а не каждый день про игрока пишут.
   const [news, setNews] = useState<PlayerNewsItem[]>([]);
   const [clips, setClips] = useState<PlayerClip[]>([]);
+  const [awardCandidates, setAwardCandidates] = useState<AwardCandidate[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setAwardCandidates([]);
+    void fetchAwardCandidates(card.id).then((r) => {
+      if (!cancelled && r.status === 'ok') setAwardCandidates(r.data);
+    });
+    return () => { cancelled = true; };
+  }, [card.id]);
   useEffect(() => {
     let cancelled = false;
     setNews([]);
@@ -556,6 +577,30 @@ export function CardDossier({ card, onClose }: { card: Card; onClose: () => void
                 >
                   <IconTrophy size={15} stroke={1.75} style={{ color: TIER_COLOR.legendary }} />
                   <span className="text-[12.5px] text-white/90">{tr}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {awardCandidates.length > 0 && (
+          <Section title={t('collection.award_candidates')}>
+            <div className="space-y-2">
+              {awardCandidates.map((candidate) => (
+                <div
+                  key={candidate.award_key}
+                  className="ds-panel flex items-center gap-2.5 bg-brand-surface border border-brand-border rounded-xl px-3 py-2.5"
+                >
+                  <IconTrophy size={15} stroke={1.75} style={{ color: TIER_COLOR.legendary }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12.5px] text-white/90">
+                      {(isRu ? AWARD_LABELS[candidate.award_key].ru : AWARD_LABELS[candidate.award_key].en)}
+                    </p>
+                    <p className="text-[10px] text-brand-muted mt-0.5">
+                      #{candidate.candidate_rank} · {t('collection.award_index', { value: Math.round(candidate.candidate_score) })}
+                      {' · '}{t(`collection.award_confidence_${candidate.confidence}`)}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
