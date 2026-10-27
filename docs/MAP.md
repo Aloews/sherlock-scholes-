@@ -1739,7 +1739,7 @@ t = 1.95, а читалось это как «кто играет — почти
 
 ## Award candidate analytics — in progress (2026-10-27)
 
-- `docs/award_candidates_build.py` and `football_scraper/award_analytics.py` build daily, evidence-backed shortlists for Ballon d'Or, Ballon d'Or Féminin, FIFA The Best (men/women), Golden Boy and top scorer from `player_season_stat`, active card metadata and source freshness.
+- `docs/award_candidates_build.py` and `football_scraper/award_analytics.py` build daily, evidence-backed shortlists for Ballon d'Or, Ballon d'Or Féminin, FIFA The Best (men/women) and Golden Boy from `player_season_stat`, active card metadata and source freshness.
 - Candidate snapshots are append-only by award, source season, date and player in `award_candidate_snapshot`. The separately sourced `award_outcome` registry stores confirmed winners/nominees with a required source URL. This separation prevents an announced result from being represented as a pre-award prediction.
 - `CardDossier` displays the latest stored candidate rank, relative score, data coverage, snapshot date and supporting season goals/assists/apps. A player not in the top 50 for an award has no candidate row to show; this is not proof of ineligibility.
 - Scores are transparent relative indices using season contributions, per-90 production, minutes, team goal-difference proxy, public recognition and (where applicable) age eligibility. Missing inputs lower coverage/confidence; youth/reserve competitions are excluded where identified. Scores are **not probabilities** until they are calibrated against verified historical outcomes.
