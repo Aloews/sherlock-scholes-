@@ -135,7 +135,10 @@ jobs:
             exit 2
           fi
           APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --limit "$limit"
-  
+
+      - name: Refresh award and team-tournament candidates after market values
+        run: python3 docs/award_candidates_build.py
+
   watch:
     runs-on: ubuntu-latest
     needs: [refresh]
