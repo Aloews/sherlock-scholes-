@@ -1,6 +1,12 @@
 name: player-honours
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/player-honours.yml'
+      - 'docs/cards_honours_build.py'
+      - 'docs/test_cards_honours_build.py'
   pull_request:
     paths:
       - '.github/workflows/player-honours.yml'
