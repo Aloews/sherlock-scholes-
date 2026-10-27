@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (OVERALL_SPECS, aggregate_women_match_stats, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -29,6 +29,21 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(coverage["missing"], 1)
         self.assertEqual(coverage["missing_names"], ["B"])
         self.assertEqual(coverage["coverage"], 0.5)
+
+    def test_low_coverage_snapshot_cleanup_targets_only_same_date_and_season(self):
+        response = Mock()
+        response.json.return_value = [{"award_key": "ballon_dor"}]
+        with patch("award_candidates_build.requests.delete", return_value=response) as delete:
+            removed = remove_award_snapshot_rows_for_date(
+                "https://example.supabase.co", "service-key", date(2026, 10, 27), 2026
+            )
+        self.assertEqual(removed, 1)
+        params = delete.call_args.kwargs["params"]
+        self.assertEqual(params, {
+            "snapshot_date": "eq.2026-10-27",
+            "season_id": "eq.2026",
+        })
+        response.raise_for_status.assert_called_once_with()
 
     def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
         cards = [
