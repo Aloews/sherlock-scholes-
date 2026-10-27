@@ -56,9 +56,9 @@ class CandidateRankingTests(unittest.TestCase):
         population = [
             {
                 "card_id": "elite-low-output", "name": "Elite Low Output", "category": "player", "active": True,
-                "apps": 8, "starts": 7, "minutes": 600, "goals": 2, "assists": 1,
-                "goals_per_90": 0.3, "assists_per_90": 0.15, "weighted_goals": 1.8,
-                "weighted_assists": 0.9, "sw_rating": 91, "market_value_eur": 30000000,
+                "apps": 8, "starts": 7, "minutes": 600, "goals": 5, "assists": 0,
+                "goals_per_90": 0.75, "assists_per_90": 0.0, "weighted_goals": 4.5,
+                "weighted_assists": 0.0, "sw_rating": 91, "market_value_eur": 30000000,
                 "fame": 80, "age": 25, "stats_rows": 2, "competition_strength": 0.9,
                 "starts_known": True, "minutes_known": True, "last_fetched": None,
             },
@@ -79,6 +79,26 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
         self.assertEqual(rows[0]["evidence"]["score_reference_population_size"], 2)
 
+    def test_overall_award_excludes_profiles_without_supported_season_output(self):
+        population = [
+            {"card_id": "zero-output", "name": "Zero Output Keeper", "category": "player", "active": True,
+             "apps": 20, "starts": 20, "minutes": 1800, "goals": 0, "assists": 0,
+             "weighted_goals": 0, "weighted_assists": 0, "goals_per_90": 0, "assists_per_90": 0,
+             "sw_rating": 89, "market_value_eur": 30000000, "fame": 90, "age": 29,
+             "stats_rows": 20, "competition_strength": 0.95, "starts_known": True, "minutes_known": True},
+            {"card_id": "productive", "name": "Productive Forward", "category": "player", "active": True,
+             "apps": 8, "starts": 7, "minutes": 600, "goals": 4, "assists": 1,
+             "weighted_goals": 3.6, "weighted_assists": 0.9, "goals_per_90": 0.6, "assists_per_90": 0.15,
+             "sw_rating": 84, "market_value_eur": 30000000, "fame": 80, "age": 24,
+             "stats_rows": 8, "competition_strength": 0.9, "starts_known": True, "minutes_known": True},
+        ]
+        rows = score_population(
+            population, {"goals": 0.5, "assists": 0.5}, "ballon_dor", 2026, date(2026, 10, 27)
+        )
+        self.assertEqual([row["card_id"] for row in rows], ["productive"])
+        self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
+        self.assertEqual(rows[0]["evidence"]["score_reference_population_size"], 2)
+
     def test_award_candidates_exclude_tiny_samples_and_shrink_early_form(self):
         population = [
             {"card_id": "tiny", "name": "Tiny Sample", "category": "player", "active": True,
@@ -92,9 +112,9 @@ class CandidateRankingTests(unittest.TestCase):
              "assists_per_90": .6, "sw_rating": 82, "market_value_eur": 60000000,
              "fame": 70, "age": 24, "stats_rows": 8},
             {"card_id": "eligible-low", "name": "Eligible Lower Sample", "category": "player", "active": True,
-             "apps": 5, "starts": 4, "minutes": 320, "goals": 1, "assists": 1,
-             "weighted_goals": .8, "weighted_assists": .8, "goals_per_90": .28,
-             "assists_per_90": .28, "sw_rating": 65, "market_value_eur": 30000000,
+             "apps": 5, "starts": 4, "minutes": 320, "goals": 3, "assists": 2,
+             "weighted_goals": 2.4, "weighted_assists": 1.6, "goals_per_90": .84,
+             "assists_per_90": .56, "sw_rating": 65, "market_value_eur": 30000000,
              "fame": 50, "age": 23, "stats_rows": 5},
             {"card_id": "low-tier-stat-leader", "name": "Low Tier Stat Leader", "category": "player", "active": True,
              "apps": 10, "starts": 9, "minutes": 600, "goals": 6, "assists": 4,
