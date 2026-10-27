@@ -49,3 +49,11 @@ create table if not exists public.tm_competition (
   id text primary key, name text, short_name text, country_id integer,
   type_id integer, logo_url text, updated_at timestamptz not null default now()
 );
+
+alter table public.cards add column if not exists born_on date;
+alter table public.cards add column if not exists market_value_eur bigint;
+alter table public.cards add column if not exists pageviews integer;
+create table if not exists public.card_position (
+  card_id uuid not null,
+  position text
+);
