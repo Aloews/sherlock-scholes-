@@ -16,6 +16,7 @@ from calendar import monthrange  # noqa: E402
 
 from espn_stats import (  # noqa: E402
     LEAGUES,
+    WOMEN_LEAGUES,
     active_cards_by_key,
     card_key,
     month_windows,
@@ -201,6 +202,8 @@ def test_leagues():
     )
     ok &= check("женские лиги и турниры присутствуют",
                 [c for c in women_codes if c not in LEAGUES], [])
+    ok &= check("женские коды совпадают с фильтром сопоставления",
+                sorted(WOMEN_LEAGUES), sorted(women_codes))
     return ok
 
 
