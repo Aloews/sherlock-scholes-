@@ -67,13 +67,19 @@ class CandidateRankingTests(unittest.TestCase):
             {"card_id": "eligible-low", "name": "Eligible Lower Sample", "category": "player", "active": True,
              "apps": 5, "starts": 4, "minutes": 320, "goals": 1, "assists": 1,
              "weighted_goals": .8, "weighted_assists": .8, "goals_per_90": .28,
-             "assists_per_90": .28, "sw_rating": 65, "market_value_eur": 12000000,
-             "fame": 25, "age": 23, "stats_rows": 5},
+             "assists_per_90": .28, "sw_rating": 65, "market_value_eur": 30000000,
+             "fame": 50, "age": 23, "stats_rows": 5},
+            {"card_id": "low-tier-stat-leader", "name": "Low Tier Stat Leader", "category": "player", "active": True,
+             "apps": 10, "starts": 9, "minutes": 600, "goals": 6, "assists": 4,
+             "weighted_goals": 3.9, "weighted_assists": 2.6, "goals_per_90": .9,
+             "assists_per_90": .6, "sw_rating": 80, "market_value_eur": 2000000,
+             "fame": 10, "age": 24, "competition_strength": .65, "stats_rows": 10},
         ]
         rows = score_population(
             population, OVERALL_SPECS["ballon_dor"], "ballon_dor", 2026, date(2026, 10, 27)
         )
         self.assertEqual([row["card_id"] for row in rows], ["eligible", "eligible-low"])
+        self.assertNotIn("low-tier-stat-leader", [row["card_id"] for row in rows])
         self.assertLess(rows[0]["candidate_score"], rows[0]["score_components"]["unshrunk_relative_index"])
         self.assertLess(rows[0]["score_components"]["sample_reliability"], 1)
         self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
@@ -109,7 +115,8 @@ class CandidateRankingTests(unittest.TestCase):
         players = [
             {"card_id": "young", "name": "Young", "category": "player", "active": True,
              "apps": 10, "starts": 8, "minutes": 700, "goals": 3, "assists": 2,
-             "team_win_rate": .5, "sw_rating": 75, "age": 20, "stats_rows": 2},
+             "team_win_rate": .5, "sw_rating": 75, "market_value_eur": 15000000,
+             "age": 20, "stats_rows": 2},
             {"card_id": "old", "name": "Old", "category": "player", "active": True,
              "apps": 20, "starts": 18, "minutes": 1500, "goals": 10, "assists": 6,
              "team_win_rate": .7, "sw_rating": 90, "age": 22, "stats_rows": 2},
@@ -163,7 +170,7 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(rows[0]["evidence"]["candidate_pool_size"], 1)
         self.assertEqual(
             rows[0]["evidence"]["candidate_pool_scope"],
-            "eligible active cards with tracked season statistics; minimum appearance/minute gates applied",
+            "eligible active cards after sample-size and award-specific quality gates",
         )
         self.assertEqual(rows[0]["confidence"], "low")
 
@@ -300,10 +307,10 @@ class CandidateRankingTests(unittest.TestCase):
         players = [
             {"card_id": "unknown", "name": "Unknown value", "category": "player", "active": True,
              "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
-             "market_value_eur": None, "stats_rows": 1},
+             "market_value_eur": None, "fame": 80, "stats_rows": 1},
             {"card_id": "known", "name": "Known value", "category": "player", "active": True,
              "apps": 10, "starts": 8, "minutes": 700, "goals": 4, "assists": 2,
-             "market_value_eur": 100000000, "stats_rows": 1},
+             "market_value_eur": 100000000, "fame": 50, "stats_rows": 1},
         ]
         rows = score_population(players, {"market_value_eur": 0.5, "goals": 0.5},
                                 "ballon_dor", 2026, date(2026, 10, 27))
@@ -333,7 +340,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.candidate-rank-v3",
+                "model_version": "neq.candidate-rank-v4",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
