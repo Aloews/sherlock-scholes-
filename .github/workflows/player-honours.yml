@@ -23,10 +23,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: player-honours-sync
-  cancel-in-progress: false
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -51,6 +47,9 @@ jobs:
   sync:
     if: github.event_name != 'pull_request'
     needs: [validate]
+    concurrency:
+      group: player-honours-sync
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
