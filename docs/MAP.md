@@ -1736,3 +1736,17 @@ t = 1.95, а читалось это как «кто играет — почти
 - Регрессионные тесты покрывают ротацию свежих/устаревших данных и защиту от неполного ответа источника.
 - Важно: `player_season_stat.season_id` не считается подтверждённым сезоном: у Палмера строка `GB1` с `season_id=2019` содержит 118 матчей и 49 голов за несколько сезонов. Карьерные агрегаты остаются в `player_season_stat`; истинная детализация сезон × турнир собирается отдельно из `/ceapi/player/{id}/performance` в `player_season_competition_stats`, с сохранением исходного payload, URL, времени сбора и процентов источника. `football_player_stats` предоставляет оба зерна раздельно (`competition_career`, `season_competition`, `match`) без их смешивания.
 - Статус этой записи — реализация в PR, а не подтверждение production: перед включением требуется зелёный CI, применение миграции, проверка RPC и production-прогон коллектора.
+
+
+---
+
+## Unified statistics — production consumers (2026-10-27)
+
+The shared read layer now replaces raw-source reads in the production consumers changed in the unified-statistics PR:
+- `player_match_days` remains the compatibility contract for rating/fantasy RPCs, but reads the canonical `football_player_stats` match grain.
+- `player_smart_deck_trends` and `player_spotlight_scored` read the same canonical match grain rather than independently querying `player_match_stats`.
+- Competition-based Smart Deck discovery reads `football_player_competition_totals`, which resolves duplicate provider snapshots before ranking career goals/appearances; it no longer sums raw `player_season_stat` snapshots.
+- Smart Deck recent-match evidence reads the canonical match view.
+- The scheduled player-stat refresh now explicitly refreshes Cole Palmer (TM ID `568177`) and verifies a fresh 2026 Premier League row exists, logging the source-derived goals total. This checks the reported four-goal figure without baking a volatile tally into a daily assertion.
+
+Regression coverage verifies that the server-side analytics functions use the canonical view and that Smart Deck discovery queries canonical career totals. Production still needs the migration and a real scheduled refresh before the actual Palmer tally or cross-feature parity can be claimed.
