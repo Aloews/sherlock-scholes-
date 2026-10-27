@@ -418,6 +418,37 @@ def score_population(population: list[dict], weights: dict[str, float], award_ke
     return rows
 
 
+def player_age_from_card(card: dict[str, Any], season: int, snapshot: date) -> int | None:
+    """Return age only when structured birth-year sources do not conflict."""
+    born = card.get("born_on")
+    facts = card.get("facts") if isinstance(card.get("facts"), dict) else {}
+    facts_year = facts.get("birth_year")
+    try:
+        facts_year = int(facts_year) if facts_year is not None else None
+    except (TypeError, ValueError):
+        facts_year = None
+
+    born_date = None
+    if born:
+        try:
+            born_date = date.fromisoformat(str(born)[:10])
+        except ValueError:
+            born_date = None
+
+    # A known conflict is not a young-player signal. Mark age unknown rather than
+    # allowing a stale or cross-identity born_on value to qualify an adult for U21.
+    if born_date and facts_year and abs(born_date.year - facts_year) > 1:
+        return None
+    if born_date:
+        return snapshot.year - born_date.year - (
+            (born_date.month, born_date.day) > (snapshot.month, snapshot.day)
+        )
+    if facts_year:
+        # Without a full birthday, use the older possible age to avoid false U21 eligibility.
+        return max(0, snapshot.year - facts_year)
+    return None
+
+
 def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, int]:
     response = requests.get(f"{base.rstrip('/')}/rest/v1/player_season_stat",
                             headers=api_headers(key),
@@ -472,7 +503,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
                 item["last_fetched"] = fetched
 
     women_cards = get_rows(base, key, "cards", {
-        "select": "id,name,name_en,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+        "select": "id,name,name_en,category,born_on,facts,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
         "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
     })
     women_ids = [str(card["id"]) for card in women_cards if card.get("id")]
@@ -495,7 +526,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     for start in range(0, len(ids), 100):
         joined = ",".join(ids[start:start + 100])
         r = requests.get(card_url, headers=api_headers(key), params={
-            "select": "id,name,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+            "select": "id,name,category,born_on,facts,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
             "id": f"in.({joined})",
         }, timeout=TIMEOUT)
         r.raise_for_status()
@@ -523,15 +554,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             else:
                 row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
                 row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
-            row["age"] = None
-            born = card.get("born_on")
-            if born:
-                try:
-                    born_date = date.fromisoformat(born[:10])
-                    row["age"] = season - born_date.year - (
-                        (born_date.month, born_date.day) > (snapshot.month, snapshot.day))
-                except ValueError:
-                    pass
+            row["age"] = player_age_from_card(card, season, snapshot)
             population.append(row)
         return population
 
