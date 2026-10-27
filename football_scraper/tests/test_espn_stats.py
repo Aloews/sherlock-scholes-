@@ -16,6 +16,7 @@ from calendar import monthrange  # noqa: E402
 
 from espn_stats import (  # noqa: E402
     LEAGUES,
+    WOMEN_LEAGUES,
     active_cards_by_key,
     card_key,
     month_windows,
@@ -30,8 +31,8 @@ def check(label, got, want):
     return got == want
 
 
-def _card(card_id, name_en):
-    return {"id": card_id, "name": "", "name_en": name_en}
+def _card(card_id, name_en, category="player"):
+    return {"id": card_id, "name": "", "name_en": name_en, "category": category}
 
 
 def test_active_cards_by_key():
@@ -66,6 +67,27 @@ def test_active_cards_by_key():
     ok &= check("duplicate key: first wins (id)", list(got.values())[0]["id"], "first")
 
     return ok
+
+
+def test_women_cards_without_club_are_matched_only_when_name_is_unique():
+    woman = _card("woman", "Aitana Bonmati", "woman")
+    got = active_cards_by_key([woman], set())
+    if not check("unique women's exact name is eligible", got,
+                 {card_key("Aitana Bonmati"): woman}):
+        return False
+
+    woman = _card("woman", "Marta", "woman")
+    male = _card("male", "Marta", "player")
+    got = active_cards_by_key([woman, male], {"male"})
+    if not check("ambiguous woman's name is excluded", got,
+                 {card_key("Marta"): male}):
+        return False
+
+    # Women with a verified current-club row retain the existing exact-name path.
+    woman = _card("woman-club", "Alexia Putellas", "woman")
+    got = active_cards_by_key([woman], {"woman-club"})
+    return check("woman with current club is eligible", got,
+                 {card_key("Alexia Putellas"): woman})
 
 
 def _days_covered(months):
@@ -173,6 +195,15 @@ def test_leagues():
     )
     ok &= check("ни одна прежняя лига не потеряна",
                 [c for c in were if c not in LEAGUES], [])
+    women_codes = (
+        "eng.w.1", "esp.w.1", "fra.w.1", "ned.w.1", "usa.nwsl",
+        "usa.w.usl.1", "uefa.wchampions", "uefa.weuro", "fifa.wwc",
+        "conmebol.america.femenina", "concacaf.w.gold",
+    )
+    ok &= check("женские лиги и турниры присутствуют",
+                [c for c in women_codes if c not in LEAGUES], [])
+    ok &= check("женские коды совпадают с фильтром сопоставления",
+                sorted(WOMEN_LEAGUES), sorted(women_codes))
     return ok
 
 
@@ -229,6 +260,7 @@ def test_write_rows():
 def main():
     print("test_espn_stats.py")
     ok = test_active_cards_by_key()
+    ok &= test_women_cards_without_club_are_matched_only_when_name_is_unique()
     ok &= test_month_windows()
     ok &= test_within_span()
     ok &= test_leagues()
