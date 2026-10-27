@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -12,7 +12,8 @@ class CandidateRankingTests(unittest.TestCase):
         cards = [
             {"id": "a", "name": "A", "active": True, "category": "player",
              "transfermarkt_id": "1", "market_value_eur": 100000000,
-             "market_value_at": "2026-07-22", "born_on": "2000-01-01", "fame": 95},
+             "market_value_at": "2026-07-22", "born_on": "2000-01-01", "fame": 95,
+             "player_stats_data_synced_at": "2026-10-26T12:00:00Z"},
             {"id": "b", "name": "B", "active": True, "category": "player",
              "transfermarkt_id": "2", "market_value_eur": 80000000,
              "market_value_at": "2026-06-01", "born_on": "1998-01-01", "fame": 90},
@@ -29,6 +30,29 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(coverage["missing"], 1)
         self.assertEqual(coverage["missing_names"], ["B"])
         self.assertEqual(coverage["coverage"], 0.5)
+
+        # A legacy row does not count as current coverage until the match-feed
+        # snapshot has been verified recently.
+        coverage_with_legacy_row = current_player_stats_coverage(
+            cards, {"a", "b"}, snapshot, limit=100
+        )
+        self.assertEqual(coverage_with_legacy_row["covered"], 1)
+        self.assertEqual(coverage_with_legacy_row["missing_names"], ["B"])
+
+        match_fallback = current_player_stats_coverage(
+            cards, set(), snapshot, limit=100, match_card_ids={"a"}
+        )
+        self.assertEqual(match_fallback["covered"], 1)
+
+    def test_unverified_legacy_season_rows_are_excluded_from_award_scores(self):
+        rows = [
+            {"card_id": "a", "season_id": 2026, "goals": 37},
+            {"card_id": "b", "season_id": 2026, "goals": 2},
+        ]
+        self.assertEqual(
+            filter_verified_season_stats(rows, {"b"}),
+            [{"card_id": "b", "season_id": 2026, "goals": 2}],
+        )
 
     def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
         cards = [
