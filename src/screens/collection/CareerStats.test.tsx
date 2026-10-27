@@ -5,11 +5,13 @@ import { cleanup, render, screen } from '@testing-library/react';
 const mocks = vi.hoisted(() => ({
   fetchCareerTotals: vi.fn(),
   fetchClubCareer: vi.fn(),
+  fetchCurrentSeasonCompetitionStats: vi.fn(),
 }));
 
 vi.mock('@/features/ratings/ratingsApi', () => ({
   fetchCareerTotals: mocks.fetchCareerTotals,
   fetchClubCareer: mocks.fetchClubCareer,
+  fetchCurrentSeasonCompetitionStats: mocks.fetchCurrentSeasonCompetitionStats,
 }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -37,9 +39,21 @@ describe('CareerStats', () => {
       }],
     });
 
+    mocks.fetchCurrentSeasonCompetitionStats.mockResolvedValue({
+      status: 'ok',
+      data: [{
+        season_id: 2026, competition_id: 'GB1', tournament: 'Premier League',
+        appearances: 8, goals: 4, assists: 1, minutes: 620, fetched_at: new Date().toISOString(),
+      }],
+    });
+
     render(<CareerStats cardId="palmer-card" />);
 
     expect(await screen.findByText('Chelsea')).toBeTruthy();
+    expect(screen.getByText('Current season')).toBeTruthy();
+    expect(screen.getByText('2026/27')).toBeTruthy();
+    expect(screen.getByText('Premier League')).toBeTruthy();
+    expect(screen.getByText(/4 goals/)).toBeTruthy();
     expect(screen.getByText('24')).toBeTruthy();
     expect(screen.getByText('4')).toBeTruthy();
     expect(screen.queryByText('null')).toBeNull();
