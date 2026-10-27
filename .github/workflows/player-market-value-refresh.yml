@@ -51,6 +51,9 @@ jobs:
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
 
+      - name: Refresh Martin Odegaard's source valuation first
+        run: APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --only 316264
+
       - name: Refresh oldest market valuations from Transfermarkt
         run: |
           limit="${{ inputs.limit || '800' }}"
