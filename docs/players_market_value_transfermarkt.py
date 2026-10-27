@@ -600,13 +600,15 @@ def main():
             print("  ⚠️ no usable TMAPI market-value response for %s (%s)"
                   % (card.get("name") or card["id"], tm_id), flush=True)
             if invalid_profiles >= invalid_profile_threshold(len(players)):
+                flushed = 0
                 if apply and pending:
+                    flushed = len(pending)
                     written += write_batch(url, write_key, pending)
                     pending = []
                 raise SystemExit(
                     "TMAPI returned unusable market-value responses for %d/%d profiles; "
-                    "aborting early after flushing %d valid checks"
-                    % (invalid_profiles, len(players), written)
+                    "aborting early after flushing %d valid source rows"
+                    % (invalid_profiles, len(players), flushed)
                 )
             time.sleep(TM_PAUSE)
             continue
