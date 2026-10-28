@@ -10,12 +10,29 @@ declare
   v_club uuid;
   v_icon uuid;
   v_checked uuid;
+  v_famous_no_awards uuid;
+  v_verified_legend uuid;
 begin
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
   values ('Khvicha regression', 'player', 99, 140000000, current_date - 30, date '2001-02-12')
   returning id into v_khvicha;
   if (select tier from public.cards where id=v_khvicha) <> 'legendary' then
     raise exception 'Khvicha-shaped card must not remain common when fame is 99';
+  end if;
+
+  insert into public.cards(name, category, fame, facts)
+  values ('Famous player without verified honours', 'player', 99, '{"titles":["Трофей без подтверждения"]}'::jsonb)
+  returning id into v_famous_no_awards;
+  if (select tier from public.cards where id=v_famous_no_awards) <> 'rare' then
+    raise exception 'fame 99 without structured verified honours must not grant legendary';
+  end if;
+
+  insert into public.cards(name, category, fame, facts)
+  values ('Famous player with verified honours', 'player', 99,
+          '{"honours":[{"title":"Победитель Лиги чемпионов УЕФА","count":5,"kind":"team"}]}'::jsonb)
+  returning id into v_verified_legend;
+  if (select tier from public.cards where id=v_verified_legend) <> 'legendary' then
+    raise exception 'fame 99 with structured verified honours must remain legendary';
   end if;
 
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
