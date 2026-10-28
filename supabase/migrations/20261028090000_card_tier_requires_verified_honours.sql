@@ -17,7 +17,15 @@ begin
      where jsonb_typeof(item.value) = 'object'
        and length(trim(coalesce(item.value->>'title', ''))) >= 3
        and case
-             when coalesce(item.value->>'count', '') ~ '^\d+
+             when coalesce(item.value->>'count', '') ~ '^[0-9]+$'
+               then (item.value->>'count')::integer >= 1
+             when coalesce(item.value->>'count', '') = '' then true
+             else false
+           end
+       and coalesce(item.value->>'title', '') !~* '\{\{|\}\}|\|url\s*=|https?://'
+       and coalesce(item.value->>'title', '') !~* 'финалист|вице-чемпион|серебряный приз[её]р|бронзовый приз[её]р|участник|номинант|runner.?up|finalist|participant|nominee'
+       and lower(trim(both ' «»„“”".,:;!?' from coalesce(item.value->>'title','')))
+           not in ('награда', 'награды', 'награда «»')
   );
 exception
   when invalid_text_representation or numeric_value_out_of_range then
