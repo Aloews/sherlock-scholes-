@@ -828,7 +828,8 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             keys.append((by_competition[competition], card_id))
         for target, target_key in keys:
             item = target.setdefault(target_key, {
-                "card_id": card_id, "apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0,
+                "card_id": card_id, "apps": 0, "starts": 0, "starts_known": False,
+                "minutes": 0, "goals": 0, "assists": 0,
                 "weighted_goals": 0.0, "weighted_assists": 0.0, "strength_minutes": 0.0,
                 "minutes_for_strength": 0, "last_fetched": None, "stats_rows": 0,
             })
