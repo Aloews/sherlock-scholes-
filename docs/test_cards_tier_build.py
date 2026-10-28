@@ -69,6 +69,15 @@ def test_legendary_fame_requires_verified_structured_honours():
     assert tier_for(card) == "legendary"
 
 
+def test_runner_up_or_finalist_does_not_count_as_verified_winning_honour():
+    card = {
+        "category": "player",
+        "fame": 99,
+        "facts": {"honours": [{"title": "Финалист Лиги чемпионов УЕФА", "count": 3, "kind": "team"}]},
+    }
+    assert tier_for(card) == "rare"
+
+
 def test_malformed_honours_do_not_grant_legendary_tier():
     card = {
         "category": "player",
