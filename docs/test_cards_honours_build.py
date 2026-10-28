@@ -151,6 +151,27 @@ class ParseHonoursTests(unittest.TestCase):
         self.assertIn("Золотой мяч ×3", merged)
         self.assertNotIn("Золотой мяч", merged)
 
+    def test_individual_awards_are_personal_without_individual_section_heading(self):
+        source = """
+== Достижения ==
+* Обладательница «Золотого мяча» по версии France Football: 2021, 2022
+* Чемпионка Испании: 2023, 2024
+"""
+        honours = parse_honours(source)
+        ballon = next(item for item in honours if "Золотого мяча" in item["title"])
+        league = next(item for item in honours if "Чемпионка Испании" in item["title"])
+        self.assertEqual(ballon["kind"], "personal")
+        self.assertEqual(league["kind"], "team")
+
+    def test_structured_merge_corrects_misclassified_personal_award(self):
+        merged = merge_structured_honours(
+            [{"title": "Обладательница «Золотого мяча»", "count": 2, "kind": "team"}],
+            [{"title": "Обладательница «Золотого мяча»", "count": 3, "kind": "personal"}],
+        )
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["kind"], "personal")
+        self.assertEqual(merged[0]["count"], 3)
+
     def test_structured_refresh_preserves_official_award_provenance_and_max_count(self):
         existing = [{
             "title": "Обладатель «Золотого мяча» по версии France Football",
