@@ -400,6 +400,26 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(totals["woman-b"]["goals"], 2)
         self.assertEqual(totals["woman-b"]["stats_window_start"], "2026-01-01")
 
+    def test_verified_season_source_does_not_fabricate_starting_appearances(self):
+        population = [{
+            "card_id": "kane", "name": "Harry Kane", "category": "player", "active": True,
+            "apps": 16, "starts": 0, "starts_known": False, "minutes": 1288,
+            "goals": 16, "assists": 9, "weighted_goals": 12.0, "weighted_assists": 7.0,
+            "competition_strength": 0.8, "goals_per_90": 1.12, "assists_per_90": 0.63,
+            "minutes_known": True, "stats_rows": 5, "stats_source": "player_season_stat",
+            "last_fetched": "2026-10-27T22:09:41Z", "market_value_eur": 60000000,
+            "fame": 97, "sw_rating": 95, "age": 33,
+        }]
+
+        rows = score_population(
+            population, OVERALL_SPECS["ballon_dor"], "ballon_dor", 2026, date(2026, 10, 27)
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0]["evidence"]["starts"])
+        self.assertFalse(rows[0]["evidence"]["starts_available"])
+        self.assertEqual(rows[0]["evidence"]["stats_source"], "player_season_stat")
+
     def test_womens_award_ranking_does_not_fabricate_per90_when_minutes_are_missing(self):
         population = [{
             "card_id": "woman-a", "name": "Player A", "category": "woman", "active": True,
