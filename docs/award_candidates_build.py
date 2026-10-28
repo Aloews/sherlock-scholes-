@@ -111,11 +111,10 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
     for card in cards:
         card_id = str(card.get("id") or "")
         facts = card.get("facts") or {}
-        source_url = str(facts.get("honours_source") or "").strip()
-        if not card_id or not source_url.startswith(("https://", "http://")):
-            continue
+        category = str(card.get("category") or "").lower()
+        is_women = category in {"woman", "women", "female"}
         titles = facts.get("titles") or []
-        if not isinstance(titles, list):
+        if not card_id or not isinstance(titles, list):
             continue
         for raw_title in titles:
             if not isinstance(raw_title, str):
@@ -134,14 +133,23 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
             elif re.search(r"golden\s+boot|золот(?:ая|ой)\s+бутс\w*", lowered):
                 award_key = "golden_boot"
             elif re.search(r"the\s+best(?:\s+fifa)?(?:\s+men'?s)?\s+(?:player|footballer)|премия\s+the\s+best", lowered):
-                award_key = "the_best"
+                award_key = "the_best_female" if is_women else "the_best"
             elif re.search(r"ballon\s+d[’']or|золот(?:ой|ого)\s+мяч", lowered):
-                award_key = "ballon_dor"
+                award_key = "ballon_dor_feminin" if is_women else "ballon_dor"
             else:
                 continue
             year = int(year_match.group(1))
+            event_key = f"{award_key}:{year}"
+            award_sources = facts.get("award_sources")
+            award_sources = award_sources if isinstance(award_sources, dict) else {}
+            source_url = str(award_sources.get(event_key) or facts.get("honours_source") or "").strip()
+            if not source_url.startswith(("https://", "http://")):
+                continue
+            event_dates = facts.get("award_announcement_dates")
+            event_dates = event_dates if isinstance(event_dates, dict) else {}
+            announced_at = event_dates.get(event_key)
             identity = (award_key, year, card_id)
-            outcomes[identity] = {
+            outcome = {
                 "award_key": award_key,
                 "award_year": year,
                 "card_id": card_id,
@@ -150,6 +158,9 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
                 "source_url": source_url,
                 "verified_by": "explicit_year_card_honours_sync",
             }
+            if announced_at:
+                outcome["announced_at"] = str(announced_at)
+            outcomes[identity] = outcome
     return list(outcomes.values())
 
 
@@ -157,7 +168,7 @@ def sync_explicit_award_outcomes(base: str, key: str) -> int:
     """Persist historical winners only when the source title contains an award year."""
     cards = get_rows(base, key, "cards", {
         "select": "id,category,active,facts",
-        "category": "eq.player", "active": "eq.true", "facts": "not.is.null",
+        "category": "in.(player,woman)", "active": "eq.true", "facts": "not.is.null",
         "order": "id.asc",
     })
     outcomes = extract_explicit_award_outcomes(cards)

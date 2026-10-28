@@ -1,6 +1,6 @@
 import unittest
 
-from cards_honours_build import merge_legacy_titles, parse_honours
+from cards_honours_build import merge_legacy_titles, merge_structured_honours, parse_honours
 
 
 class ParseHonoursTests(unittest.TestCase):
@@ -126,6 +126,34 @@ class ParseHonoursTests(unittest.TestCase):
                 "Чемпион Германии ×2",
             ],
         )
+
+    def test_year_specific_award_survives_increase_to_career_total(self):
+        merged = merge_legacy_titles(
+            ["Золотой мяч ×2", "Золотой мяч 2026"],
+            [{"title": "Обладатель «Золотого мяча»", "count": 3, "kind": "personal"}],
+        )
+        self.assertIn("Золотой мяч 2026", merged)
+        self.assertIn("Золотой мяч ×3", merged)
+        self.assertNotIn("Золотой мяч", merged)
+
+    def test_structured_refresh_preserves_official_award_provenance_and_max_count(self):
+        existing = [{
+            "title": "Обладатель «Золотого мяча» по версии France Football",
+            "count": 3,
+            "kind": "personal",
+            "source_url": "https://www.uefa.com/news-media/news/2026-ballon-dor/",
+            "award_year": 2026,
+        }]
+        incoming = [{
+            "title": "Обладатель «Золотого мяча»",
+            "count": 2,
+            "kind": "personal",
+        }]
+        merged = merge_structured_honours(existing, incoming)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["count"], 3)
+        self.assertEqual(merged[0]["source_url"], existing[0]["source_url"])
+        self.assertEqual(merged[0]["award_year"], 2026)
 
     def test_legacy_title_label_preserves_balanced_internal_quotes(self):
         merged = merge_legacy_titles(

@@ -113,6 +113,20 @@ class CandidateRankingTests(unittest.TestCase):
                     "honours_source": "https://example.org/player",
                 },
             },
+            {
+                "id": "alexia",
+                "category": "woman",
+                "facts": {
+                    "titles": ["Золотой мяч ×2", "Золотой мяч 2026"],
+                    "honours_source": "https://ru.wikipedia.org/wiki/Алексия_Путельяс",
+                    "award_sources": {
+                        "ballon_dor_feminin:2026": "https://www.uefa.com/news-media/news/2026-ballon-dor/"
+                    },
+                    "award_announcement_dates": {
+                        "ballon_dor_feminin:2026": "2026-10-26T20:00:00+00:00"
+                    },
+                },
+            },
         ]
         outcomes = extract_explicit_award_outcomes(cards)
         identity = {(row["award_key"], row["award_year"], row["card_id"]) for row in outcomes}
@@ -120,9 +134,13 @@ class CandidateRankingTests(unittest.TestCase):
             ("ballon_dor", 2026, "kane"),
             ("golden_boy", 2025, "other-player"),
             ("the_best", 2024, "other-player"),
+            ("ballon_dor_feminin", 2026, "alexia"),
         })
         self.assertTrue(all(row["result"] == "winner" for row in outcomes))
         self.assertTrue(all(row["source_url"].startswith("https://") for row in outcomes))
+        female = next(row for row in outcomes if row["card_id"] == "alexia")
+        self.assertEqual(female["announced_at"], "2026-10-26T20:00:00+00:00")
+        self.assertEqual(female["source_url"], "https://www.uefa.com/news-media/news/2026-ballon-dor/")
         self.assertFalse(any(row["award_year"] == 2026 and row["card_id"] == "player-no-source" for row in outcomes))
 
     def test_normalize_supabase_url_removes_accidental_escape_and_trailing_slash(self):
