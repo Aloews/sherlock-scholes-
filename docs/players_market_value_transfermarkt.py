@@ -76,7 +76,7 @@ from scraper.pageviews import WikimediaBudget, WikiPagePropsClient  # noqa: E402
 from scraper.wikidata import WikidataEnricher                      # noqa: E402
 
 TM_PROFILE = "https://www.transfermarkt.com/spieler/profil/spieler/%s"
-TMAPI_BASE_URL = "https://tmapi.transfermarkt.technology"
+TMAPI_BASE_URL = os.environ.get("TM_MARKET_VALUE_API_BASE", "https://transfermarkt-api.fly.dev").rstrip("/")
 # ⚠️ UA НАЗЫВАЕТ НАС, А НЕ ПРИТВОРЯЕТСЯ БРАУЗЕРОМ. Здесь стояла строка
 # «Mozilla/5.0 … Chrome/124.0 Safari/537.36» — это маскировка происхождения
 # запроса, а не вежливость, и она противоречит тому, ради чего источник
