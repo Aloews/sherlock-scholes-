@@ -185,6 +185,25 @@ def _canonicalize_golden_ball_variants(honours: list[dict]) -> list[dict]:
     return result
 
 
+PERSONAL_AWARD_TITLE_RE = re.compile(
+    r"ballon\s+d[’']or|золот(?:ой|ого)\s+мяч|the\s+best.*(?:player|footballer)|"
+    r"игрок(?:иня)?\s+года|футболистк?а?\s+года|трофей\s+копа|kopa\s+trophy|"
+    r"golden\s+boy|золот(?:ой|ого)\s+мальчик|трофей\s+яшина|yashin\s+trophy|"
+    r"goalkeeper\s+of\s+the\s+year|лучший\s+вратар|герд\s+мюллер|gerd\s+m[üu]ller|"
+    r"striker\s+of\s+the\s+year|лучший\s+нападающ|golden\s+boot|"
+    r"золот(?:ая|ой)\s+бутс|сократес|socrates\s+award|mvp|most\s+valuable\s+player|"
+    r"лучший\s+игрок|best\s+player\s+of\s+the\s+year",
+    re.I,
+)
+
+
+def _kind_for_title(title: str, fallback: str | None = None) -> str:
+    """Classify well-known individual awards as personal even on generic honours pages."""
+    if PERSONAL_AWARD_TITLE_RE.search(strip_markup(title)):
+        return "personal"
+    return fallback if fallback in {"personal", "team"} else "team"
+
+
 def parse_honours(wikitext: str) -> list[dict]:
     """Parse honours with role-aware, suffix-only counts."""
     out = []
@@ -234,7 +253,7 @@ def parse_honours(wikitext: str) -> list[dict]:
                 continue
             if not re.search(r"[A-Za-zА-Яа-яЁё0-9]", title):
                 continue
-            record = {"title": title, "count": count, "kind": kind or "team"}
+            record = {"title": title, "count": count, "kind": _kind_for_title(title, kind or "team")}
             if role:
                 record["role"] = role
             if scope:
@@ -420,13 +439,14 @@ def merge_structured_honours(existing: list | None, incoming: list[dict]) -> lis
         if not isinstance(item, dict) or not str(item.get("title") or "").strip():
             continue
         key, parsed_count = _legacy_title_identity(legacy_title_label(item))
-        kind = str(item.get("kind") or "")
+        kind = _kind_for_title(str(item.get("title") or ""), str(item.get("kind") or "team"))
         identity = (key, kind)
         try:
             count = max(1, int(item.get("count") or parsed_count or 1))
         except (TypeError, ValueError):
             count = max(1, parsed_count)
         normalized_item = dict(item)
+        normalized_item["kind"] = kind
         normalized_item["count"] = count
         if identity not in positions:
             positions[identity] = len(merged)

@@ -23,6 +23,15 @@ TEAM_MODEL_VERSION = "team-candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
 
+SUPPORTED_AWARD_KEYS = {
+    "ballon_dor", "ballon_dor_feminin", "the_best", "the_best_female",
+    "golden_boy", "golden_boot", "kopa_trophy", "kopa_trophy_feminin",
+    "yashin_trophy", "yashin_trophy_feminin", "gerd_muller_trophy",
+    "gerd_muller_trophy_feminin", "socrates_award", "club_of_the_year",
+    "club_of_the_year_feminin", "johan_cruyff_trophy",
+    "johan_cruyff_trophy_feminin",
+}
+
 OVERALL_SPECS = {
     # Award-specific weights avoid publishing identical rankings for different awards.
     # Competition-weighted output suppresses raw totals from weaker divisions; SW rating,
@@ -116,6 +125,8 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
         titles = facts.get("titles") or []
         if not card_id or not isinstance(titles, list):
             continue
+        explicit_title_keys = facts.get("award_title_keys")
+        explicit_title_keys = explicit_title_keys if isinstance(explicit_title_keys, dict) else {}
         for raw_title in titles:
             if not isinstance(raw_title, str):
                 continue
@@ -123,8 +134,17 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
             year_match = AWARD_YEAR_RE.search(title)
             if not year_match:
                 continue
+            year = int(year_match.group(1))
             lowered = title.casefold()
-            if re.search(r"ballon\s+d[’']or\s+féminin|золот(?:ой|ого)\s+мяч\s+(?:среди\s+женщин|женский)", lowered):
+            explicit_event_key = explicit_title_keys.get(title) or explicit_title_keys.get(raw_title)
+            explicit_award_key = None
+            if isinstance(explicit_event_key, str) and ":" in explicit_event_key:
+                possible_key, possible_year = explicit_event_key.rsplit(":", 1)
+                if possible_key in SUPPORTED_AWARD_KEYS and possible_year.isdigit() and int(possible_year) == year:
+                    explicit_award_key = possible_key
+            if explicit_award_key:
+                award_key = explicit_award_key
+            elif re.search(r"ballon\s+d[’']or\s+féminin|золот(?:ой|ого)\s+мяч\s+(?:среди\s+женщин|женский)", lowered):
                 award_key = "ballon_dor_feminin"
             elif re.search(r"the\s+best.*(?:women|female)|лучш(?:ая|ему)\s+футболистк\w*\s+мира", lowered):
                 award_key = "the_best_female"
@@ -138,7 +158,6 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
                 award_key = "ballon_dor_feminin" if is_women else "ballon_dor"
             else:
                 continue
-            year = int(year_match.group(1))
             event_key = f"{award_key}:{year}"
             award_sources = facts.get("award_sources")
             award_sources = award_sources if isinstance(award_sources, dict) else {}
@@ -156,7 +175,11 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
                 "competition_id": "*",
                 "result": "winner",
                 "source_url": source_url,
-                "verified_by": "explicit_year_card_honours_sync",
+                "verified_by": (
+                    "official_award_source_sync"
+                    if explicit_award_key and event_key in award_sources
+                    else "explicit_year_card_honours_sync"
+                ),
             }
             if announced_at:
                 outcome["announced_at"] = str(announced_at)
@@ -168,7 +191,7 @@ def sync_explicit_award_outcomes(base: str, key: str) -> int:
     """Persist historical winners only when the source title contains an award year."""
     cards = get_rows(base, key, "cards", {
         "select": "id,category,active,facts",
-        "category": "in.(player,woman)", "active": "eq.true", "facts": "not.is.null",
+        "category": "in.(player,woman,club)", "active": "eq.true", "facts": "not.is.null",
         "order": "id.asc",
     })
     outcomes = extract_explicit_award_outcomes(cards)
