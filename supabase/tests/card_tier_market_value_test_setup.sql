@@ -8,7 +8,8 @@ create table public.cards (
   fame smallint,
   market_value_eur bigint,
   market_value_at date,
-  born_on date
+  born_on date,
+  facts jsonb not null default '{}'::jsonb
 );
 create or replace function public.fame_tier(p_fame smallint)
 returns text language sql immutable as $$
