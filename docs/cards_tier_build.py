@@ -1,5 +1,6 @@
 """Dry-run or apply the same rarity-tier rules as public.card_tier_for_signals."""
 import os
+import re
 import sys
 from datetime import date
 
