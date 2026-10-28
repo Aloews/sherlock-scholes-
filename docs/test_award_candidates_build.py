@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -56,6 +56,39 @@ class CandidateRankingTests(unittest.TestCase):
             filter_verified_season_stats(rows, {"b"}),
             [{"card_id": "b", "season_id": 2026, "goals": 2}],
         )
+
+    def test_verified_season_totals_take_precedence_over_partial_match_feed(self):
+        season_totals = {
+            "kane": {
+                "card_id": "kane", "apps": 16, "minutes": 1288,
+                "goals": 16, "assists": 9, "stats_source": "player_season_stat",
+            },
+        }
+        match_totals = {
+            # The tracked match feed only has the league and Champions League rows.
+            "kane": {
+                "card_id": "kane", "apps": 10, "minutes": 810,
+                "goals": 8, "assists": 7, "stats_source": "player_match_stats",
+            },
+            # A player with no verified season snapshot can still use a qualified fallback.
+            "palmer": {
+                "card_id": "palmer", "apps": 10, "minutes": 836,
+                "goals": 4, "assists": 3, "stats_source": "player_match_stats",
+            },
+            "small-sample": {
+                "card_id": "small-sample", "apps": 2, "minutes": 180,
+                "goals": 2, "assists": 0, "stats_source": "player_match_stats",
+            },
+        }
+
+        merged = merge_season_stats_with_match_fallback(season_totals, match_totals)
+
+        self.assertEqual(merged["kane"]["goals"], 16)
+        self.assertEqual(merged["kane"]["assists"], 9)
+        self.assertEqual(merged["kane"]["stats_source"], "player_season_stat")
+        self.assertEqual(merged["palmer"]["goals"], 4)
+        self.assertEqual(merged["palmer"]["stats_source"], "player_match_stats")
+        self.assertNotIn("small-sample", merged)
 
     def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
         cards = [
