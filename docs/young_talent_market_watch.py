@@ -249,7 +249,7 @@ def fetch_ranked_today(base: str, key: str, snapshot_date: date, limit: int = 20
         base.rstrip("/") + "/rest/v1/young_talent_market_watch",
         headers=api_headers(key),
         params={
-            "select": "snapshot_date,card_id,player_name,age,market_value_eur,verified_honours_count,verified_award_wins,season_apps,season_goals,season_assists,season_minutes,price_change_pct,score,confidence,score_components,source_url",
+            "select": "snapshot_date,card_id,player_name,age,market_value_eur,market_value_at,verified_honours_count,verified_award_wins,season_apps,season_goals,season_assists,season_minutes,price_change_pct,score,confidence,score_components,source_url",
             "snapshot_date": f"eq.{snapshot_date.isoformat()}",
             "order": "score.desc,verified_award_wins.desc,market_value_eur.desc",
             "limit": limit,
@@ -282,6 +282,7 @@ def main() -> None:
             f"{row['score']:5.1f} | age {row['age']:2} | €{int(row['market_value_eur']):,} | "
             f"awards {row['verified_award_wins']:3} | G/A {row.get('season_goals') or 0}/{row.get('season_assists') or 0} | "
             f"Δ {row.get('price_change_pct') or 0:+.1f}% | {row['player_name']} | "
+            f"price as of {row.get('market_value_at') or 'unknown date'} | confidence {row.get('confidence') or 'low'} | "
             f"{row.get('source_url') or 'no Transfermarkt profile URL'}"
         )
 
