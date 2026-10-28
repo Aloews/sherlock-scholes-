@@ -174,6 +174,39 @@ class ParseHonoursTests(unittest.TestCase):
         self.assertEqual((player["count"], player.get("role")), (2, "player"))
         self.assertEqual((manager["count"], manager.get("role")), (5, "manager"))
 
+    def test_champions_league_wins_sum_across_clubs_but_not_duplicate_sections(self):
+        source = """
+== Достижения ==
+=== В качестве главного тренера ===
+==== «Милан» ====
+* Победитель Лиги чемпионов УЕФА (2): 2002/03, 2006/07
+==== «Реал Мадрид» ====
+* Победитель Лиги чемпионов УЕФА (3): 2013/14, 2021/22, 2023/24
+== Награды и достижения ==
+=== В качестве главного тренера ===
+==== «Милан» ====
+* Победитель Лиги чемпионов УЕФА (2): 2002/03, 2006/07
+"""
+        honours = parse_honours(source)
+        ucl = [h for h in honours if h["title"] == "Победитель Лиги чемпионов УЕФА"]
+        self.assertEqual(len(ucl), 1)
+        self.assertEqual(ucl[0]["count"], 5)
+        self.assertEqual(ucl[0]["role"], "manager")
+
+    def test_guardiola_three_champions_league_titles_across_two_clubs(self):
+        source = """
+== Достижения ==
+=== В качестве главного тренера ===
+==== «Барселона» ====
+* Победитель Лиги чемпионов УЕФА (2): 2008/09, 2010/11
+==== «Манчестер Сити» ====
+* Победитель Лиги чемпионов УЕФА: 2022/23
+"""
+        ucl = [h for h in parse_honours(source) if h["title"] == "Победитель Лиги чемпионов УЕФА"]
+        self.assertEqual(len(ucl), 1)
+        self.assertEqual(ucl[0]["count"], 3)
+        self.assertEqual(ucl[0]["role"], "manager")
+
     def test_non_numeric_parenthetical_is_preserved(self):
         source = """
 == Достижения ==
