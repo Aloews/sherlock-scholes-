@@ -85,7 +85,8 @@ def strip_markup(s: str) -> str:
     s = re.sub(r"<[^>]+>", "", s)
     s = s.replace("'''", "").replace("''", "")
     s = re.sub(r"\s+", " ", s)
-    return s.strip(" .;:—–-*")
+    # Keep a trailing colon: it separates an explicit repeat count from its year list.
+    return s.strip(" .;—–-*")
 
 
 def fetch_wikitext(title: str, session: requests.Session) -> str | None:
