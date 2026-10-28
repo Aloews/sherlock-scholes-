@@ -42,7 +42,7 @@ jobs:
   season-stats:
     if: ${{ github.event_name != 'schedule' || github.event.schedule == '0 11 * * *' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
