@@ -12,6 +12,7 @@ declare
   v_checked uuid;
   v_famous_no_awards uuid;
   v_verified_legend uuid;
+  v_finalist_only uuid;
 begin
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
   values ('Khvicha regression', 'player', 99, 140000000, current_date - 30, date '2001-02-12')
@@ -33,6 +34,14 @@ begin
   returning id into v_verified_legend;
   if (select tier from public.cards where id=v_verified_legend) <> 'legendary' then
     raise exception 'fame 99 with structured verified honours must remain legendary';
+  end if;
+
+  insert into public.cards(name, category, fame, facts)
+  values ('Famous finalist without a win', 'player', 99,
+          '{"honours":[{"title":"Финалист Лиги чемпионов УЕФА","count":3,"kind":"team"}]}'::jsonb)
+  returning id into v_finalist_only;
+  if (select tier from public.cards where id=v_finalist_only) <> 'rare' then
+    raise exception 'finalist-only records must not grant legendary';
   end if;
 
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
