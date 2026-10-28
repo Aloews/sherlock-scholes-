@@ -136,6 +136,7 @@ class CandidateRankingTests(unittest.TestCase):
             },
         ]
         outcomes = extract_explicit_award_outcomes(cards)
+        self.assertEqual(len({tuple(sorted(row.keys())) for row in outcomes}), 1)
         identity = {(row["award_key"], row["award_year"], row["card_id"]) for row in outcomes}
         self.assertEqual(identity, {
             ("ballon_dor", 2026, "kane"),

@@ -185,14 +185,13 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
                 "competition_id": "*",
                 "result": "winner",
                 "source_url": source_url,
+                "announced_at": str(announced_at) if announced_at else None,
                 "verified_by": (
                     "official_award_source_sync"
                     if explicit_award_key and event_key in award_sources
                     else "explicit_year_card_honours_sync"
                 ),
             }
-            if announced_at:
-                outcome["announced_at"] = str(announced_at)
             outcomes[identity] = outcome
     return list(outcomes.values())
 
