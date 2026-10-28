@@ -100,9 +100,19 @@ def upsert_rows(base: str, key: str, table: str, rows: list[dict], conflict: str
     url = f"{base.rstrip('/')}/rest/v1/{table}"
     headers = {**api_headers(key), "Prefer": "resolution=merge-duplicates,return=minimal"}
     for start in range(0, len(rows), 250):
+        batch = rows[start:start + 250]
         response = requests.post(url, params={"on_conflict": conflict}, headers=headers,
-                                 json=rows[start:start + 250], timeout=TIMEOUT)
-        response.raise_for_status()
+                                 json=batch, timeout=TIMEOUT)
+        if not response.ok:
+            # PostgREST's response body identifies check/constraint/schema-cache failures;
+            # include it in Actions logs instead of reducing every failure to "400 Bad Request".
+            detail = (getattr(response, "text", "") or "").strip().replace("\\n", " ")[:2000]
+            sample_keys = sorted(batch[0].keys()) if batch else []
+            raise RuntimeError(
+                f"Supabase upsert {table} failed HTTP {response.status_code} "
+                f"batch={start // 250 + 1} rows={len(batch)} "
+                f"columns={sample_keys}: {detail}"
+            )
     return len(rows)
 
 
