@@ -1,11 +1,18 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population, upsert_rows)
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
+    def test_failed_postgrest_upsert_includes_server_error_body(self):
+        response = Mock(ok=False, status_code=400, text='{"message":"award_key violates check constraint"}')
+        with patch("award_candidates_build.requests.post", return_value=response):
+            with self.assertRaisesRegex(RuntimeError, "award_key violates check constraint"):
+                upsert_rows("https://example.supabase.co", "test-key", "award_outcome",
+                            [{"award_key": "unknown"}], "award_key,award_year,card_id,result,competition_id")
+
 
     def test_current_season_coverage_counts_only_fresh_high_value_active_players(self):
         snapshot = date(2026, 10, 27)
