@@ -39,13 +39,31 @@ function canonicalTitle(value: string): string {
     .replace(/[«»„“”"]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const lower = cleaned.toLocaleLowerCase('ru');
+  const yearMatch = cleaned.match(/\s+(20\d{2})$/);
+  const year = yearMatch?.[1];
+  const awardName = yearMatch?.index === undefined
+    ? cleaned
+    : cleaned.slice(0, yearMatch.index).trim();
+  const suffix = year ? ' ' + year : '';
+  const lower = awardName.toLocaleLowerCase('ru');
 
-  if (lower.includes('золотого мяча') || lower.includes('золотой мяч')) return 'Золотой мяч';
-  if (lower.includes('трофей копа') || lower.includes('кубок копа') || lower === 'копа') return 'Трофей Копа';
-  if (lower.includes('трофей яшина') || lower.includes('яшина')) return 'Трофей Яшина';
-  if (lower.includes('герда мюллера') || lower.includes('герд мюллер')) return 'Трофей Герда Мюллера';
-  if (lower.includes('сократес')) return 'Приз Сократеса';
+  // The Club World Cup's Golden Ball is a different award from France Football's
+  // Ballon d'Or. Check the competition before the shared "golden ball" wording.
+  if (lower.includes('клубного чемпионата мира') || lower.includes('club world cup')) {
+    return 'Золотой мяч клубного чемпионата мира' + suffix;
+  }
+  if (
+    lower.includes('золотого мяча') || lower.includes('золотой мяч') ||
+    lower.includes("ballon d'or") || lower.includes('ballon d’or') || lower.includes('ballon dor')
+  ) return 'Золотой мяч' + suffix;
+  if (lower.includes('трофей копа') || lower.includes('кубок копа') || lower === 'копа') {
+    return 'Трофей Копа' + suffix;
+  }
+  if (lower.includes('трофей яшина') || lower.includes('яшина')) return 'Трофей Яшина' + suffix;
+  if (lower.includes('герда мюллера') || lower.includes('герд мюллер')) {
+    return 'Трофей Герда Мюллера' + suffix;
+  }
+  if (lower.includes('сократес')) return 'Приз Сократеса' + suffix;
 
   return cleaned
     .replace(/^обладатель\s+/i, '')
@@ -83,7 +101,22 @@ export function splitHonours({ titles, legendTitles, honours, tournaments }: Hon
     }
   });
 
-  const trophies = [...trophyMap.values()]
+  const allTrophies = [...trophyMap.values()];
+  // If a newly recorded year-specific win exists, do not let its generic
+  // one-count label hide it (e.g. "Золотой мяч 2026" behind "Золотой мяч").
+  // Keep a generic count above one as a separate career total.
+  const yearSpecificBases = new Set(
+    allTrophies
+      .map(({ title }) => title.match(/^(.*)\s+(20\d{2})$/))
+      .filter((match): match is RegExpMatchArray => match !== null)
+      .map((match) => canonicalKey(match[1])),
+  );
+  const trophies = allTrophies
+    .filter(({ title, count }) =>
+      /\s20\d{2}$/.test(title) ||
+      count > 1 ||
+      !yearSpecificBases.has(canonicalKey(title)),
+    )
     .map(({ title, count }) => formatTitle(title, count));
 
   const trophyKeys = new Set(trophyMap.keys());
