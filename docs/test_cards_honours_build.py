@@ -15,7 +15,7 @@ class ParseHonoursTests(unittest.TestCase):
 """
         honours = parse_honours(source)
         self.assertIn(
-            {"title": "Обладатель «Золотого мяча» по версии France Football", "count": 1, "kind": "personal"},
+            {"title": "Обладатель «Золотого мяча»", "count": 1, "kind": "personal"},
             honours,
         )
         self.assertIn(
