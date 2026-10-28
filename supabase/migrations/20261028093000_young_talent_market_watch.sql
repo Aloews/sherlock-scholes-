@@ -10,7 +10,12 @@ create table if not exists public.young_talent_market_snapshot (
   market_value_at date not null,
   verified_honours_count smallint not null default 0 check (verified_honours_count >= 0),
   verified_award_wins integer not null default 0 check (verified_award_wins >= 0),
-  base_score numeric(6,3) not null check (base_score between 0 and 80),
+  season_apps smallint not null default 0 check (season_apps >= 0),
+  season_goals smallint not null default 0 check (season_goals >= 0),
+  season_assists smallint not null default 0 check (season_assists >= 0),
+  season_minutes integer not null default 0 check (season_minutes >= 0),
+  season_stats_fetched_at timestamptz,
+  base_score numeric(6,3) not null check (base_score between 0 and 100),
   score_components jsonb not null default '{}'::jsonb,
   source_url text check (source_url is null or source_url ~ '^https?://'),
   model_version text not null,
@@ -79,6 +84,6 @@ grant all on public.young_talent_market_snapshot to service_role;
 grant select on public.young_talent_market_watch to service_role;
 
 comment on table public.young_talent_market_snapshot
-  is 'Daily source-dated snapshots for active 16–23 year-old players with recent market values and structured award counts.';
+  is 'Daily source-dated snapshots for active 16–23 year-old players with recent market values, structured award counts and fresh current-season output.';
 comment on view public.young_talent_market_watch
-  is 'Young player watch ranked by age, current market value, verified award wins and change versus the previous daily snapshot.';
+  is 'Young player watch ranked by age, current market value, verified award wins, fresh season output and change versus the previous daily snapshot.';
