@@ -50,7 +50,7 @@ def has_verified_honours(card):
         except (TypeError, ValueError):
             count = 0
         if (len(title) >= 3 and count >= 1
-                and not re.search(r"\\{\\{|\\}\\}|\\|url\\s*=|https?://", title, re.I)
+                and not re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I)
                 and title.casefold().strip(" «»„“”\\\".,:;!?") not in {"награда", "награды"}):
             return True
     return False
