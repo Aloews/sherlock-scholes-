@@ -47,10 +47,16 @@ class YoungTalentMarketWatchTests(unittest.TestCase):
                 "market_value_at": "2026-09-01",
             },
         ]
-        rows = build_snapshots(cards, date(2026, 10, 28))
+        rows = build_snapshots(cards, date(2026, 10, 28), {
+            "young": {"apps": 8, "goals": 4, "assists": 3, "minutes": 620,
+                      "fetched_at": "2026-10-28T10:00:00+00:00"}
+        })
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["card_id"], "young")
         self.assertEqual(rows[0]["verified_award_wins"], 1)
+        self.assertEqual(rows[0]["season_goals"], 4)
+        self.assertEqual(rows[0]["season_assists"], 3)
+        self.assertEqual(rows[0]["season_minutes"], 620)
         self.assertEqual(rows[0]["source_url"], "https://www.transfermarkt.com/spieler/profil/spieler/123")
 
     def test_award_count_excludes_malformed_and_non_winning_outcomes(self):
@@ -73,6 +79,13 @@ class YoungTalentMarketWatchTests(unittest.TestCase):
         self.assertGreater(high_components["market_value"], low_components["market_value"])
         self.assertLessEqual(high, 80)
         self.assertGreaterEqual(low, 0)
+
+    def test_fresh_season_output_increases_youth_candidate_score(self):
+        without_stats, _ = base_talent_score(19, 50_000_000, 4)
+        with_stats, components = base_talent_score(19, 50_000_000, 4, 20, 12, 8, 1500)
+        self.assertGreater(with_stats, without_stats)
+        self.assertGreater(components["current_season_output"], 0)
+        self.assertGreater(components["current_season_minutes"], 0)
 
     def test_duplicate_award_records_do_not_double_count(self):
         facts = {
