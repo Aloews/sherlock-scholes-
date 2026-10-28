@@ -126,7 +126,7 @@ jobs:
         env:
           TMAPI_DIAGNOSTICS: '1'
         run: |
-          limit="${{ inputs.limit || '800' }}"
+          limit="${{ inputs.limit || '1000' }}"
           case "$limit" in
             ''|*[!0-9]*) echo "::error::limit must be a positive integer"; exit 2 ;;
           esac
