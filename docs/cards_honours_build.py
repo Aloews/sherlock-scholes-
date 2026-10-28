@@ -497,14 +497,13 @@ def main() -> None:
             print(f"  {i:4}/{len(cards)}  {card['name'][:34]:34}  {len(honours):3} "
                   + ", ".join(f"{h['title']}×{h['count']}" for h in top))
 
-            legacy_titles = merge_legacy_titles(
-                (card.get("facts") or {}).get("titles") if isinstance(card.get("facts"), dict) else [],
-                honours,
-            )
+            existing_facts = card.get("facts") if isinstance(card.get("facts"), dict) else {}
+            merged_honours = merge_structured_honours(existing_facts.get("honours"), honours)
+            legacy_titles = merge_legacy_titles(existing_facts.get("titles"), honours)
             lines.append(
                 f"UPDATE cards SET facts = jsonb_set("
                 f"jsonb_set(coalesce(facts, '{{}}'::jsonb), '{{honours}}', "
-                f"{sql_quote(json.dumps(honours, ensure_ascii=False))}::jsonb, true), "
+                f"{sql_quote(json.dumps(merged_honours, ensure_ascii=False))}::jsonb, true), "
                 f"'{{titles}}', {sql_quote(json.dumps(legacy_titles, ensure_ascii=False))}::jsonb, true) "
                 f"WHERE id = '{card['id']}'; -- {card['name']}"
             )
