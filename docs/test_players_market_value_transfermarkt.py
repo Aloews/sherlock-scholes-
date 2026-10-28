@@ -16,10 +16,15 @@ from players_market_value_transfermarkt import (  # noqa: E402
     parse_tmapi_market_value,
     should_write_market_value,
     should_retry_market_value_status,
+    TMAPI_BASE_URL,
 )
 
 
 class MarketValueRefreshTests(unittest.TestCase):
+
+    def test_market_value_api_uses_configurable_public_service_host(self):
+        self.assertEqual(TMAPI_BASE_URL, "https://transfermarkt-api.fly.dev")
+
     def test_retryable_http_statuses_are_explicit(self):
         self.assertTrue(should_retry_market_value_status(429))
         self.assertTrue(should_retry_market_value_status(500))
@@ -131,7 +136,7 @@ class MarketValueRefreshTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(
             request.full_url,
-            "https://tmapi.transfermarkt.technology/player/316264/market-value-history",
+            "https://transfermarkt-api.fly.dev/player/316264/market-value-history",
         )
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 15)
 
