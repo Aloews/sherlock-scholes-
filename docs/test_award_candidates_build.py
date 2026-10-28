@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population)
 from datetime import date
 
 
@@ -56,6 +56,39 @@ class CandidateRankingTests(unittest.TestCase):
             filter_verified_season_stats(rows, {"b"}),
             [{"card_id": "b", "season_id": 2026, "goals": 2}],
         )
+
+    def test_verified_season_totals_take_precedence_over_partial_match_feed(self):
+        season_totals = {
+            "kane": {
+                "card_id": "kane", "apps": 16, "minutes": 1288,
+                "goals": 16, "assists": 9, "stats_source": "player_season_stat",
+            },
+        }
+        match_totals = {
+            # The tracked match feed only has the league and Champions League rows.
+            "kane": {
+                "card_id": "kane", "apps": 10, "minutes": 810,
+                "goals": 8, "assists": 7, "stats_source": "player_match_stats",
+            },
+            # A player with no verified season snapshot can still use a qualified fallback.
+            "palmer": {
+                "card_id": "palmer", "apps": 10, "minutes": 836,
+                "goals": 4, "assists": 3, "stats_source": "player_match_stats",
+            },
+            "small-sample": {
+                "card_id": "small-sample", "apps": 2, "minutes": 180,
+                "goals": 2, "assists": 0, "stats_source": "player_match_stats",
+            },
+        }
+
+        merged = merge_season_stats_with_match_fallback(season_totals, match_totals)
+
+        self.assertEqual(merged["kane"]["goals"], 16)
+        self.assertEqual(merged["kane"]["assists"], 9)
+        self.assertEqual(merged["kane"]["stats_source"], "player_season_stat")
+        self.assertEqual(merged["palmer"]["goals"], 4)
+        self.assertEqual(merged["palmer"]["stats_source"], "player_match_stats")
+        self.assertNotIn("small-sample", merged)
 
     def test_explicit_year_winner_titles_create_outcomes_without_inventing_undated_years(self):
         cards = [
@@ -367,6 +400,26 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(totals["woman-b"]["goals"], 2)
         self.assertEqual(totals["woman-b"]["stats_window_start"], "2026-01-01")
 
+    def test_verified_season_source_does_not_fabricate_starting_appearances(self):
+        population = [{
+            "card_id": "kane", "name": "Harry Kane", "category": "player", "active": True,
+            "apps": 16, "starts": 0, "starts_known": False, "minutes": 1288,
+            "goals": 16, "assists": 9, "weighted_goals": 12.0, "weighted_assists": 7.0,
+            "competition_strength": 0.8, "goals_per_90": 1.12, "assists_per_90": 0.63,
+            "minutes_known": True, "stats_rows": 5, "stats_source": "player_season_stat",
+            "last_fetched": "2026-10-27T22:09:41Z", "market_value_eur": 60000000,
+            "fame": 97, "sw_rating": 95, "age": 33,
+        }]
+
+        rows = score_population(
+            population, OVERALL_SPECS["ballon_dor"], "ballon_dor", 2026, date(2026, 10, 27)
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0]["evidence"]["starts"])
+        self.assertFalse(rows[0]["evidence"]["starts_available"])
+        self.assertEqual(rows[0]["evidence"]["stats_source"], "player_season_stat")
+
     def test_womens_award_ranking_does_not_fabricate_per90_when_minutes_are_missing(self):
         population = [{
             "card_id": "woman-a", "name": "Player A", "category": "woman", "active": True,
@@ -560,7 +613,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.award-candidate-rank-v7",
+                "model_version": f"neq.{AWARD_MODEL_VERSION}",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")

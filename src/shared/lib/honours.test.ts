@@ -84,6 +84,31 @@ describe('splitHonours', () => {
     expect(result.trophies).toEqual(['Золотой мяч']);
   });
 
+  it('keeps the newly won year-specific Ballon d’Or visible', () => {
+    const result = splitHonours({
+      titles: ['Золотой мяч 2026'],
+      honours: [
+        { title: 'Обладатель «Золотого мяча» по версии France Football', count: 1, kind: 'personal' },
+      ],
+    });
+
+    expect(result.trophies).toEqual(['Золотой мяч 2026']);
+  });
+
+  it('does not merge the Club World Cup Golden Ball into the Ballon d’Or', () => {
+    const result = splitHonours({
+      titles: ['Золотой мяч'],
+      honours: [
+        { title: 'Обладатель «Золотого мяча» Клубного чемпионата мира', count: 1, kind: 'personal' },
+      ],
+    });
+
+    expect(result.trophies).toEqual([
+      'Золотой мяч',
+      'Золотой мяч клубного чемпионата мира',
+    ]);
+  });
+
   it('survives missing, null and blank entries', () => {
     expect(splitHonours({})).toEqual({ trophies: [], tournaments: [] });
     expect(splitHonours({ titles: null, tournaments: null }))
