@@ -14,8 +14,9 @@ declare
   v_verified_legend uuid;
   v_finalist_only uuid;
 begin
-  insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
-  values ('Khvicha regression', 'player', 99, 140000000, current_date - 30, date '2001-02-12')
+  insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on, facts)
+  values ('Khvicha regression', 'player', 99, 140000000, current_date - 30, date '2001-02-12',
+          '{"honours":[{"title":"Чемпион Италии","count":1,"kind":"team"}]}'::jsonb)
   returning id into v_khvicha;
   if (select tier from public.cards where id=v_khvicha) <> 'legendary' then
     raise exception 'Khvicha-shaped card must not remain common when fame is 99';
@@ -100,8 +101,8 @@ begin
   end if;
 
   update public.cards set fame=99 where id=v_elite;
-  if (select tier from public.cards where id=v_elite) <> 'legendary' then
-    raise exception 'fame updates must keep tier synchronized';
+  if (select tier from public.cards where id=v_elite) <> 'epic' then
+    raise exception 'fame updates without verified honours must not override the market-value tier';
   end if;
 
   insert into public.cards(name, category, fame, market_value_eur, market_value_at, born_on)
