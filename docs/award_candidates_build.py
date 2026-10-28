@@ -18,7 +18,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-AWARD_MODEL_VERSION = "award-candidate-rank-v7"
+AWARD_MODEL_VERSION = "award-candidate-rank-v8"
 TEAM_MODEL_VERSION = "team-candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
@@ -437,6 +437,28 @@ def aggregate_player_match_stats(
     return totals
 
 
+def merge_season_stats_with_match_fallback(
+    season_totals: dict[str, dict[str, Any]],
+    match_totals: dict[str, dict[str, Any]],
+    min_apps: int = 3,
+) -> dict[str, dict[str, Any]]:
+    """Use source-verified Transfermarkt season totals first; match rows fill gaps only.
+
+    The match feed has different coverage by competition and can omit cup or
+    national-team matches that are present in the complete season endpoint. Replacing
+    a verified season aggregate with a partial match-feed aggregate understates the
+    player's output and can distort award rankings. Keep the granular feed as a
+    fallback only when no verified season aggregate exists for that card.
+    """
+    combined = {str(card_id): stats for card_id, stats in season_totals.items()}
+    for card_id, stats in match_totals.items():
+        normalized_id = str(card_id)
+        if normalized_id in combined or int(number(stats, "apps")) < min_apps:
+            continue
+        combined[normalized_id] = stats
+    return combined
+
+
 def score_population(population: list[dict], weights: dict[str, float], award_key: str,
                      season: int, snapshot: date, competition_id: str = "*") -> list[dict]:
     eligible = [p for p in population if p.get("active") and (
@@ -822,9 +844,10 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             if fetched and (item["last_fetched"] is None or fetched > item["last_fetched"]):
                 item["last_fetched"] = fetched
 
-    for card_id, match_stat in match_totals.items():
-        if match_stat["apps"] >= 3:
-            totals[card_id] = match_stat
+    # Source-verified season totals are the canonical source for award analytics.
+    # The match feed fills missing cards only; never overwrite a fuller verified
+    # season aggregate with a partial set of tracked matches.
+    totals = merge_season_stats_with_match_fallback(totals, match_totals)
 
     women_id_list = sorted(women_ids)
     if women_id_list:
