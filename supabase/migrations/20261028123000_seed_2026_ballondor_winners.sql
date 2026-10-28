@@ -44,8 +44,7 @@ FROM (VALUES
         'official-awards-2026:vicky-lopez',
         jsonb_build_object(
             'position', 'Полузащитник', 'birth_year', 2006,
-            'national_team', 'Испании',
-
+            'national_team', 'Испании'
         )
     ),
     (
@@ -60,7 +59,6 @@ FROM (VALUES
             'award_season_stats_2025_26', jsonb_build_object(
                 'apps', 32, 'minutes', 2880, 'goals_conceded', 16,
                 'source_url', 'https://www.fcbarcelona.com/en/football/womens-football/news/4599035/cata-coll-goalkeeper-of-the-year'
-
             )
         )
     ),
