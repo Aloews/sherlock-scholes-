@@ -1,9 +1,24 @@
 import unittest
+from unittest.mock import Mock, patch
 
-from cards_honours_build import merge_legacy_titles, merge_structured_honours, parse_honours
+from cards_honours_build import fetch_wikitext, merge_legacy_titles, merge_structured_honours, parse_honours
 
 
 class ParseHonoursTests(unittest.TestCase):
+    def test_wikimedia_503_is_retried_before_failing_the_catalogue_sync(self):
+        unavailable = Mock(status_code=503, headers={})
+        recovered = Mock(status_code=200)
+        recovered.json.return_value = {"parse": {"wikitext": "== Достижения ==\n* Золотой мяч 2026"}}
+        session = Mock()
+        session.get.side_effect = [unavailable, recovered]
+
+        with patch("cards_honours_build.time.sleep") as sleep:
+            result = fetch_wikitext("Алексия Путельяс", session)
+
+        self.assertEqual(result, "== Достижения ==\n* Золотой мяч 2026")
+        self.assertEqual(session.get.call_count, 2)
+        sleep.assert_called_once_with(2)
+
     def test_parses_new_personal_award_from_player_page(self):
         source = """
 == Достижения ==
