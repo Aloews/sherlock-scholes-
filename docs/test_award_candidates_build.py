@@ -593,7 +593,7 @@ class CandidateRankingTests(unittest.TestCase):
             kwargs["params"],
             {
                 "snapshot_date": "eq.2026-10-27",
-                "model_version": "neq.award-candidate-rank-v7",
+                "model_version": f"neq.{AWARD_MODEL_VERSION}",
             },
         )
         self.assertEqual(kwargs["headers"]["Prefer"], "return=representation")
