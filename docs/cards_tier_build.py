@@ -1,5 +1,6 @@
 """Dry-run or apply the same rarity-tier rules as public.card_tier_for_signals."""
 import os
+import re
 import sys
 from datetime import date
 
@@ -11,6 +12,10 @@ SCRAPER = os.path.join(HERE, "..", "football_scraper")
 APPLY = os.environ.get("APPLY") == "1"
 
 TIERS = ("icon", "legendary", "epic", "prospect", "rare", "common")
+NON_WIN_HONOUR = re.compile(
+    r"финалист|вице-чемпион|серебряный приз[её]р|бронзовый приз[её]р|участник|номинант|runner.?up|finalist|participant|nominee",
+    re.I,
+)
 VALUE_MAX_AGE_DAYS = 548
 PROSPECT_VALUE_20 = 20_000_000
 PROSPECT_VALUE_23 = 40_000_000
@@ -35,15 +40,36 @@ def fetch_all(url, key, table, sel):
         offset += 1000
 
 
-def fame_tier(fame):
+def has_verified_honours(card):
+    facts = card.get("facts")
+    honours = facts.get("honours") if isinstance(facts, dict) else None
+    if not isinstance(honours, list):
+        return False
+    for item in honours:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        try:
+            count = int(item.get("count") or 1)
+        except (TypeError, ValueError):
+            count = 0
+        if (len(title) >= 3 and count >= 1
+                and not re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I)
+                and title.casefold().strip(" «»„“”\\\".,:;!?") not in {"награда", "награды"}
+                and not NON_WIN_HONOUR.search(title)):
+            return True
+    return False
+
+
+def fame_tier(fame, verified_honours=False):
     try:
         fame = int(fame or 0)
     except (TypeError, ValueError):
         fame = 0
-    if fame >= 99:
+    # Popularity alone cannot grant legendary: require a structured, source-backed
+    # award record. High fame without award evidence remains rare.
+    if fame >= 99 and verified_honours:
         return "legendary"
-    # Fame is a recognisability floor, not proof of current elite market value.
-    # Only a current source-backed valuation should grant the epic tier.
     if fame >= 75:
         return "rare"
     return "common"
@@ -94,7 +120,8 @@ def signals(card, today=None):
         "value": value,
         "value_is_current": value_is_current,
         "value_tier": value_tier,
-        "fame_tier": fame_tier(card.get("fame")),
+        "has_verified_honours": has_verified_honours(card),
+        "fame_tier": fame_tier(card.get("fame"), has_verified_honours(card)),
         "prospect": prospect,
     }
 
@@ -103,7 +130,7 @@ def tier_for(card, today=None):
     if card.get("tier") == "icon":
         return "icon"
 
-    base = fame_tier(card.get("fame"))
+    base = fame_tier(card.get("fame"), has_verified_honours(card))
     if card.get("category") not in ("player", "woman"):
         return base
 
@@ -143,7 +170,7 @@ def main():
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
-    columns = "id,name,category,fame,born_on,market_value_eur,market_value_at,tier"
+    columns = "id,name,category,fame,born_on,market_value_eur,market_value_at,tier,facts"
     cards = fetch_all(url, key, "cards", columns)
     players = [card for card in cards if card.get("category") in ("player", "woman")]
 

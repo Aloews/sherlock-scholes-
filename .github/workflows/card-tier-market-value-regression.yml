@@ -6,7 +6,10 @@ on:
       - 'supabase/migrations/*card_tier_market_value_sync.sql'
       - 'supabase/migrations/*card_market_value_checked_at.sql'
       - 'supabase/migrations/*card_tier_value_primary.sql'
+      - 'supabase/migrations/*card_tier_requires_verified_honours.sql'
+      - 'supabase/migrations/*young_talent_market_watch.sql'
       - 'supabase/tests/card_tier_market_value*'
+      - 'supabase/tests/young_talent_market_watch.test.sql'
       - '.github/workflows/card-tier-market-value-regression.yml'
   push:
     branches: [main]
@@ -54,5 +57,11 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027194000_card_market_value_checked_at.sql
       - name: Apply current-value-first tier migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027210000_card_tier_value_primary.sql
+      - name: Apply verified-honours tier migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028090000_card_tier_requires_verified_honours.sql
+      - name: Apply young talent market watch migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261028093000_young_talent_market_watch.sql
       - name: Verify value-aware tier rules and update trigger
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/card_tier_market_value.test.sql
+      - name: Verify youth market snapshot and momentum view
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/young_talent_market_watch.test.sql

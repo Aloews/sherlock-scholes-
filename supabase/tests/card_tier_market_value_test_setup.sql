@@ -1,3 +1,10 @@
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
+end $$;
+
 create schema if not exists public;
 create table public.cards (
   id uuid primary key default gen_random_uuid(),
@@ -8,7 +15,8 @@ create table public.cards (
   fame smallint,
   market_value_eur bigint,
   market_value_at date,
-  born_on date
+  born_on date,
+  facts jsonb not null default '{}'::jsonb
 );
 create or replace function public.fame_tier(p_fame smallint)
 returns text language sql immutable as $$

@@ -30,6 +30,7 @@ def test_prospect_does_not_override_historic_legend_signals():
         "market_value_eur": 60_000_000,
         "market_value_at": "2026-10-01",
         "fame": 99,
+        "facts": {"honours": [{"title": "Чемпион страны", "count": 1, "kind": "team"}]},
     }
     assert tier_for(card, today=date(2026, 10, 20)) == "legendary"
 
@@ -55,8 +56,35 @@ def test_high_fame_without_current_value_does_not_grant_epic():
     assert tier_for(card, today=date(2026, 10, 27)) == "rare"
 
 
-def test_legendary_fame_is_preserved_without_market_value():
-    assert tier_for({"category": "player", "fame": 99}) == "legendary"
+def test_high_fame_without_verified_honours_is_not_legendary():
+    assert tier_for({"category": "player", "fame": 99}) == "rare"
+
+
+def test_legendary_fame_requires_verified_structured_honours():
+    card = {
+        "category": "player",
+        "fame": 99,
+        "facts": {"honours": [{"title": "Победитель Лиги чемпионов УЕФА", "count": 5, "kind": "team"}]},
+    }
+    assert tier_for(card) == "legendary"
+
+
+def test_runner_up_or_finalist_does_not_count_as_verified_winning_honour():
+    card = {
+        "category": "player",
+        "fame": 99,
+        "facts": {"honours": [{"title": "Финалист Лиги чемпионов УЕФА", "count": 3, "kind": "team"}]},
+    }
+    assert tier_for(card) == "rare"
+
+
+def test_malformed_honours_do_not_grant_legendary_tier():
+    card = {
+        "category": "player",
+        "fame": 99,
+        "facts": {"honours": [{"title": "{{cite web |url=https", "count": 2022, "kind": "team"}]},
+    }
+    assert tier_for(card) == "rare"
 
 
 def test_one_award_does_not_promote_a_low_fame_player_to_epic():

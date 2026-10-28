@@ -153,6 +153,8 @@ jobs:
           echo "::group::docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_stats_transfermarkt.py || failed="$failed docs/test_players_stats_transfermarkt.py"
           python ../docs/test_players_market_value_transfermarkt.py || failed="$failed docs/test_players_market_value_transfermarkt.py"
+          python ../docs/test_young_talent_market_watch.py || failed="$failed docs/test_young_talent_market_watch.py"
+          python -m py_compile ../docs/young_talent_market_watch.py || failed="$failed docs/young_talent_market_watch.py"
           python ../docs/test_cards_honours_build.py || failed="$failed docs/test_cards_honours_build.py"
           python ../docs/test_cards_tier_build.py || failed="$failed docs/test_cards_tier_build.py"
           python ../docs/test_cards_photo_transfermarkt.py || failed="$failed docs/test_cards_photo_transfermarkt.py"

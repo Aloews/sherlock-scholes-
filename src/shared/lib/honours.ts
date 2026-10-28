@@ -72,6 +72,22 @@ function canonicalTitle(value: string): string {
     .trim();
 }
 
+function ballonVariant(title: string, kind?: string | null): 'fifa' | 'france' | 'generic' | null {
+  if (kind === 'team') return null;
+  const lower = title.toLocaleLowerCase('ru');
+  if (lower.includes('клубного чемпионата мира') || lower.includes('club world cup')) return null;
+  const isBallon = (
+    (lower.includes('золот') && lower.includes('мяч')) ||
+    lower.includes("ballon d'or") ||
+    lower.includes('ballon d’or') ||
+    lower.includes('ballon dor')
+  );
+  if (!isBallon) return null;
+  if (lower.includes('фифа') || lower.includes('fifa')) return 'fifa';
+  if (lower.includes('france football')) return 'france';
+  return 'generic';
+}
+
 function canonicalKey(value: string): string {
   return canonicalTitle(value).toLocaleLowerCase('ru').replace(/[.,:;!?]/g, '').replace(/\s+/g, ' ');
 }
@@ -95,7 +111,31 @@ export function splitHonours({ titles, legendTitles, honours, tournaments }: Hon
 
   clean(titles).forEach((title) => addTrophy(title));
   clean(legendTitles).forEach((title) => addTrophy(title));
+
+  // France Football's Ballon d'Or and the 2010–2015 FIFA Ballon d'Or are
+  // two eras of one historic award lineage. Sum the distinct eras, but use max
+  // for duplicate copies of the same source label and across legacy/structured sources.
+  const ballonCounts: Partial<Record<'fifa' | 'france' | 'generic', number>> = {};
+  const nonBallonHonours: HonourRecord[] = [];
   (honours ?? []).forEach((item) => {
+    if (!item || typeof item.title !== 'string' || !item.title.trim()) return;
+    const variant = ballonVariant(item.title, item.kind);
+    if (!variant) {
+      nonBallonHonours.push(item);
+      return;
+    }
+    const parsed = splitCount(item.title);
+    const count = Math.max(1, Number(item.count) || 1, parsed.count);
+    ballonCounts[variant] = Math.max(ballonCounts[variant] ?? 0, count);
+  });
+  if (Object.keys(ballonCounts).length > 0) {
+    const eraTotal = ballonCounts.fifa && ballonCounts.france
+      ? ballonCounts.fifa + ballonCounts.france
+      : Math.max(ballonCounts.fifa ?? 0, ballonCounts.france ?? 0);
+    const count = Math.max(ballonCounts.generic ?? 0, eraTotal);
+    addTrophy('Золотой мяч', count);
+  }
+  nonBallonHonours.forEach((item) => {
     if (item && typeof item.title === 'string' && item.title.trim()) {
       addTrophy(item.title, Number(item.count) || 1);
     }

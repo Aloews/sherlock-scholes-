@@ -73,6 +73,17 @@ describe('splitHonours', () => {
     expect(result.trophies).toEqual(['Золотой мяч ×3']);
   });
 
+  it('combines Messi-era France Football and FIFA Ballon d’Or counts into eight', () => {
+    const result = splitHonours({
+      titles: ['Золотой мяч ×4'],
+      honours: [
+        { title: 'Обладатель «Золотого мяча» по версии France Football', count: 4, kind: 'personal' },
+        { title: 'Обладатель «Золотого мяча ФИФА»', count: 4, kind: 'personal' },
+      ],
+    });
+    expect(result.trophies).toEqual(['Золотой мяч ×8']);
+  });
+
   it('does not show an award twice when its source uses a longer label', () => {
     const result = splitHonours({
       titles: ['Золотой мяч ×1'],
