@@ -12,6 +12,10 @@ SCRAPER = os.path.join(HERE, "..", "football_scraper")
 APPLY = os.environ.get("APPLY") == "1"
 
 TIERS = ("icon", "legendary", "epic", "prospect", "rare", "common")
+NON_WIN_HONOUR = re.compile(
+    r"финалист|вице-чемпион|серебряный приз[её]р|бронзовый приз[её]р|участник|номинант|runner.?up|finalist|participant|nominee",
+    re.I,
+)
 VALUE_MAX_AGE_DAYS = 548
 PROSPECT_VALUE_20 = 20_000_000
 PROSPECT_VALUE_23 = 40_000_000
@@ -51,7 +55,8 @@ def has_verified_honours(card):
             count = 0
         if (len(title) >= 3 and count >= 1
                 and not re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I)
-                and title.casefold().strip(" «»„“”\\\".,:;!?") not in {"награда", "награды"}):
+                and title.casefold().strip(" «»„“”\\\".,:;!?") not in {"награда", "награды"}
+                and not NON_WIN_HONOUR.search(title)):
             return True
     return False
 
