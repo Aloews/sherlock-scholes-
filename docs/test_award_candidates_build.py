@@ -189,6 +189,7 @@ class CandidateRankingTests(unittest.TestCase):
         )
         self.assertTrue(all(row["source_url"] == source for row in outcomes))
         self.assertTrue(all(row["announced_at"] == "2026-10-26T20:00:00+00:00" for row in outcomes))
+        self.assertTrue(all(row["verified_by"] == "official_award_source_sync" for row in outcomes))
 
     def test_normalize_supabase_url_removes_accidental_escape_and_trailing_slash(self):
         self.assertEqual(normalize_base_url("\\\\https://project.supabase.co/"), "https://project.supabase.co")
