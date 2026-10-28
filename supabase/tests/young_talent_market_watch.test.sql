@@ -39,5 +39,8 @@ begin
   if v_row.verified_award_wins <> 2 then
     raise exception 'verified career award wins must be retained';
   end if;
+  if v_row.confidence <> 'medium' then
+    raise exception 'two snapshots with current price but no fresh season stats should be medium confidence, got %', v_row.confidence;
+  end if;
 end $$;
 rollback;
