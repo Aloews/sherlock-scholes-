@@ -143,6 +143,53 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(female["source_url"], "https://www.uefa.com/news-media/news/2026-ballon-dor/")
         self.assertFalse(any(row["award_year"] == 2026 and row["card_id"] == "player-no-source" for row in outcomes))
 
+    def test_explicit_official_award_keys_support_new_categories_and_club_cards(self):
+        source = "https://www.uefa.com/news-media/news/2026-awards/"
+        cards = [
+            {
+                "id": "vicky",
+                "category": "woman",
+                "facts": {
+                    "titles": ["Трофей Копа 2026"],
+                    "award_title_keys": {"Трофей Копа 2026": "kopa_trophy_feminin:2026"},
+                    "award_sources": {"kopa_trophy_feminin:2026": source},
+                    "award_announcement_dates": {"kopa_trophy_feminin:2026": "2026-10-26T20:00:00+00:00"},
+                },
+            },
+            {
+                "id": "cata",
+                "category": "woman",
+                "facts": {
+                    "titles": ["Трофей Яшина 2026"],
+                    "award_title_keys": {"Трофей Яшина 2026": "yashin_trophy_feminin:2026"},
+                    "award_sources": {"yashin_trophy_feminin:2026": source},
+                    "award_announcement_dates": {"yashin_trophy_feminin:2026": "2026-10-26T20:00:00+00:00"},
+                },
+            },
+            {
+                "id": "psg",
+                "category": "club",
+                "facts": {
+                    "titles": ["Мужской клуб года 2026"],
+                    "award_title_keys": {"Мужской клуб года 2026": "club_of_the_year:2026"},
+                    "award_sources": {"club_of_the_year:2026": source},
+                    "award_announcement_dates": {"club_of_the_year:2026": "2026-10-26T20:00:00+00:00"},
+                },
+            },
+        ]
+
+        outcomes = extract_explicit_award_outcomes(cards)
+        self.assertEqual(
+            {(row["award_key"], row["award_year"], row["card_id"]) for row in outcomes},
+            {
+                ("kopa_trophy_feminin", 2026, "vicky"),
+                ("yashin_trophy_feminin", 2026, "cata"),
+                ("club_of_the_year", 2026, "psg"),
+            },
+        )
+        self.assertTrue(all(row["source_url"] == source for row in outcomes))
+        self.assertTrue(all(row["announced_at"] == "2026-10-26T20:00:00+00:00" for row in outcomes))
+
     def test_normalize_supabase_url_removes_accidental_escape_and_trailing_slash(self):
         self.assertEqual(normalize_base_url("\\\\https://project.supabase.co/"), "https://project.supabase.co")
 
