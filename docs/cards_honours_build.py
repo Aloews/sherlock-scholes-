@@ -284,16 +284,22 @@ def _legacy_title_identity(value: str) -> tuple[str, int]:
     title = re.sub(r"\s*[×x]\s*\d+\s*$", "", title, flags=re.I).strip()
     title = re.sub(r"\s*\(\d+\)\s*$", "", title).strip()
     normalized = strip_markup(title).lower()
-    if "золотого мяча" in normalized or "золотой мяч" in normalized:
-        return "золотой мяч", count
-    if "трофей копа" in normalized or "кубок копа" in normalized:
-        return "трофей копа", count
-    if "трофей яшина" in normalized or "яшина" in normalized:
-        return "трофей яшина", count
-    if "герда мюллера" in normalized or "герд мюллер" in normalized:
-        return "трофей герда мюллера", count
-    if "сократес" in normalized:
-        return "приз сократеса", count
+    # A year-specific win is a distinct legacy record from the player's career total.
+    # Without this guard, updating "Золотой мяч ×2" to ×3 can replace and hide
+    # the separately recorded "Золотой мяч 2026" entry.
+    year_match = re.search(r"\b(20\d{2})$", normalized)
+    year_suffix = " " + year_match.group(1) if year_match else ""
+    award_name = normalized[:year_match.start()].strip() if year_match else normalized
+    if "золотого мяча" in award_name or "золотой мяч" in award_name:
+        return "золотой мяч" + year_suffix, count
+    if "трофей копа" in award_name or "кубок копа" in award_name:
+        return "трофей копа" + year_suffix, count
+    if "трофей яшина" in award_name or "яшина" in award_name:
+        return "трофей яшина" + year_suffix, count
+    if "герда мюллера" in award_name or "герд мюллер" in award_name:
+        return "трофей герда мюллера" + year_suffix, count
+    if "сократес" in award_name:
+        return "приз сократеса" + year_suffix, count
     normalized = re.sub(r"^обладатель\s+", "", normalized)
     normalized = re.sub(r"\s+по версии\s+.+$", "", normalized)
     normalized = re.sub(r"[«»„“”\".,:;!?]", "", normalized)
@@ -366,15 +372,51 @@ def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]
     return titles
 
 
+def merge_structured_honours(existing: list | None, incoming: list[dict]) -> list[dict]:
+    """Merge source honours without deleting verified awards from another source."""
+    merged: list[dict] = []
+    positions: dict[tuple[str, str], int] = {}
+    for item in list(existing or []) + list(incoming or []):
+        if not isinstance(item, dict) or not str(item.get("title") or "").strip():
+            continue
+        key, parsed_count = _legacy_title_identity(legacy_title_label(item))
+        kind = str(item.get("kind") or "")
+        identity = (key, kind)
+        try:
+            count = max(1, int(item.get("count") or parsed_count or 1))
+        except (TypeError, ValueError):
+            count = max(1, parsed_count)
+        normalized_item = dict(item)
+        normalized_item["count"] = count
+        if identity not in positions:
+            positions[identity] = len(merged)
+            merged.append(normalized_item)
+            continue
+        index = positions[identity]
+        previous = merged[index]
+        previous_count = max(1, int(previous.get("count") or 1))
+        # Prefer the record with the higher verified count, but retain source
+        # metadata present on either record (e.g. official UEFA source/date).
+        chosen = dict(previous if previous_count > count else normalized_item)
+        other = normalized_item if previous_count > count else previous
+        for field, value in other.items():
+            if field not in chosen or chosen[field] in (None, "", [], {}):
+                chosen[field] = value
+        chosen["count"] = max(previous_count, count)
+        merged[index] = chosen
+    return merged
+
+
 def apply_honours(url: str, key: str, card: dict, honours: list[dict]) -> bool:
     """Merge verified honours into one card without overwriting unrelated facts."""
     existing_facts = card.get("facts")
     facts = dict(existing_facts) if isinstance(existing_facts, dict) else {}
+    merged_honours = merge_structured_honours(facts.get("honours"), honours)
     legacy_titles = merge_legacy_titles(facts.get("titles"), honours)
-    if facts.get("honours") == honours and facts.get("titles") == legacy_titles:
+    if facts.get("honours") == merged_honours and facts.get("titles") == legacy_titles:
         return False
 
-    facts["honours"] = honours
+    facts["honours"] = merged_honours
     facts["titles"] = legacy_titles
     facts["honours_source"] = "https://ru.wikipedia.org/wiki/" + urllib.parse.quote(
         card["name"].replace(" ", "_"), safe="()_,"
