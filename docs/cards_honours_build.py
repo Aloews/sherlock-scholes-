@@ -197,7 +197,8 @@ def parse_honours(wikitext: str) -> list[dict]:
             item = strip_markup(item)
             award_text = item.split(":", 1)[0]
             # Only a count before a year list is a count; a parenthesized year is not.
-            count, match = 1, COUNT.search(award_text) if ":" in item else (1, None)
+            count = 1
+            match = COUNT.search(award_text) if ":" in item else None
             if match:
                 count = int(match.group(1))
                 award_text = award_text[:match.start()] + award_text[match.end():]
