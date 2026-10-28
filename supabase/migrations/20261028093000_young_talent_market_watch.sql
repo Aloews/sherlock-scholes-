@@ -62,11 +62,16 @@ select snapshot_date, card_id, player_name, age, market_value_eur, market_value_
          ))
        ))::numeric(6,3) as score,
        case
-         when snapshots_seen >= 3 and verified_honours_count > 0 then 'high'
-         when snapshots_seen >= 2 then 'medium'
+         when snapshots_seen >= 3
+          and market_value_at >= snapshot_date - 45
+          and verified_honours_count > 0
+          and season_stats_fetched_at >= (snapshot_date - 14)::timestamptz
+           then 'high'
+         when snapshots_seen >= 2 and market_value_at >= snapshot_date - 90 then 'medium'
          else 'low'
        end as confidence,
        score_components || jsonb_build_object(
+         'market_value_age_days', snapshot_date - market_value_at,
          'price_change_pct', price_change_pct,
          'momentum_score', greatest(-10::numeric, least(20::numeric,
            coalesce(price_change_pct, 0) * 0.5
