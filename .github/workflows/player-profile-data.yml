@@ -32,7 +32,7 @@ on:
         description: 'Maximum players processed in a scheduled/batch run'
         required: false
         type: string
-        default: '800'
+        default: '1200'
 
 concurrency:
   group: player-profile-data
@@ -83,7 +83,7 @@ jobs:
           if [ -n "$TM_ID" ]; then
             APPLY=1 python3 docs/players_stats_transfermarkt.py --only "$TM_ID" --refresh
           else
-            limit="${PLAYER_LIMIT:-800}"
+            limit="${PLAYER_LIMIT:-1200}"
             case "$limit" in
               ''|*[!0-9]*) echo "::error::PLAYER_LIMIT must be a positive integer"; exit 2 ;;
             esac
