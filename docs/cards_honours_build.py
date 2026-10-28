@@ -110,62 +110,112 @@ HONOUR_HEADING = re.compile(r"^==\s*([^=]*(?:достижени|титул|на�
                             re.M | re.I)
 
 
-def _sections(wikitext: str) -> list[str]:
-    bodies = []
+def _sections(wikitext: str) -> list[tuple[str, str]]:
+    sections = []
     for head in HONOUR_HEADING.finditer(wikitext):
         rest = wikitext[head.end():]
         nxt = re.search(r"^==[^=]", rest, re.M)
-        bodies.append(rest[:nxt.start()] if nxt else rest)
-    return bodies
+        body = rest[:nxt.start()] if nxt else rest
+        sections.append((head.group(1).strip(), body))
+    return sections
+
+
+def _role_from_heading(heading: str) -> str | None:
+    value = heading.casefold()
+    if re.search(r"в качестве игрока|как игрок|as a player|player career", value):
+        return "player"
+    if re.search(r"в качестве (?:главного )?тренера|в качестве менеджера|as a coach|as a manager|manager career", value):
+        return "manager"
+    return None
+
+
+def _canonicalize_golden_ball_variants(honours: list[dict]) -> list[dict]:
+    """Combine the France Football and FIFA Ballon d'Or eras into one total."""
+    result = []
+    groups: dict[tuple[str, str | None], dict[str, int]] = {}
+    for honour in honours:
+        title = str(honour.get("title") or "")
+        lower = title.casefold()
+        is_ball = (
+            (("золот" in lower and "мяч" in lower)
+             or "ballon d'or" in lower or "ballon d’or" in lower or "ballon dor" in lower)
+            and "клубного чемпионата мира" not in lower and "club world cup" not in lower
+        )
+        if not is_ball or honour.get("kind") != "personal":
+            result.append(honour)
+            continue
+        role = honour.get("role")
+        variant = "fifa" if "фифа" in lower or "fifa" in lower else (
+            "france" if "france football" in lower else "generic"
+        )
+        key = (str(honour.get("kind") or "personal"), role)
+        counts = groups.setdefault(key, {})
+        counts[variant] = max(counts.get(variant, 0), max(1, int(honour.get("count") or 1)))
+
+    for (kind, role), counts in groups.items():
+        distinct_eras = counts.get("fifa", 0) + counts.get("france", 0)
+        total = max(counts.get("generic", 0), distinct_eras,
+                    counts.get("fifa", 0), counts.get("france", 0))
+        record = {"title": "Обладатель «Золотого мяча»", "count": total, "kind": kind}
+        if role:
+            record["role"] = role
+        result.append(record)
+    return result
 
 
 def parse_honours(wikitext: str) -> list[dict]:
-    """[{title, count, kind}] from every honours-shaped section, in order."""
-    out, kind = [], None
-    for line in "\n".join(_sections(wikitext)).splitlines():
-        sub = re.match(r"^===\s*([^=]+?)\s*===", line)
-        if sub:
-            k = sub.group(1).lower()
-            kind = "team" if "командн" in k else ("personal" if "личн" in k else kind)
-            continue
-        if not line.lstrip().startswith("*"):
-            continue
-        item = line.lstrip("* ").strip()
-        if not item:
-            continue
+    """Parse honours with role-aware, suffix-only counts."""
+    out = []
+    for section_heading, body in _sections(wikitext):
+        kind = None
+        role = _role_from_heading(section_heading)
+        for line in body.splitlines():
+            sub = re.match(r"^===\s*([^=]+?)\s*===", line)
+            if sub:
+                heading = sub.group(1).strip()
+                lower_heading = heading.casefold()
+                detected_role = _role_from_heading(heading)
+                if detected_role:
+                    role = detected_role
+                if "командн" in lower_heading or "team" in lower_heading:
+                    kind = "team"
+                elif "личн" in lower_heading or "individual" in lower_heading or "personal" in lower_heading:
+                    kind = "personal"
+                continue
+            if not line.lstrip().startswith("*"):
+                continue
+            item = line.lstrip("* ").strip()
+            if not item:
+                continue
 
-        # Strip nested citation templates before splitting on a colon: URLs
-        # inside templates contain colons too and must not become part of a title.
-        item = strip_markup(item)
-        # Everything before the first colon is the honour; after it are years.
-        award_text = item.split(":", 1)[0]
-        count, m = 1, COUNT.search(award_text)
-        if m:
-            count = int(m.group(1))
-            award_text = award_text[:m.start()] + award_text[m.end():]
-        title = strip_markup(award_text)
-        # Reject template/citation fragments and generic placeholders rather than
-        # polluting a player's trophy list with parser artefacts.
-        if len(title) < 3 or re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I):
-            continue
-        placeholder = title.lower().strip(" «»„“”\".,:;!?")
-        if placeholder in {"награда", "награды", "награда «»"}:
-            continue
-        if title.count("«") != title.count("»"):
-            continue
-        if not re.search(r"[A-Za-zА-Яа-яЁё0-9]", title):
-            continue
-        out.append({"title": title, "count": count, "kind": kind or "team"})
+            item = strip_markup(item)
+            award_text = item.split(":", 1)[0]
+            # Only a count before a year list is a count; a parenthesized year is not.
+            count, match = 1, COUNT.search(award_text) if ":" in item else (1, None)
+            if match:
+                count = int(match.group(1))
+                award_text = award_text[:match.start()] + award_text[match.end():]
+            title = strip_markup(award_text)
+            if len(title) < 3 or re.search(r"\{\{|\}\}|\|url\s*=|https?://", title, re.I):
+                continue
+            placeholder = title.lower().strip(" «»„“”\".,:;!?")
+            if placeholder in {"награда", "награды", "награда «»"}:
+                continue
+            if title.count("«") != title.count("»"):
+                continue
+            if not re.search(r"[A-Za-zА-Яа-яЁё0-9]", title):
+                continue
+            record = {"title": title, "count": count, "kind": kind or "team"}
+            if role:
+                record["role"] = role
+            out.append(record)
 
-    # Two honour sections can repeat an entry (player vs manager lists);
-    # keep the higher count rather than showing the same trophy twice.
     merged: dict[tuple, dict] = {}
-    for h in out:
-        k = (h["title"], h["kind"])
-        if k not in merged or h["count"] > merged[k]["count"]:
-            merged[k] = h
-    return list(merged.values())
-
+    for honour in out:
+        identity = (honour["title"], honour["kind"], honour.get("role"))
+        if identity not in merged or honour["count"] > merged[identity]["count"]:
+            merged[identity] = honour
+    return _canonicalize_golden_ball_variants(list(merged.values()))
 
 def fetch_cards(url: str, key: str, limit: int, offset: int = 0,
                 only_name: str | None = None) -> list[dict]:
