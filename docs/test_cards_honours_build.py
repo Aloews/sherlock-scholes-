@@ -134,6 +134,46 @@ class ParseHonoursTests(unittest.TestCase):
         )
         self.assertEqual(merged, ["Игрок года в «Тоттенхэм Хотспур» ×3"])
 
+    def test_messi_ballondor_eras_are_combined_into_eight(self):
+        source = """
+== Достижения ==
+=== Личные достижения ===
+* Обладатель «Золотого мяча» по версии France Football (4): 2009, 2019, 2021, 2023
+* Обладатель «Золотого мяча ФИФА» (4): 2010, 2011, 2012, 2015
+"""
+        honours = parse_honours(source)
+        ballons = [h for h in honours if "Золотого мяча" in h["title"]]
+        self.assertEqual(len(ballons), 1)
+        self.assertEqual(ballons[0]["count"], 8)
+        self.assertEqual(merge_legacy_titles(["Золотой мяч ×4"], ballons), ["Золотой мяч ×8"])
+
+    def test_year_in_parentheses_is_not_parsed_as_award_count(self):
+        source = """
+== Достижения ==
+=== Личные достижения ===
+* Орден «За заслуги перед Итальянской Республикой» (2022)
+"""
+        honours = parse_honours(source)
+        self.assertEqual(
+            honours,
+            [{"title": "Орден «За заслуги перед Итальянской Республикой» (2022)",
+              "count": 1, "kind": "personal"}],
+        )
+
+    def test_player_and_manager_champions_league_titles_are_separate(self):
+        source = """
+== Достижения ==
+=== В качестве игрока ===
+* Обладатель Кубка европейских чемпионов (2): 1988/89, 1989/90
+=== В качестве главного тренера ===
+* Победитель Лиги чемпионов УЕФА (5): 2002/03, 2006/07, 2013/14, 2021/22, 2023/24
+"""
+        honours = parse_honours(source)
+        player = next(h for h in honours if h["title"] == "Обладатель Кубка европейских чемпионов")
+        manager = next(h for h in honours if h["title"] == "Победитель Лиги чемпионов УЕФА")
+        self.assertEqual((player["count"], player.get("role")), (2, "player"))
+        self.assertEqual((manager["count"], manager.get("role")), (5, "manager"))
+
     def test_non_numeric_parenthetical_is_preserved(self):
         source = """
 == Достижения ==
