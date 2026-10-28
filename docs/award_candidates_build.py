@@ -989,29 +989,28 @@ def competition_format(tournament: str) -> str:
 
 
 def canonical_team_tournament(tournament: str) -> str:
-    raw = re.sub(r"\\s+", " ", str(tournament or "").strip())
+    raw = re.sub(r"\s+", " ", str(tournament or "").strip())
     value = raw.casefold()
     aliases = (
-        (r"\\b(afc champions league elite|лига чемпионов азии элита)\\b", "AFC Champions League Elite"),
-        (r"\\b(afc champions league two|лига чемпионов азии 2|лига чемпионов азии два)\\b", "AFC Champions League Two"),
-        (r"\\b(uefa champions league|лига чемпионов(?!\\s+азии))\\b", "UEFA Champions League"),
-        (r"\\b(uefa europa league|europa league|лига европы)\\b", "UEFA Europa League"),
-        (r"\\b(uefa conference league|conference league|лига конференций)\\b", "UEFA Conference League"),
-        (r"\\b(english premier league|англия\\. премьер-лига|премьер-лига англии)\\b", "English Premier League"),
-        (r"\\b(russian premier league|россия\\. премьер-лига|российская премьер-лига)\\b", "Russian Premier League"),
-        (r"\\b(spanish laliga 2|laliga 2|испания\\. сегунда|сегунда дивизион)\\b", "Spanish LALIGA 2"),
-        (r"\\b(spanish laliga|spanish la liga|la liga|испания\\. ла лига)\\b", "Spanish LALIGA"),
-        (r"\\b(german 2\\. bundesliga|2\\. bundesliga|германия\\. вторая бундеслига)\\b", "German 2. Bundesliga"),
-        (r"\\b(austrian bundesliga|австрия\\. бундеслига)\\b", "Austrian Bundesliga"),
-        (r"\\b(german bundesliga|германия\\. бундеслига)\\b", "German Bundesliga"),
-        (r"\\b(italian serie a|serie a|италия\\. серия а)\\b", "Italian Serie A"),
-        (r"\\b(brazilian serie a|бразилия\\. высшая лига)\\b", "Brazilian Serie A"),
-        (r"\\b(french ligue 1|ligue 1|франция\\. лига 1)\\b", "French Ligue 1"),
-        (r"\\b(german 2\\. bundesliga|германия\\. вторая бундеслига)\\b", "German 2. Bundesliga"),
-        (r"\\b(dutch eredivisie|эрдивизи|нидерланды\\. высшая лига)\\b", "Dutch Eredivisie"),
-        (r"\\b(portuguese primeira liga|primeira liga|португалия\\. высшая лига)\\b", "Portuguese Primeira Liga"),
-        (r"\\b(mls|usa\\. мЛС|сша\\. мЛС)\\b", "MLS"),
-        (r"\\b(uefa nations league|nations league|лига наций)\\b", "UEFA Nations League"),
+        (r"\b(afc champions league elite|лига чемпионов азии элита)\b", "AFC Champions League Elite"),
+        (r"\b(afc champions league two|лига чемпионов азии 2|лига чемпионов азии два)\b", "AFC Champions League Two"),
+        (r"\b(uefa champions league|лига чемпионов(?!\s+азии))\b", "UEFA Champions League"),
+        (r"\b(uefa europa league|europa league|лига европы)\b", "UEFA Europa League"),
+        (r"\b(uefa conference league|conference league|лига конференций)\b", "UEFA Conference League"),
+        (r"\b(english premier league|англия\. премьер-лига|премьер-лига англии)\b", "English Premier League"),
+        (r"\b(russian premier league|россия\. премьер-лига|российская премьер-лига)\b", "Russian Premier League"),
+        (r"\b(spanish laliga 2|laliga 2|испания\. сегунда|сегунда дивизион)\b", "Spanish LALIGA 2"),
+        (r"\b(spanish laliga|spanish la liga|la liga|испания\. ла лига)\b", "Spanish LALIGA"),
+        (r"\b(german 2\. bundesliga|2\. bundesliga|германия\. вторая бундеслига)\b", "German 2. Bundesliga"),
+        (r"\b(austrian bundesliga|австрия\. бундеслига)\b", "Austrian Bundesliga"),
+        (r"\b(german bundesliga|германия\. бундеслига)\b", "German Bundesliga"),
+        (r"\b(brazilian serie a|бразилия\. высшая лига)\b", "Brazilian Serie A"),
+        (r"\b(italian serie a|италия\. серия а)\b", "Italian Serie A"),
+        (r"\b(french ligue 1|ligue 1|франция\. лига 1)\b", "French Ligue 1"),
+        (r"\b(dutch eredivisie|эрдивизи|нидерланды\. высшая лига)\b", "Dutch Eredivisie"),
+        (r"\b(portuguese primeira liga|primeira liga|португалия\. высшая лига)\b", "Portuguese Primeira Liga"),
+        (r"\b(mls|usa\. мЛС|сша\. мЛС)\b", "MLS"),
+        (r"\b(uefa nations league|nations league|лига наций)\b", "UEFA Nations League"),
     )
     for pattern, canonical in aliases:
         if re.search(pattern, value, re.I):
