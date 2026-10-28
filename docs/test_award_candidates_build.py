@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population, upsert_rows)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
 from datetime import date
 
 
@@ -544,6 +544,32 @@ class CandidateRankingTests(unittest.TestCase):
         rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 27))
         self.assertEqual({row["tournament"] for row in rows}, {"League A", "National Cup"})
         self.assertFalse(any("Friendly" in row["tournament"] for row in rows))
+
+    def test_localized_team_tournament_aliases_merge_without_cross_competition_merges(self):
+        matches = [
+            {"tournament": "English Premier League", "match_date": "2026-08-22",
+             "home_key": "alpha", "away_key": "beta", "home_team": "Alpha",
+             "away_team": "Beta", "home_score": 1, "away_score": 0},
+            {"tournament": "Англия. Премьер-лига", "match_date": "2026-08-29",
+             "home_key": "beta", "away_key": "alpha", "home_team": "Beta",
+             "away_team": "Alpha", "home_score": 1, "away_score": 1},
+            {"tournament": "English Premier League", "match_date": "2026-08-22",
+             "home_key": "alpha", "away_key": "beta", "home_team": "Alpha",
+             "away_team": "Beta", "home_score": 1, "away_score": 0},
+        ]
+        rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 27))
+        self.assertEqual({row["tournament"] for row in rows}, {"English Premier League"})
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({row["evidence"]["matches_played"] for row in rows}, {2})
+
+    def test_team_tournament_aliases_keep_similar_leagues_separate(self):
+        self.assertEqual(canonical_team_tournament("German Bundesliga"), "German Bundesliga")
+        self.assertEqual(canonical_team_tournament("Austrian Bundesliga"), "Austrian Bundesliga")
+        self.assertEqual(canonical_team_tournament("German 2. Bundesliga"), "German 2. Bundesliga")
+        self.assertEqual(canonical_team_tournament("Italian Serie A"), "Italian Serie A")
+        self.assertEqual(canonical_team_tournament("Brazilian Serie A"), "Brazilian Serie A")
+        self.assertEqual(canonical_team_tournament("UEFA Champions League"), "UEFA Champions League")
+        self.assertEqual(canonical_team_tournament("AFC Champions League Elite"), "AFC Champions League Elite")
 
     def test_world_cup_is_classified_as_a_tournament_not_a_league(self):
         self.assertEqual(competition_format("Чемпионат мира"), "international_tournament_form_proxy")
