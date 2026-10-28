@@ -354,7 +354,11 @@ INSERT INTO public.award_outcome (
     source_url, announced_at, verified_at, verified_by
 )
 SELECT winners.award_key, winners.award_year, cards.id, '*', 'winner',
-       winners.source_url, winners.announced_at, now(), 'UEFA official 2026 award results'
+       winners.source_url, winners.announced_at, now(),
+       CASE WHEN winners.award_year = 2026
+            THEN 'UEFA official 2026 award results'
+            ELSE 'UEFA official historical award list'
+       END
 FROM (VALUES
     ('ballon_dor', 2026, 'player', 'Harry Kane', 'https://www.uefa.com/news-media/news/02aa-21ec75ddadcd-43023dfa1670-1000--alexia-putellas-and-harry-kane-win-2026-ballon-d-ortm-awards/', '2026-10-26T20:00:00+00:00'::timestamptz),
     ('ballon_dor_feminin', 2026, 'woman', 'Alexia Putellas', 'https://www.uefa.com/news-media/news/02aa-21ec75ddadcd-43023dfa1670-1000--alexia-putellas-and-harry-kane-win-2026-ballon-d-ortm-awards/', '2026-10-26T20:00:00+00:00'::timestamptz),
