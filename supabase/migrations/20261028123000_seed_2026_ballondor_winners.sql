@@ -45,8 +45,7 @@ FROM (VALUES
         jsonb_build_object(
             'position', 'Полузащитник', 'birth_year', 2006,
             'national_team', 'Испании',
-            'official_profile_source', 'https://www.fcbarcelona.com/',
-            'market_value_status', 'No verified Transfermarkt valuation; canonical market_value_eur remains NULL.'
+
         )
     ),
     (
@@ -61,8 +60,8 @@ FROM (VALUES
             'award_season_stats_2025_26', jsonb_build_object(
                 'apps', 32, 'minutes', 2880, 'goals_conceded', 16,
                 'source_url', 'https://www.fcbarcelona.com/en/football/womens-football/news/4599035/cata-coll-goalkeeper-of-the-year'
-            ),
-            'market_value_status', 'No verified Transfermarkt valuation; canonical market_value_eur remains NULL.'
+
+            )
         )
     ),
     (
@@ -73,8 +72,7 @@ FROM (VALUES
         jsonb_build_object(
             'position', 'Нападающий', 'birth_year', 1991,
             'national_team', 'Мексики',
-            'official_profile_source', 'https://tuzos.com.mx/jugadores/charlyn-corral/',
-            'market_value_status', 'No verified Transfermarkt valuation; canonical market_value_eur remains NULL.'
+            'official_profile_source', 'https://tuzos.com.mx/jugadores/charlyn-corral/'
         )
     )
 ) AS seed(name, name_en, photo_url, top_club, country, position_ru, born_on, external_source_key, facts)
