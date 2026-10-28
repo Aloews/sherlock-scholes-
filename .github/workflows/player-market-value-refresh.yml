@@ -7,6 +7,9 @@ on:
       - '.github/workflows/player-market-value-refresh.yml'
       - 'docs/players_market_value_transfermarkt.py'
       - 'docs/test_players_market_value_transfermarkt.py'
+      - 'docs/young_talent_market_watch.py'
+      - 'docs/test_young_talent_market_watch.py'
+      - 'supabase/migrations/20261028093000_young_talent_market_watch.sql'
   schedule:
     - cron: '0 7 * * *'
   workflow_dispatch:
@@ -48,6 +51,12 @@ jobs:
 
       - name: Test source-date guard and stale-first rotation
         run: python docs/test_players_market_value_transfermarkt.py
+
+      - name: Test youth award and market scoring
+        run: python docs/test_young_talent_market_watch.py
+
+      - name: Compile youth market watch
+        run: python -m py_compile docs/young_talent_market_watch.py
 
       - name: Verify production credentials and target
         run: |
@@ -138,6 +147,9 @@ jobs:
 
       - name: Refresh award and team-tournament candidates after market values
         run: python3 docs/award_candidates_build.py
+
+      - name: Snapshot young talent awards, prices and market movement
+        run: python3 docs/young_talent_market_watch.py
 
   watch:
     runs-on: ubuntu-latest
