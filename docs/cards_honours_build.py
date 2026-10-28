@@ -369,6 +369,25 @@ def merge_legacy_titles(existing: list | None, honours: list[dict]) -> list[str]
                 titles.pop(i)
                 if i < best_index:
                     best_index -= 1
+    # Keep a year-specific win visible while suppressing only a duplicate generic
+    # one-count label. A career total such as "Золотой мяч ×3" remains meaningful.
+    year_specific_bases = set()
+    for item in titles:
+        identity, _count = _legacy_title_identity(item)
+        year_match = re.search(r"\s(20\d{2})$", identity)
+        if year_match:
+            year_specific_bases.add(identity[:year_match.start()].strip())
+    if year_specific_bases:
+        filtered = []
+        for item in titles:
+            identity, count = _legacy_title_identity(item)
+            if re.search(r"\s20\d{2}$", identity):
+                filtered.append(item)
+            elif identity in year_specific_bases and count <= 1:
+                continue
+            else:
+                filtered.append(item)
+        titles = filtered
     return titles
 
 
