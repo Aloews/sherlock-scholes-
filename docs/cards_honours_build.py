@@ -66,7 +66,7 @@ API = "https://ru.wikipedia.org/w/api.php"
 PAUSE_S = 1.1          # stay below one Wikimedia request per second
 
 LINK = re.compile(r"\[\[(?:[^\]|]*\|)?([^\]|]+)\]\]")
-COUNT = re.compile(r"\(\s*'{0,3}(\d+)'{0,3}\s*\)")
+COUNT = re.compile(r"\(\s*'{0,3}(\d+)'{0,3}\s*\)\s*$")
 
 
 def strip_markup(s: str) -> str:
