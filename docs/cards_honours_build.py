@@ -90,17 +90,38 @@ def strip_markup(s: str) -> str:
 
 
 def fetch_wikitext(title: str, session: requests.Session) -> str | None:
-    r = session.get(API, params={
+    params = {
         "action": "parse", "page": title, "prop": "wikitext",
         "format": "json", "formatversion": "2", "redirects": "1",
-    }, timeout=30)
-    if r.status_code == 404:
-        return None
-    r.raise_for_status()
-    payload = r.json()
-    if payload.get("error"):
-        return None
-    return payload.get("parse", {}).get("wikitext")
+    }
+    transient_statuses = {429, 500, 502, 503, 504}
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        try:
+            response = session.get(API, params=params, timeout=30)
+        except requests.RequestException:
+            if attempt == max_attempts - 1:
+                raise
+            time.sleep(min(30, 2 ** (attempt + 1)))
+            continue
+
+        if response.status_code == 404:
+            return None
+        if response.status_code in transient_statuses and attempt < max_attempts - 1:
+            retry_after = response.headers.get("Retry-After")
+            try:
+                delay = max(1.0, min(60.0, float(retry_after)))
+            except (TypeError, ValueError):
+                delay = min(30, 2 ** (attempt + 1))
+            time.sleep(delay)
+            continue
+
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("error"):
+            return None
+        return payload.get("parse", {}).get("wikitext")
+    return None
 
 
 # ru-wiki does not use one heading for this. Real examples from the deck:
