@@ -186,13 +186,13 @@ def _canonicalize_golden_ball_variants(honours: list[dict]) -> list[dict]:
 
 
 PERSONAL_AWARD_TITLE_RE = re.compile(
-    r"ballon\\s+d[’']or|золот(?:ой|ого)\\s+мяч|the\\s+best.*(?:player|footballer)|"
-    r"игрок(?:иня)?\\s+года|футболистк?а?\\s+года|трофей\\s+копа|kopa\\s+trophy|"
-    r"golden\\s+boy|золот(?:ой|ого)\\s+мальчик|трофей\\s+яшина|yashin\\s+trophy|"
-    r"goalkeeper\\s+of\\s+the\\s+year|лучший\\s+вратар|герд\\s+мюллер|gerd\\s+m[üu]ller|"
-    r"striker\\s+of\\s+the\\s+year|лучший\\s+нападающ|golden\\s+boot|"
-    r"золот(?:ая|ой)\\s+бутс|сократес|socrates\\s+award|mvp|most\\s+valuable\\s+player|"
-    r"лучший\\s+игрок|best\\s+player\\s+of\\s+the\\s+year",
+    r"ballon\s+d[’']or|золот(?:ой|ого)\s+мяч|the\s+best.*(?:player|footballer)|"
+    r"игрок(?:иня)?\s+года|футболистк?а?\s+года|трофей\s+копа|kopa\s+trophy|"
+    r"golden\s+boy|золот(?:ой|ого)\s+мальчик|трофей\s+яшина|yashin\s+trophy|"
+    r"goalkeeper\s+of\s+the\s+year|лучший\s+вратар|герд\s+мюллер|gerd\s+m[üu]ller|"
+    r"striker\s+of\s+the\s+year|лучший\s+нападающ|golden\s+boot|"
+    r"золот(?:ая|ой)\s+бутс|сократес|socrates\s+award|mvp|most\s+valuable\s+player|"
+    r"лучший\s+игрок|best\s+player\s+of\s+the\s+year",
     re.I,
 )
 
