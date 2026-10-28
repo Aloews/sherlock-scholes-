@@ -169,7 +169,12 @@ def parse_honours(wikitext: str) -> list[dict]:
     for section_heading, body in _sections(wikitext):
         kind = None
         role = _role_from_heading(section_heading)
+        scope = None
         for line in body.splitlines():
+            club_heading = re.match(r"^====\s*([^=]+?)\s*====", line)
+            if club_heading:
+                scope = club_heading.group(1).strip()
+                continue
             sub = re.match(r"^===\s*([^=]+?)\s*===", line)
             if sub:
                 heading = sub.group(1).strip()
@@ -177,6 +182,7 @@ def parse_honours(wikitext: str) -> list[dict]:
                 detected_role = _role_from_heading(heading)
                 if detected_role:
                     role = detected_role
+                scope = None
                 if "командн" in lower_heading or "team" in lower_heading:
                     kind = "team"
                 elif "личн" in lower_heading or "individual" in lower_heading or "personal" in lower_heading:
@@ -208,14 +214,38 @@ def parse_honours(wikitext: str) -> list[dict]:
             record = {"title": title, "count": count, "kind": kind or "team"}
             if role:
                 record["role"] = role
+            if scope:
+                record["_scope"] = scope
             out.append(record)
 
-    merged: dict[tuple, dict] = {}
+    # Repeated sections for the same club are duplicates; distinct club scopes
+    # are additive (e.g. Ancelotti won 2 with Milan and 3 with Real Madrid).
+    scoped_counts: dict[tuple, int] = {}
+    unscoped_counts: dict[tuple, dict] = {}
     for honour in out:
         identity = (honour["title"], honour["kind"], honour.get("role"))
-        if identity not in merged or honour["count"] > merged[identity]["count"]:
-            merged[identity] = honour
-    return _canonicalize_golden_ball_variants(list(merged.values()))
+        scope = honour.get("_scope")
+        if scope:
+            key = (*identity, scope)
+            scoped_counts[key] = max(scoped_counts.get(key, 0), honour["count"])
+        else:
+            if identity not in unscoped_counts or honour["count"] > unscoped_counts[identity]["count"]:
+                unscoped_counts[identity] = honour
+
+    identities = set(unscoped_counts)
+    identities.update((key[0], key[1], key[2]) for key in scoped_counts)
+    merged = []
+    for identity in identities:
+        matching_scopes = [count for key, count in scoped_counts.items() if key[:3] == identity]
+        if matching_scopes:
+            count = sum(matching_scopes)
+            record = {"title": identity[0], "kind": identity[1], "count": count}
+            if identity[2]:
+                record["role"] = identity[2]
+            merged.append(record)
+        elif identity in unscoped_counts:
+            merged.append(unscoped_counts[identity])
+    return _canonicalize_golden_ball_variants(merged)
 
 def fetch_cards(url: str, key: str, limit: int, offset: int = 0,
                 only_name: str | None = None) -> list[dict]:
