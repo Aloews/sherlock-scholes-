@@ -83,7 +83,7 @@ WHERE NOT EXISTS (
     WHERE existing.category = 'woman'
       AND lower(coalesce(existing.name_en, '')) = lower(seed.name_en)
 )
-ON CONFLICT (external_source_key) DO NOTHING;
+ON CONFLICT (external_source_key) WHERE external_source_key IS NOT NULL DO NOTHING;
 
 DROP FUNCTION IF EXISTS public._append_verified_award_fact(
     uuid, text, integer, text, text, integer, text, integer, text, timestamptz
