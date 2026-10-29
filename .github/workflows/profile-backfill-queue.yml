@@ -48,7 +48,7 @@ jobs:
           python-version: "3.12"
       - name: Validate arguments and queue worker tests
         env:
-          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '300' || inputs.max_jobs || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '200' || inputs.max_jobs || '10' }}
           ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           python docs/test_profile_backfill_queue.py
@@ -69,7 +69,7 @@ jobs:
       - name: Enqueue gaps and process a bounded batch
         env:
           ENQUEUE_ONLY: ${{ github.event_name == 'schedule' && 'false' || inputs.enqueue_only }}
-          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '300' || inputs.max_jobs || '10' }}
+          MAX_JOBS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '200' || inputs.max_jobs || '10' }}
           ENQUEUE_LIMIT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_run' || github.event_name == 'push') && '100' || inputs.enqueue_limit || '10' }}
         run: |
           if [ "$ENQUEUE_ONLY" = "true" ]; then
