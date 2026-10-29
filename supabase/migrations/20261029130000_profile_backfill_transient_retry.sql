@@ -8,8 +8,8 @@ create index if not exists profile_backfill_pending_task_idx
   where status in ('pending', 'running');
 
 create index if not exists profile_backfill_retry_task_idx
-  on public.profile_backfill_jobs (task_type, updated_at, priority desc, id)
-  where status = 'failed';
+  on public.profile_backfill_jobs (task_type, status, updated_at, priority desc, id)
+  where status in ('failed', 'no_data');
 
 create or replace function public.enqueue_profile_backfill_jobs(p_limit integer default 1000)
 returns integer
@@ -31,12 +31,18 @@ begin
     select j.id
       from public.profile_backfill_jobs j
      where j.task_type in ('photo_qid', 'photo_tm', 'season_stats')
-       and j.status = 'failed'
-       and j.updated_at <= now() - case
-         when coalesce(j.last_error, '') ~* '(transient|timeout|http 5[0-9][0-9]|profile fetches were lost|temporarily unavailable|connection reset|transient_empty_response)'
-           then interval '1 hour'
-         else interval '7 days'
-       end
+       and (
+         (j.status = 'failed'
+          and j.updated_at <= now() - case
+            when coalesce(j.last_error, '') ~* '(transient|timeout|http 5[0-9][0-9]|profile fetches were lost|temporarily unavailable|connection reset|transient_empty_response)'
+              then interval '1 hour'
+            else interval '7 days'
+          end)
+         or (j.status = 'no_data' and (
+           coalesce(j.last_error, '') like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
+           or j.updated_at <= now() - interval '7 days'
+         ))
+       )
      order by j.priority desc, j.updated_at asc, j.id
      limit least(p_limit, 100)
   ),
