@@ -68,6 +68,7 @@ describe('сторож у прогонов по расписанию', () => {
     expect(byCron.map((w) => w.name).sort())
       .toEqual([
         'daily-enrich.yml',
+        'espn-results-refresh.yml',
         'forecast.yml',
         'multimarket-odds-collection.yml',
         'player-honours.yml',
@@ -94,8 +95,20 @@ describe('сторож у прогонов по расписанию', () => {
     expect(candidates, 'candidate workflow не найден').toBeDefined();
     expect(candidates!.src).not.toMatch(/^\s{2}schedule:/m);
     expect(candidates!.src).toMatch(/workflow_run:/);
-    expect(candidates!.src).toContain('"player-profile-data", "player-stats", "player-market-value-refresh"');
+    expect(candidates!.src).toContain('"player-profile-data", "player-market-value-refresh", "espn-results-refresh"');
     expect(candidates!.src).toContain('--skip-team-candidates');
+  });
+
+  it('team match ingestion runs independently of the slow player crawl', () => {
+    const espn = all.find((w) => w.name === 'espn-results-refresh.yml');
+    const stats = all.find((w) => w.name === 'player-stats.yml');
+    const candidates = all.find((w) => w.name === 'award-and-tournament-candidates.yml');
+    expect(espn, 'ESPN results workflow не найден').toBeDefined();
+    expect(stats, 'player-stats workflow не найден').toBeDefined();
+    expect(candidates, 'candidate workflow не найден').toBeDefined();
+    expect(espn!.src).toContain('python3 espn_stats.py --days "$days"');
+    expect(stats!.src).not.toContain('name: Collect (ESPN)');
+    expect(candidates!.src).toContain('[ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ]');
   });
 
   it('у каждого есть job `watch`, который идёт ВСЕГДА', () => {
