@@ -157,6 +157,7 @@ def build_award_groups(snapshots: list[dict], outcomes: list[dict]) -> list[dict
             row["label"] = int(str(row.get("card_id")) in winners)
         groups.append({"kind": "award", "forecast_key": "|".join(key), "season": key[1],
                        "snapshot_date": snap_date.isoformat(), "announced_at": announced_at.isoformat(),
+                       "source_urls": sorted({str(r.get("source_url")) for r in records if r.get("source_url")}),
                        "rows": rows, "winners": len(winners)})
     return sorted(groups, key=lambda g: g["announced_at"])
 
@@ -215,6 +216,7 @@ def walk_forward(groups: list[dict]) -> dict[str, Any]:
         if model["status"] != "ready":
             reports.append({"forecast_key": target["forecast_key"], "snapshot_date": target["snapshot_date"],
                         "outcome_announced_at": target["announced_at"],
+                        "outcome_source_urls": target.get("source_urls", []),
                         "status": model["status"], "training_examples": model["n"],
                         "training_winners": model["winners"], "training_seasons": model["seasons"],
                         "evaluation_candidates": len(target["rows"])})
@@ -228,6 +230,7 @@ def walk_forward(groups: list[dict]) -> dict[str, Any]:
         all_predictions.extend(predicted)
         reports.append({"forecast_key": target["forecast_key"], "snapshot_date": target["snapshot_date"],
                         "outcome_announced_at": target["announced_at"],
+                        "outcome_source_urls": target.get("source_urls", []),
                         "status": "evaluated", "training_examples": model["n"],
                         "training_winners": model["winners"], "training_seasons": model["seasons"],
                         "evaluation_candidates": len(target["rows"]), "metrics": score_metrics(predicted)})
