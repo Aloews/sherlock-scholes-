@@ -1078,14 +1078,14 @@ def canonical_team_tournament(tournament: str) -> str:
 
 
 def explicit_team_season_floor(tournament: str, snapshot: date) -> date | None:
-    """Return a conservative calendar boundary for annual continental competitions.
+    """Return a conservative calendar boundary for competitions without season IDs.
 
-    A fixed 75-day gap works for many domestic leagues but can fail when the
-    results feed contains qualifying rounds, rescheduled fixtures or an unrelated
-    competition carrying a generic localized label. European/Asian continental
-    seasons restart in the summer; South American and CONCACAF club cups restart
-    in the calendar year. Official season IDs should replace these inferred
-    boundaries when the source provides them.
+    A 75-day gap works for many European leagues, but it silently merges two
+    editions of calendar-year leagues (notably Brazilian Serie A) when the old
+    season ends in December and the next starts in January. Continental seasons
+    generally restart in July in Europe/Asia and in January in South America.
+    Prefer official source season IDs whenever available; these calendar floors
+    are explicit fallbacks for feeds that expose only a competition label.
     """
     value = str(tournament or "").casefold()
     if re.search(
@@ -1097,6 +1097,17 @@ def explicit_team_season_floor(tournament: str, snapshot: date) -> date | None:
         return date(snapshot.year, 7, 1)
     if re.search(
         r"\b(conmebol libertadores|conmebol sudamericana|concacaf champions cup)\b",
+        value,
+    ):
+        return date(snapshot.year, 1, 1)
+    # These domestic competitions run on a calendar-year season. Without this
+    # guard, December results from the previous edition can inflate played/wins
+    # and even produce duplicate team rows with different inferred season_start.
+    if re.search(
+        r"\b(brazilian serie [abc]|brasileiro serie [abc]|argentine liga profesional|"
+        r"chilean primera divisi[oó]n|bolivian liga profesional|chinese super league|"
+        r"j1 league|j league|k league 1|uruguayan primera divisi[oó]n|"
+        r"paraguayan primera divisi[oó]n|peruvian liga 1|ecuadorian serie a)\b",
         value,
     ):
         return date(snapshot.year, 1, 1)
