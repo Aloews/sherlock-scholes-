@@ -1321,7 +1321,11 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
         }
         for row in rating_rows if row.get("club_key")
     }
-    payloads = build_team_candidate_payloads(matches, ratings, snapshot, max_days_since_last_match=75)
+    # Current contenders must have a recorded result in the last 30 days.
+    # Older competitions can remain in historical snapshots, but missing recent
+    # results (e.g. cup rounds absent from club_match) must not look like a live
+    # forecast. Refresh the result feed before restoring those competitions.
+    payloads = build_team_candidate_payloads(matches, ratings, snapshot, max_days_since_last_match=30)
     if not payloads:
         raise RuntimeError("No sufficiently observed team competitions; refusing empty team snapshots")
     # The source model changed from betting-feed sport keys to canonical tracked

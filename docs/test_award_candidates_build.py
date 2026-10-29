@@ -714,9 +714,14 @@ class CandidateRankingTests(unittest.TestCase):
             {"tournament": "Completed Cup", "match_date": "2026-07-25", "home_key": "y",
              "away_key": "z", "home_team": "Y", "away_team": "Z",
              "home_score": 1, "away_score": 0},
+            # A tournament with a result 55 days ago must not appear as a current
+            # contender merely because the old 75-day cutoff has not expired.
+            {"tournament": "Stale Cup", "match_date": "2026-09-02", "home_key": "p",
+             "away_key": "q", "home_team": "P", "away_team": "Q",
+             "home_score": 2, "away_score": 1},
         ]
         rows = build_team_candidate_payloads(
-            matches, {}, date(2026, 10, 27), max_days_since_last_match=75
+            matches, {}, date(2026, 10, 27), max_days_since_last_match=30
         )
         self.assertEqual({row["tournament"] for row in rows}, {"Active League"})
 
