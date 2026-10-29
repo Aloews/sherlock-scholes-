@@ -221,7 +221,9 @@ def parse_seasons(payload):
             "season_id": int(season),
             "competition_id": str(comp),
             "club_id": str(club_id),
-            "apps": 0, "starts": 0, "sub_in": 0, "sub_out": 0,
+            # The match-level endpoint does not expose reliable start/substitution flags.
+            # Omit these columns so upserts preserve prior verified values; new rows use SQL NULL.
+            "apps": 0,
             "minutes": 0, "goals": 0, "assists": 0,
             "own_goals": 0, "penalty_goals": 0,
             "yellow": 0, "yellow_red": 0, "red": 0,
