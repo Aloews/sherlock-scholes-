@@ -210,6 +210,27 @@ def sync_explicit_award_outcomes(base: str, key: str) -> int:
     )
 
 
+def remove_award_snapshot_rows_for_date(
+    base: str, key: str, snapshot: date, season_id: int
+) -> int:
+    """Clear same-day award rows when the current source-coverage gate rejects them."""
+    response = requests.delete(
+        f"{base.rstrip('/')}/rest/v1/award_candidate_snapshot",
+        headers={**api_headers(key), "Prefer": "return=representation"},
+        params={
+            "snapshot_date": f"eq.{snapshot.isoformat()}",
+            "season_id": f"eq.{season_id}",
+        },
+        timeout=TIMEOUT,
+    )
+    response.raise_for_status()
+    try:
+        deleted = response.json()
+    except ValueError:
+        return 0
+    return len(deleted) if isinstance(deleted, list) else 0
+
+
 def remove_stale_award_snapshot_rows(base: str, key: str, snapshot: date) -> int:
     """Remove rows from superseded model versions after the replacement upsert succeeds."""
     response = requests.delete(
@@ -781,6 +802,40 @@ def current_player_stats_coverage(
     }
 
 
+def player_age_from_card(card: dict[str, Any], season: int, snapshot: date) -> int | None:
+    """Return age only when structured birth-year sources do not conflict."""
+    born = card.get("born_on")
+    facts = card.get("facts") if isinstance(card.get("facts"), dict) else {}
+    facts_year = facts.get("birth_year")
+    try:
+        facts_year = int(facts_year) if facts_year is not None else None
+    except (TypeError, ValueError):
+        facts_year = None
+    # Legacy parsers sometimes store unrelated numbers as birth_year.
+    if facts_year is not None and not (1950 <= facts_year <= snapshot.year):
+        facts_year = None
+
+    born_date = None
+    if born:
+        try:
+            born_date = date.fromisoformat(str(born)[:10])
+        except ValueError:
+            born_date = None
+
+    # A conflict is not evidence that a player is young. Unknown is safer than
+    # letting a stale or cross-identity date qualify an adult for a youth award.
+    if born_date and facts_year and abs(born_date.year - facts_year) > 1:
+        return None
+    if born_date:
+        return snapshot.year - born_date.year - (
+            (born_date.month, born_date.day) > (snapshot.month, snapshot.day)
+        )
+    if facts_year:
+        # Without a full birthday, use the older possible age to avoid false U21 eligibility.
+        return max(0, snapshot.year - facts_year)
+    return None
+
+
 def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, int]:
     response = requests.get(f"{base.rstrip('/')}/rest/v1/player_season_stat",
                             headers=api_headers(key),
@@ -813,7 +868,8 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             "WARNING: skipping individual-award snapshot; no source-verified season rows yet",
             file=sys.stderr,
         )
-        return season, 0, 0
+        removed = remove_award_snapshot_rows_for_date(base, key, snapshot, season)
+        return season, 0, removed
 
     # A plausible-looking shortlist built from a small, biased subset is worse
     # than a stale snapshot. Require broad coverage of current high-value players
@@ -827,7 +883,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         "order": "market_value_eur.desc",
     })
     women_cards = get_rows(base, key, "cards", {
-        "select": "id,name,name_en,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+        "select": "id,name,name_en,category,born_on,facts,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
         "active": "eq.true", "category": "eq.woman", "name_en": "not.is.null", "order": "id.asc",
     })
     women_ids = {str(card["id"]) for card in women_cards if card.get("id")}
@@ -842,14 +898,16 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
         current_value_cards, season_stat_ids, snapshot, match_card_ids=usable_match_ids
     )
     if coverage["sample_size"] >= 50 and coverage["coverage"] < 0.75:
+        removed = remove_award_snapshot_rows_for_date(base, key, snapshot, season)
         print(
             "WARNING: skipping individual-award snapshot; current-season stats cover "
             f"{coverage['covered']}/{coverage['sample_size']} high-value active players "
             f"({coverage['coverage']:.0%}). Missing examples: "
-            + ", ".join(coverage["missing_names"][:12]),
+            + ", ".join(coverage["missing_names"][:12])
+            + f". Removed {removed} same-day candidate rows to avoid leaving a low-coverage shortlist visible.",
             file=sys.stderr,
         )
-        return season, 0, 0
+        return season, 0, removed
 
     competition_rows = get_rows(base, key, "tm_competition", {
         "select": "id,name,short_name,type_id,updated_at", "order": "id.asc",
@@ -913,7 +971,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
     for start in range(0, len(ids), 100):
         joined = ",".join(ids[start:start + 100])
         r = requests.get(card_url, headers=api_headers(key), params={
-            "select": "id,name,category,born_on,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
+            "select": "id,name,category,born_on,facts,sw_rating,market_value_eur,fame,pageviews,position_ru,active",
             "id": f"in.({joined})",
         }, timeout=TIMEOUT)
         r.raise_for_status()
@@ -941,15 +999,7 @@ def build_award_candidates(base: str, key: str, snapshot: date) -> tuple[int, in
             else:
                 row["goals_per_90"] = 90.0 * row["goals"] / max(1, row["minutes"])
                 row["assists_per_90"] = 90.0 * row["assists"] / max(1, row["minutes"])
-            row["age"] = None
-            born = card.get("born_on")
-            if born:
-                try:
-                    born_date = date.fromisoformat(born[:10])
-                    row["age"] = season - born_date.year - (
-                        (born_date.month, born_date.day) > (snapshot.month, snapshot.day))
-                except ValueError:
-                    pass
+            row["age"] = player_age_from_card(card, season, snapshot)
             population.append(row)
         return population
 
