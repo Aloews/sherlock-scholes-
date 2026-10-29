@@ -1291,7 +1291,44 @@ def build_team_candidate_payloads(
     return payloads
 
 
-def build_team_candidates(base: str, key: str, snapshot: date) -> int:
+def team_source_staleness_reason(
+    matches: list[dict],
+    now: datetime,
+    max_age_hours: int = 48,
+) -> str | None:
+    """Refuse to publish a dated team snapshot from stale or undated match feeds."""
+    fetched = []
+    for match in matches:
+        raw = str(match.get("fetched_at") or "").strip()
+        if not raw:
+            continue
+        try:
+            value = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        fetched.append(value.astimezone(timezone.utc))
+    if not fetched:
+        return "match feed has no parseable fetched_at timestamps"
+    latest = max(fetched)
+    current = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    current = current.astimezone(timezone.utc)
+    if latest > current + timedelta(minutes=5):
+        return "match feed fetched_at is in the future"
+    age = current - latest
+    if age > timedelta(hours=max_age_hours):
+        return f"latest match-feed refresh is {age.total_seconds() / 3600:.1f} hours old"
+    return None
+
+
+def build_team_candidates(
+    base: str,
+    key: str,
+    snapshot: date,
+    now: datetime | None = None,
+    max_source_age_hours: int = 48,
+) -> tuple[int, str | None]:
     cutoff = (snapshot - timedelta(days=365)).isoformat()
     # club_match is the broad competition feed: it currently covers hundreds of
     # competitions and more than 30k scored matches per rolling year. The betting
@@ -1302,6 +1339,23 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
     })
     if not matches:
         raise RuntimeError("No tracked club_match results in the last 365 days; refusing empty team snapshots")
+
+    stale_reason = team_source_staleness_reason(
+        matches, now or datetime.now(timezone.utc), max_age_hours=max_source_age_hours
+    )
+    if stale_reason:
+        # Today's rows must not make a stale feed look like a fresh forecast.
+        # Remove only this date's derived snapshot; historical snapshots remain intact.
+        delete_response = requests.delete(
+            f"{base.rstrip('/')}/rest/v1/team_tournament_candidate_snapshot",
+            headers=api_headers(key),
+            params={"snapshot_date": f"eq.{snapshot.isoformat()}"},
+            timeout=TIMEOUT,
+        )
+        delete_response.raise_for_status()
+        print(f"team snapshot skipped: {stale_reason}", file=sys.stderr)
+        return 0, stale_reason
+
     rating_rows = get_rows(base, key, "club_rating", {
         "select": "club_key,elo,computed_at", "order": "club_key.asc",
     })
@@ -1326,7 +1380,7 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
     )
     delete_response.raise_for_status()
     return upsert_rows(base, key, "team_tournament_candidate_snapshot", payloads,
-                       "tournament,season_start,snapshot_date,team_key")
+                       "tournament,season_start,snapshot_date,team_key"), None
 
 def main() -> int:
     load_dotenv()
@@ -1343,7 +1397,7 @@ def main() -> int:
     try:
         award_outcomes_written = sync_explicit_award_outcomes(base, key)
         season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
-        team_writes = build_team_candidates(base, key, snapshot)
+        team_writes, team_snapshot_skip_reason = build_team_candidates(base, key, snapshot)
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"candidate build failed: {error}", file=sys.stderr)
         return 1
@@ -1353,6 +1407,7 @@ def main() -> int:
         "award_candidate_rows_upserted": award_writes,
         "stale_award_candidate_rows_removed": stale_award_rows_removed,
         "team_tournament_candidate_rows_upserted": team_writes,
+        "team_tournament_snapshot_skip_reason": team_snapshot_skip_reason,
         "award_model_version": AWARD_MODEL_VERSION,
         "team_model_version": TEAM_MODEL_VERSION,
         "interpretation": "candidate scores are relative ranking indices, not probabilities",
