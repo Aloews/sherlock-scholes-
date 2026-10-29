@@ -186,6 +186,8 @@ class MarketValueRefreshTests(unittest.TestCase):
 
     def test_material_same_metric_value_disagreement_is_quarantined(self):
         self.assertTrue(material_valuation_conflict(
+            80_000_000, "2026-10-07", 70_000_000, "2026-07-22"))
+        self.assertTrue(material_valuation_conflict(
             80_000_000, "2026-10-07", 65_000_000, "2026-06-03"))
         self.assertFalse(material_valuation_conflict(
             65_000_000, "2026-06-03", 65_000_000, "2026-06-03"))
