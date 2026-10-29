@@ -626,6 +626,32 @@ class CandidateRankingTests(unittest.TestCase):
             {2},
         )
 
+    def test_brazilian_serie_a_does_not_mix_previous_calendar_year(self):
+        matches = [
+            {"tournament": "Brazilian Serie A", "match_date": "2025-11-02",
+             "home_key": "flamengo", "away_key": "palmeiras", "home_team": "Flamengo",
+             "away_team": "Palmeiras", "home_score": 3, "away_score": 0},
+            {"tournament": "Brazilian Serie A", "match_date": "2025-12-07",
+             "home_key": "palmeiras", "away_key": "flamengo", "home_team": "Palmeiras",
+             "away_team": "Flamengo", "home_score": 1, "away_score": 2},
+            {"tournament": "Brazilian Serie A", "match_date": "2026-02-01",
+             "home_key": "flamengo", "away_key": "santos", "home_team": "Flamengo",
+             "away_team": "Santos", "home_score": 1, "away_score": 0},
+            {"tournament": "Brazilian Serie A", "match_date": "2026-10-20",
+             "home_key": "santos", "away_key": "flamengo", "home_team": "Santos",
+             "away_team": "Flamengo", "home_score": 0, "away_score": 2},
+        ]
+        rows = build_team_candidate_payloads(
+            matches, {}, date(2026, 10, 29), max_days_since_last_match=75
+        )
+        flamengo = [row for row in rows if row["team_key"] == "flamengo"]
+        self.assertEqual(len(flamengo), 1)
+        self.assertEqual(flamengo[0]["season_start"], "2026-02-01")
+        self.assertEqual(flamengo[0]["evidence"]["matches_played"], 2)
+        self.assertEqual(flamengo[0]["evidence"]["wins"], 2)
+        self.assertEqual(flamengo[0]["evidence"]["goals_for"], 3)
+        self.assertEqual(flamengo[0]["evidence"]["goals_against"], 0)
+
     def test_spanish_laliga_is_classified_as_a_league_standings_proxy(self):
         self.assertEqual(competition_format("Spanish LALIGA"), "league_standings_proxy")
 
