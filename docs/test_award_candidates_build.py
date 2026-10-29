@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
 from datetime import date
 
 
@@ -324,6 +324,43 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertLess(rows[0]["score_components"]["sample_reliability"], 1)
         self.assertEqual(rows[0]["evidence"]["eligibility_rule"],
                          "at least 5 appearances and 300 minutes; if minutes are unavailable, at least 8 appearances")
+
+    def test_player_age_rejects_conflicting_birth_year_sources(self):
+        self.assertIsNone(player_age_from_card(
+            {"born_on": "2008-11-05", "facts": {"birth_year": 1986}},
+            2026, date(2026, 10, 27),
+        ))
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2005-01-01", "facts": {"birth_year": 2005}},
+            2026, date(2026, 10, 27),
+        ), 21)
+        self.assertEqual(player_age_from_card(
+            {"facts": {"birth_year": 2006}},
+            2026, date(2026, 10, 27),
+        ), 20)
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2001-02-26", "facts": {"birth_year": 39}},
+            2026, date(2026, 10, 27),
+        ), 25)
+        self.assertEqual(player_age_from_card(
+            {"born_on": "2003-06-17", "facts": {"birth_year": 1897}},
+            2026, date(2026, 10, 27),
+        ), 23)
+        self.assertIsNone(player_age_from_card({}, 2026, date(2026, 10, 27)))
+
+    def test_low_coverage_cleanup_targets_only_same_date_and_season(self):
+        response = Mock()
+        response.json.return_value = [{"award_key": "ballon_dor"}]
+        with patch("award_candidates_build.requests.delete", return_value=response) as delete:
+            removed = remove_award_snapshot_rows_for_date(
+                "https://example.supabase.co", "service-key", date(2026, 10, 27), 2026
+            )
+        self.assertEqual(removed, 1)
+        self.assertEqual(delete.call_args.kwargs["params"], {
+            "snapshot_date": "eq.2026-10-27",
+            "season_id": "eq.2026",
+        })
+        response.raise_for_status.assert_called_once_with()
 
     def test_golden_boot_requires_goals_and_a_minimum_appearance_sample(self):
         population = [
