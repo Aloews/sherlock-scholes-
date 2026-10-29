@@ -91,7 +91,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
         run: |
-          # The ESPN match feed is refreshed by player-stats. Other upstream jobs
+          # The ESPN match feed is refreshed by espn-results-refresh. Other upstream jobs
           # refresh player data/prices, not team match results, so they must not
           # publish new team-tournament snapshots from an older feed.
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || {
