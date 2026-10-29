@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, explicit_team_season_floor, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
 from datetime import date
 
 
@@ -599,6 +599,57 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual({row["tournament"] for row in rows}, {"English Premier League"})
         self.assertEqual(len(rows), 2)
         self.assertEqual({row["evidence"]["matches_played"] for row in rows}, {2})
+
+    def test_explicit_season_floors_follow_competition_calendar_and_handle_spring_snapshots(self):
+        self.assertEqual(
+            explicit_team_season_floor("UEFA Champions League", date(2027, 5, 1)),
+            date(2026, 7, 1),
+        )
+        self.assertEqual(
+            explicit_team_season_floor("Brazilian Serie A", date(2026, 10, 29)),
+            date(2026, 1, 1),
+        )
+        self.assertEqual(
+            explicit_team_season_floor("Russian Premier League", date(2026, 10, 29)),
+            date(2026, 7, 1),
+        )
+        self.assertEqual(
+            explicit_team_season_floor("Mexican Liga BBVA MX", date(2026, 10, 29)),
+            date(2026, 7, 1),
+        )
+        self.assertEqual(
+            explicit_team_season_floor("Mexican Liga BBVA MX", date(2027, 3, 1)),
+            date(2027, 1, 1),
+        )
+
+    def test_calendar_year_and_summer_leagues_exclude_previous_season_matches(self):
+        matches = [
+            {"tournament": "Brazilian Serie A", "match_date": "2025-11-02",
+             "home_key": "alpha", "away_key": "beta", "home_team": "Alpha",
+             "away_team": "Beta", "home_score": 4, "away_score": 0},
+            {"tournament": "Brazilian Serie A", "match_date": "2026-03-01",
+             "home_key": "alpha", "away_key": "gamma", "home_team": "Alpha",
+             "away_team": "Gamma", "home_score": 1, "away_score": 0},
+            {"tournament": "Brazilian Serie A", "match_date": "2026-10-01",
+             "home_key": "beta", "away_key": "gamma", "home_team": "Beta",
+             "away_team": "Gamma", "home_score": 0, "away_score": 1},
+            {"tournament": "Russian Premier League", "match_date": "2026-02-27",
+             "home_key": "alpha", "away_key": "beta", "home_team": "Alpha",
+             "away_team": "Beta", "home_score": 4, "away_score": 0},
+            {"tournament": "Russian Premier League", "match_date": "2026-07-18",
+             "home_key": "alpha", "away_key": "gamma", "home_team": "Alpha",
+             "away_team": "Gamma", "home_score": 1, "away_score": 0},
+            {"tournament": "Russian Premier League", "match_date": "2026-10-15",
+             "home_key": "beta", "away_key": "gamma", "home_team": "Beta",
+             "away_team": "Gamma", "home_score": 0, "away_score": 1},
+        ]
+        rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 29))
+        brazil = [row for row in rows if row["tournament"] == "Brazilian Serie A"]
+        russia = [row for row in rows if row["tournament"] == "Russian Premier League"]
+        self.assertEqual({row["season_start"] for row in brazil}, {"2026-03-01"})
+        self.assertEqual({row["evidence"]["matches_played"] for row in brazil}, {1, 2})
+        self.assertEqual({row["season_start"] for row in russia}, {"2026-07-18"})
+        self.assertEqual({row["evidence"]["matches_played"] for row in russia}, {1, 2})
 
     def test_uefa_candidate_snapshot_uses_current_season_not_previous_year_results(self):
         matches = [
