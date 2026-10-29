@@ -1042,7 +1042,7 @@ def competition_format(tournament: str) -> str:
         return "international_tournament_form_proxy"
     if re.search(r"\b(cup|copa|coupe|pokal|coppa|кубок|суперкубок)\b", value):
         return "knockout_form_proxy"
-    if re.search(r"\b(league|liga|ligue|division|división|bundesliga|serie [ab]|premier|championship|чемпионат|лига|дивизион|д[1-6]|высшая лига|первая лига|суперлига)\b", value):
+    if re.search(r"\b(league|laliga|liga mx|liga|ligue|division|división|bundesliga|serie [ab]|premier|championship|чемпионат|лига|дивизион|д[1-6]|высшая лига|первая лига|суперлига)\b", value):
         return "league_standings_proxy"
     return "competition_form_proxy"
 
@@ -1075,6 +1075,32 @@ def canonical_team_tournament(tournament: str) -> str:
         if re.search(pattern, value, re.I):
             return canonical
     return raw
+
+
+def explicit_team_season_floor(tournament: str, snapshot: date) -> date | None:
+    """Return a conservative calendar boundary for annual continental competitions.
+
+    A fixed 75-day gap works for many domestic leagues but can fail when the
+    results feed contains qualifying rounds, rescheduled fixtures or an unrelated
+    competition carrying a generic localized label. European/Asian continental
+    seasons restart in the summer; South American and CONCACAF club cups restart
+    in the calendar year. Official season IDs should replace these inferred
+    boundaries when the source provides them.
+    """
+    value = str(tournament or "").casefold()
+    if re.search(
+        r"\b(uefa champions league|uefa europa league|uefa conference league|"
+        r"afc champions league elite|afc champions league two|caf champions league|"
+        r"uefa nations league)\b",
+        value,
+    ):
+        return date(snapshot.year, 7, 1)
+    if re.search(
+        r"\b(conmebol libertadores|conmebol sudamericana|concacaf champions cup)\b",
+        value,
+    ):
+        return date(snapshot.year, 1, 1)
+    return None
 
 
 def build_team_candidate_payloads(
@@ -1114,15 +1140,24 @@ def build_team_candidate_payloads(
             # Preserve historical snapshots for evaluation, but do not keep an old
             # completed tournament in today's "who can still win?" shortlist.
             continue
-        # Keep the current competition cycle. The boundary is explicitly marked
-        # as inferred unless an upstream source provides an official season ID.
-        segment_start = 0
-        for index in range(1, len(all_matches)):
-            previous = date.fromisoformat(all_matches[index - 1]["match_date"])
-            current = date.fromisoformat(all_matches[index]["match_date"])
-            if (current - previous).days > 75:
-                segment_start = index
-        current_matches = all_matches[segment_start:]
+        # Prefer an explicit competition-specific calendar floor where known.
+        # Otherwise infer the cycle from the latest long break between results.
+        # This prevents last season's UEFA results from inflating current-season
+        # team match counts when the broad results feed lacks a clean summer gap.
+        season_floor = explicit_team_season_floor(tournament, snapshot)
+        if season_floor:
+            current_matches = [
+                item for item in all_matches
+                if date.fromisoformat(item["match_date"]) >= season_floor
+            ]
+        else:
+            segment_start = 0
+            for index in range(1, len(all_matches)):
+                previous = date.fromisoformat(all_matches[index - 1]["match_date"])
+                current = date.fromisoformat(all_matches[index]["match_date"])
+                if (current - previous).days > 75:
+                    segment_start = index
+            current_matches = all_matches[segment_start:]
         if not current_matches:
             continue
 

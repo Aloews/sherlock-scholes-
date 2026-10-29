@@ -600,6 +600,35 @@ class CandidateRankingTests(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual({row["evidence"]["matches_played"] for row in rows}, {2})
 
+    def test_uefa_candidate_snapshot_uses_current_season_not_previous_year_results(self):
+        matches = [
+            {"tournament": "UEFA Champions League", "match_date": "2025-11-04",
+             "home_key": "alpha", "away_key": "beta", "home_team": "Alpha",
+             "away_team": "Beta", "home_score": 4, "away_score": 0},
+            {"tournament": "Лига чемпионов", "match_date": "2026-05-27",
+             "home_key": "beta", "away_key": "gamma", "home_team": "Beta",
+             "away_team": "Gamma", "home_score": 3, "away_score": 0},
+            {"tournament": "UEFA Champions League", "match_date": "2026-08-19",
+             "home_key": "alpha", "away_key": "gamma", "home_team": "Alpha",
+             "away_team": "Gamma", "home_score": 1, "away_score": 0},
+            {"tournament": "Лига чемпионов", "match_date": "2026-09-08",
+             "home_key": "beta", "away_key": "alpha", "home_team": "Beta",
+             "away_team": "Alpha", "home_score": 0, "away_score": 2},
+            {"tournament": "UEFA Champions League", "match_date": "2026-10-21",
+             "home_key": "gamma", "away_key": "beta", "home_team": "Gamma",
+             "away_team": "Beta", "home_score": 1, "away_score": 1},
+        ]
+        rows = build_team_candidate_payloads(matches, {}, date(2026, 10, 29))
+        self.assertEqual({row["tournament"] for row in rows}, {"UEFA Champions League"})
+        self.assertEqual({row["season_start"] for row in rows}, {"2026-08-19"})
+        self.assertEqual(
+            {row["evidence"]["matches_played"] for row in rows},
+            {2},
+        )
+
+    def test_spanish_laliga_is_classified_as_a_league_standings_proxy(self):
+        self.assertEqual(competition_format("Spanish LALIGA"), "league_standings_proxy")
+
     def test_team_tournament_aliases_keep_similar_leagues_separate(self):
         self.assertEqual(canonical_team_tournament("German Bundesliga"), "German Bundesliga")
         self.assertEqual(canonical_team_tournament("Austrian Bundesliga"), "Austrian Bundesliga")
