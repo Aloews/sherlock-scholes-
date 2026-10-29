@@ -1,11 +1,15 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, explicit_team_season_floor, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, parse_args, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, explicit_team_season_floor, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
+    def test_team_candidate_skip_flag_is_explicit_and_opt_in(self):
+        self.assertFalse(parse_args([]).skip_team_candidates)
+        self.assertTrue(parse_args(["--skip-team-candidates"]).skip_team_candidates)
+
     def test_failed_postgrest_upsert_includes_server_error_body(self):
         response = Mock(ok=False, status_code=400, text='{"message":"award_key violates check constraint"}')
         with patch("award_candidates_build.requests.post", return_value=response):

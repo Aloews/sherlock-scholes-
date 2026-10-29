@@ -169,10 +169,6 @@ jobs:
             exit 1
           }
 
-      - name: Refresh individual-award and team-tournament analytics after stats
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.transfermarkt_id == '' }}
-        run: python3 docs/award_candidates_build.py
-
   player-photos:
     if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.transfermarkt_id == '') }}
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@ only; verified winners live separately in award_outcome / team_tournament_outcom
 """
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import os
@@ -1336,7 +1337,18 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
     return upsert_rows(base, key, "team_tournament_candidate_snapshot", payloads,
                        "tournament,season_start,snapshot_date,team_key")
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--skip-team-candidates",
+        action="store_true",
+        help="refresh individual-award candidates only; wait for the match-results workflow before rebuilding team tournaments",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    args = parse_args()
     load_dotenv()
     raw_base, key = os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", "").strip()
     if not raw_base.strip() or not key:
@@ -1351,7 +1363,12 @@ def main() -> int:
     try:
         award_outcomes_written = sync_explicit_award_outcomes(base, key)
         season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
-        team_writes = build_team_candidates(base, key, snapshot)
+        if args.skip_team_candidates:
+            team_writes = 0
+            team_snapshot_skip_reason = "waiting for the player-stats/ESPN results refresh"
+        else:
+            team_writes = build_team_candidates(base, key, snapshot)
+            team_snapshot_skip_reason = None
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"candidate build failed: {error}", file=sys.stderr)
         return 1
@@ -1361,6 +1378,7 @@ def main() -> int:
         "award_candidate_rows_upserted": award_writes,
         "stale_award_candidate_rows_removed": stale_award_rows_removed,
         "team_tournament_candidate_rows_upserted": team_writes,
+        "team_tournament_snapshot_skip_reason": team_snapshot_skip_reason,
         "award_model_version": AWARD_MODEL_VERSION,
         "team_model_version": TEAM_MODEL_VERSION,
         "interpretation": "candidate scores are relative ranking indices, not probabilities",
