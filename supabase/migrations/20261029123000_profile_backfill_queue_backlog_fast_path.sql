@@ -3,6 +3,10 @@
 -- On the production catalogue this exceeded Supabase's statement timeout before
 -- the worker could claim any jobs. Select a bounded, priority-ordered slice per
 -- task type, using the existing cards/jobs/player-season indexes.
+create index if not exists profile_backfill_pending_task_idx
+  on public.profile_backfill_jobs (task_type, status)
+  where status in ('pending', 'running');
+
 create or replace function public.enqueue_profile_backfill_jobs(p_limit integer default 1000)
 returns integer
 language plpgsql
@@ -26,7 +30,7 @@ begin
        and nullif(btrim(c.photo_url), '') is null
        and nullif(btrim(c.wikidata_qid::text), '') is not null
        -- Do not scan the catalogue while this task type already has a backlog.
-       and not exists (select 1 from public.profile_backfill_jobs backlog where backlog.task_type = 'photo_qid' and backlog.status in ('pending', 'running'))
+       and (select count(*) from public.profile_backfill_jobs backlog where backlog.task_type = 'photo_qid' and backlog.status in ('pending', 'running')) < 500
        and not exists (
          select 1 from public.profile_backfill_jobs j
           where j.card_id = c.id and j.task_type = 'photo_qid'
@@ -52,7 +56,7 @@ begin
        and nullif(btrim(c.photo_url), '') is null
        and nullif(btrim(c.transfermarkt_id::text), '') is not null
        -- Refill this source only after its existing queue has drained.
-       and not exists (select 1 from public.profile_backfill_jobs backlog where backlog.task_type = 'photo_tm' and backlog.status in ('pending', 'running'))
+       and (select count(*) from public.profile_backfill_jobs backlog where backlog.task_type = 'photo_tm' and backlog.status in ('pending', 'running')) < 500
        and not exists (
          select 1 from public.profile_backfill_jobs j
           where j.card_id = c.id and j.task_type = 'photo_tm'
@@ -78,7 +82,7 @@ begin
        and nullif(btrim(c.transfermarkt_id::text), '') is not null
        -- The scheduled season-stat batch is separate; avoid scanning 500k stats
        -- while the queue already contains unprocessed season-stat tasks.
-       and not exists (select 1 from public.profile_backfill_jobs backlog where backlog.task_type = 'season_stats' and backlog.status in ('pending', 'running'))
+       and (select count(*) from public.profile_backfill_jobs backlog where backlog.task_type = 'season_stats' and backlog.status in ('pending', 'running')) < 500
        and not exists (
          select 1 from public.player_season_stat s
           where s.tm_player_id = c.transfermarkt_id::text
