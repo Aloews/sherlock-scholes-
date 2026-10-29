@@ -264,7 +264,7 @@ begin
            profile_value_eur, profile_valued_at, observed_at, source_url
       from raw
     on conflict (card_id, api_value_eur, api_valued_at, profile_value_eur, profile_valued_at)
-    do update set observed_at = excluded.observed_at
+    do update set observed_at = excluded.observed_at, status = 'open', resolution_note = null
     returning id
   )
   select count(*)::integer into v_count from saved;
