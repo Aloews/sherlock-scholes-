@@ -114,7 +114,7 @@ def parse_verified_profile_market_value(html, tm_id):
     return parse_market_value(html)
 
 
-def material_valuation_conflict(api_value, api_date, profile_value, profile_date, threshold=0.15):
+def material_valuation_conflict(api_value, api_date, profile_value, profile_date, threshold=0.10):
     """True only for dated, same-metric Transfermarkt observations that materially disagree."""
     if not api_value or not profile_value or not api_date or not profile_date:
         return False
