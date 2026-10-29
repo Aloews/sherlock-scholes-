@@ -177,6 +177,11 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                     ? ' · надёжность выборки ' + Math.round(row.score_components.sample_reliability * 100) + '%'
                     : ''}
                 </p>
+                {typeof row.score_components.calibrated_win_probability === 'number' && (
+                  <p className="mt-1 text-xs font-medium text-brand-accent">
+                    Калиброванная вероятность победы: {(row.score_components.calibrated_win_probability * 100).toFixed(1)}%
+                  </p>
+                )}
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
                   <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify({ components: row.score_components, evidence: row.evidence }, null, 2)}</pre>
@@ -215,6 +220,11 @@ export function CandidateAnalyticsPanel({ password }: { password: string }) {
                 <p className="mt-1 text-[11px] text-brand-muted">
                   Уверенность: {confidenceLabel(row.confidence)} · доля матчей от максимума в выборке {Math.round(row.data_coverage * 100)}%
                 </p>
+                {typeof row.score_components.calibrated_win_probability === 'number' && (
+                  <p className="mt-1 text-xs font-medium text-brand-accent">
+                    Калиброванная вероятность победы: {(row.score_components.calibrated_win_probability * 100).toFixed(1)}%
+                  </p>
+                )}
                 <details className="mt-1 text-[11px] text-brand-muted">
                   <summary className="cursor-pointer">Факторы оценки</summary>
                   <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(row.evidence, null, 2)}</pre>
