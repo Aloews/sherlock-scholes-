@@ -85,22 +85,24 @@ jobs:
             echo "::error::DAYS must be between 1 and 14"; exit 2
           }
           python3 espn_stats.py --days "$days"
-      - name: Refresh player rating cache after match ingestion
+      - name: Rebuild team matches and refresh dependent caches
         if: success()
         run: |
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
-          code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/refresh_player_rating_cache" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            -H "Content-Type: application/json" -d '{}' \
-            -o "$response_file" -w '%{http_code}')
-          if [ "$code" != "200" ]; then
-            echo "::error::refresh_player_rating_cache returned HTTP $code"
-            cat "$response_file"
-            exit 1
-          fi
-          echo "refresh_player_rating_cache: HTTP $code"
+          for fn in rebuild_club_matches refresh_stats_planner refresh_player_rating_cache; do
+            code=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Content-Type: application/json" -d '{}' \
+              -o "$response_file" -w '%{http_code}')
+            if [ "$code" != "200" ]; then
+              echo "::error::$fn returned HTTP $code"
+              cat "$response_file"
+              exit 1
+            fi
+            echo "$fn: HTTP $code"
+          done
 
   watch:
     runs-on: ubuntu-latest
