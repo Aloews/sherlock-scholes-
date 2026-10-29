@@ -203,13 +203,21 @@ def walk_forward(groups: list[dict]) -> dict[str, Any]:
     all_predictions = []
     for target in groups:
         snapshot_date = parse_date(target["snapshot_date"])
-        train_groups = [g for g in groups if parse_time(g["announced_at"]) is not None
+        target_parts = target["forecast_key"].split("|")
+        if target["kind"] == "award":
+            same_forecast = [g for g in groups if g["forecast_key"].split("|")[0] == target_parts[0]
+                             and g["forecast_key"].split("|")[-1] == target_parts[-1]]
+        else:
+            same_forecast = [g for g in groups if g["forecast_key"].split("|")[0] == target_parts[0]]
+        train_groups = [g for g in same_forecast if parse_time(g["announced_at"]) is not None
                         and parse_time(g["announced_at"]).date() < snapshot_date]
         model = fit_platt(examples(train_groups))
         if model["status"] != "ready":
             reports.append({"forecast_key": target["forecast_key"], "snapshot_date": target["snapshot_date"],
-                            "status": model["status"], "training_examples": model["n"],
-                            "training_winners": model["winners"], "training_seasons": model["seasons"]})
+                        "outcome_announced_at": target["announced_at"],
+                        "status": model["status"], "training_examples": model["n"],
+                        "training_winners": model["winners"], "training_seasons": model["seasons"],
+                        "evaluation_candidates": len(target["rows"])})
             continue
         predicted = []
         for row in target["rows"]:
@@ -219,9 +227,10 @@ def walk_forward(groups: list[dict]) -> dict[str, Any]:
                                   "group_key": target["forecast_key"]})
         all_predictions.extend(predicted)
         reports.append({"forecast_key": target["forecast_key"], "snapshot_date": target["snapshot_date"],
+                        "outcome_announced_at": target["announced_at"],
                         "status": "evaluated", "training_examples": model["n"],
                         "training_winners": model["winners"], "training_seasons": model["seasons"],
-                        "metrics": score_metrics(predicted)})
+                        "evaluation_candidates": len(target["rows"]), "metrics": score_metrics(predicted)})
     return {"model_version": MODEL_VERSION, "groups": len(groups), "evaluated_groups": sum(
         r["status"] == "evaluated" for r in reports), "metrics": score_metrics(all_predictions), "reports": reports}
 
@@ -241,7 +250,11 @@ def current_predictions(snapshots: list[dict], groups: list[dict], kind: str) ->
             continue
         current_rows = [r for r in rows if parse_date(r.get("snapshot_date")) == snap_date]
         forecast_key = "|".join(key)
-        matching = [g for g in groups if g["forecast_key"] == forecast_key]
+        if kind == "award":
+            matching = [g for g in groups if g["forecast_key"].split("|")[0] == key[0]
+                        and g["forecast_key"].split("|")[-1] == key[-1]]
+        else:
+            matching = [g for g in groups if g["forecast_key"].split("|")[0] == key[0]]
         train_groups = [g for g in matching if parse_time(g["announced_at"]).date() < snap_date]
         model = fit_platt(examples(train_groups))
         statuses.append({"forecast_key": forecast_key, "snapshot_date": snap_date.isoformat(),
@@ -249,11 +262,16 @@ def current_predictions(snapshots: list[dict], groups: list[dict], kind: str) ->
                          "training_winners": model["winners"], "training_seasons": model["seasons"]})
         for row in current_rows:
             p = predict(model, row)
-            outputs.append({"kind": kind, "forecast_key": forecast_key,
-                            "snapshot_date": snap_date.isoformat(),
-                            "card_id": row.get("card_id"), "team_key": row.get("team_key"),
-                            "probability": p, "training_examples": model["n"],
-                            "calibration_status": model["status"], "model_version": MODEL_VERSION})
+            payload = {"kind": kind, "forecast_key": forecast_key,
+                       "snapshot_date": snap_date.isoformat(),
+                       "card_id": row.get("card_id"), "team_key": row.get("team_key"),
+                       "probability": p, "training_examples": model["n"],
+                       "calibration_status": model["status"], "model_version": MODEL_VERSION}
+            if kind == "award":
+                payload.update({"award_key": key[0], "season_id": int(key[1]), "competition_id": key[2]})
+            else:
+                payload.update({"tournament": key[0], "season_start": key[1]})
+            outputs.append(payload)
     return outputs, {"groups": statuses, "probabilities_written": sum(x["probability"] is not None for x in outputs)}
 
 
@@ -292,10 +310,55 @@ def load_production_data() -> dict[str, list[dict]]:
     }
 
 
+
+def persist_report(report: dict[str, Any], predictions: list[dict[str, Any]]) -> None:
+    """Persist calibrated probabilities and walk-forward evaluation rows."""
+    load_dotenv()
+    base = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not base or not key:
+        raise RuntimeError("--persist requires SUPABASE_URL and service-role SUPABASE_KEY")
+    headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    response = requests.post(f"{base.rstrip('/')}/rest/v1/rpc/apply_forecast_calibration",
+                             headers=headers, json={"p_rows": predictions}, timeout=60)
+    if not response.ok:
+        raise RuntimeError(f"apply_forecast_calibration failed: HTTP {response.status_code}: {response.text[:500]}")
+    ledger = []
+    for kind, section in (("award", report["individual_awards"]["backtest"]),
+                          ("team_tournament", report["team_tournaments"]["backtest"])):
+        for item in section["reports"]:
+            metrics = item.get("metrics") or {}
+            announced = parse_time(item.get("outcome_announced_at"))
+            if announced is None:
+                continue
+            ledger.append({
+                "forecast_kind": kind, "forecast_key": item["forecast_key"],
+                "evaluation_snapshot_date": item["snapshot_date"],
+                "outcome_announced_at": announced.isoformat(),
+                "training_cutoff": item["snapshot_date"] + "T00:00:00+00:00",
+                "training_examples": item.get("training_examples", 0),
+                "training_winners": item.get("training_winners", 0),
+                "training_seasons": item.get("training_seasons", 0),
+                "evaluation_candidates": item.get("evaluation_candidates", 0),
+                "brier_score": metrics.get("brier"), "log_loss": metrics.get("log_loss"),
+                "expected_calibration_error": metrics.get("ece"),
+                "top_1_accuracy": metrics.get("top_1_accuracy"),
+                "status": item["status"], "model_version": MODEL_VERSION, "report": item,
+            })
+    if ledger:
+        result = requests.post(f"{base.rstrip('/')}/rest/v1/forecast_calibration_evaluation",
+            headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict": "forecast_kind,forecast_key,evaluation_snapshot_date,outcome_announced_at,model_version"},
+            json=ledger, timeout=60)
+        if not result.ok:
+            raise RuntimeError(f"calibration evaluation write failed: HTTP {result.status_code}: {result.text[:500]}")
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-json", help="Use a fixture JSON instead of querying Supabase")
     parser.add_argument("--output", default="forecast-calibration-report.json")
+    parser.add_argument("--persist", action="store_true",
+                        help="write probabilities and evaluation rows; requires migration and SUPABASE_KEY")
     args = parser.parse_args()
     data = json.loads(Path(args.input_json).read_text(encoding="utf-8")) if args.input_json else load_production_data()
     award_groups = build_award_groups(data.get("award_snapshots", []), data.get("award_outcomes", []))
@@ -314,6 +377,8 @@ def main() -> int:
         "team_tournaments": {"backtest": team_report, "current": team_current, "predictions": team_predictions},
     }
     Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.persist:
+        persist_report(report, award_predictions + team_predictions)
     print(json.dumps({
         "output": args.output,
         "award_groups": len(award_groups),
