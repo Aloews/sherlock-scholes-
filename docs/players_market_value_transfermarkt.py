@@ -105,6 +105,30 @@ META_RE = re.compile(
     r'Market value:\s*€\s*([\d.,]+)\s*(bn|m|k)\b', re.I)
 
 
+def parse_verified_profile_market_value(html, tm_id):
+    """Parse the official profile only when the response looks like the requested player page."""
+    if not html or len(html) < 12000:
+        return None, None
+    if f"spieler/{tm_id}" not in html.casefold():
+        return None, None
+    return parse_market_value(html)
+
+
+def material_valuation_conflict(api_value, api_date, profile_value, profile_date, threshold=0.15):
+    """True only for dated, same-metric Transfermarkt observations that materially disagree."""
+    if not api_value or not profile_value or not api_date or not profile_date:
+        return False
+    try:
+        if date.fromisoformat(str(api_date)[:10]) > date.today():
+            return False
+        if date.fromisoformat(str(profile_date)[:10]) > date.today():
+            return False
+        denominator = max(int(api_value), int(profile_value))
+        return denominator > 0 and abs(int(api_value) - int(profile_value)) / denominator >= threshold
+    except (TypeError, ValueError):
+        return False
+
+
 def parse_market_value(html):
     """(евро:int|None, дата:str|None) со страницы профиля.
 
@@ -284,6 +308,21 @@ def fetch_profile(tm_id, tries=3):
                 return None
             time.sleep(TM_PAUSE * 3 * attempt)
     return None
+
+
+def write_market_value_conflicts(url, key, rows):
+    if not rows:
+        return 0
+    result = sb_rpc(url, key, "record_market_value_reconciliation_issues", {"p_rows": rows})
+    first = result[0] if isinstance(result, list) else result
+    try:
+        recorded = int(first.get("recorded", -1))
+    except (AttributeError, TypeError, ValueError):
+        recorded = -1
+    if recorded != len(rows):
+        raise RuntimeError("Market-value conflict write mismatch: expected %d issues, recorded %d"
+                           % (len(rows), recorded))
+    return recorded
 
 
 def env(name):
@@ -611,6 +650,7 @@ def main():
 
     # --- шаг 3: id → стоимость ------------------------------------------
     found, no_value, no_id, invalid_profiles = [], 0, 0, 0
+    market_value_conflicts = []
     pending, written = [], 0
     for i, card in enumerate(players, 1):
         qid = qid_of.get(card["id"])
@@ -638,6 +678,27 @@ def main():
                 )
             time.sleep(TM_PAUSE)
             continue
+        # Expensive-player values receive an independent read of the official profile.
+        # A material disagreement is recorded and neither value is silently selected.
+        current_value = int(card.get("market_value_eur") or 0)
+        if euros and at and max(current_value, int(euros)) >= 50_000_000:
+            profile_html = fetch_profile(tm_id, tries=1)
+            profile_value, profile_date = parse_verified_profile_market_value(profile_html, tm_id)
+            if material_valuation_conflict(euros, at, profile_value, profile_date):
+                conflict = {
+                    "card_id": card["id"], "transfermarkt_id": str(tm_id),
+                    "api_value_eur": int(euros), "api_valued_at": at,
+                    "profile_value_eur": int(profile_value), "profile_valued_at": profile_date,
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
+                    "source_url": TM_PROFILE % urllib.parse.quote(str(tm_id)),
+                }
+                market_value_conflicts.append(conflict)
+                print("  ⚠️ valuation conflict %s (%s): TMAPI €%s (%s), profile €%s (%s); value not overwritten"
+                      % (card.get("name") or card["id"], tm_id,
+                         format(int(euros), ","), at, format(int(profile_value), ","), profile_date),
+                      flush=True)
+                time.sleep(TM_PAUSE)
+                continue
         has_source_value = should_write_market_value(euros, at)
         row = {
             "id": card["id"], "name": card.get("name"),
@@ -662,7 +723,14 @@ def main():
             print("  шаг 3: %d/%d, со стоимостью %d" % (i, len(players), len(found)),
                   flush=True)
 
+    if apply and market_value_conflicts:
+        recorded_conflicts = write_market_value_conflicts(url, write_key, market_value_conflicts)
+        print("Конфликты стоимости сохранены в audit-таблице: %d" % recorded_conflicts, flush=True)
+    elif market_value_conflicts:
+        print("Конфликты стоимости в сухом прогоне: %d (не записаны)" % len(market_value_conflicts), flush=True)
+
     print("-" * 78)
+    print("Конфликты оценки : %d" % len(market_value_conflicts))
     print("Стоимость найдена : %d" % len(found))
     print("id есть, суммы нет: %d   (на TM стоит «-» — поле остаётся пустым)" % no_value)
     print("нет id на TM      : %d" % no_id)
