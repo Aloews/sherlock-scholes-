@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
+      - '.github/workflows/player-profile-data.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
@@ -15,6 +16,7 @@ on:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
       - '.github/workflows/player-market-value-refresh.yml'
+      - '.github/workflows/player-profile-data.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'docs/players_stats_transfermarkt.py'
