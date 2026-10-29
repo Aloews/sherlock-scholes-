@@ -148,3 +148,12 @@ jobs:
 
       - name: Test player stats refresh queue
         run: python3 docs/test_players_stats_transfermarkt.py
+
+      - name: Prepare verified and unknown lineup-flag fixtures
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_season_stat_unknown_lineup_flags_setup.sql
+
+      - name: Apply unknown lineup-flag correction
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261029133000_player_season_stats_unknown_lineup_flags.sql
+
+      - name: Verify lineup flags remain unknown unless source-backed
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_season_stat_unknown_lineup_flags.test.sql
