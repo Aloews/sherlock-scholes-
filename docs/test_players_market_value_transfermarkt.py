@@ -16,6 +16,8 @@ from players_market_value_transfermarkt import (  # noqa: E402
     parse_tmapi_market_value,
     should_write_market_value,
     should_retry_market_value_status,
+    material_valuation_conflict,
+    parse_verified_profile_market_value,
 )
 
 
@@ -180,6 +182,24 @@ class MarketValueRefreshTests(unittest.TestCase):
         self.assertFalse(should_write_market_value(65_000_000, "2999-01-01"))
         self.assertFalse(should_write_market_value(None, "2026-06-03"))
         self.assertFalse(should_write_market_value(0, "2026-06-03"))
+
+
+    def test_material_same_metric_value_disagreement_is_quarantined(self):
+        self.assertTrue(material_valuation_conflict(
+            80_000_000, "2026-10-07", 65_000_000, "2026-06-03"))
+        self.assertFalse(material_valuation_conflict(
+            65_000_000, "2026-06-03", 65_000_000, "2026-06-03"))
+        self.assertFalse(material_valuation_conflict(
+            65_000_000, "2026-06-03", None, None))
+        self.assertFalse(material_valuation_conflict(
+            65_000_000, None, 80_000_000, "2026-06-03"))
+
+    def test_profile_parser_rejects_short_or_wrong_player_pages(self):
+        self.assertEqual(parse_verified_profile_market_value("<html>€80.00m</html>", "316264"),
+                         (None, None))
+        valid_length_wrong_id = "x" * 13000 + "spieler/999999"
+        self.assertEqual(parse_verified_profile_market_value(valid_length_wrong_id, "316264"),
+                         (None, None))
 
 
 if __name__ == "__main__":
