@@ -19,7 +19,7 @@ class MarketValueProvenanceTests(unittest.TestCase):
         self.assertEqual(first_payload["source"], "Transfermarkt TMAPI market-value-history")
         self.assertEqual(first_payload["source_url"],
                          "https://www.transfermarkt.com/spieler/profil/spieler/316264")
-        self.assertEqual(first_payload["observed_at"][:4], "20")
+        self.assertEqual(first_payload["observed_at"][:4], "2026")
         self.assertEqual(first_payload["valued_at"], "2026-06-03")
 
     def test_market_value_provenance_does_not_claim_etv(self):
