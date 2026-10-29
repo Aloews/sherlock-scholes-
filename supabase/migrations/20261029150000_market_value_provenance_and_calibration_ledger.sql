@@ -12,6 +12,18 @@ comment on column public.cards.market_value_source_url is
 comment on column public.cards.market_value_observed_at is
   'Time the source observation was retrieved, distinct from the source valuation date market_value_at.';
 
+
+-- Attribute existing values to the collector that already wrote them; this is
+-- provenance backfill only and does not change any stored amount or source date.
+update public.cards
+   set market_value_source = 'Transfermarkt TMAPI market-value-history',
+       market_value_source_url = 'https://www.transfermarkt.com/spieler/profil/spieler/' || transfermarkt_id,
+       market_value_observed_at = coalesce(market_value_checked_at, now())
+ where market_value_eur is not null
+   and transfermarkt_id is not null
+   and market_value_source is null;
+
+
 create table if not exists public.forecast_calibration_evaluation (
   id bigint generated always as identity primary key,
   forecast_kind text not null check (forecast_kind in ('award','team_tournament')),
