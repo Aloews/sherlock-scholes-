@@ -10,6 +10,10 @@ on:
       - '.github/workflows/player-stats.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
+      - 'docs/forecast_calibration.py'
+      - 'docs/test_forecast_calibration.py'
+      - 'docs/test_market_value_provenance.py'
+      - 'supabase/migrations/20261029150000_market_value_provenance_and_calibration_ledger.sql'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
@@ -27,6 +31,11 @@ on:
       - 'docs/test_players_stats_transfermarkt.py'
       - 'docs/players_market_value_transfermarkt.py'
       - 'docs/test_players_market_value_transfermarkt.py'
+      - 'docs/forecast_calibration.py'
+      - 'docs/test_forecast_calibration.py'
+      - 'docs/test_market_value_provenance.py'
+      - 'src/features/admin/CandidateAnalyticsPanel.tsx'
+      - 'supabase/migrations/20261029150000_market_value_provenance_and_calibration_ledger.sql'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
@@ -35,6 +44,12 @@ on:
     workflows: ["player-profile-data", "player-market-value-refresh", "espn-results-refresh", "player-stats"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      persist_calibration:
+        description: "Persist calibrated probabilities after the provenance/calibration migration has been applied"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,11 +75,15 @@ jobs:
         run: python docs/test_players_stats_transfermarkt.py
       - name: Test source-date guard and market-value refresh rotation
         run: python docs/test_players_market_value_transfermarkt.py
-      - name: Compile candidate generator
-        run: python -m py_compile docs/award_candidates_build.py
+      - name: Test market-value source provenance
+        run: python docs/test_market_value_provenance.py
+      - name: Test walk-forward forecast calibration
+        run: python docs/test_forecast_calibration.py
+      - name: Compile candidate and calibration pipelines
+        run: python -m py_compile docs/award_candidates_build.py docs/forecast_calibration.py
 
   refresh:
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.name == 'espn-results-refresh')
     needs: [validate]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -90,20 +109,36 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          UPSTREAM_WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          # ESPN results and sports.ru refreshes rebuild club_match. Player/market jobs
-          # only refresh player data/prices, so they must not
-          # publish new team-tournament snapshots from an older feed.
+          # A failed ESPN rebuild may still have refreshed individual-player stats.
+          # Keep personal-award updates, but never publish team candidates from a stale fixture feed.
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python docs/award_candidates_build.py
-          elif [ "$EVENT_NAME" = "workflow_run" ] && {
-            [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ] ||
-            [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
-          }; then
+          elif [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ]; then
+            if [ "$UPSTREAM_WORKFLOW_CONCLUSION" = "success" ]; then
+              python docs/award_candidates_build.py
+            else
+              python docs/award_candidates_build.py --skip-team-candidates
+            fi
+          elif [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ]; then
             python docs/award_candidates_build.py
           else
             python docs/award_candidates_build.py --skip-team-candidates
           fi
+      - name: Produce leakage-safe calibration report
+        run: python docs/forecast_calibration.py --output forecast-calibration-report.json
+      - name: Persist calibrated probabilities and evaluation ledger
+        if: github.event_name == 'workflow_dispatch' && inputs.persist_calibration == true
+        run: python docs/forecast_calibration.py --persist --output forecast-calibration-report.json
+      - name: Upload calibration report
+        if: always() && hashFiles('forecast-calibration-report.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecast-calibration-report
+          path: forecast-calibration-report.json
+          if-no-files-found: error
+          retention-days: 90
 
   watch:
     needs: [validate, refresh]
@@ -113,7 +148,7 @@ jobs:
     env:
       VALIDATE_RESULT: ${{ needs.validate.result }}
       REFRESH_RESULT: ${{ needs.refresh.result }}
-      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.name == 'espn-results-refresh') }}
     steps:
       - name: Verify candidate pipeline completed
         shell: bash
