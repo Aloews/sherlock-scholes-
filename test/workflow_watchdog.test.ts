@@ -95,7 +95,7 @@ describe('сторож у прогонов по расписанию', () => {
     expect(candidates, 'candidate workflow не найден').toBeDefined();
     expect(candidates!.src).not.toMatch(/^\s{2}schedule:/m);
     expect(candidates!.src).toMatch(/workflow_run:/);
-    expect(candidates!.src).toContain('"player-profile-data", "player-market-value-refresh", "espn-results-refresh"');
+    expect(candidates!.src).toContain('"player-profile-data", "player-market-value-refresh", "espn-results-refresh", "player-stats"');
     expect(candidates!.src).toContain('--skip-team-candidates');
   });
 
@@ -107,8 +107,11 @@ describe('сторож у прогонов по расписанию', () => {
     expect(stats, 'player-stats workflow не найден').toBeDefined();
     expect(candidates, 'candidate workflow не найден').toBeDefined();
     expect(espn!.src).toContain('python3 espn_stats.py --days "$days"');
+    expect(espn!.src).toContain('rebuild_club_matches');
     expect(stats!.src).not.toContain('name: Collect (ESPN)');
+    expect(stats!.src).toContain('for fn in rebuild_club_matches refresh_stats_planner');
     expect(candidates!.src).toContain('[ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ]');
+    expect(candidates!.src).toContain('[ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ]');
   });
 
   it('у каждого есть job `watch`, который идёт ВСЕГДА', () => {
