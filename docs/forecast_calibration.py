@@ -275,12 +275,12 @@ def current_predictions(snapshots: list[dict], groups: list[dict], kind: str) ->
     return outputs, {"groups": statuses, "probabilities_written": sum(x["probability"] is not None for x in outputs)}
 
 
-def api_rows(base: str, key: str, table: str, select: str) -> list[dict]:
+def api_rows(base: str, key: str, table: str, select: str, order: str) -> list[dict]:
     rows, offset = [], 0
     while True:
         response = requests.get(f"{base.rstrip('/')}/rest/v1/{table}",
             headers={"apikey": key, "Authorization": f"Bearer {key}"},
-            params={"select": select, "order": "snapshot_date.asc", "limit": PAGE_SIZE, "offset": offset},
+            params={"select": select, "order": order, "limit": PAGE_SIZE, "offset": offset},
             timeout=45)
         response.raise_for_status()
         page = response.json()
@@ -300,13 +300,17 @@ def load_production_data() -> dict[str, list[dict]]:
         raise RuntimeError("SUPABASE_URL and a read-authorized Supabase key are required")
     return {
         "award_snapshots": api_rows(base, key, "award_candidate_snapshot",
-            "award_key,season_id,snapshot_date,card_id,competition_id,candidate_score,candidate_rank,model_version"),
+            "award_key,season_id,snapshot_date,card_id,competition_id,candidate_score,candidate_rank,model_version",
+            "snapshot_date.asc,award_key.asc,season_id.asc,card_id.asc,competition_id.asc"),
         "award_outcomes": api_rows(base, key, "award_outcome",
-            "award_key,award_year,card_id,result,announced_at,competition_id,source_url"),
+            "award_key,award_year,card_id,result,announced_at,competition_id,source_url",
+            "announced_at.asc,award_key.asc,award_year.asc,card_id.asc"),
         "team_snapshots": api_rows(base, key, "team_tournament_candidate_snapshot",
-            "tournament,season_start,snapshot_date,team_key,candidate_score,candidate_rank,model_version"),
+            "tournament,season_start,snapshot_date,team_key,candidate_score,candidate_rank,model_version",
+            "snapshot_date.asc,tournament.asc,season_start.asc,team_key.asc"),
         "team_outcomes": api_rows(base, key, "team_tournament_outcome",
-            "tournament,season_start,team_key,result,announced_at,source_url"),
+            "tournament,season_start,team_key,result,announced_at,source_url",
+            "announced_at.asc,tournament.asc,season_start.asc,team_key.asc"),
     }
 
 
@@ -323,6 +327,12 @@ def persist_report(report: dict[str, Any], predictions: list[dict[str, Any]]) ->
                              headers=headers, json={"p_rows": predictions}, timeout=60)
     if not response.ok:
         raise RuntimeError(f"apply_forecast_calibration failed: HTTP {response.status_code}: {response.text[:500]}")
+    try:
+        updated_count = int(response.json()[0]["updated"])
+    except (ValueError, TypeError, KeyError, IndexError):
+        raise RuntimeError("apply_forecast_calibration returned no verifiable updated-row count")
+    if updated_count != len(predictions):
+        raise RuntimeError(f"calibration write mismatch: expected {len(predictions)} rows, updated {updated_count}")
     ledger = []
     for kind, section in (("award", report["individual_awards"]["backtest"]),
                           ("team_tournament", report["team_tournaments"]["backtest"])):
