@@ -67,7 +67,6 @@ describe('сторож у прогонов по расписанию', () => {
     expect(byCron.length).toBeGreaterThanOrEqual(3);
     expect(byCron.map((w) => w.name).sort())
       .toEqual([
-        'award-and-tournament-candidates.yml',
         'daily-enrich.yml',
         'forecast.yml',
         'multimarket-odds-collection.yml',
@@ -79,6 +78,15 @@ describe('сторож у прогонов по расписанию', () => {
         'soccerwiki-roster-refresh.yml',
         'women-stats-backfill.yml',
       ]);
+  });
+
+  it('team forecasts wait for the successful match-results refresh', () => {
+    const candidates = all.find((w) => w.name === 'award-and-tournament-candidates.yml');
+    expect(candidates, 'candidate workflow не найден').toBeDefined();
+    expect(candidates!.src).not.toMatch(/^\s{2}schedule:/m);
+    expect(candidates!.src).toMatch(/workflow_run:/);
+    expect(candidates!.src).toContain('"player-profile-data", "player-stats", "player-market-value-refresh"');
+    expect(candidates!.src).toContain('--skip-team-candidates');
   });
 
   it('у каждого есть job `watch`, который идёт ВСЕГДА', () => {
