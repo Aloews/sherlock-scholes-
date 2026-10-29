@@ -1337,14 +1337,18 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
     return upsert_rows(base, key, "team_tournament_candidate_snapshot", payloads,
                        "tournament,season_start,snapshot_date,team_key")
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--skip-team-candidates",
         action="store_true",
         help="refresh individual-award candidates only; wait for the match-results workflow before rebuilding team tournaments",
     )
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def main() -> int:
+    args = parse_args()
     load_dotenv()
     raw_base, key = os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", "").strip()
     if not raw_base.strip() or not key:
