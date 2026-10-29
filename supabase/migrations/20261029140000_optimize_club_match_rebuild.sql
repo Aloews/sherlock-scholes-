@@ -14,7 +14,6 @@ create index if not exists player_match_stats_fixture_rebuild_idx
     card_id,
     fetched_at desc
   )
-  include (goals, assists)
   where not disputed
     and home_score is not null
     and away_score is not null;
