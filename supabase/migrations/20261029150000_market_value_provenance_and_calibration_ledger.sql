@@ -40,3 +40,70 @@ create index if not exists forecast_calibration_evaluation_recent_idx
 alter table public.forecast_calibration_evaluation enable row level security;
 revoke all on public.forecast_calibration_evaluation from anon, authenticated;
 grant all on public.forecast_calibration_evaluation to service_role;
+
+-- Optional source fields are accepted by the existing RPC payload, so old clients
+-- remain compatible while new collector runs record where the stored price came from.
+create or replace function public.apply_card_market_values(p_rows jsonb)
+returns table(written integer, seen integer)
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_written integer;
+  v_seen integer;
+begin
+  with raw as (
+    select
+      (r->>'card_id')::uuid as card_id,
+      nullif(r->>'value_eur', '')::bigint as value_eur,
+      nullif(r->>'valued_at', '')::date as valued_at,
+      nullif(r->>'source', '') as source,
+      nullif(r->>'source_url', '') as source_url,
+      coalesce(nullif(r->>'observed_at', '')::timestamptz, now()) as observed_at
+    from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) r
+    where (r->>'card_id') is not null
+  ),
+  src as materialized (
+    select r.*,
+      c.market_value_eur as old_value,
+      c.market_value_at as old_at,
+      (
+        r.value_eur > 0 and r.valued_at is not null
+        and r.valued_at <= current_date
+        and (c.market_value_at is null or r.valued_at >= c.market_value_at)
+      ) as price_accepted,
+      (
+        r.value_eur > 0 and r.valued_at is not null
+        and r.valued_at <= current_date
+        and (c.market_value_at is null or r.valued_at >= c.market_value_at)
+        and (c.market_value_eur is distinct from r.value_eur
+          or c.market_value_at is distinct from r.valued_at)
+      ) as price_changed
+    from raw r
+    join public.cards c on c.id = r.card_id
+  ),
+  upd as (
+    update public.cards c
+       set market_value_eur = case when s.price_accepted then s.value_eur else c.market_value_eur end,
+           market_value_at = case when s.price_accepted then s.valued_at else c.market_value_at end,
+           market_value_source = case when s.price_accepted then coalesce(s.source, 'Transfermarkt TMAPI market-value-history') else c.market_value_source end,
+           market_value_source_url = case when s.price_accepted then coalesce(s.source_url, 'https://www.transfermarkt.com/spieler/profil/spieler/' || c.transfermarkt_id) else c.market_value_source_url end,
+           market_value_observed_at = case when s.price_accepted then s.observed_at else c.market_value_observed_at end,
+           market_value_checked_at = now()
+      from src s
+     where c.id = s.card_id
+    returning c.id
+  )
+  select count(*) filter (where s.price_changed)::integer,
+         count(*)::integer
+    into v_written, v_seen
+    from src s
+    cross join (select count(*) from upd) completed;
+
+  return query select coalesce(v_written, 0), coalesce(v_seen, 0);
+end;
+$function$;
+
+revoke all on function public.apply_card_market_values(jsonb) from public;
+grant execute on function public.apply_card_market_values(jsonb) to service_role;
