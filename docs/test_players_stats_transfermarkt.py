@@ -125,6 +125,12 @@ class CandidateSelectionTests(unittest.TestCase):
         self.assertEqual(by_key[(2026, "CL", "11")]["apps"], 1)
         self.assertEqual(by_key[(2025, "GB1", "11")]["goals"], 2)
         self.assertFalse(any(row["goals"] == 9 for row in rows))
+        # This source payload has no trustworthy starter/substitution flags.
+        # Missing values must not be serialized as zero and overwrite verified data.
+        for row in rows:
+            self.assertNotIn("starts", row)
+            self.assertNotIn("sub_in", row)
+            self.assertNotIn("sub_out", row)
 
     def test_only_valid_tmapi_success_envelopes_are_checkpointable(self):
         self.assertTrue(valid_season_payload({
