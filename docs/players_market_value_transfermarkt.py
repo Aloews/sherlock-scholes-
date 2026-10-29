@@ -345,9 +345,16 @@ def write_batch(url, key, rows):
     """
     if not rows:
         return 0
+    observed_at = datetime.now(timezone.utc).isoformat()
     res = sb_rpc(url, key, "apply_card_market_values",
-                 {"p_rows": [{"card_id": r["id"], "value_eur": r["eur"],
-                              "valued_at": r["at"]} for r in rows]})
+                 {"p_rows": [{
+                     "card_id": r["id"],
+                     "value_eur": r["eur"],
+                     "valued_at": r["at"],
+                     "source": "Transfermarkt TMAPI market-value-history",
+                     "source_url": "https://www.transfermarkt.com/spieler/profil/spieler/" + str(r["tm_id"]),
+                     "observed_at": observed_at,
+                 } for r in rows]})
     r0 = res[0] if isinstance(res, list) else res
     try:
         seen = int(r0.get("seen", -1))
@@ -674,9 +681,12 @@ def main():
         for f in found:
             out.append(
                 "update cards set market_value_eur = %d, market_value_at = %s, "
+                "market_value_source = 'Transfermarkt TMAPI market-value-history', "
+                "market_value_source_url = %s, market_value_observed_at = now(), "
                 "wikidata_qid = coalesce(wikidata_qid, %s), "
                 "transfermarkt_id = coalesce(transfermarkt_id, %s) where id = %s;"
                 % (f["eur"], q(f["at"]) if f["at"] else "null",
+                   q("https://www.transfermarkt.com/spieler/profil/spieler/" + str(f["tm_id"])),
                    q(f["qid"]), q(f["tm_id"]), q(f["id"])))
         io.open(args.sql_out, "w", encoding="utf-8").write("\n".join(out) + "\n")
         print("SQL выписан в %s" % args.sql_out)
