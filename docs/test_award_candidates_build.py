@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
-from datetime import date
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, team_source_staleness_reason, competition_format, competition_strength, current_player_stats_coverage, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
+from datetime import date, datetime, timezone
 
 
 class CandidateRankingTests(unittest.TestCase):
@@ -625,6 +625,21 @@ class CandidateRankingTests(unittest.TestCase):
             {row["evidence"]["matches_played"] for row in rows},
             {2},
         )
+
+    def test_team_forecast_requires_recent_match_source_refresh(self):
+        now = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+        self.assertIsNone(team_source_staleness_reason(
+            [{"fetched_at": "2026-10-29T11:50:00Z"}], now
+        ))
+        self.assertIn("53.6 hours old", team_source_staleness_reason(
+            [{"fetched_at": "2026-10-27T06:25:00Z"}], now
+        ))
+        self.assertIn("no parseable fetched_at", team_source_staleness_reason(
+            [{"fetched_at": None}], now
+        ))
+        self.assertIn("in the future", team_source_staleness_reason(
+            [{"fetched_at": "2026-10-29T13:00:00Z"}], now
+        ))
 
     def test_brazilian_serie_a_does_not_mix_previous_calendar_year(self):
         matches = [
