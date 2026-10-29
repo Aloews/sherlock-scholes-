@@ -80,6 +80,15 @@ describe('сторож у прогонов по расписанию', () => {
       ]);
   });
 
+  it('profile workflow changes do not queue a duplicate profile batch', () => {
+    const profile = all.find((w) => w.name === 'player-profile-data.yml');
+    const market = all.find((w) => w.name === 'player-market-value-refresh.yml');
+    expect(profile, 'profile workflow не найден').toBeDefined();
+    expect(market, 'market-value workflow не найден').toBeDefined();
+    expect(profile!.src).not.toContain("      - '.github/workflows/player-profile-data.yml'");
+    expect(market!.src).toContain("      - '.github/workflows/player-profile-data.yml'");
+  });
+
   it('team forecasts wait for the successful match-results refresh', () => {
     const candidates = all.find((w) => w.name === 'award-and-tournament-candidates.yml');
     expect(candidates, 'candidate workflow не найден').toBeDefined();
