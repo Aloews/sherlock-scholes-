@@ -201,6 +201,14 @@ class MarketValueRefreshTests(unittest.TestCase):
         self.assertEqual(parse_verified_profile_market_value(valid_length_wrong_id, "316264"),
                          (None, None))
 
+    def test_profile_parser_accepts_dated_official_market_value_for_matching_player(self):
+        html = ("x" * 12000 + 'spieler/316264 '
+                '<div data-header__market-value-wrapper><span class="waehrung">€</span>'
+                '65.00<span class="waehrung">m</span></div>'
+                '<div data-header__last-update>Last update: 03/06/2026</div>')
+        self.assertEqual(parse_verified_profile_market_value(html, "316264"),
+                         (65_000_000, "2026-06-03"))
+
 
 if __name__ == "__main__":
     unittest.main()
