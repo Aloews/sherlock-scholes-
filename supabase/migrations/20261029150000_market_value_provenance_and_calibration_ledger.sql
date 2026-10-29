@@ -107,3 +107,87 @@ $function$;
 
 revoke all on function public.apply_card_market_values(jsonb) from public;
 grant execute on function public.apply_card_market_values(jsonb) to service_role;
+
+-- The calibrated values live inside score_components so the existing admin
+-- RPCs expose them without a second, competing candidate-read implementation.
+create or replace function public.apply_forecast_calibration(p_rows jsonb)
+returns table(updated integer)
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_updated integer := 0;
+  v_count integer := 0;
+begin
+  with raw as (
+    select
+      r->>'kind' as kind,
+      nullif(r->>'snapshot_date', '')::date as snapshot_date,
+      nullif(r->>'probability', '')::numeric as probability,
+      coalesce(nullif(r->>'calibration_status', ''), 'insufficient_training') as calibration_status,
+      greatest(0, coalesce(nullif(r->>'training_examples', '')::integer, 0)) as training_examples,
+      coalesce(nullif(r->>'model_version', ''), 'walk-forward-platt-v1') as model_version,
+      nullif(r->>'award_key', '') as award_key,
+      nullif(r->>'season_id', '')::smallint as season_id,
+      coalesce(nullif(r->>'competition_id', ''), '*') as competition_id,
+      nullif(r->>'card_id', '')::uuid as card_id,
+      nullif(r->>'tournament', '') as tournament,
+      nullif(r->>'season_start', '')::date as season_start,
+      nullif(r->>'team_key', '') as team_key
+    from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) r
+  ),
+  award_updates as (
+    update public.award_candidate_snapshot a
+       set score_components =
+         (a.score_components - 'calibrated_win_probability' - 'calibration_sample_size'
+                             - 'calibration_status' - 'calibration_model_version')
+         || jsonb_build_object(
+              'calibration_status', r.calibration_status,
+              'calibration_model_version', r.model_version,
+              'calibration_sample_size', r.training_examples
+            )
+         || case when r.probability between 0 and 1
+                 then jsonb_build_object('calibrated_win_probability', r.probability)
+                 else '{}'::jsonb end
+      from raw r
+     where r.kind = 'award'
+       and r.card_id is not null
+       and a.award_key = r.award_key
+       and a.season_id = r.season_id
+       and a.competition_id = r.competition_id
+       and a.snapshot_date = r.snapshot_date
+       and a.card_id = r.card_id
+    returning a.card_id
+  ),
+  team_updates as (
+    update public.team_tournament_candidate_snapshot t
+       set score_components =
+         (t.score_components - 'calibrated_win_probability' - 'calibration_sample_size'
+                             - 'calibration_status' - 'calibration_model_version')
+         || jsonb_build_object(
+              'calibration_status', r.calibration_status,
+              'calibration_model_version', r.model_version,
+              'calibration_sample_size', r.training_examples
+            )
+         || case when r.probability between 0 and 1
+                 then jsonb_build_object('calibrated_win_probability', r.probability)
+                 else '{}'::jsonb end
+      from raw r
+     where r.kind = 'team_tournament'
+       and r.team_key is not null
+       and t.tournament = r.tournament
+       and t.season_start = r.season_start
+       and t.snapshot_date = r.snapshot_date
+       and t.team_key = r.team_key
+    returning t.team_key
+  )
+  select (select count(*) from award_updates) + (select count(*) from team_updates)
+    into v_count;
+  v_updated := coalesce(v_count, 0);
+  return query select v_updated;
+end;
+$function$;
+
+revoke all on function public.apply_forecast_calibration(jsonb) from public, anon, authenticated;
+grant execute on function public.apply_forecast_calibration(jsonb) to service_role;
