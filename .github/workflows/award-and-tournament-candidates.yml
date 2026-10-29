@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/award-and-tournament-candidates.yml'
       - '.github/workflows/player-profile-data.yml'
+      - '.github/workflows/espn-results-refresh.yml'
+      - '.github/workflows/player-stats.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'supabase/migrations/20261027143304_award_tournament_candidate_pipeline.sql'
@@ -17,6 +19,8 @@ on:
       - '.github/workflows/award-and-tournament-candidates.yml'
       - '.github/workflows/player-market-value-refresh.yml'
       - '.github/workflows/player-profile-data.yml'
+      - '.github/workflows/espn-results-refresh.yml'
+      - '.github/workflows/player-stats.yml'
       - 'docs/award_candidates_build.py'
       - 'docs/test_award_candidates_build.py'
       - 'docs/players_stats_transfermarkt.py'
@@ -28,7 +32,7 @@ on:
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
       - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
   workflow_run:
-    workflows: ["player-profile-data", "player-stats", "player-market-value-refresh"]
+    workflows: ["player-profile-data", "player-market-value-refresh", "espn-results-refresh", "player-stats"]
     types: [completed]
   workflow_dispatch:
 
@@ -87,11 +91,14 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
         run: |
-          # The ESPN match feed is refreshed by player-stats. Other upstream jobs
-          # refresh player data/prices, not team match results, so they must not
+          # ESPN results and sports.ru refreshes rebuild club_match. Player/market jobs
+          # only refresh player data/prices, so they must not
           # publish new team-tournament snapshots from an older feed.
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || {
-            [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python docs/award_candidates_build.py
+          elif [ "$EVENT_NAME" = "workflow_run" ] && {
+            [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ] ||
+            [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
           }; then
             python docs/award_candidates_build.py
           else
