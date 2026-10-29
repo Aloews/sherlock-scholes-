@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/player-market-value-refresh.yml'
+      - '.github/workflows/player-profile-data.yml'
       - 'docs/players_market_value_transfermarkt.py'
       - 'docs/test_players_market_value_transfermarkt.py'
       - 'docs/young_talent_market_watch.py'
