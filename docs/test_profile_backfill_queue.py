@@ -202,10 +202,11 @@ class TransfermarktFallbackTests(unittest.TestCase):
         qid_empty = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
         )
+        original = worker.run_collector
         with patch("profile_backfill_queue.subprocess.run", return_value=qid_empty) as run, patch(
             "profile_backfill_queue.run_collector"
         ) as fallback:
-            output, exit_code = worker.run_collector(job)
+            output, exit_code = original(job)
         self.assertEqual(exit_code, 0)
         self.assertEqual(run.call_count, 1)
         self.assertIn("cards_photo_from_qid.py", run.call_args.args[0][1])
@@ -216,10 +217,11 @@ class TransfermarktFallbackTests(unittest.TestCase):
         tm_found = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="Portraits found : 1\nWritten : 1"
         )
+        original = worker.run_collector
         with patch("profile_backfill_queue.subprocess.run", return_value=tm_found) as run, patch(
             "profile_backfill_queue.run_collector"
         ) as fallback:
-            output, exit_code = worker.run_collector(self.job)
+            output, exit_code = original(self.job)
         self.assertEqual(exit_code, 0)
         self.assertEqual(run.call_count, 1)
         self.assertIn("cards_photo_transfermarkt.py", run.call_args.args[0][1])
