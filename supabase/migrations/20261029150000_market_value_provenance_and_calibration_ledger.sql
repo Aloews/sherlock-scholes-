@@ -203,3 +203,75 @@ $function$;
 
 revoke all on function public.apply_forecast_calibration(jsonb) from public, anon, authenticated;
 grant execute on function public.apply_forecast_calibration(jsonb) to service_role;
+
+-- Same-metric disagreement between the official profile page and its API proxy
+-- is retained for review instead of silently choosing or averaging one value.
+create table if not exists public.market_value_reconciliation_issue (
+  id bigint generated always as identity primary key,
+  card_id uuid not null references public.cards(id) on delete cascade,
+  transfermarkt_id text not null,
+  api_value_eur bigint not null check (api_value_eur > 0),
+  api_valued_at date not null,
+  profile_value_eur bigint not null check (profile_value_eur > 0),
+  profile_valued_at date not null,
+  observed_at timestamptz not null default now(),
+  source_url text not null,
+  status text not null default 'open' check (status in ('open','resolved','dismissed')),
+  resolution_note text,
+  created_at timestamptz not null default now(),
+  unique (card_id, api_value_eur, api_valued_at, profile_value_eur, profile_valued_at)
+);
+
+create index if not exists market_value_reconciliation_open_idx
+  on public.market_value_reconciliation_issue (observed_at desc)
+  where status = 'open';
+
+alter table public.market_value_reconciliation_issue enable row level security;
+revoke all on public.market_value_reconciliation_issue from anon, authenticated;
+grant all on public.market_value_reconciliation_issue to service_role;
+
+create or replace function public.record_market_value_reconciliation_issues(p_rows jsonb)
+returns table(recorded integer)
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_count integer;
+begin
+  with raw as (
+    select (r->>'card_id')::uuid as card_id,
+           r->>'transfermarkt_id' as transfermarkt_id,
+           (r->>'api_value_eur')::bigint as api_value_eur,
+           (r->>'api_valued_at')::date as api_valued_at,
+           (r->>'profile_value_eur')::bigint as profile_value_eur,
+           (r->>'profile_valued_at')::date as profile_valued_at,
+           coalesce(nullif(r->>'observed_at','')::timestamptz, now()) as observed_at,
+           r->>'source_url' as source_url
+      from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) r
+     where nullif(r->>'card_id','') is not null
+       and nullif(r->>'transfermarkt_id','') is not null
+       and nullif(r->>'api_value_eur','') is not null
+       and nullif(r->>'api_valued_at','') is not null
+       and nullif(r->>'profile_value_eur','') is not null
+       and nullif(r->>'profile_valued_at','') is not null
+  ),
+  saved as (
+    insert into public.market_value_reconciliation_issue
+      (card_id, transfermarkt_id, api_value_eur, api_valued_at,
+       profile_value_eur, profile_valued_at, observed_at, source_url)
+    select card_id, transfermarkt_id, api_value_eur, api_valued_at,
+           profile_value_eur, profile_valued_at, observed_at, source_url
+      from raw
+    on conflict (card_id, api_value_eur, api_valued_at, profile_value_eur, profile_valued_at)
+    do update set observed_at = excluded.observed_at
+    returning id
+  )
+  select count(*)::integer into v_count from saved;
+  return query select coalesce(v_count, 0);
+end;
+$function$;
+
+revoke all on function public.record_market_value_reconciliation_issues(jsonb) from public, anon, authenticated;
+grant execute on function public.record_market_value_reconciliation_issues(jsonb) to service_role;
+
