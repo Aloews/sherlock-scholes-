@@ -703,6 +703,14 @@ def main():
                       % (card.get("name") or card["id"], tm_id,
                          format(int(euros), ","), at, format(int(profile_value), ","), profile_date),
                       flush=True)
+                # Both sources were read successfully; record the attempt time without
+                # changing the canonical price, so the same expensive player is not
+                # fetched repeatedly during overlapping scheduled runs.
+                pending.append({"id": card["id"], "name": card.get("name"), "qid": qid,
+                                "tm_id": tm_id, "eur": None, "at": None})
+                if apply and len(pending) >= MV_BATCH:
+                    written += write_batch(url, write_key, pending)
+                    pending = []
                 time.sleep(TM_PAUSE)
                 continue
         has_source_value = should_write_market_value(euros, at)
