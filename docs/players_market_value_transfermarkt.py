@@ -313,7 +313,13 @@ def fetch_profile(tm_id, tries=3):
 def write_market_value_conflicts(url, key, rows):
     if not rows:
         return 0
-    result = sb_rpc(url, key, "record_market_value_reconciliation_issues", {"p_rows": rows})
+    try:
+        result = sb_rpc(url, key, "record_market_value_reconciliation_issues", {"p_rows": rows})
+    except Exception as error:  # noqa: BLE001
+        # The migration is intentionally deployed separately. Never overwrite a
+        # conflicting value just because the audit RPC is not installed yet.
+        print("⚠️ conflict NOT persisted (migration required): %s" % type(error).__name__, flush=True)
+        return None
     first = result[0] if isinstance(result, list) else result
     try:
         recorded = int(first.get("recorded", -1))
@@ -725,7 +731,8 @@ def main():
 
     if apply and market_value_conflicts:
         recorded_conflicts = write_market_value_conflicts(url, write_key, market_value_conflicts)
-        print("Конфликты стоимости сохранены в audit-таблице: %d" % recorded_conflicts, flush=True)
+        if recorded_conflicts is not None:
+            print("Конфликты стоимости сохранены в audit-таблице: %d" % recorded_conflicts, flush=True)
     elif market_value_conflicts:
         print("Конфликты стоимости в сухом прогоне: %d (не записаны)" % len(market_value_conflicts), flush=True)
 
