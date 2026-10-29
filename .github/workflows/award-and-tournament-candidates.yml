@@ -25,8 +25,6 @@ on:
       - 'supabase/migrations/20261027160500_team_candidate_rpc_overview.sql'
       - 'supabase/migrations/20261027190000_active_team_candidate_snapshot.sql'
       - 'supabase/migrations/20261027191500_latest_award_candidate_season.sql'
-  schedule:
-    - cron: '35 6 * * *'
   workflow_run:
     workflows: ["player-profile-data", "player-stats", "player-market-value-refresh"]
     types: [completed]
@@ -83,7 +81,20 @@ jobs:
           test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
           test -n "$SUPABASE_KEY" || { echo "::error::SUPABASE_KEY is missing"; exit 1; }
       - name: Build and store candidate snapshots
-        run: python docs/award_candidates_build.py
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          # The ESPN match feed is refreshed by player-stats. Other upstream jobs
+          # refresh player data/prices, not team match results, so they must not
+          # publish new team-tournament snapshots from an older feed.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || {
+            [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
+          }; then
+            python docs/award_candidates_build.py
+          else
+            python docs/award_candidates_build.py --skip-team-candidates
+          fi
 
   watch:
     needs: [validate, refresh]
