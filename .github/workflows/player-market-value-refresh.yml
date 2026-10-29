@@ -145,9 +145,6 @@ jobs:
           fi
           APPLY=1 python docs/players_market_value_transfermarkt.py --from-cards --refresh --limit "$limit"
 
-      - name: Refresh award and team-tournament candidates after market values
-        run: python3 docs/award_candidates_build.py
-
       - name: Snapshot young talent awards, prices and market movement
         run: python3 docs/young_talent_market_watch.py
 
