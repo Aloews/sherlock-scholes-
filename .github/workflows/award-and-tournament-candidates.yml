@@ -35,6 +35,12 @@ on:
     workflows: ["player-profile-data", "player-market-value-refresh", "espn-results-refresh", "player-stats"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      persist_calibration:
+        description: "Persist calibrated probabilities after the provenance/calibration migration has been applied"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,8 +66,10 @@ jobs:
         run: python docs/test_players_stats_transfermarkt.py
       - name: Test source-date guard and market-value refresh rotation
         run: python docs/test_players_market_value_transfermarkt.py
-      - name: Compile candidate generator
-        run: python -m py_compile docs/award_candidates_build.py
+      - name: Test walk-forward forecast calibration
+        run: python -m unittest -v docs.test_forecast_calibration
+      - name: Compile candidate and calibration pipelines
+        run: python -m py_compile docs/award_candidates_build.py docs/forecast_calibration.py
 
   refresh:
     if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
