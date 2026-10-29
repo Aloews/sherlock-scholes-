@@ -197,52 +197,61 @@ class TransfermarktFallbackTests(unittest.TestCase):
         "card_id": "9d06be47-0dd0-497e-ba58-9bdf6a265d7d",
     }
 
-    def test_wikidata_is_attempted_before_transfermarkt(self):
-        qid_found = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 1 (P18 1)\nЗаписано : 1"
+    def test_photo_qid_job_does_not_repeat_transfermarkt_or_soccwerwiki(self):
+        job = {**self.job, "task_type": "photo_qid"}
+        qid_empty = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
         )
-        with patch("profile_backfill_queue.subprocess.run", return_value=qid_found) as run:
-            output, exit_code = worker.run_collector(self.job)
+        original = worker.run_collector
+        with patch("profile_backfill_queue.subprocess.run", return_value=qid_empty) as run, patch(
+            "profile_backfill_queue.run_collector"
+        ) as fallback:
+            output, exit_code = original(job)
         self.assertEqual(exit_code, 0)
         self.assertEqual(run.call_count, 1)
         self.assertIn("cards_photo_from_qid.py", run.call_args.args[0][1])
-        self.assertIn("Источник: Wikidata", output)
+        fallback.assert_not_called()
+        self.assertNotIn("Transfermarkt attempt", output)
 
-    def test_transfermarkt_is_fallback_after_wikidata_has_no_photo(self):
-        qid_empty = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
-        )
+    def test_transfermarkt_job_does_not_repeat_wikidata(self):
         tm_found = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="Portraits found : 1\nWritten : 1"
         )
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_found]) as run:
-            output, exit_code = worker.run_collector(self.job)
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(run.call_count, 2)
-        self.assertIn("cards_photo_from_qid.py", run.call_args_list[0].args[0][1])
-        self.assertIn("cards_photo_transfermarkt.py", run.call_args_list[1].args[0][1])
-        self.assertIn("Источник: Transfermarkt после Wikidata", output)
-
-    def test_soccwerwiki_is_final_fallback_after_qid_and_transfermarkt(self):
-        qid_empty = subprocess.CompletedProcess(args=[], returncode=0, stdout='Фото найдено : 0 (P18 0)')
-        tm_empty = subprocess.CompletedProcess(args=[], returncode=0, stdout='Портретов найдено : 0\nЗаписано : 0')
         original = worker.run_collector
-        calls = []
-        def fallback(job):
-            calls.append(job['task_type'])
-            if job['task_type'] == 'photo_sw':
-                return 'Фото найдено: 1\nЗаписано: 1\nИсточник: Soccer Wiki', 0
-            return original(job)
-        with patch('profile_backfill_queue.subprocess.run', side_effect=[qid_empty, tm_empty]), patch('profile_backfill_queue.run_collector', side_effect=fallback):
+        with patch("profile_backfill_queue.subprocess.run", return_value=tm_found) as run, patch(
+            "profile_backfill_queue.run_collector"
+        ) as fallback:
             output, exit_code = original(self.job)
         self.assertEqual(exit_code, 0)
-        self.assertEqual(calls, ['photo_sw'])
-        self.assertIn('Soccer Wiki fallback', output)
-        self.assertIn('Источник: Soccer Wiki', output)
-    def test_transport_failure_still_attempts_soccwerwiki_before_retry(self):
-        qid_empty = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
+        self.assertEqual(run.call_count, 1)
+        self.assertIn("cards_photo_transfermarkt.py", run.call_args.args[0][1])
+        fallback.assert_not_called()
+        self.assertIn("Источник: Transfermarkt", output)
+        self.assertNotIn("cards_photo_from_qid.py", str(run.call_args.args[0]))
+
+    def test_soccwerwiki_is_fallback_after_transfermarkt_has_no_photo(self):
+        tm_empty = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Портретов найдено : 0\nЗаписано : 0"
         )
+        original = worker.run_collector
+        calls = []
+
+        def fallback(job):
+            calls.append(job["task_type"])
+            if job["task_type"] == "photo_sw":
+                return "Фото найдено: 1\nЗаписано: 1\nИсточник: Soccer Wiki", 0
+            return original(job)
+
+        with patch("profile_backfill_queue.subprocess.run", return_value=tm_empty), patch(
+            "profile_backfill_queue.run_collector", side_effect=fallback
+        ):
+            output, exit_code = original(self.job)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(calls, ["photo_sw"])
+        self.assertIn("Soccer Wiki fallback", output)
+        self.assertIn("Источник: Soccer Wiki", output)
+
+    def test_transport_failure_still_attempts_soccwerwiki_before_retry(self):
         tm_failed = subprocess.CompletedProcess(
             args=[], returncode=1,
             stdout="Портретов найдено: 0\nRegional portrait requests: www.transfermarkt.com:transient_empty_response\nПРОФИЛЕЙ ПОТЕРЯНО: 1"
@@ -256,7 +265,7 @@ class TransfermarktFallbackTests(unittest.TestCase):
                 return "Фото найдено: 0\nNo identity-verified Soccer Wiki photo matches card", 0
             return original(job)
 
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_failed]), patch(
+        with patch("profile_backfill_queue.subprocess.run", return_value=tm_failed), patch(
             "profile_backfill_queue.run_collector", side_effect=fallback
         ):
             output, exit_code = original(self.job)
@@ -266,12 +275,9 @@ class TransfermarktFallbackTests(unittest.TestCase):
         self.assertIn("transient_empty_response", output)
 
     def test_soccwerwiki_fills_photo_after_transient_transfermarkt_failure(self):
-        qid_empty = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="Фото найдено : 0 (P18 0)"
-        )
         tm_failed = subprocess.CompletedProcess(
             args=[], returncode=1,
-            stdout="Портретов найдено: 0\\nRegional portrait requests: www.transfermarkt.com:transient_empty_response\\nПРОФИЛЕЙ ПОТЕРЯНО: 1"
+            stdout="Портретов найдено: 0\nRegional portrait requests: www.transfermarkt.com:transient_empty_response\nПРОФИЛЕЙ ПОТЕРЯНО: 1"
         )
         original = worker.run_collector
         calls = []
@@ -279,10 +285,10 @@ class TransfermarktFallbackTests(unittest.TestCase):
         def fallback(job):
             calls.append(job["task_type"])
             if job["task_type"] == "photo_sw":
-                return "Фото найдено: 1\\nЗаписано: 1\\nИсточник: Soccer Wiki", 0
+                return "Фото найдено: 1\nЗаписано: 1\nИсточник: Soccer Wiki", 0
             return original(job)
 
-        with patch("profile_backfill_queue.subprocess.run", side_effect=[qid_empty, tm_failed]), patch(
+        with patch("profile_backfill_queue.subprocess.run", return_value=tm_failed), patch(
             "profile_backfill_queue.run_collector", side_effect=fallback
         ):
             output, exit_code = original(self.job)
