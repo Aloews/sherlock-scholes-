@@ -1,0 +1,55 @@
+name: forecast-calibration-sql-regression
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261029150000_market_value_provenance_and_calibration_ledger.sql'
+      - 'supabase/tests/forecast_calibration_test_setup.sql'
+      - 'supabase/tests/forecast_calibration_provenance.test.sql'
+      - '.github/workflows/forecast-calibration-sql-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261029150000_market_value_provenance_and_calibration_ledger.sql'
+      - 'supabase/tests/forecast_calibration_test_setup.sql'
+      - 'supabase/tests/forecast_calibration_provenance.test.sql'
+      - '.github/workflows/forecast-calibration-sql-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sql-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: calibration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d calibration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: calibration_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Create isolated calibration schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/forecast_calibration_test_setup.sql
+      - name: Apply market-value provenance and calibration migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261029150000_market_value_provenance_and_calibration_ledger.sql
+      - name: Assert provenance, conflict quarantine, and calibrated persistence
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/forecast_calibration_provenance.test.sql
