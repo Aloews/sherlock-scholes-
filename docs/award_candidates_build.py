@@ -1087,7 +1087,7 @@ def explicit_team_season_floor(tournament: str, snapshot: date) -> date | None:
     # season during spring and summerizes only half the competition.
     summer_start_tokens = (
         "uefa champions league", "uefa europa league", "uefa conference league",
-        "afc champions league", "caf champions league", "uefa nations league",
+        "afc champions league", "caf champions league", "uefa nations league", "uefa youth league",
         "premier league", "laliga", "bundesliga", "serie a", "serie b",
         "ligue 1", "ligue 2", "eredivisie", "primeira liga", "pro league",
         "super lig", "superliga", "championship", "eliteserien", "premiership",
