@@ -189,6 +189,7 @@ def build_team_groups(snapshots: list[dict], outcomes: list[dict]) -> list[dict]
             row["label"] = int(str(row.get("team_key")) in winners)
         groups.append({"kind": "team_tournament", "forecast_key": "|".join(key), "season": key[1],
                        "snapshot_date": snap_date.isoformat(), "announced_at": announced_at.isoformat(),
+                       "source_urls": sorted({str(r.get("source_url")) for r in records if r.get("source_url")}),
                        "rows": rows, "winners": len(winners)})
     return sorted(groups, key=lambda g: g["announced_at"])
 
