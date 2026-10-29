@@ -1078,30 +1078,49 @@ def canonical_team_tournament(tournament: str) -> str:
 
 
 def explicit_team_season_floor(tournament: str, snapshot: date) -> date | None:
-    """Return a conservative calendar boundary for annual continental competitions.
-
-    A fixed 75-day gap works for many domestic leagues but can fail when the
-    results feed contains qualifying rounds, rescheduled fixtures or an unrelated
-    competition carrying a generic localized label. European/Asian continental
-    seasons restart in the summer; South American and CONCACAF club cups restart
-    in the calendar year. Official season IDs should replace these inferred
-    boundaries when the source provides them.
-    """
+    """Return a known season boundary before falling back to match-gap inference."""
     value = str(tournament or "").casefold()
-    if re.search(
-        r"\b(uefa champions league|uefa europa league|uefa conference league|"
-        r"afc champions league elite|afc champions league two|caf champions league|"
-        r"uefa nations league)\b",
-        value,
-    ):
-        return date(snapshot.year, 7, 1)
-    if re.search(
-        r"\b(conmebol libertadores|conmebol sudamericana|concacaf champions cup)\b",
-        value,
-    ):
-        return date(snapshot.year, 1, 1)
-    return None
 
+    # European and Asian autumn/spring competitions restart in the summer. Use
+    # the previous July when the snapshot is in January-June, otherwise the
+    # current July; using July of the snapshot year year-round drops the active
+    # season during spring and summerizes only half the competition.
+    summer_start_tokens = (
+        "uefa champions league", "uefa europa league", "uefa conference league",
+        "afc champions league", "caf champions league", "uefa nations league",
+        "premier league", "laliga", "bundesliga", "serie a", "serie b",
+        "ligue 1", "ligue 2", "eredivisie", "primeira liga", "pro league",
+        "super lig", "superliga", "championship", "eliteserien", "premiership",
+        "saudi pro league", "russian premier league", "turkish super lig",
+        "austrian bundesliga", "south african premiership",
+        "премьер-лига", "высшая лига", "чемпионшип", "бундеслига",
+        "лига 1", "лига 2", "эрдивизи", "кубок россии", "fonbet кубок",
+        "англия. кубок", "англия. кубок лиги", "германия. кубок",
+        "австрия. кубок", "италия. кубок", "украина. кубок",
+    )
+    calendar_start_tokens = (
+        "conmebol libertadores", "conmebol sudamericana", "concacaf champions cup",
+        "brazil", "бразил", "argentin", "аргентин", "chile", "чили",
+        "colombia", "колумб", "bolivia", "болив", "paraguay", "парагва",
+        "uruguay", "уругва", "peru", "перу", "ecuador", "эквадор",
+        "venezuela", "венесуэл", "libertadores", "sudamericana", "mls",
+        "j.league", "japan", "япония", "chinese super league", "китай. суперлига",
+        "k league", "южная корея", "norwegian eliteserien", "норвегия. высшая лига",
+        "swedish allsvenskan", "швеция. высшая лига", "finnish", "финляндия. высшая лига",
+        "iceland", "исландия. высшая лига", "irish", "ирландия. высшая лига",
+        "kazakh", "казахстан. премьер-лига", "uzbek", "узбекистан. высшая лига",
+        "georgian", "грузия. высшая лига", "armenia", "армения. высшая лига",
+        "latvia", "латвия. высшая лига", "lithuania", "литва. высшая лига",
+        "estonia", "эстония. высшая лига",
+    )
+    if "mexican liga bbva mx" in value or "мексика. высшая лига" in value:
+        return date(snapshot.year, 7, 1) if snapshot.month >= 7 else date(snapshot.year, 1, 1)
+    if any(token in value for token in calendar_start_tokens):
+        return date(snapshot.year, 1, 1)
+    if any(token in value for token in summer_start_tokens):
+        season_year = snapshot.year if snapshot.month >= 7 else snapshot.year - 1
+        return date(season_year, 7, 1)
+    return None
 
 def build_team_candidate_payloads(
     matches: list[dict],
