@@ -1353,10 +1353,16 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument(
         "--skip-team-candidates",
         action="store_true",
         help="refresh individual-award candidates only; wait for the match-results workflow before rebuilding team tournaments",
+    )
+    scope.add_argument(
+        "--team-only",
+        action="store_true",
+        help="refresh team-tournament candidates only, without rebuilding individual awards",
     )
     return parser.parse_args(argv)
 
@@ -1374,15 +1380,18 @@ def main() -> int:
         print(str(error), file=sys.stderr)
         return 2
     snapshot = date.today()
+    award_outcomes_written = award_writes = stale_award_rows_removed = 0
+    season = snapshot.year
+    team_writes = 0
+    team_snapshot_skip_reason = None
     try:
-        award_outcomes_written = sync_explicit_award_outcomes(base, key)
-        season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
+        if not args.team_only:
+            award_outcomes_written = sync_explicit_award_outcomes(base, key)
+            season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
         if args.skip_team_candidates:
-            team_writes = 0
             team_snapshot_skip_reason = "waiting for the player-stats/ESPN results refresh"
         else:
             team_writes = build_team_candidates(base, key, snapshot)
-            team_snapshot_skip_reason = None
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"candidate build failed: {error}", file=sys.stderr)
         return 1
@@ -1395,6 +1404,7 @@ def main() -> int:
         "team_tournament_snapshot_skip_reason": team_snapshot_skip_reason,
         "award_model_version": AWARD_MODEL_VERSION,
         "team_model_version": TEAM_MODEL_VERSION,
+        "refresh_scope": "teams" if args.team_only else ("awards" if args.skip_team_candidates else "all"),
         "interpretation": "candidate scores are relative ranking indices, not probabilities",
     }, ensure_ascii=False))
     return 0
