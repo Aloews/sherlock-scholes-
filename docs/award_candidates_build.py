@@ -121,11 +121,11 @@ AWARD_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 
 
 def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
-    """Extract only winner claims whose card title explicitly names the award year.
+    """Extract winner labels only with event-specific official provenance.
 
-    The card honours collector records achievements, not nominations. An explicit
-    year is required so an undated career honour is never assigned to the wrong
-    award cycle. Source provenance comes from the card's honours source URL.
+    A year in a biography's honours list is not enough to prove an event outcome.
+    Require an event-keyed official source URL and a timezone-aware announcement
+    timestamp so unverified career-history text cannot enter model evaluation.
     """
     outcomes: dict[tuple[str, int, str], dict] = {}
     for card in cards:
@@ -170,14 +170,28 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
             else:
                 continue
             event_key = f"{award_key}:{year}"
+            # A player's general biography is not evidence that they won a
+            # specific award in a specific year. Only an event-keyed source and
+            # its announcement timestamp can create a verified outcome; otherwise
+            # the record must not enter the evaluation/backtest dataset.
             award_sources = facts.get("award_sources")
             award_sources = award_sources if isinstance(award_sources, dict) else {}
-            source_url = str(award_sources.get(event_key) or facts.get("honours_source") or "").strip()
+            source_url = str(award_sources.get(event_key) or "").strip()
             if not source_url.startswith(("https://", "http://")):
                 continue
             event_dates = facts.get("award_announcement_dates")
             event_dates = event_dates if isinstance(event_dates, dict) else {}
             announced_at = event_dates.get(event_key)
+            if not announced_at:
+                continue
+            try:
+                parsed_announcement = datetime.fromisoformat(
+                    str(announced_at).replace("Z", "+00:00")
+                )
+            except ValueError:
+                continue
+            if parsed_announcement.tzinfo is None or parsed_announcement.utcoffset() is None:
+                continue
             identity = (award_key, year, card_id)
             outcome = {
                 "award_key": award_key,
@@ -186,19 +200,15 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
                 "competition_id": "*",
                 "result": "winner",
                 "source_url": source_url,
-                "announced_at": str(announced_at) if announced_at else None,
-                "verified_by": (
-                    "official_award_source_sync"
-                    if explicit_award_key and event_key in award_sources
-                    else "explicit_year_card_honours_sync"
-                ),
+                "announced_at": parsed_announcement.astimezone(timezone.utc).isoformat(),
+                "verified_by": "official_award_source_sync",
             }
             outcomes[identity] = outcome
     return list(outcomes.values())
 
 
 def sync_explicit_award_outcomes(base: str, key: str) -> int:
-    """Persist historical winners only when the source title contains an award year."""
+    """Persist winners only when event-specific official evidence is present."""
     cards = get_rows(base, key, "cards", {
         "select": "id,category,active,facts",
         "category": "in.(player,woman,club)", "active": "eq.true", "facts": "not.is.null",
