@@ -121,11 +121,11 @@ AWARD_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 
 
 def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
-    """Extract only winner claims whose card title explicitly names the award year.
+    """Extract winner labels only with event-specific official provenance.
 
-    The card honours collector records achievements, not nominations. An explicit
-    year is required so an undated career honour is never assigned to the wrong
-    award cycle. Source provenance comes from the card's honours source URL.
+    A year in a biography's honours list is not enough to prove an event outcome.
+    Require an event-keyed official source URL and a timezone-aware announcement
+    timestamp so unverified career-history text cannot enter model evaluation.
     """
     outcomes: dict[tuple[str, int, str], dict] = {}
     for card in cards:
@@ -208,7 +208,7 @@ def extract_explicit_award_outcomes(cards: list[dict]) -> list[dict]:
 
 
 def sync_explicit_award_outcomes(base: str, key: str) -> int:
-    """Persist historical winners only when the source title contains an award year."""
+    """Persist winners only when event-specific official evidence is present."""
     cards = get_rows(base, key, "cards", {
         "select": "id,category,active,facts",
         "category": "in.(player,woman,club)", "active": "eq.true", "facts": "not.is.null",
