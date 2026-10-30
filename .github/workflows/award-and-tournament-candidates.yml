@@ -35,6 +35,16 @@ on:
     workflows: ["player-profile-data", "player-market-value-refresh", "espn-results-refresh", "player-stats"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Which candidate system to refresh'
+        required: true
+        type: choice
+        options:
+          - all
+          - teams
+          - awards
+        default: all
 
 permissions:
   contents: read
@@ -90,12 +100,18 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          REFRESH_SCOPE: ${{ inputs.scope || 'all' }}
         run: |
           # ESPN results and sports.ru refreshes rebuild club_match. Player/market jobs
-          # only refresh player data/prices, so they must not
-          # publish new team-tournament snapshots from an older feed.
+          # only refresh player data/prices, so they must not publish team snapshots
+          # from an older feed. Manual runs can target teams without repeating award work.
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            python docs/award_candidates_build.py
+            case "$REFRESH_SCOPE" in
+              teams) python docs/award_candidates_build.py --team-only ;;
+              awards) python docs/award_candidates_build.py --skip-team-candidates ;;
+              all) python docs/award_candidates_build.py ;;
+              *) echo "::error::Unknown refresh scope: $REFRESH_SCOPE"; exit 2 ;;
+            esac
           elif [ "$EVENT_NAME" = "workflow_run" ] && {
             [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ] ||
             [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
