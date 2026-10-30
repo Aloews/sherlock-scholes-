@@ -7,8 +7,19 @@ from datetime import date
 
 class CandidateRankingTests(unittest.TestCase):
     def test_team_candidate_skip_flag_is_explicit_and_opt_in(self):
-        self.assertFalse(parse_args([]).skip_team_candidates)
+        args = parse_args([])
+        self.assertFalse(args.skip_team_candidates)
+        self.assertFalse(args.team_only)
         self.assertTrue(parse_args(["--skip-team-candidates"]).skip_team_candidates)
+
+    def test_team_only_refresh_is_a_distinct_scope(self):
+        args = parse_args(["--team-only"])
+        self.assertTrue(args.team_only)
+        self.assertFalse(args.skip_team_candidates)
+
+    def test_award_only_and_team_only_scopes_cannot_be_combined(self):
+        with self.assertRaises(SystemExit):
+            parse_args(["--team-only", "--skip-team-candidates"])
 
     def test_failed_postgrest_upsert_includes_server_error_body(self):
         response = Mock(ok=False, status_code=400, text='{"message":"award_key violates check constraint"}')
