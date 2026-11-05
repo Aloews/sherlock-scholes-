@@ -269,7 +269,7 @@ function quizQuestionKeyboard(round: QuizRound, key: string): Record<string, unk
   return {
     inline_keyboard: round.options.map((option) => [{
       text: option.name,
-      callback_data: createQuizCallback("answer", key, option.id),
+      callback_data: createQuizCallback("answer", key, round.options.indexOf(option)),
     }]),
   };
 }
@@ -401,7 +401,7 @@ async function handleQuizCallback(query: Record<string, unknown>): Promise<void>
 
   if (data.action === "answer") {
     if (session.answered_at) return;
-    const selected = session.options.find((option) => option.id === data.optionId);
+    const selected = typeof data.optionIndex === "number" ? session.options[data.optionIndex] : undefined;
     if (!selected) return;
 
     const params = new URLSearchParams({
@@ -515,6 +515,10 @@ Deno.serve(async (req) => {
       return new Response("ok");
     }
 
+    // Text commands are read only after payment updates have been handled.
+    const text = update.message?.text;
+    const chatId = update.message?.chat?.id;
+
     // Chat-native quiz: structured Telegram Rich Message with callback actions.
     if (typeof text === "string" && /^\/quiz(?:@\w+)?(?:\s|$)/i.test(text) && typeof chatId === "number") {
       await sendQuizQuestion(chatId, update.message?.from?.id ?? chatId, update.message?.from?.language_code ?? "");
@@ -523,8 +527,6 @@ Deno.serve(async (req) => {
 
     // Приглашение: `/start <КОД>`. Стоит после платёжных веток намеренно —
     // деньги важнее и не должны ждать разбора текста.
-    const text = update.message?.text;
-    const chatId = update.message?.chat?.id;
     if (typeof text === "string" && text.startsWith("/start") && typeof chatId === "number") {
       await handleStart(chatId, text, update.message?.from?.language_code ?? "");
       return new Response("ok");
