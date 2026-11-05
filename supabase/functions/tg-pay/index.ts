@@ -316,7 +316,6 @@ async function loadQuizSession(key: string, chatId: number, messageId: number): 
     select: "session_key,chat_id,created_by,message_id,language_code,answer_id,facts,options,chosen_option_id,answered_at,expires_at",
     session_key: `eq.${key}`,
     chat_id: `eq.${chatId}`,
-    message_id: `eq.${messageId}`,
     expires_at: `gt.${new Date().toISOString()}`,
     limit: "1",
   });
@@ -326,7 +325,20 @@ async function loadQuizSession(key: string, chatId: number, messageId: number): 
     return null;
   }
   const rows = await response.json().catch(() => []) as QuizSession[];
-  return rows[0] ?? null;
+  const session = rows[0];
+  if (!session) return null;
+  // Telegram can deliver a button tap before sendRichMessage's response has
+  // been persisted. Claim the message id on the first callback to close that
+  // small send/insert race; subsequent callbacks must match it exactly.
+  if (session.message_id === null) {
+    const claim = await quizTable(
+      `telegram_chat_quiz_sessions?session_key=eq.${key}&message_id=is.null`,
+      { method: "PATCH", body: JSON.stringify({ message_id: messageId }) },
+    );
+    if (!claim.ok) return null;
+    session.message_id = messageId;
+  }
+  return session.message_id === messageId ? session : null;
 }
 
 async function editQuizQuestion(chatId: number, messageId: number, round: QuizRound, key: string, language: string): Promise<void> {
