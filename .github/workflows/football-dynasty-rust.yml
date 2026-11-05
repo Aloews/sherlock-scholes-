@@ -1,0 +1,37 @@
+name: Football Dynasty Rust
+
+on:
+  pull_request:
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/football-dynasty-rust.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/football-dynasty-rust.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: football-dynasty-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/football-dynasty
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run tests
+        run: cargo test --all-targets
