@@ -37,6 +37,11 @@ jobs:
           sudo apt-get install --yes postgresql-client
       - name: Create disposable test schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/player_rating_cache_test_setup.sql
+      - name: Apply private Telegram chat quiz session schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261105200000_telegram_chat_quiz_sessions.sql
+
+      - name: Verify Telegram quiz session isolation
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/telegram_chat_quiz_sessions.test.sql
       - name: Apply rating-cache migrations
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261009190000_fix_player_rating_cache_and_card_verification.sql
