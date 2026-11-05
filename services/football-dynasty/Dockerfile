@@ -11,6 +11,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=builder /app/target/release/football-dynasty /usr/local/bin/football-dynasty
 USER 10001:10001
 ENV PORT=8080
-ENV FD_BIND_ADDR=0.0.0.0:8080
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/football-dynasty"]
