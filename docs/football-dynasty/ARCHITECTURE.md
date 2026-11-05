@@ -1,73 +1,76 @@
 # Football Dynasty — Integration Architecture
 
-**Baseline:** v1.0 · **Inspection date:** 2026-11-05.
+**Baseline:** v1.1 · **Inspection date:** 2026-11-05.
 
 ## Verified host architecture
 
-The inspected default branch is a React 18 + Vite + TypeScript application using Feature-Sliced Design. `src/app/Router.tsx` owns routes and lazy-loads screens. Feature services call Supabase PostgREST/RPC. Edge Functions are used for specific server-side operations. The documented architecture has no general-purpose custom backend.
+Sherlock Scholes is a React 18 + Vite + TypeScript Telegram Mini App using Feature-Sliced Design. `src/app/Router.tsx` owns routes and lazy-loads screens. Existing features use Supabase PostgREST/RPC and selected Edge Functions; the host application has no general-purpose custom backend today.
 
-FSD dependency direction is `app → screens → features → shared`. Existing engineering rules require feature services, typed results, i18n, design tokens, and tests. Nine locales are supported: ru, en, es, pt, fr, ar, ja, ko, zh.
+The connected production Supabase project has 126 base tables in `public`. Existing real football data includes `cards`, `players`, `player_stats`, `player_season_stat`, `player_match_stats`, `football_club`, `club_roster`, `fixtures`, `club_match`, and `league_season`. Alias game data uses separate existing tables. These domains are not to be modified by Football Dynasty.
 
-The connected production Supabase project currently has 126 base tables in `public`. Existing real football data includes `cards`, `players`, `player_stats`, `player_season_stat`, `player_match_stats`, `football_club`, `club_roster`, `fixtures`, `club_match`, and `league_season`. Existing multiplayer game tables include `rooms`, `room_players`, `teams`, `rounds`, `round_cards`, and `scores`.
+The production Telegram verifier `public.tg_validate_init_data(p_init_data text)` was inspected. It verifies Telegram HMAC/freshness and returns a Telegram ID as `bigint`; direct execution is restricted to `postgres` and `service_role`. Existing callable wrappers include `get_user_status(p_init_data)`, but the exact response contract must be verified before the Rust service integrates with it. Do not assume `auth.uid()` equals Telegram ID.
 
-The security standard requires server-verified Telegram Mini App `initData`; client-supplied identity and UI-only access controls are not trusted. Do not assume `auth.uid()` is the product identity.
+## Architecture decision
 
-## Architectural decision
+Football Dynasty is a bounded context inside Sherlock Scholes, implemented as a **separate Rust backend service**. It is not a second frontend or a second identity system.
 
-Football Dynasty is a bounded context inside the existing Sherlock Scholes application and Supabase project. It is not a second app, auth system, database project, or football catalogue.
+- Frontend remains inside the existing React/Vite app and follows FSD, Router, design-system, and all nine locale conventions.
+- The frontend calls the Football Dynasty HTTP API for all campaign state and commands. It must not write `fd_*` state through Supabase PostgREST.
+- Rust service owns domain rules, authorization decisions, simulation, command idempotency, and transaction boundaries.
+- Supabase remains the managed PostgreSQL platform. The service connects server-to-server using SQLx and a dedicated least-privilege database role; migration credentials are separate from runtime credentials.
+- Fictional campaign state is isolated in a private `fd_*` schema (or another explicitly private namespace after verifying Supabase schema exposure). It never enters real football catalogue tables.
+- Use Axum for HTTP, Tokio for async runtime, SQLx for PostgreSQL, Serde for API types, tracing for structured telemetry, and OpenAPI for the public API contract once endpoints are introduced.
+- Package the service as a Docker container. Host it independently from the Vercel frontend on a container-capable runtime; hosting provider selection is a separate deployment decision.
+- Start with one Rust service and one Postgres database. Do not introduce Redis, Kafka, microservices, or a separate simulation worker until load measurements justify them.
 
-- Keep real catalogue tables unchanged.
-- Store fictional campaign state in dedicated `fd_` relations.
-- Add a dedicated FSD feature and lazy-loaded screens.
-- Reuse app shell, router, Zustand conventions, UI primitives, design tokens, and i18n.
-- Keep authoritative transitions in narrowly scoped transactional Postgres RPCs initially.
-- Use Edge Functions only when orchestration, secrets, external calls, or bounded background work require them.
-- Do not introduce a standalone backend, Redis queue, microservices, or a second state-management paradigm without measured need and an ADR.
+## Trust and identity boundary
+
+Telegram `initData` is untrusted input until validated server-side. The Rust service must never accept a client-supplied Telegram ID as identity.
+
+Before implementing protected endpoints, verify the callable Supabase wrapper's exact input/output contract and grants. Preferred integration is to validate the raw `initData` through the existing narrow verifier wrapper over a server-side Supabase request, then bind the returned Telegram ID to the request context. If the wrapper contract cannot safely support this, implement a separately reviewed verifier adapter without exposing `service_role` or verifier privileges to the browser.
+
+Every campaign query and command must scope by the verified owner or an explicitly authorised participant. Use opaque campaign IDs; return 404 for inaccessible campaigns where that avoids ownership disclosure. Add forged-initData, stale-initData, cross-user, and IDOR tests before enabling routes.
 
 ## Fictional data boundary
 
-Existing real-world tables remain the source of truth for Sherlock Scholes. Fictional clubs and players live only in `fd_*` tables. Campaign actions must never insert fictional rows into or mutate real football catalogue tables. Any future read-only cross-reference must be explicit and separately reviewed.
+Real-world players, clubs, leagues, matches, and stats remain in existing Sherlock Scholes relations. Fictional clubs, players, families, competitions, and events exist only in the Football Dynasty private schema. No fictional entity may be inserted into or mutate the real football catalogue.
 
-## Command boundary
+Any later read-only link to real-world football data must be an explicit adapter with provenance and a reviewed product rule; it must not collapse fictional and real identities.
 
-Proposed commands (not existing functions):
-- `fd_create_campaign`
-- `fd_create_world`
-- `fd_create_character`
-- `fd_acquire_club`
-- `fd_appoint_staff`
-- `fd_advance_campaign`
-- `fd_resolve_event`
-- `fd_preview_succession`
-- `fd_execute_succession`
-- `fd_load_campaign`
+## API and command boundary
 
-Each command validates campaign ownership through the existing verified Telegram identity contract, checks preconditions, and commits related state atomically. Never trust client-provided Telegram IDs, balances, ownership shares, heirs, or simulation results.
+Version HTTP routes under `/api/v1`. Commands are application-level operations, not client-side SQL/RPC calls:
+
+- create campaign/world/character;
+- create family relationship and designate a legal heir;
+- acquire or transfer club control;
+- appoint or dismiss staff;
+- advance bounded simulation;
+- resolve an event choice;
+- preview and execute succession;
+- load campaign and chronicle.
+
+Every command validates authorization and preconditions in the service, then commits all related writes atomically. Require an idempotency key for non-repeatable mutations. Never trust client balances, shareholding, ownership, heir selection, campaign clock, or simulation output.
 
 ## Simulation execution
 
-Do not simulate years in the browser. A client requests a bounded advance. Persist campaign time, pause state, seed, ruleset version, simulation version, tick cursor, status, and idempotency key. Process bounded batches and make long advances resumable.
+The server is authoritative. The client requests bounded advances; it never simulates years locally. Persist campaign time, pause state, seed, ruleset version, simulation version, tick cursor, and idempotency key. Process bounded batches inside explicit transaction boundaries and make long advances resumable.
 
-Initially, catch up offline progress when the player returns rather than creating a cron job per campaign. A scheduled global worker is a later decision after concurrency and cost measurement.
+Use deterministic seed derivation from campaign/tick/entity identifiers. Record the simulation version so saves can be migrated or replayed intentionally. Start with catch-up when the player returns; a global scheduler is deferred until concurrency and cost are measured. A worker loop may live in the same Rust service initially.
 
-Determinism requires stable seed derivation from campaign/tick/entity keys. Repeating a command with the same idempotency key returns the original result. Record simulation version so old saves can be migrated or replayed intentionally.
+## Persistence invariants
 
-## Security
+Use relational tables for authoritative ownership, kinship, contracts, and ledger entries. Use JSONB only for versioned configuration and event payloads. Every campaign-owned relation carries `campaign_id`; composite foreign keys prevent cross-campaign references. Account balances reconcile to immutable journal entries. Succession is atomic and non-repeatable. Campaign time is monotonic. Chronicle events are append-only. Snapshots carry schema and simulation versions.
 
-Follow `docs/SECURITY_STANDARD.md` and `docs/SUPABASE_STANDARD.md`:
-- RLS on every exposed campaign table;
-- policies scoped to verified campaign owner or explicitly authorised participant;
-- no client writes to balances, shareholding, transfers, succession, campaign clock, or AI decisions;
-- narrowly granted RPCs with explicit identity validation;
-- no service-role key in client code;
-- no copying permissive public write policies from legacy game tables;
-- cross-user and forged-identity tests.
+Use SQLx compile-time query checking where practical. Runtime database role must not own schema objects or have migration privileges. Apply additive migrations only in a disposable/local database first; compare exact migration versions before any production release.
 
-The `fd_` prefix is naming isolation, not security isolation. Decide public/private schema and Data API exposure only after inspecting current Supabase settings and testing the chosen access model.
+## Observability and operations
+
+Emit structured logs with request ID, campaign ID (not sensitive identity), command name, simulation version, duration, and outcome. Never log raw Telegram `initData`, access tokens, database URLs, or secrets. Expose liveness/readiness separately; readiness must include a real database connectivity check once SQLx is wired. Apply request timeouts, bounded body sizes, graceful shutdown, and rate limits to mutation routes.
 
 ## Frontend placement
 
-Proposed route: `/dynasty`, registered only in `src/app/Router.tsx`, lazy-loaded.
+Proposed route: `/dynasty`, registered only in `src/app/Router.tsx` and lazy-loaded.
 
 Suggested feature:
 ```
@@ -77,7 +80,6 @@ src/features/football-dynasty/
   services/
   hooks/
   types/
-  lib/
 src/screens/football-dynasty/
   DynastyHomeScreen.tsx
   CampaignSetupScreen.tsx
@@ -87,14 +89,8 @@ src/screens/football-dynasty/
   ChronicleScreen.tsx
 ```
 
-This is a target layout, not a claim about existing directories. Align with the actual FSD layout before implementation. All visible strings go into all nine locales. Keep current navigation unchanged until the feature has a complete entry/exit flow.
+This is a target layout, not a claim about existing directories. All visible strings go into ru, en, es, pt, fr, ar, ja, ko, zh. Keep current navigation unchanged until the feature has a complete entry/exit flow.
 
-## Persistence invariants
+## Release gates
 
-Use relational tables for authoritative state and append-only journals for consequential changes. JSONB is for versioned configuration/event payloads, not a substitute for ownership relations or ledgers.
-
-Every campaign-owned row carries `campaign_id`; composite foreign keys should prevent cross-campaign references. Account balances reconcile to journal entries. Succession transfers are atomic and non-repeatable. Campaign time advances monotonically. Chronicle events are immutable. Snapshots carry schema and simulation versions.
-
-## Release
-
-No production schema change during discovery. Test additive migrations on a disposable/local Supabase database, compare migration versions with the production ledger, run advisors, require green CI, and verify existing Sherlock smoke paths. A route flag alone is not security; access must be enforced server-side.
+No production schema change, public route, or deployment during the architecture phase. Require: reviewed ADR; local/disposable PostgreSQL integration tests; identity and ownership security tests; migration drift check; deterministic simulation tests; Rust fmt/clippy/test; frontend typecheck/build/tests; green required CI; and verified rollback plan. A hidden route is not an authorization control.
