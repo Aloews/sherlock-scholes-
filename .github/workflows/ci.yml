@@ -211,3 +211,6 @@ jobs:
           fi
       - name: Multi-market quote parser tests
         run: deno test supabase/functions/football-odds/markets.test.ts
+
+      - name: Telegram Rich Message quiz payload tests
+        run: deno test supabase/functions/tg-pay/rich-quiz.test.ts
