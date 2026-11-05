@@ -5,8 +5,6 @@ pub struct Config {
     pub database_url: String,
     pub migration_database_url: Option<String>,
     pub max_connections: u32,
-    pub supabase_url: String,
-    pub supabase_anon_key: String,
     pub allowed_origin: String,
     pub run_migrations: bool,
 }
@@ -20,8 +18,6 @@ impl Config {
             .parse::<SocketAddr>()
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
         let database_url = required("FD_DATABASE_URL")?;
-        let supabase_url = required("SUPABASE_URL")?;
-        let supabase_anon_key = required("SUPABASE_ANON_KEY")?;
         let allowed_origin = required("FD_ALLOWED_ORIGIN")?;
         let run_migrations = env::var("FD_RUN_MIGRATIONS")
             .unwrap_or_else(|_| "false".to_owned())
@@ -52,8 +48,6 @@ impl Config {
             database_url,
             migration_database_url,
             max_connections,
-            supabase_url,
-            supabase_anon_key,
             allowed_origin,
             run_migrations,
         })

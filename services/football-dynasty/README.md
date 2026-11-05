@@ -5,11 +5,14 @@ Rust/Axum backend for the Football Dynasty mode inside Sherlock Scholes.
 ## Local run
 
 1. Copy `.env.example` to `.env`.
-2. Set `SUPABASE_URL` and the public anon key for the Sherlock Scholes Supabase project. The service validates raw Telegram Mini App `initData` server-side through the existing `get_user_status(p_init_data)` RPC; the browser never sends a Telegram user ID.
-3. Run `docker compose up --build` from this directory.
-4. Open `http://localhost:8080/health/ready`.
+2. Run `docker compose up --build` from this directory.
+3. Open `http://localhost:8080/health/ready`.
 
 The compose database is disposable local development data. Do not point it at production.
+
+## Telegram identity boundary
+
+The service accepts raw Telegram Mini App `initData` in `x-tg-init-data`. It validates the payload directly against the existing `public.tg_validate_init_data(text)` SECURITY DEFINER function over the database connection. The verified function checks Telegram's HMAC and 24-hour freshness, reads the bot token from Vault, and returns only the verified Telegram user ID. The migration grants the restricted `fd_runtime` role EXECUTE on this one function; the browser never sends a Telegram ID, and the backend does not call the user-upsert RPC on every request.
 
 ## Database roles and connection modes
 
@@ -21,9 +24,9 @@ The compose database is disposable local development data. Do not point it at pr
 CREATE ROLE fd_app LOGIN PASSWORD '<set-a-unique-secret-in-your-secret-manager>' IN ROLE fd_runtime;
 ```
 
-Store the resulting runtime connection string only in the backend host's encrypted secret manager. For Supabase's shared pooler, use session mode on port 5432 and username `fd_app.<project-ref>`; session mode is required because the service sets a database role per connection. Do not use transaction-pooler port 6543 for this service.
+Store the resulting runtime connection string only in the backend host's encrypted secret manager. The Supabase direct database host is IPv6; enable outbound IPv6 on the backend service before using the direct connection. Alternatively, use Supabase's session pooler on port 5432, not transaction-pooler port 6543, because the service sets a database role per connection.
 
-For production, apply reviewed migrations through the controlled migration path and keep `FD_RUN_MIGRATIONS=false` on horizontally scaled API instances. Do not put either database URL or Supabase service-role credentials in the frontend.
+For production, apply reviewed migrations through the controlled migration path and keep `FD_RUN_MIGRATIONS=false` on horizontally scaled API instances. Do not put database URLs in the frontend.
 
 ## Runtime configuration
 
@@ -31,14 +34,13 @@ For production, apply reviewed migrations through the controlled migration path 
 - `FD_DATABASE_URL`: restricted runtime connection string.
 - `FD_MIGRATION_DATABASE_URL`: optional migration URL, required only when auto-migrations are explicitly enabled.
 - `FD_ALLOWED_ORIGIN`: exact frontend origin allowed by CORS.
-- `FD_MAX_CONNECTIONS`: SQLx pool size; default 2 for serverless container instances.
+- `FD_MAX_CONNECTIONS`: SQLx pool size; default 2 for horizontally scaled instances.
 - `FD_RUN_MIGRATIONS`: default false.
-- `SUPABASE_URL` and `SUPABASE_ANON_KEY`: server-side call to the existing Telegram verifier wrapper.
 
 ## API v1
 
 All campaign routes require:
-- `x-tg-init-data`: raw Telegram WebApp initData, validated by Supabase.
+- `x-tg-init-data`: raw Telegram WebApp initData, validated by the existing Supabase database function.
 - `Idempotency-Key`: unique value for each mutation (8–128 characters).
 
 - `GET /health/live`

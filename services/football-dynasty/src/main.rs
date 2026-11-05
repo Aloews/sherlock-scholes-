@@ -6,7 +6,7 @@ use std::{error::Error, sync::Arc};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use football_dynasty::{auth::SupabaseIdentityVerifier, config::Config, http, state::AppState};
+use football_dynasty::{auth::PostgresIdentityVerifier, config::Config, http, state::AppState};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -39,10 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .connect(&config.database_url)
         .await?;
 
-    let verifier = Arc::new(SupabaseIdentityVerifier::new(
-        config.supabase_url,
-        config.supabase_anon_key,
-    ));
+    let verifier = Arc::new(PostgresIdentityVerifier::new(database.clone()));
     let state = AppState {
         db: database,
         verifier,

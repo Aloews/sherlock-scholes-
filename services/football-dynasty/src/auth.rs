@@ -4,7 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use serde_json::{Value, json};
+use sqlx::PgPool;
 
 use crate::{errors::ApiError, state::AppState};
 
@@ -25,54 +25,34 @@ pub trait IdentityVerifier: Send + Sync {
 }
 
 #[derive(Clone)]
-pub struct SupabaseIdentityVerifier {
-    client: reqwest::Client,
-    endpoint: String,
-    anon_key: String,
+pub struct PostgresIdentityVerifier {
+    db: PgPool,
 }
 
-impl SupabaseIdentityVerifier {
-    pub fn new(project_url: String, anon_key: String) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            endpoint: format!(
-                "{}/rest/v1/rpc/get_user_status",
-                project_url.trim_end_matches('/')
-            ),
-            anon_key,
-        }
+impl PostgresIdentityVerifier {
+    pub fn new(db: PgPool) -> Self {
+        Self { db }
     }
 }
 
 #[async_trait]
-impl IdentityVerifier for SupabaseIdentityVerifier {
+impl IdentityVerifier for PostgresIdentityVerifier {
     async fn verify(&self, init_data: &str) -> Result<i64, VerifyError> {
-        let response = self
-            .client
-            .post(&self.endpoint)
-            .header("apikey", &self.anon_key)
-            .bearer_auth(&self.anon_key)
-            .json(&json!({ "p_init_data": init_data }))
-            .send()
-            .await
-            .map_err(|_| VerifyError::Unavailable)?;
+        let result = sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT public.tg_validate_init_data($1)",
+        )
+        .bind(init_data)
+        .fetch_one(&self.db)
+        .await;
 
-        if response.status().is_client_error() {
-            return Err(VerifyError::Invalid);
+        match result {
+            Ok(Some(telegram_id)) if telegram_id > 0 => Ok(telegram_id),
+            Ok(_) => Err(VerifyError::Invalid),
+            Err(error) => {
+                tracing::error!(error = %error, "Telegram initData verification query failed");
+                Err(VerifyError::Unavailable)
+            }
         }
-        if !response.status().is_success() {
-            return Err(VerifyError::Unavailable);
-        }
-
-        let value: Value = response
-            .json()
-            .await
-            .map_err(|_| VerifyError::Unavailable)?;
-        value
-            .get("telegram_id")
-            .and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse::<i64>().ok()))
-            .filter(|id| *id > 0)
-            .ok_or(VerifyError::Invalid)
     }
 }
 
