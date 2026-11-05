@@ -12,7 +12,7 @@
 - Existing real football relations include `cards`, `players`, `player_stats`, `player_season_stat`, `player_match_stats`, `football_club`, `club_roster`, `fixtures`, `club_match`, and `league_season`.
 - Existing game relations include `rooms`, `room_players`, `teams`, `rounds`, `round_cards`, and `scores`.
 - Newest observed production migration: `20261030143452 club_match_refresh_timeout`.
-- Security standard requires server-verified Telegram `initData`; exact verifier and trusted identity type must be traced before implementing campaign ownership.
+- Production verifier is confirmed: `public.tg_validate_init_data(p_init_data text)` verifies Telegram HMAC/freshness and returns Telegram user ID as `bigint`. It is `SECURITY DEFINER` and currently executable only by `postgres`/`service_role`; existing wrapper RPCs such as `get_user_status(p_init_data)` are granted to `anon`/`authenticated`. The `users.telegram_id` column is `bigint`. Use `owner_telegram_id bigint`, populated only inside a narrowly scoped wrapper RPC, and enforce campaign ownership there.
 
 ## Release context
 
