@@ -24,7 +24,7 @@ The service accepts raw Telegram Mini App `initData` in `x-tg-init-data`. It val
 CREATE ROLE fd_app LOGIN PASSWORD '<set-a-unique-secret-in-your-secret-manager>' IN ROLE fd_runtime;
 ```
 
-Store the resulting runtime connection string only in the backend host's encrypted secret manager. The Supabase direct database host is IPv6; enable outbound IPv6 on the backend service before using the direct connection. Alternatively, use Supabase's session pooler on port 5432, not transaction-pooler port 6543, because the service sets a database role per connection.
+Store the resulting runtime connection string only in the backend host's encrypted secret manager. The Supabase direct database host is IPv6. On Railway, enable outbound IPv6 for the API service before using the direct connection. Alternatively, use Supabase's session pooler on port 5432, not transaction-pooler port 6543, because the service sets a database role per connection.
 
 For production, apply reviewed migrations through the controlled migration path and keep `FD_RUN_MIGRATIONS=false` on horizontally scaled API instances. Do not put database URLs in the frontend.
 
