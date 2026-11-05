@@ -108,6 +108,22 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     };
     let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
 
+
+    let missing = Request::builder()
+        .uri("/api/v1/campaigns")
+        .body(Body::empty())
+        .expect("request");
+    let response = app.clone().oneshot(missing).await.expect("response");
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    let forged = Request::builder()
+        .uri("/api/v1/campaigns")
+        .header("x-tg-init-data", "forged")
+        .body(Body::empty())
+        .expect("request");
+    let response = app.clone().oneshot(forged).await.expect("response");
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
     let create_body = json!({
         "name":"North Star",
         "mode":"sandbox",
@@ -299,39 +315,3 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     pool.close().await;
 }
 
-#[tokio::test]
-async fn protected_routes_reject_missing_and_forged_telegram_data() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
-    let pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect(&database_url)
-        .await
-        .expect("pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .expect("migrations");
-    let state = AppState {
-        db: pool.clone(),
-        verifier: Arc::new(FixedVerifier(123)),
-    };
-    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
-
-    let missing = Request::builder()
-        .uri("/api/v1/campaigns")
-        .body(Body::empty())
-        .expect("request");
-    let response = app.clone().oneshot(missing).await.expect("response");
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-
-    let forged = Request::builder()
-        .uri("/api/v1/campaigns")
-        .header("x-tg-init-data", "forged")
-        .body(Body::empty())
-        .expect("request");
-    let response = app.oneshot(forged).await.expect("response");
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    pool.close().await;
-}
