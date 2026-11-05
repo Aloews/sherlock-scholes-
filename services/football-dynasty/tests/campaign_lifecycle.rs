@@ -96,7 +96,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .expect("runtime pool");
 
     let verifier = PostgresIdentityVerifier::new(pool.clone());
-    assert!(matches!(verifier.verify("").await, Err(VerifyError::Invalid)));
+    assert!(matches!(
+        verifier.verify("").await,
+        Err(VerifyError::Invalid)
+    ));
 
     let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
     let state = AppState {
