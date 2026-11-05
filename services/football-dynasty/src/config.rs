@@ -32,14 +32,19 @@ impl Config {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "FD_MIGRATION_DATABASE_URL is required when FD_RUN_MIGRATIONS=true",
-            ).into());
+            )
+            .into());
         }
         let max_connections = env::var("FD_MAX_CONNECTIONS")
             .unwrap_or_else(|_| "2".to_owned())
             .parse::<u32>()
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
         if max_connections == 0 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "FD_MAX_CONNECTIONS must be positive").into());
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "FD_MAX_CONNECTIONS must be positive",
+            )
+            .into());
         }
 
         Ok(Self {
@@ -56,10 +61,12 @@ impl Config {
 }
 
 fn required(name: &str) -> Result<String, io::Error> {
-    env::var(name).map_err(|_| io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!("required environment variable {name} is missing"),
-    ))
+    env::var(name).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("required environment variable {name} is missing"),
+        )
+    })
 }
 
 #[cfg(test)]
