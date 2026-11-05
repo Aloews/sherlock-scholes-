@@ -28,6 +28,9 @@ standard for humans and AI agents alike. Start with the constitution.
 | [AI_ENGINEERING_GUIDE.md](./AI_ENGINEERING_GUIDE.md) | How agents operate here + canonical system prompt |
 | [ROADMAP.md](./ROADMAP.md) | Engineering phases & evolution rules |
 
+## Product modules
+- [Football Dynasty](./football-dynasty/README.md) — GDD, verified host integration architecture, logical data model, and implementation gates.
+
 ## Working material
 - [ADR/](./ADR/) — Architecture Decision Records (why the project is the way it is).
 - [CHECKLISTS/](./CHECKLISTS/) — PR, architecture audit, security, data quality, release QA.
