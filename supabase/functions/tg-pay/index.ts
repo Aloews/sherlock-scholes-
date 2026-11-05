@@ -293,7 +293,7 @@ async function ensureQuizCallbackUpdates(): Promise<boolean> {
   const projectRef = new URL(SUPABASE_URL).hostname.split(".")[0];
   const supportedUrls = new Set([
     `https://${projectRef}.functions.supabase.co/tg-pay`,
-    `${SUPABASE_URL.replace(/\\/$/, "")}/functions/v1/tg-pay`,
+    `${SUPABASE_URL.endsWith("/") ? SUPABASE_URL.slice(0, -1) : SUPABASE_URL}/functions/v1/tg-pay`,
   ]);
 
   // Never repoint a bot whose webhook belongs to another service.
