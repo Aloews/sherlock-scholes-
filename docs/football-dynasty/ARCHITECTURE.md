@@ -17,17 +17,17 @@ Football Dynasty is a bounded context inside Sherlock Scholes, implemented as a 
 - Frontend remains inside the existing React/Vite app and follows FSD, Router, design-system, and all nine locale conventions.
 - The frontend calls the Football Dynasty HTTP API for all campaign state and commands. It must not write `fd_*` state through Supabase PostgREST.
 - Rust service owns domain rules, authorization decisions, simulation, command idempotency, and transaction boundaries.
-- Supabase remains the managed PostgreSQL platform. The service connects server-to-server using SQLx and a dedicated least-privilege database role; migration credentials are separate from runtime credentials.
+- Supabase remains the managed PostgreSQL platform. The service connects server-to-server using SQLx, a dedicated `fd_app` login, and the restricted `fd_runtime` role; migration credentials are separate from runtime credentials.
 - Fictional campaign state is isolated in a private `fd_*` schema (or another explicitly private namespace after verifying Supabase schema exposure). It never enters real football catalogue tables.
-- Use Axum for HTTP, Tokio for async runtime, SQLx for PostgreSQL, Serde for API types, tracing for structured telemetry, and OpenAPI for the public API contract once endpoints are introduced.
-- Package the service as a Docker container. Host it independently from the Vercel frontend on a container-capable runtime; hosting provider selection is a separate deployment decision.
+- Use Axum for HTTP, Tokio for async runtime, SQLx for PostgreSQL, Serde for API types, and tracing for structured telemetry. Version the HTTP surface under `/api/v1`.
+- Package the service as a Docker container. The repository includes Railway deployment configuration and a health check; the Railway service must enable outbound IPv6 for Supabase direct PostgreSQL connectivity.
 - Start with one Rust service and one Postgres database. Do not introduce Redis, Kafka, microservices, or a separate simulation worker until load measurements justify them.
 
 ## Trust and identity boundary
 
 Telegram `initData` is untrusted input until validated server-side. The Rust service must never accept a client-supplied Telegram ID as identity.
 
-Before implementing protected endpoints, verify the callable Supabase wrapper's exact input/output contract and grants. Preferred integration is to validate the raw `initData` through the existing narrow verifier wrapper over a server-side Supabase request, then bind the returned Telegram ID to the request context. If the wrapper contract cannot safely support this, implement a separately reviewed verifier adapter without exposing `service_role` or verifier privileges to the browser.
+The production function `public.tg_validate_init_data(p_init_data text)` was inspected directly. It is `SECURITY DEFINER`, fixes its search path, validates Telegram HMAC and the 24-hour `auth_date` window, reads the bot token from Vault, and returns the verified Telegram ID as `bigint` or NULL. Its original ACL was restricted to `postgres` and `service_role`. The foundation migration grants EXECUTE only to `fd_runtime`; Rust calls this function through SQLx. It deliberately avoids `get_user_status`, which upserts `users.updated_at` on each call. No service-role key or Telegram ID from the browser is trusted.
 
 Every campaign query and command must scope by the verified owner or an explicitly authorised participant. Use opaque campaign IDs; return 404 for inaccessible campaigns where that avoids ownership disclosure. Add forged-initData, stale-initData, cross-user, and IDOR tests before enabling routes.
 
@@ -62,35 +62,16 @@ Use deterministic seed derivation from campaign/tick/entity identifiers. Record 
 
 Use relational tables for authoritative ownership, kinship, contracts, and ledger entries. Use JSONB only for versioned configuration and event payloads. Every campaign-owned relation carries `campaign_id`; composite foreign keys prevent cross-campaign references. Account balances reconcile to immutable journal entries. Succession is atomic and non-repeatable. Campaign time is monotonic. Chronicle events are append-only. Snapshots carry schema and simulation versions.
 
-Use SQLx compile-time query checking where practical. Runtime database role must not own schema objects or have migration privileges. Apply additive migrations only in a disposable/local database first; compare exact migration versions before any production release.
+Use SQLx query binding for all values. `fd_runtime` does not own schema objects and has no DDL privileges; `fd_app` is a login member of that role. The production migration is isolated to the private `fd` schema and a narrow EXECUTE grant on the Telegram verifier. CI applies the same migration to disposable PostgreSQL 17; production migration remains a separate reviewed step.
 
 ## Observability and operations
 
-Emit structured logs with request ID, campaign ID (not sensitive identity), command name, simulation version, duration, and outcome. Never log raw Telegram `initData`, access tokens, database URLs, or secrets. Expose liveness/readiness separately; readiness must include a real database connectivity check once SQLx is wired. Apply request timeouts, bounded body sizes, graceful shutdown, and rate limits to mutation routes.
+Emit structured logs without raw Telegram `initData`, access tokens, database URLs, or secrets. `/health/live` and `/health/ready` are separate; readiness performs a real PostgreSQL query. Graceful shutdown and a bounded SQLx pool are configured. Request rate limiting and a full OpenAPI contract remain release hardening tasks.
 
 ## Frontend placement
 
-Proposed route: `/dynasty`, registered only in `src/app/Router.tsx` and lazy-loaded.
-
-Suggested feature:
-```
-src/features/football-dynasty/
-  api/
-  model/
-  services/
-  hooks/
-  types/
-src/screens/football-dynasty/
-  DynastyHomeScreen.tsx
-  CampaignSetupScreen.tsx
-  CharacterScreen.tsx
-  DynastyScreen.tsx
-  ClubScreen.tsx
-  ChronicleScreen.tsx
-```
-
-This is a target layout, not a claim about existing directories. All visible strings go into ru, en, es, pt, fr, ar, ja, ko, zh. Keep current navigation unchanged until the feature has a complete entry/exit flow.
+Implemented route: `/dynasty`, registered in `src/app/Router.tsx` and linked from the home screen. The API client lives in `src/features/football-dynasty/api.ts`; the initial screen is `src/screens/FootballDynastyScreen.tsx`. Visible labels are present in all nine existing locales.
 
 ## Release gates
 
-No production schema change, public route, or deployment during the architecture phase. Require: reviewed ADR; local/disposable PostgreSQL integration tests; identity and ownership security tests; migration drift check; deterministic simulation tests; Rust fmt/clippy/test; frontend typecheck/build/tests; green required CI; and verified rollback plan. A hidden route is not an authorization control.
+Production release gates: green Rust fmt/Clippy/tests and Sherlock CI; successful migration on the isolated private schema; runtime login restricted to `fd_runtime`; Railway outbound IPv6 and health check; real Telegram Mini App smoke test; frontend `VITE_FD_API_URL`; rollback/backup review. The route is not protected by hiding it: every API request is verified server-side and owner-scoped.

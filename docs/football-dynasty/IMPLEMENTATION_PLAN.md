@@ -1,35 +1,32 @@
 # Football Dynasty — Implementation and Release Plan
 
-## Current implementation baseline
+## Implemented in the current PR
 
-- React/Vite/TypeScript remains the Sherlock Scholes frontend.
-- One separate Rust service uses Axum, Tokio, SQLx, and PostgreSQL.
-- Supabase is the managed PostgreSQL provider; fictional campaign data lives in a private `fd` schema and is not exposed through the browser's PostgREST client.
-- Telegram `initData` is verified server-side through the existing `get_user_status(p_init_data)` wrapper. The service extracts the verified `telegram_id`; it never accepts a client-supplied identity.
-- Runtime connections switch to the `fd_runtime` database role. Migration credentials are separate from runtime deployment credentials.
-- CI uses disposable PostgreSQL 17 and never connects to production.
+- React/Vite/TypeScript integration at `/dynasty`, linked from the Sherlock Scholes home screen and localized across all nine existing locales.
+- Separate Rust service: Axum + Tokio + SQLx + PostgreSQL, Docker image, Railway deployment configuration, liveness/readiness endpoints, graceful shutdown, and bounded connection pool.
+- Private PostgreSQL `fd` schema; fictional state is isolated from real football and Alias tables.
+- Telegram identity is verified directly by `public.tg_validate_init_data(text)` through SQLx. The production function's HMAC, freshness, SECURITY DEFINER, fixed search path, and bigint return contract were inspected. The migration grants EXECUTE only to `fd_runtime`; no service-role key or browser-supplied Telegram ID is used.
+- Dedicated `fd_runtime` role and a separate `fd_app` login model; runtime and migration URLs are separate.
+- Campaign creation, six origins, sandbox/scenario modes, founder, dynasty, fictional club, dynastic club ownership, opening double-entry capital ledger, family heir creation, bounded time advancement, deterministic founder death at age 90, succession preview and atomic succession, personal cash-account inheritance, player-character switch, and chronicle.
+- Owner-scoped reads/writes, idempotency keys for mutations, deferred database journal-balance constraint.
+- CI uses disposable PostgreSQL 17 and tests campaign creation/replay, heir creation, death, succession, persistence reload, and verifier privilege path. CI never connects to production.
 
-## Implemented first playable lifecycle
+## Release sequence
 
-- Campaign creation with sandbox/scenario mode and six origin backgrounds.
-- Founder, dynasty, one fictional club, dynastic club control, and opening capital.
-- Double-entry opening ledger with a deferred database balance constraint.
-- Heir creation with parent/child age-gap validation.
-- Bounded time advancement (1–10 years) and deterministic founder death at age 90.
-- Eligible-heir preview and atomic succession.
-- Personal cash-account inheritance, dynastic club control, player-character switch, and append-only chronicle.
-- Owner-scoped reads and writes, Telegram server-side verification, and idempotency keys for mutations.
+1. Finish green Rust and Sherlock CI on the exact PR head; fix any failing checks.
+2. Apply the reviewed `0001_foundation.sql` migration to the private `fd` schema only; verify the verifier grant and role permissions. Do not alter existing public football or Alias tables.
+3. Create a dedicated `fd_app` login and store its connection string only in Railway secrets.
+4. Connect Railway, deploy the Docker service in the EU region, enable outbound IPv6, set the exact frontend CORS origin, and verify health endpoints.
+5. Set `VITE_FD_API_URL` in Vercel and deploy the frontend.
+6. Run a real Telegram Mini App smoke test: create campaign, add heir, advance time, verify death, complete succession, reload after restart, and confirm owner isolation.
+7. Review backup/restore, request limits, logs, and rollback before marking the slice production-ready.
 
-## Remaining production gates
+## Environment constraints
 
-1. Run full Rust CI and frontend typecheck/build/test on the implementation commit.
-2. Verify the exact live Supabase RPC response through a real Telegram test identity; do not use forged or fabricated initData as a success test.
-3. Provision a disposable database or use the CI PostgreSQL service for migration and integration testing.
-4. Provision separate migration and runtime database credentials; store them only in the backend host's secret manager.
-5. Deploy the Rust API to a container-capable service; configure the exact Vercel frontend origin and health checks.
-6. Set `VITE_FD_API_URL` in the frontend preview environment, test the complete Telegram Mini App flow, and only then expose the route in production.
-7. Review backup/restore, database connection limits, request rate limits, logs, monitoring, and rollback.
-8. Merge only with green required checks and deploy only the exact reviewed commit.
+- The organization is at its two-project free-plan limit, so no separate Sherlock Supabase project was created.
+- CI uses a disposable PostgreSQL service; no paid Supabase branch was provisioned.
+- Production migrations and API deployment have not yet been run from this PR.
+- The Railway connection is required before backend provisioning/deployment; connecting the plugin is a user action.
 
 ## Explicit non-goals of this vertical slice
 

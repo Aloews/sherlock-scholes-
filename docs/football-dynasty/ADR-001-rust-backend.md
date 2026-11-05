@@ -18,16 +18,16 @@ The Rust service is the sole application writer for Football Dynasty state. The 
 
 ## Identity and security
 
-The service must validate raw Telegram Mini App initData on the server. It must not accept a Telegram ID supplied by the browser. The production verifier `tg_validate_init_data` is not directly callable by ordinary client roles; the exact wrapper response and grants must be verified before integration. Never expose Supabase service-role credentials or database credentials to the frontend.
+The service must validate raw Telegram Mini App initData on the server. It must not accept a Telegram ID supplied by the browser. The production `public.tg_validate_init_data(p_init_data text)` function was inspected: SECURITY DEFINER, fixed search path, Telegram HMAC and 24-hour freshness validation, Vault bot-token lookup, and bigint Telegram ID result. Its original ACL was postgres/service_role only. The migration grants EXECUTE only to `fd_runtime`; the Rust service calls it over SQLx. This avoids the `get_user_status` wrapper's per-request user-row upsert. Never expose service-role credentials or database credentials to the frontend.
 
-Use separate runtime and migration database roles. Runtime role has only the privileges required by the private Football Dynasty schema. Apply RLS or equivalent database defense-in-depth according to the final connection/auth model; do not assume RLS policies automatically see Telegram identity when SQLx uses a backend database role.
+Use a NOLOGIN `fd_runtime` role with only private-schema privileges and a separate `fd_app` LOGIN member. Migrations use a separate privileged connection. Campaign ownership is enforced in the Rust service using the verified Telegram ID; the private `fd` schema is not exposed through PostgREST. Do not assume RLS automatically sees Telegram identity when SQLx uses a backend database role.
 
 ## Consequences
 
 - Adds Rust service build, deployment, monitoring, and API compatibility responsibilities.
 - Allows domain logic and deterministic simulation to be tested independently of React.
 - Keeps Supabase as managed PostgreSQL, avoiding a second database product initially.
-- Requires explicit API auth, database role, schema exposure, migration, backup, and deployment decisions before production.
+- Requires a Railway service with outbound IPv6 for Supabase direct PostgreSQL, a private-schema migration, a restricted database login, and real Telegram end-to-end verification before production.
 - No Redis or separate worker is required for the first vertical slice; introduce only after measured need.
 
 ## Rejected alternatives

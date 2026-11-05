@@ -1914,18 +1914,18 @@ The audit above lists the latest structural fixes. The following merged PRs form
 - #208's proposed standalone parser test and scheduled Transfermarkt-photo step are not the current architecture. The current queue worker invokes `docs/cards_photo_transfermarkt.py` per `photo_tm` job, while `docs/test_cards_photo_transfermarkt.py` is executed by CI and the profile-data workflow. The old `docs/test_player_photo_parsers.py` file is absent from current `main`; do not restore it as a parallel test suite.
 - #285 remains intentionally closed, not merged: its canonical read-layer/migration work was not ported, and its migration was not verified against the production ledger. It requires a new focused implementation if that feature is still desired.
 
-## Football Dynasty — Rust backend foundation (2026-11-05)
+## Football Dynasty — Rust backend and playable lifecycle (2026-11-05)
 
-Football Dynasty is a fictional-world dynasty strategy mode. Product and domain baseline:
-- `docs/football-dynasty/GDD.md` — game design and MVP acceptance criteria.
-- `docs/football-dynasty/ARCHITECTURE.md` — separate Rust backend integration boundary.
-- `docs/football-dynasty/DATA_MODEL.md` — logical campaign data model and isolation invariants.
-- `docs/football-dynasty/IMPLEMENTATION_PLAN.md` — delivery sequence and verification gates.
-- `docs/football-dynasty/ADR-001-rust-backend.md` — accepted backend decision.
-- `services/football-dynasty/` — initial Axum service bootstrap; currently liveness only.
+The Football Dynasty feature is implemented as a bounded context in Sherlock Scholes, with a separate Rust API and a first playable campaign lifecycle.
 
-**Architecture:** existing React/Vite Telegram Mini App remains the frontend. A single Rust service (Axum/Tokio/SQLx) owns Football Dynasty API, authorization, commands, transactions, and deterministic simulation. Supabase remains the managed PostgreSQL provider. Fictional state is isolated in a private `fd_*` schema; existing real football and Alias tables are not modified.
+- Product design: `docs/football-dynasty/GDD.md`
+- Architecture and security: `docs/football-dynasty/ARCHITECTURE.md`, `ADR-001-rust-backend.md`
+- Data model and release gates: `DATA_MODEL.md`, `IMPLEMENTATION_PLAN.md`
+- Rust service: `services/football-dynasty/` (Axum, Tokio, SQLx, PostgreSQL, Docker, Railway config)
+- Frontend: `src/features/football-dynasty/api.ts`, `src/screens/FootballDynastyScreen.tsx`, `/dynasty` route, home entry, nine locales.
 
-**Security and environment:** Telegram `initData` must be verified server-side; never trust a client Telegram ID. The exact callable verifier wrapper contract remains to be confirmed before protected endpoints. A dedicated Sherlock staging project could not be created because the organization reached its two-active-project free-plan limit. A Supabase development branch was quoted at $0.01344/hour and was not created. No production migrations, database writes, or deployment have been made.
+**Implemented lifecycle:** create sandbox/scenario campaign → choose origin → create founder/dynasty/fictional club → establish balanced opening capital ledger → add heir → advance time in bounded steps → founder dies at deterministic age 90 → preview eligible adult heirs → atomically transfer dynastic leadership and personal cash account → continue as heir. Campaign state and chronicle are persisted in the private `fd` schema. Mutations are idempotent and every request is owner-scoped.
 
-**First vertical slice:** founder → club → family → heir → death → succession → continue as heir. The Rust bootstrap is not yet connected to PostgreSQL, Telegram identity, campaign commands, or simulation.
+**Identity:** production `public.tg_validate_init_data(text)` was inspected. Rust calls it directly through SQLx; it validates Telegram HMAC and the 24-hour freshness window and returns a bigint Telegram ID. The migration grants EXECUTE only to `fd_runtime`. No browser-supplied Telegram ID or service-role key is trusted.
+
+**Environment and release:** the free organization project limit prevented creating a separate Sherlock Supabase project. CI uses disposable PostgreSQL 17. Railway Docker deployment configuration is present, but Railway must be connected and outbound IPv6 enabled before deployment. No production migration or deployment has been run from this PR; existing football and Alias tables remain untouched.
