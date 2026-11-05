@@ -1,7 +1,7 @@
 # tg-pay — Telegram Stars payment for Pro
 
 Edge Function that (1) issues a Telegram Stars invoice link to the Mini App,
-(2) receives Telegram payment updates, and (3) serves a chat-native football
+(2) receives Telegram payment updates, and (3) serves a Rich Message hub for the existing mini-games plus a chat-native football
 quiz through Telegram Rich Messages (`sendRichMessage` + callback queries).
 The quiz reuses the existing `quiz_player_round` source and keeps answer keys in
 a service-role-only session table. It is not HTMLBubbles: Telegram has not
@@ -84,3 +84,11 @@ buttons. They do not execute arbitrary HTML/CSS/JavaScript. HTMLBubbles is a
 separate experimental client feature and currently has no public Bot API send
 method, so this implementation deliberately uses the supported Rich Messages
 API instead of reverse-engineering a private protocol.
+## Mini-game hub
+
+In a private chat, send `/games`. The bot returns a Telegram Rich Message with
+Web App buttons for the existing `quiz`, `famous`, and `squad` routes. If
+Rich Messages are unavailable, the same routes are exposed through a regular
+inline keyboard. The hub does not duplicate game rules or data sources: all
+three routes open the existing Mini App implementations. Send `/quiz` to play
+the player-guessing round entirely inside the chat.
