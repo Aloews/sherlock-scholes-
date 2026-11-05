@@ -1,8 +1,11 @@
 # tg-pay — Telegram Stars payment for Pro
 
-Edge Function that (1) issues a Telegram Stars invoice link to the Mini App and
-(2) receives the Telegram payment webhook and flips `users.is_pro` via the
-`grant_pro` RPC. See the header comment in `index.ts` for the full flow.
+Edge Function that (1) issues a Telegram Stars invoice link to the Mini App,
+(2) receives Telegram payment updates, and (3) serves a chat-native football
+quiz through Telegram Rich Messages (`sendRichMessage` + callback queries).
+The quiz reuses the existing `quiz_player_round` source and keeps answer keys in
+a service-role-only session table. It is not HTMLBubbles: Telegram has not
+published a Bot API method for sending executable HTMLBubbles. See `index.ts`.
 
 ## Secrets (NEVER commit these)
 
@@ -43,11 +46,17 @@ FN_URL="https://<project-ref>.functions.supabase.co/tg-pay"
 curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
   -d "url=${FN_URL}" \
   -d "secret_token=<TG_WEBHOOK_SECRET>" \
-  -d 'allowed_updates=["message","pre_checkout_query"]'
+  -d 'allowed_updates=["message","pre_checkout_query","callback_query"]'
 ```
 
-`allowed_updates` must include `pre_checkout_query` (to approve checkout) and
-`message` (to receive `successful_payment`).
+`allowed_updates` must include `pre_checkout_query` (to approve checkout),
+`message` (to receive `successful_payment` and `/quiz`), and `callback_query`
+(to process the rich quiz buttons). On the first `/quiz`, the function checks
+`getWebhookInfo` and adds `callback_query` only if the existing webhook URL
+matches this project's `tg-pay` endpoint. It preserves the current URL, secret,
+connection limit, and IP. It refuses to change a different endpoint or a
+custom-certificate webhook; in those cases update the existing webhook
+manually rather than replacing it.
 
 ## Test
 
@@ -60,3 +69,18 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 ```sql
 select telegram_id, is_pro, pro_since from users order by updated_at desc;
 ```
+
+## Chat-native quiz
+
+In a private chat with the game bot, send `/quiz`. The bot sends a structured
+Telegram Rich Message with four player choices. The first answer wins; the bot
+edits the same message with the result and a next-question action. The session
+expires after 30 minutes. The correct answer is never embedded in callback data
+or the message payload, and the service-role-only session table is protected by
+RLS.
+
+Telegram Rich Messages are structured native message blocks and callback
+buttons. They do not execute arbitrary HTML/CSS/JavaScript. HTMLBubbles is a
+separate experimental client feature and currently has no public Bot API send
+method, so this implementation deliberately uses the supported Rich Messages
+API instead of reverse-engineering a private protocol.
