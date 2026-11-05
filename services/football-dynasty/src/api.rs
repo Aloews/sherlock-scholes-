@@ -721,9 +721,7 @@ pub async fn execute_succession(
         .bind(campaign_id).bind(campaign.0).fetch_optional(&mut *tx).await?
     }.ok_or_else(|| ApiError::conflict("no_eligible_heir"))?;
 
-    sqlx::query("UPDATE fd.characters SET is_heir=false WHERE campaign_id=$3 AND id IN ($1,$2)")
-        .bind(campaign.0)
-        .bind(heir.id)
+    sqlx::query("UPDATE fd.characters SET is_heir=false WHERE campaign_id=$1 AND is_heir=true")
         .bind(campaign_id)
         .execute(&mut *tx)
         .await?;
