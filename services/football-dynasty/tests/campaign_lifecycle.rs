@@ -234,7 +234,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         db: pool.clone(),
         verifier: Arc::new(FixedVerifier(owner_id + 1)),
     };
-    let other_app = http::router(other_state, "http://localhost:5173".parse().expect("origin"));
+    let other_app = http::router(
+        other_state,
+        "http://localhost:5173".parse().expect("origin"),
+    );
     let (other_owner_status, _) = call(
         other_app,
         "GET",
