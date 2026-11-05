@@ -1,19 +1,12 @@
 #![forbid(unsafe_code)]
 
-mod api;
-mod auth;
-mod config;
-mod errors;
-mod http;
-mod state;
-
 use std::{error::Error, sync::Arc};
 use axum::http::HeaderValue;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use crate::{auth::SupabaseIdentityVerifier, config::Config, state::AppState};
+use football_dynasty::{auth::SupabaseIdentityVerifier, config::Config, http, state::AppState};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

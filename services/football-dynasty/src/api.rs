@@ -277,7 +277,8 @@ pub async fn create_campaign(
     let mut tx = state.db.begin().await?;
     if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "create_campaign", &hash).await? {
         tx.rollback().await?;
-        return Ok((StatusCode::OK, replay(value)?.0.into()));
+        let cached: Json<CampaignCreated> = replay(value)?;
+        return Ok((StatusCode::OK, cached));
     }
 
     let campaign_id = Uuid::new_v4();
@@ -438,7 +439,8 @@ pub async fn create_heir(
     let mut tx = state.db.begin().await?;
     if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "create_heir", &hash).await? {
         tx.rollback().await?;
-        return Ok((StatusCode::OK, replay(value)?.0.into()));
+        let cached: Json<CharacterView> = replay(value)?;
+        return Ok((StatusCode::OK, cached));
     }
 
     let campaign = sqlx::query_as::<_, (Uuid, String)>(
