@@ -277,9 +277,12 @@ function quizQuestionKeyboard(round: QuizRound, key: string): Record<string, unk
 async function sendQuizQuestion(chatId: number, createdBy: number, language: string): Promise<void> {
   const session = await createQuizSession(chatId, createdBy, language);
   if (!session) {
-    await sendText(chatId, language.toLowerCase().startsWith("ru")
-      ? "Сейчас не удалось загрузить вопрос. Попробуй ещё раз."
-      : "The question could not be loaded. Please try again.");
+    await tg("sendMessage", {
+      chat_id: chatId,
+      text: language.toLowerCase().startsWith("ru")
+        ? "Сейчас не удалось загрузить вопрос. Попробуй ещё раз."
+        : "The question could not be loaded. Please try again.",
+    });
     return;
   }
 
@@ -432,9 +435,12 @@ async function handleQuizCallback(query: Record<string, unknown>): Promise<void>
   if (!session.answered_at) return;
   const next = await createQuizSession(chatId, typeof from?.id === "number" ? from.id : session.created_by, language, messageId);
   if (!next) {
-    await sendText(chatId, language.startsWith("ru")
-      ? "Не удалось загрузить следующий вопрос. Попробуй ещё раз."
-      : "Could not load the next question. Please try again.");
+    await tg("sendMessage", {
+      chat_id: chatId,
+      text: language.startsWith("ru")
+        ? "Не удалось загрузить следующий вопрос. Попробуй ещё раз."
+        : "Could not load the next question. Please try again.",
+    });
     return;
   }
   await editQuizQuestion(chatId, messageId, next.round, next.key, language);
