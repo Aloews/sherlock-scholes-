@@ -432,13 +432,9 @@ async function handleQuizCallback(query: Record<string, unknown>): Promise<void>
   if (!session.answered_at) return;
   const next = await createQuizSession(chatId, typeof from?.id === "number" ? from.id : session.created_by, language, messageId);
   if (!next) {
-    if (typeof callbackId === "string") {
-      await tg("answerCallbackQuery", {
-        callback_query_id: callbackId,
-        text: language.startsWith("ru") ? "Не удалось загрузить следующий вопрос." : "Could not load the next question.",
-        show_alert: true,
-      });
-    }
+    await sendText(chatId, language.startsWith("ru")
+      ? "Не удалось загрузить следующий вопрос. Попробуй ещё раз."
+      : "Could not load the next question. Please try again.");
     return;
   }
   await editQuizQuestion(chatId, messageId, next.round, next.key, language);
