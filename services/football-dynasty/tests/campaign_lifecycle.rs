@@ -313,4 +313,3 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
 
     pool.close().await;
 }
-
