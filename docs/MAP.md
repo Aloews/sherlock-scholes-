@@ -1866,9 +1866,9 @@ Related queue/migration history: #348 (bounded enqueue), #349 (skip expensive ca
 
 ### Unmerged or superseded work — do not merge stale heads
 
-- #289 is superseded by merged #354. Its head was 68 commits behind current `main`; the source-isolation change is already in the merged implementation.
-- #208 is an old draft, 138 commits behind `main`. Its portrait-parser additions are superseded by the current collector and the existing CI-tested `docs/test_cards_photo_transfermarkt.py`. Its proposed women's-football document was not an ingestion implementation; women's production coverage must not be inferred from parser compatibility.
-- #285 is a divergent 98-commit branch, 70 commits behind `main`. Its canonical statistics hub migration and UI changes are not present on current `main`; the branch's CI jobs passed, but its Vercel status failed because the team hit the build-rate limit. It is not safe to merge as-is, and its migration has not been verified as applied to production. Any still-needed canonical read-layer work must be rebased and reviewed as a fresh, narrowly scoped change.
+- #289 is superseded by merged #354. Its head was 69 commits behind current `main`; the source-isolation change is already in the merged implementation.
+- #208 is an old draft, 139 commits behind `main`. Its portrait-parser additions are superseded by the current collector and the existing CI-tested `docs/test_cards_photo_transfermarkt.py`. Its proposed women's-football document was not an ingestion implementation; women's production coverage must not be inferred from parser compatibility.
+- #285 is a divergent branch with 98 unique commits, 71 commits behind `main`. Its canonical statistics hub migration and UI changes are not present on current `main`; the branch's CI jobs passed, but its Vercel status failed because the team hit the build-rate limit. It is not safe to merge as-is, and its migration has not been verified as applied to production. Any still-needed canonical read-layer work must be rebased and reviewed as a fresh, narrowly scoped change.
 - #304 was superseded by merged #305; #329 was superseded by merged #330. #335's applied queue repair was restored to repository history by #352 and its production migration filenames were reconciled by #353; do not revive #335 or replay that migration.
 - Branch `claude/parser-refactor-review-hmtc8h` is 379 commits behind `main` and contains only a refactor brief/prompt, not parser implementation. Branch `claude/ci-run-scraper-scripts` is 363 commits behind and its test intent is already covered by current CI. Neither branch is a merge candidate.
 
@@ -1879,3 +1879,37 @@ Related queue/migration history: #348 (bounded enqueue), #349 (skip expensive ca
 3. Unknown lineup fields remain NULL; do not convert absent source fields into verified zeroes or overwrite previously verified values.
 4. Photo writes remain blank-only and identity/source validated; queue status alone is not evidence that photo coverage increased.
 5. Apply a migration only after comparing its exact version with the production migration ledger; already-applied migration files are source-history reconciliation, not a request to reapply them.
+
+
+### Earlier parser and portrait-pipeline milestones
+
+The audit above lists the latest structural fixes. The following merged PRs form the earlier verified implementation chain; merge SHAs were checked against GitHub PR metadata:
+
+| PR | Merge commit | Verified scope |
+|---|---|---|
+| #221 | `b8e0db4f5c035ac804a02e56832ea1bb851888d6` | Soccer Wiki profile enrichment and guarded English-name fallback. |
+| #237 | `e3ac442b94d0a0e0a7d1f5106798667e57626f1f` | Resumable portrait backfill and rotating Transfermarkt fallback. |
+| #251 | `9f8384b5960aecf6bae486d8beebaff40dcc4aa4` | Complete bounded photo-backfill pipeline. |
+| #253 | `cd3d5431d4c433c95bda36b0a649fac7440f5c85` | Wikidata fallback when Transfermarkt has no portrait. |
+| #255 | `a04ef50d4f72370ff039ac1044a162bb4ecdabc2` | Deferred retries and stale-lease recovery. |
+| #257 | `a3c3942e161f254995de33e565b420a0d6a62293` | Card-tier synchronization and expanded portrait backfill. |
+| #259 | `cc019d6b03fc883e3280df6c94f93181f8d7b4f7` | Missing-portrait prioritization and starvation prevention; superseded #256. |
+| #261 | `0af61d235f01987b054cfd177c41769dc27512d5` | Backfill RPC timeout handling and diagnostics. |
+| #265 | `8183c62dbde01a4ec3ff1174c6924c2b39694222` | Retry Transfermarkt 403 responses instead of treating them as permanent absence. |
+| #270 | `beb56cb4d03ff818db65e035bd213d25da88cc37` | Nested/lazy portrait extraction. |
+| #271 | `b6c3a92367819e1703ca9d81e865b1d30747eb91` | Continue lookup after portraitless regional responses. |
+| #276 | `e1c5dec86a849b7cc5c1358049a9fe29fde94809` | Diagnostics for unresolved regional Transfermarkt portraits. |
+| #280 | `f8887e0fa400fa2994fdf266a2bcb57ac6d260bf` | Retry transient regional transport failures. |
+| #282 | `ea81092bdd6295ee90d3c55603071c021fcb420e` | Correct photo-source fallback. |
+| #283 | `a3407a1597401d35fe726a724cd00471fd9ba8ea` | Soccer Wiki fallback after transient Transfermarkt failures. |
+| #319 | `91aaf725817e504ea682c65e91f1f871784f1280` | Correct current Transfermarkt market-value response parsing. |
+| #323 | `c5a0d675775f28a0c13627b6bf44f343ae5d70d7` | Verify market valuations are actually persisted in production. |
+| #326 | `423061ff2ed1c228be9fa24c54fd4e96e8a2c5c5` | Use the upstream Transfermarkt market-value-history route. |
+| #305 | `86a3036fd452a3d9cfd24e47578cd76e7d5ec10e` | Enable women's-football stats for award-candidate reads; this is not proof of full women's roster/match-data coverage. |
+
+### Closed without merge after reconciliation
+
+- #256 was explicitly superseded by #259; #252 was explicitly superseded by #251. Both are closed and must not be revived.
+- #214's guarded English-name fallback was ported to merged #221; #210 and #212 were closed draft iterations, while the backfill implementation proceeded through merged #205/#215 and later queue-specific PRs.
+- #208's proposed standalone parser test and scheduled Transfermarkt-photo step are not the current architecture. The current queue worker invokes `docs/cards_photo_transfermarkt.py` per `photo_tm` job, while `docs/test_cards_photo_transfermarkt.py` is executed by CI and the profile-data workflow. The old `docs/test_player_photo_parsers.py` file is absent from current `main`; do not restore it as a parallel test suite.
+- #285 remains intentionally closed, not merged: its canonical read-layer/migration work was not ported, and its migration was not verified against the production ledger. It requires a new focused implementation if that feature is still desired.
