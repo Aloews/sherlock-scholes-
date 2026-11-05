@@ -288,7 +288,13 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
             .expect("current dynasty head")["is_heir"],
         false
     );
-    assert_eq!(second_detail["characters"].as_array().expect("three generations").len(), 3);
+    assert_eq!(
+        second_detail["characters"]
+            .as_array()
+            .expect("three generations")
+            .len(),
+        3
+    );
 
     pool.close().await;
 }
