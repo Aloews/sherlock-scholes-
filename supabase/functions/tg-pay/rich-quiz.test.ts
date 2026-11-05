@@ -42,10 +42,10 @@ Deno.test("formats known facts in Russian and English without inventing missing 
 });
 
 Deno.test("quiz callbacks fit Telegram's 64-byte limit and round-trip", () => {
-  const answer = createQuizCallback("answer", "0123456789abcdef", ids[0]);
+  const answer = createQuizCallback("answer", "0123456789abcdef", 0);
   if (new TextEncoder().encode(answer).length > 64) throw new Error("callback_data exceeds 64 bytes");
   const parsedAnswer = parseQuizCallback(answer);
-  if (parsedAnswer?.action !== "answer" || parsedAnswer.optionId !== ids[0]) {
+  if (parsedAnswer?.action !== "answer" || parsedAnswer.optionIndex !== 0) {
     throw new Error("answer callback did not round-trip");
   }
   const next = createQuizCallback("next", "0123456789abcdef");
