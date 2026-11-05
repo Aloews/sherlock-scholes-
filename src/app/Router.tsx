@@ -33,6 +33,7 @@ const SpotlightScreen = lazy(() => import('@/screens/SpotlightScreen').then((m) 
 const AmateurScreen  = lazy(() => import('@/screens/AmateurScreen').then((m) => ({ default: m.AmateurScreen })));
 // Admin card editor — separate route, NOT linked from the game menu.
 const AdminScreen = lazy(() => import('@/screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
+const FootballDynastyScreen = lazy(() => import('@/screens/FootballDynastyScreen').then((m) => ({ default: m.FootballDynastyScreen })));
 
 // Full-screen fallback in the app style: brand bg + a small bouncing ball
 // (matching the splash), no text, so there's no white flash while chunks load.
@@ -202,6 +203,7 @@ export function Router() {
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
       <Route path="/arena"     element={<AdminOnly><ArenaScreen /></AdminOnly>} />
       <Route path="/pro"       element={<Navigate to="/admin" replace />} />
+      <Route path="/dynasty"   element={<PageTransition><FootballDynastyScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
