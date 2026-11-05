@@ -1840,3 +1840,21 @@ t = 1.95, а читалось это как «кто играет — почти
 - Individual-award snapshot 2026-10-30 targets award year 2027. Six award families currently have scored candidates: Ballon d'Or, Ballon d'Or Féminin, The Best, The Best Féminin, Golden Boy and competition-scoped Golden Boot. Current men's Ballon d'Or ranking index: Lamine Yamal 98.30, Harry Kane 97.61, Michael Olise 97.47. These are relative ranking indices, not probabilities.
 - Team-tournament catalogue currently contains 210 tracked competitions and 5,135 candidate rows across each competition's latest snapshot (newest snapshot date 2026-10-29). 3,092 rows are low confidence and 612 high confidence. `team_tournament_outcome` still has zero verified champions. Team scores use standings/form and club-Elo proxies; cups/international tournaments do not yet simulate remaining fixtures or knockout brackets. The UCL feed currently combines qualification and main-phase matches, so phase/participant validation is required before presenting a contender list as a true title forecast.
 - Do not fill unsupported personal-award families with generic goal/assist proxies. Goalkeeper awards need saves/clean-sheet data; coach and social-impact awards need their own verified datasets. Add those categories only when their evidence sources exist, and keep relative indices separate from calibrated probabilities.
+
+
+---
+
+## Football Dynasty — design baseline (2026-11-05)
+
+A new fictional-world strategy mode is documented on branch `docs/football-dynasty-foundation-20261105`.
+
+- Product design: `docs/football-dynasty/GDD.md`.
+- Host integration: `docs/football-dynasty/ARCHITECTURE.md`.
+- Logical data model: `docs/football-dynasty/DATA_MODEL.md`.
+- Verified integration plan: `docs/football-dynasty/IMPLEMENTATION_PLAN.md`.
+
+**Verified integration constraints:** this repository is a React/Vite/TypeScript Telegram Mini App using FSD, direct Supabase PostgREST/RPC, and selected Edge Functions; there is no general-purpose custom backend. The production Supabase `public` schema had 126 base tables at inspection. Existing real football entities and the Alias room/game entities must remain untouched by fictional campaign state.
+
+**Implementation boundary:** use an isolated `fd_` data namespace in the existing Supabase project, but do not author production migrations until the Telegram `initData` identity contract, RLS ownership predicate, public/private schema choice, and test environment are verified. Fictional players and clubs must never be inserted into the real football catalogue.
+
+**First vertical slice:** founder → club → family → heir → death → succession → continue as heir. Discovery/design only; no production database writes or deployment.
