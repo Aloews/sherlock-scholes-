@@ -30,6 +30,8 @@
 // Deploy / setWebhook: see ./README.md
 // ============================================================================
 
+import { createQuizCallback, formatQuizFacts, parseQuizCallback, parseQuizRound, questionRichBlocks, resultRichBlocks, type QuizRound } from "./rich-quiz.ts";
+
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 // Echoed by Telegram on every webhook update (set via setWebhook secret_token).
 const TG_WEBHOOK_SECRET = Deno.env.get("TG_WEBHOOK_SECRET") ?? "";
@@ -175,6 +177,260 @@ async function handleStart(chatId: number, text: string, lang: string): Promise<
   });
 }
 
+type QuizSession = {
+  session_key: string;
+  chat_id: number;
+  created_by: number;
+  message_id: number | null;
+  language_code: string;
+  answer_id: string;
+  facts: Record<string, unknown>;
+  options: { id: string; name: string }[];
+  chosen_option_id: string | null;
+  answered_at: string | null;
+  expires_at: string;
+};
+
+async function quizTable(path: string, init: RequestInit = {}): Promise<Response> {
+  return await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SERVICE_ROLE,
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+function newQuizSessionKey(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function fetchQuizRound(): Promise<QuizRound | null> {
+  const response = await rpc("quiz_player_round", {});
+  if (!response.ok) {
+    console.error("[tg-pay] quiz_player_round failed", response.status, await response.text().catch(() => ""));
+    return null;
+  }
+  return parseQuizRound(await response.json().catch(() => null));
+}
+
+async function createQuizSession(
+  chatId: number,
+  createdBy: number,
+  language: string,
+  messageId: number | null = null,
+): Promise<{ key: string; round: QuizRound } | null> {
+  const round = await fetchQuizRound();
+  if (!round) return null;
+
+  const key = newQuizSessionKey();
+  const now = Date.now();
+  const expiresAt = new Date(now + 30 * 60_000).toISOString();
+  const response = await quizTable("telegram_chat_quiz_sessions", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      session_key: key,
+      chat_id: chatId,
+      created_by: createdBy,
+      message_id: messageId,
+      language_code: language.toLowerCase().startsWith("ru") ? "ru" : "en",
+      answer_id: round.answer_id,
+      facts: round.facts,
+      options: round.options,
+      expires_at: expiresAt,
+    }),
+  });
+  if (!response.ok) {
+    console.error("[tg-pay] quiz session insert failed", response.status, await response.text().catch(() => ""));
+    return null;
+  }
+  void quizTable(`telegram_chat_quiz_sessions?expires_at=lt.${encodeURIComponent(new Date(now).toISOString())}`, {
+    method: "DELETE",
+  }).catch(() => undefined);
+  return { key, round };
+}
+
+function quizQuestionText(round: QuizRound, language: string): string {
+  const ru = language.toLowerCase().startsWith("ru");
+  return [
+    ru ? "Угадай футболиста" : "Guess the player",
+    ru ? "Кто это? Выбери один вариант." : "Who is it? Choose one option.",
+    ...formatQuizFacts(round.facts, language),
+  ].join("\n");
+}
+
+function quizQuestionKeyboard(round: QuizRound, key: string): Record<string, unknown> {
+  return {
+    inline_keyboard: round.options.map((option) => [{
+      text: option.name,
+      callback_data: createQuizCallback("answer", key, option.id),
+    }]),
+  };
+}
+
+async function sendQuizQuestion(chatId: number, createdBy: number, language: string): Promise<void> {
+  const session = await createQuizSession(chatId, createdBy, language);
+  if (!session) {
+    await sendText(chatId, language.toLowerCase().startsWith("ru")
+      ? "Сейчас не удалось загрузить вопрос. Попробуй ещё раз."
+      : "The question could not be loaded. Please try again.");
+    return;
+  }
+
+  const rich = await tg("sendRichMessage", {
+    chat_id: chatId,
+    rich_message: { blocks: questionRichBlocks(session.round, session.key, language) },
+  });
+  const messageId = (rich.result as { message_id?: number } | undefined)?.message_id;
+  if (rich.ok === true && typeof messageId === "number") {
+    const saved = await quizTable(`telegram_chat_quiz_sessions?session_key=eq.${session.key}`, {
+      method: "PATCH",
+      body: JSON.stringify({ message_id: messageId }),
+    });
+    if (!saved.ok) console.error("[tg-pay] quiz message id write failed", saved.status);
+    return;
+  }
+
+  console.warn("[tg-pay] sendRichMessage unavailable; using inline-keyboard fallback", rich.description);
+  const fallback = await tg("sendMessage", {
+    chat_id: chatId,
+    text: quizQuestionText(session.round, language),
+    reply_markup: quizQuestionKeyboard(session.round, session.key),
+  });
+  const fallbackId = (fallback.result as { message_id?: number } | undefined)?.message_id;
+  if (fallback.ok === true && typeof fallbackId === "number") {
+    await quizTable(`telegram_chat_quiz_sessions?session_key=eq.${session.key}`, {
+      method: "PATCH",
+      body: JSON.stringify({ message_id: fallbackId }),
+    });
+  }
+}
+
+async function loadQuizSession(key: string, chatId: number, messageId: number): Promise<QuizSession | null> {
+  const params = new URLSearchParams({
+    select: "session_key,chat_id,created_by,message_id,language_code,answer_id,facts,options,chosen_option_id,answered_at,expires_at",
+    session_key: `eq.${key}`,
+    chat_id: `eq.${chatId}`,
+    message_id: `eq.${messageId}`,
+    expires_at: `gt.${new Date().toISOString()}`,
+    limit: "1",
+  });
+  const response = await quizTable(`telegram_chat_quiz_sessions?${params.toString()}`);
+  if (!response.ok) {
+    console.error("[tg-pay] quiz session read failed", response.status, await response.text().catch(() => ""));
+    return null;
+  }
+  const rows = await response.json().catch(() => []) as QuizSession[];
+  return rows[0] ?? null;
+}
+
+async function editQuizQuestion(chatId: number, messageId: number, round: QuizRound, key: string, language: string): Promise<void> {
+  const rich = await tg("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    rich_message: { blocks: questionRichBlocks(round, key, language) },
+  });
+  if (rich.ok === true) return;
+  await tg("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text: quizQuestionText(round, language),
+    reply_markup: quizQuestionKeyboard(round, key),
+  });
+}
+
+async function editQuizResult(chatId: number, messageId: number, session: QuizSession, correct: boolean, answerName: string): Promise<void> {
+  const rich = await tg("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    rich_message: { blocks: resultRichBlocks(correct, answerName, session.session_key, session.language_code) },
+  });
+  if (rich.ok === true) return;
+  const ru = session.language_code.startsWith("ru");
+  await tg("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text: correct
+      ? (ru ? `Верно! Это ${answerName}.` : `Correct! The answer is ${answerName}.`)
+      : (ru ? `Не угадал. Это ${answerName}.` : `Not quite. The answer is ${answerName}.`),
+    reply_markup: {
+      inline_keyboard: [[{
+        text: ru ? "Следующий вопрос" : "Next question",
+        callback_data: createQuizCallback("next", session.session_key),
+      }]],
+    },
+  });
+}
+
+async function handleQuizCallback(query: Record<string, unknown>): Promise<void> {
+  const callbackId = query.id;
+  const data = parseQuizCallback(query.data);
+  const message = query.message as { message_id?: number; chat?: { id?: number } } | undefined;
+  const chatId = message?.chat?.id;
+  const messageId = message?.message_id;
+  const from = query.from as { id?: number } | undefined;
+  if (typeof callbackId === "string") {
+    await tg("answerCallbackQuery", {
+      callback_query_id: callbackId,
+      ...(!data ? { text: "This action is no longer available." } : {}),
+    });
+  }
+  if (!data || typeof chatId !== "number" || typeof messageId !== "number") return;
+
+  const session = await loadQuizSession(data.sessionKey, chatId, messageId);
+  if (!session) return;
+  const language = session.language_code;
+
+  if (data.action === "answer") {
+    if (session.answered_at) return;
+    const selected = session.options.find((option) => option.id === data.optionId);
+    if (!selected) return;
+
+    const params = new URLSearchParams({
+      session_key: `eq.${session.session_key}`,
+      chat_id: `eq.${chatId}`,
+      message_id: `eq.${messageId}`,
+      answered_at: "is.null",
+      expires_at: `gt.${new Date().toISOString()}`,
+      select: "session_key",
+    });
+    const saved = await quizTable(`telegram_chat_quiz_sessions?${params.toString()}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ chosen_option_id: selected.id, answered_at: new Date().toISOString() }),
+    });
+    if (!saved.ok) {
+      console.error("[tg-pay] quiz answer write failed", saved.status, await saved.text().catch(() => ""));
+      return;
+    }
+    const changed = await saved.json().catch(() => []) as { session_key: string }[];
+    if (changed.length === 0) return;
+    const answer = session.options.find((option) => option.id === session.answer_id);
+    if (!answer) return;
+    await editQuizResult(chatId, messageId, session, selected.id === session.answer_id, answer.name);
+    return;
+  }
+
+  if (!session.answered_at) return;
+  const next = await createQuizSession(chatId, typeof from?.id === "number" ? from.id : session.created_by, language, messageId);
+  if (!next) {
+    if (typeof callbackId === "string") {
+      await tg("answerCallbackQuery", {
+        callback_query_id: callbackId,
+        text: language.startsWith("ru") ? "Не удалось загрузить следующий вопрос." : "Could not load the next question.",
+        show_alert: true,
+      });
+    }
+    return;
+  }
+  await editQuizQuestion(chatId, messageId, next.round, next.key, language);
+}
+
 /**
  * Разбудить спящую базу, пока человек ещё смотрит на кнопку.
  *
@@ -229,6 +485,12 @@ Deno.serve(async (req) => {
       return new Response("ok");
     }
 
+    // Rich-message answer buttons arrive as callback_query updates.
+    if (update.callback_query) {
+      await handleQuizCallback(update.callback_query as Record<string, unknown>);
+      return new Response("ok");
+    }
+
     // Money received -> unlock Pro for the payer.
     const sp = update.message?.successful_payment;
     if (sp) {
@@ -237,6 +499,12 @@ Deno.serve(async (req) => {
         await grantPro(payerId);
         console.log("[tg-pay] granted Pro", payerId, sp.telegram_payment_charge_id);
       }
+      return new Response("ok");
+    }
+
+    // Chat-native quiz: structured Telegram Rich Message with callback actions.
+    if (typeof text === "string" && /^\/quiz(?:@\w+)?(?:\s|$)/i.test(text) && typeof chatId === "number") {
+      await sendQuizQuestion(chatId, update.message?.from?.id ?? chatId, update.message?.from?.language_code ?? "");
       return new Response("ok");
     }
 
