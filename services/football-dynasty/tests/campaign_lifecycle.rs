@@ -108,7 +108,6 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     };
     let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
 
-
     let missing = Request::builder()
         .uri("/api/v1/campaigns")
         .body(Body::empty())
