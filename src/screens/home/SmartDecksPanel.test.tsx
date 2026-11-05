@@ -58,7 +58,7 @@ function queryBuilder(table: string) {
         ? cards.filter((card) => (filters.ids as string[]).includes(card.id))
         : cards;
     }
-    if (table === 'player_match_stats') {
+    if (table === 'player_match_days') {
       const ids = (filters.ids as string[] | undefined) ?? [];
       data = ids.map((card_id) => ({ card_id, home_team: 'Test Club', away_team: 'Opponent', disputed: false }));
     }
@@ -86,6 +86,8 @@ describe('SmartDecksPanel deck builder', () => {
     const onStart = vi.fn();
     render(<SmartDecksPanel onStart={onStart} />);
 
+    await waitFor(() => expect(mocks.from).toHaveBeenCalledWith('player_match_days'));
+    expect(mocks.from).not.toHaveBeenCalledWith('player_match_stats');
     fireEvent.click(await screen.findByRole('button', { name: /Build deck/i }));
     expect(await screen.findByRole('dialog')).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(10));
