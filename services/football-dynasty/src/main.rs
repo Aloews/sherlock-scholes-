@@ -14,7 +14,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::from_env()?;
 
     if config.run_migrations {
-        let migration_url = config.migration_database_url.as_deref()
+        let migration_url = config
+            .migration_database_url
+            .as_deref()
             .expect("validated migration database URL");
         let migration_pool = PgPoolOptions::new()
             .max_connections(1)
@@ -25,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let database = PgPoolOptions::new()
-        .max_connections(config.max_connections as u32)
+        .max_connections(config.max_connections)
         .after_connect(|connection, _metadata| {
             Box::pin(async move {
                 sqlx::query("SET ROLE fd_runtime")
