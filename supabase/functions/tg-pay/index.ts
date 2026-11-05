@@ -13,6 +13,7 @@
 //      (set when we call setWebhook). We:
 //        • pre_checkout_query   -> answerPreCheckoutQuery(ok: true)
 //        • successful_payment   -> grant_pro(PAY_WEBHOOK_SECRET, payer_id)
+//        • /quiz -> интерактивная чат-игра через Telegram Rich Messages.
 //        • /start <код комнаты> -> ответ кнопкой, открывающей Mini App в этой
 //          комнате. См. handleStart() ниже — это половина приглашений.
 //
