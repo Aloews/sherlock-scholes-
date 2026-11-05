@@ -575,12 +575,13 @@ pub async fn advance_campaign(
         return Err(ApiError::conflict("campaign_not_active"));
     }
 
-    let current_player_age: i32 =
-        sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'")
-            .bind(campaign.0)
-            .bind(campaign_id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let current_player_age: i32 = sqlx::query_scalar(
+        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
+    )
+    .bind(campaign.0)
+    .bind(campaign_id)
+    .fetch_one(&mut *tx)
+    .await?;
     // The player can request a decade, but a character's death is resolved at
     // the exact simulation year of the age-90 boundary, never after overshooting it.
     let elapsed_years = if current_player_age >= 90 {
@@ -590,11 +591,13 @@ pub async fn advance_campaign(
     };
     let next_year = campaign.1 + elapsed_years;
     if elapsed_years > 0 {
-        sqlx::query("UPDATE fd.characters SET age=age+$2 WHERE campaign_id=$1 AND life_status='alive'")
-            .bind(campaign_id)
-            .bind(elapsed_years)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "UPDATE fd.characters SET age=age+$2 WHERE campaign_id=$1 AND life_status='alive'",
+        )
+        .bind(campaign_id)
+        .bind(elapsed_years)
+        .execute(&mut *tx)
+        .await?;
     }
     let player_age: i32 =
         sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
