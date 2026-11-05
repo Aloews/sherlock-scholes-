@@ -495,7 +495,7 @@ pub async fn create_heir(
     }
 
     let parent_age: i32 = sqlx::query_scalar(
-        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive',
+        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
     )
     .bind(campaign.0)
     .bind(campaign_id)
