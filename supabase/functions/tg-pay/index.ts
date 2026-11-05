@@ -308,7 +308,7 @@ async function ensureQuizCallbackUpdates(): Promise<boolean> {
 
   // An omitted list means Telegram's default update set, which already includes callback_query.
   const allowed = webhook.allowed_updates;
-  if (!Array.isArray(allowed) || allowed.includes("callback_query")) return true;
+  if (!Array.isArray(allowed) || allowed.length === 0 || allowed.includes("callback_query")) return true;
 
   const updated = await tg("setWebhook", {
     url: webhook.url,
