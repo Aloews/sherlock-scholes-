@@ -1,21 +1,53 @@
 #![forbid(unsafe_code)]
 
+mod api;
+mod auth;
 mod config;
+mod errors;
 mod http;
+mod state;
 
-use std::error::Error;
+use std::{error::Error, sync::Arc};
+use axum::http::HeaderValue;
+use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
+
+use crate::{auth::SupabaseIdentityVerifier, config::Config, state::AppState};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     init_tracing();
+    let config = Config::from_env()?;
 
-    let config = config::Config::from_env()?;
+    if config.run_migrations {
+        let migration_pool = PgPoolOptions::new()
+            .max_connections(2)
+            .connect(&config.database_url)
+            .await?;
+        sqlx::migrate!("./migrations").run(&migration_pool).await?;
+        migration_pool.close().await;
+    }
+
+    let database = PgPoolOptions::new()
+        .max_connections(10)
+        .after_connect(|connection, _metadata| Box::pin(async move {
+            sqlx::query("SET ROLE fd_runtime").execute(connection).await?;
+            Ok(())
+        }))
+        .connect(&config.database_url)
+        .await?;
+
+    let verifier = Arc::new(SupabaseIdentityVerifier::new(
+        config.supabase_url,
+        config.supabase_anon_key,
+    ));
+    let state = AppState { db: database, verifier };
+    let allowed_origin: HeaderValue = config.allowed_origin.parse()?;
     let listener = TcpListener::bind(config.bind_addr).await?;
     tracing::info!(address = %config.bind_addr, "Football Dynasty API listening");
 
-    axum::serve(listener, http::router())
+    axum::serve(listener, http::router(state, allowed_origin))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
@@ -38,9 +70,7 @@ async fn shutdown_signal() {
     #[cfg(unix)]
     let terminate = async {
         match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut signal) => {
-                signal.recv().await;
-            }
+            Ok(mut signal) => { signal.recv().await; }
             Err(error) => tracing::error!(%error, "failed to listen for SIGTERM"),
         }
     };
@@ -52,6 +82,5 @@ async fn shutdown_signal() {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
-
     tracing::info!("shutdown signal received");
 }

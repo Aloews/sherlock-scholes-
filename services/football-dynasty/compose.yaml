@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: football_dynasty
+    ports:
+      - "54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d football_dynasty"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - football-dynasty-db:/var/lib/postgresql/data
+
+  api:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+volumes:
+  football-dynasty-db:
