@@ -26,7 +26,7 @@ insert into public.telegram_chat_quiz_sessions (
   '{"position":"Forward"}'::jsonb,
   '[{"id":"10000000-0000-0000-0000-000000000001","name":"Player A"}]'::jsonb
 );
-do $
+do $body$
 begin
   if not exists (
     select 1 from public.telegram_chat_quiz_sessions
@@ -37,7 +37,7 @@ begin
     raise exception 'service_role cannot read its quiz session';
   end if;
 end;
-$;
+$body$;
 reset role;
 
 rollback;
