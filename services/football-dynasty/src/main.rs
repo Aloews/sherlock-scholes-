@@ -3,7 +3,7 @@
 mod config;
 mod http;
 
-use std::{error::Error, net::SocketAddr};
+use std::error::Error;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -55,6 +55,3 @@ async fn shutdown_signal() {
 
     tracing::info!("shutdown signal received");
 }
-
-#[allow(dead_code)]
-fn _socket_addr_is_send(_: SocketAddr) {}
