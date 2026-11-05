@@ -17,6 +17,7 @@ begin
 end;
 $$;
 
+set local role service_role;
 insert into public.telegram_chat_quiz_sessions (
   session_key, chat_id, created_by, language_code, answer_id, facts, options
 ) values (
@@ -25,8 +26,7 @@ insert into public.telegram_chat_quiz_sessions (
   '{"position":"Forward"}'::jsonb,
   '[{"id":"10000000-0000-0000-0000-000000000001","name":"Player A"}]'::jsonb
 );
-
-do $$
+do $
 begin
   if not exists (
     select 1 from public.telegram_chat_quiz_sessions
@@ -34,9 +34,10 @@ begin
       and expires_at > now()
       and answered_at is null
   ) then
-    raise exception 'quiz session fixture was not stored correctly';
+    raise exception 'service_role cannot read its quiz session';
   end if;
 end;
-$$;
+$;
+reset role;
 
 rollback;
