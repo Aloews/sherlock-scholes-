@@ -36,7 +36,7 @@ async function request<T>(path: string, init: RequestInit = {}, mutation = false
 
   // Reuse the same key after an ambiguous network/5xx failure so a retry
   // replays the committed result instead of executing the mutation twice.
-  const mutationFingerprint = mutation ? path + '\\n' + String(init.body ?? '') : '';
+  const mutationFingerprint = mutation ? path + '\n' + String(init.body ?? '') : '';
   if (mutation) {
     const key = pendingMutationKeys.get(mutationFingerprint) ?? crypto.randomUUID();
     pendingMutationKeys.set(mutationFingerprint, key);
