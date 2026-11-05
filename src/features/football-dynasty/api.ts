@@ -1,6 +1,7 @@
 import { getRawInitData } from '@/shared/lib/telegram';
 
 const API_BASE = (import.meta.env.VITE_FD_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+const pendingMutationKeys = new Map<string, string>();
 
 export interface CampaignSummary {
   id: string; name: string; mode: 'sandbox' | 'scenario'; status: string;
@@ -32,13 +33,23 @@ async function request<T>(path: string, init: RequestInit = {}, mutation = false
   const headers = new Headers(init.headers);
   headers.set('x-tg-init-data', initData);
   if (init.body) headers.set('content-type', 'application/json');
-  if (mutation) headers.set('idempotency-key', crypto.randomUUID());
+
+  // Reuse the same key after an ambiguous network/5xx failure so a retry
+  // replays the committed result instead of executing the mutation twice.
+  const mutationFingerprint = mutation ? path + '\\n' + String(init.body ?? '') : '';
+  if (mutation) {
+    const key = pendingMutationKeys.get(mutationFingerprint) ?? crypto.randomUUID();
+    pendingMutationKeys.set(mutationFingerprint, key);
+    headers.set('idempotency-key', key);
+  }
 
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (mutation && response.status < 500) pendingMutationKeys.delete(mutationFingerprint);
     throw new Error(typeof payload?.error === 'string' ? payload.error : 'request_failed');
   }
+  if (mutation) pendingMutationKeys.delete(mutationFingerprint);
   return payload as T;
 }
 
