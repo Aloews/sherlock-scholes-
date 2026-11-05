@@ -703,6 +703,13 @@ pub async fn execute_succession(
         .bind(campaign_id).bind(campaign.0).fetch_optional(&mut *tx).await?
     }.ok_or_else(|| ApiError::conflict("no_eligible_heir"))?;
 
+    sqlx::query("UPDATE fd.characters SET is_heir=false WHERE campaign_id=$3 AND id IN ($1,$2)")
+        .bind(campaign.0)
+        .bind(heir.id)
+        .bind(campaign_id)
+        .execute(&mut *tx)
+        .await?;
+
     sqlx::query("UPDATE fd.dynasties SET head_character_id=$2,prestige=prestige+10 WHERE id=$1 AND campaign_id=$3")
         .bind(campaign.1).bind(heir.id).bind(campaign_id).execute(&mut *tx).await?;
     sqlx::query("UPDATE fd.campaigns SET player_character_id=$2,status='active',version=version+1,updated_at=now() WHERE id=$1")

@@ -199,6 +199,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(detail["player_character_id"], heir_id);
     assert_eq!(detail["dynasty"]["head_character_id"], heir_id);
     assert_eq!(
+        detail["characters"]
+            .as_array()
+            .expect("characters")
+            .iter()
+            .find(|person| person["id"] == heir_id)
+            .expect("new dynasty head")["is_heir"],
+        false
+    );
+    assert_eq!(
         detail["characters"].as_array().expect("characters").len(),
         2
     );
@@ -270,6 +279,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(second_detail_status, StatusCode::OK);
     assert_eq!(second_detail["player_character_id"], grandchild_id);
     assert_eq!(second_detail["dynasty"]["head_character_id"], grandchild_id);
+    assert_eq!(
+        second_detail["characters"]
+            .as_array()
+            .expect("three generations")
+            .iter()
+            .find(|person| person["id"] == grandchild_id)
+            .expect("current dynasty head")["is_heir"],
+        false
+    );
     assert_eq!(second_detail["characters"].as_array().expect("three generations").len(), 3);
 
     pool.close().await;
