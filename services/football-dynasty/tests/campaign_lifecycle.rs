@@ -73,7 +73,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .connect(&database_url)
         .await
         .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $ SELECT NULL::bigint $")
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
         .execute(&migration_pool).await.expect("test Telegram verifier stub");
     sqlx::migrate!("./migrations")
         .run(&migration_pool)
@@ -161,7 +161,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         assert_eq!(advance_status, StatusCode::OK);
         last_advance = result;
     }
-    assert_eq!(last_advance["founder_age"], 90);
+    assert_eq!(last_advance["player_age"], 90);
     assert_eq!(last_advance["status"], "succession_pending");
 
     let (preview_status, candidates) = call(
@@ -210,6 +210,68 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         2
     );
 
+    let (grandchild_status, grandchild) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/heirs"),
+        Some("grandchild-create-0001"),
+        Some(json!({"name":"Casey Morgan","age":16})),
+    )
+    .await;
+    assert_eq!(grandchild_status, StatusCode::CREATED);
+    let grandchild_id = grandchild["id"].as_str().expect("grandchild id");
+
+    for (index, years) in [10, 10, 4].into_iter().enumerate() {
+        let (advance_status, result) = call(
+            app.clone(),
+            "POST",
+            &format!("/api/v1/campaigns/{campaign_id}/advance"),
+            Some(&format!("second-life-{index:04}")),
+            Some(json!({"years":years})),
+        )
+        .await;
+        assert_eq!(advance_status, StatusCode::OK);
+        if index == 2 {
+            assert_eq!(result["status"], "succession_pending");
+            assert_eq!(result["player_age"], 90);
+        }
+    }
+
+    let (second_preview_status, second_candidates) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/succession/preview"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(second_preview_status, StatusCode::OK);
+    assert_eq!(second_candidates[0]["id"], grandchild_id);
+
+    let (second_succession_status, second_succession) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/succession"),
+        Some("second-succession-0001"),
+        Some(json!({"heir_id":grandchild_id})),
+    )
+    .await;
+    assert_eq!(second_succession_status, StatusCode::OK);
+    assert_eq!(second_succession["heir_id"], grandchild_id);
+
+    let (second_detail_status, second_detail) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(second_detail_status, StatusCode::OK);
+    assert_eq!(second_detail["player_character_id"], grandchild_id);
+    assert_eq!(second_detail["dynasty"]["head_character_id"], grandchild_id);
+    assert_eq!(second_detail["characters"].as_array().expect("three generations").len(), 3);
+
     pool.close().await;
 }
 
@@ -221,7 +283,7 @@ async fn protected_routes_reject_missing_and_forged_telegram_data() {
         .connect(&database_url)
         .await
         .expect("pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $ SELECT NULL::bigint $")
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
         .execute(&pool).await.expect("test Telegram verifier stub");
     sqlx::migrate!("./migrations")
         .run(&pool)

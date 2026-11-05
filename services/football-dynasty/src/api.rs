@@ -141,7 +141,7 @@ pub struct CampaignView {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AdvanceResult {
     pub current_year: i32,
-    pub founder_age: i32,
+    pub player_age: i32,
     pub status: String,
     pub succession_available: bool,
 }
@@ -486,7 +486,7 @@ pub async fn create_heir(
     }
 
     let campaign = sqlx::query_as::<_, (Uuid, String)>(
-        "SELECT founder_character_id,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
+        "SELECT player_character_id,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
     )
     .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
     .ok_or_else(ApiError::not_found)?;
@@ -494,7 +494,7 @@ pub async fn create_heir(
         return Err(ApiError::conflict("campaign_not_active"));
     }
 
-    let founder_age: i32 = sqlx::query_scalar(
+    let player_age: i32 = sqlx::query_scalar(
         "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
     )
     .bind(campaign.0)
@@ -502,7 +502,7 @@ pub async fn create_heir(
     .fetch_optional(&mut *tx)
     .await?
     .ok_or_else(|| ApiError::conflict("founder_not_alive"))?;
-    if founder_age - request.age < 16 {
+    if parent_age - request.age < 16 {
         return Err(ApiError::bad_request("invalid_parent_child_age_gap"));
     }
 
@@ -567,7 +567,7 @@ pub async fn advance_campaign(
     }
 
     let campaign = sqlx::query_as::<_, (Uuid, i32, String)>(
-        "SELECT founder_character_id,current_year,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
+        "SELECT player_character_id,current_year,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
     )
     .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
     .ok_or_else(ApiError::not_found)?;
@@ -581,7 +581,7 @@ pub async fn advance_campaign(
         .bind(request.years)
         .execute(&mut *tx)
         .await?;
-    let founder_age: i32 =
+    let player_age: i32 =
         sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
             .bind(campaign.0)
             .bind(campaign_id)
@@ -590,7 +590,7 @@ pub async fn advance_campaign(
 
     let mut status = "active".to_owned();
     let mut succession_available = false;
-    if founder_age >= 90 {
+    if player_age >= 90 {
         sqlx::query(
             "UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2",
         )
@@ -612,9 +612,9 @@ pub async fn advance_campaign(
         sqlx::query("UPDATE fd.campaigns SET current_year=$2,status=$3,version=version+1,updated_at=now() WHERE id=$1")
             .bind(campaign_id).bind(next_year).bind(&status).execute(&mut *tx).await?;
         sqlx::query(
-            "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'founder_death','The founder has died', $2, $3)"
+            "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'character_death','The head of the dynasty has died', $2, $3)"
         )
-        .bind(campaign_id).bind(next_year).bind(json!({"founder_id":campaign.0,"founder_age":founder_age,"succession_available":succession_available}))
+        .bind(campaign_id).bind(next_year).bind(json!({"deceased_character_id":campaign.0,"player_age":player_age,"succession_available":succession_available}))
         .execute(&mut *tx).await?;
     } else {
         sqlx::query("UPDATE fd.campaigns SET current_year=$2,version=version+1,updated_at=now() WHERE id=$1")
@@ -622,13 +622,13 @@ pub async fn advance_campaign(
         sqlx::query(
             "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'time_advanced','The years pass', $2, $3)"
         )
-        .bind(campaign_id).bind(next_year).bind(json!({"years":request.years,"founder_age":founder_age}))
+        .bind(campaign_id).bind(next_year).bind(json!({"years":request.years,"player_age":player_age}))
         .execute(&mut *tx).await?;
     }
 
     let response = AdvanceResult {
         current_year: next_year,
-        founder_age,
+        player_age,
         status,
         succession_available,
     };
@@ -653,7 +653,7 @@ pub async fn preview_succession(
         return Err(ApiError::conflict("succession_not_pending"));
     }
     let heirs = sqlx::query_as::<_, CharacterView>(
-        "SELECT c.id,c.full_name,c.age,c.life_status,c.is_heir FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=(SELECT id FROM fd.campaigns WHERE id=$1) AND r.parent_character_id=(SELECT founder_character_id FROM fd.campaigns WHERE id=$1) AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18 ORDER BY c.age DESC,c.created_at ASC"
+        "SELECT c.id,c.full_name,c.age,c.life_status,c.is_heir FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=(SELECT id FROM fd.campaigns WHERE id=$1) AND r.parent_character_id=(SELECT player_character_id FROM fd.campaigns WHERE id=$1) AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18 ORDER BY c.age DESC,c.created_at ASC"
     )
     .bind(campaign_id).fetch_all(&state.db).await?;
     Ok(Json(heirs))
@@ -683,7 +683,7 @@ pub async fn execute_succession(
     }
 
     let campaign = sqlx::query_as::<_, (Uuid, Uuid, String, i32)>(
-        "SELECT founder_character_id,dynasty_id,status,current_year FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
+        "SELECT player_character_id,dynasty_id,status,current_year FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
     )
     .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
     .ok_or_else(ApiError::not_found)?;

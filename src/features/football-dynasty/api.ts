@@ -51,7 +51,7 @@ export const createCampaign = (payload: {
 export const createHeir = (campaignId: string, payload: { name: string; age: number }) =>
   request<Character>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/heirs`, { method: 'POST', body: JSON.stringify(payload) }, true);
 export const advanceCampaign = (campaignId: string, years: number) =>
-  request<{ current_year: number; founder_age: number; status: string; succession_available: boolean }>(
+  request<{ current_year: number; player_age: number; status: string; succession_available: boolean }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/advance`, { method: 'POST', body: JSON.stringify({ years }) }, true,
   );
 export const previewSuccession = (campaignId: string) =>
