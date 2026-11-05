@@ -36,10 +36,12 @@ impl Config {
 }
 
 fn required(name: &str) -> Result<String, io::Error> {
-    env::var(name).map_err(|_| io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!("required environment variable {name} is missing"),
-    ))
+    env::var(name).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("required environment variable {name} is missing"),
+        )
+    })
 }
 
 #[cfg(test)]

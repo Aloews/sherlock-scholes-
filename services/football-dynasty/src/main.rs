@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
-use std::{error::Error, sync::Arc};
 use axum::http::HeaderValue;
 use sqlx::postgres::PgPoolOptions;
+use std::{error::Error, sync::Arc};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -24,10 +24,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let database = PgPoolOptions::new()
         .max_connections(10)
-        .after_connect(|connection, _metadata| Box::pin(async move {
-            sqlx::query("SET ROLE fd_runtime").execute(connection).await?;
-            Ok(())
-        }))
+        .after_connect(|connection, _metadata| {
+            Box::pin(async move {
+                sqlx::query("SET ROLE fd_runtime")
+                    .execute(connection)
+                    .await?;
+                Ok(())
+            })
+        })
         .connect(&config.database_url)
         .await?;
 
@@ -35,7 +39,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         config.supabase_url,
         config.supabase_anon_key,
     ));
-    let state = AppState { db: database, verifier };
+    let state = AppState {
+        db: database,
+        verifier,
+    };
     let allowed_origin: HeaderValue = config.allowed_origin.parse()?;
     let listener = TcpListener::bind(config.bind_addr).await?;
     tracing::info!(address = %config.bind_addr, "Football Dynasty API listening");
@@ -63,7 +70,9 @@ async fn shutdown_signal() {
     #[cfg(unix)]
     let terminate = async {
         match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut signal) => { signal.recv().await; }
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
             Err(error) => tracing::error!(%error, "failed to listen for SIGTERM"),
         }
     };

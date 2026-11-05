@@ -35,7 +35,10 @@ impl SupabaseIdentityVerifier {
     pub fn new(project_url: String, anon_key: String) -> Self {
         Self {
             client: reqwest::Client::new(),
-            endpoint: format!("{}/rest/v1/rpc/get_user_status", project_url.trim_end_matches('/')),
+            endpoint: format!(
+                "{}/rest/v1/rpc/get_user_status",
+                project_url.trim_end_matches('/')
+            ),
             anon_key,
         }
     }
@@ -44,7 +47,8 @@ impl SupabaseIdentityVerifier {
 #[async_trait]
 impl IdentityVerifier for SupabaseIdentityVerifier {
     async fn verify(&self, init_data: &str) -> Result<i64, VerifyError> {
-        let response = self.client
+        let response = self
+            .client
             .post(&self.endpoint)
             .header("apikey", &self.anon_key)
             .bearer_auth(&self.anon_key)
@@ -60,8 +64,12 @@ impl IdentityVerifier for SupabaseIdentityVerifier {
             return Err(VerifyError::Unavailable);
         }
 
-        let value: Value = response.json().await.map_err(|_| VerifyError::Unavailable)?;
-        value.get("telegram_id")
+        let value: Value = response
+            .json()
+            .await
+            .map_err(|_| VerifyError::Unavailable)?;
+        value
+            .get("telegram_id")
             .and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse::<i64>().ok()))
             .filter(|id| *id > 0)
             .ok_or(VerifyError::Invalid)
@@ -73,7 +81,8 @@ pub async fn authenticate(
     mut request: Request,
     next: Next,
 ) -> Result<Response, ApiError> {
-    let init_data = request.headers()
+    let init_data = request
+        .headers()
         .get("x-tg-init-data")
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.is_empty() && value.len() <= 8192)

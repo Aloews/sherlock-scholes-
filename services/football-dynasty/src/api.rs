@@ -15,12 +15,24 @@ use crate::{auth::Identity, errors::ApiError, state::AppState};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/api/v1/campaigns", get(list_campaigns).post(create_campaign))
+        .route(
+            "/api/v1/campaigns",
+            get(list_campaigns).post(create_campaign),
+        )
         .route("/api/v1/campaigns/{campaign_id}", get(get_campaign))
         .route("/api/v1/campaigns/{campaign_id}/heirs", post(create_heir))
-        .route("/api/v1/campaigns/{campaign_id}/advance", post(advance_campaign))
-        .route("/api/v1/campaigns/{campaign_id}/succession/preview", get(preview_succession))
-        .route("/api/v1/campaigns/{campaign_id}/succession", post(execute_succession))
+        .route(
+            "/api/v1/campaigns/{campaign_id}/advance",
+            post(advance_campaign),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/succession/preview",
+            get(preview_succession),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/succession",
+            post(execute_succession),
+        )
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -169,7 +181,8 @@ fn valid_name(value: &str, max: usize) -> bool {
 }
 
 fn idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
-    headers.get("idempotency-key")
+    headers
+        .get("idempotency-key")
         .and_then(|value| value.to_str().ok())
         .map(str::trim)
         .filter(|value| value.len() >= 8 && value.len() <= 128)
@@ -216,7 +229,10 @@ async fn reserve_command(
         return Err(ApiError::conflict("idempotency_key_reused"));
     }
 
-    existing.response.ok_or_else(|| ApiError::conflict("idempotency_request_in_progress")).map(Some)
+    existing
+        .response
+        .ok_or_else(|| ApiError::conflict("idempotency_request_in_progress"))
+        .map(Some)
 }
 
 async fn complete_command(
@@ -267,7 +283,15 @@ pub async fn create_campaign(
         || !valid_name(&request.dynasty_name, 64)
         || !valid_name(&request.club_name, 64)
         || !matches!(request.mode.as_str(), "sandbox" | "scenario")
-        || !matches!(request.origin.as_str(), "football_family" | "entrepreneur" | "former_player" | "agent" | "executive" | "newcomer")
+        || !matches!(
+            request.origin.as_str(),
+            "football_family"
+                | "entrepreneur"
+                | "former_player"
+                | "agent"
+                | "executive"
+                | "newcomer"
+        )
     {
         return Err(ApiError::bad_request("invalid_campaign_setup"));
     }
@@ -275,7 +299,15 @@ pub async fn create_campaign(
     let key = idempotency_key(&headers)?;
     let hash = payload_hash(&request)?;
     let mut tx = state.db.begin().await?;
-    if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "create_campaign", &hash).await? {
+    if let Some(value) = reserve_command(
+        &mut tx,
+        identity.telegram_id,
+        &key,
+        "create_campaign",
+        &hash,
+    )
+    .await?
+    {
         tx.rollback().await?;
         let cached: Json<CampaignCreated> = replay(value)?;
         return Ok((StatusCode::OK, cached));
@@ -366,10 +398,16 @@ pub async fn get_campaign(
     Extension(identity): Extension<Identity>,
     Path(campaign_id): Path<Uuid>,
 ) -> Result<Json<CampaignView>, ApiError> {
-    Ok(Json(load_campaign(&state.db, identity.telegram_id, campaign_id).await?))
+    Ok(Json(
+        load_campaign(&state.db, identity.telegram_id, campaign_id).await?,
+    ))
 }
 
-async fn load_campaign(pool: &sqlx::PgPool, owner_id: i64, campaign_id: Uuid) -> Result<CampaignView, ApiError> {
+async fn load_campaign(
+    pool: &sqlx::PgPool,
+    owner_id: i64,
+    campaign_id: Uuid,
+) -> Result<CampaignView, ApiError> {
     let campaign = sqlx::query_as::<_, CampaignRow>(
         "SELECT id,name,mode,status,current_year,created_at,founder_character_id,player_character_id,dynasty_id FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2"
     )
@@ -391,9 +429,11 @@ async fn load_campaign(pool: &sqlx::PgPool, owner_id: i64, campaign_id: Uuid) ->
     .bind(campaign_id).fetch_all(pool).await?;
 
     let clubs = sqlx::query_as::<_, ClubView>(
-        "SELECT id,name,city,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY name"
+        "SELECT id,name,city,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY name",
     )
-    .bind(campaign_id).fetch_all(pool).await?;
+    .bind(campaign_id)
+    .fetch_all(pool)
+    .await?;
 
     let cash_accounts = sqlx::query_as::<_, CashAccountView>(
         "SELECT a.id,a.name,a.account_type,a.currency,COALESCE(SUM(CASE WHEN l.side=a.normal_balance THEN l.amount_minor ELSE -l.amount_minor END),0)::bigint AS balance_minor FROM fd.accounts a LEFT JOIN fd.journal_lines l ON l.campaign_id=a.campaign_id AND l.account_id=a.id WHERE a.campaign_id=$1 AND a.account_type='cash' GROUP BY a.id ORDER BY a.name"
@@ -437,7 +477,9 @@ pub async fn create_heir(
     let key = idempotency_key(&headers)?;
     let hash = payload_hash(&(campaign_id, &request))?;
     let mut tx = state.db.begin().await?;
-    if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "create_heir", &hash).await? {
+    if let Some(value) =
+        reserve_command(&mut tx, identity.telegram_id, &key, "create_heir", &hash).await?
+    {
         tx.rollback().await?;
         let cached: Json<CharacterView> = replay(value)?;
         return Ok((StatusCode::OK, cached));
@@ -452,9 +494,14 @@ pub async fn create_heir(
         return Err(ApiError::conflict("campaign_not_active"));
     }
 
-    let founder_age: i32 = sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'")
-        .bind(campaign.0).bind(campaign_id).fetch_optional(&mut *tx).await?
-        .ok_or_else(|| ApiError::conflict("founder_not_alive"))?;
+    let founder_age: i32 = sqlx::query_scalar(
+        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
+    )
+    .bind(campaign.0)
+    .bind(campaign_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(|| ApiError::conflict("founder_not_alive"))?;
     if founder_age - request.age < 16 {
         return Err(ApiError::bad_request("invalid_parent_child_age_gap"));
     }
@@ -470,7 +517,9 @@ pub async fn create_heir(
     )
     .bind(campaign_id).bind(campaign.0).bind(heir_id).execute(&mut *tx).await?;
     let current_year: i32 = sqlx::query_scalar("SELECT current_year FROM fd.campaigns WHERE id=$1")
-        .bind(campaign_id).fetch_one(&mut *tx).await?;
+        .bind(campaign_id)
+        .fetch_one(&mut *tx)
+        .await?;
     sqlx::query(
         "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'heir_born','A new heir joins the family', $2, $3)"
     )
@@ -497,12 +546,22 @@ pub async fn advance_campaign(
     Json(request): Json<AdvanceRequest>,
 ) -> Result<Json<AdvanceResult>, ApiError> {
     if !(1..=10).contains(&request.years) {
-        return Err(ApiError::bad_request("advance_must_be_between_1_and_10_years"));
+        return Err(ApiError::bad_request(
+            "advance_must_be_between_1_and_10_years",
+        ));
     }
     let key = idempotency_key(&headers)?;
     let hash = payload_hash(&(campaign_id, &request))?;
     let mut tx = state.db.begin().await?;
-    if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "advance_campaign", &hash).await? {
+    if let Some(value) = reserve_command(
+        &mut tx,
+        identity.telegram_id,
+        &key,
+        "advance_campaign",
+        &hash,
+    )
+    .await?
+    {
         tx.rollback().await?;
         return replay(value);
     }
@@ -518,21 +577,38 @@ pub async fn advance_campaign(
 
     let next_year = campaign.1 + request.years;
     sqlx::query("UPDATE fd.characters SET age=age+$2 WHERE campaign_id=$1 AND life_status='alive'")
-        .bind(campaign_id).bind(request.years).execute(&mut *tx).await?;
-    let founder_age: i32 = sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
-        .bind(campaign.0).bind(campaign_id).fetch_one(&mut *tx).await?;
+        .bind(campaign_id)
+        .bind(request.years)
+        .execute(&mut *tx)
+        .await?;
+    let founder_age: i32 =
+        sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
+            .bind(campaign.0)
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
     let mut status = "active".to_owned();
     let mut succession_available = false;
     if founder_age >= 90 {
-        sqlx::query("UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2")
-            .bind(campaign.0).bind(campaign_id).execute(&mut *tx).await?;
+        sqlx::query(
+            "UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2",
+        )
+        .bind(campaign.0)
+        .bind(campaign_id)
+        .execute(&mut *tx)
+        .await?;
         let eligible_count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18"
         )
         .bind(campaign_id).bind(campaign.0).fetch_one(&mut *tx).await?;
         succession_available = eligible_count > 0;
-        status = if succession_available { "succession_pending" } else { "ended_no_heir" }.to_owned();
+        status = if succession_available {
+            "succession_pending"
+        } else {
+            "ended_no_heir"
+        }
+        .to_owned();
         sqlx::query("UPDATE fd.campaigns SET current_year=$2,status=$3,version=version+1,updated_at=now() WHERE id=$1")
             .bind(campaign_id).bind(next_year).bind(&status).execute(&mut *tx).await?;
         sqlx::query(
@@ -566,9 +642,13 @@ pub async fn preview_succession(
     Extension(identity): Extension<Identity>,
     Path(campaign_id): Path<Uuid>,
 ) -> Result<Json<Vec<CharacterView>>, ApiError> {
-    let status: String = sqlx::query_scalar("SELECT status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2")
-        .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&state.db).await?
-        .ok_or_else(ApiError::not_found)?;
+    let status: String =
+        sqlx::query_scalar("SELECT status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2")
+            .bind(campaign_id)
+            .bind(identity.telegram_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or_else(ApiError::not_found)?;
     if status != "succession_pending" {
         return Err(ApiError::conflict("succession_not_pending"));
     }
@@ -589,7 +669,15 @@ pub async fn execute_succession(
     let key = idempotency_key(&headers)?;
     let hash = payload_hash(&(campaign_id, &request))?;
     let mut tx = state.db.begin().await?;
-    if let Some(value) = reserve_command(&mut tx, identity.telegram_id, &key, "execute_succession", &hash).await? {
+    if let Some(value) = reserve_command(
+        &mut tx,
+        identity.telegram_id,
+        &key,
+        "execute_succession",
+        &hash,
+    )
+    .await?
+    {
         tx.rollback().await?;
         return replay(value);
     }

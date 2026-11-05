@@ -25,7 +25,10 @@ impl ApiError {
     }
 
     pub fn unavailable() -> Self {
-        Self::new(StatusCode::SERVICE_UNAVAILABLE, "identity_provider_unavailable")
+        Self::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "identity_provider_unavailable",
+        )
     }
 
     pub fn not_found() -> Self {
