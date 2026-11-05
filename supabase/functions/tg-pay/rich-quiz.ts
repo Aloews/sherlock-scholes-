@@ -22,7 +22,7 @@ export interface QuizRound {
 export interface QuizCallback {
   action: "answer" | "next";
   sessionKey: string;
-  optionId?: string;
+  optionIndex?: number;
 }
 
 export type RichBlock = Record<string, unknown>;
@@ -67,11 +67,11 @@ export function formatQuizFacts(facts: QuizFacts, language: string): string[] {
   return lines;
 }
 
-export function createQuizCallback(action: "answer" | "next", sessionKey: string, optionId?: string): string {
+export function createQuizCallback(action: "answer" | "next", sessionKey: string, optionIndex?: number): string {
   if (!SESSION_KEY.test(sessionKey)) throw new Error("Invalid quiz session key");
   if (action === "answer") {
-    if (!optionId || !UUID.test(optionId)) throw new Error("Invalid quiz option id");
-    const value = `sq:a:${sessionKey}:${optionId}`;
+    if (!Number.isInteger(optionIndex) || optionIndex! < 0 || optionIndex! > 3) throw new Error("Invalid quiz option index");
+    const value = `sq:a:${sessionKey}:${optionIndex}`;
     if (new TextEncoder().encode(value).length > 64) throw new Error("Quiz callback exceeds Telegram limit");
     return value;
   }
@@ -80,8 +80,8 @@ export function createQuizCallback(action: "answer" | "next", sessionKey: string
 
 export function parseQuizCallback(value: unknown): QuizCallback | null {
   if (typeof value !== "string") return null;
-  const answer = /^sq:a:([0-9a-f]{16}):([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(value);
-  if (answer) return { action: "answer", sessionKey: answer[1], optionId: answer[2] };
+  const answer = /^sq:a:([0-9a-f]{16}):([0-3])$/i.exec(value);
+  if (answer) return { action: "answer", sessionKey: answer[1], optionIndex: Number(answer[2]) };
   const next = /^sq:n:([0-9a-f]{16})$/i.exec(value);
   if (next) return { action: "next", sessionKey: next[1] };
   return null;
@@ -96,13 +96,13 @@ export function questionRichBlocks(round: QuizRound, sessionKey: string, languag
     ...facts.map((text) => ({ type: "paragraph", text })),
     { type: "divider" },
   ];
-  for (const option of round.options) {
+  for (const [index, option] of round.options.entries()) {
     blocks.push({
       type: "buttons",
       buttons: [{
         text: option.name,
         style: "primary",
-        callback_data: createQuizCallback("answer", sessionKey, option.id),
+        callback_data: createQuizCallback("answer", sessionKey, index),
       }],
       align: "center",
     });
