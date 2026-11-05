@@ -292,7 +292,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(grandchild_status, StatusCode::CREATED);
     let grandchild_id = grandchild["id"].as_str().expect("grandchild id");
 
-    for (index, years) in [10, 10, 4].into_iter().enumerate() {
+    for (index, years) in [10, 10, 9].into_iter().enumerate() {
         let (advance_status, result) = call(
             app.clone(),
             "POST",
