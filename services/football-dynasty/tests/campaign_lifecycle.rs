@@ -163,9 +163,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
 
-    let mut last_advance = Value::Null;
-    for index in 0..5 {
-        let (advance_status, result) = call(
+    for index in 0..4 {
+        let (advance_status, _) = call(
             app.clone(),
             "POST",
             &format!("/api/v1/campaigns/{campaign_id}/advance"),
@@ -174,9 +173,28 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         )
         .await;
         assert_eq!(advance_status, StatusCode::OK);
-        last_advance = result;
     }
+
+    // Put the founder five years below the deterministic death boundary, then
+    // request ten years: the simulation must stop exactly at age 90.
+    sqlx::query(
+        "UPDATE fd.characters SET age=85 WHERE id=(SELECT founder_character_id FROM fd.campaigns WHERE id=$1)",
+    )
+    .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+    .execute(&pool)
+    .await
+    .expect("prepare boundary case");
+    let (last_advance_status, last_advance) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/advance"),
+        Some("advance-boundary-0001"),
+        Some(json!({"years":10})),
+    )
+    .await;
+    assert_eq!(last_advance_status, StatusCode::OK);
     assert_eq!(last_advance["player_age"], 90);
+    assert_eq!(last_advance["current_year"], 2071);
     assert_eq!(last_advance["status"], "succession_pending");
 
     let (preview_status, candidates) = call(
@@ -200,6 +218,32 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(succession_status, StatusCode::OK);
     assert_eq!(succession["heir_id"], heir_id);
+
+    let (replay_succession_status, replay_succession) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/succession"),
+        Some("succession-0001"),
+        Some(json!({"heir_id":heir_id})),
+    )
+    .await;
+    assert_eq!(replay_succession_status, StatusCode::OK);
+    assert_eq!(replay_succession, succession);
+
+    let other_state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id + 1)),
+    };
+    let other_app = http::router(other_state, "http://localhost:5173".parse().expect("origin"));
+    let (other_owner_status, _) = call(
+        other_app,
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(other_owner_status, StatusCode::NOT_FOUND);
 
     let (detail_status, detail) = call(
         app.clone(),
