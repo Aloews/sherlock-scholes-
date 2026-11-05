@@ -1879,3 +1879,20 @@ Related queue/migration history: #348 (bounded enqueue), #349 (skip expensive ca
 3. Unknown lineup fields remain NULL; do not convert absent source fields into verified zeroes or overwrite previously verified values.
 4. Photo writes remain blank-only and identity/source validated; queue status alone is not evidence that photo coverage increased.
 5. Apply a migration only after comparing its exact version with the production migration ledger; already-applied migration files are source-history reconciliation, not a request to reapply them.
+
+
+---
+
+## Football Dynasty — design baseline (2026-11-05)
+
+A fictional-world strategy mode is documented in `docs/football-dynasty/`:
+- `GDD.md`: game design and MVP acceptance criteria.
+- `ARCHITECTURE.md`: integration into the current host architecture.
+- `DATA_MODEL.md`: logical data model and isolation rules.
+- `IMPLEMENTATION_PLAN.md`: verified repository facts and implementation gates.
+
+**Verified constraints:** the app is a React/Vite/TypeScript Telegram Mini App using FSD, Supabase PostgREST/RPC, and selected Edge Functions; no general-purpose custom backend is documented. The production `public` schema had 126 base tables at inspection. Real football catalogue and Alias game data must remain untouched by fictional campaign state.
+
+**Implementation boundary:** use an isolated `fd_` namespace in the existing Supabase project. Do not create production migrations until the Telegram `initData` identity contract, RLS ownership predicate, schema exposure choice, and disposable test environment are verified. Fictional clubs and players never enter the real football catalogue.
+
+**First vertical slice:** founder → club → family → heir → death → succession → continue as heir. Documentation only; no production database writes or deployment.
