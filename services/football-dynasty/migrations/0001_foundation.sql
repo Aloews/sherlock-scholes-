@@ -51,8 +51,8 @@ CREATE TABLE fd.characters (
 
 ALTER TABLE fd.campaigns
     ADD CONSTRAINT fd_campaign_dynasty_fk FOREIGN KEY (dynasty_id) REFERENCES fd.dynasties(id) DEFERRABLE INITIALLY DEFERRED,
-    ADD CONSTRAINT fd_campaign_founder_fk FOREIGN KEY (campaign_id,founder_character_id) REFERENCES fd.characters(campaign_id,id) DEFERRABLE INITIALLY DEFERRED,
-    ADD CONSTRAINT fd_campaign_player_fk FOREIGN KEY (campaign_id,player_character_id) REFERENCES fd.characters(campaign_id,id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT fd_campaign_founder_fk FOREIGN KEY (founder_character_id) REFERENCES fd.characters(id) DEFERRABLE INITIALLY DEFERRED,
+    ADD CONSTRAINT fd_campaign_player_fk FOREIGN KEY (player_character_id) REFERENCES fd.characters(id) DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE fd.dynasties
     ADD CONSTRAINT fd_dynasty_head_fk FOREIGN KEY (campaign_id,head_character_id) REFERENCES fd.characters(campaign_id,id) DEFERRABLE INITIALLY DEFERRED;
