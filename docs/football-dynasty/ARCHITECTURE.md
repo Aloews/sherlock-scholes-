@@ -15,10 +15,10 @@ The production Telegram verifier `public.tg_validate_init_data(p_init_data text)
 Football Dynasty is a bounded context inside Sherlock Scholes, implemented as a **separate Rust backend service**. It is not a second frontend or a second identity system.
 
 - Frontend remains inside the existing React/Vite app and follows FSD, Router, design-system, and all nine locale conventions.
-- The frontend calls the Football Dynasty HTTP API for all campaign state and commands. It must not write `fd_*` state through Supabase PostgREST.
+- The frontend calls the Football Dynasty HTTP API for all campaign state and commands. It must not write state in the private `fd` schema through Supabase PostgREST.
 - Rust service owns domain rules, authorization decisions, simulation, command idempotency, and transaction boundaries.
 - Supabase remains the managed PostgreSQL platform. The service connects server-to-server using SQLx, a dedicated `fd_app` login, and the restricted `fd_runtime` role; migration credentials are separate from runtime credentials.
-- Fictional campaign state is isolated in a private `fd_*` schema (or another explicitly private namespace after verifying Supabase schema exposure). It never enters real football catalogue tables.
+- Fictional campaign state is isolated in the private `fd` schema, which is not exposed through PostgREST. It never enters real football catalogue tables.
 - Use Axum for HTTP, Tokio for async runtime, SQLx for PostgreSQL, Serde for API types, and tracing for structured telemetry. Version the HTTP surface under `/api/v1`.
 - Package the service as a Docker container. The repository includes Railway deployment configuration and a health check; the Railway service must enable outbound IPv6 for Supabase direct PostgreSQL connectivity.
 - Start with one Rust service and one Postgres database. Do not introduce Redis, Kafka, microservices, or a separate simulation worker until load measurements justify them.
