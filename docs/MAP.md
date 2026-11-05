@@ -1840,3 +1840,42 @@ t = 1.95, а читалось это как «кто играет — почти
 - Individual-award snapshot 2026-10-30 targets award year 2027. Six award families currently have scored candidates: Ballon d'Or, Ballon d'Or Féminin, The Best, The Best Féminin, Golden Boy and competition-scoped Golden Boot. Current men's Ballon d'Or ranking index: Lamine Yamal 98.30, Harry Kane 97.61, Michael Olise 97.47. These are relative ranking indices, not probabilities.
 - Team-tournament catalogue currently contains 210 tracked competitions and 5,135 candidate rows across each competition's latest snapshot (newest snapshot date 2026-10-29). 3,092 rows are low confidence and 612 high confidence. `team_tournament_outcome` still has zero verified champions. Team scores use standings/form and club-Elo proxies; cups/international tournaments do not yet simulate remaining fixtures or knockout brackets. The UCL feed currently combines qualification and main-phase matches, so phase/participant validation is required before presenting a contender list as a true title forecast.
 - Do not fill unsupported personal-award families with generic goal/assist proxies. Goalkeeper awards need saves/clean-sheet data; coach and social-impact awards need their own verified datasets. Add those categories only when their evidence sources exist, and keep relative indices separate from calibrated probabilities.
+
+
+---
+
+## Parser and ingestion history audit (2026-11-05)
+
+### Current implementation on `main`
+
+- Seasonal player statistics: `docs/players_stats_transfermarkt.py`. The collector reads Transfermarkt's match-level `performance-game` feed and aggregates actual source `seasonId` + `competitionId` + `clubId`; the competition-level aggregate must not be relabelled as a season. Regression coverage: `docs/test_players_stats_transfermarkt.py`.
+- Player portraits: `docs/cards_photo_transfermarkt.py`, with parser/fallback/reachability regressions in `docs/test_cards_photo_transfermarkt.py`. Portrait selection accepts Transfermarkt image hosts, rejects default/dummy placeholders, checks that the URL serves an image, and fills only blank photo fields.
+- Persistent photo/stat work: `docs/profile_backfill_queue.py`; queue regression: `docs/test_profile_backfill_queue.py`. Photo sources are isolated by task: `photo_qid` owns Wikidata, `photo_tm` owns Transfermarkt plus the identity-checked Soccer Wiki fallback, and `photo_sw` owns the linked Soccer Wiki source.
+- The standalone parser and queue tests are included in the repository CI/profile-data workflows. A second, parallel parser implementation is not required for these paths.
+
+### Merged fixes verified in GitHub history
+
+| PR | Merge commit | Result |
+|---|---|---|
+| #330 | `5a9b1d420134a0911fa62918892b77e87cefe2cb` | Replaced the incorrect competition-aggregate-as-season path with match-level season aggregation and refresh-starvation fixes. Required CI workflows passed. |
+| #354 | `f23beec16c3e86ec080c643ca210dbdf7e2d0b2e` | Isolated photo-source queue tasks to stop duplicate requests. Required CI workflows passed. |
+| #362 | `82c8310dd256611dace8e80c1d5b48ebc72f4c8c` | Separated ESPN match-result refresh from the slow player-profile crawl. Required CI workflows passed. |
+| #364 | `0b0b8034762c9e631f991423e077481bedc1feff` | Preserved unknown lineup flags as NULL instead of false zeroes and retained previously verified values. Required CI workflows passed; PR #365 records that its migration was applied and checked in production on 2026-10-29. |
+
+Related queue/migration history: #348 (bounded enqueue), #349 (skip expensive catalogue scans while backlog is high), #351 (bounded worker batch), #352 (restore the already-applied repair migration to source history), and #353 (align migration filenames with the production ledger). These are source-history/operational safeguards; already-applied migrations must not be replayed manually.
+
+### Unmerged or superseded work — do not merge stale heads
+
+- #289 is superseded by merged #354. Its head was 68 commits behind current `main`; the source-isolation change is already in the merged implementation.
+- #208 is an old draft, 138 commits behind `main`. Its portrait-parser additions are superseded by the current collector and the existing CI-tested `docs/test_cards_photo_transfermarkt.py`. Its proposed women's-football document was not an ingestion implementation; women's production coverage must not be inferred from parser compatibility.
+- #285 is a divergent 98-commit branch, 70 commits behind `main`. Its canonical statistics hub migration and UI changes are not present on current `main`; the branch's CI jobs passed, but its Vercel status failed because the team hit the build-rate limit. It is not safe to merge as-is, and its migration has not been verified as applied to production. Any still-needed canonical read-layer work must be rebased and reviewed as a fresh, narrowly scoped change.
+- #304 was superseded by merged #305; #329 was superseded by merged #330. #335's applied queue repair was restored to repository history by #352 and its production migration filenames were reconciled by #353; do not revive #335 or replay that migration.
+- Branch `claude/parser-refactor-review-hmtc8h` is 379 commits behind `main` and contains only a refactor brief/prompt, not parser implementation. Branch `claude/ci-run-scraper-scripts` is 363 commits behind and its test intent is already covered by current CI. Neither branch is a merge candidate.
+
+### Release invariants
+
+1. Never merge a stale branch solely because its original PR checks were green; compare its full diff with current `main` and port only unique changes.
+2. Never use `performance-competition` aggregates as season totals; preserve source season/competition/club grain.
+3. Unknown lineup fields remain NULL; do not convert absent source fields into verified zeroes or overwrite previously verified values.
+4. Photo writes remain blank-only and identity/source validated; queue status alone is not evidence that photo coverage increased.
+5. Apply a migration only after comparing its exact version with the production migration ledger; already-applied migration files are source-history reconciliation, not a request to reapply them.
