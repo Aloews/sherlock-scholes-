@@ -51,8 +51,12 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 
 `allowed_updates` must include `pre_checkout_query` (to approve checkout),
 `message` (to receive `successful_payment` and `/quiz`), and `callback_query`
-(to process the rich quiz buttons). If the webhook is already installed, update
-its allowed update list without changing the URL or secret.
+(to process the rich quiz buttons). On the first `/quiz`, the function checks
+`getWebhookInfo` and adds `callback_query` only if the existing webhook URL
+matches this project's `tg-pay` endpoint. It preserves the current URL, secret,
+connection limit, and IP. It refuses to change a different endpoint or a
+custom-certificate webhook; in those cases update the existing webhook
+manually rather than replacing it.
 
 ## Test
 
