@@ -38,12 +38,11 @@ impl PostgresIdentityVerifier {
 #[async_trait]
 impl IdentityVerifier for PostgresIdentityVerifier {
     async fn verify(&self, init_data: &str) -> Result<i64, VerifyError> {
-        let result = sqlx::query_scalar::<_, Option<i64>>(
-            "SELECT public.tg_validate_init_data($1)",
-        )
-        .bind(init_data)
-        .fetch_one(&self.db)
-        .await;
+        let result =
+            sqlx::query_scalar::<_, Option<i64>>("SELECT public.tg_validate_init_data($1)")
+                .bind(init_data)
+                .fetch_one(&self.db)
+                .await;
 
         match result {
             Ok(Some(telegram_id)) if telegram_id > 0 => Ok(telegram_id),
