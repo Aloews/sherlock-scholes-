@@ -69,12 +69,11 @@ export function SmartDecksPanel({ onStart }: Props) {
     const formRows = (formRes.data ?? []) as RatingCandidate[];
     const candidateIds = formRows.map((candidate) => candidate.card_id).filter(Boolean);
     const evidenceRes = candidateIds.length
-      ? await supabase.from('player_match_stats')
-          .select('card_id,home_team,away_team,disputed')
+      ? await supabase.from('player_match_days')
+          .select('card_id,home_team,away_team')
           .in('card_id', candidateIds)
           .gte('match_date', new Date(Date.now() - 30 * 24 * 3600_000).toISOString().slice(0, 10))
           .lte('match_date', new Date().toISOString().slice(0, 10))
-          .eq('disputed', false)
           .order('match_date', { ascending: false })
           .limit(1000)
       : { data: [], error: null };
