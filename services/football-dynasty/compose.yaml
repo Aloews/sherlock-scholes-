@@ -19,6 +19,11 @@ services:
     build: .
     env_file:
       - .env
+    environment:
+      FD_BIND_ADDR: 0.0.0.0:8080
+      FD_DATABASE_URL: postgres://postgres:postgres@postgres:5432/football_dynasty
+      FD_MIGRATION_DATABASE_URL: postgres://postgres:postgres@postgres:5432/football_dynasty
+      FD_RUN_MIGRATIONS: "true"
     depends_on:
       postgres:
         condition: service_healthy
