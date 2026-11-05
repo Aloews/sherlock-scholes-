@@ -12,13 +12,13 @@ GRANT USAGE ON SCHEMA fd TO fd_runtime;
 GRANT USAGE ON SCHEMA public TO fd_runtime;
 GRANT fd_runtime TO postgres;
 
-DO $
+DO $$
 BEGIN
     IF to_regprocedure('public.tg_validate_init_data(text)') IS NOT NULL THEN
         EXECUTE 'GRANT EXECUTE ON FUNCTION public.tg_validate_init_data(text) TO fd_runtime';
     END IF;
 END
-$;
+$$;
 CREATE TABLE fd.campaigns (
     id uuid PRIMARY KEY,
     owner_telegram_id bigint NOT NULL,
