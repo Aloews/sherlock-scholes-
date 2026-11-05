@@ -14,16 +14,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::from_env()?;
 
     if config.run_migrations {
+        let migration_url = config.migration_database_url.as_deref()
+            .expect("validated migration database URL");
         let migration_pool = PgPoolOptions::new()
-            .max_connections(2)
-            .connect(&config.database_url)
+            .max_connections(1)
+            .connect(migration_url)
             .await?;
         sqlx::migrate!("./migrations").run(&migration_pool).await?;
         migration_pool.close().await;
     }
 
     let database = PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(config.max_connections as u32)
         .after_connect(|connection, _metadata| {
             Box::pin(async move {
                 sqlx::query("SET ROLE fd_runtime")

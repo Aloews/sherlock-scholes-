@@ -11,14 +11,29 @@ Rust/Axum backend for the Football Dynasty mode inside Sherlock Scholes.
 
 The compose database is disposable local development data. Do not point it at production.
 
-## Required runtime configuration
+## Database roles and connection modes
 
-- `FD_DATABASE_URL`: PostgreSQL connection string. The service runs `SET ROLE fd_runtime` on every pooled connection.
-- `SUPABASE_URL` and `SUPABASE_ANON_KEY`: server-side call to the existing Telegram verifier wrapper.
+- `FD_DATABASE_URL` is the runtime connection. It must connect as a login role that is a member of `fd_runtime`; the service switches to that restricted role on each connection.
+- `FD_MIGRATION_DATABASE_URL` is a separate privileged connection used only when `FD_RUN_MIGRATIONS=true`.
+- After applying the foundation migration, provision a dedicated login for the API (never use the `postgres` superuser in production):
+
+```sql
+CREATE ROLE fd_app LOGIN PASSWORD '<set-a-unique-secret-in-your-secret-manager>' IN ROLE fd_runtime;
+```
+
+Store the resulting runtime connection string only in the backend host's encrypted secret manager. For Supabase's shared pooler, use session mode on port 5432 and username `fd_app.<project-ref>`; session mode is required because the service sets a database role per connection. Do not use transaction-pooler port 6543 for this service.
+
+For production, apply reviewed migrations through the controlled migration path and keep `FD_RUN_MIGRATIONS=false` on horizontally scaled API instances. Do not put either database URL or Supabase service-role credentials in the frontend.
+
+## Runtime configuration
+
+- `FD_BIND_ADDR`: optional bind address; defaults to `0.0.0.0:$PORT` (8080 locally).
+- `FD_DATABASE_URL`: restricted runtime connection string.
+- `FD_MIGRATION_DATABASE_URL`: optional migration URL, required only when auto-migrations are explicitly enabled.
 - `FD_ALLOWED_ORIGIN`: exact frontend origin allowed by CORS.
-- `FD_RUN_MIGRATIONS`: default false; set true only in a controlled environment where the database URL has migration privileges.
-
-Production migration and runtime credentials must be provisioned separately. Do not use a browser key as a database credential, and do not expose database URLs or Supabase service-role keys to the frontend.
+- `FD_MAX_CONNECTIONS`: SQLx pool size; default 2 for serverless container instances.
+- `FD_RUN_MIGRATIONS`: default false.
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY`: server-side call to the existing Telegram verifier wrapper.
 
 ## API v1
 
