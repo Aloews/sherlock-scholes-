@@ -1883,16 +1883,18 @@ Related queue/migration history: #348 (bounded enqueue), #349 (skip expensive ca
 
 ---
 
-## Football Dynasty — design baseline (2026-11-05)
+## Football Dynasty — Rust backend foundation (2026-11-05)
 
-A fictional-world strategy mode is documented in `docs/football-dynasty/`:
-- `GDD.md`: game design and MVP acceptance criteria.
-- `ARCHITECTURE.md`: integration into the current host architecture.
-- `DATA_MODEL.md`: logical data model and isolation rules.
-- `IMPLEMENTATION_PLAN.md`: verified repository facts and implementation gates.
+Football Dynasty is a fictional-world dynasty strategy mode. Product and domain baseline:
+- `docs/football-dynasty/GDD.md` — game design and MVP acceptance criteria.
+- `docs/football-dynasty/ARCHITECTURE.md` — separate Rust backend integration boundary.
+- `docs/football-dynasty/DATA_MODEL.md` — logical campaign data model and isolation invariants.
+- `docs/football-dynasty/IMPLEMENTATION_PLAN.md` — delivery sequence and verification gates.
+- `docs/football-dynasty/ADR-001-rust-backend.md` — accepted backend decision.
+- `services/football-dynasty/` — initial Axum service bootstrap; currently liveness only.
 
-**Verified constraints:** the app is a React/Vite/TypeScript Telegram Mini App using FSD, Supabase PostgREST/RPC, and selected Edge Functions; no general-purpose custom backend is documented. The production `public` schema had 126 base tables at inspection. Real football catalogue and Alias game data must remain untouched by fictional campaign state.
+**Architecture:** existing React/Vite Telegram Mini App remains the frontend. A single Rust service (Axum/Tokio/SQLx) owns Football Dynasty API, authorization, commands, transactions, and deterministic simulation. Supabase remains the managed PostgreSQL provider. Fictional state is isolated in a private `fd_*` schema; existing real football and Alias tables are not modified.
 
-**Implementation boundary:** use an isolated `fd_` namespace in the existing Supabase project. Do not create production migrations until the Telegram `initData` identity contract, RLS ownership predicate, schema exposure choice, and disposable test environment are verified. Fictional clubs and players never enter the real football catalogue.
+**Security and environment:** Telegram `initData` must be verified server-side; never trust a client Telegram ID. The exact callable verifier wrapper contract remains to be confirmed before protected endpoints. A dedicated Sherlock staging project could not be created because the organization reached its two-active-project free-plan limit. A Supabase development branch was quoted at $0.01344/hour and was not created. No production migrations, database writes, or deployment have been made.
 
-**First vertical slice:** founder → club → family → heir → death → succession → continue as heir. Documentation only; no production database writes or deployment.
+**First vertical slice:** founder → club → family → heir → death → succession → continue as heir. The Rust bootstrap is not yet connected to PostgreSQL, Telegram identity, campaign commands, or simulation.
