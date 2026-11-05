@@ -4,29 +4,29 @@
 
 ## Naming and isolation
 
-Use the `fd_` prefix in the existing Supabase project. Every campaign-owned relation carries `campaign_id`. Use composite foreign keys where practical to prevent cross-campaign references. Do not create production tables until identity, schema placement, grants, RLS, indexes, and test strategy are approved.
+Use the private `fd` PostgreSQL schema in the existing Supabase project. Relations inside it use unprefixed names (for example, `fd.campaigns`, `fd.characters`, `fd.journal_entries`). The schema is not exposed through PostgREST. Every campaign-owned relation carries `campaign_id`. Use composite foreign keys where practical to prevent cross-campaign references. Do not create production tables until identity, schema placement, grants, RLS, indexes, and test strategy are approved.
 
 ## Proposed relations
 
 | Relation | Responsibility |
 |---|---|
-| `fd_campaign` | Owner, mode, seed, game time, ruleset and simulation versions |
-| `fd_world` | Generated world and generation version |
-| `fd_country`, `fd_region` | Fictional geography |
-| `fd_dynasty` | Family house, head, reputation and succession rules |
-| `fd_character` | Player and NPC characters |
-| `fd_character_trait` | Skills and traits |
-| `fd_family_relation` | Parentage, marriage, adoption, guardianship |
-| `fd_relationship` | Trust, affection, respect, loyalty, fear, envy, rivalry |
-| `fd_will`, `fd_will_allocation` | Versioned wills and allocations |
-| `fd_club`, `fd_player`, `fd_staff` | Fictional football entities |
-| `fd_club_role` | Executive and coaching appointments |
-| `fd_holding`, `fd_ownership` | Holdings, ownership and control |
-| `fd_competition`, `fd_season`, `fd_fixture`, `fd_match_result` | Fictional football calendar and results |
-| `fd_contract`, `fd_transfer` | Contract and transfer history |
-| `fd_account`, `fd_journal_entry` | Financial accounts and append-only ledger |
-| `fd_asset`, `fd_business` | Property and non-football assets |
-| `fd_political_body`, `fd_position`, `fd_influence` | Associations, offices and influence |
+| `fd.campaigns` | Owner, mode, seed, game time, ruleset and simulation versions |
+| `fd.worlds` | Generated world and generation version |
+| `fd.countries`, `fd.regions` | Fictional geography |
+| `fd.dynasties` | Family house, head, reputation and succession rules |
+| `fd.characters` | Player and NPC characters |
+| `fd.character_traits` | Skills and traits |
+| `fd.family_relations` | Parentage, marriage, adoption, guardianship |
+| `fd.relationships` | Trust, affection, respect, loyalty, fear, envy, rivalry |
+| `fd.wills`, `fd.will_allocations` | Versioned wills and allocations |
+| `fd.clubs`, `fd.players`, `fd.staff` | Fictional football entities |
+| `fd.club_roles` | Executive and coaching appointments |
+| `fd.holdings`, `fd.club_ownership` | Holdings, ownership and control |
+| `fd.competitions`, `fd.seasons`, `fd.fixtures`, `fd.match_results` | Fictional football calendar and results |
+| `fd.contracts`, `fd.transfers` | Contract and transfer history |
+| `fd.accounts`, `fd.journal_entries`, `fd.journal_lines` | Financial accounts and append-only ledger |
+| `fd.assets`, `fd.businesses` | Property and non-football assets |
+| `fd.political_bodies`, `fd.positions`, `fd.influence` | Associations, offices and influence |
 | `fd_event`, `fd_event_choice`, `fd_chronicle` | Structured events, choices and immutable history |
 | `fd_tick_job` | Bounded simulation work and recovery cursor |
 | `fd_snapshot` | Versioned recovery snapshots |
