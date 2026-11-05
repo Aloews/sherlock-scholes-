@@ -9,6 +9,7 @@ $$;
 CREATE SCHEMA IF NOT EXISTS fd;
 REVOKE ALL ON SCHEMA fd FROM PUBLIC;
 GRANT USAGE ON SCHEMA fd TO fd_runtime;
+GRANT USAGE ON SCHEMA public TO fd_runtime;
 GRANT fd_runtime TO postgres;
 
 DO $

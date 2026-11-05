@@ -11,7 +11,7 @@ use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 
 use football_dynasty::{
-    auth::{IdentityVerifier, VerifyError},
+    auth::{IdentityVerifier, PostgresIdentityVerifier, VerifyError},
     http,
     state::AppState,
 };
@@ -73,6 +73,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .connect(&database_url)
         .await
         .expect("migration pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $ SELECT NULL::bigint $")
+        .execute(&migration_pool).await.expect("test Telegram verifier stub");
     sqlx::migrate!("./migrations")
         .run(&migration_pool)
         .await
@@ -92,6 +94,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .connect(&database_url)
         .await
         .expect("runtime pool");
+
+    let verifier = PostgresIdentityVerifier::new(pool.clone());
+    assert!(matches!(verifier.verify("").await, Err(VerifyError::Invalid)));
 
     let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
     let state = AppState {
@@ -213,6 +218,8 @@ async fn protected_routes_reject_missing_and_forged_telegram_data() {
         .connect(&database_url)
         .await
         .expect("pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $ SELECT NULL::bigint $")
+        .execute(&pool).await.expect("test Telegram verifier stub");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
