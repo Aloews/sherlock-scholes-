@@ -274,7 +274,67 @@ function quizQuestionKeyboard(round: QuizRound, key: string): Record<string, unk
   };
 }
 
+async function ensureQuizCallbackUpdates(): Promise<boolean> {
+  if (!BOT_TOKEN || !TG_WEBHOOK_SECRET || !SUPABASE_URL) return false;
+
+  const info = await tg("getWebhookInfo", {});
+  if (info.ok !== true || !info.result || typeof info.result.url !== "string") {
+    console.error("[tg-pay] cannot inspect current Telegram webhook", info.description);
+    return false;
+  }
+
+  const webhook = info.result as {
+    url: string;
+    allowed_updates?: string[];
+    has_custom_certificate?: boolean;
+    max_connections?: number;
+    ip_address?: string;
+  };
+  const projectRef = new URL(SUPABASE_URL).hostname.split(".")[0];
+  const supportedUrls = new Set([
+    `https://${projectRef}.functions.supabase.co/tg-pay`,
+    `${SUPABASE_URL.replace(/\\/$/, "")}/functions/v1/tg-pay`,
+  ]);
+
+  // Never repoint a bot whose webhook belongs to another service.
+  if (!supportedUrls.has(webhook.url)) {
+    console.error("[tg-pay] refusing to modify a webhook owned by another endpoint", webhook.url);
+    return false;
+  }
+  if (webhook.has_custom_certificate) {
+    console.error("[tg-pay] custom-certificate webhook requires a manual allowed_updates change");
+    return false;
+  }
+
+  // An omitted list means Telegram's default update set, which already includes callback_query.
+  const allowed = webhook.allowed_updates;
+  if (!Array.isArray(allowed) || allowed.includes("callback_query")) return true;
+
+  const updated = await tg("setWebhook", {
+    url: webhook.url,
+    secret_token: TG_WEBHOOK_SECRET,
+    allowed_updates: [...new Set([...allowed, "callback_query"])],
+    ...(typeof webhook.max_connections === "number" ? { max_connections: webhook.max_connections } : {}),
+    ...(typeof webhook.ip_address === "string" ? { ip_address: webhook.ip_address } : {}),
+  });
+  if (updated.ok !== true) {
+    console.error("[tg-pay] could not enable callback_query webhook updates", updated.description);
+    return false;
+  }
+  return true;
+}
+
 async function sendQuizQuestion(chatId: number, createdBy: number, language: string): Promise<void> {
+  if (!await ensureQuizCallbackUpdates()) {
+    await tg("sendMessage", {
+      chat_id: chatId,
+      text: language.toLowerCase().startsWith("ru")
+        ? "Чат-игра пока недоступна: не удалось безопасно проверить настройки Telegram webhook."
+        : "Chat quiz is unavailable because the Telegram webhook could not be safely verified.",
+    });
+    return;
+  }
+
   const session = await createQuizSession(chatId, createdBy, language);
   if (!session) {
     await tg("sendMessage", {
