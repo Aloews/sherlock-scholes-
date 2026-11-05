@@ -494,14 +494,14 @@ pub async fn create_heir(
         return Err(ApiError::conflict("campaign_not_active"));
     }
 
-    let player_age: i32 = sqlx::query_scalar(
-        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
+    let parent_age: i32 = sqlx::query_scalar(
+        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive',
     )
     .bind(campaign.0)
     .bind(campaign_id)
     .fetch_optional(&mut *tx)
     .await?
-    .ok_or_else(|| ApiError::conflict("founder_not_alive"))?;
+    .ok_or_else(|| ApiError::conflict("player_not_alive"))?;
     if parent_age - request.age < 16 {
         return Err(ApiError::bad_request("invalid_parent_child_age_gap"));
     }
