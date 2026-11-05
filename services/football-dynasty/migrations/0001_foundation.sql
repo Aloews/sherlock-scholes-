@@ -19,7 +19,6 @@ BEGIN
     END IF;
 END
 $;
-
 CREATE TABLE fd.campaigns (
     id uuid PRIMARY KEY,
     owner_telegram_id bigint NOT NULL,
