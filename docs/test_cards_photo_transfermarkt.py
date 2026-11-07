@@ -95,6 +95,8 @@ def main():
               collector.get_profile.last_failure, "transient")
 
     test_empty_regional_responses_are_retryable()
+    test_rate_limit_stops_regional_fallback()
+    test_challenge_response_stops_regional_fallback()
     test_regional_fallback_after_portraitless_shell()
     test_no_portrait_is_confirmed_no_data()
     test_placeholder_profile_is_confirmed_no_data()
@@ -115,7 +117,56 @@ def test_empty_regional_responses_are_retryable():
     check("empty HTTP responses return no profile", html, None)
     check("empty HTTP responses remain retryable", collector.get_profile.last_failure, "transient")
     check("empty HTTP response diagnostics are explicit",
-          all("transient_empty_response" in item for item in collector.get_profile.last_attempts), True)
+          all("transient_empty_response" in item and "status=200" in item and "bytes=0" in item
+              for item in collector.get_profile.last_attempts), True)
+
+
+def test_rate_limit_stops_regional_fallback():
+    rate_limited = collector.urllib.error.HTTPError(
+        "https://www.transfermarkt.com/player", 429, "Too Many Requests",
+        {"Retry-After": "120"}, None
+    )
+    calls = []
+    def fake_urlopen(*args, **kwargs):
+        calls.append(args[0].full_url)
+        raise rate_limited
+
+    with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=fake_urlopen), patch.object(
+        collector, "profile_urls",
+        return_value=["https://www.transfermarkt.com/player", "https://www.transfermarkt.nl/player"],
+    ):
+        check("rate-limited profile returns no page",
+              collector.get_profile({"name_en": "Rate Limited", "transfermarkt_id": "123456"}), None)
+
+    check("429 stops regional host hopping", len(calls), 1)
+    check("429 remains retryable", collector.get_profile.last_failure, "transient")
+    check("429 diagnostics preserve status and Retry-After",
+          "status=429" in collector.get_profile.last_attempts[0]
+          and "retry_after=120" in collector.get_profile.last_attempts[0], True)
+
+
+def test_challenge_response_stops_regional_fallback():
+    body = b"<html><title>Just a moment...</title></html>"
+    response = BytesIO(body)
+    response.status = 200
+    response.headers = {"Content-Type": "text/html", "Server": "cloudflare"}
+    response.geturl = lambda: "https://www.transfermarkt.com/player"
+    calls = []
+    def fake_urlopen(*args, **kwargs):
+        calls.append(args[0].full_url)
+        return response
+
+    with patch("cards_photo_transfermarkt.urllib.request.urlopen", side_effect=fake_urlopen), patch.object(
+        collector, "profile_urls",
+        return_value=["https://www.transfermarkt.com/player", "https://www.transfermarkt.nl/player"],
+    ):
+        check("challenge response returns no page",
+              collector.get_profile({"name_en": "Challenge", "transfermarkt_id": "123456"}), None)
+
+    check("challenge response stops regional host hopping", len(calls), 1)
+    check("challenge remains retryable", collector.get_profile.last_failure, "transient")
+    check("challenge marker is explicit",
+          "challenge=just_a_moment" in collector.get_profile.last_attempts[0], True)
 
 
 def test_regional_fallback_after_portraitless_shell():

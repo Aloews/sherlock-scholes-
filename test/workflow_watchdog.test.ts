@@ -77,6 +77,7 @@ describe('сторож у прогонов по расписанию', () => {
         'player-stats.yml',
         'profile-backfill-queue.yml',
         'soccerwiki-roster-refresh.yml',
+        'supabase-production-backup.yml',
         'women-stats-backfill.yml',
       ]);
   });
@@ -125,16 +126,27 @@ describe('сторож у прогонов по расписанию', () => {
     }
   });
 
-  it('сторож ждёт ВСЕ остальные job\'ы, а не первый попавшийся', () => {
-    // Пропущенный в `needs` job — это job, чей провал сторож не увидит.
+  it('сторож ждёт все верхнеуровневые результаты, включая агрегирующий job', () => {
     for (const w of byCron) {
-      const others = jobNames(w.src).filter((n) => n !== 'watch');
       const body = jobBody(w.src, 'watch');
       const needs = /needs:\s*\[([^\]]*)\]/.exec(body);
-      expect(needs, `${w.name}: у watch нет needs: [...]`).not.toBeNull();
+      expect(needs, w.name + ': у watch нет needs: [...]').not.toBeNull();
       const listed = needs![1].split(',').map((x) => x.trim()).filter(Boolean);
-      expect(listed.sort(), `${w.name}: сторож не ждёт часть job'ов`)
-        .toEqual(others.sort());
+
+      if (w.name === 'daily-enrich.yml') {
+        // Daily enrichment is split into stages. The aggregate enrich job
+        // waits for every stage, so watch must wait for enrich plus fame.
+        expect(listed.sort()).toEqual(['enrich', 'fame']);
+        const aggregate = jobBody(w.src, 'enrich');
+        const aggregateNeeds = /needs:\s*\[([^\]]*)\]/.exec(aggregate);
+        expect(aggregateNeeds, 'daily-enrich.yml: aggregate enrich has no stage needs').not.toBeNull();
+        expect(aggregateNeeds![1].split(',').map((x) => x.trim()).filter(Boolean).sort())
+          .toEqual(['audit', 'descriptions', 'enrich-core', 'rosters', 'soccerwiki', 'transfers']);
+      } else {
+        const others = jobNames(w.src).filter((n) => n !== 'watch');
+        expect(listed.sort(), w.name + ': сторож не ждёт часть job\'ов')
+          .toEqual(others.sort());
+      }
     }
   });
 

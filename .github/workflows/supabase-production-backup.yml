@@ -1,0 +1,174 @@
+name: supabase-production-backup
+
+on:
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: read
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_STORAGE_S3_ENDPOINT: ${{ secrets.SUPABASE_STORAGE_S3_ENDPOINT }}
+      SUPABASE_STORAGE_S3_REGION: ${{ secrets.SUPABASE_STORAGE_S3_REGION }}
+      RCLONE_CONFIG_SUPABASE_TYPE: s3
+      RCLONE_CONFIG_SUPABASE_PROVIDER: Other
+      RCLONE_CONFIG_SUPABASE_ACCESS_KEY_ID: ${{ secrets.SUPABASE_STORAGE_S3_ACCESS_KEY_ID }}
+      RCLONE_CONFIG_SUPABASE_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_STORAGE_S3_SECRET_ACCESS_KEY }}
+      RCLONE_CONFIG_SUPABASE_ENDPOINT: ${{ secrets.SUPABASE_STORAGE_S3_ENDPOINT }}
+      RCLONE_CONFIG_SUPABASE_REGION: ${{ secrets.SUPABASE_STORAGE_S3_REGION }}
+      RCLONE_CONFIG_SUPABASE_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_SUPABASE_ENV_AUTH: "false"
+      RCLONE_CONFIG_BACKUP_TYPE: s3
+      RCLONE_CONFIG_BACKUP_PROVIDER: Other
+      RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      RCLONE_CONFIG_BACKUP_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      RCLONE_CONFIG_BACKUP_REGION: ${{ secrets.BACKUP_S3_REGION }}
+      RCLONE_CONFIG_BACKUP_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_BACKUP_ENV_AUTH: "false"
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            SUPABASE_DB_URL
+            SUPABASE_STORAGE_S3_ENDPOINT
+            SUPABASE_STORAGE_S3_REGION
+            RCLONE_CONFIG_SUPABASE_ACCESS_KEY_ID
+            RCLONE_CONFIG_SUPABASE_SECRET_ACCESS_KEY
+            BACKUP_S3_BUCKET
+            RCLONE_CONFIG_BACKUP_ENDPOINT
+            RCLONE_CONFIG_BACKUP_REGION
+            RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID
+            RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required repository secret/configuration: $name"
+              exit 1
+            fi
+          done
+
+      - name: Install rclone
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y rclone
+          rclone version
+
+      - name: Create and verify PostgreSQL archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/sherlock-scholes-backup"
+          docker run --rm --network host \
+            -e SUPABASE_DB_URL \
+            -v "$RUNNER_TEMP/sherlock-scholes-backup:/backup" \
+            postgres:17-alpine sh -euc '
+              pg_dump --no-password --format=custom --compress=6 --no-owner \
+                --dbname "$SUPABASE_DB_URL" --file /backup/database.dump
+              pg_restore --list /backup/database.dump > /backup/database.toc
+              pg_dump --version > /backup/pg_dump_version.txt
+            '
+          sha256sum "$RUNNER_TEMP/sherlock-scholes-backup/database.dump" \
+            > "$RUNNER_TEMP/sherlock-scholes-backup/database.dump.sha256"
+
+      - name: Define immutable backup prefix
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="sherlock-scholes/$(date -u +%Y/%m/%d)/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "BACKUP_PREFIX=$prefix" >> "$GITHUB_ENV"
+
+      - name: Upload database archive and verify remote copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="backup:$BACKUP_S3_BUCKET/$BACKUP_PREFIX"
+          rclone copyto "$RUNNER_TEMP/sherlock-scholes-backup/database.dump" \
+            "$destination/database.dump" --checksum
+          rclone copyto "$RUNNER_TEMP/sherlock-scholes-backup/database.dump.sha256" \
+            "$destination/database.dump.sha256"
+          rclone check "$RUNNER_TEMP/sherlock-scholes-backup/database.dump" \
+            "$destination/database.dump" --checksum
+
+      - name: Copy every Supabase Storage bucket and verify object sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t buckets < <(rclone lsf supabase: --dirs-only)
+          if [ "${#buckets[@]}" -eq 0 ]; then
+            echo "::error::Supabase Storage returned no buckets; refusing to mark an incomplete backup successful"
+            exit 1
+          fi
+          if [ "$SUPABASE_STORAGE_S3_ENDPOINT" = "$RCLONE_CONFIG_BACKUP_ENDPOINT" ]; then
+            for candidate in "${buckets[@]}"; do
+              if [ "${candidate%/}" = "$BACKUP_S3_BUCKET" ]; then
+                echo "::error::Backup destination bucket is also a production source bucket"
+                exit 1
+              fi
+            done
+          fi
+          printf '%s\n' "${buckets[@]}" > "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt"
+          for raw_bucket in "${buckets[@]}"; do
+            bucket="${raw_bucket%/}"
+            [[ -n "$bucket" ]] || continue
+            source="supabase:$bucket"
+            destination="backup:$BACKUP_S3_BUCKET/$BACKUP_PREFIX/storage/$bucket"
+            echo "Backing up Storage bucket: $bucket"
+            rclone copy "$source" "$destination" --transfers 4 --checkers 8
+            rclone check "$source" "$destination" --size-only --one-way
+          done
+          rclone copyto "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt" \
+            "backup:$BACKUP_S3_BUCKET/$BACKUP_PREFIX/storage-buckets.txt"
+
+      - name: Write and upload backup manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          dump_sha="$(cut -d ' ' -f1 "$RUNNER_TEMP/sherlock-scholes-backup/database.dump.sha256")"
+          {
+            echo "project_ref=konoavrduynecxblqfvq"
+            echo "created_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "source_commit=$GITHUB_SHA"
+            echo "backup_prefix=$BACKUP_PREFIX"
+            echo "database_format=PostgreSQL custom archive"
+            echo "database_acl=preserved; object_owners=omitted"
+            echo "custom_roles=must be recreated from migrations; login passwords reset separately"
+            echo "database_sha256=$dump_sha"
+            echo "storage_objects=all buckets copied; object sizes checked"
+            echo "restore_validation=not performed by this workflow"
+          } > "$RUNNER_TEMP/sherlock-scholes-backup/manifest.txt"
+          rclone copyto "$RUNNER_TEMP/sherlock-scholes-backup/manifest.txt" \
+            "backup:$BACKUP_S3_BUCKET/$BACKUP_PREFIX/manifest.txt"
+
+  watch:
+    runs-on: ubuntu-latest
+    needs: [backup]
+    if: always()
+    timeout-minutes: 5
+    env:
+      BACKUP_RESULT: ${{ needs.backup.result }}
+    steps:
+      - name: Fail scheduled run if backup did not complete
+        run: |
+          if [ "$BACKUP_RESULT" != "success" ]; then
+            echo "::error::Production backup job ended as $BACKUP_RESULT"
+            exit 1
+          fi
