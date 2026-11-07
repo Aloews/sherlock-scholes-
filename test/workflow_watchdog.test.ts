@@ -128,7 +128,7 @@ describe('сторож у прогонов по расписанию', () => {
   it('сторож ждёт все верхнеуровневые результаты, включая агрегирующий job', () => {
     for (const w of byCron) {
       const body = jobBody(w.src, 'watch');
-      const needs = /needs:\\s*\\[([^\\]]*)\\]/.exec(body);
+      const needs = /needs:\s*\[([^\]*)\]/.exec(body);
       expect(needs, w.name + ': у watch нет needs: [...]').not.toBeNull();
       const listed = needs![1].split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -137,7 +137,7 @@ describe('сторож у прогонов по расписанию', () => {
         // waits for every stage, so watch must wait for enrich plus fame.
         expect(listed.sort()).toEqual(['enrich', 'fame']);
         const aggregate = jobBody(w.src, 'enrich');
-        const aggregateNeeds = /needs:\\s*\\[([^\\]]*)\\]/.exec(aggregate);
+        const aggregateNeeds = /needs:\s*\[([^\]*)\]/.exec(aggregate);
         expect(aggregateNeeds, 'daily-enrich.yml: aggregate enrich has no stage needs').not.toBeNull();
         expect(aggregateNeeds![1].split(',').map((x) => x.trim()).filter(Boolean).sort())
           .toEqual(['audit', 'descriptions', 'enrich-core', 'rosters', 'soccerwiki', 'transfers']);
