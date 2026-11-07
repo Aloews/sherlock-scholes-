@@ -239,7 +239,7 @@ BEGIN
          verified_at=NULL, updated_at=now();
 
   INSERT INTO public.cards(name,name_en,category,active,market_value_eur,wikidata_qid)
-  VALUES ('Queue Enqueue QID','Queue Enqueue QID','player',true,8000000000000000000,'QENQUEUE001')
+  VALUES ('Queue Enqueue QID','Queue Enqueue QID','player',true,8000000000000000000,'Q999999999')
   RETURNING id INTO v_qid;
 
   INSERT INTO public.cards(name,name_en,category,active,market_value_eur,transfermarkt_id)
