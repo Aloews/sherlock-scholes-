@@ -2198,6 +2198,7 @@ This follow-up snapshot was measured against main commit `00c28a0b1e760c62940cc4
   - #379 Rich Message hub: 11 GitHub Actions workflows completed successfully; Vercel status success. This is Telegram Rich Messages, not HTMLBubbles.
   - #377 canonical match-day evidence: 10 GitHub Actions workflows completed successfully; Vercel status success.
   - #376 Football Dynasty Rust: 11 GitHub Actions workflows completed successfully, including the Rust workflow; remains Draft pending a dedicated Railway service and production DB connection.
+  - Railway constraint: the requested project is `distinguished-transformation` (`Stream Service`). The existing `stream-service` is the LiveKit/M3U media service and was not repurposed. Railway Free rejected creation of a separate service; the user explicitly excluded a Hobby/$5 monthly upgrade. Keep #376 Draft until a Free-compatible deployment path exists or the user changes that cost constraint.
   - #367 market-value provenance and forecast calibration: GitHub Actions workflows completed successfully; Vercel status is failure due to the Vercel build-rate-limit response.
   - #366 club-match rebuild optimization: GitHub Actions workflows completed successfully; Vercel status is failure due to the Vercel build-rate-limit response. Its migration targets the older club-match rebuild path, not the currently measured slow `rebuild_football_clubs()` step.
   - #291 accumulator active-model diagnostics: 10 GitHub Actions workflows completed successfully; Vercel status success.
