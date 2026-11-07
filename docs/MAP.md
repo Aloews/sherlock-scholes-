@@ -2038,6 +2038,13 @@ The audit above lists the latest structural fixes. The following merged PRs form
 - `refresh_player_rating_cache()` has 22 API calls averaging 4.89 seconds (max 7.61 seconds) and four direct diagnostic calls averaging 7.15 seconds (max 11.19 seconds). No direct cron run for this function was found in the last seven days; its invocation path remains unverified.
 - No cron schedules or functions were modified.
 
+### Telegram chat messages: Rich Messages vs HTMLBubbles
+
+- Production Edge Function `tg-pay` is ACTIVE at version 38, updated 2026-11-05 19:55:31 UTC. Its deployed `index.ts` and `rich-quiz.ts` contents match current main byte-for-byte. It implements `/quiz` using the official Bot API `sendRichMessage` method and callback-backed sessions.
+- This is **Telegram Rich Messages**, not HTMLBubbles. The official Bot API documents rich HTML/Markdown/structured blocks, but does not expose a method for executing arbitrary HTML/CSS/JavaScript inside a chat message. Reference: https://core.telegram.org/bots/api.
+- Telegram Info's 2026-11-07 Beta report says HTMLBubbles is still experimental in Telegram 13.2 Beta and that no public developer API is available. This is third-party reporting, not an official Telegram commitment. Reference: https://t.me/s/betainfo/2471.
+- PR #379 adds a `/games` Rich Message hub with existing Mini App buttons and explicitly does not claim HTMLBubbles support. It remains open; no production deployment of that PR's `/games` command was verified. Do not reverse-engineer a private protocol or claim the HTMLBubbles requirement is complete.
+
 ### Release and safety disposition
 
 - No production migration, restore, destructive SQL, queue reset, user-data mutation, photo replacement, index drop, secret change, or deployment was performed.
