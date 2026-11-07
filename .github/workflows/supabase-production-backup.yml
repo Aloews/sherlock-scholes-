@@ -125,7 +125,7 @@ jobs:
               fi
             done
           fi
-          printf '%s\\n' "${buckets[@]}" > "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt"
+          printf '%s\n' "${buckets[@]}" > "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt"
           for raw_bucket in "${buckets[@]}"; do
             bucket="${raw_bucket%/}"
             [[ -n "$bucket" ]] || continue
