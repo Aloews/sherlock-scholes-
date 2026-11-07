@@ -3,7 +3,7 @@
 Workflow: `.github/workflows/supabase-production-backup.yml`
 
 - Runs daily at 03:15 UTC and can be started manually.
-- Dumps the PostgreSQL database in custom format using PostgreSQL 17, verifies the archive table-of-contents, and uploads the archive plus SHA-256 checksum to an external S3-compatible bucket.
+- Dumps the PostgreSQL database in custom format using PostgreSQL 17, preserves ACL/GRANT statements while omitting object ownership, verifies the archive table-of-contents, and uploads the archive plus SHA-256 checksum to an external S3-compatible bucket.
 - Copies every Supabase Storage bucket to a separate prefix in the external backup bucket and runs a size comparison.
 - Uses immutable date/run prefixes. It never deletes or overwrites previous backups; configure retention with the destination bucket's lifecycle policy.
 - A watchdog job makes a failed or cancelled backup workflow fail visibly.
@@ -38,7 +38,7 @@ Enable Supabase Storage's S3 protocol and create a read-only source credential u
 - `storage-buckets.txt` — source bucket names.
 - `manifest.txt` — project, timestamp, source commit, checksum, and verification scope.
 
-The database dump includes Storage metadata in PostgreSQL; the separate Storage copy preserves the actual object bytes. The workflow verifies the database archive index and remote dump checksum. Storage objects are checked by size; this is not a full restore test.
+The database dump includes Storage metadata in PostgreSQL; the separate Storage copy preserves the actual object bytes. The workflow verifies the database archive index and remote dump checksum. Storage objects are checked by size; this is not a full restore test. PostgreSQL global role definitions are not included: recreate custom roles from migrations and set runtime login passwords separately. ACL/GRANT statements are preserved.
 
 ## Restore validation
 
