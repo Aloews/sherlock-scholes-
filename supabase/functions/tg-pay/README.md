@@ -92,3 +92,6 @@ Rich Messages are unavailable, the same routes are exposed through a regular
 inline keyboard. The hub does not duplicate game rules or data sources: all
 three routes open the existing Mini App implementations. Send `/quiz` to play
 the player-guessing round entirely inside the chat.
+
+
+Telegram Bot API 10.3 documents `sendRichMessage` and structured Rich Message blocks/buttons; this implementation uses that API for a chat-native quiz and `/games` menu, with standard inline-keyboard fallback. This is not arbitrary HTML/CSS/JavaScript execution: the client-side HTMLBubbles experiment remains a separate capability without a documented public bot API. Use Telegram Web Apps for custom executable interfaces.
