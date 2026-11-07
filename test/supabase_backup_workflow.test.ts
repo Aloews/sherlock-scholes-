@@ -17,8 +17,12 @@ describe('Supabase production backup safety', () => {
     expect(workflow).toContain('postgres:17-alpine');
     expect(workflow).toContain('pg_dump --no-password --format=custom');
     expect(workflow).toContain('pg_restore --list');
+    expect(workflow).toContain('--no-owner');
+    expect(workflow).not.toContain('--no-acl');
     expect(workflow).toContain('database.dump.sha256');
     expect(workflow).toContain('rclone check');
+    expect(workflow).toContain('refusing to mark an incomplete backup successful');
+    expect(workflow).toContain('production source bucket');
   });
 
   it('backs up Supabase Storage object bytes to a separate S3 destination', () => {
