@@ -2142,7 +2142,7 @@ Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
 | `photo_sw` | 0 | 0 | 709 | 39 |
 | `season_stats` | 5,847 | 0 | 27 | 0 |
 
-- Active player cards: 25,637; 16,496 have a photo URL, 9,141 do not. No net increase in card photo coverage was confirmed in this snapshot.
+- All cards: 28,211; 18,425 have a photo URL and 9,786 do not, a net increase of one versus the previous known snapshot (18,424/28,211). Active player cards: 25,637; 16,496 have a photo URL and 9,141 do not. The +1 is a net count only; the cards table has no photo-specific update timestamp, so it cannot be attributed to a particular worker run.
 - 2,857 active cards have a linked Soccer Wiki photo while their card photo is empty; 2,819 of those have no `photo_sw` queue job. The new enqueue function is installed, but this source backlog is not yet in the queue.
 - The bounded claim dry run, rolled back in a transaction, returned both photo and season-stat work. The enqueue dry run was also rolled back; neither dry run changed queue counts.
 - GitHub Actions run #42359177765 was still processing its bounded batch; run #42359295787 was queued behind it. Season-stat successes have increased from zero to 27, but new photo URLs are not yet confirmed. Do not describe a queue success as a new photo without checking the card's `photo_url`.
@@ -2152,7 +2152,7 @@ Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
 - 28 cron jobs; 2,785 runs in the last 24 hours; 1 failed.
 - The failure was `rebuild-football-clubs` at 2026-11-07 06:25 UTC (SQLSTATE 57014). The outer `rebuild_clubs_all()` call reached its 120-second statement timeout while inside `rebuild_club_squads()`.
 - A production `EXPLAIN ANALYZE` of the final `count(*) FROM club_squad WHERE left_at IS NULL` took 120.376 ms using `club_squad_current_idx` with an index-only scan and zero heap fetches. That count is not the root cause; the whole `rebuild_clubs_all()` call is near the timeout. `pg_stat_statements` recorded a 118.97-second maximum for the orchestrator and 77.43 seconds for `rebuild_football_clubs()`.
-- `rebuild_football_clubs()` rebuilds `club_name_seen` from the full `player_match_days` view (288,793 source rows) before subsequent joins and updates. This is the primary profiling/optimization target. The existing `rebuild_club_matches()` already uses a 365-day window, `player_match_stats_club_refresh_idx`, `statement_timeout=30s`, and `work_mem=64MB`.
+- `rebuild_football_clubs()` reads all 288,793 estimated `player_match_stats` source rows through `player_match_days` (a `DISTINCT ON (card_id, match_date)` view; planner estimate about 28,879 output rows), then fully rebuilds `club_name_seen` before subsequent joins and updates. This is the primary profiling/optimization target. The existing `rebuild_club_matches()` already uses a 365-day window, `player_match_stats_club_refresh_idx`, `statement_timeout=30s`, and `work_mem=64MB`.
 - No timeout was increased. PR #366's older club-match migration was not applied; its proposed optimization is superseded by the current production function/index and it does not address the largest `rebuild_football_clubs()` step.
 - `refresh_player_rating_cache()` has a recorded maximum of about 11.2 seconds in current statement statistics; no corresponding failure appeared in the last-24-hour cron failures.
 
@@ -2160,7 +2160,7 @@ Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
 
 - Production has no Hemibrain/Connectome tables, views, materialized views, or matching SQL functions. Main has no active `fly_brain.py` implementation or active Connectome references.
 - Preserve the separate `/duel` reservoir model: `forecast_duel_model` still contains the `fly` key and its 5,504 match records. That key is not evidence of Hemibrain/Connectome.
-- Current `forecast_pick` rows are split between `llm` and `own`; current calibration rows are likewise `llm` and `own`. Accumulator history and the duel reservoir remain separate systems.
+- Current `forecast_pick`: 3,844 rows (1,922 `llm`, 1,922 `own`). Current `forecast_calibration`: 2 rows (one each for `llm` and `own`). `accumulator_ticket`: 215 rows (106 `llm`, 114 `own`, 1 null-model legacy row); `accumulator_leg`: 742 rows. `forecast_duel_match`: 5,504 rows. Accumulator history and the duel reservoir remain separate systems.
 - The retired-model migration previously deleted 1,497 forecast picks, 1 calibration row, 82 accumulator tickets and associated legs. No pre-deletion backup has been verified, so those deleted rows have not been restored or reconstructed.
 
 ### Security and performance advisors
@@ -2174,6 +2174,8 @@ Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
 1. Configure the 10 backup workflow secrets, run a complete PostgreSQL + Storage backup, then restore it into a separate project and verify row counts, RLS/grants, migration ledger, buckets, and sample object downloads.
 2. Decide whether to move the project to Supabase Pro; the current database exceeds the Free allowance and Free has no daily backup/PITR protection.
 3. Finish PR #380 CI, merge the migration-source reconciliation, and verify local migration files against all 472 production ledger entries without replaying them.
-4. Let the queued backfill run execute the new Soccer Wiki enqueue logic; confirm actual photo URL growth and season-stat freshness before increasing batch size.
+4. Let the queued backfill run execute the new Soccer Wiki enqueue logic; confirm actual photo URL growth and season-stat freshness before increasing batch size. The previous known Transfermarkt state had 74 failed jobs; the current snapshot has none failed and 10,031 pending, consistent with the bounded retry migration re-queuing those failures, but not proof that those jobs produced photos.
 5. Profile and split/optimize `rebuild_football_clubs()` so the complete club rebuild no longer approaches the 120-second outer statement timeout.
 6. Keep PR #376 Draft until the Rust Railway service and production integration are actually deployed and verified.
+7. PR #367's market-value/calibration migration is not applied in production (no ledger entry, provenance columns, or reconciliation/calibration tables). Its backfill attributes existing populated values to Transfermarkt TMAPI when provenance is null; verify that historical source assumption before merging or applying it. Its candidate workflow also overlaps #371 and needs reconciliation.
+8. PR #267 is 100 commits behind. Retired-model removal is already present in main; its separate market-express walk-forward implementation remains unmerged and needs independent review.
