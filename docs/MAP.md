@@ -1978,18 +1978,28 @@ The audit above lists the latest structural fixes. The following merged PRs form
 
 - `pg_database_size(current_database())`: **964,422,803 bytes (920 MiB)**. Previous measured baseline supplied for 2026-11-06: 946,441,363 bytes; net increase **17,981,440 bytes (~17.15 MiB)**.
 - The current 500 MB Free-plan database quota is exceeded by approximately 420 MiB. No rows, indexes, or history were removed.
-- Largest relations by total size (bytes):
-  - `player_season_stat`: 173,785,088
-  - `player_match_stats`: 165,314,560
-  - `award_candidate_snapshot`: 90,882,048
-  - `cards`: 70,967,296
-  - `team_tournament_candidate_snapshot`: 68,419,584
-  - `card_metric_history`: 68,001,792
-  - `young_talent_market_snapshot`: 33,857,536
-  - `club_match`: 26,238,976
-  - `soccerwiki_player`: 22,478,848
-  - `cron.job_run_details`: 22,200,320
-  - `profile_backfill_jobs`: 21,266,432
+- Largest relations by total size (bytes). Tuple counts are `pg_stat_user_tables.n_live_tup` estimates; heap/index values are current relation-size measurements:
+  - `player_season_stat`: 857,215 live / 60,118 dead; total 173,785,088; heap 100,720,640; indexes 72,998,912.
+  - `player_match_stats`: 288,793 / 50,858; total 165,314,560; heap 57,237,504; indexes 108,027,904.
+  - `award_candidate_snapshot`: 32,952 / 3,890; total 90,882,048; heap 83,140,608; indexes 7,684,096.
+  - `cards`: 28,211 / 4,049; total 70,967,296; heap 34,291,712; indexes 34,635,776.
+  - `team_tournament_candidate_snapshot`: 35,102 / 0; total 68,419,584; heap 57,524,224; indexes 10,846,208.
+  - `card_metric_history`: 492,673 / 0; total 68,001,792; heap 33,619,968; indexes 34,332,672.
+  - `young_talent_market_snapshot`: 49,965 / 0; total 33,857,536; heap 26,001,408; indexes 7,815,168.
+  - `club_match`: 57,901 / 0; total 26,238,976; heap 14,237,696; indexes 11,960,320.
+  - `soccerwiki_player`: 76,484 / 8,934; total 22,478,848; heap 11,698,176; indexes 10,739,712.
+  - `cron.job_run_details`: 94,299 / 0; total 22,208,512; heap 19,243,008; indexes 2,924,544.
+  - `fixture_market_quotes`: 60,098 / 0; total 21,307,392; heap 8,757,248; indexes 12,509,184.
+  - `profile_backfill_jobs`: 23,158 / 2,901; total 21,266,432; heap 12,353,536; indexes 8,871,936.
+  - `player_transfer`: 67,392 / 15; total 17,293,312; heap 9,445,376; indexes 7,806,976.
+  - `fixture_odds`: 66,425 / 0; total 16,400,384; heap 7,364,608; indexes 8,994,816.
+  - `news_items`: 3,258 / 504; total 13,467,648; heap 4,759,552; indexes 8,290,304.
+  - `player_level`: 25,637 / 0; total 11,902,976; heap 5,644,288; indexes 6,217,728.
+  - `club_squad`: 32,566 / 0; total 11,313,152; heap 4,718,592; indexes 6,553,600.
+  - `card_current_club`: 24,867 / 4,712; total 10,575,872; heap 5,193,728; indexes 5,341,184.
+  - `duel_features`: 27,976 / 627; total 8,839,168; heap 6,889,472; indexes 1,908,736.
+  - `club_roster`: 24,492 / 8; total 6,815,744; heap 3,825,664; indexes 2,949,120.
+- Per-table growth since the prior 2026-11-06 snapshot cannot be calculated: no historical per-relation size snapshot was available. Only the database-level size comparison is grounded.
 - Performance Advisor reports one duplicate index pair on `award_candidate_snapshot` (`award_candidate_latest_idx` / `award_candidate_snapshot_latest_idx`), 23 unused indexes, and five tables without primary keys. These are findings, not authorization to drop indexes or alter backup/staging tables. No index changes were made.
 - `club_squad` has approximately 32,566 live rows and 11.3 MB total size. Its current indexes include the primary key, a card index, and partial current-membership indexes. No long-running transaction was present during the snapshot.
 
