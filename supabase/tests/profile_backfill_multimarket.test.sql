@@ -220,6 +220,83 @@ begin
   end if;
 end $$;
 
+-- Enqueue test: linked Soccer Wiki portraits must become photo_sw jobs.
+DO $$
+DECLARE
+  v_qid uuid;
+  v_tm uuid;
+  v_sw uuid;
+  v_stats uuid;
+  v_failed uuid;
+  v_enqueued integer;
+  v_count integer;
+  v_status text;
+  v_attempts integer;
+  v_last_error text;
+BEGIN
+  UPDATE public.profile_backfill_jobs
+     SET status='succeeded', attempts=0, last_error=NULL,
+         verified_at=NULL, updated_at=now();
+
+  INSERT INTO public.cards(name,name_en,category,active,market_value_eur,wikidata_qid)
+  VALUES ('Queue Enqueue QID','Queue Enqueue QID','player',true,8000000000000000000,'QENQUEUE001')
+  RETURNING id INTO v_qid;
+
+  INSERT INTO public.cards(name,name_en,category,active,market_value_eur,transfermarkt_id)
+  VALUES ('Queue Enqueue TM','Queue Enqueue TM','player',true,8000000000000000000,'990001')
+  RETURNING id INTO v_tm;
+
+  INSERT INTO public.cards(name,name_en,category,active,market_value_eur,transfermarkt_id,country,born_on)
+  VALUES ('Queue Enqueue SW','Queue Enqueue SW','player',true,8000000000000000000,'990002','England','2000-01-01')
+  RETURNING id INTO v_sw;
+
+  INSERT INTO public.soccerwiki_player(pid,name,full_name,card_id,photo_url,born_on,nation_code)
+  VALUES (2147483000,'Queue Enqueue SW','Queue Enqueue SW',v_sw,
+          'https://images.example.test/soccerwiki-photo.jpg','2000-01-01','ENG');
+
+  INSERT INTO public.cards(name,name_en,category,active,market_value_eur,transfermarkt_id,photo_url)
+  VALUES ('Queue Enqueue Stats','Queue Enqueue Stats','player',true,8000000000000000000,
+          '990003','https://images.example.test/already-present.jpg')
+  RETURNING id INTO v_stats;
+
+  INSERT INTO public.cards(name,category,active)
+  VALUES ('Queue Enqueue Retry','player',true)
+  RETURNING id INTO v_failed;
+
+  INSERT INTO public.profile_backfill_jobs
+    (card_id,task_type,priority,status,attempts,max_attempts,last_error,updated_at)
+  VALUES (v_failed,'photo_sw',1,'failed',1,3,'transient_empty_response',now()-interval '2 hours');
+
+  v_enqueued := public.enqueue_profile_backfill_jobs(4);
+  IF v_enqueued <> 5 THEN
+    RAISE EXCEPTION 'expected 4 new source jobs plus 1 retry, got %',v_enqueued;
+  END IF;
+
+  SELECT count(*) INTO v_count FROM public.profile_backfill_jobs
+   WHERE card_id=v_qid AND task_type='photo_qid' AND status='pending';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'QID candidate was not enqueued'; END IF;
+
+  SELECT count(*) INTO v_count FROM public.profile_backfill_jobs
+   WHERE card_id IN (v_tm,v_sw) AND task_type='photo_tm' AND status='pending';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Transfermarkt candidate intake was not fair'; END IF;
+
+  SELECT count(*) INTO v_count FROM public.profile_backfill_jobs
+   WHERE card_id=v_sw AND task_type='photo_sw' AND status='pending';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'linked Soccer Wiki photo did not create a photo_sw job'; END IF;
+
+  SELECT count(*) INTO v_count FROM public.profile_backfill_jobs
+   WHERE card_id IN (v_tm,v_sw,v_stats) AND task_type='season_stats' AND status='pending';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'season_stats candidate intake was not fair'; END IF;
+
+  SELECT status,attempts,last_error INTO v_status,v_attempts,v_last_error
+    FROM public.profile_backfill_jobs
+   WHERE card_id=v_failed AND task_type='photo_sw';
+  IF v_status <> 'pending' OR v_attempts <> 0 OR v_last_error IS NOT NULL THEN
+    RAISE EXCEPTION 'transient photo_sw failure was not safely requeued';
+  END IF;
+END
+$$;
+
 -- Claim fairness: source priority must not starve season_stats behind photo queues.
 -- Isolate earlier fixtures in this disposable test transaction.
 update public.profile_backfill_jobs
