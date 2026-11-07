@@ -206,34 +206,109 @@ def profile_urls(card):
     return list(dict.fromkeys(urls))
 
 
+def _header(headers, name):
+    if not headers:
+        return ""
+    try:
+        return str(headers.get(name, "") or "")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _response_summary(response):
+    response = response or {}
+    return (
+        "status=%s bytes=%s type=%s server=%s cf_ray=%s retry_after=%s"
+        % (
+            response.get("status", "?"),
+            response.get("bytes", "?"),
+            response.get("content_type") or "-",
+            response.get("server") or "-",
+            response.get("cf_ray") or "-",
+            response.get("retry_after") or "-",
+        )
+    )
+
+
+def _challenge_marker(body):
+    lowered = (body or "").casefold()
+    markers = (
+        ("captcha", "captcha"),
+        ("just_a_moment", "just a moment"),
+        ("human_verification", "verify you are human"),
+        ("browser_check", "checking your browser"),
+        ("javascript_required", "enable javascript and then reload"),
+        ("access_denied", "access denied"),
+        ("rate_limited", "too many requests"),
+        ("rate_limited", "rate limit"),
+        ("robot_check", "robot check"),
+    )
+    for label, marker in markers:
+        if marker in lowered:
+            return label
+    return None
+
+
 def get_profile(card):
     transient = False
     profile_without_portrait = None
+    empty_hosts = 0
+    transient_hosts = 0
     get_profile.last_attempts = []
+
     for url in profile_urls(card):
         host = urllib.parse.urlparse(url).hostname or "unknown-host"
+        get.last_response = {}
         html = get(url)
+        response = getattr(get, "last_response", {}) or {}
+        summary = _response_summary(response)
+
         if html:
+            challenge = _challenge_marker(html)
+            if challenge:
+                get_profile.last_attempts.append(
+                    "%s:challenge=%s %s" % (host, challenge, summary)
+                )
+                get_profile.last_failure = "transient"
+                return None
+
             found_portrait = portrait_url(html)
             shell = has_profile_content(html)
             get_profile.last_attempts.append(
-                "%s:shell=%s,meta=%s,img_candidates=%s,portrait=%s"
-                % (host, int(shell), int(bool(meta_image_url(html))),
+                "%s:%s shell=%s,meta=%s,img_candidates=%s,portrait=%s"
+                % (host, summary, int(shell), int(bool(meta_image_url(html))),
                    len(profile_image_urls(html)), int(bool(found_portrait)))
             )
             if found_portrait:
                 get_profile.last_failure = None
                 return html
-            # Do not stop at a regional profile shell without a portrait.
             if shell:
                 profile_without_portrait = html
             else:
                 transient = True
+                transient_hosts += 1
+                if transient_hosts >= 2:
+                    break
         else:
             failure = str(get.last_failure or "no_response")
-            get_profile.last_attempts.append("%s:%s" % (host, failure[:60]))
-            if failure.startswith(("transient", "blocked")):
+            get_profile.last_attempts.append("%s:%s %s" % (host, failure[:60], summary))
+            status = response.get("status")
+            if failure in ("blocked_http", "transient_rate_limited") or status in (403, 429):
+                # A block or rate limit is not a signal to hop to another region.
                 transient = True
+                break
+            if failure == "transient_empty_response":
+                transient = True
+                empty_hosts += 1
+                # Two regional HTTP-200 empty bodies are enough to identify a
+                # transient edge response; do not multiply requests across hosts.
+                if empty_hosts >= 2:
+                    break
+            elif failure.startswith("transient"):
+                transient = True
+                transient_hosts += 1
+                if transient_hosts >= 2:
+                    break
 
     if transient:
         get_profile.last_failure = "transient"
@@ -247,37 +322,67 @@ def get_profile(card):
 
 def get(url):
     get.last_failure = None
+    get.last_response = {}
     for attempt in range(RETRIES):
         try:
             req = urllib.request.Request(url, headers={
                 "User-Agent": UA, "Accept-Language": "en"})
             with urllib.request.urlopen(req, timeout=10) as fh:
-                body = fh.read().decode("utf-8", "replace")
+                raw = fh.read()
+                headers = getattr(fh, "headers", None)
+                final_url = getattr(fh, "geturl", lambda: url)()
+                get.last_response = {
+                    "status": getattr(fh, "status", 200),
+                    "bytes": len(raw),
+                    "content_type": _header(headers, "Content-Type"),
+                    "server": _header(headers, "Server"),
+                    "cf_ray": _header(headers, "CF-Ray"),
+                    "retry_after": _header(headers, "Retry-After"),
+                    "final_host": urllib.parse.urlparse(final_url).hostname or "",
+                }
+                body = raw.decode("utf-8", "replace")
                 if body.strip():
                     return body
                 # HTTP 200 with an empty body is not evidence that the player
-                # has no portrait; it is commonly a transient edge/bot response.
+                # has no portrait; it is a transient edge/bot response.
                 get.last_failure = "transient_empty_response"
                 if attempt + 1 == RETRIES:
                     return None
                 time.sleep(PAUSE * 3 * (attempt + 1))
         except urllib.error.HTTPError as exc:
-            # 403/404/410 are permanent for this URL; get_profile tries other
-            # regional hosts. Do not turn a complete set of permanent responses
-            # into a transport failure that exhausts the queue's retry budget.
+            headers = getattr(exc, "headers", None)
+            get.last_response = {
+                "status": exc.code,
+                "bytes": 0,
+                "content_type": _header(headers, "Content-Type"),
+                "server": _header(headers, "Server"),
+                "cf_ray": _header(headers, "CF-Ray"),
+                "retry_after": _header(headers, "Retry-After"),
+                "final_host": urllib.parse.urlparse(url).hostname or "",
+            }
             if exc.code in {404, 410}:
                 get.last_failure = "permanent_http"
                 return None
             if exc.code == 403:
                 get.last_failure = "blocked_http"
                 return None
+            if exc.code == 429:
+                # Respect Retry-After and let the persistent queue retry later.
+                get.last_failure = "transient_rate_limited"
+                return None
             if attempt + 1 == RETRIES:
                 get.last_failure = "transient_http"
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
-        except Exception:                                        # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            get.last_response = {
+                "status": "?",
+                "bytes": 0,
+                "error": type(exc).__name__,
+                "final_host": urllib.parse.urlparse(url).hostname or "",
+            }
             if attempt + 1 == RETRIES:
-                get.last_failure = "transient"
+                get.last_failure = "transient:" + type(exc).__name__
                 return None
             time.sleep(PAUSE * 3 * (attempt + 1))
     get.last_failure = "transient"
