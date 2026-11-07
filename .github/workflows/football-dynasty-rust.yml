@@ -1,0 +1,62 @@
+name: Football Dynasty Rust
+
+on:
+  pull_request:
+    paths:
+      - "services/football-dynasty/**"
+      - "docs/football-dynasty/**"
+      - "docs/MAP.md"
+      - ".github/workflows/football-dynasty-rust.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/football-dynasty-rust.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: football-dynasty-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: football_dynasty_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d football_dynasty_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/football_dynasty_test
+    defaults:
+      run:
+        working-directory: services/football-dynasty
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run tests
+        run: cargo test --all-targets
+      - name: Export resolved dependency lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: football-dynasty-cargo-lock
+          path: services/football-dynasty/Cargo.lock
+          if-no-files-found: warn
