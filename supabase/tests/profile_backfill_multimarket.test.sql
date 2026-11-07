@@ -229,7 +229,7 @@ update public.profile_backfill_claim_cursor
    set last_task_type=null, updated_at=now()
  where singleton=true;
 
-do $
+do $$
 declare
   v_type text;
   v_count integer;
@@ -279,6 +279,6 @@ begin
     end if;
   end loop;
 end
-$;
+$$;
 
 rollback;
