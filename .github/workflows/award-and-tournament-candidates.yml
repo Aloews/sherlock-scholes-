@@ -64,7 +64,7 @@ jobs:
         run: python -m py_compile docs/award_candidates_build.py
 
   refresh:
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.name == 'espn-results-refresh')
     needs: [validate]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -90,16 +90,23 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           UPSTREAM_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          UPSTREAM_WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
           # ESPN results and sports.ru refreshes rebuild club_match. Player/market jobs
           # only refresh player data/prices, so they must not
           # publish new team-tournament snapshots from an older feed.
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             python docs/award_candidates_build.py
-          elif [ "$EVENT_NAME" = "workflow_run" ] && {
-            [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ] ||
-            [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ];
-          }; then
+          elif [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "espn-results-refresh" ]; then
+            if [ "$UPSTREAM_WORKFLOW_CONCLUSION" = "success" ]; then
+              python docs/award_candidates_build.py
+            else
+              # ESPN can write player stats before the expensive club-match rebuild times out.
+              # Refresh individual-award candidates from available player data, but never
+              # publish team-tournament candidates from a failed team-results refresh.
+              python docs/award_candidates_build.py --skip-team-candidates
+            fi
+          elif [ "$EVENT_NAME" = "workflow_run" ] && [ "$UPSTREAM_WORKFLOW_NAME" = "player-stats" ]; then
             python docs/award_candidates_build.py
           else
             python docs/award_candidates_build.py --skip-team-candidates
@@ -113,7 +120,7 @@ jobs:
     env:
       VALIDATE_RESULT: ${{ needs.validate.result }}
       REFRESH_RESULT: ${{ needs.refresh.result }}
-      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+      REFRESH_EXPECTED: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.name == 'espn-results-refresh') }}
     steps:
       - name: Verify candidate pipeline completed
         shell: bash
