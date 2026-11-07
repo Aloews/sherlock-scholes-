@@ -1960,6 +1960,7 @@ The audit above lists the latest structural fixes. The following merged PRs form
 - **Vercel Preview:** `dpl_HDWu6eWvh5V1Yk6R31XHGsRqeFXr` is `READY` for Football Dynasty branch commit `bd265e793cc974bb7ca64d89154735db86cfed3b`, but it is not a production deployment (`target=null`).
 - **CI:** main's combined status currently reports Vercel `failure` with the build-rate-limit URL. The production deployment's Vercel status is `success`. PR #376 head `bd265e7` has 11 completed Actions workflows, all `success`; the PR remains Draft and the Rust API is not live. This is not evidence that all open PRs have green required checks.
 - **Open PRs:** 17. Existing #372 is the production-audit PR; #376 is the Football Dynasty Rust implementation; #377 is unmergeable at this snapshot; #379 is based on the current main SHA. Do not merge stale or red PRs.
+- PR #379 (head `d2281ab`) implements a chat-native football quiz and `/games` menu using Telegram Bot API 10.3 `sendRichMessage` blocks/buttons, with inline-keyboard fallback and HTTPS Web App launch buttons for the existing mini-games. All 11 required Actions checks, including Deno type-check and Rich Message tests, are green. This is not arbitrary HTML/CSS/JavaScript execution: HTMLBubbles remains experimental and has no public Bot API. PR #379 is not deployed.
 - **PR #372 reconciliation:** its previous base was `ec159aeb`; this audit update is rebased onto current `main` while preserving its 2026-11-03 and 2026-11-04 audit sections.
 
 ### Supabase and migration ledger
