@@ -219,4 +219,66 @@ begin
     raise exception 'stale running photo job at max attempts was not reclaimed';
   end if;
 end $$;
+
+-- Claim fairness: source priority must not starve season_stats behind photo queues.
+-- Isolate earlier fixtures in this disposable test transaction.
+update public.profile_backfill_jobs
+   set status='succeeded', updated_at=now()
+ where status in ('pending','running');
+update public.profile_backfill_claim_cursor
+   set last_task_type=null, updated_at=now()
+ where singleton=true;
+
+do $
+declare
+  v_type text;
+  v_count integer;
+begin
+  with fixtures as (
+    select * from (values
+      ('photo_qid'::text, 1500000000::numeric),
+      ('photo_tm'::text, 1000000000::numeric),
+      ('photo_sw'::text, 500000::numeric),
+      ('season_stats'::text, 100000::numeric)
+    ) as t(task_type, priority)
+  ),
+  expanded as (
+    select f.task_type, f.priority, g as seq
+      from fixtures f cross join generate_series(1,2) g
+  ),
+  inserted_cards as (
+    insert into public.cards(name,category,active,transfermarkt_id,wikidata_qid,market_value_eur)
+    select 'Fair claim ' || task_type || ' ' || seq, 'player', true,
+           'tm-fair-' || task_type || '-' || seq,
+           'Qfair-' || task_type || '-' || seq,
+           0
+      from expanded
+    returning id,name
+  )
+  insert into public.profile_backfill_jobs(card_id,task_type,transfermarkt_id,wikidata_qid,priority)
+  select c.id,e.task_type,'tm-fair-' || e.task_type || '-' || e.seq,
+         'Qfair-' || e.task_type || '-' || e.seq,e.priority
+    from expanded e
+    join inserted_cards c on c.name='Fair claim ' || e.task_type || ' ' || e.seq;
+
+  create temp table claim_fairness_batch_one on commit drop as
+    select task_type from public.claim_profile_backfill_jobs(4,45);
+  foreach v_type in array array['photo_qid','photo_tm','photo_sw','season_stats'] loop
+    select count(*) into v_count from claim_fairness_batch_one where task_type=v_type;
+    if v_count <> 1 then
+      raise exception 'first fair claim batch expected one %, found %',v_type,v_count;
+    end if;
+  end loop;
+
+  create temp table claim_fairness_batch_two on commit drop as
+    select task_type from public.claim_profile_backfill_jobs(4,45);
+  foreach v_type in array array['photo_qid','photo_tm','photo_sw','season_stats'] loop
+    select count(*) into v_count from claim_fairness_batch_two where task_type=v_type;
+    if v_count <> 1 then
+      raise exception 'second fair claim batch expected one %, found %',v_type,v_count;
+    end if;
+  end loop;
+end
+$;
+
 rollback;
