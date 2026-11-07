@@ -2009,14 +2009,17 @@ The audit above lists the latest structural fixes. The following merged PRs form
   - `photo_sw`: 709 succeeded, 39 no_data.
   - `season_stats`: 5,874 pending; oldest/latest update both remain 2026-10-21 11:06 UTC.
 - Current active player cards: 25,637 total; 16,496 with a non-empty photo URL; 9,141 without one. This is a player-only denominator and must not be compared to all-card counts.
+- Across all cards: 28,211 total; 18,425 with a non-empty photo URL; 9,786 without one. This is +3 net photos against the 2026-11-04 snapshot (18,422).
 - During the last 24 hours, Transfermarkt had zero verified successes; Wikidata had two verified successes; season-stat jobs had zero successes. The Transfermarkt pending rows include 159 with recorded transient regional empty-response errors. The collector code intentionally retries transient failures rather than marking them as no_data.
 - No queue rows were deleted, reset, or mass-requeued. Queue status alone is not evidence of new portraits; only verified card photo URLs count.
 
 ### Cron and refresh reliability
 
 - `cron.job_run_details` recorded 2,785 runs in the last 24 hours: 2,784 succeeded and one failed.
+- ESPN refresh job 18 recorded 288 successful cron invocations in the last 24 hours (latest at 2026-11-07 08:28 UTC). Successful job status alone does not prove that the source delivered new match rows.
 - The failed run was job 15, `rebuild-football-clubs`, at 2026-11-07 06:25 UTC. It timed out after 120 seconds inside `rebuild_club_squads()`, at the final `select count(*) from club_squad where left_at is null`, called by `rebuild_clubs_all()`. The function materializes match evidence and updates squad rows before that final count; the last statement location alone does not prove the count is the root cause.
-- `refresh_player_rating_cache()` currently performs a full delete/reinsert aggregation over `player_match_days`; no current failure for it was observed in the last 24-hour cron snapshot. It still requires a bounded plan/performance review before any timeout change.
+- Over the last seven days, job 15 had four successful runs and three failures; the most recent success was 2026-11-06 06:25 UTC, followed by the 2026-11-07 timeout. The count statement is the reported cancellation location, not yet a proven root cause.
+- `refresh_player_rating_cache()` currently performs a full delete/reinsert aggregation over `player_match_days`; no current failure for it was observed in the last 24-hour cron snapshot. It still requires a bounded plan/performance review before any timeout change. No cron run whose command text directly names this function was found in the last seven days; its invocation path remains unverified.
 - No cron schedules or functions were modified.
 
 ### Release and safety disposition
