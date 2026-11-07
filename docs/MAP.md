@@ -2180,3 +2180,100 @@ Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
 6. Keep PR #376 Draft until the Rust Railway service and production integration are actually deployed and verified.
 7. PR #367's market-value/calibration migration is not applied in production (no ledger entry, provenance columns, or reconciliation/calibration tables). Its backfill attributes existing populated values to Transfermarkt TMAPI when provenance is null; verify that historical source assumption before merging or applying it. Its candidate workflow also overlaps #371 and needs reconciliation.
 8. PR #267 is 100 commits behind. Retired-model removal is already present in main; its separate market-express walk-forward implementation remains unmerged and needs independent review.
+
+
+---
+
+## Production recovery delta — 2026-11-07 10:06 UTC
+
+This follow-up snapshot was measured against main commit `00c28a0b1e760c62940cc470ea3014b1ee6fe61e`. It does not replace the earlier 09:34 UTC snapshot; values below are newer measurements where stated.
+
+### GitHub and Vercel
+
+- Main commit at measurement: `00c28a0b1e760c62940cc470ea3014b1ee6fe61e`.
+- Production deployment: `dpl_HNLebUEb9kXGdR557Y9jB7NQJqjm`, READY, deployed from the same main commit. Aliases include `sherlock-scholes.vercel.app`; alias error is null.
+- Production HTTP GET of `https://sherlock-scholes.vercel.app/` returned HTTP 200 with the Vite application shell.
+- Open pull requests: 14. PRs #380, #372, and #258 are merged; PR #371 is also merged.
+- Relevant open PRs and checks:
+  - #379 Rich Message hub: 11 GitHub Actions workflows completed successfully; Vercel status success. This is Telegram Rich Messages, not HTMLBubbles.
+  - #377 canonical match-day evidence: 10 GitHub Actions workflows completed successfully; Vercel status success.
+  - #376 Football Dynasty Rust: 11 GitHub Actions workflows completed successfully, including the Rust workflow; remains Draft pending a dedicated Railway service and production DB connection.
+  - #367 market-value provenance and forecast calibration: GitHub Actions workflows completed successfully; Vercel status is failure due to the Vercel build-rate-limit response.
+  - #366 club-match rebuild optimization: GitHub Actions workflows completed successfully; Vercel status is failure due to the Vercel build-rate-limit response. Its migration targets the older club-match rebuild path, not the currently measured slow `rebuild_football_clubs()` step.
+  - #291 accumulator active-model diagnostics: 10 GitHub Actions workflows completed successfully; Vercel status success.
+  - #267 retired Connectome removal and express calibration: 9 GitHub Actions workflows completed successfully; Vercel status is failure due to the Vercel build-rate-limit response. The branch is 102 commits behind main.
+- Other open branches are substantially stale: #288 is 76 commits behind, #260 105, #197 154, #185 162, #146 213, #48 348, and #46 345. Their diffs have not been merged or rebased in this snapshot. Do not merge them without re-review against current main.
+
+### Production migration ledger
+
+- Production ledger: 472 entries.
+- The six latest production versions have corresponding source files in main:
+  - `20261105195504` — `telegram_chat_quiz_sessions`.
+  - `20261105203942` — `football_dynasty_foundation`.
+  - `20261105204011` — `football_dynasty_rls_hardening`.
+  - `20261107091847` — `20261107080000_fair_profile_backfill_job_claims`.
+  - `20261107091901` — `20261107083000_enqueue_soccerwiki_photo_candidates`.
+  - `20261107092926` — `award_candidate_evaluation_security_invoker`.
+- These migrations are already applied. Do not replay them.
+- The wider historical source baseline remains unresolved. The latest full-ledger comparison recorded 73 timestamped local files against 472 remote entries, with only 33 exact version+name matches. The remaining candidates include version mismatches, legacy unprefixed SQL files, version/name mismatches, and remote names with no local filename match. These are not proof of SQL identity. Do not synthesize missing migrations or edit the remote ledger manually.
+
+### PostgreSQL size and largest relations
+
+Measured with `pg_database_size(current_database())` at 10:06 UTC: **971,533,459 bytes (927 MB as reported by pg_size_pretty)**. The previous known 2026-11-06 value was 946,441,363 bytes, an increase of 25,092,096 bytes. The database remains above the Free 500 MB allowance. No rows, indexes, or tables were removed to reduce the size.
+
+| Relation | Total bytes | Heap bytes | Index bytes | Estimated rows |
+|---|---:|---:|---:|---:|
+| `player_season_stat` | 179,429,376 | 105,635,840 | 73,728,000 | 865,400 |
+| `player_match_stats` | 165,314,560 | 57,237,504 | 108,027,904 | 288,793 |
+| `award_candidate_snapshot` | 92,241,920 | 83,763,200 | 8,421,376 | 37,088 |
+| `cards` | 70,967,296 | 34,291,712 | 34,635,776 | 28,211 |
+| `team_tournament_candidate_snapshot` | 68,419,584 | 57,524,224 | 10,846,208 | 35,102 |
+| `card_metric_history` | 68,001,792 | 33,619,968 | 34,332,672 | 492,673 |
+| `young_talent_market_snapshot` | 33,857,536 | 26,001,408 | 7,815,168 | 49,965 |
+| `club_match` | 26,238,976 | 14,237,696 | 11,960,320 | 57,901 |
+| `soccerwiki_player` | 22,478,848 | 11,698,176 | 10,739,712 | 76,484 |
+| `fixture_market_quotes` | 21,307,392 | 8,757,248 | 12,509,184 | 60,098 |
+| `profile_backfill_jobs` | 21,266,432 | 12,353,536 | 8,871,936 | 23,358 |
+
+### Photo and season-stat backfill
+
+- All cards: 28,211; 18,431 have a non-empty photo URL; 9,780 do not. This is a net increase of 7 photos versus the previous known 18,424 count.
+- Active player cards: 25,637; 16,502 have a non-empty photo URL; 9,135 do not.
+- Queue total: 23,358 tasks.
+  - `photo_qid`: 91 pending, 1,458 succeeded, 4,136 no_data.
+  - `photo_tm`: 10,011 pending, 5 running, 814 succeeded, 21 failed.
+  - `photo_sw`: 179 pending, 718 succeeded, 51 no_data.
+  - `season_stats`: 5,775 pending, 99 succeeded.
+- Two bounded GitHub Actions runs processed 240 jobs:
+  - Run `42359177765`: 120 processed, 72 succeeded, 9 no_data, 39 retry/failed; workflow succeeded.
+  - Run `42359295787`: 120 processed, 61 succeeded, 29 no_data, 30 retry/failed; workflow failed because retryable tasks remained.
+- Transfermarkt logs show regional HTTP 202 responses with zero-byte bodies served by CloudFront. The collector treats empty responses as transient and stops regional fallback after two empty hosts; the queue keeps those tasks retryable. Soccer Wiki fallback did not find an identity-verified match for those specific failed examples. Do not mark them as genuine no_data or increase request volume blindly.
+- `player_season_stat` currently contains 865,582 rows; latest `fetched_at` is 2026-11-07 10:06:02 UTC and latest season ID is 2026. Queue successes confirm that season-stat work is advancing.
+- The queue schedule is every four hours at minute 17 UTC, with bounded 120-job runs and concurrency protection. No queue reset or mass requeue was performed.
+
+### Cron and refresh reliability
+
+- `cron.job_run_details`: 2,785 runs in the last 24 hours; 2,784 succeeded and 1 failed.
+- The failed run is job 15, `rebuild_clubs_all()`, at 2026-11-07 06:25 UTC (SQLSTATE 57014).
+- Job 18, `fetch_espn_scores()`, recorded 288 successful invocations in the last 24 hours; latest at 10:03 UTC. A successful cron invocation is not by itself proof that every upstream source supplied fresh data.
+- Production function inspection confirms `rebuild_clubs_all()` calls `rebuild_football_clubs()` before squad/match rebuilds. The measured bottleneck remains the full `rebuild_football_clubs()` path, which rebuilds `club_name_seen` from `player_match_days`; no timeout was increased and no production function was changed.
+- `refresh_player_rating_cache()` has a recorded maximum around 11.2 seconds in the existing statement statistics. No new production cron failure for this function was identified in the 24-hour snapshot.
+
+### Backup, restore, and historical forecasts
+
+- The scheduled backup workflow `.github/workflows/supabase-production-backup.yml` is present on main. It runs daily at 03:15 UTC and supports manual dispatch.
+- No successful execution, completed external archive, backup inventory, pre-2026-10-23 export, or isolated restore was verified in this snapshot. The workflow requires 10 repository secrets covering the Supabase database URL, Supabase Storage S3 access, and the external backup S3 destination. The GitHub connector does not expose secret values or provide a workflow-dispatch action.
+- No destructive operation, restore, production secret change, or backup claim was made. The owner must configure the 10 secrets and dispatch the workflow; then restore the resulting archive into a separate Supabase project and verify database and Storage contents.
+- Historical retired-model deletion remains unrecovered: 1,497 `forecast_pick` rows, 1 `forecast_calibration` row, 82 `accumulator_ticket` rows and associated legs were removed by the 2026-10-23 retired-model migration. No verified pre-deletion backup is available; these records were not reconstructed.
+- The separate reservoir evaluation remains distinct from Hemibrain/Connectome. Production catalog inspection found no Hemibrain/Connectome objects or matching SQL functions; the `/duel` reservoir's `fly` key is not evidence of the retired model.
+
+### Security and performance advisors
+
+- Security advisor findings: 68 RLS-enabled tables without policies (INFO), 54 mutable function search paths (WARN), one extension in `public` (WARN), and 173 SECURITY DEFINER functions executable by `anon` plus 173 executable by `authenticated` (WARN). These require function-by-function access-model review; no blanket revocations were applied.
+- Performance advisor findings: 40 unindexed foreign keys, 5 tables without primary keys, 23 unused indexes, and one duplicate index. No index was dropped; several findings concern empty/staging or Football Dynasty tables and require dependency review.
+
+### Actions taken in this delta
+
+- Read-only verification only: GitHub refs/PRs/CI runs, Supabase project/ledger/tables/size/queue/cron/advisors, and Vercel deployment/HTTP smoke.
+- No production SQL writes, migrations, data deletes, queue resets, photo replacements, index changes, secret changes, or deployments were performed.
+- Remaining blockers are unchanged in kind: no verified backup/restore, Free-plan database quota overage, broad historical migration-source drift, Transfermarkt transient empty responses, and the 120-second `rebuild_clubs_all()` ceiling.
