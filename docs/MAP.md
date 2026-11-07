@@ -2354,3 +2354,41 @@ This read-only follow-up was measured against main commit `00c28a0b1e760c62940cc
 - `profile_backfill_claim_cursor` has RLS disabled, which triggers a critical Supabase advisor finding. Direct privilege inspection found no `anon` or `authenticated` table privileges (ACL grants only to `postgres`); this is not currently client-readable through table grants. Do not enable RLS without designing the required server-side policy.
 - No production SQL writes, migrations, data deletion, queue resets, photo replacements, index changes, secret changes, or deployments were performed in this audit.
 - Blocking items remain: configure and verify external database+Storage backups and a separate restore; resolve the historical migration-source mapping; address the Free-plan database quota; diagnose Transfermarkt empty responses and stale running jobs; fix the two independent timeout paths; and recover historical `fly` forecast rows only if a pre-deletion export is located.
+
+
+---
+
+## Production recovery delta — 2026-11-07 13:07 UTC
+
+### Release and migration application
+
+- Main code commit at measurement: `99e455f99508374d08087d8e9b2963f518eee8f9`. Production deployment `dpl_GLm7cDUfV6Rpzm86P7eLVGEFKvPo` is READY from that exact SHA. It owns all three production aliases, including `sherlock-scholes.vercel.app`; production GET returned HTTP 200 at 13:04:57 UTC.
+- PR #381 (recovery documentation) and PR #382 (stale lease priority) were merged after their checks passed. PR #383 aligns the migration filename with the production migration ledger; its SQL regression and queue regression checks passed, Vercel preview is READY, and the general CI run was still completing at this snapshot.
+- Production migration `prioritize_stale_profile_backfill_leases` was applied successfully at ledger version **20261107130343**. The deployed `claim_profile_backfill_jobs` definition was read back and contains the expired-running-first ordering before task-type round-robin and priority. No table rows were changed by the migration.
+- The local migration filename is being aligned to `20261107130343_prioritize_stale_profile_backfill_leases.sql` in PR #383; its workflow path is updated in the same PR. After that rename, the production ledger/source exact-match count becomes 34 rather than 33.
+
+### Queue progress after the claim fix
+
+- Main-triggered queue run #42375136085 started at 2026-11-07 13:02:43 UTC and was still processing its bounded batch at 13:07 UTC. The separate `player-profile-data` run was also active.
+- The five `photo_tm` jobs that had been stuck in `running` since 2026-11-05 were reclaimed. Four reached `failed` at attempt 3/3; the remaining active job has a fresh 13:07 lease. No job was deleted or reset. The previous lease-starvation condition is no longer present.
+- Current queue total is **23,408** jobs: 16,215 pending, 1 running, 3,117 succeeded, 4,046 no_data, 29 failed. Per task:
+  - `photo_qid`: 233 pending, 1,465 succeeded, 3,987 no_data.
+  - `photo_tm`: 10,007 pending, 1 running, 814 succeeded, 29 failed.
+  - `photo_sw`: 222 pending, 720 succeeded, 56 no_data.
+  - `season_stats`: 5,768 pending, 106 succeeded.
+- Card photos increased from 18,431 at 12:50 to **18,436 / 28,211** at 13:07 (+5); 9,775 cards still have no photo URL. This is measured net growth, not merely successful job status.
+- `player_season_stat` contains 866,057 rows; latest `fetched_at` is 13:07:41 UTC and 5,644 rows were fetched in the preceding hour.
+- Transfermarkt remains a source blocker: no successful `photo_tm` job since 2026-11-04 13:15 UTC. New attempts still receive HTTP 202 with zero-byte CloudFront bodies from the .com and .nl hosts. The lease fix makes stale work retryable but does not bypass this upstream response; do not mark these as verified no_data or fabricate photos.
+
+### Database size and recovery constraints
+
+- At 13:07:51 UTC, PostgreSQL measured **983,264,403 bytes** (938 MB by `pg_size_pretty`). Against the 10:06 snapshot of 971,533,459 bytes, growth is **11,730,944 bytes**. No relation or index was dropped.
+- The organization remains on Free. No Supabase automatic daily backup is included on Free; the external backup workflow was not found among the latest 300 GitHub Actions runs. No successful external archive or isolated restore has been verified.
+- The forecast-history loss described in the prior section remains unresolved: the retired-model migration deleted 1,497 `fly` picks, one calibration row, and 82 tickets plus associated legs in the earlier production audit. No pre-deletion export has been found.
+
+### Remaining failures
+
+- Transfermarkt's zero-byte HTTP 202 responses remain the main photo-source blocker; 29 jobs are now failed after reaching their attempt limit.
+- `rebuild-football-clubs` and `espn-results-refresh` still have the independently measured statement-timeout failures from the 12:50 snapshot. No timeout was raised.
+- Migration source reconciliation remains incomplete: the production ledger has 473 entries, and most historical versions still do not have a proven exact local SQL source. PR #383 corrects only the new migration's version/name alignment; it does not reconcile the legacy baseline.
+- No user data, football records, existing photo URLs, or forecast history was deleted or replaced in this follow-up.
