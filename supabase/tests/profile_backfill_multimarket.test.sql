@@ -114,7 +114,7 @@ begin
          last_error='fixture photo not available yet', verified_at=now()
    where card_id=v_sw_card and task_type='photo_sw';
   update public.soccerwiki_player
-     set detail_at=now(), photo_url='https://cdn.soccerwiki.org/images/player/149112.png'
+     set detail_at=now()+interval '1 second', photo_url='https://cdn.soccerwiki.org/images/player/149112.png'
    where card_id=v_sw_card;
   perform public.enqueue_profile_backfill_jobs(100);
   if (select status from public.profile_backfill_jobs where card_id=v_sw_card and task_type='photo_sw') <> 'pending' then
