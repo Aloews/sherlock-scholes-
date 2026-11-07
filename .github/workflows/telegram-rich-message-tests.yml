@@ -1,0 +1,29 @@
+name: Telegram Rich Message regression
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/tg-pay/**'
+      - '.github/workflows/telegram-rich-message-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/tg-pay/**'
+      - '.github/workflows/telegram-rich-message-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-rich-message:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Telegram webhook
+        run: deno check supabase/functions/tg-pay/index.ts
+      - name: Test Rich Message blocks and quiz callbacks
+        run: deno test supabase/functions/tg-pay/rich-quiz.test.ts
