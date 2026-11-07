@@ -2070,3 +2070,110 @@ The audit above lists the latest structural fixes. The following merged PRs form
 - PR #372's latest full CI run is queued/in progress. PR #379 adds a Rich Message `/games` hub but has no Actions run yet. No PR has been merged because Vercel's main status still reports the build-rate-limit failure; merging would trigger another automatic deployment attempt.
 - Remaining blockers: Free-plan database quota; no verified pre-2026-10-23 export or restore; migration source-history drift pending merge; production deployment one commit behind main; Vercel build-rate-limit; no Transfermarkt verified photo progress; queue fairness migration not yet applied; and `rebuild_clubs_all()` operating at the 120-second ceiling.
 - Supabase Pro is a technically relevant option because the database exceeds Free quota and Pro includes 8 GB database allowance plus daily backups, but no plan change or paid resource was initiated.
+
+
+---
+
+## Production recovery delta — 2026-11-07 09:34 UTC
+
+This dated snapshot supersedes earlier status statements in this file where they differ. No production data, queue rows, photos, forecast history, or Football Dynasty tables were deleted. No destructive migration, TRUNCATE, backup restore, or timeout increase was performed.
+
+### GitHub and Vercel
+
+- `main`: `071d0068934498a0bf7d02a39e00950eb3746d45`.
+- Production Vercel deployment: `dpl_5dE7Gn3jHuc1KvZEk5iJPqf8ZaGH`, READY, commit matches main, alias `sherlock-scholes.vercel.app`, alias error null.
+- Main commit checks: 22 success, 2 skipped, 0 failed.
+- Open PRs: 15. PRs #258 (fair backfill claims), #372 (enrichment fixes and backup workflow), and #371 (targeted team tournament refresh) were merged after green checks.
+- PR #380 remains open for migration-source reconciliation and regression tests. At this snapshot: 15 checks succeeded, 1 mutation check in progress, 1 skipped, 0 failed; its Vercel preview was still building.
+- PR #376 remains Draft; its production-applied SQL is tracked separately by #380. Do not merge the Rust service until its Railway runtime and integration are verified.
+
+### Production migration ledger
+
+- Production ledger: 472 entries.
+- Applied versions now present in production:
+  - `20261105195504` — Telegram chat quiz sessions.
+  - `20261105203942` — Football Dynasty foundation.
+  - `20261105204011` — Football Dynasty RLS hardening.
+  - `20261107091847` — name `20261107080000_fair_profile_backfill_job_claims`.
+  - `20261107091901` — name `20261107083000_enqueue_soccerwiki_photo_candidates`.
+  - `20261107092926` — `award_candidate_evaluation_security_invoker`.
+- The Supabase migration API assigned execution-time versions to the two backfill migrations. PR #380 renames their local files to the exact ledger version/name pairs and adds the three already-applied Telegram/Football Dynasty migrations. It also adds isolated SQL regression tests. These files must not be replayed.
+- All 12 Football Dynasty production tables remain present, including empty tables. RLS is enabled on all 12. The application grants are assigned to the private `fd_runtime` role; no anon/authenticated table grants were found. The Telegram quiz-session table has RLS enabled and client roles have no table privileges.
+
+### Backup and restore
+
+- The connected organization is on the Free plan. Supabase documentation states Free projects do not receive downloadable daily backups and cannot enable PITR; Pro includes daily backups with 7-day retention. Sources: [Supabase backups](https://supabase.com/docs/guides/platform/backups), [database and disk size](https://supabase.com/docs/guides/platform/database-size).
+- No pre-2026-10-23 database export was verified in the available Library search. The connected Supabase tools do not expose backup inventory or the DB URI/Storage S3 credentials; no restore has been tested.
+- PR #372 added and merged `.github/workflows/supabase-production-backup.yml`. It runs daily at 03:15 UTC, uses PostgreSQL 17 custom-format `pg_dump`, verifies the archive checksum, copies Storage object bytes to a separate S3-compatible destination, and fails closed if required secrets are absent.
+- The workflow has not run successfully. Repository owner action is required to configure its 10 documented GitHub Actions secrets: `SUPABASE_DB_URL`; `SUPABASE_STORAGE_S3_ENDPOINT`, `SUPABASE_STORAGE_S3_REGION`, `SUPABASE_STORAGE_S3_ACCESS_KEY_ID`, `SUPABASE_STORAGE_S3_SECRET_ACCESS_KEY`; `BACKUP_S3_ENDPOINT`, `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`.
+- The workflow does not claim restore validation. Restore must be tested in a separate Supabase project before any destructive production operation.
+
+### PostgreSQL size and growth
+
+Measured with `pg_database_size(current_database())` at 2026-11-07 09:34 UTC: **966,397,075 bytes (966.4 MB)**. The previous known snapshot was 946,441,363 bytes, a difference of 19,955,712 bytes. The Free database-size allowance is 500 MB; current size is approximately 466 MB above it. No data was deleted to reduce size.
+
+Largest relations by total size (heap + indexes; row counts are PostgreSQL estimates):
+
+| Table | Total | Heap | Indexes | Estimated rows |
+|---|---:|---:|---:|---:|
+| `player_season_stat` | 174.3 MB | 101.2 MB | 73.1 MB | 858,792 |
+| `player_match_stats` | 165.3 MB | 57.2 MB | 108.0 MB | 288,793 |
+| `award_candidate_snapshot` | 92.2 MB | 83.8 MB | 8.4 MB | 37,088 |
+| `cards` | 71.0 MB | 34.3 MB | 34.6 MB | 28,211 |
+| `team_tournament_candidate_snapshot` | 68.4 MB | 57.5 MB | 10.8 MB | 35,102 |
+| `card_metric_history` | 68.0 MB | 33.6 MB | 34.3 MB | 492,673 |
+| `young_talent_market_snapshot` | 33.9 MB | 26.0 MB | 7.8 MB | 49,965 |
+| `club_match` | 26.2 MB | 14.2 MB | 12.0 MB | 57,901 |
+| `soccerwiki_player` | 22.5 MB | 11.7 MB | 10.7 MB | 76,484 |
+| `fixture_market_quotes` | 21.3 MB | 8.8 MB | 12.5 MB | 60,098 |
+| `profile_backfill_jobs` | 21.3 MB | 12.4 MB | 8.9 MB | 23,158 |
+| `player_transfer` | 17.3 MB | 9.5 MB | 7.8 MB | 67,392 |
+
+Supabase Pro is the practical minimum infrastructure path: its default general-purpose disk is 8 GB with autoscaling, and it includes daily backups for 7 days. The Pro base subscription is documented at $25/month before compute and usage. PITR is a separate add-on and is not included in that base price. No plan change or paid add-on was made.
+
+### Photo and season-stat queues
+
+Queue total: 23,158 jobs. Snapshot at 09:34 UTC:
+
+| Task | Pending | Running | Succeeded | No data |
+|---|---:|---:|---:|---:|
+| `photo_qid` | 162 | 0 | 1,395 | 4,128 |
+| `photo_tm` | 10,031 | 6 | 814 | 0 |
+| `photo_sw` | 0 | 0 | 709 | 39 |
+| `season_stats` | 5,847 | 0 | 27 | 0 |
+
+- Active player cards: 25,637; 16,496 have a photo URL, 9,141 do not. No net increase in card photo coverage was confirmed in this snapshot.
+- 2,857 active cards have a linked Soccer Wiki photo while their card photo is empty; 2,819 of those have no `photo_sw` queue job. The new enqueue function is installed, but this source backlog is not yet in the queue.
+- The bounded claim dry run, rolled back in a transaction, returned both photo and season-stat work. The enqueue dry run was also rolled back; neither dry run changed queue counts.
+- GitHub Actions run #42359177765 was still processing its bounded batch; run #42359295787 was queued behind it. Season-stat successes have increased from zero to 27, but new photo URLs are not yet confirmed. Do not describe a queue success as a new photo without checking the card's `photo_url`.
+
+### Cron and club rebuild
+
+- 28 cron jobs; 2,785 runs in the last 24 hours; 1 failed.
+- The failure was `rebuild-football-clubs` at 2026-11-07 06:25 UTC (SQLSTATE 57014). The outer `rebuild_clubs_all()` call reached its 120-second statement timeout while inside `rebuild_club_squads()`.
+- A production `EXPLAIN ANALYZE` of the final `count(*) FROM club_squad WHERE left_at IS NULL` took 120.376 ms using `club_squad_current_idx` with an index-only scan and zero heap fetches. That count is not the root cause; the whole `rebuild_clubs_all()` call is near the timeout. `pg_stat_statements` recorded a 118.97-second maximum for the orchestrator and 77.43 seconds for `rebuild_football_clubs()`.
+- `rebuild_football_clubs()` rebuilds `club_name_seen` from the full `player_match_days` view (288,793 source rows) before subsequent joins and updates. This is the primary profiling/optimization target. The existing `rebuild_club_matches()` already uses a 365-day window, `player_match_stats_club_refresh_idx`, `statement_timeout=30s`, and `work_mem=64MB`.
+- No timeout was increased. PR #366's older club-match migration was not applied; its proposed optimization is superseded by the current production function/index and it does not address the largest `rebuild_football_clubs()` step.
+- `refresh_player_rating_cache()` has a recorded maximum of about 11.2 seconds in current statement statistics; no corresponding failure appeared in the last-24-hour cron failures.
+
+### Forecast history and retired model
+
+- Production has no Hemibrain/Connectome tables, views, materialized views, or matching SQL functions. Main has no active `fly_brain.py` implementation or active Connectome references.
+- Preserve the separate `/duel` reservoir model: `forecast_duel_model` still contains the `fly` key and its 5,504 match records. That key is not evidence of Hemibrain/Connectome.
+- Current `forecast_pick` rows are split between `llm` and `own`; current calibration rows are likewise `llm` and `own`. Accumulator history and the duel reservoir remain separate systems.
+- The retired-model migration previously deleted 1,497 forecast picks, 1 calibration row, 82 accumulator tickets and associated legs. No pre-deletion backup has been verified, so those deleted rows have not been restored or reconstructed.
+
+### Security and performance advisors
+
+- The exposed `award_candidate_evaluation` view was hardened by migration `20261107092926`: `security_invoker=true`, anon/authenticated SELECT revoked, service_role SELECT retained. The Supabase security advisor no longer reports the security-definer-view ERROR.
+- Remaining security findings: 68 INFO entries for RLS-enabled tables without policies; 54 mutable function search paths; 173 security-definer functions executable by anon and 173 executable by authenticated; 1 extension in public. These require per-function/grant review; no mass revocation was performed.
+- Remaining performance findings: 40 unindexed foreign keys, 5 tables without primary keys, 23 unused indexes, and 1 duplicate index. No index was dropped because there is no verified restore point and some apparently unused indexes belong to new/empty Football Dynasty tables.
+
+### Outstanding blockers
+
+1. Configure the 10 backup workflow secrets, run a complete PostgreSQL + Storage backup, then restore it into a separate project and verify row counts, RLS/grants, migration ledger, buckets, and sample object downloads.
+2. Decide whether to move the project to Supabase Pro; the current database exceeds the Free allowance and Free has no daily backup/PITR protection.
+3. Finish PR #380 CI, merge the migration-source reconciliation, and verify local migration files against all 472 production ledger entries without replaying them.
+4. Let the queued backfill run execute the new Soccer Wiki enqueue logic; confirm actual photo URL growth and season-stat freshness before increasing batch size.
+5. Profile and split/optimize `rebuild_football_clubs()` so the complete club rebuild no longer approaches the 120-second outer statement timeout.
+6. Keep PR #376 Draft until the Rust Railway service and production integration are actually deployed and verified.
