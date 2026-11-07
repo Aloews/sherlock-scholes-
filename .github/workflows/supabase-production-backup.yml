@@ -5,6 +5,9 @@ on:
     - cron: '15 3 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: supabase-production-backup
   cancel-in-progress: false
@@ -78,7 +81,7 @@ jobs:
             -e SUPABASE_DB_URL \
             -v "$RUNNER_TEMP/sherlock-scholes-backup:/backup" \
             postgres:17-alpine sh -euc '
-              pg_dump --no-password --format=custom --compress=6 --no-owner --no-acl \
+              pg_dump --no-password --format=custom --compress=6 --no-owner \
                 --dbname "$SUPABASE_DB_URL" --file /backup/database.dump
               pg_restore --list /backup/database.dump > /backup/database.toc
               pg_dump --version > /backup/pg_dump_version.txt
@@ -110,7 +113,19 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t buckets < <(rclone lsf supabase: --dirs-only)
-          printf '%s\n' "${buckets[@]}" > "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt"
+          if [ "${buckets[@]}" = "" ]; then
+            echo "::error::Supabase Storage returned no buckets; refusing to mark an incomplete backup successful"
+            exit 1
+          fi
+          if [ "$SUPABASE_STORAGE_S3_ENDPOINT" = "$RCLONE_CONFIG_BACKUP_ENDPOINT" ]; then
+            for candidate in "${buckets[@]}"; do
+              if [ "${candidate%/}" = "$BACKUP_S3_BUCKET" ]; then
+                echo "::error::Backup destination bucket is also a production source bucket"
+                exit 1
+              fi
+            done
+          fi
+          printf '%s\\n' "${buckets[@]}" > "$RUNNER_TEMP/sherlock-scholes-backup/storage-buckets.txt"
           for raw_bucket in "${buckets[@]}"; do
             bucket="${raw_bucket%/}"
             [[ -n "$bucket" ]] || continue
@@ -134,6 +149,8 @@ jobs:
             echo "source_commit=$GITHUB_SHA"
             echo "backup_prefix=$BACKUP_PREFIX"
             echo "database_format=PostgreSQL custom archive"
+            echo "database_acl=preserved; object_owners=omitted"
+            echo "custom_roles=must be recreated from migrations; login passwords reset separately"
             echo "database_sha256=$dump_sha"
             echo "storage_objects=all buckets copied; object sizes checked"
             echo "restore_validation=not performed by this workflow"
