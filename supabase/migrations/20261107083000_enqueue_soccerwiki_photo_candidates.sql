@@ -31,6 +31,15 @@ begin
          or (j.status = 'no_data' and (
            coalesce(j.last_error, '') like 'Transfermarkt photo collector skips cards linked to Soccer Wiki%'
            or j.updated_at <= now() - interval '7 days'
+           or (
+             j.task_type = 'photo_sw'
+             and exists (
+               select 1 from public.soccerwiki_player s
+                where s.card_id = j.card_id
+                  and nullif(btrim(s.photo_url), '') is not null
+                  and s.detail_at > coalesce(j.verified_at, j.updated_at)
+             )
+           )
          ))
        )
      order by j.priority desc, j.updated_at asc, j.id
