@@ -2029,6 +2029,12 @@ The audit above lists the latest structural fixes. The following merged PRs form
 - The separate `player-profile-data` season-stat batch succeeded on 2026-11-06 11:00 UTC. Current `player_season_stat` contains 857,215 rows, 22,035 refreshed in the last 24 hours, with latest fetch 2026-11-06 18:22 UTC and latest season 2026. This confirms data refresh activity even while the queue ledger remains pending.
 - No queue rows were deleted, reset, or mass-requeued. Queue status alone is not evidence of new portraits; only verified card photo URLs count.
 
+### Daily enrichment workflow execution
+
+- Workflow run `42219640997` on 2026-11-06 was not a successful full pass: the `enrich` job ran 5h55m and was cancelled while step 18 (`Club bridge to Transfermarkt`) was still running. Steps 19–29, including roster linking, card creation, Soccer Wiki sweeps, and the final audit, never ran. The separate `fame` job succeeded; the `watch` job correctly failed because `enrich` was cancelled.
+- The actual completed step timings show why: `Build non-player card descriptions` consumed about 2h53m, ESPN crests about 34m, and transfer history about 30m before the roster stage even began. A single 350-minute job was not a reliable envelope for the entire pipeline.
+- PR #372 now splits the workflow into chained `enrich-core`, `descriptions`, `transfers`, `rosters`, `soccerwiki`, and `audit` jobs with independent timeouts and stage-specific cache keys. A summary `enrich` job preserves the existing `fame` and `watch` contracts. The regression test now verifies per-stage budgets, ordering, and cache handoff. The new workflow is awaiting CI; no scheduled production run has yet validated the split.
+
 ### Cron and refresh reliability
 
 - `cron.job_run_details` recorded 2,785 runs in the last 24 hours: 2,784 succeeded and one failed.
