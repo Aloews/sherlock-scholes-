@@ -129,6 +129,8 @@ jobs:
 
       - name: Apply fair profile backfill claim scheduling
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107080000_fair_profile_backfill_job_claims.sql
+      - name: Apply Soccer Wiki photo enqueue scheduling
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107083000_enqueue_soccerwiki_photo_candidates.sql
 
       - name: Verify Soccer Wiki detail timestamp for photo refresh regression
         run: psql -v ON_ERROR_STOP=1 -c "select detail_at from public.soccerwiki_player limit 0"
