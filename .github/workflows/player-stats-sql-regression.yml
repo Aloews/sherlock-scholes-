@@ -141,6 +141,8 @@ jobs:
 
       - name: Apply fair profile backfill claim scheduling
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107091847_20261107080000_fair_profile_backfill_job_claims.sql
+      - name: Prioritize expired profile backfill leases
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107125100_prioritize_stale_profile_backfill_leases.sql
       - name: Apply Soccer Wiki photo enqueue scheduling
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107091901_20261107083000_enqueue_soccerwiki_photo_candidates.sql
 
@@ -149,6 +151,8 @@ jobs:
 
       - name: Profile queue, quota, settlement and fine-tuning SQL regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_multimarket.test.sql
+      - name: Verify expired running leases are reclaimed before pending backlog
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/profile_backfill_stale_lease_priority.test.sql
 
       - name: Apply Smart Deck trend analytics migration
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018085926_player_smart_deck_trends.sql
