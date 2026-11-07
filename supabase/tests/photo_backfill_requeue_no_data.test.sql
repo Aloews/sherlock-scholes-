@@ -45,7 +45,7 @@ begin
   returning id into v_job_id;
 end $$;
 
-\ir ../migrations/20261021171000_requeue_photo_tm_no_data_failures.sql
+\ir ../migrations/20261021140431_requeue_photo_tm_no_data_failures.sql
 
 do $$
 declare
