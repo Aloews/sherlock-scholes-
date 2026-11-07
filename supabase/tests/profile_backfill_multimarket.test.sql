@@ -250,9 +250,9 @@ BEGIN
   VALUES ('Queue Enqueue SW','Queue Enqueue SW','player',true,8000000000000000000,'990002','England','2000-01-01')
   RETURNING id INTO v_sw;
 
-  INSERT INTO public.soccerwiki_player(pid,name,card_id,photo_url,born_on,nation_code)
+  INSERT INTO public.soccerwiki_player(pid,name,card_id,photo_url)
   VALUES (2147483000,'Queue Enqueue SW',v_sw,
-          'https://images.example.test/soccerwiki-photo.jpg','2000-01-01','ENG');
+          'https://images.example.test/soccerwiki-photo.jpg');
 
   INSERT INTO public.cards(name,name_en,category,active,market_value_eur,transfermarkt_id,photo_url)
   VALUES ('Queue Enqueue Stats','Queue Enqueue Stats','player',true,8000000000000000000,
