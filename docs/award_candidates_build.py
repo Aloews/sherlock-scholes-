@@ -12,6 +12,7 @@ import math
 import os
 import re
 import sys
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -23,6 +24,8 @@ AWARD_MODEL_VERSION = "award-candidate-rank-v8"
 TEAM_MODEL_VERSION = "team-candidate-rank-v4"
 PAGE_SIZE = 1000
 TIMEOUT = 45
+REQUEST_RETRIES = 4
+RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 
 SUPPORTED_AWARD_KEYS = {
     "ballon_dor", "ballon_dor_feminin", "the_best", "the_best_female",
@@ -78,13 +81,41 @@ def api_headers(key: str) -> dict[str, str]:
     return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
+def request_with_retry(method, url: str, **kwargs):
+    """Retry transient transport and PostgREST availability failures only."""
+    for attempt in range(REQUEST_RETRIES):
+        try:
+            response = method(url, **kwargs)
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt >= REQUEST_RETRIES - 1:
+                raise
+            time.sleep(min(8, 2 ** attempt))
+            continue
+
+        if response.status_code not in RETRYABLE_HTTP_STATUSES or attempt >= REQUEST_RETRIES - 1:
+            return response
+
+        headers = getattr(response, "headers", {}) or {}
+        retry_after = headers.get("Retry-After")
+        try:
+            delay = min(30.0, max(0.0, float(retry_after))) if retry_after is not None else float(2 ** attempt)
+        except (TypeError, ValueError):
+            delay = float(2 ** attempt)
+        time.sleep(delay)
+
+    raise RuntimeError("PostgREST request retry loop ended unexpectedly")
+
+
 def get_rows(base: str, key: str, table: str, params: dict[str, str], page_size: int = PAGE_SIZE) -> list[dict]:
     url = f"{base.rstrip('/')}/rest/v1/{table}"
     rows: list[dict] = []
     offset = 0
     while True:
-        response = requests.get(url, headers={**api_headers(key), "Range-Unit": "items"},
-                                params={**params, "limit": page_size, "offset": offset}, timeout=TIMEOUT)
+        response = request_with_retry(
+            requests.get, url,
+            headers={**api_headers(key), "Range-Unit": "items"},
+            params={**params, "limit": page_size, "offset": offset}, timeout=TIMEOUT,
+        )
         response.raise_for_status()
         batch = response.json()
         if not isinstance(batch, list):
@@ -102,8 +133,10 @@ def upsert_rows(base: str, key: str, table: str, rows: list[dict], conflict: str
     headers = {**api_headers(key), "Prefer": "resolution=merge-duplicates,return=minimal"}
     for start in range(0, len(rows), 250):
         batch = rows[start:start + 250]
-        response = requests.post(url, params={"on_conflict": conflict}, headers=headers,
-                                 json=batch, timeout=TIMEOUT)
+        response = request_with_retry(
+            requests.post, url, params={"on_conflict": conflict}, headers=headers,
+            json=batch, timeout=TIMEOUT,
+        )
         if not response.ok:
             # PostgREST's response body identifies check/constraint/schema-cache failures;
             # include it in Actions logs instead of reducing every failure to "400 Bad Request".
@@ -1353,10 +1386,16 @@ def build_team_candidates(base: str, key: str, snapshot: date) -> int:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument(
         "--skip-team-candidates",
         action="store_true",
         help="refresh individual-award candidates only; wait for the match-results workflow before rebuilding team tournaments",
+    )
+    scope.add_argument(
+        "--team-only",
+        action="store_true",
+        help="refresh team-tournament candidates only, without rebuilding individual awards",
     )
     return parser.parse_args(argv)
 
@@ -1374,15 +1413,18 @@ def main() -> int:
         print(str(error), file=sys.stderr)
         return 2
     snapshot = date.today()
+    award_outcomes_written = award_writes = stale_award_rows_removed = 0
+    season = snapshot.year
+    team_writes = 0
+    team_snapshot_skip_reason = None
     try:
-        award_outcomes_written = sync_explicit_award_outcomes(base, key)
-        season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
+        if not args.team_only:
+            award_outcomes_written = sync_explicit_award_outcomes(base, key)
+            season, award_writes, stale_award_rows_removed = build_award_candidates(base, key, snapshot)
         if args.skip_team_candidates:
-            team_writes = 0
             team_snapshot_skip_reason = "waiting for the player-stats/ESPN results refresh"
         else:
             team_writes = build_team_candidates(base, key, snapshot)
-            team_snapshot_skip_reason = None
     except (requests.RequestException, ValueError, KeyError, TypeError, RuntimeError) as error:
         print(f"candidate build failed: {error}", file=sys.stderr)
         return 1
@@ -1395,6 +1437,7 @@ def main() -> int:
         "team_tournament_snapshot_skip_reason": team_snapshot_skip_reason,
         "award_model_version": AWARD_MODEL_VERSION,
         "team_model_version": TEAM_MODEL_VERSION,
+        "refresh_scope": "teams" if args.team_only else ("awards" if args.skip_team_candidates else "all"),
         "interpretation": "candidate scores are relative ranking indices, not probabilities",
     }, ensure_ascii=False))
     return 0
