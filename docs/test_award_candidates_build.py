@@ -1,14 +1,44 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, parse_args, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, explicit_team_season_floor, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, upsert_rows, canonical_team_tournament)
+from award_candidates_build import (AWARD_MODEL_VERSION, OVERALL_SPECS, parse_args, aggregate_player_match_stats, aggregate_women_match_stats, canonical_match_competition, get_player_match_rows, build_team_candidate_payloads, competition_format, competition_strength, current_player_stats_coverage, explicit_team_season_floor, filter_verified_season_stats, merge_season_stats_with_match_fallback, extract_explicit_award_outcomes, is_rankable_competition, normal_key, normalize_base_url, percentile, player_age_from_card, remove_award_snapshot_rows_for_date, remove_stale_award_snapshot_rows, score_population, get_rows, upsert_rows, canonical_team_tournament)
 from datetime import date
 
 
 class CandidateRankingTests(unittest.TestCase):
     def test_team_candidate_skip_flag_is_explicit_and_opt_in(self):
-        self.assertFalse(parse_args([]).skip_team_candidates)
+        args = parse_args([])
+        self.assertFalse(args.skip_team_candidates)
+        self.assertFalse(args.team_only)
         self.assertTrue(parse_args(["--skip-team-candidates"]).skip_team_candidates)
+
+    def test_team_only_refresh_is_a_distinct_scope(self):
+        args = parse_args(["--team-only"])
+        self.assertTrue(args.team_only)
+        self.assertFalse(args.skip_team_candidates)
+
+    def test_award_only_and_team_only_scopes_cannot_be_combined(self):
+        with self.assertRaises(SystemExit):
+            parse_args(["--team-only", "--skip-team-candidates"])
+
+    def test_get_rows_retries_transient_server_error(self):
+        failed = Mock(status_code=500, headers={})
+        success = Mock(status_code=200, headers={}, json=Mock(return_value=[{"id": "ok"}]))
+        with patch("award_candidates_build.requests.get", side_effect=[failed, success]) as get, \
+             patch("award_candidates_build.time.sleep"):
+            rows = get_rows("https://example.supabase.co", "test-key", "player_season_stat", {}, page_size=10)
+        self.assertEqual(rows, [{"id": "ok"}])
+        self.assertEqual(get.call_count, 2)
+
+    def test_upsert_retries_transient_server_error(self):
+        failed = Mock(ok=False, status_code=503, text="temporarily unavailable", headers={})
+        success = Mock(ok=True, status_code=201, text="", headers={})
+        with patch("award_candidates_build.requests.post", side_effect=[failed, success]) as post, \
+             patch("award_candidates_build.time.sleep"):
+            written = upsert_rows("https://example.supabase.co", "test-key", "award_outcome",
+                                  [{"award_key": "ballon_dor"}], "award_key,award_year,card_id,result,competition_id")
+        self.assertEqual(written, 1)
+        self.assertEqual(post.call_count, 2)
 
     def test_failed_postgrest_upsert_includes_server_error_body(self):
         response = Mock(ok=False, status_code=400, text='{"message":"award_key violates check constraint"}')
