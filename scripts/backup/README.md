@@ -26,7 +26,7 @@ External backup destination:
 - `BACKUP_S3_ACCESS_KEY_ID`
 - `BACKUP_S3_SECRET_ACCESS_KEY`
 
-Enable Supabase Storage's S3 protocol and create a read-only source credential under Storage → Configuration → S3. Create a separate bucket (name only, no path prefix) with write access for the backup destination. Do not use the production Storage bucket as the destination.
+Enable Supabase Storage's S3 protocol and create an access key under Storage → Configuration → S3. Treat this key as high-privilege unless the dashboard explicitly offers a read-only scope. Create a separate bucket (name only, no path prefix) with ListBucket/GetObject access for verification and PutObject access for the backup destination. Do not use the production Storage bucket as the destination. Enable encryption at rest and configure lifecycle retention on the destination bucket.
 
 ## Backup layout
 
