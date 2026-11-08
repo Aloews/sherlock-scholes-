@@ -142,7 +142,7 @@ jobs:
       - name: Apply fair profile backfill claim scheduling
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107091847_20261107080000_fair_profile_backfill_job_claims.sql
       - name: Prioritize expired profile backfill leases
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107125100_prioritize_stale_profile_backfill_leases.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107130343_prioritize_stale_profile_backfill_leases.sql
       - name: Apply Soccer Wiki photo enqueue scheduling
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107091901_20261107083000_enqueue_soccerwiki_photo_candidates.sql
 
