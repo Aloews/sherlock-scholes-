@@ -2392,3 +2392,50 @@ This read-only follow-up was measured against main commit `00c28a0b1e760c62940cc
 - `rebuild-football-clubs` and `espn-results-refresh` still have the independently measured statement-timeout failures from the 12:50 snapshot. No timeout was raised.
 - Migration source reconciliation remains incomplete: the production ledger has 473 entries, and most historical versions still do not have a proven exact local SQL source. PR #383 corrects only the new migration's version/name alignment; it does not reconcile the legacy baseline.
 - No user data, football records, existing photo URLs, or forecast history was deleted or replaced in this follow-up.
+
+
+---
+
+## Production verification — 2026-11-09 13:05 UTC
+
+Read-only snapshot from GitHub, Vercel and production Supabase. No production SQL writes, migrations, data deletion, photo replacement, queue reset, index changes, or deployment were performed during this verification.
+
+### Repository, pull requests and release
+
+- Main: `a8e2f794f0bc6e6e6a05d36465cadf0e32005d53`.
+- Production Vercel deployment: `dpl_6mMgHNx1T4iyf691iytdub3s5uWq`, READY from the same main SHA. Aliases: `sherlock-scholes.vercel.app`, `sherlock-scholes-aloews-projects.vercel.app`, and `sherlock-scholes-git-main-aloews-projects.vercel.app`.
+- Main CI run `42480348260` completed successfully. Main's combined commit status reports Vercel success. This does not mean all scheduled production workflows are healthy.
+- Fourteen PRs remain open: #379, #376, #377, #367, #366, #291, #288, #267, #260, #197, #185, #146, #48 and #46. Latest head check-runs for these PRs had no failed or pending checks; some were skipped. #376, #146, #48 and #46 remain drafts. GitHub reports several other PRs as non-mergeable; do not merge them until conflicts/mergeability are resolved. PR #267 is still open and non-mergeable despite its historical-model-removal scope.
+
+### Production database and scheduled work
+
+- At 2026-11-09 13:05:37 UTC, `pg_database_size(current_database())` was **1,015,508,115 bytes** (`pg_size_pretty`: 968 MB). The prior 2026-11-08 12:30 UTC measurement was 993,627,283 bytes; increase: **21,880,832 bytes**. No relation was dropped.
+- Largest relations by total size (heap + indexes): `player_season_stat` 189,464,576 B; `player_match_stats` 167,804,928 B; `award_candidate_snapshot` 112,132,096 B; `cards` 70,983,680 B; `card_metric_history` 70,418,432 B; `team_tournament_candidate_snapshot` 68,419,584 B; `young_talent_market_snapshot` 40,288,256 B; `club_match` 26,279,936 B; `cron.job_run_details` 23,281,664 B; `soccerwiki_player` 22,487,040 B; `fixture_market_quotes` 22,159,360 B; `profile_backfill_jobs` 21,323,776 B.
+- `cron.job_run_details`: 133,885 rows; 2,786 executions in the preceding 24 hours, all 2,786 succeeded and 0 failed.
+- `profile_backfill_jobs`: 24,041 rows; 1,355 updated in the preceding 24 hours; 0 currently running and 0 running leases older than 45 minutes.
+- Cards: 18,816 / 28,211 have a photo URL (66.69%); 9,395 have none. This is +159 cards with photos versus the prior 18,657 measurement.
+- Queue by type/status: `photo_qid` 1,614 succeeded / 4,067 no_data / 4 pending; `photo_sw` 1,076 succeeded / 180 no_data / 375 pending; `photo_tm` 836 succeeded / 9,981 pending / 34 failed; `season_stats` 1,245 succeeded / 4,629 pending. No queue rows were deleted or reset in this verification.
+- The latest successful Transfermarkt job update was 2026-11-09 12:57:32 UTC. However, requests to Transfermarkt .com/.nl still produce HTTP 202 with zero-byte CloudFront responses. Queue run #42574532623 processed 120 jobs (77 succeeded, 3 no_data, 40 retry/failed). Player-data run #42604073921 processed 500 (242 succeeded, 92 no_data, 166 retry/failed); the workflow failed because transient source fetches remained unresolved. The queue is advancing, but Transfermarkt remains unreliable.
+- ESPN run #42619289116 wrote 4,645 player-stat rows; `rebuild_club_matches` and `refresh_stats_planner` returned HTTP 200, then `refresh_player_rating_cache` returned HTTP 500 / SQLSTATE 57014 (statement timeout).
+
+### Hemibrain / Connectome and forecast history
+
+- Main-branch code search returned no `Hemibrain` or `fly_brain.py` implementation. `Connectome` remains only in a regression test asserting retired names are absent. `fly_state` and `dopamine_at` remain only in the historical cleanup migration/test references.
+- Production catalog query found no matching Hemibrain/Connectome/`fly_state` relations, routines, or dopamine columns.
+- The history was **not preserved intact**. Migration `20261023110000_remove_retired_forecast_model.sql` deleted 1,497 `forecast_pick` rows for model `fly`, one `forecast_calibration` row, 82 `accumulator_ticket` rows and their associated legs, plus `fly_state`, `dopamine_at` and retired functions/RPC. These records have not been restored; no verified pre-deletion export is available in the evidence for this audit.
+- Current active records: `forecast_pick` has 1,943 `llm` and 1,943 `own`; `forecast_calibration` has one row per active model; `accumulator_ticket` has 109 `llm`, 117 `own`, and one NULL-model row. Do not interpret this as recovery of the deleted `fly` history.
+
+### Backup / restore blocker
+
+- Latest `supabase-production-backup` run #42610729683 failed at “Validate required secrets”. Its log shows `SUPABASE_DB_URL`, Supabase Storage S3 endpoint/region/keys, and backup S3 bucket/endpoint/region/keys empty. The PostgreSQL dump, Storage copy, remote checksum verification and manifest steps were skipped. No backup archive was produced by this run.
+- No successful isolated restore test is recorded. No verified PostgreSQL export from before 2026-10-23 is available in the evidence for this audit.
+- Required repository secrets/configuration are: `SUPABASE_DB_URL`, `SUPABASE_STORAGE_S3_ENDPOINT`, `SUPABASE_STORAGE_S3_REGION`, `SUPABASE_STORAGE_S3_ACCESS_KEY_ID`, `SUPABASE_STORAGE_S3_SECRET_ACCESS_KEY`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, and `BACKUP_S3_SECRET_ACCESS_KEY`. The owner must configure these against an independent backup destination; do not put secret values in repository files or PR comments.
+
+### Migration source reconciliation
+
+- Production ledger contains 473 versions. Main contains 282 SQL migration files, but only 74 use a 14-digit version prefix. Only 36 source filename prefixes match ledger versions exactly; 437 ledger versions have no exact-prefix source counterpart, while 38 timestamped source versions do not appear in the ledger. The remaining 208 SQL files are unversioned legacy files and require an explicit mapping; these counts do not prove that all 437 SQL definitions are absent, but they do prove that full replay cannot currently be established from filename matching alone.
+- Do not reapply production-applied migrations or rewrite the ledger manually. Reconcile each historical version against source SQL and the live schema before any migration repair.
+
+### Required owner action
+
+Configure the ten backup secrets above, run the workflow successfully, verify the database and every Storage bucket remotely, and restore the archive into a separate Supabase project. Locate a pre-2026-10-23 export if historical `fly` predictions and tickets are to be recovered. Until then, the historical forecast loss and backup/restore criteria remain unresolved.
