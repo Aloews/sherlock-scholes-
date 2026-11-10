@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { IconHelp, IconVolume, IconVolumeOff, IconBallFootball, IconUser } from '@tabler/icons-react';
+import { IconHelp, IconVolume, IconVolumeOff, IconBallFootball, IconUser, IconCrown } from '@tabler/icons-react';
 import { IconButton } from '@/shared/ui/IconButton';
 import { LanguageToggle } from '@/shared/ui/LanguageToggle';
 import { DesignToggle } from '@/shared/ui/DesignToggle';
@@ -273,12 +273,19 @@ export function HomeScreen() {
             последним, что от этого блока осталось, — теперь нет и его. */}
 
         {view === 'home' && (
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-sm space-y-2">
             <HomeGameLink
               icon={<IconBallFootball size={20} stroke={1.75} />}
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
+            {import.meta.env.VITE_FD_API_URL && (
+              <HomeGameLink
+                icon={<IconCrown size={20} stroke={1.75} />}
+                label={t('home.dynasty_link')}
+                onClick={() => navigate('/dynasty')}
+              />
+            )}
           </div>
         )}
 
