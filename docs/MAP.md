@@ -2392,3 +2392,20 @@ This read-only follow-up was measured against main commit `00c28a0b1e760c62940cc
 - `rebuild-football-clubs` and `espn-results-refresh` still have the independently measured statement-timeout failures from the 12:50 snapshot. No timeout was raised.
 - Migration source reconciliation remains incomplete: the production ledger has 473 entries, and most historical versions still do not have a proven exact local SQL source. PR #383 corrects only the new migration's version/name alignment; it does not reconcile the legacy baseline.
 - No user data, football records, existing photo URLs, or forecast history was deleted or replaced in this follow-up.
+
+## Football Dynasty — Rust backend and playable lifecycle (2026-11-10)
+
+Football Dynasty is integrated as a separate Rust API service and a first playable campaign lifecycle inside Sherlock Scholes.
+
+- Product design: `docs/football-dynasty/GDD.md`
+- Architecture and release gates: `docs/football-dynasty/ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`
+- Rust service: `services/football-dynasty/` (Axum, Tokio, SQLx, PostgreSQL, Docker).
+- Frontend: `src/features/football-dynasty/api.ts`, `src/screens/FootballDynastyScreen.tsx`, `/dynasty` route, home entry, nine locales.
+- Persistence: the existing private Supabase `fd` schema; no second Supabase project and no writes to real football or Alias tables.
+- Security: every authenticated API transaction sets `fd.telegram_id` locally; the owner-scoped RLS migrations restrict all 12 tables to the verified Telegram owner and use initplan-safe settings plus covering indexes for the previously unindexed foreign keys. The runtime role is `fd_runtime`, with append-only financial/history tables protected from mutation.
+- Deployment: frontend and Rust container are routed through Vercel Services in the existing Sherlock Scholes Vercel project, on the same origin. Railway Free rejected additional service provisioning; the existing media `stream-service` and bot service were not repurposed.
+- Runtime DB connection: prefers the existing production `POSTGRES_URL` Supavisor pooler URL (IPv4-compatible), disables SQLx prepared-statement caching for transaction-pooler compatibility, and executes `SET LOCAL ROLE fd_runtime` inside every transaction. `POSTGRES_URL_NON_POOLING` is only a direct/local fallback; a dedicated `fd_app` login remains a hardening task and can be supplied through `FD_DATABASE_URL`.
+
+**Implemented lifecycle:** create sandbox/scenario campaign → choose origin → create founder/dynasty/fictional club → establish balanced opening capital ledger → add heir → advance time in bounded steps → founder dies at deterministic age 90 → preview eligible adult heirs → atomically transfer dynastic leadership and personal cash account → continue as heir. Campaign state and chronicle are persisted. Mutations are idempotent.
+
+**Release boundary:** this is a playable campaign/succession vertical slice, not the complete football-management simulation in the GDD. Match engine, full squad and transfer market, staff appointments, competitions, and long-term economic simulation remain future implementation work. Production release still requires passing the owner-RLS integration tests, applying the owner-RLS migration to Supabase, and verifying the live Vercel container against Telegram initData.

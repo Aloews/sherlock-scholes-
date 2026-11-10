@@ -1,13 +1,36 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
+  "services": {
+    "frontend": {
+      "root": ".",
+      "framework": "vite"
+    },
+    "football_dynasty": {
+      "root": "services/football-dynasty",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  },
   "rewrites": [
     {
+      "source": "/api/v1/(.*)",
+      "destination": {
+        "service": "football_dynasty"
+      }
+    },
+    {
+      "source": "/health/(.*)",
+      "destination": {
+        "service": "football_dynasty"
+      }
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "frontend"
+      }
     }
   ],
-
   "headers": [
     {
       "source": "/assets/(.*)",
