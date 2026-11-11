@@ -3,19 +3,7 @@
   "services": {
     "frontend": {
       "root": ".",
-      "framework": "vite",
-      "routes": [
-        {
-          "src": "/(?!assets/|logo-).*",
-          "transforms": [
-            {
-              "type": "request.path",
-              "op": "set",
-              "args": "/index.html"
-            }
-          ]
-        }
-      ]
+      "framework": "vite"
     },
     "football_dynasty": {
       "root": "services/football-dynasty",
@@ -37,22 +25,8 @@
       }
     },
     {
-      "source": "/assets/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
-    },
-    {
-      "source": "/logo-(.*)",
-      "destination": {
-        "service": "frontend"
-      }
-    },
-    {
       "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
+      "destination": "/index.html"
     }
   ],
   "headers": [
