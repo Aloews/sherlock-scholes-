@@ -3,7 +3,21 @@
   "services": {
     "frontend": {
       "root": ".",
-      "framework": "vite"
+      "framework": "vite",
+      "routes": [
+        {
+          "src": "/assets/(.*)",
+          "dest": "/assets/$1"
+        },
+        {
+          "src": "/logo-(.*)",
+          "dest": "/logo-$1"
+        },
+        {
+          "src": "/(.*)",
+          "dest": "/index.html"
+        }
+      ]
     },
     "football_dynasty": {
       "root": "services/football-dynasty",

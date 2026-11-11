@@ -203,7 +203,7 @@ export function Router() {
       <Route path="/arena/online" element={<Navigate to="/arena" replace />} />
       <Route path="/arena"     element={<AdminOnly><ArenaScreen /></AdminOnly>} />
       <Route path="/pro"       element={<Navigate to="/admin" replace />} />
-      <Route path="/dynasty" element={import.meta.env.VITE_FD_API_URL ? <PageTransition><FootballDynastyScreen /></PageTransition> : <Navigate to="/" replace />} />
+      <Route path="/dynasty" element={<PageTransition><FootballDynastyScreen /></PageTransition>} />
       <Route path="/admin"     element={<AdminScreen />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
