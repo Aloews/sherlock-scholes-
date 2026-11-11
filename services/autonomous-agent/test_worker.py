@@ -75,10 +75,6 @@ class WorkerPolicyTests(unittest.TestCase):
             extract_patch(patch)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_repository_scoped_path_policies(self):
         from worker import allowed_prefixes_for_repo
 
@@ -98,3 +94,7 @@ if __name__ == "__main__":
 
         with self.assertRaises(RuntimeError):
             allowed_prefixes_for_repo("Aloews/not-on-the-allowlist")
+
+
+if __name__ == "__main__":
+    unittest.main()
