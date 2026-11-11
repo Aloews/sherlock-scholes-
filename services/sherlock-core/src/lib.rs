@@ -123,6 +123,126 @@ impl RoundClock {
     }
 }
 
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DeckFilter {
+    pub categories: Option<Vec<String>>,
+    pub card_ids: Option<Vec<String>>,
+    pub continents: Option<Vec<String>>,
+    pub countries: Option<Vec<String>>,
+    pub leagues: Option<Vec<String>>,
+    pub tags: Option<Vec<String>>,
+    pub clubs: Option<Vec<String>>,
+    pub fame_min: Option<u8>,
+    pub lang: Option<String>,
+}
+
+fn canonicalize(values: &mut Option<Vec<String>>, deduplicate: bool) {
+    if let Some(items) = values {
+        if items.is_empty() {
+            *values = None;
+            return;
+        }
+        items.sort();
+        if deduplicate {
+            items.dedup();
+        }
+    }
+}
+
+impl DeckFilter {
+    pub fn normalized(mut self) -> Self {
+        canonicalize(&mut self.categories, false);
+        canonicalize(&mut self.card_ids, true);
+        canonicalize(&mut self.continents, false);
+        canonicalize(&mut self.countries, false);
+        canonicalize(&mut self.leagues, false);
+        canonicalize(&mut self.tags, false);
+        canonicalize(&mut self.clubs, false);
+        if self.fame_min == Some(0) {
+            self.fame_min = None;
+        }
+        if self.lang.as_deref() == Some("") {
+            self.lang = None;
+        }
+        self
+    }
+
+    pub fn is_empty_selection(&self) -> bool {
+        matches!(&self.categories, Some(items) if items.is_empty())
+    }
+
+    pub fn is_whole_deck(&self) -> bool {
+        let filter = self.clone().normalized();
+        filter.categories.is_none()
+            && filter.card_ids.is_none()
+            && filter.continents.is_none()
+            && filter.countries.is_none()
+            && filter.leagues.is_none()
+            && filter.tags.is_none()
+            && filter.clubs.is_none()
+            && filter.fame_min.is_none()
+            && filter.lang.is_none()
+    }
+
+    pub fn pinnable(mut self) -> Self {
+        self.lang = None;
+        self.normalized()
+    }
+}
+
+pub fn room_deck_filter(deck: Option<DeckFilter>, categories: Option<Vec<String>>) -> DeckFilter {
+    match deck {
+        Some(value) => value.normalized(),
+        None => DeckFilter { categories, ..DeckFilter::default() }.normalized(),
+    }
+}
+
+pub fn settings_categories(filter: &DeckFilter) -> Option<Vec<String>> {
+    filter.clone().pinnable().categories
+}
+
+pub const ROOM_CODE_LENGTH: usize = 6;
+
+pub fn normalize_room_code(raw: Option<&str>) -> Option<String> {
+    let code = raw?.trim().to_ascii_uppercase();
+    if code.len() != ROOM_CODE_LENGTH
+        || !code.bytes().all(|byte| byte.is_ascii_alphanumeric())
+    {
+        return None;
+    }
+    Some(code)
+}
+
+pub fn sanitize_room_code_input(raw: &str) -> String {
+    let candidate = extract_room_code(raw);
+    candidate.chars().take(ROOM_CODE_LENGTH).collect()
+}
+
+fn extract_room_code(raw: &str) -> String {
+    let text = raw.trim();
+    let candidate = text
+        .split_once('?')
+        .and_then(|(_, query)| {
+            query.split('&').find_map(|part| {
+                let (key, value) = part.split_once('=')?;
+                (key.eq_ignore_ascii_case("startapp") || key.eq_ignore_ascii_case("start"))
+                    .then_some(value)
+            })
+        })
+        .unwrap_or(text);
+    candidate
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .map(|ch| ch.to_ascii_uppercase())
+        .collect()
+}
+
+pub fn room_code_from_text(raw: Option<&str>) -> Option<String> {
+    let raw = raw?;
+    normalize_room_code(Some(&extract_room_code(raw)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +261,77 @@ mod tests {
             paused_ms,
             paused_at_ms,
         }
+    }
+
+
+    #[test]
+    fn deck_filter_normalization_matches_client_contract() {
+        let filter = DeckFilter {
+            categories: Some(vec!["player".into(), "club".into()]),
+            card_ids: Some(vec!["b".into(), "a".into(), "b".into()]),
+            fame_min: Some(0),
+            lang: Some("".into()),
+            ..DeckFilter::default()
+        }.normalized();
+        assert_eq!(filter.categories, Some(vec!["club".to_string(), "player".to_string()]));
+        assert_eq!(filter.card_ids, Some(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(filter.fame_min, None);
+        assert_eq!(filter.lang, None);
+    }
+
+    #[test]
+    fn empty_filter_is_whole_deck_but_explicit_empty_category_is_empty_selection() {
+        assert!(DeckFilter::default().is_whole_deck());
+        let empty = DeckFilter { categories: Some(vec![]), ..DeckFilter::default() };
+        assert!(empty.is_empty_selection());
+        assert!(empty.is_whole_deck());
+    }
+
+    #[test]
+    fn room_filter_falls_back_for_legacy_rooms_and_prefers_saved_deck() {
+        let legacy = room_deck_filter(None, Some(vec!["player".into()]));
+        assert_eq!(legacy.categories, Some(vec!["player".to_string()]));
+
+        let saved = room_deck_filter(
+            Some(DeckFilter {
+                categories: Some(vec!["club".into()]),
+                lang: Some("ru".into()),
+                ..DeckFilter::default()
+            }),
+            Some(vec!["player".into()]),
+        );
+        assert_eq!(saved.categories, Some(vec!["club".to_string()]));
+        assert_eq!(saved.lang, Some("ru".to_string()));
+    }
+
+    #[test]
+    fn pinned_room_filter_drops_device_language_and_keeps_other_constraints() {
+        let pinned = DeckFilter {
+            categories: Some(vec!["player".into()]),
+            lang: Some("ru".into()),
+            fame_min: Some(60),
+            ..DeckFilter::default()
+        }.pinnable();
+        assert_eq!(pinned.lang, None);
+        assert_eq!(pinned.fame_min, Some(60));
+        assert_eq!(settings_categories(&pinned), Some(vec!["player".to_string()]));
+    }
+
+    #[test]
+    fn room_codes_normalize_only_exact_six_ascii_alphanumeric_characters() {
+        assert_eq!(normalize_room_code(Some(" ab12cd ")), Some("AB12CD".into()));
+        assert_eq!(normalize_room_code(Some("ABCDE")), None);
+        assert_eq!(normalize_room_code(Some("ABCDEF7")), None);
+        assert_eq!(normalize_room_code(Some("ABC-12")), None);
+        assert_eq!(normalize_room_code(None), None);
+    }
+
+    #[test]
+    fn pasted_room_invite_links_extract_startapp_and_start_codes() {
+        assert_eq!(room_code_from_text(Some("https://t.me/bot?startapp=ab12cd")), Some("AB12CD".into()));
+        assert_eq!(room_code_from_text(Some("https://t.me/bot?start=ab12cd&other=1")), Some("AB12CD".into()));
+        assert_eq!(sanitize_room_code_input("ab-12 cd"), "AB12CD");
+        assert_eq!(room_code_from_text(Some("no-code")), None);
     }
 
     #[test]
