@@ -393,9 +393,6 @@ class Worker:
             return
         branch = f"ai/task-{issue_number}-{comment_id}"
         source_url = str(comment.get("html_url", ""))
-        if self._has_marker(issue_number, comment_id):
-            self.attempted.add(comment_id)
-            return
         existing = self._existing_pr(branch)
         if existing:
             self.attempted.add(comment_id)
@@ -405,7 +402,9 @@ class Worker:
             LOG.info("Recovered existing task branch %s -> %s", branch, url)
             self.attempted.add(comment_id)
             return
-
+        if self._has_marker(issue_number, comment_id):
+            self.attempted.add(comment_id)
+            return
         self.attempted.add(comment_id)
         LOG.info("Starting task comment %s on issue #%s", comment_id, issue_number)
         temp = Path(tempfile.mkdtemp(prefix="sherlock-agent-"))
