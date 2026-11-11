@@ -269,8 +269,11 @@ class Worker:
         sender = str((comment.get("user") or {}).get("login", ""))
         if not comment_id or sender.casefold() != self.owner.casefold() or not body.startswith("/ai "):
             return False
+        task = body[4:].strip()
+        if not task or len(task) > MAX_TASK_CHARS:
+            return False
         issue_url = str(comment.get("issue_url", ""))
-        match = re.search(r"/issues/(\\d+)$", issue_url)
+        match = re.search(r"/issues/(\d+)$", issue_url)
         if not match:
             return False
         issue_number = int(match.group(1))
