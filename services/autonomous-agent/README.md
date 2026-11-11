@@ -1,6 +1,6 @@
 # Sherlock Scholes autonomous engineering worker
 
-The worker runs as a scheduled job in the existing Railway project. GitHub is the durable task/PR ledger; Starimg is the only model gateway.
+The worker is deployed in the existing Railway project using the user's explicitly released `stream-service` Railway service. GitHub is the durable task/PR ledger; Starimg is the only model gateway.
 
 ## Trigger
 
@@ -8,18 +8,18 @@ On an ordinary GitHub issue (not a pull request), the repository owner can add a
 
 `/ai Implement the requested change and add regression tests.`
 
-Railway runs the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs lightweight Python syntax checks without provider credentials, pushes an isolated branch, and opens a pull request. Full frontend, Rust, SQL, and integration suites remain GitHub Actions release gates on the exact PR head. It never merges or deploys.
+After activation, Railway will run the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs lightweight Python syntax checks without provider credentials, pushes an isolated branch, and opens a pull request. Full frontend, Rust, SQL, and integration suites remain GitHub Actions release gates on the exact PR head. It never merges or deploys.
 
 ## Railway service configuration
 
-Reuse the existing `sherlock-ai-bot` Railway service in project `distinguished-transformation`; do not create a third service on the Free plan. Its Railway-only long-polling bot is currently crashed and documented as nonworking. The Vercel webhook bot remains separate and is not changed. Do not modify `stream-service`, which serves the M3U playlist.
+Reuse the existing `stream-service` Railway service in project `distinguished-transformation`; the user explicitly confirmed that the streaming service is no longer used and authorized repurposing it as the coding agent. The old streaming deployment has been replaced; its public domain was removed. Existing `LIVEKIT_URL` and `M3U_SOURCE_URL` variables are preserved but unused by the worker. Do not create another Railway service on the Free plan.
 
-- Source: `Aloews/sherlock-scholes-`, branch `main`
+- Source: `Aloews/sherlock-scholes-`, branch `feat/starimg-autonomous-engineering-worker-20261111` (temporary until PR review/merge)
 - Root directory: `/services/autonomous-agent`
-- Keep the existing `/app` volume attached but unused; the worker image runs from `/opt/worker` to avoid masking its files.
+- No volume is attached; the worker image runs from `/opt/worker`.
 - Builder: Dockerfile
 - Dockerfile: `Dockerfile`
-- Cron schedule: `*/15 * * * *`
+- Cron schedule: temporarily `0 0 1 1 *`; change to `*/15 * * * *` only after required CI and safe runtime preflight pass.
 - Start command: Dockerfile default; the process exits after checking one task
 - Sleep mode: disabled; no public domain is required
 - Restart policy: `NEVER`
@@ -27,10 +27,11 @@ Reuse the existing `sherlock-ai-bot` Railway service in project `distinguished-t
 Required variables:
 
 - `GITHUB_REPOSITORY=Aloews/sherlock-scholes-`
-- Preserve the existing secret variables `GITHUB_TOKEN` and `STARIMG_API_KEY`; do not reveal or copy their values.
+- `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}` (Railway service reference; the secret value is not copied)
+- Preserve the existing `STARIMG_API_KEY` already present on `stream-service`; do not reveal or copy its value.
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
-- `AGENT_ENABLED=false` during deployment verification; switch to `true` only after CI and live preflight pass.
-- `TASKS_SINCE=<UTC timestamp recorded at activation>` (fixed UTC start boundary; ignore older comments; required only when enabled)
+- `AGENT_ENABLED=false` until CI and live preflight pass; switch to `true` only after both are verified.
+- `TASKS_SINCE=2999-01-01T00:00:00Z` during the disabled verification period; replace with the activation UTC timestamp when enabling tasks.
 
 Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
 
@@ -50,7 +51,7 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 
 ## Cost controls
 
-- Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously.
+- Once activated, Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously. During verification the schedule is parked and task execution is disabled.
 - At most one task is processed per invocation, with up to two Starimg completions if a patch or its lightweight local checks fail.
 - Completion output is capped at 6,000 tokens per attempt; patches are limited to eight files and 60,000 characters.
 - Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
