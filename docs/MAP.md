@@ -427,3 +427,19 @@ ChatGPT Work is an optional execution environment, not a prerequisite, dependenc
 - If an external long-running agent or cloud workspace is later configured, treat it as an optional execution worker. It must read and obey this map, write durable progress to GitHub, and meet the same security and release gates. The product owner should not have to operate that environment manually.
 
 **Operating conclusion:** development can proceed from the current ChatGPT conversation using the tools actually connected here. Work is optional. Continuity is provided by GitHub records and verified automation; uninterrupted background execution must never be promised unless it is demonstrably configured and running.
+
+### 13.12 Operational checks and configuration ownership
+
+The execution team owns routine operational verification. The product owner is not the deployment operator, environment-variable auditor, build coordinator, or first-line infrastructure troubleshooter.
+
+- Before asking the product owner to do anything, inspect the connected provider configuration, project/service/environment scope, deployment history, build logs, runtime logs, health checks, and repository deployment configuration using the tools already authorized.
+- For every required environment variable, verify its **name, presence, scope, target service, and target environment**. Never request or expose secret values in chat. Distinguish service-level variables from shared/environment-level variables and check whether the consuming process can actually receive the variable.
+- When a configuration change is detected, determine whether it requires a rebuild, redeploy, restart, or no action. Do not assume that saving a variable automatically updates an already-running deployment.
+- If the required action is authorized, safe, and within the agreed cost boundary, perform it directly. Then verify that a new deployment was created from the intended source commit, the build completed, the service became healthy, and the runtime can use the configuration. A deployment marked successful is not enough if runtime verification is possible.
+- If the provider requires a manual action that the connected tools cannot perform, exhaust available read-only diagnostics first. Ask the product owner only for that specific provider-side action, explaining exactly why it cannot be performed by the execution team. Never ask them to perform routine checks that the team can do itself.
+- Treat missing, mis-scoped, unavailable, or unapplied configuration as an engineering diagnosis to resolve—not as evidence that the product owner made a mistake.
+- Before declaring an integration ready, test the actual integration path with the configured service, inspect sanitized response/error evidence, and verify failure handling. Do not print credentials, tokens, authorization headers, or secret-bearing environment output in logs, PRs, or reports.
+- Apply the same ownership rule to build triggers, deployment restarts, health checks, domain/routing configuration, scheduled jobs, queue workers, and provider-side service status.
+- Keep all operational actions within the approved project, environment, permissions, and cost limits. Do not trigger paid resources or irreversible production changes without the required approval.
+
+**Acceptance rule:** a configuration-related task is complete only when the execution team has verified the effective configuration scope, applied any required rebuild/redeploy/restart, and checked the resulting runtime behaviour—or recorded a concrete provider-side blocker that genuinely requires the product owner's action.
