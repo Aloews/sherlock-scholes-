@@ -125,9 +125,16 @@ def choose_model(base: str, key: str) -> str:
 
 def run_command(args: list[str], cwd: Path, timeout: int = 900,
                 extra_env: dict[str, str] | None = None) -> str:
-    env = {k: v for k, v in os.environ.items()
-           if not any(secret in k.upper() for secret in ("TOKEN", "SECRET", "API_KEY", "PASSWORD"))}
-    env.update({"GIT_TERMINAL_PROMPT": "0", "CI": "1"})
+    # Strict allowlist: unrelated Railway secrets (DB URLs, Vercel tokens,
+    # Telegram tokens, etc.) must never enter a subprocess environment.
+    env = {
+        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        "HOME": os.environ.get("HOME", "/tmp"),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
+        "GIT_TERMINAL_PROMPT": "0",
+        "CI": "1",
+    }
     if extra_env:
         env.update(extra_env)
     result = subprocess.run(args, cwd=cwd, env=env, text=True,
