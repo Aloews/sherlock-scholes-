@@ -12,7 +12,6 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -244,11 +243,10 @@ class Worker:
         if not permissions.get("push") or not permissions.get("pull"):
             raise RuntimeError("GITHUB_TOKEN lacks repository push or pull-request permissions")
         LOG.info("GitHub auth verified for %s (account %s)", self.repo, user.get("login", "unknown"))
-        self.model = choose_model(self.starimg_base, self.starimg_key)
-        LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
+        LOG.info("Starimg credentials will be validated only when a task is available")
 
     def _recent_comments(self) -> list[dict[str, Any]]:
-        since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(timespec="seconds").replace("+00:00", "Z")
+        since = required_env("TASKS_SINCE")
         comments: list[dict[str, Any]] = []
         for page in range(1, 11):
             query = urllib.parse.urlencode({
@@ -414,8 +412,11 @@ class Worker:
                          f"https://github.com/{self.repo}.git", str(temp)], temp.parent, timeout=180)
             run_command(["git", "checkout", "-b", branch], temp)
             context = rank_context(temp, task)
+            if self.model is None:
+                self.model = choose_model(self.starimg_base, self.starimg_key)
+                LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
             answer, usage = ask_starimg(self.starimg_base, self.starimg_key,
-                                        self.model or "", task, issue_number, context)
+                                        self.model, task, issue_number, context)
             patch = extract_patch(answer)
             check = subprocess.run(["git", "apply", "--recount", "--check", "-"],
                                    cwd=temp, input=patch, text=True,
