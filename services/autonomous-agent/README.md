@@ -27,8 +27,7 @@ Reuse the existing `sherlock-ai-bot` Railway service in project `distinguished-t
 Required variables:
 
 - `GITHUB_REPOSITORY=Aloews/sherlock-scholes-`
-- `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}`
-- `STARIMG_API_KEY=${{sherlock-ai-bot.STARIMG_API_KEY}}`
+- Preserve the existing secret variables `GITHUB_TOKEN` and `STARIMG_API_KEY`; do not reveal or copy their values.
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
 - `TASKS_SINCE=<UTC timestamp recorded at activation>` (fixed UTC start boundary; ignore older comments)
 
