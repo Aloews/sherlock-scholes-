@@ -5,7 +5,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY worker.py /app/worker.py
-RUN python3 -m py_compile /app/worker.py
+COPY worker.py test_worker.py /app/
+RUN python3 -m py_compile /app/worker.py /app/test_worker.py \
+    && cd /app && python3 -m unittest -v
 ENV PYTHONUNBUFFERED=1
 CMD ["python3", "/app/worker.py"]
