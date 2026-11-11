@@ -56,9 +56,6 @@ def safe_path(path: str) -> bool:
         and not any(part in lower for part in EXCLUDED_PARTS)
         and not lower.endswith(EXCLUDED_SUFFIXES)
     )
-        and not lower.endswith(EXCLUDED_SUFFIXES)
-        and ".." not in Path(path).parts
-    )
 
 
 def request_json(url: str, token: str, method: str = "GET",
@@ -411,7 +408,6 @@ class Worker:
             ))
             if not changed or len(changed) > MAX_FILES or any(not safe_path(path) for path in changed):
                 raise RuntimeError("Applied patch failed the final changed-path policy")
-                raise RuntimeError("Applied patch failed the final changed-path policy")
             run_command(["git", "diff", "--check"], temp)
             self._validate(temp, changed)
             run_command(["git", "config", "user.name", "Sherlock Engineering Agent"], temp)
@@ -471,6 +467,7 @@ def main() -> None:
                     worker.process(comment)
                 except Exception as exc:
                     LOG.error("Task processing failed (comment id %s): %s",
+                              comment.get("id", "unknown"), str(exc)[:1000])
                     worker.record_failure(comment, str(exc))
                               comment.get("id", "unknown"), str(exc)[:1000])
         except Exception as exc:
