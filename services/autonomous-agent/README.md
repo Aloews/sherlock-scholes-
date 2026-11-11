@@ -8,7 +8,7 @@ On an ordinary GitHub issue (not a pull request), the repository owner can add a
 
 `/ai Implement the requested change and add regression tests.`
 
-Railway runs the worker every five minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs applicable local checks without provider credentials in the test process, pushes an isolated branch, and opens a pull request. It never merges or deploys.
+Railway runs the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs applicable local checks without provider credentials in the test process, pushes an isolated branch, and opens a pull request. It never merges or deploys.
 
 ## Railway service configuration
 
@@ -18,7 +18,7 @@ Create a separate service in the existing `distinguished-transformation` project
 - Root directory: `services/autonomous-agent`
 - Builder: Dockerfile
 - Dockerfile: `Dockerfile`
-- Cron schedule: `*/5 * * * *`
+- Cron schedule: `*/15 * * * *`
 - Start command: Dockerfile default; the process exits after checking one task
 
 Required variables:
@@ -27,6 +27,7 @@ Required variables:
 - `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}`
 - `STARIMG_API_KEY=${{sherlock-ai-bot.STARIMG_API_KEY}}`
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
+- `TASKS_SINCE=2026-11-11T14:25:00Z` (fixed UTC start boundary; ignore older comments)
 
 Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
 
@@ -45,11 +46,11 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 
 ## Cost controls
 
-- Railway runs a short job every five minutes rather than keeping a VM awake continuously.
+- Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously.
 - At most one task and one Starimg completion are processed per invocation.
 - Completion output is capped at 3,000 tokens; patches are limited to eight files and 60,000 characters.
 - Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
-- No scheduled task is started if required credentials or the Starimg model catalog cannot be verified.
+- Starimg model discovery is deferred until an eligible task exists; idle runs do not call the model API.
 
 ## Verification
 
