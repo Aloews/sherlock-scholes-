@@ -1,0 +1,31 @@
+name: sherlock-core-rust
+
+on:
+  pull_request:
+    paths:
+      - 'services/sherlock-core/**'
+      - '.github/workflows/sherlock-core-rust.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/sherlock-core/**'
+      - '.github/workflows/sherlock-core-rust.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --manifest-path services/sherlock-core/Cargo.toml --all -- --check
+      - name: Run domain tests
+        run: cargo test --manifest-path services/sherlock-core/Cargo.toml --all-targets
+      - name: Run Clippy
+        run: cargo clippy --manifest-path services/sherlock-core/Cargo.toml --all-targets -- -D warnings
