@@ -112,7 +112,13 @@ def choose_model(base: str, key: str) -> str:
         return explicit
     if not ids:
         raise RuntimeError("Starimg model catalog is empty; set STARIMG_MODEL explicitly")
-    preferred = ("qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral", "gpt-6-luna", "gpt-6.1-terra")
+    preferred = (
+        "qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral",
+        "gpt-6-luna", "gpt-6.1-terra",
+        "claude-sonnet-5.5", "claude-sonnet-5-5",
+        "claude-haiku-5.5", "claude-haiku-5-5",
+        "claude-opus-5.5", "claude-opus-5-5", "claude-opus-5",
+    )
     for wanted in preferred:
         match = next((model for model in ids if wanted in model.lower()), None)
         if match:
