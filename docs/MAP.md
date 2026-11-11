@@ -265,3 +265,13 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+## 13. Autonomous engineering workflow
+
+- Portable skill: `.agents/skills/reality-first-autonomous-engineering/SKILL.md`.
+- Shareable operating model and copy/paste agent instruction: `docs/AI_AGENT_AUTONOMY_SHARE.md`.
+- The skill is project-agnostic; each repository must keep its own project map, task contracts, credentials, permissions, budgets, and release policy.
+- The Railway worker is a bounded execution adapter for this repository. It does not grant other agents or repositories access automatically.
+- Required lifecycle: inspect → define acceptance → implement → locally verify → review → exact-SHA CI → authorized deployment → real-path verification → durable handoff.
+- The worker remains disabled until required CI and a safe live preflight pass. No task is processed merely because the service is deployed.
+
