@@ -549,6 +549,11 @@ def main() -> None:
         raise RuntimeError("GITHUB_REPOSITORIES must contain at most 12 unique repositories")
     # Preflight every configured repository before any task is accepted.
     workers = [Worker(repository) for repository in repositories]
+    if os.environ.get("STARIMG_PREFLIGHT", "false").strip().lower() in ("1", "true", "yes"):
+        base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
+        model = choose_model(base, required_env("STARIMG_API_KEY"))
+        LOG.info("Starimg authenticated model catalog verified; selected model=%s; no completion requested", model)
+        return
     if os.environ.get("AGENT_ENABLED", "false").strip().lower() not in ("1", "true", "yes"):
         LOG.info("Worker disabled; GitHub preflight succeeded for %s repositories", len(workers))
         return
