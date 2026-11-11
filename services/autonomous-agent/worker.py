@@ -478,20 +478,11 @@ class Worker:
             shutil.rmtree(temp, ignore_errors=True)
 
     def _validate(self, root: Path, changed: list[str]) -> None:
-        # Test subprocesses deliberately receive no provider or GitHub credentials.
-        if any(path.startswith(("src/", "test/", "tests/")) for path in changed):
-            run_command(["npm", "ci", "--ignore-scripts"], root, timeout=1200)
-            run_command(["npm", "run", "typecheck"], root, timeout=900)
-            run_command(["npm", "run", "build"], root, timeout=900)
-            run_command(["npm", "test"], root, timeout=1200)
-            if (root / "scripts/check-i18n.mjs").exists():
-                run_command(["node", "scripts/check-i18n.mjs"], root, timeout=300)
+        # Full application tests run in GitHub Actions on the exact PR head.
+        # This small Railway Free worker performs only safe, local syntax checks.
         python_paths = [path for path in changed if path.endswith(".py")]
         if python_paths:
             run_command(["python3", "-m", "py_compile"] + python_paths, root, timeout=300)
-        # SQL, Rust, Edge Function and scraper integration suites run in the repository's
-        # required GitHub Actions workflows on the exact PR head. This worker never
-        # applies migrations or accesses production databases.
 
 
 def main() -> None:
