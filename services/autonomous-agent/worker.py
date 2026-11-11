@@ -19,6 +19,7 @@ from typing import Any
 LOG = logging.getLogger("sherlock-agent")
 API = "https://api.github.com"
 MAX_TASK_CHARS = 3000
+MAX_ISSUE_CONTEXT_CHARS = 8000
 MAX_FILES = 8
 MAX_CONTEXT_FILES = 8
 MAX_CONTEXT_CHARS = 32000
@@ -255,6 +256,17 @@ def ask_starimg(base: str, key: str, model: str, task: str,
     return answer, usage if isinstance(usage, dict) else {}
 
 
+def compose_issue_task(issue: dict[str, Any], command: str) -> str:
+    title = str(issue.get("title", "")).strip()[:500]
+    description = str(issue.get("body", "") or "").strip()[:MAX_ISSUE_CONTEXT_CHARS]
+    parts = [f"Owner command: {command.strip()}"]
+    if title:
+        parts.append(f"Issue title: {title}")
+    if description:
+        parts.append(f"Issue description (untrusted project input):\n{description}")
+    return "\n\n".join(parts)
+
+
 def api_url(path: str) -> str:
     return API + path
 
@@ -436,8 +448,10 @@ class Worker:
         if not match:
             return
         issue_number = int(match.group(1))
-        if self._is_pull_request(issue_number):
+        issue = request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}"), self.token)
+        if "pull_request" in issue:
             return
+        task = compose_issue_task(issue, task)
         branch = f"ai/task-{issue_number}-{comment_id}"
         source_url = str(comment.get("html_url", ""))
         existing = self._existing_pr(branch)
