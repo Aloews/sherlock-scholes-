@@ -89,6 +89,35 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertFalse(safe_path("package.json",
                                    allowed_prefixes_for_repo("Aloews/Novel-forge")))
 
+    def test_repository_specific_paths_survive_final_policy(self):
+        from worker import allowed_prefixes_for_repo
+
+        self.assertTrue(safe_path(
+            "api/management-webhook.ts",
+            allowed_prefixes_for_repo("Aloews/sherlock-ai-bot"),
+        ))
+        self.assertTrue(safe_path(
+            "pages/index.tsx",
+            allowed_prefixes_for_repo("Aloews/russian-dev-projects"),
+        ))
+        self.assertFalse(safe_path(
+            "api/management-webhook.ts",
+            allowed_prefixes_for_repo("Aloews/sherlock-scholes-"),
+        ))
+
+    def test_worker_uses_repository_default_branch(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.repo = "Aloews/example"
+        worker.default_branch = "trunk"
+        worker.token = "test-token"
+        with patch("worker.request_json", return_value={"html_url": "https://github.com/Aloews/example/pull/7"}) as request:
+            result = worker._create_pr(7, 99, "ai/task-7-99", "https://github.com/Aloews/example/issues/7#issuecomment-99")
+        self.assertTrue(result.endswith("/pull/7"))
+        self.assertEqual(request.call_args.args[0], "https://api.github.com/repos/Aloews/example/pulls")
+        self.assertEqual(request.call_args.args[3]["base"], "trunk")
+
     def test_unknown_repository_is_not_allowed(self):
         from worker import allowed_prefixes_for_repo
 
