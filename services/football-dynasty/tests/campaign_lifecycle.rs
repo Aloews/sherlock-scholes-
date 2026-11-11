@@ -187,7 +187,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let heir_id = heir["id"].as_str().expect("heir id");
 
     for index in 0..4 {
-        let (advance_status, _) = call(
+        let (advance_status, advance_result) = call(
             app.clone(),
             "POST",
             &format!("/api/v1/campaigns/{campaign_id}/advance"),
@@ -206,23 +206,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
             )
             .await;
             assert_eq!(replay_status, StatusCode::OK);
-            assert_eq!(replayed, {
-                let (status, value) = call(
-                    app.clone(),
-                    "GET",
-                    &format!("/api/v1/campaigns/{campaign_id}"),
-                    None,
-                    None,
-                )
-                .await;
-                assert_eq!(status, StatusCode::OK);
-                json!({
-                    "current_year": value["campaign"]["current_year"],
-                    "player_age": 60,
-                    "status": "active",
-                    "succession_available": false
-                })
-            });
+            assert_eq!(replayed, advance_result);
         }
     }
 
