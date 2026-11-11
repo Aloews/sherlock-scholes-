@@ -8,7 +8,7 @@ On an ordinary GitHub issue (not a pull request), the repository owner can add a
 
 `/ai Implement the requested change and add regression tests.`
 
-After activation, Railway will run the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs lightweight Python syntax checks without provider credentials, pushes an isolated branch, and opens a pull request. Full frontend, Rust, SQL, and integration suites remain GitHub Actions release gates on the exact PR head. It never merges or deploys.
+After activation, Railway will run the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, combines the command with the issue title and description (treated as untrusted input), generates a bounded patch through Starimg, validates changed paths against that repository's own allowlist at every validation stage, runs lightweight Python syntax checks without provider credentials, pushes an isolated branch based on that repository's actual default branch, and opens a pull request against the same default branch. Full frontend, Rust, SQL, and integration suites remain GitHub Actions release gates on the exact PR head. It never merges or deploys.
 
 ## Railway service configuration
 
