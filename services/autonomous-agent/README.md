@@ -29,7 +29,8 @@ Required variables:
 - `GITHUB_REPOSITORY=Aloews/sherlock-scholes-`
 - Preserve the existing secret variables `GITHUB_TOKEN` and `STARIMG_API_KEY`; do not reveal or copy their values.
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
-- `TASKS_SINCE=<UTC timestamp recorded at activation>` (fixed UTC start boundary; ignore older comments)
+- `AGENT_ENABLED=false` during deployment verification; switch to `true` only after CI and live preflight pass.
+- `TASKS_SINCE=<UTC timestamp recorded at activation>` (fixed UTC start boundary; ignore older comments; required only when enabled)
 
 Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
 
