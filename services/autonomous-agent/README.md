@@ -1,6 +1,6 @@
 # Sherlock Scholes autonomous engineering worker
 
-The worker runs inside the existing Railway project and uses GitHub as its durable task/PR ledger and Starimg as its only model gateway.
+The worker runs as a scheduled job in the existing Railway project. GitHub is the durable task/PR ledger; Starimg is the only model gateway.
 
 ## Trigger
 
@@ -8,7 +8,7 @@ On an ordinary GitHub issue (not a pull request), the repository owner can add a
 
 `/ai Implement the requested change and add regression tests.`
 
-The worker polls GitHub every 90 seconds, accepts only comments authored by the repository owner, generates a bounded patch through Starimg, validates the changed paths, runs applicable local checks without provider credentials in the test process, pushes an isolated branch, and opens a pull request. It never merges or deploys.
+Railway runs the worker every five minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs applicable local checks without provider credentials in the test process, pushes an isolated branch, and opens a pull request. It never merges or deploys.
 
 ## Railway service configuration
 
@@ -18,8 +18,8 @@ Create a separate service in the existing `distinguished-transformation` project
 - Root directory: `services/autonomous-agent`
 - Builder: Dockerfile
 - Dockerfile: `Dockerfile`
-- Health check: `/healthz`
-- Start command: Dockerfile default
+- Cron schedule: `*/5 * * * *`
+- Start command: Dockerfile default; the process exits after checking one task
 
 Required variables:
 
@@ -27,9 +27,8 @@ Required variables:
 - `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}`
 - `STARIMG_API_KEY=${{sherlock-ai-bot.STARIMG_API_KEY}}`
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
-- `POLL_INTERVAL_SECONDS=90`
 
-Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog and chooses a supported coding model; it refuses to guess if no coding model is listed.
+Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
 
 The referenced credentials are injected by Railway and never printed. The GitHub token must have repository contents write and pull-request write permissions. No Supabase, Vercel, Telegram, or production database credentials are required.
 
@@ -42,12 +41,16 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 - No arbitrary model-generated shell commands or model-generated test commands.
 - Test subprocesses do not receive GitHub or Starimg credentials.
 - The worker creates branches and PRs only. It cannot merge, deploy, apply migrations, or write production data.
-- Each task uses a deterministic branch name, allowing recovery if a process restarts after pushing.
+- A deterministic branch and GitHub issue marker prevent duplicate work after restarts; failed tasks are recorded on the source issue.
 
 ## Cost controls
 
-The worker uses one Starimg completion per task, a 3,000-token output ceiling, at most eight changed files, and one task at a time. Railway compute runs continuously to poll GitHub; keep the service within the Free plan's included credits and sleep/disable it if the plan's remaining credits would be exceeded. Model usage is charged by Starimg separately.
+- Railway runs a short job every five minutes rather than keeping a VM awake continuously.
+- At most one task and one Starimg completion are processed per invocation.
+- Completion output is capped at 3,000 tokens; patches are limited to eight files and 60,000 characters.
+- Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
+- No scheduled task is started if required credentials or the Starimg model catalog cannot be verified.
 
 ## Verification
 
-The service preflights GitHub repository write permissions and the authenticated Starimg model catalog before polling. A task is considered accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
+The worker preflights GitHub repository write permissions and the authenticated Starimg model catalog before processing. A task is accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
