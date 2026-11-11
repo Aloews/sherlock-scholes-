@@ -12,14 +12,17 @@ Railway runs the worker every fifteen minutes. Each run accepts at most one pend
 
 ## Railway service configuration
 
-Create a separate service in the existing `distinguished-transformation` project:
+Reuse the existing `sherlock-ai-bot` Railway service in project `distinguished-transformation`; do not create a third service on the Free plan. Its Railway-only long-polling bot is currently crashed and documented as nonworking. The Vercel webhook bot remains separate and is not changed. Do not modify `stream-service`, which serves the M3U playlist.
 
 - Source: `Aloews/sherlock-scholes-`, branch `main`
-- Root directory: `services/autonomous-agent`
+- Root directory: `/services/autonomous-agent`
+- Keep the existing `/app` volume attached but unused; the worker image runs from `/opt/worker` to avoid masking its files.
 - Builder: Dockerfile
 - Dockerfile: `Dockerfile`
 - Cron schedule: `*/15 * * * *`
 - Start command: Dockerfile default; the process exits after checking one task
+- Sleep mode: disabled; no public domain is required
+- Restart policy: `NEVER`
 
 Required variables:
 
