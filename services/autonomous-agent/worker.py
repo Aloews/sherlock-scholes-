@@ -517,6 +517,9 @@ def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     worker = Worker()
+    if os.environ.get("AGENT_ENABLED", "false").strip().lower() not in ("1", "true", "yes"):
+        LOG.info("Worker disabled; GitHub preflight succeeded")
+        return
     for comment in worker._recent_comments():
         try:
             if not worker.is_actionable(comment):
