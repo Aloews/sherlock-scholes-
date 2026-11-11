@@ -477,9 +477,5 @@ def main() -> None:
     LOG.info("No pending owner task found")
 
 
-def stop_handler(*_: Any) -> None:
-    STOP.set()
-
-
 if __name__ == "__main__":
     main()
