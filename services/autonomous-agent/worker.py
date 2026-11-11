@@ -7,15 +7,12 @@ import logging
 import os
 import re
 import shutil
-import signal
 import subprocess
 import tempfile
-import threading
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +30,6 @@ ALLOWED_PREFIXES = (
 )
 EXCLUDED_PARTS = (".env", "credentials", "service-account", "secrets")
 EXCLUDED_SUFFIXES = (".lock", ".min.js", ".map", ".pem", ".key")
-STOP = threading.Event()
 
 
 def required_env(name: str) -> str:
@@ -252,10 +248,36 @@ class Worker:
         LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
 
     def _recent_comments(self) -> list[dict[str, Any]]:
-        since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds").replace("+00:00", "Z")
-        query = urllib.parse.urlencode({"since": since, "per_page": 100, "sort": "created", "direction": "desc"})
-        comments = request_json(api_url(f"/repos/{self.repo}/issues/comments?{query}"), self.token)
-        return comments if isinstance(comments, list) else []
+        since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(timespec="seconds").replace("+00:00", "Z")
+        comments: list[dict[str, Any]] = []
+        for page in range(1, 11):
+            query = urllib.parse.urlencode({
+                "since": since, "per_page": 100, "page": page,
+                "sort": "created", "direction": "desc"
+            })
+            batch = request_json(api_url(f"/repos/{self.repo}/issues/comments?{query}"), self.token)
+            if not isinstance(batch, list) or not batch:
+                break
+            comments.extend(batch)
+            if len(batch) < 100:
+                break
+        return comments
+
+    def is_actionable(self, comment: dict[str, Any]) -> bool:
+        comment_id = int(comment.get("id", 0))
+        body = str(comment.get("body", "")).strip()
+        sender = str((comment.get("user") or {}).get("login", ""))
+        if not comment_id or sender.casefold() != self.owner.casefold() or not body.startswith("/ai "):
+            return False
+        issue_url = str(comment.get("issue_url", ""))
+        match = re.search(r"/issues/(\\d+)$", issue_url)
+        if not match:
+            return False
+        issue_number = int(match.group(1))
+        if self._is_pull_request(issue_number) or self._has_marker(issue_number, comment_id):
+            return False
+        branch = f"ai/task-{issue_number}-{comment_id}"
+        return self._existing_pr(branch) is None
 
     def _is_pull_request(self, issue_number: int) -> bool:
         issue = request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}"), self.token)
@@ -437,41 +459,22 @@ class Worker:
         # applies migrations or accesses production databases.
 
 
-def health_server() -> None:
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:
-            if self.path in ("/healthz", "/health/live", "/"):
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"status":"ok"}')
-            else:
-                self.send_response(404)
-                self.end_headers()
-
-        def log_message(self, *_: Any) -> None:
-            return
-    port = int(os.environ.get("PORT", "8080"))
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
-
-
 def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    threading.Thread(target=health_server, name="health-server", daemon=True).start()
     worker = Worker()
-    while not STOP.is_set():
+    for comment in worker._recent_comments():
         try:
-            for comment in worker._recent_comments():
-                try:
-                    worker.process(comment)
-                except Exception as exc:
-                    LOG.error("Task processing failed (comment id %s): %s",
-                              comment.get("id", "unknown"), str(exc)[:1000])
-                    worker.record_failure(comment, str(exc))
+            if not worker.is_actionable(comment):
+                continue
+            worker.process(comment)
+            return
         except Exception as exc:
-            LOG.error("Polling cycle failed: %s", str(exc)[:1000])
-        STOP.wait(worker.poll_seconds)
+            LOG.error("Task processing failed (comment id %s): %s",
+                      comment.get("id", "unknown"), str(exc)[:1000])
+            worker.record_failure(comment, str(exc))
+            return
+    LOG.info("No pending owner task found")
 
 
 def stop_handler(*_: Any) -> None:
@@ -479,6 +482,4 @@ def stop_handler(*_: Any) -> None:
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, stop_handler)
-    signal.signal(signal.SIGINT, stop_handler)
     main()
