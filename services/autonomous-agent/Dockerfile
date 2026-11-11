@@ -7,5 +7,4 @@ RUN apt-get update \
 WORKDIR /app
 COPY worker.py /app/worker.py
 ENV PYTHONUNBUFFERED=1
-EXPOSE 8080
 CMD ["python3", "/app/worker.py"]
