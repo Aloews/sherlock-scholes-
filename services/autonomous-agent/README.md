@@ -47,8 +47,8 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 ## Cost controls
 
 - Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously.
-- At most one task and one Starimg completion are processed per invocation.
-- Completion output is capped at 3,000 tokens; patches are limited to eight files and 60,000 characters.
+- At most one task is processed per invocation, with up to two Starimg completions if a patch or its local checks fail.
+- Completion output is capped at 6,000 tokens per attempt; patches are limited to eight files and 60,000 characters.
 - Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
 - Starimg model discovery is deferred until an eligible task exists; idle runs do not call the model API.
 
