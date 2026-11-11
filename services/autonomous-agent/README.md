@@ -42,7 +42,7 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 - Only allowlisted source, test, documentation, scraper, migration, and Rust Football Dynasty paths can be changed.
 - No workflow, package manifest, lockfile, deployment config, worker self-modification, file deletion, rename, or symlink changes.
 - No arbitrary model-generated shell commands or model-generated test commands.
-- Local syntax-check subprocesses do not receive GitHub or Starimg credentials.
+- Every child process receives a strict environment allowlist; GitHub, Starimg, Supabase, Vercel, Telegram, and other Railway secrets are excluded.
 - Full product test suites run on GitHub-hosted runners; the Railway worker does not install the application's large dependency trees.
 - The worker creates branches and PRs only. It cannot merge, deploy, apply migrations, or write production data.
 - A deterministic branch and GitHub issue marker prevent duplicate work after restarts; failed tasks are recorded on the source issue.
