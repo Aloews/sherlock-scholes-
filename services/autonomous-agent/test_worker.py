@@ -1,5 +1,10 @@
+import os
 import unittest
-from worker import extract_patch, safe_path
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from worker import extract_patch, run_command, safe_path
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -21,6 +26,25 @@ class WorkerPolicyTests(unittest.TestCase):
             "src/.env.production",
         ):
             self.assertFalse(safe_path(path), path)
+
+    def test_subprocess_environment_excludes_all_service_secrets(self):
+        with patch.dict(os.environ, {
+            "SUPABASE_DB_URL": "postgresql://secret",
+            "SUPABASE_ACCESS_TOKEN": "supabase-secret",
+            "VERCEL_TOKEN": "vercel-secret",
+            "STARIMG_API_KEY": "starimg-secret",
+            "GITHUB_TOKEN": "github-secret",
+            "M3U_SOURCE_URL": "https://private.example/playlist",
+        }, clear=True):
+            with patch("worker.subprocess.run") as mocked:
+                mocked.return_value = SimpleNamespace(returncode=0, stdout="")
+                run_command(["true"], Path("/tmp"))
+                child_env = mocked.call_args.kwargs["env"]
+                for secret_name in (
+                    "SUPABASE_DB_URL", "SUPABASE_ACCESS_TOKEN", "VERCEL_TOKEN",
+                    "STARIMG_API_KEY", "GITHUB_TOKEN", "M3U_SOURCE_URL",
+                ):
+                    self.assertNotIn(secret_name, child_env)
 
     def test_accepts_simple_patch(self):
         patch = (
