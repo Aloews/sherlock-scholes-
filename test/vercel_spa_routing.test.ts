@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
-  services: { frontend: { routes: Array<{ src: string; transforms: Array<{ type: string; op: string; args: string }> }> } };
+  services: { frontend: { routes: Array<{ src: string; dest: string }> } };
   rewrites: Array<{ source: string; destination: string | { service: string } }>;
 };
 const router = readFileSync('src/app/Router.tsx', 'utf8');
@@ -20,11 +20,11 @@ describe('Vercel SPA and Football Dynasty routing', () => {
     expect(vercel.rewrites[fallback].destination).toEqual({ service: 'frontend' });
   });
 
-  it('preserves built assets and public logos inside the frontend service', () => {
+  it('preserves static files and falls back to index.html inside the frontend service', () => {
     expect(vercel.services.frontend.routes).toEqual([
-      { src: '/assets/(.*)', transforms: [{ type: 'request.path', op: 'set', args: '/assets/$1' }] },
-      { src: '/logo-(.*)', transforms: [{ type: 'request.path', op: 'set', args: '/logo-$1' }] },
-      { src: '/(.*)', transforms: [{ type: 'request.path', op: 'set', args: '/index.html' }] },
+      { src: '/assets/(.*)', dest: '/assets/$1' },
+      { src: '/logo-(.*)', dest: '/logo-$1' },
+      { src: '/(.*)', dest: '/index.html' },
     ]);
   });
 
