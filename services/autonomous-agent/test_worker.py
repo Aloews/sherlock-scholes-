@@ -95,6 +95,30 @@ class WorkerPolicyTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             allowed_prefixes_for_repo("Aloews/not-on-the-allowlist")
 
+    def test_starimg_model_catalog_selects_coding_model_without_completion(self):
+        from worker import choose_model
+
+        with patch("worker.starimg_request", return_value={
+            "data": [{"id": "general-chat"}, {"id": "qwen3-coder-plus"}]
+        }) as request:
+            self.assertEqual(
+                choose_model("https://ai.starimg.ru/v1", "test-key"),
+                "qwen3-coder-plus",
+            )
+        request.assert_called_once_with(
+            "https://ai.starimg.ru/v1", "test-key", "/models", timeout=30
+        )
+
+    def test_starimg_explicit_model_must_exist_in_catalog(self):
+        from worker import choose_model
+
+        with patch.dict(os.environ, {"STARIMG_MODEL": "unknown-model"}):
+            with patch("worker.starimg_request", return_value={
+                "data": [{"id": "qwen3-coder-plus"}]
+            }):
+                with self.assertRaises(RuntimeError):
+                    choose_model("https://ai.starimg.ru/v1", "test-key")
+
 
 if __name__ == "__main__":
     unittest.main()
