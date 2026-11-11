@@ -1,6 +1,6 @@
 # Sherlock Scholes autonomous engineering worker
 
-The worker is deployed in the existing Railway project using the user's explicitly released `stream-service` Railway service. GitHub is the durable task/PR ledger; Starimg is the only model gateway.
+The worker is deployed in the existing Railway project using the user's explicitly released `stream-service` Railway service. GitHub is the durable task/PR ledger; Starimg is the only model gateway. One bounded run can scan an explicit allowlist of independent repositories and process at most one task total.
 
 ## Trigger
 
@@ -26,7 +26,8 @@ Reuse the existing `stream-service` Railway service in project `distinguished-tr
 
 Required variables:
 
-- `GITHUB_REPOSITORY=Aloews/sherlock-scholes-`
+- `GITHUB_REPOSITORIES=Aloews/sherlock-scholes-,Aloews/first-traffic-platform,Aloews/russian-dev-projects,Aloews/sherlock-tv,Aloews/sherlock-ai-bot,Aloews/Novel-forge` (explicit allowlist; each repository is preflighted before tasks are accepted)
+- `GITHUB_REPOSITORY=Aloews/sherlock-scholes-` (legacy single-repository fallback only when `GITHUB_REPOSITORIES` is unset)
 - `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}` (Railway service reference; the secret value is not copied)
 - Preserve the existing `STARIMG_API_KEY` already present on `stream-service`; do not reveal or copy its value.
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
@@ -41,7 +42,7 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 
 - Only owner-authored `/ai ` issue comments are tasks.
 - Pull request comments are ignored.
-- Only allowlisted source, test, documentation, scraper, migration, and Rust Football Dynasty paths can be changed.
+- Each repository has a separate source-path allowlist; unknown repositories are rejected. Only allowlisted source, test, and documentation paths can be changed. The Russian developer-project directory is restricted to `pages/`, `docs/`, and `scripts/`.
 - No workflow, package manifest, lockfile, deployment config, worker self-modification, file deletion, rename, or symlink changes.
 - No arbitrary model-generated shell commands or model-generated test commands.
 - Every child process receives a strict environment allowlist; GitHub, Starimg, Supabase, Vercel, Telegram, and other Railway secrets are excluded.
@@ -52,11 +53,11 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 ## Cost controls
 
 - Once activated, Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously. During verification the schedule is parked and task execution is disabled.
-- At most one task is processed per invocation, with up to two Starimg completions if a patch or its lightweight local checks fail.
+- At most one task across all configured repositories is processed per invocation, with up to two Starimg completions if a patch or its lightweight local checks fail.
 - Completion output is capped at 6,000 tokens per attempt; patches are limited to eight files and 60,000 characters.
 - Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
 - Starimg model discovery is deferred until an eligible task exists; idle runs do not call the model API.
 
 ## Verification
 
-The worker preflights GitHub repository write permissions and the authenticated Starimg model catalog before processing. A task is accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
+The worker preflights GitHub repository write permissions for every configured repository before processing. It discovers the authenticated Starimg model catalog only after finding an eligible task. A task is accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
