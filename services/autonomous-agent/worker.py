@@ -274,6 +274,7 @@ class Worker:
         self.starimg_key = required_env("STARIMG_API_KEY")
         self.starimg_base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
         self.model: str | None = None
+        self.default_branch = ""
         self.attempted: set[int] = set()
         self._preflight()
 
@@ -282,7 +283,11 @@ class Worker:
         permissions = repo.get("permissions") or {}
         if not permissions.get("push") or not permissions.get("pull"):
             raise RuntimeError("GITHUB_TOKEN lacks repository write access")
-        LOG.info("GitHub repository access verified for %s", self.repo)
+        default_branch = str(repo.get("default_branch", "")).strip()
+        if not default_branch or not re.fullmatch(r"[A-Za-z0-9._/-]+", default_branch) or ".." in default_branch.split("/"):
+            raise RuntimeError(f"GitHub did not return a safe default branch for {self.repo}")
+        self.default_branch = default_branch
+        LOG.info("GitHub repository access verified for %s (default branch=%s)", self.repo, self.default_branch)
         LOG.info("Starimg credentials will be validated only when a task is available")
 
     def _recent_comments(self) -> list[dict[str, Any]]:
@@ -369,7 +374,7 @@ class Worker:
         pr = request_json(api_url(f"/repos/{self.repo}/pulls"), self.token, "POST", {
             "title": f"AI implementation for issue #{issue_number}",
             "head": branch,
-            "base": "main",
+            "base": self.default_branch,
             "body": body,
         })
         url = pr.get("html_url", "")
@@ -463,7 +468,7 @@ class Worker:
                 "GIT_TERMINAL_PROMPT": "0",
             }
             try:
-                run_command(["git", "clone", "--depth", "1", "--branch", "main",
+                run_command(["git", "clone", "--depth", "1", "--branch", self.default_branch,
                              f"https://github.com/{self.repo}.git", str(temp)],
                             temp.parent, timeout=180, extra_env=clone_env)
             finally:
@@ -500,7 +505,7 @@ class Worker:
                         run_command(["git", "diff", "--name-only"], temp).splitlines()
                         + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
                     ))
-                    if not changed or len(changed) > MAX_FILES or any(not safe_path(path) for path in changed):
+                    if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
                         raise RuntimeError("Applied patch failed the final changed-path policy")
                     if any((temp / path).is_symlink() for path in changed):
                         raise RuntimeError("Symlink changes are not permitted")
