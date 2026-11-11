@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import extract_patch, run_command, safe_path
+from worker import compose_issue_task, extract_patch, run_command, safe_path
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -104,6 +104,19 @@ class WorkerPolicyTests(unittest.TestCase):
             "api/management-webhook.ts",
             allowed_prefixes_for_repo("Aloews/sherlock-scholes-"),
         ))
+
+    def test_issue_title_and_description_are_included_in_task(self):
+        task = compose_issue_task(
+            {"title": "Fix player card", "body": "The card shows the wrong season total."},
+            "Implement the issue and add tests",
+        )
+        self.assertIn("Owner command: Implement the issue and add tests", task)
+        self.assertIn("Issue title: Fix player card", task)
+        self.assertIn("wrong season total", task)
+
+    def test_issue_description_is_bounded(self):
+        task = compose_issue_task({"body": "x" * 20000}, "Fix")
+        self.assertLess(len(task), 8100)
 
     def test_worker_uses_repository_default_branch(self):
         from worker import Worker
