@@ -8,7 +8,7 @@ On an ordinary GitHub issue (not a pull request), the repository owner can add a
 
 `/ai Implement the requested change and add regression tests.`
 
-Railway runs the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs applicable local checks without provider credentials in the test process, pushes an isolated branch, and opens a pull request. It never merges or deploys.
+Railway runs the worker every fifteen minutes. Each run accepts at most one pending owner-authored task, generates a bounded patch through Starimg, validates changed paths, runs lightweight Python syntax checks without provider credentials, pushes an isolated branch, and opens a pull request. Full frontend, Rust, SQL, and integration suites remain GitHub Actions release gates on the exact PR head. It never merges or deploys.
 
 ## Railway service configuration
 
@@ -42,14 +42,15 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 - Only allowlisted source, test, documentation, scraper, migration, and Rust Football Dynasty paths can be changed.
 - No workflow, package manifest, lockfile, deployment config, worker self-modification, file deletion, rename, or symlink changes.
 - No arbitrary model-generated shell commands or model-generated test commands.
-- Test subprocesses do not receive GitHub or Starimg credentials.
+- Local syntax-check subprocesses do not receive GitHub or Starimg credentials.
+- Full product test suites run on GitHub-hosted runners; the Railway worker does not install the application's large dependency trees.
 - The worker creates branches and PRs only. It cannot merge, deploy, apply migrations, or write production data.
 - A deterministic branch and GitHub issue marker prevent duplicate work after restarts; failed tasks are recorded on the source issue.
 
 ## Cost controls
 
 - Railway runs a short job every fifteen minutes rather than keeping a VM awake continuously.
-- At most one task is processed per invocation, with up to two Starimg completions if a patch or its local checks fail.
+- At most one task is processed per invocation, with up to two Starimg completions if a patch or its lightweight local checks fail.
 - Completion output is capped at 6,000 tokens per attempt; patches are limited to eight files and 60,000 characters.
 - Model usage is charged by Starimg; Railway usage is limited to the scheduled job runtime.
 - Starimg model discovery is deferred until an eligible task exists; idle runs do not call the model API.
