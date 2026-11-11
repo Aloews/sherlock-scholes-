@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -515,7 +516,8 @@ class Worker:
 
 def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
-                        format="%(asctime)s %(levelname)s %(name)s %(message)s")
+                        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+                        stream=sys.stdout)
     worker = Worker()
     if os.environ.get("AGENT_ENABLED", "false").strip().lower() not in ("1", "true", "yes"):
         LOG.info("Worker disabled; GitHub preflight succeeded")
