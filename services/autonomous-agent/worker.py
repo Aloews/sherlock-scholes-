@@ -414,8 +414,23 @@ class Worker:
         LOG.info("Starting task comment %s on issue #%s", comment_id, issue_number)
         temp = Path(tempfile.mkdtemp(prefix="sherlock-agent-"))
         try:
-            run_command(["git", "clone", "--depth", "1", "--branch", "main",
-                         f"https://github.com/{self.repo}.git", str(temp)], temp.parent, timeout=180)
+            clone_askpass = temp.parent / f".git-askpass-{comment_id}"
+            clone_askpass.write_text(
+                "#!/bin/sh\\ncase \\"$1\\" in *Username*) echo x-access-token ;; *Password*) echo \\"$GITHUB_TOKEN\\" ;; esac\\n",
+                encoding="utf-8",
+            )
+            clone_askpass.chmod(0o700)
+            clone_env = {
+                "GIT_ASKPASS": str(clone_askpass),
+                "GITHUB_TOKEN": self.token,
+                "GIT_TERMINAL_PROMPT": "0",
+            }
+            try:
+                run_command(["git", "clone", "--depth", "1", "--branch", "main",
+                             f"https://github.com/{self.repo}.git", str(temp)],
+                            temp.parent, timeout=180, extra_env=clone_env)
+            finally:
+                clone_askpass.unlink(missing_ok=True)
             run_command(["git", "checkout", "-b", branch], temp)
             context = rank_context(temp, task)
             if self.model is None:
