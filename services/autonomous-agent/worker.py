@@ -469,6 +469,7 @@ def main() -> None:
                     LOG.error("Task processing failed (comment id %s): %s",
                               comment.get("id", "unknown"), str(exc)[:1000])
                     worker.record_failure(comment, str(exc))
+        except Exception as exc:
             LOG.error("Polling cycle failed: %s", str(exc)[:1000])
         STOP.wait(worker.poll_seconds)
 
