@@ -411,3 +411,19 @@ The final report is delivered only after the agreed release scope has passed its
 - a clear request for the user's final whole-product acceptance test.
 
 Do not send a completion announcement while any mandatory release gate remains unverified.
+
+### 13.11 Execution does not depend on ChatGPT Work
+
+ChatGPT Work is an optional execution environment, not a prerequisite, dependency, or user setup requirement for this project.
+
+- The product owner must not be instructed to locate, open, configure, or transfer the task into Work as a condition for development to proceed.
+- When repository and integration tools are available in the current ChatGPT session, the assistant may execute authorized GitHub work directly from the conversation: inspect repository state, read and edit files, create branches and pull requests, inspect CI evidence, and use connected service tools within their granted permissions.
+- The assistant must first discover which tools and permissions are actually available. It must not imply that access to GitHub, Supabase, Vercel, Railway, production credentials, or deployment controls exists unless confirmed by tool results.
+- GitHub remains the durable source of truth for project instructions, migration inventory, issues, pull requests, commits, CI results, release evidence, and resumable next actions. No essential project state may exist only in chat history or an ephemeral Work session.
+- A chat session is an interactive execution window, not a continuously running process. The assistant cannot promise to keep executing after the session ends, autonomously wake itself, or guarantee uninterrupted work between turns unless a separately configured and verified execution mechanism provides that capability.
+- At the end of each actual work session, persist a precise handoff in GitHub: current branch and commit, work completed, checks and their evidence, unresolved failures, deployment state, blockers, and the next executable task.
+- When the user returns in a new conversation and asks to continue, reconstruct the state from GitHub and connected services, then resume from the recorded next action. Do not ask the user to repeat project context already stored there.
+- GitHub Actions and other verified automation may run bounded checks or scheduled jobs. They are not a substitute for an implementation agent with repository permissions, and their existence must not be represented as proof of continuous autonomous development.
+- If an external long-running agent or cloud workspace is later configured, treat it as an optional execution worker. It must read and obey this map, write durable progress to GitHub, and meet the same security and release gates. The product owner should not have to operate that environment manually.
+
+**Operating conclusion:** development can proceed from the current ChatGPT conversation using the tools actually connected here. Work is optional. Continuity is provided by GitHub records and verified automation; uninterrupted background execution must never be promised unless it is demonstrably configured and running.
