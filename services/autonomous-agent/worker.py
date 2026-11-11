@@ -2,7 +2,6 @@
 """Bounded GitHub issue-to-PR worker. No shell commands are accepted from the model."""
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -12,7 +11,6 @@ import signal
 import subprocess
 import tempfile
 import threading
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -46,12 +44,18 @@ def required_env(name: str) -> str:
 
 
 def safe_path(path: str) -> bool:
-    path = path.replace("\\", "/").lstrip("./")
+    path = path.replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    if path.startswith("/") or ".." in Path(path).parts:
+        return False
     lower = path.lower()
     return (
         path.startswith(ALLOWED_PREFIXES)
         and not path.startswith("services/autonomous-agent/")
         and not any(part in lower for part in EXCLUDED_PARTS)
+        and not lower.endswith(EXCLUDED_SUFFIXES)
+    )
         and not lower.endswith(EXCLUDED_SUFFIXES)
         and ".." not in Path(path).parts
     )
@@ -114,7 +118,7 @@ def choose_model(base: str, key: str) -> str:
         return explicit
     if not ids:
         raise RuntimeError("Starimg model catalog is empty; set STARIMG_MODEL explicitly")
-    preferred = ("gpt-6-luna", "qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral")
+    preferred = ("qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral", "gpt-6-luna")
     for wanted in preferred:
         match = next((model for model in ids if wanted in model.lower()), None)
         if match:
@@ -275,6 +279,16 @@ class Worker:
                 return False
             raise
 
+    def _has_marker(self, issue_number: int, comment_id: int) -> bool:
+        comments = request_json(
+            api_url(f"/repos/{self.repo}/issues/{issue_number}/comments?per_page=100"),
+            self.token,
+        )
+        marker = (f"<!-- sherlock-agent-result:{comment_id} -->",
+                  f"<!-- sherlock-agent-failure:{comment_id} -->")
+        return any(any(tag in str(item.get("body", "")) for tag in marker)
+                   for item in comments if isinstance(item, dict))
+
     def _create_pr(self, issue_number: int, comment_id: int, branch: str,
                    source_url: str) -> str:
         existing = self._existing_pr(branch)
@@ -299,6 +313,28 @@ class Worker:
             "body": f"Pull request opened: {url}\n\n<!-- sherlock-agent-result:{comment_id} -->"
         })
         return url
+
+    def record_failure(self, comment: dict[str, Any], error: str) -> None:
+        issue_url = str(comment.get("issue_url", ""))
+        match = re.search(r"/issues/(\\d+)$", issue_url)
+        comment_id = int(comment.get("id", 0))
+        if not match or not comment_id:
+            return
+        issue_number = int(match.group(1))
+        try:
+            if self._has_marker(issue_number, comment_id):
+                return
+            safe_error = re.sub(r"https?://[^\\s]+", "[url]", error)[:500]
+            request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
+                         self.token, "POST", {
+                "body": "The autonomous worker could not complete this task. "
+                        "No production changes were made.\\n\\n"
+                        f"Failure: {safe_error}\\n\\n"
+                        f"<!-- sherlock-agent-failure:{comment_id} -->"
+            })
+        except Exception as marker_error:
+            LOG.error("Could not persist failure marker for task %s: %s",
+                      comment_id, str(marker_error)[:300])
 
     def _push(self, root: Path, branch: str) -> None:
         askpass = root / ".git-askpass"
@@ -335,6 +371,9 @@ class Worker:
             return
         branch = f"ai/task-{issue_number}-{comment_id}"
         source_url = str(comment.get("html_url", ""))
+        if self._has_marker(issue_number, comment_id):
+            self.attempted.add(comment_id)
+            return
         existing = self._existing_pr(branch)
         if existing:
             self.attempted.add(comment_id)
@@ -366,8 +405,12 @@ class Worker:
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
             if apply.returncode:
                 raise RuntimeError("Generated patch could not be applied: " + apply.stdout[-2000:])
-            changed = run_command(["git", "diff", "--name-only"], temp).splitlines()
+            changed = sorted(set(
+                run_command(["git", "diff", "--name-only"], temp).splitlines()
+                + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
+            ))
             if not changed or len(changed) > MAX_FILES or any(not safe_path(path) for path in changed):
+                raise RuntimeError("Applied patch failed the final changed-path policy")
                 raise RuntimeError("Applied patch failed the final changed-path policy")
             run_command(["git", "diff", "--check"], temp)
             self._validate(temp, changed)
@@ -428,6 +471,7 @@ def main() -> None:
                     worker.process(comment)
                 except Exception as exc:
                     LOG.error("Task processing failed (comment id %s): %s",
+                    worker.record_failure(comment, str(exc))
                               comment.get("id", "unknown"), str(exc)[:1000])
         except Exception as exc:
             LOG.error("Polling cycle failed: %s", str(exc)[:1000])
