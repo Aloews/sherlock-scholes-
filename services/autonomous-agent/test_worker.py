@@ -77,3 +77,24 @@ class WorkerPolicyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_repository_scoped_path_policies(self):
+        from worker import allowed_prefixes_for_repo
+
+        self.assertTrue(safe_path("api/management-webhook.ts",
+                                  allowed_prefixes_for_repo("Aloews/sherlock-ai-bot")))
+        self.assertTrue(safe_path("src/features/stream/player.ts",
+                                  allowed_prefixes_for_repo("Aloews/sherlock-tv")))
+        self.assertTrue(safe_path("pages/README-Game.md",
+                                  allowed_prefixes_for_repo("Aloews/russian-dev-projects")))
+        self.assertFalse(safe_path("api/management-webhook.ts",
+                                   allowed_prefixes_for_repo("Aloews/sherlock-scholes-")))
+        self.assertFalse(safe_path("package.json",
+                                   allowed_prefixes_for_repo("Aloews/Novel-forge")))
+
+    def test_unknown_repository_is_not_allowed(self):
+        from worker import allowed_prefixes_for_repo
+
+        with self.assertRaises(RuntimeError):
+            allowed_prefixes_for_repo("Aloews/not-on-the-allowlist")
