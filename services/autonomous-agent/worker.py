@@ -110,7 +110,7 @@ def choose_model(base: str, key: str) -> str:
         return explicit
     if not ids:
         raise RuntimeError("Starimg model catalog is empty; set STARIMG_MODEL explicitly")
-    preferred = ("qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral", "gpt-6-luna")
+    preferred = ("qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral", "gpt-6-luna", "gpt-6.1-terra")
     for wanted in preferred:
         match = next((model for model in ids if wanted in model.lower()), None)
         if match:
@@ -227,22 +227,20 @@ def api_url(path: str) -> str:
 class Worker:
     def __init__(self) -> None:
         self.repo = required_env("GITHUB_REPOSITORY")
-        self.owner, self.name = self.repo.split("/", 1)
+        self.owner, _ = self.repo.split("/", 1)
         self.token = required_env("GITHUB_TOKEN")
         self.starimg_key = required_env("STARIMG_API_KEY")
         self.starimg_base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
-        self.poll_seconds = max(60, int(os.environ.get("POLL_INTERVAL_SECONDS", "90")))
         self.model: str | None = None
         self.attempted: set[int] = set()
         self._preflight()
 
     def _preflight(self) -> None:
-        user = request_json(api_url("/user"), self.token)
         repo = request_json(api_url(f"/repos/{self.repo}"), self.token)
         permissions = repo.get("permissions") or {}
         if not permissions.get("push") or not permissions.get("pull"):
-            raise RuntimeError("GITHUB_TOKEN lacks repository push or pull-request permissions")
-        LOG.info("GitHub auth verified for %s (account %s)", self.repo, user.get("login", "unknown"))
+            raise RuntimeError("GITHUB_TOKEN lacks repository write access")
+        LOG.info("GitHub repository access verified for %s", self.repo)
         LOG.info("Starimg credentials will be validated only when a task is available")
 
     def _recent_comments(self) -> list[dict[str, Any]]:
@@ -275,10 +273,14 @@ class Worker:
         if not match:
             return False
         issue_number = int(match.group(1))
-        if self._is_pull_request(issue_number) or self._has_marker(issue_number, comment_id):
+        if self._is_pull_request(issue_number):
             return False
         branch = f"ai/task-{issue_number}-{comment_id}"
-        return self._existing_pr(branch) is None
+        if self._existing_pr(branch):
+            return False
+        if self._has_marker(issue_number, comment_id) and not self._branch_exists(branch):
+            return False
+        return True
 
     def _is_pull_request(self, issue_number: int) -> bool:
         issue = request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}"), self.token)
