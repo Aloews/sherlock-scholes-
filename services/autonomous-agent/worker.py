@@ -423,7 +423,7 @@ class Worker:
         try:
             clone_askpass = temp.parent / f".git-askpass-{comment_id}"
             clone_askpass.write_text(
-                "#!/bin/sh\\ncase \\"$1\\" in *Username*) echo x-access-token ;; *Password*) echo \\"$GITHUB_TOKEN\\" ;; esac\\n",
+                "#!/bin/sh\ncase \"$1\" in *Username*) echo x-access-token ;; *Password*) echo \"$GITHUB_TOKEN\" ;; esac\n",
                 encoding="utf-8",
             )
             clone_askpass.chmod(0o700)
