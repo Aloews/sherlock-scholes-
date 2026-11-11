@@ -133,6 +133,37 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(status, StatusCode::CREATED);
     let campaign_id = created["id"].as_str().expect("campaign id");
+
+    // Reusing an idempotency key with a different payload must never replay
+    // a response for a different campaign setup.
+    let (reused_key_status, _) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("campaign-create-0001"),
+        Some(json!({
+            "name":"North Star",
+            "mode":"sandbox",
+            "origin":"entrepreneur",
+            "founder_name":"Alex Morgan",
+            "dynasty_name":"Morgan House",
+            "club_name":"Different Club"
+        })),
+    )
+    .await;
+    assert_eq!(reused_key_status, StatusCode::CONFLICT);
+
+    // A child cannot be older than the parent or be born less than 16 years
+    // after the parent's birth.
+    let (invalid_gap_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/heirs"),
+        Some("heir-invalid-gap-0001"),
+        Some(json!({"name":"Invalid Morgan","age":30})),
+    )
+    .await;
+    assert_eq!(invalid_gap_status, StatusCode::BAD_REQUEST);
     let (replay_status, replayed) = call(
         app.clone(),
         "POST",
@@ -165,6 +196,34 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         )
         .await;
         assert_eq!(advance_status, StatusCode::OK);
+        if index == 0 {
+            let (replay_status, replayed) = call(
+                app.clone(),
+                "POST",
+                &format!("/api/v1/campaigns/{campaign_id}/advance"),
+                Some("advance-0000"),
+                Some(json!({"years":10})),
+            )
+            .await;
+            assert_eq!(replay_status, StatusCode::OK);
+            assert_eq!(replayed, {
+                let (status, value) = call(
+                    app.clone(),
+                    "GET",
+                    &format!("/api/v1/campaigns/{campaign_id}"),
+                    None,
+                    None,
+                )
+                .await;
+                assert_eq!(status, StatusCode::OK);
+                json!({
+                    "current_year": value["campaign"]["current_year"],
+                    "player_age": 60,
+                    "status": "active",
+                    "succession_available": false
+                })
+            });
+        }
     }
 
     // Put the founder five years below the deterministic death boundary, then
