@@ -16,6 +16,8 @@ class WorkerPolicyTests(unittest.TestCase):
             "package-lock.json",
             "supabase/.env",
             "docs/../.env",
+            "../../src/secret.ts",
+            "/src/absolute.ts",
             "src/.env.production",
         ):
             self.assertFalse(safe_path(path), path)
