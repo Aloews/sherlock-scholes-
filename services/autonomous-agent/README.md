@@ -32,6 +32,7 @@ Required variables:
 - Preserve the existing `STARIMG_API_KEY` already present on `stream-service`; do not reveal or copy its value.
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
 - `AGENT_ENABLED=false` until CI and live preflight pass; switch to `true` only after both are verified.
+- `STARIMG_PREFLIGHT=false` normally; set to `true` for exactly one scheduled invocation to authenticate GET `/models` and validate model selection without sending a completion, then immediately reset to `false`.
 - `TASKS_SINCE=2999-01-01T00:00:00Z` during the disabled verification period; replace with the activation UTC timestamp when enabling tasks.
 
 Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
@@ -60,4 +61,4 @@ The referenced credentials are injected by Railway and never printed. The GitHub
 
 ## Verification
 
-The worker preflights GitHub repository write permissions for every configured repository before processing. It discovers the authenticated Starimg model catalog only after finding an eligible task. A task is accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
+The worker preflights GitHub repository write permissions for every configured repository before processing. A one-shot `STARIMG_PREFLIGHT=true` mode validates the authenticated Starimg `/models` catalog without sending a completion or consuming generation tokens; reset it immediately after the one verification run. Normal idle runs do not call Starimg. A task is accepted only when a PR exists. Required CI checks remain the release gate; no PR is merged automatically.
