@@ -271,7 +271,7 @@ These are the next outcomes to prove—not a promise that work is already comple
 - Portable skill: `.agents/skills/reality-first-autonomous-engineering/SKILL.md`.
 - Shareable operating model and copy/paste agent instruction: `docs/AI_AGENT_AUTONOMY_SHARE.md`.
 - The skill is project-agnostic; each repository must keep its own project map, task contracts, credentials, permissions, budgets, and release policy.
-- The Railway worker is a bounded execution adapter for this repository. It does not grant other agents or repositories access automatically.
+- The Railway worker is a bounded multi-repository executor using an explicit repository allowlist and repository-specific writable-path policies. It preflights write access to every configured repository before accepting work; one invocation processes at most one task total. The shared skill does not grant any other agent or repository access automatically.
 - Required lifecycle: inspect → define acceptance → implement → locally verify → review → exact-SHA CI → authorized deployment → real-path verification → durable handoff.
 - The worker remains disabled until required CI and a safe live preflight pass. No task is processed merely because the service is deployed.
 
