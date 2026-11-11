@@ -431,8 +431,9 @@ class Worker:
                     task, issue_number, context, previous_patch, validation_error
                 )
                 usage_records.append(usage)
-                patch = extract_patch(answer)
+                patch = ""
                 try:
+                    patch = extract_patch(answer)
                     check = subprocess.run(["git", "apply", "--recount", "--check", "-"],
                                             cwd=temp, input=patch, text=True,
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
@@ -456,7 +457,7 @@ class Worker:
                     break
                 except Exception as exc:
                     validation_error = str(exc)[:3000]
-                    previous_patch = patch
+                    previous_patch = patch or answer
                     if attempt >= MAX_GENERATION_ATTEMPTS:
                         raise RuntimeError(f"Implementation failed after {attempt} attempts: {validation_error}") from None
                     LOG.warning("Task %s validation failed on attempt %s; requesting one correction",
