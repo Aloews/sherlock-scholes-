@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "services/football-dynasty/**"
+      - "services/sherlock-core/**"
       - "docs/football-dynasty/**"
       - "docs/MAP.md"
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - "services/football-dynasty/**"
+      - "services/sherlock-core/**"
       - ".github/workflows/football-dynasty-rust.yml"
 
 permissions:
@@ -55,6 +57,15 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets -- -D warnings
       - name: Run tests
+        run: cargo test --all-targets
+      - name: Check Sherlock core formatting
+        working-directory: services/sherlock-core
+        run: cargo fmt --all -- --check
+      - name: Run Sherlock core Clippy
+        working-directory: services/sherlock-core
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run Sherlock core tests
+        working-directory: services/sherlock-core
         run: cargo test --all-targets
       - name: Install PostgreSQL client
         run: |
