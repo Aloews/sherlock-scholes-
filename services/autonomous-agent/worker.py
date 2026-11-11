@@ -313,7 +313,7 @@ class Worker:
 
     def record_failure(self, comment: dict[str, Any], error: str) -> None:
         issue_url = str(comment.get("issue_url", ""))
-        match = re.search(r"/issues/(\\d+)$", issue_url)
+        match = re.search(r"/issues/(\d+)$", issue_url)
         comment_id = int(comment.get("id", 0))
         if not match or not comment_id:
             return
@@ -321,12 +321,12 @@ class Worker:
         try:
             if self._has_marker(issue_number, comment_id):
                 return
-            safe_error = re.sub(r"https?://[^\\s]+", "[url]", error)[:500]
+            safe_error = re.sub(r"https?://[^\s]+", "[url]", error)[:500]
             request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
                          self.token, "POST", {
                 "body": "The autonomous worker could not complete this task. "
-                        "No production changes were made.\\n\\n"
-                        f"Failure: {safe_error}\\n\\n"
+                        "No production changes were made.\n\n"
+                        f"Failure: {safe_error}\n\n"
                         f"<!-- sherlock-agent-failure:{comment_id} -->"
             })
         except Exception as marker_error:
@@ -467,9 +467,7 @@ def main() -> None:
                     worker.process(comment)
                 except Exception as exc:
                     LOG.error("Task processing failed (comment id %s): %s",
-                              comment.get("id", "unknown"), str(exc)[:1000])
                     worker.record_failure(comment, str(exc))
-                              comment.get("id", "unknown"), str(exc)[:1000])
         except Exception as exc:
             LOG.error("Polling cycle failed: %s", str(exc)[:1000])
         STOP.wait(worker.poll_seconds)
