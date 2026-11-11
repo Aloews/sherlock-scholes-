@@ -27,7 +27,7 @@ Required variables:
 - `GITHUB_TOKEN=${{sherlock-ai-bot.GITHUB_TOKEN}}`
 - `STARIMG_API_KEY=${{sherlock-ai-bot.STARIMG_API_KEY}}`
 - `STARIMG_BASE_URL=https://ai.starimg.ru/v1`
-- `TASKS_SINCE=2026-11-11T14:25:00Z` (fixed UTC start boundary; ignore older comments)
+- `TASKS_SINCE=<UTC timestamp recorded at activation>` (fixed UTC start boundary; ignore older comments)
 
 Optional `STARIMG_MODEL` pins a model. If unset, the worker discovers the authenticated Starimg catalog, prefers an available coding model, and refuses to guess if no supported model is listed.
 
