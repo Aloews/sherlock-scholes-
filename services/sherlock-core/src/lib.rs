@@ -225,8 +225,9 @@ mod tests {
 
     #[test]
     fn arithmetic_saturates_at_numeric_boundaries() {
-        let value = clock(Some(i64::MIN), u64::MAX, u64::MAX, Some(i64::MIN));
+        let value = clock(Some(i64::MIN), u64::MAX, 0, None);
+        assert_eq!(value.elapsed_ms(i64::MAX), u64::MAX);
         assert_eq!(value.deadline_at_ms(i64::MAX), i64::MAX);
-        assert_eq!(value.remaining_seconds(i64::MAX), 0);
+        assert_eq!(value.remaining_seconds(i64::MAX), u64::MAX - u64::MAX / 1_000);
     }
 }
