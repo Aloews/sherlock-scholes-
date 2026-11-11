@@ -6,5 +6,6 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY worker.py /app/worker.py
+RUN python3 -m py_compile /app/worker.py
 ENV PYTHONUNBUFFERED=1
 CMD ["python3", "/app/worker.py"]
