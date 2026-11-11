@@ -27,3 +27,8 @@ disagree about the app itself, `CLAUDE.md` is current.
 The canonical, detailed system prompt for agents lives in
 [`docs/AI_ENGINEERING_GUIDE.md`](./docs/AI_ENGINEERING_GUIDE.md) and
 [`docs/PROMPTS/`](./docs/PROMPTS/).
+
+
+## Portable autonomous execution
+
+For tasks that require an agent to own the complete engineering loop—not just suggest code—load the portable [Reality-First Autonomous Engineering skill](./.agents/skills/reality-first-autonomous-engineering/SKILL.md). It supplements this repository's project-specific rules; it does not override `CLAUDE.md`, the engineering constitution, security policy, or release approvals. The shareable overview is [docs/AI_AGENT_AUTONOMY_SHARE.md](./docs/AI_AGENT_AUTONOMY_SHARE.md).
