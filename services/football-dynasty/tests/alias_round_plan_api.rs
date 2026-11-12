@@ -504,15 +504,13 @@ async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
     .execute(&db)
     .await
     .expect("round");
-    sqlx::query(
-        "INSERT INTO public.cards (id, active) VALUES ($1, true), ($2, true), ($3, false)",
-    )
-    .bind(card_a)
-    .bind(card_b)
-    .bind(inactive_card)
-    .execute(&db)
-    .await
-    .expect("cards");
+    sqlx::query("INSERT INTO public.cards (id, active) VALUES ($1, true), ($2, true), ($3, false)")
+        .bind(card_a)
+        .bind(card_b)
+        .bind(inactive_card)
+        .execute(&db)
+        .await
+        .expect("cards");
 
     let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
     let (denied, _) = call_at(
@@ -548,12 +546,11 @@ async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
     assert_eq!(room_state.0, "playing");
     assert_eq!(room_state.1, Some(round_id));
 
-    let round_status: String =
-        sqlx::query_scalar("SELECT status FROM public.rounds WHERE id = $1")
-            .bind(round_id)
-            .fetch_one(&db)
-            .await
-            .expect("round status");
+    let round_status: String = sqlx::query_scalar("SELECT status FROM public.rounds WHERE id = $1")
+        .bind(round_id)
+        .fetch_one(&db)
+        .await
+        .expect("round status");
     assert_eq!(round_status, "active");
 
     let dealt: Vec<(Uuid, i32, String)> = sqlx::query_as(
@@ -567,7 +564,10 @@ async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
     .await
     .expect("dealt cards");
     assert_eq!(dealt.len(), 2);
-    assert_eq!(dealt.iter().map(|row| row.1).collect::<Vec<_>>(), vec![1, 2]);
+    assert_eq!(
+        dealt.iter().map(|row| row.1).collect::<Vec<_>>(),
+        vec![1, 2]
+    );
     assert!(dealt.iter().all(|row| row.2 == "pending"));
     assert!(dealt.iter().all(|row| row.0 != inactive_card));
 }
@@ -619,13 +619,8 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
         .expect("new card");
 
     let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
-    let (status, response) = call_at(
-        app,
-        &uri,
-        json!({}),
-        Some("valid-test-init-data"),
-    )
-    .await;
+    let (status, response) =
+        call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(response["outcome"], "activated");
 

@@ -411,8 +411,8 @@ async fn alias_activate_round(
         return Err(ApiError::conflict("alias_round_not_pending"));
     }
 
-    let is_recovering_claim = round.room_status == "playing"
-        && round.current_round_id == Some(round_id);
+    let is_recovering_claim =
+        round.room_status == "playing" && round.current_round_id == Some(round_id);
     if !is_recovering_claim {
         match (round.room_status.as_str(), round.current_round_id) {
             ("waiting", None) if round.round_number == 1 => {}
@@ -464,14 +464,13 @@ async fn alias_activate_round(
             Value::Object(filter)
         }
     };
-    let card_ids = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM public.pick_random_cards($1, $2, $3)",
-    )
-    .bind(filter)
-    .bind(card_count)
-    .bind(init_data)
-    .fetch_all(&mut *tx)
-    .await?;
+    let card_ids =
+        sqlx::query_scalar::<_, Uuid>("SELECT id FROM public.pick_random_cards($1, $2, $3)")
+            .bind(filter)
+            .bind(card_count)
+            .bind(init_data)
+            .fetch_all(&mut *tx)
+            .await?;
     if card_ids.is_empty() {
         return Err(ApiError::bad_request("no_cards_for_room_deck"));
     }
