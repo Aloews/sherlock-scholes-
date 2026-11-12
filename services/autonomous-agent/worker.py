@@ -22,7 +22,8 @@ MAX_TASK_CHARS = 3000
 MAX_ISSUE_CONTEXT_CHARS = 8000
 MAX_FILES = 8
 MAX_CONTEXT_FILES = 8
-MAX_CONTEXT_CHARS = 32000
+MAX_CONTEXT_CHARS = 64000
+MAX_FILE_CONTEXT_CHARS = 8000
 MAX_PATCH_CHARS = 60000
 MAX_COMPLETION_TOKENS = 6000
 MAX_GENERATION_ATTEMPTS = 2
@@ -227,6 +228,33 @@ def run_command(args: list[str], cwd: Path, timeout: int = 900,
     return result.stdout
 
 
+def context_excerpt(body: str, limit: int = MAX_FILE_CONTEXT_CHARS) -> str:
+    if len(body) <= limit:
+        return body
+    marker = "\n...[middle omitted; do not edit omitted lines]...\n"
+    budget = max(2, limit - len(marker))
+    head = budget // 2
+    tail = budget - head
+    return body[:head] + marker + body[-tail:]
+
+
+def patch_file_context(root: Path, patch: str,
+                       allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PREFIXES) -> str:
+    """Return exact current contents for every safe path named by a rejected patch."""
+    headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
+    parts: list[str] = []
+    for old, new in headers:
+        if old != new or not safe_path(old, allowed_prefixes):
+            continue
+        path = root / old
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        parts.append(f"\n--- EXACT CURRENT FILE CONTENT AFTER RESET: {old} ---\n{context_excerpt(body)}")
+    return "\n".join(parts)
+
+
 def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> str:
     tokens = set(re.findall(r"[a-zA-Z0-9_/-]{3,}", task.lower()))
     files = run_command(["git", "ls-files"], root).splitlines()
@@ -245,7 +273,7 @@ def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> st
         score += sum(1 for token in tokens if token in body[:12_000].lower())
         if path in ("AGENTS.md", "README.md", "docs/MAP.md"):
             score += 100
-        ranked.append((score, path, body[:4500]))
+        ranked.append((score, path, context_excerpt(body)))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
     selected = ranked[:MAX_CONTEXT_FILES]
     context = "\n".join(f"\n--- FILE: {path} ---\n{body}" for _, path, body in selected)
@@ -287,6 +315,8 @@ def ask_starimg(base: str, key: str, model: str, task: str,
         "Do not modify services/autonomous-agent/, workflows, manifests, lockfiles, deployment settings, "
         "credentials, or secrets. Do not delete files, rename files, create symlinks, or add dependencies. "
         "Keep the change minimal, preserve existing behaviour, and add focused regression tests. "
+        "Every old line in every diff hunk must exactly match the supplied current repository context. "
+        "Do not edit omitted file regions or invent context; if the exact target lines are not shown, leave that file unchanged. "
         "Never claim that tests or production checks have run."
     )
     prompt = (
@@ -595,6 +625,13 @@ class Worker:
                     )
                     run_command(["git", "reset", "--hard", "HEAD"], temp)
                     run_command(["git", "clean", "-fd"], temp)
+                    exact_failed_files = patch_file_context(temp, patch, self.allowed_prefixes)
+                    if exact_failed_files:
+                        context = (
+                            exact_failed_files
+                            + "\n\n--- Additional ranked repository context ---\n"
+                            + context[:8000]
+                        )[:MAX_CONTEXT_CHARS]
             if not changed:
                 raise RuntimeError("Worker produced no validated changes")
             run_command(["git", "config", "user.name", "Sherlock Engineering Agent"], temp)
