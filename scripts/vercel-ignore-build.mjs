@@ -16,6 +16,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     environment: process.env.VERCEL_ENV ?? '',
   });
   const reason = shouldBuild ? 'build allowed' : 'preview skipped: release marker absent';
-  process.stdout.write(`Vercel ${reason} (environment=${process.env.VERCEL_ENV ?? 'unknown'}, branch=${process.env.VERCEL_GIT_COMMIT_REF ?? 'unknown'})\\n`);
+  process.stdout.write(`Vercel ${reason} (environment=${process.env.VERCEL_ENV ?? 'unknown'}, branch=${process.env.VERCEL_GIT_COMMIT_REF ?? 'unknown'})\n`);
   process.exitCode = shouldBuild ? 1 : 0;
 }
