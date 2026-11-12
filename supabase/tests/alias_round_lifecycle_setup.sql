@@ -45,7 +45,7 @@ CREATE TABLE public.room_players (
 );
 
 CREATE TABLE public.rounds (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id UUID NOT NULL REFERENCES public.rooms(id),
   team_id UUID NOT NULL,
   round_number INTEGER NOT NULL,
