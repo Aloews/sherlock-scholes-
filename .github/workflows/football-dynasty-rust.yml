@@ -95,6 +95,12 @@ jobs:
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle.test.sql
           DATABASE_URL="$ALIAS_DATABASE_URL" cargo test --test alias_round_plan_api -- --ignored
 
+      - name: Alias Rust API PostgreSQL integration tests
+        working-directory: services/football-dynasty
+        run: |
+          ALIAS_DATABASE_URL="postgres://postgres:postgres@localhost:5432/sherlock_alias_test"
+          DATABASE_URL="$ALIAS_DATABASE_URL" cargo test --test alias_round_plan_api -- --ignored
+
       - name: Build Vercel Rust service container
         working-directory: .
         run: docker build --file services/football-dynasty/Dockerfile.vercel --tag sherlock-scholes-rust-api:ci services
