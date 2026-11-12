@@ -43,19 +43,23 @@ describe('a clock that is being held', () => {
 
   it('never holds longer than the remaining pause allowance', () => {
     const held = clock({
-      startedAt: new Date(T0 - 100_000).toISOString(),
+      startedAt: new Date(T0 - 110_000).toISOString(),
       pausedMs: 100_000,
       pausedAt: new Date(T0).toISOString(),
     });
+    expect(remainingSeconds(held, T0 + 10_000)).toBe(50);
     expect(remainingSeconds(held, T0 + 20_000)).toBe(50);
-    expect(remainingSeconds(held, T0 + 30_000)).toBe(50);
-    expect(remainingSeconds(held, T0 + 40_000)).toBe(40);
-    expect(deadlineAt(held, T0 + 40_000)).toBe(T0 + 80_000);
+    expect(remainingSeconds(held, T0 + 30_000)).toBe(40);
+    expect(remainingSeconds(held, T0 + 40_000)).toBe(30);
+    expect(deadlineAt(held, T0 + 40_000)).toBe(T0 + 70_000);
   });
 
-  it('says so', () => {
-    expect(isPaused(clock())).toBe(false);
-    expect(isPaused(clock({ pausedAt: new Date(T0).toISOString() }))).toBe(true);
+  it('stops reporting a pause when its allowance is exhausted', () => {
+    const held = clock({ pausedAt: new Date(T0).toISOString() });
+    expect(isPaused(clock(), T0)).toBe(false);
+    expect(isPaused(held, T0)).toBe(true);
+    expect(isPaused(held, T0 + MAX_ROUND_PAUSE_MS)).toBe(false);
+    expect(isPaused({ ...held, pausedMs: MAX_ROUND_PAUSE_MS }, T0)).toBe(false);
   });
 
   // THE ONE THAT MATTERS MOST. The fallback that ends a round when the

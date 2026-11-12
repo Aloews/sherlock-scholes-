@@ -60,6 +60,7 @@ export function deadlineAt(clock: RoundClock, now: number): number {
 }
 
 /** Whether the clock is being held right now. */
-export function isPaused(clock: RoundClock): boolean {
-  return clock.pausedAt !== null;
+export function isPaused(clock: RoundClock, now: number = Date.now()): boolean {
+  const allowance = Math.max(0, MAX_ROUND_PAUSE_MS - clock.pausedMs);
+  return clock.pausedAt !== null && allowance > 0 && activePauseMs(clock, now) < allowance;
 }

@@ -125,8 +125,9 @@ impl RoundClock {
         deadline.clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64
     }
 
-    pub const fn is_paused(self) -> bool {
-        self.paused_at_ms.is_some()
+    pub fn is_paused(self, now_ms: i64) -> bool {
+        let allowance = i128::from(MAX_ROUND_PAUSE_MS.saturating_sub(self.paused_ms));
+        allowance > 0 && self.active_pause_ms(now_ms) < allowance
     }
 }
 
@@ -438,16 +439,18 @@ mod tests {
         assert_eq!(value.deadline_at_ms(T0 + 10_000), T0 + 60_000);
         assert_eq!(value.deadline_at_ms(T0 + 45_000), T0 + 95_000);
         assert_eq!(value.deadline_at_ms(T0 + 200_000), T0 + 180_000);
-        assert!(value.is_paused());
+        assert!(value.is_paused(T0 + 45_000));
+        assert!(!value.is_paused(T0 + 130_000));
     }
 
     #[test]
     fn active_pause_uses_only_the_remaining_allowance_after_prior_pauses() {
-        let value = clock(Some(T0 - 100_000), 60, 100_000, Some(T0));
+        let value = clock(Some(T0 - 110_000), 60, 100_000, Some(T0));
+        assert_eq!(value.remaining_seconds(T0 + 10_000), 50);
         assert_eq!(value.remaining_seconds(T0 + 20_000), 50);
-        assert_eq!(value.remaining_seconds(T0 + 30_000), 50);
-        assert_eq!(value.remaining_seconds(T0 + 40_000), 40);
-        assert_eq!(value.deadline_at_ms(T0 + 40_000), T0 + 80_000);
+        assert_eq!(value.remaining_seconds(T0 + 30_000), 40);
+        assert_eq!(value.remaining_seconds(T0 + 40_000), 30);
+        assert_eq!(value.deadline_at_ms(T0 + 40_000), T0 + 70_000);
     }
 
     #[test]
@@ -456,7 +459,7 @@ mod tests {
         assert_eq!(value.remaining_seconds(T0 + 40_000), 50);
         assert_eq!(value.deadline_at_ms(T0 + 40_000), T0 + 90_000);
         assert_eq!(value.remaining_seconds(T0 + 90_000), 0);
-        assert!(!value.is_paused());
+        assert!(!value.is_paused(T0 + 40_000));
     }
 
     #[test]
