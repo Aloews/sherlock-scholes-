@@ -23,9 +23,9 @@ CREATE TABLE public.rooms (
 
 CREATE OR REPLACE FUNCTION public.sweep_stale_rooms(p_grace_seconds INT DEFAULT 120)
 RETURNS TABLE (rounds_ended INT, rooms_finished INT)
-LANGUAGE SQL SECURITY DEFINER SET search_path = public AS $
+LANGUAGE SQL SECURITY DEFINER SET search_path = public AS $$
   SELECT 0::INT, 0::INT
-$;
+$$;
 
 CREATE TABLE public.room_players (
   room_id UUID NOT NULL REFERENCES public.rooms(id),
