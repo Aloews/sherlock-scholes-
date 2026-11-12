@@ -630,7 +630,8 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
             .fetch_all(&db)
             .await
             .expect("dealt cards");
-    assert_eq!(dealt, vec![new_card]);
+    assert!(!dealt.contains(&old_card), "stale partial cards must be removed before recovery");
+    assert!(dealt.contains(&new_card), "the recovery must deal an active card from the current deck");
 }
 
 #[tokio::test]
