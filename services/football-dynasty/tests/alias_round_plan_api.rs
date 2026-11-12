@@ -57,10 +57,6 @@ async fn call_at(
     (status, value)
 }
 
-async fn call(app: axum::Router, body: Value, init_data: Option<&str>) -> (StatusCode, Value) {
-    call_at(app, "/api/v1/alias/round-plan", body, init_data).await
-}
-
 fn database_app(identity: i64) -> (axum::Router, PgPool) {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL for ignored PostgreSQL tests");
     let db = PgPoolOptions::new()
