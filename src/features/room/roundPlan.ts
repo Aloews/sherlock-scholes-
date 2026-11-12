@@ -13,6 +13,7 @@ export interface PlannedRound {
 }
 
 interface RoundPlanRequest {
+  roomId: string;
   mode: GameMode;
   teams: readonly string[];
   members: readonly RoundPlanMember[];
@@ -172,12 +173,7 @@ export async function requestAliasRoundPlan(request: RoundPlanRequest): Promise<
       'content-type': 'application/json',
       'x-tg-init-data': request.initData,
     },
-    body: JSON.stringify({
-      mode: request.mode,
-      teams: request.teams,
-      members: request.members,
-      total_rounds: request.totalRounds,
-    }),
+    body: JSON.stringify({ room_id: request.roomId }),
   });
 
   if (!response.ok) {

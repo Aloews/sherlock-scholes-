@@ -61,17 +61,6 @@ async fn call(app: axum::Router, body: Value, init_data: Option<&str>) -> (Statu
     call_at(app, "/api/v1/alias/round-plan", body, init_data).await
 }
 
-fn app(identity: i64) -> axum::Router {
-    let db = PgPoolOptions::new()
-        .connect_lazy("postgres://postgres:postgres@127.0.0.1:5432/unused")
-        .expect("lazy database pool");
-    let state = AppState {
-        db,
-        verifier: Arc::new(FixedVerifier(identity)),
-    };
-    http::router(state, "http://localhost:5173".parse().expect("origin"))
-}
-
 fn database_app(identity: i64) -> (axum::Router, PgPool) {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL for ignored PostgreSQL tests");
     let db = PgPoolOptions::new()
@@ -86,20 +75,6 @@ fn database_app(identity: i64) -> (axum::Router, PgPool) {
         http::router(state, "http://localhost:5173".parse().expect("origin")),
         db,
     )
-}
-
-fn team_mode_request() -> Value {
-    json!({
-        "mode": "team",
-        "teams": ["blue", "red"],
-        "total_rounds": 2,
-        "members": [
-            {"player_id": 2, "team_id": "blue", "joined_at": "2026-01-02T10:00:00Z"},
-            {"player_id": 4, "team_id": "red", "joined_at": "2026-01-02T10:00:00Z"},
-            {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"},
-            {"player_id": 3, "team_id": "red", "joined_at": "2026-01-01T10:00:00Z"}
-        ]
-    })
 }
 
 #[tokio::test]
@@ -228,109 +203,132 @@ async fn voice_pause_and_resume_are_explainer_scoped_and_idempotent() {
 }
 
 #[tokio::test]
-async fn authenticated_request_returns_the_rust_round_plan() {
-    let (status, body) = call(app(1), team_mode_request(), Some("valid-test-init-data")).await;
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn round_plan_uses_the_authenticated_host_and_database_roster() {
+    let room_id = Uuid::new_v4();
+    let team_a = Uuid::from_u128(1);
+    let team_b = Uuid::from_u128(2);
+    let (app, db) = database_app(7);
 
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, settings)
+         VALUES ($1, 7, 'waiting', 'team', $2)",
+    )
+    .bind(room_id)
+    .bind(json!({"total_rounds": 2}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query(
+        "INSERT INTO public.teams (id, room_id)
+         VALUES ($1, $3), ($2, $3)",
+    )
+    .bind(team_a)
+    .bind(team_b)
+    .bind(room_id)
+    .execute(&db)
+    .await
+    .expect("teams");
+    sqlx::query(
+        "INSERT INTO public.room_players (room_id, player_id, team_id, joined_at)
+         VALUES ($1, 7, $2, '2026-01-01T10:00:00Z'),
+                ($1, 8, $3, '2026-01-02T10:00:00Z')",
+    )
+    .bind(room_id)
+    .bind(team_a)
+    .bind(team_b)
+    .execute(&db)
+    .await
+    .expect("room roster");
+
+    let uri = "/api/v1/alias/round-plan";
+    let (status, plan) = call_at(
+        app,
+        uri,
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body.as_array().map(Vec::len), Some(4));
-    assert_eq!(body[0]["round_number"], 1);
-    assert_eq!(body[0]["team_id"], "blue");
-    assert_eq!(body[0]["explainer_id"], 1);
-    assert_eq!(body[1]["team_id"], "red");
-    assert_eq!(body[1]["explainer_id"], 3);
-    assert_eq!(body[2]["explainer_id"], 2);
-    assert_eq!(body[3]["explainer_id"], 4);
+    assert_eq!(plan.as_array().map(Vec::len), Some(4));
+    assert_eq!(plan[0]["team_id"], team_a.to_string());
+    assert_eq!(plan[0]["explainer_id"], 7);
+    assert_eq!(plan[1]["team_id"], team_b.to_string());
+    assert_eq!(plan[1]["explainer_id"], 8);
+    assert_eq!(plan[2]["round_number"], 3);
+
+    let (forbidden, _) = call_at(
+        database_app(8).0,
+        uri,
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(forbidden, StatusCode::NOT_FOUND);
+
+    let (forged, _) = call_at(
+        database_app(7).0,
+        uri,
+        json!({
+            "room_id": room_id,
+            "teams": ["attacker-controlled"],
+            "members": [{"player_id": 7, "team_id": "attacker-controlled"}]
+        }),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(forged, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
-async fn one_vs_one_uses_the_verified_telegram_identity_for_host_order() {
-    let body = json!({
-        "mode": "1v1",
-        "teams": ["home", "away"],
-        "total_rounds": 1,
-        "members": [
-            {"player_id": 20, "team_id": "away", "joined_at": "2026-01-02T10:00:00Z"},
-            {"player_id": 42, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
-        ]
-    });
-    let (status, plan) = call(app(42), body, Some("valid-test-init-data")).await;
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn one_vs_one_round_plan_places_the_authenticated_host_team_first() {
+    let room_id = Uuid::new_v4();
+    let team_a = Uuid::from_u128(3);
+    let team_b = Uuid::from_u128(4);
+    let (app, db) = database_app(7);
 
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, settings)
+         VALUES ($1, 7, 'waiting', '1v1', $2)",
+    )
+    .bind(room_id)
+    .bind(json!({"total_rounds": 1}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query(
+        "INSERT INTO public.teams (id, room_id)
+         VALUES ($1, $3), ($2, $3)",
+    )
+    .bind(team_a)
+    .bind(team_b)
+    .bind(room_id)
+    .execute(&db)
+    .await
+    .expect("teams");
+    sqlx::query(
+        "INSERT INTO public.room_players (room_id, player_id, team_id, joined_at)
+         VALUES ($1, 7, $3, '2026-01-02T10:00:00Z'),
+                ($1, 8, $2, '2026-01-01T10:00:00Z')",
+    )
+    .bind(room_id)
+    .bind(team_a)
+    .bind(team_b)
+    .execute(&db)
+    .await
+    .expect("room roster");
+
+    let (status, plan) = call_at(
+        app,
+        "/api/v1/alias/round-plan",
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(plan[0]["team_id"], "home");
-    assert_eq!(plan[0]["explainer_id"], 42);
-    assert_eq!(plan[1]["team_id"], "away");
-    assert_eq!(plan[1]["explainer_id"], 20);
-}
-
-#[tokio::test]
-async fn authenticated_identity_must_belong_to_the_room_roster() {
-    let (status, _) = call(app(99), team_mode_request(), Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn one_vs_one_requires_two_players_assigned_to_distinct_teams() {
-    let valid = json!({
-        "mode": "1v1",
-        "teams": ["home", "away"],
-        "total_rounds": 1,
-        "members": [
-            {"player_id": 42, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"},
-            {"player_id": 20, "team_id": "away", "joined_at": "2026-01-02T10:00:00Z"}
-        ]
-    });
-    let (status, _) = call(app(42), valid.clone(), Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::OK);
-
-    let mut duplicate_team = valid.clone();
-    duplicate_team["members"][1]["team_id"] = json!("home");
-    let (status, _) = call(app(42), duplicate_team, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-
-    let mut missing_player = valid;
-    missing_player["members"] = json!([
-        {"player_id": 42, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
-    ]);
-    let (status, _) = call(app(42), missing_player, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn malformed_join_timestamps_are_rejected() {
-    let mut body = team_mode_request();
-    body["members"][0]["joined_at"] = json!("2026-02-30T10:00:00Z");
-    let (status, _) = call(app(42), body, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn missing_telegram_identity_is_rejected() {
-    let (status, _) = call(app(42), team_mode_request(), None).await;
-    assert_eq!(status, StatusCode::UNAUTHORIZED);
-}
-
-#[tokio::test]
-async fn invalid_mode_and_duplicate_teams_are_rejected() {
-    let mut invalid_mode = team_mode_request();
-    invalid_mode["mode"] = json!("unknown");
-    let (status, _) = call(app(42), invalid_mode, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-
-    let mut duplicate_teams = team_mode_request();
-    duplicate_teams["teams"] = json!(["blue", "blue"]);
-    let (status, _) = call(app(42), duplicate_teams, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn empty_and_oversized_plans_are_rejected() {
-    let mut empty = team_mode_request();
-    empty["teams"] = json!([]);
-    let (status, _) = call(app(42), empty, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-
-    let mut oversized = team_mode_request();
-    oversized["total_rounds"] = json!(200);
-    let (status, _) = call(app(42), oversized, Some("valid-test-init-data")).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(plan[0]["team_id"], team_b.to_string());
+    assert_eq!(plan[0]["explainer_id"], 7);
+    assert_eq!(plan[1]["team_id"], team_a.to_string());
+    assert_eq!(plan[1]["explainer_id"], 8);
 }

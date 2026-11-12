@@ -55,18 +55,7 @@ pub fn routes() -> Router<AppState> {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AliasRoundPlanRequest {
-    pub mode: String,
-    pub teams: Vec<String>,
-    pub members: Vec<AliasRoundPlanMember>,
-    pub total_rounds: u32,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AliasRoundPlanMember {
-    pub player_id: i64,
-    pub team_id: Option<String>,
-    pub joined_at: String,
+    room_id: Uuid,
 }
 
 #[derive(Debug, Serialize)]
@@ -77,91 +66,111 @@ struct AliasPlannedRound {
 }
 
 async fn alias_round_plan(
+    State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
     Json(request): Json<AliasRoundPlanRequest>,
 ) -> Result<Json<Vec<AliasPlannedRound>>, ApiError> {
-    let mode = match request.mode.as_str() {
+    let mut tx = state.db.begin().await?;
+    let room = sqlx::query_as::<_, (String, Value)>(
+        "SELECT mode, settings
+           FROM public.rooms
+          WHERE id = $1
+            AND host_id = $2
+            AND status = 'waiting'
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    let mode = match room.0.as_str() {
         "team" => GameMode::Teams,
         "1v1" => GameMode::OneVsOne,
         _ => return Err(ApiError::bad_request("invalid_alias_round_plan")),
     };
+    let total_rounds = match room.1.get("total_rounds") {
+        None => 3,
+        Some(value) => value
+            .as_u64()
+            .and_then(|rounds| u32::try_from(rounds).ok())
+            .ok_or_else(|| ApiError::bad_request("invalid_alias_round_plan"))?,
+    };
 
-    let total_turns = request
-        .teams
-        .len()
-        .checked_mul(usize::try_from(request.total_rounds).unwrap_or(usize::MAX));
-    let unique_teams: HashSet<&str> = request.teams.iter().map(String::as_str).collect();
-    let unique_players: HashSet<i64> = request
-        .members
-        .iter()
-        .map(|member| member.player_id)
+    let team_ids = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id
+           FROM public.teams
+          WHERE room_id = $1
+          ORDER BY created_at ASC, id ASC
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    let teams: Vec<String> = team_ids.iter().map(ToString::to_string).collect();
+    let known_teams: HashSet<String> = teams.iter().cloned().collect();
+
+    let roster = sqlx::query_as::<_, (i64, Option<Uuid>, DateTime<Utc>)>(
+        "SELECT player_id,
+                team_id,
+                COALESCE(joined_at, 'epoch'::timestamptz)
+           FROM public.room_players
+          WHERE room_id = $1
+          ORDER BY joined_at NULLS FIRST, player_id ASC
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    let members: Vec<RoomMember> = roster
+        .into_iter()
+        .map(|(player_id, team_id, joined_at)| RoomMember {
+            player_id,
+            team_id: team_id.map(|id| id.to_string()),
+            joined_at: joined_at.to_rfc3339(),
+        })
         .collect();
 
-    let host_is_member = request
-        .members
+    let host_is_member = members
         .iter()
         .any(|member| member.player_id == identity.telegram_id);
+    let assigned_to_unknown_team = members.iter().any(|member| {
+        member
+            .team_id
+            .as_ref()
+            .is_some_and(|team| !known_teams.contains(team))
+    });
     let one_vs_one_has_two_assigned_players = mode != GameMode::OneVsOne
-        || (request.teams.len() == 2
-            && request.members.len() == 2
-            && request.members.iter().all(|member| {
+        || (teams.len() == 2
+            && members.len() == 2
+            && members.iter().all(|member| {
                 member
                     .team_id
                     .as_ref()
-                    .is_some_and(|team| request.teams.contains(team))
+                    .is_some_and(|team| known_teams.contains(team))
             })
-            && request
-                .members
+            && members
                 .iter()
                 .filter_map(|member| member.team_id.as_ref())
                 .collect::<HashSet<_>>()
                 .len()
                 == 2);
 
-    if !host_is_member
-        || !one_vs_one_has_two_assigned_players
-        || request.teams.is_empty()
-        || request.teams.len() > 16
-        || unique_teams.len() != request.teams.len()
-        || request.teams.iter().any(|team| {
-            team.trim().is_empty() || team.len() > 64 || team.chars().any(char::is_whitespace)
-        })
-        || request.total_rounds == 0
-        || request.total_rounds > 64
-        || total_turns.is_none_or(|count| count > 256)
-        || request.members.len() > 128
-        || unique_players.len() != request.members.len()
-        || request.members.iter().any(|member| {
-            member.player_id <= 0
-                || chrono::DateTime::parse_from_rfc3339(&member.joined_at).is_err()
-                || member.team_id.as_ref().is_some_and(|team| {
-                    team.trim().is_empty()
-                        || team.len() > 64
-                        || team.chars().any(char::is_whitespace)
-                })
-        })
-    {
+    if !host_is_member || assigned_to_unknown_team || !one_vs_one_has_two_assigned_players {
         return Err(ApiError::bad_request("invalid_alias_round_plan"));
     }
 
-    let members: Vec<RoomMember> = request
-        .members
-        .into_iter()
-        .map(|member| RoomMember {
-            player_id: member.player_id,
-            team_id: member.team_id,
-            joined_at: member.joined_at,
-        })
-        .collect();
-
     let plan = build_round_plan(
         mode,
-        &request.teams,
+        &teams,
         &members,
         identity.telegram_id,
-        request.total_rounds,
+        total_rounds,
     )
     .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
+
+    tx.commit().await?;
 
     Ok(Json(
         plan.into_iter()

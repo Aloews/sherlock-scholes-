@@ -284,15 +284,18 @@ export async function fetchRoomPlayers(roomId: string): Promise<RoomPlayer[]> {
 
 export async function startGame(room: Room, teams: Team[]): Promise<void> {
   const { round_seconds, total_rounds } = room.settings;
-  const { data: roomPlayers, error: playersError } = await supabase
-    .from('room_players')
-    .select('player_id, team_id, joined_at')
-    .eq('room_id', room.id);
+  let members: Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[] = [];
+  if (import.meta.env.DEV) {
+    const { data: roomPlayers, error: playersError } = await supabase
+      .from('room_players')
+      .select('player_id, team_id, joined_at')
+      .eq('room_id', room.id);
+    if (playersError) throw new Error('Failed to load room players');
+    members = (roomPlayers ?? []) as Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[];
+  }
 
-  if (playersError) throw new Error('Failed to load room players');
-
-  const members = (roomPlayers ?? []) as Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[];
   const plan = await requestAliasRoundPlan({
+    roomId: room.id,
     mode: room.mode,
     teams: teams.map((team) => team.id),
     members,

@@ -147,6 +147,7 @@ describe('requestAliasRoundPlan', () => {
   });
 
   const request = {
+    roomId: '00000000-0000-4000-8000-000000000001',
     mode: 'team' as const,
     teams: ['blue', 'red'],
     members: [
@@ -190,12 +191,7 @@ describe('requestAliasRoundPlan', () => {
         'content-type': 'application/json',
         'x-tg-init-data': 'signed-init-data',
       },
-      body: JSON.stringify({
-        mode: 'team',
-        teams: ['blue', 'red'],
-        members: request.members,
-        total_rounds: 1,
-      }),
+      body: JSON.stringify({ room_id: request.roomId }),
     });
   });
 

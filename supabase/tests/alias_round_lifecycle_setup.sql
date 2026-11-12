@@ -17,8 +17,17 @@ $roles$;
 
 CREATE TABLE public.rooms (
   id UUID PRIMARY KEY,
+  host_id BIGINT,
   status TEXT NOT NULL,
+  settings JSONB NOT NULL DEFAULT '{"total_rounds": 3}'::jsonb,
+  mode TEXT NOT NULL DEFAULT 'team',
   ended_at TIMESTAMPTZ
+);
+
+CREATE TABLE public.teams (
+  id UUID PRIMARY KEY,
+  room_id UUID NOT NULL REFERENCES public.rooms(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE OR REPLACE FUNCTION public.sweep_stale_rooms(p_grace_seconds INT DEFAULT 120)
@@ -30,6 +39,8 @@ $$;
 CREATE TABLE public.room_players (
   room_id UUID NOT NULL REFERENCES public.rooms(id),
   player_id BIGINT NOT NULL,
+  team_id UUID,
+  joined_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (room_id, player_id)
 );
 
