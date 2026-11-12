@@ -58,8 +58,17 @@ function extractCode(raw: string): string {
   const text = (raw ?? '').trim();
   // ОБЕ формы, и `startapp` первой: ссылки, разосланные до смены формата,
   // продолжают ходить по чатам, и код в них тот же самый.
-  const fromLink = /[?&](?:startapp|start)=([^&\s]+)/i.exec(text);
-  const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
+  const fromLink = /[?&](?:startapp|start)=([^&\s]*)/i.exec(text);
+  const isUrl = /https?:\/\/\S+/i.test(text);
+  if (isUrl && !fromLink) return '';
+  let candidate = text;
+  if (fromLink) {
+    try {
+      candidate = decodeURIComponent(fromLink[1]);
+    } catch {
+      return '';
+    }
+  }
   return candidate.replace(/[^a-zA-Z0-9]/g, '');
 }
 

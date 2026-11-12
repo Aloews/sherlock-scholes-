@@ -129,11 +129,12 @@ describe('sanitizeCodeInput', () => {
     expect(sanitizeCodeInput('AB12CDEF')).toBe('AB12CD');
   });
 
-  it('reads the invite LINK, which is what people actually paste', () => {
-    // Stripping punctuation from a URL would leave HTTPSTMESHERLOCK…; the link
-    // has to be read as a link before anything blunt happens to it.
+  it('reads invite links without treating unrelated URL text as a room code', () => {
     expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?startapp=AB12CD')).toBe('AB12CD');
     expect(sanitizeCodeInput(deepLink('XY9Z01'))).toBe('XY9Z01');
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?other=1')).toBe('');
+    expect(codeFromText('https://t.me/sherlock_scholes_bot?other=1')).toBeNull();
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?start=%E0%A4%A')).toBe('');
   });
 });
 

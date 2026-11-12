@@ -10,12 +10,22 @@ import { trackEvent } from '@/shared/lib/analytics';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
-import { normalizeCode } from '@/features/lobby/invite';
+import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
 
-function requireRoomCode(room: Room): Room {
+function requireRoomCode(room: Room, expectedCode?: string): Room {
   const code = normalizeCode(room.code);
-  if (!code) throw new Error('INVALID_ROOM_CODE_RETURNED');
+  if (!code || (expectedCode !== undefined && code !== expectedCode)) {
+    throw new Error('INVALID_ROOM_CODE_RETURNED');
+  }
   return { ...room, code };
+}
+
+function requireGeneratedRoomCode(room: Room): Room {
+  const validated = requireRoomCode(room);
+  if (validated.code.length !== CODE_LENGTH) {
+    throw new Error('INVALID_ROOM_CODE_RETURNED');
+  }
+  return validated;
 }
 
 // ─── Room ───────────────────────────────────────────────────
@@ -41,7 +51,7 @@ export async function createRoom(
       p_settings: s,
     });
     if (error || !data) throw new Error(error?.message ?? 'Failed to create room');
-    return requireRoomCode(data as Room);
+    return requireGeneratedRoomCode(data as Room);
   }
 
   const finalSettings: RoomSettings = {
@@ -59,7 +69,7 @@ export async function createRoom(
     p_settings: finalSettings,
   });
   if (error || !room) throw new Error(error?.message ?? 'Failed to create room');
-  return requireRoomCode(room as Room);
+  return requireGeneratedRoomCode(room as Room);
 }
 
 // Join-vs-start race guard: joinRoom saw status='waiting' before inserting,
@@ -89,7 +99,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
     .single();
 
   if (error || !room) throw new Error('Room not found or game already started');
-  const validRoom = requireRoomCode(room as Room);
+  const validRoom = requireRoomCode(room as Room, normalizedCode);
 
   if (validRoom.mode === '1v1') {
     // Atomic path (PENDING_SQL 2026-07-18): status + capacity + team +
@@ -102,7 +112,7 @@ export async function joinRoom(code: string, playerId: number): Promise<Room> {
       p_room_id:   validRoom.id,
       p_player_id: playerId,
     });
-    if (!rpcError && joined) return requireRoomCode(joined as Room);
+    if (!rpcError && joined) return requireRoomCode(joined as Room, normalizedCode);
     if (rpcError?.message.includes('ROOM_FULL_1V1'))    throw new Error('ROOM_FULL_1V1');
     if (rpcError?.message.includes('ROOM_NOT_WAITING')) throw new Error('Room not found or game already started');
     // Any other error means the function isn't on prod yet → legacy path.

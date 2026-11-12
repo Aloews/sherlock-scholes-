@@ -224,16 +224,18 @@ pub fn sanitize_room_code_input(raw: &str) -> String {
 
 fn extract_room_code(raw: &str) -> String {
     let text = raw.trim();
-    let candidate = text
-        .split_once('?')
-        .and_then(|(_, query)| {
-            query.split('&').find_map(|part| {
+    let candidate = if let Some((_, query)) = text.split_once('?') {
+        query
+            .split('&')
+            .find_map(|part| {
                 let (key, value) = part.split_once('=')?;
                 (key.eq_ignore_ascii_case("startapp") || key.eq_ignore_ascii_case("start"))
                     .then_some(value)
             })
-        })
-        .unwrap_or(text);
+            .unwrap_or("")
+    } else {
+        text
+    };
     candidate
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
@@ -358,6 +360,8 @@ mod tests {
             Some("AB12CD".into())
         );
         assert_eq!(sanitize_room_code_input("ab-12 cd"), "AB12CD");
+        assert_eq!(room_code_from_text(Some("https://t.me/bot?other=1")), None);
+        assert_eq!(sanitize_room_code_input("https://t.me/bot?other=1"), "");
         assert_eq!(room_code_from_text(Some("no-code")), None);
     }
 
