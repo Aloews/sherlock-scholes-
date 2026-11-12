@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, extract_patch, run_command, safe_path
+from worker import compose_issue_task, extract_patch, run_command, safe_path, starimg_request
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -139,6 +139,15 @@ class WorkerPolicyTests(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             allowed_prefixes_for_repo("Aloews/not-on-the-allowlist")
+
+    def test_starimg_completion_uses_five_minute_read_timeout(self):
+        with patch("worker.urllib.request.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = b'{"ok":true}'
+            self.assertEqual(
+                starimg_request("https://ai.starimg.ru/v1", "test-key", "/chat/completions", {"model": "test"}),
+                {"ok": True},
+            )
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 300)
 
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
