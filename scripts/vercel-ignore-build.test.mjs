@@ -21,8 +21,12 @@ test('an explicit preview marker allows one planned preview', () => {
   assert.equal(shouldBuildVercelDeployment({ branch: 'feature/game-core', message: `feat: release candidate ${PREVIEW_BUILD_MARKER}`, environment: 'preview' }), true);
 });
 
-test('missing branch metadata fails open', () => {
-  assert.equal(shouldBuildVercelDeployment({ branch: '', message: '', environment: 'preview' }), true);
+test('preview metadata is enough to skip when the branch ref is unavailable', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: '', message: '', environment: 'preview' }), false);
+});
+
+test('missing branch and environment metadata fails open', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: '', message: '', environment: '' }), true);
 });
 
 test('both Vercel service roots have a valid ignore command and no ambiguous top-level command', () => {
