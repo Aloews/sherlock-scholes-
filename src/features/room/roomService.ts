@@ -10,7 +10,7 @@ import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
-import { requestAliasRoundPlan } from '@/features/room/roundPlan';
+import { requestAliasRoundPlan, startAliasGame } from '@/features/room/roundPlan';
 import { endAliasRound } from '@/features/game/roundLifecycle';
 
 function requireRoomCode(room: Room, expectedCode?: string): Room {
@@ -283,16 +283,19 @@ export async function fetchRoomPlayers(roomId: string): Promise<RoomPlayer[]> {
 // ─── Game Start ──────────────────────────────────────────────
 
 export async function startGame(room: Room, teams: Team[]): Promise<void> {
-  const { round_seconds, total_rounds } = room.settings;
-  let members: Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[] = [];
-  if (import.meta.env.DEV) {
-    const { data: roomPlayers, error: playersError } = await supabase
-      .from('room_players')
-      .select('player_id, team_id, joined_at')
-      .eq('room_id', room.id);
-    if (playersError) throw new Error('Failed to load room players');
-    members = (roomPlayers ?? []) as Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[];
+  if (!import.meta.env.DEV) {
+    const firstRoundId = await startAliasGame(room.id, getRawInitData());
+    await activateRound(firstRoundId, room);
+    return;
   }
+
+  const { round_seconds, total_rounds } = room.settings;
+  const { data: roomPlayers, error: playersError } = await supabase
+    .from('room_players')
+    .select('player_id, team_id, joined_at')
+    .eq('room_id', room.id);
+  if (playersError) throw new Error('Failed to load room players');
+  const members = (roomPlayers ?? []) as Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[];
 
   const plan = await requestAliasRoundPlan({
     roomId: room.id,

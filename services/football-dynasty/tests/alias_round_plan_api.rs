@@ -329,3 +329,132 @@ async fn one_vs_one_round_plan_places_the_authenticated_host_team_first() {
     assert_eq!(plan[1]["team_id"], team_a.to_string());
     assert_eq!(plan[1]["explainer_id"], 8);
 }
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn start_game_creates_rounds_atomically_and_replays_without_duplicates() {
+    let room_id = Uuid::new_v4();
+    let team_a = Uuid::new_v4();
+    let team_b = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, settings)
+         VALUES ($1, 7, 'waiting', 'team', $2)",
+    )
+    .bind(room_id)
+    .bind(json!({"total_rounds": 2, "round_seconds": 45}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.teams (id, room_id) VALUES ($1, $3), ($2, $3)")
+        .bind(team_a)
+        .bind(team_b)
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("teams");
+    sqlx::query(
+        "INSERT INTO public.room_players (room_id, player_id, team_id, joined_at)
+         VALUES ($1, 7, $2, '2026-01-01T10:00:00Z'),
+                ($1, 8, $3, '2026-01-02T10:00:00Z')",
+    )
+    .bind(room_id)
+    .bind(team_a)
+    .bind(team_b)
+    .execute(&db)
+    .await
+    .expect("roster");
+
+    let (denied, _) = call_at(
+        database_app(8).0,
+        "/api/v1/alias/start",
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(denied, StatusCode::NOT_FOUND);
+
+    let (status, first) = call_at(
+        app.clone(),
+        "/api/v1/alias/start",
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(first["total_rounds"], 4);
+    let first_round_id = first["first_round_id"].as_str().expect("first round id");
+
+    let (replay_status, replay) = call_at(
+        app,
+        "/api/v1/alias/start",
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(replay_status, StatusCode::OK);
+    assert_eq!(replay["first_round_id"], first_round_id);
+    assert_eq!(replay["total_rounds"], 4);
+
+    let rows: Vec<(Uuid, i32, i32, String)> = sqlx::query_as(
+        "SELECT id, round_number, time_seconds, status
+           FROM public.rounds WHERE room_id = $1 ORDER BY round_number",
+    )
+    .bind(room_id)
+    .fetch_all(&db)
+    .await
+    .expect("round rows");
+    assert_eq!(rows.len(), 4);
+    assert_eq!(rows[0].0.to_string(), first_round_id);
+    assert_eq!(rows.iter().map(|row| row.1).collect::<Vec<_>>(), vec![1, 2, 3, 4]);
+    assert!(rows.iter().all(|row| row.2 == 45 && row.3 == "pending"));
+}
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn start_game_rejects_incomplete_one_vs_one_rosters() {
+    let room_id = Uuid::new_v4();
+    let team_a = Uuid::new_v4();
+    let team_b = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, settings)
+         VALUES ($1, 7, 'waiting', '1v1', $2)",
+    )
+    .bind(room_id)
+    .bind(json!({"total_rounds": 1, "round_seconds": 60}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.teams (id, room_id) VALUES ($1, $3), ($2, $3)")
+        .bind(team_a)
+        .bind(team_b)
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("teams");
+    sqlx::query("INSERT INTO public.room_players (room_id, player_id, team_id) VALUES ($1, 7, $2)")
+        .bind(room_id)
+        .bind(team_a)
+        .execute(&db)
+        .await
+        .expect("host roster");
+
+    let (status, _) = call_at(
+        app,
+        "/api/v1/alias/start",
+        json!({"room_id": room_id}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM public.rounds WHERE room_id = $1")
+        .bind(room_id)
+        .fetch_one(&db)
+        .await
+        .expect("round count");
+    assert_eq!(count, 0);
+}

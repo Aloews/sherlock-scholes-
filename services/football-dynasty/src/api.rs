@@ -41,6 +41,10 @@ pub fn routes() -> Router<AppState> {
             "/api/v1/alias/round-plan",
             post(alias_round_plan).layer(DefaultBodyLimit::max(64 * 1024)),
         )
+        .route(
+            "/api/v1/alias/start",
+            post(alias_start).layer(DefaultBodyLimit::max(16 * 1024)),
+        )
         .route("/api/v1/alias/rounds/{round_id}/end", post(alias_end_round))
         .route(
             "/api/v1/alias/rounds/{round_id}/pause",
@@ -65,12 +69,11 @@ struct AliasPlannedRound {
     explainer_id: Option<i64>,
 }
 
-async fn alias_round_plan(
-    State(state): State<AppState>,
-    Extension(identity): Extension<Identity>,
-    Json(request): Json<AliasRoundPlanRequest>,
-) -> Result<Json<Vec<AliasPlannedRound>>, ApiError> {
-    let mut tx = state.db.begin().await?;
+async fn load_alias_round_plan(
+    tx: &mut Transaction<'_, Postgres>,
+    room_id: Uuid,
+    host_id: i64,
+) -> Result<(i32, Vec<AliasPlannedRound>), ApiError> {
     let room = sqlx::query_as::<_, (String, Value)>(
         "SELECT mode, settings
            FROM public.rooms
@@ -79,9 +82,9 @@ async fn alias_round_plan(
             AND status = 'waiting'
           FOR UPDATE",
     )
-    .bind(request.room_id)
-    .bind(identity.telegram_id)
-    .fetch_optional(&mut *tx)
+    .bind(room_id)
+    .bind(host_id)
+    .fetch_optional(&mut **tx)
     .await?
     .ok_or_else(ApiError::not_found)?;
 
@@ -97,6 +100,15 @@ async fn alias_round_plan(
             .and_then(|rounds| u32::try_from(rounds).ok())
             .ok_or_else(|| ApiError::bad_request("invalid_alias_round_plan"))?,
     };
+    let round_seconds = room
+        .1
+        .get("round_seconds")
+        .and_then(Value::as_i64)
+        .unwrap_or(60);
+    let round_seconds = i32::try_from(round_seconds)
+        .ok()
+        .filter(|seconds| (1..=600).contains(seconds))
+        .ok_or_else(|| ApiError::bad_request("invalid_alias_round_plan"))?;
 
     let team_ids = sqlx::query_scalar::<_, Uuid>(
         "SELECT id
@@ -105,8 +117,8 @@ async fn alias_round_plan(
           ORDER BY created_at ASC, id ASC
           FOR UPDATE",
     )
-    .bind(request.room_id)
-    .fetch_all(&mut *tx)
+    .bind(room_id)
+    .fetch_all(&mut **tx)
     .await?;
     let teams: Vec<String> = team_ids.iter().map(ToString::to_string).collect();
     let known_teams: HashSet<String> = teams.iter().cloned().collect();
@@ -120,8 +132,8 @@ async fn alias_round_plan(
           ORDER BY joined_at NULLS FIRST, player_id ASC
           FOR UPDATE",
     )
-    .bind(request.room_id)
-    .fetch_all(&mut *tx)
+    .bind(room_id)
+    .fetch_all(&mut **tx)
     .await?;
     let members: Vec<RoomMember> = roster
         .into_iter()
@@ -132,9 +144,7 @@ async fn alias_round_plan(
         })
         .collect();
 
-    let host_is_member = members
-        .iter()
-        .any(|member| member.player_id == identity.telegram_id);
+    let host_is_member = members.iter().any(|member| member.player_id == host_id);
     let assigned_to_unknown_team = members.iter().any(|member| {
         member
             .team_id
@@ -161,12 +171,10 @@ async fn alias_round_plan(
         return Err(ApiError::bad_request("invalid_alias_round_plan"));
     }
 
-    let plan = build_round_plan(mode, &teams, &members, identity.telegram_id, total_rounds)
+    let plan = build_round_plan(mode, &teams, &members, host_id, total_rounds)
         .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
-
-    tx.commit().await?;
-
-    Ok(Json(
+    Ok((
+        round_seconds,
         plan.into_iter()
             .map(|round| AliasPlannedRound {
                 round_number: round.round_number,
@@ -175,6 +183,140 @@ async fn alias_round_plan(
             })
             .collect(),
     ))
+}
+
+async fn alias_round_plan(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Json(request): Json<AliasRoundPlanRequest>,
+) -> Result<Json<Vec<AliasPlannedRound>>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    let (_, plan) = load_alias_round_plan(&mut tx, request.room_id, identity.telegram_id).await?;
+    tx.commit().await?;
+    Ok(Json(plan))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AliasStartRequest {
+    room_id: Uuid,
+}
+
+#[derive(Debug, Serialize)]
+struct AliasStartResponse {
+    first_round_id: Uuid,
+    total_rounds: usize,
+}
+
+#[derive(Debug, FromRow)]
+struct AliasStartedRound {
+    id: Uuid,
+    round_number: i32,
+    team_id: Uuid,
+    explainer_id: Option<i64>,
+    status: String,
+    time_seconds: i32,
+    started_at: Option<DateTime<Utc>>,
+    ended_at: Option<DateTime<Utc>>,
+}
+
+async fn alias_start(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Json(request): Json<AliasStartRequest>,
+) -> Result<Json<AliasStartResponse>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    let room_status = sqlx::query_scalar::<_, String>(
+        "SELECT status
+           FROM public.rooms
+          WHERE id = $1 AND host_id = $2
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    if room_status != "waiting" {
+        return Err(ApiError::conflict("alias_game_already_started"));
+    }
+
+    let (round_seconds, plan) =
+        load_alias_round_plan(&mut tx, request.room_id, identity.telegram_id).await?;
+    let existing = sqlx::query_as::<_, AliasStartedRound>(
+        "SELECT id, round_number, team_id, explainer_id, status, time_seconds,
+                started_at, ended_at
+           FROM public.rounds
+          WHERE room_id = $1
+          ORDER BY round_number ASC
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    if existing.is_empty() {
+        let mut insert_rows = Vec::with_capacity(plan.len());
+        for round in &plan {
+            let team_id = Uuid::parse_str(&round.team_id).map_err(|_| ApiError::internal())?;
+            let round_number = i32::try_from(round.round_number)
+                .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
+            insert_rows.push((round_number, team_id, round.explainer_id));
+        }
+        let mut query = sqlx::QueryBuilder::<Postgres>::new(
+            "INSERT INTO public.rounds \
+             (room_id, team_id, explainer_id, round_number, status, time_seconds) ",
+        );
+        query.push_values(insert_rows.iter(), |mut row, values| {
+            row.push_bind(request.room_id)
+                .push_bind(values.1)
+                .push_bind(values.2)
+                .push_bind(values.0)
+                .push_bind("pending")
+                .push_bind(round_seconds);
+        });
+        query.build().execute(&mut *tx).await?;
+    }
+
+    let rounds = sqlx::query_as::<_, AliasStartedRound>(
+        "SELECT id, round_number, team_id, explainer_id, status, time_seconds,
+                started_at, ended_at
+           FROM public.rounds
+          WHERE room_id = $1
+          ORDER BY round_number ASC
+          FOR UPDATE",
+    )
+    .bind(request.room_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    if rounds.len() != plan.len()
+        || rounds.iter().zip(&plan).any(|(actual, expected)| {
+            let expected_team = Uuid::parse_str(&expected.team_id).ok();
+            actual.round_number != expected.round_number as i32
+                || Some(actual.team_id) != expected_team
+                || actual.explainer_id != expected.explainer_id
+                || actual.status != "pending"
+                || actual.time_seconds != round_seconds
+                || actual.started_at.is_some()
+                || actual.ended_at.is_some()
+        })
+    {
+        return Err(ApiError::conflict("alias_rounds_already_started"));
+    }
+
+    let first_round_id = rounds
+        .first()
+        .map(|round| round.id)
+        .ok_or_else(|| ApiError::bad_request("invalid_alias_round_plan"))?;
+    let total_rounds = rounds.len();
+    tx.commit().await?;
+
+    Ok(Json(AliasStartResponse {
+        first_round_id,
+        total_rounds,
+    }))
 }
 
 #[derive(Debug, Serialize)]

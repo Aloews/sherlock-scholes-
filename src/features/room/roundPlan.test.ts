@@ -365,3 +365,44 @@ describe('requestAliasRoundPlan', () => {
       .rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
   });
 });
+
+describe('startAliasGame', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('sends only the room id with Telegram authentication and validates the response', async () => {
+    const response = {
+      first_round_id: '11111111-1111-4111-8111-111111111111',
+      total_rounds: 6,
+    };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => response });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(startAliasGame(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'signed-init-data',
+    )).resolves.toBe(response.first_round_id);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/alias/start', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-tg-init-data': 'signed-init-data',
+      },
+      body: JSON.stringify({ room_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }),
+    });
+  });
+
+  it('rejects missing authentication, invalid room ids, backend errors and malformed responses', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'room_not_found' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ first_round_id: 'not-a-uuid', total_rounds: 2 }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(startAliasGame('bad-id', 'signed')).rejects.toThrow('INVALID_ROOM_ID');
+    await expect(startAliasGame('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', ''))
+      .rejects.toThrow('TELEGRAM_AUTH_REQUIRED');
+    await expect(startAliasGame('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'signed'))
+      .rejects.toThrow('room_not_found');
+    await expect(startAliasGame('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'signed'))
+      .rejects.toThrow('INVALID_ALIAS_START_RESPONSE');
+  });
+});

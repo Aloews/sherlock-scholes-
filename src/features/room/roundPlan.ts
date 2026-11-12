@@ -149,6 +149,43 @@ function isPlannedRound(
     );
 }
 
+export async function startAliasGame(roomId: string, initData: string): Promise<string> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(roomId)) {
+    throw new Error('INVALID_ROOM_ID');
+  }
+  if (!initData) throw new Error('TELEGRAM_AUTH_REQUIRED');
+
+  const response = await fetch('/api/v1/alias/start', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-tg-init-data': initData,
+    },
+    body: JSON.stringify({ room_id: roomId }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+    throw new Error(typeof payload?.error === 'string' ? payload.error : 'ALIAS_START_FAILED');
+  }
+
+  const payload: unknown = await response.json();
+  if (
+    !payload
+    || typeof payload !== 'object'
+    || !('first_round_id' in payload)
+    || typeof payload.first_round_id !== 'string'
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.first_round_id)
+    || !('total_rounds' in payload)
+    || !Number.isSafeInteger(payload.total_rounds)
+    || (payload.total_rounds as number) < 1
+    || (payload.total_rounds as number) > 256
+  ) {
+    throw new Error('INVALID_ALIAS_START_RESPONSE');
+  }
+  return payload.first_round_id;
+}
+
 export async function requestAliasRoundPlan(request: RoundPlanRequest): Promise<PlannedRound[]> {
   if (import.meta.env.DEV) {
     return buildRoundPlan(
