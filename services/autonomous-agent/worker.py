@@ -98,7 +98,7 @@ def request_json(url: str, token: str, method: str = "GET",
 
 def starimg_request(base: str, key: str, path: str,
                     payload: dict[str, Any] | None = None,
-                    timeout: int = 180) -> Any:
+                    timeout: int = 300) -> Any:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         base.rstrip("/") + path, data=data,
