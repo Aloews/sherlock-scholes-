@@ -1,12 +1,13 @@
 import io
 import json
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, extract_patch, run_command, safe_path, starimg_request, starimg_stream_completion
+from worker import compose_issue_task, context_excerpt, extract_patch, patch_file_context, run_command, safe_path, starimg_request, starimg_stream_completion
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -47,6 +48,29 @@ class WorkerPolicyTests(unittest.TestCase):
                     "STARIMG_API_KEY", "GITHUB_TOKEN", "M3U_SOURCE_URL",
                 ):
                     self.assertNotIn(secret_name, child_env)
+
+    def test_context_excerpt_preserves_file_head_and_tail(self):
+        body = "BEGIN\n" + ("x" * 12000) + "\nEND"
+        excerpt = context_excerpt(body, limit=200)
+        self.assertTrue(excerpt.startswith("BEGIN"))
+        self.assertTrue(excerpt.endswith("END"))
+        self.assertIn("middle omitted", excerpt)
+
+    def test_rejected_patch_context_contains_exact_current_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "src" / "example.rs"
+            target.parent.mkdir(parents=True)
+            target.write_text("pub fn current() {}\n", encoding="utf-8")
+            patch = (
+                "diff --git a/src/example.rs b/src/example.rs\n"
+                "--- a/src/example.rs\n"
+                "+++ b/src/example.rs\n"
+                "@@ -1 +1 @@\n-old\n+new\n"
+            )
+            context = patch_file_context(root, patch)
+            self.assertIn("EXACT CURRENT FILE CONTENT AFTER RESET: src/example.rs", context)
+            self.assertIn("pub fn current() {}", context)
 
     def test_accepts_simple_patch(self):
         patch = (
