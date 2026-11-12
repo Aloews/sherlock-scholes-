@@ -478,7 +478,7 @@ async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
          VALUES ($1, 7, 'waiting', 'team', $2)",
     )
     .bind(room_id)
-    .bind(json!({"cards_per_round": 2, "deck": {"categories": ["player"]}}))
+    .bind(json!({"cards_per_round": 2, "deck": {"categories": ["player"], "test_scope": "concurrent"}}))
     .execute(&db)
     .await
     .expect("room");
@@ -504,7 +504,7 @@ async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
     .execute(&db)
     .await
     .expect("round");
-    sqlx::query("INSERT INTO public.cards (id, active) VALUES ($1, true), ($2, true), ($3, false)")
+    sqlx::query("INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'concurrent'), ($2, true, 'concurrent'), ($3, false, 'concurrent')")
         .bind(card_a)
         .bind(card_b)
         .bind(inactive_card)
@@ -583,11 +583,12 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
     let (app, db) = database_app(7);
 
     sqlx::query(
-        "INSERT INTO public.rooms (id, host_id, status, mode, current_round_id)
-         VALUES ($1, 7, 'playing', 'team', $2)",
+        "INSERT INTO public.rooms (id, host_id, status, mode, current_round_id, settings)
+         VALUES ($1, 7, 'playing', 'team', $2, $3)",
     )
     .bind(room_id)
     .bind(round_id)
+    .bind(json!({"cards_per_round": 5, "deck": {"test_scope": "recovery"}}))
     .execute(&db)
     .await
     .expect("room");
@@ -612,7 +613,7 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
         .execute(&db)
         .await
         .expect("stale partial card");
-    sqlx::query("INSERT INTO public.cards (id, active) VALUES ($1, true)")
+    sqlx::query("INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'recovery')")
         .bind(new_card)
         .execute(&db)
         .await
@@ -630,4 +631,59 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
             .await
             .expect("dealt cards");
     assert_eq!(dealt, vec![new_card]);
+}
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn round_activation_recovers_an_active_round_with_no_dealt_cards() {
+    let room_id = Uuid::new_v4();
+    let round_id = Uuid::new_v4();
+    let team_id = Uuid::new_v4();
+    let card_id = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, current_round_id, settings)
+         VALUES ($1, 7, 'playing', 'team', $2, $3)",
+    )
+    .bind(room_id)
+    .bind(round_id)
+    .bind(json!({"cards_per_round": 1, "deck": {"test_scope": "active-empty"}}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.room_players (room_id, player_id) VALUES ($1, 7)")
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("member");
+    sqlx::query(
+        "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
+         VALUES ($1, $2, $3, 1, 'active', 7)",
+    )
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .execute(&db)
+    .await
+    .expect("round");
+    sqlx::query("INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'active-empty')")
+        .bind(card_id)
+        .execute(&db)
+        .await
+        .expect("card");
+
+    let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
+    let (status, response) = call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(response["outcome"], "activated");
+    assert_eq!(response["card_count"], 1);
+
+    let dealt: Vec<Uuid> =
+        sqlx::query_scalar("SELECT card_id FROM public.round_cards WHERE round_id = $1")
+            .bind(round_id)
+            .fetch_all(&db)
+            .await
+            .expect("dealt cards");
+    assert_eq!(dealt, vec![card_id]);
 }

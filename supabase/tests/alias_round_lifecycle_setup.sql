@@ -62,7 +62,8 @@ CREATE TABLE public.rounds (
 
 CREATE TABLE public.cards (
   id UUID PRIMARY KEY,
-  active BOOLEAN NOT NULL DEFAULT true
+  active BOOLEAN NOT NULL DEFAULT true,
+  test_scope TEXT NOT NULL DEFAULT 'default'
 );
 
 CREATE OR REPLACE FUNCTION public.pick_random_cards(
@@ -75,6 +76,7 @@ AS $$
   SELECT *
     FROM public.cards
    WHERE active
+     AND (p_filter ->> 'test_scope' IS NULL OR test_scope = p_filter ->> 'test_scope')
    ORDER BY id
    LIMIT greatest(coalesce(p_count, 50), 1);
 $$;

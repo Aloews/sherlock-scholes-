@@ -392,22 +392,27 @@ async fn alias_activate_round(
         ));
     }
 
-    if round.round_status == "active" {
+    let recovering_active_without_cards = if round.round_status == "active" {
         if round.current_round_id != Some(round_id) {
             return Err(ApiError::conflict("alias_round_not_current"));
         }
-        let card_count: i64 =
+        let existing_card_count: i64 =
             sqlx::query_scalar("SELECT count(*) FROM public.round_cards WHERE round_id = $1")
                 .bind(round_id)
                 .fetch_one(&mut *tx)
                 .await?;
-        tx.commit().await?;
-        return Ok(Json(AliasRoundActivationResponse {
-            outcome: "already_active".into(),
-            card_count: usize::try_from(card_count).unwrap_or(0),
-        }));
-    }
-    if round.round_status != "pending" {
+        if existing_card_count > 0 {
+            tx.commit().await?;
+            return Ok(Json(AliasRoundActivationResponse {
+                outcome: "already_active".into(),
+                card_count: usize::try_from(existing_card_count).unwrap_or(0),
+            }));
+        }
+        true
+    } else {
+        false
+    };
+    if round.round_status != "pending" && !recovering_active_without_cards {
         return Err(ApiError::conflict("alias_round_not_pending"));
     }
 
@@ -506,8 +511,8 @@ async fn alias_activate_round(
     .await?;
     sqlx::query(
         "UPDATE public.rounds
-            SET status = 'active', started_at = now()
-          WHERE id = $1 AND status = 'pending'",
+            SET status = 'active', started_at = COALESCE(started_at, now())
+          WHERE id = $1 AND status IN ('pending', 'active')",
     )
     .bind(round_id)
     .execute(&mut *tx)
