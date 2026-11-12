@@ -20,7 +20,9 @@ const CODE_RE = /^[A-Z0-9]{1,6}$/;
  * one. Callers must never navigate on the raw value.
  */
 export function normalizeCode(raw: string | null | undefined): string | null {
-  const code = (raw ?? '').trim().toUpperCase();
+  const trimmed = (raw ?? '').trim();
+  if (!/^[A-Za-z0-9]{1,6}$/.test(trimmed)) return null;
+  const code = trimmed.toUpperCase();
   return CODE_RE.test(code) ? code : null;
 }
 

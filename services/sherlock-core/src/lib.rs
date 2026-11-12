@@ -216,46 +216,101 @@ pub fn settings_categories(filter: &DeckFilter) -> Option<Vec<String>> {
 pub const ROOM_CODE_LENGTH: usize = 6;
 
 pub fn normalize_room_code(raw: Option<&str>) -> Option<String> {
-    let code = raw?.trim().to_ascii_uppercase();
-    if code.is_empty()
-        || code.len() > ROOM_CODE_LENGTH
-        || !code.bytes().all(|byte| byte.is_ascii_alphanumeric())
+    let trimmed = raw?.trim();
+    if trimmed.is_empty()
+        || trimmed.len() > ROOM_CODE_LENGTH
+        || !trimmed.bytes().all(|byte| byte.is_ascii_alphanumeric())
     {
         return None;
     }
-    Some(code)
+    Some(trimmed.to_ascii_uppercase())
 }
 
 pub fn sanitize_room_code_input(raw: &str) -> String {
-    let candidate = extract_room_code(raw);
-    candidate.chars().take(ROOM_CODE_LENGTH).collect()
+    extract_room_code(raw).chars().take(ROOM_CODE_LENGTH).collect()
+}
+
+fn find_invite_param(raw: &str) -> Option<&str> {
+    raw.char_indices()
+        .filter(|(_, ch)| *ch == '?' || *ch == '&')
+        .find_map(|(index, ch)| {
+            let start = index + ch.len_utf8();
+            let part = raw[start..]
+                .split(|value: char| value == '&' || value.is_whitespace())
+                .next()?;
+            let (key, value) = part.split_once('=')?;
+            (key.eq_ignore_ascii_case("startapp") || key.eq_ignore_ascii_case("start"))
+                .then_some(value)
+        })
+}
+
+fn contains_http_url(raw: &str) -> bool {
+    let lower = raw.to_ascii_lowercase();
+    ["https://", "http://"].iter().any(|scheme| {
+        lower.find(scheme).is_some_and(|index| {
+            raw[index + scheme.len()..]
+                .chars()
+                .next()
+                .is_some_and(|ch| !ch.is_whitespace())
+        })
+    })
+}
+
+fn hex_nibble(value: u8) -> Option<u8> {
+    match value {
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        b'A'..=b'F' => Some(value - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn decode_uri_component(raw: &str) -> Option<String> {
+    let bytes = raw.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let high = hex_nibble(*bytes.get(index + 1)?)?;
+            let low = hex_nibble(*bytes.get(index + 2)?)?;
+            decoded.push((high << 4) | low);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+
+    String::from_utf8(decoded).ok()
 }
 
 fn extract_room_code(raw: &str) -> String {
     let text = raw.trim();
-    let candidate = if let Some((_, query)) = text.split_once('?') {
-        query
-            .split('&')
-            .find_map(|part| {
-                let (key, value) = part.split_once('=')?;
-                (key.eq_ignore_ascii_case("startapp") || key.eq_ignore_ascii_case("start"))
-                    .then_some(value)
-            })
-            .unwrap_or("")
-    } else {
-        text
+    let candidate = match find_invite_param(text) {
+        Some(value) => match decode_uri_component(value) {
+            Some(decoded) => decoded,
+            None => return String::new(),
+        },
+        None if contains_http_url(text) => return String::new(),
+        None => text.to_owned(),
     };
+
     candidate
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
-        .map(|ch| ch.to_ascii_uppercase())
         .collect()
 }
 
 pub fn room_code_from_text(raw: Option<&str>) -> Option<String> {
     let text = raw?.trim();
-    if text.contains('?') {
-        normalize_room_code(Some(&extract_room_code(text)))
+    if text.is_empty() {
+        return None;
+    }
+
+    if find_invite_param(text).is_some() {
+        let candidate = extract_room_code(text);
+        normalize_room_code(Some(&candidate))
     } else {
         normalize_room_code(Some(text))
     }
@@ -356,6 +411,22 @@ mod tests {
         assert_eq!(normalize_room_code(Some("ABCDEFG")), None);
         assert_eq!(normalize_room_code(Some("ABC-12")), None);
         assert_eq!(normalize_room_code(None), None);
+    }
+
+    #[test]
+    fn room_code_behavior_matches_the_shared_typescript_contract() {
+        let cases: serde_json::Value =
+            serde_json::from_str(include_str!("../../../contracts/alias_room_code_cases.json"))
+                .expect("room-code fixture JSON must parse");
+        for case in cases.as_array().expect("fixture root must be an array") {
+            let name = case["name"].as_str().expect("case name");
+            let raw = case["raw"].as_str().expect("raw input");
+            let expected_input = case["sanitized"].as_str().expect("sanitized output");
+            let expected_code = case["code"].as_str().map(str::to_owned);
+
+            assert_eq!(sanitize_room_code_input(raw), expected_input, "{name}");
+            assert_eq!(room_code_from_text(Some(raw)), expected_code, "{name}");
+        }
     }
 
     #[test]

@@ -1,0 +1,104 @@
+[
+  {
+    "name": "plain lowercase code",
+    "raw": "ab12cd",
+    "sanitized": "ab12cd",
+    "code": "AB12CD"
+  },
+  {
+    "name": "one-character code",
+    "raw": "x",
+    "sanitized": "x",
+    "code": "X"
+  },
+  {
+    "name": "pasted separators",
+    "raw": "AB 12-CD",
+    "sanitized": "AB12CD",
+    "code": null
+  },
+  {
+    "name": "startapp invite",
+    "raw": "https://t.me/sherlock_scholes_bot?startapp=AB12CD",
+    "sanitized": "AB12CD",
+    "code": "AB12CD"
+  },
+  {
+    "name": "legacy start invite",
+    "raw": "https://t.me/sherlock_scholes_bot?start=AB12CD",
+    "sanitized": "AB12CD",
+    "code": "AB12CD"
+  },
+  {
+    "name": "prefixed invite link",
+    "raw": "Join: https://t.me/sherlock_scholes_bot?startapp=ab12cd",
+    "sanitized": "ab12cd",
+    "code": "AB12CD"
+  },
+  {
+    "name": "percent-encoded code",
+    "raw": "https://t.me/sherlock_scholes_bot?start=AB%31%32",
+    "sanitized": "AB12",
+    "code": "AB12"
+  },
+  {
+    "name": "percent-encoded punctuation",
+    "raw": "https://t.me/sherlock_scholes_bot?start=AB%2D12",
+    "sanitized": "AB12",
+    "code": "AB12"
+  },
+  {
+    "name": "start parameter in free text",
+    "raw": "Join &start=ab12",
+    "sanitized": "ab12",
+    "code": "AB12"
+  },
+  {
+    "name": "URL without invite parameter",
+    "raw": "https://t.me/sherlock_scholes_bot",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "unrelated URL query",
+    "raw": "https://t.me/sherlock_scholes_bot?other=1",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "malformed percent encoding",
+    "raw": "https://t.me/sherlock_scholes_bot?start=%E0%A4%A",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "too-long code",
+    "raw": "ABCDEFG",
+    "sanitized": "ABCDEF",
+    "code": null
+  },
+  {
+    "name": "non-ASCII sharp s",
+    "raw": "ß",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "non-ASCII dotless i",
+    "raw": "ı",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "empty start parameter",
+    "raw": "https://t.me/sherlock_scholes_bot?startapp=",
+    "sanitized": "",
+    "code": null
+  },
+  {
+    "name": "case-insensitive parameter name",
+    "raw": "https://t.me/sherlock_scholes_bot?START=ab12",
+    "sanitized": "ab12",
+    "code": "AB12"
+  }
+]

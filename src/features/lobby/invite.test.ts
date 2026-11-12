@@ -1,3 +1,4 @@
+import roomCodeCases from '../../../contracts/alias_room_code_cases.json';
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
@@ -8,6 +9,13 @@ import {
 // out loud, and every one of its inputs comes from outside: a
 // Telegram start_param, a paste, a clipboard API that may refuse.
 
+describe('shared Rust room-code contract', () => {
+  it.each(roomCodeCases)('$name', ({ raw, sanitized, code }) => {
+    expect(sanitizeCodeInput(raw)).toBe(sanitized);
+    expect(codeFromText(raw)).toBe(code);
+  });
+});
+
 describe('normalizeCode', () => {
   it('accepts one-to-six-character codes and uppercases them', () => {
     expect(normalizeCode('a')).toBe('A');
@@ -17,7 +25,7 @@ describe('normalizeCode', () => {
   });
 
   it('rejects anything that is not a room code', () => {
-    for (const bad of ['', '  ', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
+    for (const bad of ['', '  ', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', 'ß', 'ı', null, undefined]) {
       expect(normalizeCode(bad)).toBeNull();
     }
   });
