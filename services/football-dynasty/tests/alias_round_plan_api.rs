@@ -619,8 +619,7 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
         .expect("new card");
 
     let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
-    let (status, response) =
-        call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
+    let (status, response) = call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(response["outcome"], "activated");
 
