@@ -7,6 +7,7 @@ on:
       - "services/sherlock-core/**"
       - "src/features/game/roundLifecycle.ts"
       - "src/features/game/roundLifecycle.test.ts"
+      - "src/features/game/useGame.ts"
       - "src/features/room/roundPlan.ts"
       - "src/features/room/roundPlan.test.ts"
       - "src/features/room/roomService.ts"
