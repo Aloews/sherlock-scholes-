@@ -589,8 +589,10 @@ class Worker:
                     previous_patch = patch or answer
                     if attempt >= MAX_GENERATION_ATTEMPTS:
                         raise RuntimeError(f"Implementation failed after {attempt} attempts: {validation_error}") from None
-                    LOG.warning("Task %s validation failed on attempt %s; requesting one correction",
-                                comment_id, attempt)
+                    LOG.warning(
+                        "Task %s validation failed on attempt %s; requesting one correction: %s",
+                        comment_id, attempt, validation_error[:800],
+                    )
                     run_command(["git", "reset", "--hard", "HEAD"], temp)
                     run_command(["git", "clean", "-fd"], temp)
             if not changed:
