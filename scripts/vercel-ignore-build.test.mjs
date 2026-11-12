@@ -38,6 +38,22 @@ test('both Vercel service roots have a valid ignore command and no ambiguous top
   assert.equal(config.services.football_dynasty.ignoreCommand, 'node ../scripts/vercel-ignore-build.mjs');
 });
 
+test('the backend service ignore command resolves from the configured services root', () => {
+  const servicesRoot = fileURLToPath(new URL('../services/', import.meta.url));
+  const result = spawnSync(process.execPath, ['../scripts/vercel-ignore-build.mjs'], {
+    cwd: servicesRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      VERCEL_GIT_COMMIT_REF: 'feature/alias-core',
+      VERCEL_GIT_COMMIT_MESSAGE: 'fix: routine change',
+      VERCEL_ENV: 'preview',
+    },
+  });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /build skipped/i);
+});
+
 test('the Vercel command maps build/skip decisions to the documented exit codes', () => {
   const script = fileURLToPath(new URL('./vercel-ignore-build.mjs', import.meta.url));
   const skipped = spawnSync(process.execPath, [script], {

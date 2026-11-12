@@ -46,12 +46,12 @@ describe('requestAliasRoundPlan', () => {
     totalRounds: 1,
   };
 
-  it('uses the TypeScript contract only in local development without Telegram initData', async () => {
+  it('uses the TypeScript contract in local development without calling the Rust API', async () => {
     vi.stubEnv('DEV', true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const plan = await requestAliasRoundPlan({ ...request, initData: '' });
+    const plan = await requestAliasRoundPlan({ ...request, initData: 'local-telegram-init-data' });
 
     expect(plan).toEqual([
       { round_number: 1, team_id: 'blue', explainer_id: 1 },

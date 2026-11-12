@@ -45,7 +45,7 @@ pub fn routes() -> Router<AppState> {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct AliasRoundPlanRequest {
+struct AliasRoundPlanRequest {
     pub mode: String,
     pub teams: Vec<String>,
     pub members: Vec<AliasRoundPlanMember>,
@@ -54,7 +54,7 @@ pub struct AliasRoundPlanRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct AliasRoundPlanMember {
+struct AliasRoundPlanMember {
     pub player_id: i64,
     pub team_id: Option<String>,
     pub joined_at: String,
@@ -67,7 +67,7 @@ struct AliasPlannedRound {
     explainer_id: Option<i64>,
 }
 
-pub async fn alias_round_plan(
+async fn alias_round_plan(
     Extension(identity): Extension<Identity>,
     Json(request): Json<AliasRoundPlanRequest>,
 ) -> Result<Json<Vec<AliasPlannedRound>>, ApiError> {

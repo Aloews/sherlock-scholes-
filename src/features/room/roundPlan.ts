@@ -111,18 +111,16 @@ function isPlannedRound(value: unknown): value is PlannedRound {
 }
 
 export async function requestAliasRoundPlan(request: RoundPlanRequest): Promise<PlannedRound[]> {
-  if (!request.initData) {
-    if (import.meta.env.DEV) {
-      return buildRoundPlan(
-        request.mode,
-        request.teams,
-        request.members,
-        request.hostId,
-        request.totalRounds,
-      );
-    }
-    throw new Error('TELEGRAM_AUTH_REQUIRED');
+  if (import.meta.env.DEV) {
+    return buildRoundPlan(
+      request.mode,
+      request.teams,
+      request.members,
+      request.hostId,
+      request.totalRounds,
+    );
   }
+  if (!request.initData) throw new Error('TELEGRAM_AUTH_REQUIRED');
 
   const response = await fetch('/api/v1/alias/round-plan', {
     method: 'POST',
