@@ -630,8 +630,14 @@ async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
             .fetch_all(&db)
             .await
             .expect("dealt cards");
-    assert!(!dealt.contains(&old_card), "stale partial cards must be removed before recovery");
-    assert!(dealt.contains(&new_card), "the recovery must deal an active card from the current deck");
+    assert!(
+        !dealt.contains(&old_card),
+        "stale partial cards must be removed before recovery"
+    );
+    assert!(
+        dealt.contains(&new_card),
+        "the recovery must deal an active card from the current deck"
+    );
 }
 
 #[tokio::test]
@@ -668,7 +674,9 @@ async fn round_activation_recovers_an_active_round_with_no_dealt_cards() {
     .execute(&db)
     .await
     .expect("round");
-    sqlx::query("INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'active-empty')")
+    sqlx::query(
+        "INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'active-empty')",
+    )
         .bind(card_id)
         .execute(&db)
         .await
