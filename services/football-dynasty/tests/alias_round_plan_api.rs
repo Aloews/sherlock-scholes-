@@ -13,8 +13,8 @@ use football_dynasty::{
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use uuid::Uuid;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 struct FixedVerifier(i64);
 
@@ -113,20 +113,41 @@ async fn end_round_requires_room_membership_and_is_idempotent() {
     let (app, db) = database_app(7);
 
     sqlx::query("INSERT INTO public.rooms (id, status) VALUES ($1, 'playing')")
-        .bind(room_id).execute(&db).await.expect("room");
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("room");
     sqlx::query(
         "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
          VALUES ($1, $2, $3, 1, 'active', 7), ($4, $2, $3, 2, 'pending', 8)",
     )
-    .bind(round_id).bind(room_id).bind(team_id).bind(next_round_id)
-    .execute(&db).await.expect("rounds");
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .bind(next_round_id)
+    .execute(&db)
+    .await
+    .expect("rounds");
     sqlx::query("INSERT INTO public.room_players (room_id, player_id) VALUES ($1, 7)")
-        .bind(room_id).execute(&db).await.expect("room player");
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("room player");
     sqlx::query("INSERT INTO public.round_cards (id, round_id, status) VALUES ($1, $2, 'correct')")
-        .bind(Uuid::new_v4()).bind(round_id).execute(&db).await.expect("card");
+        .bind(Uuid::new_v4())
+        .bind(round_id)
+        .execute(&db)
+        .await
+        .expect("card");
 
     let uri = format!("/api/v1/alias/rounds/{round_id}/end");
-    let (denied, _) = call_at(database_app(8).0, &uri, json!({}), Some("valid-test-init-data")).await;
+    let (denied, _) = call_at(
+        database_app(8).0,
+        &uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(denied, StatusCode::FORBIDDEN);
 
     let (status, body) = call_at(app.clone(), &uri, json!({}), Some("valid-test-init-data")).await;
@@ -134,13 +155,15 @@ async fn end_round_requires_room_membership_and_is_idempotent() {
     assert_eq!(body["outcome"], "next_round");
     assert_eq!(body["next_round_id"], next_round_id.to_string());
 
-    let (again_status, again) =
-        call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
+    let (again_status, again) = call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
     assert_eq!(again_status, StatusCode::OK);
     assert_eq!(again["outcome"], "already_ended");
 
     let points: i32 = sqlx::query_scalar("SELECT points FROM public.scores WHERE round_id = $1")
-        .bind(round_id).fetch_one(&db).await.expect("score");
+        .bind(round_id)
+        .fetch_one(&db)
+        .await
+        .expect("score");
     assert_eq!(points, 1);
 }
 
@@ -157,22 +180,41 @@ async fn voice_pause_and_resume_are_explainer_scoped_and_idempotent() {
         "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
          VALUES ($1, $2, $3, 1, 'active', 7)",
     )
-    .bind(round_id).bind(room_id).bind(team_id)
-    .execute(&db).await.expect("round");
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .execute(&db)
+    .await
+    .expect("round");
 
     let pause_uri = format!("/api/v1/alias/rounds/{round_id}/pause");
     let resume_uri = format!("/api/v1/alias/rounds/{round_id}/resume");
-    let (denied, _) =
-        call_at(database_app(8).0, &pause_uri, json!({}), Some("valid-test-init-data")).await;
+    let (denied, _) = call_at(
+        database_app(8).0,
+        &pause_uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(denied, StatusCode::FORBIDDEN);
 
-    let (status, first) =
-        call_at(app.clone(), &pause_uri, json!({}), Some("valid-test-init-data")).await;
+    let (status, first) = call_at(
+        app.clone(),
+        &pause_uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert!(first["paused_at"].is_string());
 
-    let (again_status, again) =
-        call_at(app.clone(), &pause_uri, json!({}), Some("valid-test-init-data")).await;
+    let (again_status, again) = call_at(
+        app.clone(),
+        &pause_uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
     assert_eq!(again_status, StatusCode::OK);
     assert_eq!(again["paused_at"], first["paused_at"]);
 

@@ -42,8 +42,14 @@ pub fn routes() -> Router<AppState> {
             post(alias_round_plan).layer(DefaultBodyLimit::max(64 * 1024)),
         )
         .route("/api/v1/alias/rounds/{round_id}/end", post(alias_end_round))
-        .route("/api/v1/alias/rounds/{round_id}/pause", post(alias_pause_round))
-        .route("/api/v1/alias/rounds/{round_id}/resume", post(alias_resume_round))
+        .route(
+            "/api/v1/alias/rounds/{round_id}/pause",
+            post(alias_pause_round),
+        )
+        .route(
+            "/api/v1/alias/rounds/{round_id}/resume",
+            post(alias_resume_round),
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -164,12 +170,11 @@ async fn alias_end_round(
     Path(round_id): Path<Uuid>,
 ) -> Result<Json<AliasRoundEndResponse>, ApiError> {
     let mut tx = state.db.begin().await?;
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM public.rounds WHERE id = $1)",
-    )
-    .bind(round_id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM public.rounds WHERE id = $1)")
+            .bind(round_id)
+            .fetch_one(&mut *tx)
+            .await?;
     if !exists {
         return Err(ApiError::not_found());
     }
@@ -186,7 +191,10 @@ async fn alias_end_round(
     .fetch_optional(&mut *tx)
     .await?;
     if member_id.is_none() {
-        return Err(ApiError::new(StatusCode::FORBIDDEN, "room_membership_required"));
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "room_membership_required",
+        ));
     }
 
     let (outcome, next_round_id): (String, Option<Uuid>) =
@@ -207,14 +215,18 @@ async fn alias_pause_round(
     Extension(identity): Extension<Identity>,
     Path(round_id): Path<Uuid>,
 ) -> Result<Json<AliasRoundPauseState>, ApiError> {
-    let explainer_id: Option<i64> =
-        sqlx::query_scalar("SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1")
-            .bind(round_id)
-            .fetch_optional(&state.db)
-            .await?;
+    let explainer_id: Option<i64> = sqlx::query_scalar(
+        "SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1",
+    )
+    .bind(round_id)
+    .fetch_optional(&state.db)
+    .await?;
     let explainer_id = explainer_id.ok_or_else(ApiError::not_found)?;
     if explainer_id != identity.telegram_id {
-        return Err(ApiError::new(StatusCode::FORBIDDEN, "only_explainer_may_pause"));
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "only_explainer_may_pause",
+        ));
     }
 
     let max_pause_ms = i32::try_from(sherlock_core::MAX_ROUND_PAUSE_MS).unwrap_or(i32::MAX);
@@ -256,7 +268,10 @@ async fn alias_resume_round(
             .await?;
     let explainer_id = explainer_id.ok_or_else(ApiError::not_found)?;
     if explainer_id != identity.telegram_id {
-        return Err(ApiError::new(StatusCode::FORBIDDEN, "only_explainer_may_resume"));
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "only_explainer_may_resume",
+        ));
     }
 
     let max_pause_ms = i32::try_from(sherlock_core::MAX_ROUND_PAUSE_MS).unwrap_or(i32::MAX);
