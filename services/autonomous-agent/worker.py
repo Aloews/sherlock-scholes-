@@ -189,12 +189,13 @@ def choose_model(base: str, key: str) -> str:
         return explicit
     if not ids:
         raise RuntimeError("Starimg model catalog is empty; set STARIMG_MODEL explicitly")
+    logging.info("Starimg model catalog returned %d model IDs: %s", len(ids), ", ".join(ids[:30]))
     preferred = (
         "qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral",
-        "gpt-6-luna", "gpt-6.1-terra",
         "claude-sonnet-5.5", "claude-sonnet-5-5",
-        "claude-haiku-5.5", "claude-haiku-5-5",
         "claude-opus-5.5", "claude-opus-5-5", "claude-opus-5",
+        "gpt-6.1-terra", "gpt-6-luna",
+        "claude-haiku-5.5", "claude-haiku-5-5",
     )
     for wanted in preferred:
         match = next((model for model in ids if wanted in model.lower()), None)
@@ -299,6 +300,7 @@ def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> st
 
 def extract_patch(answer: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PREFIXES) -> str:
     text = answer.strip()
+    text = re.sub(r"(?m)^\\*\\*\\* (?:Begin|End) Patch\\s*$", "", text)
     if text.startswith("```"):
         text = re.sub(r"^\`\`\`(?:diff)?\s*", "", text)
         text = re.sub(r"\s*\`\`\`$", "", text)
