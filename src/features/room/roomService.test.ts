@@ -95,21 +95,23 @@ describe('endRound', () => {
     expect(endAliasRound).toHaveBeenCalledTimes(1);
   });
 
-  it('deals the round the server named, after the summary pause', async () => {
+  it('activates the round the server named, after the summary pause', async () => {
     endAliasRound.mockResolvedValue({ outcome: 'next_round', next_round_id: 'round-2' });
+    activateAliasRound.mockResolvedValue({ outcome: 'activated', card_count: 5 });
 
     const pending = roomService.endRound('round-1', room);
 
     // Nothing may happen while the summary is on screen.
     await vi.advanceTimersByTimeAsync(roomService.SUMMARY_PAUSE_MS - 1);
+    expect(activateAliasRound).not.toHaveBeenCalled();
     expect(from).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(2);
     await pending;
 
-    const claim = (from.mock.results[0].value as { __calls: { method: string; args: unknown[] }[] }).__calls;
-    expect(from).toHaveBeenCalledWith('rooms');
-    expect(claim[0].args[0]).toMatchObject({ current_round_id: 'round-2' });
+    expect(activateAliasRound).toHaveBeenCalledTimes(1);
+    expect(activateAliasRound).toHaveBeenCalledWith('round-2', 'signed-test-init-data');
+    expect(from).not.toHaveBeenCalled();
   });
 
   it('does not fall back to client-side writes when the Rust API fails', async () => {
