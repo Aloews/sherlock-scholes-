@@ -311,7 +311,10 @@ mod tests {
             round("round-3", 3, RoundStatus::Pending, Vec::new()),
         ]);
 
-        assert_eq!(game.end_round("round-1", 123).unwrap(), EndRoundOutcome::GameEnd);
+        assert_eq!(
+            game.end_round("round-1", 123).unwrap(),
+            EndRoundOutcome::GameEnd
+        );
         assert_eq!(game.rounds[1].status, RoundStatus::Pending);
         assert_eq!(game.room.status, RoomStatus::Finished);
     }
@@ -404,12 +407,7 @@ mod tests {
 
     #[test]
     fn resume_folds_elapsed_pause_and_clamps_total_to_two_minutes() {
-        let mut game = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
         game.rounds[0].paused_ms = 100_000;
         game.rounds[0].paused_at_ms = Some(1_000);
 
@@ -423,12 +421,7 @@ mod tests {
 
     #[test]
     fn resume_does_not_count_time_before_the_pause_or_allow_non_explainer() {
-        let mut game = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
         game.rounds[0].paused_at_ms = Some(1_000);
 
         assert_eq!(
@@ -462,12 +455,7 @@ mod tests {
 
     #[test]
     fn a_round_can_be_resumed_only_by_its_explainer() {
-        let mut game = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
         game.rounds[0].paused_at_ms = Some(1_000);
 
         assert_eq!(
