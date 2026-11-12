@@ -407,7 +407,10 @@ async fn start_game_creates_rounds_atomically_and_replays_without_duplicates() {
     .expect("round rows");
     assert_eq!(rows.len(), 4);
     assert_eq!(rows[0].0.to_string(), first_round_id);
-    assert_eq!(rows.iter().map(|row| row.1).collect::<Vec<_>>(), vec![1, 2, 3, 4]);
+    assert_eq!(
+        rows.iter().map(|row| row.1).collect::<Vec<_>>(),
+        vec![1, 2, 3, 4]
+    );
     assert!(rows.iter().all(|row| row.2 == 45 && row.3 == "pending"));
 }
 
