@@ -261,11 +261,12 @@ async fn alias_resume_round(
     Extension(identity): Extension<Identity>,
     Path(round_id): Path<Uuid>,
 ) -> Result<Json<AliasRoundPauseState>, ApiError> {
-    let explainer_id: Option<i64> =
-        sqlx::query_scalar("SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1")
-            .bind(round_id)
-            .fetch_optional(&state.db)
-            .await?;
+    let explainer_id: Option<i64> = sqlx::query_scalar(
+        "SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1",
+    )
+    .bind(round_id)
+    .fetch_optional(&state.db)
+    .await?;
     let explainer_id = explainer_id.ok_or_else(ApiError::not_found)?;
     if explainer_id != identity.telegram_id {
         return Err(ApiError::new(

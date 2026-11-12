@@ -175,7 +175,10 @@ async fn voice_pause_and_resume_are_explainer_scoped_and_idempotent() {
     let team_id = Uuid::new_v4();
     let (app, db) = database_app(7);
     sqlx::query("INSERT INTO public.rooms (id, status) VALUES ($1, 'playing')")
-        .bind(room_id).execute(&db).await.expect("room");
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("room");
     sqlx::query(
         "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
          VALUES ($1, $2, $3, 1, 'active', 7)",
