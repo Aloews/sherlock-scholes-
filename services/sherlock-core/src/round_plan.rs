@@ -31,15 +31,12 @@ pub enum RoundPlanError {
 }
 
 fn valid_team_id(value: &str) -> bool {
-    !value.trim().is_empty()
-        && value.len() <= 64
-        && !value.chars().any(char::is_whitespace)
+    !value.trim().is_empty() && value.len() <= 64 && !value.chars().any(char::is_whitespace)
 }
 
 fn valid_joined_at(value: &str) -> bool {
     value.len() <= 64 && DateTime::parse_from_rfc3339(value).is_ok()
 }
-
 
 pub fn build_round_plan(
     mode: GameMode,
@@ -60,12 +57,19 @@ pub fn build_round_plan(
         || teams.iter().any(|team| !valid_team_id(team))
         || teams.iter().collect::<HashSet<_>>().len() != teams.len()
         || members.len() > 128
-        || members.iter().map(|member| member.player_id).collect::<HashSet<_>>().len()
+        || members
+            .iter()
+            .map(|member| member.player_id)
+            .collect::<HashSet<_>>()
+            .len()
             != members.len()
         || members.iter().any(|member| {
             member.player_id <= 0
                 || !valid_joined_at(&member.joined_at)
-                || member.team_id.as_ref().is_some_and(|team| !valid_team_id(team))
+                || member
+                    .team_id
+                    .as_ref()
+                    .is_some_and(|team| !valid_team_id(team))
         })
     {
         return Err(RoundPlanError::InvalidInput);
@@ -315,21 +319,39 @@ mod tests {
             Err(RoundPlanError::InvalidInput)
         );
         assert_eq!(
-            build_round_plan(GameMode::Teams, &teams, &[RoomMember {
-                joined_at: "2026-02-30T10:00:00Z".into(),
-                ..valid_member.clone()
-            }], 1, 1),
+            build_round_plan(
+                GameMode::Teams,
+                &teams,
+                &[RoomMember {
+                    joined_at: "2026-02-30T10:00:00Z".into(),
+                    ..valid_member.clone()
+                }],
+                1,
+                1
+            ),
             Err(RoundPlanError::InvalidInput)
         );
         assert_eq!(
-            build_round_plan(GameMode::Teams, &teams, &[RoomMember {
-                player_id: 0,
-                ..valid_member.clone()
-            }], 1, 1),
+            build_round_plan(
+                GameMode::Teams,
+                &teams,
+                &[RoomMember {
+                    player_id: 0,
+                    ..valid_member.clone()
+                }],
+                1,
+                1
+            ),
             Err(RoundPlanError::InvalidInput)
         );
         assert_eq!(
-            build_round_plan(GameMode::Teams, &teams, &[valid_member.clone(), valid_member], 1, 1),
+            build_round_plan(
+                GameMode::Teams,
+                &teams,
+                &[valid_member.clone(), valid_member],
+                1,
+                1
+            ),
             Err(RoundPlanError::InvalidInput)
         );
         assert_eq!(
