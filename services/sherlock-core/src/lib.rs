@@ -97,8 +97,7 @@ impl RoundClock {
         if self.started_at_ms.is_none() {
             return self.seconds;
         }
-        self.seconds
-            .saturating_sub(self.elapsed_ms(now_ms) / 1_000)
+        self.seconds.saturating_sub(self.elapsed_ms(now_ms) / 1_000)
     }
 
     pub fn deadline_at_ms(self, now_ms: i64) -> i64 {
@@ -122,7 +121,6 @@ impl RoundClock {
         self.paused_at_ms.is_some()
     }
 }
-
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeckFilter {
@@ -194,7 +192,11 @@ impl DeckFilter {
 pub fn room_deck_filter(deck: Option<DeckFilter>, categories: Option<Vec<String>>) -> DeckFilter {
     match deck {
         Some(value) => value.normalized(),
-        None => DeckFilter { categories, ..DeckFilter::default() }.normalized(),
+        None => DeckFilter {
+            categories,
+            ..DeckFilter::default()
+        }
+        .normalized(),
     }
 }
 
@@ -206,9 +208,7 @@ pub const ROOM_CODE_LENGTH: usize = 6;
 
 pub fn normalize_room_code(raw: Option<&str>) -> Option<String> {
     let code = raw?.trim().to_ascii_uppercase();
-    if code.len() != ROOM_CODE_LENGTH
-        || !code.bytes().all(|byte| byte.is_ascii_alphanumeric())
-    {
+    if code.len() != ROOM_CODE_LENGTH || !code.bytes().all(|byte| byte.is_ascii_alphanumeric()) {
         return None;
     }
     Some(code)
@@ -263,7 +263,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn deck_filter_normalization_matches_client_contract() {
         let filter = DeckFilter {
@@ -272,9 +271,16 @@ mod tests {
             fame_min: Some(0),
             lang: Some("".into()),
             ..DeckFilter::default()
-        }.normalized();
-        assert_eq!(filter.categories, Some(vec!["club".to_string(), "player".to_string()]));
-        assert_eq!(filter.card_ids, Some(vec!["a".to_string(), "b".to_string()]));
+        }
+        .normalized();
+        assert_eq!(
+            filter.categories,
+            Some(vec!["club".to_string(), "player".to_string()])
+        );
+        assert_eq!(
+            filter.card_ids,
+            Some(vec!["a".to_string(), "b".to_string()])
+        );
         assert_eq!(filter.fame_min, None);
         assert_eq!(filter.lang, None);
     }
@@ -282,7 +288,10 @@ mod tests {
     #[test]
     fn empty_filter_is_whole_deck_but_explicit_empty_category_is_empty_selection() {
         assert!(DeckFilter::default().is_whole_deck());
-        let empty = DeckFilter { categories: Some(vec![]), ..DeckFilter::default() };
+        let empty = DeckFilter {
+            categories: Some(vec![]),
+            ..DeckFilter::default()
+        };
         assert!(empty.is_empty_selection());
         assert!(empty.is_whole_deck());
     }
@@ -311,10 +320,14 @@ mod tests {
             lang: Some("ru".into()),
             fame_min: Some(60),
             ..DeckFilter::default()
-        }.pinnable();
+        }
+        .pinnable();
         assert_eq!(pinned.lang, None);
         assert_eq!(pinned.fame_min, Some(60));
-        assert_eq!(settings_categories(&pinned), Some(vec!["player".to_string()]));
+        assert_eq!(
+            settings_categories(&pinned),
+            Some(vec!["player".to_string()])
+        );
     }
 
     #[test]
@@ -328,8 +341,14 @@ mod tests {
 
     #[test]
     fn pasted_room_invite_links_extract_startapp_and_start_codes() {
-        assert_eq!(room_code_from_text(Some("https://t.me/bot?startapp=ab12cd")), Some("AB12CD".into()));
-        assert_eq!(room_code_from_text(Some("https://t.me/bot?start=ab12cd&other=1")), Some("AB12CD".into()));
+        assert_eq!(
+            room_code_from_text(Some("https://t.me/bot?startapp=ab12cd")),
+            Some("AB12CD".into())
+        );
+        assert_eq!(
+            room_code_from_text(Some("https://t.me/bot?start=ab12cd&other=1")),
+            Some("AB12CD".into())
+        );
         assert_eq!(sanitize_room_code_input("ab-12 cd"), "AB12CD");
         assert_eq!(room_code_from_text(Some("no-code")), None);
     }
@@ -360,7 +379,10 @@ mod tests {
     #[test]
     fn forced_transition_is_unconditional() {
         assert_eq!(force_transition(GamePhase::GameEnd), GamePhase::GameEnd);
-        assert_eq!(force_transition(GamePhase::RoundActive), GamePhase::RoundActive);
+        assert_eq!(
+            force_transition(GamePhase::RoundActive),
+            GamePhase::RoundActive
+        );
     }
 
     #[test]
@@ -419,6 +441,9 @@ mod tests {
         let value = clock(Some(i64::MIN), u64::MAX, 0, None);
         assert_eq!(value.elapsed_ms(i64::MAX), u64::MAX);
         assert_eq!(value.deadline_at_ms(i64::MAX), i64::MAX);
-        assert_eq!(value.remaining_seconds(i64::MAX), u64::MAX - u64::MAX / 1_000);
+        assert_eq!(
+            value.remaining_seconds(i64::MAX),
+            u64::MAX - u64::MAX / 1_000
+        );
     }
 }
