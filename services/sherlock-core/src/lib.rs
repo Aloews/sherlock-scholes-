@@ -208,7 +208,10 @@ pub const ROOM_CODE_LENGTH: usize = 6;
 
 pub fn normalize_room_code(raw: Option<&str>) -> Option<String> {
     let code = raw?.trim().to_ascii_uppercase();
-    if code.len() != ROOM_CODE_LENGTH || !code.bytes().all(|byte| byte.is_ascii_alphanumeric()) {
+    if code.is_empty()
+        || code.len() > ROOM_CODE_LENGTH
+        || !code.bytes().all(|byte| byte.is_ascii_alphanumeric())
+    {
         return None;
     }
     Some(code)
@@ -331,10 +334,11 @@ mod tests {
     }
 
     #[test]
-    fn room_codes_normalize_only_exact_six_ascii_alphanumeric_characters() {
+    fn room_codes_accept_one_to_six_ascii_alphanumeric_characters() {
+        assert_eq!(normalize_room_code(Some(" a ")), Some("A".into()));
         assert_eq!(normalize_room_code(Some(" ab12cd ")), Some("AB12CD".into()));
-        assert_eq!(normalize_room_code(Some("ABCDE")), None);
-        assert_eq!(normalize_room_code(Some("ABCDEF7")), None);
+        assert_eq!(normalize_room_code(Some("")), None);
+        assert_eq!(normalize_room_code(Some("ABCDEFG")), None);
         assert_eq!(normalize_room_code(Some("ABC-12")), None);
         assert_eq!(normalize_room_code(None), None);
     }
@@ -344,6 +348,10 @@ mod tests {
         assert_eq!(
             room_code_from_text(Some("https://t.me/bot?startapp=ab12cd")),
             Some("AB12CD".into())
+        );
+        assert_eq!(
+            room_code_from_text(Some("https://t.me/bot?start=Q")),
+            Some("Q".into())
         );
         assert_eq!(
             room_code_from_text(Some("https://t.me/bot?start=ab12cd&other=1")),
