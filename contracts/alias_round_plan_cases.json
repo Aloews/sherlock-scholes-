@@ -4,20 +4,21 @@
     "mode": "team",
     "host_id": 1,
     "total_rounds": 3,
-    "teams": ["blue", "red"],
+    "teams": ["red", "blue"],
     "members": [
-      {"player_id": 3, "team_id": "blue", "joined_at": "2026-01-02T10:00:00Z"},
+      {"player_id": 2, "team_id": "blue", "joined_at": "2026-01-02T10:00:00Z"},
       {"player_id": 8, "team_id": "red", "joined_at": "2026-01-03T10:00:00Z"},
       {"player_id": 7, "team_id": "red", "joined_at": "2026-01-01T10:00:00Z"},
-      {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"}
+      {"player_id": 9, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"},
+      {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-03T10:00:00Z"}
     ],
     "expected": [
-      {"round_number": 1, "team_id": "blue", "explainer_id": 1},
-      {"round_number": 2, "team_id": "red", "explainer_id": 7},
-      {"round_number": 3, "team_id": "blue", "explainer_id": 3},
-      {"round_number": 4, "team_id": "red", "explainer_id": 8},
-      {"round_number": 5, "team_id": "blue", "explainer_id": 1},
-      {"round_number": 6, "team_id": "red", "explainer_id": 7}
+      {"round_number": 1, "team_id": "red", "explainer_id": 7},
+      {"round_number": 2, "team_id": "blue", "explainer_id": 9},
+      {"round_number": 3, "team_id": "red", "explainer_id": 8},
+      {"round_number": 4, "team_id": "blue", "explainer_id": 2},
+      {"round_number": 5, "team_id": "red", "explainer_id": 7},
+      {"round_number": 6, "team_id": "blue", "explainer_id": 1}
     ]
   },
   {
@@ -38,7 +39,7 @@
     ]
   },
   {
-    "name": "team mode preserves team order when host is not assigned",
+    "name": "team mode preserves team order when host is unassigned",
     "mode": "team",
     "host_id": 99,
     "total_rounds": 1,

@@ -23,17 +23,20 @@ interface RoundPlanRequest {
 }
 
 function validTeamId(value: string): boolean {
-  return value.trim().length > 0 && value.length <= 64 && !/\s/.test(value);
+  return value.length > 0 && value.length <= 64 && !/\s/.test(value);
 }
 
 function validJoinedAt(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 64) return false;
+  if (typeof value !== 'string') return false;
   const match = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.exec(value);
   if (!match || !Number.isFinite(Date.parse(value))) return false;
+
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  const calendarDate = new Date(0);
+  calendarDate.setUTCFullYear(year, month - 1, day);
+
   return calendarDate.getUTCFullYear() === year
     && calendarDate.getUTCMonth() === month - 1
     && calendarDate.getUTCDate() === day;
@@ -57,18 +60,14 @@ export function buildRoundPlan(
 
   if (
     !oneVsOneHasTwoAssignedPlayers
-    || 
-    (mode !== 'team' && mode !== '1v1')
-    || !Number.isSafeInteger(hostId)
-    || hostId <= 0
+    || (mode !== 'team' && mode !== '1v1')
     || teams.length === 0
     || teams.length > 16
     || uniqueTeams.size !== teams.length
-    || teams.some((team) => !validTeamId(team))
+    || teams.some((team) => typeof team !== 'string' || !validTeamId(team))
     || !Number.isInteger(totalRounds)
     || totalRounds <= 0
     || totalRounds > 64
-    || !Number.isSafeInteger(totalTurns)
     || totalTurns > 256
     || members.length > 128
     || uniquePlayers.size !== members.length
@@ -77,7 +76,10 @@ export function buildRoundPlan(
       !Number.isSafeInteger(member.player_id)
       || member.player_id <= 0
       || !validJoinedAt(member.joined_at)
-      || (member.team_id !== null && !validTeamId(member.team_id))
+      || (
+        member.team_id !== null
+        && (typeof member.team_id !== 'string' || !validTeamId(member.team_id))
+      )
     ))
   ) {
     throw new Error('INVALID_ALIAS_ROUND_PLAN');
@@ -91,16 +93,11 @@ export function buildRoundPlan(
   const orderedTeams = [...teams];
   if (mode === '1v1') {
     const hostTeamIndex = orderedTeams.findIndex((teamId) => playerByTeam.get(teamId) === hostId);
-    if (hostTeamIndex > 0) {
-      const [hostTeam] = orderedTeams.splice(hostTeamIndex, 1);
-      orderedTeams.unshift(hostTeam);
-    }
+    if (hostTeamIndex === 1) orderedTeams.reverse();
   }
 
-  const knownTeams = new Set(teams);
   const sortedMembers = members
-    .filter((member) => member.team_id !== null && knownTeams.has(member.team_id))
-    .slice()
+    .filter((member) => member.team_id !== null)
     .sort((left, right) => (
       left.joined_at !== right.joined_at
         ? (left.joined_at < right.joined_at ? -1 : 1)
@@ -137,20 +134,21 @@ export function buildRoundPlan(
   });
 }
 
-function isPlannedRound(value: unknown): value is PlannedRound {
+function isPlannedRound(
+  value: unknown,
+  index: number,
+  teams: readonly string[],
+): value is PlannedRound {
   if (!value || typeof value !== 'object') return false;
   const round = value as Record<string, unknown>;
-  return Number.isSafeInteger(round.round_number)
-    && typeof round.round_number === 'number'
-    && round.round_number > 0
-    && typeof round.team_id === 'string'
-    && round.team_id.length > 0
+
+  return round.round_number === index + 1
+    && teams.includes(round.team_id as string)
     && (
       round.explainer_id === null
       || (
-        typeof round.explainer_id === 'number'
-        && Number.isSafeInteger(round.explainer_id)
-        && round.explainer_id > 0
+        Number.isSafeInteger(round.explainer_id)
+        && (round.explainer_id as number) > 0
       )
     );
 }
@@ -189,11 +187,7 @@ export async function requestAliasRoundPlan(request: RoundPlanRequest): Promise<
     || expectedLength > 256
     || !Array.isArray(payload)
     || payload.length !== expectedLength
-    || !payload.every((round, index) => (
-      isPlannedRound(round)
-      && round.round_number === index + 1
-      && request.teams.includes(round.team_id)
-    ))
+    || !payload.every((round, index) => isPlannedRound(round, index, request.teams))
   ) {
     throw new Error('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
   }
