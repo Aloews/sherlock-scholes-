@@ -56,6 +56,23 @@ describe('useTimer', () => {
     expect(onExpire).toHaveBeenCalledTimes(1);
   });
 
+  it('expires after the two-minute pause cap even if paused_at never clears', () => {
+    const onExpire = vi.fn();
+    const { result } = renderHook(() => useTimer(round({
+      paused_at: new Date('2026-01-01T00:00:10Z').toISOString(),
+      paused_ms: 0,
+    }), { onExpire }));
+
+    act(() => vi.advanceTimersByTime(130_000));
+    expect(result.current.remaining).toBe(50);
+    expect(result.current.paused).toBe(false);
+    expect(onExpire).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(50_000));
+    expect(result.current.remaining).toBe(0);
+    expect(onExpire).toHaveBeenCalledTimes(1);
+  });
+
   it('does not run for a non-active round (shows full time)', () => {
     const onExpire = vi.fn();
     const { result } = renderHook(() => useTimer(round({ status: 'pending' }), { onExpire }));
