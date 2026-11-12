@@ -54,7 +54,7 @@ export async function endAliasRound(
   ) {
     throw new Error('INVALID_ALIAS_ROUND_END_RESPONSE');
   }
-  return result as AliasRoundEndResult;
+  return result as unknown as AliasRoundEndResult;
 }
 
 export async function setAliasRoundVoiceState(
@@ -73,5 +73,5 @@ export async function setAliasRoundVoiceState(
   ) {
     throw new Error('INVALID_ALIAS_ROUND_PAUSE_RESPONSE');
   }
-  return state as AliasRoundPauseState;
+  return state as unknown as AliasRoundPauseState;
 }

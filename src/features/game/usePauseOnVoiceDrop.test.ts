@@ -150,10 +150,10 @@ describe('where it refuses to act', () => {
   it('forgets the previous round, including that its link was ever up', () => {
     const { rerender } = renderHook((p: Input) => usePauseOnVoiceDrop(p), { initialProps: base });
     rerender({ ...base, status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
 
     // A new round starts from nothing: its own link has not been up yet.
     rerender({ ...base, roundId: 'round-2', status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
   });
 });
