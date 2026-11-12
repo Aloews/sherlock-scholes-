@@ -91,6 +91,7 @@ jobs:
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle_setup.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/end_round_rpc.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/pause_round_on_voice_drop.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle.test.sql
       - name: Export resolved dependency lockfile
         if: always()
