@@ -10,6 +10,12 @@ on:
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
       - "supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql"
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
+      - "supabase/migrations/end_round_rpc.sql"
+      - "supabase/migrations/pause_round_on_voice_drop.sql"
+      - "supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql"
+      - "supabase/migrations/20261112160000_restrict_alias_end_round_rpc.sql"
+      - "supabase/tests/alias_round_lifecycle_setup.sql"
+      - "supabase/tests/alias_round_lifecycle.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
     branches: [main]
