@@ -1,6 +1,6 @@
 pub mod round_plan;
 
-pub use round_plan::{build_round_plan, GameMode, PlannedRound, RoomMember, RoundPlanError};
+pub use round_plan::{GameMode, PlannedRound, RoomMember, RoundPlanError, build_round_plan};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GamePhase {

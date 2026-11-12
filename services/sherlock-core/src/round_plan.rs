@@ -67,8 +67,7 @@ pub fn build_round_plan(
         }
     }
 
-    let known_teams: std::collections::HashSet<&str> =
-        teams.iter().map(String::as_str).collect();
+    let known_teams: std::collections::HashSet<&str> = teams.iter().map(String::as_str).collect();
     let mut sorted_members: Vec<&RoomMember> = members
         .iter()
         .filter(|member| {
@@ -161,7 +160,9 @@ mod tests {
             ]
         );
         assert_eq!(
-            plan.iter().map(|round| round.round_number).collect::<Vec<_>>(),
+            plan.iter()
+                .map(|round| round.round_number)
+                .collect::<Vec<_>>(),
             vec![1, 2, 3, 4, 5, 6]
         );
     }
@@ -169,7 +170,10 @@ mod tests {
     #[test]
     fn one_vs_one_puts_the_host_team_first_and_keeps_each_explainer() {
         let teams = vec!["home".into(), "away".into()];
-        let members = vec![member(20, "away", "2026-01-02T10:00:00Z"), member(10, "home", "2026-01-01T10:00:00Z")];
+        let members = vec![
+            member(20, "away", "2026-01-02T10:00:00Z"),
+            member(10, "home", "2026-01-01T10:00:00Z"),
+        ];
 
         let plan = build_round_plan(GameMode::OneVsOne, &teams, &members, 20, 2).unwrap();
 
