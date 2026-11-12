@@ -4,18 +4,20 @@ import {
   normalizeCode, deepLink, shareLink, copyText, sanitizeCodeInput, codeFromText, CODE_LENGTH,
 } from './invite';
 
-// The invite path is the only way into a room other than reading six
-// characters out loud, and every one of its inputs comes from outside: a
+// The invite path is the only way into a room other than reading the code
+// out loud, and every one of its inputs comes from outside: a
 // Telegram start_param, a paste, a clipboard API that may refuse.
 
 describe('normalizeCode', () => {
-  it('accepts a six-character code and uppercases it', () => {
+  it('accepts one-to-six-character codes and uppercases them', () => {
+    expect(normalizeCode('a')).toBe('A');
+    expect(normalizeCode('ab12')).toBe('AB12');
     expect(normalizeCode('ab12cd')).toBe('AB12CD');
     expect(normalizeCode('  XY9Z01 ')).toBe('XY9Z01');
   });
 
   it('rejects anything that is not a room code', () => {
-    for (const bad of ['', '  ', 'A', 'ABC', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
+    for (const bad of ['', '  ', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
       expect(normalizeCode(bad)).toBeNull();
     }
   });
@@ -113,7 +115,7 @@ describe('sanitizeCodeInput', () => {
     // The first keystroke must survive. It is not a valid code and must not be
     // treated as one, but it has to appear.
     expect(sanitizeCodeInput('x')).toBe('x');
-    expect(normalizeCode(sanitizeCodeInput('x'))).toBeNull();
+    expect(normalizeCode(sanitizeCodeInput('x'))).toBe('X');
   });
 
   it('drops what a code cannot contain instead of holding it and failing later', () => {
@@ -140,7 +142,7 @@ describe('codeFromText', () => {
     expect(codeFromText('AB12CD')).toBe('AB12CD');
     expect(codeFromText(deepLink('XY9Z01'))).toBe('XY9Z01');
     expect(codeFromText('Заходи: https://t.me/sherlock_scholes_bot?startapp=ab12cd')).toBe('AB12CD');
-    expect(codeFromText('AB12')).toBeNull();
+    expect(codeFromText('AB12')).toBe('AB12');
     expect(codeFromText(null)).toBeNull();
   });
 });
