@@ -116,14 +116,10 @@ export function buildRoundPlan(
     const teamId = orderedTeams[index % orderedTeams.length];
     let explainerId: number | null = null;
 
-    if (mode === '1v1') {
-      explainerId = playerByTeam.get(teamId) ?? null;
-    } else {
-      const roster = rosterByTeam.get(teamId) ?? [];
-      if (roster.length > 0) {
-        const turn = Math.floor(index / orderedTeams.length) % roster.length;
-        explainerId = roster[turn];
-      }
+    const roster = rosterByTeam.get(teamId) ?? [];
+    if (roster.length > 0) {
+      const turn = Math.floor(index / orderedTeams.length) % roster.length;
+      explainerId = roster[turn];
     }
 
     return {
@@ -139,7 +135,7 @@ function isPlannedRound(
   index: number,
   teams: readonly string[],
 ): value is PlannedRound {
-  if (!value || typeof value !== 'object') return false;
+  if (!value) return false;
   const round = value as Record<string, unknown>;
 
   return round.round_number === index + 1

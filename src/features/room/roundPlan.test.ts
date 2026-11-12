@@ -59,6 +59,11 @@ describe('round-plan input boundaries', () => {
       member(index + 1, 'blue')
     ));
     expect(buildRoundPlan('team', ['blue'], maximumMembers, 1, 1)).toHaveLength(1);
+    const maximumRoster = maximumMembers.map((player) => ({
+      ...player,
+      team_id: maximumTeams[0],
+    }));
+    expect(buildRoundPlan('team', maximumTeams, maximumRoster, 1, 16)).toHaveLength(256);
     expect(() => buildRoundPlan(
       'team',
       ['blue'],
