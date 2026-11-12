@@ -49,7 +49,11 @@ describe('round-plan input boundaries', () => {
     const maximumPlan = buildRoundPlan('team', teams, members, 1, 16);
 
     expect(maximumPlan).toHaveLength(256);
-    expect(() => buildRoundPlan('team', ['t'.repeat(64)], [], 1, 1)).not.toThrow();
+    expect(() => buildRoundPlan('team', ['t'.repeat(64)], [{
+      player_id: 1,
+      team_id: 't'.repeat(64),
+      joined_at: '2026-01-01T10:00:00Z',
+    }], 1, 1)).not.toThrow();
     expect(() => buildRoundPlan('team', [' '], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
     expect(() => buildRoundPlan('team', ['t'.repeat(65)], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
     expect(() => buildRoundPlan('team', ['valid', 'invalid team'], [], 1, 1))
