@@ -23,6 +23,7 @@ on:
       - "supabase/migrations/pause_round_on_voice_drop.sql"
       - "supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql"
       - "supabase/migrations/20261112160000_restrict_alias_end_round_rpc.sql"
+      - "supabase/migrations/20261112170000_alias_card_decision_timestamp.sql"
       - "supabase/tests/alias_round_lifecycle_setup.sql"
       - "supabase/tests/alias_round_lifecycle.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
@@ -104,6 +105,7 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sherlock_alias_test"
           ALIAS_DATABASE_URL="postgres://postgres:postgres@localhost:5432/sherlock_alias_test"
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle_setup.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112170000_alias_card_decision_timestamp.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/end_round_rpc.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112160000_restrict_alias_end_round_rpc.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/pause_round_on_voice_drop.sql
