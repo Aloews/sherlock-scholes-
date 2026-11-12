@@ -51,7 +51,7 @@ test('the backend service ignore command resolves from the configured services r
     },
   });
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /build skipped/i);
+  assert.match(result.stdout, /preview skipped/i);
 });
 
 test('the Vercel command maps build/skip decisions to the documented exit codes', () => {
