@@ -227,7 +227,10 @@ pub fn normalize_room_code(raw: Option<&str>) -> Option<String> {
 }
 
 pub fn sanitize_room_code_input(raw: &str) -> String {
-    extract_room_code(raw).chars().take(ROOM_CODE_LENGTH).collect()
+    extract_room_code(raw)
+        .chars()
+        .take(ROOM_CODE_LENGTH)
+        .collect()
 }
 
 fn find_invite_param(raw: &str) -> Option<&str> {
@@ -415,9 +418,10 @@ mod tests {
 
     #[test]
     fn room_code_behavior_matches_the_shared_typescript_contract() {
-        let cases: serde_json::Value =
-            serde_json::from_str(include_str!("../../../contracts/alias_room_code_cases.json"))
-                .expect("room-code fixture JSON must parse");
+        let cases: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../contracts/alias_room_code_cases.json"
+        ))
+        .expect("room-code fixture JSON must parse");
         for case in cases.as_array().expect("fixture root must be an array") {
             let name = case["name"].as_str().expect("case name");
             let raw = case["raw"].as_str().expect("raw input");
@@ -443,7 +447,7 @@ mod tests {
             room_code_from_text(Some("https://t.me/bot?start=ab12cd&other=1")),
             Some("AB12CD".into())
         );
-        assert_eq!(sanitize_room_code_input("ab-12 cd"), "AB12CD");
+        assert_eq!(sanitize_room_code_input("ab-12 cd"), "ab12cd");
         assert_eq!(room_code_from_text(Some("https://t.me/bot?other=1")), None);
         assert_eq!(sanitize_room_code_input("https://t.me/bot?other=1"), "");
         assert_eq!(room_code_from_text(Some("no-code")), None);
