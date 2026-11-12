@@ -238,20 +238,37 @@ def context_excerpt(body: str, limit: int = MAX_FILE_CONTEXT_CHARS) -> str:
     return body[:head] + marker + body[-tail:]
 
 
+def required_paths_from_task(task: str) -> list[str]:
+    marker = "Required files — all six must be changed in the same PR"
+    if marker not in task:
+        return []
+    section = task.split(marker, 1)[1].split("\n\n", 1)[0]
+    return list(dict.fromkeys(re.findall(r"`([^`]+)`", section)))
+
+
+def missing_required_paths(required: list[str], changed: list[str]) -> list[str]:
+    return sorted(set(required) - set(changed))
+
+
 def patch_file_context(root: Path, patch: str,
-                       allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PREFIXES) -> str:
-    """Return exact current contents for every safe path named by a rejected patch."""
+                       allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PREFIXES,
+                       extra_paths: list[str] | None = None) -> str:
+    """Return exact current contents for rejected-patch paths and required task files."""
     headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
+    paths = list(dict.fromkeys([old for old, new in headers if old == new] + (extra_paths or [])))
     parts: list[str] = []
-    for old, new in headers:
-        if old != new or not safe_path(old, allowed_prefixes):
+    for relative in paths:
+        if not safe_path(relative, allowed_prefixes):
             continue
-        path = root / old
+        path = root / relative
+        if not path.exists():
+            parts.append(f"\n--- REQUIRED NEW FILE (does not exist yet): {relative} ---\n")
+            continue
         try:
             body = path.read_text(encoding="utf-8")
         except (OSError, UnicodeError):
             continue
-        parts.append(f"\n--- EXACT CURRENT FILE CONTENT AFTER RESET: {old} ---\n{context_excerpt(body)}")
+        parts.append(f"\n--- EXACT CURRENT FILE CONTENT AFTER RESET: {relative} ---\n{context_excerpt(body)}")
     return "\n".join(parts)
 
 
@@ -540,6 +557,7 @@ class Worker:
         if "pull_request" in issue:
             return
         task = compose_issue_task(issue, task)
+        required_paths = required_paths_from_task(task)
         branch = f"ai/task-{issue_number}-{comment_id}"
         source_url = str(comment.get("html_url", ""))
         existing = self._existing_pr(branch)
@@ -609,6 +627,9 @@ class Worker:
                     ))
                     if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
                         raise RuntimeError("Applied patch failed the final changed-path policy")
+                    missing_required = missing_required_paths(required_paths, changed)
+                    if missing_required:
+                        raise RuntimeError("Acceptance gate: required files missing from the same PR: " + ", ".join(missing_required))
                     if any((temp / path).is_symlink() for path in changed):
                         raise RuntimeError("Symlink changes are not permitted")
                     run_command(["git", "diff", "--check"], temp)
@@ -625,7 +646,7 @@ class Worker:
                     )
                     run_command(["git", "reset", "--hard", "HEAD"], temp)
                     run_command(["git", "clean", "-fd"], temp)
-                    exact_failed_files = patch_file_context(temp, patch, self.allowed_prefixes)
+                    exact_failed_files = patch_file_context(temp, patch, self.allowed_prefixes, required_paths)
                     if exact_failed_files:
                         context = (
                             exact_failed_files
