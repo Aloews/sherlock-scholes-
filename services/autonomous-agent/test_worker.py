@@ -1,10 +1,12 @@
+import io
+import json
 import os
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, extract_patch, run_command, safe_path, starimg_request
+from worker import compose_issue_task, extract_patch, run_command, safe_path, starimg_request, starimg_stream_completion
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -148,6 +150,26 @@ class WorkerPolicyTests(unittest.TestCase):
                 {"ok": True},
             )
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 300)
+
+    def test_starimg_streaming_completion_collects_sse_deltas_and_usage(self):
+        events = [
+            {"choices": [{"delta": {"content": "diff --git "}}]},
+            {"choices": [{"delta": {"content": "a/src/a.ts b/src/a.ts\\n"}}]},
+            {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 8}},
+        ]
+        payload = b"".join(
+            ("data: " + json.dumps(event) + "\\n\\n").encode("utf-8")
+            for event in events
+        ) + b"data: [DONE]\\n\\n"
+        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)) as urlopen:
+            result = starimg_stream_completion(
+                "https://ai.starimg.ru/v1", "test-key",
+                {"model": "test-model", "messages": []},
+            )
+        self.assertEqual(result["choices"][0]["message"]["content"],
+                         "diff --git a/src/a.ts b/src/a.ts\\n")
+        self.assertEqual(result["usage"]["completion_tokens"], 8)
+        self.assertTrue(urlopen.call_args.kwargs["timeout"] >= 180)
 
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
