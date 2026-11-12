@@ -300,7 +300,7 @@ def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> st
 
 def extract_patch(answer: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PREFIXES) -> str:
     text = answer.strip()
-    text = re.sub(r"(?m)^\\*\\*\\* (?:Begin|End) Patch\\s*$", "", text)
+    text = re.sub(r"(?m)^\*\*\* (?:Begin|End) Patch\s*$", "", text)
     if text.startswith("```"):
         text = re.sub(r"^\`\`\`(?:diff)?\s*", "", text)
         text = re.sub(r"\s*\`\`\`$", "", text)
