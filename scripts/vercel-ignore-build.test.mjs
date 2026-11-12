@@ -1,0 +1,39 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { PREVIEW_BUILD_MARKER, shouldBuildVercelDeployment } from './vercel-ignore-build.mjs';
+
+test('production deployments always build, regardless of branch name', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: 'release', environment: 'production' }), true);
+});
+
+test('main always builds', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: 'main', environment: 'preview' }), true);
+});
+
+test('feature branches skip routine preview builds', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: 'feature/game-core', message: 'fix: update timer', environment: 'preview' }), false);
+});
+
+test('an explicit preview marker allows one planned preview', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: 'feature/game-core', message: `feat: release candidate ${PREVIEW_BUILD_MARKER}`, environment: 'preview' }), true);
+});
+
+test('missing branch metadata fails open', () => {
+  assert.equal(shouldBuildVercelDeployment({ branch: '', message: '', environment: 'preview' }), true);
+});
+
+test('the Vercel command maps build/skip decisions to the documented exit codes', () => {
+  const script = fileURLToPath(new URL('./vercel-ignore-build.mjs', import.meta.url));
+  const skipped = spawnSync(process.execPath, [script], {
+    encoding: 'utf8',
+    env: { ...process.env, VERCEL_GIT_COMMIT_REF: 'feature/game-core', VERCEL_GIT_COMMIT_MESSAGE: 'fix: routine work', VERCEL_ENV: 'preview' },
+  });
+  const built = spawnSync(process.execPath, [script], {
+    encoding: 'utf8',
+    env: { ...process.env, VERCEL_GIT_COMMIT_REF: 'feature/game-core', VERCEL_GIT_COMMIT_MESSAGE: `release ${PREVIEW_BUILD_MARKER}`, VERCEL_ENV: 'preview' },
+  });
+  assert.equal(skipped.status, 0);
+  assert.equal(built.status, 1);
+});

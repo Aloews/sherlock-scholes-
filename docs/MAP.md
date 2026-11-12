@@ -37,6 +37,7 @@ flowchart TD
 - **Frontend:** React, Vite, TypeScript, Feature-Sliced Design; route ownership is in `src/app/Router.tsx`.
 - **Primary data platform:** the existing Supabase project. Real football data, Alias game data, and Football Dynasty fictional campaign data are separate domains.
 - **Backend boundary:** existing features use Supabase RPC/PostgREST and Edge Functions. Football Dynasty has its own Rust/Axum API and private `fd` schema.
+- **Alias Rust migration:** `services/sherlock-core/` is a staged pure-domain port for Alias phase, clock, room planning, and round lifecycle rules. It is not wired into the production runtime yet; React/TypeScript and Supabase remain authoritative until end-to-end integration and parity acceptance pass.
 - **Hosting:** Vercel hosts the Mini App and the currently configured backend routing. Do not assume a Railway migration is complete unless the deployed service and production routes have been verified.
 - **Scheduled collection:** GitHub Actions, Supabase Cron, and collector code. A successful job invocation does not prove that the upstream source returned complete or fresh data.
 
@@ -47,6 +48,7 @@ flowchart TD
 - Do implementation, formatting, static analysis, unit tests, integration tests, and broad regression checks in the local/CI environment first. GitHub Actions and local test execution are not a reason to trigger a Vercel deployment.
 - Build a **substantial, coherent vertical slice** before asking Vercel to build it: implementation, related migrations/contracts, tests, documentation, and reviewable acceptance criteria belong to one planned batch. Keep commits logically ordered, but do not use a Vercel build as a per-commit test.
 - Avoid pushing intermediate states to a Vercel-connected preview branch when each push would trigger a build. Before starting a batch, inspect the repository's actual Vercel Git integration and ignored-build configuration. Use an approved skip/ignore mechanism for intermediate commits only when its behavior is verified; never guess at configuration or silently change production settings.
+- **Repository-enforced preview gate:** the linked `sherlock-scholes` project is on the Hobby plan. `vercel.json` now uses `scripts/vercel-ignore-build.mjs`: Production deployments and `main` always build; non-main branches are ignored unless the commit message contains the explicit `[vercel-preview]` marker. Missing branch metadata fails open. The policy is covered by a Node test and is version-controlled; do not change Vercel project settings separately without first obtaining a readable current configuration.
 - Trigger **one deliberate Preview build** after the batch passes local and GitHub checks. Use that deployment for the complete end-to-end acceptance pass, not for debugging individual lines.
 - Promote/deploy to Production only after Preview acceptance, required CI, database/security checks, and the release checklist pass. Verify the deployed commit and critical Telegram journey.
 - If Vercel reports a quota/rate-limit failure, do not repeatedly retry the same deployment or create extra commits merely to retry it. Preserve the code, diagnose through local builds, GitHub Actions and available logs, and wait for the allowance/reset or an explicitly approved alternative release path.
@@ -92,7 +94,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | Product area | User outcome | Main entry points | Completion evidence |
 |---|---|---|---|
 | Home and navigation | Reach a useful football activity quickly | `src/screens/HomeScreen.tsx`, `src/app/Router.tsx` | Main journeys are discoverable; route and deep-link tests pass |
-| Football Alias | Create/join a room and finish a multiplayer game | `src/screens`, `src/features/lobby`, game features | Host/guest lifecycle, reconnect, replay, and room expiry pass end-to-end |
+| Football Alias | Create/join a room and finish a multiplayer game | `src/screens`, `src/features/lobby`, game features, staged Rust domain in `services/sherlock-core/` | Host/guest lifecycle, reconnect, replay, and room expiry pass end-to-end; Rust runtime parity is proven before cutover |
 | Player cards and profiles | Identify a player and inspect a reliable career record | `src/features/cards`, collection/profile screens | Identity, portrait provenance, career totals, and season totals reconcile |
 | Clubs and squads | Inspect club identity, squad, form, and matches | `src/features/clubs`, club screens | Squad source, coverage, match sample size, and timestamps are visible and consistent |
 | Matches and competitions | Follow fixtures, results, tables, and tournaments | `src/features/matches`, match/table screens | Fixtures and results reconcile; incomplete coverage is not presented as a full table |
