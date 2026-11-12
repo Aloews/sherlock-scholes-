@@ -1,3 +1,4 @@
+pub mod round_lifecycle;
 pub mod round_plan;
 
 pub use round_plan::{GameMode, PlannedRound, RoomMember, RoundPlanError, build_round_plan};
