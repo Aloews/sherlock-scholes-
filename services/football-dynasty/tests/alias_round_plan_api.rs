@@ -677,10 +677,10 @@ async fn round_activation_recovers_an_active_round_with_no_dealt_cards() {
     sqlx::query(
         "INSERT INTO public.cards (id, active, test_scope) VALUES ($1, true, 'active-empty')",
     )
-        .bind(card_id)
-        .execute(&db)
-        .await
-        .expect("card");
+    .bind(card_id)
+    .execute(&db)
+    .await
+    .expect("card");
 
     let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
     let (status, response) = call_at(app, &uri, json!({}), Some("valid-test-init-data")).await;
