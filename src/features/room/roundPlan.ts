@@ -48,8 +48,15 @@ export function buildRoundPlan(
   const uniqueTeams = new Set(teams);
   const uniquePlayers = new Set(members.map((member) => member.player_id));
   const totalTurns = teams.length * totalRounds;
+  const oneVsOneHasTwoAssignedPlayers = mode !== '1v1'
+    || (teams.length === 2
+      && members.length === 2
+      && members.every((member) => member.team_id !== null && teams.includes(member.team_id))
+      && new Set(members.map((member) => member.team_id)).size === 2);
 
   if (
+    !oneVsOneHasTwoAssignedPlayers
+    || 
     (mode !== 'team' && mode !== '1v1')
     || !Number.isSafeInteger(hostId)
     || hostId <= 0

@@ -38,8 +38,8 @@
     ]
   },
   {
-    "name": "one versus one preserves order if host has no team",
-    "mode": "1v1",
+    "name": "team mode preserves team order when host is not assigned",
+    "mode": "team",
     "host_id": 99,
     "total_rounds": 1,
     "teams": ["home", "away"],

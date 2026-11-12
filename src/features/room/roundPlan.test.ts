@@ -94,6 +94,28 @@ describe('round-plan input boundaries', () => {
     expect(plan.map((round) => round.team_id)).toEqual(['home', 'away']);
   });
 
+  it('requires exactly two 1v1 players assigned to distinct known teams', () => {
+    const members = [
+      { player_id: 1, team_id: 'home', joined_at: '2026-01-01T10:00:00Z' },
+      { player_id: 2, team_id: 'away', joined_at: '2026-01-01T10:00:00Z' },
+    ];
+    expect(() => buildRoundPlan('1v1', ['home', 'away'], members, 1, 1)).not.toThrow();
+    expect(() => buildRoundPlan('1v1', ['home', 'away'], members.slice(0, 1), 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('1v1', ['home', 'away'], [
+      ...members,
+      { player_id: 3, team_id: 'home', joined_at: '2026-01-01T10:00:00Z' },
+    ], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('1v1', ['home', 'away'], [
+      members[0],
+      { ...members[1], team_id: null },
+    ], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('1v1', ['home', 'away'], [
+      members[0],
+      { ...members[1], team_id: 'home' },
+    ], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+  });
+
   it('requires the authenticated host to be a room member', () => {
     expect(() => buildRoundPlan('team', ['blue'], [
       { player_id: 2, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' },
