@@ -91,6 +91,20 @@ class WorkerPolicyTests(unittest.TestCase):
             self.assertIn("EXACT CURRENT FILE CONTENT AFTER RESET: src/example.rs", context)
             self.assertIn("pub fn current() {}", context)
 
+    def test_extract_patch_strips_apply_patch_sentinels(self):
+        patch = (
+            "*** Begin Patch\n"
+            "diff --git a/src/example.ts b/src/example.ts\n"
+            "--- a/src/example.ts\n"
+            "+++ b/src/example.ts\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+            "*** End Patch\n"
+        )
+        extracted = extract_patch(patch)
+        self.assertTrue(extracted.startswith("diff --git a/src/example.ts"))
+        self.assertNotIn("*** Begin Patch", extracted)
+        self.assertNotIn("*** End Patch", extracted)
+
     def test_accepts_simple_patch(self):
         patch = (
             "diff --git a/src/example.ts b/src/example.ts\n"
@@ -227,6 +241,17 @@ class WorkerPolicyTests(unittest.TestCase):
         request.assert_called_once_with(
             "https://ai.starimg.ru/v1", "test-key", "/models", timeout=30
         )
+
+    def test_starimg_prefers_claude_sonnet_over_general_gpt_model(self):
+        from worker import choose_model
+
+        with patch("worker.starimg_request", return_value={
+            "data": [{"id": "gpt-6-luna"}, {"id": "claude-sonnet-5.5"}]
+        }):
+            self.assertEqual(
+                choose_model("https://ai.starimg.ru/v1", "test-key"),
+                "claude-sonnet-5.5",
+            )
 
     def test_starimg_explicit_model_must_exist_in_catalog(self):
         from worker import choose_model
