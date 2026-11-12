@@ -57,14 +57,13 @@ pub fn build_round_plan(
     }
 
     let mut ordered_teams: Vec<&String> = teams.iter().collect();
-    if mode == GameMode::OneVsOne {
-        if let Some(host_team_index) = teams
+    if mode == GameMode::OneVsOne
+        && let Some(host_team_index) = teams
             .iter()
             .position(|team_id| player_by_team.get(team_id) == Some(&host_id))
-        {
-            let host_team = ordered_teams.remove(host_team_index);
-            ordered_teams.insert(0, host_team);
-        }
+    {
+        let host_team = ordered_teams.remove(host_team_index);
+        ordered_teams.insert(0, host_team);
     }
 
     let known_teams: std::collections::HashSet<&str> = teams.iter().map(String::as_str).collect();
