@@ -11,6 +11,8 @@ on:
       - "src/features/room/roundPlan.test.ts"
       - "src/features/room/roomService.ts"
       - "src/features/room/roomService.test.ts"
+      - "contracts/alias_round_code_cases.json"
+      - "contracts/alias_round_plan_cases.json"
       - "docs/football-dynasty/**"
       - "docs/MAP.md"
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
