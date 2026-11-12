@@ -15,6 +15,13 @@ BEGIN
   ASSERT public.max_round_pause_ms() = 120000,
     'the pause allowance must remain two minutes';
 
+  ASSERT NOT has_function_privilege('anon', 'public.end_round(uuid)', 'EXECUTE'),
+    'anonymous clients must not call the unauthenticated legacy round RPC';
+  ASSERT NOT has_function_privilege('authenticated', 'public.end_round(uuid)', 'EXECUTE'),
+    'authenticated clients must use the verified Rust API for round completion';
+  ASSERT has_function_privilege('service_role', 'public.end_round(uuid)', 'EXECUTE'),
+    'the trusted server role retains the legacy SQL function permission';
+
   -- A non-final round claims once, counts only correct cards, upserts the
   -- score, and returns the pending next round without activating it.
   INSERT INTO public.rooms (id, status) VALUES

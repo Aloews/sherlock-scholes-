@@ -111,7 +111,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.end_round(UUID) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.end_round(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.end_round(UUID) TO service_role;
 
 COMMENT ON FUNCTION public.end_round(UUID) IS
   'Claim, score and close a round in one transaction, so the realtime event '

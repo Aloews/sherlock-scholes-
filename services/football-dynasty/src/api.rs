@@ -157,6 +157,13 @@ struct AliasRoundEndResponse {
     next_round_id: Option<Uuid>,
 }
 
+#[derive(Debug, FromRow)]
+struct AliasRoundClaim {
+    room_id: Uuid,
+    team_id: Uuid,
+    round_number: i32,
+}
+
 #[derive(Debug, Serialize, FromRow)]
 struct AliasRoundPauseState {
     paused_at: Option<DateTime<Utc>>,
@@ -196,15 +203,74 @@ async fn alias_end_round(
         ));
     }
 
-    let (outcome, next_round_id): (String, Option<Uuid>) =
-        sqlx::query_as("SELECT outcome, next_round_id FROM public.end_round($1)")
-            .bind(round_id)
-            .fetch_one(&mut *tx)
-            .await?;
-    tx.commit().await?;
+    let claimed = sqlx::query_as::<_, AliasRoundClaim>(
+        "UPDATE public.rounds
+            SET status = 'completed', ended_at = now()
+          WHERE id = $1 AND status = 'active'
+        RETURNING room_id, team_id, round_number",
+    )
+    .bind(round_id)
+    .fetch_optional(&mut *tx)
+    .await?;
 
+    let Some(claimed) = claimed else {
+        tx.commit().await?;
+        return Ok(Json(AliasRoundEndResponse {
+            outcome: "already_ended".into(),
+            next_round_id: None,
+        }));
+    };
+
+    let correct_cards: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM public.round_cards WHERE round_id = $1 AND status = 'correct'",
+    )
+    .bind(round_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    let points = i32::try_from(correct_cards).map_err(|_| ApiError::internal())?;
+
+    sqlx::query(
+        "INSERT INTO public.scores (room_id, team_id, round_id, points)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (team_id, round_id) DO UPDATE SET points = EXCLUDED.points",
+    )
+    .bind(claimed.room_id)
+    .bind(claimed.team_id)
+    .bind(round_id)
+    .bind(points)
+    .execute(&mut *tx)
+    .await?;
+
+    let next_round_id = match claimed.round_number.checked_add(1) {
+        Some(next_number) => sqlx::query_scalar::<_, Uuid>(
+            "SELECT id FROM public.rounds
+              WHERE room_id = $1 AND round_number = $2 AND status = 'pending'
+              LIMIT 1",
+        )
+        .bind(claimed.room_id)
+        .bind(next_number)
+        .fetch_optional(&mut *tx)
+        .await?,
+        None => None,
+    };
+
+    let outcome = if next_round_id.is_some() {
+        "next_round"
+    } else {
+        sqlx::query(
+            "UPDATE public.rooms
+                SET status = 'finished', ended_at = now()
+              WHERE id = $1 AND status <> 'finished'",
+        )
+        .bind(claimed.room_id)
+        .execute(&mut *tx)
+        .await?;
+        "game_end"
+    };
+
+    tx.commit().await?;
     Ok(Json(AliasRoundEndResponse {
-        outcome,
+        outcome: outcome.into(),
         next_round_id,
     }))
 }
