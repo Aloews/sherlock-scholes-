@@ -44,6 +44,7 @@
     "total_rounds": 1,
     "teams": ["home", "away"],
     "members": [
+      {"player_id": 99, "team_id": null, "joined_at": "2026-01-01T10:00:00Z"},
       {"player_id": 10, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
     ],
     "expected": [

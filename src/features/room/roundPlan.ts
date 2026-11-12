@@ -64,6 +64,7 @@ export function buildRoundPlan(
     || totalTurns > 256
     || members.length > 128
     || uniquePlayers.size !== members.length
+    || !members.some((member) => member.player_id === hostId)
     || members.some((member) => (
       !Number.isSafeInteger(member.player_id)
       || member.player_id <= 0

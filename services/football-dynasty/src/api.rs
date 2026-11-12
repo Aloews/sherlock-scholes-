@@ -97,7 +97,30 @@ async fn alias_round_plan(
         .map(|member| member.player_id)
         .collect();
 
-    if request.teams.is_empty()
+    let host_is_member = request
+        .members
+        .iter()
+        .any(|member| member.player_id == identity.telegram_id);
+    let one_vs_one_has_two_assigned_players = mode != GameMode::OneVsOne
+        || (request.teams.len() == 2
+            && request.members.len() == 2
+            && request.members.iter().all(|member| {
+                member
+                    .team_id
+                    .as_ref()
+                    .is_some_and(|team| request.teams.contains(team))
+            })
+            && request
+                .members
+                .iter()
+                .filter_map(|member| member.team_id.as_ref())
+                .collect::<HashSet<_>>()
+                .len()
+                == 2);
+
+    if !host_is_member
+        || !one_vs_one_has_two_assigned_players
+        || request.teams.is_empty()
         || request.teams.len() > 16
         || unique_teams.len() != request.teams.len()
         || request.teams.iter().any(|team| {

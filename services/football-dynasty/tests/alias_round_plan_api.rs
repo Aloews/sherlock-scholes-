@@ -229,7 +229,7 @@ async fn voice_pause_and_resume_are_explainer_scoped_and_idempotent() {
 
 #[tokio::test]
 async fn authenticated_request_returns_the_rust_round_plan() {
-    let (status, body) = call(app(42), team_mode_request(), Some("valid-test-init-data")).await;
+    let (status, body) = call(app(1), team_mode_request(), Some("valid-test-init-data")).await;
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body.as_array().map(Vec::len), Some(4));
@@ -260,6 +260,39 @@ async fn one_vs_one_uses_the_verified_telegram_identity_for_host_order() {
     assert_eq!(plan[0]["explainer_id"], 42);
     assert_eq!(plan[1]["team_id"], "away");
     assert_eq!(plan[1]["explainer_id"], 20);
+}
+
+#[tokio::test]
+async fn authenticated_identity_must_belong_to_the_room_roster() {
+    let (status, _) = call(app(99), team_mode_request(), Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn one_vs_one_requires_two_players_assigned_to_distinct_teams() {
+    let valid = json!({
+        "mode": "1v1",
+        "teams": ["home", "away"],
+        "total_rounds": 1,
+        "members": [
+            {"player_id": 42, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"},
+            {"player_id": 20, "team_id": "away", "joined_at": "2026-01-02T10:00:00Z"}
+        ]
+    });
+    let (status, _) = call(app(42), valid.clone(), Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let mut duplicate_team = valid.clone();
+    duplicate_team["members"][1]["team_id"] = json!("home");
+    let (status, _) = call(app(42), duplicate_team, Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let mut missing_player = valid;
+    missing_player["members"] = json!([
+        {"player_id": 42, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
+    ]);
+    let (status, _) = call(app(42), missing_player, Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]

@@ -90,6 +90,12 @@ describe('round-plan input boundaries', () => {
     expect(plan.map((round) => round.team_id)).toEqual(['home', 'away']);
   });
 
+  it('requires the authenticated host to be a room member', () => {
+    expect(() => buildRoundPlan('team', ['blue'], [
+      { player_id: 2, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' },
+    ], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+  });
+
   it('rejects duplicate or malformed room members', () => {
     const member = { player_id: 1, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' };
     expect(() => buildRoundPlan('team', ['blue'], [member, member], 1, 1))
