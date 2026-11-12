@@ -102,3 +102,47 @@ export async function activateAliasRound(
   }
   return result as unknown as AliasRoundActivationResult;
 }
+export interface AliasCardDecisionResult {
+  outcome: 'decided' | 'already_decided';
+  status: 'correct' | 'skipped';
+}
+
+export async function decideAliasCard(
+  roundCardId: string,
+  status: 'correct' | 'skipped',
+  initData: string | null,
+): Promise<AliasCardDecisionResult> {
+  if (!roundCardId || roundCardId.length > 64) throw new Error('INVALID_ROUND_CARD_ID');
+  if (!initData) throw new Error('TELEGRAM_AUTH_REQUIRED');
+
+  const response = await fetch(
+    `/api/v1/alias/cards/${encodeURIComponent(roundCardId)}/decision`,
+    {
+      method: 'POST',
+      headers: {
+        'x-tg-init-data': initData,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    },
+  );
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+    throw new Error(
+      typeof payload?.error === 'string' ? payload.error : 'ALIAS_CARD_DECISION_FAILED',
+    );
+  }
+
+  const payload: unknown = await response.json();
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('INVALID_ALIAS_CARD_DECISION_RESPONSE');
+  }
+  const result = payload as Record<string, unknown>;
+  if (
+    !['decided', 'already_decided'].includes(String(result.outcome))
+    || result.status !== status
+  ) {
+    throw new Error('INVALID_ALIAS_CARD_DECISION_RESPONSE');
+  }
+  return result as unknown as AliasCardDecisionResult;
+}

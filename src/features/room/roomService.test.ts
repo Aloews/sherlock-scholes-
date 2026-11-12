@@ -9,6 +9,7 @@ const rpc = vi.fn();
 const from = vi.fn();
 const endAliasRound = vi.fn();
 const activateAliasRound = vi.fn();
+const decideAliasCard = vi.fn();
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -18,6 +19,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 }));
 vi.mock('@/features/game/roundLifecycle', () => ({
   activateAliasRound: (...args: unknown[]) => activateAliasRound(...args),
+  decideAliasCard: (...args: unknown[]) => decideAliasCard(...args),
   endAliasRound: (...args: unknown[]) => endAliasRound(...args),
 }));
 vi.mock('@/shared/lib/telegram', () => ({ getRawInitData: () => 'signed-test-init-data' }));
@@ -54,6 +56,8 @@ beforeEach(async () => {
   endAliasRound.mockResolvedValue({ outcome: 'already_ended', next_round_id: null });
   activateAliasRound.mockReset();
   activateAliasRound.mockResolvedValue({ outcome: 'already_active', card_count: 5 });
+  decideAliasCard.mockReset();
+  decideAliasCard.mockResolvedValue({ outcome: 'decided', status: 'correct' });
   from.mockReset();
   from.mockImplementation(() => builder());
   vi.useFakeTimers();
@@ -127,6 +131,23 @@ describe('endRound', () => {
 // The deal used to pass `{ categories }` and nothing else, so every dimension
 // the picker offers — leagues, squads, a fame floor — stopped at the training
 // screen. These pin the seam: what the room stores is what the round deals.
+
+describe('markCard', () => {
+  it('records the decision through Rust without writing round_cards from the client', async () => {
+    await roomService.markCard('round-card-1', 'correct');
+
+    expect(decideAliasCard).toHaveBeenCalledWith('round-card-1', 'correct', 'signed-test-init-data');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('surfaces server authorization and state conflicts', async () => {
+    decideAliasCard.mockRejectedValue(new Error('alias_explainer_required'));
+
+    await expect(roomService.markCard('round-card-1', 'skipped'))
+      .rejects.toThrow('alias_explainer_required');
+    expect(from).not.toHaveBeenCalled();
+  });
+});
 
 describe('activateRound', () => {
   it('delegates card selection, room claiming and activation to the Rust API', async () => {

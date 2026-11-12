@@ -696,3 +696,116 @@ async fn round_activation_recovers_an_active_round_with_no_dealt_cards() {
             .expect("dealt cards");
     assert_eq!(dealt, vec![card_id]);
 }
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn card_decision_is_explainer_scoped_and_idempotent() {
+    let room_id = Uuid::new_v4();
+    let round_id = Uuid::new_v4();
+    let round_card_id = Uuid::new_v4();
+    let team_id = Uuid::new_v4();
+    let card_id = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, current_round_id)
+         VALUES ($1, 7, 'playing', 'team', $2)",
+    )
+    .bind(room_id)
+    .bind(round_id)
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.room_players (room_id, player_id) VALUES ($1, 7), ($1, 8)")
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("members");
+    sqlx::query(
+        "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
+         VALUES ($1, $2, $3, 1, 'active', 7)",
+    )
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .execute(&db)
+    .await
+    .expect("round");
+    sqlx::query(
+        "INSERT INTO public.round_cards (id, round_id, card_id, card_order, status)
+         VALUES ($1, $2, $3, 1, 'pending')",
+    )
+    .bind(round_card_id)
+    .bind(round_id)
+    .bind(card_id)
+    .execute(&db)
+    .await
+    .expect("round card");
+
+    let uri = format!("/api/v1/alias/cards/{round_card_id}/decision");
+    let (non_explainer_status, _) = call_at(
+        database_app(8).0,
+        &uri,
+        json!({"status": "correct"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(non_explainer_status, StatusCode::FORBIDDEN);
+
+    let (non_member_status, _) = call_at(
+        database_app(9).0,
+        &uri,
+        json!({"status": "correct"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(non_member_status, StatusCode::FORBIDDEN);
+
+    let (status, response) = call_at(
+        app.clone(),
+        &uri,
+        json!({"status": "correct"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(response["outcome"], "decided");
+    assert_eq!(response["status"], "correct");
+
+    let (replay_status, replay) = call_at(
+        app.clone(),
+        &uri,
+        json!({"status": "correct"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(replay_status, StatusCode::OK);
+    assert_eq!(replay["outcome"], "already_decided");
+
+    let (conflict_status, _) = call_at(
+        app.clone(),
+        &uri,
+        json!({"status": "skipped"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(conflict_status, StatusCode::CONFLICT);
+
+    let (invalid_status, _) = call_at(
+        app,
+        &uri,
+        json!({"status": "wrong"}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
+
+    let persisted: (String, Option<String>) =
+        sqlx::query_as("SELECT status, decided_at::text FROM public.round_cards WHERE id = $1")
+            .bind(round_card_id)
+            .fetch_one(&db)
+            .await
+            .expect("decision");
+    assert_eq!(persisted.0, "correct");
+    assert!(persisted.1.is_some());
+}

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   activateAliasRound,
+  decideAliasCard,
   endAliasRound,
   setAliasRoundVoiceState,
 } from './roundLifecycle';
@@ -90,6 +91,40 @@ describe('Alias round lifecycle API', () => {
       .rejects.toThrow('INVALID_ALIAS_ROUND_ACTIVATION_RESPONSE');
     await expect(activateAliasRound('round-1', 'signed-data'))
       .rejects.toThrow('no_cards_for_room_deck');
+  });
+
+
+  it('records a card decision through Rust and validates idempotent results', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ outcome: 'decided', status: 'correct' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(decideAliasCard('round-card-1', 'correct', 'signed-data'))
+      .resolves.toEqual({ outcome: 'decided', status: 'correct' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/alias/cards/round-card-1/decision', {
+      method: 'POST',
+      headers: {
+        'x-tg-init-data': 'signed-data',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'correct' }),
+    });
+  });
+
+  it('rejects unauthenticated, invalid and conflicting card decisions', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'alias_explainer_required' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome: 'decided', status: 'skipped' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(decideAliasCard('round-card-1', 'correct', null))
+      .rejects.toThrow('TELEGRAM_AUTH_REQUIRED');
+    await expect(decideAliasCard('round-card-1', 'correct', 'signed-data'))
+      .rejects.toThrow('alias_explainer_required');
+    await expect(decideAliasCard('round-card-1', 'correct', 'signed-data'))
+      .rejects.toThrow('INVALID_ALIAS_CARD_DECISION_RESPONSE');
   });
 
 });

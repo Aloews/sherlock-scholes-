@@ -10,7 +10,7 @@ import { pinnableFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
 import { requestAliasRoundPlan, startAliasGame } from '@/features/room/roundPlan';
-import { activateAliasRound, endAliasRound } from '@/features/game/roundLifecycle';
+import { activateAliasRound, decideAliasCard, endAliasRound } from '@/features/game/roundLifecycle';
 
 function requireRoomCode(room: Room, expectedCode?: string): Room {
   const code = normalizeCode(room.code);
@@ -392,10 +392,7 @@ export async function fetchRoundCards(roundId: string, lang: string): Promise<Ro
 }
 
 export async function markCard(cardId: string, status: 'correct' | 'skipped'): Promise<void> {
-  await supabase
-    .from('round_cards')
-    .update({ status, decided_at: new Date().toISOString() })
-    .eq('id', cardId);
+  await decideAliasCard(cardId, status, getRawInitData());
 }
 
 // ─── End Round ───────────────────────────────────────────────

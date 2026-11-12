@@ -51,6 +51,10 @@ pub fn routes() -> Router<AppState> {
             post(alias_activate_round),
         )
         .route(
+            "/api/v1/alias/cards/{round_card_id}/decision",
+            post(alias_decide_card),
+        )
+        .route(
             "/api/v1/alias/rounds/{round_id}/pause",
             post(alias_pause_round),
         )
@@ -523,6 +527,129 @@ async fn alias_activate_round(
     Ok(Json(AliasRoundActivationResponse {
         outcome: "activated".into(),
         card_count: dealt_count,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AliasCardDecisionRequest {
+    status: String,
+}
+
+#[derive(Debug, Serialize)]
+struct AliasCardDecisionResponse {
+    outcome: String,
+    status: String,
+}
+
+#[derive(Debug, FromRow)]
+struct AliasCardDecision {
+    room_id: Uuid,
+    round_id: Uuid,
+    room_status: String,
+    current_round_id: Option<Uuid>,
+    round_status: String,
+    explainer_id: Option<i64>,
+    card_status: String,
+    decided_at: Option<DateTime<Utc>>,
+}
+
+async fn alias_decide_card(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(round_card_id): Path<Uuid>,
+    Json(request): Json<AliasCardDecisionRequest>,
+) -> Result<Json<AliasCardDecisionResponse>, ApiError> {
+    let requested_status = match request.status.as_str() {
+        "correct" | "skipped" => request.status,
+        _ => return Err(ApiError::bad_request("invalid_alias_card_decision")),
+    };
+
+    let mut tx = state.db.begin().await?;
+    let card = sqlx::query_as::<_, AliasCardDecision>(
+        "SELECT ro.id AS room_id,
+                r.id AS round_id,
+                ro.status AS room_status,
+                ro.current_round_id,
+                r.status AS round_status,
+                r.explainer_id,
+                rc.status AS card_status,
+                rc.decided_at
+           FROM public.round_cards AS rc
+           JOIN public.rounds AS r ON r.id = rc.round_id
+           JOIN public.rooms AS ro ON ro.id = r.room_id
+          WHERE rc.id = $1
+          FOR UPDATE OF ro, r, rc",
+    )
+    .bind(round_card_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    let member = sqlx::query_scalar::<_, i64>(
+        "SELECT player_id
+           FROM public.room_players
+          WHERE room_id = $1 AND player_id = $2
+          FOR KEY SHARE",
+    )
+    .bind(card.room_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if member.is_none() {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "room_membership_required",
+        ));
+    }
+    if card.explainer_id != Some(identity.telegram_id) {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "alias_explainer_required",
+        ));
+    }
+    if card.room_status != "playing"
+        || card.current_round_id != Some(card.round_id)
+        || card.round_status != "active"
+    {
+        return Err(ApiError::conflict("alias_round_not_active"));
+    }
+
+    if card.card_status == requested_status {
+        if card.decided_at.is_none() {
+            sqlx::query(
+                "UPDATE public.round_cards
+                    SET decided_at = now()
+                  WHERE id = $1 AND decided_at IS NULL",
+            )
+            .bind(round_card_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        return Ok(Json(AliasCardDecisionResponse {
+            outcome: "already_decided".into(),
+            status: requested_status,
+        }));
+    }
+    if card.card_status != "pending" {
+        return Err(ApiError::conflict("alias_card_already_decided"));
+    }
+
+    sqlx::query(
+        "UPDATE public.round_cards
+            SET status = $2, decided_at = now()
+          WHERE id = $1 AND status = 'pending'",
+    )
+    .bind(round_card_id)
+    .bind(&requested_status)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    Ok(Json(AliasCardDecisionResponse {
+        outcome: "decided".into(),
+        status: requested_status,
     }))
 }
 

@@ -86,7 +86,8 @@ CREATE TABLE public.round_cards (
   round_id UUID NOT NULL REFERENCES public.rounds(id),
   card_id UUID NOT NULL DEFAULT gen_random_uuid(),
   card_order INTEGER NOT NULL DEFAULT 1,
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  decided_at TIMESTAMPTZ
 );
 
 CREATE TABLE public.scores (
