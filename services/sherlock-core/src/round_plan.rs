@@ -54,7 +54,8 @@ pub fn build_round_plan(
     if total_rounds > 64 {
         return Err(RoundPlanError::TooManyRounds);
     }
-    if teams.len() > 16 || host_id <= 0
+    if teams.len() > 16
+        || host_id <= 0
         || teams.iter().any(|team| !valid_team_id(team))
         || teams.iter().collect::<HashSet<_>>().len() != teams.len()
         || members.len() > 128
