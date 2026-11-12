@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import cases from '../../../contracts/alias_round_plan_cases.json';
 import type { GameMode } from '@/shared/types/database';
-import { buildRoundPlan, requestAliasRoundPlan } from './roundPlan';
+import { buildRoundPlan, requestAliasRoundPlan, startAliasGame } from './roundPlan';
 
 const joinedAt = '2026-01-01T10:00:00Z';
 const member = (player_id: number, team_id: string | null, joined_at = joinedAt) => ({
