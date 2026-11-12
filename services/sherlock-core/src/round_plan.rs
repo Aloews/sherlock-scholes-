@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use chrono::DateTime;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GameMode {
@@ -25,7 +27,19 @@ pub enum RoundPlanError {
     NoTeams,
     ZeroRounds,
     TooManyRounds,
+    InvalidInput,
 }
+
+fn valid_team_id(value: &str) -> bool {
+    !value.trim().is_empty()
+        && value.len() <= 64
+        && !value.chars().any(char::is_whitespace)
+}
+
+fn valid_joined_at(value: &str) -> bool {
+    value.len() <= 64 && DateTime::parse_from_rfc3339(value).is_ok()
+}
+
 
 pub fn build_round_plan(
     mode: GameMode,
@@ -40,6 +54,22 @@ pub fn build_round_plan(
     if total_rounds == 0 {
         return Err(RoundPlanError::ZeroRounds);
     }
+    if teams.len() > 16
+        || total_rounds > 64
+        || host_id <= 0
+        || teams.iter().any(|team| !valid_team_id(team))
+        || teams.iter().collect::<HashSet<_>>().len() != teams.len()
+        || members.len() > 128
+        || members.iter().map(|member| member.player_id).collect::<HashSet<_>>().len()
+            != members.len()
+        || members.iter().any(|member| {
+            member.player_id <= 0
+                || !valid_joined_at(&member.joined_at)
+                || member.team_id.as_ref().is_some_and(|team| !valid_team_id(team))
+        })
+    {
+        return Err(RoundPlanError::InvalidInput);
+    }
 
     let rounds_per_team =
         usize::try_from(total_rounds).map_err(|_| RoundPlanError::TooManyRounds)?;
@@ -48,6 +78,9 @@ pub fn build_round_plan(
         .checked_mul(rounds_per_team)
         .ok_or(RoundPlanError::TooManyRounds)?;
     u32::try_from(total_turns).map_err(|_| RoundPlanError::TooManyRounds)?;
+    if total_turns > 256 {
+        return Err(RoundPlanError::TooManyRounds);
+    }
 
     let mut player_by_team = HashMap::new();
     for member in members {
@@ -266,6 +299,61 @@ mod tests {
         let plan = build_round_plan(GameMode::Teams, &teams, &members, 1, 1).unwrap();
 
         assert_eq!(pairs(&plan), vec![("blue", Some(1))]);
+    }
+
+    #[test]
+    fn rejects_invalid_teams_members_and_timestamps() {
+        let valid_member = member(1, "blue", "2026-01-01T10:00:00Z");
+        let teams = vec!["blue".to_owned()];
+
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &[" ".into()], &[], 1, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &["blue".into(), "blue".into()], &[], 1, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &teams, &[RoomMember {
+                joined_at: "2026-02-30T10:00:00Z".into(),
+                ..valid_member.clone()
+            }], 1, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &teams, &[RoomMember {
+                player_id: 0,
+                ..valid_member.clone()
+            }], 1, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &teams, &[valid_member.clone(), valid_member], 1, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &teams, &[], 0, 1),
+            Err(RoundPlanError::InvalidInput)
+        );
+    }
+
+    #[test]
+    fn accepts_inclusive_round_plan_limits() {
+        let teams: Vec<String> = (0..16).map(|index| format!("team-{index}")).collect();
+        let members: Vec<RoomMember> = (1..=128)
+            .map(|player_id| RoomMember {
+                player_id,
+                team_id: Some(teams[(player_id as usize - 1) % teams.len()].clone()),
+                joined_at: "2026-01-01T10:00:00Z".into(),
+            })
+            .collect();
+
+        let plan = build_round_plan(GameMode::Teams, &teams, &members, 1, 16).unwrap();
+
+        assert_eq!(plan.len(), 256);
+        assert_eq!(plan[0].round_number, 1);
+        assert_eq!(plan[255].round_number, 256);
     }
 
     #[test]

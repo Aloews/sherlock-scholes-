@@ -110,7 +110,7 @@ async fn alias_round_plan(
         || unique_players.len() != request.members.len()
         || request.members.iter().any(|member| {
             member.player_id <= 0
-                || member.joined_at.len() > 64
+                || chrono::DateTime::parse_from_rfc3339(&member.joined_at).is_err()
                 || member.team_id.as_ref().is_some_and(|team| {
                     team.trim().is_empty()
                         || team.len() > 64

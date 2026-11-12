@@ -39,6 +39,52 @@ describe('round-plan input boundaries', () => {
       .toThrow('INVALID_ALIAS_ROUND_PLAN');
   });
 
+  it('enforces inclusive maximums and validates timestamp calendar values', () => {
+    const teams = Array.from({ length: 16 }, (_, index) => `team-${index}`);
+    const members = Array.from({ length: 128 }, (_, index) => ({
+      player_id: index + 1,
+      team_id: teams[index % teams.length],
+      joined_at: '2026-01-01T10:00:00Z',
+    }));
+    const maximumPlan = buildRoundPlan('team', teams, members, 1, 16);
+
+    expect(maximumPlan).toHaveLength(256);
+    expect(() => buildRoundPlan('team', ['t'.repeat(64)], [], 1, 1)).not.toThrow();
+    expect(() => buildRoundPlan('team', [' '], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['t'.repeat(65)], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['valid', 'invalid team'], [], 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{
+      player_id: 1,
+      team_id: 'blue',
+      joined_at: '2026-02-30T10:00:00Z',
+    }], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{
+      player_id: 1,
+      team_id: 'blue',
+      joined_at: '2026-01-01',
+    }], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+  });
+
+  it('uses player id as a deterministic join-time tie breaker and ignores unassigned members', () => {
+    const plan = buildRoundPlan('team', ['blue'], [
+      { player_id: 9, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' },
+      { player_id: 2, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' },
+      { player_id: 1, team_id: null, joined_at: '2026-01-01T10:00:00Z' },
+    ], 2, 2);
+
+    expect(plan.map((round) => round.explainer_id)).toEqual([2, 9]);
+  });
+
+  it('keeps the first 1v1 team in place when it already belongs to the host', () => {
+    const plan = buildRoundPlan('1v1', ['home', 'away'], [
+      { player_id: 1, team_id: 'home', joined_at: '2026-01-01T10:00:00Z' },
+      { player_id: 2, team_id: 'away', joined_at: '2026-01-01T10:00:00Z' },
+    ], 1, 1);
+
+    expect(plan.map((round) => round.team_id)).toEqual(['home', 'away']);
+  });
+
   it('rejects duplicate or malformed room members', () => {
     const member = { player_id: 1, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' };
     expect(() => buildRoundPlan('team', ['blue'], [member, member], 1, 1))
@@ -124,6 +170,75 @@ describe('requestAliasRoundPlan', () => {
     await expect(requestAliasRoundPlan({ ...request, initData: '' }))
       .rejects.toThrow('TELEGRAM_AUTH_REQUIRED');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed response shapes and falls back for non-string backend errors', async () => {
+    vi.stubEnv('DEV', false);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => null })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 42 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ length: 2 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => [null, validPlan[1]] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [
+        { ...validPlan[0], explainer_id: -1 },
+        validPlan[1],
+      ] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [
+        validPlan[0],
+        { ...validPlan[1], team_id: 'not-a-requested-team' },
+      ] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (let i = 0; i < 2; i += 1) {
+      await expect(requestAliasRoundPlan({ ...request, initData: 'signed' }))
+        .rejects.toThrow('ALIAS_ROUND_PLAN_FAILED');
+    }
+    for (let i = 0; i < 4; i += 1) {
+      await expect(requestAliasRoundPlan({ ...request, initData: 'signed' }))
+        .rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
+    }
+  });
+
+  it('requires the exact number of rounds and enforces the response-size cap', async () => {
+    vi.stubEnv('DEV', false);
+    const fourRounds = [
+      { round_number: 1, team_id: 'blue', explainer_id: 1 },
+      { round_number: 2, team_id: 'red', explainer_id: 2 },
+      { round_number: 3, team_id: 'blue', explainer_id: 1 },
+      { round_number: 4, team_id: 'red', explainer_id: 2 },
+    ];
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => fourRounds })
+      .mockResolvedValueOnce({ ok: true, json: async () => fourRounds.slice(0, 2) })
+      .mockResolvedValueOnce({ ok: true, json: async () => Array.from({ length: 272 }, (_, index) => ({
+        round_number: index + 1,
+        team_id: 'blue',
+        explainer_id: 1,
+      })) })
+      .mockResolvedValueOnce({ ok: true, json: async () => [] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await requestAliasRoundPlan({
+      ...request,
+      totalRounds: 2,
+      initData: 'signed',
+    })).toEqual(fourRounds);
+    await expect(requestAliasRoundPlan({
+      ...request,
+      totalRounds: 2,
+      initData: 'signed',
+    })).rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
+    await expect(requestAliasRoundPlan({
+      ...request,
+      teams: Array.from({ length: 16 }, (_, index) => `team-${index}`),
+      totalRounds: 17,
+      initData: 'signed',
+    })).rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
+    await expect(requestAliasRoundPlan({
+      ...request,
+      teams: [],
+      initData: 'signed',
+    })).rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
   });
 
   it('surfaces backend errors and rejects malformed response sequences', async () => {

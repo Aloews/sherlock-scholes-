@@ -263,6 +263,14 @@ async fn one_vs_one_uses_the_verified_telegram_identity_for_host_order() {
 }
 
 #[tokio::test]
+async fn malformed_join_timestamps_are_rejected() {
+    let mut body = team_mode_request();
+    body["members"][0]["joined_at"] = json!("2026-02-30T10:00:00Z");
+    let (status, _) = call(app(42), body, Some("valid-test-init-data")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn missing_telegram_identity_is_rejected() {
     let (status, _) = call(app(42), team_mode_request(), None).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
