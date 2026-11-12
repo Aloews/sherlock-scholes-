@@ -64,6 +64,11 @@ describe('round-plan input boundaries', () => {
       team_id: 'blue',
       joined_at: '2026-01-01',
     }], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{
+      player_id: 1,
+      team_id: 'blue',
+      joined_at: null as unknown as string,
+    }], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
   });
 
   it('uses player id as a deterministic join-time tie breaker and ignores unassigned members', () => {
