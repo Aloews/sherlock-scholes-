@@ -127,7 +127,9 @@ impl RoundClock {
 
     pub fn is_paused(self, now_ms: i64) -> bool {
         let allowance = i128::from(MAX_ROUND_PAUSE_MS.saturating_sub(self.paused_ms));
-        allowance > 0 && self.active_pause_ms(now_ms) < allowance
+        self.paused_at_ms.is_some()
+            && allowance > 0
+            && self.active_pause_ms(now_ms) < allowance
     }
 }
 
