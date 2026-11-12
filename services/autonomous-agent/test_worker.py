@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, context_excerpt, extract_patch, patch_file_context, run_command, safe_path, starimg_request, starimg_stream_completion
+from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, starimg_stream_completion
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -48,6 +48,25 @@ class WorkerPolicyTests(unittest.TestCase):
                     "STARIMG_API_KEY", "GITHUB_TOKEN", "M3U_SOURCE_URL",
                 ):
                     self.assertNotIn(secret_name, child_env)
+
+    def test_required_file_gate_extracts_all_declared_paths(self):
+        task = """Required files — all six must be changed in the same PR
+- `services/football-dynasty/migrations/0005_squad_contracts.sql`
+- `services/football-dynasty/src/roster.rs`
+- `services/football-dynasty/src/lib.rs`
+- `services/football-dynasty/src/http.rs`
+- `services/football-dynasty/tests/campaign_lifecycle.rs`
+- `docs/MAP.md`"""
+        required = required_paths_from_task(task)
+        self.assertEqual(len(required), 6)
+        self.assertEqual(
+            missing_required_paths(required, [required[0]]),
+            sorted(required[1:]),
+        )
+
+    def test_required_file_gate_allows_complete_change_set(self):
+        required = ["services/football-dynasty/src/roster.rs", "docs/MAP.md"]
+        self.assertEqual(missing_required_paths(required, required), [])
 
     def test_context_excerpt_preserves_file_head_and_tail(self):
         body = "BEGIN\n" + ("x" * 12000) + "\nEND"
