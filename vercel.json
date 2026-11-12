@@ -17,12 +17,14 @@
           "src": "/(.*)",
           "dest": "/index.html"
         }
-      ]
+      ],
+      "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
     },
     "football_dynasty": {
       "root": "services/football-dynasty",
       "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+      "entrypoint": "Dockerfile.vercel",
+      "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs"
     }
   },
   "rewrites": [
@@ -73,6 +75,5 @@
         }
       ]
     }
-  ],
-  "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
+  ]
 }

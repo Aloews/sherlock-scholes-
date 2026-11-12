@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -22,6 +23,13 @@ test('an explicit preview marker allows one planned preview', () => {
 
 test('missing branch metadata fails open', () => {
   assert.equal(shouldBuildVercelDeployment({ branch: '', message: '', environment: 'preview' }), true);
+});
+
+test('both Vercel service roots have a valid ignore command and no ambiguous top-level command', () => {
+  const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.equal(config.ignoreCommand, undefined);
+  assert.equal(config.services.frontend.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
+  assert.equal(config.services.football_dynasty.ignoreCommand, 'node ../../scripts/vercel-ignore-build.mjs');
 });
 
 test('the Vercel command maps build/skip decisions to the documented exit codes', () => {
