@@ -1,3 +1,7 @@
+pub mod round_plan;
+
+pub use round_plan::{build_round_plan, GameMode, PlannedRound, RoomMember, RoundPlanError};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GamePhase {
     Idle,

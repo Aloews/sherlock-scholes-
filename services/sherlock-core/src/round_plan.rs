@@ -1,0 +1,242 @@
+use std::collections::HashMap;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GameMode {
+    Teams,
+    OneVsOne,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RoomMember {
+    pub player_id: i64,
+    pub team_id: Option<String>,
+    pub joined_at: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlannedRound {
+    pub round_number: u32,
+    pub team_id: String,
+    pub explainer_id: Option<i64>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RoundPlanError {
+    NoTeams,
+    ZeroRounds,
+    TooManyRounds,
+}
+
+pub fn build_round_plan(
+    mode: GameMode,
+    teams: &[String],
+    members: &[RoomMember],
+    host_id: i64,
+    total_rounds: u32,
+) -> Result<Vec<PlannedRound>, RoundPlanError> {
+    if teams.is_empty() {
+        return Err(RoundPlanError::NoTeams);
+    }
+    if total_rounds == 0 {
+        return Err(RoundPlanError::ZeroRounds);
+    }
+
+    let rounds_per_team =
+        usize::try_from(total_rounds).map_err(|_| RoundPlanError::TooManyRounds)?;
+    let total_turns = teams
+        .len()
+        .checked_mul(rounds_per_team)
+        .ok_or(RoundPlanError::TooManyRounds)?;
+    u32::try_from(total_turns).map_err(|_| RoundPlanError::TooManyRounds)?;
+
+    let mut player_by_team = HashMap::new();
+    for member in members {
+        if let Some(team_id) = &member.team_id {
+            player_by_team.insert(team_id.clone(), member.player_id);
+        }
+    }
+
+    let mut ordered_teams: Vec<&String> = teams.iter().collect();
+    if mode == GameMode::OneVsOne {
+        if let Some(host_team_index) = teams
+            .iter()
+            .position(|team_id| player_by_team.get(team_id) == Some(&host_id))
+        {
+            let host_team = ordered_teams.remove(host_team_index);
+            ordered_teams.insert(0, host_team);
+        }
+    }
+
+    let known_teams: std::collections::HashSet<&str> =
+        teams.iter().map(String::as_str).collect();
+    let mut sorted_members: Vec<&RoomMember> = members
+        .iter()
+        .filter(|member| {
+            member
+                .team_id
+                .as_deref()
+                .is_some_and(|team_id| known_teams.contains(team_id))
+        })
+        .collect();
+    sorted_members.sort_by(|left, right| {
+        left.joined_at
+            .cmp(&right.joined_at)
+            .then_with(|| left.player_id.cmp(&right.player_id))
+    });
+
+    let mut roster_by_team: HashMap<String, Vec<i64>> = HashMap::new();
+    for member in sorted_members {
+        if let Some(team_id) = &member.team_id {
+            roster_by_team
+                .entry(team_id.clone())
+                .or_default()
+                .push(member.player_id);
+        }
+    }
+
+    let team_count = ordered_teams.len();
+    let mut plan = Vec::with_capacity(total_turns);
+    for index in 0..total_turns {
+        let team_id = ordered_teams[index % team_count];
+        let explainer_id = match mode {
+            GameMode::OneVsOne => player_by_team.get(team_id).copied(),
+            GameMode::Teams => roster_by_team.get(team_id).and_then(|roster| {
+                if roster.is_empty() {
+                    None
+                } else {
+                    let turn = (index / team_count) % roster.len();
+                    Some(roster[turn])
+                }
+            }),
+        };
+        plan.push(PlannedRound {
+            round_number: u32::try_from(index + 1).map_err(|_| RoundPlanError::TooManyRounds)?,
+            team_id: team_id.clone(),
+            explainer_id,
+        });
+    }
+
+    Ok(plan)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn member(player_id: i64, team_id: &str, joined_at: &str) -> RoomMember {
+        RoomMember {
+            player_id,
+            team_id: Some(team_id.into()),
+            joined_at: joined_at.into(),
+        }
+    }
+
+    fn pairs(plan: &[PlannedRound]) -> Vec<(&str, Option<i64>)> {
+        plan.iter()
+            .map(|round| (round.team_id.as_str(), round.explainer_id))
+            .collect()
+    }
+
+    #[test]
+    fn team_mode_rotates_rosters_in_join_order_with_player_id_tiebreaks() {
+        let teams = vec!["blue".into(), "red".into()];
+        let members = vec![
+            member(3, "blue", "2026-01-02T10:00:00Z"),
+            member(8, "red", "2026-01-03T10:00:00Z"),
+            member(7, "red", "2026-01-01T10:00:00Z"),
+            member(1, "blue", "2026-01-01T10:00:00Z"),
+        ];
+
+        let plan = build_round_plan(GameMode::Teams, &teams, &members, 1, 3).unwrap();
+
+        assert_eq!(
+            pairs(&plan),
+            vec![
+                ("blue", Some(1)),
+                ("red", Some(7)),
+                ("blue", Some(3)),
+                ("red", Some(8)),
+                ("blue", Some(1)),
+                ("red", Some(7)),
+            ]
+        );
+        assert_eq!(
+            plan.iter().map(|round| round.round_number).collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5, 6]
+        );
+    }
+
+    #[test]
+    fn one_vs_one_puts_the_host_team_first_and_keeps_each_explainer() {
+        let teams = vec!["home".into(), "away".into()];
+        let members = vec![member(20, "away", "2026-01-02T10:00:00Z"), member(10, "home", "2026-01-01T10:00:00Z")];
+
+        let plan = build_round_plan(GameMode::OneVsOne, &teams, &members, 20, 2).unwrap();
+
+        assert_eq!(
+            pairs(&plan),
+            vec![
+                ("away", Some(20)),
+                ("home", Some(10)),
+                ("away", Some(20)),
+                ("home", Some(10)),
+            ]
+        );
+    }
+
+    #[test]
+    fn one_vs_one_keeps_team_order_when_host_has_no_team() {
+        let teams = vec!["home".into(), "away".into()];
+        let members = vec![member(10, "home", "2026-01-01T10:00:00Z")];
+
+        let plan = build_round_plan(GameMode::OneVsOne, &teams, &members, 99, 1).unwrap();
+
+        assert_eq!(pairs(&plan), vec![("home", Some(10)), ("away", None)]);
+    }
+
+    #[test]
+    fn teams_without_members_keep_a_null_explainer() {
+        let teams = vec!["blue".into(), "red".into()];
+        let members = vec![member(1, "blue", "2026-01-01T10:00:00Z")];
+
+        let plan = build_round_plan(GameMode::Teams, &teams, &members, 1, 1).unwrap();
+
+        assert_eq!(pairs(&plan), vec![("blue", Some(1)), ("red", None)]);
+    }
+
+    #[test]
+    fn members_from_removed_teams_do_not_enter_any_roster() {
+        let teams = vec!["blue".into()];
+        let members = vec![
+            member(1, "blue", "2026-01-01T10:00:00Z"),
+            member(2, "removed", "2025-01-01T10:00:00Z"),
+        ];
+
+        let plan = build_round_plan(GameMode::Teams, &teams, &members, 1, 1).unwrap();
+
+        assert_eq!(pairs(&plan), vec![("blue", Some(1))]);
+    }
+
+    #[test]
+    fn rejects_empty_teams_zero_rounds_and_unrepresentable_plan_sizes() {
+        let members = [];
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &[], &members, 1, 1),
+            Err(RoundPlanError::NoTeams)
+        );
+        assert_eq!(
+            build_round_plan(GameMode::Teams, &["blue".into()], &members, 1, 0),
+            Err(RoundPlanError::ZeroRounds)
+        );
+        assert_eq!(
+            build_round_plan(
+                GameMode::Teams,
+                &["blue".into(), "red".into()],
+                &members,
+                1,
+                u32::MAX
+            ),
+            Err(RoundPlanError::TooManyRounds)
+        );
+    }
+}
