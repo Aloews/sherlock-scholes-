@@ -136,6 +136,55 @@ mod tests {
     }
 
     #[test]
+    fn round_plan_matches_the_shared_typescript_contract() {
+        let cases: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../contracts/alias_round_plan_cases.json"
+        ))
+        .expect("round-plan fixture JSON must parse");
+
+        for case in cases.as_array().expect("fixture root must be an array") {
+            let name = case["name"].as_str().expect("case name");
+            let mode = match case["mode"].as_str().expect("mode") {
+                "team" => GameMode::Teams,
+                "1v1" => GameMode::OneVsOne,
+                other => panic!("unsupported fixture mode: {other}"),
+            };
+            let teams: Vec<String> =
+                serde_json::from_value(case["teams"].clone()).expect("teams");
+            let members: Vec<RoomMember> = case["members"]
+                .as_array()
+                .expect("members")
+                .iter()
+                .map(|member| RoomMember {
+                    player_id: member["player_id"].as_i64().expect("player id"),
+                    team_id: member["team_id"].as_str().map(str::to_owned),
+                    joined_at: member["joined_at"].as_str().expect("joined_at").to_owned(),
+                })
+                .collect();
+            let expected: Vec<PlannedRound> = case["expected"]
+                .as_array()
+                .expect("expected rounds")
+                .iter()
+                .map(|round| PlannedRound {
+                    round_number: round["round_number"].as_u64().expect("round number") as u32,
+                    team_id: round["team_id"].as_str().expect("team id").to_owned(),
+                    explainer_id: round["explainer_id"].as_i64(),
+                })
+                .collect();
+            let actual = build_round_plan(
+                mode,
+                &teams,
+                &members,
+                case["host_id"].as_i64().expect("host id"),
+                case["total_rounds"].as_u64().expect("total rounds") as u32,
+            )
+            .expect("valid fixture plan");
+
+            assert_eq!(actual, expected, "{name}");
+        }
+    }
+
+    #[test]
     fn team_mode_rotates_rosters_in_join_order_with_player_id_tiebreaks() {
         let teams = vec!["blue".into(), "red".into()];
         let members = vec![

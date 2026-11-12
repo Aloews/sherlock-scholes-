@@ -33,7 +33,9 @@ test('both Vercel service roots have a valid ignore command and no ambiguous top
   const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.equal(config.ignoreCommand, undefined);
   assert.equal(config.services.frontend.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
-  assert.equal(config.services.football_dynasty.ignoreCommand, 'node ../../scripts/vercel-ignore-build.mjs');
+  assert.equal(config.services.football_dynasty.root, 'services');
+  assert.equal(config.services.football_dynasty.entrypoint, 'football-dynasty/Dockerfile.vercel');
+  assert.equal(config.services.football_dynasty.ignoreCommand, 'node ../scripts/vercel-ignore-build.mjs');
 });
 
 test('the Vercel command maps build/skip decisions to the documented exit codes', () => {

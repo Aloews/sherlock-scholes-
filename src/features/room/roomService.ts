@@ -11,6 +11,7 @@ import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
+import { requestAliasRoundPlan } from '@/features/room/roundPlan';
 
 function requireRoomCode(room: Room, expectedCode?: string): Room {
   const code = normalizeCode(room.code);
@@ -283,90 +284,38 @@ export async function fetchRoomPlayers(roomId: string): Promise<RoomPlayer[]> {
 
 export async function startGame(room: Room, teams: Team[]): Promise<void> {
   const { round_seconds, total_rounds } = room.settings;
-  const totalTurns = teams.length * total_rounds;
-
-  if (room.mode === '1v1') {
-    // Resolve which player belongs to which team (for explainer_id)
-    const { data: roomPlayers } = await supabase
-      .from('room_players')
-      .select('player_id, team_id')
-      .eq('room_id', room.id);
-
-    const playerByTeam: Record<string, number> = {};
-    for (const rp of (roomPlayers ?? []) as { player_id: number; team_id: string | null }[]) {
-      if (rp.team_id) playerByTeam[rp.team_id] = rp.player_id;
-    }
-
-    // Host's team always goes first so the host explains in round 1
-    const hostTeamId = Object.entries(playerByTeam).find(([, pid]) => pid === room.host_id)?.[0];
-    const sortedTeams = hostTeamId
-      ? [...teams.filter((t) => t.id === hostTeamId), ...teams.filter((t) => t.id !== hostTeamId)]
-      : teams;
-
-    const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => ({
-      room_id:      room.id,
-      team_id:      sortedTeams[i % sortedTeams.length].id,
-      explainer_id: playerByTeam[sortedTeams[i % sortedTeams.length].id] ?? null,
-      round_number: i + 1,
-      status:       'pending' as const,
-      time_seconds: round_seconds,
-    }));
-
-    const { data: rounds, error } = await supabase
-      .from('rounds')
-      .insert(roundsToInsert)
-      .select();
-
-    if (error || !rounds?.length) throw new Error('Failed to create rounds');
-    await activateRound((rounds[0] as Round).id, room);
-    return;
-  }
-
-  // Team mode: rotate the explainer through each team's roster so every player
-  // explains in turn (round N of a team -> Nth player of that team, wrapping).
-  // Deterministic order: joined_at, then player_id as tiebreaker — never the
-  // DB's unspecified return order.
-  const { data: teamRoomPlayers } = await supabase
+  const { data: roomPlayers, error: playersError } = await supabase
     .from('room_players')
     .select('player_id, team_id, joined_at')
     .eq('room_id', room.id);
 
-  const rosterByTeam: Record<string, number[]> = {};
-  const sortedPlayers = ((teamRoomPlayers ?? []) as {
-    player_id: number; team_id: string | null; joined_at: string;
-  }[])
-    .filter((rp) => rp.team_id !== null)
-    .sort((a, b) => (
-      a.joined_at !== b.joined_at
-        ? (a.joined_at < b.joined_at ? -1 : 1)
-        : a.player_id - b.player_id
-    ));
-  for (const rp of sortedPlayers) {
-    const teamId = rp.team_id as string;
-    if (!rosterByTeam[teamId]) rosterByTeam[teamId] = [];
-    rosterByTeam[teamId].push(rp.player_id);
-  }
+  if (playersError) throw new Error('Failed to load room players');
 
-  const roundsToInsert = Array.from({ length: totalTurns }, (_, i) => {
-    const team   = teams[i % teams.length];
-    const roster = rosterByTeam[team.id] ?? [];
-    const turn   = Math.floor(i / teams.length); // this team's Nth turn
-    return {
-      room_id:      room.id,
-      team_id:      team.id,
-      explainer_id: roster.length ? roster[turn % roster.length] : null,
-      round_number: i + 1,
-      status:       'pending' as const,
-      time_seconds: round_seconds,
-    };
+  const members = (roomPlayers ?? []) as Pick<RoomPlayer, 'player_id' | 'team_id' | 'joined_at'>[];
+  const plan = await requestAliasRoundPlan({
+    mode: room.mode,
+    teams: teams.map((team) => team.id),
+    members,
+    hostId: room.host_id,
+    totalRounds: total_rounds,
+    initData: getRawInitData(),
   });
 
-  const { data: rounds, error: roundError } = await supabase
+  const roundsToInsert = plan.map((round) => ({
+    room_id: room.id,
+    team_id: round.team_id,
+    explainer_id: round.explainer_id,
+    round_number: round.round_number,
+    status: 'pending' as const,
+    time_seconds: round_seconds,
+  }));
+
+  const { data: rounds, error } = await supabase
     .from('rounds')
     .insert(roundsToInsert)
     .select();
 
-  if (roundError || !rounds?.length) throw new Error('Failed to create rounds');
+  if (error || !rounds?.length) throw new Error('Failed to create rounds');
   await activateRound((rounds[0] as Round).id, room);
 }
 

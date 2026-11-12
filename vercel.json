@@ -21,10 +21,10 @@
       "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
     },
     "football_dynasty": {
-      "root": "services/football-dynasty",
+      "root": "services",
       "runtime": "container",
-      "entrypoint": "Dockerfile.vercel",
-      "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs"
+      "entrypoint": "football-dynasty/Dockerfile.vercel",
+      "ignoreCommand": "node ../scripts/vercel-ignore-build.mjs"
     }
   },
   "rewrites": [

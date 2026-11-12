@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use axum::{
     Extension, Json, Router,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     http::{HeaderMap, StatusCode},
     routing::{get, post},
 };
@@ -10,6 +12,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{FromRow, Postgres, Transaction};
 use uuid::Uuid;
+
+use sherlock_core::{GameMode, RoomMember, build_round_plan};
 
 use crate::{auth::Identity, errors::ApiError, state::AppState};
 
@@ -33,6 +37,107 @@ pub fn routes() -> Router<AppState> {
             "/api/v1/campaigns/{campaign_id}/succession",
             post(execute_succession),
         )
+        .route(
+            "/api/v1/alias/round-plan",
+            post(alias_round_plan).layer(DefaultBodyLimit::max(64 * 1024)),
+        )
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AliasRoundPlanRequest {
+    pub mode: String,
+    pub teams: Vec<String>,
+    pub members: Vec<AliasRoundPlanMember>,
+    pub total_rounds: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AliasRoundPlanMember {
+    pub player_id: i64,
+    pub team_id: Option<String>,
+    pub joined_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct AliasPlannedRound {
+    round_number: u32,
+    team_id: String,
+    explainer_id: Option<i64>,
+}
+
+pub async fn alias_round_plan(
+    Extension(identity): Extension<Identity>,
+    Json(request): Json<AliasRoundPlanRequest>,
+) -> Result<Json<Vec<AliasPlannedRound>>, ApiError> {
+    let mode = match request.mode.as_str() {
+        "team" => GameMode::Teams,
+        "1v1" => GameMode::OneVsOne,
+        _ => return Err(ApiError::bad_request("invalid_alias_round_plan")),
+    };
+
+    let total_turns = request
+        .teams
+        .len()
+        .checked_mul(usize::try_from(request.total_rounds).unwrap_or(usize::MAX));
+    let unique_teams: HashSet<&str> = request.teams.iter().map(String::as_str).collect();
+    let unique_players: HashSet<i64> = request.members.iter().map(|member| member.player_id).collect();
+
+    if request.teams.is_empty()
+        || request.teams.len() > 16
+        || unique_teams.len() != request.teams.len()
+        || request.teams.iter().any(|team| {
+            team.trim().is_empty()
+                || team.len() > 64
+                || team.chars().any(char::is_whitespace)
+        })
+        || request.total_rounds == 0
+        || request.total_rounds > 64
+        || total_turns.is_none_or(|count| count > 256)
+        || request.members.len() > 128
+        || unique_players.len() != request.members.len()
+        || request.members.iter().any(|member| {
+            member.player_id <= 0
+                || member.joined_at.len() > 64
+                || member.team_id.as_ref().is_some_and(|team| {
+                    team.trim().is_empty()
+                        || team.len() > 64
+                        || team.chars().any(char::is_whitespace)
+                })
+        })
+    {
+        return Err(ApiError::bad_request("invalid_alias_round_plan"));
+    }
+
+    let members: Vec<RoomMember> = request
+        .members
+        .into_iter()
+        .map(|member| RoomMember {
+            player_id: member.player_id,
+            team_id: member.team_id,
+            joined_at: member.joined_at,
+        })
+        .collect();
+
+    let plan = build_round_plan(
+        mode,
+        &request.teams,
+        &members,
+        identity.telegram_id,
+        request.total_rounds,
+    )
+    .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
+
+    Ok(Json(
+        plan.into_iter()
+            .map(|round| AliasPlannedRound {
+                round_number: round.round_number,
+                team_id: round.team_id,
+                explainer_id: round.explainer_id,
+            })
+            .collect(),
+    ))
 }
 
 #[derive(Debug, Deserialize, Serialize)]
