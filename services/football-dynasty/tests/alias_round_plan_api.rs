@@ -53,7 +53,9 @@ async fn call_at(
         .await
         .expect("body")
         .to_bytes();
-    let value = serde_json::from_slice(&bytes).expect("JSON response");
+    let value = serde_json::from_slice(&bytes).unwrap_or_else(|_| {
+        json!({"body": String::from_utf8_lossy(&bytes).to_string()})
+    });
     (status, value)
 }
 
