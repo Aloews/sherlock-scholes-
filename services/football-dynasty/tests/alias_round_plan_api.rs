@@ -102,7 +102,6 @@ fn team_mode_request() -> Value {
     })
 }
 
-
 #[tokio::test]
 #[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
 async fn end_round_requires_room_membership_and_is_idempotent() {
