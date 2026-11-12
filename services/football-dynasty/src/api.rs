@@ -252,7 +252,7 @@ async fn alias_end_round(
             .bind(next_number)
             .fetch_optional(&mut *tx)
             .await?
-        },
+        }
         None => None,
     };
 
