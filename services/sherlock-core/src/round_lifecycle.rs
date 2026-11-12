@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 pub const MAX_ROUND_PAUSE_MS: u64 = 120_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -129,11 +127,13 @@ impl GameLifecycle {
             self.scores.push(score);
         }
 
-        let next_round_number = self.rounds[index].round_number.saturating_add(1);
-        if let Some(next) = self.rounds.iter().find(|candidate| {
-            candidate.room_id == self.room.id
-                && candidate.round_number == next_round_number
-                && candidate.status == RoundStatus::Pending
+        let next_round_number = self.rounds[index].round_number.checked_add(1);
+        if let Some(next) = next_round_number.and_then(|number| {
+            self.rounds.iter().find(|candidate| {
+                candidate.room_id == self.room.id
+                    && candidate.round_number == number
+                    && candidate.status == RoundStatus::Pending
+            })
         }) {
             return Ok(EndRoundOutcome::NextRound {
                 next_round_id: next.id.clone(),
@@ -190,9 +190,10 @@ impl GameLifecycle {
     }
 
     fn round_mut(&mut self, round_id: &str) -> Result<&mut RoundRecord, LifecycleError> {
+        let room_id = self.room.id.as_str();
         self.rounds
             .iter_mut()
-            .find(|round| round.id == round_id && round.room_id == self.room.id)
+            .find(|round| round.id == round_id && round.room_id == room_id)
             .ok_or(LifecycleError::RoundNotFound)
     }
 }
