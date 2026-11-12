@@ -242,15 +242,17 @@ async fn alias_end_round(
     .await?;
 
     let next_round_id = match claimed.round_number.checked_add(1) {
-        Some(next_number) => sqlx::query_scalar::<_, Uuid>(
-            "SELECT id FROM public.rounds
-              WHERE room_id = $1 AND round_number = $2 AND status = 'pending'
-              LIMIT 1",
-        )
-        .bind(claimed.room_id)
-        .bind(next_number)
-        .fetch_optional(&mut *tx)
-        .await?,
+        Some(next_number) => {
+            sqlx::query_scalar::<_, Uuid>(
+                "SELECT id FROM public.rounds
+                  WHERE room_id = $1 AND round_number = $2 AND status = 'pending'
+                  LIMIT 1",
+            )
+            .bind(claimed.room_id)
+            .bind(next_number)
+            .fetch_optional(&mut *tx)
+            .await?
+        },
         None => None,
     };
 
