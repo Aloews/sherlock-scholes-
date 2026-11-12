@@ -118,6 +118,65 @@ def starimg_request(base: str, key: str, path: str,
         raise RuntimeError(f"Starimg returned HTTP {exc.code}") from None
 
 
+def starimg_stream_completion(base: str, key: str,
+                              payload: dict[str, Any],
+                              timeout: int = 300) -> dict[str, Any]:
+    """Read OpenAI-compatible SSE incrementally to avoid idle proxy timeouts."""
+    request_payload = dict(payload)
+    request_payload["stream"] = True
+    request_payload["stream_options"] = {"include_usage": True}
+    data = json.dumps(request_payload).encode("utf-8")
+    req = urllib.request.Request(
+        base.rstrip("/") + "/chat/completions",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "User-Agent": "sherlock-scholes-engineering-worker",
+        },
+        method="POST",
+    )
+    chunks: list[str] = []
+    usage: dict[str, Any] = {}
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", "replace").strip()
+                if not line or line.startswith(":") or not line.startswith("data:"):
+                    continue
+                data_line = line[5:].strip()
+                if data_line == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(event, dict):
+                    continue
+                event_usage = event.get("usage")
+                if isinstance(event_usage, dict):
+                    usage = event_usage
+                choices = event.get("choices") or []
+                if not choices or not isinstance(choices[0], dict):
+                    continue
+                choice = choices[0]
+                delta = choice.get("delta") or choice.get("message") or {}
+                content = delta.get("content") if isinstance(delta, dict) else None
+                if isinstance(content, str):
+                    chunks.append(content)
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Starimg returned HTTP {exc.code}") from None
+    answer = "".join(chunks)
+    if not answer.strip():
+        raise RuntimeError("Starimg streaming completion returned no text")
+    return {
+        "choices": [{"message": {"content": answer}}],
+        "usage": usage,
+    }
+
+
 def choose_model(base: str, key: str) -> str:
     explicit = os.environ.get("STARIMG_MODEL", "").strip()
     catalog = starimg_request(base, key, "/models", timeout=30)
@@ -238,13 +297,12 @@ def ask_starimg(base: str, key: str, model: str, task: str,
            if validation_error else "")
         + "Return a minimal applicable unified git diff only. No markdown fences or explanation."
     )
-    response = starimg_request(base, key, "/chat/completions", {
+    response = starimg_stream_completion(base, key, {
         "model": model,
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": prompt}],
         "temperature": 0.1,
         "max_tokens": MAX_COMPLETION_TOKENS,
-        "stream": False,
     })
     choices = response.get("choices", [])
     if not choices:
