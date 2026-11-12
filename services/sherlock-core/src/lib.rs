@@ -244,8 +244,12 @@ fn extract_room_code(raw: &str) -> String {
 }
 
 pub fn room_code_from_text(raw: Option<&str>) -> Option<String> {
-    let raw = raw?;
-    normalize_room_code(Some(&extract_room_code(raw)))
+    let text = raw?.trim();
+    if text.contains('?') {
+        normalize_room_code(Some(&extract_room_code(text)))
+    } else {
+        normalize_room_code(Some(text))
+    }
 }
 
 #[cfg(test)]
@@ -363,6 +367,8 @@ mod tests {
         assert_eq!(room_code_from_text(Some("https://t.me/bot?other=1")), None);
         assert_eq!(sanitize_room_code_input("https://t.me/bot?other=1"), "");
         assert_eq!(room_code_from_text(Some("no-code")), None);
+        assert_eq!(room_code_from_text(Some("AB-12")), None);
+        assert_eq!(sanitize_room_code_input("AB-12"), "AB12");
     }
 
     #[test]

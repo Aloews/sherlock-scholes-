@@ -80,7 +80,10 @@ function extractCode(raw: string): string {
  * join with", and the caller may act on it without asking.
  */
 export function codeFromText(raw: string | null | undefined): string | null {
-  return normalizeCode(extractCode(raw ?? ''));
+  const text = (raw ?? '').trim();
+  if (!text) return null;
+  const hasInviteParam = /[?&](?:startapp|start)=/i.test(text);
+  return normalizeCode(hasInviteParam ? extractCode(text) : text);
 }
 
 /**

@@ -144,6 +144,9 @@ describe('codeFromText', () => {
     expect(codeFromText(deepLink('XY9Z01'))).toBe('XY9Z01');
     expect(codeFromText('Заходи: https://t.me/sherlock_scholes_bot?startapp=ab12cd')).toBe('AB12CD');
     expect(codeFromText('AB12')).toBe('AB12');
+    expect(codeFromText('no-code')).toBeNull();
+    expect(codeFromText('AB-12')).toBeNull();
+    expect(sanitizeCodeInput('AB-12')).toBe('AB12');
     expect(codeFromText(null)).toBeNull();
   });
 });
