@@ -1,6 +1,8 @@
 pub mod round_lifecycle;
 pub mod round_plan;
 
+pub const MAX_ROUND_PAUSE_MS: u64 = 120_000;
+
 pub use round_plan::{GameMode, PlannedRound, RoomMember, RoundPlanError, build_round_plan};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -84,17 +86,22 @@ pub struct RoundClock {
 }
 
 impl RoundClock {
+    fn active_pause_ms(self, now_ms: i64) -> i128 {
+        let Some(paused_at_ms) = self.paused_at_ms else {
+            return 0;
+        };
+        let spent = (i128::from(now_ms) - i128::from(paused_at_ms)).max(0);
+        let allowance = i128::from(MAX_ROUND_PAUSE_MS.saturating_sub(self.paused_ms));
+        spent.min(allowance)
+    }
+
     pub fn elapsed_ms(self, now_ms: i64) -> u64 {
         let Some(started_at_ms) = self.started_at_ms else {
             return 0;
         };
 
         let since = i128::from(now_ms) - i128::from(started_at_ms);
-        let held = self
-            .paused_at_ms
-            .map(|paused_at| (i128::from(now_ms) - i128::from(paused_at)).max(0))
-            .unwrap_or(0);
-        let elapsed = (since - i128::from(self.paused_ms) - held).max(0);
+        let elapsed = (since - i128::from(self.paused_ms) - self.active_pause_ms(now_ms)).max(0);
         u64::try_from(elapsed).unwrap_or(u64::MAX)
     }
 
@@ -109,14 +116,10 @@ impl RoundClock {
         let deadline = match self.started_at_ms {
             None => i128::from(now_ms) + i128::from(self.seconds) * 1_000,
             Some(started_at_ms) => {
-                let active_pause = self
-                    .paused_at_ms
-                    .map(|paused_at| (i128::from(now_ms) - i128::from(paused_at)).max(0))
-                    .unwrap_or(0);
                 i128::from(started_at_ms)
                     + i128::from(self.seconds) * 1_000
                     + i128::from(self.paused_ms)
-                    + active_pause
+                    + self.active_pause_ms(now_ms)
             }
         };
         deadline.clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64
@@ -429,10 +432,22 @@ mod tests {
         let value = clock(Some(T0), 60, 0, Some(T0 + 10_000));
         assert_eq!(value.remaining_seconds(T0 + 10_000), 50);
         assert_eq!(value.remaining_seconds(T0 + 40_000), 50);
-        assert_eq!(value.remaining_seconds(T0 + 600_000), 50);
+        assert_eq!(value.remaining_seconds(T0 + 130_000), 50);
+        assert_eq!(value.remaining_seconds(T0 + 140_000), 40);
+        assert_eq!(value.remaining_seconds(T0 + 180_000), 0);
         assert_eq!(value.deadline_at_ms(T0 + 10_000), T0 + 60_000);
         assert_eq!(value.deadline_at_ms(T0 + 45_000), T0 + 95_000);
+        assert_eq!(value.deadline_at_ms(T0 + 200_000), T0 + 180_000);
         assert!(value.is_paused());
+    }
+
+    #[test]
+    fn active_pause_uses_only_the_remaining_allowance_after_prior_pauses() {
+        let value = clock(Some(T0 - 100_000), 60, 100_000, Some(T0));
+        assert_eq!(value.remaining_seconds(T0 + 20_000), 50);
+        assert_eq!(value.remaining_seconds(T0 + 30_000), 50);
+        assert_eq!(value.remaining_seconds(T0 + 40_000), 40);
+        assert_eq!(value.deadline_at_ms(T0 + 40_000), T0 + 80_000);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-pub const MAX_ROUND_PAUSE_MS: u64 = 120_000;
+use crate::MAX_ROUND_PAUSE_MS;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RoomStatus {
