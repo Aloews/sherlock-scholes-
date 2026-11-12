@@ -18,14 +18,42 @@ describe('shared Rust round-plan contract', () => {
 });
 
 describe('round-plan input boundaries', () => {
-  it('rejects an empty team list and a zero round count', () => {
+  it('rejects missing teams, invalid modes, and invalid host identities', () => {
     expect(() => buildRoundPlan('team', [], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
-    expect(() => buildRoundPlan('team', ['blue'], [], 1, 0)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [], 1, 1.5)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('unknown' as GameMode, ['blue'], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [], 0, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
   });
 
-  it('rejects unsafe or unrepresentable turn counts', () => {
-    expect(() => buildRoundPlan('team', ['blue', 'red'], [], 1, Number.MAX_SAFE_INTEGER))
+  it('rejects duplicate, malformed, and oversized teams', () => {
+    expect(() => buildRoundPlan('team', ['blue', 'blue'], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue team'], [], 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', Array.from({ length: 17 }, (_, i) => `team-${i}`), [], 1, 1))
       .toThrow('INVALID_ALIAS_ROUND_PLAN');
+  });
+
+  it('rejects invalid round counts and plans exceeding the turn cap', () => {
+    expect(() => buildRoundPlan('team', ['blue'], [], 1, 0)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [], 1, 65)).toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', Array.from({ length: 16 }, (_, i) => `team-${i}`), [], 1, 17))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+  });
+
+  it('rejects duplicate or malformed room members', () => {
+    const member = { player_id: 1, team_id: 'blue', joined_at: '2026-01-01T10:00:00Z' };
+    expect(() => buildRoundPlan('team', ['blue'], [member, member], 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{ ...member, player_id: 0 }], 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{ ...member, team_id: 'blue team' }], 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], [{ ...member, joined_at: 'x'.repeat(65) }], 1, 1))
+      .toThrow('INVALID_ALIAS_ROUND_PLAN');
+    expect(() => buildRoundPlan('team', ['blue'], Array.from({ length: 129 }, (_, i) => ({
+      player_id: i + 1,
+      team_id: 'blue',
+      joined_at: '2026-01-01T10:00:00Z',
+    })), 1, 1)).toThrow('INVALID_ALIAS_ROUND_PLAN');
   });
 });
 
@@ -46,6 +74,11 @@ describe('requestAliasRoundPlan', () => {
     totalRounds: 1,
   };
 
+  const validPlan = [
+    { round_number: 1, team_id: 'blue', explainer_id: 1 },
+    { round_number: 2, team_id: 'red', explainer_id: 2 },
+  ];
+
   it('uses the TypeScript contract in local development without calling the Rust API', async () => {
     vi.stubEnv('DEV', true);
     const fetchMock = vi.fn();
@@ -53,28 +86,21 @@ describe('requestAliasRoundPlan', () => {
 
     const plan = await requestAliasRoundPlan({ ...request, initData: 'local-telegram-init-data' });
 
-    expect(plan).toEqual([
-      { round_number: 1, team_id: 'blue', explainer_id: 1 },
-      { round_number: 2, team_id: 'red', explainer_id: 2 },
-    ]);
+    expect(plan).toEqual(validPlan);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('uses the authenticated Rust endpoint when Telegram initData is present', async () => {
     vi.stubEnv('DEV', false);
-    const expected = [
-      { round_number: 1, team_id: 'blue', explainer_id: 1 },
-      { round_number: 2, team_id: 'red', explainer_id: 2 },
-    ];
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => expected,
+      json: async () => validPlan,
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const plan = await requestAliasRoundPlan({ ...request, initData: 'signed-init-data' });
 
-    expect(plan).toEqual(expected);
+    expect(plan).toEqual(validPlan);
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/alias/round-plan', {
       method: 'POST',
       headers: {
@@ -100,16 +126,29 @@ describe('requestAliasRoundPlan', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('surfaces backend errors and rejects malformed plans', async () => {
+  it('surfaces backend errors and rejects malformed response sequences', async () => {
     vi.stubEnv('DEV', false);
+    const invalidPlans = [
+      [{ round_number: 0, team_id: 'blue', explainer_id: 1 }, validPlan[1]],
+      [{ round_number: 1, team_id: '', explainer_id: 1 }, validPlan[1]],
+      [{ round_number: 1, team_id: 'blue', explainer_id: 0 }, validPlan[1]],
+      [{ round_number: 2, team_id: 'blue', explainer_id: 1 }, { ...validPlan[1], round_number: 1 }],
+      [validPlan[0]],
+      [],
+    ];
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'invalid_alias_round_plan' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ round_number: 0, team_id: '', explainer_id: 'bad' }] });
+      .mockImplementation(async () => ({
+        ok: true,
+        json: async () => invalidPlans.shift(),
+      }));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(requestAliasRoundPlan({ ...request, initData: 'signed' }))
       .rejects.toThrow('invalid_alias_round_plan');
-    await expect(requestAliasRoundPlan({ ...request, initData: 'signed' }))
-      .rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
+    for (let i = 0; i < 6; i += 1) {
+      await expect(requestAliasRoundPlan({ ...request, initData: 'signed' }))
+        .rejects.toThrow('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
+    }
   });
 });

@@ -21,6 +21,10 @@ interface RoundPlanRequest {
   initData: string;
 }
 
+function validTeamId(value: string): boolean {
+  return value.trim().length > 0 && value.length <= 64 && !/\s/.test(value);
+}
+
 export function buildRoundPlan(
   mode: GameMode,
   teams: readonly string[],
@@ -28,17 +32,32 @@ export function buildRoundPlan(
   hostId: number,
   totalRounds: number,
 ): PlannedRound[] {
+  const uniqueTeams = new Set(teams);
+  const uniquePlayers = new Set(members.map((member) => member.player_id));
+  const totalTurns = teams.length * totalRounds;
+
   if (
     (mode !== 'team' && mode !== '1v1')
+    || !Number.isSafeInteger(hostId)
+    || hostId <= 0
     || teams.length === 0
+    || teams.length > 16
+    || uniqueTeams.size !== teams.length
+    || teams.some((team) => !validTeamId(team))
     || !Number.isInteger(totalRounds)
     || totalRounds <= 0
+    || totalRounds > 64
+    || !Number.isSafeInteger(totalTurns)
+    || totalTurns > 256
+    || members.length > 128
+    || uniquePlayers.size !== members.length
+    || members.some((member) => (
+      !Number.isSafeInteger(member.player_id)
+      || member.player_id <= 0
+      || member.joined_at.length > 64
+      || (member.team_id !== null && !validTeamId(member.team_id))
+    ))
   ) {
-    throw new Error('INVALID_ALIAS_ROUND_PLAN');
-  }
-
-  const totalTurns = teams.length * totalRounds;
-  if (!Number.isSafeInteger(totalTurns) || totalTurns > 0xffff_ffff) {
     throw new Error('INVALID_ALIAS_ROUND_PLAN');
   }
 
@@ -106,7 +125,11 @@ function isPlannedRound(value: unknown): value is PlannedRound {
     && round.team_id.length > 0
     && (
       round.explainer_id === null
-      || (typeof round.explainer_id === 'number' && Number.isSafeInteger(round.explainer_id))
+      || (
+        typeof round.explainer_id === 'number'
+        && Number.isSafeInteger(round.explainer_id)
+        && round.explainer_id > 0
+      )
     );
 }
 
@@ -142,11 +165,18 @@ export async function requestAliasRoundPlan(request: RoundPlanRequest): Promise<
   }
 
   const payload: unknown = await response.json();
+  const expectedLength = request.teams.length * request.totalRounds;
   if (
-    !Array.isArray(payload)
-    || payload.length === 0
-    || payload.length > 256
-    || !payload.every(isPlannedRound)
+    !Number.isSafeInteger(expectedLength)
+    || expectedLength <= 0
+    || expectedLength > 256
+    || !Array.isArray(payload)
+    || payload.length !== expectedLength
+    || !payload.every((round, index) => (
+      isPlannedRound(round)
+      && round.round_number === index + 1
+      && request.teams.includes(round.team_id)
+    ))
   ) {
     throw new Error('INVALID_ALIAS_ROUND_PLAN_RESPONSE');
   }
