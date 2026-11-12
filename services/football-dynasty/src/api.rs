@@ -161,14 +161,8 @@ async fn alias_round_plan(
         return Err(ApiError::bad_request("invalid_alias_round_plan"));
     }
 
-    let plan = build_round_plan(
-        mode,
-        &teams,
-        &members,
-        identity.telegram_id,
-        total_rounds,
-    )
-    .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
+    let plan = build_round_plan(mode, &teams, &members, identity.telegram_id, total_rounds)
+        .map_err(|_| ApiError::bad_request("invalid_alias_round_plan"))?;
 
     tx.commit().await?;
 
