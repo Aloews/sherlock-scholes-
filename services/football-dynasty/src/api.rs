@@ -82,15 +82,17 @@ pub async fn alias_round_plan(
         .len()
         .checked_mul(usize::try_from(request.total_rounds).unwrap_or(usize::MAX));
     let unique_teams: HashSet<&str> = request.teams.iter().map(String::as_str).collect();
-    let unique_players: HashSet<i64> = request.members.iter().map(|member| member.player_id).collect();
+    let unique_players: HashSet<i64> = request
+        .members
+        .iter()
+        .map(|member| member.player_id)
+        .collect();
 
     if request.teams.is_empty()
         || request.teams.len() > 16
         || unique_teams.len() != request.teams.len()
         || request.teams.iter().any(|team| {
-            team.trim().is_empty()
-                || team.len() > 64
-                || team.chars().any(char::is_whitespace)
+            team.trim().is_empty() || team.len() > 64 || team.chars().any(char::is_whitespace)
         })
         || request.total_rounds == 0
         || request.total_rounds > 64

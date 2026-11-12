@@ -28,11 +28,7 @@ impl IdentityVerifier for FixedVerifier {
     }
 }
 
-async fn call(
-    app: axum::Router,
-    body: Value,
-    init_data: Option<&str>,
-) -> (StatusCode, Value) {
+async fn call(app: axum::Router, body: Value, init_data: Option<&str>) -> (StatusCode, Value) {
     let mut request = Request::builder()
         .method("POST")
         .uri("/api/v1/alias/round-plan")
@@ -41,11 +37,7 @@ async fn call(
         request = request.header("x-tg-init-data", value);
     }
     let response = app
-        .oneshot(
-            request
-                .body(Body::from(body.to_string()))
-                .expect("request"),
-        )
+        .oneshot(request.body(Body::from(body.to_string())).expect("request"))
         .await
         .expect("response");
     let status = response.status();

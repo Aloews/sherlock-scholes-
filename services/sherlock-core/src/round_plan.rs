@@ -149,8 +149,7 @@ mod tests {
                 "1v1" => GameMode::OneVsOne,
                 other => panic!("unsupported fixture mode: {other}"),
             };
-            let teams: Vec<String> =
-                serde_json::from_value(case["teams"].clone()).expect("teams");
+            let teams: Vec<String> = serde_json::from_value(case["teams"].clone()).expect("teams");
             let members: Vec<RoomMember> = case["members"]
                 .as_array()
                 .expect("members")
