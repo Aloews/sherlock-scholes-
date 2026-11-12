@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const rpc = vi.fn();
 const from = vi.fn();
+const endAliasRound = vi.fn();
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -14,6 +15,10 @@ vi.mock('@/shared/lib/supabase', () => ({
     from: (...args: unknown[]) => from(...args),
   },
 }));
+vi.mock('@/features/game/roundLifecycle', () => ({
+  endAliasRound: (...args: unknown[]) => endAliasRound(...args),
+}));
+vi.mock('@/shared/lib/telegram', () => ({ getRawInitData: () => 'signed-test-init-data' }));
 vi.mock('@/features/game/cardRandomizer', () => ({
   pickCardIds: vi.fn(async () => ['card-1']),
 }));
@@ -46,6 +51,8 @@ let roomService: typeof import('./roomService');
 beforeEach(async () => {
   vi.resetModules();
   rpc.mockReset();
+  endAliasRound.mockReset();
+  endAliasRound.mockResolvedValue({ outcome: 'already_ended', next_round_id: null });
   from.mockReset();
   from.mockImplementation(() => builder());
   vi.useFakeTimers();
@@ -56,17 +63,18 @@ afterEach(() => { vi.useRealTimers(); });
 
 describe('endRound', () => {
   it('asks the server, and asks it only once', async () => {
-    rpc.mockResolvedValue({ data: { outcome: 'already_ended', next_round_id: null }, error: null });
+    endAliasRound.mockResolvedValue({ outcome: 'already_ended', next_round_id: null });
 
     const outcome = await roomService.endRound('round-1', room);
 
     expect(outcome).toBe('already_ended');
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('end_round', { p_round_id: 'round-1' });
+    expect(endAliasRound).toHaveBeenCalledTimes(1);
+    expect(endAliasRound).toHaveBeenCalledWith('round-1', 'signed-test-init-data');
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('does not touch a table when the round was already claimed', async () => {
-    rpc.mockResolvedValue({ data: { outcome: 'already_ended', next_round_id: null }, error: null });
+    endAliasRound.mockResolvedValue({ outcome: 'already_ended', next_round_id: null });
 
     await roomService.endRound('round-1', room);
 
@@ -75,7 +83,7 @@ describe('endRound', () => {
   });
 
   it('leaves scoring and statistics to the transaction when the game ends', async () => {
-    rpc.mockResolvedValue({ data: { outcome: 'game_end', next_round_id: null }, error: null });
+    endAliasRound.mockResolvedValue({ outcome: 'game_end', next_round_id: null });
 
     const outcome = await roomService.endRound('round-1', room);
 
@@ -83,11 +91,11 @@ describe('endRound', () => {
     // No rooms UPDATE, and — the part that used to be lost when a player
     // closed Telegram on the results screen — no award_room_stats follow-up.
     expect(from).not.toHaveBeenCalled();
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(endAliasRound).toHaveBeenCalledTimes(1);
   });
 
   it('deals the round the server named, after the summary pause', async () => {
-    rpc.mockResolvedValue({ data: { outcome: 'next_round', next_round_id: 'round-2' }, error: null });
+    endAliasRound.mockResolvedValue({ outcome: 'next_round', next_round_id: 'round-2' });
 
     const pending = roomService.endRound('round-1', room);
 
@@ -103,20 +111,11 @@ describe('endRound', () => {
     expect(claim[0].args[0]).toMatchObject({ current_round_id: 'round-2' });
   });
 
-  it('falls back to the old sequence when the RPC is not on the database yet', async () => {
-    rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
-    from.mockImplementation((table: string) => (
-      table === 'rounds'
-        ? builder({ data: [{ team_id: 'team-1', round_number: 1 }], error: null })
-        : builder({ data: [], error: null })
-    ));
-
-    const pending = roomService.endRound('round-1', room);
-    await vi.advanceTimersByTimeAsync(roomService.SUMMARY_PAUSE_MS + 1);
-    await pending;
-
-    expect(from).toHaveBeenCalledWith('rounds');
-    expect(from).toHaveBeenCalledWith('scores');
+  it('does not fall back to client-side writes when the Rust API fails', async () => {
+    endAliasRound.mockRejectedValue(new Error('backend unavailable'));
+    await expect(roomService.endRound('round-1', room)).rejects.toThrow('backend unavailable');
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

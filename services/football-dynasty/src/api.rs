@@ -41,6 +41,9 @@ pub fn routes() -> Router<AppState> {
             "/api/v1/alias/round-plan",
             post(alias_round_plan).layer(DefaultBodyLimit::max(64 * 1024)),
         )
+        .route("/api/v1/alias/rounds/{round_id}/end", post(alias_end_round))
+        .route("/api/v1/alias/rounds/{round_id}/pause", post(alias_pause_round))
+        .route("/api/v1/alias/rounds/{round_id}/resume", post(alias_resume_round))
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,6 +143,150 @@ async fn alias_round_plan(
             })
             .collect(),
     ))
+}
+
+
+#[derive(Debug, Serialize)]
+struct AliasRoundEndResponse {
+    outcome: String,
+    next_round_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+struct AliasRoundPauseState {
+    paused_at: Option<DateTime<Utc>>,
+    paused_ms: i32,
+}
+
+async fn alias_end_round(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(round_id): Path<Uuid>,
+) -> Result<Json<AliasRoundEndResponse>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM public.rounds WHERE id = $1)",
+    )
+    .bind(round_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if !exists {
+        return Err(ApiError::not_found());
+    }
+
+    let member_id: Option<i64> = sqlx::query_scalar(
+        "SELECT rp.player_id
+           FROM public.room_players AS rp
+           JOIN public.rounds AS r ON r.room_id = rp.room_id
+          WHERE r.id = $1 AND rp.player_id = $2
+          FOR KEY SHARE OF rp",
+    )
+    .bind(round_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if member_id.is_none() {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "room_membership_required"));
+    }
+
+    let (outcome, next_round_id): (String, Option<Uuid>) =
+        sqlx::query_as("SELECT outcome, next_round_id FROM public.end_round($1)")
+            .bind(round_id)
+            .fetch_one(&mut *tx)
+            .await?;
+    tx.commit().await?;
+
+    Ok(Json(AliasRoundEndResponse {
+        outcome,
+        next_round_id,
+    }))
+}
+
+async fn alias_pause_round(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(round_id): Path<Uuid>,
+) -> Result<Json<AliasRoundPauseState>, ApiError> {
+    let explainer_id: Option<i64> =
+        sqlx::query_scalar("SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1")
+            .bind(round_id)
+            .fetch_optional(&state.db)
+            .await?;
+    let explainer_id = explainer_id.ok_or_else(ApiError::not_found)?;
+    if explainer_id != identity.telegram_id {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "only_explainer_may_pause"));
+    }
+
+    let max_pause_ms = i32::try_from(sherlock_core::MAX_ROUND_PAUSE_MS).unwrap_or(i32::MAX);
+    let updated = sqlx::query_as::<_, AliasRoundPauseState>(
+        "UPDATE public.rounds
+            SET paused_at = now()
+          WHERE id = $1 AND explainer_id = $2 AND status = 'active'
+            AND paused_at IS NULL AND paused_ms < $3
+        RETURNING paused_at, paused_ms",
+    )
+    .bind(round_id)
+    .bind(identity.telegram_id)
+    .bind(max_pause_ms)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let current = match updated {
+        Some(value) => value,
+        None => sqlx::query_as::<_, AliasRoundPauseState>(
+            "SELECT paused_at, paused_ms FROM public.rounds WHERE id = $1 AND explainer_id = $2",
+        )
+        .bind(round_id)
+        .bind(identity.telegram_id)
+        .fetch_one(&state.db)
+        .await?,
+    };
+    Ok(Json(current))
+}
+
+async fn alias_resume_round(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(round_id): Path<Uuid>,
+) -> Result<Json<AliasRoundPauseState>, ApiError> {
+    let explainer_id: Option<i64> =
+        sqlx::query_scalar("SELECT COALESCE(explainer_id, 0)::bigint FROM public.rounds WHERE id = $1")
+            .bind(round_id)
+            .fetch_optional(&state.db)
+            .await?;
+    let explainer_id = explainer_id.ok_or_else(ApiError::not_found)?;
+    if explainer_id != identity.telegram_id {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "only_explainer_may_resume"));
+    }
+
+    let max_pause_ms = i32::try_from(sherlock_core::MAX_ROUND_PAUSE_MS).unwrap_or(i32::MAX);
+    let updated = sqlx::query_as::<_, AliasRoundPauseState>(
+        "UPDATE public.rounds
+            SET paused_ms = LEAST(
+                    $2,
+                    paused_ms + (extract(epoch from (now() - paused_at)) * 1000)::integer
+                ),
+                paused_at = NULL
+          WHERE id = $1 AND explainer_id = $3 AND paused_at IS NOT NULL
+        RETURNING paused_at, paused_ms",
+    )
+    .bind(round_id)
+    .bind(max_pause_ms)
+    .bind(identity.telegram_id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let current = match updated {
+        Some(value) => value,
+        None => sqlx::query_as::<_, AliasRoundPauseState>(
+            "SELECT paused_at, paused_ms FROM public.rounds WHERE id = $1 AND explainer_id = $2",
+        )
+        .bind(round_id)
+        .bind(identity.telegram_id)
+        .fetch_one(&state.db)
+        .await?,
+    };
+    Ok(Json(current))
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -93,6 +93,7 @@ jobs:
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/pause_round_on_voice_drop.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql
           psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle.test.sql
+          DATABASE_URL="$ALIAS_DATABASE_URL" cargo test --test alias_round_plan_api -- --ignored
 
       - name: Build Vercel Rust service container
         working-directory: .

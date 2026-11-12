@@ -21,6 +21,12 @@ CREATE TABLE public.rooms (
   ended_at TIMESTAMPTZ
 );
 
+CREATE TABLE public.room_players (
+  room_id UUID NOT NULL REFERENCES public.rooms(id),
+  player_id BIGINT NOT NULL,
+  PRIMARY KEY (room_id, player_id)
+);
+
 CREATE TABLE public.rounds (
   id UUID PRIMARY KEY,
   room_id UUID NOT NULL REFERENCES public.rooms(id),

@@ -6,12 +6,12 @@ import type {
 } from '@/shared/types/database';
 import { pickCardIds } from '@/features/game/cardRandomizer';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
-import { trackEvent } from '@/shared/lib/analytics';
 import { getRawInitData } from '@/shared/lib/telegram';
 import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
 import { requestAliasRoundPlan } from '@/features/room/roundPlan';
+import { endAliasRound } from '@/features/game/roundLifecycle';
 
 function requireRoomCode(room: Room, expectedCode?: string): Room {
   const code = normalizeCode(room.code);
@@ -447,109 +447,18 @@ export type EndRoundOutcome = 'next_round' | 'game_end' | 'already_ended';
  * the same round twice. See supabase/migrations/end_round_rpc.sql.
  */
 export async function endRound(roundId: string, room: Room): Promise<EndRoundOutcome> {
-  const { data, error } = await supabase.rpc('end_round', { p_round_id: roundId });
+  const { outcome, next_round_id: nextRoundId } = await endAliasRound(
+    roundId,
+    getRawInitData(),
+  );
 
-  // PGRST202 = the function is not on this database yet. Any other error is a
-  // real failure, and the legacy path below re-claims safely in either case
-  // (an already-completed round yields 'already_ended'), so falling back costs
-  // nothing but a round-trip.
-  if (error) {
-    console.error('[game] end_round rpc failed:', error.code, error.message);
-    return endRoundLegacy(roundId, room);
-  }
-
-  const { outcome, next_round_id: nextRoundId } =
-    data as { outcome: EndRoundOutcome; next_round_id: string | null };
-
-  // Statistics are credited by trg_award_room_stats inside that same
-  // transaction (award_stats_on_finish.sql), so 'game_end' needs no follow-up
-  // call from a phone that is being told to navigate away.
+  // Statistics are credited by trg_award_room_stats inside the end_round
+  // transaction, so game_end needs no follow-up request from the client.
   if (outcome !== 'next_round' || !nextRoundId) return outcome;
 
-  // Hold the summary on screen before the next round starts — without this
-  // the next 'active' event lands within a second and nobody reads the score.
-  // If this client dies mid-pause, the useGame watchdog activates the round.
   await sleep(SUMMARY_PAUSE_MS);
   await activateRound(nextRoundId, room);
   return 'next_round';
-}
-
-/**
- * The pre-RPC sequence, kept only until end_round_rpc.sql is on every
- * database — same shape as the join_1v1_room fallback above. It carries the
- * 0:0 race by construction; it is here so a frontend deployed ahead of the
- * migration still plays, not because it is correct.
- */
-async function endRoundLegacy(roundId: string, room: Room): Promise<EndRoundOutcome> {
-  const { data: claimed } = await supabase
-    .from('rounds')
-    .update({ status: 'completed', ended_at: new Date().toISOString() })
-    .eq('id', roundId)
-    .eq('status', 'active')
-    .select('team_id, round_number');
-
-  const claimedRound = (claimed ?? [])[0] as { team_id: string; round_number: number } | undefined;
-  if (!claimedRound) return 'already_ended';
-
-  const { data: cards } = await supabase
-    .from('round_cards')
-    .select('status')
-    .eq('round_id', roundId);
-
-  const points = (cards ?? []).filter((c) => c.status === 'correct').length;
-
-  const { error: scoreErr } = await supabase.from('scores').upsert({
-    room_id:  room.id,
-    team_id:  claimedRound.team_id,
-    round_id: roundId,
-    points,
-  });
-  if (scoreErr) console.error('[game] scores upsert failed:', scoreErr.code, scoreErr.message);
-
-  const { data: next } = await supabase
-    .from('rounds')
-    .select('id')
-    .eq('room_id', room.id)
-    .eq('round_number', claimedRound.round_number + 1)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  const nextRoundId = (next as { id: string } | null)?.id;
-
-  if (!nextRoundId) {
-    await supabase
-      .from('rooms')
-      .update({ status: 'finished', ended_at: new Date().toISOString() })
-      .eq('id', room.id);
-    updatePlayerStats(room.id).catch((e) =>
-      console.error('[stats] update after game end failed:', e));
-    return 'game_end';
-  }
-
-  await sleep(SUMMARY_PAUSE_MS);
-  await activateRound(nextRoundId, room);
-  return 'next_round';
-}
-
-// ─── Player Stats ─────────────────────────────────────────────
-
-async function updatePlayerStats(roomId: string): Promise<void> {
-  // One call. The arithmetic — who won, who explained which cards — lives in
-  // award_room_stats() (supabase/migrations/award_stats_on_finish.sql), where
-  // a trigger on the room finishing has almost certainly run it already. This
-  // is the retry for the case where it has not, and it is a no-op when the
-  // room is already scored, so it can never double-count.
-  //
-  // It replaces four round-trips the client made AFTER being told the game
-  // was over: close the app at that moment and the game was scored for
-  // nobody, with nothing to notice it.
-  const { error } = await supabase.rpc('award_room_stats', { p_room_id: roomId });
-  if (error) {
-    // A console line inside a Telegram WebView is seen by nobody, which is how
-    // a broken stats path once ran unnoticed for a day.
-    console.error('[stats] award_room_stats failed:', error.code, error.message);
-    trackEvent('stats_award_failed', { code: error.code ?? 'unknown' });
-  }
 }
 
 export async function fetchRoundScores(
