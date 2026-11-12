@@ -11,8 +11,8 @@ const BOT = 'sherlock_scholes_bot';
  */
 const APP_NAME = (import.meta.env.VITE_TG_APP_NAME as string | undefined) ?? '';
 
-/** Room codes are six chars, uppercase letters and digits — see `create_team_room`. */
-const CODE_RE = /^[A-Z0-9]{6}$/;
+/** Room codes contain one to six uppercase letters or digits. */
+const CODE_RE = /^[A-Z0-9]{1,6}$/;
 
 /**
  * A room code as it arrives from an untrusted source: Telegram's start_param,
@@ -24,7 +24,7 @@ export function normalizeCode(raw: string | null | undefined): string | null {
   return CODE_RE.test(code) ? code : null;
 }
 
-/** Room codes are six characters. Exported so the UI never re-guesses it. */
+/** Maximum room-code length; shorter legacy codes remain valid. */
 export const CODE_LENGTH = 6;
 
 /**
