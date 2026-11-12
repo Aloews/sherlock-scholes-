@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const rpc = vi.fn();
 const from = vi.fn();
 const endAliasRound = vi.fn();
+const activateAliasRound = vi.fn();
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -16,12 +17,10 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }));
 vi.mock('@/features/game/roundLifecycle', () => ({
+  activateAliasRound: (...args: unknown[]) => activateAliasRound(...args),
   endAliasRound: (...args: unknown[]) => endAliasRound(...args),
 }));
 vi.mock('@/shared/lib/telegram', () => ({ getRawInitData: () => 'signed-test-init-data' }));
-vi.mock('@/features/game/cardRandomizer', () => ({
-  pickCardIds: vi.fn(async () => ['card-1']),
-}));
 vi.mock('@/shared/lib/analytics', () => ({ trackEvent: vi.fn() }));
 
 // Every PostgREST builder call returns the builder; awaiting it yields the
@@ -53,6 +52,8 @@ beforeEach(async () => {
   rpc.mockReset();
   endAliasRound.mockReset();
   endAliasRound.mockResolvedValue({ outcome: 'already_ended', next_round_id: null });
+  activateAliasRound.mockReset();
+  activateAliasRound.mockResolvedValue({ outcome: 'already_active', card_count: 5 });
   from.mockReset();
   from.mockImplementation(() => builder());
   vi.useFakeTimers();
@@ -126,28 +127,31 @@ describe('endRound', () => {
 // screen. These pin the seam: what the room stores is what the round deals.
 
 describe('activateRound', () => {
-  const roomWith = (settings: Record<string, unknown>) => ({
-    id: 'room-1', mode: 'team',
-    settings: { cards_per_round: 5, categories: null, ...settings },
-  } as unknown as import('@/shared/types/database').Room);
+  it('delegates card selection, room claiming and activation to the Rust API', async () => {
+    activateAliasRound.mockResolvedValue({ outcome: 'activated', card_count: 5 });
 
-  async function dealtFilter(room: import('@/shared/types/database').Room) {
-    const { pickCardIds } = await import('@/features/game/cardRandomizer');
-    await roomService.activateRound('round-1', room);
-    return vi.mocked(pickCardIds).mock.calls.at(-1)?.[0];
-  }
+    await expect(roomService.activateRound('round-1', room)).resolves.toBe(true);
 
-  it('deals the whole filter the host pinned, not just its categories', async () => {
-    const filter = { categories: ['player'], leagues: ['La Liga'], fame_min: 90 };
-    expect(await dealtFilter(roomWith({ categories: ['player'], deck: filter })))
-      .toEqual(filter);
+    expect(activateAliasRound).toHaveBeenCalledWith('round-1', 'signed-test-init-data');
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  // Rooms created before `deck` existed carry categories alone, and they must
-  // keep dealing exactly what they dealt yesterday.
-  it('deals a pre-filter room from its categories', async () => {
-    expect(await dealtFilter(roomWith({ categories: ['club', 'stadium'] })))
-      .toEqual({ categories: ['club', 'stadium'] });
+  it('does not deal or write again when the round is already active', async () => {
+    activateAliasRound.mockResolvedValue({ outcome: 'already_active', card_count: 5 });
+
+    await expect(roomService.activateRound('round-1', room)).resolves.toBe(false);
+
+    expect(activateAliasRound).toHaveBeenCalledTimes(1);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to client-side dealing when the Rust API fails', async () => {
+    activateAliasRound.mockRejectedValue(new Error('backend unavailable'));
+
+    await expect(roomService.activateRound('round-1', room)).rejects.toThrow('backend unavailable');
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

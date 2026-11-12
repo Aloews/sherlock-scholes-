@@ -21,6 +21,8 @@ CREATE TABLE public.rooms (
   status TEXT NOT NULL,
   settings JSONB NOT NULL DEFAULT '{"total_rounds": 3}'::jsonb,
   mode TEXT NOT NULL DEFAULT 'team',
+  current_round_id UUID,
+  started_at TIMESTAMPTZ,
   ended_at TIMESTAMPTZ
 );
 
@@ -58,9 +60,30 @@ CREATE TABLE public.rounds (
   time_seconds INTEGER NOT NULL DEFAULT 60
 );
 
-CREATE TABLE public.round_cards (
+CREATE TABLE public.cards (
   id UUID PRIMARY KEY,
+  active BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE OR REPLACE FUNCTION public.pick_random_cards(
+  p_filter JSONB,
+  p_count INTEGER DEFAULT 50,
+  p_init_data TEXT DEFAULT NULL
+) RETURNS SETOF public.cards
+LANGUAGE SQL STABLE
+AS $$
+  SELECT *
+    FROM public.cards
+   WHERE active
+   ORDER BY id
+   LIMIT greatest(coalesce(p_count, 50), 1);
+$$;
+
+CREATE TABLE public.round_cards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   round_id UUID NOT NULL REFERENCES public.rounds(id),
+  card_id UUID NOT NULL DEFAULT gen_random_uuid(),
+  card_order INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL
 );
 

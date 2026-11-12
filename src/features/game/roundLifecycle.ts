@@ -10,7 +10,7 @@ export interface AliasRoundPauseState {
   paused_ms: number;
 }
 
-type RoundAction = 'end' | 'pause' | 'resume';
+type RoundAction = 'activate' | 'end' | 'pause' | 'resume';
 
 async function postRoundAction<T>(
   roundId: string,
@@ -24,7 +24,10 @@ async function postRoundAction<T>(
     `/api/v1/alias/rounds/${encodeURIComponent(roundId)}/${action}`,
     {
       method: 'POST',
-      headers: { 'x-tg-init-data': initData },
+      headers: action === 'activate'
+        ? { 'x-tg-init-data': initData, 'content-type': 'application/json' }
+        : { 'x-tg-init-data': initData },
+      ...(action === 'activate' ? { body: '{}' } : {}),
     },
   );
 
@@ -74,4 +77,28 @@ export async function setAliasRoundVoiceState(
     throw new Error('INVALID_ALIAS_ROUND_PAUSE_RESPONSE');
   }
   return state as unknown as AliasRoundPauseState;
+}
+export interface AliasRoundActivationResult {
+  outcome: 'activated' | 'already_active';
+  card_count: number;
+}
+
+export async function activateAliasRound(
+  roundId: string,
+  initData: string | null,
+): Promise<AliasRoundActivationResult> {
+  const payload = await postRoundAction<unknown>(roundId, 'activate', initData);
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('INVALID_ALIAS_ROUND_ACTIVATION_RESPONSE');
+  }
+  const result = payload as Record<string, unknown>;
+  if (
+    !['activated', 'already_active'].includes(String(result.outcome))
+    || !Number.isSafeInteger(result.card_count)
+    || (result.card_count as number) < 0
+    || (result.card_count as number) > 100
+  ) {
+    throw new Error('INVALID_ALIAS_ROUND_ACTIVATION_RESPONSE');
+  }
+  return result as unknown as AliasRoundActivationResult;
 }

@@ -461,3 +461,179 @@ async fn start_game_rejects_incomplete_one_vs_one_rosters() {
         .expect("round count");
     assert_eq!(count, 0);
 }
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn round_activation_is_atomic_authenticated_and_concurrent_safe() {
+    let room_id = Uuid::new_v4();
+    let round_id = Uuid::new_v4();
+    let team_id = Uuid::new_v4();
+    let card_a = Uuid::new_v4();
+    let card_b = Uuid::new_v4();
+    let inactive_card = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, settings)
+         VALUES ($1, 7, 'waiting', 'team', $2)",
+    )
+    .bind(room_id)
+    .bind(json!({"cards_per_round": 2, "deck": {"categories": ["player"]}}))
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.teams (id, room_id) VALUES ($1, $2)")
+        .bind(team_id)
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("team");
+    sqlx::query("INSERT INTO public.room_players (room_id, player_id, team_id) VALUES ($1, 7, $2)")
+        .bind(room_id)
+        .bind(team_id)
+        .execute(&db)
+        .await
+        .expect("member");
+    sqlx::query(
+        "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
+         VALUES ($1, $2, $3, 1, 'pending', 7)",
+    )
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .execute(&db)
+    .await
+    .expect("round");
+    sqlx::query(
+        "INSERT INTO public.cards (id, active) VALUES ($1, true), ($2, true), ($3, false)",
+    )
+    .bind(card_a)
+    .bind(card_b)
+    .bind(inactive_card)
+    .execute(&db)
+    .await
+    .expect("cards");
+
+    let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
+    let (denied, _) = call_at(
+        database_app(8).0,
+        &uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(denied, StatusCode::FORBIDDEN);
+
+    let (first, second) = tokio::join!(
+        call_at(app.clone(), &uri, json!({}), Some("valid-test-init-data")),
+        call_at(app, &uri, json!({}), Some("valid-test-init-data")),
+    );
+    assert_eq!(first.0, StatusCode::OK);
+    assert_eq!(second.0, StatusCode::OK);
+    let outcomes = [
+        first.1["outcome"].as_str().expect("first outcome"),
+        second.1["outcome"].as_str().expect("second outcome"),
+    ];
+    assert!(outcomes.contains(&"activated"));
+    assert!(outcomes.contains(&"already_active"));
+    assert_eq!(first.1["card_count"], 2);
+    assert_eq!(second.1["card_count"], 2);
+
+    let room_state: (String, Option<Uuid>) =
+        sqlx::query_as("SELECT status, current_round_id FROM public.rooms WHERE id = $1")
+            .bind(room_id)
+            .fetch_one(&db)
+            .await
+            .expect("room state");
+    assert_eq!(room_state.0, "playing");
+    assert_eq!(room_state.1, Some(round_id));
+
+    let round_status: String =
+        sqlx::query_scalar("SELECT status FROM public.rounds WHERE id = $1")
+            .bind(round_id)
+            .fetch_one(&db)
+            .await
+            .expect("round status");
+    assert_eq!(round_status, "active");
+
+    let dealt: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT card_id, card_order, status
+           FROM public.round_cards
+          WHERE round_id = $1
+          ORDER BY card_order",
+    )
+    .bind(round_id)
+    .fetch_all(&db)
+    .await
+    .expect("dealt cards");
+    assert_eq!(dealt.len(), 2);
+    assert_eq!(dealt.iter().map(|row| row.1).collect::<Vec<_>>(), vec![1, 2]);
+    assert!(dealt.iter().all(|row| row.2 == "pending"));
+    assert!(dealt.iter().all(|row| row.0 != inactive_card));
+}
+
+#[tokio::test]
+#[ignore = "requires the isolated alias lifecycle PostgreSQL fixture"]
+async fn round_activation_recovers_a_claimed_but_not_dealt_round() {
+    let room_id = Uuid::new_v4();
+    let round_id = Uuid::new_v4();
+    let team_id = Uuid::new_v4();
+    let old_card = Uuid::new_v4();
+    let new_card = Uuid::new_v4();
+    let (app, db) = database_app(7);
+
+    sqlx::query(
+        "INSERT INTO public.rooms (id, host_id, status, mode, current_round_id)
+         VALUES ($1, 7, 'playing', 'team', $2)",
+    )
+    .bind(room_id)
+    .bind(round_id)
+    .execute(&db)
+    .await
+    .expect("room");
+    sqlx::query("INSERT INTO public.room_players (room_id, player_id) VALUES ($1, 7)")
+        .bind(room_id)
+        .execute(&db)
+        .await
+        .expect("member");
+    sqlx::query(
+        "INSERT INTO public.rounds (id, room_id, team_id, round_number, status, explainer_id)
+         VALUES ($1, $2, $3, 1, 'pending', 7)",
+    )
+    .bind(round_id)
+    .bind(room_id)
+    .bind(team_id)
+    .execute(&db)
+    .await
+    .expect("round");
+    sqlx::query("INSERT INTO public.round_cards (round_id, card_id, card_order, status) VALUES ($1, $2, 1, 'pending')")
+        .bind(round_id)
+        .bind(old_card)
+        .execute(&db)
+        .await
+        .expect("stale partial card");
+    sqlx::query("INSERT INTO public.cards (id, active) VALUES ($1, true)")
+        .bind(new_card)
+        .execute(&db)
+        .await
+        .expect("new card");
+
+    let uri = format!("/api/v1/alias/rounds/{round_id}/activate");
+    let (status, response) = call_at(
+        app,
+        &uri,
+        json!({}),
+        Some("valid-test-init-data"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(response["outcome"], "activated");
+
+    let dealt: Vec<Uuid> =
+        sqlx::query_scalar("SELECT card_id FROM public.round_cards WHERE round_id = $1")
+            .bind(round_id)
+            .fetch_all(&db)
+            .await
+            .expect("dealt cards");
+    assert_eq!(dealt, vec![new_card]);
+}

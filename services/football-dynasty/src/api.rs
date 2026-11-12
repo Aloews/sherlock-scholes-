@@ -47,6 +47,10 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/api/v1/alias/rounds/{round_id}/end", post(alias_end_round))
         .route(
+            "/api/v1/alias/rounds/{round_id}/activate",
+            post(alias_activate_round),
+        )
+        .route(
             "/api/v1/alias/rounds/{round_id}/pause",
             post(alias_pause_round),
         )
@@ -316,6 +320,205 @@ async fn alias_start(
     Ok(Json(AliasStartResponse {
         first_round_id,
         total_rounds,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AliasRoundActivationRequest {}
+
+#[derive(Debug, Serialize)]
+struct AliasRoundActivationResponse {
+    outcome: String,
+    card_count: usize,
+}
+
+#[derive(Debug, FromRow)]
+struct AliasRoundActivation {
+    room_id: Uuid,
+    round_number: i32,
+    round_status: String,
+    room_status: String,
+    current_round_id: Option<Uuid>,
+    mode: String,
+    settings: Value,
+}
+
+async fn alias_activate_round(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(round_id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(_request): Json<AliasRoundActivationRequest>,
+) -> Result<Json<AliasRoundActivationResponse>, ApiError> {
+    let init_data = headers
+        .get("x-tg-init-data")
+        .and_then(|value| value.to_str().ok())
+        .ok_or_else(ApiError::unauthorized)?;
+
+    let mut tx = state.db.begin().await?;
+    let round = sqlx::query_as::<_, AliasRoundActivation>(
+        "SELECT r.room_id,
+                r.round_number,
+                r.status AS round_status,
+                ro.status AS room_status,
+                ro.current_round_id,
+                ro.mode,
+                ro.settings
+           FROM public.rounds AS r
+           JOIN public.rooms AS ro ON ro.id = r.room_id
+          WHERE r.id = $1
+          FOR UPDATE OF ro, r",
+    )
+    .bind(round_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    let member = sqlx::query_scalar::<_, i64>(
+        "SELECT player_id
+           FROM public.room_players
+          WHERE room_id = $1 AND player_id = $2
+          FOR KEY SHARE",
+    )
+    .bind(round.room_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if member.is_none() {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "room_membership_required",
+        ));
+    }
+
+    if round.round_status == "active" {
+        if round.current_round_id != Some(round_id) {
+            return Err(ApiError::conflict("alias_round_not_current"));
+        }
+        let card_count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM public.round_cards WHERE round_id = $1")
+                .bind(round_id)
+                .fetch_one(&mut *tx)
+                .await?;
+        tx.commit().await?;
+        return Ok(Json(AliasRoundActivationResponse {
+            outcome: "already_active".into(),
+            card_count: usize::try_from(card_count).unwrap_or(0),
+        }));
+    }
+    if round.round_status != "pending" {
+        return Err(ApiError::conflict("alias_round_not_pending"));
+    }
+
+    let is_recovering_claim = round.room_status == "playing"
+        && round.current_round_id == Some(round_id);
+    if !is_recovering_claim {
+        match (round.room_status.as_str(), round.current_round_id) {
+            ("waiting", None) if round.round_number == 1 => {}
+            ("playing", Some(previous_round_id)) => {
+                let previous = sqlx::query_as::<_, (i32, String)>(
+                    "SELECT round_number, status
+                       FROM public.rounds
+                      WHERE id = $1 AND room_id = $2
+                      FOR UPDATE",
+                )
+                .bind(previous_round_id)
+                .bind(round.room_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+                let Some((previous_number, previous_status)) = previous else {
+                    return Err(ApiError::conflict("alias_previous_round_missing"));
+                };
+                if previous_status != "completed"
+                    || previous_number.checked_add(1) != Some(round.round_number)
+                {
+                    return Err(ApiError::conflict("alias_round_sequence_invalid"));
+                }
+            }
+            _ => return Err(ApiError::conflict("alias_round_sequence_invalid")),
+        }
+    }
+
+    let card_count = if round.mode == "1v1" {
+        100_i64
+    } else {
+        round
+            .settings
+            .get("cards_per_round")
+            .and_then(Value::as_i64)
+            .unwrap_or(5)
+    };
+    let card_count = i32::try_from(card_count)
+        .ok()
+        .filter(|count| (1..=100).contains(count))
+        .ok_or_else(|| ApiError::bad_request("invalid_alias_card_count"))?;
+
+    let filter = match round.settings.get("deck") {
+        Some(value) if value.is_object() => value.clone(),
+        _ => {
+            let mut filter = serde_json::Map::new();
+            if let Some(categories) = round.settings.get("categories") {
+                filter.insert("categories".into(), categories.clone());
+            }
+            Value::Object(filter)
+        }
+    };
+    let card_ids = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM public.pick_random_cards($1, $2, $3)",
+    )
+    .bind(filter)
+    .bind(card_count)
+    .bind(init_data)
+    .fetch_all(&mut *tx)
+    .await?;
+    if card_ids.is_empty() {
+        return Err(ApiError::bad_request("no_cards_for_room_deck"));
+    }
+
+    // Pending rounds may contain leftovers from the former multi-request
+    // activation path. Replace those rows before the atomic deal.
+    sqlx::query("DELETE FROM public.round_cards WHERE round_id = $1")
+        .bind(round_id)
+        .execute(&mut *tx)
+        .await?;
+
+    let mut insert = sqlx::QueryBuilder::<Postgres>::new(
+        "INSERT INTO public.round_cards (round_id, card_id, card_order, status) ",
+    );
+    insert.push_values(card_ids.iter().enumerate(), |mut row, (index, card_id)| {
+        row.push_bind(round_id)
+            .push_bind(*card_id)
+            .push_bind((index + 1) as i32)
+            .push_bind("pending");
+    });
+    insert.build().execute(&mut *tx).await?;
+
+    sqlx::query(
+        "UPDATE public.rooms
+            SET status = 'playing',
+                current_round_id = $2,
+                started_at = COALESCE(started_at, now())
+          WHERE id = $1",
+    )
+    .bind(round.room_id)
+    .bind(round_id)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "UPDATE public.rounds
+            SET status = 'active', started_at = now()
+          WHERE id = $1 AND status = 'pending'",
+    )
+    .bind(round_id)
+    .execute(&mut *tx)
+    .await?;
+
+    let dealt_count = card_ids.len();
+    tx.commit().await?;
+    Ok(Json(AliasRoundActivationResponse {
+        outcome: "activated".into(),
+        card_count: dealt_count,
     }))
 }
 

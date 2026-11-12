@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  activateAliasRound,
   endAliasRound,
   setAliasRoundVoiceState,
 } from './roundLifecycle';
@@ -62,4 +63,33 @@ describe('Alias round lifecycle API', () => {
     await expect(endAliasRound('round-1', 'signed-data')).rejects.toThrow('room_membership_required');
     await expect(endAliasRound('round-1', 'signed-data')).rejects.toThrow('INVALID_ALIAS_ROUND_END_RESPONSE');
   });
+
+  it('activates a round through the Rust API and validates the dealt card count', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ outcome: 'activated', card_count: 5 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(activateAliasRound('round-1', 'signed-data'))
+      .resolves.toEqual({ outcome: 'activated', card_count: 5 });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/alias/rounds/round-1/activate', {
+      method: 'POST',
+      headers: { 'x-tg-init-data': 'signed-data', 'content-type': 'application/json' },
+      body: '{}',
+    });
+  });
+
+  it('rejects an invalid activation response and never deals from the client on API failure', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome: 'activated', card_count: 101 }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'no_cards_for_room_deck' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(activateAliasRound('round-1', 'signed-data'))
+      .rejects.toThrow('INVALID_ALIAS_ROUND_ACTIVATION_RESPONSE');
+    await expect(activateAliasRound('round-1', 'signed-data'))
+      .rejects.toThrow('no_cards_for_room_deck');
+  });
+
 });

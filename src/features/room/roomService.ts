@@ -4,14 +4,13 @@ import { supabase } from '@/shared/lib/supabase';
 import type {
   Room, RoomSettings, GameMode, Team, RoomPlayer, Round, RoundCard,
 } from '@/shared/types/database';
-import { pickCardIds } from '@/features/game/cardRandomizer';
 import { isCardTranslationLang } from '@/shared/lib/cardName';
 import { getRawInitData } from '@/shared/lib/telegram';
-import { pinnableFilter, roomDeckFilter } from '@/features/room/roomDeck';
+import { pinnableFilter } from '@/features/room/roomDeck';
 import type { DeckFilter } from '@/shared/types/deck';
 import { CODE_LENGTH, normalizeCode } from '@/features/lobby/invite';
 import { requestAliasRoundPlan, startAliasGame } from '@/features/room/roundPlan';
-import { endAliasRound } from '@/features/game/roundLifecycle';
+import { activateAliasRound, endAliasRound } from '@/features/game/roundLifecycle';
 
 function requireRoomCode(room: Room, expectedCode?: string): Room {
   const code = normalizeCode(room.code);
@@ -337,42 +336,9 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 // and the useGame watchdog can never deal two hands or start the timer twice.
 // Cards are inserted BEFORE the round goes 'active' — clients fetch the hand
 // the moment they see the active event.
-export async function activateRound(roundId: string, room: Room): Promise<boolean> {
-  const { data: claimed } = await supabase
-    .from('rooms')
-    .update({ status: 'playing', current_round_id: roundId, started_at: new Date().toISOString() })
-    .eq('id', room.id)
-    .or(`current_round_id.is.null,current_round_id.neq.${roundId}`)
-    .select('id');
-
-  if (!claimed?.length) return false;
-
-  // 1v1 always uses 100 cards (big buffer — player shouldn't run out in 60s)
-  const cardsCount = room.mode === '1v1' ? 100 : room.settings.cards_per_round;
-
-  // One filter for the room, so both teams face the same spread — whatever the
-  // host narrowed it to in the lobby, and the whole deck when they narrowed
-  // nothing. roomDeckFilter is also what the lobby counts, so the number under
-  // the Start button and this hand can never describe different decks.
-  // Ids only: this inserts round_cards and never reads another column. Asking
-  // for whole rows shipped 141 kB to the host to extract 100 UUIDs (4.9 kB),
-  // on the critical path between "start" and the first card appearing.
-  const cardIds = await pickCardIds(roomDeckFilter(room.settings), cardsCount);
-
-  await supabase.from('round_cards').insert(
-    cardIds.map((cardId, i) => ({
-      round_id:   roundId,
-      card_id:    cardId,
-      card_order: i + 1,
-      status:     'pending',
-    })),
-  );
-
-  await supabase
-    .from('rounds')
-    .update({ status: 'active', started_at: new Date().toISOString() })
-    .eq('id', roundId);
-  return true;
+export async function activateRound(roundId: string, _room: Room): Promise<boolean> {
+  const result = await activateAliasRound(roundId, getRawInitData());
+  return result.outcome === 'activated';
 }
 
 // ─── Cards ───────────────────────────────────────────────────
