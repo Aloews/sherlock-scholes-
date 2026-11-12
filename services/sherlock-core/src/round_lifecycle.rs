@@ -209,12 +209,7 @@ mod tests {
         }
     }
 
-    fn round(
-        id: &str,
-        number: u32,
-        status: RoundStatus,
-        cards: Vec<CardProgress>,
-    ) -> RoundRecord {
+    fn round(id: &str, number: u32, status: RoundStatus, cards: Vec<CardProgress>) -> RoundRecord {
         RoundRecord {
             id: id.into(),
             room_id: "room-1".into(),
@@ -282,7 +277,10 @@ mod tests {
             vec![card("a", CardStatus::Correct)],
         )]);
 
-        assert_eq!(game.end_round("round-1", 10).unwrap(), EndRoundOutcome::GameEnd);
+        assert_eq!(
+            game.end_round("round-1", 10).unwrap(),
+            EndRoundOutcome::GameEnd
+        );
         assert_eq!(
             game.end_round("round-1", 20).unwrap(),
             EndRoundOutcome::AlreadyEnded
@@ -295,14 +293,12 @@ mod tests {
 
     #[test]
     fn final_round_finishes_the_room_in_the_same_operation() {
-        let mut game = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
 
-        assert_eq!(game.end_round("round-1", 123).unwrap(), EndRoundOutcome::GameEnd);
+        assert_eq!(
+            game.end_round("round-1", 123).unwrap(),
+            EndRoundOutcome::GameEnd
+        );
         assert_eq!(game.room.status, RoomStatus::Finished);
         assert_eq!(game.room.ended_at_ms, Some(123));
         assert_eq!(game.scores[0].points, 0);
@@ -326,7 +322,10 @@ mod tests {
             "round-1",
             1,
             RoundStatus::Active,
-            vec![card("a", CardStatus::Correct), card("b", CardStatus::Correct)],
+            vec![
+                card("a", CardStatus::Correct),
+                card("b", CardStatus::Correct),
+            ],
         )]);
         game.scores.push(RoundScore {
             room_id: "room-1".into(),
@@ -365,12 +364,7 @@ mod tests {
 
     #[test]
     fn pause_is_explainer_only_and_idempotent() {
-        let mut game = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
 
         assert_eq!(
             game.pause_round("round-1", 7, 10).unwrap(),
@@ -400,12 +394,7 @@ mod tests {
             PauseOutcome::Unchanged
         );
 
-        let mut capped = game(vec![round(
-            "round-1",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut capped = game(vec![round("round-1", 1, RoundStatus::Active, Vec::new())]);
         capped.rounds[0].paused_ms = MAX_ROUND_PAUSE_MS;
         assert_eq!(
             capped.pause_round("round-1", 7, 10).unwrap(),
@@ -456,12 +445,7 @@ mod tests {
 
     #[test]
     fn pause_and_resume_for_unknown_or_foreign_rounds_fail_without_mutation() {
-        let mut game = game(vec![round(
-            "foreign",
-            1,
-            RoundStatus::Active,
-            Vec::new(),
-        )]);
+        let mut game = game(vec![round("foreign", 1, RoundStatus::Active, Vec::new())]);
         game.rounds[0].room_id = "other-room".into();
         let before = game.clone();
 
