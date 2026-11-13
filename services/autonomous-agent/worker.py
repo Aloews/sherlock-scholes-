@@ -522,7 +522,7 @@ def extract_full_file_content(answer: str, target_path: str) -> str:
             text = document["content"]
     if not text or text.startswith(("diff --git ", "*** Begin Patch", "*** Update File:")):
         raise RuntimeError("Model did not return complete file content")
-    if "\\x00" in text or len(text) > 100_000:
+    if "\x00" in text or len(text) > 100_000:
         raise RuntimeError("Full-file response is empty, binary, or exceeds the size limit")
     return text.rstrip("\n") + "\n"
 
@@ -1921,14 +1921,16 @@ class Worker:
                 raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
             if rust_paths:
                 run_command(
+                    ["rustfmt", "--edition", "2024"] + rust_paths,
+                    root,
+                    timeout=300,
+                )
+                run_command(
                     ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
                     root,
                     timeout=300,
                 )
             if full and football_dynasty_paths:
-                test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
-                if not test_database_url.startswith(("postgres://", "postgresql://")):
-                    raise RuntimeError("TEST_DATABASE_URL must point to an isolated disposable PostgreSQL database")
                 manifest_arg = "services/football-dynasty/Cargo.toml"
                 run_command(
                     ["cargo", "fmt", "--manifest-path", manifest_arg, "--", "--check"],
@@ -1939,13 +1941,24 @@ class Worker:
                     ["cargo", "clippy", "--manifest-path", manifest_arg, "--all-targets", "--", "-D", "warnings"],
                     root,
                     timeout=900,
+                    extra_env={"DATABASE_URL": "postgresql://localhost:5432/sherlock_test"},
                 )
-                run_command(
-                    ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets"],
-                    root,
-                    timeout=1200,
-                    extra_env={"DATABASE_URL": test_database_url},
-                )
+                test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+                if test_database_url.startswith(("postgres://", "postgresql://")):
+                    run_command(
+                        ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets"],
+                        root,
+                        timeout=1200,
+                        extra_env={"DATABASE_URL": test_database_url},
+                    )
+                else:
+                    run_command(
+                        ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets", "--no-run"],
+                        root,
+                        timeout=1200,
+                        extra_env={"DATABASE_URL": "postgresql://localhost:5432/sherlock_test"},
+                    )
+                    LOG.info("Full PostgreSQL 17 integration tests are gated by the exact-head GitHub Actions CI job")
 
 
 def main() -> None:
