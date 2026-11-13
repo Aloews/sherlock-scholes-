@@ -349,6 +349,8 @@ Expected Railway runtime variable names:
 - `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID`
 - `STARIMG_API_KEY` and `GITHUB_TOKEN`
 
+For this deployment, add provider keys to Railway → project `distinguished-transformation` → service `sherlock-ai-bot` → production → Variables. Never commit them or paste them into GitHub.
+
 A variable name in this list is not evidence that a credential is available to the runtime. Verify presence on the actual Railway service without reading or printing its value. Missing provider credentials must be reported as `not_configured`; never infer a successful connection from a dashboard label or a key name.
 
 ### 14.4 Safety and release gates
@@ -360,6 +362,6 @@ A variable name in this list is not evidence that a credential is available to t
 
 ### 14.5 Current verification state
 
-- Starimg's authenticated model catalog selected `claude-fable-5-2` in the Railway runtime.
-- The first controlled smoke task was started, but a successful generated PR was not yet observed. Do not mark end-to-end inference, internal review, or external review as verified until the smoke task produces its PR and the reviewer posts a SHA-scoped result.
+- Starimg's authenticated model catalog selected `claude-fable-5-2`; the implementer generated a smoke-test PR and the separate reviewer posted a SHA-scoped PASS comment using the same model. The smoke PR was closed without merging.
+- This verifies model inference, durable PR handoff, and independent review. It does not verify production feature deployment or the provider APIs whose credentials are still absent from the reviewer runtime.
 - The multi-agent worker, tests, and provider preflight are changed on the runtime branch; rerun CI on the latest head before treating the branch as release-ready.
