@@ -1597,6 +1597,57 @@ class Worker:
                         except Exception as exc:
                             validation_error = str(exc)[:3000]
                             previous_patch = patch or answer
+                            if (
+                                attempt == 1
+                                and any(token in validation_error.lower() for token in (
+                                    "did not apply", "does not apply", "context does not match",
+                                ))
+                            ):
+                                target_file = temp / target_path
+                                original_exists = target_file.is_file()
+                                original_content = (
+                                    target_file.read_text(encoding="utf-8")
+                                    if original_exists else ""
+                                )
+                                full_answer = ""
+                                try:
+                                    full_answer, full_usage = ask_starimg_full_file(
+                                        self.starimg_base, self.starimg_key, self.model,
+                                        file_task, issue_number, target_path,
+                                        original_content,
+                                        context[:12000],
+                                    )
+                                    usage_records.append(full_usage)
+                                    write_full_file_content(
+                                        temp, target_path, full_answer, self.allowed_prefixes
+                                    )
+                                    run_command(["git", "diff", "--check"], temp)
+                                    self._validate(temp, [target_path])
+                                    changed = sorted(set(
+                                        run_command(["git", "diff", "--name-only"], temp).splitlines()
+                                        + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
+                                    ))
+                                    if target_path not in changed:
+                                        raise RuntimeError("Full-file fallback did not change its assigned path")
+                                    applied = True
+                                    LOG.info(
+                                        "Task %s file %s recovered with exact full-file replacement",
+                                        comment_id, target_path,
+                                    )
+                                    break
+                                except Exception as full_exc:
+                                    if original_exists:
+                                        target_file.write_text(original_content, encoding="utf-8")
+                                    else:
+                                        target_file.unlink(missing_ok=True)
+                                    validation_error = (
+                                        "Full-file fallback failed: " + str(full_exc)
+                                    )[:3000]
+                                    previous_patch = full_answer or previous_patch
+                                    LOG.warning(
+                                        "Task %s file %s full-file fallback failed: %s",
+                                        comment_id, target_path, validation_error[:800],
+                                    )
                             if attempt >= MAX_GENERATION_ATTEMPTS:
                                 raise RuntimeError(
                                     f"Implementation unit {target_path} failed after {attempt} attempts: {validation_error}"
@@ -1611,7 +1662,7 @@ class Worker:
                             file_context = (
                                 exact_file
                                 + "\n\n--- Supporting repository context ---\n"
-                                + context[:24000]
+                                + context[:12000]
                             )[:MAX_CONTEXT_CHARS]
                     if not applied:
                         raise RuntimeError(f"Implementation unit was not applied: {target_path}")
