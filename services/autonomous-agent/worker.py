@@ -38,6 +38,7 @@ REPO_ALLOWED_PREFIXES = {
     "Aloews/sherlock-scholes-": DEFAULT_ALLOWED_PREFIXES,
     "Aloews/first-traffic-platform": ("src/", "test/", "tests/", "scripts/", "docs/", "api/", "server/", "backend/"),
     "Aloews/russian-dev-projects": ("pages/", "docs/", "scripts/"),
+    "Aloews/full": ("luxury-estate/", "docs/"),
     "Aloews/sherlock-tv": ("src/", "test/", "tests/", "scripts/", "docs/"),
     "Aloews/sherlock-ai-bot": ("api/", "src/", "test/", "tests/", "scripts/", "docs/"),
     "Aloews/Novel-forge": ("src/", "app/", "pages/", "api/", "test/", "tests/", "scripts/", "docs/"),
