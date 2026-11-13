@@ -9,6 +9,8 @@
  * while every screen still showed time left.
  */
 
+export const MAX_ROUND_PAUSE_MS = 120_000;
+
 export interface RoundClock {
   /** When the round's clock started, from the server. */
   startedAt: string | null;
@@ -21,17 +23,22 @@ export interface RoundClock {
 }
 
 /**
- * Milliseconds of the round that have actually been played by `now`.
- *
- * A pause in progress is subtracted as it happens, so the number simply stops
- * moving — which is what "the timer is on hold" has to mean for every client
- * at once, not just the one that noticed the drop.
+ * Active pause time is capped by the same two-minute allowance as pause_round.
+ * If the explainer never reconnects, the clock resumes when that allowance is
+ * exhausted; a stale paused_at value must not freeze a room indefinitely.
  */
+function activePauseMs(clock: RoundClock, now: number): number {
+  if (!clock.pausedAt) return 0;
+  const allowance = Math.max(0, MAX_ROUND_PAUSE_MS - clock.pausedMs);
+  const spent = Math.max(0, now - new Date(clock.pausedAt).getTime());
+  return Math.min(allowance, spent);
+}
+
+/** Milliseconds of the round that have actually been played by `now`. */
 export function elapsedMs(clock: RoundClock, now: number): number {
   if (!clock.startedAt) return 0;
   const since = now - new Date(clock.startedAt).getTime();
-  const held = clock.pausedAt ? now - new Date(clock.pausedAt).getTime() : 0;
-  return Math.max(0, since - clock.pausedMs - Math.max(0, held));
+  return Math.max(0, since - clock.pausedMs - activePauseMs(clock, now));
 }
 
 /** Whole seconds left, floored at zero. */
@@ -41,22 +48,19 @@ export function remainingSeconds(clock: RoundClock, now: number): number {
 }
 
 /**
- * The wall-clock moment this round runs out, given the pauses so far.
- *
- * For a round on hold this keeps moving into the future with every call —
- * correctly: nobody can say when a paused round ends, and a fallback timer
- * scheduled against it simply keeps being rescheduled until the clock runs
- * again.
+ * The wall-clock moment this round runs out, including only the unused part
+ * of the two-minute pause allowance.
  */
 export function deadlineAt(clock: RoundClock, now: number): number {
   if (!clock.startedAt) return now + clock.seconds * 1000;
   return new Date(clock.startedAt).getTime()
     + clock.seconds * 1000
     + clock.pausedMs
-    + (clock.pausedAt ? Math.max(0, now - new Date(clock.pausedAt).getTime()) : 0);
+    + activePauseMs(clock, now);
 }
 
 /** Whether the clock is being held right now. */
-export function isPaused(clock: RoundClock): boolean {
-  return clock.pausedAt !== null;
+export function isPaused(clock: RoundClock, now: number = Date.now()): boolean {
+  const allowance = Math.max(0, MAX_ROUND_PAUSE_MS - clock.pausedMs);
+  return clock.pausedAt !== null && allowance > 0 && activePauseMs(clock, now) < allowance;
 }

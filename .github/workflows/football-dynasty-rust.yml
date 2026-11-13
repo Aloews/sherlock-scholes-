@@ -4,16 +4,34 @@ on:
   pull_request:
     paths:
       - "services/football-dynasty/**"
+      - "services/sherlock-core/**"
+      - "src/features/game/roundLifecycle.ts"
+      - "src/features/game/roundLifecycle.test.ts"
+      - "src/features/game/useGame.ts"
+      - "src/features/room/roundPlan.ts"
+      - "src/features/room/roundPlan.test.ts"
+      - "src/features/room/roomService.ts"
+      - "src/features/room/roomService.test.ts"
+      - "contracts/alias_round_code_cases.json"
+      - "contracts/alias_round_plan_cases.json"
       - "docs/football-dynasty/**"
       - "docs/MAP.md"
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
       - "supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql"
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
+      - "supabase/migrations/end_round_rpc.sql"
+      - "supabase/migrations/pause_round_on_voice_drop.sql"
+      - "supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql"
+      - "supabase/migrations/20261112160000_restrict_alias_end_round_rpc.sql"
+      - "supabase/migrations/20261112170000_alias_card_decision_timestamp.sql"
+      - "supabase/tests/alias_round_lifecycle_setup.sql"
+      - "supabase/tests/alias_round_lifecycle.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
     branches: [main]
     paths:
       - "services/football-dynasty/**"
+      - "services/sherlock-core/**"
       - ".github/workflows/football-dynasty-rust.yml"
 
 permissions:
@@ -56,6 +74,15 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Run tests
         run: cargo test --all-targets
+      - name: Check Sherlock core formatting
+        working-directory: services/sherlock-core
+        run: cargo fmt --all -- --check
+      - name: Run Sherlock core Clippy
+        working-directory: services/sherlock-core
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run Sherlock core tests
+        working-directory: services/sherlock-core
+        run: cargo test --all-targets
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -71,6 +98,25 @@ jobs:
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_rls.test.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_owner_rls.test.sql
+
+      - name: Alias round lifecycle SQL integration tests
+        working-directory: services/football-dynasty
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sherlock_alias_test"
+          ALIAS_DATABASE_URL="postgres://postgres:postgres@localhost:5432/sherlock_alias_test"
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle_setup.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112170000_alias_card_decision_timestamp.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/end_round_rpc.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112160000_restrict_alias_end_round_rpc.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/pause_round_on_voice_drop.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261112143000_fix_alias_pause_resume_column_ambiguity.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/alias_round_lifecycle.test.sql
+          psql "$ALIAS_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP FUNCTION public.end_round(UUID)"
+          DATABASE_URL="$ALIAS_DATABASE_URL" cargo test --test alias_round_plan_api -- --ignored
+
+      - name: Build Vercel Rust service container
+        working-directory: .
+        run: docker build --file services/football-dynasty/Dockerfile.vercel --tag sherlock-scholes-rust-api:ci services
       - name: Export resolved dependency lockfile
         if: always()
         uses: actions/upload-artifact@v4

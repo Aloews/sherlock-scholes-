@@ -6,9 +6,9 @@ import { renderHook } from '@testing-library/react';
 // that decides whether the game is playable: a pause nobody lifts is a worse
 // bug than a round lost to a bad connection.
 
-const rpc = vi.fn();
-vi.mock('@/shared/lib/supabase', () => ({
-  supabase: { rpc: (...args: unknown[]) => rpc(...args) },
+const setVoiceState = vi.fn();
+vi.mock('@/features/game/roundLifecycle', () => ({
+  setAliasRoundVoiceState: (...args: unknown[]) => setVoiceState(...args),
 }));
 
 let initData: string | null = 'signed-init-data';
@@ -28,11 +28,11 @@ const base: Input = {
   status: 'on',
 };
 
-const calls = () => rpc.mock.calls.map((c) => c[0] as string);
+const calls = () => setVoiceState.mock.calls.map((c) => c[1] as string);
 
 beforeEach(() => {
-  rpc.mockReset();
-  rpc.mockResolvedValue({ error: null });
+  setVoiceState.mockReset();
+  setVoiceState.mockResolvedValue({ paused_at: null, paused_ms: 0 });
   initData = 'signed-init-data';
 });
 
@@ -42,18 +42,15 @@ describe('holding the clock', () => {
     expect(calls()).toEqual([]);
 
     rerender({ ...base, status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
-    expect(rpc.mock.calls[0][1]).toEqual({
-      p_round_id: 'round-1',
-      p_init_data: 'signed-init-data',
-    });
+    expect(calls()).toEqual(['pause']);
+    expect(setVoiceState.mock.calls[0]).toEqual(['round-1', 'pause', 'signed-init-data']);
   });
 
   it('lifts the pause when the link comes back', () => {
     const { rerender } = renderHook((p: Input) => usePauseOnVoiceDrop(p), { initialProps: base });
     rerender({ ...base, status: 'unavailable' });
     rerender({ ...base, status: 'on' });
-    expect(calls()).toEqual(['pause_round', 'resume_round']);
+    expect(calls()).toEqual(['pause', 'resume']);
   });
 
   // The RPCs are idempotent, but a request per render is still a request per
@@ -63,7 +60,7 @@ describe('holding the clock', () => {
     rerender({ ...base, status: 'unavailable' });
     rerender({ ...base, status: 'unavailable' });
     rerender({ ...base, status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
   });
 
   // A pause that failed to send must be retried, or the round stays held on a
@@ -73,15 +70,15 @@ describe('holding the clock', () => {
   // silently failed leaves the round held forever.
   it('sends it again on its own after a request that did not land', async () => {
     vi.useFakeTimers();
-    rpc.mockResolvedValueOnce({ error: new Error('offline') });
+    setVoiceState.mockRejectedValueOnce(new Error('offline'));
     const { rerender } = renderHook((p: Input) => usePauseOnVoiceDrop(p), { initialProps: base });
     rerender({ ...base, status: 'unavailable' });
 
     await vi.advanceTimersByTimeAsync(0);
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
 
     await vi.advanceTimersByTimeAsync(2500);
-    expect(calls()).toEqual(['pause_round', 'pause_round']);
+    expect(calls()).toEqual(['pause', 'pause']);
     vi.useRealTimers();
   });
 });
@@ -153,10 +150,10 @@ describe('where it refuses to act', () => {
   it('forgets the previous round, including that its link was ever up', () => {
     const { rerender } = renderHook((p: Input) => usePauseOnVoiceDrop(p), { initialProps: base });
     rerender({ ...base, status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
 
     // A new round starts from nothing: its own link has not been up yet.
     rerender({ ...base, roundId: 'round-2', status: 'unavailable' });
-    expect(calls()).toEqual(['pause_round']);
+    expect(calls()).toEqual(['pause']);
   });
 });

@@ -11,8 +11,8 @@ const BOT = 'sherlock_scholes_bot';
  */
 const APP_NAME = (import.meta.env.VITE_TG_APP_NAME as string | undefined) ?? '';
 
-/** Room codes are six chars, uppercase letters and digits — see `create_team_room`. */
-const CODE_RE = /^[A-Z0-9]{6}$/;
+/** Room codes contain one to six uppercase letters or digits. */
+const CODE_RE = /^[A-Z0-9]{1,6}$/;
 
 /**
  * A room code as it arrives from an untrusted source: Telegram's start_param,
@@ -20,11 +20,13 @@ const CODE_RE = /^[A-Z0-9]{6}$/;
  * one. Callers must never navigate on the raw value.
  */
 export function normalizeCode(raw: string | null | undefined): string | null {
-  const code = (raw ?? '').trim().toUpperCase();
+  const trimmed = (raw ?? '').trim();
+  if (!/^[A-Za-z0-9]{1,6}$/.test(trimmed)) return null;
+  const code = trimmed.toUpperCase();
   return CODE_RE.test(code) ? code : null;
 }
 
-/** Room codes are six characters. Exported so the UI never re-guesses it. */
+/** Maximum room-code length; shorter legacy codes remain valid. */
 export const CODE_LENGTH = 6;
 
 /**
@@ -58,8 +60,17 @@ function extractCode(raw: string): string {
   const text = (raw ?? '').trim();
   // ОБЕ формы, и `startapp` первой: ссылки, разосланные до смены формата,
   // продолжают ходить по чатам, и код в них тот же самый.
-  const fromLink = /[?&](?:startapp|start)=([^&\s]+)/i.exec(text);
-  const candidate = fromLink ? decodeURIComponent(fromLink[1]) : text;
+  const fromLink = /[?&](?:startapp|start)=([^&\s]*)/i.exec(text);
+  const isUrl = /https?:\/\/\S+/i.test(text);
+  if (isUrl && !fromLink) return '';
+  let candidate = text;
+  if (fromLink) {
+    try {
+      candidate = decodeURIComponent(fromLink[1]);
+    } catch {
+      return '';
+    }
+  }
   return candidate.replace(/[^a-zA-Z0-9]/g, '');
 }
 
@@ -71,7 +82,10 @@ function extractCode(raw: string): string {
  * join with", and the caller may act on it without asking.
  */
 export function codeFromText(raw: string | null | undefined): string | null {
-  return normalizeCode(extractCode(raw ?? ''));
+  const text = (raw ?? '').trim();
+  if (!text) return null;
+  const hasInviteParam = /[?&](?:startapp|start)=/i.test(text);
+  return normalizeCode(hasInviteParam ? extractCode(text) : text);
 }
 
 /**
