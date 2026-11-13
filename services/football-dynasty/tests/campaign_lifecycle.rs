@@ -388,7 +388,8 @@ async fn squad_seeding_is_deterministic_idempotent_and_owner_isolated() {
         .connect(&database_url)
         .await
         .expect("runtime pool");
-    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let owner_id = 900_000_000_000_i64
+        + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
     let state = AppState {
         db: pool.clone(),
         verifier: Arc::new(FixedVerifier(owner_id)),
