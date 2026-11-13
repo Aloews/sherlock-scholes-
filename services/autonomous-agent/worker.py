@@ -338,7 +338,12 @@ def patch_file_context(root: Path, patch: str,
             body = path.read_text(encoding="utf-8")
         except (OSError, UnicodeError):
             continue
-        parts.append(f"\n--- EXACT CURRENT FILE CONTENT AFTER RESET: {relative} ---\n{context_excerpt(body)}")
+        used = sum(len(part) for part in parts)
+        remaining = max(0, MAX_CONTEXT_CHARS - used)
+        if remaining <= 0:
+            break
+        excerpt = body if len(body) <= remaining else context_excerpt(body, min(MAX_FILE_CONTEXT_CHARS, remaining))
+        parts.append(f"\n--- EXACT CURRENT FILE CONTENT AFTER RESET: {relative} ---\n{excerpt}")
     return "\n".join(parts)
 
 
@@ -377,6 +382,11 @@ def extract_patch(answer: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOW
     if start < 0:
         raise RuntimeError("Model did not return a unified git diff")
     patch = text[start:].strip() + "\n"
+    patch_lines = patch.splitlines()
+    for index, line in enumerate(patch_lines):
+        if line.startswith("+") and not line.startswith("+++"):
+            patch_lines[index] = line.rstrip(" \t")
+    patch = "\n".join(patch_lines).rstrip() + "\n"
     if len(patch) > MAX_PATCH_CHARS:
         raise RuntimeError("Generated patch exceeds the size limit")
     headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
