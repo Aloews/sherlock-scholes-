@@ -404,22 +404,97 @@ def extract_patch(answer: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOW
 
 
 def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
-    """Accept a normal diff or a complete single-file response and build a safe git patch."""
+    """Accept git diff, apply_patch, or a complete single-file response."""
     try:
         return extract_patch(answer, (target_path,))
     except RuntimeError as error:
         if "Model did not return a unified git diff" not in str(error):
             raise
 
-    # Some Claude responses return a fenced complete file instead of the requested diff.
+    target = root / target_path
+    apply_header = f"*** Update File: {target_path}"
+    add_header = f"*** Add File: {target_path}"
+    if add_header in answer and not target.exists():
+        lines = answer.splitlines()
+        marker = lines.index(add_header)
+        body: list[str] = []
+        for line in lines[marker + 1:]:
+            if line.startswith("*** "):
+                break
+            if line.startswith("+"):
+                body.append(line[1:])
+            elif line:
+                raise RuntimeError("Malformed apply_patch Add File body")
+        candidate = "\n".join(body) + "\n"
+        patch = (
+            f"diff --git a/{target_path} b/{target_path}\n"
+            "new file mode 100644\n"
+            + "".join(difflib.unified_diff(
+                [], candidate.splitlines(keepends=True),
+                fromfile="/dev/null", tofile=f"b/{target_path}"
+            ))
+        )
+        return extract_patch(patch, (target_path,))
+
+    if apply_header in answer and target.exists():
+        current_lines = target.read_text(encoding="utf-8").splitlines()
+        patch_lines = answer.splitlines()
+        marker = patch_lines.index(apply_header)
+        hunks: list[list[str]] = []
+        active: list[str] | None = None
+        for line in patch_lines[marker + 1:]:
+            if line.startswith("*** "):
+                if active is not None:
+                    hunks.append(active)
+                break
+            if line.startswith("@@"):
+                if active is not None:
+                    hunks.append(active)
+                active = []
+            elif active is not None:
+                active.append(line)
+        if active is not None:
+            hunks.append(active)
+        if not hunks:
+            raise RuntimeError("Malformed apply_patch Update File body")
+        for hunk in hunks:
+            old_block: list[str] = []
+            new_block: list[str] = []
+            for line in hunk:
+                if line.startswith("+"):
+                    new_block.append(line[1:])
+                elif line.startswith("-"):
+                    old_block.append(line[1:])
+                else:
+                    old_block.append(line)
+                    new_block.append(line)
+            if not old_block:
+                raise RuntimeError("apply_patch update hunk has no exact context")
+            match_at = next(
+                (i for i in range(len(current_lines) - len(old_block) + 1)
+                 if current_lines[i:i + len(old_block)] == old_block),
+                None,
+            )
+            if match_at is None:
+                raise RuntimeError("apply_patch update hunk context does not match the current file")
+            current_lines[match_at:match_at + len(old_block)] = new_block
+        candidate = "\n".join(current_lines) + "\n"
+        old_text = target.read_text(encoding="utf-8")
+        diff = "".join(difflib.unified_diff(
+            old_text.splitlines(keepends=True), candidate.splitlines(keepends=True),
+            fromfile=f"a/{target_path}", tofile=f"b/{target_path}"
+        ))
+        if not diff:
+            raise RuntimeError("apply_patch update produced no file change")
+        return extract_patch(f"diff --git a/{target_path} b/{target_path}\n" + diff, (target_path,))
+
+    # Some Claude responses return a fenced complete file instead of a diff.
     blocks = re.findall(r"```[a-zA-Z0-9_+.-]*\s*\n(.*?)\n```", answer, re.S)
     candidate = max(blocks, key=len).strip("\n") if blocks else ""
     if not candidate:
-        raise RuntimeError("Model returned neither a diff nor a complete-file code block")
-
+        raise RuntimeError("Model returned neither a diff, apply_patch block, nor a complete-file code block")
     if not candidate.endswith("\n"):
         candidate += "\n"
-    target = root / target_path
     if target.exists():
         current = target.read_text(encoding="utf-8")
         old_lines = current.splitlines(keepends=True)
@@ -429,7 +504,8 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
             raise RuntimeError("Cannot safely replace an existing empty file from a model response")
         anchors = old_nonempty[:2] + old_nonempty[-2:]
         if not all(anchor in candidate for anchor in anchors):
-            raise RuntimeError("Model code block is not a complete copy of the existing file")
+            preview = answer[:500].replace("\n", " ")
+            raise RuntimeError("Model code block is not a complete copy of the existing file: " + preview)
         diff = "".join(difflib.unified_diff(
             old_lines, new_lines, fromfile=f"a/{target_path}", tofile=f"b/{target_path}"
         ))
@@ -447,6 +523,7 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
             + diff
         )
     return extract_patch(patch, (target_path,))
+
 
 
 def ask_starimg(base: str, key: str, model: str, task: str,
