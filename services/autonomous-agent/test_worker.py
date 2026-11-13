@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -338,6 +339,68 @@ class WorkerPolicyTests(unittest.TestCase):
             result["choices"][0]["message"]["content"],
             "diff --git a/src/a.rs b/src/a.rs\n",
         )
+
+    def test_anthropic_empty_text_diagnostic_includes_http_status_and_body_metadata(self):
+        events = [
+            {"type": "message_start", "message": {"usage": {"input_tokens": 12}}},
+            {"type": "content_block_start", "content_block": {"type": "thinking"}},
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn"},
+                "usage": {"output_tokens": 0},
+            },
+            {"type": "message_stop"},
+        ]
+        payload = b"".join(
+            ("event: " + event["type"] + "\ndata: " + json.dumps(event) + "\n\n").encode("utf-8")
+            for event in events
+        )
+
+        class DiagnosticResponse(io.BytesIO):
+            status = 200
+            headers = {
+                "content-type": "text/event-stream",
+                "request-id": "req-no-text-001",
+            }
+
+        with patch(
+            "worker.urllib.request.urlopen",
+            return_value=DiagnosticResponse(payload),
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                starimg_anthropic_stream_completion(
+                    "https://ai.starimg.ru/v1",
+                    "test-key",
+                    {"model": "claude-fable-5-2", "messages": []},
+                )
+
+        message = str(raised.exception)
+        self.assertIn("HTTP 200", message)
+        self.assertIn("req-no-text-001", message)
+        self.assertIn("thinking", message)
+        self.assertIn("end_turn", message)
+        self.assertIn("body_bytes=", message)
+
+    def test_anthropic_http_error_diagnostic_includes_status_and_body(self):
+        error = urllib.error.HTTPError(
+            "https://ai.starimg.ru/v1/messages",
+            429,
+            "Too Many Requests",
+            {"content-type": "application/json", "x-request-id": "req-limit-429"},
+            io.BytesIO(b'{"error":{"type":"rate_limit_error","message":"rate limit"}}'),
+        )
+        with patch("worker.urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(RuntimeError) as raised:
+                starimg_anthropic_stream_completion(
+                    "https://ai.starimg.ru/v1",
+                    "test-key",
+                    {"model": "claude-fable-5-2", "messages": []},
+                )
+
+        message = str(raised.exception)
+        self.assertIn("HTTP 429", message)
+        self.assertIn("req-limit-429", message)
+        self.assertIn("rate limit", message)
 
     def test_single_file_extractor_accepts_apply_patch_add_file(self):
         with tempfile.TemporaryDirectory() as directory:
