@@ -691,8 +691,54 @@ class WorkerPolicyTests(unittest.TestCase):
 
         with patch.dict(os.environ, {}, clear=True):
             result = integration_preflight()
-        self.assertEqual(result["supabase"]["status"], "not_configured")
-        self.assertEqual(result["vercel"]["status"], "not_configured")
+        for provider in ("cloudflare", "fly", "neon", "railway_api", "render", "supabase", "vercel"):
+            self.assertEqual(result[provider]["status"], "not_configured", provider)
+
+    def test_integration_preflight_checks_configured_providers_without_returning_tokens(self):
+        from worker import integration_preflight
+
+        secrets = {
+            "CLOUDFLARE_API_TOKEN": "cloudflare-secret",
+            "FLY_API_TOKEN": "fly-secret",
+            "NEON_API_KEY": "neon-secret",
+            "RAILWAY": "railway-secret",
+            "RENDER_API_KEY": "render-secret",
+            "SUPABASE_ACCESS_TOKEN": "supabase-secret",
+            "SUPABASE_PROJECT_REF": "test-project",
+            "VERCEL_TOKEN": "vercel-secret",
+            "VERCEL_PROJECT_ID": "project-id",
+            "VERCEL_TEAM_ID": "team-id",
+        }
+
+        def fake_provider_request(url, token, method="GET", payload=None,
+                                  token_header="Authorization", timeout=20):
+            if "cloudflare" in url:
+                return {"result": {"status": "active"}}
+            if "machines.dev" in url:
+                return {"total_apps": 2}
+            if "neon.tech" in url:
+                return {"projects": [{}, {}]}
+            if "render.com" in url:
+                return [{}, {}]
+            if "railway.com" in url:
+                return {"data": {"me": {"name": "workspace"}}}
+            if "supabase.com" in url:
+                return {"status": "ACTIVE", "region": "eu-central-1", "database_version": "16"}
+            if "/v9/projects/" in url:
+                return {"name": "sherlock"}
+            if "/v6/deployments" in url:
+                return {"deployments": [{"readyState": "READY", "meta": {"githubCommitSha": "abc"}}]}
+            raise AssertionError(f"Unexpected provider URL: {url}")
+
+        with patch.dict(os.environ, secrets, clear=True), \
+             patch("worker.provider_request_json", side_effect=fake_provider_request):
+            result = integration_preflight()
+
+        for provider in ("cloudflare", "fly", "neon", "railway_api", "render", "supabase", "vercel"):
+            self.assertEqual(result[provider]["status"], "connected", provider)
+        rendered = json.dumps(result)
+        for secret in secrets.values():
+            self.assertNotIn(secret, rendered)
 
 
 
