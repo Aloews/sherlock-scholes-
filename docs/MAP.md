@@ -363,5 +363,5 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 ### 14.5 Current verification state
 
 - Starimg's authenticated model catalog selected `claude-fable-5-2`; the implementer completed architect → implementer → internal reviewer handoffs and opened PR #409. The external Railway reviewer posted SHA-scoped PASS comments on smoke PR #408 and task PR #409.
-- The dedicated autonomous-agent unit suite and Docker build passed on the previous worker head; full branch CI for the latest head is still running.
+- Full GitHub Actions CI passed on exact runtime PR head `61a00b96bdb14721501aa55ba3f5e2db837c99ee`, including autonomous-agent tests, Python tests, frontend tests, Edge Functions, and build.
 - The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR preview deployments are blocked by the free-plan daily deployment cap.
