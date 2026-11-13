@@ -33,7 +33,7 @@ CREATE TABLE fd.contracts (
     CHECK (
         (status = 'released' AND released_at IS NOT NULL) OR
         (status != 'released' AND released_at IS NULL)
-    ),
+    )
 );
 
 -- Partial unique index: at most one active contract per player
