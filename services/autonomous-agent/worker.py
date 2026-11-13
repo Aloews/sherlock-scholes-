@@ -23,8 +23,8 @@ MAX_TASK_CHARS = 3000
 MAX_ISSUE_CONTEXT_CHARS = 8000
 MAX_FILES = 8
 MAX_CONTEXT_FILES = 8
-MAX_CONTEXT_CHARS = 120000
-MAX_FILE_CONTEXT_CHARS = 120000
+MAX_CONTEXT_CHARS = 60000
+MAX_FILE_CONTEXT_CHARS = 60000
 MAX_PATCH_CHARS = 100000
 MAX_COMPLETION_TOKENS = 9000
 MAX_GENERATION_ATTEMPTS = 3
@@ -1348,7 +1348,7 @@ class Worker:
                     file_context = (
                         target_context
                         + "\n\n--- Supporting repository context ---\n"
-                        + context[:24000]
+                        + context[:8000]
                     )[:MAX_CONTEXT_CHARS]
                     file_task = (
                         task
