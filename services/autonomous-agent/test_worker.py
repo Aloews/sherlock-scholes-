@@ -384,6 +384,45 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertIn("end_turn", message)
         self.assertIn("body_bytes=", message)
 
+    def test_anthropic_sse_response_stops_at_message_stop_even_for_json_mode(self):
+        events = [
+            {"type": "message_start", "message": {"usage": {"input_tokens": 8}}},
+            {"type": "content_block_start", "content_block": {"type": "text"}},
+            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "OK"}},
+            {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 1}},
+            {"type": "message_stop"},
+            {"type": "provider_tail", "text": "must not be read"},
+        ]
+        payload = b"".join(
+            ("event: " + event["type"] + "\ndata: " + json.dumps(event) + "\n\n").encode("utf-8")
+            for event in events
+        )
+
+        class SseResponse(io.BytesIO):
+            status = 200
+            headers = {
+                "content-type": "text/event-stream",
+                "request-id": "req-json-mode-sse",
+            }
+
+            def read(self, *args, **kwargs):
+                raise AssertionError("SSE response must stop on message_stop, not read to EOF")
+
+        with patch(
+            "worker.urllib.request.urlopen",
+            return_value=SseResponse(payload),
+        ) as urlopen:
+            result = starimg_anthropic_stream_completion(
+                "https://ai.starimg.ru/v1",
+                "test-key",
+                {"model": "claude-fable-5-2", "stream": False, "messages": []},
+            )
+
+        self.assertEqual(result["choices"][0]["message"]["content"], "OK")
+        request = urlopen.call_args.args[0]
+        self.assertEqual(json.loads(request.data)["stream"], False)
+        self.assertEqual(request.get_header("Accept"), "application/json")
+
     def test_anthropic_http_error_diagnostic_includes_status_and_body(self):
         error = urllib.error.HTTPError(
             "https://ai.starimg.ru/v1/messages",
