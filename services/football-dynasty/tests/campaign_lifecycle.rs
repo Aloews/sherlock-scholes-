@@ -93,7 +93,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         Err(VerifyError::Invalid)
     ));
 
-    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let owner_id = 900_000_000_000_i64
+        + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
     let state = AppState {
         db: pool.clone(),
         verifier: Arc::new(FixedVerifier(owner_id)),
