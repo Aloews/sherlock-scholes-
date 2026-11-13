@@ -852,11 +852,25 @@ def is_reviewable_pr(pr: dict[str, Any]) -> bool:
     head = pr.get("head") or {}
     branch = str(head.get("ref", ""))
     body = str(pr.get("body", "") or "")
-    return (
-        not bool(pr.get("draft"))
-        and branch.startswith("ai/task-")
-        and "sherlock-agent-task:" in body
-    )
+    if bool(pr.get("draft")):
+        return False
+    if branch.startswith("ai/task-"):
+        return "sherlock-agent-task:" in body
+    if branch.startswith("feat/sherlock-multi-agent-runtime-"):
+        return "sherlock-agent-runtime-review:" in body
+    return False
+
+
+def reviewer_issue_number(pr: dict[str, Any]) -> int | None:
+    head = pr.get("head") or {}
+    branch = str(head.get("ref", ""))
+    match = re.match(r"^ai/task-(\d+)-\d+$", branch)
+    if match:
+        return int(match.group(1))
+    if branch.startswith("feat/sherlock-multi-agent-runtime-"):
+        number = int(pr.get("number", 0) or 0)
+        return number or None
+    return None
 
 
 def has_review_marker(comments: list[dict[str, Any]], head_sha: str) -> bool:
@@ -1664,10 +1678,9 @@ class Worker:
             if not diff.strip() or len(diff) > MAX_PATCH_CHARS:
                 LOG.warning("Reviewer skipped PR #%s: diff is empty or exceeds the review limit", number)
                 continue
-            match = re.match(r"^ai/task-(\d+)-\d+$", str(head.get("ref", "")))
-            if not match:
+            issue_number = reviewer_issue_number(pr)
+            if issue_number is None:
                 continue
-            issue_number = int(match.group(1))
             issue = request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}"), self.token)
             context = json.dumps({
                 "pull_request": {
