@@ -894,20 +894,125 @@ def validate_reviewer_output(review: dict[str, Any]) -> list[dict[str, Any]]:
     return blocking_findings(review.get("findings"))
 
 
+def provider_request_json(
+    url: str,
+    token: str,
+    method: str = "GET",
+    payload: dict[str, Any] | None = None,
+    token_header: str = "Authorization",
+    timeout: int = 20,
+) -> Any:
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    credential = f"Bearer {token}" if token_header == "Authorization" else token
+    headers = {
+        token_header: credential,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "sherlock-scholes-agent-runtime",
+    }
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            raw = response.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"provider returned HTTP {exc.code}") from None
+
+
 def integration_preflight() -> dict[str, Any]:
+    """Read-only connection checks; never returns or logs provider credentials."""
     result: dict[str, Any] = {
-        "railway": {
+        "railway_runtime": {
             "service": os.environ.get("RAILWAY_SERVICE_NAME", "unknown"),
             "environment": os.environ.get("RAILWAY_ENVIRONMENT_NAME", "unknown"),
         }
     }
+
+    checks: list[tuple[str, str, Any]] = [
+        (
+            "cloudflare",
+            os.environ.get("CLOUDFLARE_API_TOKEN", "").strip(),
+            lambda token: {
+                "token_status": (provider_request_json(
+                    "https://api.cloudflare.com/client/v4/user/tokens/verify", token
+                ).get("result") or {}).get("status", "unknown")
+            },
+        ),
+        (
+            "fly",
+            os.environ.get("FLY_API_TOKEN", "").strip(),
+            lambda token: {
+                "apps_visible": int(provider_request_json(
+                    "https://api.machines.dev/v1/apps?org_slug=personal", token
+                ).get("total_apps", 0))
+            },
+        ),
+        (
+            "neon",
+            os.environ.get("NEON_API_KEY", "").strip(),
+            lambda token: {
+                "projects_visible": len(provider_request_json(
+                    "https://console.neon.tech/api/v2/projects?limit=10", token
+                ).get("projects", []))
+            },
+        ),
+        (
+            "render",
+            os.environ.get("RENDER_API_KEY", "").strip(),
+            lambda token: {
+                "services_visible": len(provider_request_json(
+                    "https://api.render.com/v1/services?limit=10", token
+                ))
+            },
+        ),
+    ]
+    for name, token, probe in checks:
+        if not token:
+            result[name] = {"status": "not_configured"}
+            continue
+        try:
+            result[name] = {"status": "connected", **probe(token)}
+        except Exception as exc:
+            result[name] = {"status": "unavailable", "reason": type(exc).__name__}
+
+    railway_token = (
+        os.environ.get("RAILWAY_API_TOKEN", "").strip()
+        or os.environ.get("RAILWAY", "").strip()
+    )
+    if not railway_token:
+        result["railway_api"] = {"status": "not_configured"}
+    else:
+        endpoint = "https://backboard.railway.com/graphql/v2"
+        try:
+            response = provider_request_json(
+                endpoint, railway_token, method="POST",
+                payload={"query": "query { me { name email } }"},
+            )
+            errors = response.get("errors") or []
+            if errors:
+                raise RuntimeError("account/workspace token query was rejected")
+            result["railway_api"] = {"status": "connected", "scope": "account_or_workspace"}
+        except Exception:
+            try:
+                response = provider_request_json(
+                    endpoint, railway_token, method="POST",
+                    payload={"query": "query { projectToken { projectId environmentId } }"},
+                    token_header="Project-Access-Token",
+                )
+                errors = response.get("errors") or []
+                if errors:
+                    raise RuntimeError("project token query was rejected")
+                result["railway_api"] = {"status": "connected", "scope": "project"}
+            except Exception as exc:
+                result["railway_api"] = {"status": "unavailable", "reason": type(exc).__name__}
+
     supabase_token = os.environ.get("SUPABASE_ACCESS_TOKEN", "").strip()
     supabase_ref = os.environ.get("SUPABASE_PROJECT_REF", "").strip()
     if supabase_token and supabase_ref:
         try:
-            project = request_json(
+            project = provider_request_json(
                 f"https://api.supabase.com/v1/projects/{urllib.parse.quote(supabase_ref, safe='')}",
-                supabase_token, timeout=20,
+                supabase_token,
             )
             result["supabase"] = {
                 "status": project.get("status", "unknown"),
@@ -925,16 +1030,16 @@ def integration_preflight() -> dict[str, Any]:
     if vercel_token and vercel_project and vercel_team:
         try:
             query = urllib.parse.urlencode({"teamId": vercel_team})
-            project = request_json(
+            project = provider_request_json(
                 f"https://api.vercel.com/v9/projects/{urllib.parse.quote(vercel_project, safe='')}?{query}",
-                vercel_token, timeout=20,
+                vercel_token,
             )
             deployments_query = urllib.parse.urlencode({
                 "projectId": vercel_project, "teamId": vercel_team, "target": "production", "limit": 1,
             })
-            deployments = request_json(
+            deployments = provider_request_json(
                 f"https://api.vercel.com/v6/deployments?{deployments_query}",
-                vercel_token, timeout=20,
+                vercel_token,
             )
             latest = (deployments.get("deployments") or [{}])[0]
             result["vercel"] = {
