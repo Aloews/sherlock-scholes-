@@ -606,7 +606,7 @@ async fn another_test() {}
     def test_ask_starimg_full_file_append_mode_requests_only_new_test_items(self):
         from worker import ask_starimg_full_file
 
-        snippet = "#[tokio::test]\\nasync fn focused_test() {}"
+        snippet = "#[tokio::test]\nasync fn focused_test() {}"
         with patch("worker.starimg_anthropic_stream_completion", return_value={
             "choices": [{"message": {"content": snippet}}],
             "usage": {"input_tokens": 20, "output_tokens": 10},
@@ -618,7 +618,7 @@ async fn another_test() {}
                 "Add missing roster regression tests",
                 394,
                 "services/football-dynasty/tests/campaign_lifecycle.rs",
-                "use std::sync::Arc;\\n",
+                "use std::sync::Arc;\n",
                 "roster module context",
                 output_mode="append",
                 max_tokens=5000,
@@ -640,8 +640,8 @@ async fn another_test() {}
         worker.starimg_key = "test-key"
         worker.model = "claude-fable-5-1"
         target_path = "services/football-dynasty/tests/campaign_lifecycle.rs"
-        original = "use std::sync::Arc;\\n\\nasync fn existing_helper() {}\\n"
-        append_block = "#[tokio::test]\\nasync fn appended_regression_test() {}\\n"
+        original = "use std::sync::Arc;\n\nasync fn existing_helper() {}\n"
+        append_block = "#[tokio::test]\nasync fn appended_regression_test() {}\n"
 
         def fake_run(command, cwd, **kwargs):
             if command == ["git", "diff", "--name-only"]:
@@ -656,15 +656,17 @@ async fn another_test() {}
             target.parent.mkdir(parents=True)
             target.write_text(original, encoding="utf-8")
             usage_records = []
-            with patch("worker.ask_starimg_full_file", return_value=(append_block, {"output_tokens": 50})), \\
-                 patch("worker.run_command", side_effect=fake_run), \\
-                 patch.object(worker, "_validate") as validate:
+            with (
+                patch("worker.ask_starimg_full_file", return_value=(append_block, {"output_tokens": 50})),
+                patch("worker.run_command", side_effect=fake_run),
+                patch.object(worker, "_validate") as validate,
+            ):
                 worker._implement_append_rust_tests(
                     root, target_path, "task", 394, "context", 6860303413, usage_records
                 )
 
             updated = target.read_text(encoding="utf-8")
-            self.assertTrue(updated.startswith(original.rstrip() + "\\n\\n"))
+            self.assertTrue(updated.startswith(original.rstrip() + "\n\n"))
             self.assertIn("appended_regression_test", updated)
             self.assertIn("existing_helper", updated)
             validate.assert_called_once_with(root, [target_path])
