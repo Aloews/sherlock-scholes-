@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use axum::{
@@ -435,10 +435,18 @@ async fn squad_is_seeded_deterministically_with_correct_distribution() {
         *position_counts.entry(position).or_insert(0) += 1;
 
         let player_id = player["id"].as_str().expect("player id");
-        assert!(player_ids.insert(player_id), "Duplicate player ID: {}", player_id);
+        assert!(
+            player_ids.insert(player_id),
+            "Duplicate player ID: {}",
+            player_id
+        );
 
         let seed_index = player["seed_index"].as_i64().expect("seed_index");
-        assert!(seed_indices.insert(seed_index), "Duplicate seed_index: {}", seed_index);
+        assert!(
+            seed_indices.insert(seed_index),
+            "Duplicate seed_index: {}",
+            seed_index
+        );
 
         assert!(player["full_name"].as_str().expect("full_name").len() > 0);
         assert!(player["age"].as_i64().expect("age") >= 16);
@@ -457,7 +465,11 @@ async fn squad_is_seeded_deterministically_with_correct_distribution() {
         assert_eq!(contract["status"].as_str().expect("status"), "active");
         let start_year = contract["start_year"].as_i64().expect("start_year");
         let end_year = contract["end_year"].as_i64().expect("end_year");
-        assert_eq!(end_year - start_year, 3, "Initial contracts should be 3 years");
+        assert_eq!(
+            end_year - start_year,
+            3,
+            "Initial contracts should be 3 years"
+        );
         assert!(contract["wage_per_year"].as_i64().expect("wage") > 0);
     }
 
@@ -582,7 +594,11 @@ async fn concurrent_first_squad_reads_produce_identical_deterministic_results() 
 
     for result in &results[1..] {
         let players = result["players"].as_array().expect("players");
-        assert_eq!(players.len(), 23, "All concurrent reads must return 23 players");
+        assert_eq!(
+            players.len(),
+            23,
+            "All concurrent reads must return 23 players"
+        );
 
         for (i, player) in players.iter().enumerate() {
             let expected_id = first_players[i]["id"].as_str().expect("expected id");
@@ -920,9 +936,15 @@ async fn contract_renewal_release_and_expiry_are_transactional() {
     )
     .await;
     assert_eq!(after_release_status, StatusCode::OK);
-    assert_eq!(after_release["players"].as_array().expect("players").len(), 23);
     assert_eq!(
-        after_release["contracts"].as_array().expect("active contracts").len(),
+        after_release["players"].as_array().expect("players").len(),
+        23
+    );
+    assert_eq!(
+        after_release["contracts"]
+            .as_array()
+            .expect("active contracts")
+            .len(),
         22
     );
 
@@ -944,7 +966,10 @@ async fn contract_renewal_release_and_expiry_are_transactional() {
         .as_i64()
         .expect("resigned end year");
 
-    let mut tx = pool.begin().await.expect("advance campaign year transaction");
+    let mut tx = pool
+        .begin()
+        .await
+        .expect("advance campaign year transaction");
     sqlx::query("SET LOCAL ROLE fd_runtime")
         .execute(&mut *tx)
         .await
@@ -971,9 +996,15 @@ async fn contract_renewal_release_and_expiry_are_transactional() {
     )
     .await;
     assert_eq!(after_expiry_status, StatusCode::OK);
-    assert_eq!(after_expiry["players"].as_array().expect("players").len(), 23);
     assert_eq!(
-        after_expiry["contracts"].as_array().expect("active contracts").len(),
+        after_expiry["players"].as_array().expect("players").len(),
+        23
+    );
+    assert_eq!(
+        after_expiry["contracts"]
+            .as_array()
+            .expect("active contracts")
+            .len(),
         22
     );
 
