@@ -295,7 +295,7 @@ pub async fn get_squad(
     )
     .bind(campaign_id)
     .bind(club_id)
-    .fetch_all(&mut **tx)
+    .fetch_all(&mut *tx)
     .await?;
 
     let mut players = Vec::with_capacity(rows.len());
@@ -353,7 +353,7 @@ pub async fn sign_or_renew_contract(
     .bind(campaign_id)
     .bind(request.player_id)
     .bind(club_id)
-    .fetch_optional(&mut **tx)
+    .fetch_optional(&mut *tx)
     .await?;
     if player_exists.is_none() {
         return Err(ApiError::not_found());
@@ -373,7 +373,7 @@ pub async fn sign_or_renew_contract(
     .bind(request.wage_per_week)
     .bind(context.current_year)
     .bind(end_year)
-    .fetch_optional(&mut **tx)
+    .fetch_optional(&mut *tx)
     .await?;
 
     let contract_id = match updated {
@@ -390,7 +390,7 @@ pub async fn sign_or_renew_contract(
             .bind(request.wage_per_week)
             .bind(context.current_year)
             .bind(end_year)
-            .execute(&mut **tx)
+            .execute(&mut *tx)
             .await?;
             id
         }
@@ -427,7 +427,7 @@ pub async fn release_contract(
     .bind(campaign_id)
     .bind(player_id)
     .bind(club_id)
-    .fetch_optional(&mut **tx)
+    .fetch_optional(&mut *tx)
     .await?
     .ok_or_else(ApiError::not_found)?;
 
