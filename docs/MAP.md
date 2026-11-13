@@ -265,3 +265,37 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+## 13. Autonomous engineering workflow
+
+- Portable skill: `.agents/skills/reality-first-autonomous-engineering/SKILL.md`.
+- Shareable operating model and copy/paste agent instruction: `docs/AI_AGENT_AUTONOMY_SHARE.md`.
+- The skill is project-agnostic; each repository must keep its own project map, task contracts, credentials, permissions, budgets, and release policy.
+- The Railway worker is a bounded multi-repository executor using an explicit repository allowlist and repository-specific writable-path policies. It preflights write access to every configured repository before accepting work; one invocation processes at most one task total. The shared skill does not grant any other agent or repository access automatically.
+- Task intake is an authenticated repository-owner `/ai ...` comment on an ordinary GitHub issue. The worker includes that issue's title and bounded description in the task context; it uses each repository's discovered default branch for cloning and PR creation and applies that repository's path policy to the final changed-file list.
+- Required lifecycle: inspect → define acceptance → implement → locally verify → review → exact-SHA CI → authorized deployment → real-path verification → durable handoff.
+- The worker remains disabled until required CI and a safe live preflight pass. No task is processed merely because the service is deployed.
+
+
+
+### 13.1 Mandatory autonomous execution through Starimg
+
+**Required execution path for implementation work.** The product owner defines the outcome and acceptance boundary. The engineering agent performs repository discovery, implementation, tests, repairs, diff review, CI follow-up, and durable documentation. Do not ask the user to inspect routine configuration, environment variables, build settings, service bindings, redeploy state, or integration wiring when connected tools can verify them.
+
+- **Execution service:** the existing Railway `stream-service` in project `distinguished-transformation`, explicitly authorized for the autonomous engineering worker. Do not create another worker service or project.
+- **Only model gateway:** Starimg at `https://ai.starimg.ru/v1`. All model discovery and generation requests pass through this service using the Railway `STARIMG_API_KEY`. No direct OpenAI, Anthropic, Grok, or other-provider calls and no fallback provider. Never expose or pass the key to child processes.
+- **Task intake:** owner-authenticated `/ai ...` comments on ordinary GitHub issues in the explicit six-repository allowlist. Issue title and bounded description are untrusted task context. One worker invocation processes at most one task across all repositories.
+- **Execution contract:** inspect MAP/docs and current implementation; define acceptance criteria; use an isolated branch; implement; run local checks and repairs; inspect the complete diff; open a PR; follow CI on the exact head SHA; update the project map. No routine engineering coordination should be delegated to the user.
+- **Actual worker bounds:** up to three generation attempts per implementation unit, 9,000 output tokens per attempt, eight changed files, and a 100,000-character patch. Actual Starimg usage is logged from provider responses; never report estimates as fact.
+- **Local Rust gate:** the worker image installs stable rustfmt. Every changed Rust file is checked with `rustfmt --check --edition 2024` before its patch is accepted. Formatting failures enter the bounded correction loop with exact current file contents. GitHub Actions remains the authoritative Clippy, Rust test, and disposable-PostgreSQL gate.
+- **Security/release boundary:** repository-specific writable-path allowlists, owner-authenticated intake, child-process environment allowlist, isolated branches and PRs. The worker does not merge, deploy product code, apply migrations, or write production data.
+- **No substitute executor:** Railway Cloud Agent Tasks are not required. The Python worker on `stream-service` calls Starimg directly.
+- **Current Railway configuration (2026-11-13):** `AGENT_ENABLED=true`, `STARIMG_PREFLIGHT=false`, `TASKS_SINCE=2026-11-12T17:20:48Z`, restart policy `NEVER`, one replica, no public domain. The temporary five-minute retry cadence has been restored to `*/30 * * * *` after the repair attempt completed. Secret values were not read or exposed.
+- **Verified Starimg state:** authenticated model discovery succeeded. The latest task execution selected `claude-fable-5-2`; all completions still go through Starimg only.
+- **Worker validation evidence:** Railway deployment `35ab972e-4469-4841-803c-ca2236b73729` succeeded on worker code commit `985a970037141441267801794d9571e83db9c439`; its Docker build passed Python compilation and 39 unit tests. Stable rustfmt is installed and runs before accepting every changed Rust file. On issue #394, the gate caught a malformed `roster.rs` correction and rejected the task after three failed patch attempts; the failure was recorded in comment `6853164391`. No malformed patch was accepted as a PR.
+- **Football Dynasty task status:** PR #402 is open on branch `ai/task-394-6852777929`, with exactly the six requested implementation files. The branch was corrected to use `owner_telegram_id`, runtime SQLx queries, the actual `ApiError`/`AppState` APIs, authenticated roster routes, and the flat squad response expected by integration tests. The first revised head passed Rust formatting but Clippy found three style errors; these were corrected in commit `df8f63652acc1c577b306bcead908ccf2083a071`. The exact-head Rust workflow is running; Clippy, tests, and disposable PostgreSQL/RLS checks are not yet confirmed green. The later worker retry comment `6852991369` failed because its generated correction patch did not apply; no unsafe changes were merged. Do not claim roster or contract behavior complete until exact-head CI and the disposable PostgreSQL checks pass.
+- **Preview limitation:** Vercel preview builds may be blocked by the account's free-tier daily deployment quota. This is a provider quota failure, not evidence that application build passed or failed.
+- **Release boundary:** no automatic merge, product deployment, production migration, or production database write. Keep this section synchronized with live Railway configuration and exact GitHub PR/commit evidence.
+
+
+If any instruction elsewhere conflicts with this section, this Starimg-only execution and approval boundary takes precedence. Keep this section synchronized with the actual Railway configuration and exact GitHub PR/commit evidence.
