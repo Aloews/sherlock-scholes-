@@ -53,7 +53,7 @@ Common:
 - CLOUDFLARE_API_TOKEN (optional read-only token verification)
 - FLY_API_TOKEN (optional read-only app inventory)
 - NEON_API_KEY (optional read-only project inventory)
-- RAILWAY_API_TOKEN or RAILWAY (optional read-only GraphQL identity/project-token check)
+- RAILWAY_API_TOKEN or RAILWAY plus RAILWAY_WORKSPACE_ID (optional read-only GraphQL identity/workspace/project-token check)
 - RENDER_API_KEY (optional read-only service inventory)
 
 Reviewer-only, non-secret:
