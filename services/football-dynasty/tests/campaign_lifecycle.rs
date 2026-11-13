@@ -66,21 +66,38 @@ async fn call(
     response_json(app.oneshot(request).await.expect("response")).await
 }
 
+static TEST_DATABASE_SETUP: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
+
+async fn setup_test_database() -> String {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
+    TEST_DATABASE_SETUP
+        .get_or_init(|| async {
+            let migration_pool = PgPoolOptions::new()
+                .max_connections(2)
+                .connect(&database_url)
+                .await
+                .expect("migration pool");
+            sqlx::query(
+                "CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) \
+                 RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public \
+                 AS $fn$ SELECT NULL::bigint $fn$",
+            )
+            .execute(&migration_pool)
+            .await
+            .expect("test Telegram verifier stub");
+            sqlx::migrate!("./migrations")
+                .run(&migration_pool)
+                .await
+                .expect("migrations");
+            migration_pool.close().await;
+        })
+        .await;
+    database_url
+}
+
 #[tokio::test]
 async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -367,19 +384,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
 
 #[tokio::test]
 async fn squad_is_seeded_deterministically_with_correct_distribution() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -519,19 +524,7 @@ async fn squad_is_seeded_deterministically_with_correct_distribution() {
 
 #[tokio::test]
 async fn concurrent_first_squad_reads_produce_identical_deterministic_results() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -621,19 +614,7 @@ async fn concurrent_first_squad_reads_produce_identical_deterministic_results() 
 
 #[tokio::test]
 async fn owner_isolation_prevents_cross_campaign_access() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -704,19 +685,7 @@ async fn owner_isolation_prevents_cross_campaign_access() {
 
 #[tokio::test]
 async fn contract_signing_enforces_wage_and_term_bounds() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -824,21 +793,7 @@ async fn contract_signing_enforces_wage_and_term_bounds() {
 
 #[tokio::test]
 async fn contract_renewal_release_and_expiry_are_transactional() {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
-    let migration_pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("migration pool");
-    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool)
-        .await
-        .expect("test Telegram verifier stub");
-    sqlx::migrate!("./migrations")
-        .run(&migration_pool)
-        .await
-        .expect("migrations");
-    migration_pool.close().await;
+    let database_url = setup_test_database().await;
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
