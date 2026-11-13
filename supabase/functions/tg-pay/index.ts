@@ -31,7 +31,7 @@
 // Deploy / setWebhook: see ./README.md
 // ============================================================================
 
-import { createQuizCallback, formatQuizFacts, parseQuizCallback, parseQuizRound, questionRichBlocks, resultRichBlocks, type QuizRound } from "./rich-quiz.ts";
+import { createQuizCallback, formatQuizFacts, gamesMenuKeyboard, gamesMenuRichBlocks, parseQuizCallback, parseQuizRound, questionRichBlocks, resultRichBlocks, type QuizRound } from "./rich-quiz.ts";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 // Echoed by Telegram on every webhook update (set via setWebhook secret_token).
@@ -177,7 +177,6 @@ async function handleStart(chatId: number, text: string, lang: string): Promise<
     },
   });
 }
-
 type QuizSession = {
   session_key: string;
   chat_id: number;
@@ -357,8 +356,7 @@ async function sendQuizQuestion(chatId: number, createdBy: number, language: str
       body: JSON.stringify({ message_id: messageId }),
     });
     if (!saved.ok) console.error("[tg-pay] quiz message id write failed", saved.status);
-    return;
-  }
+    return;  }
 
   console.warn("[tg-pay] sendRichMessage unavailable; using inline-keyboard fallback", rich.description);
   const fallback = await tg("sendMessage", {
@@ -373,6 +371,34 @@ async function sendQuizQuestion(chatId: number, createdBy: number, language: str
       body: JSON.stringify({ message_id: fallbackId }),
     });
   }
+}
+
+async function sendGamesMenu(chatId: number, language: string, chatType: string): Promise<void> {
+  const ru = language.toLowerCase().startsWith("ru");
+  if (chatType !== "private") {
+    await tg("sendMessage", {
+      chat_id: chatId,
+      text: ru
+        ? "Открой личный чат с ботом: мини-игры запускаются там. Для игры прямо в переписке отправь /quiz."
+        : "Open a private chat with the bot to launch mini-games. To play directly in chat, send /quiz.",
+    });
+    return;
+  }
+
+  const rich = await tg("sendRichMessage", {
+    chat_id: chatId,
+    rich_message: { blocks: gamesMenuRichBlocks(APP_URL, language) },
+  });
+  if (rich.ok === true) return;
+
+  console.warn("[tg-pay] games menu Rich Message unavailable; using Web App keyboard fallback", rich.description);
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text: ru
+      ? "Sherlock Scholes — выбери мини-игру. Для чат-игры без открытия приложения отправь /quiz."
+      : "Sherlock Scholes — choose a mini-game. To play in chat without opening the app, send /quiz.",
+    reply_markup: gamesMenuKeyboard(APP_URL, language),
+  });
 }
 
 async function loadQuizSession(key: string, chatId: number, messageId: number): Promise<QuizSession | null> {
@@ -537,7 +563,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const secretHeader = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
-
   // ── Path 2: Telegram webhook update ──
   if (secretHeader !== null) {
     if (!TG_WEBHOOK_SECRET || secretHeader !== TG_WEBHOOK_SECRET) {
@@ -580,6 +605,12 @@ Deno.serve(async (req) => {
     // Text commands are read only after payment updates have been handled.
     const text = update.message?.text;
     const chatId = update.message?.chat?.id;
+
+    // Rich Message hub for the existing mini-games.
+    if (typeof text === "string" && /^\/games(?:@\w+)?(?:\s|$)/i.test(text) && typeof chatId === "number") {
+      await sendGamesMenu(chatId, update.message?.from?.language_code ?? "", update.message?.chat?.type ?? "");
+      return new Response("ok");
+    }
 
     // Chat-native quiz: structured Telegram Rich Message with callback actions.
     if (typeof text === "string" && /^\/quiz(?:@\w+)?(?:\s|$)/i.test(text) && typeof chatId === "number") {

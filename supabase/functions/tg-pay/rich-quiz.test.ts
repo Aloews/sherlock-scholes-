@@ -1,6 +1,8 @@
 import {
   createQuizCallback,
   formatQuizFacts,
+  gamesMenuKeyboard,
+  gamesMenuRichBlocks,
   parseQuizCallback,
   parseQuizRound,
   questionRichBlocks,
@@ -62,4 +64,22 @@ Deno.test("rich quiz messages contain one callback button per option and no answ
   }
   const result = resultRichBlocks(true, "Player 1", "0123456789abcdef", "ru");
   if (!JSON.stringify(result).includes("Следующий вопрос")) throw new Error("next action missing");
+});
+
+Deno.test("games hub exposes only the three existing mini-games through HTTPS Web App buttons", () => {
+  const blocks = gamesMenuRichBlocks("https://sherlock-scholes.vercel.app/", "ru");
+  const buttons = blocks.filter((block) => block.type === "buttons");
+  if (buttons.length !== 3) throw new Error(`expected three mini-game buttons, got ${buttons.length}`);
+  const serialized = JSON.stringify(blocks);
+  for (const game of ["quiz", "famous", "squad"]) {
+    if (!serialized.includes(`/minigames?game=${game}`)) throw new Error(`missing ${game} route`);
+  }
+  if (serialized.includes("http://")) throw new Error("insecure Web App URL emitted");
+  const fallback = gamesMenuKeyboard("https://sherlock-scholes.vercel.app", "en");
+  if (!Array.isArray((fallback as { inline_keyboard?: unknown }).inline_keyboard)) {
+    throw new Error("fallback inline keyboard missing");
+  }
+  let rejected = false;
+  try { gamesMenuRichBlocks("http://example.com", "ru"); } catch { rejected = true; }
+  if (!rejected) throw new Error("non-HTTPS APP_URL must be rejected");
 });

@@ -131,3 +131,43 @@ export function resultRichBlocks(
     },
   ];
 }
+
+function miniGameUrl(appUrl: string, game: "quiz" | "famous" | "squad"): string {
+  const base = new URL(appUrl);
+  if (base.protocol !== "https:") throw new Error("APP_URL must use HTTPS");
+  base.pathname = base.pathname.replace(/\/$/, "");
+  base.search = "";
+  base.hash = "";
+  return `${base.toString().replace(/\/$/, "")}/minigames?game=${game}`;
+}
+
+export function gamesMenuRichBlocks(appUrl: string, language: string): RichBlock[] {
+  const ru = language.toLowerCase().startsWith("ru");
+  const labels = ru
+    ? [["Угадай игрока", "quiz"], ["Кто известнее", "famous"], ["Чей состав", "squad"]] as const
+    : [["Guess the player", "quiz"], ["Who is more famous", "famous"], ["Whose squad", "squad"]] as const;
+  return [
+    { type: "heading", size: 2, text: "Sherlock Scholes" },
+    { type: "paragraph", text: ru ? "Выбери мини-игру." : "Choose a mini-game." },
+    { type: "divider" },
+    ...labels.map(([text, game]) => ({
+      type: "buttons",
+      buttons: [{ text, style: "primary", web_app: { url: miniGameUrl(appUrl, game) } }],
+      align: "center",
+    })),
+    { type: "paragraph", text: ru ? "Игра прямо в чате: отправь /quiz." : "Play directly in chat: send /quiz." },
+  ];
+}
+
+export function gamesMenuKeyboard(appUrl: string, language: string): Record<string, unknown> {
+  const ru = language.toLowerCase().startsWith("ru");
+  const labels = ru
+    ? [["Угадай игрока", "quiz"], ["Кто известнее", "famous"], ["Чей состав", "squad"]] as const
+    : [["Guess the player", "quiz"], ["Who is more famous", "famous"], ["Whose squad", "squad"]] as const;
+  return {
+    inline_keyboard: labels.map(([text, game]) => [{
+      text,
+      web_app: { url: miniGameUrl(appUrl, game) },
+    }]),
+  };
+}
