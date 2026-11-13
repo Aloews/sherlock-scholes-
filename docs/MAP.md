@@ -309,3 +309,57 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+
+## 14. Autonomous multi-agent engineering network
+
+The engineering agents operate inside Sherlock Scholes. Their durable handoff channel is the repository itself; the owner should not have to relay intermediate model outputs.
+
+### 14.1 Runtime roles
+
+| Runtime | Railway service | Role | Cadence |
+|---|---|---|---|
+| Implementer | `stream-service` in `distinguished-transformation` | Architect → implementer → independent internal reviewer → isolated PR | Every 5 minutes; at most one task per run |
+| External reviewer | `sherlock-ai-bot` in `distinguished-transformation` | Independent PR reviewer on the exact head SHA; posts a persistent GitHub review comment | Every 5 minutes; at most one PR per run |
+
+Both services use `services/autonomous-agent` from the multi-agent runtime branch. Runtime repository scope is restricted to `Aloews/sherlock-scholes-`; it must not process tasks from other repositories.
+
+### 14.2 Agent-to-agent protocol
+
+1. The owner creates a GitHub issue and adds an owner-authenticated `/ai ...` command.
+2. Architect (Starimg model `claude-fable-5-2`) returns a bounded JSON plan.
+3. Implementer generates one isolated patch, validates allowed paths, runs local checks, and pushes a task branch.
+4. Internal reviewer inspects the exact diff. A blocker/major finding triggers at most one bounded correction; unresolved findings fail closed.
+5. The implementer opens a PR containing the plan and review verdict.
+6. External reviewer independently inspects the PR diff and writes a SHA-scoped review comment. A new commit requires a new review.
+7. GitHub issue comments, task branches, PR bodies, and review comments are the durable communication ledger. No model output is forwarded as an intermediate user message.
+
+### 14.3 Connected provider checks
+
+The external reviewer supports read-only connection checks for Cloudflare, Fly.io, Neon, Railway, Render, Supabase, and Vercel. These checks report minimal status/metadata only. Provider credentials are never sent to model prompts, logs, GitHub comments, or subprocesses.
+
+Expected Railway runtime variable names:
+
+- `CLOUDFLARE_API_TOKEN`
+- `FLY_API_TOKEN`
+- `NEON_API_KEY`
+- `RAILWAY_API_TOKEN` or `RAILWAY`
+- `RENDER_API_KEY`
+- `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`
+- `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID`
+- `STARIMG_API_KEY` and `GITHUB_TOKEN`
+
+A variable name in this list is not evidence that a credential is available to the runtime. Verify presence on the actual Railway service without reading or printing its value. Missing provider credentials must be reported as `not_configured`; never infer a successful connection from a dashboard label or a key name.
+
+### 14.4 Safety and release gates
+
+- Provider probes are read-only. No DNS edits, deployments, app creation, database migrations, production data writes, or billing actions are performed by the agent network.
+- No automatic PR merge or product production deployment.
+- The owner sees only final outcomes or a specific permission/credential blocker, not architect drafts, model reasoning, patch attempts, or repeated progress messages.
+- CI, exact-head review, acceptance criteria, and product release checks remain mandatory.
+
+### 14.5 Current verification state
+
+- Starimg's authenticated model catalog selected `claude-fable-5-2` in the Railway runtime.
+- The first controlled smoke task was started, but a successful generated PR was not yet observed. Do not mark end-to-end inference, internal review, or external review as verified until the smoke task produces its PR and the reviewer posts a SHA-scoped result.
+- The multi-agent worker, tests, and provider preflight are changed on the runtime branch; rerun CI on the latest head before treating the branch as release-ready.
