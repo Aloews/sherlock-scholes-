@@ -243,6 +243,8 @@ Do not scan the entire repository by default. Start with the relevant entry poin
 
 ## 11. AI agent as an implementation partner
 
+**Operating protocol:** [`AI_EXECUTION_PROTOCOL.md`](./AI_EXECUTION_PROTOCOL.md) defines autonomous execution, roles, Fable delegation, communication, escalation, permissions, retries, and evidence. It is mandatory for every AI worker. The maintainer should receive finished outcomes, not routine intermediate engineering artifacts.
+
 The AI assistant is an active engineering contributor, not a review-only gate. Its responsibility is to help move work from a verified requirement to a working, tested deliverable.
 
 ### 11.1 What the assistant can do
@@ -256,11 +258,11 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 
 ### 11.2 The assistant owns the result; models and agents are tools
 
-- The assistant remains responsible for the technical direction, integration, review, and truthful completion report.
+- ChatGPT remains accountable for technical direction, integration, independent acceptance, and a truthful completion report; delegated models do not certify their own work.
 - Starimg models (including Fable 5.2) and other coding agents may be used to accelerate bounded implementation tasks. They are optional workers, not the only way work can be completed.
 - If a model produces malformed code, stale-context patches, incomplete files, or failing tests, the assistant must diagnose the failure and may rewrite the affected code directly using the available repository tools or execution environment. It must not endlessly resubmit the same failed patch.
 - Generated code is untrusted until it is integrated, reviewed, and passes the relevant checks. A model's claim that work is complete is not evidence.
-- Delegate only tasks with explicit file scope, acceptance criteria, constraints, and verification commands. Keep the main implementation coherent; do not allow multiple agents to overwrite the same files concurrently.
+- Delegate only tasks with explicit file scope, acceptance criteria, constraints, verification commands, output evidence, and retry policy. Keep one owner per overlapping file set; do not allow multiple agents to overwrite the same files concurrently.
 
 ### 11.3 Execution and safety boundaries
 
@@ -268,10 +270,14 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 - If direct shell execution is unavailable, use the connected repository/CI/hosting tools that can perform the required work. State any capability gap precisely; do not pretend that a command was run.
 - Never expose secrets in source, logs, commits, prompts, or reports. Use configured secret stores and verify secret presence without printing secret values.
 - Do not apply production migrations, modify production data, merge PRs, incur paid usage, or deploy product changes unless the user has authorized that action. Read-only inspection and isolated test environments should be preferred.
-- If an external dependency or permission genuinely blocks implementation, identify the exact blocker and the smallest action needed; continue all independent work instead of stopping at an audit.
+- If an external dependency or permission genuinely blocks implementation, identify the exact blocker and the smallest owner-only action needed; continue all independent work instead of stopping at an audit.
+- Do not send routine progress reports, logs, patch fragments, or technical-choice questions to the maintainer. Keep them in the issue/PR/worker record; communicate at completion or for a genuine escalation defined in `AI_EXECUTION_PROTOCOL.md`.
+- For deterministic failures, stop repeating the same prompt or patch. Diagnose the root cause, change the execution strategy, and preserve failure evidence.
 - The final report must distinguish implemented changes, verified checks, unverified items, and production impact. Never call a task complete while required checks are failing or unavailable.
 
 ## 12. Working agreement for AI agents and contributors
+
+All AI work follows [`AI_EXECUTION_PROTOCOL.md`](./AI_EXECUTION_PROTOCOL.md). The numbered rules below are the project-specific implementation checklist; the protocol governs roles, delegation, retries, communications, permissions, and acceptance evidence.
 
 1. Read this map and the relevant feature specification before implementation.
 2. Inspect the current branch, open PRs, CI, migrations, production state, and recent deployments before changing anything.
