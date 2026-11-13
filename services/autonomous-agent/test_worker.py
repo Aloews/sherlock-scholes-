@@ -232,12 +232,12 @@ class WorkerPolicyTests(unittest.TestCase):
         events = [
             {"type": "message_start", "message": {"usage": {"input_tokens": 12, "output_tokens": 0}}},
             {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "diff --git "}},
-            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "a/src/a.ts b/src/a.ts\\n"}},
+            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "a/src/a.ts b/src/a.ts\n"}},
             {"type": "message_delta", "usage": {"output_tokens": 8}},
             {"type": "message_stop"},
         ]
         payload = b"".join(
-            ("event: " + event["type"] + "\\ndata: " + json.dumps(event) + "\\n\\n").encode("utf-8")
+            ("event: " + event["type"] + "\ndata: " + json.dumps(event) + "\n\n").encode("utf-8")
             for event in events
         )
         with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)) as urlopen:
@@ -247,7 +247,7 @@ class WorkerPolicyTests(unittest.TestCase):
             )
         self.assertEqual(
             result["choices"][0]["message"]["content"],
-            "diff --git a/src/a.ts b/src/a.ts\\n",
+            "diff --git a/src/a.ts b/src/a.ts\n",
         )
         self.assertEqual(result["usage"]["input_tokens"], 12)
         self.assertEqual(result["usage"]["output_tokens"], 8)
@@ -260,7 +260,7 @@ class WorkerPolicyTests(unittest.TestCase):
         from worker import ask_starimg
 
         with patch("worker.starimg_anthropic_stream_completion", return_value={
-            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\\n"}}],
+            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\n"}}],
             "usage": {"input_tokens": 10, "output_tokens": 5},
         }) as completion:
             answer, usage = ask_starimg(
