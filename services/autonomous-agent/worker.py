@@ -396,9 +396,10 @@ def starimg_anthropic_stream_completion(base: str, key: str,
         preview = _safe_anthropic_body_preview(raw, content_type)
         raise RuntimeError(
             f"Starimg Anthropic HTTP {status_code or 'unknown'} response contained no text; "
-            + json.dumps(diagnostics, ensure_ascii=False)
-            + "; body="
-            + preview
+            f"request_id={request_id or 'n/a'}; content_type={content_type or 'n/a'}; "
+            f"body_bytes={len(raw)}; event_types={event_types}; "
+            f"content_block_types={content_block_types}; stop_reason={stop_reason}; "
+            f"usage={usage}; body={preview}"
         )
     return {
         "choices": [{"message": {"content": answer}}],
