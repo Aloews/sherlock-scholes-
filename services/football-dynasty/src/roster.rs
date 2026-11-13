@@ -153,6 +153,9 @@ async fn seed_squad(
         return Err(ApiError::conflict("squad_seed_incomplete"));
     }
 
+    let contract_end_year = current_year
+        .checked_add(3)
+        .ok_or_else(|| ApiError::bad_request("invalid_campaign_year"))?;
     let mut seed_index = 0_i32;
     for (position, count) in STARTING_POSITIONS {
         for _ in 0..count {
@@ -184,7 +187,7 @@ async fn seed_squad(
             .bind(club_id)
             .bind(wage_per_week)
             .bind(current_year)
-            .bind(current_year.saturating_add(3))
+            .bind(contract_end_year)
             .execute(&mut **tx)
             .await?;
 
@@ -339,7 +342,10 @@ pub async fn sign_or_renew_contract(
     }
 
     update_expired_contracts(&mut tx, campaign_id, context.current_year).await?;
-    let end_year = context.current_year.saturating_add(request.years);
+    let end_year = context
+        .current_year
+        .checked_add(request.years)
+        .ok_or_else(|| ApiError::bad_request("invalid_contract_terms"))?;
 
     let updated = sqlx::query(
         "UPDATE fd.contracts SET wage_per_week = $3, start_year = $4, end_year = $5 WHERE campaign_id = $1 AND player_id = $2 AND status = 'active' RETURNING id",
