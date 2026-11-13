@@ -1012,8 +1012,6 @@ def is_reviewable_pr(pr: dict[str, Any]) -> bool:
     head = pr.get("head") or {}
     branch = str(head.get("ref", ""))
     body = str(pr.get("body", "") or "")
-    if bool(pr.get("draft")):
-        return False
     if branch.startswith("ai/task-"):
         return "sherlock-agent-task:" in body
     if branch.startswith("feat/sherlock-multi-agent-runtime-"):
@@ -1949,6 +1947,18 @@ class Worker:
             head = pr.get("head") or {}
             head_sha = str((head.get("sha") or "")).strip()
             if not number or not head_sha:
+                continue
+            check_response = request_json(
+                api_url(f"/repos/{self.repo}/commits/{head_sha}/check-runs?per_page=100"),
+                self.token,
+                timeout=30,
+            )
+            check_summary = github_actions_check_summary(check_response.get("check_runs", []))
+            if check_summary["state"] != "success":
+                LOG.info(
+                    "Reviewer skipped PR #%s at %s: GitHub Actions state=%s",
+                    number, head_sha, check_summary["state"],
+                )
                 continue
             comments = request_json(
                 api_url(f"/repos/{self.repo}/issues/{number}/comments?per_page=100"),
