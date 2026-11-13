@@ -774,7 +774,6 @@ def ask_starimg(base: str, key: str, model: str, task: str,
 def ask_starimg_agent(base: str, key: str, model: str, role: str,
                       task: str, issue_number: int, context: str,
                       max_tokens: int = 3500) -> tuple[str, dict[str, Any]]:
-    """Run a bounded specialist-agent handoff through the configured Starimg model."""
     if role not in ("architect", "reviewer"):
         raise RuntimeError("Unsupported agent role")
     if role == "architect":
@@ -866,7 +865,6 @@ def has_review_marker(comments: list[dict[str, Any]], head_sha: str) -> bool:
 
 
 def integration_preflight() -> dict[str, Any]:
-    """Read-only checks for already-configured Sherlock Supabase and Vercel accounts."""
     result: dict[str, Any] = {
         "railway": {
             "service": os.environ.get("RAILWAY_SERVICE_NAME", "unknown"),
