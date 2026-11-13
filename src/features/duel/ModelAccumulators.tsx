@@ -96,7 +96,7 @@ export function ModelAccumulators() {
 
   useEffect(() => {
     let dead = false;
-    void Promise.all([fetchModelAccumulators(null, 40), fetchAccumulatorScore()])
+    void Promise.all([fetchModelAccumulators(null, 200), fetchAccumulatorScore()])
       .then(([h, s]) => {
         if (dead) return;
         setRows(dataOr(h, []));
