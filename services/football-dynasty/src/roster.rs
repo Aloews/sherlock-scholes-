@@ -505,10 +505,10 @@ pub async fn sign_contract(
         .execute(&mut *tx)
         .await
         .map_err(|error| {
-            if let sqlx::Error::Database(database_error) = &error {
-                if database_error.constraint() == Some("idx_contracts_active_player") {
-                    return ApiError::conflict("player_already_has_active_contract");
-                }
+            if let sqlx::Error::Database(database_error) = &error
+                && database_error.constraint() == Some("idx_contracts_active_player")
+            {
+                return ApiError::conflict("player_already_has_active_contract");
             }
             ApiError::from(error)
         })?;
