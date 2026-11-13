@@ -785,7 +785,7 @@ async fn contract_signing_enforces_wage_and_term_bounds() {
 }
 
 #[tokio::test]
-async fn contract_renewal_extends_existing_contract_and_updates_wage() {
+async fn contract_renewal_release_and_expiry_are_transactional() {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
     let migration_pool = PgPoolOptions::new()
         .max_connections(2)
@@ -793,7 +793,9 @@ async fn contract_renewal_extends_existing_contract_and_updates_wage() {
         .await
         .expect("migration pool");
     sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
-        .execute(&migration_pool).await.expect("test Telegram verifier stub");
+        .execute(&migration_pool)
+        .await
+        .expect("test Telegram verifier stub");
     sqlx::migrate!("./migrations")
         .run(&migration_pool)
         .await
@@ -801,7 +803,7 @@ async fn contract_renewal_extends_existing_contract_and_updates_wage() {
     migration_pool.close().await;
 
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(10)
         .connect(&database_url)
         .await
         .expect("runtime pool");
@@ -814,23 +816,24 @@ async fn contract_renewal_extends_existing_contract_and_updates_wage() {
     let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
 
     let create_body = json!({
-        "name":"Renewal Test",
+        "name":"Contract Lifecycle Test",
         "mode":"sandbox",
         "origin":"entrepreneur",
-        "founder_name":"Renewal Founder",
-        "dynasty_name":"Renewal Dynasty",
-        "club_name":"Renewal FC"
+        "founder_name":"Contract Founder",
+        "dynasty_name":"Contract Dynasty",
+        "club_name":"Contract FC"
     });
-    let (status, created) = call(
+    let (create_status, created) = call(
         app.clone(),
         "POST",
         "/api/v1/campaigns",
-        Some("renewal-campaign-create"),
+        Some("contract-lifecycle-create"),
         Some(create_body),
     )
     .await;
-    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(create_status, StatusCode::CREATED);
     let campaign_id = created["id"].as_str().expect("campaign id");
+    let campaign_uuid = uuid::Uuid::parse_str(campaign_id).expect("campaign UUID");
 
     let (squad_status, squad) = call(
         app.clone(),
@@ -841,9 +844,128 @@ async fn contract_renewal_extends_existing_contract_and_updates_wage() {
     )
     .await;
     assert_eq!(squad_status, StatusCode::OK);
-    let player_id = squad["players"].as_array().expect("players")[0]["id"]
-        .as_str()
-        .expect("player id");
+    let players = squad["players"].as_array().expect("players");
+    let player_id = players[0]["id"].as_str().expect("player id");
+    let player_uuid = uuid::Uuid::parse_str(player_id).expect("player UUID");
+    let initial_contract = squad["contracts"]
+        .as_array()
+        .expect("contracts")
+        .iter()
+        .find(|contract| contract["player_id"] == player_id)
+        .expect("initial active contract");
+    let initial_end_year = initial_contract["end_year"].as_i64().expect("end year");
 
     let (renew_status, renewed) = call(
         app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts"),
+        Some("contract-lifecycle-renew"),
+        Some(json!({
+            "player_id": player_id,
+            "wage_per_year": 75_000,
+            "years": 2
+        })),
+    )
+    .await;
+    assert_eq!(renew_status, StatusCode::OK);
+    assert_eq!(renewed["contract"]["wage_per_year"], 75_000);
+    let renewed_end_year = renewed["contract"]["end_year"]
+        .as_i64()
+        .expect("renewed end year");
+    assert!(renewed_end_year > initial_end_year);
+
+    let (release_status, released) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts/{player_id}/release"),
+        Some("contract-lifecycle-release"),
+        None,
+    )
+    .await;
+    assert_eq!(release_status, StatusCode::OK);
+    assert_eq!(released["contract"]["status"], "released");
+    assert!(
+        released["contract"]["released_at"].as_str().is_some(),
+        "released contract must have released_at"
+    );
+
+    let (after_release_status, after_release) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(after_release_status, StatusCode::OK);
+    assert_eq!(after_release["players"].as_array().expect("players").len(), 23);
+    assert_eq!(
+        after_release["contracts"].as_array().expect("active contracts").len(),
+        22
+    );
+
+    let (resign_status, resigned) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts"),
+        Some("contract-lifecycle-resign"),
+        Some(json!({
+            "player_id": player_id,
+            "wage_per_year": 80_000,
+            "years": 2
+        })),
+    )
+    .await;
+    assert_eq!(resign_status, StatusCode::CREATED);
+    assert_eq!(resigned["contract"]["status"], "active");
+    let resigned_end_year = resigned["contract"]["end_year"]
+        .as_i64()
+        .expect("resigned end year");
+
+    let mut tx = pool.begin().await.expect("advance campaign year transaction");
+    sqlx::query("SET LOCAL ROLE fd_runtime")
+        .execute(&mut *tx)
+        .await
+        .expect("set runtime role");
+    sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
+        .bind(owner_id.to_string())
+        .execute(&mut *tx)
+        .await
+        .expect("set owner scope");
+    sqlx::query("UPDATE fd.campaigns SET current_year = $1 WHERE id = $2")
+        .bind((resigned_end_year + 1) as i32)
+        .bind(campaign_uuid)
+        .execute(&mut *tx)
+        .await
+        .expect("advance game year");
+    tx.commit().await.expect("commit game year");
+
+    let (after_expiry_status, after_expiry) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(after_expiry_status, StatusCode::OK);
+    assert_eq!(after_expiry["players"].as_array().expect("players").len(), 23);
+    assert_eq!(
+        after_expiry["contracts"].as_array().expect("active contracts").len(),
+        22
+    );
+
+    let expired_status: String = sqlx::query_scalar(
+        "SELECT status FROM fd.contracts
+         WHERE campaign_id = $1 AND player_id = $2 AND status = 'expired'
+         LIMIT 1",
+    )
+    .bind(campaign_uuid)
+    .bind(player_uuid)
+    .fetch_one(&pool)
+    .await
+    .expect("expired contract row");
+    assert_eq!(expired_status, "expired");
+
+    pool.close().await;
+}
