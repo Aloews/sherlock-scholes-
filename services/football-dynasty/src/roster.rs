@@ -11,12 +11,7 @@ use uuid::Uuid;
 
 use crate::{auth::Identity, errors::ApiError, state::AppState};
 
-const STARTING_POSITIONS: [(&str, usize); 4] = [
-    ("GK", 2),
-    ("DEF", 8),
-    ("MID", 8),
-    ("FWD", 5),
-];
+const STARTING_POSITIONS: [(&str, usize); 4] = [("GK", 2), ("DEF", 8), ("MID", 8), ("FWD", 5)];
 
 #[derive(Debug, Serialize)]
 pub struct SquadResponse {
@@ -69,10 +64,7 @@ struct CampaignContext {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/api/v1/campaigns/{campaign_id}/squad",
-            get(get_squad),
-        )
+        .route("/api/v1/campaigns/{campaign_id}/squad", get(get_squad))
         .route(
             "/api/v1/campaigns/{campaign_id}/contracts",
             post(sign_or_renew_contract),
@@ -210,16 +202,44 @@ fn deterministic_uuid(campaign_id: Uuid, seed: i64, kind: &str, index: i32) -> U
 
 fn generated_player(seed: i64, index: i32) -> (String, i32, i32) {
     const FIRST_NAMES: &[&str] = &[
-        "Alex", "Ben", "Chris", "David", "Ethan", "Frank", "George", "Harry",
-        "Ivan", "Jack", "Kevin", "Leo", "Mark", "Nathan", "Oscar", "Paul",
-        "Quinn", "Ryan", "Sam", "Tom", "Ulrich", "Victor", "Will", "Xavier",
-        "Yuri", "Zack", "Adam", "Brian", "Carl", "Dan", "Eric", "Felix",
+        "Alex", "Ben", "Chris", "David", "Ethan", "Frank", "George", "Harry", "Ivan", "Jack",
+        "Kevin", "Leo", "Mark", "Nathan", "Oscar", "Paul", "Quinn", "Ryan", "Sam", "Tom", "Ulrich",
+        "Victor", "Will", "Xavier", "Yuri", "Zack", "Adam", "Brian", "Carl", "Dan", "Eric",
+        "Felix",
     ];
     const LAST_NAMES: &[&str] = &[
-        "Smith", "Johnson", "Brown", "Taylor", "Anderson", "Thomas", "Jackson", "White",
-        "Harris", "Martin", "Garcia", "Martinez", "Robinson", "Clark", "Rodriguez", "Lewis",
-        "Lee", "Walker", "Hall", "Allen", "Young", "King", "Wright", "Lopez",
-        "Hill", "Scott", "Green", "Adams", "Baker", "Nelson", "Carter", "Mitchell",
+        "Smith",
+        "Johnson",
+        "Brown",
+        "Taylor",
+        "Anderson",
+        "Thomas",
+        "Jackson",
+        "White",
+        "Harris",
+        "Martin",
+        "Garcia",
+        "Martinez",
+        "Robinson",
+        "Clark",
+        "Rodriguez",
+        "Lewis",
+        "Lee",
+        "Walker",
+        "Hall",
+        "Allen",
+        "Young",
+        "King",
+        "Wright",
+        "Lopez",
+        "Hill",
+        "Scott",
+        "Green",
+        "Adams",
+        "Baker",
+        "Nelson",
+        "Carter",
+        "Mitchell",
     ];
 
     let mixed = seed.wrapping_add(i64::from(index).wrapping_mul(7919));
@@ -318,9 +338,7 @@ pub async fn sign_or_renew_contract(
     Path(campaign_id): Path<Uuid>,
     Json(request): Json<SignContractRequest>,
 ) -> Result<(StatusCode, Json<ContractMutationResponse>), ApiError> {
-    if !(1..=1_000_000_000).contains(&request.wage_per_week)
-        || !(1..=5).contains(&request.years)
-    {
+    if !(1..=1_000_000_000).contains(&request.wage_per_week) || !(1..=5).contains(&request.years) {
         return Err(ApiError::bad_request("invalid_contract_terms"));
     }
 
@@ -446,10 +464,7 @@ mod tests {
         let first_id = deterministic_uuid(campaign_id, 1234, "player", 0);
         let second_id = deterministic_uuid(campaign_id, 1234, "player", 0);
         assert_eq!(first_id, second_id);
-        assert_eq!(
-            generated_player(1234, 0),
-            generated_player(1234, 0)
-        );
+        assert_eq!(generated_player(1234, 0), generated_player(1234, 0));
         assert_ne!(
             deterministic_uuid(campaign_id, 1234, "player", 0),
             deterministic_uuid(campaign_id, 1234, "player", 1)
