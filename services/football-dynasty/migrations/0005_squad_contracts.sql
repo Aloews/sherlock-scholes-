@@ -12,6 +12,7 @@ CREATE TABLE fd.players (
     ability integer NOT NULL CHECK (ability BETWEEN 1 AND 99),
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (campaign_id, id),
+    UNIQUE (campaign_id, id, club_id),
     UNIQUE (campaign_id, seed_index),
     FOREIGN KEY (campaign_id, club_id)
         REFERENCES fd.clubs(campaign_id, id) ON DELETE CASCADE
@@ -33,8 +34,8 @@ CREATE TABLE fd.contracts (
         CHECK (status IN ('active', 'expired', 'released')),
     created_at timestamptz NOT NULL DEFAULT now(),
     released_at timestamptz,
-    FOREIGN KEY (campaign_id, player_id)
-        REFERENCES fd.players(campaign_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (campaign_id, player_id, club_id)
+        REFERENCES fd.players(campaign_id, id, club_id) ON DELETE CASCADE,
     FOREIGN KEY (campaign_id, club_id)
         REFERENCES fd.clubs(campaign_id, id) ON DELETE CASCADE,
     CHECK (end_year > start_year AND end_year - start_year BETWEEN 1 AND 5),
