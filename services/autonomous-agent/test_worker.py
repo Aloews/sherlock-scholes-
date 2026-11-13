@@ -301,6 +301,25 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(request.get_header("X-api-key"), "test-key")
         self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
 
+    def test_extract_patch_accepts_exact_single_file_scope(self):
+        patch = (
+            "diff --git a/services/football-dynasty/src/lib.rs b/services/football-dynasty/src/lib.rs\n"
+            "--- a/services/football-dynasty/src/lib.rs\n"
+            "+++ b/services/football-dynasty/src/lib.rs\n"
+            "@@ -1 +1,2 @@\n pub mod api;\n+pub mod roster;\n"
+        )
+        extracted = extract_patch(patch, ("services/football-dynasty/src/lib.rs",))
+        self.assertIn("+pub mod roster;", extracted)
+
+    def test_extract_patch_rejects_a_second_required_file_in_single_file_scope(self):
+        patch = (
+            "diff --git a/docs/MAP.md b/docs/MAP.md\n"
+            "--- a/docs/MAP.md\n+++ b/docs/MAP.md\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+        )
+        with self.assertRaises(RuntimeError):
+            extract_patch(patch, ("services/football-dynasty/src/lib.rs",))
+
     def test_ask_starimg_uses_anthropic_messages_for_claude_models(self):
         from worker import ask_starimg
 
