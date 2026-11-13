@@ -485,6 +485,23 @@ async fn squad_is_seeded_deterministically_with_correct_distribution() {
         "Player IDs must be deterministic"
     );
 
+    let first_contract_ids: Vec<&str> = squad["contracts"]
+        .as_array()
+        .expect("first contracts")
+        .iter()
+        .map(|contract| contract["id"].as_str().expect("contract id"))
+        .collect();
+    let replay_contract_ids: Vec<&str> = replay_squad["contracts"]
+        .as_array()
+        .expect("replay contracts")
+        .iter()
+        .map(|contract| contract["id"].as_str().expect("contract id"))
+        .collect();
+    assert_eq!(
+        first_contract_ids, replay_contract_ids,
+        "Contract IDs must be deterministic"
+    );
+
     pool.close().await;
 }
 
@@ -576,6 +593,11 @@ async fn concurrent_first_squad_reads_produce_identical_deterministic_results() 
                 i
             );
         }
+
+        assert_eq!(
+            result["contracts"], results[0]["contracts"],
+            "All concurrent reads must return identical seeded contracts"
+        );
     }
 
     pool.close().await;
