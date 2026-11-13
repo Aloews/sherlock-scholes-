@@ -672,6 +672,19 @@ async fn another_test() {}
             validate.assert_called_once_with(root, [target_path])
             self.assertEqual(len(usage_records), 1)
 
+    def test_worker_marker_check_fetches_latest_issue_comments(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.repo = "Aloews/sherlock-scholes-"
+        worker.token = "test-token"
+        marker = "<!-- sherlock-agent-failure:6860748454 -->"
+        with patch("worker.request_json", return_value=[{"body": marker}]) as request:
+            self.assertTrue(worker._has_marker(394, 6860748454))
+
+        request_url = request.call_args.args[0]
+        self.assertIn("sort=created&direction=desc", request_url)
+
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
 
