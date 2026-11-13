@@ -566,7 +566,7 @@ mod tests {
 
     #[test]
     fn generated_roster_has_exact_position_counts() {
-        assert_eq!(POSITION_COUNTS.iter().map(|(_, count)| count).sum::<usize>(), 23);
+        assert_eq!(POSITION_COUNTS.iter().map(|(_, count)| *count).sum::<usize>(), 23);
         assert_eq!(POSITION_COUNTS[0], ("GK", 2));
         assert_eq!(POSITION_COUNTS[1], ("DEF", 8));
         assert_eq!(POSITION_COUNTS[2], ("MID", 8));
