@@ -1044,6 +1044,7 @@ def integration_preflight() -> dict[str, Any]:
             )
             latest = (deployments.get("deployments") or [{}])[0]
             result["vercel"] = {
+                "status": "connected",
                 "project": project.get("name", vercel_project),
                 "latest_production_state": latest.get("readyState", latest.get("state", "unknown")),
                 "latest_commit": ((latest.get("meta") or {}).get("githubCommitSha", "unknown")),
