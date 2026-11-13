@@ -1685,6 +1685,10 @@ class Worker:
                                     target_file.read_text(encoding="utf-8")
                                     if original_exists else ""
                                 )
+                                if len(original_content) > 30_000:
+                                    raise RuntimeError(
+                                        "Target file is too large for safe full-file fallback; use smaller exact-context edits"
+                                    )
                                 full_answer = ""
                                 try:
                                     full_answer, full_usage = ask_starimg_full_file(
