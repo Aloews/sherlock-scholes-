@@ -24,8 +24,8 @@ MAX_FILES = 8
 MAX_CONTEXT_FILES = 8
 MAX_CONTEXT_CHARS = 120000
 MAX_FILE_CONTEXT_CHARS = 120000
-MAX_PATCH_CHARS = 60000
-MAX_COMPLETION_TOKENS = 6000
+MAX_PATCH_CHARS = 100000
+MAX_COMPLETION_TOKENS = 9000
 MAX_GENERATION_ATTEMPTS = 3
 DEFAULT_ALLOWED_PREFIXES = (
     "src/", "test/", "tests/", "scripts/", "docs/",
@@ -688,61 +688,153 @@ class Worker:
             if self.model is None:
                 self.model = choose_model(self.starimg_base, self.starimg_key)
                 LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
-            previous_patch = ""
-            validation_error = ""
             usage_records: list[dict[str, Any]] = []
             changed: list[str] = []
-            for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
-                answer, usage = ask_starimg(
-                    self.starimg_base, self.starimg_key, self.model,
-                    task, issue_number, context, self.allowed_prefixes, previous_patch, validation_error
-                )
-                usage_records.append(usage)
-                patch = ""
-                try:
-                    patch = extract_patch(answer, self.allowed_prefixes)
-                    check = subprocess.run(["git", "apply", "--recount", "--check", "-"],
-                                            cwd=temp, input=patch, text=True,
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-                    if check.returncode:
-                        raise RuntimeError("Generated patch did not apply: " + check.stdout[-2000:])
-                    apply = subprocess.run(["git", "apply", "--recount", "-"],
-                                            cwd=temp, input=patch, text=True,
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-                    if apply.returncode:
-                        raise RuntimeError("Generated patch could not be applied: " + apply.stdout[-2000:])
-                    changed = sorted(set(
-                        run_command(["git", "diff", "--name-only"], temp).splitlines()
-                        + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
-                    ))
-                    if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
-                        raise RuntimeError("Applied patch failed the final changed-path policy")
-                    missing_required = missing_required_paths(required_paths, changed)
-                    if missing_required:
-                        raise RuntimeError("Acceptance gate: required files missing from the same PR: " + ", ".join(missing_required))
-                    if any((temp / path).is_symlink() for path in changed):
-                        raise RuntimeError("Symlink changes are not permitted")
-                    run_command(["git", "diff", "--check"], temp)
-                    self._validate(temp, changed)
-                    break
-                except Exception as exc:
-                    validation_error = str(exc)[:3000]
-                    previous_patch = patch or answer
-                    if attempt >= MAX_GENERATION_ATTEMPTS:
-                        raise RuntimeError(f"Implementation failed after {attempt} attempts: {validation_error}") from None
-                    LOG.warning(
-                        "Task %s validation failed on attempt %s; requesting one correction: %s",
-                        comment_id, attempt, validation_error[:800],
+            if required_paths:
+                # Large vertical slices are generated one required file at a time.
+                # This keeps each Claude response bounded and makes patch context exact.
+                for target_path in required_paths:
+                    target_context = patch_file_context(
+                        temp, "", self.allowed_prefixes, [target_path]
                     )
-                    run_command(["git", "reset", "--hard", "HEAD"], temp)
-                    run_command(["git", "clean", "-fd"], temp)
-                    exact_failed_files = patch_file_context(temp, patch, self.allowed_prefixes, required_paths)
-                    if exact_failed_files:
-                        context = (
-                            exact_failed_files
-                            + "\n\n--- Additional ranked repository context ---\n"
-                            + context[:8000]
-                        )[:MAX_CONTEXT_CHARS]
+                    file_context = (
+                        target_context
+                        + "\n\n--- Supporting repository context ---\n"
+                        + context[:24000]
+                    )[:MAX_CONTEXT_CHARS]
+                    file_task = (
+                        task
+                        + "\n\nIMPLEMENTATION UNIT: modify exactly this one required path and no other path: "
+                        + target_path
+                        + ". Other required paths are handled in separate model calls. "
+                        + "For an existing file, use only exact current lines shown in its full file content. "
+                        + "For a new file, create it with a complete compilable implementation. "
+                        + "Do not output changes for any other file."
+                    )
+                    previous_patch = ""
+                    validation_error = ""
+                    applied = False
+                    for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+                        answer, usage = ask_starimg(
+                            self.starimg_base, self.starimg_key, self.model,
+                            file_task, issue_number, file_context, (target_path,),
+                            previous_patch, validation_error
+                        )
+                        usage_records.append(usage)
+                        patch = ""
+                        try:
+                            patch = extract_patch(answer, (target_path,))
+                            headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
+                            if not headers or any(old != target_path or new != target_path for old, new in headers):
+                                raise RuntimeError("Model changed a path outside the current required implementation unit")
+                            check = subprocess.run(
+                                ["git", "apply", "--recount", "--check", "-"],
+                                cwd=temp, input=patch, text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False
+                            )
+                            if check.returncode:
+                                raise RuntimeError("Generated patch did not apply: " + check.stdout[-2000:])
+                            apply = subprocess.run(
+                                ["git", "apply", "--recount", "-"],
+                                cwd=temp, input=patch, text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False
+                            )
+                            if apply.returncode:
+                                raise RuntimeError("Generated patch could not be applied: " + apply.stdout[-2000:])
+                            changed = sorted(set(
+                                run_command(["git", "diff", "--name-only"], temp).splitlines()
+                                + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
+                            ))
+                            if target_path not in changed:
+                                raise RuntimeError("Model patch did not change its assigned required file")
+                            run_command(["git", "diff", "--check"], temp)
+                            applied = True
+                            break
+                        except Exception as exc:
+                            validation_error = str(exc)[:3000]
+                            previous_patch = patch or answer
+                            if attempt >= MAX_GENERATION_ATTEMPTS:
+                                raise RuntimeError(
+                                    f"Implementation unit {target_path} failed after {attempt} attempts: {validation_error}"
+                                ) from None
+                            LOG.warning(
+                                "Task %s file %s validation failed on attempt %s; requesting correction: %s",
+                                comment_id, target_path, attempt, validation_error[:800],
+                            )
+                            exact_file = patch_file_context(
+                                temp, patch, self.allowed_prefixes, [target_path]
+                            )
+                            file_context = (
+                                exact_file
+                                + "\n\n--- Supporting repository context ---\n"
+                                + context[:24000]
+                            )[:MAX_CONTEXT_CHARS]
+                    if not applied:
+                        raise RuntimeError(f"Implementation unit was not applied: {target_path}")
+                changed = sorted(set(
+                    run_command(["git", "diff", "--name-only"], temp).splitlines()
+                    + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
+                ))
+                if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
+                    raise RuntimeError("Applied patch failed the final changed-path policy")
+                missing_required = missing_required_paths(required_paths, changed)
+                if missing_required:
+                    raise RuntimeError("Acceptance gate: required files missing from the same PR: " + ", ".join(missing_required))
+                if any((temp / path).is_symlink() for path in changed):
+                    raise RuntimeError("Symlink changes are not permitted")
+                run_command(["git", "diff", "--check"], temp)
+                self._validate(temp, changed)
+            else:
+                previous_patch = ""
+                validation_error = ""
+                for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+                    answer, usage = ask_starimg(
+                        self.starimg_base, self.starimg_key, self.model,
+                        task, issue_number, context, self.allowed_prefixes, previous_patch, validation_error
+                    )
+                    usage_records.append(usage)
+                    patch = ""
+                    try:
+                        patch = extract_patch(answer, self.allowed_prefixes)
+                        check = subprocess.run(["git", "apply", "--recount", "--check", "-"],
+                                                cwd=temp, input=patch, text=True,
+                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+                        if check.returncode:
+                            raise RuntimeError("Generated patch did not apply: " + check.stdout[-2000:])
+                        apply = subprocess.run(["git", "apply", "--recount", "-"],
+                                                cwd=temp, input=patch, text=True,
+                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+                        if apply.returncode:
+                            raise RuntimeError("Generated patch could not be applied: " + apply.stdout[-2000:])
+                        changed = sorted(set(
+                            run_command(["git", "diff", "--name-only"], temp).splitlines()
+                            + run_command(["git", "ls-files", "--others", "--exclude-standard"], temp).splitlines()
+                        ))
+                        if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
+                            raise RuntimeError("Applied patch failed the final changed-path policy")
+                        if any((temp / path).is_symlink() for path in changed):
+                            raise RuntimeError("Symlink changes are not permitted")
+                        run_command(["git", "diff", "--check"], temp)
+                        self._validate(temp, changed)
+                        break
+                    except Exception as exc:
+                        validation_error = str(exc)[:3000]
+                        previous_patch = patch or answer
+                        if attempt >= MAX_GENERATION_ATTEMPTS:
+                            raise RuntimeError(f"Implementation failed after {attempt} attempts: {validation_error}") from None
+                        LOG.warning(
+                            "Task %s validation failed on attempt %s; requesting one correction: %s",
+                            comment_id, attempt, validation_error[:800],
+                        )
+                        run_command(["git", "reset", "--hard", "HEAD"], temp)
+                        run_command(["git", "clean", "-fd"], temp)
+                        exact_failed_files = patch_file_context(temp, patch, self.allowed_prefixes)
+                        if exact_failed_files:
+                            context = (
+                                exact_failed_files
+                                + "\n\n--- Additional ranked repository context ---\n"
+                                + context[:8000]
+                            )[:MAX_CONTEXT_CHARS]
             if not changed:
                 raise RuntimeError("Worker produced no validated changes")
             run_command(["git", "config", "user.name", "Sherlock Engineering Agent"], temp)
