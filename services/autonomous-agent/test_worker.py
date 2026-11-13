@@ -335,9 +335,29 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(usage["output_tokens"], 5)
         payload = completion.call_args.args[2]
         self.assertEqual(payload["model"], "claude-opus-5")
+        self.assertNotIn("temperature", payload)
+        self.assertNotIn("top_p", payload)
+        self.assertNotIn("top_k", payload)
         self.assertIn("system", payload)
         self.assertEqual(payload["messages"][0]["role"], "user")
         self.assertTrue(completion.call_args.args[0].endswith("/v1"))
+
+    def test_fable_52_request_omits_sampling_parameters(self):
+        from worker import ask_starimg
+
+        with patch("worker.starimg_anthropic_stream_completion", return_value={
+            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\\n"}}],
+            "usage": {},
+        }) as completion:
+            ask_starimg(
+                "https://ai.starimg.ru/v1", "test-key", "claude-fable-5-2",
+                "Implement task", 394, "repo context", ("src/",),
+            )
+        payload = completion.call_args.args[2]
+        self.assertEqual(payload["model"], "claude-fable-5-2")
+        self.assertNotIn("temperature", payload)
+        self.assertNotIn("top_p", payload)
+        self.assertNotIn("top_k", payload)
 
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
