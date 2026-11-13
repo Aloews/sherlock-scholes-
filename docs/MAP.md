@@ -136,7 +136,49 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Product specification: `docs/football-dynasty/GDD.md`
 - Technical architecture: `docs/football-dynasty/ARCHITECTURE.md`
 - Current implementation/release notes: `docs/football-dynasty/IMPLEMENTATION_PLAN.md`
-- Rust API: `services/football-dynasty/`
+- Rust API: `services/football-dynasty/` (Axum/SQLx, 200k context limit, autonomous PostgreSQL transaction/RLS)
+- Supabase persistence: private `fd` schema, `fd_runtime` role, Telegram owner scoping
+
+### 7.1 Implemented features (verified 2026-11-13)
+
+#### Campaign lifecycle
+- Create owned campaign: `POST /api/v1/campaigns` with `telegram_id` from Telegram Mini App `initData`.
+- Read campaign: `GET /api/v1/campaigns/{campaign_id}` (owner-scoped).
+- All mutations enforce transactional RLS, role switch, and Telegram owner ID.
+
+#### Founder and heir succession
+- Set founder: `PUT /api/v1/campaigns/{campaign_id}/founder` (JSON `{ "name": "…" }`).
+- Designate heir: `PUT /api/v1/campaigns/{campaign_id}/heir` (JSON `{ "name": "…", "heir_age": 18..65 }`).
+- Succeed: `POST /api/v1/campaigns/{campaign_id}/succeed` transitions to the heir, increments year, archives founder, enforces linear progression. Idempotent under concurrent/duplicate requests.
+
+#### Squad and contracts (verified 2026-11-13)
+- First squad read: `GET /api/v1/campaigns/{campaign_id}/squad` atomically seeds 23 deterministic players (2 GK, 8 DEF, 8 MID, 5 FWD) and their initial active contracts using the campaign seed. Concurrent/duplicate reads are safe and produce identical stable results.
+- Player identity: UUID-based IDs derived from the campaign seed and position index; names, positions, ages, and ability scores are deterministic and fixed after seed.
+- Contracts: composite FK `(campaign_id, club_id) REFERENCES fd.clubs(campaign_id, id)`, `status` CHECK constraint (`active`|`expired`|`released`), partial unique index `WHERE status = 'active'` prevents duplicate active contracts.
+- Sign/renew: `POST /api/v1/campaigns/{campaign_id}/contracts` with JSON `{ "player_id": "…", "wage_per_week": 1..100000000, "years": 1..5 }`. Transactional ownership/membership checks, bounded wage, bounded term, year arithmetic, and concurrency safety (advisory lock).
+- Release: `POST /api/v1/campaigns/{campaign_id}/contracts/{player_id}/release` sets `status = 'released'` and `released_at = CURRENT_TIMESTAMP`.
+- Expiry: expired contracts remain visible with `status = 'expired'` for historical/audit purposes.
+
+#### Database schema
+- `fd.players`: `campaign_id`, `club_id`, `id`, `name`, `position`, `age`, `ability`, `seed_index`. Primary key `(campaign_id, id)`. Composite FK `(campaign_id, club_id)` to `fd.clubs(campaign_id, id)`.
+- `fd.contracts`: `campaign_id`, `player_id`, `club_id`, `wage_per_week`, `start_year`, `end_year`, `status`, `released_at`. Primary key `(campaign_id, player_id)`. Composite FKs to `fd.campaigns`, `fd.players`, `fd.clubs`. Partial unique `(campaign_id, player_id) WHERE status = 'active'`. CHECK `status IN ('active', 'expired', 'released')`.
+
+#### Integration tests (PostgreSQL 17 disposable service)
+- Seed count and distribution: confirms 23 players in correct position distribution.
+- Deterministic IDs and data: repeated reads produce identical stable player/contract sets.
+- Concurrent first read: parallel squad reads are safe, produce identical results, no duplicate inserts.
+- Active seeded contracts: initial seeding creates one `status = 'active'` contract per player.
+- Owner isolation: user A cannot read/mutate user B's campaign.
+- Invalid contract terms: zero/negative wage, zero/out-of-bound years, missing player/club rejected with 400.
+- Sign: creates new active contract with correct expiry year.
+- Renew: updates existing active contract, preserves deterministic club/player linkage, extends end year.
+- Release: sets status = 'released' and released_at; released contract cannot be renewed.
+- Expiry transition: contract past end_year is marked 'expired' during mutation or query.
+
+### 7.2 Test and CI verification (2026-11-13)
+- Rust fmt, Clippy, unit tests, and disposable PostgreSQL integration tests run and pass in CI.
+- Migration 0005 successfully applies to clean PostgreSQL 17; `CURRENT_DATE` removed from index predicates; composite FK order verified.
+
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
