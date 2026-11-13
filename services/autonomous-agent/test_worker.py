@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, starimg_stream_completion, starimg_anthropic_stream_completion, ask_starimg
+from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, extract_single_file_patch, starimg_stream_completion, starimg_anthropic_stream_completion, ask_starimg
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -300,6 +300,24 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertTrue(request.full_url.endswith("/v1/messages"))
         self.assertEqual(request.get_header("X-api-key"), "test-key")
         self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
+
+    def test_single_file_extractor_builds_patch_from_complete_new_file_code_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            answer = "Here is the file:\n```rust\npub fn roster() -> usize { 23 }\n```"
+            patch = extract_single_file_patch(answer, "services/football-dynasty/src/roster.rs", root)
+            self.assertIn("new file mode 100644", patch)
+            self.assertIn("+pub fn roster() -> usize { 23 }", patch)
+
+    def test_single_file_extractor_builds_patch_from_complete_existing_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "src" / "lib.rs"
+            target.parent.mkdir(parents=True)
+            target.write_text("pub mod api;\npub mod state;\n", encoding="utf-8")
+            answer = "Updated file:\n```rust\npub mod api;\npub mod roster;\npub mod state;\n```"
+            patch = extract_single_file_patch(answer, "src/lib.rs", root)
+            self.assertIn("+pub mod roster;", patch)
 
     def test_extract_patch_accepts_exact_single_file_scope(self):
         patch = (
