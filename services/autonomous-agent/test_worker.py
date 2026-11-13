@@ -579,6 +579,97 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertIn("complete file contents", payload["messages"][0]["content"])
         self.assertNotIn("unified git diff only", payload["messages"][0]["content"])
 
+    def test_extract_append_block_accepts_focused_rust_tests(self):
+        from worker import extract_append_block
+
+        answer = """#[tokio::test]
+async fn new_roster_contract_is_idempotent() {
+    assert!(true);
+}
+"""
+        self.assertIn("new_roster_contract_is_idempotent", extract_append_block(
+            answer, "services/football-dynasty/tests/campaign_lifecycle.rs"
+        ))
+
+    def test_extract_append_block_rejects_full_file_rewrites(self):
+        from worker import extract_append_block
+
+        answer = """struct FixedVerifier(i64);
+
+async fn response_json(response: axum::response::Response) {}
+#[tokio::test]
+async fn another_test() {}
+"""
+        with self.assertRaisesRegex(RuntimeError, "reproduce existing test helpers"):
+            extract_append_block(answer, "services/football-dynasty/tests/campaign_lifecycle.rs")
+
+    def test_ask_starimg_full_file_append_mode_requests_only_new_test_items(self):
+        from worker import ask_starimg_full_file
+
+        snippet = "#[tokio::test]\\nasync fn focused_test() {}"
+        with patch("worker.starimg_anthropic_stream_completion", return_value={
+            "choices": [{"message": {"content": snippet}}],
+            "usage": {"input_tokens": 20, "output_tokens": 10},
+        }) as completion:
+            answer, usage = ask_starimg_full_file(
+                "https://ai.starimg.ru/v1",
+                "test-key",
+                "claude-fable-5-1",
+                "Add missing roster regression tests",
+                394,
+                "services/football-dynasty/tests/campaign_lifecycle.rs",
+                "use std::sync::Arc;\\n",
+                "roster module context",
+                output_mode="append",
+                max_tokens=5000,
+            )
+
+        payload = completion.call_args.args[2]
+        self.assertIn("append-only block", payload["system"])
+        self.assertIn("Do not repeat existing imports", payload["system"])
+        self.assertIn("append only", payload["messages"][0]["content"].lower())
+        self.assertEqual(payload["max_tokens"], 5000)
+        self.assertEqual(answer, snippet)
+        self.assertEqual(usage["output_tokens"], 10)
+
+    def test_worker_append_rust_tests_preserves_existing_file_and_appends(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.starimg_base = "https://ai.starimg.ru/v1"
+        worker.starimg_key = "test-key"
+        worker.model = "claude-fable-5-1"
+        target_path = "services/football-dynasty/tests/campaign_lifecycle.rs"
+        original = "use std::sync::Arc;\\n\\nasync fn existing_helper() {}\\n"
+        append_block = "#[tokio::test]\\nasync fn appended_regression_test() {}\\n"
+
+        def fake_run(command, cwd, **kwargs):
+            if command == ["git", "diff", "--name-only"]:
+                return target_path
+            if command == ["git", "ls-files", "--others", "--exclude-standard"]:
+                return ""
+            return ""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / target_path
+            target.parent.mkdir(parents=True)
+            target.write_text(original, encoding="utf-8")
+            usage_records = []
+            with patch("worker.ask_starimg_full_file", return_value=(append_block, {"output_tokens": 50})), \\
+                 patch("worker.run_command", side_effect=fake_run), \\
+                 patch.object(worker, "_validate") as validate:
+                worker._implement_append_rust_tests(
+                    root, target_path, "task", 394, "context", 6860303413, usage_records
+                )
+
+            updated = target.read_text(encoding="utf-8")
+            self.assertTrue(updated.startswith(original.rstrip() + "\\n\\n"))
+            self.assertIn("appended_regression_test", updated)
+            self.assertIn("existing_helper", updated)
+            validate.assert_called_once_with(root, [target_path])
+            self.assertEqual(len(usage_records), 1)
+
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
 
