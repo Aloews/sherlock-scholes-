@@ -426,11 +426,12 @@ def ask_starimg(base: str, key: str, model: str, task: str,
         + "Return a minimal applicable unified git diff only. No markdown fences or explanation."
     )
     if model.lower().startswith("claude-"):
+        # Current Claude 5.x models reject non-default sampling parameters.
+        # Fable 5.2 always uses adaptive thinking; omit temperature entirely.
         response = starimg_anthropic_stream_completion(base, key, {
             "model": model,
             "system": system,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
             "max_tokens": MAX_COMPLETION_TOKENS,
         })
     else:
