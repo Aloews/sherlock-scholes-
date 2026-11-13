@@ -912,7 +912,7 @@ def integration_preflight() -> dict[str, Any]:
             result["supabase"] = {
                 "status": project.get("status", "unknown"),
                 "region": project.get("region", "unknown"),
-                "database_version": (project.get("database") or {}).get("version", "unknown"),
+                "database_version": project.get("database_version", "unknown"),
             }
         except Exception as exc:
             result["supabase"] = {"status": "unavailable", "reason": type(exc).__name__}
