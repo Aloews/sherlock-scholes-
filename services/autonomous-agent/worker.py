@@ -22,11 +22,11 @@ MAX_TASK_CHARS = 3000
 MAX_ISSUE_CONTEXT_CHARS = 8000
 MAX_FILES = 8
 MAX_CONTEXT_FILES = 8
-MAX_CONTEXT_CHARS = 64000
-MAX_FILE_CONTEXT_CHARS = 8000
+MAX_CONTEXT_CHARS = 120000
+MAX_FILE_CONTEXT_CHARS = 120000
 MAX_PATCH_CHARS = 60000
 MAX_COMPLETION_TOKENS = 6000
-MAX_GENERATION_ATTEMPTS = 2
+MAX_GENERATION_ATTEMPTS = 3
 DEFAULT_ALLOWED_PREFIXES = (
     "src/", "test/", "tests/", "scripts/", "docs/",
     "supabase/functions/", "supabase/migrations/",
@@ -325,7 +325,7 @@ def patch_file_context(root: Path, patch: str,
                        extra_paths: list[str] | None = None) -> str:
     """Return exact current contents for rejected-patch paths and required task files."""
     headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
-    paths = list(dict.fromkeys([old for old, new in headers if old == new] + (extra_paths or [])))
+    paths = list(dict.fromkeys((extra_paths or []) + [old for old, new in headers if old == new]))
     parts: list[str] = []
     for relative in paths:
         if not safe_path(relative, allowed_prefixes):
