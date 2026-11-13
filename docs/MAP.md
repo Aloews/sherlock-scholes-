@@ -224,20 +224,23 @@ Do not report a task as complete based only on code being merged, a workflow bei
 
 ## 9a. Football Dynasty squad and contract backend (Issue #394)
 
-**Status:** Implementation is in PR #398 and remains unverified. Do not treat this feature as complete until the exact PR head passes Rust formatting, Clippy, and disposable-Postgres integration tests.
+**Status:** Implemented in PR #398. Rust and disposable-Postgres validation passed on the current code head; the PR remains open and is not merged or deployed to production.
 
-**PR scope:**
+**Implementation:**
 - Campaign-scoped `fd.players` and `fd.contracts` tables with UUID keys, composite campaign/club/player foreign keys, owner-scoped RLS, and a partial unique index for one active contract per player.
 - Authenticated Rust routes for squad reads, contract sign/renew, and contract release.
 - First-read generation of 23 deterministic fictional players from the campaign seed (2 GK, 8 DEF, 8 MID, 5 FWD), with initial active contracts.
 - Transaction-local `fd_runtime` role and Telegram owner scope for each read/write transaction; campaign row locking for idempotent first-read seeding and serialized contract changes.
-- Disposable-Postgres tests for concurrent/idempotent seeding, position distribution, owner isolation, contract validation, renew/release, and expiry.
+- Integration coverage for concurrent/idempotent seeding, position distribution, owner isolation, contract validation, renew/release, and expiry.
 
-**Verification evidence:**
-- The first PR head, `c7a601fb82a5c9f40cea61781f518ed0fb1ac603`, failed `cargo fmt --check`. Clippy, Rust tests, and the disposable-Postgres migration/test steps were skipped by that workflow run.
-- The schema and Rust handlers were corrected afterward. The current branch head is `ab585c342ed4dfe045ce427d0b6232b36378497e`; its CI run is pending. No test-pass claim is made for this revision.
+**Verified checks on commit `99857c9ce271d62a05f95310c1ff50e86d0b4b66`:**
+- `cargo fmt --check`: passed.
+- `cargo clippy`: passed.
+- `cargo test`: passed.
+- Disposable PostgreSQL 17 migration and owner-scoped RLS application: passed.
+- Repository regression workflows: all completed workflows passed. The main `ci` workflow's mutation-testing job and Vercel preview check are still pending; do not mark the overall PR green until both resolve.
 
-**Production boundary:** Migration 0005 has not been applied to production. The PR has not been merged, and no product deployment or production database write has been made.
+**Production boundary:** Migration 0005 has not been applied to production. PR #398 has not been merged; no product deployment or production database write has been made.
 
 ## 10. Repository navigation
 
