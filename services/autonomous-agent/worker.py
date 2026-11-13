@@ -1560,6 +1560,98 @@ class Worker:
             LOG.error("Could not persist failure marker for task %s: %s",
                       comment_id, str(marker_error)[:300])
 
+    def _implement_append_rust_tests(
+        self,
+        root: Path,
+        target_path: str,
+        task: str,
+        issue_number: int,
+        context: str,
+        comment_id: int,
+        usage_records: list[dict[str, Any]],
+    ) -> None:
+        target = root / target_path
+        if not target.is_file():
+            raise RuntimeError(f"Append-only test target does not exist: {target_path}")
+        original_content = target.read_text(encoding="utf-8")
+        supporting_parts: list[str] = []
+        for supporting_path in (
+            "services/football-dynasty/src/lib.rs",
+            "services/football-dynasty/src/http.rs",
+            "services/football-dynasty/src/roster.rs",
+            "services/football-dynasty/migrations/0005_squad_contracts.sql",
+        ):
+            supporting_file = root / supporting_path
+            if supporting_file.is_file():
+                supporting_parts.append(
+                    f"--- CURRENT WORKING TREE: {supporting_path} ---\n"
+                    + supporting_file.read_text(encoding="utf-8")[:7000]
+                )
+        supporting_context = (
+            "\n\n".join(supporting_parts)
+            + "\n\n--- ORIGINAL REPOSITORY CONTEXT ---\n"
+            + context[:7000]
+        )[:16000]
+        append_task = (
+            task
+            + "\n\nSPECIAL INSTRUCTION FOR services/football-dynasty/tests/campaign_lifecycle.rs: "
+            "do not rewrite the existing test file. Append only compact tests for missing acceptance criteria: "
+            "concurrent/idempotent first read, owner isolation, invalid roster terms, and valid/invalid state transitions. "
+            "Reuse the existing FixedVerifier, call, response_json, and imports. Do not duplicate existing succession tests. "
+            "Keep the appended code under 180 lines and do not add use statements."
+        )
+        previous_output = ""
+        validation_error = ""
+        for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+            answer = ""
+            try:
+                answer, usage = ask_starimg_full_file(
+                    self.starimg_base,
+                    self.starimg_key,
+                    self.model,
+                    append_task,
+                    issue_number,
+                    target_path,
+                    original_content,
+                    supporting_context,
+                    output_mode="append",
+                    previous_output=previous_output,
+                    validation_error=validation_error,
+                    max_tokens=5000,
+                )
+                usage_records.append(usage)
+                append_block = extract_append_block(answer, target_path)
+                target.write_text(
+                    original_content.rstrip() + "\n\n" + append_block + "\n",
+                    encoding="utf-8",
+                )
+                run_command(["git", "diff", "--check"], root)
+                self._validate(root, [target_path])
+                changed = sorted(set(
+                    run_command(["git", "diff", "--name-only"], root).splitlines()
+                    + run_command(["git", "ls-files", "--others", "--exclude-standard"], root).splitlines()
+                ))
+                if target_path not in changed:
+                    raise RuntimeError("Append-only test generation did not modify its assigned file")
+                LOG.info(
+                    "Task %s appended focused regression tests to %s",
+                    comment_id, target_path,
+                )
+                return
+            except Exception as exc:
+                target.write_text(original_content, encoding="utf-8")
+                validation_error = str(exc)[:3000]
+                previous_output = answer or previous_output
+                if attempt >= MAX_GENERATION_ATTEMPTS:
+                    raise RuntimeError(
+                        f"Append-only implementation unit {target_path} failed after {attempt} attempts: "
+                        f"{validation_error}"
+                    ) from None
+                LOG.warning(
+                    "Task %s append-only tests for %s failed on attempt %s; requesting correction: %s",
+                    comment_id, target_path, attempt, validation_error[:800],
+                )
+
     def _push(self, root: Path, branch: str) -> None:
         askpass = root / ".git-askpass"
         askpass.write_text(
@@ -1660,6 +1752,11 @@ class Worker:
                 # Large vertical slices are generated one required file at a time.
                 # This keeps each Claude response bounded and makes patch context exact.
                 for target_path in required_paths:
+                    if target_path.endswith("/tests/campaign_lifecycle.rs") and (temp / target_path).is_file():
+                        self._implement_append_rust_tests(
+                            temp, target_path, task, issue_number, context, comment_id, usage_records
+                        )
+                        continue
                     target_context = patch_file_context(
                         temp, "", self.allowed_prefixes, [target_path]
                     )
