@@ -319,7 +319,7 @@ The engineering agents operate inside Sherlock Scholes. Their durable handoff ch
 
 | Runtime | Railway service | Role | Cadence |
 |---|---|---|---|
-| Implementer | `stream-service` in `distinguished-transformation` | Architect → implementer → independent internal reviewer → isolated PR | Every 15 minutes; at most one task per run |
+| Implementer | `stream-service` in `distinguished-transformation` | Architect → implementer → independent internal reviewer → isolated PR | Every 10 minutes; at most one task per run |
 | External reviewer | `sherlock-ai-bot` in `distinguished-transformation` | Independent PR reviewer on the exact head SHA; posts a persistent GitHub review comment | Every 5 minutes; at most one PR per run |
 
 Both services use `services/autonomous-agent` from the multi-agent runtime branch. Runtime repository scope is restricted to `Aloews/sherlock-scholes-`; it must not process tasks from other repositories.
