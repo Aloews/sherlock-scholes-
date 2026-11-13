@@ -1467,7 +1467,7 @@ class Worker:
                 if any((temp / path).is_symlink() for path in changed):
                     raise RuntimeError("Symlink changes are not permitted")
                 run_command(["git", "diff", "--check"], temp)
-                self._validate(temp, changed)
+                self._validate(temp, changed, full=True)
             else:
                 previous_patch = ""
                 validation_error = ""
@@ -1499,7 +1499,7 @@ class Worker:
                         if any((temp / path).is_symlink() for path in changed):
                             raise RuntimeError("Symlink changes are not permitted")
                         run_command(["git", "diff", "--check"], temp)
-                        self._validate(temp, changed)
+                        self._validate(temp, changed, full=True)
                         break
                     except Exception as exc:
                         validation_error = str(exc)[:3000]
@@ -1536,7 +1536,7 @@ class Worker:
             if not changed or len(changed) > MAX_FILES or any(not safe_path(path, self.allowed_prefixes) for path in changed):
                 raise RuntimeError("Post-review patch failed the final changed-path policy")
             run_command(["git", "diff", "--check"], temp)
-            self._validate(temp, changed)
+            self._validate(temp, changed, full=True)
             run_command(["git", "config", "user.name", "Sherlock Engineering Agent"], temp)
             run_command(["git", "config", "user.email", "agent@users.noreply.github.com"], temp)
             run_command(["git", "add", "--"] + changed, temp)
@@ -1636,7 +1636,7 @@ class Worker:
             if set(corrected_paths) != set(changed):
                 raise RuntimeError("Reviewer correction changed the original file set")
             run_command(["git", "diff", "--check"], root)
-            self._validate(root, corrected_paths)
+            self._validate(root, corrected_paths, full=True)
             changed = corrected_paths
             diff = run_command(["git", "diff", "--no-ext-diff", "--unified=3"], root)
         raise RuntimeError("Independent review did not reach an approval verdict")
@@ -1745,23 +1745,47 @@ class Worker:
             return True
         return False
 
-    def _validate(self, root: Path, changed: list[str]) -> None:
-        # Full application tests run in GitHub Actions on the exact PR head.
-        # The worker performs bounded local syntax/format checks before opening a PR.
+    def _validate(self, root: Path, changed: list[str], full: bool = False) -> None:
         python_paths = [path for path in changed if path.endswith(".py")]
         if python_paths:
             run_command(["python3", "-m", "py_compile"] + python_paths, root, timeout=300)
 
         rust_paths = sorted({path for path in changed if path.endswith(".rs")})
-        if rust_paths:
+        football_dynasty_paths = [
+            path for path in changed
+            if path.startswith("services/football-dynasty/")
+        ]
+        if rust_paths or football_dynasty_paths:
             manifest = root / "services" / "football-dynasty" / "Cargo.toml"
             if not manifest.is_file():
                 raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
-            run_command(
-                ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
-                root,
-                timeout=300,
-            )
+            if rust_paths:
+                run_command(
+                    ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
+                    root,
+                    timeout=300,
+                )
+            if full and football_dynasty_paths:
+                test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+                if not test_database_url.startswith(("postgres://", "postgresql://")):
+                    raise RuntimeError("TEST_DATABASE_URL must point to an isolated disposable PostgreSQL database")
+                manifest_arg = "services/football-dynasty/Cargo.toml"
+                run_command(
+                    ["cargo", "fmt", "--manifest-path", manifest_arg, "--", "--check"],
+                    root,
+                    timeout=300,
+                )
+                run_command(
+                    ["cargo", "clippy", "--manifest-path", manifest_arg, "--all-targets", "--", "-D", "warnings"],
+                    root,
+                    timeout=900,
+                )
+                run_command(
+                    ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets"],
+                    root,
+                    timeout=1200,
+                    extra_env={"DATABASE_URL": test_database_url},
+                )
 
 
 def main() -> None:
