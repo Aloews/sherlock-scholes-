@@ -387,8 +387,7 @@ async fn squad_seeding_is_deterministic_idempotent_and_owner_isolated() {
         .connect(&database_url)
         .await
         .expect("runtime pool");
-    let owner_id = 900_000_000_000_i64
-        + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
     let state = AppState {
         db: pool.clone(),
         verifier: Arc::new(FixedVerifier(owner_id)),
@@ -439,7 +438,11 @@ async fn squad_seeding_is_deterministic_idempotent_and_owner_isolated() {
     for player in players {
         assert!(player["id"].is_string());
         assert!(player["name"].is_string());
-        assert!(player["age"].as_i64().is_some_and(|age| (18..=32).contains(&age)));
+        assert!(
+            player["age"]
+                .as_i64()
+                .is_some_and(|age| (18..=32).contains(&age))
+        );
         assert!(player["contract"]["wage_per_week"].as_i64().unwrap_or(0) > 0);
         assert_eq!(player["contract"]["status"], "active");
     }
@@ -648,17 +651,15 @@ async fn contract_sign_renew_release_and_expiry_are_transactional() {
     assert_eq!(release_status, StatusCode::OK);
     assert_eq!(released["status"], "released");
 
-    let released_contract_id = uuid::Uuid::parse_str(
-        released["id"].as_str().expect("released contract id"),
-    )
-    .expect("released contract UUID");
-    let released_at: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "SELECT released_at FROM fd.contracts WHERE id = $1",
-    )
-    .bind(released_contract_id)
-    .fetch_one(&pool)
-    .await
-    .expect("released timestamp");
+    let released_contract_id =
+        uuid::Uuid::parse_str(released["id"].as_str().expect("released contract id"))
+            .expect("released contract UUID");
+    let released_at: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT released_at FROM fd.contracts WHERE id = $1")
+            .bind(released_contract_id)
+            .fetch_one(&pool)
+            .await
+            .expect("released timestamp");
     assert!(released_at.is_some());
 
     let re_sign_body = json!({
