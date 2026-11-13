@@ -363,3 +363,48 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
 
     pool.close().await;
 }
+
+#[tokio::test]
+async fn squad_seeds_23_players_deterministically() {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&database_url)
+        .await
+        .expect("pool");
+
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id)),
+    };
+    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
+
+    let (status, campaign) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("squad-test-001"),
+        Some(json!({"name":"Squad Test","mode":"sandbox","origin":"entrepreneur","founder_name":"Test Founder","dynasty_name":"Test Dynasty","club_name":"Test Club"})),
+    ).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let campaign_id = campaign["id"].as_str().expect("campaign id");
+
+    let club_id: i64 = sqlx::query_scalar("select id from fd.clubs where campaign_id = $1 limit 1")
+        .bind(uuid::Uuid::parse_str(campaign_id).unwrap())
+        .fetch_one(&pool)
+        .await
+        .expect("club id");
+
+    let (squad_status, squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/campaigns/{}/squads/{}", campaign_id, club_id),
+        None,
+        None,
+    ).await;
+    assert_eq!(squad_status, StatusCode::OK);
+    assert_eq!(squad.as_array().expect("squad array").len(), 23);
+
+    pool.close().await;
+}
