@@ -1501,9 +1501,9 @@ class Worker:
         try:
             if self._has_marker(issue_number, comment_id):
                 return
-            safe_error = re.sub(r"(?:sk-ant-|sk_live_|Bearer\\s+)[A-Za-z0-9_./+-]+", "[REDACTED]", error)
-        if len(safe_error) > 1800:
-            safe_error = "[earlier output omitted]\\n" + safe_error[-1800:]
+            safe_error = re.sub(r"(?:sk-ant-|sk_live_|Bearer\s+)[A-Za-z0-9_./+-]+", "[REDACTED]", error)
+            if len(safe_error) > 1800:
+                safe_error = "[earlier output omitted]\n" + safe_error[-1800:]
             request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
                          self.token, "POST", {
                 "body": "The autonomous worker could not complete this task. "
