@@ -136,13 +136,37 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Product specification: `docs/football-dynasty/GDD.md`
 - Technical architecture: `docs/football-dynasty/ARCHITECTURE.md`
 - Current implementation/release notes: `docs/football-dynasty/IMPLEMENTATION_PLAN.md`
-- Rust API: `services/football-dynasty/`
+- Rust API: `services/football-dynasty/` with campaign-scoped squad/contract management
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
 - The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
 
 ## 8. Execution priorities
+
+### Football Dynasty campaign squad and contract implementation status
+
+As of migration 0005 and the roster module commit:
+
+- Campaign-scoped players and contracts use composite primary keys `(campaign_id, id)` for referential integrity.
+- First squad read after campaign creation transactionally seeds 23 deterministic fictional players (2 GK, 8 DEF, 8 MID, 5 FWD) and 23 active contracts from the campaign seed using SHA-256(campaign UUID || seed || index); no duplicate players under concurrent access.
+- Contract state is tracked explicitly (`active`, `expired`, `released`) with partial unique index `WHERE status = 'active'` ensuring one active contract per player. Rust code expires contracts at the game-year boundary before sign/renew/release actions.
+- Sign creates a new contract for an uncontracted player if campaign/player/club/wage/years are valid and years ≤ 5. Renew extends from `max(existing.end_year, current_year)` by requested years, updates wage, preserves one active contract, and rejects zero/negative/out-of-bound inputs.
+- Release transitions active contracts to `released` with `released_at` timestamp; released contracts are inactive.
+- Owner-scoped RLS policies use `FOR ALL TO fd_runtime` with the initplan convention `NULLIF(current_setting('fd.telegram_id', true), '')::bigint`.
+- Integration tests confirm: exact 23-player/23-contract seeding, position distribution (2/8/8/5), deterministic IDs from seed, identical results under concurrent first-read calls, owner isolation, sign/renew/release/expiry state transitions, wage/year bounds (wage > 0, wage ≤ 100,000,000, years ≤ 5), and rejection of invalid campaign/player/club/wage/year inputs.
+- Seed is transactional with advisory lock on owned campaign row FOR UPDATE before generating players/contracts.
+- Tests run against disposable PostgreSQL 17 in CI.
+
+**Verified behavior:**
+- Deterministic SHA-256-based player/contract IDs from campaign UUID + seed + index (using `rem_euclid` to avoid i64::abs overflow).
+- Transactional atomic seed with advisory lock; concurrent calls produce identical results.
+- Composite foreign keys correctly reference `(campaign_id, id)` for clubs and `(campaign_id, player_id)` for contracts.
+- Partial unique index on active contracts enforces one active contract per player without CURRENT_DATE immutability issues.
+- Expiry transition at game-year boundary before sign/renew/release operations; renewal correctly extends from max(existing.end_year, current_year).
+- Owner isolation enforced via RLS; owner-scoped actions reject cross-campaign/cross-player operations.
+- Wage and contract-term bounds validated; zero/negative/out-of-range inputs rejected.
+- Disposable PostgreSQL migration/integration tests pass in CI.
 
 Work in this order. Reorder only when fresh production evidence shows a higher-impact blocker.
 
