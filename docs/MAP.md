@@ -72,7 +72,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | Fantasy | Build a team using the same trusted football statistics | `src/features/fantasy`, fantasy screens | Fantasy scoring reconciles to canonical match/player statistics |
 | News and digest | Find relevant football stories with clear source attribution | `src/features/digest`, news screens | Source links, timestamps, deduplication, and clear separation of articles from video |
 | Amateur football | Create and manage a private amateur league | `src/features/amateur`, `amateur-logo` Edge Function | Telegram identity verification, owner isolation, upload validation |
-| Football Dynasty | Play a persistent fictional football dynasty campaign | `src/features/football-dynasty`, `src/screens/FootballDynastyScreen.tsx`, `services/football-dynasty` | Campaign lifecycle, ledger integrity, succession, persistence, and owner isolation |
+| Football Dynasty | Play a persistent fictional football dynasty campaign | `src/features/football-dynasty`, `src/screens/FootballDynastyScreen.tsx`, `services/football-dynasty` | Campaign lifecycle, ledger integrity, succession, persistence, owner isolation, and squad/contract management |
 | Admin and operations | Maintain data and resolve production issues safely | `src/screens/admin`, `docs/operations` | Audited changes, bounded jobs, observable failures, tested rollback |
 
 This is a navigation index, not a promise that every listed area is currently complete. Verify implementation and production state before extending an area.
@@ -140,7 +140,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
-- The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The current implemented slice is campaign creation, bounded founder/heir succession, and squad/contract management (seeded 23-player roster, signing, renewal, release). It is not the full management simulation described in the GDD.
 
 ## 8. Execution priorities
 
@@ -204,6 +204,20 @@ Work in this order. Reorder only when fresh production evidence shows a higher-i
 - Defer cosmetic refactors unless they remove a measured usability problem or unblock delivery.
 
 **Exit criteria:** each feature is used by a real user path and has a metric that can confirm or reject its value.
+
+### Football Dynasty squad and contract backend — verified slice
+
+**Outcome:** campaign owners can inspect their squad and manage player contracts through a tested, authorized API.
+
+**Verified implementation (2025-01-XX):**
+- Migration 0005: `fd.players` (campaign_id, id, full_name, position, age, skill, seed_index) and `fd.contracts` (campaign_id, id, player_id, club_id, start_year, end_year, wage_per_year, status, released_at) with composite keys, FKs, and partial unique index for one active contract per player.
+- Rust `roster` module: GET squad, POST sign/renew contract, POST release contract.
+- On first squad read after campaign creation, transactionally seed exactly 23 deterministic players (2 GK, 8 DEF, 8 MID, 5 FWD) with stable SHA-256 IDs from campaign UUID + seed + domain + index, and 23 active 3-year contracts. Concurrent/repeated first reads are idempotent and never duplicate.
+- Contracts expire when `end_year < current_year`. Renewal extends `max(existing.end_year, current_year) + years` and updates wage. Release sets `released_at = NOW()` and `status = 'released'`.
+- Owner-scoped RLS on both tables using `fd.telegram_id` convention from migration 0003. All handlers verify campaign ownership and use transaction-local `SET LOCAL ROLE fd_runtime`.
+- Integration tests: seed count/distribution/determinism, concurrent first read, owner isolation, invalid wage (outside 1..100M)/years (outside 1..5), signing available player, renewing existing contract with new terms, releasing active contract, automatic expiry on GET.
+- Axum 0.8 routes merged into protected router before auth layer; full `/api/v1/campaigns/{campaign_id}/*` paths.
+- All tests, fmt, Clippy -D warnings, and disposable PG17 migration/integration pass. No Cargo.lock, production DB, or deployment changes.
 
 ## 9. Definition of done
 

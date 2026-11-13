@@ -7,10 +7,10 @@ use axum::{
 use serde_json::json;
 use tower_http::cors::CorsLayer;
 
-use crate::{api, auth, state::AppState};
+use crate::{api, auth, roster, state::AppState};
 
 pub fn router(state: AppState, allowed_origin: HeaderValue) -> Router {
-    let protected = api::routes().route_layer(middleware::from_fn_with_state(
+    let protected = api::routes().merge(roster::routes()).route_layer(middleware::from_fn_with_state(
         state.clone(),
         auth::authenticate,
     ));
