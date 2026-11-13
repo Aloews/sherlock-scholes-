@@ -919,6 +919,16 @@ def provider_request_json(
         raise RuntimeError(f"provider returned HTTP {exc.code}") from None
 
 
+def cloudflare_token_probe(token: str) -> dict[str, Any]:
+    response = provider_request_json(
+        "https://api.cloudflare.com/client/v4/user/tokens/verify", token
+    )
+    status = str((response.get("result") or {}).get("status", "unknown")).lower()
+    if not response.get("success") or status != "active":
+        raise RuntimeError(f"Cloudflare token status is {status}")
+    return {"token_status": status}
+
+
 def integration_preflight() -> dict[str, Any]:
     """Read-only connection checks; never returns or logs provider credentials."""
     result: dict[str, Any] = {
@@ -932,11 +942,7 @@ def integration_preflight() -> dict[str, Any]:
         (
             "cloudflare",
             os.environ.get("CLOUDFLARE_API_TOKEN", "").strip(),
-            lambda token: {
-                "token_status": (provider_request_json(
-                    "https://api.cloudflare.com/client/v4/user/tokens/verify", token
-                ).get("result") or {}).get("status", "unknown")
-            },
+            lambda token: cloudflare_token_probe(token),
         ),
         (
             "fly",
@@ -993,18 +999,33 @@ def integration_preflight() -> dict[str, Any]:
                 raise RuntimeError("account/workspace token query was rejected")
             result["railway_api"] = {"status": "connected", "scope": "account_or_workspace"}
         except Exception:
-            try:
-                response = provider_request_json(
-                    endpoint, railway_token, method="POST",
-                    payload={"query": "query { projectToken { projectId environmentId } }"},
-                    token_header="Project-Access-Token",
-                )
-                errors = response.get("errors") or []
-                if errors:
-                    raise RuntimeError("project token query was rejected")
-                result["railway_api"] = {"status": "connected", "scope": "project"}
-            except Exception as exc:
-                result["railway_api"] = {"status": "unavailable", "reason": type(exc).__name__}
+            workspace_id = os.environ.get("RAILWAY_WORKSPACE_ID", "").strip()
+            workspace_connected = False
+            if workspace_id:
+                try:
+                    workspace_response = provider_request_json(
+                        endpoint, railway_token, method="POST",
+                        payload={"query": f'query {{ workspace(workspaceId: "{workspace_id}") {{ name id }} }}'},
+                    )
+                    if workspace_response.get("errors") or not (workspace_response.get("data") or {}).get("workspace"):
+                        raise RuntimeError("workspace token query was rejected")
+                    result["railway_api"] = {"status": "connected", "scope": "workspace"}
+                    workspace_connected = True
+                except Exception:
+                    pass
+            if not workspace_connected:
+                try:
+                    response = provider_request_json(
+                        endpoint, railway_token, method="POST",
+                        payload={"query": "query { projectToken { projectId environmentId } }"},
+                        token_header="Project-Access-Token",
+                    )
+                    errors = response.get("errors") or []
+                    if errors:
+                        raise RuntimeError("project token query was rejected")
+                    result["railway_api"] = {"status": "connected", "scope": "project"}
+                except Exception as exc:
+                    result["railway_api"] = {"status": "unavailable", "reason": str(exc)[:120]}
 
     supabase_token = os.environ.get("SUPABASE_ACCESS_TOKEN", "").strip()
     supabase_ref = os.environ.get("SUPABASE_PROJECT_REF", "").strip()
@@ -1021,7 +1042,7 @@ def integration_preflight() -> dict[str, Any]:
                 "database_version": project.get("database_version", "unknown"),
             }
         except Exception as exc:
-            result["supabase"] = {"status": "unavailable", "reason": type(exc).__name__}
+            result["supabase"] = {"status": "unavailable", "reason": str(exc)[:120]
     else:
         result["supabase"] = {"status": "not_configured"}
 
