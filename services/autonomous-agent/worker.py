@@ -864,6 +864,21 @@ def has_review_marker(comments: list[dict[str, Any]], head_sha: str) -> bool:
     return any(marker in str(comment.get("body", "")) for comment in comments)
 
 
+def blocking_findings(findings: list[Any]) -> list[dict[str, Any]]:
+    if not isinstance(findings, list):
+        raise RuntimeError("Reviewer findings must be a JSON array")
+    blockers = []
+    for item in findings:
+        if not isinstance(item, dict):
+            raise RuntimeError("Reviewer finding must be a JSON object")
+        severity = str(item.get("severity", "")).strip().lower()
+        if severity not in ("blocker", "major", "minor"):
+            raise RuntimeError("Reviewer finding has an unsupported severity")
+        if severity in ("blocker", "major"):
+            blockers.append(item)
+    return blockers
+
+
 def integration_preflight() -> dict[str, Any]:
     result: dict[str, Any] = {
         "railway": {
@@ -1392,13 +1407,7 @@ class Worker:
             review = extract_agent_json(answer)
             verdict = str(review.get("verdict", "")).strip().lower()
             findings = review.get("findings", [])
-            if not isinstance(findings, list):
-                raise RuntimeError("Reviewer findings must be a JSON array")
-            blockers = [
-                item for item in findings
-                if isinstance(item, dict)
-                and str(item.get("severity", "")).lower() in ("blocker", "major")
-            ]
+            blockers = blocking_findings(findings)
             if verdict == "approve" and not blockers:
                 review["reviewer_model"] = reviewer_model
                 review["reviewed_files"] = changed
@@ -1524,13 +1533,7 @@ class Worker:
             if verdict not in ("approve", "revise"):
                 raise RuntimeError(f"Reviewer returned invalid verdict for PR #{number}")
             findings = review.get("findings", [])
-            if not isinstance(findings, list):
-                raise RuntimeError(f"Reviewer findings for PR #{number} are not an array")
-            blockers = [
-                item for item in findings
-                if isinstance(item, dict)
-                and str(item.get("severity", "")).lower() in ("blocker", "major")
-            ]
+            blockers = blocking_findings(findings)
             status = "PASS" if verdict == "approve" and not blockers else "CHANGES REQUIRED"
             lines = [
                 "## Independent AI review",
