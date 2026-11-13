@@ -349,7 +349,7 @@ Expected Railway runtime variable names:
 - `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID`
 - `STARIMG_API_KEY` and `GITHUB_TOKEN`
 
-The owner stores the listed credentials as GitHub Actions repository secrets. The workflow `.github/workflows/sync-agent-secrets.yml` transfers them through stdin into the existing Railway `sherlock-ai-bot` reviewer service in project `distinguished-transformation`; it never prints values or writes them to repository files. The `RAILWAY` GitHub secret is mapped to the runtime variable `RAILWAY_API_TOKEN`. Only the reviewer service receives infrastructure-management credentials; the implementer does not.
+The workflow `.github/workflows/sync-agent-secrets.yml` is manual-only and transfers GitHub Actions repository secrets through stdin into the existing Railway `sherlock-ai-bot` reviewer service in project `distinguished-transformation`; it never prints values or writes them to repository files. It becomes dispatchable after reaching the default branch. The `RAILWAY` GitHub secret is accepted as a project token and mapped to runtime variable `RAILWAY_API_TOKEN`; `RAILWAY_API_TOKEN` is also accepted for workspace tokens. Only the reviewer service receives infrastructure-management credentials; the implementer does not.
 
 A GitHub secret name is not proof that a runtime has received the value. The sync workflow must complete successfully, then the reviewer preflight must report each provider's authenticated status. Missing secrets, insufficient Railway token scope, or provider API rejection must remain explicit `not_configured` / `unavailable` states; never infer connectivity from a key name.
 
@@ -362,6 +362,6 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 
 ### 14.5 Current verification state
 
-- Starimg's authenticated model catalog selected `claude-fable-5-2`; an implementation task completed the architect → implementer → internal reviewer handoff and opened PR #409. The independent Railway reviewer also posted a SHA-scoped PASS review on the earlier smoke PR #408.
-- The latest worker CI run passed the dedicated autonomous-agent unit suite and Docker build. Full branch CI remains subject to all product checks and the Vercel free-plan deployment limit.
-- Provider credential synchronization from GitHub Actions secrets to the Railway reviewer service is performed by `.github/workflows/sync-agent-secrets.yml`; do not call providers connected until the workflow and subsequent authenticated preflight both succeed.
+- Starimg's authenticated model catalog selected `claude-fable-5-2`; the implementer completed architect → implementer → internal reviewer handoffs and opened PR #409. The external Railway reviewer posted SHA-scoped PASS comments on smoke PR #408 and task PR #409.
+- The dedicated autonomous-agent unit suite and Docker build passed on the previous worker head; full branch CI for the latest head is still running.
+- The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR preview deployments are blocked by the free-plan daily deployment cap.
