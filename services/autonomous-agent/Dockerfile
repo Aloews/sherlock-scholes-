@@ -5,8 +5,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --profile minimal --component rustfmt --default-toolchain stable \
-    && /root/.cargo/bin/rustfmt --version
+    | sh -s -- -y --profile minimal --component rustfmt --component clippy --default-toolchain stable \
+    && /root/.cargo/bin/rustfmt --version \
+    && /root/.cargo/bin/cargo --version \
+    && /root/.cargo/bin/cargo clippy --version
 
 ENV PATH="/root/.cargo/bin:$PATH"
 
