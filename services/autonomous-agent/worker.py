@@ -2,6 +2,7 @@
 """Bounded GitHub issue-to-PR worker. No shell commands are accepted from the model."""
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import os
@@ -411,19 +412,19 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
             raise
 
     # Some Claude responses return a fenced complete file instead of the requested diff.
-    blocks = re.findall(r"```[a-zA-Z0-9_+.-]*\\s*\\n(.*?)\\n```", answer, re.S)
-    candidate = max(blocks, key=len).strip("\\n") if blocks else ""
+    blocks = re.findall(r"```[a-zA-Z0-9_+.-]*\s*\n(.*?)\n```", answer, re.S)
+    candidate = max(blocks, key=len).strip("\n") if blocks else ""
     if not candidate:
         raise RuntimeError("Model returned neither a diff nor a complete-file code block")
 
-    if not candidate.endswith("\\n"):
-        candidate += "\\n"
+    if not candidate.endswith("\n"):
+        candidate += "\n"
     target = root / target_path
     if target.exists():
         current = target.read_text(encoding="utf-8")
         old_lines = current.splitlines(keepends=True)
         new_lines = candidate.splitlines(keepends=True)
-        old_nonempty = [line.rstrip("\\r\\n") for line in old_lines if line.strip()]
+        old_nonempty = [line.rstrip("\r\n") for line in old_lines if line.strip()]
         if not old_nonempty:
             raise RuntimeError("Cannot safely replace an existing empty file from a model response")
         anchors = old_nonempty[:2] + old_nonempty[-2:]
@@ -434,15 +435,15 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
         ))
         if not diff:
             raise RuntimeError("Model full-file response did not change the target file")
-        patch = f"diff --git a/{target_path} b/{target_path}\\n" + diff
+        patch = f"diff --git a/{target_path} b/{target_path}\n" + diff
     else:
         new_lines = candidate.splitlines(keepends=True)
         diff = "".join(difflib.unified_diff(
             [], new_lines, fromfile="/dev/null", tofile=f"b/{target_path}"
         ))
         patch = (
-            f"diff --git a/{target_path} b/{target_path}\\n"
-            "new file mode 100644\\n"
+            f"diff --git a/{target_path} b/{target_path}\n"
+            "new file mode 100644\n"
             + diff
         )
     return extract_patch(patch, (target_path,))
