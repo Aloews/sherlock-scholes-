@@ -26,9 +26,9 @@ Only owner-authored commands are accepted. At most one implementation task is pr
 - **Supabase:** the reviewer uses the existing scoped Management API token for read-only project health checks. The database connection string is not used by the agent.
 - **Vercel:** the reviewer uses the existing token for read-only project and latest-deployment checks.
 - Vercel preview builds are skipped on non-main branches unless the commit message contains [vercel-preview]; production builds on main remain enabled.
-- **Railway:** the implementer and reviewer run as separate scheduled roles in the existing Railway project. Railway environment/service metadata is included in the read-only preflight; no Railway API token is currently configured for runtime resource-management operations.
+- **Cloudflare, Fly.io, Neon, Railway, Render, Supabase and Vercel:** the reviewer performs read-only credential/connection checks and reports only minimal status metadata. No provider mutation is performed by these checks.
 
-Supabase and Vercel credentials already exist on the reviewer service. Their values are never copied into source, prompts, logs, or subprocess environments.
+Provider credentials must be present as Railway service variables on the reviewer runtime. The runtime checks variable presence without printing values; credentials are never copied into source, model prompts, logs, GitHub comments, or subprocess environments.
 
 ## Railway roles
 
@@ -37,7 +37,7 @@ Supabase and Vercel credentials already exist on the reviewer service. Their val
 | stream-service | implementer + architect + internal reviewer | every 5 minutes | one task per invocation |
 | sherlock-ai-bot | independent PR reviewer | every 5 minutes | one PR per invocation |
 
-Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The reviewer role is enabled only after the branch passes its worker tests and Docker build. No public domain is required.
+Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The implementation service is scoped to Aloews/sherlock-scholes- only; the reviewer scans only that repository. No public domain is required.
 
 ## Required runtime variables
 
@@ -49,6 +49,12 @@ Common:
 - STARIMG_API_KEY
 - STARIMG_BASE_URL=https://ai.starimg.ru/v1
 - STARIMG_MODEL=claude-fable-5-2
+- STARIMG_REVIEWER_MODEL=claude-fable-5-2
+- CLOUDFLARE_API_TOKEN (optional read-only token verification)
+- FLY_API_TOKEN (optional read-only app inventory)
+- NEON_API_KEY (optional read-only project inventory)
+- RAILWAY_API_TOKEN or RAILWAY (optional read-only GraphQL identity/project-token check)
+- RENDER_API_KEY (optional read-only service inventory)
 
 Reviewer-only, non-secret:
 - SUPABASE_PROJECT_REF=konoavrduynecxblqfvq
@@ -59,7 +65,7 @@ Reviewer-only existing secrets:
 - SUPABASE_ACCESS_TOKEN
 - VERCEL_TOKEN
 
-The reviewer uses only GET requests against Supabase and Vercel. It never reads secret values from those providers, changes settings, applies migrations, or triggers deployments.
+The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers deployments, or writes product data. Missing optional provider credentials are reported as not_configured rather than treated as connected.
 
 ## Safety and limits
 
