@@ -1383,11 +1383,90 @@ class Worker:
         return any(any(tag in str(item.get("body", "")) for tag in marker)
                    for item in comments if isinstance(item, dict))
 
+    def _wait_for_github_actions(self, pr: dict[str, Any], timeout_seconds: int = 1200) -> dict[str, Any]:
+        number = int(pr.get("number", 0) or 0)
+        head = pr.get("head") or {}
+        sha = str(head.get("sha", "")).strip()
+        if not number or not sha:
+            raise RuntimeError("Draft PR is missing its number or exact head SHA")
+        started = time.monotonic()
+        while True:
+            response = request_json(
+                api_url(f"/repos/{self.repo}/commits/{sha}/check-runs?per_page=100"),
+                self.token,
+                timeout=30,
+            )
+            summary = github_actions_check_summary(response.get("check_runs", []))
+            if summary["state"] == "success":
+                LOG.info(
+                    "Task PR #%s exact-head GitHub Actions checks passed (%s checks)",
+                    number, len(summary.get("checks", [])),
+                )
+                return summary
+            if summary["state"] == "failure":
+                failed = ", ".join(
+                    f"{item.get('name')}={item.get('conclusion')}"
+                    for item in summary.get("checks", [])
+                )
+                try:
+                    self._close_pr(number)
+                except Exception as close_error:
+                    LOG.error("Could not close failed draft PR #%s: %s", number, str(close_error)[:300])
+                raise RuntimeError(f"GitHub Actions checks failed for draft PR #{number}: {failed}")
+            elapsed = time.monotonic() - started
+            if elapsed >= 120 and not summary.get("checks"):
+                try:
+                    self._close_pr(number)
+                except Exception as close_error:
+                    LOG.error("Could not close draft PR #%s without checks: %s", number, str(close_error)[:300])
+                raise RuntimeError(
+                    f"No GitHub Actions check runs appeared for draft PR #{number} at {sha}"
+                )
+            if elapsed >= timeout_seconds:
+                try:
+                    self._close_pr(number)
+                except Exception as close_error:
+                    LOG.error("Could not close timed-out draft PR #%s: %s", number, str(close_error)[:300])
+                raise RuntimeError(
+                    f"GitHub Actions checks did not finish within {timeout_seconds}s for draft PR #{number}"
+                )
+            time.sleep(15)
+
+    def _close_pr(self, number: int) -> None:
+        request_json(
+            api_url(f"/repos/{self.repo}/pulls/{number}"),
+            self.token,
+            "PATCH",
+            {"state": "closed"},
+        )
+
+    def _post_task_result(self, issue_number: int, comment_id: int,
+                          pr: dict[str, Any], checks: dict[str, Any]) -> None:
+        url = str(pr.get("html_url", ""))
+        sha = str(((pr.get("head") or {}).get("sha")) or "")
+        names = ", ".join(
+            str(item.get("name", "unknown"))
+            for item in checks.get("checks", [])
+        )
+        request_json(
+            api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
+            self.token,
+            "POST",
+            {
+                "body": (
+                    f"Draft pull request ready after exact-head GitHub Actions checks passed: {url}\n"
+                    f"Commit: `{sha}`\nChecks: {names}\n"
+                    "The PR remains a draft; no merge, production migration, or product deployment was performed.\n\n"
+                    f"<!-- sherlock-agent-result:{comment_id} -->"
+                )
+            },
+        )
+
     def _create_pr(self, issue_number: int, comment_id: int, branch: str,
-                   source_url: str, agent_plan: str = "", agent_review: dict[str, Any] | None = None) -> str:
+                   source_url: str, agent_plan: str = "", agent_review: dict[str, Any] | None = None) -> dict[str, Any]:
         existing = self._existing_pr(branch)
         if existing:
-            return existing.get("html_url", "")
+            return existing
         review_summary = str((agent_review or {}).get("summary", "Not available"))[:2500]
         review_verdict = str((agent_review or {}).get("verdict", "not_run")).upper()
         plan_summary = agent_plan[:5000] if agent_plan else "Not available"
@@ -1410,12 +1489,9 @@ class Worker:
             "head": branch,
             "base": self.default_branch,
             "body": body,
+            "draft": True,
         })
-        url = pr.get("html_url", "")
-        request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"), self.token, "POST", {
-            "body": f"Pull request opened: {url}\n\n<!-- sherlock-agent-result:{comment_id} -->"
-        })
-        return url
+        return pr
 
     def record_failure(self, comment: dict[str, Any], error: str) -> None:
         issue_url = str(comment.get("issue_url", ""))
@@ -1482,12 +1558,14 @@ class Worker:
             self.attempted.add(comment_id)
             return
         if self._branch_exists(branch):
-            url = self._create_pr(
+            pr = self._create_pr(
                 issue_number, comment_id, branch, source_url,
                 "Recovered an existing isolated task branch. The original architect handoff is unavailable.",
                 {"summary": "External reviewer must inspect this recovered branch before acceptance.", "verdict": "not_run"},
             )
-            LOG.info("Recovered existing task branch %s -> %s", branch, url)
+            checks = self._wait_for_github_actions(pr)
+            self._post_task_result(issue_number, comment_id, pr, checks)
+            LOG.info("Recovered task branch %s -> draft PR %s after exact-head CI passed", branch, pr.get("html_url"))
             self.attempted.add(comment_id)
             return
         if self._has_marker(issue_number, comment_id):
@@ -1754,12 +1832,14 @@ class Worker:
             run_command(["git", "diff", "--cached", "--check"], temp)
             run_command(["git", "commit", "-m", f"ai: implement issue #{issue_number}"], temp)
             self._push(temp, branch)
-            url = self._create_pr(
+            pr = self._create_pr(
                 issue_number, comment_id, branch, source_url, architect_plan, agent_review
             )
+            checks = self._wait_for_github_actions(pr)
+            self._post_task_result(issue_number, comment_id, pr, checks)
             LOG.info(
-                "Task %s opened PR %s after architect, implementer and reviewer handoffs; usage=%s",
-                comment_id, url, json.dumps(usage_records, sort_keys=True),
+                "Task %s opened draft PR %s after architect, implementer, internal review and exact-head CI; usage=%s",
+                comment_id, pr.get("html_url"), json.dumps(usage_records, sort_keys=True),
             )
         finally:
             shutil.rmtree(temp, ignore_errors=True)
