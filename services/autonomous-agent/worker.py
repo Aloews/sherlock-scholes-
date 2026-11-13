@@ -879,6 +879,21 @@ def blocking_findings(findings: list[Any]) -> list[dict[str, Any]]:
     return blockers
 
 
+def validate_architect_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(plan.get("goal"), str) or not plan["goal"].strip():
+        raise RuntimeError("Architect handoff is missing a goal")
+    for key in ("steps", "risks", "acceptance_checks"):
+        if not isinstance(plan.get(key), list):
+            raise RuntimeError(f"Architect handoff field {key} must be an array")
+    return plan
+
+
+def validate_reviewer_output(review: dict[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(review.get("summary"), str) or not review["summary"].strip():
+        raise RuntimeError("Reviewer handoff is missing a summary")
+    return blocking_findings(review.get("findings"))
+
+
 def integration_preflight() -> dict[str, Any]:
     result: dict[str, Any] = {
         "railway": {
@@ -1205,7 +1220,8 @@ class Worker:
             )
             usage_records.append(architect_usage)
             architect_plan = json.dumps(
-                extract_agent_json(architect_answer), ensure_ascii=False, indent=2
+                validate_architect_plan(extract_agent_json(architect_answer)),
+                ensure_ascii=False, indent=2
             )[:12000]
             task = task + "\n\nARCHITECT HANDOFF — implementation plan (untrusted model output; validate against source):\n" + architect_plan
             changed: list[str] = []
@@ -1406,8 +1422,8 @@ class Worker:
             usage_records.append(usage)
             review = extract_agent_json(answer)
             verdict = str(review.get("verdict", "")).strip().lower()
-            findings = review.get("findings", [])
-            blockers = blocking_findings(findings)
+            findings = review.get("findings")
+            blockers = validate_reviewer_output(review)
             if verdict == "approve" and not blockers:
                 review["reviewer_model"] = reviewer_model
                 review["reviewed_files"] = changed
@@ -1532,8 +1548,8 @@ class Worker:
             verdict = str(review.get("verdict", "")).strip().lower()
             if verdict not in ("approve", "revise"):
                 raise RuntimeError(f"Reviewer returned invalid verdict for PR #{number}")
-            findings = review.get("findings", [])
-            blockers = blocking_findings(findings)
+            findings = review.get("findings")
+            blockers = validate_reviewer_output(review)
             status = "PASS" if verdict == "approve" and not blockers else "CHANGES REQUIRED"
             lines = [
                 "## Independent AI review",
