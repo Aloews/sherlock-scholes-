@@ -140,7 +140,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
-- The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The current implemented slice is campaign creation, a bounded founder/heir succession lifecycle, and squad/contract management (campaign-scoped players with deterministic initial seeding, active contract enforcement, positive bounded wages, and transactional state transitions). It is not the full management simulation described in the GDD.
 
 ## 8. Execution priorities
 

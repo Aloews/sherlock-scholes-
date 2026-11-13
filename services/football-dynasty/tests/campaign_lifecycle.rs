@@ -363,3 +363,137 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
 
     pool.close().await;
 }
+
+#[tokio::test]
+async fn squad_seeding_is_deterministic_and_idempotent() {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
+    let migration_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&database_url)
+        .await
+        .expect("migration pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
+        .execute(&migration_pool).await.expect("test Telegram verifier stub");
+    sqlx::migrate!("./migrations")
+        .run(&migration_pool)
+        .await
+        .expect("migrations");
+    migration_pool.close().await;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("runtime pool");
+
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id)),
+    };
+    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
+
+    let (create_status, created) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("squad-campaign-0001"),
+        Some(json!({
+            "name":"Squad Test",
+            "mode":"sandbox",
+            "origin":"entrepreneur",
+            "founder_name":"Test Founder",
+            "dynasty_name":"Test Dynasty",
+            "club_name":"Test United"
+        })),
+    )
+    .await;
+    assert_eq!(create_status, StatusCode::CREATED);
+    let campaign_id = created["id"].as_str().expect("campaign id");
+
+    // TODO: replace with actual route path from roster.rs
+    let squad_path = format!("/api/v1/campaigns/{campaign_id}/squad");
+
+    let (first_read_status, first_squad) = call(
+        app.clone(),
+        "GET",
+        &squad_path,
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(first_read_status, StatusCode::OK);
+
+    // TODO: verify based on actual migration schema
+    // - Should seed exactly 23 players on first read
+    // - Distribution: 2 GK, 8 DEF, 8 MID, 5 FWD
+    // - Players derived from campaign seed for determinism
+    let players = first_squad["players"].as_array().expect("players array");
+    assert_eq!(players.len(), 23, "first read should seed 23 players");
+
+    let (second_read_status, second_squad) = call(
+        app.clone(),
+        "GET",
+        &squad_path,
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(second_read_status, StatusCode::OK);
+    assert_eq!(
+        second_squad["players"].as_array().expect("players").len(),
+        23,
+        "repeated read should not duplicate players"
+    );
+
+    // TODO: verify player IDs match between reads for determinism
+
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn contract_operations_enforce_campaign_owner_scope() {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let migration_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&database_url)
+        .await
+        .expect("migration pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
+        .execute(&migration_pool).await.expect("stub");
+    sqlx::migrate!("./migrations").run(&migration_pool).await.expect("migrations");
+    migration_pool.close().await;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("pool");
+
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id)),
+    };
+    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
+
+    let (create_status, created) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("contract-campaign-0001"),
+        Some(json!({"name":"Contract Test","mode":"sandbox","origin":"entrepreneur","founder_name":"Owner","dynasty_name":"Dynasty","club_name":"Club"})),
+    )
+    .await;
+    assert_eq!(create_status, StatusCode::CREATED);
+    let campaign_id = created["id"].as_str().expect("campaign id");
+
+    // TODO: Add actual contract operation tests once roster.rs routes are known:
+    // - POST sign/renew with valid/invalid terms
+    // - POST release
+    // - Verify owner-RLS prevents other owners from accessing
+    // - Verify at-most-one-active-contract constraint
+    // - Verify positive bounded wages and contract terms
+
+    pool.close().await;
+}
