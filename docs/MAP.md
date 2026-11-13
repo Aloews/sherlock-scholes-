@@ -271,6 +271,20 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 - If an external dependency or permission genuinely blocks implementation, identify the exact blocker and the smallest action needed; continue all independent work instead of stopping at an audit.
 - The final report must distinguish implemented changes, verified checks, unverified items, and production impact. Never call a task complete while required checks are failing or unavailable.
 
+### 11.4 Multi-agent execution runtime
+
+The existing Railway runtime is split into two scheduled roles inside the Sherlock Scholes Railway project:
+
+- Architect + implementer + internal reviewer run on the existing stream-service.
+- A separate reviewer role runs on the existing sherlock-ai-bot service and independently reviews autonomous PRs by exact head SHA.
+- Both roles use Starimg; Fable 5.2 is the pinned implementation/review model when present in the authenticated catalog.
+- Supabase and Vercel are read-only reviewer integrations using the existing scoped tokens. The database URL is not exposed to the worker.
+- Railway is the runtime host. The worker currently has no Railway API token, so runtime resource creation, scaling and rollback are not delegated to the model.
+
+Communication is persisted through GitHub issue tasks, isolated branches, PR agent-handoff sections and SHA-scoped reviewer comments. The internal reviewer may request one bounded correction before a PR is opened; the external reviewer posts a separate review result after the PR exists. A new head SHA triggers a fresh external review.
+
+Release boundary: no automatic merge, product deployment, production migration or production data write. Product CI on the exact PR head and maintainer acceptance remain mandatory. Only existing Railway services are reused; no new paid resources are created.
+
 ## 12. Working agreement for AI agents and contributors
 
 1. Read this map and the relevant feature specification before implementation.
