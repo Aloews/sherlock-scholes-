@@ -12,7 +12,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     && /root/.cargo/bin/cargo clippy --version
 
 ENV PATH="/root/.cargo/bin:$PATH"
-ENV SHERLOCK_AGENT_VALIDATION="rust-fmt-clippy-postgres-v2"
+ENV SHERLOCK_AGENT_VALIDATION="rust-fmt-clippy-postgres-v3"
 
 WORKDIR /opt/worker
 COPY worker.py test_worker.py /opt/worker/
