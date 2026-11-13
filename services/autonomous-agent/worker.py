@@ -973,7 +973,7 @@ def integration_preflight() -> dict[str, Any]:
         try:
             result[name] = {"status": "connected", **probe(token)}
         except Exception as exc:
-            result[name] = {"status": "unavailable", "reason": type(exc).__name__}
+            result[name] = {"status": "unavailable", "reason": str(exc)[:120]}
 
     railway_token = (
         os.environ.get("RAILWAY_API_TOKEN", "").strip()
@@ -1015,7 +1015,8 @@ def integration_preflight() -> dict[str, Any]:
                 supabase_token,
             )
             result["supabase"] = {
-                "status": project.get("status", "unknown"),
+                "status": "connected",
+                "project_status": project.get("status", "unknown"),
                 "region": project.get("region", "unknown"),
                 "database_version": project.get("database_version", "unknown"),
             }
