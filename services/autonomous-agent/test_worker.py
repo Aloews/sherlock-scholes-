@@ -590,5 +590,43 @@ class WorkerPolicyTests(unittest.TestCase):
                     choose_model("https://ai.starimg.ru/v1", "test-key")
 
 
+    def test_rust_changes_run_stable_edition_2024_rustfmt_check(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "services" / "football-dynasty" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            with patch("worker.run_command") as command:
+                worker._validate(
+                    root,
+                    ["services/football-dynasty/src/roster.rs", "docs/MAP.md"],
+                )
+            command.assert_called_once_with(
+                [
+                    "rustfmt",
+                    "--check",
+                    "--edition",
+                    "2024",
+                    "services/football-dynasty/src/roster.rs",
+                ],
+                root,
+                timeout=300,
+            )
+
+    def test_rust_validation_fails_closed_without_manifest(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(RuntimeError, "Cargo.toml is missing"):
+                worker._validate(
+                    Path(directory),
+                    ["services/football-dynasty/src/roster.rs"],
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
