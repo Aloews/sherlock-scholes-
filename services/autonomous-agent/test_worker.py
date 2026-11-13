@@ -301,6 +301,44 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(request.get_header("X-api-key"), "test-key")
         self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
 
+    def test_starimg_anthropic_completion_accepts_json_message_fallback(self):
+        document = {
+            "type": "message",
+            "content": [{"type": "text", "text": "diff --git a/src/a.rs b/src/a.rs\n"}],
+            "usage": {"input_tokens": 21, "output_tokens": 13},
+        }
+        payload = json.dumps(document).encode("utf-8")
+        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)):
+            result = starimg_anthropic_stream_completion(
+                "https://ai.starimg.ru/v1", "test-key",
+                {"model": "claude-fable-5-2", "messages": []},
+            )
+        self.assertEqual(
+            result["choices"][0]["message"]["content"],
+            "diff --git a/src/a.rs b/src/a.rs\n",
+        )
+        self.assertEqual(result["usage"]["output_tokens"], 13)
+
+    def test_starimg_anthropic_completion_accepts_text_block_start(self):
+        events = [
+            {"type": "content_block_start", "content_block": {"type": "text", "text": "diff --git "}},
+            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "a/src/a.rs b/src/a.rs\n"}},
+            {"type": "message_stop"},
+        ]
+        payload = b"".join(
+            ("event: " + event["type"] + "\ndata: " + json.dumps(event) + "\n\n").encode("utf-8")
+            for event in events
+        )
+        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)):
+            result = starimg_anthropic_stream_completion(
+                "https://ai.starimg.ru/v1", "test-key",
+                {"model": "claude-fable-5-2", "messages": []},
+            )
+        self.assertEqual(
+            result["choices"][0]["message"]["content"],
+            "diff --git a/src/a.rs b/src/a.rs\n",
+        )
+
     def test_single_file_extractor_accepts_apply_patch_add_file(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
