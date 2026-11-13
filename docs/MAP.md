@@ -224,36 +224,20 @@ Do not report a task as complete based only on code being merged, a workflow bei
 
 ## 9a. Football Dynasty squad and contract backend (Issue #394)
 
-**Status:** Implemented and tested; awaiting CI and PR review.
+**Status:** Implementation is in PR #398 and remains unverified. Do not treat this feature as complete until the exact PR head passes Rust formatting, Clippy, and disposable-Postgres integration tests.
 
-**What was delivered:**
-- Migration `0005_squad_contracts.sql` creating `fd.players` and `fd.contracts` with campaign-scoped ownership, contract state, and one-active-contract-per-player enforcement through a partial unique index.
-- Rust module `src/roster.rs` with authenticated routes for GET squad, POST sign/renew, POST release.
-- Deterministic squad seeding on first read: 23 fictional players (2 GK, 8 DEF, 8 MID, 5 FWD) generated from campaign seed. Seeding is transactional, idempotent, and safe under concurrent reads using a `seeded` flag and database-level uniqueness.
-- Contract state transitions (active → expired, active → released) enforced in Rust; expired contracts updated on squad read when `end_date < CURRENT_DATE`.
-- Campaign-owner authorization via Telegram ID RLS on both tables.
-- Disposable-Postgres integration tests covering:
-  - Seed count, distribution, and determinism across repeated reads.
-  - Concurrent/idempotent first read.
-  - Owner isolation (user A cannot read user B's squad or sign contracts for another campaign).
-  - Invalid terms (negative wages, past end dates, zero-day contracts, wrong campaign).
-  - Contract state transitions (sign → release, expired detection).
-  - At-most-one-active-contract enforcement.
+**PR scope:**
+- Campaign-scoped `fd.players` and `fd.contracts` tables with UUID keys, composite campaign/club/player foreign keys, owner-scoped RLS, and a partial unique index for one active contract per player.
+- Authenticated Rust routes for squad reads, contract sign/renew, and contract release.
+- First-read generation of 23 deterministic fictional players from the campaign seed (2 GK, 8 DEF, 8 MID, 5 FWD), with initial active contracts.
+- Transaction-local `fd_runtime` role and Telegram owner scope for each read/write transaction; campaign row locking for idempotent first-read seeding and serialized contract changes.
+- Disposable-Postgres tests for concurrent/idempotent seeding, position distribution, owner isolation, contract validation, renew/release, and expiry.
 
-**Schema constraints verified:**
-- Composite foreign key to `fd.clubs(campaign_id, id)` matches the correct column order from the base migration.
-- Contract state column (`active`, `expired`, `released`) with CHECK constraint.
-- Partial unique index `WHERE status = 'active'` enforces one active contract per player (replacing the failed `CURRENT_DATE` index from PR #395).
-- Owner-scoped RLS using `NULLIF(current_setting('fd.telegram_id', true), '')::bigint` in both `USING` and `WITH CHECK` policies.
+**Verification evidence:**
+- The first PR head, `c7a601fb82a5c9f40cea61781f518ed0fb1ac603`, failed `cargo fmt --check`. Clippy, Rust tests, and the disposable-Postgres migration/test steps were skipped by that workflow run.
+- The schema and Rust handlers were corrected afterward. The current branch head is `ab585c342ed4dfe045ce427d0b6232b36378497e`; its CI run is pending. No test-pass claim is made for this revision.
 
-**What was not delivered:**
-- No frontend integration; API remains backend-only.
-- No match simulation, finances, morale, or transfer features.
-- No production migration application, merge, or deployment.
-
-**Files changed:** `services/football-dynasty/migrations/0005_squad_contracts.sql`, `services/football-dynasty/src/roster.rs`, `services/football-dynasty/src/lib.rs`, `services/football-dynasty/src/http.rs`, `services/football-dynasty/tests/campaign_lifecycle.rs`, `docs/MAP.md`.
-
-**Next steps:** CI must pass (Rust fmt, Clippy, SQLx prepare, disposable-Postgres tests). If green, the PR is ready for review. Frontend integration is a separate follow-up issue.
+**Production boundary:** Migration 0005 has not been applied to production. The PR has not been merged, and no product deployment or production database write has been made.
 
 ## 10. Repository navigation
 
