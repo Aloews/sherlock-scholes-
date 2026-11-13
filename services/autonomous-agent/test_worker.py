@@ -301,6 +301,37 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(request.get_header("X-api-key"), "test-key")
         self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
 
+    def test_single_file_extractor_accepts_apply_patch_add_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            answer = (
+                "*** Begin Patch\n"
+                "*** Add File: src/roster.rs\n"
+                "+pub fn roster() -> usize { 23 }\n"
+                "*** End Patch"
+            )
+            patch = extract_single_file_patch(answer, "src/roster.rs", root)
+            self.assertIn("new file mode 100644", patch)
+            self.assertIn("+pub fn roster() -> usize { 23 }", patch)
+
+    def test_single_file_extractor_accepts_apply_patch_update_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "src" / "lib.rs"
+            target.parent.mkdir(parents=True)
+            target.write_text("pub mod api;\npub mod state;\n", encoding="utf-8")
+            answer = (
+                "*** Begin Patch\n"
+                "*** Update File: src/lib.rs\n"
+                "@@\n"
+                " pub mod api;\n"
+                "+pub mod roster;\n"
+                " pub mod state;\n"
+                "*** End Patch"
+            )
+            patch = extract_single_file_patch(answer, "src/lib.rs", root)
+            self.assertIn("+pub mod roster;", patch)
+
     def test_single_file_extractor_builds_patch_from_complete_new_file_code_block(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
