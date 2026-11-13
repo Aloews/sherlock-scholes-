@@ -1,8 +1,8 @@
 use axum::{
+    Extension, Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{get, post},
-    Extension, Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -21,10 +21,7 @@ type ApiResult<T> = Result<T, ApiError>;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/api/v1/campaigns/{campaign_id}/squad",
-            get(get_squad),
-        )
+        .route("/api/v1/campaigns/{campaign_id}/squad", get(get_squad))
         .route(
             "/api/v1/campaigns/{campaign_id}/contracts",
             post(sign_contract),
@@ -122,14 +119,34 @@ fn deterministic_uuid(campaign_id: Uuid, seed: i64, domain: &str, index: usize) 
 
 fn deterministic_name(campaign_id: Uuid, seed: i64, index: usize) -> String {
     const FIRST_NAMES: &[&str] = &[
-        "James", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas",
-        "Charles", "Daniel", "Matthew", "Anthony", "Mark", "Steven", "Paul", "Andrew",
-        "Joshua", "Kevin", "Brian", "George", "Timothy", "Ronald", "Edward", "Peter",
+        "James", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles",
+        "Daniel", "Matthew", "Anthony", "Mark", "Steven", "Paul", "Andrew", "Joshua", "Kevin",
+        "Brian", "George", "Timothy", "Ronald", "Edward", "Peter",
     ];
     const LAST_NAMES: &[&str] = &[
-        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
-        "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
-        "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson", "White",
+        "Smith",
+        "Johnson",
+        "Williams",
+        "Brown",
+        "Jones",
+        "Garcia",
+        "Miller",
+        "Davis",
+        "Rodriguez",
+        "Martinez",
+        "Hernandez",
+        "Lopez",
+        "Gonzalez",
+        "Wilson",
+        "Anderson",
+        "Thomas",
+        "Taylor",
+        "Moore",
+        "Jackson",
+        "Martin",
+        "Lee",
+        "Thompson",
+        "White",
     ];
     let digest = deterministic_digest(campaign_id, seed, "name", index);
     let first = FIRST_NAMES[digest[0] as usize % FIRST_NAMES.len()];
@@ -147,10 +164,7 @@ fn deterministic_skill(campaign_id: Uuid, seed: i64, index: usize) -> i32 {
     45 + i32::from(digest[0] % 51)
 }
 
-async fn set_owner_scope(
-    tx: &mut Transaction<'_, Postgres>,
-    telegram_id: i64,
-) -> ApiResult<()> {
+async fn set_owner_scope(tx: &mut Transaction<'_, Postgres>, telegram_id: i64) -> ApiResult<()> {
     sqlx::query("SET LOCAL ROLE fd_runtime")
         .execute(&mut **tx)
         .await
@@ -372,10 +386,7 @@ pub async fn get_squad(
         }
     }
 
-    Ok(Json(SquadResponse {
-        players,
-        contracts,
-    }))
+    Ok(Json(SquadResponse { players, contracts }))
 }
 
 pub async fn sign_contract(
@@ -411,14 +422,13 @@ pub async fn sign_contract(
         return Err(ApiError::not_found());
     }
 
-    let club_id: Uuid = sqlx::query_scalar(
-        "SELECT id FROM fd.clubs WHERE campaign_id = $1 ORDER BY id LIMIT 1",
-    )
-    .bind(campaign_id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(ApiError::from)?
-    .ok_or_else(ApiError::not_found)?;
+    let club_id: Uuid =
+        sqlx::query_scalar("SELECT id FROM fd.clubs WHERE campaign_id = $1 ORDER BY id LIMIT 1")
+            .bind(campaign_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(ApiError::from)?
+            .ok_or_else(ApiError::not_found)?;
 
     let existing = sqlx::query_as::<_, ContractResponse>(
         "SELECT id, player_id, club_id, start_year, end_year, wage_per_year,
@@ -508,10 +518,7 @@ pub async fn sign_contract(
 
     tx.commit().await.map_err(ApiError::from)?;
 
-    Ok((
-        status_code,
-        Json(ContractActionResponse { contract }),
-    ))
+    Ok((status_code, Json(ContractActionResponse { contract })))
 }
 
 pub async fn release_contract(
@@ -566,7 +573,13 @@ mod tests {
 
     #[test]
     fn generated_roster_has_exact_position_counts() {
-        assert_eq!(POSITION_COUNTS.iter().map(|(_, count)| *count).sum::<usize>(), 23);
+        assert_eq!(
+            POSITION_COUNTS
+                .iter()
+                .map(|(_, count)| *count)
+                .sum::<usize>(),
+            23
+        );
         assert_eq!(POSITION_COUNTS[0], ("GK", 2));
         assert_eq!(POSITION_COUNTS[1], ("DEF", 8));
         assert_eq!(POSITION_COUNTS[2], ("MID", 8));
