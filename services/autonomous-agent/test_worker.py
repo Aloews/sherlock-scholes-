@@ -713,5 +713,32 @@ class WorkerPolicyTests(unittest.TestCase):
             blocking_findings([{"severity": "critical", "problem": "unknown level"}])
 
 
+
+    def test_architect_handoff_requires_all_contract_fields(self):
+        from worker import validate_architect_plan
+
+        valid = {
+            "goal": "complete task",
+            "steps": ["inspect", "implement"],
+            "risks": [],
+            "acceptance_checks": ["tests"],
+        }
+        self.assertEqual(validate_architect_plan(valid), valid)
+        with self.assertRaisesRegex(RuntimeError, "acceptance_checks"):
+            validate_architect_plan({"goal": "x", "steps": [], "risks": []})
+
+    def test_reviewer_handoff_requires_summary_and_findings(self):
+        from worker import validate_reviewer_output
+
+        self.assertEqual(
+            validate_reviewer_output({"summary": "Reviewed", "findings": []}),
+            [],
+        )
+        with self.assertRaisesRegex(RuntimeError, "summary"):
+            validate_reviewer_output({"findings": []})
+        with self.assertRaisesRegex(RuntimeError, "JSON array"):
+            validate_reviewer_output({"summary": "Reviewed"})
+
+
 if __name__ == "__main__":
     unittest.main()
