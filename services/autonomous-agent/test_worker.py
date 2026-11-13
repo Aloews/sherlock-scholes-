@@ -727,6 +727,37 @@ class WorkerPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "acceptance_checks"):
             validate_architect_plan({"goal": "x", "steps": [], "risks": []})
 
+    def test_recovered_task_branch_creates_pr_without_unbound_handoffs(self):
+        from worker import Worker
+
+        worker = object.__new__(Worker)
+        worker.attempted = set()
+        worker.owner = "Aloews"
+        worker.repo = "Aloews/sherlock-scholes-"
+        worker.token = "test-token"
+        worker.default_branch = "main"
+        comment = {
+            "id": 12345,
+            "body": "/ai finish task",
+            "user": {"login": "Aloews"},
+            "issue_url": "https://api.github.com/repos/Aloews/sherlock-scholes-/issues/77",
+            "html_url": "https://github.com/Aloews/sherlock-scholes-/issues/77#issuecomment-12345",
+        }
+        with patch("worker.request_json", return_value={"title": "test", "body": "task"}), \
+             patch.object(Worker, "_existing_pr", return_value=None), \
+             patch.object(Worker, "_branch_exists", return_value=True), \
+             patch.object(Worker, "_create_pr", return_value="https://github.com/Aloews/sherlock-scholes-/pull/88") as create_pr:
+            worker.process(comment)
+
+        self.assertEqual(worker.attempted, {12345})
+        self.assertEqual(create_pr.call_args.args[:4], (
+            77, 12345, "ai/task-77-12345",
+            "https://github.com/Aloews/sherlock-scholes-/issues/77#issuecomment-12345",
+        ))
+        self.assertIn("Recovered an existing isolated task branch", create_pr.call_args.args[4])
+        self.assertEqual(create_pr.call_args.args[5]["verdict"], "not_run")
+
+
     def test_reviewer_handoff_requires_summary_and_findings(self):
         from worker import validate_reviewer_output
 
