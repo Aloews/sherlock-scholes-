@@ -686,6 +686,44 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertTrue(has_review_marker(comments, "abc123"))
         self.assertFalse(has_review_marker(comments, "def456"))
 
+    def test_railway_preflight_falls_back_to_workspace_token(self):
+        from worker import integration_preflight
+
+        calls = []
+
+        def fake_provider_request(url, token, method="GET", payload=None,
+                                  token_header="Authorization", timeout=20):
+            if "railway.com" in url:
+                query = (payload or {}).get("query", "")
+                calls.append((query, token_header))
+                if "me {" in query:
+                    return {"errors": [{"message": "not authorized"}]}
+                if "workspace(" in query:
+                    return {"data": {"workspace": {"id": "workspace-id", "name": "workspace"}}}
+                raise AssertionError("Unexpected Railway query")
+            raise AssertionError(f"Unexpected provider URL: {url}")
+
+        with patch.dict(os.environ, {
+            "RAILWAY": "railway-secret",
+            "RAILWAY_WORKSPACE_ID": "workspace-id",
+        }, clear=True), patch("worker.provider_request_json", side_effect=fake_provider_request):
+            result = integration_preflight()
+
+        self.assertEqual(result["railway_api"], {"status": "connected", "scope": "workspace"})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][1], "Authorization")
+        self.assertEqual(calls[1][1], "Authorization")
+
+    def test_cloudflare_preflight_rejects_inactive_tokens(self):
+        from worker import cloudflare_token_probe
+
+        with patch("worker.provider_request_json", return_value={
+            "success": True, "result": {"status": "disabled"}
+        }):
+            with self.assertRaisesRegex(RuntimeError, "disabled"):
+                cloudflare_token_probe("test-token")
+
+
     def test_integration_preflight_reports_unconfigured_services_without_secrets(self):
         from worker import integration_preflight
 
@@ -713,7 +751,7 @@ class WorkerPolicyTests(unittest.TestCase):
         def fake_provider_request(url, token, method="GET", payload=None,
                                   token_header="Authorization", timeout=20):
             if "cloudflare" in url:
-                return {"result": {"status": "active"}}
+                return {"success": True, "result": {"status": "active"}}
             if "machines.dev" in url:
                 return {"total_apps": 2}
             if "neon.tech" in url:
