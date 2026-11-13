@@ -679,6 +679,24 @@ class WorkerPolicyTests(unittest.TestCase):
         pr["body"] = "ordinary PR"
         self.assertFalse(is_reviewable_pr(pr))
 
+    def test_runtime_control_plane_pr_is_reviewable_only_with_marker(self):
+        from worker import is_reviewable_pr, reviewer_issue_number
+
+        pr = {
+            "number": 406,
+            "draft": False,
+            "body": "Runtime control plane <!-- sherlock-agent-runtime-review:20261113 -->",
+            "head": {"ref": "feat/sherlock-multi-agent-runtime-20261113"},
+        }
+        self.assertTrue(is_reviewable_pr(pr))
+        self.assertEqual(reviewer_issue_number(pr), 406)
+        pr["body"] = "Runtime control plane"
+        self.assertFalse(is_reviewable_pr(pr))
+        pr["body"] = "Runtime control plane <!-- sherlock-agent-runtime-review:20261113 -->"
+        pr["draft"] = True
+        self.assertFalse(is_reviewable_pr(pr))
+
+
     def test_review_marker_is_scoped_to_exact_head_sha(self):
         from worker import has_review_marker
 
