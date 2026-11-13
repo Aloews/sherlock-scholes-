@@ -930,7 +930,7 @@ def integration_preflight() -> dict[str, Any]:
                 vercel_token, timeout=20,
             )
             deployments_query = urllib.parse.urlencode({
-                "projectId": vercel_project, "teamId": vercel_team, "limit": 1,
+                "projectId": vercel_project, "teamId": vercel_team, "target": "production", "limit": 1,
             })
             deployments = request_json(
                 f"https://api.vercel.com/v6/deployments?{deployments_query}",
