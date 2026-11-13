@@ -205,18 +205,26 @@ Work in this order. Reorder only when fresh production evidence shows a higher-i
 
 **Exit criteria:** each feature is used by a real user path and has a metric that can confirm or reject its value.
 
-### Football Dynasty squad and contract backend — implementation in validation
+### Football Dynasty squad and contract backend — implemented in PR #402, not merged
 
 **Outcome:** campaign owners can inspect their squad and manage player contracts through an authenticated API.
 
-**Implementation present in the unmerged PR branch:**
-- Migration 0005 adds campaign-scoped `fd.players` and `fd.contracts`, composite campaign keys/FKs, owner-scoped RLS using `fd.campaigns.owner_telegram_id`, and a partial unique index for one active contract per player.
-- Rust `roster` module adds GET squad, POST sign/renew, and POST release routes under the authenticated `/api/v1/campaigns/{campaign_id}` router.
-- First squad read locks the owned campaign row and transactionally seeds 23 deterministic players (2 GK, 8 DEF, 8 MID, 5 FWD) with 23 active contracts from the campaign UUID and BIGINT seed.
-- Contract operations validate wage and requested term bounds, extend active contracts, record release timestamps, and expire contracts when `end_year < current_year`.
-- Integration tests have been added for roster distribution/determinism, concurrent first reads, owner isolation, wage/term validation, renewal, release, and expiry.
+**Implementation in PR #402:**
+- Migration 0005 adds campaign-scoped \`fd.players\` and \`fd.contracts\`, composite campaign keys/FKs, owner-scoped RLS using \`fd.campaigns.owner_telegram_id\`, wage/term/state constraints, and a partial unique index for one active contract per player.
+- Rust \`roster\` module adds authenticated GET squad, POST sign/renew, and POST release routes under the existing protected campaign router.
+- First squad read locks the owned campaign row and transactionally seeds 23 deterministic fictional players (2 GK, 8 DEF, 8 MID, 5 FWD) and 23 active contracts from the campaign UUID and BIGINT seed.
+- Contract operations validate wage and requested term bounds, extend active contracts, record release timestamps, and expire contracts when \`end_year < current_year\`.
+- Integration tests cover roster distribution/determinism, concurrent/idempotent first reads, owner isolation, wage/term validation, renewal, release, and expiry. Shared test-database initialization is serialized with a Tokio OnceCell to prevent duplicate concurrent DDL.
 
-**Validation status:** this slice is not complete or production-ready until the exact PR head passes Rust formatting, Clippy, all tests, and disposable PostgreSQL migration/integration checks. No production migration, database write, merge, or product deployment has been performed.
+**Verified evidence (implementation commit \`7b0d83b411963db0e2bc7168026514a4b636a148\`, 2026-11-13):**
+- Rust formatting passed.
+- Clippy with warnings denied passed.
+- Rust unit and integration tests passed.
+- Disposable PostgreSQL migration and owner-scoped RLS checks passed.
+- All GitHub Actions workflows on that exact commit completed successfully.
+
+**Release boundary:** PR #402 remains open and unmerged. This backend slice is not deployed to production. No production migration, production database write, merge, or product deployment has occurred. Frontend screen integration remains a separate follow-up.
+
 ## 9. Definition of done
 
 A task is done only when all applicable items are true:
