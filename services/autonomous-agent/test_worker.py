@@ -96,12 +96,12 @@ class WorkerPolicyTests(unittest.TestCase):
             root = Path(directory)
             target = root / "src" / "large.rs"
             target.parent.mkdir(parents=True)
-            body = "HEAD\\n" + ("x" * 9000) + "\\nMIDDLE_ANCHOR\\n" + ("y" * 9000) + "\\nTAIL\\n"
+            body = "HEAD\n" + ("x" * 9000) + "\nMIDDLE_ANCHOR\n" + ("y" * 9000) + "\nTAIL\n"
             target.write_text(body, encoding="utf-8")
             patch = (
-                "diff --git a/src/large.rs b/src/large.rs\\n"
-                "--- a/src/large.rs\\n+++ b/src/large.rs\\n"
-                "@@ -1 +1 @@\\n-old\\n+new\\n"
+                "diff --git a/src/large.rs b/src/large.rs\n"
+                "--- a/src/large.rs\n+++ b/src/large.rs\n"
+                "@@ -1 +1 @@\n-old\n+new\n"
             )
             context = patch_file_context(root, patch)
             self.assertIn("MIDDLE_ANCHOR", context)
@@ -110,12 +110,12 @@ class WorkerPolicyTests(unittest.TestCase):
 
     def test_extract_patch_removes_trailing_whitespace_from_added_lines(self):
         patch = (
-            "diff --git a/src/example.rs b/src/example.rs\\n"
-            "--- a/src/example.rs\\n+++ b/src/example.rs\\n"
-            "@@ -1 +1 @@\\n-old\\n+new value   \\n"
+            "diff --git a/src/example.rs b/src/example.rs\n"
+            "--- a/src/example.rs\n+++ b/src/example.rs\n"
+            "@@ -1 +1 @@\n-old\n+new value   \n"
         )
         extracted = extract_patch(patch)
-        self.assertIn("+new value\\n", extracted)
+        self.assertIn("+new value\n", extracted)
         self.assertNotIn("+new value   ", extracted)
 
     def test_extract_patch_strips_apply_patch_sentinels(self):
