@@ -395,7 +395,7 @@ def starimg_anthropic_stream_completion(base: str, key: str,
     if not answer.strip():
         preview = _safe_anthropic_body_preview(raw, content_type)
         raise RuntimeError(
-            "Starimg Anthropic completion contained no text; "
+            f"Starimg Anthropic HTTP {status_code or 'unknown'} response contained no text; "
             + json.dumps(diagnostics, ensure_ascii=False)
             + "; body="
             + preview
