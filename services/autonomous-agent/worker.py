@@ -1418,7 +1418,7 @@ class Worker:
 
     def _has_marker(self, issue_number: int, comment_id: int) -> bool:
         comments = request_json(
-            api_url(f"/repos/{self.repo}/issues/{issue_number}/comments?per_page=100"),
+            api_url(f"/repos/{self.repo}/issues/{issue_number}/comments?per_page=100&sort=created&direction=desc"),
             self.token,
         )
         marker = (f"<!-- sherlock-agent-result:{comment_id} -->",
