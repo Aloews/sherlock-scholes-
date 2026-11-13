@@ -402,6 +402,52 @@ def extract_patch(answer: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOW
     return patch
 
 
+def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
+    """Accept a normal diff or a complete single-file response and build a safe git patch."""
+    try:
+        return extract_patch(answer, (target_path,))
+    except RuntimeError as error:
+        if "Model did not return a unified git diff" not in str(error):
+            raise
+
+    # Some Claude responses return a fenced complete file instead of the requested diff.
+    blocks = re.findall(r"```[a-zA-Z0-9_+.-]*\\s*\\n(.*?)\\n```", answer, re.S)
+    candidate = max(blocks, key=len).strip("\\n") if blocks else ""
+    if not candidate:
+        raise RuntimeError("Model returned neither a diff nor a complete-file code block")
+
+    if not candidate.endswith("\\n"):
+        candidate += "\\n"
+    target = root / target_path
+    if target.exists():
+        current = target.read_text(encoding="utf-8")
+        old_lines = current.splitlines(keepends=True)
+        new_lines = candidate.splitlines(keepends=True)
+        old_nonempty = [line.rstrip("\\r\\n") for line in old_lines if line.strip()]
+        if not old_nonempty:
+            raise RuntimeError("Cannot safely replace an existing empty file from a model response")
+        anchors = old_nonempty[:2] + old_nonempty[-2:]
+        if not all(anchor in candidate for anchor in anchors):
+            raise RuntimeError("Model code block is not a complete copy of the existing file")
+        diff = "".join(difflib.unified_diff(
+            old_lines, new_lines, fromfile=f"a/{target_path}", tofile=f"b/{target_path}"
+        ))
+        if not diff:
+            raise RuntimeError("Model full-file response did not change the target file")
+        patch = f"diff --git a/{target_path} b/{target_path}\\n" + diff
+    else:
+        new_lines = candidate.splitlines(keepends=True)
+        diff = "".join(difflib.unified_diff(
+            [], new_lines, fromfile="/dev/null", tofile=f"b/{target_path}"
+        ))
+        patch = (
+            f"diff --git a/{target_path} b/{target_path}\\n"
+            "new file mode 100644\\n"
+            + diff
+        )
+    return extract_patch(patch, (target_path,))
+
+
 def ask_starimg(base: str, key: str, model: str, task: str,
                 issue_number: int, context: str, allowed_prefixes: tuple[str, ...],
                 previous_patch: str = "", validation_error: str = "") -> tuple[str, dict[str, Any]]:
@@ -724,7 +770,7 @@ class Worker:
                         usage_records.append(usage)
                         patch = ""
                         try:
-                            patch = extract_patch(answer, (target_path,))
+                            patch = extract_single_file_patch(answer, target_path, temp)
                             headers = re.findall(r"^diff --git a/(.+?) b/(.+?)$", patch, re.M)
                             if not headers or any(old != target_path or new != target_path for old, new in headers):
                                 raise RuntimeError("Model changed a path outside the current required implementation unit")
