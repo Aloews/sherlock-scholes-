@@ -448,7 +448,7 @@ async fn squad_is_seeded_deterministically_with_correct_distribution() {
             seed_index
         );
 
-        assert!(player["full_name"].as_str().expect("full_name").len() > 0);
+        assert!(!player["full_name"].as_str().expect("full_name").is_empty());
         assert!(player["age"].as_i64().expect("age") >= 16);
         assert!(player["skill"].as_i64().expect("skill") > 0);
     }
@@ -566,7 +566,7 @@ async fn concurrent_first_squad_reads_produce_identical_deterministic_results() 
     let campaign_id = created["id"].as_str().expect("campaign id");
 
     let mut handles = vec![];
-    for i in 0..5 {
+    for _ in 0..5 {
         let app_clone = app.clone();
         let campaign_id_clone = campaign_id.to_string();
         let handle = tokio::spawn(async move {
