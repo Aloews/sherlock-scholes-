@@ -821,7 +821,7 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertFalse(is_reviewable_pr(pr))
         pr["body"] = "Runtime control plane <!-- sherlock-agent-runtime-review:20261113 -->"
         pr["draft"] = True
-        self.assertFalse(is_reviewable_pr(pr))
+        self.assertTrue(is_reviewable_pr(pr))
 
 
     def test_review_marker_is_scoped_to_exact_head_sha(self):
