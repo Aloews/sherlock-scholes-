@@ -395,6 +395,7 @@ pub async fn release_contract(
     set_owner_scope(&mut tx, identity.telegram_id).await?;
     let context = campaign_context(&mut tx, campaign_id, identity.telegram_id).await?;
     let club_id = campaign_club_id(&mut tx, campaign_id, context.dynasty_id).await?;
+    update_expired_contracts(&mut tx, campaign_id, context.current_year).await?;
 
     let row = sqlx::query(
         "UPDATE fd.contracts SET status = 'released', released_at = now() WHERE campaign_id = $1 AND player_id = $2 AND club_id = $3 AND status = 'active' RETURNING id, wage_per_week, start_year, end_year",
