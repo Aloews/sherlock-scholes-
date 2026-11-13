@@ -19,8 +19,8 @@ hidden bugs. Prefer being correct and boring over clever.
    what you're touching.
 2. Understand the layer you're in (FSD — [`ARCHITECTURE.md`](./ARCHITECTURE.md))
    and where the change belongs.
-3. If the task is ambiguous or architecturally significant, **stop and ask**.
-   Guessing a design is worse than a clarifying question.
+3. Resolve routine technical ambiguity autonomously from repository evidence, standards, tests, and product requirements. Make a reversible engineering decision and document it; escalate only for owner-only product decisions or permissions under [the Autonomous AI Execution Protocol](./AI_EXECUTION_PROTOCOL.md).
+   Do not guess product requirements; escalate only when the maintainer must decide.
 
 ## 3. While you work
 
