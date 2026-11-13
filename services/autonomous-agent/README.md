@@ -23,12 +23,11 @@ Only owner-authored commands are accepted. At most one implementation task is pr
 
 - **Starimg:** authenticated model catalog and Fable 5.2-compatible Messages API. The model is checked against the live catalog before use.
 - **GitHub:** owner-authenticated task intake, repository preflight, isolated branches, PRs and persistent reviewer handoffs.
-- **Supabase:** the reviewer uses the existing scoped Management API token for read-only project health checks. The database connection string is not used by the agent.
+- **Supabase:** the reviewer attempts a read-only Management API project check. The currently configured `SUPABASE_ACCESS_TOKEN` is rejected with HTTP 401; replace it with a valid Supabase Personal Access Token before treating Supabase as connected. The database connection string is not used by the agent.
 - **Vercel:** the reviewer uses the existing token for read-only project and latest-deployment checks.
-- Vercel preview builds are skipped on non-main branches unless the commit message contains [vercel-preview]; production builds on main remain enabled.
 - **Cloudflare, Fly.io, Neon, Railway, Render, Supabase and Vercel:** the reviewer performs read-only credential/connection checks and reports only minimal status metadata. No provider mutation is performed by these checks.
 
-Provider credentials must be present as Railway service variables on the reviewer runtime. The runtime checks variable presence without printing values; credentials are never copied into source, model prompts, logs, GitHub comments, or subprocess environments.
+Provider credentials are synced from GitHub Actions repository secrets by `.github/workflows/sync-agent-secrets.yml`, using stdin and without printing values. The workflow is manual-only and becomes dispatchable after it reaches the default branch. The last secret-sync attempt found only `SUPABASE_ACCESS_TOKEN`; the Railway, Cloudflare, Fly.io, Neon, and Render secrets were absent. Credentials are never copied into source, model prompts, logs, GitHub comments, or subprocess environments.
 
 ## Railway roles
 
@@ -65,7 +64,7 @@ Reviewer-only existing secrets:
 - SUPABASE_ACCESS_TOKEN
 - VERCEL_TOKEN
 
-The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers deployments, or writes product data. Missing optional provider credentials are reported as not_configured rather than treated as connected.
+The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers product deployments, or writes product data. Vercel's latest production deployment is READY, but preview deployments are currently blocked by the account's free-plan 100-deployments-per-day limit. Missing provider credentials are reported as not_configured rather than treated as connected.
 
 ## Safety and limits
 
