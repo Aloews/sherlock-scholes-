@@ -2085,7 +2085,10 @@ class Worker:
                     extra_env={"DATABASE_URL": "postgresql://localhost:5432/sherlock_test"},
                 )
                 test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
-                if test_database_url.startswith(("postgres://", "postgresql://")):
+                if (
+                    test_database_url.startswith(("postgres://", "postgresql://"))
+                    and os.environ.get("TEST_DATABASE_DISPOSABLE", "").strip().lower() in ("1", "true", "yes")
+                ):
                     run_command(
                         ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets"],
                         root,
