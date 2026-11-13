@@ -446,6 +446,7 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
             if line.startswith("*** "):
                 if active is not None:
                     hunks.append(active)
+                    active = None
                 break
             if line.startswith("@@"):
                 if active is not None:
