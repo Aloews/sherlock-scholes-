@@ -616,6 +616,59 @@ class WorkerPolicyTests(unittest.TestCase):
                 timeout=300,
             )
 
+    def test_full_rust_validation_requires_disposable_database_url(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "services" / "football-dynasty" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=True), patch("worker.run_command") as command:
+                with self.assertRaisesRegex(RuntimeError, "TEST_DATABASE_URL"):
+                    worker._validate(
+                        root,
+                        ["services/football-dynasty/migrations/0005_squad_contracts.sql"],
+                        full=True,
+                    )
+            command.assert_not_called()
+
+    def test_full_rust_validation_runs_cargo_checks_with_only_disposable_database_url(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        test_database_url = "postgresql://test-user:test-password@ep-test.example/neondb?sslmode=require"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "services" / "football-dynasty" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            with patch.dict(os.environ, {
+                "TEST_DATABASE_URL": test_database_url,
+                "SUPABASE_DB_URL": "postgresql://production-secret",
+            }, clear=True), patch("worker.run_command") as command:
+                worker._validate(
+                    root,
+                    ["services/football-dynasty/migrations/0005_squad_contracts.sql", "docs/MAP.md"],
+                    full=True,
+                )
+
+        calls = command.call_args_list
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[0].args[0], [
+            "cargo", "fmt", "--manifest-path", "services/football-dynasty/Cargo.toml", "--", "--check"
+        ])
+        self.assertEqual(calls[1].args[0], [
+            "cargo", "clippy", "--manifest-path", "services/football-dynasty/Cargo.toml",
+            "--all-targets", "--", "-D", "warnings"
+        ])
+        self.assertEqual(calls[2].args[0], [
+            "cargo", "test", "--manifest-path", "services/football-dynasty/Cargo.toml", "--all-targets"
+        ])
+        self.assertEqual(calls[2].kwargs["extra_env"], {"DATABASE_URL": test_database_url})
+        self.assertTrue(all("SUPABASE_DB_URL" not in call.kwargs.get("extra_env", {}) for call in calls))
+
     def test_rust_validation_fails_closed_without_manifest(self):
         from worker import Worker
 
