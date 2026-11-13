@@ -245,7 +245,8 @@ def starimg_anthropic_stream_completion(base: str, key: str,
                                         timeout: int = 300) -> dict[str, Any]:
     """Read Starimg's Anthropic Messages JSON or SSE response with safe diagnostics."""
     request_payload = dict(payload)
-    request_payload["stream"] = True
+    stream_requested = bool(request_payload.get("stream", True))
+    request_payload["stream"] = stream_requested
     data = json.dumps(request_payload).encode("utf-8")
     req = urllib.request.Request(
         base.rstrip("/") + "/messages",
@@ -254,7 +255,7 @@ def starimg_anthropic_stream_completion(base: str, key: str,
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
-            "Accept": "text/event-stream",
+            "Accept": "text/event-stream" if stream_requested else "application/json",
             "Cache-Control": "no-cache",
             "User-Agent": "sherlock-scholes-engineering-worker",
         },
@@ -716,12 +717,22 @@ def ask_starimg(base: str, key: str, model: str, task: str,
     if model.lower().startswith("claude-"):
         # Current Claude 5.x models reject non-default sampling parameters.
         # Fable 5.2 always uses adaptive thinking; omit temperature entirely.
-        response = starimg_anthropic_stream_completion(base, key, {
+        claude_payload = {
             "model": model,
             "system": system,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": MAX_COMPLETION_TOKENS,
-        })
+        }
+        if model.lower() == "claude-fable-5-2":
+            # Prefer a complete Messages JSON response for Fable 5.2. The
+            # Starimg SSE gateway has returned thinking-only streams (zero
+            # output tokens) for this model; JSON avoids dropping final text.
+            claude_payload.update({
+                "stream": False,
+                "thinking": {"type": "adaptive", "display": "summarized"},
+                "output_config": {"effort": "medium"},
+            })
+        response = starimg_anthropic_stream_completion(base, key, claude_payload)
     else:
         response = starimg_stream_completion(base, key, {
             "model": model,
