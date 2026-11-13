@@ -178,6 +178,75 @@ def starimg_stream_completion(base: str, key: str,
     }
 
 
+def starimg_anthropic_stream_completion(base: str, key: str,
+                                        payload: dict[str, Any],
+                                        timeout: int = 300) -> dict[str, Any]:
+    """Read Starimg's Anthropic Messages SSE protocol for Claude models."""
+    request_payload = dict(payload)
+    request_payload["stream"] = True
+    data = json.dumps(request_payload).encode("utf-8")
+    req = urllib.request.Request(
+        base.rstrip("/") + "/messages",
+        data=data,
+        headers={
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "User-Agent": "sherlock-scholes-engineering-worker",
+        },
+        method="POST",
+    )
+    chunks: list[str] = []
+    usage: dict[str, Any] = {}
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", "replace").strip()
+                if not line or line.startswith(":") or not line.startswith("data:"):
+                    continue
+                data_line = line[5:].strip()
+                if data_line == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(event, dict):
+                    continue
+                event_type = event.get("type")
+                if event_type == "error":
+                    error = event.get("error") or {}
+                    raise RuntimeError(
+                        "Starimg Anthropic stream error: "
+                        + str(error.get("message") or error.get("type") or "unknown error")[:300]
+                    )
+                if event_type == "message_start":
+                    message = event.get("message") or {}
+                    message_usage = message.get("usage")
+                    if isinstance(message_usage, dict):
+                        usage.update(message_usage)
+                elif event_type == "message_delta":
+                    event_usage = event.get("usage")
+                    if isinstance(event_usage, dict):
+                        usage.update(event_usage)
+                elif event_type == "content_block_delta":
+                    delta = event.get("delta") or {}
+                    text_delta = delta.get("text")
+                    if delta.get("type") == "text_delta" and isinstance(text_delta, str):
+                        chunks.append(text_delta)
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Starimg returned HTTP {exc.code}") from None
+    answer = "".join(chunks)
+    if not answer.strip():
+        raise RuntimeError("Starimg Anthropic streaming completion returned no text")
+    return {
+        "choices": [{"message": {"content": answer}}],
+        "usage": usage,
+    }
+
+
 def choose_model(base: str, key: str) -> str:
     explicit = os.environ.get("STARIMG_MODEL", "").strip()
     catalog = starimg_request(base, key, "/models", timeout=30)
@@ -346,13 +415,22 @@ def ask_starimg(base: str, key: str, model: str, task: str,
            if validation_error else "")
         + "Return a minimal applicable unified git diff only. No markdown fences or explanation."
     )
-    response = starimg_stream_completion(base, key, {
-        "model": model,
-        "messages": [{"role": "system", "content": system},
-                     {"role": "user", "content": prompt}],
-        "temperature": 0.1,
-        "max_tokens": MAX_COMPLETION_TOKENS,
-    })
+    if model.lower().startswith("claude-"):
+        response = starimg_anthropic_stream_completion(base, key, {
+            "model": model,
+            "system": system,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": MAX_COMPLETION_TOKENS,
+        })
+    else:
+        response = starimg_stream_completion(base, key, {
+            "model": model,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": MAX_COMPLETION_TOKENS,
+        })
     choices = response.get("choices", [])
     if not choices:
         raise RuntimeError("Starimg returned no completion choices")
