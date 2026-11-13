@@ -10,10 +10,12 @@ use tower_http::cors::CorsLayer;
 use crate::{api, auth, roster, state::AppState};
 
 pub fn router(state: AppState, allowed_origin: HeaderValue) -> Router {
-    let protected = api::routes().merge(roster::routes()).route_layer(middleware::from_fn_with_state(
-        state.clone(),
-        auth::authenticate,
-    ));
+    let protected = api::routes()
+        .merge(roster::routes())
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth::authenticate,
+        ));
 
     let cors = CorsLayer::new()
         .allow_origin(allowed_origin)
