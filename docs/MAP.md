@@ -205,20 +205,18 @@ Work in this order. Reorder only when fresh production evidence shows a higher-i
 
 **Exit criteria:** each feature is used by a real user path and has a metric that can confirm or reject its value.
 
-### Football Dynasty squad and contract backend — verified slice
+### Football Dynasty squad and contract backend — implementation in validation
 
-**Outcome:** campaign owners can inspect their squad and manage player contracts through a tested, authorized API.
+**Outcome:** campaign owners can inspect their squad and manage player contracts through an authenticated API.
 
-**Verified implementation (2025-01-XX):**
-- Migration 0005: `fd.players` (campaign_id, id, full_name, position, age, skill, seed_index) and `fd.contracts` (campaign_id, id, player_id, club_id, start_year, end_year, wage_per_year, status, released_at) with composite keys, FKs, and partial unique index for one active contract per player.
-- Rust `roster` module: GET squad, POST sign/renew contract, POST release contract.
-- On first squad read after campaign creation, transactionally seed exactly 23 deterministic players (2 GK, 8 DEF, 8 MID, 5 FWD) with stable SHA-256 IDs from campaign UUID + seed + domain + index, and 23 active 3-year contracts. Concurrent/repeated first reads are idempotent and never duplicate.
-- Contracts expire when `end_year < current_year`. Renewal extends `max(existing.end_year, current_year) + years` and updates wage. Release sets `released_at = NOW()` and `status = 'released'`.
-- Owner-scoped RLS on both tables using `fd.telegram_id` convention from migration 0003. All handlers verify campaign ownership and use transaction-local `SET LOCAL ROLE fd_runtime`.
-- Integration tests: seed count/distribution/determinism, concurrent first read, owner isolation, invalid wage (outside 1..100M)/years (outside 1..5), signing available player, renewing existing contract with new terms, releasing active contract, automatic expiry on GET.
-- Axum 0.8 routes merged into protected router before auth layer; full `/api/v1/campaigns/{campaign_id}/*` paths.
-- All tests, fmt, Clippy -D warnings, and disposable PG17 migration/integration pass. No Cargo.lock, production DB, or deployment changes.
+**Implementation present in the unmerged PR branch:**
+- Migration 0005 adds campaign-scoped `fd.players` and `fd.contracts`, composite campaign keys/FKs, owner-scoped RLS using `fd.campaigns.owner_telegram_id`, and a partial unique index for one active contract per player.
+- Rust `roster` module adds GET squad, POST sign/renew, and POST release routes under the authenticated `/api/v1/campaigns/{campaign_id}` router.
+- First squad read locks the owned campaign row and transactionally seeds 23 deterministic players (2 GK, 8 DEF, 8 MID, 5 FWD) with 23 active contracts from the campaign UUID and BIGINT seed.
+- Contract operations validate wage and requested term bounds, extend active contracts, record release timestamps, and expire contracts when `end_year < current_year`.
+- Integration tests have been added for roster distribution/determinism, concurrent first reads, owner isolation, wage/term validation, renewal, release, and expiry.
 
+**Validation status:** this slice is not complete or production-ready until the exact PR head passes Rust formatting, Clippy, all tests, and disposable PostgreSQL migration/integration checks. No production migration, database write, merge, or product deployment has been performed.
 ## 9. Definition of done
 
 A task is done only when all applicable items are true:
