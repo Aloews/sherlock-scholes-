@@ -366,6 +366,9 @@ def starimg_anthropic_stream_completion(base: str, key: str,
                 block = event.get("content_block") or {}
                 block_type = str(block.get("type", "unknown"))
                 content_block_types.append(block_type)
+                block_text = block.get("text")
+                if block_type == "text" and isinstance(block_text, str):
+                    chunks.append(block_text)
             elif event_type == "content_block_delta":
                 delta = event.get("delta") or {}
                 text_delta = delta.get("text")
