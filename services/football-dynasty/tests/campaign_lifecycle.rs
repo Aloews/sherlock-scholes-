@@ -363,3 +363,232 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
 
     pool.close().await;
 }
+
+#[tokio::test]
+async fn squad_seeding_is_deterministic_idempotent_and_owner_isolated() {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
+    let migration_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&database_url)
+        .await
+        .expect("migration pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
+        .execute(&migration_pool).await.expect("test Telegram verifier stub");
+    sqlx::migrate!("./migrations")
+        .run(&migration_pool)
+        .await
+        .expect("migrations");
+    migration_pool.close().await;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("runtime pool");
+
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id)),
+    };
+    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
+
+    let create_body = json!({
+        "name":"Squad Test",
+        "mode":"sandbox",
+        "origin":"entrepreneur",
+        "founder_name":"Test Founder",
+        "dynasty_name":"Test House",
+        "club_name":"Test United FC"
+    });
+    let (status, created) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("squad-seed-campaign"),
+        Some(create_body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let campaign_id = created["id"].as_str().expect("campaign id");
+
+    let (first_status, first_squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(first_status, StatusCode::OK);
+    let first_players = first_squad["players"].as_array().expect("players array");
+    assert_eq!(first_players.len(), 23);
+
+    let gk_count = first_players.iter().filter(|p| p["position"] == "GK").count();
+    let def_count = first_players.iter().filter(|p| p["position"] == "DEF").count();
+    let mid_count = first_players.iter().filter(|p| p["position"] == "MID").count();
+    let fwd_count = first_players.iter().filter(|p| p["position"] == "FWD").count();
+    assert_eq!(gk_count, 2);
+    assert_eq!(def_count, 8);
+    assert_eq!(mid_count, 8);
+    assert_eq!(fwd_count, 5);
+
+    for player in first_players {
+        assert!(player["name"].is_string());
+        assert!(player["age"].is_number());
+        assert!(player["contract"]["wage_per_week"].is_number());
+        assert_eq!(player["contract"]["status"], "active");
+    }
+
+    let (second_status, second_squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(second_status, StatusCode::OK);
+    let second_players = second_squad["players"].as_array().expect("players array");
+    assert_eq!(second_players.len(), 23);
+    assert_eq!(first_squad, second_squad);
+
+    let other_owner_id = owner_id + 1;
+    let other_state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(other_owner_id)),
+    };
+    let other_app = http::router(other_state, "http://localhost:5173".parse().expect("origin"));
+    let (other_status, _) = call(
+        other_app,
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(other_status, StatusCode::NOT_FOUND);
+
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn contract_operations_enforce_campaign_scope_and_state_transitions() {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is set in CI");
+    let migration_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&database_url)
+        .await
+        .expect("migration pool");
+    sqlx::query("CREATE OR REPLACE FUNCTION public.tg_validate_init_data(p_init_data text) RETURNS bigint LANGUAGE sql SECURITY DEFINER SET search_path=public AS $fn$ SELECT NULL::bigint $fn$")
+        .execute(&migration_pool).await.expect("test Telegram verifier stub");
+    sqlx::migrate!("./migrations")
+        .run(&migration_pool)
+        .await
+        .expect("migrations");
+    migration_pool.close().await;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("runtime pool");
+
+    let owner_id = 900_000_000_000_i64 + (uuid::Uuid::new_v4().as_u128() as i64 & 0x0fff_ffff);
+    let state = AppState {
+        db: pool.clone(),
+        verifier: Arc::new(FixedVerifier(owner_id)),
+    };
+    let app = http::router(state, "http://localhost:5173".parse().expect("origin"));
+
+    let create_body = json!({
+        "name":"Contract Test",
+        "mode":"sandbox",
+        "origin":"entrepreneur",
+        "founder_name":"Contract Founder",
+        "dynasty_name":"Contract Dynasty",
+        "club_name":"Contract FC"
+    });
+    let (status, created) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/campaigns",
+        Some("contract-test-campaign"),
+        Some(create_body),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let campaign_id = created["id"].as_str().expect("campaign id");
+
+    let (squad_status, squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(squad_status, StatusCode::OK);
+    let players = squad["players"].as_array().expect("players");
+    let player_id = players[0]["id"].as_str().expect("player id");
+
+    let invalid_wage = json!({
+        "player_id": player_id,
+        "wage_per_week": -1000,
+        "years": 3
+    });
+    let (invalid_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts"),
+        Some("invalid-wage"),
+        Some(invalid_wage),
+    )
+    .await;
+    assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
+
+    let invalid_years = json!({
+        "player_id": player_id,
+        "wage_per_week": 5000,
+        "years": 0
+    });
+    let (invalid_years_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts"),
+        Some("invalid-years"),
+        Some(invalid_years),
+    )
+    .await;
+    assert_eq!(invalid_years_status, StatusCode::BAD_REQUEST);
+
+    let renew_body = json!({
+        "player_id": player_id,
+        "wage_per_week": 8000,
+        "years": 4
+    });
+    let (renew_status, renewed) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts"),
+        Some("renew-001"),
+        Some(renew_body),
+    )
+    .await;
+    assert_eq!(renew_status, StatusCode::OK);
+    assert_eq!(renewed["wage_per_week"], 8000);
+    assert_eq!(renewed["status"], "active");
+
+    let (release_status, released) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/contracts/{player_id}/release"),
+        Some("release-001"),
+        None,
+    )
+    .await;
+    assert_eq!(release_status, StatusCode::OK);
+    assert_eq!(released["status"], "released");
+
+    pool.close().await;
+}

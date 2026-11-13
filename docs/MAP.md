@@ -73,7 +73,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | News and digest | Find relevant football stories with clear source attribution | `src/features/digest`, news screens | Source links, timestamps, deduplication, and clear separation of articles from video |
 | Amateur football | Create and manage a private amateur league | `src/features/amateur`, `amateur-logo` Edge Function | Telegram identity verification, owner isolation, upload validation |
 | Football Dynasty | Play a persistent fictional football dynasty campaign | `src/features/football-dynasty`, `src/screens/FootballDynastyScreen.tsx`, `services/football-dynasty` | Campaign lifecycle, ledger integrity, succession, persistence, and owner isolation |
-| Admin and operations | Maintain data and resolve production issues safely | `src/screens/admin`, `docs/operations` | Audited changes, bounded jobs, observable failures, tested rollback |
+| Admin and operations | Maintain data and resolve production issues safely | `src/screens/admin`, `docs/operations`, `docs/archive/` | Audited changes, bounded jobs, observable failures, tested rollback |
 
 This is a navigation index, not a promise that every listed area is currently complete. Verify implementation and production state before extending an area.
 
@@ -140,7 +140,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
-- The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The current implemented slice is campaign creation, a bounded founder/heir succession lifecycle, squad seeding, and player contract management. Full match simulation, finances, and transfers are not yet implemented.
 
 ## 8. Execution priorities
 
@@ -221,6 +221,39 @@ A task is done only when all applicable items are true:
 - [ ] Documentation reflects the deployed code, not an intended future state.
 
 Do not report a task as complete based only on code being merged, a workflow being green, or a deployment being marked ready.
+
+## 9a. Football Dynasty squad and contract backend (Issue #394)
+
+**Status:** Implemented and tested; awaiting CI and PR review.
+
+**What was delivered:**
+- Migration `0005_squad_contracts.sql` creating `fd.players` and `fd.contracts` with campaign-scoped ownership, contract state, and one-active-contract-per-player enforcement through a partial unique index.
+- Rust module `src/roster.rs` with authenticated routes for GET squad, POST sign/renew, POST release.
+- Deterministic squad seeding on first read: 23 fictional players (2 GK, 8 DEF, 8 MID, 5 FWD) generated from campaign seed. Seeding is transactional, idempotent, and safe under concurrent reads using a `seeded` flag and database-level uniqueness.
+- Contract state transitions (active → expired, active → released) enforced in Rust; expired contracts updated on squad read when `end_date < CURRENT_DATE`.
+- Campaign-owner authorization via Telegram ID RLS on both tables.
+- Disposable-Postgres integration tests covering:
+  - Seed count, distribution, and determinism across repeated reads.
+  - Concurrent/idempotent first read.
+  - Owner isolation (user A cannot read user B's squad or sign contracts for another campaign).
+  - Invalid terms (negative wages, past end dates, zero-day contracts, wrong campaign).
+  - Contract state transitions (sign → release, expired detection).
+  - At-most-one-active-contract enforcement.
+
+**Schema constraints verified:**
+- Composite foreign key to `fd.clubs(campaign_id, id)` matches the correct column order from the base migration.
+- Contract state column (`active`, `expired`, `released`) with CHECK constraint.
+- Partial unique index `WHERE status = 'active'` enforces one active contract per player (replacing the failed `CURRENT_DATE` index from PR #395).
+- Owner-scoped RLS using `NULLIF(current_setting('fd.telegram_id', true), '')::bigint` in both `USING` and `WITH CHECK` policies.
+
+**What was not delivered:**
+- No frontend integration; API remains backend-only.
+- No match simulation, finances, morale, or transfer features.
+- No production migration application, merge, or deployment.
+
+**Files changed:** `services/football-dynasty/migrations/0005_squad_contracts.sql`, `services/football-dynasty/src/roster.rs`, `services/football-dynasty/src/lib.rs`, `services/football-dynasty/src/http.rs`, `services/football-dynasty/tests/campaign_lifecycle.rs`, `docs/MAP.md`.
+
+**Next steps:** CI must pass (Rust fmt, Clippy, SQLx prepare, disposable-Postgres tests). If green, the PR is ready for review. Frontend integration is a separate follow-up issue.
 
 ## 10. Repository navigation
 
