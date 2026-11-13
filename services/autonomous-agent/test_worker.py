@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, starimg_stream_completion
+from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, starimg_stream_completion, starimg_anthropic_stream_completion, ask_starimg
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -227,6 +227,53 @@ class WorkerPolicyTests(unittest.TestCase):
                          "diff --git a/src/a.ts b/src/a.ts\n")
         self.assertEqual(result["usage"]["completion_tokens"], 8)
         self.assertTrue(urlopen.call_args.kwargs["timeout"] >= 180)
+
+    def test_starimg_anthropic_streaming_completion_collects_text_and_usage(self):
+        events = [
+            {"type": "message_start", "message": {"usage": {"input_tokens": 12, "output_tokens": 0}}},
+            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "diff --git "}},
+            {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "a/src/a.ts b/src/a.ts\\n"}},
+            {"type": "message_delta", "usage": {"output_tokens": 8}},
+            {"type": "message_stop"},
+        ]
+        payload = b"".join(
+            ("event: " + event["type"] + "\\ndata: " + json.dumps(event) + "\\n\\n").encode("utf-8")
+            for event in events
+        )
+        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)) as urlopen:
+            result = starimg_anthropic_stream_completion(
+                "https://ai.starimg.ru/v1", "test-key",
+                {"model": "claude-opus-5", "messages": []},
+            )
+        self.assertEqual(
+            result["choices"][0]["message"]["content"],
+            "diff --git a/src/a.ts b/src/a.ts\\n",
+        )
+        self.assertEqual(result["usage"]["input_tokens"], 12)
+        self.assertEqual(result["usage"]["output_tokens"], 8)
+        request = urlopen.call_args.args[0]
+        self.assertTrue(request.full_url.endswith("/v1/messages"))
+        self.assertEqual(request.get_header("X-api-key"), "test-key")
+        self.assertEqual(request.get_header("Anthropic-version"), "2023-06-01")
+
+    def test_ask_starimg_uses_anthropic_messages_for_claude_models(self):
+        from worker import ask_starimg
+
+        with patch("worker.starimg_anthropic_stream_completion", return_value={
+            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\\n"}}],
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+        }) as completion:
+            answer, usage = ask_starimg(
+                "https://ai.starimg.ru/v1", "test-key", "claude-opus-5",
+                "Implement task", 394, "repo context", ("src/",),
+            )
+        self.assertTrue(answer.startswith("diff --git"))
+        self.assertEqual(usage["output_tokens"], 5)
+        payload = completion.call_args.args[2]
+        self.assertEqual(payload["model"], "claude-opus-5")
+        self.assertIn("system", payload)
+        self.assertEqual(payload["messages"][0]["role"], "user")
+        self.assertTrue(completion.call_args.args[0].endswith("/v1"))
 
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
