@@ -33,7 +33,7 @@ Provider credentials are synced from GitHub Actions repository secrets by `.gith
 
 | Service | Role | Schedule | Runtime |
 |---|---|---|---|
-| stream-service | implementer + architect + internal reviewer | every 10 minutes | one task per invocation |
+| stream-service | implementer + architect + internal reviewer | every 30 minutes | one task per invocation |
 | sherlock-ai-bot | independent PR reviewer | every 5 minutes | one PR per invocation |
 
 Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The implementation service is scoped to Aloews/sherlock-scholes- only; the reviewer scans only that repository. No public domain is required.
