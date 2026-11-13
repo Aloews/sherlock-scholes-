@@ -4,6 +4,7 @@ This directory is the project's **development operating system**: one enforced
 standard for humans and AI agents alike. Start with the constitution.
 
 ## Start here
+- **[AI_EXECUTION_PROTOCOL.md](./AI_EXECUTION_PROTOCOL.md)** — mandatory autonomous workflow, roles, communication, permissions, retries, and evidence.
 - **[ENGINEERING_CONSTITUTION.md](./ENGINEERING_CONSTITUTION.md)** — philosophy,
   Definition of Done, quality bar, and the index of everything below.
 - Agent entrypoints at the repo root: [`../CLAUDE.md`](../CLAUDE.md),
