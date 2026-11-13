@@ -683,6 +683,7 @@ class WorkerPolicyTests(unittest.TestCase):
             manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
             with patch.dict(os.environ, {
                 "TEST_DATABASE_URL": test_database_url,
+                "TEST_DATABASE_DISPOSABLE": "true",
                 "SUPABASE_DB_URL": "postgresql://production-secret",
             }, clear=True), patch("worker.run_command") as command:
                 worker._validate(
