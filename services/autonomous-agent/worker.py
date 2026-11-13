@@ -1180,8 +1180,10 @@ def main() -> None:
                     "model": model,
                     "system": "Return exactly the single word OK and no other text.",
                     "messages": [{"role": "user", "content": "Return exactly OK."}],
-                    "max_tokens": 16,
-                    "temperature": 0,
+                    "max_tokens": 256,
+                    "stream": False,
+                    "thinking": {"type": "adaptive", "display": "summarized"},
+                    "output_config": {"effort": "medium"},
                 },
                 timeout=90,
             )
