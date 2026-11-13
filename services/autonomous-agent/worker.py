@@ -1066,6 +1066,7 @@ class Worker:
                             if target_path not in changed:
                                 raise RuntimeError("Model patch did not change its assigned required file")
                             run_command(["git", "diff", "--check"], temp)
+                            self._validate(temp, [target_path])
                             applied = True
                             break
                         except Exception as exc:
@@ -1168,10 +1169,21 @@ class Worker:
 
     def _validate(self, root: Path, changed: list[str]) -> None:
         # Full application tests run in GitHub Actions on the exact PR head.
-        # This small Railway Free worker performs only safe, local syntax checks.
+        # The worker performs bounded local syntax/format checks before opening a PR.
         python_paths = [path for path in changed if path.endswith(".py")]
         if python_paths:
             run_command(["python3", "-m", "py_compile"] + python_paths, root, timeout=300)
+
+        rust_paths = sorted({path for path in changed if path.endswith(".rs")})
+        if rust_paths:
+            manifest = root / "services" / "football-dynasty" / "Cargo.toml"
+            if not manifest.is_file():
+                raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
+            run_command(
+                ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
+                root,
+                timeout=300,
+            )
 
 
 def main() -> None:
