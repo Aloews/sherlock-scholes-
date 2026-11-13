@@ -108,6 +108,24 @@ class WorkerPolicyTests(unittest.TestCase):
             self.assertIn("HEAD", context)
             self.assertIn("TAIL", context)
 
+    def test_rejected_patch_context_prioritizes_required_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, marker_text in (
+                ("patch.rs", "PATCH_FILE_CONTEXT"),
+                ("required.rs", "REQUIRED_FILE_CONTEXT"),
+            ):
+                target = root / "src" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(marker_text + "\n", encoding="utf-8")
+            patch = (
+                "diff --git a/src/patch.rs b/src/patch.rs\n"
+                "--- a/src/patch.rs\n+++ b/src/patch.rs\n"
+                "@@ -1 +1 @@\n-old\n+new\n"
+            )
+            context = patch_file_context(root, patch, extra_paths=["src/required.rs"])
+            self.assertLess(context.index("REQUIRED_FILE_CONTEXT"), context.index("PATCH_FILE_CONTEXT"))
+
     def test_extract_patch_removes_trailing_whitespace_from_added_lines(self):
         patch = (
             "diff --git a/src/example.rs b/src/example.rs\n"
