@@ -279,7 +279,25 @@ def starimg_anthropic_stream_completion(base: str, key: str,
                 headers.get("request-id") or headers.get("x-request-id")
                 or headers.get("anthropic-request-id")
             ) if hasattr(headers, "get") else None
-            raw = response.read()
+            if "text/event-stream" in content_type.lower():
+                response_lines: list[bytes] = []
+                for raw_line in response:
+                    response_lines.append(raw_line)
+                    line = raw_line.decode("utf-8", "replace").strip()
+                    if not line.startswith("data:"):
+                        continue
+                    data_line = line[5:].strip()
+                    if data_line == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(data_line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(event, dict) and event.get("type") == "message_stop":
+                        break
+                raw = b"".join(response_lines)
+            else:
+                raw = response.read()
     except urllib.error.HTTPError as exc:
         body = exc.read(4096)
         error_type = exc.headers.get("content-type", "") if exc.headers else ""
