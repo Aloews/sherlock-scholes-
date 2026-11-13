@@ -34,7 +34,6 @@ CREATE TABLE fd.contracts (
         (status = 'released' AND released_at IS NOT NULL) OR
         (status != 'released' AND released_at IS NULL)
     ),
-    CHECK (end_year - start_year + 1 BETWEEN 1 AND 5)
 );
 
 -- Partial unique index: at most one active contract per player
@@ -59,14 +58,14 @@ CREATE POLICY players_owner_access ON fd.players
         EXISTS (
             SELECT 1 FROM fd.campaigns c
             WHERE c.id = players.campaign_id
-            AND c.telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
+            AND c.owner_telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM fd.campaigns c
             WHERE c.id = players.campaign_id
-            AND c.telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
+            AND c.owner_telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
         )
     );
 
@@ -80,14 +79,14 @@ CREATE POLICY contracts_owner_access ON fd.contracts
         EXISTS (
             SELECT 1 FROM fd.campaigns c
             WHERE c.id = contracts.campaign_id
-            AND c.telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
+            AND c.owner_telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM fd.campaigns c
             WHERE c.id = contracts.campaign_id
-            AND c.telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
+            AND c.owner_telegram_id = NULLIF(current_setting('fd.telegram_id', true), '')::bigint
         )
     );
 
