@@ -295,3 +295,10 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+
+## 14. Multi-agent product delivery
+
+The reusable role model and delivery gates are defined in [Multi-Agent Product Delivery System](MULTI_AGENT_PRODUCT_DELIVERY.md). Its verified runtime baseline, rollout phases, and operational acceptance tests are in [Multi-Agent Runtime Rollout](MULTI_AGENT_RUNTIME_ROLLOUT.md).
+
+**Current status:** the architecture is documented, but the independent reviewer, QA, and release-controller runtime roles are not yet provisioned or accepted. The existing Starimg worker remains a single implementation worker. Do not count a second service or a green CI workflow as an independent QA agent.
