@@ -25,6 +25,7 @@ Only owner-authored commands are accepted. At most one implementation task is pr
 - **GitHub:** owner-authenticated task intake, repository preflight, isolated branches, PRs and persistent reviewer handoffs.
 - **Supabase:** the reviewer uses the existing scoped Management API token for read-only project health checks. The database connection string is not used by the agent.
 - **Vercel:** the reviewer uses the existing token for read-only project and latest-deployment checks.
+- Vercel preview builds are skipped on non-main branches unless the commit message contains [vercel-preview]; production builds on main remain enabled.
 - **Railway:** the implementer and reviewer run as separate scheduled roles in the existing Railway project. Railway environment/service metadata is included in the read-only preflight; no Railway API token is currently configured for runtime resource-management operations.
 
 Supabase and Vercel credentials already exist on the reviewer service. Their values are never copied into source, prompts, logs, or subprocess environments.
