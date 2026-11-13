@@ -1501,7 +1501,9 @@ class Worker:
         try:
             if self._has_marker(issue_number, comment_id):
                 return
-            safe_error = re.sub(r"https?://[^\s]+", "[url]", error)[:500]
+            safe_error = re.sub(r"(?:sk-ant-|sk_live_|Bearer\\s+)[A-Za-z0-9_./+-]+", "[REDACTED]", error)
+        if len(safe_error) > 1800:
+            safe_error = "[earlier output omitted]\\n" + safe_error[-1800:]
             request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
                          self.token, "POST", {
                 "body": "The autonomous worker could not complete this task. "
@@ -2168,8 +2170,11 @@ def main() -> None:
                 worker.process(comment)
                 return
             except Exception as exc:
+                error_text = str(exc)
+                if len(error_text) > 4000:
+                    error_text = "[earlier output omitted]\\n" + error_text[-4000:]
                 LOG.error("Task processing failed in %s (comment id %s): %s",
-                          worker.repo, comment.get("id", "unknown"), str(exc)[:1000])
+                          worker.repo, comment.get("id", "unknown"), error_text)
                 worker.record_failure(comment, str(exc))
                 return
     LOG.info("No pending owner task found across %s repositories", len(workers))
