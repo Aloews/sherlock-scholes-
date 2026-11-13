@@ -1,8 +1,14 @@
 FROM python:3.12-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --profile minimal --component rustfmt --default-toolchain stable \
+    && /root/.cargo/bin/rustfmt --version
+
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /opt/worker
 COPY worker.py test_worker.py /opt/worker/
