@@ -695,5 +695,23 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(result["vercel"]["status"], "not_configured")
 
 
+
+    def test_blocking_findings_accepts_only_declared_severities(self):
+        from worker import blocking_findings
+
+        findings = [
+            {"severity": "minor", "problem": "style"},
+            {"severity": "major", "problem": "missing guard"},
+            {"severity": "blocker", "problem": "unsafe write"},
+        ]
+        self.assertEqual(len(blocking_findings(findings)), 2)
+
+    def test_blocking_findings_rejects_unknown_severity_fail_closed(self):
+        from worker import blocking_findings
+
+        with self.assertRaisesRegex(RuntimeError, "unsupported severity"):
+            blocking_findings([{"severity": "critical", "problem": "unknown level"}])
+
+
 if __name__ == "__main__":
     unittest.main()
