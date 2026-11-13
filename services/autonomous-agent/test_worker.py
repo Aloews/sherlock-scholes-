@@ -309,16 +309,19 @@ class WorkerPolicyTests(unittest.TestCase):
             "usage": {"input_tokens": 21, "output_tokens": 13},
         }
         payload = json.dumps(document).encode("utf-8")
-        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)):
+        with patch("worker.urllib.request.urlopen", return_value=io.BytesIO(payload)) as urlopen:
             result = starimg_anthropic_stream_completion(
                 "https://ai.starimg.ru/v1", "test-key",
-                {"model": "claude-fable-5-2", "messages": []},
+                {"model": "claude-fable-5-2", "messages": [], "stream": False},
             )
         self.assertEqual(
             result["choices"][0]["message"]["content"],
             "diff --git a/src/a.rs b/src/a.rs\n",
         )
         self.assertEqual(result["usage"]["output_tokens"], 13)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(json.loads(request.data)["stream"], False)
+        self.assertEqual(request.get_header("Accept"), "application/json")
 
     def test_starimg_anthropic_completion_accepts_text_block_start(self):
         events = [
@@ -508,6 +511,9 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertNotIn("temperature", payload)
         self.assertNotIn("top_p", payload)
         self.assertNotIn("top_k", payload)
+        self.assertEqual(payload["stream"], False)
+        self.assertEqual(payload["thinking"], {"type": "adaptive", "display": "summarized"})
+        self.assertEqual(payload["output_config"], {"effort": "medium"})
 
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
