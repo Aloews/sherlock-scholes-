@@ -29,3 +29,4 @@ consequences. ADRs are how this project's standards evolve — see the
 | [0002](./0002-adopt-engineering-constitution.md) | Adopt the Engineering Constitution | Accepted |
 | [0003](./0003-bootstrap-testing-strategy.md) | Bootstrap testing: Vitest/Stryker + pytest/mutmut, gates, defect locks | Accepted |
 | 0004 | Add a Live TV (m3u/HLS) screen, unrelated to the Alias gameplay | **Moved out** — экран стал отдельным приложением, решение переехало в [Aloews/sherlock-tv](https://github.com/Aloews/sherlock-tv) (`docs/ADR-0004-live-tv-playlist-relay.md`) |
+| [0005](./0005-autonomous-ai-execution.md) | Autonomous AI execution, delegation, and maintainer communication | Proposed |
