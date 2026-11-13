@@ -1482,6 +1482,9 @@ class Worker:
             )
             if isinstance(comments, list) and has_review_marker(comments, head_sha):
                 continue
+            if integrations is None:
+                integrations = integration_preflight()
+                LOG.info("Read-only provider preflight: %s", json.dumps(integrations, sort_keys=True))
             diff = request_text(
                 api_url(f"/repos/{self.repo}/pulls/{number}"),
                 self.token,
@@ -1632,10 +1635,8 @@ def main() -> None:
     if agent_role not in ("implementer", "reviewer"):
         raise RuntimeError("AGENT_ROLE must be implementer or reviewer")
     if agent_role == "reviewer":
-        integrations = integration_preflight()
-        LOG.info("Read-only provider preflight: %s", json.dumps(integrations, sort_keys=True))
         for worker in workers:
-            if worker.review_pending_prs(integrations):
+            if worker.review_pending_prs():
                 return
         LOG.info("No unreviewed autonomous pull requests found across %s repositories", len(workers))
         return
