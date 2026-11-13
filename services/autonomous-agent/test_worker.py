@@ -554,6 +554,30 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(payload["thinking"], {"type": "adaptive", "display": "summarized"})
         self.assertEqual(payload["output_config"], {"effort": "medium"})
 
+    def test_single_file_prompt_requests_complete_content_for_new_target(self):
+        from worker import ask_starimg
+
+        with patch("worker.starimg_anthropic_stream_completion", return_value={
+            "choices": [{"message": {"content": "```rust\\npub mod roster;\\n```"}}],
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+        }) as completion:
+            ask_starimg(
+                "https://ai.starimg.ru/v1",
+                "test-key",
+                "claude-fable-5-2",
+                "IMPLEMENTATION UNIT: modify exactly this one required path: "
+                "services/football-dynasty/src/roster.rs",
+                394,
+                "--- REQUIRED NEW FILE (does not exist yet): services/football-dynasty/src/roster.rs ---",
+                ("services/football-dynasty/src/roster.rs",),
+            )
+
+        payload = completion.call_args.args[2]
+        self.assertIn("complete file contents", payload["system"])
+        self.assertIn("one fenced code block", payload["system"])
+        self.assertIn("complete file contents", payload["messages"][0]["content"])
+        self.assertNotIn("unified git diff only", payload["messages"][0]["content"])
+
     def test_starimg_model_catalog_selects_coding_model_without_completion(self):
         from worker import choose_model
 
