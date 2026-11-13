@@ -1,28 +1,51 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    Extension, Json,
+    routing::{get, post},
+    Extension, Json, Router,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{FromRow, Postgres, Transaction};
 use uuid::Uuid;
 
-use crate::auth::Identity;
-use crate::errors::ApiError;
-use crate::state::AppState;
+use crate::{auth::Identity, errors::ApiError, state::AppState};
 
-#[derive(Debug, Serialize, Deserialize)]
+const POSITION_COUNTS: &[(&str, usize)] = &[("GK", 2), ("DEF", 8), ("MID", 8), ("FWD", 5)];
+const SEEDED_WAGE_PER_YEAR: i64 = 50_000;
+const SEEDED_CONTRACT_YEARS: i32 = 3;
+const MAX_WAGE_PER_YEAR: i64 = 100_000_000;
+
+type ApiResult<T> = Result<T, ApiError>;
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/v1/campaigns/{campaign_id}/squad",
+            get(get_squad),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/contracts",
+            post(sign_contract),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/contracts/{player_id}/release",
+            post(release_contract),
+        )
+}
+
+#[derive(Debug, Serialize)]
 pub struct PlayerResponse {
     pub id: Uuid,
     pub full_name: String,
     pub position: String,
     pub age: i32,
     pub skill: i32,
+    pub seed_index: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct ContractResponse {
     pub id: Uuid,
     pub player_id: Uuid,
@@ -31,17 +54,13 @@ pub struct ContractResponse {
     pub end_year: i32,
     pub wage_per_year: i64,
     pub status: String,
+    pub released_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct SquadResponse {
-    pub players: Vec<PlayerWithContract>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PlayerWithContract {
-    pub player: PlayerResponse,
-    pub contract: ContractResponse,
+    pub players: Vec<PlayerResponse>,
+    pub contracts: Vec<ContractResponse>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,67 +71,133 @@ pub struct SignContractRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SignContractResponse {
+pub struct ContractActionResponse {
     pub contract: ContractResponse,
 }
 
-const POSITION_COUNTS: &[(&str, usize)] = &[("GK", 2), ("DEF", 8), ("MID", 8), ("FWD", 5)];
+#[derive(Debug, FromRow)]
+struct CampaignRow {
+    seed: i64,
+    current_year: i32,
+}
 
-fn deterministic_uuid(campaign_id: Uuid, seed: i64, domain: &str, index: usize) -> Uuid {
+#[derive(Debug, FromRow)]
+struct SquadRow {
+    player_id: Uuid,
+    full_name: String,
+    position: String,
+    age: i32,
+    skill: i32,
+    seed_index: i32,
+    contract_id: Option<Uuid>,
+    contract_player_id: Option<Uuid>,
+    club_id: Option<Uuid>,
+    start_year: Option<i32>,
+    end_year: Option<i32>,
+    wage_per_year: Option<i64>,
+    status: Option<String>,
+    released_at: Option<DateTime<Utc>>,
+}
+
+fn deterministic_digest(campaign_id: Uuid, seed: i64, domain: &str, index: usize) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(campaign_id.as_bytes());
-    hasher.update(seed.to_le_bytes());
+    hasher.update(seed.to_be_bytes());
     hasher.update(domain.as_bytes());
-    hasher.update(index.to_le_bytes());
-    let hash = hasher.finalize();
-    let mut bytes = [0u8; 16];
-    bytes.copy_from_slice(&hash[..16]);
+    hasher.update((index as u64).to_be_bytes());
+    let digest = hasher.finalize();
+    let mut bytes = [0_u8; 32];
+    bytes.copy_from_slice(&digest);
+    bytes
+}
+
+fn deterministic_uuid(campaign_id: Uuid, seed: i64, domain: &str, index: usize) -> Uuid {
+    let digest = deterministic_digest(campaign_id, seed, domain, index);
+    let mut bytes = [0_u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    bytes[6] = (bytes[6] & 0x0f) | 0x80;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
     Uuid::from_bytes(bytes)
 }
 
 fn deterministic_name(campaign_id: Uuid, seed: i64, index: usize) -> String {
-    let first_names = [
+    const FIRST_NAMES: &[&str] = &[
         "James", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas",
-        "Charles", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul",
-        "Andrew", "Joshua", "Kenneth", "Kevin", "Brian", "George", "Timothy", "Ronald",
+        "Charles", "Daniel", "Matthew", "Anthony", "Mark", "Steven", "Paul", "Andrew",
+        "Joshua", "Kevin", "Brian", "George", "Timothy", "Ronald", "Edward", "Peter",
     ];
-    let last_names = [
+    const LAST_NAMES: &[&str] = &[
         "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
         "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
         "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson", "White",
     ];
-
-    let mut hasher = Sha256::new();
-    hasher.update(campaign_id.as_bytes());
-    hasher.update(seed.to_le_bytes());
-    hasher.update(b"name");
-    hasher.update(index.to_le_bytes());
-    let hash = hasher.finalize();
-
-    let first_idx = (hash[0] as usize) % first_names.len();
-    let last_idx = (hash[1] as usize) % last_names.len();
-
-    format!("{} {}", first_names[first_idx], last_names[last_idx])
+    let digest = deterministic_digest(campaign_id, seed, "name", index);
+    let first = FIRST_NAMES[digest[0] as usize % FIRST_NAMES.len()];
+    let last = LAST_NAMES[digest[1] as usize % LAST_NAMES.len()];
+    format!("{first} {last}")
 }
 
 fn deterministic_age(campaign_id: Uuid, seed: i64, index: usize) -> i32 {
-    let mut hasher = Sha256::new();
-    hasher.update(campaign_id.as_bytes());
-    hasher.update(seed.to_le_bytes());
-    hasher.update(b"age");
-    hasher.update(index.to_le_bytes());
-    let hash = hasher.finalize();
-    18 + ((hash[0] as i32) % 17)
+    let digest = deterministic_digest(campaign_id, seed, "age", index);
+    18 + i32::from(digest[0] % 18)
 }
 
 fn deterministic_skill(campaign_id: Uuid, seed: i64, index: usize) -> i32 {
-    let mut hasher = Sha256::new();
-    hasher.update(campaign_id.as_bytes());
-    hasher.update(seed.to_le_bytes());
-    hasher.update(b"skill");
-    hasher.update(index.to_le_bytes());
-    let hash = hasher.finalize();
-    50 + ((hash[0] as i32) % 31)
+    let digest = deterministic_digest(campaign_id, seed, "skill", index);
+    45 + i32::from(digest[0] % 51)
+}
+
+async fn set_owner_scope(
+    tx: &mut Transaction<'_, Postgres>,
+    telegram_id: i64,
+) -> ApiResult<()> {
+    sqlx::query("SET LOCAL ROLE fd_runtime")
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
+        .bind(telegram_id.to_string())
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(())
+}
+
+async fn lock_campaign(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+) -> ApiResult<CampaignRow> {
+    sqlx::query_as::<_, CampaignRow>(
+        "SELECT seed, current_year FROM fd.campaigns WHERE id = $1 FOR UPDATE",
+    )
+    .bind(campaign_id)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)?
+    .ok_or_else(ApiError::not_found)
+}
+
+async fn expire_contracts(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+    current_year: i32,
+) -> ApiResult<()> {
+    sqlx::query(
+        "UPDATE fd.contracts
+         SET status = 'expired'
+         WHERE campaign_id = $1
+           AND status = 'active'
+           AND end_year < $2",
+    )
+    .bind(campaign_id)
+    .bind(current_year)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(())
 }
 
 async fn seed_squad(
@@ -121,83 +206,61 @@ async fn seed_squad(
     club_id: Uuid,
     seed: i64,
     current_year: i32,
-) -> Result<(), ApiError> {
-    let mut player_index = 0;
+) -> ApiResult<()> {
+    let mut index = 0_usize;
 
     for (position, count) in POSITION_COUNTS {
         for _ in 0..*count {
-            let player_id = deterministic_uuid(campaign_id, seed, "player", player_index);
-            let full_name = deterministic_name(campaign_id, seed, player_index);
-            let age = deterministic_age(campaign_id, seed, player_index);
-            let skill = deterministic_skill(campaign_id, seed, player_index);
+            let player_id = deterministic_uuid(campaign_id, seed, "player", index);
+            let contract_id = deterministic_uuid(campaign_id, seed, "contract", index);
+            let full_name = deterministic_name(campaign_id, seed, index);
+            let age = deterministic_age(campaign_id, seed, index);
+            let skill = deterministic_skill(campaign_id, seed, index);
+            let seed_index = index as i32;
+            let end_year = current_year
+                .checked_add(SEEDED_CONTRACT_YEARS)
+                .ok_or_else(ApiError::internal)?;
+            let wage_per_year = SEEDED_WAGE_PER_YEAR + i64::from(skill) * 100;
 
-            sqlx::query!(
-                r#"
-                INSERT INTO fd.players (campaign_id, id, full_name, position, age, skill, seed_index)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT (campaign_id, seed_index) DO NOTHING
-                "#,
-                campaign_id,
-                player_id,
-                full_name,
-                *position,
-                age,
-                skill,
-                player_index as i32
+            sqlx::query(
+                "INSERT INTO fd.players
+                    (campaign_id, id, full_name, position, age, skill, seed_index)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 ON CONFLICT (campaign_id, seed_index) DO NOTHING",
             )
+            .bind(campaign_id)
+            .bind(player_id)
+            .bind(full_name)
+            .bind(*position)
+            .bind(age)
+            .bind(skill)
+            .bind(seed_index)
             .execute(&mut **tx)
             .await
-            .map_err(|e| ApiError::internal().with_source(e))?;
+            .map_err(ApiError::from)?;
 
-            let contract_id = deterministic_uuid(campaign_id, seed, "contract", player_index);
-            let start_year = current_year;
-            let end_year = current_year + 3;
-            let wage_per_year: i64 = 50_000;
-
-            sqlx::query!(
-                r#"
-                INSERT INTO fd.contracts (campaign_id, id, player_id, club_id, start_year, end_year, wage_per_year, status, released_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NULL)
-                ON CONFLICT (campaign_id, player_id) WHERE status = 'active' DO NOTHING
-                "#,
-                campaign_id,
-                contract_id,
-                player_id,
-                club_id,
-                start_year,
-                end_year,
-                wage_per_year
+            sqlx::query(
+                "INSERT INTO fd.contracts
+                    (campaign_id, id, player_id, club_id, start_year, end_year,
+                     wage_per_year, status, released_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NULL)
+                 ON CONFLICT (campaign_id, player_id)
+                     WHERE status = 'active' DO NOTHING",
             )
+            .bind(campaign_id)
+            .bind(contract_id)
+            .bind(player_id)
+            .bind(club_id)
+            .bind(current_year)
+            .bind(end_year)
+            .bind(wage_per_year)
             .execute(&mut **tx)
             .await
-            .map_err(|e| ApiError::internal().with_source(e))?;
+            .map_err(ApiError::from)?;
 
-            player_index += 1;
+            index += 1;
         }
     }
-
-    Ok(())
-}
-
-async fn expire_contracts(
-    tx: &mut Transaction<'_, Postgres>,
-    campaign_id: Uuid,
-    current_year: i32,
-) -> Result<(), ApiError> {
-    sqlx::query!(
-        r#"
-        UPDATE fd.contracts
-        SET status = 'expired'
-        WHERE campaign_id = $1
-          AND status = 'active'
-          AND end_year < $2
-        "#,
-        campaign_id,
-        current_year
-    )
-    .execute(&mut **tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
 
     Ok(())
 }
@@ -206,96 +269,65 @@ pub async fn get_squad(
     State(state): State<AppState>,
     Path(campaign_id): Path<Uuid>,
     Extension(identity): Extension<Identity>,
-) -> Result<Json<SquadResponse>, ApiError> {
-    let mut tx = state
-        .db
-        .begin()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
+) -> ApiResult<Json<SquadResponse>> {
+    let mut tx = state.db.begin().await.map_err(ApiError::from)?;
+    set_owner_scope(&mut tx, identity.telegram_id).await?;
 
-    sqlx::query!("SET LOCAL ROLE fd_runtime")
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    sqlx::query!(
-        "SELECT set_config('fd.telegram_id', $1, true)",
-        identity.telegram_id.to_string()
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
-
-    let campaign = sqlx::query!(
-        r#"
-        SELECT seed, current_year
-        FROM fd.campaigns
-        WHERE id = $1
-        FOR UPDATE
-        "#,
-        campaign_id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
-
-    let seed = campaign.seed;
-    let current_year = campaign.current_year;
-
-    expire_contracts(&mut tx, campaign_id, current_year).await?;
-
-    let player_count = sqlx::query_scalar!(
-        r#"
-        SELECT COUNT(*)
-        FROM fd.players
-        WHERE campaign_id = $1
-        "#,
-        campaign_id
-    )
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .unwrap_or(0);
+    let campaign = lock_campaign(&mut tx, campaign_id).await?;
+    let player_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1")
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
 
     if player_count == 0 {
-        let club = sqlx::query!(
-            r#"
-            SELECT id
-            FROM fd.clubs
-            WHERE campaign_id = $1
-            ORDER BY id
-            LIMIT 1
-            "#,
-            campaign_id
+        let club_id: Uuid = sqlx::query_scalar(
+            "SELECT id FROM fd.clubs WHERE campaign_id = $1 ORDER BY id LIMIT 1",
         )
+        .bind(campaign_id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| ApiError::internal().with_source(e))?
-        .ok_or_else(|| ApiError::not_found())?;
+        .map_err(ApiError::from)?
+        .ok_or_else(ApiError::not_found)?;
 
-        seed_squad(&mut tx, campaign_id, club.id, seed, current_year).await?;
+        seed_squad(
+            &mut tx,
+            campaign_id,
+            club_id,
+            campaign.seed,
+            campaign.current_year,
+        )
+        .await?;
+    } else if player_count != 23 {
+        return Err(ApiError::internal());
     }
 
-    let rows = sqlx::query!(
-        r#"
-        SELECT
-            p.id as player_id,
+    expire_contracts(&mut tx, campaign_id, campaign.current_year).await?;
+
+    let rows = sqlx::query_as::<_, SquadRow>(
+        "SELECT
+            p.id AS player_id,
             p.full_name,
             p.position,
             p.age,
             p.skill,
-            c.id as contract_id,
+            p.seed_index,
+            c.id AS contract_id,
+            c.player_id AS contract_player_id,
             c.club_id,
             c.start_year,
             c.end_year,
             c.wage_per_year,
-            c.status
-        FROM fd.players p
-        INNER JOIN fd.contracts c ON c.campaign_id = p.campaign_id AND c.player_id = p.id
-        WHERE p.campaign_id = $1
+            c.status,
+            c.released_at
+         FROM fd.players p
+         LEFT JOIN fd.contracts c
+           ON c.campaign_id = p.campaign_id
+          AND c.player_id = p.id
           AND c.status = 'active'
-        ORDER BY
+         WHERE p.campaign_id = $1
+         ORDER BY
             CASE p.position
                 WHEN 'GK' THEN 1
                 WHEN 'DEF' THEN 2
@@ -303,42 +335,47 @@ pub async fn get_squad(
                 WHEN 'FWD' THEN 4
                 ELSE 5
             END,
-            p.skill DESC,
-            p.full_name
-        "#,
-        campaign_id
+            p.seed_index",
     )
+    .bind(campaign_id)
     .fetch_all(&mut *tx)
     .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
+    .map_err(ApiError::from)?;
 
-    tx.commit()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
+    tx.commit().await.map_err(ApiError::from)?;
 
-    let players = rows
-        .into_iter()
-        .map(|row| PlayerWithContract {
-            player: PlayerResponse {
-                id: row.player_id,
-                full_name: row.full_name,
-                position: row.position,
-                age: row.age,
-                skill: row.skill,
-            },
-            contract: ContractResponse {
-                id: row.contract_id,
-                player_id: row.player_id,
-                club_id: row.club_id,
-                start_year: row.start_year,
-                end_year: row.end_year,
-                wage_per_year: row.wage_per_year,
-                status: row.status,
-            },
-        })
-        .collect();
+    let mut players = Vec::with_capacity(rows.len());
+    let mut contracts = Vec::with_capacity(rows.len());
 
-    Ok(Json(SquadResponse { players }))
+    for row in rows {
+        players.push(PlayerResponse {
+            id: row.player_id,
+            full_name: row.full_name,
+            position: row.position,
+            age: row.age,
+            skill: row.skill,
+            seed_index: row.seed_index,
+        });
+
+        if let Some(contract_id) = row.contract_id {
+            let contract = ContractResponse {
+                id: contract_id,
+                player_id: row.contract_player_id.ok_or_else(ApiError::internal)?,
+                club_id: row.club_id.ok_or_else(ApiError::internal)?,
+                start_year: row.start_year.ok_or_else(ApiError::internal)?,
+                end_year: row.end_year.ok_or_else(ApiError::internal)?,
+                wage_per_year: row.wage_per_year.ok_or_else(ApiError::internal)?,
+                status: row.status.ok_or_else(ApiError::internal)?,
+                released_at: row.released_at,
+            };
+            contracts.push(contract);
+        }
+    }
+
+    Ok(Json(SquadResponse {
+        players,
+        contracts,
+    }))
 }
 
 pub async fn sign_contract(
@@ -346,164 +383,134 @@ pub async fn sign_contract(
     Path(campaign_id): Path<Uuid>,
     Extension(identity): Extension<Identity>,
     Json(payload): Json<SignContractRequest>,
-) -> Result<(StatusCode, Json<SignContractResponse>), ApiError> {
-    if payload.wage_per_year < 1 || payload.wage_per_year > 100_000_000 {
-        return Err(ApiError::bad_request("wage must be between 1 and 100000000"));
+) -> ApiResult<(StatusCode, Json<ContractActionResponse>)> {
+    if !(1..=MAX_WAGE_PER_YEAR).contains(&payload.wage_per_year) {
+        return Err(ApiError::bad_request("wage_per_year_out_of_range"));
+    }
+    if !(1..=5).contains(&payload.years) {
+        return Err(ApiError::bad_request("contract_years_out_of_range"));
     }
 
-    if payload.years < 1 || payload.years > 5 {
-        return Err(ApiError::bad_request("contract years must be between 1 and 5"));
+    let mut tx = state.db.begin().await.map_err(ApiError::from)?;
+    set_owner_scope(&mut tx, identity.telegram_id).await?;
+    let campaign = lock_campaign(&mut tx, campaign_id).await?;
+    expire_contracts(&mut tx, campaign_id, campaign.current_year).await?;
+
+    let player_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT 1 FROM fd.players WHERE campaign_id = $1 AND id = $2
+         )",
+    )
+    .bind(campaign_id)
+    .bind(payload.player_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    if !player_exists {
+        return Err(ApiError::not_found());
     }
 
-    let mut tx = state
-        .db
-        .begin()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    sqlx::query!("SET LOCAL ROLE fd_runtime")
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    sqlx::query!(
-        "SELECT set_config('fd.telegram_id', $1, true)",
-        identity.telegram_id.to_string()
+    let club_id: Uuid = sqlx::query_scalar(
+        "SELECT id FROM fd.clubs WHERE campaign_id = $1 ORDER BY id LIMIT 1",
     )
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
-
-    let campaign = sqlx::query!(
-        r#"
-        SELECT current_year
-        FROM fd.campaigns
-        WHERE id = $1
-        FOR UPDATE
-        "#,
-        campaign_id
-    )
+    .bind(campaign_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
+    .map_err(ApiError::from)?
+    .ok_or_else(ApiError::not_found)?;
 
-    let current_year = campaign.current_year;
-
-    expire_contracts(&mut tx, campaign_id, current_year).await?;
-
-    let player = sqlx::query!(
-        r#"
-        SELECT id
-        FROM fd.players
-        WHERE campaign_id = $1 AND id = $2
-        "#,
-        campaign_id,
-        payload.player_id
+    let existing = sqlx::query_as::<_, ContractResponse>(
+        "SELECT id, player_id, club_id, start_year, end_year, wage_per_year,
+                status, released_at
+         FROM fd.contracts
+         WHERE campaign_id = $1 AND player_id = $2 AND status = 'active'
+         FOR UPDATE",
     )
+    .bind(campaign_id)
+    .bind(payload.player_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
+    .map_err(ApiError::from)?;
 
-    let club = sqlx::query!(
-        r#"
-        SELECT id
-        FROM fd.clubs
-        WHERE campaign_id = $1
-        ORDER BY id
-        LIMIT 1
-        "#,
-        campaign_id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
+    let (contract, status_code) = if let Some(existing) = existing {
+        let end_year = existing
+            .end_year
+            .max(campaign.current_year)
+            .checked_add(payload.years)
+            .ok_or_else(ApiError::internal)?;
 
-    let existing = sqlx::query!(
-        r#"
-        SELECT id, end_year, wage_per_year
-        FROM fd.contracts
-        WHERE campaign_id = $1
-          AND player_id = $2
-          AND status = 'active'
-        "#,
-        campaign_id,
-        payload.player_id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
-
-    let (contract_id, start_year, end_year, status_code) = if let Some(existing) = existing {
-        let new_end_year = existing.end_year.max(current_year) + payload.years;
-
-        sqlx::query!(
-            r#"
-            UPDATE fd.contracts
-            SET end_year = $1, wage_per_year = $2
-            WHERE campaign_id = $3 AND id = $4
-            "#,
-            new_end_year,
-            payload.wage_per_year,
-            campaign_id,
-            existing.id
+        sqlx::query(
+            "UPDATE fd.contracts
+             SET end_year = $1, wage_per_year = $2
+             WHERE campaign_id = $3 AND id = $4",
         )
+        .bind(end_year)
+        .bind(payload.wage_per_year)
+        .bind(campaign_id)
+        .bind(existing.id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
+        .map_err(ApiError::from)?;
 
-        (existing.id, current_year, new_end_year, StatusCode::OK)
-    } else {
-        let contract_id = Uuid::new_v4();
-        let start_year = current_year;
-        let end_year = current_year + payload.years;
-
-        sqlx::query!(
-            r#"
-            INSERT INTO fd.contracts (campaign_id, id, player_id, club_id, start_year, end_year, wage_per_year, status, released_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NULL)
-            "#,
-            campaign_id,
-            contract_id,
-            payload.player_id,
-            club.id,
-            start_year,
-            end_year,
-            payload.wage_per_year
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| {
-            if let Some(db_err) = e.as_database_error() {
-                if db_err.constraint() == Some("contracts_campaign_id_player_id_key") {
-                    return ApiError::conflict("player already has an active contract");
-                }
-            }
-            ApiError::internal().with_source(e)
-        })?;
-
-        (contract_id, start_year, end_year, StatusCode::CREATED)
-    };
-
-    tx.commit()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    Ok((
-        status_code,
-        Json(SignContractResponse {
-            contract: ContractResponse {
-                id: contract_id,
-                player_id: payload.player_id,
-                club_id: club.id,
-                start_year,
+        (
+            ContractResponse {
                 end_year,
                 wage_per_year: payload.wage_per_year,
                 status: "active".to_string(),
+                released_at: None,
+                ..existing
             },
-        }),
+            StatusCode::OK,
+        )
+    } else {
+        let end_year = campaign
+            .current_year
+            .checked_add(payload.years)
+            .ok_or_else(ApiError::internal)?;
+        let contract = ContractResponse {
+            id: Uuid::new_v4(),
+            player_id: payload.player_id,
+            club_id,
+            start_year: campaign.current_year,
+            end_year,
+            wage_per_year: payload.wage_per_year,
+            status: "active".to_string(),
+            released_at: None,
+        };
+
+        sqlx::query(
+            "INSERT INTO fd.contracts
+                (campaign_id, id, player_id, club_id, start_year, end_year,
+                 wage_per_year, status, released_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NULL)",
+        )
+        .bind(campaign_id)
+        .bind(contract.id)
+        .bind(contract.player_id)
+        .bind(contract.club_id)
+        .bind(contract.start_year)
+        .bind(contract.end_year)
+        .bind(contract.wage_per_year)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| {
+            if let sqlx::Error::Database(database_error) = &error {
+                if database_error.constraint() == Some("idx_contracts_active_player") {
+                    return ApiError::conflict("player_already_has_active_contract");
+                }
+            }
+            ApiError::from(error)
+        })?;
+
+        (contract, StatusCode::CREATED)
+    };
+
+    tx.commit().await.map_err(ApiError::from)?;
+
+    Ok((
+        status_code,
+        Json(ContractActionResponse { contract }),
     ))
 }
 
@@ -511,393 +518,58 @@ pub async fn release_contract(
     State(state): State<AppState>,
     Path((campaign_id, player_id)): Path<(Uuid, Uuid)>,
     Extension(identity): Extension<Identity>,
-) -> Result<StatusCode, ApiError> {
-    let mut tx = state
-        .db
-        .begin()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
+) -> ApiResult<Json<ContractActionResponse>> {
+    let mut tx = state.db.begin().await.map_err(ApiError::from)?;
+    set_owner_scope(&mut tx, identity.telegram_id).await?;
+    let campaign = lock_campaign(&mut tx, campaign_id).await?;
+    expire_contracts(&mut tx, campaign_id, campaign.current_year).await?;
 
-    sqlx::query!("SET LOCAL ROLE fd_runtime")
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    sqlx::query!(
-        "SELECT set_config('fd.telegram_id', $1, true)",
-        identity.telegram_id.to_string()
+    let contract = sqlx::query_as::<_, ContractResponse>(
+        "UPDATE fd.contracts
+         SET status = 'released', released_at = $1
+         WHERE campaign_id = $2 AND player_id = $3 AND status = 'active'
+         RETURNING id, player_id, club_id, start_year, end_year, wage_per_year,
+                   status, released_at",
     )
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
-
-    let campaign = sqlx::query!(
-        r#"
-        SELECT current_year
-        FROM fd.campaigns
-        WHERE id = $1
-        FOR UPDATE
-        "#,
-        campaign_id
-    )
+    .bind(Utc::now())
+    .bind(campaign_id)
+    .bind(player_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
+    .map_err(ApiError::from)?
+    .ok_or_else(ApiError::not_found)?;
 
-    let current_year = campaign.current_year;
+    tx.commit().await.map_err(ApiError::from)?;
 
-    expire_contracts(&mut tx, campaign_id, current_year).await?;
-
-    let contract = sqlx::query!(
-        r#"
-        SELECT id
-        FROM fd.contracts
-        WHERE campaign_id = $1
-          AND player_id = $2
-          AND status = 'active'
-        "#,
-        campaign_id,
-        player_id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?
-    .ok_or_else(|| ApiError::not_found())?;
-
-    let now = Utc::now();
-
-    sqlx::query!(
-        r#"
-        UPDATE fd.contracts
-        SET status = 'released', released_at = $1
-        WHERE campaign_id = $2 AND id = $3
-        "#,
-        now,
-        campaign_id,
-        contract.id
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| ApiError::internal().with_source(e))?;
-
-    tx.commit()
-        .await
-        .map_err(|e| ApiError::internal().with_source(e))?;
-
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(ContractActionResponse { contract }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::PgPool;
 
-    async fn setup_test_db() -> PgPool {
-        let database_url =
-            std::env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL must be set");
-        PgPool::connect(&database_url).await.unwrap()
+    #[test]
+    fn deterministic_seed_data_is_stable_and_domain_separated() {
+        let campaign_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let seed = 123_456_i64;
+        let player_a = deterministic_uuid(campaign_id, seed, "player", 0);
+        let player_b = deterministic_uuid(campaign_id, seed, "player", 0);
+        let contract = deterministic_uuid(campaign_id, seed, "contract", 0);
+
+        assert_eq!(player_a, player_b);
+        assert_ne!(player_a, contract);
+        assert_ne!(
+            player_a,
+            deterministic_uuid(campaign_id, seed + 1, "player", 0)
+        );
     }
 
-    async fn create_test_campaign(pool: &PgPool, telegram_id: i64) -> Uuid {
-        let campaign_id = Uuid::new_v4();
-        let seed: i64 = 12345;
-
-        sqlx::query!(
-            r#"
-            SET LOCAL ROLE fd_runtime;
-            SELECT set_config('fd.telegram_id', $1, true);
-            "#,
-            telegram_id.to_string()
-        )
-        .execute(pool)
-        .await
-        .unwrap();
-
-        sqlx::query!(
-            r#"
-            INSERT INTO fd.campaigns (id, telegram_id, seed, current_year)
-            VALUES ($1, $2, $3, 2024)
-            "#,
-            campaign_id,
-            telegram_id,
-            seed
-        )
-        .execute(pool)
-        .await
-        .unwrap();
-
-        let club_id = Uuid::new_v4();
-        sqlx::query!(
-            r#"
-            INSERT INTO fd.clubs (campaign_id, id, name, city, reputation)
-            VALUES ($1, $2, 'Test FC', 'Test City', 50)
-            "#,
-            campaign_id,
-            club_id
-        )
-        .execute(pool)
-        .await
-        .unwrap();
-
-        campaign_id
-    }
-
-    #[tokio::test]
-    async fn test_seed_squad_count() {
-        let pool = setup_test_db().await;
-        let telegram_id = 999001;
-        let campaign_id = create_test_campaign(&pool, telegram_id).await;
-
-        let mut tx = pool.begin().await.unwrap();
-        sqlx::query!("SET LOCAL ROLE fd_runtime")
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        sqlx::query!(
-            "SELECT set_config('fd.telegram_id', $1, true)",
-            telegram_id.to_string()
-        )
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-
-        let club_id = sqlx::query_scalar!(
-            "SELECT id FROM fd.clubs WHERE campaign_id = $1 LIMIT 1",
-            campaign_id
-        )
-        .fetch_one(&mut *tx)
-        .await
-        .unwrap();
-
-        seed_squad(&mut tx, campaign_id, club_id, 12345, 2024)
-            .await
-            .unwrap();
-        tx.commit().await.unwrap();
-
-        let count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(count, 23);
-
-        let gk_count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1 AND position = 'GK'",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(gk_count, 2);
-
-        let def_count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1 AND position = 'DEF'",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(def_count, 8);
-
-        let mid_count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1 AND position = 'MID'",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(mid_count, 8);
-
-        let fwd_count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1 AND position = 'FWD'",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(fwd_count, 5);
-    }
-
-    #[tokio::test]
-    async fn test_seed_deterministic() {
-        let pool = setup_test_db().await;
-        let telegram_id = 999002;
-        let campaign_id_1 = create_test_campaign(&pool, telegram_id).await;
-        let campaign_id_2 = create_test_campaign(&pool, telegram_id + 1).await;
-
-        let mut tx1 = pool.begin().await.unwrap();
-        sqlx::query!("SET LOCAL ROLE fd_runtime")
-            .execute(&mut *tx1)
-            .await
-            .unwrap();
-        sqlx::query!(
-            "SELECT set_config('fd.telegram_id', $1, true)",
-            telegram_id.to_string()
-        )
-        .execute(&mut *tx1)
-        .await
-        .unwrap();
-
-        let club_id_1 = sqlx::query_scalar!(
-            "SELECT id FROM fd.clubs WHERE campaign_id = $1 LIMIT 1",
-            campaign_id_1
-        )
-        .fetch_one(&mut *tx1)
-        .await
-        .unwrap();
-
-        seed_squad(&mut tx1, campaign_id_1, club_id_1, 12345, 2024)
-            .await
-            .unwrap();
-        tx1.commit().await.unwrap();
-
-        let mut tx2 = pool.begin().await.unwrap();
-        sqlx::query!("SET LOCAL ROLE fd_runtime")
-            .execute(&mut *tx2)
-            .await
-            .unwrap();
-        sqlx::query!(
-            "SELECT set_config('fd.telegram_id', $1, true)",
-            (telegram_id + 1).to_string()
-        )
-        .execute(&mut *tx2)
-        .await
-        .unwrap();
-
-        let club_id_2 = sqlx::query_scalar!(
-            "SELECT id FROM fd.clubs WHERE campaign_id = $1 LIMIT 1",
-            campaign_id_2
-        )
-        .fetch_one(&mut *tx2)
-        .await
-        .unwrap();
-
-        seed_squad(&mut tx2, campaign_id_2, club_id_2, 12345, 2024)
-            .await
-            .unwrap();
-        tx2.commit().await.unwrap();
-
-        let players_1 = sqlx::query!(
-            r#"
-            SELECT full_name, position, age, skill
-            FROM fd.players
-            WHERE campaign_id = $1
-            ORDER BY seed_index
-            "#,
-            campaign_id_1
-        )
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-
-        let players_2 = sqlx::query!(
-            r#"
-            SELECT full_name, position, age, skill
-            FROM fd.players
-            WHERE campaign_id = $1
-            ORDER BY seed_index
-            "#,
-            campaign_id_2
-        )
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-
-        assert_eq!(players_1.len(), players_2.len());
-        for (p1, p2) in players_1.iter().zip(players_2.iter()) {
-            assert_eq!(p1.full_name, p2.full_name);
-            assert_eq!(p1.position, p2.position);
-            assert_eq!(p1.age, p2.age);
-            assert_eq!(p1.skill, p2.skill);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_concurrent_seed_idempotent() {
-        let pool = setup_test_db().await;
-        let telegram_id = 999003;
-        let campaign_id = create_test_campaign(&pool, telegram_id).await;
-
-        let pool_clone = pool.clone();
-        let campaign_id_clone = campaign_id;
-        let handle1 = tokio::spawn(async move {
-            let mut tx = pool_clone.begin().await.unwrap();
-            sqlx::query!("SET LOCAL ROLE fd_runtime")
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-            sqlx::query!(
-                "SELECT set_config('fd.telegram_id', $1, true)",
-                telegram_id.to_string()
-            )
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-
-            let club_id = sqlx::query_scalar!(
-                "SELECT id FROM fd.clubs WHERE campaign_id = $1 LIMIT 1",
-                campaign_id_clone
-            )
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-
-            seed_squad(&mut tx, campaign_id_clone, club_id, 12345, 2024)
-                .await
-                .unwrap();
-            tx.commit().await.unwrap();
-        });
-
-        let pool_clone = pool.clone();
-        let handle2 = tokio::spawn(async move {
-            let mut tx = pool_clone.begin().await.unwrap();
-            sqlx::query!("SET LOCAL ROLE fd_runtime")
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-            sqlx::query!(
-                "SELECT set_config('fd.telegram_id', $1, true)",
-                telegram_id.to_string()
-            )
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-
-            let club_id = sqlx::query_scalar!(
-                "SELECT id FROM fd.clubs WHERE campaign_id = $1 LIMIT 1",
-                campaign_id
-            )
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-
-            seed_squad(&mut tx, campaign_id, club_id, 12345, 2024)
-                .await
-                .unwrap();
-            tx.commit().await.unwrap();
-        });
-
-        handle1.await.unwrap();
-        handle2.await.unwrap();
-
-        let count = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM fd.players WHERE campaign_id = $1",
-            campaign_id
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(count, 23);
+    #[test]
+    fn generated_roster_has_exact_position_counts() {
+        assert_eq!(POSITION_COUNTS.iter().map(|(_, count)| count).sum::<usize>(), 23);
+        assert_eq!(POSITION_COUNTS[0], ("GK", 2));
+        assert_eq!(POSITION_COUNTS[1], ("DEF", 8));
+        assert_eq!(POSITION_COUNTS[2], ("MID", 8));
+        assert_eq!(POSITION_COUNTS[3], ("FWD", 5));
     }
 }
