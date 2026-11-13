@@ -1180,7 +1180,11 @@ class Worker:
             self.attempted.add(comment_id)
             return
         if self._branch_exists(branch):
-            url = self._create_pr(issue_number, comment_id, branch, source_url, architect_plan, agent_review)
+            url = self._create_pr(
+                issue_number, comment_id, branch, source_url,
+                "Recovered an existing isolated task branch. The original architect handoff is unavailable.",
+                {"summary": "External reviewer must inspect this recovered branch before acceptance.", "verdict": "not_run"},
+            )
             LOG.info("Recovered existing task branch %s -> %s", branch, url)
             self.attempted.add(comment_id)
             return
@@ -1214,10 +1218,12 @@ class Worker:
                 self.model = choose_model(self.starimg_base, self.starimg_key)
                 LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
             usage_records: list[dict[str, Any]] = []
+            LOG.info("Task %s architect handoff started; model=%s", comment_id, self.model)
             architect_answer, architect_usage = ask_starimg_agent(
                 self.starimg_base, self.starimg_key, self.model, "architect",
                 task, issue_number, context,
             )
+            LOG.info("Task %s architect handoff completed", comment_id)
             usage_records.append(architect_usage)
             architect_plan = json.dumps(
                 validate_architect_plan(extract_agent_json(architect_answer)),
@@ -1373,8 +1379,13 @@ class Worker:
                             )[:MAX_CONTEXT_CHARS]
             if not changed:
                 raise RuntimeError("Worker produced no validated changes")
+            LOG.info("Task %s independent review started; changed_files=%s", comment_id, len(changed))
             agent_review = self._review_implementation(
                 temp, task, issue_number, changed, architect_plan, usage_records
+            )
+            LOG.info(
+                "Task %s independent review completed; verdict=%s",
+                comment_id, agent_review.get("verdict", "unknown"),
             )
             changed = sorted(set(
                 run_command(["git", "diff", "--name-only"], temp).splitlines()
@@ -1390,8 +1401,13 @@ class Worker:
             run_command(["git", "diff", "--cached", "--check"], temp)
             run_command(["git", "commit", "-m", f"ai: implement issue #{issue_number}"], temp)
             self._push(temp, branch)
-            url = self._create_pr(issue_number, comment_id, branch, source_url)
-            LOG.info("Task %s opened PR %s; Starimg usage per attempt=%s", comment_id, url, json.dumps(usage_records, sort_keys=True))
+            url = self._create_pr(
+                issue_number, comment_id, branch, source_url, architect_plan, agent_review
+            )
+            LOG.info(
+                "Task %s opened PR %s after architect, implementer and reviewer handoffs; usage=%s",
+                comment_id, url, json.dumps(usage_records, sort_keys=True),
+            )
         finally:
             shutil.rmtree(temp, ignore_errors=True)
 
@@ -1655,8 +1671,10 @@ def main() -> None:
     if agent_role not in ("implementer", "reviewer"):
         raise RuntimeError("AGENT_ROLE must be implementer or reviewer")
     if agent_role == "reviewer":
+        integrations = integration_preflight()
+        LOG.info("Read-only provider preflight completed: %s", json.dumps(integrations, sort_keys=True))
         for worker in workers:
-            if worker.review_pending_prs():
+            if worker.review_pending_prs(integrations):
                 return
         LOG.info("No unreviewed autonomous pull requests found across %s repositories", len(workers))
         return
