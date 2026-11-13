@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, extract_single_file_patch, starimg_stream_completion, starimg_anthropic_stream_completion, ask_starimg
+from worker import compose_issue_task, context_excerpt, extract_patch, missing_required_paths, patch_file_context, required_paths_from_task, run_command, safe_path, starimg_request, extract_single_file_patch, starimg_stream_completion, starimg_anthropic_stream_completion, ask_starimg, extract_full_file_content, write_full_file_content, github_actions_check_summary
 
 
 class WorkerPolicyTests(unittest.TestCase):
@@ -232,10 +232,11 @@ class WorkerPolicyTests(unittest.TestCase):
         worker.default_branch = "trunk"
         worker.token = "test-token"
         with patch("worker.request_json", side_effect=[
-            [], {"html_url": "https://github.com/Aloews/example/pull/7"}, {},
+            [], {"html_url": "https://github.com/Aloews/example/pull/7", "draft": True},
         ]) as request:
             result = worker._create_pr(7, 99, "ai/task-7-99", "https://github.com/Aloews/example/issues/7#issuecomment-99")
-        self.assertTrue(result.endswith("/pull/7"))
+        self.assertTrue(result["html_url"].endswith("/pull/7"))
+        self.assertTrue(request.call_args_list[1].args[3]["draft"])
         self.assertEqual(request.call_args_list[1].args[0], "https://api.github.com/repos/Aloews/example/pulls")
         self.assertEqual(request.call_args_list[1].args[3]["base"], "trunk")
 
@@ -753,11 +754,48 @@ class WorkerPolicyTests(unittest.TestCase):
         self.assertEqual(payload["output_config"], {"effort": "medium"})
         self.assertNotIn("temperature", payload)
 
+    def test_full_file_fallback_strips_outer_fence_and_writes_only_safe_target(self):
+        from worker import write_full_file_content
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_full_file_content(
+                root,
+                "services/football-dynasty/src/roster.rs",
+                "```rust\npub struct Roster { pub players: Vec<String> }\n```",
+            )
+            written = (root / "services/football-dynasty/src/roster.rs").read_text()
+            self.assertEqual(written, "pub struct Roster { pub players: Vec<String> }\n")
+            with self.assertRaisesRegex(RuntimeError, "restricted path"):
+                write_full_file_content(root, "../../secrets.env", "secret=bad")
+
+    def test_full_file_fallback_rejects_diff_instead_of_file_content(self):
+        with self.assertRaisesRegex(RuntimeError, "complete file content"):
+            extract_full_file_content("diff --git a/a b/a\n@@ -1 +1 @@\n-old\n+new", "a")
+
+    def test_github_actions_check_summary_waits_for_all_jobs_and_ignores_vercel(self):
+        success = github_actions_check_summary([
+            {"name": "python-tests", "status": "completed", "conclusion": "success",
+             "app": {"slug": "github-actions", "name": "GitHub Actions"}},
+            {"name": "Vercel", "status": "completed", "conclusion": "failure",
+             "app": {"slug": "vercel", "name": "Vercel"}},
+        ])
+        self.assertEqual(success["state"], "success")
+        pending = github_actions_check_summary([
+            {"name": "rust-tests", "status": "in_progress", "app": {"slug": "github-actions"}}
+        ])
+        self.assertEqual(pending["state"], "pending")
+        failed = github_actions_check_summary([
+            {"name": "rust-tests", "status": "completed", "conclusion": "failure",
+             "app": {"slug": "github-actions"}}
+        ])
+        self.assertEqual(failed["state"], "failure")
+
     def test_reviewable_pr_requires_autonomous_branch_and_marker(self):
         from worker import is_reviewable_pr
 
         pr = {
-            "draft": False,
+            "draft": True,
             "body": "Automated task <!-- sherlock-agent-task:123 -->",
             "head": {"ref": "ai/task-394-123"},
         }
@@ -773,7 +811,7 @@ class WorkerPolicyTests(unittest.TestCase):
 
         pr = {
             "number": 406,
-            "draft": False,
+            "draft": True,
             "body": "Runtime control plane <!-- sherlock-agent-runtime-review:20261113 -->",
             "head": {"ref": "feat/sherlock-multi-agent-runtime-20261113"},
         }
@@ -937,7 +975,12 @@ class WorkerPolicyTests(unittest.TestCase):
         with patch("worker.request_json", return_value={"title": "test", "body": "task"}), \
              patch.object(Worker, "_existing_pr", return_value=None), \
              patch.object(Worker, "_branch_exists", return_value=True), \
-             patch.object(Worker, "_create_pr", return_value="https://github.com/Aloews/sherlock-scholes-/pull/88") as create_pr:
+             patch.object(Worker, "_create_pr", return_value={
+                 "number": 88, "html_url": "https://github.com/Aloews/sherlock-scholes-/pull/88",
+                 "head": {"sha": "abc123"},
+             }) as create_pr, \
+             patch.object(Worker, "_wait_for_github_actions", return_value={"state": "success", "checks": []}), \
+             patch.object(Worker, "_post_task_result"):
             worker.process(comment)
 
         self.assertEqual(worker.attempted, {12345})
