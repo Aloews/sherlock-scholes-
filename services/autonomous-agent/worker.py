@@ -466,8 +466,9 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
                 elif line.startswith("-"):
                     old_block.append(line[1:])
                 else:
-                    old_block.append(line)
-                    new_block.append(line)
+                    context_line = line[1:] if line.startswith(" ") else line
+                    old_block.append(context_line)
+                    new_block.append(context_line)
             if not old_block:
                 raise RuntimeError("apply_patch update hunk has no exact context")
             match_at = next(
@@ -492,7 +493,8 @@ def extract_single_file_patch(answer: str, target_path: str, root: Path) -> str:
     blocks = re.findall(r"```[a-zA-Z0-9_+.-]*\s*\n(.*?)\n```", answer, re.S)
     candidate = max(blocks, key=len).strip("\n") if blocks else ""
     if not candidate:
-        raise RuntimeError("Model returned neither a diff, apply_patch block, nor a complete-file code block")
+        preview = answer[:700].replace("\\n", " ")
+        raise RuntimeError("Model returned neither a diff, apply_patch block, nor a complete-file code block; response preview: " + preview)
     if not candidate.endswith("\n"):
         candidate += "\n"
     if target.exists():
