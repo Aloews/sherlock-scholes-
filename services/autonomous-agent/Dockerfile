@@ -8,7 +8,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --profile minimal --component rustfmt --default-toolchain stable \
     && /root/.cargo/bin/rustfmt --version
 
-ENV PATH="/root/.cargo/bin:\${PATH}"
+ENV PATH="/root/.cargo/bin:$PATH"
 
 WORKDIR /opt/worker
 COPY worker.py test_worker.py /opt/worker/
