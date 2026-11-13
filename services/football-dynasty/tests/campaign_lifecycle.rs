@@ -648,10 +648,14 @@ async fn contract_sign_renew_release_and_expiry_are_transactional() {
     assert_eq!(release_status, StatusCode::OK);
     assert_eq!(released["status"], "released");
 
+    let released_contract_id = uuid::Uuid::parse_str(
+        released["id"].as_str().expect("released contract id"),
+    )
+    .expect("released contract UUID");
     let released_at: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "SELECT released_at FROM fd.contracts WHERE id = $1",
     )
-    .bind(released["id"].as_str().expect("released contract id"))
+    .bind(released_contract_id)
     .fetch_one(&pool)
     .await
     .expect("released timestamp");
