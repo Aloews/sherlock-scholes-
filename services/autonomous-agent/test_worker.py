@@ -189,6 +189,12 @@ class WorkerPolicyTests(unittest.TestCase):
                                   allowed_prefixes_for_repo("Aloews/sherlock-tv")))
         self.assertTrue(safe_path("pages/README-Game.md",
                                   allowed_prefixes_for_repo("Aloews/russian-dev-projects")))
+        self.assertTrue(safe_path("luxury-estate/backend/app/main.py",
+                                  allowed_prefixes_for_repo("Aloews/full")))
+        self.assertTrue(safe_path("docs/MAP.md",
+                                  allowed_prefixes_for_repo("Aloews/full")))
+        self.assertFalse(safe_path("services/autonomous-agent/worker.py",
+                                   allowed_prefixes_for_repo("Aloews/full")))
         self.assertFalse(safe_path("api/management-webhook.ts",
                                    allowed_prefixes_for_repo("Aloews/sherlock-scholes-")))
         self.assertFalse(safe_path("package.json",
