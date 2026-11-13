@@ -1508,8 +1508,9 @@ class Worker:
             if isinstance(comments, list) and has_review_marker(comments, head_sha):
                 continue
             if integrations is None:
-                integrations = integration_preflight()
-                LOG.info("Read-only provider preflight: %s", json.dumps(integrations, sort_keys=True))
+                integrations = integration_preflight() if self.repo == "Aloews/sherlock-scholes-" else {}
+                if integrations:
+                    LOG.info("Read-only provider preflight: %s", json.dumps(integrations, sort_keys=True))
             diff = request_text(
                 api_url(f"/repos/{self.repo}/pulls/{number}"),
                 self.token,
