@@ -241,7 +241,37 @@ Do not report a task as complete based only on code being merged, a workflow bei
 
 Do not scan the entire repository by default. Start with the relevant entry point, feature API, database contract, and tests. Expand the search only when the code contradicts this map or a dependency is not listed.
 
-## 11. Working agreement for AI agents and contributors
+## 11. AI agent as an implementation partner
+
+The AI assistant is an active engineering contributor, not a review-only gate. Its responsibility is to help move work from a verified requirement to a working, tested deliverable.
+
+### 11.1 What the assistant can do
+
+- **Understand and plan:** inspect the relevant repository code, project map, specifications, migrations, open issues/PRs, CI results, deployment configuration, and available operational evidence; identify dependencies, risks, and acceptance criteria.
+- **Design:** propose and refine architecture, API contracts, database schemas, data models, user flows, error handling, security boundaries, and rollout/rollback plans.
+- **Implement:** write and edit application code, SQL migrations, tests, scripts, configuration, and documentation; refactor existing code; fix compiler, lint, test, integration, and runtime failures; update the project map when the operating model or architecture changes.
+- **Work across the stack:** contribute to the React/TypeScript frontend, Rust/Axum services, Python tooling and collectors, PostgreSQL/Supabase, Edge Functions, CI workflows, and deployment configuration where the repository and connected tools provide access.
+- **Verify:** run or trigger the checks available in the current environment, inspect their actual logs and outputs, review diffs, trace failures to root causes, and repeat the fix-and-test cycle.
+- **Deliver:** create branches and commits, prepare pull requests, review CI, and verify deployments when the required repository/hosting access and explicit release authorization are available.
+
+### 11.2 The assistant owns the result; models and agents are tools
+
+- The assistant remains responsible for the technical direction, integration, review, and truthful completion report.
+- Starimg models (including Fable 5.2) and other coding agents may be used to accelerate bounded implementation tasks. They are optional workers, not the only way work can be completed.
+- If a model produces malformed code, stale-context patches, incomplete files, or failing tests, the assistant must diagnose the failure and may rewrite the affected code directly using the available repository tools or execution environment. It must not endlessly resubmit the same failed patch.
+- Generated code is untrusted until it is integrated, reviewed, and passes the relevant checks. A model's claim that work is complete is not evidence.
+- Delegate only tasks with explicit file scope, acceptance criteria, constraints, and verification commands. Keep the main implementation coherent; do not allow multiple agents to overwrite the same files concurrently.
+
+### 11.3 Execution and safety boundaries
+
+- Prefer completing the implementation in the current working branch and delivering a reviewable PR over sending the user a checklist of manual coding steps.
+- If direct shell execution is unavailable, use the connected repository/CI/hosting tools that can perform the required work. State any capability gap precisely; do not pretend that a command was run.
+- Never expose secrets in source, logs, commits, prompts, or reports. Use configured secret stores and verify secret presence without printing secret values.
+- Do not apply production migrations, modify production data, merge PRs, incur paid usage, or deploy product changes unless the user has authorized that action. Read-only inspection and isolated test environments should be preferred.
+- If an external dependency or permission genuinely blocks implementation, identify the exact blocker and the smallest action needed; continue all independent work instead of stopping at an audit.
+- The final report must distinguish implemented changes, verified checks, unverified items, and production impact. Never call a task complete while required checks are failing or unavailable.
+
+## 12. Working agreement for AI agents and contributors
 
 1. Read this map and the relevant feature specification before implementation.
 2. Inspect the current branch, open PRs, CI, migrations, production state, and recent deployments before changing anything.
@@ -254,7 +284,7 @@ Do not scan the entire repository by default. Start with the relevant entry poin
 9. Put dated investigations, raw counts, incident timelines, and detailed query output in a dedicated operational report under `docs/archive/` or `docs/operations/`.
 10. Never invent metrics, claim unverified deployment success, weaken tests to get a green check, or delete production data to make a dashboard look healthy.
 
-## 12. Immediate next deliverables
+## 13. Immediate next deliverables
 
 These are the next outcomes to prove—not a promise that work is already complete:
 
