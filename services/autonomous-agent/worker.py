@@ -179,10 +179,71 @@ def starimg_stream_completion(base: str, key: str,
     }
 
 
+def _safe_anthropic_body_preview(raw: bytes, content_type: str) -> str:
+    decoded = raw.decode("utf-8", "replace")
+    if not decoded:
+        return "<empty body>"
+    if "json" in content_type.lower() or decoded.lstrip().startswith("{"):
+        try:
+            document = json.loads(decoded)
+        except json.JSONDecodeError:
+            return decoded[:1200]
+        if not isinstance(document, dict):
+            return json.dumps(document, ensure_ascii=False)[:1200]
+        summary: dict[str, Any] = {}
+        for key in ("type", "id", "model", "stop_reason", "stop_sequence", "usage", "error"):
+            if key in document:
+                summary[key] = document[key]
+        content = document.get("content")
+        if isinstance(content, list):
+            summary["content_block_types"] = [
+                {"type": block.get("type"), "name": block.get("name")}
+                for block in content if isinstance(block, dict)
+            ]
+        return json.dumps(summary, ensure_ascii=False)[:1200]
+
+    events: list[dict[str, Any]] = []
+    for line in decoded.splitlines():
+        if not line.startswith("data:"):
+            continue
+        data_line = line[5:].strip()
+        if not data_line or data_line == "[DONE]":
+            continue
+        try:
+            event = json.loads(data_line)
+        except json.JSONDecodeError:
+            events.append({"unparsed_data": data_line[:200]})
+            continue
+        if not isinstance(event, dict):
+            continue
+        summary = {"type": event.get("type")}
+        event_type = event.get("type")
+        if event_type == "error":
+            summary["error"] = event.get("error")
+        elif event_type == "message_start":
+            message = event.get("message") or {}
+            summary["model"] = message.get("model")
+            summary["usage"] = message.get("usage")
+        elif event_type == "content_block_start":
+            block = event.get("content_block") or {}
+            summary["content_block_type"] = block.get("type")
+            if block.get("name"):
+                summary["name"] = block.get("name")
+        elif event_type == "content_block_delta":
+            delta = event.get("delta") or {}
+            summary["delta_type"] = delta.get("type")
+        elif event_type == "message_delta":
+            delta = event.get("delta") or {}
+            summary["stop_reason"] = delta.get("stop_reason")
+            summary["usage"] = event.get("usage")
+        events.append(summary)
+    return json.dumps(events, ensure_ascii=False)[:1600] if events else decoded[:1200]
+
+
 def starimg_anthropic_stream_completion(base: str, key: str,
                                         payload: dict[str, Any],
                                         timeout: int = 300) -> dict[str, Any]:
-    """Read Starimg Anthropic Messages responses in SSE or JSON form."""
+    """Read Starimg's Anthropic Messages JSON or SSE response with safe diagnostics."""
     request_payload = dict(payload)
     request_payload["stream"] = True
     data = json.dumps(request_payload).encode("utf-8")
@@ -193,7 +254,7 @@ def starimg_anthropic_stream_completion(base: str, key: str,
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
-            "Accept": "text/event-stream, application/json",
+            "Accept": "text/event-stream",
             "Cache-Control": "no-cache",
             "User-Agent": "sherlock-scholes-engineering-worker",
         },
@@ -202,108 +263,146 @@ def starimg_anthropic_stream_completion(base: str, key: str,
     chunks: list[str] = []
     usage: dict[str, Any] = {}
     event_types: list[str] = []
-
-    def collect_message(message: dict[str, Any]) -> None:
-        content = message.get("content")
-        if isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") in ("text", "output_text"):
-                    value = block.get("text")
-                    if isinstance(value, str):
-                        chunks.append(value)
-        message_usage = message.get("usage")
-        if isinstance(message_usage, dict):
-            usage.update(message_usage)
-
+    content_block_types: list[str] = []
+    stop_reason: str | None = None
+    status_code: int | None = None
+    content_type = ""
+    request_id: str | None = None
+    raw = b""
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            status_code = int(getattr(response, "status", getattr(response, "code", 200)))
+            headers = getattr(response, "headers", {})
+            content_type = headers.get("content-type", "") if hasattr(headers, "get") else ""
+            request_id = (
+                headers.get("request-id") or headers.get("x-request-id")
+                or headers.get("anthropic-request-id")
+            ) if hasattr(headers, "get") else None
             raw = response.read()
-            content_type = ""
-            headers = getattr(response, "headers", None)
-            if headers is not None:
-                content_type = str(headers.get("Content-Type", "")).lower()
-
-        # Some compatible gateways return a normal Anthropic JSON message even
-        # when streaming was requested. Parse that shape instead of discarding it.
-        if raw and not raw.lstrip().startswith((b"data:", b"event:")):
-            try:
-                document = json.loads(raw.decode("utf-8", "replace"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                document = None
-            if isinstance(document, dict):
-                if document.get("type") == "error" or document.get("error"):
-                    error = document.get("error") or {}
-                    raise RuntimeError(
-                        "Starimg Anthropic response error: "
-                        + str(error.get("message") or error.get("type") or error)[:300]
-                    )
-                collect_message(document)
-                if not chunks and isinstance(document.get("choices"), list):
-                    for choice in document["choices"]:
-                        message = choice.get("message", {}) if isinstance(choice, dict) else {}
-                        value = message.get("content") if isinstance(message, dict) else None
-                        if isinstance(value, str):
-                            chunks.append(value)
-                if isinstance(document.get("usage"), dict):
-                    usage.update(document["usage"])
-
-        if not chunks and raw:
-            for raw_line in raw.splitlines():
-                line = raw_line.decode("utf-8", "replace").strip()
-                if not line or line.startswith(":") or not line.startswith("data:"):
-                    continue
-                data_line = line[5:].strip()
-                if data_line == "[DONE]":
-                    break
-                try:
-                    event = json.loads(data_line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(event, dict):
-                    continue
-                event_type = str(event.get("type", "unknown"))
-                if event_type not in event_types:
-                    event_types.append(event_type)
-                if event_type == "error":
-                    error = event.get("error") or {}
-                    raise RuntimeError(
-                        "Starimg Anthropic stream error: "
-                        + str(error.get("message") or error.get("type") or "unknown error")[:300]
-                    )
-                if event_type == "message_start":
-                    message = event.get("message") or {}
-                    if isinstance(message, dict):
-                        collect_message(message)
-                elif event_type == "message_delta":
-                    event_usage = event.get("usage")
-                    if isinstance(event_usage, dict):
-                        usage.update(event_usage)
-                elif event_type == "content_block_start":
-                    block = event.get("content_block") or {}
-                    if isinstance(block, dict) and block.get("type") in ("text", "output_text"):
-                        value = block.get("text")
-                        if isinstance(value, str):
-                            chunks.append(value)
-                elif event_type == "content_block_delta":
-                    delta = event.get("delta") or {}
-                    value = delta.get("text")
-                    if delta.get("type") in ("text_delta", "text") and isinstance(value, str):
-                        chunks.append(value)
     except urllib.error.HTTPError as exc:
-        detail = exc.read(500).decode("utf-8", "replace")
-        raise RuntimeError(f"Starimg returned HTTP {exc.code}: {detail[:300]}") from None
+        body = exc.read(4096)
+        error_type = exc.headers.get("content-type", "") if exc.headers else ""
+        request_id = (
+            exc.headers.get("request-id") or exc.headers.get("x-request-id")
+            or exc.headers.get("anthropic-request-id")
+        ) if exc.headers else None
+        preview = _safe_anthropic_body_preview(body, error_type)
+        raise RuntimeError(
+            f"Starimg Anthropic HTTP {exc.code}; request_id={request_id or 'n/a'}; "
+            f"content_type={error_type or 'n/a'}; body_bytes={len(body)}; body={preview}"
+        ) from None
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Starimg Anthropic transport error: {exc.reason}") from None
+
+    if status_code is not None and status_code >= 400:
+        preview = _safe_anthropic_body_preview(raw, content_type)
+        raise RuntimeError(
+            f"Starimg Anthropic HTTP {status_code}; request_id={request_id or 'n/a'}; "
+            f"content_type={content_type or 'n/a'}; body_bytes={len(raw)}; body={preview}"
+        )
+
+    decoded = raw.decode("utf-8", "replace")
+    if "json" in content_type.lower() or decoded.lstrip().startswith("{"):
+        try:
+            document = json.loads(decoded)
+        except json.JSONDecodeError as exc:
+            preview = _safe_anthropic_body_preview(raw, content_type)
+            raise RuntimeError(
+                f"Starimg Anthropic HTTP {status_code}; invalid JSON response; "
+                f"request_id={request_id or 'n/a'}; content_type={content_type or 'n/a'}; "
+                f"body_bytes={len(raw)}; body={preview}; parse_error={exc}"
+            ) from None
+        if isinstance(document, dict):
+            event_types.append(str(document.get("type", "json_message")))
+            if isinstance(document.get("usage"), dict):
+                usage.update(document["usage"])
+            stop_reason = document.get("stop_reason")
+            blocks = document.get("content")
+            if isinstance(blocks, list):
+                for block in blocks:
+                    if not isinstance(block, dict):
+                        continue
+                    block_type = str(block.get("type", "unknown"))
+                    content_block_types.append(block_type)
+                    if block_type == "text" and isinstance(block.get("text"), str):
+                        chunks.append(block["text"])
+            for key_name in ("output_text", "completion"):
+                value = document.get(key_name)
+                if isinstance(value, str) and value:
+                    chunks.append(value)
+            if document.get("error"):
+                preview = _safe_anthropic_body_preview(raw, content_type)
+                raise RuntimeError(
+                    f"Starimg Anthropic HTTP {status_code}; request_id={request_id or 'n/a'}; "
+                    f"provider_error={preview}"
+                )
+    else:
+        for line in decoded.splitlines():
+            if not line.startswith("data:"):
+                continue
+            data_line = line[5:].strip()
+            if not data_line or data_line == "[DONE]":
+                continue
+            try:
+                event = json.loads(data_line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict):
+                continue
+            event_type = str(event.get("type", "unknown"))
+            event_types.append(event_type)
+            if event_type == "error":
+                preview = _safe_anthropic_body_preview(raw, content_type)
+                raise RuntimeError(
+                    f"Starimg Anthropic HTTP {status_code}; request_id={request_id or 'n/a'}; "
+                    f"provider_error={preview}"
+                )
+            if event_type == "message_start":
+                message = event.get("message") or {}
+                message_usage = message.get("usage")
+                if isinstance(message_usage, dict):
+                    usage.update(message_usage)
+            elif event_type == "content_block_start":
+                block = event.get("content_block") or {}
+                block_type = str(block.get("type", "unknown"))
+                content_block_types.append(block_type)
+            elif event_type == "content_block_delta":
+                delta = event.get("delta") or {}
+                text_delta = delta.get("text")
+                if delta.get("type") == "text_delta" and isinstance(text_delta, str):
+                    chunks.append(text_delta)
+            elif event_type == "message_delta":
+                delta = event.get("delta") or {}
+                stop_reason = delta.get("stop_reason")
+                event_usage = event.get("usage")
+                if isinstance(event_usage, dict):
+                    usage.update(event_usage)
 
     answer = "".join(chunks)
+    diagnostics = {
+        "http_status": status_code,
+        "request_id": request_id,
+        "content_type": content_type or "n/a",
+        "body_bytes": len(raw),
+        "event_types": event_types,
+        "content_block_types": content_block_types,
+        "stop_reason": stop_reason,
+        "usage": usage,
+    }
     if not answer.strip():
+        preview = _safe_anthropic_body_preview(raw, content_type)
         raise RuntimeError(
-            "Starimg Anthropic completion contained no text "
-            f"(content_type={content_type or 'unknown'}, events={event_types or ['none']}, "
-            f"bytes={len(raw) if raw else 0})"
+            "Starimg Anthropic completion contained no text; "
+            + json.dumps(diagnostics, ensure_ascii=False)
+            + "; body="
+            + preview
         )
     return {
         "choices": [{"message": {"content": answer}}],
         "usage": usage,
+        "_diagnostics": diagnostics,
     }
+
 
 
 def choose_model(base: str, key: str) -> str:
@@ -1054,6 +1153,28 @@ def main() -> None:
         raise RuntimeError("GITHUB_REPOSITORIES must contain at most 12 unique repositories")
     # Preflight every configured repository before any task is accepted.
     workers = [Worker(repository) for repository in repositories]
+    if os.environ.get("STARIMG_DIAGNOSTIC", "false").strip().lower() in ("1", "true", "yes"):
+        base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
+        key = required_env("STARIMG_API_KEY")
+        model = choose_model(base, key)
+        try:
+            result = starimg_anthropic_stream_completion(
+                base,
+                key,
+                {
+                    "model": model,
+                    "system": "Return exactly the single word OK and no other text.",
+                    "messages": [{"role": "user", "content": "Return exactly OK."}],
+                    "max_tokens": 16,
+                    "temperature": 0,
+                },
+                timeout=90,
+            )
+            LOG.info("Starimg diagnostic completion succeeded: %s",
+                     json.dumps(result.get("_diagnostics", {}), ensure_ascii=False))
+        except Exception as exc:
+            LOG.error("Starimg diagnostic completion failed: %s", str(exc)[:3000])
+        return
     if os.environ.get("STARIMG_PREFLIGHT", "false").strip().lower() in ("1", "true", "yes"):
         base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
         model = choose_model(base, required_env("STARIMG_API_KEY"))
