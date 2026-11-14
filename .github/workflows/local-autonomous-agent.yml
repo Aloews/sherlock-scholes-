@@ -41,14 +41,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes codebase-memory-mcp@0.12.1 cli --quiet index_repository --repo-path "$GITHUB_WORKSPACE" >/tmp/cbm-index.json
-          npx --yes codebase-memory-mcp@0.12.1 cli --quiet list_projects --format json >/tmp/cbm-projects.json
-          PROJECT="$(jq -r '.projects[0].name // empty' /tmp/cbm-projects.json)"
-          if [[ -n "$PROJECT" ]]; then
-            echo "CBM_PROJECT=$PROJECT" >> "$GITHUB_ENV"
-            echo "Indexed code graph: $PROJECT"
+          if npx --yes codebase-memory-mcp@0.12.1 cli --quiet index_repository --repo-path "$GITHUB_WORKSPACE" >/tmp/cbm-index.json; then
+            if npx --yes codebase-memory-mcp@0.12.1 cli --quiet list_projects --format json >/tmp/cbm-projects.json; then
+              PROJECT="$(jq -r '.projects[0].name // empty' /tmp/cbm-projects.json)"
+              if [[ -n "$PROJECT" ]]; then
+                echo "CBM_PROJECT=$PROJECT" >> "$GITHUB_ENV"
+                echo "Indexed code graph: $PROJECT"
+              else
+                echo "::warning::No codebase-memory project name found; using bounded file context."
+              fi
+            else
+              echo "::warning::Could not list codebase-memory projects; using bounded file context."
+            fi
           else
-            echo "::warning::codebase-memory-mcp indexed no discoverable project; agent will use bounded file context."
+            echo "::warning::codebase-memory-mcp indexing failed; using bounded file context."
           fi
 
       - name: Install local model runtime
@@ -72,9 +78,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Test local agent edit validation
-        run: python -m unittest .github.scripts.test_local_model_agent
 
       - name: Test local agent edit validation
         run: python .github/scripts/test_local_model_agent.py
