@@ -76,11 +76,13 @@ jobs:
       - name: Test local agent edit validation
         run: python -m unittest .github.scripts.test_local_model_agent
 
+      - name: Test local agent edit validation
+        run: python .github/scripts/test_local_model_agent.py
+
       - name: Generate patch with local model
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          CAVEMAN_SKILL_PATH: ${{ github.workspace }}/.agents/skills/caveman/SKILL.md
         run: python .github/scripts/local_model_agent.py
 
       - name: Set up Node
