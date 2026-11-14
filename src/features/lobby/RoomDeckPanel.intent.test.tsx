@@ -113,7 +113,7 @@ describe('AI deck intent in the room lobby', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
       leagues: ['La Liga'],
       clubs: null,
