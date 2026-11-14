@@ -79,14 +79,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Test local agent edit validation
-        run: python .github/scripts/test_local_model_agent.py
+      - name: Test agent network and patch safety
+        run: |
+          python -m py_compile .github/scripts/local_model_agent.py .github/scripts/agent_network.py .github/scripts/quality_gate.py .github/scripts/fable_ci_repair.py
+          python .github/scripts/test_local_model_agent.py
+          python .github/scripts/test_agent_network.py
 
-      - name: Generate patch with local model
+      - name: Run Qwen multi-role network
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python .github/scripts/local_model_agent.py
+        run: python .github/scripts/agent_network.py
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -94,20 +97,19 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Run deterministic quality gates
+        id: quality
+        continue-on-error: true
+        run: python .github/scripts/quality_gate.py
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Production build
-        run: npm run build
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Translation check
-        run: node scripts/check-i18n.mjs
+      - name: Escalate failed quality gates to Fable 5.2
+        if: steps.quality.outcome == 'failure'
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          STARIMG_API_KEY: ${{ secrets.STARIMG_API_KEY }}
+          STARIMG_MODEL: claude-fable-5-2
+          STARIMG_BASE_URL: https://ai.starimg.ru
+        run: python .github/scripts/fable_ci_repair.py
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
