@@ -17,7 +17,7 @@ def main():
         print("::error::Quality-gate log is missing; Fable cannot diagnose an empty report.")
         return 1
     logs = LOG.read_text(encoding="utf-8", errors="replace")[-12000:]
-    diff = base.run(["git", "diff", "--no-ext-diff", "--unified=2"]).stdout[-9000:]
+    diff = agent_network.current_diff()
     context = agent_network.task_context(task)
     try:
         result = agent_network.fable_role(
