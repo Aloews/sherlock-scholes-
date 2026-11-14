@@ -2,7 +2,7 @@
 import json, os, re, subprocess, sys, urllib.request
 from pathlib import Path
 
-ROOT = Path.cwd()
+ROOT = Path.cwd().resolve()
 MODEL = "qwen2.5-coder:3b"
 ALLOWED = ("src/", "test/", "tests/", "scripts/", "docs/", "supabase/functions/", "supabase/migrations/", "football_scraper/", "ml/")
 EDIT_SCHEMA = {
