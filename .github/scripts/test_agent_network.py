@@ -25,6 +25,13 @@ class AgentNetworkTests(unittest.TestCase):
         self.assertEqual(agent_network.normalize_role_edits(qwen), [{"path": "src/a.py", "old": "a", "new": "b"}])
         self.assertEqual(agent_network.normalize_role_edits(fable), [{"path": "src/a.py", "old": "a", "new": "b"}])
 
+    def test_escalation_flag_is_strict(self):
+        self.assertTrue(agent_network.wants_fable(True))
+        self.assertTrue(agent_network.wants_fable("true"))
+        self.assertFalse(agent_network.wants_fable(False))
+        self.assertFalse(agent_network.wants_fable("false"))
+        self.assertFalse(agent_network.wants_fable(None))
+
     def test_rejects_symlink_parent_escape(self):
         with tempfile.TemporaryDirectory() as temp, tempfile.TemporaryDirectory() as outside:
             root = Path(temp)
