@@ -37,6 +37,14 @@ def main():
       "Return ONLY a unified git diff starting with 'diff --git'. Modify only src/, test/, tests/, scripts/, docs/, "
       "supabase/functions/, supabase/migrations/, football_scraper/, ml/. Do not modify workflows, manifests, "
       "lockfiles, credentials, deployment settings, or secrets. Keep the patch small and add tests where appropriate.")
+    skill_path = os.environ.get("CAVEMAN_SKILL_PATH", "")
+    if skill_path:
+        try:
+            skill = Path(skill_path).read_text(encoding="utf-8")[:9000]
+            system += "\\n\\nApply this Caveman skill to reduce prose only. Preserve code, identifiers, paths, errors, negations, contracts and test assertions exactly:\\n" + skill
+        except (OSError, UnicodeError):
+            print("::error::Pinned Caveman skill could not be loaded.")
+            return 1
     prompt = "Task for issue #"+str(issue.get("number"))+":\n"+task+"\n\nRepository files:\n"+context+"\n\nReturn a minimal applicable unified diff only."
     messages = [{"role":"system","content":system},{"role":"user","content":prompt}]
     for attempt in range(3):
