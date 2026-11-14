@@ -1,0 +1,57 @@
+import json
+import os
+import unittest
+from unittest.mock import patch
+
+import agent_network
+
+class AgentNetworkTests(unittest.TestCase):
+    def test_parse_role_json(self):
+        self.assertEqual(agent_network.parse_object('{"decision":"approve"}'), {"decision": "approve"})
+        fence = chr(96) * 3
+        self.assertEqual(agent_network.parse_object(fence + 'json\n{"decision":"approve"}\n' + fence), {"decision": "approve"})
+
+    def test_rejects_non_object_json(self):
+        with self.assertRaises(ValueError):
+            agent_network.parse_object('["not", "an", "object"]')
+
+    def test_fable_requires_configured_secret(self):
+        with patch.dict(os.environ, {"STARIMG_API_KEY": ""}):
+            with self.assertRaises(agent_network.EscalationError) as error:
+                agent_network.fable_role("task", "context", "review blocker")
+        self.assertIn("STARIMG_API_KEY is not configured", str(error.exception))
+
+    def test_fable_402_is_not_retried_or_hidden(self):
+        class FakeHTTPError(Exception):
+            code = 402
+            def read(self, size=-1):
+                return b"Payment Required"
+        with patch.dict(os.environ, {"STARIMG_API_KEY": "test-only"}):
+            with patch("agent_network.urllib.request.urlopen", side_effect=FakeHTTPError()):
+                with self.assertRaises(agent_network.EscalationError) as error:
+                    agent_network.fable_role("task", "context", "review blocker")
+        self.assertIn("HTTP 402", str(error.exception))
+        self.assertIn("No automatic retry", str(error.exception))
+
+    def test_fable_uses_anthropic_messages_contract(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self):
+                return json.dumps({"content":[{"type":"text","text":'{"decision":"stop","diagnosis":"not enough evidence","changes":[]}'}]}).encode()
+        captured = {}
+        def fake_urlopen(request, timeout):
+            captured["url"] = request.full_url
+            captured["headers"] = request.headers
+            captured["body"] = json.loads(request.data)
+            return Response()
+        with patch.dict(os.environ, {"STARIMG_API_KEY":"test-only", "STARIMG_MODEL":"claude-fable-5-2"}):
+            with patch("agent_network.urllib.request.urlopen", side_effect=fake_urlopen):
+                result = agent_network.fable_role("task", "context", "reason")
+        self.assertEqual(result["decision"], "stop")
+        self.assertTrue(captured["url"].endswith("/v1/messages"))
+        self.assertEqual(captured["body"]["model"], "claude-fable-5-2")
+        self.assertIn("x-api-key", captured["headers"])
+
+if __name__ == "__main__":
+    unittest.main()
