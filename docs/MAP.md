@@ -352,3 +352,9 @@ This section is shared across the active project maps. It records installation a
 | codebase-memory-mcp | Recorded here | Not verified; no persistent supported host indexed |
 | Spotify Portal / shunt | Recorded here | Not verified; Portal authentication and AiKA readiness not established |
 
+
+## Installed agent runtime — 2026-11-14
+
+- GitHub Actions local coding workflow installs Ollama and verifies `qwen2.5-coder:3b` with `ollama show` before inference. Model weights are local to the ephemeral runner; no Railway-hosted persistent Ollama server is claimed.
+- Workflow pins Caveman 4.1.0 to verified commit `1e91f1306d602d4ca23618701b1185575ae1869b` and injects its `skills/caveman/SKILL.md` into the Qwen system prompt. This is the custom Python/Ollama agent integration, not a Claude Code plugin host.
+- The install change is committed to `main`; existing issue-comment runs started before it do not retroactively load Caveman. New runs must show the Caveman checkout and `ollama show` steps before the runtime is considered verified.
