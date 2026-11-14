@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   filterSquadsByLeagues,
   reconcileSquadSelection,
-  type Squad,
-} from './squads';
+} from './squadFilters';
+import type { Squad } from './squads';
 
 const squad = (key: string, name: string, league: string | null): Squad => ({
   key, name, league, players: 20, cardId: null, asOf: null,
