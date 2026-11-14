@@ -41,7 +41,8 @@ def allowed(path, tracked):
 def run(args, check=True):
     return subprocess.run(args, cwd=ROOT, check=check, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def apply_edits(edits, tracked):
+def apply_edits(edits, tracked, root=None):
+    root = Path(root or ROOT).resolve()
     if not isinstance(edits, list) or not edits or len(edits) > 8:
         raise ValueError("model returned no edits or exceeded the edit limit")
     staged = {}
@@ -53,7 +54,7 @@ def apply_edits(edits, tracked):
             raise ValueError("edit is missing path, old or new text")
         if not allowed(path, tracked):
             raise ValueError("edit path is outside the source allowlist")
-        target = ROOT / path
+        target = root / path
         if target.is_symlink():
             raise ValueError("symbolic-link edits are not permitted")
         if path in staged:
@@ -82,6 +83,15 @@ def apply_edits(edits, tracked):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
     return sorted(staged)
+
+def parse_edits(answer):
+    try:
+        payload = json.loads(answer)
+    except json.JSONDecodeError as exc:
+        raise ValueError("model response is not valid JSON") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("edits"), list):
+        raise ValueError("expected JSON object with an edits array")
+    return payload["edits"]
 
 def main():
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
@@ -149,8 +159,8 @@ def main():
         with urllib.request.urlopen(request, timeout=900) as response:
             answer = json.loads(response.read())["message"]["content"]
         try:
-            data = json.loads(answer)
-            apply_edits(data.get("edits"), tracked)
+            edits = parse_edits(answer)
+            apply_edits(edits, tracked)
             break
         except (ValueError, OSError, UnicodeError, json.JSONDecodeError) as exc:
             error = str(exc)[:1000]
