@@ -208,6 +208,11 @@ def apply_role_changes(response):
         raise ValueError("structured edits failed git diff --check: " + check.stderr[-1000:])
     return changed
 
+def wants_fable(value):
+    if value is True:
+        return True
+    return isinstance(value, str) and value.strip().lower() in ("true", "yes")
+
 def implementer_system():
     return (
         "Return ONLY a JSON object with an edits array. Each item has path, old, new. "
@@ -298,9 +303,9 @@ def main():
                                      "commands": [], "test_files": [], "coverage_gaps": [planning_error],
                                      "escalate_to_fable": True}
         hard_risk = (
-            bool(triage.get("escalate_to_fable"))
-            or bool(architecture.get("escalate_to_fable"))
-            or bool(test_strategy.get("escalate_to_fable"))
+            wants_fable(triage.get("escalate_to_fable"))
+            or wants_fable(architecture.get("escalate_to_fable"))
+            or wants_fable(test_strategy.get("escalate_to_fable"))
         )
         if hard_risk:
             fable = fable_role(
