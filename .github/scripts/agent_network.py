@@ -152,11 +152,15 @@ def current_diff():
     return subprocess.run(["git", "diff", "--no-ext-diff", "--unified=2"], cwd=ROOT,
                           text=True, capture_output=True).stdout[-MAX_CONTEXT_CHARS:]
 
-def apply_role_changes(response):
+def normalize_role_edits(response):
+    direct = response.get("edits")
+    if isinstance(direct, list):
+        if not 1 <= len(direct) <= 8:
+            raise ValueError("role did not provide 1–8 structured edits")
+        return direct
     changes = response.get("changes")
-    if not isinstance(changes, list) or not changes or len(changes) > 8:
+    if not isinstance(changes, list) or not 1 <= len(changes) <= 8:
         raise ValueError("role did not provide 1–8 file changes")
-    tracked = set(base.run(["git", "ls-files"]).stdout.splitlines())
     edits = []
     for change in changes:
         if not isinstance(change, dict):
@@ -168,7 +172,16 @@ def apply_role_changes(response):
             edits.append({"path": change.get("path"), "old": "", "new": change.get("content")})
         else:
             raise ValueError("unsupported edit operation: " + str(operation))
-    return base.apply_edits(edits, tracked)
+    return edits
+
+def apply_role_changes(response):
+    tracked = set(base.run(["git", "ls-files"]).stdout.splitlines())
+    edits = normalize_role_edits(response)
+    changed = base.apply_edits(edits, tracked)
+    check = base.run(["git", "diff", "--check"], check=False)
+    if check.returncode:
+        raise ValueError("structured edits failed git diff --check: " + check.stderr[-1000:])
+    return changed
 
 def implementer_system():
     return (
