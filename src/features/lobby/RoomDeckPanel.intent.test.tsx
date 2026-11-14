@@ -76,6 +76,18 @@ describe('AI deck intent in the room lobby', () => {
 
     view.rerender(
       <RoomDeckPanel
+        filter={{ categories: ['player'], leagues: ['La Liga'], clubs: null }}
+        count={12} isHost failed={false} onChange={onChange}
+      />,
+    );
+    await waitFor(() => {
+      const [, oneLeagueSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
+      expect(Array.from(oneLeagueSelect.options).map((option) => option.value))
+        .toEqual(['', 'barcelona']);
+    });
+
+    view.rerender(
+      <RoomDeckPanel
         filter={{ categories: ['player'], leagues: ['Premier League', 'La Liga'], clubs: ['arsenal'] }}
         count={12} isHost failed={false} onChange={onChange}
       />,
@@ -85,6 +97,27 @@ describe('AI deck intent in the room lobby', () => {
       expect(Array.from(allLeaguesSelect.options).map((option) => option.value))
         .toEqual(['', 'arsenal', 'chelsea', 'barcelona']);
     });
+  });
+
+
+  it('removes a persisted club that is outside the selected league after squads load', async () => {
+    mocks.squads = [
+      { club_key: 'arsenal', club: 'Arsenal', players: 23, card_id: null, fetched_at: null, league: 'Premier League' },
+      { club_key: 'barcelona', club: 'Barcelona', players: 25, card_id: null, fetched_at: null, league: 'La Liga' },
+    ];
+    const onChange = vi.fn();
+    render(
+      <RoomDeckPanel
+        filter={{ categories: ['player'], leagues: ['La Liga'], clubs: ['arsenal'] }}
+        count={12} isHost failed={false} onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /lobby\\.deck_title/ }));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+      leagues: ['La Liga'],
+      clubs: null,
+    })));
   });
 
   it('preserves a selected club when it belongs to the newly selected league', async () => {
