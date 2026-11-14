@@ -196,8 +196,9 @@ def main():
         if hard_risk:
             fable = fable_role(
                 compact_task, context + "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) +
-                "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False),
-                "Qwen triage/architecture marked this task as high-risk or requiring senior review.",
+                "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False) +
+                "\nQA plan:\n" + json.dumps(test_strategy, ensure_ascii=False),
+                "Qwen triage, architecture, or QA marked this task as high-risk or requiring senior review.",
             )
             if fable.get("decision") != "fix":
                 raise EscalationError("Fable decided to stop: " + str(fable.get("diagnosis", "insufficient evidence")))
@@ -207,7 +208,8 @@ def main():
         else:
             prompt = (
                 compact_task + "\nAcceptance:\n" + json.dumps(acceptance, ensure_ascii=False) +
-                "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False) + "\nSource:\n" + context
+                "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False) +
+                "\nQA regression plan:\n" + json.dumps(test_strategy, ensure_ascii=False) + "\nSource:\n" + context
             )
             last_error = ""
             for attempt in range(2):
