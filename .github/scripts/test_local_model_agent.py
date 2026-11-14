@@ -43,7 +43,7 @@ class LocalModelAgentTests(unittest.TestCase):
             root = Path(temp)
             changed = agent.apply_changes(root, [{
                 "operation": "create", "path": "tests/new_test.py", "content": "assert True\n"
-            }])
+            }], run_git_check=False)
             self.assertEqual(changed, ["tests/new_test.py"])
             self.assertTrue((root / "tests/new_test.py").is_file())
 
