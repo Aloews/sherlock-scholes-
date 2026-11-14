@@ -189,10 +189,15 @@ class WorkerPolicyTests(unittest.TestCase):
                                   allowed_prefixes_for_repo("Aloews/sherlock-tv")))
         self.assertTrue(safe_path("pages/README-Game.md",
                                   allowed_prefixes_for_repo("Aloews/russian-dev-projects")))
-        self.assertTrue(safe_path("luxury-estate/backend/app/main.py",
-                                  allowed_prefixes_for_repo("Aloews/full")))
-        self.assertTrue(safe_path("docs/MAP.md",
-                                  allowed_prefixes_for_repo("Aloews/full")))
+        aurel_paths = allowed_prefixes_for_repo("Aloews/full")
+        self.assertTrue(safe_path("app/page.tsx", aurel_paths))
+        self.assertTrue(safe_path("services/platform-api/src/elite_estate_api.rs", aurel_paths))
+        self.assertTrue(safe_path("services/platform-api/Cargo.toml", aurel_paths))
+        self.assertTrue(safe_path("services/platform-api/migrations/0002_auth.sql", aurel_paths))
+        self.assertTrue(safe_path("docs/MAP.md", aurel_paths))
+        self.assertFalse(safe_path(".github/workflows/ci.yml", aurel_paths))
+        self.assertFalse(safe_path(".env.production", aurel_paths))
+        self.assertFalse(safe_path("services/autonomous-agent/worker.py", aurel_paths))
         self.assertFalse(safe_path("services/autonomous-agent/worker.py",
                                    allowed_prefixes_for_repo("Aloews/full")))
         self.assertFalse(safe_path("api/management-webhook.ts",
