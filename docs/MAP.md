@@ -300,7 +300,7 @@ These are the next outcomes to prove—not a promise that work is already comple
 
 GitHub Actions is the supported fallback execution host when Railway agent execution is unavailable. The implementation is tracked in [PR #422](https://github.com/Aloews/sherlock-scholes-/pull/422); it is not active on the default branch until the PR is reviewed and merged.
 
-- **Qwen 2.5 Coder 3B / Ollama:** sequential specialist passes for triage, architecture, implementation, and independent code review. One shared working tree; no parallel writes.
+- **Qwen 2.5 Coder 3B / Ollama:** sequential specialist passes for triage, architecture, test planning, implementation, and independent code review. One shared working tree; no parallel writes.
 - **QA:** fixed checks (dependency install, typecheck, production build, unit tests, translation validation) with captured failure logs.
 - **Fable 5.2 / Starimg:** escalation for high-risk plans, repeated invalid Qwen edits, reviewer blockers, and failed CI. Fable changes are constrained by the same file/path validator and must pass the full quality gates.
 - **Caveman 4.1.0:** pinned skill supplied to Qwen prompts to reduce verbose reasoning without deleting code or contracts.
