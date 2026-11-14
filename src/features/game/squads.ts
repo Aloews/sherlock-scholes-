@@ -60,7 +60,7 @@ export async function fetchSquads(min = MIN_SQUAD): Promise<Squad[]> {
 
 
 const LEAGUE_ORDER = new Map<string, number>(
-  DECK_LEAGUES.map((league, index) => [normalizeLeague(league), index]),
+  DECK_LEAGUES.map((league, index) => [normalizeLeague(league), index] as const),
 );
 const SQUAD_NAME_ORDER = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
 
