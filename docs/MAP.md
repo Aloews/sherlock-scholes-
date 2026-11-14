@@ -72,7 +72,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | Fantasy | Build a team using the same trusted football statistics | `src/features/fantasy`, fantasy screens | Fantasy scoring reconciles to canonical match/player statistics |
 | News and digest | Find relevant football stories with clear source attribution | `src/features/digest`, news screens | Source links, timestamps, deduplication, and clear separation of articles from video |
 | Amateur football | Create and manage a private amateur league | `src/features/amateur`, `amateur-logo` Edge Function | Telegram identity verification, owner isolation, upload validation |
-| Football Dynasty | Play a persistent fictional football dynasty campaign | `src/features/football-dynasty`, `src/screens/FootballDynastyScreen.tsx`, `services/football-dynasty` | Campaign lifecycle, ledger integrity, succession, persistence, and owner isolation |
+| Football Dynasty | Play a persistent fictional football dynasty campaign | `src/features/football-dynasty`, `src/screens/FootballDynastyScreen.tsx`, `services/football-dynasty` | Campaign lifecycle, ledger integrity, succession, persistence, owner isolation, and squad/contract management |
 | Admin and operations | Maintain data and resolve production issues safely | `src/screens/admin`, `docs/operations` | Audited changes, bounded jobs, observable failures, tested rollback |
 
 This is a navigation index, not a promise that every listed area is currently complete. Verify implementation and production state before extending an area.
@@ -140,7 +140,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
-- The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The current implemented slice is campaign creation, bounded founder/heir succession, and squad/contract management (seeded 23-player roster, signing, renewal, release). It is not the full management simulation described in the GDD.
 
 ## 8. Execution priorities
 
@@ -204,6 +204,26 @@ Work in this order. Reorder only when fresh production evidence shows a higher-i
 - Defer cosmetic refactors unless they remove a measured usability problem or unblock delivery.
 
 **Exit criteria:** each feature is used by a real user path and has a metric that can confirm or reject its value.
+
+### Football Dynasty squad and contract backend — implemented in PR #402, not merged
+
+**Outcome:** campaign owners can inspect their squad and manage player contracts through an authenticated API.
+
+**Implementation in PR #402:**
+- Migration 0005 adds campaign-scoped \`fd.players\` and \`fd.contracts\`, composite campaign keys/FKs, owner-scoped RLS using \`fd.campaigns.owner_telegram_id\`, wage/term/state constraints, and a partial unique index for one active contract per player.
+- Rust \`roster\` module adds authenticated GET squad, POST sign/renew, and POST release routes under the existing protected campaign router.
+- First squad read locks the owned campaign row and transactionally seeds 23 deterministic fictional players (2 GK, 8 DEF, 8 MID, 5 FWD) and 23 active contracts from the campaign UUID and BIGINT seed.
+- Contract operations validate wage and requested term bounds, extend active contracts, record release timestamps, and expire contracts when \`end_year < current_year\`.
+- Integration tests cover roster distribution/determinism, concurrent/idempotent first reads, owner isolation, wage/term validation, renewal, release, and expiry. Shared test-database initialization is serialized with a Tokio OnceCell to prevent duplicate concurrent DDL.
+
+**Verified evidence (implementation commit \`7b0d83b411963db0e2bc7168026514a4b636a148\`, 2026-11-13):**
+- Rust formatting passed.
+- Clippy with warnings denied passed.
+- Rust unit and integration tests passed.
+- Disposable PostgreSQL migration and owner-scoped RLS checks passed.
+- All GitHub Actions workflows on that exact commit completed successfully.
+
+**Release boundary:** PR #402 remains open and unmerged. This backend slice is not deployed to production. No production migration, production database write, merge, or product deployment has occurred. Frontend screen integration remains a separate follow-up.
 
 ## 9. Definition of done
 
