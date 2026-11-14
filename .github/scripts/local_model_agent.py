@@ -80,10 +80,19 @@ def apply_edits(edits, tracked, root=None):
             raise ValueError("edited file exceeds safe text limits")
         staged[path] = current
     for path, content in staged.items():
-        target = ROOT / path
+        target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
     return sorted(staged)
+
+def parse_edits(answer):
+    try:
+        payload = json.loads(answer)
+    except json.JSONDecodeError as exc:
+        raise ValueError("model response is not valid JSON") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("edits"), list):
+        raise ValueError("expected JSON object with an edits array")
+    return payload["edits"]
 
 def main():
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
