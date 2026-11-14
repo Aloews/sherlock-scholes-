@@ -34,7 +34,7 @@ import { countCards } from '@/features/game/cardRandomizer';
 import { supabase } from '@/shared/lib/supabase';
 import { countryName } from '@/shared/lib/countryName';
 import { fameFloor, fameStartLevel } from '@/features/game/onboarding';
-import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
+import { fetchSquads, filterSquadsByLeagues, formatSquadAsOf, type Squad } from '@/features/game/squads';
 import { trackEvent } from '@/shared/lib/analytics';
 import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { aiDeckErrorMessage, edgeFunctionErrorCode } from '@/features/decks/aiDeckError';
@@ -90,11 +90,10 @@ export function DeckPickerScreen({ isPro, gamesPlayed, onClose, onNeedPro, onSta
   // when the picker opens rather than on every keystroke of the filter.
   useEffect(() => { void fetchSquads().then(setSquads); }, []);
 
-  const visibleSquads = useMemo(() => {
-    if (!selLeague) return squads;
-    const selectedLeague = selLeague.trim().toLocaleLowerCase();
-    return squads.filter((s) => (s.league ?? '').trim().toLocaleLowerCase() === selectedLeague);
-  }, [squads, selLeague]);
+  const visibleSquads = useMemo(
+    () => filterSquadsByLeagues(squads, selLeague ? [selLeague] : []),
+    [squads, selLeague],
+  );
 
   useEffect(() => {
     if (selSquad && !visibleSquads.some((s) => s.key === selSquad)) setSelSquad('');
