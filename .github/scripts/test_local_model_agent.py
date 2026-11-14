@@ -24,7 +24,7 @@ class LocalModelAgentTests(unittest.TestCase):
             (root / "src/a.py").write_text("x = 1\ny = 2\n", encoding="utf-8")
             changed = agent.apply_changes(root, [{
                 "operation": "replace", "path": "src/a.py", "old": "x = 1", "new": "x = 3"
-            }])
+            }], run_git_check=False)
             self.assertEqual(changed, ["src/a.py"])
             self.assertEqual((root / "src/a.py").read_text(encoding="utf-8"), "x = 3\ny = 2\n")
 
