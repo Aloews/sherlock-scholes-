@@ -27,6 +27,16 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
 
+      - name: Install pinned Caveman 4.1.0 skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          CAVEMAN_DIR="$RUNNER_TEMP/caveman"
+          git clone --depth 1 --branch v4.1.0 https://github.com/JuliusBrussee/caveman.git "$CAVEMAN_DIR"
+          test "$(git -C "$CAVEMAN_DIR" rev-parse HEAD)" = "1e91f1306d602d4ca23618701b1185575ae1869b"
+          test -s "$CAVEMAN_DIR/skills/caveman/SKILL.md"
+          echo "CAVEMAN_SKILL_PATH=$CAVEMAN_DIR/skills/caveman/SKILL.md" >> "$GITHUB_ENV"
+
       - name: Install local model runtime
         shell: bash
         run: |
@@ -41,6 +51,8 @@ jobs:
           done
           curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
           ollama pull qwen2.5-coder:3b
+          ollama show qwen2.5-coder:3b >/dev/null
+          echo "Verified local model: qwen2.5-coder:3b"
 
       - name: Set up Python
         uses: actions/setup-python@v5
