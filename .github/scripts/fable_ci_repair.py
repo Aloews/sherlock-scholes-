@@ -30,7 +30,20 @@ def main():
             raise agent_network.EscalationError("Fable chose not to patch: " + str(result.get("diagnosis", "no diagnosis")))
         changed = agent_network.apply_role_changes(result)
         print("Fable 5.2 proposed changes: " + ", ".join(changed))
-        return run_gates()
+        gate_result = run_gates()
+        if gate_result:
+            return gate_result
+        review = agent_network.ollama_role(
+            "post-Fable CI repair reviewer",
+            "Review the actual post-Fable diff against the original task. Return JSON keys: decision (approve|reject), "
+            "blocking_findings array. Reject unrelated changes and incomplete fixes. CI has actually been rerun; "
+            "do not infer anything beyond the supplied task and diff.",
+            "Task:\n" + task + "\nFable repair diff:\n" + agent_network.current_diff(), 450,
+        )
+        if review.get("decision") != "approve" or review.get("blocking_findings"):
+            raise agent_network.EscalationError("Qwen post-Fable review blocked the CI repair: " + json.dumps(review, ensure_ascii=False))
+        print("Qwen post-Fable review approved the CI repair.")
+        return 0
     except (ValueError, OSError, agent_network.EscalationError) as exc:
         print("::error::Fable CI escalation failed: " + str(exc))
         return 1
