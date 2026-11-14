@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import unittest
@@ -23,7 +24,7 @@ class AgentNetworkTests(unittest.TestCase):
         self.assertIn("STARIMG_API_KEY is not configured", str(error.exception))
 
     def test_fable_402_is_not_retried_or_hidden(self):
-        failure = urllib.error.HTTPError("https://ai.starimg.ru/v1/messages", 402, "Payment Required", {}, None)
+        failure = urllib.error.HTTPError("https://ai.starimg.ru/v1/messages", 402, "Payment Required", {}, io.BytesIO(b"Payment Required"))
         with patch.dict(os.environ, {"STARIMG_API_KEY": "test-only"}):
             with patch("agent_network.urllib.request.urlopen", side_effect=failure):
                 with self.assertRaises(agent_network.EscalationError) as error:
