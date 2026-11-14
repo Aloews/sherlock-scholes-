@@ -89,6 +89,9 @@ jobs:
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          STARIMG_API_KEY: ${{ secrets.STARIMG_API_KEY }}
+          STARIMG_MODEL: claude-fable-5-2
+          STARIMG_BASE_URL: https://ai.starimg.ru
         run: python .github/scripts/agent_network.py
 
       - name: Set up Node
