@@ -349,7 +349,7 @@ This section is shared across the active project maps. It records installation a
 
 | Integration | Repository documentation | Active runtime installation |
 |---|---|---|
-| Caveman | Portable skill at `.agents/skills/caveman/`; official `caveman@caveman` plugin enabled in `.claude/settings.json` | Included in this PR; host trust/session activation not yet verified |
+| Caveman | Portable skill at `.agents/skills/caveman/`; official plugin pinned to reviewed commit in `.claude/settings.json` | Included in this PR; host trust/session activation not yet verified |
 | codebase-memory-mcp | Recorded here | Not verified; no persistent supported host indexed |
 | Spotify Portal / shunt | Recorded here | Not verified; Portal authentication and AiKA readiness not established |
 
