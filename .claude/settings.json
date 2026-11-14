@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "portal": {
+      "source": {
+        "source": "github",
+        "repo": "spotify/portal-ai-plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "portal@portal": true,
+    "shunt@portal": false
+  }
+}
