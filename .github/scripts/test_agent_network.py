@@ -17,6 +17,12 @@ class AgentNetworkTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             agent_network.parse_object('["not", "an", "object"]')
 
+    def test_normalizes_qwen_edits_and_fable_changes(self):
+        qwen = {"edits": [{"path": "src/a.py", "old": "a", "new": "b"}]}
+        fable = {"changes": [{"operation": "replace", "path": "src/a.py", "old": "a", "new": "b"}]}
+        self.assertEqual(agent_network.normalize_role_edits(qwen), [{"path": "src/a.py", "old": "a", "new": "b"}])
+        self.assertEqual(agent_network.normalize_role_edits(fable), [{"path": "src/a.py", "old": "a", "new": "b"}])
+
     def test_fable_requires_configured_secret(self):
         with patch.dict(os.environ, {"STARIMG_API_KEY": ""}):
             with self.assertRaises(agent_network.EscalationError) as error:
