@@ -151,7 +151,9 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
   const pickLeague = (lg: string) => {
     const nextLeagues = lg ? [lg] : [];
     const nextSquads = filterSquadsByLeagues(squads, nextLeagues);
-    const nextClubs = reconcileSquadSelection(filter.clubs, nextSquads);
+    const nextClubs = squads.length
+      ? reconcileSquadSelection(filter.clubs, nextSquads)
+      : (filter.clubs ?? []);
     patch({
       leagues: nextLeagues.length ? nextLeagues : null,
       clubs: nextClubs.length ? nextClubs : null,
