@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   initData: vi.fn(() => 'signed-init-data' as string | null),
-  squads: [] as Array<{ key: string; name: string; players: number; asOf: string | null; league: string | null }>,
+  squads: [] as Array<{ club_key: string; club: string; players: number; card_id: string | null; fetched_at: string | null; league: string | null }>,
 }));
 
 vi.mock('react-i18next', () => ({
@@ -19,11 +19,10 @@ vi.mock('@/shared/lib/telegram', () => ({
   hapticImpact: vi.fn(),
 }));
 vi.mock('@/shared/lib/supabase', () => ({
-  supabase: { functions: { invoke: mocks.invoke } },
-}));
-vi.mock('@/features/game/squads', () => ({
-  fetchSquads: () => Promise.resolve(mocks.squads),
-  formatSquadAsOf: () => '',
+  supabase: {
+    functions: { invoke: mocks.invoke },
+    rpc: () => Promise.resolve({ data: mocks.squads, error: null }),
+  },
 }));
 
 import { RoomDeckPanel } from './RoomDeckPanel';
@@ -50,9 +49,9 @@ afterEach(() => cleanup());
 describe('AI deck intent in the room lobby', () => {
   it('filters lobby squad options by every selected league and removes only invalid clubs', async () => {
     mocks.squads = [
-      { key: 'arsenal', name: 'Arsenal', players: 23, asOf: null, league: 'Premier League' },
-      { key: 'chelsea', name: 'Chelsea', players: 24, asOf: null, league: 'Premier League' },
-      { key: 'barcelona', name: 'Barcelona', players: 25, asOf: null, league: 'La Liga' },
+      { club_key: 'arsenal', club: 'Arsenal', players: 23, card_id: null, fetched_at: null, league: 'Premier League' },
+      { club_key: 'chelsea', club: 'Chelsea', players: 24, card_id: null, fetched_at: null, league: 'Premier League' },
+      { club_key: 'barcelona', club: 'Barcelona', players: 25, card_id: null, fetched_at: null, league: 'La Liga' },
     ];
     const onChange = vi.fn();
     const view = render(
@@ -62,7 +61,7 @@ describe('AI deck intent in the room lobby', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\\.deck_title/ }));
+    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
 
     const [leagueSelect, squadSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
@@ -90,8 +89,8 @@ describe('AI deck intent in the room lobby', () => {
 
   it('preserves a selected club when it belongs to the newly selected league', async () => {
     mocks.squads = [
-      { key: 'arsenal', name: 'Arsenal', players: 23, asOf: null, league: 'Premier League' },
-      { key: 'barcelona', name: 'Barcelona', players: 25, asOf: null, league: 'La Liga' },
+      { club_key: 'arsenal', club: 'Arsenal', players: 23, card_id: null, fetched_at: null, league: 'Premier League' },
+      { club_key: 'barcelona', club: 'Barcelona', players: 25, card_id: null, fetched_at: null, league: 'La Liga' },
     ];
     const onChange = vi.fn();
     render(
@@ -101,7 +100,7 @@ describe('AI deck intent in the room lobby', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\\.deck_title/ }));
+    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
     const [leagueSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
     fireEvent.change(leagueSelect, { target: { value: 'Premier League' } });
