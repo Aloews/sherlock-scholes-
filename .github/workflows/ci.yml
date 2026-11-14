@@ -214,3 +214,19 @@ jobs:
 
       - name: Telegram Rich Message quiz payload tests
         run: deno test supabase/functions/tg-pay/rich-quiz.test.ts
+
+  autonomous-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile and test worker policy
+        working-directory: services/autonomous-agent
+        run: |
+          python -m py_compile worker.py test_worker.py
+          python -m unittest -v
+      - name: Build worker container
+        run: docker build -f services/autonomous-agent/Dockerfile services/autonomous-agent

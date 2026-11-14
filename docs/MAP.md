@@ -271,6 +271,20 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 - If an external dependency or permission genuinely blocks implementation, identify the exact blocker and the smallest action needed; continue all independent work instead of stopping at an audit.
 - The final report must distinguish implemented changes, verified checks, unverified items, and production impact. Never call a task complete while required checks are failing or unavailable.
 
+### 11.4 Multi-agent execution runtime
+
+The existing Railway runtime is split into two scheduled roles inside the Sherlock Scholes Railway project:
+
+- Architect + implementer + internal reviewer run on the existing stream-service.
+- A separate reviewer role runs on the existing sherlock-ai-bot service and independently reviews autonomous PRs by exact head SHA.
+- Both roles use Starimg; Fable 5.2 is the pinned implementation/review model when present in the authenticated catalog.
+- Supabase and Vercel are read-only reviewer integrations using the existing scoped tokens. The database URL is not exposed to the worker.
+- Railway is the runtime host. The worker currently has no Railway API token, so runtime resource creation, scaling and rollback are not delegated to the model.
+
+Communication is persisted through GitHub issue tasks, isolated branches, PR agent-handoff sections and SHA-scoped reviewer comments. The internal reviewer may request one bounded correction before a PR is opened; the external reviewer posts a separate review result after the PR exists. A new head SHA triggers a fresh external review.
+
+Release boundary: no automatic merge, product deployment, production migration or production data write. Product CI on the exact PR head and maintainer acceptance remain mandatory. Only existing Railway services are reused; no new paid resources are created.
+
 ## 12. Working agreement for AI agents and contributors
 
 1. Read this map and the relevant feature specification before implementation.
@@ -295,3 +309,62 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+
+## 14. Autonomous multi-agent engineering network
+
+The engineering agents operate inside Sherlock Scholes. Their durable handoff channel is the repository itself; the owner should not have to relay intermediate model outputs.
+
+### 14.1 Runtime roles
+
+| Runtime | Railway service | Role | Cadence |
+|---|---|---|---|
+| Implementer | `stream-service` in `distinguished-transformation` | Architect → implementer → independent internal reviewer → isolated PR | Every 30 minutes; at most one task per run |
+| External reviewer | `sherlock-ai-bot` in `distinguished-transformation` | Independent PR reviewer on the exact head SHA; posts a persistent GitHub review comment | Every 5 minutes; at most one PR per run |
+
+Both services use `services/autonomous-agent` from the multi-agent runtime branch. Runtime repository scope is restricted to `Aloews/sherlock-scholes-`; it must not process tasks from other repositories.
+
+### 14.2 Agent-to-agent protocol
+
+1. The owner creates a GitHub issue and adds an owner-authenticated `/ai ...` command.
+2. Architect (Starimg model `claude-fable-5-2`) returns a bounded JSON plan.
+3. Implementer generates one isolated patch, validates allowed paths, runs local checks, and pushes a task branch.
+4. Internal reviewer inspects the exact diff. A blocker/major finding triggers at most one bounded correction; unresolved findings fail closed.
+5. The implementer opens a PR containing the plan and review verdict.
+6. External reviewer independently inspects the PR diff and writes a SHA-scoped review comment. A new commit requires a new review.
+7. GitHub issue comments, task branches, PR bodies, and review comments are the durable communication ledger. No model output is forwarded as an intermediate user message.
+
+### 14.3 Connected provider checks
+
+The external reviewer supports read-only connection checks for Cloudflare, Fly.io, Neon, Railway, Render, Supabase, and Vercel. These checks report minimal status/metadata only. Provider credentials are never sent to model prompts, logs, GitHub comments, or subprocesses.
+
+Expected Railway runtime variable names:
+
+- `CLOUDFLARE_API_TOKEN`
+- `FLY_API_TOKEN`
+- `NEON_API_KEY`
+- `RAILWAY_API_TOKEN` or `RAILWAY`, plus `RAILWAY_WORKSPACE_ID`
+- `RENDER_API_KEY`
+- `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`
+- `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID`
+- `STARIMG_API_KEY` and `GITHUB_TOKEN`
+
+The workflow `.github/workflows/sync-agent-secrets.yml` is manual-only and transfers GitHub Actions repository secrets through stdin into the existing Railway `sherlock-ai-bot` reviewer service in project `distinguished-transformation`; it never prints values or writes them to repository files. It becomes dispatchable after reaching the default branch. The `RAILWAY` GitHub secret is accepted as a project token and mapped to runtime variable `RAILWAY_API_TOKEN`; `RAILWAY_API_TOKEN` is also accepted for workspace tokens. Only the reviewer service receives infrastructure-management credentials; the implementer does not.
+
+A GitHub secret name is not proof that a runtime has received the value. The sync workflow must complete successfully, then the reviewer preflight must report each provider's authenticated status. Missing secrets, insufficient Railway token scope, or provider API rejection must remain explicit `not_configured` / `unavailable` states; never infer connectivity from a key name.
+
+### 14.4 Safety and release gates
+
+- Provider probes are read-only. No DNS edits, deployments, app creation, database migrations, production data writes, or billing actions are performed by the agent network.
+- No automatic PR merge or product production deployment.
+- The owner sees only final outcomes or a specific permission/credential blocker, not architect drafts, model reasoning, patch attempts, or repeated progress messages.
+- CI, exact-head review, acceptance criteria, and product release checks remain mandatory.
+
+### 14.5 Current verification state
+
+- Starimg's authenticated model catalog selected `claude-fable-5-2`; the implementer completed architect → implementer → internal reviewer handoffs and opened PR #409. The external Railway reviewer posted SHA-scoped PASS comments on smoke PR #408 and task PR #409.
+- Full GitHub Actions CI passed on exact runtime PR head `61a00b96bdb14721501aa55ba3f5e2db837c99ee`, including autonomous-agent tests, Python tests, frontend tests, Edge Functions, and build.
+- The queued Football Dynasty issue #394 was stopped after the configured two corrective retries: the generated patch for `services/football-dynasty/src/roster.rs` did not apply (line-context mismatch). No PR, production migration, or production data write was made; the failure marker prevents an automatic third retry.
+- The worker now falls back to exact full-file replacement when a bounded patch fails, formats changed Rust files, compiles/clippies locally where possible, and creates only a draft PR for exact-head GitHub Actions validation. The external reviewer waits for all GitHub Actions checks to pass before reviewing; failed or timed-out validation closes the draft PR.
+- Implementer cadence is 30 minutes to allow long generation and CI gates without overlapping task runs; external reviewer cadence remains five minutes.
+- The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR preview deployments are blocked by the free-plan daily deployment cap.
