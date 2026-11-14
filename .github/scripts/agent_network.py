@@ -223,33 +223,66 @@ def main():
     compact_task = "Issue #" + str(issue.get("number")) + "\n" + task
     fable_used = False
     try:
-        triage = ollama_role(
-            "triage / product analyst",
-            "Classify task. Return JSON: complexity (low|medium|high), summary, acceptance_criteria array, "
-            "risk_flags array, escalate_to_fable boolean.",
-            compact_task + "\nRelevant source:\n" + context, 450,
-        )
-        acceptance = triage.get("acceptance_criteria")
-        if not isinstance(acceptance, list) or not acceptance:
-            raise ValueError("triage did not define acceptance criteria")
-        architecture = ollama_role(
-            "solution architect",
-            "Design smallest complete implementation. Return JSON: steps array, target_files array, test_plan array, "
-            "risks array, escalate_to_fable boolean. Do not invent files absent from source.",
-            compact_task + "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) + "\nSource:\n" + context, 650,
-        )
-        if not isinstance(architecture.get("steps"), list) or not architecture["steps"]:
-            raise ValueError("architect returned no implementation steps")
-        test_strategy = ollama_role(
-            "test engineer / QA planner",
-            "Design regression coverage before implementation. Return JSON: regression_cases array, commands array, "
-            "test_files array, coverage_gaps array, escalate_to_fable boolean. Cases must be concrete and traceable "
-            "to supplied code. Never claim tests were executed.",
-            compact_task + "\\nTriage:\\n" + json.dumps(triage, ensure_ascii=False) +
-            "\\nArchitecture:\\n" + json.dumps(architecture, ensure_ascii=False) + "\\nSource:\\n" + context, 550,
-        )
-        if not isinstance(test_strategy.get("regression_cases"), list) or not test_strategy["regression_cases"]:
-            raise ValueError("QA planner returned no regression cases")
+        planning_error = ""
+        try:
+            triage = ollama_role(
+                "triage / product analyst",
+                "Classify task. Return JSON: complexity (low|medium|high), summary, acceptance_criteria array, "
+                "risk_flags array, escalate_to_fable boolean.",
+                compact_task + "\nRelevant source:\n" + context, 450,
+            )
+            acceptance = triage.get("acceptance_criteria")
+            if not isinstance(acceptance, list) or not acceptance:
+                raise ValueError("triage did not define acceptance criteria")
+        except (ValueError, OSError) as exc:
+            planning_error = "Qwen triage failed: " + str(exc)
+            triage = {"complexity": "high", "summary": task, "acceptance_criteria": [task],
+                      "risk_flags": ["triage-failure"], "escalate_to_fable": True}
+            acceptance = triage["acceptance_criteria"]
+
+        if planning_error:
+            architecture = {"steps": ["Senior Fable escalation required after Qwen triage failure"],
+                            "target_files": [], "test_plan": [], "risks": [planning_error],
+                            "escalate_to_fable": True}
+            test_strategy = {"regression_cases": ["Fable must derive cases from the task and source"],
+                             "commands": [], "test_files": [], "coverage_gaps": [planning_error],
+                             "escalate_to_fable": True}
+        else:
+            try:
+                architecture = ollama_role(
+                    "solution architect",
+                    "Design smallest complete implementation. Return JSON: steps array, target_files array, test_plan array, "
+                    "risks array, escalate_to_fable boolean. Do not invent files absent from source.",
+                    compact_task + "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) + "\nSource:\n" + context, 650,
+                )
+                if not isinstance(architecture.get("steps"), list) or not architecture["steps"]:
+                    raise ValueError("architect returned no implementation steps")
+            except (ValueError, OSError) as exc:
+                planning_error = "Qwen architecture failed: " + str(exc)
+                architecture = {"steps": ["Senior Fable escalation required after architecture failure"],
+                                "target_files": [], "test_plan": [], "risks": [planning_error],
+                                "escalate_to_fable": True}
+            if planning_error:
+                test_strategy = {"regression_cases": ["Fable must derive cases from the task and source"],
+                                 "commands": [], "test_files": [], "coverage_gaps": [planning_error],
+                                 "escalate_to_fable": True}
+            else:
+                try:
+                    test_strategy = ollama_role(
+                        "test engineer / QA planner",
+                        "Design regression coverage before implementation. Return JSON: regression_cases array, commands array, "
+                        "test_files array, coverage_gaps array, escalate_to_fable boolean. Cases must be concrete and traceable "
+                        "to supplied code. Never claim tests were executed.",
+                        compact_task + "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) +
+                        "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False) + "\nSource:\n" + context, 550,
+                    )
+                    if not isinstance(test_strategy.get("regression_cases"), list) or not test_strategy["regression_cases"]:
+                        raise ValueError("QA planner returned no regression cases")
+                except (ValueError, OSError) as exc:
+                    planning_error = "Qwen QA planning failed: " + str(exc)
+                    test_strategy = {"regression_cases": ["Fable must derive cases from the task and source"],
+                                     "commands": [], "test_files": [], "coverage_gaps": [planning_error],
+                                     "escalate_to_fable": True}
         hard_risk = (
             bool(triage.get("escalate_to_fable"))
             or bool(architecture.get("escalate_to_fable"))
@@ -290,15 +323,20 @@ def main():
                 fable_used = True
                 print("Fable 5.2 repaired Qwen implementation: " + ", ".join(changed))
         diff = current_diff()
-        review = ollama_role(
-            "independent code reviewer",
-            "Review actual diff against task and acceptance criteria. Return JSON: decision (approve|escalate|reject), "
-            "findings array, blocking_findings array, missing_tests array. Reject unrelated/unsafe/incomplete edits. "
-            "Never claim CI passed.",
-            compact_task + "\nAcceptance:\n" + json.dumps(acceptance, ensure_ascii=False) +
-            "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) + "\nArchitecture:\n" +
-            json.dumps(architecture, ensure_ascii=False) + "\nActual diff:\n" + diff, 650,
-        )
+        try:
+            review = ollama_role(
+                "independent code reviewer",
+                "Review actual diff against task and acceptance criteria. Return JSON: decision (approve|escalate|reject), "
+                "findings array, blocking_findings array, missing_tests array. Reject unrelated/unsafe/incomplete edits. "
+                "Never claim CI passed.",
+                compact_task + "\nAcceptance:\n" + json.dumps(acceptance, ensure_ascii=False) +
+                "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) + "\nArchitecture:\n" +
+                json.dumps(architecture, ensure_ascii=False) + "\nQA plan:\n" +
+                json.dumps(test_strategy, ensure_ascii=False) + "\nActual diff:\n" + diff, 650,
+            )
+        except (ValueError, OSError) as exc:
+            review = {"decision": "escalate", "blocking_findings": ["Qwen reviewer failed: " + str(exc)],
+                      "findings": [], "missing_tests": []}
         if review.get("decision") != "approve" or review.get("blocking_findings"):
             if fable_used:
                 raise EscalationError("Qwen reviewer still found blockers after the single Fable escalation: " + json.dumps(review, ensure_ascii=False))
