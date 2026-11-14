@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 import agent_network
@@ -22,12 +23,9 @@ class AgentNetworkTests(unittest.TestCase):
         self.assertIn("STARIMG_API_KEY is not configured", str(error.exception))
 
     def test_fable_402_is_not_retried_or_hidden(self):
-        class FakeHTTPError(Exception):
-            code = 402
-            def read(self, size=-1):
-                return b"Payment Required"
+        failure = urllib.error.HTTPError("https://ai.starimg.ru/v1/messages", 402, "Payment Required", {}, None)
         with patch.dict(os.environ, {"STARIMG_API_KEY": "test-only"}):
-            with patch("agent_network.urllib.request.urlopen", side_effect=FakeHTTPError()):
+            with patch("agent_network.urllib.request.urlopen", side_effect=failure):
                 with self.assertRaises(agent_network.EscalationError) as error:
                     agent_network.fable_role("task", "context", "review blocker")
         self.assertIn("HTTP 402", str(error.exception))
@@ -51,7 +49,7 @@ class AgentNetworkTests(unittest.TestCase):
         self.assertEqual(result["decision"], "stop")
         self.assertTrue(captured["url"].endswith("/v1/messages"))
         self.assertEqual(captured["body"]["model"], "claude-fable-5-2")
-        self.assertIn("x-api-key", captured["headers"])
+        self.assertIn("x-api-key", {key.lower() for key in captured["headers"]})
 
 if __name__ == "__main__":
     unittest.main()
