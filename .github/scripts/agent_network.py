@@ -39,7 +39,7 @@ def caveman_rules():
     return "Use concise reasoning and outputs. Preserve identifiers, paths, error messages, negations, contracts and code exactly."
 
 def ollama_role(role, system, user, max_tokens=900):
-    system = system + "\\n\\nToken-efficiency skill (Caveman):\\n" + caveman_rules()
+    system = system + "\n\nToken-efficiency skill (Caveman):\n" + caveman_rules()
     payload = {
         "model": MODEL, "stream": False, "format": "json",
         "messages": [
