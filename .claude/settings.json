@@ -6,10 +6,17 @@
         "source": "github",
         "repo": "spotify/portal-ai-plugins"
       }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
     }
   },
   "enabledPlugins": {
     "portal@portal": true,
-    "shunt@portal": false
+    "shunt@portal": false,
+    "caveman@caveman": true
   }
 }
