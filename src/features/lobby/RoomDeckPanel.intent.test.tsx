@@ -61,7 +61,7 @@ describe('AI deck intent in the room lobby', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
 
     const [leagueSelect, squadSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
@@ -133,7 +133,7 @@ describe('AI deck intent in the room lobby', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
     const [leagueSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
     fireEvent.change(leagueSelect, { target: { value: 'Premier League' } });
@@ -148,7 +148,7 @@ describe('AI deck intent in the room lobby', () => {
     const onChange = vi.fn();
     render(<RoomDeckPanel filter={{ categories: null }} count={12} isHost failed={false} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     fireEvent.change(screen.getByRole('textbox', { name: 'Запрос для колоды' }), {
       target: { value: 'Тренеры сборных' },
     });
@@ -179,7 +179,7 @@ describe('AI deck intent in the room lobby', () => {
     const onChange = vi.fn();
     render(<RoomDeckPanel filter={{ categories: null }} count={12} isHost failed={false} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     fireEvent.change(screen.getByRole('textbox', { name: 'Запрос для колоды' }), {
       target: { value: 'Один тренер' },
     });
@@ -194,7 +194,7 @@ describe('AI deck intent in the room lobby', () => {
     const onChange = vi.fn();
     render(<RoomDeckPanel filter={{ categories: null }} count={12} isHost failed={false} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /lobby\.deck_title/ }));
+    fireEvent.click(screen.getByText('lobby.deck_title').closest('button')!);
     fireEvent.change(screen.getByRole('textbox', { name: 'Запрос для колоды' }), {
       target: { value: 'Легенды Барселоны' },
     });
