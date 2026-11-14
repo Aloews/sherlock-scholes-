@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman",
+        "ref": "1e91f1306d602d4ca23618701b1185575ae1869b"
+      }
+    },
+    "spotify-portal": {
+      "source": "settings",
+      "name": "spotify-portal",
+      "plugins": [
+        {
+          "name": "portal",
+          "source": {
+            "source": "github",
+            "repo": "spotify/portal-ai-plugins",
+            "ref": "aa252eb21df5bbf32b0beb45f84a2c03341ccad8"
+          }
+        },
+        {
+          "name": "shunt",
+          "source": {
+            "source": "git-subdir",
+            "url": "https://github.com/spotify/portal-ai-plugins.git",
+            "path": "plugins/shunt",
+            "ref": "aa252eb21df5bbf32b0beb45f84a2c03341ccad8"
+          }
+        }
+      ]
+    }
+  },
+  "enabledPlugins": {
+    "caveman@caveman": true,
+    "portal@spotify-portal": true,
+    "shunt@spotify-portal": false
+  }
+}
