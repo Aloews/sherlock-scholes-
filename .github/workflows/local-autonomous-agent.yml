@@ -37,6 +37,20 @@ jobs:
           test -s "$CAVEMAN_DIR/skills/caveman/SKILL.md"
           echo "CAVEMAN_SKILL_PATH=$CAVEMAN_DIR/skills/caveman/SKILL.md" >> "$GITHUB_ENV"
 
+      - name: Index repository with codebase-memory-mcp
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes codebase-memory-mcp@0.12.1 cli --quiet index_repository --repo-path "$GITHUB_WORKSPACE" >/tmp/cbm-index.json
+          npx --yes codebase-memory-mcp@0.12.1 cli --quiet list_projects --format json >/tmp/cbm-projects.json
+          PROJECT="$(jq -r '.projects[0].name // empty' /tmp/cbm-projects.json)"
+          if [[ -n "$PROJECT" ]]; then
+            echo "CBM_PROJECT=$PROJECT" >> "$GITHUB_ENV"
+            echo "Indexed code graph: $PROJECT"
+          else
+            echo "::warning::codebase-memory-mcp indexed no discoverable project; agent will use bounded file context."
+          fi
+
       - name: Install local model runtime
         shell: bash
         run: |
@@ -59,10 +73,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Test local agent edit validation
+        run: python -m unittest .github.scripts.test_local_model_agent
+
       - name: Generate patch with local model
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          CAVEMAN_SKILL_PATH: ${{ github.workspace }}/.agents/skills/caveman/SKILL.md
         run: python .github/scripts/local_model_agent.py
 
       - name: Set up Node
