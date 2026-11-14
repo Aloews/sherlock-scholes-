@@ -295,3 +295,18 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+## 14. Autonomous engineering-agent network
+
+GitHub Actions is the supported fallback execution host when Railway agent execution is unavailable. The implementation is tracked in [PR #422](https://github.com/Aloews/sherlock-scholes-/pull/422); it is not active on the default branch until the PR is reviewed and merged.
+
+- **Qwen 2.5 Coder 3B / Ollama:** sequential specialist passes for triage, architecture, test planning, implementation, and independent code review. One shared working tree; no parallel writes.
+- **QA:** fixed checks (dependency install, typecheck, production build, unit tests, translation validation) with captured failure logs.
+- **Fable 5.2 / Starimg:** escalation for high-risk plans, repeated invalid Qwen edits, reviewer blockers, and failed CI. Fable changes are constrained by the same file/path validator and must pass the full quality gates.
+- **Caveman 4.1.0:** pinned skill supplied to Qwen prompts to reduce verbose reasoning without deleting code or contracts.
+- **Codebase Memory MCP 0.12.1:** indexed per GitHub Actions run; graph retrieval is optional and falls back to bounded source context.
+- **Spotify Portal:** marketplace registered and Portal plugin enabled in `.claude/settings.json` for Claude Code hosts. It is not loaded by the plain Ollama runner. Shunt remains disabled until its upstream PreToolUse hook response contract is corrected and tested.
+- **Fable credential:** workflow reads `STARIMG_API_KEY` from GitHub Actions secrets. A Railway-only key is not inherited. Missing key or Starimg HTTP 402 stops escalation without repeated calls.
+- **Delivery boundary:** agent opens a PR only after review and checks; no auto-merge, production migration, or deployment.
+
+The Railway `stream-service` agent previously failed with Starimg HTTP 402. Railway inspection is currently unavailable to this connection because its role lacks access; GitHub Actions is therefore the active implementation path in this PR. Do not dispatch additional tasks through the old default-branch workflow until this PR is reviewed and merged.

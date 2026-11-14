@@ -41,6 +41,26 @@ jobs:
           test -s "$CAVEMAN_DIR/skills/caveman/SKILL.md"
           echo "CAVEMAN_SKILL_PATH=$CAVEMAN_DIR/skills/caveman/SKILL.md" >> "$GITHUB_ENV"
 
+      - name: Index repository with codebase-memory-mcp
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npx --yes codebase-memory-mcp@0.12.1 cli --quiet index_repository --repo-path "$GITHUB_WORKSPACE" >/tmp/cbm-index.json; then
+            if npx --yes codebase-memory-mcp@0.12.1 cli --quiet list_projects --format json >/tmp/cbm-projects.json; then
+              PROJECT="$(jq -r '.projects[0].name // empty' /tmp/cbm-projects.json)"
+              if [[ -n "$PROJECT" ]]; then
+                echo "CBM_PROJECT=$PROJECT" >> "$GITHUB_ENV"
+                echo "Indexed code graph: $PROJECT"
+              else
+                echo "::warning::No codebase-memory project name found; using bounded file context."
+              fi
+            else
+              echo "::warning::Could not list codebase-memory projects; using bounded file context."
+            fi
+          else
+            echo "::warning::codebase-memory-mcp indexing failed; using bounded file context."
+          fi
+
       - name: Install local model runtime
         shell: bash
         run: |
@@ -63,11 +83,20 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate patch with local model
+      - name: Test agent network and patch safety
+        run: |
+          python -m py_compile .github/scripts/local_model_agent.py .github/scripts/agent_network.py .github/scripts/quality_gate.py .github/scripts/fable_ci_repair.py
+          python .github/scripts/test_local_model_agent.py
+          python .github/scripts/test_agent_network.py
+
+      - name: Run Qwen multi-role network
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python .github/scripts/local_model_agent.py
+          STARIMG_API_KEY: ${{ secrets.STARIMG_API_KEY }}
+          STARIMG_MODEL: claude-fable-5-2
+          STARIMG_BASE_URL: https://ai.starimg.ru
+        run: python .github/scripts/agent_network.py
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -75,20 +104,19 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Run deterministic quality gates
+        id: quality
+        continue-on-error: true
+        run: python .github/scripts/quality_gate.py
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Production build
-        run: npm run build
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Translation check
-        run: node scripts/check-i18n.mjs
+      - name: Escalate failed quality gates to Fable 5.2
+        if: steps.quality.outcome == 'failure'
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          STARIMG_API_KEY: ${{ secrets.STARIMG_API_KEY }}
+          STARIMG_MODEL: claude-fable-5-2
+          STARIMG_BASE_URL: https://ai.starimg.ru
+        run: python .github/scripts/fable_ci_repair.py
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7

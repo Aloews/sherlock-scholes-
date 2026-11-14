@@ -1,0 +1,31 @@
+name: Local agent script tests
+
+"on":
+  push:
+    branches:
+      - fix/local-agent-json-edits-cbm-20261114
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile all agent roles and gates
+        run: python -m py_compile .github/scripts/local_model_agent.py .github/scripts/agent_network.py .github/scripts/quality_gate.py .github/scripts/fable_ci_repair.py .github/scripts/test_local_model_agent.py .github/scripts/test_agent_network.py
+
+      - name: Test structured edit validation
+        run: python .github/scripts/test_local_model_agent.py
+
+      - name: Test Qwen role network and Fable escalation contract
+        run: python .github/scripts/test_agent_network.py
