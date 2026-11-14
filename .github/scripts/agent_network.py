@@ -56,7 +56,7 @@ def fable_role(task, context, reason, max_tokens=2200):
         "model": FABLE_MODEL, "max_tokens": max_tokens,
         "system": (
             "You are the senior escalation engineer. Diagnose the concrete failure and return ONLY one JSON object "
-            "with keys diagnosis, decision, changes. decision is fix or stop. changes must contain a changes array. "
+            "with keys diagnosis, decision, changes. decision is fix or stop. changes is a top-level array of file edits. "
             "Each item is either {operation:replace,path,old,new} with an exact unique source snippet, or "
             "{operation:create,path,content}. Use only src/, test/, tests/, scripts/, docs/, supabase/functions/, "
             "supabase/migrations/, football_scraper/, ml/. Never change workflows, manifests, lockfiles, secrets, "
@@ -148,6 +148,7 @@ def main():
         return 1
     context = task_context(task)
     compact_task = "Issue #" + str(issue.get("number")) + "\n" + task
+    fable_used = False
     try:
         triage = ollama_role(
             "triage / product analyst",
@@ -176,6 +177,7 @@ def main():
             if fable.get("decision") != "fix":
                 raise EscalationError("Fable decided to stop: " + str(fable.get("diagnosis", "insufficient evidence")))
             changed = apply_role_changes(fable)
+            fable_used = True
             print("Fable 5.2 supplied escalated implementation: " + ", ".join(changed))
         else:
             prompt = (
@@ -196,6 +198,7 @@ def main():
                 if fable.get("decision") != "fix":
                     raise EscalationError("Fable declined failed Qwen implementation: " + str(fable.get("diagnosis", "")))
                 changed = apply_role_changes(fable)
+                fable_used = True
                 print("Fable 5.2 repaired Qwen implementation: " + ", ".join(changed))
         diff = current_diff()
         review = ollama_role(
@@ -208,11 +211,14 @@ def main():
             json.dumps(architecture, ensure_ascii=False) + "\nActual diff:\n" + diff, 650,
         )
         if review.get("decision") != "approve" or review.get("blocking_findings"):
+            if fable_used:
+                raise EscalationError("Qwen reviewer still found blockers after the single Fable escalation: " + json.dumps(review, ensure_ascii=False))
             fable = fable_role(compact_task, context + "\nCurrent diff:\n" + diff,
                                "Qwen reviewer did not approve: " + json.dumps(review, ensure_ascii=False))
             if fable.get("decision") != "fix":
                 raise EscalationError("Fable could not resolve reviewer findings: " + str(fable.get("diagnosis", "")))
             changed = apply_role_changes(fable)
+            fable_used = True
             final_review = ollama_role(
                 "post-escalation reviewer",
                 "Review revised actual diff. Return JSON: decision (approve|reject), blocking_findings array. "
