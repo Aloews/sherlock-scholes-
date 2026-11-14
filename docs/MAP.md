@@ -342,6 +342,7 @@ This section is shared across the active project maps. It records installation a
 - When the Railway worker is unavailable, use a repository-owned GitHub Actions agent workflow only if that workflow exists, its trigger/permissions are verified, and the model/provider can be invoked successfully.
 - For Sherlock Scholes, `.github/workflows/local-autonomous-agent.yml` listens for an owner-authored issue comment beginning with `/ai ` and runs the local Qwen2.5-Coder 3B model on a GitHub-hosted runner. It is a separate fallback from Starimg/Fable, has a restricted patch allowlist, and must produce a draft PR with CI evidence. It is not Fable 5.2.
 - Do not assume another repository has this fallback: inspect its workflow and trigger before requesting work there.
+- Last fallback attempts for issues #418–#420 failed before tests because Qwen produced malformed unified diffs; no source files changed. The repair is tracked in draft PR #422, which switches to validated JSON edits, adds parser/safety tests and optional per-run codebase-memory graph context. Do not retry the same workflow until that PR's focused tests and CI pass.
 - No automatic merge or production deployment. Review the exact PR head, run required checks, and verify deployment separately.
 
 ### Installation status (2026-11-14)
