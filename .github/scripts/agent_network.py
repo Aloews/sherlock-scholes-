@@ -101,12 +101,34 @@ def fable_role(task, context, reason, max_tokens=2200):
         raise EscalationError("Fable returned no text content.")
     return parse_object(text)
 
+def codebase_graph_context(tokens):
+    project = os.environ.get("CBM_PROJECT", "").strip()
+    if not project:
+        return ""
+    terms = [t for t in sorted(tokens) if len(t) >= 4][:8]
+    if not terms:
+        return ""
+    pattern = "(?i).*(" + "|".join(re.escape(t) for t in terms) + ").*"
+    command = ["npx", "--yes", "codebase-memory-mcp@0.12.1", "cli", "--quiet",
+               "search_graph", "--project", project, "--name-pattern", pattern,
+               "--label", "Function", "--format", "json"]
+    try:
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=90)
+    except (OSError, subprocess.TimeoutExpired):
+        print("::warning::Codebase Memory graph lookup unavailable; using bounded file context.")
+        return ""
+    if result.returncode:
+        print("::warning::Codebase Memory graph lookup failed; using bounded file context.")
+        return ""
+    return result.stdout[:4500]
+
 def task_context(task):
     files = base.run(["git", "ls-files"]).stdout.splitlines()
+    tracked = set(files)
     tokens = set(re.findall(r"[a-zA-Z0-9_/-]{3,}", task.lower()))
     ranked = []
     for path in files:
-        if not base.allowed(path):
+        if not base.allowed(path, tracked):
             continue
         try:
             body = (ROOT / path).read_text(encoding="utf-8")
@@ -120,7 +142,11 @@ def task_context(task):
             score += 100
         ranked.append((score, path, body[:2400]))
     ranked.sort(reverse=True)
-    return "\n".join("\n--- FILE: " + p + " ---\n" + b for _, p, b in ranked[:5])[:MAX_CONTEXT_CHARS]
+    source_context = "\n".join("\n--- FILE: " + p + " ---\n" + b for _, p, b in ranked[:5])
+    graph = codebase_graph_context(tokens)
+    if graph:
+        source_context += "\n\nCodebase Memory MCP graph context (verify against source):\n" + graph
+    return source_context[:MAX_CONTEXT_CHARS]
 
 def current_diff():
     return subprocess.run(["git", "diff", "--no-ext-diff", "--unified=2"], cwd=ROOT,
@@ -128,9 +154,21 @@ def current_diff():
 
 def apply_role_changes(response):
     changes = response.get("changes")
-    if not isinstance(changes, list) or not changes:
-        raise ValueError("role did not provide non-empty changes")
-    return base.apply_changes(ROOT, changes)
+    if not isinstance(changes, list) or not changes or len(changes) > 8:
+        raise ValueError("role did not provide 1–8 file changes")
+    tracked = set(base.run(["git", "ls-files"]).stdout.splitlines())
+    edits = []
+    for change in changes:
+        if not isinstance(change, dict):
+            raise ValueError("file change must be an object")
+        operation = change.get("operation")
+        if operation == "replace":
+            edits.append({"path": change.get("path"), "old": change.get("old"), "new": change.get("new")})
+        elif operation == "create":
+            edits.append({"path": change.get("path"), "old": "", "new": change.get("content")})
+        else:
+            raise ValueError("unsupported edit operation: " + str(operation))
+    return base.apply_edits(edits, tracked)
 
 def implementer_system():
     return (
