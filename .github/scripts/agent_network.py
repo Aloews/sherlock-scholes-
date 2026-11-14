@@ -28,7 +28,18 @@ def parse_object(raw):
         raise ValueError("role response must be a JSON object")
     return result
 
+def caveman_rules():
+    candidates = [os.environ.get("CAVEMAN_SKILL_PATH", ""), str(ROOT / ".agents/skills/caveman/SKILL.md")]
+    for candidate in candidates:
+        if candidate:
+            try:
+                return Path(candidate).read_text(encoding="utf-8")[:4500]
+            except (OSError, UnicodeError):
+                continue
+    return "Use concise reasoning and outputs. Preserve identifiers, paths, error messages, negations, contracts and code exactly."
+
 def ollama_role(role, system, user, max_tokens=900):
+    system = system + "\\n\\nToken-efficiency skill (Caveman):\\n" + caveman_rules()
     payload = {
         "model": MODEL, "stream": False, "format": "json",
         "messages": [
