@@ -178,7 +178,21 @@ def main():
         )
         if not isinstance(architecture.get("steps"), list) or not architecture["steps"]:
             raise ValueError("architect returned no implementation steps")
-        hard_risk = bool(triage.get("escalate_to_fable")) or bool(architecture.get("escalate_to_fable"))
+        test_strategy = ollama_role(
+            "test engineer / QA planner",
+            "Design regression coverage before implementation. Return JSON: regression_cases array, commands array, "
+            "test_files array, coverage_gaps array, escalate_to_fable boolean. Cases must be concrete and traceable "
+            "to supplied code. Never claim tests were executed.",
+            compact_task + "\\nTriage:\\n" + json.dumps(triage, ensure_ascii=False) +
+            "\\nArchitecture:\\n" + json.dumps(architecture, ensure_ascii=False) + "\\nSource:\\n" + context, 550,
+        )
+        if not isinstance(test_strategy.get("regression_cases"), list) or not test_strategy["regression_cases"]:
+            raise ValueError("QA planner returned no regression cases")
+        hard_risk = (
+            bool(triage.get("escalate_to_fable"))
+            or bool(architecture.get("escalate_to_fable"))
+            or bool(test_strategy.get("escalate_to_fable"))
+        )
         if hard_risk:
             fable = fable_role(
                 compact_task, context + "\nTriage:\n" + json.dumps(triage, ensure_ascii=False) +
@@ -244,7 +258,7 @@ def main():
         changed_status = [line[3:] for line in status if len(line) > 3]
         if not changed_status or any(not base.allowed(p) for p in changed_status):
             raise ValueError("No valid changes or restricted path detected after role network.")
-        print("Agent roles: triage → architect → implementer → reviewer.")
+        print("Agent roles: triage → architect → test engineer → implementer → reviewer.")
         print("Qwen model: " + MODEL)
         print("Validated files: " + ", ".join(changed_status))
         return 0
