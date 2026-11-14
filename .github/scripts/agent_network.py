@@ -149,8 +149,22 @@ def task_context(task):
     return source_context[:MAX_CONTEXT_CHARS]
 
 def current_diff():
-    return subprocess.run(["git", "diff", "--no-ext-diff", "--unified=2"], cwd=ROOT,
-                          text=True, capture_output=True).stdout[-MAX_CONTEXT_CHARS:]
+    tracked_diff = subprocess.run(
+        ["git", "diff", "--no-ext-diff", "--unified=2"], cwd=ROOT, text=True, capture_output=True
+    ).stdout
+    untracked = base.run(["git", "ls-files", "--others", "--exclude-standard"]).stdout.splitlines()
+    additions = []
+    for path in untracked:
+        if not base.allowed(path, set()) or not isinstance(path, str):
+            continue
+        target = ROOT / path
+        try:
+            if target.is_file() and not target.is_symlink() and target.stat().st_size <= 100000:
+                content = target.read_text(encoding="utf-8")
+                additions.append("\\n--- NEW FILE: " + path + " ---\\n" + content[:10000])
+        except (OSError, UnicodeError):
+            continue
+    return (tracked_diff + "".join(additions))[-MAX_CONTEXT_CHARS:]
 
 def normalize_role_edits(response):
     direct = response.get("edits")
