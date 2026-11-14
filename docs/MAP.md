@@ -295,3 +295,11 @@ These are the next outcomes to prove—not a promise that work is already comple
 5. **Feature delivery cadence:** ship one complete, measurable user-facing vertical slice at a time; do not let infrastructure cleanup consume the entire release cycle.
 
 **Priority rule:** if a task does not improve a user journey, increase verified data coverage/freshness, improve measured prediction quality, or remove a demonstrated production blocker, it is not a top-priority task.
+
+
+## Verified issue work — 2026-11-14
+
+- Issue #418 root cause: the lobby's `RoomDeckPanel` built squad options from the full squad list, ignored the selected league filter, and changed the league without reconciling selected clubs. The deck picker filtered teams but did not share a canonical sort.
+- Fix in the current branch: one shared helper filters the union of selected canonical leagues, sorts by the fixed `DECK_LEAGUES` order and stable squad-name/key tie-breaks, and preserves only selected club keys still available. Both the lobby and deck picker use it.
+- Regression coverage: union and single-league filtering, stable ordering, stale persisted club cleanup, and preserving a valid selected club. Awaiting CI on PR #423.
+

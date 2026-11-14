@@ -10,7 +10,7 @@
 // and a wall of chips above the team grid gets in the way of that; the summary
 // line says what the deck is in one line, and the host opens it to change it.
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Chip } from '@/shared/ui/Chip';
 import { OptionRow } from '@/shared/ui/OptionRow';
@@ -19,6 +19,7 @@ import { getRawInitData, hapticImpact } from '@/shared/lib/telegram';
 import { supabase } from '@/shared/lib/supabase';
 import { parseAIResolvedDeck } from '@/features/decks/roomDeckIntent';
 import { fetchSquads, formatSquadAsOf, type Squad } from '@/features/game/squads';
+import { filterSquadsByLeagues, reconcileSquadSelection } from '@/features/game/squadFilters';
 import { isWholeDeck } from '@/features/room/roomDeck';
 import { IconChevronDown } from '@tabler/icons-react';
 import { VoicePromptButton } from '@/shared/ui/VoicePromptButton';
@@ -97,9 +98,13 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
   const { players, others } = readCategories(filter);
   const league = filter.leagues?.[0] ?? '';
   const club   = filter.clubs?.[0] ?? '';
+  const visibleSquads = useMemo(
+    () => filterSquadsByLeagues(squads, filter.leagues),
+    [squads, filter.leagues],
+  );
   const fame   = fameLevelOf(filter.fame_min);
 
-  const clubName = squads.find((s) => s.key === club)?.name ?? club;
+  const clubName = visibleSquads.find((s) => s.key === club)?.name ?? club;
   const leagueLabel = league ? t(`league.${league}`, { defaultValue: league }) : '';
 
   // ── The one-line summary ───────────────────────────────────────────
@@ -144,7 +149,27 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
   const pickClub = (key: string) =>
     patch({ clubs: key ? [key] : null, categories: key ? (['player'] as CardCategory[]) : filter.categories ?? null });
 
-  const pickLeague = (lg: string) => patch({ leagues: lg ? [lg] : null });
+  const pickLeague = (lg: string) => {
+    const nextLeagues = lg ? [lg] : [];
+    const nextSquads = filterSquadsByLeagues(squads, nextLeagues);
+    const nextClubs = squads.length
+      ? reconcileSquadSelection(filter.clubs, nextSquads)
+      : (filter.clubs ?? []);
+    patch({
+      leagues: nextLeagues.length ? nextLeagues : null,
+      clubs: nextClubs.length ? nextClubs : null,
+    });
+  };
+
+  // A room can be opened with a persisted filter created by another client or
+  // an AI deck. Reconcile it once the canonical squad list is available.
+  useEffect(() => {
+    if (!squads.length || !filter.clubs?.length) return;
+    const nextClubs = reconcileSquadSelection(filter.clubs, visibleSquads);
+    if (nextClubs.length !== filter.clubs.length) {
+      onChange({ ...filter, clubs: nextClubs.length ? nextClubs : null });
+    }
+  }, [squads, filter, visibleSquads, onChange]);
 
   const nothingSelected = Array.isArray(filter.categories) && filter.categories.length === 0;
 
@@ -309,7 +334,7 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
                   label={t('home.filter_all_squads')}
                   value={club}
                   onChange={pickClub}
-                  options={squads.map((s) => ({ value: s.key, label: `${s.name} · ${s.players}` }))}
+                  options={visibleSquads.map((s) => ({ value: s.key, label: `${s.name} · ${s.players}` }))}
                 />
               )}
               {/* Says how old this is, every time — the squad is the club a
@@ -319,7 +344,7 @@ export function RoomDeckPanel({ filter, count, isHost, failed, onChange }: Props
                 <p className="text-[10.5px] text-brand-muted px-1">
                   {t('home.squad_as_of', {
                     date: formatSquadAsOf(
-                      squads.find((s) => s.key === club)?.asOf ?? null,
+                      visibleSquads.find((s) => s.key === club)?.asOf ?? null,
                       i18n.language,
                     ),
                   })}
