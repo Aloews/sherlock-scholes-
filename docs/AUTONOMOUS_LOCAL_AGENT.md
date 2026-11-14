@@ -8,10 +8,11 @@ The GitHub Actions workflow runs on an ephemeral GitHub-hosted runner. It does n
 
 1. **Triage / product analyst — Qwen 2.5 Coder 3B.** Converts the issue into acceptance criteria, identifies risk flags, and decides whether senior escalation is needed.
 2. **Solution architect — Qwen 2.5 Coder 3B.** Produces a minimal implementation plan, target files, risks, and a test plan.
-3. **Implementer — Qwen 2.5 Coder 3B.** Returns bounded JSON file edits, never a unified diff. Exact source snippets must match once before any write.
-4. **Independent reviewer — Qwen 2.5 Coder 3B.** Reviews the actual Git diff against acceptance criteria and can block the PR.
-5. **QA — deterministic GitHub Actions commands.** Runs dependency installation, typecheck, production build, unit tests, and translation validation.
-6. **Senior escalation — Fable 5.2 through Starimg.** Invoked only for high-risk architecture, two failed Qwen edit attempts, a reviewer rejection, or failed deterministic quality gates. Fable receives the actual failure evidence and bounded source context, returns structured edits, and must pass the same checks. A post-Fable Qwen review is required for reviewer-triggered escalation.
+3. **Test engineer / QA planner — Qwen 2.5 Coder 3B.** Produces regression cases, commands, test files, and coverage gaps before code is written.
+4. **Implementer — Qwen 2.5 Coder 3B.** Returns bounded JSON file edits, never a unified diff. Exact source snippets must match once before any write.
+5. **Independent reviewer — Qwen 2.5 Coder 3B.** Reviews the actual Git diff against acceptance criteria and can block the PR.
+6. **QA — deterministic GitHub Actions commands.** Runs dependency installation, typecheck, production build, unit tests, and translation validation.
+7. **Senior escalation — Fable 5.2 through Starimg.** Invoked only for high-risk architecture, two failed Qwen edit attempts, a reviewer rejection, or failed deterministic quality gates. Fable receives the actual failure evidence and bounded source context, returns structured edits, and must pass the same checks. A post-Fable Qwen review is required for reviewer-triggered escalation.
 
 Qwen role passes are sequential to avoid conflicting edits. Their token limits are bounded. The workflow does not retry the same failed provider request indefinitely.
 
