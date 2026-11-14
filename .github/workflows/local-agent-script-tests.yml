@@ -1,0 +1,28 @@
+name: Local agent script tests
+
+"on":
+  push:
+    branches:
+      - fix/local-agent-json-edits-cbm-20261114
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile agent
+        run: python -m py_compile .github/scripts/local_model_agent.py .github/scripts/test_local_model_agent.py
+
+      - name: Run parser and safety tests
+        run: python .github/scripts/test_local_model_agent.py
