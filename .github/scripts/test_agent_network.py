@@ -1,8 +1,10 @@
 import io
 import json
 import os
+import tempfile
 import unittest
 import urllib.error
+from pathlib import Path
 from unittest.mock import patch
 
 import agent_network
@@ -22,6 +24,15 @@ class AgentNetworkTests(unittest.TestCase):
         fable = {"changes": [{"operation": "replace", "path": "src/a.py", "old": "a", "new": "b"}]}
         self.assertEqual(agent_network.normalize_role_edits(qwen), [{"path": "src/a.py", "old": "a", "new": "b"}])
         self.assertEqual(agent_network.normalize_role_edits(fable), [{"path": "src/a.py", "old": "a", "new": "b"}])
+
+    def test_rejects_symlink_parent_escape(self):
+        with tempfile.TemporaryDirectory() as temp, tempfile.TemporaryDirectory() as outside:
+            root = Path(temp)
+            (root / "src").mkdir()
+            (root / "src/link").symlink_to(Path(outside), target_is_directory=True)
+            with patch.object(agent_network, "ROOT", root):
+                with self.assertRaises(ValueError):
+                    agent_network.validate_edit_paths([{"path": "src/link/escape.py"}], set())
 
     def test_fable_requires_configured_secret(self):
         with patch.dict(os.environ, {"STARIMG_API_KEY": ""}):
