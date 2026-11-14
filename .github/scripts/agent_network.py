@@ -161,7 +161,7 @@ def current_diff():
         try:
             if target.is_file() and not target.is_symlink() and target.stat().st_size <= 100000:
                 content = target.read_text(encoding="utf-8")
-                additions.append("\\n--- NEW FILE: " + path + " ---\\n" + content[:10000])
+                additions.append("\n--- NEW FILE: " + path + " ---\n" + content[:10000])
         except (OSError, UnicodeError):
             continue
     return (tracked_diff + "".join(additions))[-MAX_CONTEXT_CHARS:]
