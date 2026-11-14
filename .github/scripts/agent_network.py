@@ -174,9 +174,20 @@ def normalize_role_edits(response):
             raise ValueError("unsupported edit operation: " + str(operation))
     return edits
 
+def validate_edit_paths(edits, tracked):
+    root = ROOT.resolve()
+    for edit in edits:
+        path = edit.get("path") if isinstance(edit, dict) else None
+        if not isinstance(path, str) or not base.allowed(path, tracked):
+            raise ValueError("role edit path is outside the source allowlist")
+        target = ROOT / path
+        if target.is_symlink() or not target.resolve(strict=False).is_relative_to(root):
+            raise ValueError("role edit path escapes repository through a symlink")
+
 def apply_role_changes(response):
     tracked = set(base.run(["git", "ls-files"]).stdout.splitlines())
     edits = normalize_role_edits(response)
+    validate_edit_paths(edits, tracked)
     changed = base.apply_edits(edits, tracked)
     check = base.run(["git", "diff", "--check"], check=False)
     if check.returncode:
