@@ -1,4 +1,6 @@
 
+
+[Project execution map](./docs/MAP.md) — current product architecture, delivery priorities and agent-toolchain status.
 # SHERLOCK SCHOLES
 
 Telegram Mini App football Alias game.
