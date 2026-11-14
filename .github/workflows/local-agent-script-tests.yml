@@ -25,5 +25,6 @@ jobs:
         run: python -m py_compile .github/scripts/local_model_agent.py .github/scripts/agent_network.py .github/scripts/quality_gate.py .github/scripts/fable_ci_repair.py .github/scripts/test_agent_network.py
 
       - name: Run parser and safety tests
-        run: python .github/scripts/test_local_model_agent.py
+        run: |
+          python .github/scripts/test_local_model_agent.py
           python .github/scripts/test_agent_network.py
