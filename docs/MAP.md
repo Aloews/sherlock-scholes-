@@ -348,7 +348,7 @@ This section is shared across the active project maps. It records installation a
 
 | Integration | Repository documentation | Active runtime installation |
 |---|---|---|
-| Caveman | Project skill at `.agents/skills/caveman/SKILL.md` | Included in this PR; runtime discovery/activation not yet verified |
+| Caveman | Project skills at `.agents/skills/caveman/` and `.claude/skills/caveman/` | Included in this PR; host discovery/activation not yet verified |
 | codebase-memory-mcp | Recorded here | Not verified; no persistent supported host indexed |
 | Spotify Portal / shunt | Recorded here | Not verified; Portal authentication and AiKA readiness not established |
 
