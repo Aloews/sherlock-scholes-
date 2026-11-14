@@ -172,10 +172,10 @@ def apply_role_changes(response):
 
 def implementer_system():
     return (
-        "Return ONLY a JSON object with a changes array. Each item is either "
-        "{\"operation\":\"replace\",\"path\":\"src/file.ts\",\"old\":\"exact unique existing text\",\"new\":\"replacement\"} "
-        "or {\"operation\":\"create\",\"path\":\"src/new-file.ts\",\"content\":\"complete file text\"}. "
-        "Never return a unified diff, markdown, explanation, delete, or more than 8 changes. "
+        "Return ONLY a JSON object with an edits array. Each item has path, old, new. "
+        "For an existing file, old is an exact unique snippet and new is its replacement. "
+        "For a new file, old is empty and new is the complete file content. "
+        "Never return a unified diff, markdown, explanation, delete, or more than 8 edits. "
         "Use exact snippets from supplied context. Do not edit workflows, manifests, lockfiles, secrets, deployment "
         "settings, or files outside the path allowlist. Keep edits minimal and include regression tests."
     )
