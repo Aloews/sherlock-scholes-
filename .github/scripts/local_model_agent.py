@@ -41,8 +41,7 @@ def allowed(path, tracked):
 def run(args, check=True):
     return subprocess.run(args, cwd=ROOT, check=check, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def apply_edits(edits, tracked, root=None):
-    root = Path(root or ROOT).resolve()
+def apply_edits(edits, tracked):
     if not isinstance(edits, list) or not edits or len(edits) > 8:
         raise ValueError("model returned no edits or exceeded the edit limit")
     staged = {}
@@ -54,9 +53,10 @@ def apply_edits(edits, tracked, root=None):
             raise ValueError("edit is missing path, old or new text")
         if not allowed(path, tracked):
             raise ValueError("edit path is outside the source allowlist")
-        target = root / path
-        if target.is_symlink():
-            raise ValueError("symbolic-link edits are not permitted")
+        target = ROOT / path
+        resolved = target.resolve(strict=False)
+        if not resolved.is_relative_to(ROOT) or target.is_symlink():
+            raise ValueError("edit path escapes repository or targets a symbolic link")
         if path in staged:
             current = staged[path]
         elif target.exists():
@@ -83,15 +83,6 @@ def apply_edits(edits, tracked, root=None):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
     return sorted(staged)
-
-def parse_edits(answer):
-    try:
-        payload = json.loads(answer)
-    except json.JSONDecodeError as exc:
-        raise ValueError("model response is not valid JSON") from exc
-    if not isinstance(payload, dict) or not isinstance(payload.get("edits"), list):
-        raise ValueError("expected JSON object with an edits array")
-    return payload["edits"]
 
 def main():
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
@@ -159,8 +150,8 @@ def main():
         with urllib.request.urlopen(request, timeout=900) as response:
             answer = json.loads(response.read())["message"]["content"]
         try:
-            edits = parse_edits(answer)
-            apply_edits(edits, tracked)
+            data = json.loads(answer)
+            apply_edits(data.get("edits"), tracked)
             break
         except (ValueError, OSError, UnicodeError, json.JSONDecodeError) as exc:
             error = str(exc)[:1000]
