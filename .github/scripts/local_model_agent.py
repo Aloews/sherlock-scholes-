@@ -58,7 +58,7 @@ def parse_edits(answer):
     return payload["changes"]
 
 
-def apply_changes(root, changes):
+def apply_changes(root, changes, run_git_check=True):
     if not isinstance(changes, list) or not 1 <= len(changes) <= MAX_FILES:
         raise ValueError("expected 1–8 file changes")
     root = Path(root).resolve()
@@ -98,6 +98,8 @@ def apply_changes(root, changes):
             content = change.get("content")
             if target.exists() or not isinstance(content, str) or not content.strip():
                 raise ValueError("create requires a new path and non-empty content: " + name)
+            if any(line.endswith((" ", "\\t")) for line in content.splitlines()):
+                raise ValueError("new file contains trailing whitespace: " + name)
             original = None
             updated = content.encode("utf-8")
         else:
@@ -111,14 +113,15 @@ def apply_changes(root, changes):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(updated)
 
-    check = subprocess.run(["git", "diff", "--check"], cwd=root, text=True, capture_output=True)
-    if check.returncode:
-        for target, original, updated, name in plans:
-            if original is None:
-                target.unlink(missing_ok=True)
-            else:
-                target.write_bytes(original)
-        raise ValueError("git diff --check failed: " + check.stderr[-1000:])
+    if run_git_check:
+        check = subprocess.run(["git", "diff", "--check"], cwd=root, text=True, capture_output=True)
+        if check.returncode:
+            for target, original, updated, name in plans:
+                if original is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    target.write_bytes(original)
+            raise ValueError("git diff --check failed: " + check.stderr[-1000:])
     return [name for _, _, _, name in plans]
 
 
