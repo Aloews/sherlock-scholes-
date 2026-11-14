@@ -41,7 +41,8 @@ def allowed(path, tracked):
 def run(args, check=True):
     return subprocess.run(args, cwd=ROOT, check=check, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def apply_edits(edits, tracked):
+def apply_edits(edits, tracked, root=None):
+    root = Path(root or ROOT).resolve()
     if not isinstance(edits, list) or not edits or len(edits) > 8:
         raise ValueError("model returned no edits or exceeded the edit limit")
     staged = {}
@@ -53,9 +54,9 @@ def apply_edits(edits, tracked):
             raise ValueError("edit is missing path, old or new text")
         if not allowed(path, tracked):
             raise ValueError("edit path is outside the source allowlist")
-        target = ROOT / path
+        target = root / path
         resolved = target.resolve(strict=False)
-        if not resolved.is_relative_to(ROOT) or target.is_symlink():
+        if not resolved.is_relative_to(root) or target.is_symlink():
             raise ValueError("edit path escapes repository or targets a symbolic link")
         if path in staged:
             current = staged[path]
