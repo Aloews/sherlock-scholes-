@@ -10,7 +10,7 @@ permissions:
   issues: read
 
 concurrency:
-  group: sherlock-qwen-role-network
+  group: local-ai-agent-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
