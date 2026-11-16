@@ -1451,5 +1451,26 @@
     "sandbox": "沙盒",
     "scenario": "剧情模式",
     "accounts": "账户"
+  },
+  "machiavelli": {
+    "eyebrow": "权力与治理课堂",
+    "title": "领导力的18项原则",
+    "subtitle": "通过俱乐部与家族经营中的决策学习马基雅维利的思维方式。每个选择都会产生后果；分数衡量战略判断，而非道德价值。",
+    "progress": "学习进度",
+    "principle": "原则",
+    "completed": "已完成",
+    "locked": "未解锁",
+    "loading": "正在加载…",
+    "error": "无法加载进度或保存决定，请重试。",
+    "finishedTitle": "课程完成",
+    "finishedText": "你已学习18项政治思维理念。请将它们用于分析环境与后果，而不是视为放之四海而皆准的公式。",
+    "totalScore": "战略评分",
+    "scenario": "俱乐部情境",
+    "choose": "你会怎么做？",
+    "yourDecision": "你的决定",
+    "score": "得分",
+    "takeaway": "核心启示",
+    "submit": "确认决定",
+    "scoreMeaning": "0–2分衡量战略判断，不评价道德价值。"
   }
 }
