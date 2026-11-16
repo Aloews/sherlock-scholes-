@@ -326,6 +326,16 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         other_state,
         "http://localhost:5173".parse().expect("origin"),
     );
+
+    let (other_doctrine_status, _) = call(
+        other_app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/doctrine"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(other_doctrine_status, StatusCode::NOT_FOUND);
     let (other_owner_status, _) = call(
         other_app,
         "GET",
