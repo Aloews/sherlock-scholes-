@@ -90,6 +90,7 @@ export interface DoctrineAnswerResult {
   principle_id: number;
   choice_id: 'a' | 'b' | 'c';
   score: number;
+  completed_at: string;
   completed_count: number;
   total_principles: number;
   unlocked_principle_id: number | null;
