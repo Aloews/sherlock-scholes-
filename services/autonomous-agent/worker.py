@@ -1388,7 +1388,9 @@ class Worker:
     def __init__(self, repo: str | None = None) -> None:
         configured = [item.strip() for item in os.environ.get("GITHUB_REPOSITORIES", "").split(",") if item.strip()]
         selected = repo or (configured[0] if configured else required_env("GITHUB_REPOSITORY"))
-        if configured and selected not in configured:
+        if configured and selected not in configured and not (
+            ush_execution_scope_enabled() and selected == USH_REPOSITORY
+        ):
             raise RuntimeError(f"Repository is not configured in GITHUB_REPOSITORIES: {selected}")
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", selected):
             raise RuntimeError("Invalid GitHub repository identifier")
@@ -1411,8 +1413,26 @@ class Worker:
         default_branch = str(repo.get("default_branch", "")).strip()
         if not default_branch or not re.fullmatch(r"[A-Za-z0-9._/-]+", default_branch) or ".." in default_branch.split("/"):
             raise RuntimeError(f"GitHub did not return a safe default branch for {self.repo}")
-        self.default_branch = default_branch
-        LOG.info("GitHub repository access verified for %s (default branch=%s)", self.repo, self.default_branch)
+        if ush_execution_scope_enabled():
+            target_branch = required_env("USH_BASE_BRANCH")
+            if (
+                not re.fullmatch(r"[A-Za-z0-9._/-]+", target_branch)
+                or target_branch.startswith("/")
+                or ".." in target_branch.split("/")
+            ):
+                raise RuntimeError("USH_BASE_BRANCH is not a safe branch name")
+            branch_info = request_json(
+                api_url(f"/repos/{self.repo}/branches/{urllib.parse.quote(target_branch, safe='')}"),
+                self.token,
+            )
+            target_sha = str((branch_info.get("commit") or {}).get("sha", ""))
+            if not re.fullmatch(r"[0-9a-fA-F]{40}", target_sha):
+                raise RuntimeError("USH_BASE_BRANCH did not resolve to an immutable commit SHA")
+            self.default_branch = target_branch
+            LOG.info("USH adapter base branch verified: %s at %s", target_branch, target_sha)
+        else:
+            self.default_branch = default_branch
+        LOG.info("GitHub repository access verified for %s (working base=%s)", self.repo, self.default_branch)
         LOG.info("Starimg credentials will be validated only when a task is available")
 
     def _recent_comments(self) -> list[dict[str, Any]]:
