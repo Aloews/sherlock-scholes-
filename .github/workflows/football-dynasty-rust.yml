@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
       - "supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql"
       - "supabase/migrations/20261116110000_football_dynasty_machiavellian_doctrine.sql"
+      - "supabase/tests/football_dynasty_rls.test.sql"
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
