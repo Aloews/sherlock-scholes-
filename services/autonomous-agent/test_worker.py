@@ -167,6 +167,18 @@ class WorkerPolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "USH_BASE_BRANCH"):
                     worker._preflight()
 
+    def test_ush_nested_agent_instructions_are_loaded_read_only(self):
+        from worker import rank_context
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            instructions = root / "universal-service-hub" / "AGENTS.md"
+            instructions.parent.mkdir(parents=True)
+            instructions.write_text("USH_ADAPTER_INSTRUCTIONS_MARKER\\n", encoding="utf-8")
+            with patch("worker.run_command", return_value="universal-service-hub/AGENTS.md\\n"):
+                context = rank_context(root, "Implement USH queue", ("universal-service-hub/src/",))
+        self.assertIn("USH_ADAPTER_INSTRUCTIONS_MARKER", context)
+
     def test_subprocess_environment_excludes_all_service_secrets(self):
         with patch.dict(os.environ, {
             "SUPABASE_DB_URL": "postgresql://secret",
