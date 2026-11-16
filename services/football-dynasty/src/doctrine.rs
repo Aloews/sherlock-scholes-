@@ -125,7 +125,7 @@ async fn submit_answer(
     .await?
     {
         tx.rollback().await?;
-        return Ok((StatusCode::OK, replay(value)?.0));
+        return Ok((StatusCode::OK, replay(value)?));
     }
 
     let current_year: i32 = sqlx::query_scalar(
