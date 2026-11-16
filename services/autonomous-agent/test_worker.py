@@ -807,6 +807,7 @@ async fn another_test() {}
         worker.starimg_base = "https://ai.starimg.ru/v1"
         worker.starimg_key = "test-key"
         worker.model = "claude-fable-5-1"
+        worker.models = ["claude-fable-5-1"]
         target_path = "services/football-dynasty/tests/campaign_lifecycle.rs"
         original = "use std::sync::Arc;\n\nasync fn existing_helper() {}\n"
         append_block = "#[tokio::test]\nasync fn appended_regression_test() {}\n"
