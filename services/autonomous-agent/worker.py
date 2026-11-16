@@ -37,7 +37,16 @@ DEFAULT_ALLOWED_PREFIXES = (
 REPO_ALLOWED_PREFIXES = {
     "Aloews/sherlock-scholes-": DEFAULT_ALLOWED_PREFIXES,
     "Aloews/first-traffic-platform": ("src/", "test/", "tests/", "scripts/", "docs/", "api/", "server/", "backend/"),
-    "Aloews/russian-dev-projects": ("pages/", "docs/", "scripts/"),
+    "Aloews/russian-dev-projects": (
+        "pages/", "docs/", "scripts/",
+        "universal-service-hub/src/",
+        "universal-service-hub/rust-migrations/",
+        "universal-service-hub/tests/",
+        "universal-service-hub/docs/",
+        "universal-service-hub/Cargo.toml",
+        "universal-service-hub/Dockerfile",
+        "universal-service-hub/README.md",
+    ),
     "Aloews/full": ("app/", "components/", "public/", "services/platform-api/", "tests/", "test/", "docs/", "Cargo.toml", "services/platform-api/Cargo.toml"),
     "Aloews/sherlock-tv": ("src/", "test/", "tests/", "scripts/", "docs/"),
     "Aloews/sherlock-ai-bot": ("api/", "src/", "test/", "tests/", "scripts/", "docs/"),
