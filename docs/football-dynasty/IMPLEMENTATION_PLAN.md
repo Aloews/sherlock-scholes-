@@ -22,7 +22,7 @@ The feature branch adds the first educational vertical slice without claiming th
 - Academy integrated into the existing campaign screen; interface labels in all nine locales.
 - Rust unit/integration tests and frontend curriculum/locale tests.
 
-**Release state:** feature branch only. Exact-head CI, PR review, production migration 0005_machiavellian_doctrine.sql, deployment and real Telegram Mini App persistence/owner-isolation smoke tests remain release gates. Do not apply the migration to production before the PR has been reviewed and the exact-head checks pass.
+**Release state:** feature branch only. Exact-head CI, PR review, production Supabase migration 20261116110000_football_dynasty_machiavellian_doctrine.sql (mirrored by SQLx migration 0005_machiavellian_doctrine.sql), deployment and real Telegram Mini App persistence/owner-isolation smoke tests remain release gates. Do not apply the migration to production before the PR has been reviewed and the exact-head checks pass.
 
 ## Release sequence
 
