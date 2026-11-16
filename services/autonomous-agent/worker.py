@@ -491,10 +491,16 @@ def starimg_anthropic_stream_completion(base: str, key: str,
 
 
 
-def choose_model_candidates(base: str, key: str) -> list[str]:
-    explicit = os.environ.get("STARIMG_MODEL", "").strip()
+def choose_model_candidates(base: str, key: str, role: str | None = None) -> list[str]:
+    role = (role or os.environ.get("AGENT_ROLE", "implementer")).strip().lower()
+    role_key = role.upper()
+    explicit = (
+        os.environ.get(f"STARIMG_MODEL_{role_key}", "").strip()
+        or os.environ.get("STARIMG_MODEL", "").strip()
+    )
+    role_fallbacks = os.environ.get(f"STARIMG_FALLBACK_MODELS_{role_key}", "").strip()
     configured_fallbacks = [
-        item.strip() for item in os.environ.get("STARIMG_FALLBACK_MODELS", "").split(",")
+        item.strip() for item in (role_fallbacks or os.environ.get("STARIMG_FALLBACK_MODELS", "")).split(",")
         if item.strip()
     ]
     catalog = starimg_request(base, key, "/models", timeout=30)
@@ -545,8 +551,8 @@ def choose_model_candidates(base: str, key: str) -> list[str]:
     return ordered
 
 
-def choose_model(base: str, key: str) -> str:
-    return choose_model_candidates(base, key)[0]
+def choose_model(base: str, key: str, role: str | None = None) -> str:
+    return choose_model_candidates(base, key, role)[0]
 
 
 def model_for_attempt(candidates: list[str], attempt: int) -> str:
@@ -1446,6 +1452,7 @@ class Worker:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", selected):
             raise RuntimeError("Invalid GitHub repository identifier")
         self.repo = selected
+        self.role = os.environ.get("AGENT_ROLE", "implementer").strip().lower()
         self.allowed_prefixes = allowed_prefixes_for_repo(self.repo)
         self.owner, _ = self.repo.split("/", 1)
         self.token = required_env("GITHUB_TOKEN")
@@ -1868,7 +1875,7 @@ class Worker:
             run_command(["git", "checkout", "-b", branch], temp)
             context = rank_context(temp, task, self.allowed_prefixes)
             if not self.models:
-                self.models = choose_model_candidates(self.starimg_base, self.starimg_key)
+                self.models = choose_model_candidates(self.starimg_base, self.starimg_key, self.role)
             if self.model is None:
                 self.model = self.models[0]
                 LOG.info("Starimg model discovery succeeded (primary=%s; candidates=%s)", self.model, len(self.models))
