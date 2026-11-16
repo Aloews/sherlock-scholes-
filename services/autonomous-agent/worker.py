@@ -1728,7 +1728,7 @@ class Worker:
         validation_error = ""
         for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
             self.model = model_for_attempt(self.models, attempt)
-            attempt_task = append_task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+            attempt_task = append_task + "\n\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
             LOG.info("Task %s append-test attempt=%s model=%s strategy=%s", comment_id, attempt, self.model, retry_strategy_for_attempt(attempt))
             answer = ""
             try:
@@ -1912,7 +1912,7 @@ class Worker:
                     applied = False
                     for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
                         self.model = model_for_attempt(self.models, attempt)
-                        attempt_file_task = file_task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+                        attempt_file_task = file_task + "\n\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
                         LOG.info("Task %s file=%s attempt=%s model=%s strategy=%s", comment_id, target_path, attempt, self.model, retry_strategy_for_attempt(attempt))
                         answer, usage = ask_starimg(
                             self.starimg_base, self.starimg_key, self.model,
@@ -2040,7 +2040,7 @@ class Worker:
                 validation_error = ""
                 for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
                     self.model = model_for_attempt(self.models, attempt)
-                    attempt_task = task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+                    attempt_task = task + "\n\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
                     LOG.info("Task %s implementation attempt=%s model=%s strategy=%s", comment_id, attempt, self.model, retry_strategy_for_attempt(attempt))
                     answer, usage = ask_starimg(
                         self.starimg_base, self.starimg_key, self.model,
