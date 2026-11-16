@@ -52,10 +52,12 @@ All campaign routes require:
 - `POST /api/v1/campaigns/{campaign_id}/advance`
 - `GET /api/v1/campaigns/{campaign_id}/succession/preview`
 - `POST /api/v1/campaigns/{campaign_id}/succession`
+- `GET /api/v1/campaigns/{campaign_id}/doctrine`
+- `POST /api/v1/campaigns/{campaign_id}/doctrine/{principle_id}/answer`
 
 ## First playable lifecycle
 
-Create a campaign (founder age 40, one fictional club, family holding and balanced opening ledger), add an heir, advance in bounded 1–10 year steps, reach the founder's deterministic age-90 death, preview eligible adult heirs, execute succession atomically, and continue as the heir. The chronicle and ledger survive service restarts because they are stored in PostgreSQL.
+Create a campaign (founder age 40, one fictional club, family holding and balanced opening ledger), add an heir, advance in bounded 1–10 year steps, reach the founder's deterministic age-90 death, preview eligible adult heirs, execute succession atomically, and continue as the heir. Each campaign also includes an 18-lesson Machiavellian strategic-doctrine course; answers, scores and unlocks persist in PostgreSQL and are recorded in the chronicle.
 
 ## Verification
 
