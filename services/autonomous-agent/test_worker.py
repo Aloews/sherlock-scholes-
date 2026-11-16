@@ -913,6 +913,26 @@ async fn another_test() {}
         self.assertNotEqual(retry_strategy_for_attempt(1), retry_strategy_for_attempt(2))
         self.assertNotEqual(retry_strategy_for_attempt(2), retry_strategy_for_attempt(3))
 
+    def test_starimg_router_uses_role_specific_model_order(self):
+        from worker import choose_model_candidates
+
+        catalog = {"data": [
+            {"id": "qwen3-coder"},
+            {"id": "claude-sonnet-5.5"},
+            {"id": "deepseek-coder"},
+        ]}
+        with patch.dict(os.environ, {
+            "STARIMG_MODEL": "qwen3-coder",
+            "STARIMG_FALLBACK_MODELS": "deepseek-coder",
+            "STARIMG_MODEL_REVIEWER": "claude-sonnet-5.5",
+            "STARIMG_FALLBACK_MODELS_REVIEWER": "qwen3-coder",
+        }):
+            with patch("worker.starimg_request", return_value=catalog):
+                candidates = choose_model_candidates(
+                    "https://ai.starimg.ru/v1", "test-key", role="reviewer"
+                )
+        self.assertEqual(candidates[0:2], ["claude-sonnet-5.5", "qwen3-coder"])
+
     def test_starimg_router_rejects_unavailable_fallback_model(self):
         from worker import choose_model_candidates
 
