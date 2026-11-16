@@ -133,6 +133,91 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(status, StatusCode::CREATED);
     let campaign_id = created["id"].as_str().expect("campaign id");
+
+    // Doctrine progress is campaign-scoped, sequential, persistent and idempotent.
+    let (doctrine_status, initial_doctrine) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/doctrine"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(doctrine_status, StatusCode::OK);
+    assert_eq!(initial_doctrine["completed_count"], 0);
+    assert_eq!(initial_doctrine["total_principles"], 18);
+    assert_eq!(initial_doctrine["unlocked_principle_id"], 1);
+
+    let (locked_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/doctrine/2/answer"),
+        Some("doctrine-locked-0001"),
+        Some(json!({"choice_id":"a"})),
+    )
+    .await;
+    assert_eq!(locked_status, StatusCode::CONFLICT);
+
+    let answer_body = json!({"choice_id":"a"});
+    let answer_path = format!("/api/v1/campaigns/{campaign_id}/doctrine/1/answer");
+    let (answer_status, answer) = call(
+        app.clone(),
+        "POST",
+        &answer_path,
+        Some("doctrine-answer-0001"),
+        Some(answer_body.clone()),
+    )
+    .await;
+    assert_eq!(answer_status, StatusCode::CREATED);
+    assert_eq!(answer["principle_id"], 1);
+    assert_eq!(answer["choice_id"], "a");
+    assert_eq!(answer["score"], 2);
+    assert_eq!(answer["unlocked_principle_id"], 2);
+
+    let (answer_replay_status, answer_replay) = call(
+        app.clone(),
+        "POST",
+        &answer_path,
+        Some("doctrine-answer-0001"),
+        Some(answer_body),
+    )
+    .await;
+    assert_eq!(answer_replay_status, StatusCode::OK);
+    assert_eq!(answer_replay, answer);
+
+    let (doctrine_status, doctrine) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/doctrine"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(doctrine_status, StatusCode::OK);
+    assert_eq!(doctrine["completed_count"], 1);
+    assert_eq!(doctrine["total_score"], 2);
+    assert_eq!(doctrine["unlocked_principle_id"], 2);
+    assert_eq!(doctrine["completed"][0]["principle_id"], 1);
+
+    let (duplicate_lesson_status, _) = call(
+        app.clone(),
+        "POST",
+        &answer_path,
+        Some("doctrine-answer-duplicate"),
+        Some(json!({"choice_id":"b"})),
+    )
+    .await;
+    assert_eq!(duplicate_lesson_status, StatusCode::CONFLICT);
+
+    let (invalid_choice_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/doctrine/2/answer"),
+        Some("doctrine-invalid-0001"),
+        Some(json!({"choice_id":"d"})),
+    )
+    .await;
+    assert_eq!(invalid_choice_status, StatusCode::BAD_REQUEST);
     let (replay_status, replayed) = call(
         app.clone(),
         "POST",
