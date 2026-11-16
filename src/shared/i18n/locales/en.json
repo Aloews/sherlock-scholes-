@@ -1506,5 +1506,26 @@
     "sandbox": "Sandbox",
     "scenario": "Scenario",
     "accounts": "accounts"
+  },
+  "machiavelli": {
+    "eyebrow": "THE SCHOOL OF POWER",
+    "title": "18 principles of leadership",
+    "subtitle": "Study Machiavelli through decisions in the life of a club and dynasty. Choices have consequences; the score reflects strategic judgment, not moral worth.",
+    "progress": "Learning progress",
+    "principle": "Principle",
+    "completed": "completed",
+    "locked": "locked",
+    "loading": "Loading…",
+    "error": "Could not load progress or save your decision. Please try again.",
+    "finishedTitle": "Course completed",
+    "finishedText": "You have examined 18 ideas in political thinking. Use them to analyse circumstances and consequences, not as universal recipes.",
+    "totalScore": "Strategic score",
+    "scenario": "Club situation",
+    "choose": "What would you do?",
+    "yourDecision": "Your decision",
+    "score": "Score",
+    "takeaway": "Key lesson",
+    "submit": "Commit decision",
+    "scoreMeaning": "0–2 measures strategic judgment, not your moral worth."
   }
 }
