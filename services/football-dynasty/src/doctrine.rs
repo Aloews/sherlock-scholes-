@@ -55,6 +55,7 @@ pub struct DoctrineAnswerResult {
     pub principle_id: i16,
     pub choice_id: String,
     pub score: i16,
+    pub completed_at: DateTime<Utc>,
     pub completed_count: i16,
     pub total_principles: i16,
     pub unlocked_principle_id: Option<i16>,
@@ -86,7 +87,7 @@ async fn get_progress(
     .await?;
     tx.commit().await?;
 
-    let completed_count = completed.len() as i16;
+    let completed_count = i16::try_from(completed.len()).map_err(|_| ApiError::internal())?;
     let total_score = completed.iter().map(|item| item.score).sum();
     Ok(Json(DoctrineProgress {
         completed,
@@ -151,14 +152,14 @@ async fn submit_answer(
         return Err(ApiError::conflict("principle_locked"));
     }
 
-    sqlx::query(
-        "INSERT INTO fd.doctrine_progress (campaign_id,principle_id,choice_id,score) VALUES ($1,$2,$3,$4)",
+    let completed_at: DateTime<Utc> = sqlx::query_scalar(
+        "INSERT INTO fd.doctrine_progress (campaign_id,principle_id,choice_id,score) VALUES ($1,$2,$3,$4) RETURNING completed_at",
     )
     .bind(campaign_id)
     .bind(principle_id)
     .bind(&request.choice_id)
     .bind(score)
-    .execute(&mut *tx)
+    .fetch_one(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -174,12 +175,13 @@ async fn submit_answer(
     .execute(&mut *tx)
     .await?;
 
-    let completed_count = completed_count as i16 + 1;
+    let completed_count = i16::try_from(completed_count + 1).map_err(|_| ApiError::internal())?;
     let response = DoctrineAnswerResult {
         campaign_id,
         principle_id,
         choice_id: request.choice_id,
         score,
+        completed_at,
         completed_count,
         total_principles: PRINCIPLE_COUNT,
         unlocked_principle_id: (completed_count < PRINCIPLE_COUNT)
