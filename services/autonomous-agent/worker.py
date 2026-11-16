@@ -56,7 +56,7 @@ def is_ush_issue(issue: dict[str, Any]) -> bool:
         str(label.get("name", "") if isinstance(label, dict) else label).strip().casefold()
         for label in labels
     }
-    text = (str(issue.get("title", "")) + "\\n" + str(issue.get("body", ""))).casefold()
+    text = (str(issue.get("title", "")) + "\n" + str(issue.get("body", ""))).casefold()
     return (
         "universal-service-hub" in text
         or "universal service hub" in text
