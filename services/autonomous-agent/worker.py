@@ -1727,13 +1727,16 @@ class Worker:
         previous_output = ""
         validation_error = ""
         for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+            self.model = model_for_attempt(self.models, attempt)
+            attempt_task = append_task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+            LOG.info("Task %s append-test attempt=%s model=%s strategy=%s", comment_id, attempt, self.model, retry_strategy_for_attempt(attempt))
             answer = ""
             try:
                 answer, usage = ask_starimg_full_file(
                     self.starimg_base,
                     self.starimg_key,
                     self.model,
-                    append_task,
+                    attempt_task,
                     issue_number,
                     target_path,
                     original_content,
@@ -1908,9 +1911,12 @@ class Worker:
                     validation_error = ""
                     applied = False
                     for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+                        self.model = model_for_attempt(self.models, attempt)
+                        attempt_file_task = file_task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+                        LOG.info("Task %s file=%s attempt=%s model=%s strategy=%s", comment_id, target_path, attempt, self.model, retry_strategy_for_attempt(attempt))
                         answer, usage = ask_starimg(
                             self.starimg_base, self.starimg_key, self.model,
-                            file_task, issue_number, file_context, (target_path,),
+                            attempt_file_task, issue_number, file_context, (target_path,),
                             previous_patch, validation_error
                         )
                         usage_records.append(usage)
@@ -1963,7 +1969,7 @@ class Worker:
                                 try:
                                     full_answer, full_usage = ask_starimg_full_file(
                                         self.starimg_base, self.starimg_key, self.model,
-                                        file_task, issue_number, target_path,
+                                        attempt_file_task, issue_number, target_path,
                                         original_content,
                                         context[:12000],
                                     )
@@ -2033,9 +2039,12 @@ class Worker:
                 previous_patch = ""
                 validation_error = ""
                 for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+                    self.model = model_for_attempt(self.models, attempt)
+                    attempt_task = task + "\\n\\nRETRY STRATEGY: " + retry_strategy_for_attempt(attempt)
+                    LOG.info("Task %s implementation attempt=%s model=%s strategy=%s", comment_id, attempt, self.model, retry_strategy_for_attempt(attempt))
                     answer, usage = ask_starimg(
                         self.starimg_base, self.starimg_key, self.model,
-                        task, issue_number, context, self.allowed_prefixes, previous_patch, validation_error
+                        attempt_task, issue_number, context, self.allowed_prefixes, previous_patch, validation_error
                     )
                     usage_records.append(usage)
                     patch = ""
