@@ -61,9 +61,19 @@ export function MachiavelliAcademy({ campaignId }: Props) {
     setBusy(true);
     setError('');
     try {
-      await submitDoctrineAnswer(campaignId, current.id, selectedChoice);
-      const refreshed = await getDoctrineProgress(campaignId);
-      setProgress(refreshed);
+      const answer = await submitDoctrineAnswer(campaignId, current.id, selectedChoice);
+      setProgress((previous) => previous ? {
+        ...previous,
+        completed: [...previous.completed, {
+          principle_id: answer.principle_id,
+          choice_id: answer.choice_id,
+          score: answer.score,
+          completed_at: answer.completed_at,
+        }],
+        completed_count: answer.completed_count,
+        total_score: previous.total_score + answer.score,
+        unlocked_principle_id: answer.unlocked_principle_id,
+      } : previous);
     } catch {
       setError(t('machiavelli.error'));
     } finally {
