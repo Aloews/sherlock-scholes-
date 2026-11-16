@@ -191,7 +191,7 @@ pub(crate) fn idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
         .ok_or_else(|| ApiError::bad_request("idempotency_key_required"))
 }
 
-fn payload_hash<T: Serialize>(payload: &T) -> Result<String, ApiError> {
+pub(crate) fn payload_hash<T: Serialize>(payload: &T) -> Result<String, ApiError> {
     let bytes = serde_json::to_vec(payload)?;
     let digest = Sha256::digest(bytes);
     Ok(format!("{digest:x}"))
@@ -256,7 +256,7 @@ async pub(crate) fn complete_command(
     Ok(())
 }
 
-fn replay<T: DeserializeOwned>(value: Value) -> Result<Json<T>, ApiError> {
+pub(crate) fn replay<T: DeserializeOwned>(value: Value) -> Result<Json<T>, ApiError> {
     Ok(Json(serde_json::from_value(value)?))
 }
 
