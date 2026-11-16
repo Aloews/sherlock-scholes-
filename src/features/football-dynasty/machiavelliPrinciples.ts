@@ -8,6 +8,7 @@ export interface MachiavelliChoice {
 
 export interface MachiavelliPrinciple {
   id: number;
+  bestChoiceId: DoctrineChoiceId;
   title: string;
   source: string;
   idea: string;
@@ -18,7 +19,7 @@ export interface MachiavelliPrinciple {
 
 const ru: MachiavelliPrinciple[] = [
   {
-    id: 1, title: 'Смотри на действительность, а не на желаемое',
+    id: 1, bestChoiceId: 'a', title: 'Смотри на действительность, а не на желаемое',
     source: '«Государь», глава XV',
     idea: 'Макиавелли начинает с verità effettuale — действительной картины вещей. Решение должно опираться на интересы, ресурсы и поведение людей, а не на красивые обещания.',
     scenario: 'Клуб хочет купить звёздного нападающего. Доходы падают, зарплатная ведомость уже перегружена, но болельщики ждут громкого трансфера.',
@@ -30,7 +31,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Первый вопрос правителя — не «как должно быть?», а «что происходит на самом деле и кто чем располагает?».',
   },
   {
-    id: 2, title: 'Развивай собственную virtù — способность действовать',
+    id: 2, bestChoiceId: 'b', title: 'Развивай собственную virtù — способность действовать',
     source: '«Государь», главы VI и XXV',
     idea: 'Virtù у Макиавелли — не просто добродетель. Это энергия, компетентность, расчёт, смелость и способность менять ход событий.',
     scenario: 'Новый владелец клуба полностью зависит от одного влиятельного агента: тот приводит игроков, знает рынок и фактически определяет трансферную политику.',
@@ -42,7 +43,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Сильный руководитель не только использует возможности — он создаёт способность действовать без постоянной опоры на чужую удачу.',
   },
   {
-    id: 3, title: 'Опирайся на собственные силы',
+    id: 3, bestChoiceId: 'c', title: 'Опирайся на собственные силы',
     source: '«Государь», главы XII–XIII',
     idea: 'Макиавелли резко критикует наёмные и чужие войска: они могут подвести именно тогда, когда цена зависимости максимальна. В игре это принцип собственных компетенций и контроля.',
     scenario: 'Перед решающим сезоном клуб может купить готовую команду через посредников или укрепить академию, медицинский штаб и собственную селекцию.',
@@ -54,7 +55,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Не путай доступ к чужому ресурсу с собственной силой. Важнейшие способности должны оставаться внутри династии и клуба.',
   },
   {
-    id: 4, title: 'Изучай историю и чужой опыт',
+    id: 4, bestChoiceId: 'a', title: 'Изучай историю и чужой опыт',
     source: '«Государь», главы VI и XIV',
     idea: 'Макиавелли советует изучать действия выдающихся предшественников и разбирать причины их успехов и поражений.',
     scenario: 'Ты приобрёл клуб, похожий на тот, который другой владелец уже довёл до кризиса: быстрые покупки, конфликт с болельщиками и долги.',
@@ -66,7 +67,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'История полезна не как набор героев для подражания, а как лаборатория причин и последствий.',
   },
   {
-    id: 5, title: 'Закрепляй приобретённое, прежде чем расширяться',
+    id: 5, bestChoiceId: 'b', title: 'Закрепляй приобретённое, прежде чем расширяться',
     source: '«Государь», главы III и V',
     idea: 'Новые владения особенно уязвимы: старые привычки, интересы и местные порядки не исчезают после смены владельца.',
     scenario: 'Династия купила второй клуб. Местные руководители опасаются закрытия академии, фанаты не доверяют новому владельцу, а сотрудники ждут сокращений.',
@@ -78,7 +79,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Победа при покупке — начало управления. Устойчивость возникает, когда новые правила принимаются и работают на месте.',
   },
   {
-    id: 6, title: 'Понимай интересы разных групп',
+    id: 6, bestChoiceId: 'c', title: 'Понимай интересы разных групп',
     source: '«Государь», главы IX и XIX',
     idea: 'Макиавелли различает интересы народа и элит. Руководитель должен понимать, кто чего хочет и откуда возникает поддержка или сопротивление.',
     scenario: 'Совет директоров требует немедленной прибыли, тренер просит усилить состав, фанаты требуют сохранить местных воспитанников, а игроки хотят ясных перспектив.',
@@ -90,7 +91,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Не существует абстрактного «всех». Есть конкретные группы с ресурсами, страхами, ожиданиями и разными возможностями влияния.',
   },
   {
-    id: 7, title: 'Уважение надёжнее любви, но страх не должен стать ненавистью',
+    id: 7, bestChoiceId: 'a', title: 'Уважение надёжнее любви, но страх не должен стать ненавистью',
     source: '«Государь», глава XVII',
     idea: 'Макиавелли считает, что на любовь нельзя полностью положиться, а страх наказания предсказуемее. Но он отдельно предупреждает: правитель должен избегать ненависти.',
     scenario: 'Капитан нарушил дисциплину перед важным матчем. Команда наблюдает, как руководство отреагирует.',
@@ -102,7 +103,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Дисциплина должна быть последовательной и соразмерной. Страх последствий не должен превращаться в ненависть к руководителю.',
   },
   {
-    id: 8, title: 'Не вызывай ненависть произволом',
+    id: 8, bestChoiceId: 'b', title: 'Не вызывай ненависть произволом',
     source: '«Государь», глава XIX',
     idea: 'Для Макиавелли особенно опасны действия, из-за которых люди чувствуют себя ограбленными, униженными или обманутыми.',
     scenario: 'Клуб оказался в финансовом кризисе. Руководство рассматривает сокращение зарплат и пересмотр контрактов.',
@@ -114,7 +115,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Недовольство решением иногда неизбежно; ненависть часто рождается из произвола, унижения и нарушения базовых ожиданий.',
   },
   {
-    id: 9, title: 'Не позволяй считать себя слабым и непоследовательным',
+    id: 9, bestChoiceId: 'c', title: 'Не позволяй считать себя слабым и непоследовательным',
     source: '«Государь», глава XIX',
     idea: 'Презрение к правителю возникает, когда его считают непостоянным, нерешительным или неспособным обеспечить исполнение решений.',
     scenario: 'Тренер и спортивный директор публично перекладывают ответственность друг на друга. Каждый ждёт, что владелец поддержит именно его.',
@@ -126,7 +127,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Решительность — это не скорость любой ценой. Это способность принять проверенное решение и обеспечить его исполнение.',
   },
   {
-    id: 10, title: 'Будь и львом, и лисой',
+    id: 10, bestChoiceId: 'a', title: 'Будь и львом, и лисой',
     source: '«Государь», глава XVIII',
     idea: 'Лев символизирует силу, лиса — распознавание ловушек. Одной силы недостаточно против хитрости, а одной хитрости — против открытого давления.',
     scenario: 'Агент на переговорах заявляет, что у игрока есть более выгодное предложение конкурента, но отказывается раскрыть детали.',
@@ -138,7 +139,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Сначала распознай ловушку и скрытые стимулы; затем прояви твёрдость там, где это действительно необходимо.',
   },
   {
-    id: 11, title: 'Управляй репутацией через поступки и ясные сигналы',
+    id: 11, bestChoiceId: 'b', title: 'Управляй репутацией через поступки и ясные сигналы',
     source: '«Государь», главы XVIII и XXI',
     idea: 'Макиавелли уделяет большое внимание тому, как действия выглядят для окружающих. Репутация влияет на доверие, союзы и готовность следовать за лидером.',
     scenario: 'После двух неудачных сезонов клуб объявляет новую стратегию. Болельщики уже слышали несколько громких обещаний.',
@@ -150,7 +151,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Образ важен, но он устойчив только тогда, когда за ним стоят поступки, которые можно проверить.',
   },
   {
-    id: 12, title: 'Не раздавай обещания, которыми не управляешь',
+    id: 12, bestChoiceId: 'c', title: 'Не раздавай обещания, которыми не управляешь',
     source: '«Государь», глава XVIII',
     idea: 'Макиавелли анализирует политическую цену обещаний и обстоятельства, при которых обязательства сталкиваются с изменившейся реальностью. Это не оправдание мелкого обмана.',
     scenario: 'Ты обещал капитану новый контракт, но после медицинского обследования и пересмотра бюджета прежние условия стали невыполнимыми.',
@@ -162,7 +163,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Мудрость не в том, чтобы обещать всё или нарушать обещания без последствий, а в том, чтобы понимать цену обязательств до их принятия.',
   },
   {
-    id: 13, title: 'Выбирай советников по компетентности',
+    id: 13, bestChoiceId: 'a', title: 'Выбирай советников по компетентности',
     source: '«Государь», глава XXII',
     idea: 'Качество ближайших помощников отражает способность правителя судить о людях. Сильный руководитель выбирает профессионалов и понимает их стимулы.',
     scenario: 'На должность спортивного директора претендуют давний друг семьи, известный специалист и кандидат с сильными связями, но слабой репутацией.',
@@ -174,7 +175,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Советник усиливает правителя только тогда, когда его компетентность проверена, а ответственность определена.',
   },
   {
-    id: 14, title: 'Создай пространство для неприятной правды',
+    id: 14, bestChoiceId: 'b', title: 'Создай пространство для неприятной правды',
     source: '«Государь», глава XXIII',
     idea: 'Макиавелли предупреждает о льстецах: правитель, который слышит только приятное, теряет связь с действительностью.',
     scenario: 'Все руководители клуба поддерживают твой план расширения стадиона. Один финансовый аналитик предупреждает, что прогноз посещаемости завышен.',
@@ -186,7 +187,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Хороший совет — не тот, который приятен. Это проверяемая информация, которую можно безопасно принести руководителю.',
   },
   {
-    id: 15, title: 'Сдерживай щедрость, которая разрушает основу',
+    id: 15, bestChoiceId: 'c', title: 'Сдерживай щедрость, которая разрушает основу',
     source: '«Государь», глава XVI',
     idea: 'Макиавелли показывает, что показная щедрость может привести к долгам и новым сборам. Финансовая осторожность иногда лучше эффектного жеста.',
     scenario: 'После победы в кубке владельцы хотят выплатить огромные премии и немедленно подписать трёх дорогих игроков.',
@@ -198,7 +199,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Финансовая дисциплина — не жадность. Это защита будущей свободы действий.',
   },
   {
-    id: 16, title: 'Готовься к конфликту до того, как он станет кризисом',
+    id: 16, bestChoiceId: 'a', title: 'Готовься к конфликту до того, как он станет кризисом',
     source: '«Государь», главы XII–XIV',
     idea: 'Для Макиавелли подготовка к угрозам — постоянная обязанность руководителя. Нельзя вспоминать о защите только в момент опасности.',
     scenario: 'Клуб входит в сезон с короткой скамейкой, слабой медицинской инфраструктурой и отсутствием плана на случай травм ключевых игроков.',
@@ -210,7 +211,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Стратегия — это не только план победы. Это готовность к моменту, когда план перестанет работать.',
   },
   {
-    id: 17, title: 'Выбирай союзы осознанно, а не ради видимости нейтралитета',
+    id: 17, bestChoiceId: 'b', title: 'Выбирай союзы осознанно, а не ради видимости нейтралитета',
     source: '«Государь», глава XXI',
     idea: 'Макиавелли разбирает, как нейтралитет и выбор стороны влияют на репутацию и безопасность правителя. У каждого союза есть цена и последствия.',
     scenario: 'Перед реформой лиги два влиятельных клуба формируют конкурирующие коалиции. Твой клуб может повлиять на исход голосования.',
@@ -222,7 +223,7 @@ const ru: MachiavelliPrinciple[] = [
     takeaway: 'Союз — это обмен обязательствами. Важно понимать, что ты получаешь, чем рискуешь и где проходит граница зависимости.',
   },
   {
-    id: 18, title: 'Приспосабливайся к переменам и готовься к fortuna',
+    id: 18, bestChoiceId: 'c', title: 'Приспосабливайся к переменам и готовься к fortuna',
     source: '«Государь», глава XXV',
     idea: 'Fortuna — изменчивость обстоятельств. Часть событий неподконтрольна человеку, но подготовка, запас прочности и гибкость уменьшают их разрушительную силу.',
     scenario: 'Правила финансового контроля лиги меняются, главный спонсор уходит, а молодые клубы начинают быстрее развивать игроков благодаря аналитике.',
@@ -237,7 +238,7 @@ const ru: MachiavelliPrinciple[] = [
 
 const en: MachiavelliPrinciple[] = [
   {
-    id: 1, title: 'See reality, not the reality you wish for',
+    id: 1, bestChoiceId: 'a', title: 'See reality, not the reality you wish for',
     source: 'The Prince, Chapter XV',
     idea: 'Machiavelli begins with verità effettuale — the effective truth of things. Decisions must rest on interests, resources and behaviour, not attractive promises.',
     scenario: 'Your club wants a star striker. Revenue is falling and the wage bill is already stretched, but supporters expect a major signing.',
@@ -249,7 +250,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'The first question of a ruler is not “what should be true?” but “what is happening, and who controls which resources?”',
   },
   {
-    id: 2, title: 'Develop your own virtù — the capacity to act',
+    id: 2, bestChoiceId: 'b', title: 'Develop your own virtù — the capacity to act',
     source: 'The Prince, Chapters VI and XXV',
     idea: 'For Machiavelli, virtù is not simply moral virtue. It is energy, competence, judgment, courage and the ability to shape events.',
     scenario: 'A new owner depends entirely on one powerful agent who supplies players, knows the market and effectively controls recruitment.',
@@ -261,7 +262,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'A strong leader does not merely exploit opportunities; they build the capacity to act without relying on someone else’s luck.',
   },
   {
-    id: 3, title: 'Rely on your own foundations',
+    id: 3, bestChoiceId: 'c', title: 'Rely on your own foundations',
     source: 'The Prince, Chapters XII–XIII',
     idea: 'Machiavelli criticises mercenary and auxiliary forces because they may fail when dependence is most costly. In the game, this means owning critical capabilities and control.',
     scenario: 'Before a decisive season, the club can buy a ready-made team through intermediaries or strengthen its academy, medical staff and recruitment system.',
@@ -273,7 +274,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Access to someone else’s resources is not the same as having strength of your own. Critical capabilities should stay within the club and dynasty.',
   },
   {
-    id: 4, title: 'Study history and the experience of others',
+    id: 4, bestChoiceId: 'a', title: 'Study history and the experience of others',
     source: 'The Prince, Chapters VI and XIV',
     idea: 'Machiavelli advises studying exceptional predecessors and examining the causes of their successes and failures.',
     scenario: 'You acquired a club resembling one another owner drove into crisis through rapid spending, supporter conflict and debt.',
@@ -285,7 +286,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'History is useful not as a gallery of heroes, but as a laboratory of causes and consequences.',
   },
   {
-    id: 5, title: 'Consolidate an acquisition before expanding',
+    id: 5, bestChoiceId: 'b', title: 'Consolidate an acquisition before expanding',
     source: 'The Prince, Chapters III and V',
     idea: 'Newly acquired territories are especially fragile: old habits, interests and institutions do not disappear when ownership changes.',
     scenario: 'Your dynasty bought a second club. Local leaders fear the academy will close, supporters distrust the new owner and staff expect layoffs.',
@@ -297,7 +298,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Winning the acquisition is the beginning of management. Stability comes when new rules are accepted and work locally.',
   },
   {
-    id: 6, title: 'Understand the interests of different groups',
+    id: 6, bestChoiceId: 'c', title: 'Understand the interests of different groups',
     source: 'The Prince, Chapters IX and XIX',
     idea: 'Machiavelli distinguishes the interests of the people from those of elites. A ruler must understand who wants what and where support or resistance comes from.',
     scenario: 'The board wants immediate profit, the coach wants reinforcements, supporters want local academy graduates and players want clear prospects.',
@@ -309,7 +310,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'There is no abstract “everyone”. There are specific groups with resources, fears, expectations and different forms of influence.',
   },
   {
-    id: 7, title: 'Respect is more reliable than love; fear must not become hatred',
+    id: 7, bestChoiceId: 'a', title: 'Respect is more reliable than love; fear must not become hatred',
     source: 'The Prince, Chapter XVII',
     idea: 'Machiavelli argues that love is difficult to rely on while fear of consequences is more predictable. But he explicitly warns rulers to avoid hatred.',
     scenario: 'The captain breaks discipline before an important match. The whole squad is watching the club’s response.',
@@ -321,7 +322,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Discipline should be consistent and proportionate. Fear of consequences must not turn into hatred of the leader.',
   },
   {
-    id: 8, title: 'Do not create hatred through arbitrariness',
+    id: 8, bestChoiceId: 'b', title: 'Do not create hatred through arbitrariness',
     source: 'The Prince, Chapter XIX',
     idea: 'For Machiavelli, actions that make people feel robbed, humiliated or deceived are especially dangerous.',
     scenario: 'The club is in financial crisis. Management is considering wage reductions and contract changes.',
@@ -333,7 +334,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Disagreement with a decision may be unavoidable; hatred often grows from arbitrariness, humiliation and broken basic expectations.',
   },
   {
-    id: 9, title: 'Do not let others see you as weak or inconsistent',
+    id: 9, bestChoiceId: 'c', title: 'Do not let others see you as weak or inconsistent',
     source: 'The Prince, Chapter XIX',
     idea: 'Contempt grows when a ruler is seen as unstable, indecisive or unable to make decisions stick.',
     scenario: 'The coach and sporting director publicly blame each other. Both expect the owner to take their side.',
@@ -345,7 +346,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Decisiveness is not speed at any cost. It is the ability to make an informed decision and ensure it is carried out.',
   },
   {
-    id: 10, title: 'Be both lion and fox',
+    id: 10, bestChoiceId: 'a', title: 'Be both lion and fox',
     source: 'The Prince, Chapter XVIII',
     idea: 'The lion represents strength; the fox recognises traps. Strength alone cannot defeat cunning, and cunning alone cannot withstand open pressure.',
     scenario: 'An agent says the player has a better offer from a rival but refuses to share details.',
@@ -357,7 +358,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Recognise the trap and hidden incentives first; then use firmness where it is genuinely needed.',
   },
   {
-    id: 11, title: 'Manage reputation through actions and clear signals',
+    id: 11, bestChoiceId: 'b', title: 'Manage reputation through actions and clear signals',
     source: 'The Prince, Chapters XVIII and XXI',
     idea: 'Machiavelli pays close attention to how actions appear to others. Reputation affects trust, alliances and willingness to follow a leader.',
     scenario: 'After two poor seasons, the club announces a new strategy. Supporters have already heard several grand promises.',
@@ -369,7 +370,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Image matters, but it lasts only when backed by actions that can be checked.',
   },
   {
-    id: 12, title: 'Do not make promises you cannot control',
+    id: 12, bestChoiceId: 'c', title: 'Do not make promises you cannot control',
     source: 'The Prince, Chapter XVIII',
     idea: 'Machiavelli examines the political cost of promises and circumstances in which commitments collide with changed realities. This is not a licence for casual dishonesty.',
     scenario: 'You promised the captain a new contract, but a medical review and revised budget make the original terms impossible.',
@@ -381,7 +382,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Wisdom is neither promising everything nor breaking promises without consequence; it is understanding the cost before making them.',
   },
   {
-    id: 13, title: 'Choose advisers for competence',
+    id: 13, bestChoiceId: 'a', title: 'Choose advisers for competence',
     source: 'The Prince, Chapter XXII',
     idea: 'The quality of a ruler’s closest assistants reflects their judgment of people. Strong leaders choose professionals and understand their incentives.',
     scenario: 'Candidates for sporting director include a family friend, a respected specialist and a well-connected candidate with a weak record.',
@@ -393,7 +394,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'An adviser strengthens a ruler only when competence is tested and responsibility is defined.',
   },
   {
-    id: 14, title: 'Create room for unwelcome truth',
+    id: 14, bestChoiceId: 'b', title: 'Create room for unwelcome truth',
     source: 'The Prince, Chapter XXIII',
     idea: 'Machiavelli warns against flatterers: a ruler who hears only pleasant things loses contact with reality.',
     scenario: 'Every club executive supports your stadium expansion. One financial analyst warns that the attendance forecast is overstated.',
@@ -405,7 +406,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Good advice is not advice that feels pleasant. It is verifiable information that can safely reach the decision-maker.',
   },
   {
-    id: 15, title: 'Restrain generosity that destroys the foundation',
+    id: 15, bestChoiceId: 'c', title: 'Restrain generosity that destroys the foundation',
     source: 'The Prince, Chapter XVI',
     idea: 'Machiavelli shows how showy generosity can create debt and new levies. Financial restraint can be wiser than an impressive gesture.',
     scenario: 'After winning the cup, the owners want huge bonuses and three expensive signings immediately.',
@@ -417,7 +418,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Financial discipline is not stinginess. It protects future freedom of action.',
   },
   {
-    id: 16, title: 'Prepare for conflict before it becomes a crisis',
+    id: 16, bestChoiceId: 'a', title: 'Prepare for conflict before it becomes a crisis',
     source: 'The Prince, Chapters XII–XIV',
     idea: 'For Machiavelli, preparation against threats is a permanent duty of leadership. Protection cannot begin only when danger arrives.',
     scenario: 'The club starts the season with a thin squad, weak medical infrastructure and no injury contingency plan.',
@@ -429,7 +430,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'Strategy is not only a plan to win. It is readiness for the moment when the plan stops working.',
   },
   {
-    id: 17, title: 'Choose alliances deliberately, not for the appearance of neutrality',
+    id: 17, bestChoiceId: 'b', title: 'Choose alliances deliberately, not for the appearance of neutrality',
     source: 'The Prince, Chapter XXI',
     idea: 'Machiavelli examines how neutrality and taking sides affect a ruler’s reputation and security. Every alliance has a price and consequences.',
     scenario: 'Before a league reform, two influential clubs form rival coalitions. Your club can affect the vote.',
@@ -441,7 +442,7 @@ const en: MachiavelliPrinciple[] = [
     takeaway: 'An alliance is an exchange of commitments. Know what you gain, what you risk and where dependence begins.',
   },
   {
-    id: 18, title: 'Adapt to change and prepare for fortuna',
+    id: 18, bestChoiceId: 'c', title: 'Adapt to change and prepare for fortuna',
     source: 'The Prince, Chapter XXV',
     idea: 'Fortuna is the volatility of circumstances. Some events are beyond control, but preparation, reserves and flexibility reduce their destructive force.',
     scenario: 'League financial rules change, the main sponsor leaves and younger clubs develop players faster through analytics.',
