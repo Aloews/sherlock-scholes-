@@ -194,8 +194,6 @@ async fn submit_answer(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// Strategic-judgment scores are fixed server-side; clients cannot award
-/// themselves points by changing a submitted score.
 pub fn score_choice(principle_id: i16, choice_id: &str) -> Option<i16> {
     let best = match principle_id {
         1 => "a",
