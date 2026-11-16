@@ -880,6 +880,48 @@ async fn another_test() {}
                     choose_model("https://ai.starimg.ru/v1", "test-key")
 
 
+    def test_starimg_router_rotates_validated_fallback_models_and_strategies(self):
+        from worker import (
+            choose_model_candidates,
+            model_for_attempt,
+            retry_strategy_for_attempt,
+        )
+
+        catalog = {"data": [
+            {"id": "qwen3-coder-plus"},
+            {"id": "deepseek-coder-v2"},
+            {"id": "claude-sonnet-5.5"},
+            {"id": "other-coder"},
+        ]}
+        with patch.dict(os.environ, {
+            "STARIMG_MODEL": "qwen3-coder-plus",
+            "STARIMG_FALLBACK_MODELS": "deepseek-coder-v2,claude-sonnet-5.5",
+        }):
+            with patch("worker.starimg_request", return_value=catalog):
+                candidates = choose_model_candidates("https://ai.starimg.ru/v1", "test-key")
+
+        self.assertEqual(candidates, [
+            "qwen3-coder-plus", "deepseek-coder-v2", "claude-sonnet-5.5", "other-coder"
+        ])
+        self.assertEqual(model_for_attempt(candidates, 1), "qwen3-coder-plus")
+        self.assertEqual(model_for_attempt(candidates, 2), "deepseek-coder-v2")
+        self.assertEqual(model_for_attempt(candidates, 3), "claude-sonnet-5.5")
+        self.assertNotEqual(retry_strategy_for_attempt(1), retry_strategy_for_attempt(2))
+        self.assertNotEqual(retry_strategy_for_attempt(2), retry_strategy_for_attempt(3))
+
+    def test_starimg_router_rejects_unavailable_fallback_model(self):
+        from worker import choose_model_candidates
+
+        with patch.dict(os.environ, {
+            "STARIMG_MODEL": "qwen3-coder-plus",
+            "STARIMG_FALLBACK_MODELS": "missing-model",
+        }):
+            with patch("worker.starimg_request", return_value={
+                "data": [{"id": "qwen3-coder-plus"}]
+            }):
+                with self.assertRaisesRegex(RuntimeError, "absent from the authenticated catalog"):
+                    choose_model_candidates("https://ai.starimg.ru/v1", "test-key")
+
     def test_rust_changes_run_stable_edition_2024_rustfmt_check(self):
         from worker import Worker
 
