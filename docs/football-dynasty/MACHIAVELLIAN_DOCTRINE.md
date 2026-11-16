@@ -63,7 +63,7 @@ Scores assess the quality of the strategic reasoning in that particular scenario
 
 - Niccolò Machiavelli, *The Prince*, especially Chapters III, V–VI, IX, XII–XXIII and XXV. [Early Modern Texts edition (PDF)](https://www.earlymoderntexts.com/assets/pdfs/machiavelli1532part1.pdf).
 - [Internet Encyclopedia of Philosophy — Niccolò Machiavelli](https://iep.utm.edu/machiave/), for the structure and interpretive controversies surrounding *The Prince*.
-- [Stanford Encyclopedia of Philosophy — Machiavelli](https://plato.stanford.edu/archives/spr2017/entries/machiavelli/), for the account of political power and *virtù*.
+- [Stanford Encyclopedia of Philosophy — Machiavelli](https://plato.stanford.edu/entries/machiavelli/), for the account of political power and *virtù*.
 - Revisiting the Received Image of Machiavelli in Business Ethics Through a Close Reading of *The Prince* and *Discourses* (2023), [Journal of Business Ethics](https://doi.org/10.1007/s10551-023-05481-2), for a modern discussion of *virtù*, *fortuna*, adaptability and the distinction between effective rule and gratuitous harm.
 
 These references support the conceptual adaptation. The game scenarios, wording, choice feedback and scoring are original product content.
