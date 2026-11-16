@@ -1526,6 +1526,7 @@
     "score": "Pontuação",
     "takeaway": "Ideia principal",
     "submit": "Confirmar decisão",
-    "scoreMeaning": "0–2 mede o discernimento estratégico, não a sua moralidade."
+    "scoreMeaning": "0–2 mede o discernimento estratégico, não a sua moralidade.",
+    "strongestOption": "Opção mais sólida neste cenário"
   }
 }
