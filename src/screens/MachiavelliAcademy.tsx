@@ -139,12 +139,6 @@ export function MachiavelliAcademy({ campaignId }: Props) {
       </div>
 
       {current ? (
-        <div className="rounded-xl border border-brand-accent/30 bg-brand-bg p-5">
-          <h4 className="text-lg font-semibold">{t('machiavelli.finishedTitle')}</h4>
-          <p className="mt-2 text-sm leading-6 text-brand-muted">{t('machiavelli.finishedText')}</p>
-          <p className="mt-3 text-sm font-semibold text-brand-accent">{t('machiavelli.totalScore')}: {progress.total_score} / 36</p>
-        </div>
-      ) : current ? (
         <div className="rounded-xl border border-brand-border bg-brand-bg p-4 sm:p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-brand-muted">
             <span>{t('machiavelli.principle')} {current.id}</span>
