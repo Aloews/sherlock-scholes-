@@ -11,6 +11,7 @@ import ko from '@/shared/i18n/locales/ko.json';
 import zh from '@/shared/i18n/locales/zh.json';
 
 describe('Machiavellian doctrine curriculum', () => {
+  const bestChoiceIds = ['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'];
   it.each([
     ['ru', machiavelliPrinciples.ru],
     ['en', machiavelliPrinciples.en],
@@ -20,6 +21,7 @@ describe('Machiavellian doctrine curriculum', () => {
       Array.from({ length: 18 }, (_, index) => index + 1),
     );
     for (const lesson of lessons) {
+      expect(lesson.bestChoiceId).toBe(bestChoiceIds[lesson.id - 1]);
       expect(lesson.title.trim()).not.toBe('');
       expect(lesson.source.trim()).not.toBe('');
       expect(lesson.idea.trim()).not.toBe('');
@@ -40,7 +42,7 @@ describe('Machiavellian doctrine curriculum', () => {
       'eyebrow', 'title', 'subtitle', 'progress', 'principle', 'completed',
       'locked', 'loading', 'error', 'finishedTitle', 'finishedText',
       'totalScore', 'scenario', 'choose', 'yourDecision', 'score',
-      'takeaway', 'submit', 'scoreMeaning',
+      'takeaway', 'submit', 'scoreMeaning', 'strongestOption',
     ]) {
       expect(labels[key]?.trim(), key).not.toBe('');
     }
