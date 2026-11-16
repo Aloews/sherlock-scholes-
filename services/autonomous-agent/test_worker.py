@@ -88,6 +88,50 @@ class WorkerPolicyTests(unittest.TestCase):
         ))
         self.assertFalse(any("services/football-dynasty/Cargo.toml" in command for command in commands))
 
+    def test_ush_execution_scope_forces_one_repository_and_only_ush_paths(self):
+        from worker import (
+            USH_ALLOWED_PREFIXES,
+            USH_REPOSITORY,
+            allowed_prefixes_for_repo,
+            configured_repositories,
+        )
+
+        with patch.dict(os.environ, {"USH_EXECUTION_SCOPE": "true"}):
+            repositories = configured_repositories(
+                "Aloews/sherlock-scholes-,Aloews/Novel-forge,Aloews/full",
+                "Aloews/sherlock-scholes-",
+            )
+            self.assertEqual(repositories, [USH_REPOSITORY])
+            self.assertEqual(allowed_prefixes_for_repo(USH_REPOSITORY), USH_ALLOWED_PREFIXES)
+            with self.assertRaisesRegex(RuntimeError, "only Aloews/russian-dev-projects"):
+                allowed_prefixes_for_repo("Aloews/Novel-forge")
+
+            prefixes = allowed_prefixes_for_repo(USH_REPOSITORY)
+            self.assertTrue(safe_path("universal-service-hub/src/main.rs", prefixes))
+            self.assertTrue(safe_path("universal-service-hub/rust-migrations/0005.sql", prefixes))
+            self.assertFalse(safe_path("pages/index.tsx", prefixes))
+            self.assertFalse(safe_path("docs/MAP.md", prefixes))
+            self.assertFalse(safe_path("universal-service-hub/.env", prefixes))
+
+    def test_ush_issue_classifier_rejects_unrelated_repo_tasks(self):
+        from worker import is_ush_issue
+
+        self.assertTrue(is_ush_issue({
+            "title": "P0 durable engineering dispatcher",
+            "body": "Implement the Universal Service Hub task runtime.",
+            "labels": [],
+        }))
+        self.assertTrue(is_ush_issue({
+            "title": "Engineering task",
+            "body": "Unrelated title",
+            "labels": [{"name": "project:ush"}],
+        }))
+        self.assertFalse(is_ush_issue({
+            "title": "Update unrelated website",
+            "body": "Change a marketing page.",
+            "labels": [],
+        }))
+
     def test_subprocess_environment_excludes_all_service_secrets(self):
         with patch.dict(os.environ, {
             "SUPABASE_DB_URL": "postgresql://secret",
