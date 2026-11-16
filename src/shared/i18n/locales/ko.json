@@ -1451,5 +1451,26 @@
     "sandbox": "샌드박스",
     "scenario": "시나리오",
     "accounts": "계좌"
+  },
+  "machiavelli": {
+    "eyebrow": "권력의 학교",
+    "title": "리더십의 18가지 원칙",
+    "subtitle": "구단과 가문의 의사결정을 통해 마키아벨리의 사고방식을 배웁니다. 선택에는 결과가 따릅니다. 점수는 도덕성이 아니라 전략적 판단을 나타냅니다.",
+    "progress": "학습 진행도",
+    "principle": "원칙",
+    "completed": "완료",
+    "locked": "잠김",
+    "loading": "불러오는 중…",
+    "error": "진행 상황을 불러오거나 결정을 저장하지 못했습니다. 다시 시도하세요.",
+    "finishedTitle": "과정 완료",
+    "finishedText": "정치적 사고의 18가지 아이디어를 살펴봤습니다. 이를 보편적 처방이 아니라 상황과 결과를 분석하는 도구로 활용하세요.",
+    "totalScore": "전략 점수",
+    "scenario": "구단 상황",
+    "choose": "어떻게 하시겠습니까?",
+    "yourDecision": "나의 결정",
+    "score": "점수",
+    "takeaway": "핵심 교훈",
+    "submit": "결정 확정",
+    "scoreMeaning": "0~2점은 전략적 판단을 측정하며 도덕성을 평가하지 않습니다."
   }
 }
