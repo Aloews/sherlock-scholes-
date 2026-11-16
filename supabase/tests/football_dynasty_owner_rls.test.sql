@@ -1,4 +1,4 @@
--- Run against the disposable PostgreSQL service after the four FD migrations.
+-- Run against the disposable PostgreSQL service after the five FD migrations.
 DO $$
 DECLARE
   v_tables integer;
