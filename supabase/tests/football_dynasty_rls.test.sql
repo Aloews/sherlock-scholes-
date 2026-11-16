@@ -56,17 +56,15 @@ BEGIN
      OR has_table_privilege('fd_runtime', 'fd.chronicle', 'DELETE')
      OR has_table_privilege('fd_runtime', 'fd.chronicle', 'UPDATE')
      OR has_table_privilege('fd_runtime', 'fd.succession_events', 'DELETE')
-     OR has_table_privilege('fd_runtime', 'fd.succession_events', 'UPDATE')
-     THEN
+     OR has_table_privilege('fd_runtime', 'fd.succession_events', 'UPDATE') THEN
     RAISE EXCEPTION 'append-only financial/history tables must not be mutable by fd_runtime';
   END IF;
 
-  IF to_regclass('fd.doctrine_progress') IS NOT NULL
-     AND (
-       has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'DELETE')
-       OR has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'UPDATE')
-     ) THEN
-    RAISE EXCEPTION 'doctrine progress must be append-only for fd_runtime';
+  IF to_regclass('fd.doctrine_progress') IS NOT NULL THEN
+    IF has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'DELETE')
+       OR has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'UPDATE') THEN
+      RAISE EXCEPTION 'doctrine progress must be append-only for fd_runtime';
+    END IF;
   END IF;
 END
 $;
