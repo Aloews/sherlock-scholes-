@@ -119,8 +119,7 @@ async fn doctrine_progress_is_sequential_persistent_idempotent_and_owner_scoped(
     let campaign_id = created["id"].as_str().expect("campaign id");
 
     let doctrine_path = format!("/api/v1/campaigns/{campaign_id}/doctrine");
-    let (initial_status, initial) =
-        call(app.clone(), "GET", &doctrine_path, None, None).await;
+    let (initial_status, initial) = call(app.clone(), "GET", &doctrine_path, None, None).await;
     assert_eq!(initial_status, StatusCode::OK);
     assert_eq!(initial["completed_count"], 0);
     assert_eq!(initial["total_principles"], 18);
@@ -165,8 +164,7 @@ async fn doctrine_progress_is_sequential_persistent_idempotent_and_owner_scoped(
     assert_eq!(replay_status, StatusCode::OK);
     assert_eq!(replayed, answer);
 
-    let (progress_status, progress) =
-        call(app.clone(), "GET", &doctrine_path, None, None).await;
+    let (progress_status, progress) = call(app.clone(), "GET", &doctrine_path, None, None).await;
     assert_eq!(progress_status, StatusCode::OK);
     assert_eq!(progress["completed_count"], 1);
     assert_eq!(progress["total_score"], 2);
@@ -201,8 +199,7 @@ async fn doctrine_progress_is_sequential_persistent_idempotent_and_owner_scoped(
         other_state,
         "http://localhost:5173".parse().expect("origin"),
     );
-    let (other_owner_status, _) =
-        call(other_app, "GET", &doctrine_path, None, None).await;
+    let (other_owner_status, _) = call(other_app, "GET", &doctrine_path, None, None).await;
     assert_eq!(other_owner_status, StatusCode::NOT_FOUND);
 
     pool.close().await;
