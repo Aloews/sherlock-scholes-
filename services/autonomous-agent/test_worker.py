@@ -57,6 +57,37 @@ class WorkerPolicyTests(unittest.TestCase):
         ):
             self.assertFalse(safe_path(path, prefixes), path)
 
+    def test_ush_rust_validation_uses_ush_manifest_and_never_football_dynasty_manifest(self):
+        from worker import Worker
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "universal-service-hub" / "Cargo.toml"
+            source = root / "universal-service-hub" / "src" / "main.rs"
+            source.parent.mkdir(parents=True)
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text("[package]\\nname = \"universal-service-hub\"\\n", encoding="utf-8")
+            source.write_text("fn main() {}\\n", encoding="utf-8")
+            worker = Worker.__new__(Worker)
+
+            with patch("worker.run_command", return_value="") as run:
+                worker._validate(root, ["universal-service-hub/src/main.rs"], full=True)
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertTrue(any(
+            command[:4] == ["cargo", "fmt", "--manifest-path", "universal-service-hub/Cargo.toml"]
+            for command in commands
+        ))
+        self.assertTrue(any(
+            command[:4] == ["cargo", "clippy", "--manifest-path", "universal-service-hub/Cargo.toml"]
+            for command in commands
+        ))
+        self.assertTrue(any(
+            command[:4] == ["cargo", "test", "--manifest-path", "universal-service-hub/Cargo.toml"]
+            for command in commands
+        ))
+        self.assertFalse(any("services/football-dynasty/Cargo.toml" in command for command in commands))
+
     def test_subprocess_environment_excludes_all_service_secrets(self):
         with patch.dict(os.environ, {
             "SUPABASE_DB_URL": "postgresql://secret",
