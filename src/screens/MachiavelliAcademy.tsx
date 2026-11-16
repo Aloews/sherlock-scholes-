@@ -138,7 +138,7 @@ export function MachiavelliAcademy({ campaignId }: Props) {
         })}
       </div>
 
-      {finished && !completion ? (
+      {current ? (
         <div className="rounded-xl border border-brand-accent/30 bg-brand-bg p-5">
           <h4 className="text-lg font-semibold">{t('machiavelli.finishedTitle')}</h4>
           <p className="mt-2 text-sm leading-6 text-brand-muted">{t('machiavelli.finishedText')}</p>
@@ -212,6 +212,13 @@ export function MachiavelliAcademy({ campaignId }: Props) {
           {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
         </div>
       ) : null}
+
+      {finished && (
+        <div className="mt-4 rounded-xl border border-brand-accent/30 bg-brand-bg p-4">
+          <h4 className="font-semibold">{t('machiavelli.finishedTitle')}</h4>
+          <p className="mt-2 text-sm leading-6 text-brand-muted">{t('machiavelli.finishedText')}</p>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-brand-muted">
         <span>{t('machiavelli.scoreMeaning')}</span>
