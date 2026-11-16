@@ -1471,6 +1471,7 @@
     "score": "得分",
     "takeaway": "核心启示",
     "submit": "确认决定",
-    "scoreMeaning": "0–2分衡量战略判断，不评价道德价值。"
+    "scoreMeaning": "0–2分衡量战略判断，不评价道德价值。",
+    "strongestOption": "此情境下最稳健的选择"
   }
 }
