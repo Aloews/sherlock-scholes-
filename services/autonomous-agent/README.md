@@ -33,17 +33,33 @@ Provider credentials are synced from GitHub Actions repository secrets by `.gith
 
 | Service | Role | Schedule | Runtime |
 |---|---|---|---|
-| stream-service | implementer + architect + internal reviewer | every 30 minutes | one task per invocation |
-| sherlock-ai-bot | independent PR reviewer | every 5 minutes | one PR per invocation |
+| stream-service | implementer + architect + internal reviewer | every 5 minutes (live Railway configuration) | one task per invocation |
+| sherlock-ai-bot | independent PR reviewer | every 5 minutes (live Railway configuration) | one PR per invocation |
 
-Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The implementation service is scoped to Aloews/sherlock-scholes- only; the reviewer scans only that repository. No public domain is required.
+Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The live repository list is configured separately through `GITHUB_REPOSITORIES`; a configured repository is not proof that task execution is enabled. Live logs previously reported `Worker disabled`, and execution must remain disabled until the relevant acceptance gates pass. No public domain is required.
+
+### Universal Service Hub adapter
+
+The executor has a separate, fail-closed USH adapter mode. It is deliberately not enabled by default.
+
+- `USH_EXECUTION_SCOPE=false` — default; preserves the existing configured repository behavior.
+- When `USH_EXECUTION_SCOPE=true`, the worker ignores the broader `GITHUB_REPOSITORIES` list and instantiates only `Aloews/russian-dev-projects`.
+- Only issues whose title/body identifies `Universal Service Hub` / `universal-service-hub`, or which carry the `project:ush` label, are eligible.
+- The writable paths are limited to `universal-service-hub/src/`, `rust-migrations/`, `tests/`, `docs/`, `Cargo.toml`, `Dockerfile` and `README.md` under that project root. Repository workflows, root files, lockfiles, secrets and other projects remain excluded.
+- `USH_BASE_BRANCH` is mandatory in this mode. Preflight verifies that it resolves to an immutable 40-character commit SHA; the worker clones and opens a draft PR against that branch. For the current USH workstream the intended base is `feat/ush-durable-task-dispatcher-bootstrap`.
+- The adapter reads the nested `universal-service-hub/AGENTS.md` as read-only instructions.
+- Rust validation uses `universal-service-hub/Cargo.toml` for formatting, Clippy and test compilation. Database integration/migration tests run only against an explicitly marked disposable PostgreSQL database.
+- No execution-scope environment change, agent activation, or credential change is made by this code update. Enable the scope only after exact-head tests and the full USH tenant/security acceptance suite pass.
+
 
 ## Required runtime variables
 
 Common:
-- AGENT_ENABLED=true
+- AGENT_ENABLED=true (only after the applicable execution acceptance gate)
 - AGENT_ROLE=implementer or reviewer
-- GITHUB_REPOSITORIES — explicit repository allowlist
+- GITHUB_REPOSITORIES — explicit repository allowlist; ignored only while `USH_EXECUTION_SCOPE=true`
+- USH_EXECUTION_SCOPE=false by default; set true only for the isolated USH execution phase
+- USH_BASE_BRANCH — required when USH execution scope is enabled
 - GITHUB_TOKEN
 - STARIMG_API_KEY
 - STARIMG_BASE_URL=https://ai.starimg.ru/v1
