@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -34,17 +35,47 @@ DEFAULT_ALLOWED_PREFIXES = (
     "supabase/functions/", "supabase/migrations/",
     "football_scraper/", "ml/", "services/football-dynasty/",
 )
-USH_REPOSITORY = "Aloews/russian-dev-projects"
-USH_ALLOWED_PREFIXES = (
-    "universal-service-hub/src/",
-    "universal-service-hub/rust-migrations/",
-    "universal-service-hub/tests/",
-    "universal-service-hub/docs/",
-    "universal-service-hub/scripts/test_tenant_schema.sh",
-    "universal-service-hub/Cargo.toml",
-    "universal-service-hub/Dockerfile",
-    "universal-service-hub/README.md",
+@dataclass(frozen=True)
+class GitHubProjectAdapter:
+    project_id: str
+    repository: str
+    writable_paths: tuple[str, ...]
+    base_branch_env: str
+    validation_manifest: str
+    issue_labels: tuple[str, ...]
+
+    def accepts_issue(self, issue: dict[str, Any]) -> bool:
+        labels = issue.get("labels") or []
+        label_names = {
+            str(label.get("name", "") if isinstance(label, dict) else label).strip().casefold()
+            for label in labels
+        }
+        text = (str(issue.get("title", "")) + "\n" + str(issue.get("body", ""))).casefold()
+        return (
+            any(term in text for term in ("universal-service-hub", "universal service hub"))
+            or bool(label_names.intersection(self.issue_labels))
+        )
+
+
+USH_PROJECT_ADAPTER = GitHubProjectAdapter(
+    project_id="universal-service-hub",
+    repository="Aloews/russian-dev-projects",
+    writable_paths=(
+        "universal-service-hub/src/",
+        "universal-service-hub/rust-migrations/",
+        "universal-service-hub/tests/",
+        "universal-service-hub/docs/",
+        "universal-service-hub/scripts/test_tenant_schema.sh",
+        "universal-service-hub/Cargo.toml",
+        "universal-service-hub/Dockerfile",
+        "universal-service-hub/README.md",
+    ),
+    base_branch_env="USH_BASE_BRANCH",
+    validation_manifest="universal-service-hub/Cargo.toml",
+    issue_labels=("ush", "project:ush", "universal-service-hub"),
 )
+USH_REPOSITORY = USH_PROJECT_ADAPTER.repository
+USH_ALLOWED_PREFIXES = USH_PROJECT_ADAPTER.writable_paths
 
 
 def ush_execution_scope_enabled() -> bool:
@@ -52,17 +83,7 @@ def ush_execution_scope_enabled() -> bool:
 
 
 def is_ush_issue(issue: dict[str, Any]) -> bool:
-    labels = issue.get("labels") or []
-    label_names = {
-        str(label.get("name", "") if isinstance(label, dict) else label).strip().casefold()
-        for label in labels
-    }
-    text = (str(issue.get("title", "")) + "\n" + str(issue.get("body", ""))).casefold()
-    return (
-        "universal-service-hub" in text
-        or "universal service hub" in text
-        or bool(label_names.intersection({"ush", "project:ush", "universal-service-hub"}))
-    )
+    return USH_PROJECT_ADAPTER.accepts_issue(issue)
 
 
 def configured_repositories(raw_repositories: str, fallback_repository: str = "") -> list[str]:
@@ -1473,7 +1494,7 @@ class Worker:
         if not default_branch or not re.fullmatch(r"[A-Za-z0-9._/-]+", default_branch) or ".." in default_branch.split("/"):
             raise RuntimeError(f"GitHub did not return a safe default branch for {self.repo}")
         if ush_execution_scope_enabled():
-            target_branch = required_env("USH_BASE_BRANCH")
+            target_branch = required_env(USH_PROJECT_ADAPTER.base_branch_env)
             if (
                 not re.fullmatch(r"[A-Za-z0-9._/-]+", target_branch)
                 or target_branch.startswith("/")
@@ -2361,7 +2382,7 @@ class Worker:
         ]
 
         # Fail closed before invoking rustfmt when a project manifest is absent.
-        if ush_paths and not (root / "universal-service-hub" / "Cargo.toml").is_file():
+        if ush_paths and not (root / USH_PROJECT_ADAPTER.validation_manifest).is_file():
             raise RuntimeError("USH validation requested but universal-service-hub/Cargo.toml is missing")
         if football_dynasty_paths and not (root / "services" / "football-dynasty" / "Cargo.toml").is_file():
             raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
@@ -2384,7 +2405,7 @@ class Worker:
             if not manifest.is_file():
                 raise RuntimeError("USH validation requested but universal-service-hub/Cargo.toml is missing")
             if full:
-                manifest_arg = "universal-service-hub/Cargo.toml"
+                manifest_arg = USH_PROJECT_ADAPTER.validation_manifest
                 run_command(
                     ["cargo", "fmt", "--manifest-path", manifest_arg, "--", "--check"],
                     root,
