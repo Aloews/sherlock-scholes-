@@ -34,6 +34,49 @@ DEFAULT_ALLOWED_PREFIXES = (
     "supabase/functions/", "supabase/migrations/",
     "football_scraper/", "ml/", "services/football-dynasty/",
 )
+USH_REPOSITORY = "Aloews/russian-dev-projects"
+USH_ALLOWED_PREFIXES = (
+    "universal-service-hub/src/",
+    "universal-service-hub/rust-migrations/",
+    "universal-service-hub/tests/",
+    "universal-service-hub/docs/",
+    "universal-service-hub/Cargo.toml",
+    "universal-service-hub/Dockerfile",
+    "universal-service-hub/README.md",
+)
+
+
+def ush_execution_scope_enabled() -> bool:
+    return os.environ.get("USH_EXECUTION_SCOPE", "").strip().lower() in ("1", "true", "yes")
+
+
+def is_ush_issue(issue: dict[str, Any]) -> bool:
+    labels = issue.get("labels") or []
+    label_names = {
+        str(label.get("name", "") if isinstance(label, dict) else label).strip().casefold()
+        for label in labels
+    }
+    text = (str(issue.get("title", "")) + "\\n" + str(issue.get("body", ""))).casefold()
+    return (
+        "universal-service-hub" in text
+        or "universal service hub" in text
+        or bool(label_names.intersection({"ush", "project:ush", "universal-service-hub"}))
+    )
+
+
+def configured_repositories(raw_repositories: str, fallback_repository: str = "") -> list[str]:
+    if ush_execution_scope_enabled():
+        return [USH_REPOSITORY]
+    repositories = [item.strip() for item in raw_repositories.split(",") if item.strip()]
+    if not repositories and fallback_repository.strip():
+        repositories = [fallback_repository.strip()]
+    if not repositories:
+        raise RuntimeError("GITHUB_REPOSITORIES or GITHUB_REPOSITORY must be configured")
+    if len(repositories) > 12 or len(set(repositories)) != len(repositories):
+        raise RuntimeError("GITHUB_REPOSITORIES must contain at most 12 unique repositories")
+    return repositories
+
+
 REPO_ALLOWED_PREFIXES = {
     "Aloews/sherlock-scholes-": DEFAULT_ALLOWED_PREFIXES,
     "Aloews/first-traffic-platform": ("src/", "test/", "tests/", "scripts/", "docs/", "api/", "server/", "backend/"),
@@ -55,6 +98,10 @@ REPO_ALLOWED_PREFIXES = {
 
 
 def allowed_prefixes_for_repo(repo: str) -> tuple[str, ...]:
+    if ush_execution_scope_enabled():
+        if repo != USH_REPOSITORY:
+            raise RuntimeError("USH execution scope permits only Aloews/russian-dev-projects")
+        return USH_ALLOWED_PREFIXES
     try:
         return REPO_ALLOWED_PREFIXES[repo]
     except KeyError:
@@ -1696,6 +1743,10 @@ class Worker:
         issue = request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}"), self.token)
         if "pull_request" in issue:
             return
+        if ush_execution_scope_enabled() and (self.repo != USH_REPOSITORY or not is_ush_issue(issue)):
+            LOG.info("Ignored issue #%s outside the explicit USH project adapter scope", issue_number)
+            self.attempted.add(comment_id)
+            return
         task = compose_issue_task(issue, task)
         required_paths = required_paths_from_task(task)
         branch = f"ai/task-{issue_number}-{comment_id}"
@@ -2316,11 +2367,10 @@ def main() -> None:
                         format="%(asctime)s %(levelname)s %(name)s %(message)s",
                         stream=sys.stdout)
     raw_repositories = os.environ.get("GITHUB_REPOSITORIES", "").strip()
-    repositories = [item.strip() for item in raw_repositories.split(",") if item.strip()]
-    if not repositories:
-        repositories = [required_env("GITHUB_REPOSITORY")]
-    if len(repositories) > 12 or len(set(repositories)) != len(repositories):
-        raise RuntimeError("GITHUB_REPOSITORIES must contain at most 12 unique repositories")
+    fallback_repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    repositories = configured_repositories(raw_repositories, fallback_repository)
+    if ush_execution_scope_enabled():
+        LOG.info("USH execution scope active: repository=%s; writable_paths=%s", USH_REPOSITORY, len(USH_ALLOWED_PREFIXES))
     # Preflight every configured repository before any task is accepted.
     workers = [Worker(repository) for repository in repositories]
     if os.environ.get("STARIMG_DIAGNOSTIC", "false").strip().lower() in ("1", "true", "yes"):
