@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { MachiavelliAcademy } from '@/screens/MachiavelliAcademy';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceCampaign, createCampaign, createHeir, executeSuccession, getCampaign,
@@ -244,6 +245,8 @@ export function FootballDynastyScreen() {
                 </div>
               </div>
             </section>
+
+            <MachiavelliAcademy campaignId={campaign.campaign.id} />
 
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <section className="rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
