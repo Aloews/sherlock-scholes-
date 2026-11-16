@@ -1506,5 +1506,26 @@
     "sandbox": "Sandbox",
     "scenario": "Escenario",
     "accounts": "cuentas"
+  },
+  "machiavelli": {
+    "eyebrow": "ESCUELA DEL PODER",
+    "title": "18 principios de liderazgo",
+    "subtitle": "Estudia a Maquiavelo mediante decisiones en la vida de un club y una dinastía. Las elecciones tienen consecuencias; la puntuación mide el criterio estratégico, no el valor moral.",
+    "progress": "Progreso de aprendizaje",
+    "principle": "Principio",
+    "completed": "completado",
+    "locked": "bloqueado",
+    "loading": "Cargando…",
+    "error": "No se pudo cargar el progreso o guardar la decisión. Inténtalo de nuevo.",
+    "finishedTitle": "Curso completado",
+    "finishedText": "Has estudiado 18 ideas del pensamiento político. Úsalas para analizar circunstancias y consecuencias, no como recetas universales.",
+    "totalScore": "Puntuación estratégica",
+    "scenario": "Situación del club",
+    "choose": "¿Qué harías?",
+    "yourDecision": "Tu decisión",
+    "score": "Puntuación",
+    "takeaway": "Idea clave",
+    "submit": "Confirmar decisión",
+    "scoreMeaning": "0–2 mide el criterio estratégico, no tu moralidad."
   }
 }
