@@ -1526,6 +1526,7 @@
     "score": "Score",
     "takeaway": "Idée clé",
     "submit": "Valider la décision",
-    "scoreMeaning": "0–2 mesure le jugement stratégique, pas votre moralité."
+    "scoreMeaning": "0–2 mesure le jugement stratégique, pas votre moralité.",
+    "strongestOption": "Option la plus solide dans ce scénario"
   }
 }
