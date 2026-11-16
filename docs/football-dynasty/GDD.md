@@ -80,6 +80,18 @@ Rival dynasties have leaders, heirs, goals, assets, relationships, budgets, and 
 
 AI memory stores structured event references and relationship changes. Narrative text presents persisted facts; it does not determine state.
 
+## Machiavellian strategic doctrine
+
+The campaign includes an 18-lesson strategic-thinking curriculum adapted from *The Prince*. It is a game-authored sequence, not a historical list of 18 rules published by Machiavelli.
+
+The player studies effective truth, *virtù*, own capabilities, historical examples, consolidation, factions, respect and fear, avoiding hatred and contempt, fox-and-lion reasoning, reputation, credible promises, capable advisers, anti-flattery, fiscal restraint, preparedness, alliances and *fortuna*/adaptability.
+
+Each lesson is a decision in a football-governance scenario: club acquisition, board conflict, transfer negotiations, financial pressure, supporter relations, league politics, executive appointments or succession. Three choices have distinct consequences. After a choice, the game explains the trade-off and the relevant Machiavellian idea.
+
+Progress is campaign-persistent and sequential. The server validates the choice, calculates a bounded strategic-judgment score, records the answer and chronicle event, and unlocks the next lesson. Scores are not moral grades. Completed lessons can be reviewed but cannot be replayed to farm points. The client and any LLM cannot authoritatively change scores, unlocks or campaign state.
+
+The adaptation does not reward violence, unlawful coercion or arbitrary abuse. It distinguishes strategic analysis from endorsement and does not reduce Machiavelli to the slogan “the ends justify the means”. Full content and source notes: docs/football-dynasty/MACHIAVELLIAN_DOCTRINE.md.
+
 ## Personal life and time
 
 Life simulation is strategic, not room-by-room. It covers partnership, marriage, divorce, children, education, friendships, residences, travel, and social events through choices and event chains. Full 3D property exploration is out of scope.
