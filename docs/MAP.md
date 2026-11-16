@@ -148,7 +148,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 
 - GET /api/v1/campaigns/{campaign_id}/doctrine returns campaign-owned progress; POST /api/v1/campaigns/{campaign_id}/doctrine/{principle_id}/answer accepts one choice.
 - The lesson bank contains 18 original football-governance scenarios in Russian and English, with interface labels in all nine app locales.
-- fd.doctrine_progress persists one answer per campaign/principle. The new migration adds owner-scoped RLS. Server-side scoring, sequential unlocks, idempotent replay and chronicle entries are covered by Rust tests.
+- fd.doctrine_progress persists one answer per campaign/principle. The matching SQLx migration and Supabase production migration 20261116110000_football_dynasty_machiavellian_doctrine.sql add owner-scoped RLS; the disposable PostgreSQL workflow checks it. Server-side scoring, sequential unlocks, idempotent replay and chronicle entries are covered by Rust tests.
 - The UI is embedded in the existing /dynasty campaign screen; it is not a separate demo route.
 - The 18-item sequence is a curated adaptation from *The Prince*, not a canonical numbered list by Machiavelli. Scores assess strategic judgment in context, not moral worth. No violence or unlawful coercion is rewarded.
 - State: implementation committed to feat/football-dynasty-machiavelli-academy-20261116; CI, review and production migration/deployment are still required. Do not claim it is live until the exact PR head passes checks and a real Telegram campaign smoke test proves persistence and owner isolation.
