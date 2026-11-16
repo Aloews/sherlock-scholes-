@@ -132,6 +132,41 @@ class WorkerPolicyTests(unittest.TestCase):
             "labels": [],
         }))
 
+    def test_ush_preflight_requires_and_verifies_explicit_base_branch(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.repo = "Aloews/russian-dev-projects"
+        worker.token = "test-token"
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "true",
+            "USH_BASE_BRANCH": "feat/ush-durable-task-dispatcher-bootstrap",
+        }):
+            with patch("worker.request_json", side_effect=[
+                {"permissions": {"push": True, "pull": True}, "default_branch": "main"},
+                {"commit": {"sha": "a" * 40}},
+            ]) as request:
+                worker._preflight()
+
+        self.assertEqual(worker.default_branch, "feat/ush-durable-task-dispatcher-bootstrap")
+        self.assertTrue(request.call_args_list[1].args[0].endswith(
+            "/branches/feat%2Fush-durable-task-dispatcher-bootstrap"
+        ))
+
+    def test_ush_preflight_fails_closed_without_base_branch(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.repo = "Aloews/russian-dev-projects"
+        worker.token = "test-token"
+        with patch.dict(os.environ, {"USH_EXECUTION_SCOPE": "true"}, clear=True):
+            with patch("worker.request_json", return_value={
+                "permissions": {"push": True, "pull": True},
+                "default_branch": "main",
+            }):
+                with self.assertRaisesRegex(RuntimeError, "USH_BASE_BRANCH"):
+                    worker._preflight()
+
     def test_subprocess_environment_excludes_all_service_secrets(self):
         with patch.dict(os.environ, {
             "SUPABASE_DB_URL": "postgresql://secret",
