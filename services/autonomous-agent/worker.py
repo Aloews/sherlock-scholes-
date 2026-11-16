@@ -40,6 +40,7 @@ USH_ALLOWED_PREFIXES = (
     "universal-service-hub/rust-migrations/",
     "universal-service-hub/tests/",
     "universal-service-hub/docs/",
+    "universal-service-hub/scripts/test_tenant_schema.sh",
     "universal-service-hub/Cargo.toml",
     "universal-service-hub/Dockerfile",
     "universal-service-hub/README.md",
