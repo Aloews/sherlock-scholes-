@@ -2206,26 +2206,72 @@ class Worker:
             run_command(["python3", "-m", "py_compile"] + python_paths, root, timeout=300)
 
         rust_paths = sorted({path for path in changed if path.endswith(".rs")})
+        ush_paths = [path for path in changed if path.startswith("universal-service-hub/")]
+        ush_rust_paths = [path for path in rust_paths if path.startswith("universal-service-hub/")]
         football_dynasty_paths = [
             path for path in changed
             if path.startswith("services/football-dynasty/")
         ]
-        if rust_paths or football_dynasty_paths:
+        football_rust_paths = [
+            path for path in rust_paths
+            if path.startswith("services/football-dynasty/")
+        ]
+
+        # Format every changed Rust source, but compile each project against its own manifest.
+        if rust_paths:
+            run_command(
+                ["rustfmt", "--edition", "2024"] + rust_paths,
+                root,
+                timeout=300,
+            )
+            run_command(
+                ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
+                root,
+                timeout=300,
+            )
+
+        if ush_paths:
+            manifest = root / "universal-service-hub" / "Cargo.toml"
+            if not manifest.is_file():
+                raise RuntimeError("USH validation requested but universal-service-hub/Cargo.toml is missing")
+            if full:
+                manifest_arg = "universal-service-hub/Cargo.toml"
+                run_command(
+                    ["cargo", "fmt", "--manifest-path", manifest_arg, "--", "--check"],
+                    root,
+                    timeout=300,
+                )
+                run_command(
+                    ["cargo", "clippy", "--manifest-path", manifest_arg, "--all-targets", "--", "-D", "warnings"],
+                    root,
+                    timeout=900,
+                    extra_env={"DATABASE_URL": "postgresql://localhost:5432/ush_test"},
+                )
+                test_database_url = os.environ.get("USH_TEST_DATABASE_URL", "").strip()
+                if (
+                    test_database_url.startswith(("postgres://", "postgresql://"))
+                    and os.environ.get("USH_TEST_DATABASE_DISPOSABLE", "").strip().lower() in ("1", "true", "yes")
+                ):
+                    run_command(
+                        ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets"],
+                        root,
+                        timeout=1200,
+                        extra_env={"DATABASE_URL": test_database_url},
+                    )
+                else:
+                    run_command(
+                        ["cargo", "test", "--manifest-path", manifest_arg, "--all-targets", "--no-run"],
+                        root,
+                        timeout=1200,
+                        extra_env={"DATABASE_URL": "postgresql://localhost:5432/ush_test"},
+                    )
+                    LOG.info("USH database integration tests remain gated by exact-head PostgreSQL CI")
+
+        if football_dynasty_paths:
             manifest = root / "services" / "football-dynasty" / "Cargo.toml"
             if not manifest.is_file():
-                raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
-            if rust_paths:
-                run_command(
-                    ["rustfmt", "--edition", "2024"] + rust_paths,
-                    root,
-                    timeout=300,
-                )
-                run_command(
-                    ["rustfmt", "--check", "--edition", "2024"] + rust_paths,
-                    root,
-                    timeout=300,
-                )
-            if full and football_dynasty_paths:
+                raise RuntimeError("Football Dynasty Rust validation requested but its Cargo.toml is missing")
+            if full:
                 manifest_arg = "services/football-dynasty/Cargo.toml"
                 run_command(
                     ["cargo", "fmt", "--manifest-path", manifest_arg, "--", "--check"],
@@ -2256,7 +2302,7 @@ class Worker:
                         timeout=1200,
                         extra_env={"DATABASE_URL": "postgresql://localhost:5432/sherlock_test"},
                     )
-                    LOG.info("Full PostgreSQL 17 integration tests are gated by the exact-head GitHub Actions CI job")
+                    LOG.info("Full PostgreSQL integration tests are gated by the exact-head GitHub Actions CI job")
 
 
 def main() -> None:
