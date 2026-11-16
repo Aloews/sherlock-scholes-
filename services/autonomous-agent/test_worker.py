@@ -109,6 +109,8 @@ class WorkerPolicyTests(unittest.TestCase):
             prefixes = allowed_prefixes_for_repo(USH_REPOSITORY)
             self.assertTrue(safe_path("universal-service-hub/src/main.rs", prefixes))
             self.assertTrue(safe_path("universal-service-hub/rust-migrations/0005.sql", prefixes))
+            self.assertTrue(safe_path("universal-service-hub/scripts/test_tenant_schema.sh", prefixes))
+            self.assertFalse(safe_path("universal-service-hub/scripts/dev-up.sh", prefixes))
             self.assertFalse(safe_path("pages/index.tsx", prefixes))
             self.assertFalse(safe_path("docs/MAP.md", prefixes))
             self.assertFalse(safe_path("universal-service-hub/.env", prefixes))
