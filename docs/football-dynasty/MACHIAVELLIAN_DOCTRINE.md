@@ -57,6 +57,7 @@ Scores assess the quality of the strategic reasoning in that particular scenario
 - API: GET /api/v1/campaigns/{campaign_id}/doctrine and POST /api/v1/campaigns/{campaign_id}/doctrine/{principle_id}/answer.
 - Persistence: fd.doctrine_progress, keyed by campaign and principle, protected by the same verified Telegram owner scope as the campaign.
 - Mutations require idempotency keys. Principle order and score are server-authoritative.
+- Both disposable PostgreSQL schema/RLS regressions include the 13th doctrine table, verify its owner policy and ensure the runtime role cannot update or delete completed lessons.
 - Each locale must include the academy interface labels in ru, en, es, pt, fr, ar, ja, ko and zh. Lesson text is authored in Russian and English; other locales currently use English lesson content until full lesson translation is reviewed.
 
 ## Source basis
