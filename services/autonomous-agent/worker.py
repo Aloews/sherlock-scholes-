@@ -125,8 +125,12 @@ def safe_path(path: str, allowed_prefixes: tuple[str, ...] = DEFAULT_ALLOWED_PRE
     if path.startswith("/") or ".." in Path(path).parts:
         return False
     lower = path.lower()
+    allowed = any(
+        path.startswith(rule) if rule.endswith("/") else path == rule
+        for rule in allowed_prefixes
+    )
     return (
-        path.startswith(allowed_prefixes)
+        allowed
         and not path.startswith("services/autonomous-agent/")
         and not any(part in lower for part in EXCLUDED_PARTS)
         and not lower.endswith(EXCLUDED_SUFFIXES)
