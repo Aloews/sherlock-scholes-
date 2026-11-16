@@ -89,7 +89,7 @@ The reviewer uses only read-only GET requests and Railway GraphQL queries. It ne
 ## Safety and limits
 
 - No arbitrary model-generated shell commands.
-- No worker self-modification, workflow/manifests/lockfiles, secrets, deletions, renames or symlinks.
+- No worker self-modification, CI workflow edits, lockfiles, secrets, deletions, renames or symlinks. The USH adapter permits only its explicitly listed Cargo manifest and tenant-schema smoke script.
 - Per-repository write-path allowlists remain enforced.
 - Every child process receives a strict environment allowlist; provider credentials are excluded.
 - Patch size is bounded; reviewer corrections are restricted to the original changed-file set.
