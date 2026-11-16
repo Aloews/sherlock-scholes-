@@ -197,7 +197,7 @@ pub(crate) fn payload_hash<T: Serialize>(payload: &T) -> Result<String, ApiError
     Ok(format!("{digest:x}"))
 }
 
-async pub(crate) fn reserve_command(
+pub(crate) async fn reserve_command(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
     key: &str,
@@ -236,7 +236,7 @@ async pub(crate) fn reserve_command(
         .map(Some)
 }
 
-async pub(crate) fn complete_command(
+pub(crate) async fn complete_command(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
     key: &str,
@@ -260,7 +260,7 @@ pub(crate) fn replay<T: DeserializeOwned>(value: Value) -> Result<Json<T>, ApiEr
     Ok(Json(serde_json::from_value(value)?))
 }
 
-async pub(crate) fn set_owner_scope(
+pub(crate) async fn set_owner_scope(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
 ) -> Result<(), ApiError> {
