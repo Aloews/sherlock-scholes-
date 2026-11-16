@@ -60,8 +60,18 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('room code contract', () => {
-  it('refuses to join with a one-character code before querying the database', async () => {
-    await expect(joinRoom('A', 200)).rejects.toThrow('INVALID_ROOM_CODE');
+  it('accepts a one-character code and queries with its normalized value', async () => {
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    mocks.from.mockImplementation((table: string) =>
+      queryBuilder(table, calls, { ...validRoom, code: 'A' }),
+    );
+    await joinRoom('a', 200);
+    expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'A'] });
+  });
+
+  it('rejects empty and malformed codes before querying the database', async () => {
+    await expect(joinRoom('', 200)).rejects.toThrow('INVALID_ROOM_CODE');
+    await expect(joinRoom('AB-12', 200)).rejects.toThrow('INVALID_ROOM_CODE');
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
@@ -73,7 +83,7 @@ describe('room code contract', () => {
     expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['status', 'waiting'] });
   });
 
-  it('rejects a room row whose stored code is shorter than six characters', async () => {
+  it('rejects a room row whose code does not match the requested code', async () => {
     const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
     mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, code: 'A' }));
 
@@ -157,12 +167,15 @@ describe('room code contract', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('create_1v1_room', expect.objectContaining({ p_host_id: 100 }));
   });
 
-  it('joins a 1v1 room only with the full normalized code', async () => {
+  it('joins a 1v1 room with a short normalized code', async () => {
     const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
-    mocks.from.mockImplementation((table: string) => queryBuilder(table, calls, { ...validRoom, mode: '1v1' }));
-    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1' }, error: null });
-    await joinRoom('ab12cd', 200);
-    expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'AB12CD'] });
+    mocks.from.mockImplementation((table: string) =>
+      queryBuilder(table, calls, { ...validRoom, mode: '1v1', code: 'A' }),
+    );
+    mocks.rpc.mockResolvedValue({ data: { ...validRoom, mode: '1v1', code: 'A' }, error: null });
+    const room = await joinRoom('a', 200);
+    expect(room.code).toBe('A');
+    expect(calls).toContainEqual({ table: 'rooms', method: 'eq', args: ['code', 'A'] });
     expect(mocks.rpc).toHaveBeenCalledWith('join_1v1_room', { p_room_id: 'room-123', p_player_id: 200 });
   });
 });

@@ -1,21 +1,31 @@
+import roomCodeCases from '../../../contracts/alias_room_code_cases.json';
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizeCode, deepLink, shareLink, copyText, sanitizeCodeInput, codeFromText, CODE_LENGTH,
 } from './invite';
 
-// The invite path is the only way into a room other than reading six
-// characters out loud, and every one of its inputs comes from outside: a
+// The invite path is the only way into a room other than reading the code
+// out loud, and every one of its inputs comes from outside: a
 // Telegram start_param, a paste, a clipboard API that may refuse.
 
+describe('shared Rust room-code contract', () => {
+  it.each(roomCodeCases)('$name', ({ raw, sanitized, code }) => {
+    expect(sanitizeCodeInput(raw)).toBe(sanitized);
+    expect(codeFromText(raw)).toBe(code);
+  });
+});
+
 describe('normalizeCode', () => {
-  it('accepts a six-character code and uppercases it', () => {
+  it('accepts one-to-six-character codes and uppercases them', () => {
+    expect(normalizeCode('a')).toBe('A');
+    expect(normalizeCode('ab12')).toBe('AB12');
     expect(normalizeCode('ab12cd')).toBe('AB12CD');
     expect(normalizeCode('  XY9Z01 ')).toBe('XY9Z01');
   });
 
   it('rejects anything that is not a room code', () => {
-    for (const bad of ['', '  ', 'A', 'ABC', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', null, undefined]) {
+    for (const bad of ['', '  ', 'ABCDEFG', 'ABC-12', 'ЖЖЖЖЖЖ', 'ß', 'ı', null, undefined]) {
       expect(normalizeCode(bad)).toBeNull();
     }
   });
@@ -113,7 +123,7 @@ describe('sanitizeCodeInput', () => {
     // The first keystroke must survive. It is not a valid code and must not be
     // treated as one, but it has to appear.
     expect(sanitizeCodeInput('x')).toBe('x');
-    expect(normalizeCode(sanitizeCodeInput('x'))).toBeNull();
+    expect(normalizeCode(sanitizeCodeInput('x'))).toBe('X');
   });
 
   it('drops what a code cannot contain instead of holding it and failing later', () => {
@@ -127,11 +137,12 @@ describe('sanitizeCodeInput', () => {
     expect(sanitizeCodeInput('AB12CDEF')).toBe('AB12CD');
   });
 
-  it('reads the invite LINK, which is what people actually paste', () => {
-    // Stripping punctuation from a URL would leave HTTPSTMESHERLOCK…; the link
-    // has to be read as a link before anything blunt happens to it.
+  it('reads invite links without treating unrelated URL text as a room code', () => {
     expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?startapp=AB12CD')).toBe('AB12CD');
     expect(sanitizeCodeInput(deepLink('XY9Z01'))).toBe('XY9Z01');
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?other=1')).toBe('');
+    expect(codeFromText('https://t.me/sherlock_scholes_bot?other=1')).toBeNull();
+    expect(sanitizeCodeInput('https://t.me/sherlock_scholes_bot?start=%E0%A4%A')).toBe('');
   });
 });
 
@@ -140,7 +151,10 @@ describe('codeFromText', () => {
     expect(codeFromText('AB12CD')).toBe('AB12CD');
     expect(codeFromText(deepLink('XY9Z01'))).toBe('XY9Z01');
     expect(codeFromText('Заходи: https://t.me/sherlock_scholes_bot?startapp=ab12cd')).toBe('AB12CD');
-    expect(codeFromText('AB12')).toBeNull();
+    expect(codeFromText('AB12')).toBe('AB12');
+    expect(codeFromText('no-code')).toBeNull();
+    expect(codeFromText('AB-12')).toBeNull();
+    expect(sanitizeCodeInput('AB-12')).toBe('AB12');
     expect(codeFromText(null)).toBeNull();
   });
 });

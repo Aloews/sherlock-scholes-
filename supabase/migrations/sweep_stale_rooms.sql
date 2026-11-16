@@ -92,8 +92,9 @@ COMMENT ON FUNCTION public.sweep_stale_rooms(INT) IS
   'Close rounds and rooms abandoned by every client. Scheduled every 5 '
   'minutes by pg_cron; see sweep_stale_rooms.sql.';
 
--- Deliberately NOT granted to anon/authenticated: unlike end_round(), which a
--- player legitimately calls for their own game, this one walks every room.
+-- Both SECURITY DEFINER functions are server-internal. pg_cron runs as postgres.
+REVOKE ALL ON FUNCTION public.sweep_stale_rooms(INT) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.end_round(UUID) FROM PUBLIC, anon, authenticated, service_role;
 
 -- ─── The scheduler ──────────────────────────────────────────
 -- pg_cron was available on this project but not installed (checked before

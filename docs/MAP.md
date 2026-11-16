@@ -2,7 +2,7 @@
 
 > **Purpose:** keep the team focused on shipping a better football product and collecting trustworthy football data. This is an execution map, not a chronological work diary.
 >
-> **Last structure review:** 2026-11-11  
+> **Last structure review:** 2026-11-12  
 > **Canonical product:** Telegram Mini App — https://sherlock-scholes.vercel.app  
 > **Repository:** https://github.com/Aloews/sherlock-scholes-  
 > **Legacy map:** [Archived 2026-11-11](archive/MAP-2026-11-11-pre-outcome-rewrite.md)
@@ -37,8 +37,49 @@ flowchart TD
 - **Frontend:** React, Vite, TypeScript, Feature-Sliced Design; route ownership is in `src/app/Router.tsx`.
 - **Primary data platform:** the existing Supabase project. Real football data, Alias game data, and Football Dynasty fictional campaign data are separate domains.
 - **Backend boundary:** existing features use Supabase RPC/PostgREST and Edge Functions. Football Dynasty has its own Rust/Axum API and private `fd` schema.
+- **Alias Rust migration:** `services/sherlock-core/` contains the pure domain for phase transitions, clock, room planning, round lifecycle, filters, and room codes. The authenticated Rust/Axum API owns the runtime endpoints for planning, starting, activating/dealing, ending, and explainer voice pause/resume. Round planning and start use the verified Telegram identity and derive roster/settings from PostgreSQL. Starting a room inserts every pending round in one transaction and is idempotent while the room remains waiting. Activation locks the room and round, checks membership and round sequence, selects cards through the existing sanitized `pick_random_cards` SQL contract, replaces stale partial deals, and updates room/round state in one transaction. Concurrent activation requests result in one deal; retries repair a claimed round with missing cards. Round completion is claimed and scored directly in a single Rust-owned PostgreSQL transaction, with membership row-locking, idempotent score upsert, next-round lookup, and final-room statistics trigger. Voice pause/resume use atomic database updates and explainer ownership checks, capped at 120 seconds. The legacy `end_round` and global `sweep_stale_rooms` SECURITY DEFINER RPCs are revoked from `PUBLIC`, `anon`, `authenticated`, and `service_role`; the postgres owner retains the cron-only sweep path. Production no longer inserts rounds or deals cards directly from the frontend. Card decisions are now explainer-authorized Rust transactions; round scoring remains in the atomic round-end transaction. The remaining client-write boundary is legacy room/lobby mutation and the final-room recovery fallback in the game hook. Supabase remains the persistence layer and realtime event source.
+- **Alias lifecycle verification:** `supabase/tests/alias_round_lifecycle_setup.sql` and `supabase/tests/alias_round_lifecycle.test.sql` exercise the production SQL contracts against disposable PostgreSQL. Rust API integration tests additionally call the authenticated round-plan/start/activate/end/pause/resume routes against that fixture, including non-host/member denial, strict 1v1 roster validation, idempotent round creation, concurrent activation, partial-deal recovery, explainer-only card decisions, idempotent decision replay, persisted pause state, and score writes. The timestamped pause/resume correction is applied in the same CI job.
+- **Shared room-code contract:** `contracts/alias_room_code_cases.json` is consumed by TypeScript and Rust tests. It locks short legacy codes, ASCII-only normalization, case-preserving field input, Telegram `start`/`startapp` links, percent decoding, malformed URLs, and invalid inputs to one cross-language behavior set.
+- **Shared round-plan contract:** `contracts/alias_round_plan_cases.json` is consumed by the TypeScript fallback and Rust core tests. The Rust API integration tests verify Telegram authentication, that the authenticated caller is present in the submitted room roster, strict two-player/two-team assignment for 1v1, input bounds, host ordering, team roster rotation, and invalid-request rejection. The shared planner is used by the transactional start endpoint; production no longer inserts rows into `rounds` directly from the frontend. The next boundary is the remaining room/lobby mutations and the final-room recovery fallback; move them behind verified Rust endpoints before tightening transitional client-facing RLS policies.
 - **Hosting:** Vercel hosts the Mini App and the currently configured backend routing. Do not assume a Railway migration is complete unless the deployed service and production routes have been verified.
 - **Scheduled collection:** GitHub Actions, Supabase Cron, and collector code. A successful job invocation does not prove that the upstream source returned complete or fresh data.
+
+
+## 2.2 Production security findings (read-only)
+
+- The 2026-11-12 read-only audit found permissive `USING (true)` / `WITH CHECK (true)` policies on the core Alias room/game tables. They remain a transitional risk while older clients still write through PostgREST. Do not tighten them until all corresponding client writes are moved behind authenticated server endpoints and regression-tested.
+- Supabase's security advisory flags `public.profile_backfill_claim_cursor` because RLS is disabled. The same audit found no direct `anon` or `authenticated` table grants at that time; this is not a reason to ignore the advisory. Do not enable RLS blindly: first define and test the worker/service-role policy. No production RLS changes were made during this work.
+
+## 2.1 Vercel free-plan budget and release batching
+
+**Hard constraint:** Vercel's free-plan build/deployment allowance is a scarce release resource. Do not spend it on routine commits, tiny fixes, repeated previews, or retries of an unchanged build.
+
+- Do implementation, formatting, static analysis, unit tests, integration tests, and broad regression checks in the local/CI environment first. GitHub Actions and local test execution are not a reason to trigger a Vercel deployment.
+- Build a **substantial, coherent vertical slice** before asking Vercel to build it: implementation, related migrations/contracts, tests, documentation, and reviewable acceptance criteria belong to one planned batch. Keep commits logically ordered, but do not use a Vercel build as a per-commit test.
+- Avoid pushing intermediate states to a Vercel-connected preview branch when each push would trigger a build. Before starting a batch, inspect the repository's actual Vercel Git integration and ignored-build configuration. Use an approved skip/ignore mechanism for intermediate commits only when its behavior is verified; never guess at configuration or silently change production settings.
+- **Repository-enforced preview gate:** the linked `sherlock-scholes` project is on the Hobby plan. Because this repository defines multiple Vercel services, `vercel.json` sets the ignore command separately for the frontend and Football Dynasty service roots. Production deployments and `main` always build; non-main branches are ignored unless the commit message contains the explicit `[vercel-preview]` marker. Missing branch and environment metadata fails open; when Vercel identifies a Preview but omits the branch, the script skips it unless the explicit marker is present. The policy is covered by a Node test and is version-controlled. The service-level commands in `vercel.json` are the repository configuration; Vercel's deployment log confirmed the frontend command ran for the planned Preview. For routine commits, Vercel still starts a short preflight deployment process to run the ignore command, then cancels before dependency installation and the application build. This avoids full builds but is not zero Vercel platform activity. No separate project-level setting is assumed. Do not change the service commands without checking the actual service configuration.
+- Trigger **one deliberate Preview build** after the batch passes local and GitHub checks. Use that deployment for the complete end-to-end acceptance pass, not for debugging individual lines.
+- Promote/deploy to Production only after Preview acceptance, required CI, database/security checks, and the release checklist pass. Verify the deployed commit and critical Telegram journey.
+- If Vercel reports a quota/rate-limit failure, do not repeatedly retry the same deployment or create extra commits merely to retry it. Preserve the code, diagnose through local builds, GitHub Actions and available logs, and wait for the allowance/reset or an explicitly approved alternative release path.
+- Do not disable required GitHub CI, weaken tests, or mark a Vercel failure as success to save quota. Keep Vercel build failures distinct from source/test failures.
+- Record each intentional Vercel Preview/Production build and its purpose in the release record. No routine status update or documentation-only commit should consume a Vercel build.
+
+**Acceptance:** intermediate implementation and verification do not require Vercel builds; a Vercel build is reserved for a complete, already-verified release candidate.
+
+## 2.2 Large-batch implementation and deep verification protocol
+
+The user-facing delivery unit is a complete, coherent feature slice—not a stream of tiny deployments. Build the slice end-to-end before spending deployment quota, while keeping source changes internally reviewable and tests authored with the behavior.
+
+1. **Inspect first:** read this map, the relevant product specification, current source and tests, callers/contracts, migrations/RLS, open PRs, CI and the affected production behavior. Record unknowns; do not infer unseen state.
+2. **Define the whole slice:** list user-visible scenarios, API/data contracts, authorization boundaries, failure states, migration/rollback needs, acceptance criteria and explicit non-goals. Avoid bundling unrelated features.
+3. **Implement the coherent slice:** make the full intended path work across UI/API/database/jobs as applicable. Add regression tests with the code; do not leave stubs, dead routes, duplicate implementations, or placeholder success responses.
+4. **First verification pass:** run formatting, type/compiler checks, lint/Clippy, focused unit tests, integration/contract tests, database migration and RLS tests, and relevant existing regressions. Include boundary, invalid-input, empty/missing-data, failure/retry, idempotency, concurrency and authorization cases where applicable.
+5. **Quality-tool pass (ub-mode):** follow `.agents/skills/ub-mode/SKILL.md`. Use Crapper to target CRAP < 10 per function, Dryer to find structural duplication at similarity >= 0.8, and Mutator to find uncovered behavior, surviving mutants and dead code. Capture actual output. If a tool is unavailable, record that exact limitation; do not claim it ran or silently waive the project gate.
+6. **Second independent verification pass:** after fixing all findings, rerun the complete relevant suite from a clean state against the exact candidate commit. Reinspect the final diff, generated artifacts, migration order, test output and CI results. A test run before the final code change does not validate the final code.
+7. **Runtime/artifact verification:** use REA per `.agents/skills/rea/SKILL.md` when conclusions require a packaged build, live runtime or artifact behavior not established by source. REA is not a substitute for source tests, and its local MCP setup must not be assumed installed. Verify the actual Telegram Mini App user path in Preview after the single planned Vercel build.
+8. **Release gate:** all required checks must pass on the exact commit; no unexplained red checks, known critical defects, data-integrity failures or unverified deployment claims. If a gate is blocked by infrastructure/quota, report it as blocked—not passed—and do not merge/deploy around it.
+
+**Test evidence must identify:** exact commit SHA, command/workflow, environment, pass/fail result, relevant coverage/mutation output, and any untested surface. “Build succeeded” alone is not deep verification.
 
 ## 3. Delivery scoreboard
 
@@ -62,7 +103,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | Product area | User outcome | Main entry points | Completion evidence |
 |---|---|---|---|
 | Home and navigation | Reach a useful football activity quickly | `src/screens/HomeScreen.tsx`, `src/app/Router.tsx` | Main journeys are discoverable; route and deep-link tests pass |
-| Football Alias | Create/join a room and finish a multiplayer game | `src/screens`, `src/features/lobby`, game features | Host/guest lifecycle, reconnect, replay, and room expiry pass end-to-end |
+| Football Alias | Create/join a room and finish a multiplayer game | `src/screens`, `src/features/lobby`, game features, staged Rust domain in `services/sherlock-core/` | Host/guest lifecycle, reconnect, replay, and room expiry pass end-to-end; Rust runtime parity is proven before cutover |
 | Player cards and profiles | Identify a player and inspect a reliable career record | `src/features/cards`, collection/profile screens | Identity, portrait provenance, career totals, and season totals reconcile |
 | Clubs and squads | Inspect club identity, squad, form, and matches | `src/features/clubs`, club screens | Squad source, coverage, match sample size, and timestamps are visible and consistent |
 | Matches and competitions | Follow fixtures, results, tables, and tournaments | `src/features/matches`, match/table screens | Fixtures and results reconcile; incomplete coverage is not presented as a full table |
@@ -152,7 +193,7 @@ Work in this order. Reorder only when fresh production evidence shows a higher-i
 
 - Establish a current production baseline for release health, core journeys, active users, game starts/completions, collection yield, and forecast quality.
 - Identify the smallest production blocker that prevents a feature or data pipeline from shipping.
-- Keep changes small enough to review and deploy independently.
+- Deliver one complete, coherent vertical slice at a time. Keep its commits reviewable and ordered, but batch implementation before broad verification and reserve Vercel builds for the release candidate.
 - Remove stale or contradictory roadmap items; do not keep multiple competing implementations alive.
 - Maintain a weekly shipped-outcome log with links to PRs, deployments, tests, and measured impact.
 
@@ -214,7 +255,9 @@ A task is done only when all applicable items are true:
 - [ ] One canonical implementation is used; no parallel duplicate pipeline was added.
 - [ ] Authorization, ownership, and data provenance are enforced server-side.
 - [ ] Tests cover success, failure, boundary, and regression cases.
-- [ ] Relevant CI checks pass on the exact commit being released.
+- [ ] The complete first-pass and independent second-pass test suites pass on the exact commit being released.
+- [ ] Applicable ub-mode Crapper/Dryer/Mutator evidence is recorded; unavailable tools are explicitly identified.
+- [ ] No intermediate Vercel build was used for routine validation; the planned Preview build is reserved for the verified release candidate.
 - [ ] Deployment is verified against the intended commit and production URL.
 - [ ] Critical user journey is smoke-tested in the real Telegram Mini App.
 - [ ] Data freshness, collection yield, or feature usage is measured where relevant.
@@ -277,12 +320,14 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 2. Inspect the current branch, open PRs, CI, migrations, production state, and recent deployments before changing anything.
 3. State the expected user outcome and acceptance criteria in the PR.
 4. Implement the smallest complete vertical slice.
-5. Run targeted tests first, then required repository checks.
-6. Inspect the actual diff and test output; fix failures rather than explaining them away.
-7. Verify production behaviour and data impact after deployment.
-8. Update this map only when architecture, ownership, a release gate, or a measured priority changes. Do not append routine audit logs here.
-9. Put dated investigations, raw counts, incident timelines, and detailed query output in a dedicated operational report under `docs/archive/` or `docs/operations/`.
-10. Never invent metrics, claim unverified deployment success, weaken tests to get a green check, or delete production data to make a dashboard look healthy.
+5. Finish the planned coherent implementation batch, then run deep verification and a clean second pass as specified in §2.2.
+6. Inspect the actual diff and test output; fix failures rather than explaining them away. Re-run the full relevant suite after the final fix.
+7. Preserve Vercel free-plan allowance: no Preview/Production build for intermediate commits or routine checks. Use one planned Preview for the verified batch, then Production only after acceptance.
+8. Apply ub-mode for engineering discipline and REA only for artifact/runtime evidence; verify tool availability and retain actual outputs.
+9. Verify production behaviour and data impact after deployment.
+10. Update this map only when architecture, ownership, a release gate, or a measured priority changes. Do not append routine audit logs here.
+11. Put dated investigations, raw counts, incident timelines, and detailed query output in a dedicated operational report under `docs/archive/` or `docs/operations/`.
+12. Never invent metrics, claim unverified deployment success, weaken tests to get a green check, or delete production data to make a dashboard look healthy.
 
 ## 13. Immediate next deliverables
 

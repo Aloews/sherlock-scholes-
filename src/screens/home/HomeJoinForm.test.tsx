@@ -54,23 +54,27 @@ describe('HomeJoinForm room-code input', () => {
     expect(input.value).toHaveLength(6);
   });
 
-  it('does not enable joining after only one character', () => {
+  it('allows joining with a one-character code', () => {
     const onSubmit = vi.fn();
     render(<Harness onSubmit={onSubmit} />);
     const input = screen.getByLabelText('home.room_code_label') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'a' } });
     expect(input.value).toBe('a');
-    expect(screen.getByRole('button', { name: 'home.join_room' })).toHaveProperty('disabled', true);
-    expect(onSubmit).not.toHaveBeenCalled();
+    const button = screen.getByRole('button', { name: 'home.join_room' });
+    expect(button).toHaveProperty('disabled', false);
+    fireEvent.click(button);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('does not allow joining with fewer than six characters', () => {
+  it('allows joining with a shorter legacy code', () => {
     const onSubmit = vi.fn();
     render(<Harness onSubmit={onSubmit} />);
     const input = screen.getByLabelText('home.room_code_label') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'ab12' } });
-    expect(screen.getByRole('button', { name: 'home.join_room' })).toHaveProperty('disabled', true);
-    expect(onSubmit).not.toHaveBeenCalled();
+    const button = screen.getByRole('button', { name: 'home.join_room' });
+    expect(button).toHaveProperty('disabled', false);
+    fireEvent.click(button);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('submits the complete six-character value with Enter', () => {

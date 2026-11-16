@@ -67,6 +67,72 @@ describe('tierCardStyle', () => {
   });
 });
 
+describe('tierCardStyle — exact token values', () => {
+  it('uses the exact blur and opacity for every tier in both designs', () => {
+    const cases = [
+      { tier: 'icon', master: [40, 35], classic: [24, 35] },
+      { tier: 'legendary', master: [34, 50], classic: [18, 40] },
+      { tier: 'epic', master: [26, 44], classic: [14, 33] },
+      { tier: 'prospect', master: [24, 38], classic: [12, 30] },
+      { tier: 'rare', master: [22, 33], classic: [10, 25] },
+    ] as const;
+
+    for (const { tier, master, classic } of cases) {
+      for (const [design, [blur, alpha]] of [
+        ['master', master],
+        ['classic', classic],
+      ] as const) {
+        const style = tierCardStyle(tier, design)!;
+        const shadow = String(style.boxShadow);
+        expect(shadow).toContain(`0 0 ${blur}px`);
+        expect(shadow).toContain(
+          `color-mix(in srgb, var(--tier-${tier}, ${TIER_COLOR[tier]}) ${alpha}%, transparent)`,
+        );
+      }
+    }
+  });
+});
+
+describe('tierFrameStyle — exact token values', () => {
+  it('uses the exact frame blur and padding for every decorated tier', () => {
+    const cases = [
+      { tier: 'icon', blur: 40, padding: '2px' },
+      { tier: 'legendary', blur: 34, padding: '1.5px' },
+      { tier: 'epic', blur: 26, padding: '1.5px' },
+      { tier: 'prospect', blur: 24, padding: '1.75px' },
+      { tier: 'rare', blur: 22, padding: '1.5px' },
+    ] as const;
+
+    for (const { tier, blur, padding } of cases) {
+      const style = tierFrameStyle(tier, 'master')!;
+      expect(style.padding).toBe(padding);
+      expect(String(style.boxShadow)).toContain(`0 0 ${blur}px`);
+    }
+  });
+});
+
+describe('tierRingStyle — exact token values', () => {
+  it('uses the exact glow radius for every tier in both designs', () => {
+    const cases = [
+      { tier: 'icon', master: 16, classic: 10 },
+      { tier: 'prospect', master: 14, classic: 8 },
+      { tier: 'legendary', master: 12, classic: 6 },
+      { tier: 'epic', master: 12, classic: 6 },
+      { tier: 'rare', master: 12, classic: 6 },
+    ] as const;
+
+    for (const { tier, master, classic } of cases) {
+      for (const [design, blur] of [
+        ['master', master],
+        ['classic', classic],
+      ] as const) {
+        const shadow = String(tierRingStyle(tier, design)!.boxShadow);
+        expect(shadow).toContain(`0 0 ${blur}px`);
+      }
+    }
+  });
+});
+
 describe('tierRingStyle', () => {
   it('returns undefined for common/unknown/nullish', () => {
     expect(tierRingStyle('common')).toBeUndefined();

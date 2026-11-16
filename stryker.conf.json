@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "Mutation testing on the game logic core. Kept tightly scoped so the run stays fast; grow `mutate` as the harness spreads outward.",
+  "_comment": "Mutation testing on the game and Alias round-plan logic cores.",
   "packageManager": "npm",
   "testRunner": "vitest",
   "reporters": ["html", "clear-text", "progress"],
@@ -8,7 +8,8 @@
   "mutate": [
     "src/features/game/stateMachine.ts",
     "src/shared/lib/tier.ts",
-    "src/shared/lib/pro.ts"
+    "src/shared/lib/pro.ts",
+    "src/features/room/roundPlan.ts"
   ],
   "thresholds": {
     "high": 90,

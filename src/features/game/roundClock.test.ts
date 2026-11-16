@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { elapsedMs, remainingSeconds, deadlineAt, isPaused, type RoundClock } from './roundClock';
+import { elapsedMs, remainingSeconds, deadlineAt, isPaused, MAX_ROUND_PAUSE_MS, type RoundClock } from './roundClock';
 
 // The deadline is derived, never counted down, so that two phones agree to the
 // second. A pause has to survive that derivation — on every client at once,
@@ -32,17 +32,34 @@ describe('a round that runs without interruption', () => {
 });
 
 describe('a clock that is being held', () => {
-  it('stops moving while the pause is in progress', () => {
-    // 10s played, then held at T0+10s.
+  it('holds for at most two minutes, then resumes without a reconnect', () => {
     const held = clock({ pausedAt: new Date(T0 + 10_000).toISOString() });
     expect(remainingSeconds(held, T0 + 10_000)).toBe(50);
     expect(remainingSeconds(held, T0 + 40_000)).toBe(50);
-    expect(remainingSeconds(held, T0 + 600_000)).toBe(50);
+    expect(remainingSeconds(held, T0 + 130_000)).toBe(50);
+    expect(remainingSeconds(held, T0 + 140_000)).toBe(40);
+    expect(remainingSeconds(held, T0 + 180_000)).toBe(0);
   });
 
-  it('says so', () => {
-    expect(isPaused(clock())).toBe(false);
-    expect(isPaused(clock({ pausedAt: new Date(T0).toISOString() }))).toBe(true);
+  it('never holds longer than the remaining pause allowance', () => {
+    const held = clock({
+      startedAt: new Date(T0 - 110_000).toISOString(),
+      pausedMs: 100_000,
+      pausedAt: new Date(T0).toISOString(),
+    });
+    expect(remainingSeconds(held, T0 + 10_000)).toBe(50);
+    expect(remainingSeconds(held, T0 + 20_000)).toBe(50);
+    expect(remainingSeconds(held, T0 + 30_000)).toBe(40);
+    expect(remainingSeconds(held, T0 + 40_000)).toBe(30);
+    expect(deadlineAt(held, T0 + 40_000)).toBe(T0 + 70_000);
+  });
+
+  it('stops reporting a pause when its allowance is exhausted', () => {
+    const held = clock({ pausedAt: new Date(T0).toISOString() });
+    expect(isPaused(clock(), T0)).toBe(false);
+    expect(isPaused(held, T0)).toBe(true);
+    expect(isPaused(held, T0 + MAX_ROUND_PAUSE_MS)).toBe(false);
+    expect(isPaused({ ...held, pausedMs: MAX_ROUND_PAUSE_MS }, T0)).toBe(false);
   });
 
   // THE ONE THAT MATTERS MOST. The fallback that ends a round when the
@@ -53,6 +70,8 @@ describe('a clock that is being held', () => {
     const held = clock({ pausedAt: new Date(T0 + 10_000).toISOString() });
     expect(deadlineAt(held, T0 + 10_000)).toBe(T0 + 60_000);
     expect(deadlineAt(held, T0 + 45_000)).toBe(T0 + 95_000);
+    expect(deadlineAt(held, T0 + 200_000)).toBe(T0 + 180_000);
+    expect(MAX_ROUND_PAUSE_MS).toBe(120_000);
   });
 });
 

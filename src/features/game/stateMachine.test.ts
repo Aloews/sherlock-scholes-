@@ -78,6 +78,19 @@ describe('transition — diagnostics', () => {
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
+
+  it('does not emit development diagnostics in production', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubEnv('DEV', false);
+    try {
+      forceTransition('idle');
+      transition('game_end');
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe('forceTransition', () => {

@@ -93,8 +93,11 @@ begin
     return;
   end if;
 
-  update rounds set paused_at = now()
-   where id = p_round_id and paused_at is null and status = 'active';
+  update public.rounds AS r
+     set paused_at = now()
+   where r.id = p_round_id
+     and r.paused_at is null
+     and r.status = 'active';
 
   return query select r.paused_at, r.paused_ms from rounds r where r.id = p_round_id;
 end;
@@ -142,10 +145,11 @@ begin
     v_round.paused_ms + (extract(epoch from (now() - v_round.paused_at)) * 1000)::integer
   );
 
-  update rounds
+  update public.rounds AS r
      set paused_ms = v_spent,
          paused_at = null
-   where id = p_round_id and paused_at is not null;
+   where r.id = p_round_id
+     and r.paused_at is not null;
 
   return query select r.paused_at, r.paused_ms from rounds r where r.id = p_round_id;
 end;

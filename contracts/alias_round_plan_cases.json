@@ -1,0 +1,84 @@
+[
+  {
+    "name": "team mode rotates rosters by join time and player id",
+    "mode": "team",
+    "host_id": 1,
+    "total_rounds": 3,
+    "teams": ["red", "blue"],
+    "members": [
+      {"player_id": 2, "team_id": "blue", "joined_at": "2026-01-02T10:00:00Z"},
+      {"player_id": 8, "team_id": "red", "joined_at": "2026-01-03T10:00:00Z"},
+      {"player_id": 7, "team_id": "red", "joined_at": "2026-01-01T10:00:00Z"},
+      {"player_id": 9, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"},
+      {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-03T10:00:00Z"}
+    ],
+    "expected": [
+      {"round_number": 1, "team_id": "red", "explainer_id": 7},
+      {"round_number": 2, "team_id": "blue", "explainer_id": 9},
+      {"round_number": 3, "team_id": "red", "explainer_id": 8},
+      {"round_number": 4, "team_id": "blue", "explainer_id": 2},
+      {"round_number": 5, "team_id": "red", "explainer_id": 7},
+      {"round_number": 6, "team_id": "blue", "explainer_id": 1}
+    ]
+  },
+  {
+    "name": "one versus one places the host team first",
+    "mode": "1v1",
+    "host_id": 20,
+    "total_rounds": 2,
+    "teams": ["home", "away"],
+    "members": [
+      {"player_id": 20, "team_id": "away", "joined_at": "2026-01-02T10:00:00Z"},
+      {"player_id": 10, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
+    ],
+    "expected": [
+      {"round_number": 1, "team_id": "away", "explainer_id": 20},
+      {"round_number": 2, "team_id": "home", "explainer_id": 10},
+      {"round_number": 3, "team_id": "away", "explainer_id": 20},
+      {"round_number": 4, "team_id": "home", "explainer_id": 10}
+    ]
+  },
+  {
+    "name": "team mode preserves team order when host is unassigned",
+    "mode": "team",
+    "host_id": 99,
+    "total_rounds": 1,
+    "teams": ["home", "away"],
+    "members": [
+      {"player_id": 99, "team_id": null, "joined_at": "2026-01-01T10:00:00Z"},
+      {"player_id": 10, "team_id": "home", "joined_at": "2026-01-01T10:00:00Z"}
+    ],
+    "expected": [
+      {"round_number": 1, "team_id": "home", "explainer_id": 10},
+      {"round_number": 2, "team_id": "away", "explainer_id": null}
+    ]
+  },
+  {
+    "name": "teams without players receive a null explainer",
+    "mode": "team",
+    "host_id": 1,
+    "total_rounds": 1,
+    "teams": ["blue", "red"],
+    "members": [
+      {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"}
+    ],
+    "expected": [
+      {"round_number": 1, "team_id": "blue", "explainer_id": 1},
+      {"round_number": 2, "team_id": "red", "explainer_id": null}
+    ]
+  },
+  {
+    "name": "members from removed teams are ignored",
+    "mode": "team",
+    "host_id": 1,
+    "total_rounds": 1,
+    "teams": ["blue"],
+    "members": [
+      {"player_id": 1, "team_id": "blue", "joined_at": "2026-01-01T10:00:00Z"},
+      {"player_id": 2, "team_id": "removed", "joined_at": "2025-01-01T10:00:00Z"}
+    ],
+    "expected": [
+      {"round_number": 1, "team_id": "blue", "explainer_id": 1}
+    ]
+  }
+]

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/shared/lib/supabase';
+import { setAliasRoundVoiceState } from '@/features/game/roundLifecycle';
 import { getRawInitData } from '@/shared/lib/telegram';
 import type { VoiceStatus } from '@/features/voice/useVoiceChat';
 
@@ -77,19 +77,13 @@ export function usePauseOnVoiceDrop(input: {
     let cancelled = false;
     const send = () => {
       sentRef.current = want;
-      void supabase.rpc(down ? 'pause_round' : 'resume_round', {
-        p_round_id: roundId,
-        p_init_data: initData,
-      }).then(({ error }) => {
-        if (!error || cancelled) return;
-        // A request that never landed has to be sent again on its own: the
-        // effect will not re-run, because nothing about the props changed. A
-        // pause that fails is survivable — the clock simply runs. A RESUME
-        // that fails is not: the round stays held on a request nobody sent,
-        // which is worse than never pausing at all.
-        sentRef.current = null;
-        retryRef.current = setTimeout(send, 2000);
-      });
+      void setAliasRoundVoiceState(roundId, down ? 'pause' : 'resume', initData)
+        .catch(() => {
+          if (cancelled) return;
+          // A request that never landed must be retried without another render.
+          sentRef.current = null;
+          retryRef.current = setTimeout(send, 2000);
+        });
     };
     send();
 
