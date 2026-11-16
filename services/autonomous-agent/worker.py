@@ -486,18 +486,29 @@ def starimg_anthropic_stream_completion(base: str, key: str,
 
 
 
-def choose_model(base: str, key: str) -> str:
+def choose_model_candidates(base: str, key: str) -> list[str]:
     explicit = os.environ.get("STARIMG_MODEL", "").strip()
+    configured_fallbacks = [
+        item.strip() for item in os.environ.get("STARIMG_FALLBACK_MODELS", "").split(",")
+        if item.strip()
+    ]
     catalog = starimg_request(base, key, "/models", timeout=30)
     entries = catalog.get("data", []) if isinstance(catalog, dict) else []
-    ids = [str(item.get("id", "")) for item in entries if isinstance(item, dict)]
-    if explicit:
-        if ids and explicit not in ids:
-            raise RuntimeError("STARIMG_MODEL is not present in the authenticated Starimg model catalog")
-        return explicit
+    ids = list(dict.fromkeys(
+        str(item.get("id", "")).strip()
+        for item in entries if isinstance(item, dict) and str(item.get("id", "")).strip()
+    ))
+    if explicit and ids and explicit not in ids:
+        raise RuntimeError("STARIMG_MODEL is not present in the authenticated Starimg model catalog")
+    if configured_fallbacks:
+        unknown = [model for model in configured_fallbacks if ids and model not in ids]
+        if unknown:
+            raise RuntimeError("STARIMG_FALLBACK_MODELS contains models absent from the authenticated catalog: " + ", ".join(unknown))
     if not ids:
+        if explicit:
+            return [explicit] + configured_fallbacks
         raise RuntimeError("Starimg model catalog is empty; set STARIMG_MODEL explicitly")
-    logging.info("Starimg model catalog returned %d model IDs: %s", len(ids), ", ".join(ids[:30]))
+
     preferred = (
         "claude-fable-5-2", "qwen3-coder", "qwen2.5-coder", "deepseek-coder", "devstral",
         "claude-sonnet-5.5", "claude-sonnet-5-5",
@@ -505,14 +516,48 @@ def choose_model(base: str, key: str) -> str:
         "gpt-6.1-terra", "gpt-6-luna",
         "claude-haiku-5.5", "claude-haiku-5-5",
     )
-    for wanted in preferred:
-        match = next((model for model in ids if wanted in model.lower()), None)
-        if match:
-            return match
-    coder = next((model for model in ids if any(x in model.lower() for x in ("coder", "code", "devstral"))), None)
-    if coder:
-        return coder
-    raise RuntimeError("No recognized coding model is available; set STARIMG_MODEL to an enabled coding model")
+    ordered: list[str] = []
+    if explicit:
+        ordered.append(explicit)
+    else:
+        for wanted in preferred:
+            match = next((model for model in ids if wanted in model.lower()), None)
+            if match:
+                ordered.append(match)
+                break
+        if not ordered:
+            coder = next((model for model in ids if any(x in model.lower() for x in ("coder", "code", "devstral"))), None)
+            if coder:
+                ordered.append(coder)
+    ordered.extend(configured_fallbacks)
+    ordered.extend(
+        model for model in ids
+        if model not in ordered and any(x in model.lower() for x in ("coder", "code", "devstral"))
+    )
+    if not ordered:
+        raise RuntimeError("No recognized coding model is available; set STARIMG_MODEL to an enabled coding model")
+    logging.info("Starimg model router candidates: %s", ", ".join(ordered[:12]))
+    return ordered
+
+
+def choose_model(base: str, key: str) -> str:
+    return choose_model_candidates(base, key)[0]
+
+
+def model_for_attempt(candidates: list[str], attempt: int) -> str:
+    if not candidates:
+        raise RuntimeError("Model router has no validated candidates")
+    return candidates[min(max(attempt - 1, 0), len(candidates) - 1)]
+
+
+def retry_strategy_for_attempt(attempt: int) -> str:
+    if attempt <= 1:
+        return "standard unified diff; preserve existing interfaces"
+    if attempt == 2:
+        return "change model when available; reduce context to exact failing file and diagnostics; emit the smallest valid patch"
+    return "change implementation strategy; decompose the failing change and use a complete replacement only for the assigned file if a patch is still failing"
+
+
 
 
 def run_command(args: list[str], cwd: Path, timeout: int = 900,
@@ -1402,6 +1447,7 @@ class Worker:
         self.starimg_key = required_env("STARIMG_API_KEY")
         self.starimg_base = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru/v1").rstrip("/")
         self.model: str | None = None
+        self.models: list[str] = []
         self.default_branch = ""
         self.attempted: set[int] = set()
         self._preflight()
@@ -1813,9 +1859,11 @@ class Worker:
                 clone_askpass.unlink(missing_ok=True)
             run_command(["git", "checkout", "-b", branch], temp)
             context = rank_context(temp, task, self.allowed_prefixes)
+            if not self.models:
+                self.models = choose_model_candidates(self.starimg_base, self.starimg_key)
             if self.model is None:
-                self.model = choose_model(self.starimg_base, self.starimg_key)
-                LOG.info("Starimg model discovery succeeded (model id: %s)", self.model)
+                self.model = self.models[0]
+                LOG.info("Starimg model discovery succeeded (primary=%s; candidates=%s)", self.model, len(self.models))
             usage_records: list[dict[str, Any]] = []
             LOG.info("Task %s architect handoff started; model=%s", comment_id, self.model)
             architect_answer, architect_usage = ask_starimg_agent(
@@ -2157,8 +2205,10 @@ class Worker:
         raise RuntimeError("Independent review did not reach an approval verdict")
 
     def review_pending_prs(self, integrations: dict[str, Any] | None = None) -> bool:
+        if not self.models:
+            self.models = choose_model_candidates(self.starimg_base, self.starimg_key)
         if self.model is None:
-            self.model = choose_model(self.starimg_base, self.starimg_key)
+            self.model = self.models[0]
             LOG.info("Reviewer selected Starimg model: %s", self.model)
         prs = request_json(
             api_url(f"/repos/{self.repo}/pulls?state=open&per_page=50&sort=updated&direction=desc"),
