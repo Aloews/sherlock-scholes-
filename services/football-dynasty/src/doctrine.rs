@@ -195,31 +195,26 @@ async fn submit_answer(
 }
 
 pub fn score_choice(principle_id: i16, choice_id: &str) -> Option<i16> {
-    let best = match principle_id {
-        1 => "a",
-        2 => "b",
-        3 => "c",
-        4 => "a",
-        5 => "b",
-        6 => "c",
-        7 => "a",
-        8 => "b",
-        9 => "c",
-        10 => "a",
-        11 => "b",
-        12 => "c",
-        13 => "a",
-        14 => "b",
-        15 => "c",
-        16 => "a",
-        17 => "b",
-        18 => "c",
+    let (best, middle) = match principle_id {
+        1 => ("a", "b"),
+        2 => ("b", "c"),
+        3 => ("c", "a"),
+        4 => ("a", "c"),
+        5 => ("b", "a"),
+        6 => ("c", "b"),
+        7 => ("a", "c"),
+        8 => ("b", "a"),
+        9 => ("c", "a"),
+        10 => ("a", "b"),
+        11 => ("b", "c"),
+        12 => ("c", "a"),
+        13 => ("a", "c"),
+        14 => ("b", "a"),
+        15 => ("c", "b"),
+        16 => ("a", "c"),
+        17 => ("b", "c"),
+        18 => ("c", "a"),
         _ => return None,
-    };
-    let middle = match best {
-        "a" => "b",
-        "b" => "c",
-        _ => "a",
     };
     match choice_id {
         value if value == best => Some(2),
