@@ -2217,6 +2217,12 @@ class Worker:
             if path.startswith("services/football-dynasty/")
         ]
 
+        # Fail closed before invoking rustfmt when a project manifest is absent.
+        if ush_paths and not (root / "universal-service-hub" / "Cargo.toml").is_file():
+            raise RuntimeError("USH validation requested but universal-service-hub/Cargo.toml is missing")
+        if football_dynasty_paths and not (root / "services" / "football-dynasty" / "Cargo.toml").is_file():
+            raise RuntimeError("Rust validation requested but services/football-dynasty/Cargo.toml is missing")
+
         # Format every changed Rust source, but compile each project against its own manifest.
         if rust_paths:
             run_command(
