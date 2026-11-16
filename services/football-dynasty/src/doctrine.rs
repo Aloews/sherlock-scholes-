@@ -248,12 +248,44 @@ mod tests {
     #[test]
     fn server_score_map_matches_the_curriculum_best_and_middle_choices() {
         let best = [
-            "a", "b", "c", "a", "b", "c", "a", "b", "c",
-            "a", "b", "c", "a", "b", "c", "a", "b", "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "b",
+            "c",
         ];
         let middle = [
-            "b", "c", "a", "c", "a", "b", "c", "a", "a",
-            "b", "c", "a", "c", "a", "b", "c", "c", "a",
+            "b",
+            "c",
+            "a",
+            "c",
+            "a",
+            "b",
+            "c",
+            "a",
+            "a",
+            "b",
+            "c",
+            "a",
+            "c",
+            "a",
+            "b",
+            "c",
+            "c",
+            "a",
         ];
         for (index, principle_id) in (1..=PRINCIPLE_COUNT).enumerate() {
             assert_eq!(score_choice(principle_id, best[index]), Some(2));
