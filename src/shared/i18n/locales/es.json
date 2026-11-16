@@ -1526,6 +1526,7 @@
     "score": "Puntuación",
     "takeaway": "Idea clave",
     "submit": "Confirmar decisión",
-    "scoreMeaning": "0–2 mide el criterio estratégico, no tu moralidad."
+    "scoreMeaning": "0–2 mide el criterio estratégico, no tu moralidad.",
+    "strongestOption": "Opción más sólida en este escenario"
   }
 }
