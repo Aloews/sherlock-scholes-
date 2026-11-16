@@ -10,7 +10,9 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::{
-    api::{complete_command, idempotency_key, payload_hash, replay, reserve_command, set_owner_scope},
+    api::{
+        complete_command, idempotency_key, payload_hash, replay, reserve_command, set_owner_scope,
+    },
     auth::Identity,
     errors::ApiError,
     state::AppState,
@@ -20,7 +22,10 @@ pub const PRINCIPLE_COUNT: i16 = 18;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/api/v1/campaigns/{campaign_id}/doctrine", get(get_progress))
+        .route(
+            "/api/v1/campaigns/{campaign_id}/doctrine",
+            get(get_progress),
+        )
         .route(
             "/api/v1/campaigns/{campaign_id}/doctrine/{principle_id}/answer",
             post(submit_answer),
@@ -94,8 +99,7 @@ async fn get_progress(
         completed_count,
         total_principles: PRINCIPLE_COUNT,
         total_score,
-        unlocked_principle_id: (completed_count < PRINCIPLE_COUNT)
-            .then_some(completed_count + 1),
+        unlocked_principle_id: (completed_count < PRINCIPLE_COUNT).then_some(completed_count + 1),
     }))
 }
 
@@ -138,12 +142,11 @@ async fn submit_answer(
     .await?
     .ok_or_else(ApiError::not_found)?;
 
-    let completed_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM fd.doctrine_progress WHERE campaign_id=$1",
-    )
-    .bind(campaign_id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let completed_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM fd.doctrine_progress WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
     if i64::from(principle_id) <= completed_count {
         return Err(ApiError::conflict("principle_already_completed"));
@@ -187,14 +190,7 @@ async fn submit_answer(
         unlocked_principle_id: (completed_count < PRINCIPLE_COUNT)
             .then_some(completed_count + 1),
     };
-    complete_command(
-        &mut tx,
-        identity.telegram_id,
-        &key,
-        campaign_id,
-        &response,
-    )
-    .await?;
+    complete_command(&mut tx, identity.telegram_id, &key, campaign_id, &response).await?;
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(response)))
 }
