@@ -695,7 +695,8 @@ def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> st
     files = run_command(["git", "ls-files"], root).splitlines()
     ranked: list[tuple[int, str, str]] = []
     for path in files:
-        if not safe_path(path, allowed_prefixes) and path not in ("AGENTS.md", "README.md", "docs/MAP.md"):
+        is_ush_instruction = path == "universal-service-hub/AGENTS.md"
+        if not safe_path(path, allowed_prefixes) and path not in ("AGENTS.md", "README.md", "docs/MAP.md") and not is_ush_instruction:
             continue
         target = root / path
         try:
@@ -706,7 +707,7 @@ def rank_context(root: Path, task: str, allowed_prefixes: tuple[str, ...]) -> st
             continue
         score = sum(3 for token in tokens if token in path.lower())
         score += sum(1 for token in tokens if token in body[:12_000].lower())
-        if path in ("AGENTS.md", "README.md", "docs/MAP.md"):
+        if path in ("AGENTS.md", "README.md", "docs/MAP.md") or is_ush_instruction:
             score += 100
         ranked.append((score, path, context_excerpt(body)))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
