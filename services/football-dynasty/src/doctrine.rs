@@ -187,8 +187,7 @@ async fn submit_answer(
         completed_at,
         completed_count,
         total_principles: PRINCIPLE_COUNT,
-        unlocked_principle_id: (completed_count < PRINCIPLE_COUNT)
-            .then_some(completed_count + 1),
+        unlocked_principle_id: (completed_count < PRINCIPLE_COUNT).then_some(completed_count + 1),
     };
     complete_command(&mut tx, identity.telegram_id, &key, campaign_id, &response).await?;
     tx.commit().await?;
