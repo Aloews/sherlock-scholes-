@@ -45,9 +45,6 @@ export function MachiavelliAcademy({ campaignId }: Props) {
   );
   const current = principles.find((item) => item.id === selectedId);
   const completion = completedById.get(selectedId);
-  const chosenOption = completion && current
-    ? current.choices.find((choice) => choice.id === completion.choice_id)
-    : undefined;
 
   const selectPrinciple = (principle: MachiavelliPrinciple) => {
     if (principle.id > (progress?.unlocked_principle_id ?? 19) && !completedById.has(principle.id)) return;
@@ -153,15 +150,33 @@ export function MachiavelliAcademy({ campaignId }: Props) {
             <p className="text-sm leading-6">{current.scenario}</p>
           </div>
 
-          {completion && chosenOption ? (
+          {completion ? (
             <div className="mt-5 space-y-3">
               <div className="rounded-xl border border-brand-accent/30 bg-brand-accent/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-brand-accent">{t('machiavelli.yourDecision')}</span>
                   <span className="text-sm font-semibold tabular-nums">{t('machiavelli.score')}: {completion.score} / 2</span>
                 </div>
-                <p className="mt-2 text-sm font-medium">{chosenOption.label}</p>
-                <p className="mt-2 text-sm leading-6 text-brand-muted">{chosenOption.consequence}</p>
+                <div className="mt-3 space-y-2">
+                  {current.choices.map((choice) => {
+                    const selected = choice.id === completion.choice_id;
+                    const strongest = choice.id === current.bestChoiceId;
+                    return (
+                      <div key={choice.id} className={'rounded-lg border p-3 ' + (
+                        strongest ? 'border-brand-accent/50 bg-brand-accent/10'
+                          : selected ? 'border-brand-border bg-brand-surface'
+                            : 'border-brand-border/60 bg-brand-bg'
+                      )}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium">{choice.label}</p>
+                          {strongest && <span className="rounded-full bg-brand-accent/15 px-2 py-0.5 text-[11px] font-semibold text-brand-accent">{t('machiavelli.strongestOption')}</span>}
+                          {selected && <span className="rounded-full border border-brand-border px-2 py-0.5 text-[11px] text-brand-muted">{t('machiavelli.yourDecision')}</span>}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-brand-muted">{choice.consequence}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-accent">{t('machiavelli.takeaway')}</p>
