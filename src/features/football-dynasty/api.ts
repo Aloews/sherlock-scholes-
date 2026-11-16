@@ -71,3 +71,34 @@ export const executeSuccession = (campaignId: string, heirId: string) =>
   request<{ campaign_id: string; deceased_character_id: string; heir_id: string; dynasty_head_id: string; status: string }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/succession`, { method: 'POST', body: JSON.stringify({ heir_id: heirId }) }, true,
   );
+
+export interface DoctrineCompletion {
+  principle_id: number;
+  choice_id: 'a' | 'b' | 'c';
+  score: number;
+  completed_at: string;
+}
+export interface DoctrineProgress {
+  completed: DoctrineCompletion[];
+  completed_count: number;
+  total_principles: number;
+  total_score: number;
+  unlocked_principle_id: number | null;
+}
+export interface DoctrineAnswerResult {
+  campaign_id: string;
+  principle_id: number;
+  choice_id: 'a' | 'b' | 'c';
+  score: number;
+  completed_count: number;
+  total_principles: number;
+  unlocked_principle_id: number | null;
+}
+export const getDoctrineProgress = (campaignId: string) =>
+  request<DoctrineProgress>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/doctrine');
+export const submitDoctrineAnswer = (campaignId: string, principleId: number, choiceId: 'a' | 'b' | 'c') =>
+  request<DoctrineAnswerResult>(
+    '/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/doctrine/' + principleId + '/answer',
+    { method: 'POST', body: JSON.stringify({ choice_id: choiceId }) },
+    true,
+  );
