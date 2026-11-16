@@ -32,4 +32,5 @@ CREATE POLICY fd_runtime_access ON fd.doctrine_progress
         )
     );
 
+REVOKE ALL ON fd.doctrine_progress FROM fd_runtime;
 GRANT SELECT, INSERT ON fd.doctrine_progress TO fd_runtime;
