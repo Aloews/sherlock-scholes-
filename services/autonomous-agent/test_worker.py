@@ -66,8 +66,8 @@ class WorkerPolicyTests(unittest.TestCase):
             source = root / "universal-service-hub" / "src" / "main.rs"
             source.parent.mkdir(parents=True)
             manifest.parent.mkdir(parents=True, exist_ok=True)
-            manifest.write_text("[package]\\nname = \"universal-service-hub\"\\n", encoding="utf-8")
-            source.write_text("fn main() {}\\n", encoding="utf-8")
+            manifest.write_text("[package]\nname = \"universal-service-hub\"\n", encoding="utf-8")
+            source.write_text("fn main() {}\n", encoding="utf-8")
             worker = Worker.__new__(Worker)
 
             with patch("worker.run_command", return_value="") as run:
@@ -174,8 +174,8 @@ class WorkerPolicyTests(unittest.TestCase):
             root = Path(directory)
             instructions = root / "universal-service-hub" / "AGENTS.md"
             instructions.parent.mkdir(parents=True)
-            instructions.write_text("USH_ADAPTER_INSTRUCTIONS_MARKER\\n", encoding="utf-8")
-            with patch("worker.run_command", return_value="universal-service-hub/AGENTS.md\\n"):
+            instructions.write_text("USH_ADAPTER_INSTRUCTIONS_MARKER\n", encoding="utf-8")
+            with patch("worker.run_command", return_value="universal-service-hub/AGENTS.md\n"):
                 context = rank_context(root, "Implement USH queue", ("universal-service-hub/src/",))
         self.assertIn("USH_ADAPTER_INSTRUCTIONS_MARKER", context)
 
@@ -698,7 +698,7 @@ class WorkerPolicyTests(unittest.TestCase):
         from worker import ask_starimg
 
         with patch("worker.starimg_anthropic_stream_completion", return_value={
-            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\\n"}}],
+            "choices": [{"message": {"content": "diff --git a/src/a.ts b/src/a.ts\n"}}],
             "usage": {},
         }) as completion:
             ask_starimg(
@@ -718,7 +718,7 @@ class WorkerPolicyTests(unittest.TestCase):
         from worker import ask_starimg
 
         with patch("worker.starimg_anthropic_stream_completion", return_value={
-            "choices": [{"message": {"content": "```rust\\npub mod roster;\\n```"}}],
+            "choices": [{"message": {"content": "```rust\npub mod roster;\n```"}}],
             "usage": {"input_tokens": 10, "output_tokens": 5},
         }) as completion:
             ask_starimg(
@@ -888,7 +888,7 @@ async fn another_test() {}
             root = Path(directory)
             manifest = root / "services" / "football-dynasty" / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
-            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            manifest.write_text('[package]\nname = "fixture"\nedition = "2024"\n', encoding="utf-8")
             with patch("worker.run_command") as command:
                 worker._validate(
                     root,
@@ -912,7 +912,7 @@ async fn another_test() {}
             root = Path(directory)
             manifest = root / "services" / "football-dynasty" / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
-            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            manifest.write_text('[package]\nname = "fixture"\nedition = "2024"\n', encoding="utf-8")
             with patch.dict(os.environ, {}, clear=True), patch("worker.run_command") as command:
                 worker._validate(
                     root,
@@ -945,7 +945,7 @@ async fn another_test() {}
             root = Path(directory)
             manifest = root / "services" / "football-dynasty" / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
-            manifest.write_text('[package]\\nname = "fixture"\\nedition = "2024"\\n', encoding="utf-8")
+            manifest.write_text('[package]\nname = "fixture"\nedition = "2024"\n', encoding="utf-8")
             with patch.dict(os.environ, {
                 "TEST_DATABASE_URL": test_database_url,
                 "TEST_DATABASE_DISPOSABLE": "true",
