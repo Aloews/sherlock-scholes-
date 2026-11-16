@@ -31,6 +31,32 @@ class WorkerPolicyTests(unittest.TestCase):
         ):
             self.assertFalse(safe_path(path), path)
 
+    def test_ush_adapter_allows_only_rust_migration_and_validation_surfaces(self):
+        from worker import allowed_prefixes_for_repo
+
+        prefixes = allowed_prefixes_for_repo("Aloews/russian-dev-projects")
+        for path in (
+            "universal-service-hub/src/main.rs",
+            "universal-service-hub/src/task_state.rs",
+            "universal-service-hub/rust-migrations/0005_dispatcher.sql",
+            "universal-service-hub/tests/tenant_isolation.rs",
+            "universal-service-hub/docs/MAP.md",
+            "universal-service-hub/Cargo.toml",
+            "universal-service-hub/Dockerfile",
+            "universal-service-hub/README.md",
+        ):
+            self.assertTrue(safe_path(path, prefixes), path)
+
+        for path in (
+            "universal-service-hub/.env.production",
+            "universal-service-hub/Cargo.lock",
+            "universal-service-hub/.github/workflows/ci.yml",
+            "universal-service-hub/target/debug/app",
+            "universal-service-hub/secrets/provider.json",
+            "universal-service-hub/src/../../.env",
+        ):
+            self.assertFalse(safe_path(path, prefixes), path)
+
     def test_subprocess_environment_excludes_all_service_secrets(self):
         with patch.dict(os.environ, {
             "SUPABASE_DB_URL": "postgresql://secret",
