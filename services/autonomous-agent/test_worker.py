@@ -91,6 +91,7 @@ class WorkerPolicyTests(unittest.TestCase):
     def test_ush_execution_scope_forces_one_repository_and_only_ush_paths(self):
         from worker import (
             USH_ALLOWED_PREFIXES,
+            USH_PROJECT_ADAPTER,
             USH_REPOSITORY,
             allowed_prefixes_for_repo,
             configured_repositories,
@@ -102,7 +103,11 @@ class WorkerPolicyTests(unittest.TestCase):
                 "Aloews/sherlock-scholes-",
             )
             self.assertEqual(repositories, [USH_REPOSITORY])
-            self.assertEqual(allowed_prefixes_for_repo(USH_REPOSITORY), USH_ALLOWED_PREFIXES)
+            self.assertEqual(USH_PROJECT_ADAPTER.project_id, "universal-service-hub")
+            self.assertEqual(USH_PROJECT_ADAPTER.repository, "Aloews/russian-dev-projects")
+            self.assertEqual(USH_PROJECT_ADAPTER.base_branch_env, "USH_BASE_BRANCH")
+            self.assertEqual(USH_PROJECT_ADAPTER.validation_manifest, "universal-service-hub/Cargo.toml")
+            self.assertEqual(allowed_prefixes_for_repo(USH_REPOSITORY), USH_PROJECT_ADAPTER.writable_paths)
             with self.assertRaisesRegex(RuntimeError, "only Aloews/russian-dev-projects"):
                 allowed_prefixes_for_repo("Aloews/Novel-forge")
 
