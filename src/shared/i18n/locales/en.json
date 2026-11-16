@@ -1526,6 +1526,7 @@
     "score": "Score",
     "takeaway": "Key lesson",
     "submit": "Commit decision",
-    "scoreMeaning": "0–2 measures strategic judgment, not your moral worth."
+    "scoreMeaning": "0–2 measures strategic judgment, not your moral worth.",
+    "strongestOption": "Strongest option in this scenario"
   }
 }
