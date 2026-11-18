@@ -139,7 +139,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Rust API: `services/football-dynasty/`
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
-- Home discovery: Football Dynasty's `/dynasty` entry is rendered unconditionally; the frontend API client falls back to same-origin `/api/v1` routing. The previous `VITE_FD_API_URL` visibility gate is removed in PR #439. Exact-head CI passed all 11 workflows on `7b558c064779c42a1848a31a558b202b8db3c86c`; Telegram Mini App navigation/API smoke remains a release gate.
+- Home discovery: Football Dynasty's `/dynasty` entry is rendered unconditionally; the frontend API client falls back to same-origin `/api/v1` routing. The previous `VITE_FD_API_URL` visibility gate is removed in PR #439. Exact-head CI passed all 11 workflows on `56863d154871595cf1a833c63d5672634d67476b`; main CI #44367762702 and Football Dynasty Rust #44367762162 succeeded. Telegram Mini App navigation/API smoke remains a release gate.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
 - The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
 
