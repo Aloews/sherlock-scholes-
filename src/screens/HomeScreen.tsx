@@ -216,7 +216,7 @@ export function HomeScreen() {
             onClick={() => navigate('/tutorial')}
             label={t('home.tutorial_button_aria')}
           >
-            <IconHelp size={17} stroke={1.75} />
+            <IconHelp size={17} stroke={1.8} />
           </IconButton>
           <IconButton
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -224,14 +224,14 @@ export function HomeScreen() {
             pressed={soundEnabled}
           >
             {soundEnabled
-              ? <IconVolume    size={17} stroke={1.75} />
-              : <IconVolumeOff size={17} stroke={1.75} />}
+              ? <IconVolume    size={17} stroke={1.8} />
+              : <IconVolumeOff size={17} stroke={1.8} />}
           </IconButton>
           <IconButton
             onClick={() => navigate('/profile')}
             label={t('tabs.profile')}
           >
-            <IconUser size={17} stroke={1.75} />
+            <IconUser size={17} stroke={1.8} />
           </IconButton>
         </div>
 
@@ -275,13 +275,13 @@ export function HomeScreen() {
         {view === 'home' && (
           <div className="w-full max-w-sm space-y-2">
             <HomeGameLink
-              icon={<IconBallFootball size={20} stroke={1.75} />}
+              icon={<IconBallFootball size={20} stroke={1.8} />}
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
             {import.meta.env.VITE_FD_API_URL && (
               <HomeGameLink
-                icon={<IconCrown size={20} stroke={1.75} />}
+                icon={<IconCrown size={20} stroke={1.8} />}
                 label={t('home.dynasty_link')}
                 onClick={() => navigate('/dynasty')}
               />
