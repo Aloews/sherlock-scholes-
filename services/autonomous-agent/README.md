@@ -97,7 +97,7 @@ Reviewer-only existing secrets:
 - SUPABASE_ACCESS_TOKEN
 - VERCEL_TOKEN
 
-The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers product deployments, or writes product data. Vercel's latest production deployment is READY, but preview deployments are currently blocked by the account's free-plan 100-deployments-per-day limit. Missing provider credentials are reported as not_configured rather than treated as connected.
+The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers product deployments, or writes product data. Vercel's latest production deployment is READY. PR preview deployments are intentionally skipped by the repository's Ignored Build Step unless the commit message contains `[vercel-preview]`. Missing provider credentials are reported as not_configured rather than treated as connected.
 
 ## Safety and limits
 
