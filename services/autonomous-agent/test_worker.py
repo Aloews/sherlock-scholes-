@@ -165,7 +165,8 @@ class WorkerPolicyTests(unittest.TestCase):
                 worker = Worker()
             self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
             self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
-            with patch.object(Worker, "_preflight"):
+            with patch("worker.sherlock_execution_scope_enabled", return_value=True), \
+                 patch("worker.ush_execution_scope_enabled", return_value=False):
                 with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
                     Worker(repo="Aloews/Novel-forge")
 
