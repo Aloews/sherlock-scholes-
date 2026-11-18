@@ -168,7 +168,9 @@ class WorkerPolicyTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "USH_EXECUTION_SCOPE": "false",
                 "SHERLOCK_EXECUTION_SCOPE": "true",
-            }), patch("worker.required_env", side_effect=lambda name: "test-token" if name == "GITHUB_TOKEN" else "test-key"), patch.object(Worker, "_preflight"):
+                "GITHUB_TOKEN": "test-token",
+                "STARIMG_API_KEY": "test-key",
+            }), patch.object(Worker, "_preflight"):
                 with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
                     Worker(repo="Aloews/Novel-forge")
 
