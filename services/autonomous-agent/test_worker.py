@@ -163,11 +163,11 @@ class WorkerPolicyTests(unittest.TestCase):
         }):
             with patch.object(Worker, "_preflight"):
                 worker = Worker()
-        self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
-        self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
-        with patch.object(Worker, "_preflight"):
-            with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
-                Worker(repo="Aloews/Novel-forge")
+            self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
+            self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
+            with patch.object(Worker, "_preflight"):
+                with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
+                    Worker(repo="Aloews/Novel-forge")
 
     def test_execution_scopes_are_mutually_exclusive(self):
         from worker import configured_repositories
