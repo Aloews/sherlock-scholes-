@@ -20,7 +20,9 @@ Relevant PRs:
 - [#406 — Railway Starimg multi-agent runtime](https://github.com/Aloews/sherlock-scholes-/pull/406), Draft, head `c5e6a45080e897ae3bccbb424963bcc9247d096c`. It is deployed to the two existing services but the worker is disabled. No PR-triggered workflow run was returned for this exact head in this audit.
 - [#422 — Qwen + Fable GitHub Actions network](https://github.com/Aloews/sherlock-scholes-/pull/422), Draft, head `12424ab5aadd089c72e1ed547dde3cc7e770ab35`; its 11 listed checks passed. It is not active until merged and uses local Qwen plus Starimg escalation.
 - [#424 — Qwen-only multi-role network](https://github.com/Aloews/sherlock-scholes-/pull/424) is already merged into main at `0d9e0d2643ec964bb2348e75f535cea25bc2a284`, and that exact main commit is the latest READY Vercel production deployment. The workflow is owner-invoked and uses local Qwen on ephemeral GitHub runners. However, its current write allowlist excludes the repository's `src/` tree, so it cannot implement the open Home / Football Elias UI tasks (#419 and #420) as written. No successful real task run was verified in this audit.
-- [#389 — Starimg autonomous worker base](https://github.com/Aloews/sherlock-scholes-/pull/389), open, exact head `afb17ef7738e78ae033c186929987a9aefcbbebe`; 11 listed checks passed.
+- [#389 — Starimg autonomous worker base](https://github.com/Aloews/sherlock-scholes-/pull/389), open, exact head `afb17ef7738e78ae033c186929987a9aefcbbebe`; all 17 listed checks completed successfully.
+- #391 Alias Rust core: all 16 listed checks completed successfully. #402 Dynasty squad/contracts: all 17 listed checks completed successfully. #436 doctrine: all listed checks completed successfully on head `b3b058c3e2f245e7825082f7b1500f6f1c03c7f5`.
+- #390 Rust inventory: exact-head check suite contains multiple failures (SQL regression, room-code, queue, standings and concurrency checks); do not treat its inventory as release-ready until those checks are diagnosed.
 - The two runtime services share a seven-repository allowlist. Do not enable them blindly: the worker processes one owner-authenticated `/ai ` task per invocation across the entire allowlist. Scope and task watermark must be checked before activation to prevent an unrelated repository task being picked up.
 
 ## 2. Product and data snapshot
@@ -57,10 +59,10 @@ There are 30 open PRs in the repository at audit time. This is too many to treat
 | #422 | Qwen/Fable GitHub Actions agent network | Draft alternative; do not activate alongside another poller |
 | #424 | Qwen-only GitHub Actions network | Merged and present on main; local model, but `src/` is outside its current write allowlist; no real task execution verified |
 | #389 | Starimg worker base | Green checks; reconcile its base/commits with #406 before merge |
-| #391 | Alias Rust domain core | Green checks; still requires a parity/integration plan before replacing frontend domain logic |
-| #390 | Full Rust migration inventory | Review against current main and use as migration ledger |
-| #402 | Football Dynasty squad/contracts | Open implementation PR; inspect exact-head checks and reconcile with later doctrine changes |
-| #436 | 18 Machiavellian principles in Football Dynasty | Exact-head listed checks passed; no production migration or deployment; requires integration/release gate |
+| #391 | Alias Rust domain core | Exact-head checks passed; still requires a parity/integration plan before replacing frontend domain logic |
+| #390 | Full Rust migration inventory | Exact-head checks have multiple failures in SQL/room/queue regression jobs; must be repaired before using as the migration ledger |
+| #402 | Football Dynasty squad/contracts | Exact-head checks passed; reconcile with later doctrine changes and verify production contract |
+| #436 | 18 Machiavellian principles in Football Dynasty | Exact-head checks passed; no production migration or deployment; requires integration/release gate |
 | #423 | League/team filter fix | Merged 2026-11-14; production verification remains open |
 | #367 | Market-value reconciliation and award calibration | Open; must be checked against current production data and newer forecast pipeline before reuse |
 | #366 | Team-tournament refresh timeout | Open; verify current main and production cron before treating as unresolved |
