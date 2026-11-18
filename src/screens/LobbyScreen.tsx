@@ -132,7 +132,7 @@ export function LobbyScreen() {
 
         <div className="flex gap-2">
           <Button fullWidth variant="secondary" onClick={() => { void invite(); }}>
-            <IconUserPlus size={18} stroke={2} />
+            <IconUserPlus size={18} stroke={1.8} />
             {t('lobby.invite_button')}
           </Button>
           <Button
@@ -140,7 +140,7 @@ export function LobbyScreen() {
             onClick={() => { hapticImpact('light'); setShowQr((v) => !v); }}
             aria-expanded={showQr}
           >
-            <IconQrcode size={18} stroke={2} />
+            <IconQrcode size={18} stroke={1.8} />
             <span className="sr-only">{t('lobby.qr_button')}</span>
           </Button>
         </div>
@@ -301,7 +301,7 @@ export function LobbyScreen() {
                     {isMyTeam && (
                       <div className="px-3 pb-3">
                         <div className="flex items-center justify-center gap-1.5 text-xs text-brand-accent font-semibold py-1">
-                          {master && <IconCheck size={13} stroke={2.5} />}
+                          {master && <IconCheck size={13} stroke={1.8} />}
                           {t('lobby.your_team')}
                         </div>
                       </div>
