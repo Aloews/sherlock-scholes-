@@ -430,3 +430,11 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - Exact-head worker CI #44370659777 failed one new test because its second constructor call omitted required `GITHUB_TOKEN` and `STARIMG_API_KEY`; the constructor stopped at credential validation before reaching the intended repository-scope guard.
 - Updated the test fixture to provide dummy credentials and retained the preflight mock. No production credentials or runtime configuration were changed.
 - Test fixture commit: `9146d999597aebc02aeecca6cae7500b2666a063`. New exact-head CI is required.
+
+
+### Live Railway worker state — read-only evidence 2026-11-19
+
+- Railway production project `distinguished-transformation` has two cron services: `stream-service` and `sherlock-ai-bot`, both scheduled every five minutes. Latest executions at 2026-11-18 22:10 UTC succeeded; no failed deployments or active Railway warnings were reported in the preceding 24 hours.
+- Runtime logs for both services explicitly say `Worker disabled; GitHub preflight succeeded for 7 repositories`. Thus the containers start and validate credentials/repository access, but they do not intake or execute tasks.
+- Both live deployments still run commit `c5e6a45080e897ae3bccbb424963bcc9247d096c` from branch `feat/sherlock-multi-agent-runtime-20261113`; PR #440's scope-hardening code has not been deployed.
+- No Railway variables, deployment settings, cron schedules, secrets or live services were changed. Activation remains gated on merge/deployment, explicit single-repository scope configuration, base-branch pinning, and an owner-approved model/CI spend ceiling.
