@@ -6,6 +6,7 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
   rewrites: Array<{ source: string; destination: string | { service: string } }>;
 };
 const router = readFileSync('src/app/Router.tsx', 'utf8');
+const home = readFileSync('src/screens/HomeScreen.tsx', 'utf8');
 
 describe('Vercel SPA and Football Dynasty routing', () => {
   it('routes API and health requests to the Rust service before the frontend fallback', () => {
@@ -28,8 +29,10 @@ describe('Vercel SPA and Football Dynasty routing', () => {
     ]);
   });
 
-  it('exposes Football Dynasty on the same-origin API without a build-time opt-in', () => {
+  it('exposes Football Dynasty in home navigation without a build-time opt-in', () => {
     expect(router).toContain('<Route path="/dynasty" element={<PageTransition><FootballDynastyScreen /></PageTransition>} />');
-    expect(router).not.toContain('import.meta.env.VITE_FD_API_URL ?');
+    expect(home).toContain('label={t(\'home.dynasty_link\')}');
+    expect(home).toContain('onClick={() => navigate(\'/dynasty\')}');
+    expect(home).not.toContain('import.meta.env.VITE_FD_API_URL');
   });
 });
