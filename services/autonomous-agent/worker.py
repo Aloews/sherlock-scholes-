@@ -76,6 +76,8 @@ USH_PROJECT_ADAPTER = GitHubProjectAdapter(
 )
 USH_REPOSITORY = USH_PROJECT_ADAPTER.repository
 USH_ALLOWED_PREFIXES = USH_PROJECT_ADAPTER.writable_paths
+SHERLOCK_REPOSITORY = "Aloews/sherlock-scholes-"
+SHERLOCK_ALLOWED_PREFIXES = DEFAULT_ALLOWED_PREFIXES
 
 
 def ush_execution_scope_enabled() -> bool:
@@ -86,7 +88,15 @@ def is_ush_issue(issue: dict[str, Any]) -> bool:
     return USH_PROJECT_ADAPTER.accepts_issue(issue)
 
 
+def sherlock_execution_scope_enabled() -> bool:
+    return os.environ.get("SHERLOCK_EXECUTION_SCOPE", "").strip().lower() in ("1", "true", "yes")
+
+
 def configured_repositories(raw_repositories: str, fallback_repository: str = "") -> list[str]:
+    if ush_execution_scope_enabled() and sherlock_execution_scope_enabled():
+        raise RuntimeError("USH_EXECUTION_SCOPE and SHERLOCK_EXECUTION_SCOPE are mutually exclusive")
+    if sherlock_execution_scope_enabled():
+        return [SHERLOCK_REPOSITORY]
     if ush_execution_scope_enabled():
         return [USH_REPOSITORY]
     repositories = [item.strip() for item in raw_repositories.split(",") if item.strip()]
@@ -120,6 +130,10 @@ REPO_ALLOWED_PREFIXES = {
 
 
 def allowed_prefixes_for_repo(repo: str) -> tuple[str, ...]:
+    if sherlock_execution_scope_enabled():
+        if repo != SHERLOCK_REPOSITORY:
+            raise RuntimeError("Sherlock execution scope permits only Aloews/sherlock-scholes-")
+        return SHERLOCK_ALLOWED_PREFIXES
     if ush_execution_scope_enabled():
         if repo != USH_REPOSITORY:
             raise RuntimeError("USH execution scope permits only Aloews/russian-dev-projects")
@@ -1467,7 +1481,8 @@ class Worker:
         configured = [item.strip() for item in os.environ.get("GITHUB_REPOSITORIES", "").split(",") if item.strip()]
         selected = repo or (configured[0] if configured else required_env("GITHUB_REPOSITORY"))
         if configured and selected not in configured and not (
-            ush_execution_scope_enabled() and selected == USH_REPOSITORY
+            (ush_execution_scope_enabled() and selected == USH_REPOSITORY)
+            or (sherlock_execution_scope_enabled() and selected == SHERLOCK_REPOSITORY)
         ):
             raise RuntimeError(f"Repository is not configured in GITHUB_REPOSITORIES: {selected}")
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", selected):
@@ -1493,23 +1508,25 @@ class Worker:
         default_branch = str(repo.get("default_branch", "")).strip()
         if not default_branch or not re.fullmatch(r"[A-Za-z0-9._/-]+", default_branch) or ".." in default_branch.split("/"):
             raise RuntimeError(f"GitHub did not return a safe default branch for {self.repo}")
-        if ush_execution_scope_enabled():
-            target_branch = required_env(USH_PROJECT_ADAPTER.base_branch_env)
+        if ush_execution_scope_enabled() or sherlock_execution_scope_enabled():
+            scope_name = "USH" if ush_execution_scope_enabled() else "Sherlock"
+            base_branch_env = USH_PROJECT_ADAPTER.base_branch_env if ush_execution_scope_enabled() else "SHERLOCK_BASE_BRANCH"
+            target_branch = required_env(base_branch_env)
             if (
                 not re.fullmatch(r"[A-Za-z0-9._/-]+", target_branch)
                 or target_branch.startswith("/")
                 or ".." in target_branch.split("/")
             ):
-                raise RuntimeError("USH_BASE_BRANCH is not a safe branch name")
+                raise RuntimeError(f"{base_branch_env} is not a safe branch name")
             branch_info = request_json(
                 api_url(f"/repos/{self.repo}/branches/{urllib.parse.quote(target_branch, safe='')}"),
                 self.token,
             )
             target_sha = str((branch_info.get("commit") or {}).get("sha", ""))
             if not re.fullmatch(r"[0-9a-fA-F]{40}", target_sha):
-                raise RuntimeError("USH_BASE_BRANCH did not resolve to an immutable commit SHA")
+                raise RuntimeError(f"{base_branch_env} did not resolve to an immutable commit SHA")
             self.default_branch = target_branch
-            LOG.info("USH adapter base branch verified: %s at %s", target_branch, target_sha)
+            LOG.info("%s adapter base branch verified: %s at %s", scope_name, target_branch, target_sha)
         else:
             self.default_branch = default_branch
         LOG.info("GitHub repository access verified for %s (working base=%s)", self.repo, self.default_branch)
@@ -2484,6 +2501,8 @@ def main() -> None:
     repositories = configured_repositories(raw_repositories, fallback_repository)
     if ush_execution_scope_enabled():
         LOG.info("USH execution scope active: repository=%s; writable_paths=%s", USH_REPOSITORY, len(USH_ALLOWED_PREFIXES))
+    if sherlock_execution_scope_enabled():
+        LOG.info("Sherlock execution scope active: repository=%s; writable_paths=%s", SHERLOCK_REPOSITORY, len(SHERLOCK_ALLOWED_PREFIXES))
     # Preflight every configured repository before any task is accepted.
     workers = [Worker(repository) for repository in repositories]
     if os.environ.get("STARIMG_DIAGNOSTIC", "false").strip().lower() in ("1", "true", "yes"):
