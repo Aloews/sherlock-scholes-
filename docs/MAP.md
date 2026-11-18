@@ -300,6 +300,63 @@ These are the next outcomes to prove—not a promise that work is already comple
 ## Verified issue work — 2026-11-14
 
 - Issue #418 root cause: the lobby's `RoomDeckPanel` built squad options from the full squad list, ignored the selected league filter, and changed the league without reconciling selected clubs. The deck picker filtered teams but did not share a canonical sort.
-- Fix in the current branch: one shared helper filters the union of selected canonical leagues, sorts by the fixed `DECK_LEAGUES` order and stable squad-name/key tie-breaks, and preserves only selected club keys still available. Both the lobby and deck picker use it.
-- Regression coverage: union and single-league filtering, stable ordering, stale persisted club cleanup, and preserving a valid selected club. Awaiting CI on PR #423.
+- Fix: PR #423 merged to `main` on 2026-11-14. It adds shared filtering across the union of selected canonical leagues, deterministic ordering, and cleanup of selected clubs that are no longer valid.
+- Status: code is merged. Production behavior still requires an explicit read-after-deploy smoke test; do not mark the user-facing issue complete from merge status alone.
 
+
+
+## 15. Execution backlog — 2026-11-18
+
+The current small-task backlog, dependencies, live evidence, and acceptance criteria are maintained in [the 2026-11-18 production audit](operations/2026-11-18-project-audit.md). Keep this section as the navigation point; do not duplicate raw database counts here.
+
+### P0 — Agent runtime is deployed but disabled
+
+- [ ] **AGT-01:** select one canonical execution path; reconcile PRs #389, #406, #422 and the already-merged #424 workflow. Do not run competing pollers.
+- [ ] **AGT-02:** verify the authenticated Starimg model catalog without a completion/inference call.
+- [ ] **AGT-03:** verify repository scope, owner-only task intake, task watermark, path allowlists and duplicate suppression.
+- [ ] **AGT-04:** verify exact-SHA external review and read-only provider failure handling.
+- [ ] **AGT-05:** enable bounded Sherlock execution only after AGT-01–04; prove one real task reaches a draft PR with green exact-head CI and independent review.
+
+**Observed blocker:** both existing Railway services deploy successfully from `feat/sherlock-multi-agent-runtime-20261113`, but live logs on 2026-11-18 say `Worker disabled`. Authenticated Starimg model-catalog preflight returned HTTP 402 on the reviewer service; no completion was requested. The temporary preflight flag was reverted and `AGENT_ENABLED` remains false. The merged #424 Qwen-only workflow is available on main, but its current write allowlist excludes `src/`, so it cannot handle the open frontend tasks. No successful real task execution was verified. A deployed workflow is not proof of an active, effective agent network.
+
+### P1 — Core user journeys
+
+- [ ] **UX-01:** production-smoke the merged #423 league/team filtering fix; close issue #418 only after evidence.
+- [ ] **UX-02:** finish issue #419 — canonical icon mapping between Home and Football Elias.
+- [ ] **UX-03:** finish issue #420 — release-quality Home → lobby → game → result → replay UX.
+- [ ] **GAME-01:** verify room creation/join, room codes, reconnect, replay, expiry and competitive lifecycle.
+- [ ] **GAME-02:** verify category selection, dynamic category discovery and deck count/deal parity.
+- [ ] **GAME-03:** verify online presence and voice behavior on supported clients.
+
+### P1/P2 — Trustworthy football data
+
+- [ ] **DATA-01:** measure portrait coverage and source eligibility; preserve verified photos.
+- [ ] **DATA-02:** diagnose Transfermarkt photo failures and stale leases; apply bounded retry rules.
+- [ ] **DATA-03:** recover or classify stale season-stat jobs with read-after-write checks.
+- [ ] **DATA-04:** unify career, season and match metric definitions across cards, ratings, fantasy and forecasts.
+- [ ] **DATA-05:** reconcile SoccerWiki squads, Transfermarkt market values, effective dates and source conflicts.
+
+### P1/P2 — Forecasts and analytics
+
+- [ ] **FORECAST-01:** reconcile ungraded match forecasts.
+- [ ] **FORECAST-02:** explain zero eligible accumulator days despite future fixtures and forecast rows; do not relax model thresholds without backtests.
+- [ ] **FORECAST-03:** reconcile unsettled accumulator tickets and verify ledger/history invariants.
+- [ ] **FORECAST-04:** publish leakage-safe award forecast evaluation and calibration.
+- [ ] **FORECAST-05:** collect verified team-tournament outcomes before claiming forecast accuracy.
+- [ ] **FORECAST-06:** add independent model forecasters only on identical immutable pre-kickoff inputs and isolated virtual ledgers.
+
+### P2 — Football Dynasty and Rust migration
+
+- [ ] **FD-01:** reconcile the Rust migration inventory, contract implementation and doctrine PRs (#390, #402, #436); #390 currently has exact-head regression failures while #402/#436 checks are green.
+- [ ] **FD-02:** verify the 18 Machiavellian principles feature and owner-isolated persistence; production migration remains a separate release action.
+- [ ] **FD-03:** complete one playable Dynasty vertical slice and verify it through Telegram.
+- [ ] **RUST-01:** establish Alias Rust domain parity before replacing frontend logic.
+- [ ] **RUST-02:** migrate the remaining product domains in bounded slices; preserve current behavior until equivalent Rust-backed flows pass.
+
+### P0 — Release discipline
+
+- [ ] **OPS-01:** triage the 30 open PRs into current, superseded, duplicate, blocked or obsolete.
+- [ ] **OPS-02:** maintain an exact-head CI, deployment, smoke-test and rollback matrix for retained PRs.
+- [ ] **OPS-03:** keep merge, production deployment, migrations and production data writes behind explicit release authorization.
+
+**Concurrency rule:** agents may work in parallel only on disjoint file sets. Shared `docs/MAP.md` edits are serialized. Every agent task must have explicit file scope, acceptance checks and a separate reviewer. No automatic merge or production mutation.
