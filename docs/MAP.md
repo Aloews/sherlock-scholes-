@@ -416,3 +416,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 
 - Exact-head run #44370659777 caught a test-isolation issue: the explicit-repository override test reached the required GitHub credential lookup instead of the intended fail-closed scope guard. The production scope guard itself is before credential access; the regression test now stubs the required-env lookup so it isolates that invariant and cannot fail due to unrelated test environment state.
 - Correction commit: `8024a198dbbb26daecc8dbbf131deda332a78ec3`. Exact-head CI is pending.
+
+
+### Worker scope override hardening verification — 2026-11-19
+
+- Exact code revision `8024a198dbbb26daecc8dbbf131deda332a78ec3` passed all 12 workflows: main CI #44408253253, autonomous-agent-worker-ci #44408253048, Football Dynasty Rust #44408252957 (rerun after cancellation), and nine regression workflows.
+- The docs-only map refresh is commit `c18fdab293137ad7710fe610cbdf20c300939454`; no code changed after the verified implementation SHA.
+- Railway workers remain disabled; this verifies the code and tests, not live worker activation or Starimg execution.
