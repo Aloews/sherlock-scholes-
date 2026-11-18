@@ -165,8 +165,12 @@ class WorkerPolicyTests(unittest.TestCase):
                 worker = Worker()
             self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
             self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
-            with patch("worker.sherlock_execution_scope_enabled", return_value=True), \
-                 patch("worker.ush_execution_scope_enabled", return_value=False):
+            with patch.dict(os.environ, {
+                "USH_EXECUTION_SCOPE": "false",
+                "SHERLOCK_EXECUTION_SCOPE": "true",
+                "GITHUB_TOKEN": "test-token",
+                "STARIMG_API_KEY": "test-key",
+            }), patch.object(Worker, "_preflight"):
                 with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
                     Worker(repo="Aloews/Novel-forge")
 
