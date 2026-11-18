@@ -317,7 +317,7 @@ The current small-task backlog, dependencies, live evidence, and acceptance crit
 - [ ] **AGT-04:** verify exact-SHA external review and read-only provider failure handling.
 - [ ] **AGT-05:** enable bounded Sherlock execution only after AGT-01–04; prove one real task reaches a draft PR with green exact-head CI and independent review.
 
-**Observed blocker:** both existing Railway services deploy successfully from `feat/sherlock-multi-agent-runtime-20261113`, but live logs on 2026-11-18 say `Worker disabled`. A deployed worker is not an active agent network. Do not report autonomous execution until a real task completes the full handoff.
+**Observed blocker:** both existing Railway services deploy successfully from `feat/sherlock-multi-agent-runtime-20261113`, but live logs on 2026-11-18 say `Worker disabled`. Authenticated Starimg model-catalog preflight returned HTTP 402 on the reviewer service; no completion was requested. The temporary preflight flag was reverted and `AGENT_ENABLED` remains false. A deployed worker is not an active agent network. Do not report autonomous execution until Starimg access is restored and a real task completes the full handoff.
 
 ### P1 — Core user journeys
 
