@@ -396,3 +396,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - PR #440 latest implementation head: `c0ab2fef363bc780b445edcc4f9dcabcc62c0bbe`.
 - All 12 exact-head workflows completed successfully: autonomous-agent worker CI #44382409327, main CI #44382409449, Football Dynasty Rust #44382409373, plus nine regression workflows (#44382409318, #44382409339, #44382409444, #44382409501, #44382409506, #44382409621, #44382409756, #44382409324, #44382409347).
 - This validates the PR code and regression suite. It does not validate a live Telegram Mini App session or authorize enabling the Railway workers. Both Railway services remain disabled pending owner-approved spend limits, branch settings and live smoke acceptance.
+
+
+### Worker scope regression test isolation — 2026-11-18
+
+- The first exact-head worker CI run exposed a test-fixture issue: the explicit-repository override assertion patched the helper function while not isolating the worker's preflight dependencies. The assertion reached token preflight instead of the repository-scope guard.
+- Reworked the regression to use an explicit isolated environment and mock only network preflight. The test now exercises the real scope environment parser and constructor rejection path without requiring external credentials or network access.
+- The latest revision is awaiting exact-head CI. This change does not alter production credentials or enable the Railway workers.
