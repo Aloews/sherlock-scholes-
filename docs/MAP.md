@@ -423,3 +423,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - Exact code revision `8024a198dbbb26daecc8dbbf131deda332a78ec3` passed all 12 workflows: main CI #44408253253, autonomous-agent-worker-ci #44408253048, Football Dynasty Rust #44408252957 (rerun after cancellation), and nine regression workflows.
 - The docs-only map refresh is commit `c18fdab293137ad7710fe610cbdf20c300939454`; no code changed after the verified implementation SHA.
 - Railway workers remain disabled; this verifies the code and tests, not live worker activation or Starimg execution.
+
+
+### Worker explicit-repository scope regression test repair — 2026-11-19
+
+- Exact-head worker CI #44370659777 failed one new test because its second constructor call omitted required `GITHUB_TOKEN` and `STARIMG_API_KEY`; the constructor stopped at credential validation before reaching the intended repository-scope guard.
+- Updated the test fixture to provide dummy credentials and retained the preflight mock. No production credentials or runtime configuration were changed.
+- Test fixture commit: `9146d999597aebc02aeecca6cae7500b2666a063`. New exact-head CI is required.
