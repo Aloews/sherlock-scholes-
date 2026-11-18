@@ -319,3 +319,11 @@ These are the next outcomes to prove—not a promise that work is already comple
 - The route is registered at `/dynasty` without the `AdminOnly` guard. The frontend API client uses the same-origin fallback when `VITE_FD_API_URL` is unset; `vercel.json` routes `/api/v1/*` and `/health/*` to the Football Dynasty service.
 - A live Telegram Mini App navigation and authenticated API smoke remains a release gate. No claim of production behaviour is made from CI alone.
 - Preview deployment is opt-in through the repository's `[vercel-preview]` commit-message gate. A preview is needed to test the real Vercel service rewrite and browser route before the PR can be considered release-ready.
+
+
+### Football Dynasty preview route inspection — 2026-11-18
+
+- Vercel preview for the visibility fix built successfully: `dpl_418wHkVPLertqfmn7o5fMZh3my5c` (commit `56863d154871595cf1a833c63d5672634d67476b`). The frontend root and `/dynasty` both return HTTP 200 with the SPA shell.
+- Retrieved the exact built frontend bundle from that deployment. It contains the unconditional `home.dynasty_link` render and navigation to `/dynasty`; the bundle contains no `VITE_FD_API_URL` gate. The focused test also checks all nine locale labels.
+- The preview's `/health/live` returned Vercel `FUNCTION_INVOCATION_FAILED` (500). Read-only Vercel environment inspection showed the Football Dynasty database variables are production-only; no preview database configuration exists. The production `/health/live` returned HTTP 200 with `{"service":"football-dynasty","status":"ok"}`. No secrets were read or changed.
+- Therefore, preview build and frontend bundle/navigation wiring are verified; a live Telegram Mini App session and preview backend readiness are not. Production remains unchanged. PR #439 stays draft pending the remaining end-to-end gate.
