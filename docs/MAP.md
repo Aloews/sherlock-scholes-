@@ -403,3 +403,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - The first exact-head worker CI run exposed a test-fixture issue: the explicit-repository override assertion patched the helper function while not isolating the worker's preflight dependencies. The assertion reached token preflight instead of the repository-scope guard.
 - Reworked the regression to use an explicit isolated environment and mock only network preflight. The test now exercises the real scope environment parser and constructor rejection path without requiring external credentials or network access.
 - The latest revision is awaiting exact-head CI. This change does not alter production credentials or enable the Railway workers.
+
+
+### Sherlock worker scope regression — latest exact-head result — 2026-11-18
+
+- PR #440 head `16e742fd1f66e9d0688f61e5cfabb68ddb1cfc45` completed all 12 required workflows successfully: main CI, autonomous-agent worker CI, Football Dynasty Rust and nine regression workflows.
+- The regression now covers single-repository selection, rejection of explicit cross-repository constructor overrides, mutual exclusion with USH scope, and mandatory immutable base-branch resolution.
+- This remains code-level validation only. Railway's two scheduled services remain disabled; no production environment variables, model spending, or deployment state were changed. Live Telegram Mini App acceptance is still outstanding.
