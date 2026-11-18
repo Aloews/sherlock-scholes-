@@ -1479,12 +1479,16 @@ def api_url(path: str) -> str:
 class Worker:
     def __init__(self, repo: str | None = None) -> None:
         configured = [item.strip() for item in os.environ.get("GITHUB_REPOSITORIES", "").split(",") if item.strip()]
-        if repo:
-            selected = repo
-        elif sherlock_execution_scope_enabled():
+        if sherlock_execution_scope_enabled():
+            if repo and repo != SHERLOCK_REPOSITORY:
+                raise RuntimeError(f"Only {SHERLOCK_REPOSITORY} is allowed in Sherlock execution scope")
             selected = SHERLOCK_REPOSITORY
         elif ush_execution_scope_enabled():
+            if repo and repo != USH_REPOSITORY:
+                raise RuntimeError(f"Only {USH_REPOSITORY} is allowed in USH execution scope")
             selected = USH_REPOSITORY
+        elif repo:
+            selected = repo
         else:
             selected = configured[0] if configured else required_env("GITHUB_REPOSITORY")
         if configured and selected not in configured and not (
