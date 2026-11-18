@@ -151,6 +151,21 @@ class WorkerPolicyTests(unittest.TestCase):
             self.assertFalse(safe_path(".github/workflows/deploy.yml", prefixes))
             self.assertFalse(safe_path(".env.production", prefixes))
 
+    def test_worker_constructor_uses_forced_scope_not_first_legacy_repository(self):
+        from worker import SHERLOCK_REPOSITORY, Worker
+
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "false",
+            "SHERLOCK_EXECUTION_SCOPE": "true",
+            "GITHUB_REPOSITORIES": "Aloews/full,Aloews/Novel-forge,Aloews/russian-dev-projects",
+            "GITHUB_TOKEN": "test-token",
+            "STARIMG_API_KEY": "test-key",
+        }):
+            with patch.object(Worker, "_preflight"):
+                worker = Worker()
+        self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
+        self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
+
     def test_execution_scopes_are_mutually_exclusive(self):
         from worker import configured_repositories
 
