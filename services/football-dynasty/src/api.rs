@@ -19,6 +19,7 @@ pub fn routes() -> Router<AppState> {
             "/api/v1/campaigns",
             get(list_campaigns).post(create_campaign),
         )
+        .merge(crate::doctrine::routes())
         .route("/api/v1/campaigns/{campaign_id}", get(get_campaign))
         .route("/api/v1/campaigns/{campaign_id}/heirs", post(create_heir))
         .route(
@@ -180,7 +181,7 @@ fn valid_name(value: &str, max: usize) -> bool {
     !trimmed.is_empty() && trimmed.chars().count() <= max
 }
 
-fn idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
+pub(crate) fn idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
     headers
         .get("idempotency-key")
         .and_then(|value| value.to_str().ok())
@@ -190,13 +191,13 @@ fn idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
         .ok_or_else(|| ApiError::bad_request("idempotency_key_required"))
 }
 
-fn payload_hash<T: Serialize>(payload: &T) -> Result<String, ApiError> {
+pub(crate) fn payload_hash<T: Serialize>(payload: &T) -> Result<String, ApiError> {
     let bytes = serde_json::to_vec(payload)?;
     let digest = Sha256::digest(bytes);
     Ok(format!("{digest:x}"))
 }
 
-async fn reserve_command(
+pub(crate) async fn reserve_command(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
     key: &str,
@@ -235,7 +236,7 @@ async fn reserve_command(
         .map(Some)
 }
 
-async fn complete_command(
+pub(crate) async fn complete_command(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
     key: &str,
@@ -255,11 +256,11 @@ async fn complete_command(
     Ok(())
 }
 
-fn replay<T: DeserializeOwned>(value: Value) -> Result<Json<T>, ApiError> {
+pub(crate) fn replay<T: DeserializeOwned>(value: Value) -> Result<Json<T>, ApiError> {
     Ok(Json(serde_json::from_value(value)?))
 }
 
-async fn set_owner_scope(
+pub(crate) async fn set_owner_scope(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
 ) -> Result<(), ApiError> {

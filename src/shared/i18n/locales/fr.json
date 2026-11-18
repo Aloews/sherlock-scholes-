@@ -1506,5 +1506,27 @@
     "sandbox": "Bac à sable",
     "scenario": "Scénario",
     "accounts": "comptes"
+  },
+  "machiavelli": {
+    "eyebrow": "ÉCOLE DU POUVOIR",
+    "title": "18 principes de leadership",
+    "subtitle": "Étudiez Machiavel à travers les décisions qui façonnent un club et une dynastie. Les choix ont des conséquences ; le score mesure le jugement stratégique, pas la valeur morale.",
+    "progress": "Progression",
+    "principle": "Principe",
+    "completed": "terminé",
+    "locked": "verrouillé",
+    "loading": "Chargement…",
+    "error": "Impossible de charger la progression ou d’enregistrer la décision. Réessayez.",
+    "finishedTitle": "Cours terminé",
+    "finishedText": "Vous avez étudié 18 idées de la pensée politique. Utilisez-les pour analyser les circonstances et les conséquences, pas comme des recettes universelles.",
+    "totalScore": "Score stratégique",
+    "scenario": "Situation du club",
+    "choose": "Que feriez-vous ?",
+    "yourDecision": "Votre décision",
+    "score": "Score",
+    "takeaway": "Idée clé",
+    "submit": "Valider la décision",
+    "scoreMeaning": "0–2 mesure le jugement stratégique, pas votre moralité.",
+    "strongestOption": "Option la plus solide dans ce scénario"
   }
 }

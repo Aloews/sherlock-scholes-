@@ -137,10 +137,21 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Technical architecture: `docs/football-dynasty/ARCHITECTURE.md`
 - Current implementation/release notes: `docs/football-dynasty/IMPLEMENTATION_PLAN.md`
 - Rust API: `services/football-dynasty/`
-- Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
+- Frontend API and screens: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`, `src/screens/MachiavelliAcademy.tsx`
+- Machiavellian doctrine specification: `docs/football-dynasty/MACHIAVELLIAN_DOCTRINE.md`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
-- The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The current implemented slice includes campaign creation, a bounded founder/heir succession lifecycle, and (on the current feature branch, pending exact-head CI and release) an 18-lesson Machiavellian decision curriculum. It is not the full management simulation described in the GDD.
+
+
+### Machiavellian strategic doctrine — feature branch, not yet released
+
+- GET /api/v1/campaigns/{campaign_id}/doctrine returns campaign-owned progress; POST /api/v1/campaigns/{campaign_id}/doctrine/{principle_id}/answer accepts one choice.
+- The lesson bank contains 18 original football-governance scenarios in Russian and English, with interface labels in all nine app locales.
+- fd.doctrine_progress persists one answer per campaign/principle. The matching SQLx migration and Supabase production migration 20261116110000_football_dynasty_machiavellian_doctrine.sql add owner-scoped RLS; the disposable PostgreSQL workflow checks it. Server-side scoring, sequential unlocks, idempotent replay and chronicle entries are covered by Rust tests.
+- The UI is embedded in the existing /dynasty campaign screen; it is not a separate demo route.
+- The 18-item sequence is a curated adaptation from *The Prince*, not a canonical numbered list by Machiavelli. Scores assess strategic judgment in context, not moral worth. No violence or unlawful coercion is rewarded.
+- State: implementation committed to feat/football-dynasty-machiavelli-academy-20261116; CI, review and production migration/deployment are still required. Do not claim it is live until the exact PR head passes checks and a real Telegram campaign smoke test proves persistence and owner isolation.
 
 ## 8. Execution priorities
 

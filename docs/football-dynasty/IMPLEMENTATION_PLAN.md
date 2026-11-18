@@ -11,6 +11,19 @@
 - Owner-scoped reads/writes, idempotency keys for mutations, deferred database journal-balance constraint.
 - CI uses disposable PostgreSQL 17 and tests campaign creation/replay, heir creation, death, succession, persistence reload, and verifier privilege path. CI never connects to production.
 
+
+## Machiavellian doctrine — implementation branch
+
+The feature branch adds the first educational vertical slice without claiming the full club-management simulation is complete:
+
+- 18 authored lessons with football governance, finance, negotiation, reputation, alliances and contingency scenarios; Russian and English lesson content.
+- One decision per lesson, three choices, contextual consequence feedback, a server-authoritative 0–2 score and sequential unlocks.
+- Campaign-scoped PostgreSQL persistence with owner-scoped RLS, idempotent API mutations and chronicle events.
+- Academy integrated into the existing campaign screen; interface labels in all nine locales.
+- Rust unit/integration tests and frontend curriculum/locale tests.
+
+**Release state:** feature branch only. Exact-head CI, PR review, production Supabase migration 20261116110000_football_dynasty_machiavellian_doctrine.sql (mirrored by SQLx migration 0005_machiavellian_doctrine.sql), deployment and real Telegram Mini App persistence/owner-isolation smoke tests remain release gates. Do not apply the migration to production before the PR has been reviewed and the exact-head checks pass.
+
 ## Release sequence
 
 1. Finish green Rust and Sherlock CI on the exact PR head; fix any failing checks.

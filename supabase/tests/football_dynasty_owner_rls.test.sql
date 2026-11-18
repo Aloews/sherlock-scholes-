@@ -1,4 +1,4 @@
--- Run against the disposable PostgreSQL service after the three FD migrations.
+-- Run against the disposable PostgreSQL service after the five FD migrations.
 DO $$
 DECLARE
   v_tables integer;
@@ -7,8 +7,8 @@ DECLARE
   v_bypass boolean;
 BEGIN
   SELECT count(*) INTO v_tables FROM pg_tables WHERE schemaname = 'fd';
-  IF v_tables <> 12 THEN
-    RAISE EXCEPTION 'expected 12 Football Dynasty tables, found %', v_tables;
+  IF v_tables <> 13 THEN
+    RAISE EXCEPTION 'expected 13 Football Dynasty tables, found %', v_tables;
   END IF;
 
   SELECT count(*) INTO v_unprotected
@@ -56,6 +56,9 @@ VALUES
   ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000101',
    'RLS House', '00000000-0000-0000-0000-000000000102', 0);
 
+INSERT INTO fd.doctrine_progress (campaign_id, principle_id, choice_id, score)
+VALUES ('00000000-0000-0000-0000-000000000101', 1, 'a', 2);
+
 SET LOCAL fd.telegram_id = '1002';
 
 DO $$
@@ -74,6 +77,13 @@ BEGIN
    WHERE campaign_id = '00000000-0000-0000-0000-000000000101';
   IF v_visible <> 0 THEN
     RAISE EXCEPTION 'cross-owner character read was not isolated';
+  END IF;
+
+  SELECT count(*) INTO v_visible
+    FROM fd.doctrine_progress
+   WHERE campaign_id = '00000000-0000-0000-0000-000000000101';
+  IF v_visible <> 0 THEN
+    RAISE EXCEPTION 'cross-owner doctrine progress read was not isolated';
   END IF;
 
   BEGIN

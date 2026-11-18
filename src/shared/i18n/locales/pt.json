@@ -1506,5 +1506,27 @@
     "sandbox": "Sandbox",
     "scenario": "Cenário",
     "accounts": "contas"
+  },
+  "machiavelli": {
+    "eyebrow": "ESCOLA DO PODER",
+    "title": "18 princípios de liderança",
+    "subtitle": "Estude Maquiavel por meio de decisões na vida de um clube e de uma dinastia. As escolhas têm consequências; a pontuação mede o discernimento estratégico, não o valor moral.",
+    "progress": "Progresso de aprendizagem",
+    "principle": "Princípio",
+    "completed": "concluído",
+    "locked": "bloqueado",
+    "loading": "Carregando…",
+    "error": "Não foi possível carregar o progresso ou guardar a decisão. Tente novamente.",
+    "finishedTitle": "Curso concluído",
+    "finishedText": "Você estudou 18 ideias do pensamento político. Use-as para analisar circunstâncias e consequências, não como receitas universais.",
+    "totalScore": "Pontuação estratégica",
+    "scenario": "Situação do clube",
+    "choose": "O que você faria?",
+    "yourDecision": "Sua decisão",
+    "score": "Pontuação",
+    "takeaway": "Ideia principal",
+    "submit": "Confirmar decisão",
+    "scoreMeaning": "0–2 mede o discernimento estratégico, não a sua moralidade.",
+    "strongestOption": "Opção mais sólida neste cenário"
   }
 }

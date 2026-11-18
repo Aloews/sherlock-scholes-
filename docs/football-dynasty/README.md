@@ -3,6 +3,7 @@
 Design and implementation baseline for the fictional Football Dynasty mode in Sherlock Scholes.
 
 - GDD.md — game design and MVP acceptance criteria
+- MACHIAVELLIAN_DOCTRINE.md — 18-principle learning curriculum, source notes and scoring rules
 - ARCHITECTURE.md — verified Rust backend integration architecture
 - ADR-001-rust-backend.md — decision record for the separate Rust service
 - DATA_MODEL.md — logical campaign data model

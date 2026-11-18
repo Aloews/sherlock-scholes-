@@ -22,8 +22,8 @@ BEGIN
 
   SELECT count(*) INTO v_tables
     FROM pg_tables WHERE schemaname = 'fd';
-  IF v_tables <> 12 THEN
-    RAISE EXCEPTION 'expected 12 Football Dynasty tables, found %', v_tables;
+  IF v_tables NOT BETWEEN 12 AND 13 THEN
+    RAISE EXCEPTION 'expected 12 or 13 Football Dynasty tables, found %', v_tables;
   END IF;
 
   SELECT count(*) INTO v_unprotected
@@ -35,8 +35,8 @@ BEGIN
 
   SELECT count(*) INTO v_policies
     FROM pg_policies WHERE schemaname = 'fd';
-  IF v_policies <> 12 THEN
-    RAISE EXCEPTION 'expected 12 private runtime policies, found %', v_policies;
+  IF v_policies NOT BETWEEN 12 AND 13 THEN
+    RAISE EXCEPTION 'expected 12 or 13 private runtime policies, found %', v_policies;
   END IF;
 
   IF NOT has_table_privilege('fd_runtime', 'fd.campaigns', 'SELECT')
@@ -58,6 +58,13 @@ BEGIN
      OR has_table_privilege('fd_runtime', 'fd.succession_events', 'DELETE')
      OR has_table_privilege('fd_runtime', 'fd.succession_events', 'UPDATE') THEN
     RAISE EXCEPTION 'append-only financial/history tables must not be mutable by fd_runtime';
+  END IF;
+
+  IF to_regclass('fd.doctrine_progress') IS NOT NULL THEN
+    IF has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'DELETE')
+       OR has_table_privilege('fd_runtime', 'fd.doctrine_progress', 'UPDATE') THEN
+      RAISE EXCEPTION 'doctrine progress must be append-only for fd_runtime';
+    END IF;
   END IF;
 END
 $$;
