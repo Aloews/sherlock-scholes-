@@ -368,3 +368,12 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - The worker now falls back to exact full-file replacement when a bounded patch fails, formats changed Rust files, compiles/clippies locally where possible, and creates only a draft PR for exact-head GitHub Actions validation. The external reviewer waits for all GitHub Actions checks to pass before reviewing; failed or timed-out validation closes the draft PR.
 - Implementer cadence is 30 minutes to allow long generation and CI gates without overlapping task runs; external reviewer cadence remains five minutes.
 - The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR preview deployments are blocked by the free-plan daily deployment cap.
+
+
+## Agent runtime single-repository safety gate — 2026-11-18
+
+- Read-only Railway inspection of production environment `distinguished-transformation` found two live cron services: `stream-service` (implementer) and `sherlock-ai-bot` (reviewer). Both have a successful latest deployment and report zero recent failures/warnings.
+- Both services are configured with a seven-repository allowlist. Their 2026-11-18 runtime logs repeatedly report `Worker disabled; GitHub preflight succeeded for 7 repositories`. Therefore the services are scheduled/preflighting, but agent task execution is not active. No Starimg completion was requested by those runs.
+- The old PR #406 description stated that both services were scoped to Sherlock; current live logs contradict that statement. Do not enable either worker until the scope is corrected.
+- PR #440 adds `SHERLOCK_EXECUTION_SCOPE`: it ignores the legacy multi-repository list, forces `Aloews/sherlock-scholes-`, rejects simultaneous USH scope, and requires an explicit immutable `SHERLOCK_BASE_BRANCH`. It does not turn on `AGENT_ENABLED` or mutate Railway configuration.
+- Exact-head CI for PR #440 is pending. Both implementer and reviewer Railway services remain disabled; spend, branch and Mini App release gates remain separate.
