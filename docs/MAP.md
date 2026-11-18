@@ -327,3 +327,11 @@ These are the next outcomes to prove—not a promise that work is already comple
 - Retrieved the exact built frontend bundle from that deployment. It contains the unconditional `home.dynasty_link` render and navigation to `/dynasty`; the bundle contains no `VITE_FD_API_URL` gate. The focused test also checks all nine locale labels.
 - The preview's `/health/live` returned Vercel `FUNCTION_INVOCATION_FAILED` (500). Read-only Vercel environment inspection showed the Football Dynasty database variables are production-only; no preview database configuration exists. The production `/health/live` returned HTTP 200 with `{"service":"football-dynasty","status":"ok"}`. No secrets were read or changed.
 - Therefore, preview build and frontend bundle/navigation wiring are verified; a live Telegram Mini App session and preview backend readiness are not. Production remains unchanged. PR #439 stays draft pending the remaining end-to-end gate.
+
+
+### Football Dynasty home entry — exact-head CI refresh — 2026-11-18
+
+- Current PR #439 implementation head: `fbc31b177ac3345ddfbb391699be7a6f88dce544`.
+- All 11 exact-head workflows passed: main CI #44369679809, Football Dynasty Rust #44369680428, and nine regression workflows (#44369679681, #44369679784, #44369679950, #44369679969, #44369680553, #44369680568, #44369680912, #44369680914, #44369680968).
+- Regression coverage verifies Vercel API/health/frontend rewrite order, frontend SPA fallback, unconditional home entry and `/dynasty` route, same-origin API fallback, and non-empty translation labels in all nine supported locales.
+- Remaining release gate: open the actual Telegram Mini App with valid Telegram init data and verify navigation, API response and screen rendering. Production currently remains on a different main commit; this PR is not deployed.
