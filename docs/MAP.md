@@ -407,6 +407,6 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 
 ### Sherlock worker scope regression — latest exact-head result — 2026-11-18
 
-- PR #440 head `16e742fd1f66e9d0688f61e5cfabb68ddb1cfc45` completed all 12 required workflows successfully: main CI, autonomous-agent worker CI, Football Dynasty Rust and nine regression workflows.
-- The regression now covers single-repository selection, rejection of explicit cross-repository constructor overrides, mutual exclusion with USH scope, and mandatory immutable base-branch resolution.
+- PR #440 exact current head `5b0eac018d737dfae4f62e1f970c1360ad8682d8` completed all 12 associated GitHub Actions workflows successfully on 2026-11-18: main CI #44389403089, Football Dynasty Rust #44389403353, autonomous-agent worker CI #44389403256, and nine regression workflows (#44389403021, #44389403347, #44389403415, #44389403057, #44389403125, #44389403051, #44389403160, #44389403056, #44389403208).
+- The regression covers single-repository selection, rejection of explicit cross-repository constructor overrides, mutual exclusion with USH scope, and mandatory immutable base-branch resolution.
 - This remains code-level validation only. Railway's two scheduled services remain disabled; no production environment variables, model spending, or deployment state were changed. Live Telegram Mini App acceptance is still outstanding.
