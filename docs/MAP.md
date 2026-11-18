@@ -385,7 +385,7 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 
 - A second-pass review found that `Worker(repo=...)` could override the forced repository scope even though the normal `Worker()` path was pinned. This was a real constructor-level escape hatch.
 - The constructor now applies Sherlock/USH scope before considering an explicit repo argument and rejects any conflicting explicit repository. Added a regression test that passes `Aloews/Novel-forge` to a Sherlock-scoped constructor and expects a fail-closed error.
-- Exact-head CI for the latest PR #440 revision is pending. Railway services remain disabled; no environment configuration changed.
+- Exact-head CI for PR #440 passed all 12 workflows on `e72dae4c4cc38b301c8864dfc0264fb00a5332bd`: main CI #44371414848, autonomous-agent worker CI #44371414678, Football Dynasty Rust #44371415003, and nine regression workflows all succeeded. Railway services remain disabled; no environment configuration changed.
 
 
-- The first regression run for the explicit-override guard failed because the test's environment patch did not reliably isolate the scope helper in the nested constructor test. The test now stubs the scope predicates directly, so it asserts the actual guard deterministically without requiring any external credentials. Latest exact-head CI is pending.
+- The first regression run for the explicit-override guard failed because the test's environment patch did not reliably isolate the scope helper in the nested constructor test. The test now stubs the scope predicates directly, so it asserts the actual guard deterministically without requiring any external credentials. The resulting exact-head CI passed all 12 workflows on `e72dae4c4cc38b301c8864dfc0264fb00a5332bd`.
