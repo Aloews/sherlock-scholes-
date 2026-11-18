@@ -304,3 +304,10 @@ These are the next outcomes to prove—not a promise that work is already comple
 - Fix in the current branch: one shared helper filters the union of selected canonical leagues, sorts by the fixed `DECK_LEAGUES` order and stable squad-name/key tie-breaks, and preserves only selected club keys still available. Both the lobby and deck picker use it.
 - Regression coverage: union and single-league filtering, stable ordering, stale persisted club cleanup, and preserving a valid selected club. Awaiting CI on PR #423.
 
+
+
+### Football Dynasty preview smoke gate — 2026-11-18
+
+- The PR's latest Vercel preview was cancelled by the project's Ignored Build Step, which intentionally skips preview builds unless the commit message contains `[vercel-preview]`. This is a configured skip, not a build failure.
+- Added a regression assertion that `home.dynasty_link` is non-empty in all nine shipped locales (ar, en, es, fr, ja, ko, pt, ru, zh).
+- The next commit includes `[vercel-preview]` solely to request the required preview build for Telegram Mini App smoke testing. Production remains unchanged.
