@@ -37,8 +37,8 @@ function MuteButton() {
       className="p-1.5 rounded-lg text-brand-muted hover:text-white transition-colors"
     >
       {muted
-        ? <IconVolumeOff size={18} stroke={1.5} />
-        : <IconVolume    size={18} stroke={1.5} />}
+        ? <IconVolumeOff size={18} stroke={1.8} />
+        : <IconVolume    size={18} stroke={1.8} />}
     </button>
   );
 }
@@ -377,7 +377,7 @@ export function GameScreen() {
       {isExplainer && activeCard && activeCard.status === 'pending' && (
         <div className={`px-4 pb-6 pt-3 grid grid-cols-2 gap-3 ${master ? '' : 'border-t border-brand-border'}`}>
           <Button size="lg" variant="secondary" onClick={markSkipped}>
-            <IconChevronsRight size={18} stroke={2} />
+            <IconChevronsRight size={18} stroke={1.8} />
             {t('game.skip')}
           </Button>
           <Button size="lg" onClick={markCorrect}>
