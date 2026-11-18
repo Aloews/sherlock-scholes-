@@ -347,7 +347,7 @@ The current small-task backlog, dependencies, live evidence, and acceptance crit
 
 ### P2 — Football Dynasty and Rust migration
 
-- [ ] **FD-01:** reconcile the Rust migration inventory, contract implementation and doctrine PRs (#390, #402, #436).
+- [ ] **FD-01:** reconcile the Rust migration inventory, contract implementation and doctrine PRs (#390, #402, #436); #390 currently has exact-head regression failures while #402/#436 checks are green.
 - [ ] **FD-02:** verify the 18 Machiavellian principles feature and owner-isolated persistence; production migration remains a separate release action.
 - [ ] **FD-03:** complete one playable Dynasty vertical slice and verify it through Telegram.
 - [ ] **RUST-01:** establish Alias Rust domain parity before replacing frontend logic.
