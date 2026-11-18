@@ -7,6 +7,15 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
 };
 const router = readFileSync('src/app/Router.tsx', 'utf8');
 const home = readFileSync('src/screens/HomeScreen.tsx', 'utf8');
+const locales = ['ar', 'en', 'es', 'fr', 'ja', 'ko', 'pt', 'ru', 'zh'] as const;
+const translations = Object.fromEntries(
+  locales.map((locale) => [
+    locale,
+    JSON.parse(readFileSync(`src/shared/i18n/locales/${locale}.json`, 'utf8')) as {
+      home?: { dynasty_link?: string };
+    },
+  ]),
+) as Record<(typeof locales)[number], { home?: { dynasty_link?: string } }>;
 
 describe('Vercel SPA and Football Dynasty routing', () => {
   it('routes API and health requests to the Rust service before the frontend fallback', () => {
@@ -34,5 +43,11 @@ describe('Vercel SPA and Football Dynasty routing', () => {
     expect(home).toContain('label={t(\'home.dynasty_link\')}');
     expect(home).toContain('onClick={() => navigate(\'/dynasty\')}');
     expect(home).not.toContain('import.meta.env.VITE_FD_API_URL');
+  });
+
+  it('has a non-empty Football Dynasty label in all supported locales', () => {
+    for (const locale of locales) {
+      expect(translations[locale].home?.dynasty_link?.trim(), locale).toBeTruthy();
+    }
   });
 });
