@@ -311,13 +311,13 @@ The current small-task backlog, dependencies, live evidence, and acceptance crit
 
 ### P0 — Agent runtime is deployed but disabled
 
-- [ ] **AGT-01:** select one canonical Starimg execution path; reconcile PRs #389, #406 and #422. Do not run competing pollers.
+- [ ] **AGT-01:** select one canonical execution path; reconcile PRs #389, #406, #422 and the already-merged #424 workflow. Do not run competing pollers.
 - [ ] **AGT-02:** verify the authenticated Starimg model catalog without a completion/inference call.
 - [ ] **AGT-03:** verify repository scope, owner-only task intake, task watermark, path allowlists and duplicate suppression.
 - [ ] **AGT-04:** verify exact-SHA external review and read-only provider failure handling.
 - [ ] **AGT-05:** enable bounded Sherlock execution only after AGT-01–04; prove one real task reaches a draft PR with green exact-head CI and independent review.
 
-**Observed blocker:** both existing Railway services deploy successfully from `feat/sherlock-multi-agent-runtime-20261113`, but live logs on 2026-11-18 say `Worker disabled`. Authenticated Starimg model-catalog preflight returned HTTP 402 on the reviewer service; no completion was requested. The temporary preflight flag was reverted and `AGENT_ENABLED` remains false. A deployed worker is not an active agent network. Do not report autonomous execution until Starimg access is restored and a real task completes the full handoff.
+**Observed blocker:** both existing Railway services deploy successfully from `feat/sherlock-multi-agent-runtime-20261113`, but live logs on 2026-11-18 say `Worker disabled`. Authenticated Starimg model-catalog preflight returned HTTP 402 on the reviewer service; no completion was requested. The temporary preflight flag was reverted and `AGENT_ENABLED` remains false. The merged #424 Qwen-only workflow is available on main, but its current write allowlist excludes `src/`, so it cannot handle the open frontend tasks. No successful real task execution was verified. A deployed workflow is not proof of an active, effective agent network.
 
 ### P1 — Core user journeys
 
