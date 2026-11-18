@@ -379,3 +379,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - Exact-head CI for PR #440 passed all 12 workflows on `649e91c723def54f2b7d7248fde330fee51cb7d1`; worker policy suite #44361319311, main CI #44361319284 and Football Dynasty Rust #44361319016 succeeded. Both implementer and reviewer Railway services remain disabled; spend, branch and Mini App release gates remain separate.
 
 - Vercel preview attempts for PR #439 were canceled by the repository's Ignored Build Step because the commit message did not contain `[vercel-preview]`. This is an intentional preview opt-in gate; no plan-quota failure was established, and the gate was not bypassed.
+
+
+### Explicit worker repository override guard — 2026-11-18
+
+- A second-pass review found that `Worker(repo=...)` could override the forced repository scope even though the normal `Worker()` path was pinned. This was a real constructor-level escape hatch.
+- The constructor now applies Sherlock/USH scope before considering an explicit repo argument and rejects any conflicting explicit repository. Added a regression test that passes `Aloews/Novel-forge` to a Sherlock-scoped constructor and expects a fail-closed error.
+- Exact-head CI for the latest PR #440 revision is pending. Railway services remain disabled; no environment configuration changed.
