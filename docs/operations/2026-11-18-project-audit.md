@@ -43,6 +43,8 @@ Read-only production queries returned:
 | Team tournament snapshots | 57,564 rows; latest snapshot 2026-11-16; 221 tournaments; zero verified outcomes | No outcome-based tournament evaluation exists yet |
 | Football Dynasty | 12 tables in `fd`, all RLS-enabled; 0 campaigns and 0 rows in the domain tables | Schema is present, but no production campaign usage is evidenced by current rows |
 
+Vercel production is READY on main commit `0d9e0d2643ec964bb2348e75f535cea25bc2a284` (PR #424). The earlier production deployment for merged PR #423 is also READY on merge commit `11b868fc38e9d13c8600cbf6595afa330f3fc0a6`. This verifies deployment state, not a real-device Telegram smoke test.
+
 The project has 475 recorded Supabase migrations. The latest applied Football Dynasty migrations are `20261110190452` and `20261110191118`; the new Machiavelli doctrine migration in PR #436 is not applied to production.
 
 ## 3. Open pull requests and integration risks
