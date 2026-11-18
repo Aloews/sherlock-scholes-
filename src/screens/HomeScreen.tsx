@@ -279,13 +279,11 @@ export function HomeScreen() {
               label={t('home.alias_link')}
               onClick={() => setView('alias')}
             />
-            {import.meta.env.VITE_FD_API_URL && (
-              <HomeGameLink
-                icon={<IconCrown size={20} stroke={1.75} />}
-                label={t('home.dynasty_link')}
-                onClick={() => navigate('/dynasty')}
-              />
-            )}
+            <HomeGameLink
+              icon={<IconCrown size={20} stroke={1.75} />}
+              label={t('home.dynasty_link')}
+              onClick={() => navigate('/dynasty')}
+            />
           </div>
         )}
 

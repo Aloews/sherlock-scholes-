@@ -139,6 +139,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Rust API: `services/football-dynasty/`
 - Frontend API and screen: `src/features/football-dynasty/`, `src/screens/FootballDynastyScreen.tsx`
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
+- Home discovery: Football Dynasty's `/dynasty` entry is rendered unconditionally; the frontend API client falls back to same-origin `/api/v1` routing. The previous `VITE_FD_API_URL` visibility gate is removed in PR #439. Exact-head CI passed all 11 workflows on `56863d154871595cf1a833c63d5672634d67476b`; main CI #44367762702 and Football Dynasty Rust #44367762162 succeeded. Telegram Mini App navigation/API smoke remains a release gate.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
 - The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
 
@@ -303,3 +304,41 @@ These are the next outcomes to prove—not a promise that work is already comple
 - Fix in the current branch: one shared helper filters the union of selected canonical leagues, sorts by the fixed `DECK_LEAGUES` order and stable squad-name/key tie-breaks, and preserves only selected club keys still available. Both the lobby and deck picker use it.
 - Regression coverage: union and single-league filtering, stable ordering, stale persisted club cleanup, and preserving a valid selected club. Awaiting CI on PR #423.
 
+
+
+### Football Dynasty preview smoke gate — 2026-11-18
+
+- The PR's latest Vercel preview was cancelled by the project's Ignored Build Step, which intentionally skips preview builds unless the commit message contains `[vercel-preview]`. This is a configured skip, not a build failure.
+- Added a regression assertion that `home.dynasty_link` is non-empty in all nine shipped locales (ar, en, es, fr, ja, ko, pt, ru, zh).
+- The next commit includes `[vercel-preview]` solely to request the required preview build for Telegram Mini App smoke testing. Production remains unchanged.
+
+
+## Football Dynasty home entry — exact-head verification checkpoint (2026-11-18)
+
+- PR #439 head `56863d154871595cf1a833c63d5672634d67476b` passes all 11 exact-head GitHub Actions workflows, including the main CI and Football Dynasty Rust suites.
+- The route is registered at `/dynasty` without the `AdminOnly` guard. The frontend API client uses the same-origin fallback when `VITE_FD_API_URL` is unset; `vercel.json` routes `/api/v1/*` and `/health/*` to the Football Dynasty service.
+- A live Telegram Mini App navigation and authenticated API smoke remains a release gate. No claim of production behaviour is made from CI alone.
+- Preview deployment is opt-in through the repository's `[vercel-preview]` commit-message gate. A preview is needed to test the real Vercel service rewrite and browser route before the PR can be considered release-ready.
+
+
+### Football Dynasty preview route inspection — 2026-11-18
+
+- Vercel preview for the visibility fix built successfully: `dpl_418wHkVPLertqfmn7o5fMZh3my5c` (commit `56863d154871595cf1a833c63d5672634d67476b`). The frontend root and `/dynasty` both return HTTP 200 with the SPA shell.
+- Retrieved the exact built frontend bundle from that deployment. It contains the unconditional `home.dynasty_link` render and navigation to `/dynasty`; the bundle contains no `VITE_FD_API_URL` gate. The focused test also checks all nine locale labels.
+- The preview's `/health/live` returned Vercel `FUNCTION_INVOCATION_FAILED` (500). Read-only Vercel environment inspection showed the Football Dynasty database variables are production-only; no preview database configuration exists. The production `/health/live` returned HTTP 200 with `{"service":"football-dynasty","status":"ok"}`. No secrets were read or changed.
+- Therefore, preview build and frontend bundle/navigation wiring are verified; a live Telegram Mini App session and preview backend readiness are not. Production remains unchanged. PR #439 stays draft pending the remaining end-to-end gate.
+
+
+### Football Dynasty home entry — exact-head CI refresh — 2026-11-18
+
+- Current PR #439 implementation head: `fbc31b177ac3345ddfbb391699be7a6f88dce544`.
+- All 11 exact-head workflows passed: main CI #44369679809, Football Dynasty Rust #44369680428, and nine regression workflows (#44369679681, #44369679784, #44369679950, #44369679969, #44369680553, #44369680568, #44369680912, #44369680914, #44369680968).
+- Regression coverage verifies Vercel API/health/frontend rewrite order, frontend SPA fallback, unconditional home entry and `/dynasty` route, same-origin API fallback, and non-empty translation labels in all nine supported locales.
+- Remaining release gate: open the actual Telegram Mini App with valid Telegram init data and verify navigation, API response and screen rendering. Production currently remains on a different main commit; this PR is not deployed.
+
+
+### Football Dynasty home entry — latest exact-head confirmation — 2026-11-19
+
+- PR #439 exact implementation head `1abeffd662404c4cb9e61feb48db69163b41dc14` passed all 11 GitHub Actions workflows: main CI #44385906922, Football Dynasty Rust #44385904038, and nine regression workflows (#44385903996, #44385904040, #44385904063, #44385904245, #44385904252, #44385904301, #44385904425, #44385904550, #44385904661).
+- The PR description records a READY Vercel preview, HTTP 200 SPA responses for root and `/dynasty`, and bundle inspection confirming the unconditional home entry. The preview backend health endpoint still returns FUNCTION_INVOCATION_FAILED because preview database variables are not provisioned; production health is HTTP 200.
+- Telegram Mini App end-to-end navigation/API smoke remains outstanding. Keep draft; do not merge/deploy until a safe preview DB or approved production smoke plan exists.

@@ -6,6 +6,17 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
   rewrites: Array<{ source: string; destination: string | { service: string } }>;
 };
 const router = readFileSync('src/app/Router.tsx', 'utf8');
+const home = readFileSync('src/screens/HomeScreen.tsx', 'utf8');
+const dynastyApi = readFileSync('src/features/football-dynasty/api.ts', 'utf8');
+const locales = ['ar', 'en', 'es', 'fr', 'ja', 'ko', 'pt', 'ru', 'zh'] as const;
+const translations = Object.fromEntries(
+  locales.map((locale) => [
+    locale,
+    JSON.parse(readFileSync(`src/shared/i18n/locales/${locale}.json`, 'utf8')) as {
+      home?: { dynasty_link?: string };
+    },
+  ]),
+) as Record<(typeof locales)[number], { home?: { dynasty_link?: string } }>;
 
 describe('Vercel SPA and Football Dynasty routing', () => {
   it('routes API and health requests to the Rust service before the frontend fallback', () => {
@@ -28,8 +39,21 @@ describe('Vercel SPA and Football Dynasty routing', () => {
     ]);
   });
 
-  it('exposes Football Dynasty on the same-origin API without a build-time opt-in', () => {
+  it('exposes Football Dynasty in home navigation without a build-time opt-in', () => {
     expect(router).toContain('<Route path="/dynasty" element={<PageTransition><FootballDynastyScreen /></PageTransition>} />');
-    expect(router).not.toContain('import.meta.env.VITE_FD_API_URL ?');
+    expect(home).toContain('label={t(\'home.dynasty_link\')}');
+    expect(home).toContain('onClick={() => navigate(\'/dynasty\')}');
+    expect(home).not.toContain('import.meta.env.VITE_FD_API_URL');
+  });
+
+  it('uses same-origin API routing when no dedicated Dynasty API URL is configured', () => {
+    expect(dynastyApi).toContain("|| window.location.origin");
+    expect(dynastyApi).toContain("fetch(`${API_BASE}${path}`");
+  });
+
+  it('has a non-empty Football Dynasty label in all supported locales', () => {
+    for (const locale of locales) {
+      expect(translations[locale].home?.dynasty_link?.trim(), locale).toBeTruthy();
+    }
   });
 });
