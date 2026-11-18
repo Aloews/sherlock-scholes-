@@ -7,6 +7,7 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
 };
 const router = readFileSync('src/app/Router.tsx', 'utf8');
 const home = readFileSync('src/screens/HomeScreen.tsx', 'utf8');
+const dynastyApi = readFileSync('src/features/football-dynasty/api.ts', 'utf8');
 const locales = ['ar', 'en', 'es', 'fr', 'ja', 'ko', 'pt', 'ru', 'zh'] as const;
 const translations = Object.fromEntries(
   locales.map((locale) => [
@@ -43,6 +44,11 @@ describe('Vercel SPA and Football Dynasty routing', () => {
     expect(home).toContain('label={t(\'home.dynasty_link\')}');
     expect(home).toContain('onClick={() => navigate(\'/dynasty\')}');
     expect(home).not.toContain('import.meta.env.VITE_FD_API_URL');
+  });
+
+  it('uses same-origin API routing when no dedicated Dynasty API URL is configured', () => {
+    expect(dynastyApi).toContain("|| window.location.origin");
+    expect(dynastyApi).toContain("fetch(`${API_BASE}${path}`");
   });
 
   it('has a non-empty Football Dynasty label in all supported locales', () => {
