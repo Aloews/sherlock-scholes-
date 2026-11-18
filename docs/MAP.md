@@ -311,3 +311,11 @@ These are the next outcomes to prove—not a promise that work is already comple
 - The PR's latest Vercel preview was cancelled by the project's Ignored Build Step, which intentionally skips preview builds unless the commit message contains `[vercel-preview]`. This is a configured skip, not a build failure.
 - Added a regression assertion that `home.dynasty_link` is non-empty in all nine shipped locales (ar, en, es, fr, ja, ko, pt, ru, zh).
 - The next commit includes `[vercel-preview]` solely to request the required preview build for Telegram Mini App smoke testing. Production remains unchanged.
+
+
+## Football Dynasty home entry — exact-head verification checkpoint (2026-11-18)
+
+- PR #439 head `56863d154871595cf1a833c63d5672634d67476b` passes all 11 exact-head GitHub Actions workflows, including the main CI and Football Dynasty Rust suites.
+- The route is registered at `/dynasty` without the `AdminOnly` guard. The frontend API client uses the same-origin fallback when `VITE_FD_API_URL` is unset; `vercel.json` routes `/api/v1/*` and `/health/*` to the Football Dynasty service.
+- A live Telegram Mini App navigation and authenticated API smoke remains a release gate. No claim of production behaviour is made from CI alone.
+- Preview deployment is opt-in through the repository's `[vercel-preview]` commit-message gate. A preview is needed to test the real Vercel service rewrite and browser route before the PR can be considered release-ready.
