@@ -18,7 +18,8 @@ The services and source are deployed, but agent task execution is **not active**
 
 Relevant PRs:
 - [#406 — Railway Starimg multi-agent runtime](https://github.com/Aloews/sherlock-scholes-/pull/406), Draft, head `c5e6a45080e897ae3bccbb424963bcc9247d096c`. It is deployed to the two existing services but the worker is disabled. No PR-triggered workflow run was returned for this exact head in this audit.
-- [#422 — Qwen + Fable GitHub Actions network](https://github.com/Aloews/sherlock-scholes-/pull/422), Draft, head `12424ab5aadd089c72e1ed547dde3cc7e770ab35`; its 11 listed checks passed. It is not active until merged and uses local Qwen plus Starimg escalation, so it is not the preferred runtime while the project instruction is Starimg-only.
+- [#422 — Qwen + Fable GitHub Actions network](https://github.com/Aloews/sherlock-scholes-/pull/422), Draft, head `12424ab5aadd089c72e1ed547dde3cc7e770ab35`; its 11 listed checks passed. It is not active until merged and uses local Qwen plus Starimg escalation.
+- [#424 — Qwen-only multi-role network](https://github.com/Aloews/sherlock-scholes-/pull/424) is already merged into main at `0d9e0d2643ec964bb2348e75f535cea25bc2a284`, and that exact main commit is the latest READY Vercel production deployment. The workflow is owner-invoked and uses local Qwen on ephemeral GitHub runners. However, its current write allowlist excludes the repository's `src/` tree, so it cannot implement the open Home / Football Elias UI tasks (#419 and #420) as written. No successful real task run was verified in this audit.
 - [#389 — Starimg autonomous worker base](https://github.com/Aloews/sherlock-scholes-/pull/389), open, exact head `afb17ef7738e78ae033c186929987a9aefcbbebe`; 11 listed checks passed.
 - The two runtime services share a seven-repository allowlist. Do not enable them blindly: the worker processes one owner-authenticated `/ai ` task per invocation across the entire allowlist. Scope and task watermark must be checked before activation to prevent an unrelated repository task being picked up.
 
@@ -51,7 +52,8 @@ There are 30 open PRs in the repository at audit time. This is too many to treat
 | PR | Scope | Audit disposition |
 |---|---|---|
 | #406 | Railway Starimg agent runtime | Keep as canonical runtime candidate; disabled; validate exact head and safe activation before enabling |
-| #422 | Qwen/Fable GitHub Actions agent network | Alternative implementation; do not activate both orchestration paths |
+| #422 | Qwen/Fable GitHub Actions agent network | Draft alternative; do not activate alongside another poller |
+| #424 | Qwen-only GitHub Actions network | Merged and present on main; local model, but `src/` is outside its current write allowlist; no real task execution verified |
 | #389 | Starimg worker base | Green checks; reconcile its base/commits with #406 before merge |
 | #391 | Alias Rust domain core | Green checks; still requires a parity/integration plan before replacing frontend domain logic |
 | #390 | Full Rust migration inventory | Review against current main and use as migration ledger |
@@ -116,7 +118,7 @@ The open PR inventory includes older changes and competing agent protocols. Do n
 
 ## 5. Execution order and concurrency
 
-- First: AGT-01 → AGT-04. Do not turn on a worker before these checks pass.
+- First: AGT-01 → AGT-04. Do not turn on a worker before these checks pass. Reconcile the already-merged #424 workflow as well as the unmerged Starimg runtime branches.
 - Then: AGT-05 starts one low-risk Sherlock task.
 - Parallel work is allowed only when file write sets do not overlap: UX-02 may run beside DATA-01; FORECAST-04 may run beside FD-02; shared `docs/MAP.md` updates must be serialized by the integration owner.
 - UX-03 depends on UX-01 and UX-02.
