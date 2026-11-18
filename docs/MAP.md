@@ -438,3 +438,10 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - Runtime logs for both services explicitly say `Worker disabled; GitHub preflight succeeded for 7 repositories`. Thus the containers start and validate credentials/repository access, but they do not intake or execute tasks.
 - Both live deployments still run commit `c5e6a45080e897ae3bccbb424963bcc9247d096c` from branch `feat/sherlock-multi-agent-runtime-20261113`; PR #440's scope-hardening code has not been deployed.
 - No Railway variables, deployment settings, cron schedules, secrets or live services were changed. Activation remains gated on merge/deployment, explicit single-repository scope configuration, base-branch pinning, and an owner-approved model/CI spend ceiling.
+
+
+### Worker single-repository scope — latest exact-head verification — 2026-11-19
+
+- PR #440 exact head `516d3b9247cef5732f23155817789fe169d3a082` passed all 12 GitHub Actions workflows: main CI #44409702695, autonomous-agent worker CI #44409702660, Football Dynasty Rust #44409702517 and nine regression workflows (#44409702457, #44409702564, #44409702602, #44409702625, #44409702631, #44409702652, #44409702734, #44409702741, #44409704348).
+- The tests cover fail-closed repository scope, explicit constructor override rejection, scope exclusivity, path policy and immutable base-branch validation.
+- Railway logs still show both scheduled workers disabled and preflighting seven repositories. This PR does not change Railway configuration or activate workers. Activation and spend ceiling remain explicit release gates.
