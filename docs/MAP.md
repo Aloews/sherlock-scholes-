@@ -335,3 +335,10 @@ These are the next outcomes to prove—not a promise that work is already comple
 - All 11 exact-head workflows passed: main CI #44369679809, Football Dynasty Rust #44369680428, and nine regression workflows (#44369679681, #44369679784, #44369679950, #44369679969, #44369680553, #44369680568, #44369680912, #44369680914, #44369680968).
 - Regression coverage verifies Vercel API/health/frontend rewrite order, frontend SPA fallback, unconditional home entry and `/dynasty` route, same-origin API fallback, and non-empty translation labels in all nine supported locales.
 - Remaining release gate: open the actual Telegram Mini App with valid Telegram init data and verify navigation, API response and screen rendering. Production currently remains on a different main commit; this PR is not deployed.
+
+
+### Football Dynasty home entry — latest exact-head confirmation — 2026-11-19
+
+- PR #439 exact implementation head `1abeffd662404c4cb9e61feb48db69163b41dc14` passed all 11 GitHub Actions workflows: main CI #44385906922, Football Dynasty Rust #44385904038, and nine regression workflows (#44385903996, #44385904040, #44385904063, #44385904245, #44385904252, #44385904301, #44385904425, #44385904550, #44385904661).
+- The PR description records a READY Vercel preview, HTTP 200 SPA responses for root and `/dynasty`, and bundle inspection confirming the unconditional home entry. The preview backend health endpoint still returns FUNCTION_INVOCATION_FAILED because preview database variables are not provisioned; production health is HTTP 200.
+- Telegram Mini App end-to-end navigation/API smoke remains outstanding. Keep draft; do not merge/deploy until a safe preview DB or approved production smoke plan exists.
