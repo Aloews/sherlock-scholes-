@@ -18,6 +18,38 @@ CREATE TABLE fd.season_fixtures (
   UNIQUE (campaign_id, season_year, matchday, home_team, away_team)
 );
 
+WITH player_clubs AS (
+  SELECT DISTINCT ON (campaign_id) campaign_id, name AS player_team
+  FROM fd.clubs
+  ORDER BY campaign_id, created_at, id
+), schedule(matchday, home_slot, away_slot) AS (
+  VALUES
+    (1, 'player', 'Harbor Athletic'),
+    (1, 'Redbridge FC', 'Kingsport United'),
+    (2, 'Kingsport United', 'player'),
+    (2, 'Harbor Athletic', 'Redbridge FC'),
+    (3, 'player', 'Redbridge FC'),
+    (3, 'Kingsport United', 'Harbor Athletic'),
+    (4, 'Harbor Athletic', 'player'),
+    (4, 'Kingsport United', 'Redbridge FC'),
+    (5, 'Redbridge FC', 'player'),
+    (5, 'Harbor Athletic', 'Kingsport United'),
+    (6, 'player', 'Kingsport United'),
+    (6, 'Redbridge FC', 'Harbor Athletic')
+)
+INSERT INTO fd.season_fixtures
+  (campaign_id, season_year, matchday, match_date, home_team, away_team)
+SELECT
+  pc.campaign_id,
+  2026,
+  schedule.matchday,
+  DATE '2026-01-03' + ((schedule.matchday::integer - 1) * 7),
+  CASE WHEN schedule.home_slot = 'player' THEN pc.player_team ELSE schedule.home_slot END,
+  CASE WHEN schedule.away_slot = 'player' THEN pc.player_team ELSE schedule.away_slot END
+FROM player_clubs pc
+CROSS JOIN schedule
+ON CONFLICT (campaign_id, season_year, matchday, home_team, away_team) DO NOTHING;
+
 CREATE INDEX fd_season_fixtures_calendar_idx
   ON fd.season_fixtures(campaign_id, season_year, match_date, matchday);
 
