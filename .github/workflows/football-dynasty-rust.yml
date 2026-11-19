@@ -15,6 +15,7 @@ on:
     branches: [main]
     paths:
       - "services/football-dynasty/**"
+      - "supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql"
       - ".github/workflows/football-dynasty-rust.yml"
 
 permissions:
