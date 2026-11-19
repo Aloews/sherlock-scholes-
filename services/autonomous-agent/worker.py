@@ -639,11 +639,14 @@ def context_excerpt(body: str, limit: int = MAX_FILE_CONTEXT_CHARS) -> str:
 
 
 def required_paths_from_task(task: str) -> list[str]:
-    marker = "Required files — all six must be changed in the same PR"
-    if marker not in task:
+    marker = re.search(
+        r"(?m)^(?:#{1,6}\s*)?Required files[^\n]*\n(.*?)(?=\n\n|\Z)",
+        task,
+        re.S,
+    )
+    if not marker:
         return []
-    section = task.split(marker, 1)[1].split("\n\n", 1)[0]
-    return list(dict.fromkeys(re.findall(r"`([^`]+)`", section)))
+    return list(dict.fromkeys(re.findall(r"`([^`]+)`", marker.group(1))))
 
 
 def missing_required_paths(required: list[str], changed: list[str]) -> list[str]:
