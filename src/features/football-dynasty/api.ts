@@ -12,7 +12,7 @@ export interface Character {
 }
 
 export interface GameEvent {
-  id: string; event_type: string; title: string; body: string; game_date: string;
+  id: string; event_type: string; title: string; body: string; game_date: string; expires_on: string;
   priority: number; choices: { id: string; label: string; effect: string }[];
   status: 'pending' | 'resolved' | 'expired'; resolution: Record<string, unknown> | null;
 }
@@ -80,7 +80,7 @@ export const executeSuccession = (campaignId: string, heirId: string) =>
   );
 
 export const advanceGameTime = (campaignId: string, days: number) =>
-  request<{ from_date: string; current_date: string; current_year: number; player_age: number; status: string; generated_events: number }>(
+  request<{ from_date: string; current_date: string; current_year: number; player_age: number; status: string; generated_events: number; expired_events: number }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/time/advance`,
     { method: 'POST', body: JSON.stringify({ days }) }, true,
   );
