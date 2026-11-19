@@ -664,6 +664,49 @@ pub async fn advance_time(
                 .bind(json!({"player_id":event.player_id,"related_player_id":event.related_player_id}))
                 .execute(&mut *tx).await?;
             }
+            crate::fd_query!(
+                "WITH played AS (
+                   SELECT ml.campaign_id,ml.fixture_id,ml.team_id,ml.player_id,ml.role='starter' AS started,
+                     CASE WHEN ml.role='starter' THEN COALESCE(
+                       (SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
+                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.player_id=ml.player_id),90)
+                     ELSE COALESCE(90-(SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
+                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.related_player_id=ml.player_id),0)
+                     END::smallint AS minutes_played
+                   FROM fd.match_lineups ml
+                   WHERE ml.campaign_id=$1 AND ml.fixture_id=$2
+                 ), stats AS (
+                   SELECT p.*,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
+                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.player_id=p.player_id) AS goals,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
+                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.related_player_id=p.player_id) AS assists,
+                     ((p.team_id=$3 AND $5=0) OR (p.team_id=$4 AND $6=0)) AS clean_sheet
+                   FROM played p
+                 )
+                 INSERT INTO fd.player_match_stats(campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,rating)
+                 SELECT campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,
+                   LEAST(10.0,6.0+(goals*1.5)+(assists*1.0)+CASE WHEN clean_sheet THEN 0.5 ELSE 0.0 END)::numeric(3,1)
+                 FROM stats
+                 ON CONFLICT(campaign_id,fixture_id,player_id) DO NOTHING"
+            )
+            .bind(campaign_id).bind(fixture_id).bind(home_team_id).bind(away_team_id)
+            .bind(away_goals).bind(home_goals)
+            .execute(&mut *tx).await?;
+            crate::fd_query!(
+                "UPDATE fd.players p SET
+                   appearances=p.appearances+CASE WHEN s.minutes_played>0 THEN 1 ELSE 0 END,
+                   career_goals=p.career_goals+s.goals,
+                   career_assists=p.career_assists+s.assists,
+                   career_minutes=p.career_minutes+s.minutes_played,
+                   clean_sheets=p.clean_sheets+CASE WHEN s.clean_sheet AND s.minutes_played>0 THEN 1 ELSE 0 END,
+                   fatigue=LEAST(100,p.fatigue+CASE WHEN s.minutes_played>0
+                     THEN CEIL(s.minutes_played/10.0)::integer*GREATEST(1,(100-p.stamina)/25) ELSE 0 END),
+                   updated_at=now()
+                 FROM fd.player_match_stats s
+                 WHERE s.campaign_id=$1 AND s.fixture_id=$2 AND p.campaign_id=s.campaign_id AND p.id=s.player_id"
+            )
+            .bind(campaign_id).bind(fixture_id).execute(&mut *tx).await?;
             let report = format!("{home_team} {home_goals}–{away_goals} {away_team}");
             let scorers:Vec<_>=result.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Goal)
                 .map(|e|json!({"team_id":e.team_id,"scorer_id":e.player_id,"assist_id":e.related_player_id,"minute":e.minute}))
