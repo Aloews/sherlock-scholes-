@@ -286,6 +286,10 @@ The AI assistant is an active engineering contributor, not a review-only gate. I
 
 ## 13. Immediate next deliverables
 
+**Note on CI-gated auto-merge (issue #414):** Issue #414 was marked as a duplicate of #412. No separate auto-merge controller implementation was created under #414. All CI-gated merge and production verification work tracks under canonical issue #412.
+
+---
+
 These are the next outcomes to prove—not a promise that work is already complete:
 
 1. **Fresh baseline:** remeasure production deployment, key user journeys, player/photo/stat coverage, collection yield, cron and GitHub workflow failures, and database capacity.
