@@ -97,7 +97,9 @@ class AgentNetworkTests(unittest.TestCase):
             self.assertEqual(saved["provider_request_id"], "req_123")
             self.assertNotIn("prompt", saved)
             self.assertNotIn("completion", saved)
-            self.assertIn("| Provider | Purpose | Status |", summary.read_text(encoding="utf-8"))
+            summary_text = summary.read_text(encoding="utf-8")
+            self.assertIn("| Provider | Purpose | Status |", summary_text)
+            self.assertIn("\n|---|---|---|", summary_text)
             self.assertEqual(record["max_output_tokens"], 2600)
 
     def test_fable_requires_configured_secret(self):
