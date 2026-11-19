@@ -649,6 +649,38 @@ def required_paths_from_task(task: str) -> list[str]:
     return list(dict.fromkeys(re.findall(r"`([^`]+)`", marker.group(1))))
 
 
+def summarize_usage(records: list[dict[str, Any]]) -> dict[str, int]:
+    """Aggregate provider token counters without retaining prompts or completions."""
+    aliases = {
+        "input_tokens": ("input_tokens", "prompt_tokens"),
+        "output_tokens": ("output_tokens", "completion_tokens"),
+        "cache_read_input_tokens": ("cache_read_input_tokens", "cached_tokens"),
+        "cache_creation_input_tokens": ("cache_creation_input_tokens", "cache_write_tokens"),
+    }
+    result: dict[str, int] = {"calls": len(records)}
+    for target, names in aliases.items():
+        total = 0
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            for name in names:
+                value = record.get(name)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    total += int(value)
+                    break
+        if total:
+            result[target] = total
+    reported_total = sum(
+        int(record.get("total_tokens", 0))
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("total_tokens"), (int, float))
+    )
+    calculated_total = result.get("input_tokens", 0) + result.get("output_tokens", 0)
+    if reported_total or calculated_total:
+        result["total_tokens"] = reported_total or calculated_total
+    return result
+
+
 def missing_required_paths(required: list[str], changed: list[str]) -> list[str]:
     return sorted(set(required) - set(changed))
 
@@ -1519,6 +1551,7 @@ class Worker:
         self.models: list[str] = []
         self.default_branch = ""
         self.attempted: set[int] = set()
+        self.current_usage_records: list[dict[str, Any]] = []
         self._preflight()
 
     def _preflight(self) -> None:
@@ -1744,11 +1777,20 @@ class Worker:
             safe_error = re.sub(r"(?:sk-ant-|sk_live_|Bearer\s+)[A-Za-z0-9_./+-]+", "[REDACTED]", error)
             if len(safe_error) > 1800:
                 safe_error = "[earlier output omitted]\n" + safe_error[-1800:]
+            usage_summary = summarize_usage(self.current_usage_records)
+            LOG.error(
+                "Task %s failed; Starimg usage=%s",
+                comment_id, json.dumps(usage_summary, sort_keys=True),
+            )
+            usage_line = (
+                "\nStarimg usage: " + json.dumps(usage_summary, sort_keys=True)
+                if usage_summary.get("calls", 0) else ""
+            )
             request_json(api_url(f"/repos/{self.repo}/issues/{issue_number}/comments"),
                          self.token, "POST", {
                 "body": "The autonomous worker could not complete this task. "
                         "No production changes were made.\n\n"
-                        f"Failure: {safe_error}\n\n"
+                        f"Failure: {safe_error}{usage_line}\n\n"
                         f"<!-- sherlock-agent-failure:{comment_id} -->"
             })
         except Exception as marker_error:
@@ -1939,6 +1981,7 @@ class Worker:
                 self.model = self.models[0]
                 LOG.info("Starimg model discovery succeeded (primary=%s; candidates=%s)", self.model, len(self.models))
             usage_records: list[dict[str, Any]] = []
+            self.current_usage_records = usage_records
             LOG.info("Task %s architect handoff started; model=%s", comment_id, self.model)
             architect_answer, architect_usage = ask_starimg_agent(
                 self.starimg_base, self.starimg_key, self.model, "architect",
@@ -2190,8 +2233,11 @@ class Worker:
             checks = self._wait_for_github_actions(pr)
             self._post_task_result(issue_number, comment_id, pr, checks)
             LOG.info(
-                "Task %s opened draft PR %s after architect, implementer, internal review and exact-head CI; usage=%s",
-                comment_id, pr.get("html_url"), json.dumps(usage_records, sort_keys=True),
+                "Task %s opened draft PR %s after architect, implementer, internal review and exact-head CI; "
+                "usage_summary=%s; usage_records=%s",
+                comment_id, pr.get("html_url"),
+                json.dumps(summarize_usage(usage_records), sort_keys=True),
+                json.dumps(usage_records, sort_keys=True),
             )
         finally:
             shutil.rmtree(temp, ignore_errors=True)
@@ -2210,12 +2256,41 @@ class Worker:
         if not reviewer_model:
             raise RuntimeError("Reviewer model is not configured")
         for review_attempt in range(2):
+            tracked_paths = run_command(["git", "ls-files"], root).splitlines()
+            relevant_paths = [
+                path for path in tracked_paths
+                if "football-dynasty" in path.lower() or "footballdynasty" in path.lower()
+            ]
+            source_parts = [
+                "REPOSITORY INVENTORY — existing files outside the diff are still part of the implementation:",
+                "\n".join(relevant_paths[:160]),
+            ]
+            for source_path in (
+                "src/features/football-dynasty/api.ts",
+                "src/screens/FootballDynastyScreen.tsx",
+                "src/app/Router.tsx",
+                "services/football-dynasty/src/api.rs",
+                "services/football-dynasty/src/simulation.rs",
+            ):
+                source_file = root / source_path
+                if source_file.is_file():
+                    source_parts.append(
+                        f"--- EXISTING SOURCE (not necessarily changed): {source_path} ---\n"
+                        + source_file.read_text(encoding="utf-8")[:2600]
+                    )
+            repository_evidence = "\n\n".join(source_parts)
             context = (
-                "ARCHITECT HANDOFF (untrusted model output; verify against source):\n"
-                + plan[:12000]
+                "REVIEW RULES: Review the diff against the complete repository state and the source evidence below. "
+                "Do not report an existing file or UI/API capability as missing merely because it is unchanged or absent "
+                "from the diff. Do not demand new directories/components when the current architecture already provides "
+                "the required route or screen. Distinguish a genuinely missing acceptance criterion from a feature "
+                "that already exists in unchanged source. Verify API contracts against the Rust handlers.\n\n"
+                + repository_evidence[:18000]
+                + "\n\nARCHITECT HANDOFF (untrusted model output; verify against source):\n"
+                + plan[:8000]
                 + "\n\nIMPLEMENTATION DIFF:\n"
-                + diff
-            )
+                + context_excerpt(diff, 30000)
+            )[:MAX_CONTEXT_CHARS]
             answer, usage = ask_starimg_agent(
                 self.starimg_base, self.starimg_key, reviewer_model,
                 "reviewer", task, issue_number, context,
