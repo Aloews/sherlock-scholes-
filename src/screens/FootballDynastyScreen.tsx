@@ -104,10 +104,10 @@ export function FootballDynastyScreen() {
     });
   };
 
-  const advance = () => {
+  const advance = (days: number) => {
     if (!campaign) return;
     void run('advance', async () => {
-      await advanceGameTime(campaign.campaign.id, 7);
+      await advanceGameTime(campaign.campaign.id, days);
       await refreshSelected(campaign.campaign.id);
       await refreshCampaigns();
     });
@@ -326,9 +326,15 @@ export function FootballDynastyScreen() {
                       <input className={inputClass} type="number" min={0} max={70} value={heirAge} onChange={(e) => setHeirAge(Number(e.target.value))} aria-label={t('dynasty.heir_age')} />
                       <button type="button" className={buttonClass} disabled={busy !== '' || !heirName.trim()} onClick={submitHeir}>{busy === 'heir' ? t('dynasty.loading') : t('dynasty.save_heir')}</button>
                     </div>
-                    <button type="button" className={`${quietButtonClass} mt-4`} disabled={busy !== ''} onClick={advance}>
-                      <IconHourglass size={16} /> {busy === 'advance' ? t('dynasty.loading') : (i18n.language.startsWith('ru') ? 'Прожить 7 дней' : 'Advance 7 days')}
-                    </button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {[1, 7, 30].map((days) => (
+                        <button key={days} type="button" className={quietButtonClass}
+                          disabled={busy !== ''} onClick={() => advance(days)}>
+                          <IconHourglass size={16} />
+                          {busy === 'advance' ? t('dynasty.loading') : (i18n.language.startsWith('ru') ? 'Прожить ' + days + (days === 1 ? ' день' : days < 5 ? ' дня' : ' дней') : 'Advance ' + days + (days === 1 ? ' day' : ' days'))}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
