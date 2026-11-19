@@ -617,6 +617,12 @@ def run_command(args: list[str], cwd: Path, timeout: int = 900,
         "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
         "GIT_TERMINAL_PROMPT": "0",
         "CI": "1",
+        # Keep Rust validation within the Railway worker's memory limit.
+        "CARGO_BUILD_JOBS": os.environ.get("CARGO_BUILD_JOBS", "1"),
+        "CARGO_INCREMENTAL": os.environ.get("CARGO_INCREMENTAL", "0"),
+        "CARGO_PROFILE_DEV_DEBUG": os.environ.get("CARGO_PROFILE_DEV_DEBUG", "0"),
+        "CARGO_PROFILE_TEST_DEBUG": os.environ.get("CARGO_PROFILE_TEST_DEBUG", "0"),
+        "RUSTFLAGS": os.environ.get("RUSTFLAGS", "-C debuginfo=0"),
     }
     if extra_env:
         env.update(extra_env)
