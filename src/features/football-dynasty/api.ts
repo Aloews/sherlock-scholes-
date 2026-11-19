@@ -21,6 +21,7 @@ export interface SeasonFixture {
   id: string; season_year: number; matchday: number; match_date: string;
   home_team: string; away_team: string; status: 'scheduled' | 'played';
   home_goals: number | null; away_goals: number | null;
+  player_tactic: 'balanced' | 'attacking' | 'defensive';
 }
 export interface LeagueStanding {
   team: string; played: number; wins: number; draws: number; losses: number;
@@ -100,6 +101,11 @@ export const listGameEvents = async (campaignId: string): Promise<GameEvent[]> =
 };
 export const getSeason = (campaignId: string) =>
   request<SeasonView>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/season`);
+export const setFixtureTactic = (campaignId: string, fixtureId: string, tactic: SeasonFixture['player_tactic']) =>
+  request<{ fixture_id: string; tactic: SeasonFixture['player_tactic']; status: string }>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/fixtures/${encodeURIComponent(fixtureId)}/tactic`,
+    { method: 'POST', body: JSON.stringify({ tactic }) }, true,
+  );
 export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
   request<{ event_id: string; status: string; resolution: Record<string, unknown> }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
