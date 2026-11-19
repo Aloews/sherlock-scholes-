@@ -205,6 +205,17 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         standings.iter().all(|standing| standing["played"] == 1),
         "each club must have one played match after matchday one",
     );
+    for (index, standing) in standings.iter().enumerate() {
+        assert_eq!(standing["position"], index as i64 + 1);
+        assert_eq!(
+            standing["goal_difference"],
+            standing["goals_for"].as_i64().unwrap()
+                - standing["goals_against"].as_i64().unwrap(),
+        );
+    }
+    assert!(standings.windows(2).all(|pair| {
+        pair[0]["points"].as_i64().unwrap() >= pair[1]["points"].as_i64().unwrap()
+    }));
 
     let (events_status, events) = call(
         app.clone(),
