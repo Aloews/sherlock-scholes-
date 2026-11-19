@@ -31,7 +31,7 @@
 
 - This ChatGPT session directly authored the matchday board-decision backend, the result/choice idempotency tests, the standings integration assertions, and the home-match ticket-revenue ledger implementation and tests.
 - Concurrent branch automation also modified the Rust/test files, added ranked standings coverage, and added backend CI wiring. Those changes are not attributable to Starimg or local Qwen from available records; their individual model attribution is not fully established.
-- Current exact PR diff against `main`: 191 Rust source additions / 1 deletion; 161 lifecycle-test additions / 5 deletions; 34 CI workflow additions; 38 provenance-document additions; 17 other documentation additions. Total: **441 additions and 6 deletions**.
+- Current exact PR diff against `main`: 191 Rust source additions / 1 deletion; 161 lifecycle-test additions / 5 deletions; 34 CI workflow additions; 40 provenance-document additions; 17 other documentation additions. Total: **443 additions and 6 deletions**.
 - These are exact repository diff statistics, not a complete ChatGPT-only line count. Model-specific attribution remains incomplete until every agent patch is linked to a provider/run ID and commit.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
 
