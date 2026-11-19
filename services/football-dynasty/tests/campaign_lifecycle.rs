@@ -253,6 +253,69 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 3);
 
+    let (played_tactic_season_status, played_tactic_season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(played_tactic_season_status, StatusCode::OK);
+    let first_player_fixture = played_tactic_season["fixtures"]
+        .as_array()
+        .expect("fixtures")
+        .iter()
+        .find(|fixture| fixture["id"] == fixture_id)
+        .expect("first player fixture");
+    assert_eq!(first_player_fixture["status"], "played");
+    assert_eq!(first_player_fixture["player_tactic"], "attacking");
+    let player_goals = if first_player_fixture["home_team"] == "Northbridge United" {
+        first_player_fixture["home_goals"].as_i64().expect("home goals")
+    } else {
+        first_player_fixture["away_goals"].as_i64().expect("away goals")
+    };
+    let opponent_goals = if first_player_fixture["home_team"] == "Northbridge United" {
+        first_player_fixture["away_goals"].as_i64().expect("away goals")
+    } else {
+        first_player_fixture["home_goals"].as_i64().expect("home goals")
+    };
+    assert!(player_goals >= 1, "attacking tactic adds a goal to the player club");
+    assert!(opponent_goals >= 1, "attacking tactic increases match risk");
+
+    let next_player_fixture = played_tactic_season["fixtures"]
+        .as_array()
+        .expect("fixtures")
+        .iter()
+        .find(|fixture| {
+            fixture["status"] == "scheduled"
+                && fixture["matchday"] == 2
+                && (fixture["home_team"] == "Northbridge United"
+                    || fixture["away_team"] == "Northbridge United")
+        })
+        .expect("next player fixture");
+    let next_fixture_id = next_player_fixture["id"].as_str().expect("next fixture id");
+    let (defensive_status, defensive) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{next_fixture_id}/tactic"),
+        Some("match-tactic-defensive"),
+        Some(json!({"tactic":"defensive"})),
+    )
+    .await;
+    assert_eq!(defensive_status, StatusCode::OK);
+    assert_eq!(defensive["tactic"], "defensive");
+
+    let (played_fixture_change_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/tactic"),
+        Some("match-tactic-after-play"),
+        Some(json!({"tactic":"balanced"})),
+    )
+    .await;
+    assert_eq!(played_fixture_change_status, StatusCode::CONFLICT);
+
     let (events_status, events) = call(
         app.clone(),
         "GET",
@@ -334,6 +397,30 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
     assert_eq!(sponsor_tick["generated_events"], 3);
     assert_eq!(sponsor_tick["expired_events"], 1);
+
+    let (defensive_season_status, defensive_season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(defensive_season_status, StatusCode::OK);
+    let defensive_fixture = defensive_season["fixtures"]
+        .as_array()
+        .expect("fixtures")
+        .iter()
+        .find(|fixture| fixture["id"] == next_fixture_id)
+        .expect("defensive fixture");
+    assert_eq!(defensive_fixture["status"], "played");
+    assert_eq!(defensive_fixture["player_tactic"], "defensive");
+    let conceded = if defensive_fixture["home_team"] == "Northbridge United" {
+        defensive_fixture["away_goals"].as_i64().expect("away goals")
+    } else {
+        defensive_fixture["home_goals"].as_i64().expect("home goals")
+    };
+    assert!(conceded <= 2, "defensive tactic reduces opponent scoring");
 
     let (sponsor_events_status, sponsor_events) = call(
         app.clone(),
