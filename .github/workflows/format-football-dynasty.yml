@@ -41,3 +41,5 @@ jobs:
           git add services/football-dynasty
           git commit -m "style(dynasty): apply rustfmt"
           git push origin HEAD:main
+
+# Trigger the one-time formatting repair on this mainline revision.
