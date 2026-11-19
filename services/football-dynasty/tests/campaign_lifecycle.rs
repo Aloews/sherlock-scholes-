@@ -227,17 +227,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(month["generated_events"], 4);
     assert_eq!(month["expired_events"], 3);
 
-    for index in 0..4 {
-        let (advance_status, _) = call(
-            app.clone(),
-            "POST",
-            &format!("/api/v1/campaigns/{campaign_id}/advance"),
-            Some(&format!("advance-{index:04}")),
-            Some(json!({"years":10})),
-        )
-        .await;
-        assert_eq!(advance_status, StatusCode::OK);
-    }
+    let (legacy_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/advance"),
+        Some("legacy-disabled-0001"),
+        Some(json!({"years":1})),
+    )
+    .await;
+    assert_eq!(legacy_status, StatusCode::CONFLICT);
 
     // Put the founder five years below the deterministic death boundary, then
     // request ten years: the simulation must stop exactly at age 90.
@@ -252,24 +250,36 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .await
         .expect("set owner scope for boundary fixture");
     sqlx::query(
-        "UPDATE fd.characters SET age=85 WHERE id=(SELECT founder_character_id FROM fd.campaigns WHERE id=$1)",
+        "UPDATE fd.characters SET age=89 WHERE id=(SELECT founder_character_id FROM fd.campaigns WHERE id=$1)",
     )
     .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
     .execute(&mut *boundary_tx)
     .await
-    .expect("prepare boundary case");
+    .expect("prepare founder age boundary");
+    sqlx::query("UPDATE fd.characters SET age=40 WHERE id=$2 AND campaign_id=$1")
+        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+        .bind(uuid::Uuid::parse_str(heir_id).expect("heir UUID"))
+        .execute(&mut *boundary_tx)
+        .await
+        .expect("prepare eligible heir");
+    sqlx::query("UPDATE fd.campaigns SET game_date=DATE '2026-12-31',current_year=2026 WHERE id=$1")
+        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+        .execute(&mut *boundary_tx)
+        .await
+        .expect("set calendar before birthday");
     boundary_tx.commit().await.expect("commit boundary fixture");
     let (last_advance_status, last_advance) = call(
         app.clone(),
         "POST",
-        &format!("/api/v1/campaigns/{campaign_id}/advance"),
-        Some("advance-boundary-0001"),
-        Some(json!({"years":10})),
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("calendar-boundary-0001"),
+        Some(json!({"days":1})),
     )
     .await;
     assert_eq!(last_advance_status, StatusCode::OK);
+    assert_eq!(last_advance["current_date"], "2027-01-01");
     assert_eq!(last_advance["player_age"], 90);
-    assert_eq!(last_advance["current_year"], 2071);
+    assert_eq!(last_advance["current_year"], 2027);
     assert_eq!(last_advance["status"], "succession_pending");
 
     let (preview_status, candidates) = call(
@@ -361,27 +371,45 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         "POST",
         &format!("/api/v1/campaigns/{campaign_id}/heirs"),
         Some("grandchild-create-0001"),
-        Some(json!({"name":"Casey Morgan","age":16})),
+        Some(json!({"name":"Casey Morgan","age":18})),
     )
     .await;
     assert_eq!(grandchild_status, StatusCode::CREATED);
     let grandchild_id = grandchild["id"].as_str().expect("grandchild id");
 
-    for (index, years) in [10, 10, 9].into_iter().enumerate() {
-        let (advance_status, result) = call(
-            app.clone(),
-            "POST",
-            &format!("/api/v1/campaigns/{campaign_id}/advance"),
-            Some(&format!("second-life-{index:04}")),
-            Some(json!({"years":years})),
-        )
-        .await;
-        assert_eq!(advance_status, StatusCode::OK);
-        if index == 2 {
-            assert_eq!(result["status"], "succession_pending");
-            assert_eq!(result["player_age"], 90);
-        }
-    }
+    let mut second_boundary_tx = pool.begin().await.expect("second boundary transaction");
+    sqlx::query("SET LOCAL ROLE fd_runtime")
+        .execute(&mut *second_boundary_tx)
+        .await
+        .expect("set runtime role for second boundary fixture");
+    sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
+        .bind(owner_id.to_string())
+        .execute(&mut *second_boundary_tx)
+        .await
+        .expect("set owner scope for second boundary fixture");
+    sqlx::query("UPDATE fd.characters SET age=89 WHERE id=(SELECT player_character_id FROM fd.campaigns WHERE id=$1)")
+        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+        .execute(&mut *second_boundary_tx)
+        .await
+        .expect("prepare second founder age boundary");
+    sqlx::query("UPDATE fd.campaigns SET game_date=DATE '2027-12-31',current_year=2027 WHERE id=$1")
+        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+        .execute(&mut *second_boundary_tx)
+        .await
+        .expect("set second calendar boundary");
+    second_boundary_tx.commit().await.expect("commit second boundary fixture");
+    let (second_advance_status, second_advance) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("second-calendar-boundary-01"),
+        Some(json!({"days":1})),
+    )
+    .await;
+    assert_eq!(second_advance_status, StatusCode::OK);
+    assert_eq!(second_advance["current_date"], "2028-01-01");
+    assert_eq!(second_advance["status"], "succession_pending");
+    assert_eq!(second_advance["player_age"], 90);
 
     let (second_preview_status, second_candidates) = call(
         app.clone(),
