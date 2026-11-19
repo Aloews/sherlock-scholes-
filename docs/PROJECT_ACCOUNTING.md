@@ -82,3 +82,33 @@ The current baseline is incomplete. Monetary totals, token consumption and proje
 
 - **Issue #441, comment 7006805718 — failed attempt:** model claude-fable-5-2 via Starimg; 7 calls; input 14,757; output 56,778; total 71,535; cache-creation input 282,176. Worker window 10:43:53–10:50:25Z (~6m32s elapsed, not active labour time). Three attempts to update docs/MAP.md failed, including a Starimg HTTP 503 and patch-context mismatch. No PR or production changes. Exact monetary cost unknown because the Starimg rate card was not verified.
 - **Issue #441, comment 7006979375 — interrupted attempt:** Architect handoff completed 10:52:18–10:52:45Z; screen implementation unit began 10:52:45Z; last log 10:52:53Z. No usage summary, PR or production change observed. Token usage and cost unknown. The worker briefly selected obsolete issue #392 comment 7006040886 before service redeployment; usage for that interrupted request is also unknown.
+
+### Provider request export — 2026-11-18 to 2026-11-19
+
+Source: user-uploaded `request-logs(2).csv`, 30 rows. The export does not identify a timezone, task/PR per request, provider request IDs, a rate card, or the unit represented by `Списано`.
+
+| Model | Requests | Input | Output | Cache | `Списано` |
+|---|---:|---:|---:|---:|---:|
+| `claude-fable-5-2` | 19 | 732,305 | 153,879 | 0 | 7,089,472 |
+| `claude-opus-5` | 9 | 328,990 | 9,954 | 268,789 | 1,355,776 |
+| `claude-fable-5-1` | 2 | 23,470 | 10,776 | 0 | 273,968 |
+| **Total** | **30** | **1,084,765** | **174,609** | **268,789** | **8,719,216** |
+
+- 29 requests succeeded; 1 ended with `provider_error`.
+- `claude-fable-5-2` accounts for 81.3% of the export's `Списано` units. This is a share of the export's provider counter, not a verified share of money or tokens.
+- Mean request latency: 29.8 seconds; median: 23.6 seconds.
+- Cache values are reported only for `claude-opus-5` in this export. Do not infer cache creation, cache-read pricing, or caching configuration from this field alone.
+- The 30-row export is a bounded sample, not a complete account-period usage statement. It does not establish the remaining balance of the user-reported 25,000,000-token top-up.
+- Monetary cost and the conversion of `Списано` units to billable tokens remain **unknown** until the exact Starimg rate card/invoice and metric definition are verified.
+
+### Cost-control actions derived from the export
+
+1. Route repository discovery, task decomposition, routine implementation and test triage to the local Qwen workflow proposed in PR #442 once its security review and checks are complete. Do not describe it as active until merged and an actual run is evidenced.
+2. Keep paid-model calls for bounded escalation/review only; require a task-specific reason before escalating from the local model.
+3. Send only the target file, relevant symbols and the minimal dependency/test context. Exclude the large project map unless the task explicitly requires editing it.
+4. Cap output by role and split large changes into independently testable file-level units. A truncated response must not trigger an unbounded retry loop.
+5. Stop retries on deterministic infrastructure failures (missing compiler/toolchain, invalid credentials, permission denial, unavailable provider). Repair the environment or stop the task before requesting another generation.
+6. Record usage per provider request and role, including failed calls, retry count, cache-read/cache-creation counters separately, and provider request ID when available.
+
+These are controls to implement/verify, not a claim that the current agent runtime already enforces them.
+
