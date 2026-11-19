@@ -1,7 +1,6 @@
 name: Football Dynasty Rust
 
 on:
-  workflow_dispatch:
   pull_request:
     paths:
       - "services/football-dynasty/**"
@@ -16,7 +15,7 @@ on:
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
-    branches: [main, "feat/dynasty-*"]
+    branches: [main]
     paths:
       - "services/football-dynasty/**"
       - "supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql"
