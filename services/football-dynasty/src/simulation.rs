@@ -704,7 +704,10 @@ pub async fn advance_time(
             .await?;
             for event in &result.events {
                 let event_type=match event.kind {
+                    PlayerMatchEventKind::Shot=>"shot",
                     PlayerMatchEventKind::Goal=>"goal",
+                    PlayerMatchEventKind::Save=>"save",
+                    PlayerMatchEventKind::Miss=>"miss",
                     PlayerMatchEventKind::Substitution=>"substitution",
                     PlayerMatchEventKind::HalfTime=>"half_time",
                     PlayerMatchEventKind::FullTime=>"full_time",
