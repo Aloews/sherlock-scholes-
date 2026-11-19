@@ -1,3 +1,4 @@
+// Supavisor transaction pooling can reuse backend sessions across clients; keep runtime SQLx statements non-persistent.
 #[macro_export]
 macro_rules! fd_query {
     ($sql:expr $(,)?) => {
