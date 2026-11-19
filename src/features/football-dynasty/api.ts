@@ -17,6 +17,19 @@ export interface GameEvent {
   status: 'pending' | 'resolved' | 'expired'; resolution: Record<string, unknown> | null;
 }
 
+export interface SeasonFixture {
+  id: string; season_year: number; matchday: number; match_date: string;
+  home_team: string; away_team: string; status: 'scheduled' | 'played';
+  home_goals: number | null; away_goals: number | null;
+}
+export interface LeagueStanding {
+  team: string; played: number; wins: number; draws: number; losses: number;
+  goals_for: number; goals_against: number; points: number;
+}
+export interface SeasonView {
+  season_year: number; fixtures: SeasonFixture[]; standings: LeagueStanding[];
+}
+
 export interface CampaignCreated {
   id: string; name: string; mode: string; status: string; current_year: number;
   dynasty_id: string; founder_id: string; club_id: string;
@@ -82,6 +95,8 @@ export const advanceGameTime = (campaignId: string, days: number) =>
   );
 export const listGameEvents = (campaignId: string) =>
   request<GameEvent[]>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/events`);
+export const getSeason = (campaignId: string) =>
+  request<SeasonView>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/season`);
 export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
   request<{ event_id: string; status: string; resolution: Record<string, unknown> }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
