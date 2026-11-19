@@ -1,5 +1,6 @@
 //! Squad validation and deterministic team-strength aggregation.
 use std::collections::BTreeSet;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::engine::TeamProfile;
@@ -7,7 +8,7 @@ use crate::engine::TeamProfile;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Position { Goalkeeper, Defender, Midfielder, Forward }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerAttributes {
     pub pace: u8,
     pub shooting: u8,
