@@ -425,7 +425,7 @@ pub async fn create_campaign(
     let game_date:NaiveDate=crate::fd_query_scalar!(
         "SELECT game_date FROM fd.campaigns WHERE id=$1"
     ).bind(campaign_id).fetch_one(&mut *tx).await?;
-    let days_to_saturday=(6_i64-i64::from(game_date.weekday().num_days_from_monday())).rem_euclid(7);
+    let days_to_saturday=(5_i64-i64::from(game_date.weekday().num_days_from_monday())).rem_euclid(7);
     let first_match_date=game_date+chrono::Duration::days(days_to_saturday);
     let fixtures=crate::competition::generate_round_robin(
         &team_ids,first_match_date,crate::competition::CompetitionRules::default()
