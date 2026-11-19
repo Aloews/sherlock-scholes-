@@ -204,6 +204,21 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let match_review_choice = match_review["choices"][0]["id"]
         .as_str()
         .expect("first match review choice");
+    let match_review_effect = match_review["choices"][0]["effect"]
+        .as_str()
+        .expect("match review effect");
+    let club_reputation_before: i32 =
+        sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("club reputation before match decision");
+    let dynasty_prestige_before: i32 =
+        sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("dynasty prestige before match decision");
     let (match_review_status, match_review_result) = call(
         app.clone(),
         "POST",
@@ -224,6 +239,41 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(match_review_replay_status, StatusCode::OK);
     assert_eq!(match_review_replay, match_review_result);
+    let club_reputation_after: i32 =
+        sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("club reputation after match decision");
+    let dynasty_prestige_after: i32 =
+        sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("dynasty prestige after match decision");
+    match match_review_effect {
+        "club_reputation" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before + 1).min(100)
+        ),
+        "club_reputation_2" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before + 2).min(100)
+        ),
+        "club_reputation_minus_1" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before - 1).max(0)
+        ),
+        "dynasty_prestige" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 1);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        "dynasty_prestige_2" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 2);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        other => panic!("unexpected match decision effect: {other}"),
+    }
 
     let event_id = events
         .as_array()
