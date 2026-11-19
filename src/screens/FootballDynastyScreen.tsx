@@ -11,6 +11,27 @@ const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50';
 const quietButtonClass = 'inline-flex items-center justify-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-4 py-2.5 text-sm text-white transition hover:border-brand-accent/60 disabled:opacity-50';
 
+async function loadCampaignPanels(campaignId: string, status: string) {
+  let events: GameEvent[] = [];
+  let season: SeasonView | null = null;
+  let candidates: Character[] = [];
+  let eventsFailed = false;
+  let failed = false;
+
+  try { events = await listGameEvents(campaignId); }
+  catch { eventsFailed = true; failed = true; }
+
+  try { season = await getSeason(campaignId); }
+  catch { failed = true; }
+
+  if (status === 'succession_pending') {
+    try { candidates = await previewSuccession(campaignId); }
+    catch { failed = true; }
+  }
+
+  return { events, season, candidates, eventsFailed, failed };
+}
+
 export function FootballDynastyScreen() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -19,6 +40,7 @@ export function FootballDynastyScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
   const [events, setEvents] = useState<GameEvent[]>([]);
+  const [eventsLoadFailed, setEventsLoadFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('events');
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -40,22 +62,20 @@ export function FootballDynastyScreen() {
   }, []);
 
   const refreshSelected = useCallback(async (id: string) => {
-    const data = await getCampaign(id);
-    setCampaign(data);
-    const [heirsResult, inboxResult, seasonResult] = await Promise.allSettled([
-      data.campaign.status === 'succession_pending' ? previewSuccession(id) : Promise.resolve([]),
-      listGameEvents(id),
-      getSeason(id),
-    ]);
-    const inbox = inboxResult.status === 'fulfilled' ? inboxResult.value : [];
-    setCandidates(heirsResult.status === 'fulfilled' ? heirsResult.value : []);
-    setEvents(inbox);
-    setSeason(seasonResult.status === 'fulfilled' ? seasonResult.value : null);
-    if (inboxResult.status === 'fulfilled') {
-      setActiveTab(inbox.some((event) => event.status === 'pending') ? 'events' : 'club');
-    }
-    if (heirsResult.status === 'rejected' || inboxResult.status === 'rejected' || seasonResult.status === 'rejected') {
-      setError(t('dynasty.error'));
+    setEventsLoadFailed(false);
+    try {
+      const data = await getCampaign(id);
+      setCampaign(data);
+      const panels = await loadCampaignPanels(id, data.campaign.status);
+      setCandidates(panels.candidates);
+      setEvents(panels.events);
+      setEventsLoadFailed(panels.eventsFailed);
+      setSeason(panels.season);
+      setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
+      if (panels.failed) setError(t('dynasty.error'));
+    } catch (error) {
+      setEventsLoadFailed(true);
+      throw error;
     }
   }, [t]);
 
@@ -78,34 +98,31 @@ export function FootballDynastyScreen() {
       setCampaign(null);
       setSeason(null);
       setEvents([]);
+      setEventsLoadFailed(false);
       return;
     }
     let active = true;
     setBusy('loading');
     setError('');
+    setEventsLoadFailed(false);
     (async () => {
       try {
         const data = await getCampaign(selectedId);
         if (!active) return;
         setCampaign(data);
-        const [heirsResult, inboxResult, seasonResult] = await Promise.allSettled([
-          data.campaign.status === 'succession_pending' ? previewSuccession(selectedId) : Promise.resolve([]),
-          listGameEvents(selectedId),
-          getSeason(selectedId),
-        ]);
+        const panels = await loadCampaignPanels(selectedId, data.campaign.status);
         if (!active) return;
-        const inbox = inboxResult.status === 'fulfilled' ? inboxResult.value : [];
-        setCandidates(heirsResult.status === 'fulfilled' ? heirsResult.value : []);
-        setEvents(inbox);
-        setSeason(seasonResult.status === 'fulfilled' ? seasonResult.value : null);
-        if (inboxResult.status === 'fulfilled') {
-          setActiveTab(inbox.some((event) => event.status === 'pending') ? 'events' : 'club');
-        }
-        if (heirsResult.status === 'rejected' || inboxResult.status === 'rejected' || seasonResult.status === 'rejected') {
+        setCandidates(panels.candidates);
+        setEvents(panels.events);
+        setEventsLoadFailed(panels.eventsFailed);
+        setSeason(panels.season);
+        setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
+        if (panels.failed) setError(t('dynasty.error'));
+      } catch {
+        if (active) {
+          setEventsLoadFailed(true);
           setError(t('dynasty.error'));
         }
-      } catch {
-        if (active) setError(t('dynasty.error'));
       } finally {
         if (active) setBusy('');
       }
@@ -362,7 +379,14 @@ export function FootballDynastyScreen() {
                   {events.filter((event) => event.status === 'pending').length} {i18n.language.startsWith('ru') ? 'ожидают решения' : 'awaiting decision'}
                 </span>
               </div>
-              {events.length === 0 ? (
+              {eventsLoadFailed ? (
+                <div className="rounded-xl bg-brand-bg p-4">
+                  <p className="mb-2 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'Не удалось загрузить события.' : 'Events could not be loaded.'}</p>
+                  <button type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => void run('refresh', () => refreshSelected(campaign.campaign.id))}>
+                    {i18n.language.startsWith('ru') ? 'Повторить' : 'Retry'}
+                  </button>
+                </div>
+              ) : events.length === 0 ? (
                 <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">
                   {i18n.language.startsWith('ru') ? 'Пока нет новых событий. Продвиньте календарь на неделю.' : 'No new events yet. Advance the calendar by one week.'}
                 </p>
