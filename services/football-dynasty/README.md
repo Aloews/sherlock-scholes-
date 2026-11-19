@@ -70,6 +70,7 @@ The CI workflow starts a disposable PostgreSQL 17 service, applies migrations, a
 - A new campaign starts with three persisted, actionable launch decisions; older campaigns with an empty event inbox are backfilled on first inbox read.
 - A six-matchday, four-team fictional league schedule is persisted per campaign (12 fixtures). Existing campaigns are backfilled by migration 0007_season_fixtures.sql.
 - Every simulated day resolves fixtures due on that date. Scores are deterministic from the campaign seed and fixture identity, then stored with a chronicle entry and a resolved match-report event.
+- Every match involving the player's club also creates a pending, result-specific board decision (win/draw/loss, home/away). The player chooses a club-reputation or dynasty-leadership response; the choice is validated and persisted with the event and chronicle in one transaction.
 - GET /api/v1/campaigns/{campaign_id}/season returns the fixture calendar and standings derived from played results.
 - This is a bounded first season loop, not a tactical match engine or full season rollover system.
 
