@@ -484,9 +484,9 @@ Required information architecture:
 
 ## Agent network — local Qwen fallback — 2026-11-19
 
-- The Railway implementer/reviewer services are scoped to `Aloews/sherlock-scholes-`, pinned to `main`, and have independent implementer/reviewer roles. Starimg returned HTTP 402 on the reviewer path; Fable escalation is therefore unavailable until provider billing/quota is restored.
+- The Railway implementer/reviewer services are scoped to `Aloews/sherlock-scholes-`, pinned to `main`, and have independent implementer/reviewer roles. The Railway implementer task and reviewer preflight both returned Starimg HTTP 402; Fable escalation is therefore unavailable until provider billing/quota is restored.
 - A local Qwen2.5-Coder 3B multi-role workflow is prepared in branch `feat/qwen-agent-network-mainline-20261119`: triage, architect, QA planner, implementer and independent reviewer run on an ephemeral GitHub Actions runner. Normal Qwen inference does not require Starimg.
 - The workflow accepts only repository-owner `/ai` issue comments, includes the issue body as task requirements, edits at most eight allowlisted files, protects existing migrations/manifests/workflows/secrets, and opens draft PRs only. It never merges or deploys.
 - Backend source `services/football-dynasty/` is included in the allowlist; existing service migrations are immutable and a new migration may be created. Rust CI remains the backend acceptance gate.
 - Fable 5.2 remains a bounded high-risk escalation. HTTP 402 is surfaced and not retried; high-risk tasks stop rather than bypass review.
-- Activation is pending exact-head workflow checks and merge of the network PR. The Railway reviewer is paused to avoid repeated 402 calls.
+- Activation is pending exact-head workflow checks and merge of the network PR. The Railway implementer and reviewer are paused to avoid repeated 402 calls.
