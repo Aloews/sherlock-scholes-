@@ -1225,6 +1225,13 @@ def reviewer_issue_number(pr: dict[str, Any]) -> int | None:
     return None
 
 
+def is_after_review_since(pr: dict[str, Any], cutoff: str) -> bool:
+    if not cutoff:
+        return True
+    created_at = str(pr.get("created_at", "")).strip()
+    return bool(created_at and created_at >= cutoff)
+
+
 def has_review_marker(comments: list[dict[str, Any]], head_sha: str) -> bool:
     marker = f"<!-- sherlock-agent-review:{head_sha} -->"
     return any(marker in str(comment.get("body", "")) for comment in comments)
@@ -2286,8 +2293,13 @@ class Worker:
         )
         if not isinstance(prs, list):
             raise RuntimeError("GitHub returned an invalid pull request list")
+        review_since = os.environ.get("REVIEW_SINCE", "").strip()
         for pr in prs:
-            if not isinstance(pr, dict) or not is_reviewable_pr(pr):
+            if (
+                not isinstance(pr, dict)
+                or not is_reviewable_pr(pr)
+                or not is_after_review_since(pr, review_since)
+            ):
                 continue
             number = int(pr.get("number", 0))
             head = pr.get("head") or {}
