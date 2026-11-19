@@ -151,7 +151,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 | Sequence | Engine milestone | Acceptance evidence |
 |---|---|---|
 | E0 | Pure deterministic match core | Same inputs replay identically; seed changes stream; validated ratings; table reconciliation |
-| E1 | Player/squad/tactics | Campaign roster persistence, XI selection, formations, scorer/assist attribution, legal substitutions and player match-stat persistence; manager-controlled lineups/tactics UI and discipline/injury event logic remain |
+| E1 | Player/squad/tactics | Campaign roster persistence, XI selection, formations, attack/shot/save/miss event chains, scorer/assist attribution, legal substitutions and player match-stat persistence; manager-controlled lineups/tactics UI and discipline/injury event logic remain |
 | E2 | Competition/calendar | Deterministic circle-method double round-robin scheduler is implemented and used for new campaign calendars; cups, season rollover, tie-breakers, registration and postponement rules remain |
 | E3 | Matchday integration | Due fixtures now route through Rust and persist score, match events, lineups and player stats in the calendar transaction; verify integration/replay/idempotency and production migration before acceptance |
 | E4 | Player lifecycle | Pure deterministic training/development, fatigue recovery, match-load, contract-expiry and market-value rules are started; database-backed training commands, injuries, discipline and contract lifecycle remain |
