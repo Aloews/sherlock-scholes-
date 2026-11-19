@@ -324,3 +324,63 @@ These are the next outcomes to prove—not a promise that work is already comple
 - **Verification still required:** exact-commit CI, production deployment of this commit, browser-visible home entry, /health/live, /health/ready, and authenticated campaign lifecycle. A READY frontend deployment alone does not prove the Rust container is running.
 - **Known production evidence at investigation time:** Vercel reported three Application exited with code 1 runtime errors for the container, last seen 2026-11-18 20:00:58 UTC. Runtime log retrieval was unavailable because the Hobby plan retention window rejected the query. Root cause of the container exits remains unverified; do not describe the API as connected/healthy until readiness and an authenticated campaign request succeed.
 - **Release gate:** do not mark Football Dynasty production-ready based on source presence, a frontend build, or a READY deployment alone. Record the exact deployed SHA and direct endpoint/smoke-test evidence.
+
+
+## Football Dynasty — playable product and interface priority — 2026-11-19
+
+**Product truth / current baseline (verified from main):**
+- The current GDD defines Football Dynasty as a fictional-world, long-running football dynasty strategy game. The intended core loop spans family, club ownership/management, seasons, finances, rivals, succession and a persistent chronicle.
+- The current Rust API exposes campaign list/create/read, heir creation, bounded time advance and succession preview/execute. The campaign response includes a chronicle collection, but the inspected API contract does not expose a player-facing event inbox, event-choice resolution, fixtures/matchday interaction, transfer market, club operations, rival actions or a season calendar.
+- The current React screen is a thin campaign-management surface: campaign list/create, current campaign data, heir creation, time advance and succession. It is not yet the complete game interface described in the GDD.
+- Therefore, do not present the engine or the existing screen as a complete game. Until real event generation and resolution are implemented and verified, the game has no proven playable event loop. Do not fill the interface with fabricated events or decorative fake activity.
+
+**P0 — deliver an attractive, fast, event-led game interface before expanding simulation breadth.**
+
+The first screen after opening a campaign must immediately communicate: who the player is, which dynasty they lead, which club they control, what is happening in the world, what needs a decision, and what happens next. The visual direction must feel like a premium football-management / grand-strategy product, not an admin panel or a developer demo. Use the Sherlock Scholes design system and responsive Telegram Mini App constraints.
+
+Required information architecture:
+1. **Dynasty home / command centre:** dynasty identity and crest, current leader and heir, year/season, club status, treasury and financial trend, reputation/prestige, compact world status, next match/important date, and a clear primary action.
+2. **Events inbox:** chronological, prioritised event cards with source, involved characters/clubs, urgency/deadline, concise context, consequences preview and meaningful choices. Unread / pending / resolved states must be persisted. Every choice must call a real server-side transition and appear in the chronicle.
+3. **Club hub:** squad, management/staff, club finances, facilities, reputation, performance and ownership/control. Display only fields backed by stored game state.
+4. **Season & match centre:** calendar, fixtures, results, league table, upcoming match and match report. The first release can use the GDD's bounded season simulation; a full tactical match engine is not required.
+5. **People & dynasty:** family tree, character profiles, relationships, heir/succession state, appointments and relevant personal events.
+6. **Transfers & contracts:** available players, contract status, bids/offers, budget impact and server-validated transactions. Do not expose a non-functional transfer-market screen as if it works.
+7. **Finances & assets:** distinct personal, family/holding and club balances; revenue/cost breakdown; recent journal entries; liabilities and warnings.
+8. **World, rivals & chronicle:** rival dynasties, competition/world context, significant actions and an immutable campaign history.
+
+**Event system is a release blocker, not optional polish:**
+- Define a typed event catalogue and event lifecycle: generated → eligible → pending → choice submitted → resolved/expired → chronicle entry.
+- Persist event payload, campaign, actor/targets, created game date, deadline, allowed choices, status, idempotency key and resolution result.
+- Generate events from deterministic game rules and actual campaign state; enforce eligibility, cooldowns and duplicate prevention. AI may propose narrative/context only; it cannot authoritatively mutate game state or invent facts.
+- Provide server-side event list/detail/resolve contracts with ownership checks, validation, atomic state transition and audit/chronicle write.
+- Start with a small coherent event set that creates a meaningful loop (club crisis/opportunity, staff/contract decision, transfer offer, family/relationship event, rival action, matchday outcome). Expand only after each event type has persistence, resolution tests and visible consequences.
+- Empty event inbox must have an honest designed empty state and a clear next action; never imply that events are occurring when none are persisted.
+
+**Performance and perceived-speed requirements:**
+- Measure cold open, campaign list, campaign detail and each mutation separately. Record p50/p95 latency and request counts against a representative generated world; do not use unmeasured claims such as "fast".
+- Set explicit initial targets: app shell and cached campaign shell become interactive within 2 seconds on a representative mobile connection; cached dashboard paints immediately while fresh data loads; ordinary read endpoints p95 ≤ 500 ms and event/choice mutations p95 ≤ 1 second under the agreed test load. If the environment cannot meet a target, publish the measured result and identify the bottleneck.
+- Do not block the whole screen on sequential requests. Load shell, campaign summary and critical status first; lazy-load secondary tabs and long histories.
+- Use skeletons matching final layout, stable cached data with visible freshness, optimistic updates only for reversible/non-authoritative presentation, and clear per-action pending/error/retry states. Never show a successful state before the server confirms a mutation.
+- Profile Rust queries, indexes, serialization and world/tick generation. Bound work per request; move expensive world generation and simulation to durable background jobs with progress/checkpoints rather than holding the UI behind a long synchronous request.
+- Add request IDs, server timings and safe diagnostics. Do not log Telegram initData, credentials or personal data.
+
+**Implementation sequence / exit gates:**
+1. **P0.1 — product baseline:** map every current screen/API/database capability to implemented, partial or absent; record a real campaign trace and baseline latency. No feature is counted from a type/interface or mock.
+2. **P0.2 — interface foundation:** build the responsive command-centre shell, navigation, visual hierarchy, reusable event cards, skeleton/empty/error states and mobile interaction patterns using real campaign data.
+3. **P0.3 — persistent event vertical slice:** implement event schema, deterministic generation, inbox, one complete event-choice flow, atomic resolution and chronicle; verify reload and duplicate-submit behaviour.
+4. **P0.4 — season loop:** add persisted season/calendar/fixtures/results/table and one matchday outcome that can generate follow-up events. Verify table arithmetic and reload consistency.
+5. **P0.5 — club and dynasty decisions:** connect real staff/contracts/club finance/family/succession data to actionable screens and server-side commands.
+6. **P0.6 — performance hardening:** profile representative campaigns, remove N+1/sequential fetches, add indexes/cache/background work where measurements justify them, and pass the latency targets or document measured exceptions.
+7. **P0.7 — release proof:** exact-SHA CI; API integration tests; event lifecycle and ownership tests; browser/mobile smoke test in Telegram Mini App; cold/warm performance report; production endpoint and deployed-SHA verification.
+
+**Acceptance criteria for calling it a game rather than an engine demo:**
+- A new player can create/resume a campaign and understand their current position without reading documentation.
+- The dashboard is populated only by persisted game state and gives at least one meaningful next action.
+- At least one event is generated from real campaign conditions, shown in the inbox, resolved by a player choice, changes authoritative state, and appears in the chronicle after reload.
+- A season can advance through fixtures/results and reconcile to a correct table; the matchday outcome feeds the event/chronicle loop.
+- Core navigation works on narrow Telegram mobile screens with no dead-end or placeholder tabs presented as finished features.
+- Loading, stale-data, empty, failure, retry and mutation-pending states are designed and tested; slow simulation does not freeze the entire interface.
+- Performance targets are measured on the exact release candidate, not inferred from local development.
+- All visible numbers and narrative claims have a source in persisted campaign state. No fabricated events, fake activity, placeholder metrics or success messages.
+
+**Status:** this section records the required product direction and delivery gates. It does not claim that the event system, complete interface, season loop or performance targets are implemented. The verified current baseline remains a limited campaign engine and thin screen; event generation/resolution and a full user-facing game experience remain outstanding.
