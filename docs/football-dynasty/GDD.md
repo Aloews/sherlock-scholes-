@@ -116,3 +116,5 @@ Weekly events rotate across board decisions, sponsor offers, supporter meetings 
 
 
 The season calendar is anchored to the campaign's persisted game date and current year. Matchdays begin on the next Saturday, and existing campaigns are aligned by the 20261119150000 season-year migration; no fixed real-world year is assumed.
+
+A fixture involving the player's club also triggers a pending board decision based on the actual simulated result and home/away context. The player can respond to a win, draw or loss; the selected outcome changes persisted club reputation or dynasty prestige and is recorded in the chronicle. A match decision is deduplicated by fixture and expires after seven in-game days.
