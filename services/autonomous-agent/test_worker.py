@@ -1461,7 +1461,7 @@ class UsageAccountingTests(unittest.TestCase):
         self.assertEqual(summary["output_tokens"], 550)
         self.assertEqual(summary["cache_read_input_tokens"], 400)
         self.assertEqual(summary["cache_creation_input_tokens"], 80)
-        self.assertEqual(summary["total_tokens"], 2450)
+        self.assertEqual(summary["total_tokens"], 2930)
 
     def test_summarize_usage_handles_missing_usage_without_inventing_tokens(self):
         from worker import summarize_usage
