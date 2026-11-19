@@ -441,3 +441,10 @@ Required information architecture:
 - The old year-based advance handler no longer mutates campaign state; the route returns `409 use_day_based_calendar`. The obsolete years-based request/result types and frontend client method were removed.
 - Lifecycle tests no longer simulate decades through the old route. They set controlled fixture dates and verify founder and successor deaths by advancing exactly one calendar day across 1 January; the legacy route is asserted to reject.
 - The test also verifies weekly event expiry after missed deadlines. This is source-level test coverage; no passing CI run is claimed yet.
+
+
+**Deadline edge cases and calendar-only progression — 2026-11-19:**
+- Event expiry is processed at the start of each simulated day, before annual birthday and succession checks. Pending decisions therefore cannot survive beyond their deadline merely because the founder dies on that date.
+- Added an integration assertion that resolving an expired event returns `409`.
+- Removed the years-based mutating handler, request/result types and frontend client method. The old URL remains as a migration response returning `409 use_day_based_calendar`; it cannot skip weekly events or desynchronize `game_date`.
+- Lifecycle coverage now crosses both founder and successor age-90 boundaries by advancing exactly one day from 31 December to 1 January. Fixture-only age/date setup is not part of player-facing gameplay.
