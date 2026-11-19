@@ -288,16 +288,22 @@ class WorkerPolicyTests(unittest.TestCase):
                 ):
                     self.assertNotIn(secret_name, child_env)
 
-    def test_required_file_gate_extracts_all_declared_paths(self):
-        task = """Required files — all six must be changed in the same PR
-- `services/football-dynasty/migrations/0005_squad_contracts.sql`
+    def test_required_file_gate_extracts_variable_number_of_paths(self):
+        task = """## Required files — all eight must be present in the same PR
+- `services/football-dynasty/migrations/0008_squad_contracts.sql`
 - `services/football-dynasty/src/roster.rs`
 - `services/football-dynasty/src/lib.rs`
 - `services/football-dynasty/src/http.rs`
 - `services/football-dynasty/tests/campaign_lifecycle.rs`
+- `src/features/football-dynasty/api.ts`
+- `src/screens/FootballDynastyScreen.tsx`
 - `docs/MAP.md`"""
         required = required_paths_from_task(task)
-        self.assertEqual(len(required), 6)
+        self.assertEqual(len(required), 8)
+        self.assertEqual(
+            missing_required_paths(required, [required[0]]),
+            sorted(required[1:]),
+        )
         self.assertEqual(
             missing_required_paths(required, [required[0]]),
             sorted(required[1:]),
