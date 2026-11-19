@@ -25,6 +25,7 @@ def main():
             "CI failure log:\n" + logs + "\nCurrent diff:\n" + diff + "\nRelevant source:\n" + context,
             "Deterministic CI gates failed. Diagnose the exact failing command and make the smallest verified correction.",
             max_tokens=2600,
+            purpose="ci-repair",
         )
         if result.get("decision") != "fix":
             raise agent_network.EscalationError("Fable chose not to patch: " + str(result.get("diagnosis", "no diagnosis")))
