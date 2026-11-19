@@ -11,6 +11,13 @@
 - Owner-scoped reads/writes, idempotency keys for mutations, deferred database journal-balance constraint.
 - CI uses disposable PostgreSQL 17 and tests campaign creation/replay, heir creation, death, succession, persistence reload, and verifier privilege path. CI never connects to production.
 
+## Next backend slice — matchday decisions
+
+- After each player-club fixture is resolved, the same transaction creates one deduplicated pending board decision tied to the exact fixture result and venue.
+- Win, draw and loss produce different narrative and decision choices. The player can strengthen club reputation or publicly support dynasty leadership; a loss also offers an explicit board review with a small reputation cost.
+- The event is keyed by fixture ID, carries a seven-day inclusive deadline, and is resolved through the existing idempotent event command. No LLM is authoritative for simulation state.
+- CI acceptance: the campaign lifecycle test advances through a player fixture, sees the contextual event, resolves a valid choice, and verifies the normal event and season flows remain intact.
+
 ## Release sequence
 
 1. Finish green Rust and Sherlock CI on the exact PR head; fix any failing checks.
