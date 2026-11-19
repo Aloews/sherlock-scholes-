@@ -27,7 +27,10 @@ pub struct SubstitutionPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlayerMatchEventKind {
+    Shot,
     Goal,
+    Save,
+    Miss,
     Substitution,
     HalfTime,
     FullTime,
@@ -100,18 +103,24 @@ fn draw(seed: u64, match_id: Uuid, minute: u8, team_id: Uuid, salt: u8) -> u32 {
     u32::from_be_bytes([digest[0], digest[1], digest[2], digest[3]]) % SCALE
 }
 
-fn scoring_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16, tactics: TacticalPlan) -> u32 {
-    (8_000_i32
-        + i32::from(attack.attack) * 200
-        + i32::from(attack.midfield) * 100
-        - i32::from(defence.defence) * 80
-        - i32::from(defence.goalkeeper) * 80
-        + i32::from(attack.morale) * 30
-        - i32::from(attack.fatigue) * 80
-        + i32::from(home)
-        + (i32::from(tactics.tempo)-50)*45
-        + (i32::from(tactics.width)-50)*20)
-        .clamp(2_000, 90_000) as u32
+fn chance_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16, tactics: TacticalPlan) -> u32 {
+    (100_000_i32
+        + i32::from(attack.midfield) * 600
+        + i32::from(attack.attack) * 250
+        - i32::from(defence.midfield) * 300
+        + (i32::from(tactics.tempo)-50)*500
+        + (i32::from(tactics.width)-50)*100
+        + i32::from(home))
+        .clamp(50_000,350_000) as u32
+}
+
+fn shot_probability(shooter: &Player, attack: &TeamProfile, defence: &TeamProfile) -> u32 {
+    (70_000_i32
+        + i32::from(shooter.attributes.shooting) * 900
+        + i32::from(attack.attack) * 250
+        - i32::from(defence.goalkeeper) * 700
+        - i32::from(defence.defence) * 150)
+        .clamp(20_000,450_000) as u32
 }
 
 fn select_player(players: &[Player], value: u32, scorer: bool) -> Option<Uuid> {
@@ -260,34 +269,74 @@ pub fn simulate_player_match(
 
         let home_profile = profile(home.team_id, &home_active, home.starting.formation, home.starting.tactics)?;
         let away_profile = profile(away.team_id, &away_active, away.starting.formation, away.starting.tactics)?;
-        let home_probability = scoring_probability(&home_profile, &away_profile, rules.home_advantage_milli, home.starting.tactics);
-        let away_probability = scoring_probability(&away_profile, &home_profile, 0, away.starting.tactics);
-        home_xg += home_probability / 1_000;
-        away_xg += away_probability / 1_000;
+        let home_chance = chance_probability(&home_profile,&away_profile,rules.home_advantage_milli,home.starting.tactics);
+        let away_chance = chance_probability(&away_profile,&home_profile,0,away.starting.tactics);
 
-        if home_goals < 12 && draw(seed, match_id, minute, home.team_id, 1) < home_probability {
-            home_goals += 1;
-            let scorer_id = select_player(&home_active, draw(seed, match_id, minute, home.team_id, 2), true);
-            let assist_id = if draw(seed, match_id, minute, home.team_id, 3) < 700_000 {
-                let candidates: Vec<_> = home_active.iter().filter(|p| Some(p.id) != scorer_id).cloned().collect();
-                select_player(&candidates, draw(seed, match_id, minute, home.team_id, 4), false)
-            } else { None };
-            events.push(PlayerMatchEvent {
-                sequence: events.len() as u16, minute, kind: PlayerMatchEventKind::Goal,
-                team_id: Some(home.team_id), player_id: scorer_id, related_player_id: assist_id,
-            });
+        if home_goals < 12 && draw(seed,match_id,minute,home.team_id,1)<home_chance {
+            if let Some(shooter_id)=select_player(&home_active,draw(seed,match_id,minute,home.team_id,2),true) {
+                let shooter=home_active.iter().find(|p|p.id==shooter_id).expect("selected home shooter");
+                let goal_probability=shot_probability(shooter,&home_profile,&away_profile);
+                home_xg+=goal_probability/1_000;
+                events.push(PlayerMatchEvent {
+                    sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Shot,
+                    team_id:Some(home.team_id),player_id:Some(shooter_id),related_player_id:None,
+                });
+                if draw(seed,match_id,minute,home.team_id,3)<goal_probability {
+                    home_goals+=1;
+                    let assist_id=if draw(seed,match_id,minute,home.team_id,4)<700_000 {
+                        let candidates:Vec<_>=home_active.iter().filter(|p|p.id!=shooter_id).cloned().collect();
+                        select_player(&candidates,draw(seed,match_id,minute,home.team_id,5),false)
+                    } else {None};
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Goal,
+                        team_id:Some(home.team_id),player_id:Some(shooter_id),related_player_id:assist_id,
+                    });
+                } else if draw(seed,match_id,minute,home.team_id,6)<500_000 {
+                    let keeper=away_active.iter().find(|p|p.position==Position::Goalkeeper).map(|p|p.id);
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Save,
+                        team_id:Some(away.team_id),player_id:keeper,related_player_id:Some(shooter_id),
+                    });
+                } else {
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Miss,
+                        team_id:Some(home.team_id),player_id:Some(shooter_id),related_player_id:None,
+                    });
+                }
+            }
         }
-        if away_goals < 12 && draw(seed, match_id, minute, away.team_id, 1) < away_probability {
-            away_goals += 1;
-            let scorer_id = select_player(&away_active, draw(seed, match_id, minute, away.team_id, 2), true);
-            let assist_id = if draw(seed, match_id, minute, away.team_id, 3) < 700_000 {
-                let candidates: Vec<_> = away_active.iter().filter(|p| Some(p.id) != scorer_id).cloned().collect();
-                select_player(&candidates, draw(seed, match_id, minute, away.team_id, 4), false)
-            } else { None };
-            events.push(PlayerMatchEvent {
-                sequence: events.len() as u16, minute, kind: PlayerMatchEventKind::Goal,
-                team_id: Some(away.team_id), player_id: scorer_id, related_player_id: assist_id,
-            });
+        if away_goals < 12 && draw(seed,match_id,minute,away.team_id,11)<away_chance {
+            if let Some(shooter_id)=select_player(&away_active,draw(seed,match_id,minute,away.team_id,12),true) {
+                let shooter=away_active.iter().find(|p|p.id==shooter_id).expect("selected away shooter");
+                let goal_probability=shot_probability(shooter,&away_profile,&home_profile);
+                away_xg+=goal_probability/1_000;
+                events.push(PlayerMatchEvent {
+                    sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Shot,
+                    team_id:Some(away.team_id),player_id:Some(shooter_id),related_player_id:None,
+                });
+                if draw(seed,match_id,minute,away.team_id,13)<goal_probability {
+                    away_goals+=1;
+                    let assist_id=if draw(seed,match_id,minute,away.team_id,14)<700_000 {
+                        let candidates:Vec<_>=away_active.iter().filter(|p|p.id!=shooter_id).cloned().collect();
+                        select_player(&candidates,draw(seed,match_id,minute,away.team_id,15),false)
+                    } else {None};
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Goal,
+                        team_id:Some(away.team_id),player_id:Some(shooter_id),related_player_id:assist_id,
+                    });
+                } else if draw(seed,match_id,minute,away.team_id,16)<500_000 {
+                    let keeper=home_active.iter().find(|p|p.position==Position::Goalkeeper).map(|p|p.id);
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Save,
+                        team_id:Some(home.team_id),player_id:keeper,related_player_id:Some(shooter_id),
+                    });
+                } else {
+                    events.push(PlayerMatchEvent {
+                        sequence:events.len() as u16,minute,kind:PlayerMatchEventKind::Miss,
+                        team_id:Some(away.team_id),player_id:Some(shooter_id),related_player_id:None,
+                    });
+                }
+            }
         }
     }
     events.push(PlayerMatchEvent {
@@ -334,6 +383,7 @@ mod tests {
         let a=simulate_player_match(42,Uuid::from_u128(9000),&home,&away,MatchRules::default(),&[],&[]).unwrap();
         let b=simulate_player_match(42,Uuid::from_u128(9000),&home,&away,MatchRules::default(),&[],&[]).unwrap();
         assert_eq!(a,b);
+        assert!(a.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Shot).count() >= a.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Goal).count());
         for event in a.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Goal) {
             assert!(event.player_id.is_some());
             assert!(event.related_player_id != event.player_id);
