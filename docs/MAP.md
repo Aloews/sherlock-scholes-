@@ -483,3 +483,15 @@ Required information architecture:
 
 
 **Rust formatting repair — 2026-11-19:** Exact-head Rust CI exposed formatting-only diffs in the Football Dynasty HTTP, module, simulation and lifecycle-test files. A guarded main-branch CI step is being used to apply rustfmt to `services/football-dynasty/` only, then re-run the normal formatting, Clippy, test and RLS checks. No behavior change is intended.
+
+
+## Project accounting — time, tokens and operating costs — 2026-11-19
+
+- Added `docs/PROJECT_ACCOUNTING.md` as the append-only accounting ledger for engineering time, agent usage, failed/retried generations, reviews, CI, infrastructure and monetary spend.
+- Each task must separate queue time from active phase durations; track Architect, Implementer, retries, Reviewer, CI and deployment independently. Failed attempts count toward delivery cost.
+- Capture provider-reported usage per request and aggregate by model: input/output/cache tokens, request count and provider request ID. Never store prompts, completions or credentials in the ledger.
+- Record Railway, Supabase, Vercel, storage, domains and external APIs separately by billing period. Monetary amounts require verified invoices or exact rate cards; otherwise retain `unknown`.
+- A token top-up is budget/credit, not consumption. The user-reported Starimg top-up of 25,000,000 tokens is recorded as an unverified credit; actual consumption, remaining balance and monetary equivalent are currently unknown.
+- Initial agent-cost record includes the failed issue #441 retry: observed worker window 10:36:36Z–10:41:07Z (~4m31s elapsed), architect handoff, two implementation attempts and review start. Provider token usage was not present in the persisted failure comment, so usage and monetary cost remain unknown. No accepted PR or production change resulted.
+- This baseline explicitly excludes unmeasured human/assistant time and unverified infrastructure charges. Future task records must append actual metrics and link evidence.
+- Do not produce a project-completion percentage from token budget. Forecast delivery from accepted backlog items, measured throughput, actual token burn and infrastructure spend, with confidence ranges.
