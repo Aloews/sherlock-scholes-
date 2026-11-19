@@ -227,3 +227,37 @@ jobs:
 
       - name: Telegram Rich Message quiz payload tests
         run: deno test supabase/functions/tg-pay/rich-quiz.test.ts
+
+  football-dynasty-rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: football_dynasty_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d football_dynasty_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/football_dynasty_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Rust formatting
+        working-directory: services/football-dynasty
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        working-directory: services/football-dynasty
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Backend and lifecycle tests
+        working-directory: services/football-dynasty
+        run: cargo test --all-targets

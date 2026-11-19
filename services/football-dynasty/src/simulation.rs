@@ -73,6 +73,7 @@ pub struct SeasonFixture {
 
 #[derive(Debug, Serialize)]
 pub struct LeagueStanding {
+    pub position: i32,
     pub team: String,
     pub played: i32,
     pub wins: i32,
@@ -80,6 +81,7 @@ pub struct LeagueStanding {
     pub losses: i32,
     pub goals_for: i32,
     pub goals_against: i32,
+    pub goal_difference: i32,
     pub points: i32,
 }
 
@@ -314,6 +316,7 @@ pub async fn get_season(
     let mut standings: Vec<LeagueStanding> = totals
         .into_iter()
         .map(|(team, value)| LeagueStanding {
+            position: 0,
             team,
             played: value.played,
             wins: value.wins,
@@ -321,16 +324,20 @@ pub async fn get_season(
             losses: value.losses,
             goals_for: value.goals_for,
             goals_against: value.goals_against,
+            goal_difference: value.goals_for - value.goals_against,
             points: value.points,
         })
         .collect();
     standings.sort_by(|a, b| {
         b.points
             .cmp(&a.points)
-            .then_with(|| (b.goals_for - b.goals_against).cmp(&(a.goals_for - a.goals_against)))
+            .then_with(|| b.goal_difference.cmp(&a.goal_difference))
             .then_with(|| b.goals_for.cmp(&a.goals_for))
             .then_with(|| a.team.cmp(&b.team))
     });
+    for (index, standing) in standings.iter_mut().enumerate() {
+        standing.position = index as i32 + 1;
+    }
     tx.commit().await?;
     Ok(Json(SeasonView {
         season_year,
@@ -485,6 +492,18 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
+        let player_club = if due_fixtures.is_empty() {
+            None
+        } else {
+            let name: String = crate::fd_query_scalar!(
+                "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+            )
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
+            Some(name)
+        };
+
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
             let score_seed =
                 format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
@@ -535,6 +554,168 @@ pub async fn advance_time(
             .execute(&mut *tx)
             .await?;
             generated_events += event_insert.rows_affected() as i64;
+
+            // A match involving the player's club creates a contextual board
+            // decision. The event is persisted with the fixture result and is
+            // idempotent because the fixture transitions from scheduled to played.
+            if player_club.as_deref() == Some(home_team.as_str())
+                || player_club.as_deref() == Some(away_team.as_str())
+            {
+                let is_home = player_club.as_deref() == Some(home_team.as_str());
+                let (team_goals, opponent_goals) = if is_home {
+                    (home_goals, away_goals)
+                } else {
+                    (away_goals, home_goals)
+                };
+                let (result_label, body, choices) = match team_goals.cmp(&opponent_goals) {
+                    std::cmp::Ordering::Greater => (
+                        "победа",
+                        format!(
+                            "{}: {report}. Совет предлагает решить, как закрепить результат.",
+                            if is_home {
+                                "Команда добилась победы"
+                            } else {
+                                "Команда добилась выездной победы"
+                            }
+                        ),
+                        json!([
+                            {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
+                            {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
+                        ]),
+                    ),
+                    std::cmp::Ordering::Equal => (
+                        "ничья",
+                        format!(
+                            "{}: {report}. Совет ждёт решения о следующем шаге.",
+                            if is_home {
+                                "Матч завершился вничью"
+                            } else {
+                                "Выездной матч завершился вничью"
+                            }
+                        ),
+                        json!([
+                            {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
+                            {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
+                        ]),
+                    ),
+                    std::cmp::Ordering::Less => (
+                        "поражение",
+                        format!(
+                            "{}: {report}. Совет требует реакции руководства.",
+                            if is_home {
+                                "Команда потерпела поражение"
+                            } else {
+                                "Команда проиграла на выезде"
+                            }
+                        ),
+                        json!([
+                            {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
+                            {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
+                        ]),
+                    ),
+                };
+                let reaction_key = format!("match-board-review-{fixture_id}");
+                let reaction = crate::fd_query!(
+                    "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices)
+                     VALUES($1,$2,'match_board_review',$3,$4,$5,$6,80,$7)
+                     ON CONFLICT(campaign_id,event_key) DO NOTHING",
+                )
+                .bind(campaign_id)
+                .bind(reaction_key)
+                .bind(format!("Решение после матча: {result_label}"))
+                .bind(body)
+                .bind(current_date)
+                .bind(current_date + Duration::days(7))
+                .bind(choices)
+                .execute(&mut *tx)
+                .await?;
+                generated_events += reaction.rows_affected() as i64;
+
+                // Home fixtures generate ticket revenue through the double-entry
+                // ledger. The estimate is deterministic and bounded by attendance.
+                if is_home {
+                    let (club_id, reputation): (Uuid, i32) = crate::fd_query_as!(
+                        (Uuid, i32),
+                        "SELECT id,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    let attendance = (5_000_i64 + i64::from(reputation.clamp(0, 100)) * 150)
+                        .min(20_000);
+                    let ticket_revenue_minor = attendance * 2_500;
+                    let cash_account_id: Uuid = crate::fd_query_scalar!(
+                        "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND owner_type='club' AND owner_id=$2 AND account_type='cash' ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .bind(club_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    let revenue_account_id = if let Some(id) = crate::fd_query_scalar!(
+                        "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND owner_type='club' AND owner_id=$2 AND account_type='revenue' AND name='Matchday ticket revenue' ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .bind(club_id)
+                    .fetch_optional(&mut *tx)
+                    .await?
+                    {
+                        id
+                    } else {
+                        let id = Uuid::new_v4();
+                        crate::fd_query!(
+                            "INSERT INTO fd.accounts(id,campaign_id,name,account_type,owner_type,owner_id,currency,normal_balance)
+                             VALUES($1,$2,'Matchday ticket revenue','revenue','club',$3,'EUR','credit')",
+                        )
+                        .bind(id)
+                        .bind(campaign_id)
+                        .bind(club_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        id
+                    };
+                    let journal_id = Uuid::new_v4();
+                    let journal_key = format!("matchday-ticket-{fixture_id}");
+                    let journal = crate::fd_query!(
+                        "INSERT INTO fd.journal_entries(id,campaign_id,idempotency_key,memo,game_year)
+                         VALUES($1,$2,$3,'Home match ticket revenue',$4)
+                         ON CONFLICT(campaign_id,idempotency_key) DO NOTHING",
+                    )
+                    .bind(journal_id)
+                    .bind(campaign_id)
+                    .bind(journal_key)
+                    .bind(current_date.year())
+                    .execute(&mut *tx)
+                    .await?;
+                    if journal.rows_affected() > 0 {
+                        crate::fd_query!(
+                            "INSERT INTO fd.journal_lines(campaign_id,journal_entry_id,account_id,side,amount_minor)
+                             VALUES($1,$2,$3,'debit',$4),($1,$2,$5,'credit',$4)",
+                        )
+                        .bind(campaign_id)
+                        .bind(journal_id)
+                        .bind(cash_account_id)
+                        .bind(ticket_revenue_minor)
+                        .bind(revenue_account_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        crate::fd_query!(
+                            "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
+                             VALUES($1,'matchday_revenue',$2,$3,$4)",
+                        )
+                        .bind(campaign_id)
+                        .bind(format!("Домашний матч: доход от билетов €{}", ticket_revenue_minor / 100))
+                        .bind(current_date.year())
+                        .bind(json!({
+                            "fixture_id":fixture_id,
+                            "attendance":attendance,
+                            "ticket_price_minor":2500,
+                            "ticket_revenue_minor":ticket_revenue_minor
+                        }))
+                        .execute(&mut *tx)
+                        .await?;
+                    }
+                }
+            }
         }
     }
 
@@ -623,6 +804,15 @@ pub async fn resolve_event(
             .execute(&mut *tx)
             .await?;
             "club_reputation_increased_by_two"
+        }
+        Some("club_reputation_minus_1") => {
+            crate::fd_query!(
+                "UPDATE fd.clubs SET reputation=GREATEST(0,reputation-1) WHERE campaign_id=$1",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
+            "club_reputation_decreased_by_one"
         }
         Some("dynasty_prestige") => {
             crate::fd_query!("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")

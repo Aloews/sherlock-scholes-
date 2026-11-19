@@ -178,7 +178,44 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick_status, StatusCode::OK);
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
-    assert_eq!(tick["generated_events"], 3);
+    assert_eq!(tick["generated_events"], 4);
+
+    let (season_status, season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(season_status, StatusCode::OK);
+    let fixtures = season["fixtures"].as_array().expect("season fixtures");
+    assert_eq!(fixtures.len(), 12);
+    assert_eq!(
+        fixtures
+            .iter()
+            .filter(|fixture| fixture["status"] == "played")
+            .count(),
+        2,
+        "the first matchday must resolve both scheduled fixtures",
+    );
+    let standings = season["standings"].as_array().expect("league standings");
+    assert_eq!(standings.len(), 4);
+    assert!(
+        standings.iter().all(|standing| standing["played"] == 1),
+        "each club must have one played match after matchday one",
+    );
+    for (index, standing) in standings.iter().enumerate() {
+        assert_eq!(standing["position"], index as i64 + 1);
+        assert_eq!(
+            standing["goal_difference"],
+            standing["goals_for"].as_i64().unwrap()
+                - standing["goals_against"].as_i64().unwrap(),
+        );
+    }
+    assert!(standings.windows(2).all(|pair| {
+        pair[0]["points"].as_i64().unwrap() >= pair[1]["points"].as_i64().unwrap()
+    }));
 
     let (events_status, events) = call(
         app.clone(),
@@ -189,7 +226,92 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(events_status, StatusCode::OK);
-    assert_eq!(events.as_array().expect("event inbox").len(), 6);
+    assert_eq!(events.as_array().expect("event inbox").len(), 7);
+    let match_review = events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "match_board_review")
+        .expect("player match must create a contextual board decision");
+    let match_review_body = match_review["body"].as_str().unwrap_or_default();
+    assert!(match_review_body.contains("Northbridge United"));
+    assert_eq!(match_review["choices"].as_array().expect("match decision choices").len(), 2);
+    assert!(match_review["title"].as_str().unwrap_or_default().contains("Решение после матча"));
+    let match_review_id = match_review["id"].as_str().expect("match review id");
+    let match_review_choice = match_review["choices"][0]["id"]
+        .as_str()
+        .expect("first match review choice");
+    let match_review_effect = match_review["choices"][0]["effect"]
+        .as_str()
+        .expect("match review effect");
+    let club_reputation_before: i32 =
+        sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("club reputation before match decision");
+    let dynasty_prestige_before: i32 =
+        sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("dynasty prestige before match decision");
+    let (match_review_status, match_review_result) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    )
+    .await;
+    assert_eq!(match_review_status, StatusCode::OK);
+    assert_eq!(match_review_result["status"], "resolved");
+    let (match_review_replay_status, match_review_replay) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    )
+    .await;
+    assert_eq!(match_review_replay_status, StatusCode::OK);
+    assert_eq!(match_review_replay, match_review_result);
+    let club_reputation_after: i32 =
+        sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("club reputation after match decision");
+    let dynasty_prestige_after: i32 =
+        sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+            .bind(campaign_id)
+            .fetch_one(&pool)
+            .await
+            .expect("dynasty prestige after match decision");
+    match match_review_effect {
+        "club_reputation" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before + 1).min(100)
+        ),
+        "club_reputation_2" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before + 2).min(100)
+        ),
+        "club_reputation_minus_1" => assert_eq!(
+            club_reputation_after,
+            (club_reputation_before - 1).max(0)
+        ),
+        "dynasty_prestige" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 1);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        "dynasty_prestige_2" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 2);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        other => panic!("unexpected match decision effect: {other}"),
+    }
+
     let event_id = events
         .as_array()
         .expect("event inbox")
@@ -239,6 +361,19 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(season_status, StatusCode::OK);
     assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
+    let player_standing = season["standings"]
+        .as_array()
+        .expect("league standings")
+        .iter()
+        .find(|standing| standing["team"] == "Northbridge United")
+        .expect("player club standing");
+    assert_eq!(player_standing["played"], 1);
+    assert_eq!(
+        player_standing["wins"].as_i64().unwrap_or_default()
+            + player_standing["draws"].as_i64().unwrap_or_default()
+            + player_standing["losses"].as_i64().unwrap_or_default(),
+        1
+    );
     assert_eq!(
         season["fixtures"]
             .as_array()
@@ -259,7 +394,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
-    assert_eq!(sponsor_tick["generated_events"], 3);
+    assert_eq!(sponsor_tick["generated_events"], 4);
     assert_eq!(sponsor_tick["expired_events"], 1);
 
     let (sponsor_events_status, sponsor_events) = call(
@@ -305,7 +440,28 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .iter()
         .map(|account| account["balance_minor"].as_i64().expect("cash balance"))
         .sum();
-    assert_eq!(cash_total, 3_525_000_000);
+    assert_eq!(cash_total, 3_550_625_000);
+    let ticket_revenue: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(line.amount_minor),0)
+         FROM fd.journal_lines line
+         JOIN fd.journal_entries journal ON journal.id=line.journal_entry_id
+         WHERE line.campaign_id=$1 AND line.side='debit'
+           AND journal.idempotency_key LIKE 'matchday-ticket-%'",
+    )
+    .bind(campaign_id)
+    .fetch_one(&pool)
+    .await
+    .expect("ticket revenue ledger total");
+    assert_eq!(ticket_revenue, 25_625_000);
+    let ticket_journals: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM fd.journal_entries
+         WHERE campaign_id=$1 AND idempotency_key LIKE 'matchday-ticket-%'",
+    )
+    .bind(campaign_id)
+    .fetch_one(&pool)
+    .await
+    .expect("ticket revenue journal count");
+    assert_eq!(ticket_journals, 1);
 
     let (month_status, month) = call(
         app.clone(),
@@ -317,7 +473,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
-    assert_eq!(month["generated_events"], 11);
+    assert_eq!(month["generated_events"], 15);
     assert_eq!(month["expired_events"], 5);
 
     let (final_season_status, final_season) = call(
