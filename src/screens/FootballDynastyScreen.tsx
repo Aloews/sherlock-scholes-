@@ -278,13 +278,14 @@ export function FootballDynastyScreen() {
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                         <span className="text-xs text-brand-accent">{new Date(event.game_date + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
                         <span className={`rounded-full px-2 py-1 text-[11px] ${event.status === 'pending' ? 'bg-brand-accent/10 text-brand-accent' : 'bg-white/5 text-brand-muted'}`}>
-                          {event.status === 'pending' ? (i18n.language.startsWith('ru') ? 'Требуется решение' : 'Decision required') : (i18n.language.startsWith('ru') ? 'Решено' : 'Resolved')}
+                          {event.status === 'pending' ? (i18n.language.startsWith('ru') ? 'Требуется решение' : 'Decision required') : event.status === 'expired' ? (i18n.language.startsWith('ru') ? 'Срок истёк' : 'Expired') : (i18n.language.startsWith('ru') ? 'Решено' : 'Resolved')}
                         </span>
                       </div>
                       <h4 className="font-semibold">{i18n.language.startsWith('ru') ? 'Еженедельный совет клуба' : event.title}</h4>
                       <p className="mt-1 text-sm leading-6 text-brand-muted">
                         {i18n.language.startsWith('ru') ? 'Совет клуба подвёл итоги недели. Выберите приоритет на следующую неделю.' : event.body}
                       </p>
+                      {event.status === 'pending' && <p className="mt-2 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Решить до: ' : 'Deadline: '}{new Date(event.expires_on + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>}
                       {event.status === 'pending' && (
                         <div className="mt-4 flex flex-wrap gap-2">
                           {event.choices.map((choice) => (
