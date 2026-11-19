@@ -66,6 +66,40 @@ class AgentNetworkTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     agent_network.validate_edit_paths([{"path": "src/link/escape.py"}], set())
 
+    def test_fable_budget_allows_only_one_paid_call_per_run(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"RUNNER_TEMP": temp}):
+            self.assertEqual(agent_network.reserve_fable_call("high-risk"), 1)
+            with self.assertRaises(agent_network.EscalationError):
+                agent_network.reserve_fable_call("ci-repair")
+
+    def test_fable_usage_is_recorded_without_prompt_or_completion(self):
+        with tempfile.TemporaryDirectory() as temp:
+            summary = Path(temp) / "summary.md"
+            env = {
+                "RUNNER_TEMP": temp,
+                "GITHUB_STEP_SUMMARY": str(summary),
+                "GITHUB_RUN_ID": "12345",
+                "GITHUB_REPOSITORY": "Aloews/sherlock-scholes-",
+            }
+            with patch.dict(os.environ, env):
+                record = agent_network.record_fable_usage(
+                    "ci-repair", 2600, "success",
+                    {"input_tokens": 120, "output_tokens": 40,
+                     "cache_read_input_tokens": 80, "cache_creation_input_tokens": 40},
+                    request_id="req_123",
+                )
+            usage_file = Path(temp) / "starimg-usage.jsonl"
+            saved = json.loads(usage_file.read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(saved["input_tokens"], 120)
+            self.assertEqual(saved["output_tokens"], 40)
+            self.assertEqual(saved["cache_read_input_tokens"], 80)
+            self.assertEqual(saved["cache_creation_input_tokens"], 40)
+            self.assertEqual(saved["provider_request_id"], "req_123")
+            self.assertNotIn("prompt", saved)
+            self.assertNotIn("completion", saved)
+            self.assertIn("| Provider | Purpose | Status |", summary.read_text(encoding="utf-8"))
+            self.assertEqual(record["max_output_tokens"], 2600)
+
     def test_fable_requires_configured_secret(self):
         with patch.dict(os.environ, {"STARIMG_API_KEY": ""}):
             with self.assertRaises(agent_network.EscalationError) as error:
@@ -74,7 +108,7 @@ class AgentNetworkTests(unittest.TestCase):
 
     def test_fable_402_is_not_retried_or_hidden(self):
         failure = urllib.error.HTTPError("https://ai.starimg.ru/v1/messages", 402, "Payment Required", {}, io.BytesIO(b"Payment Required"))
-        with patch.dict(os.environ, {"STARIMG_API_KEY": "test-only"}):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"STARIMG_API_KEY": "test-only", "RUNNER_TEMP": temp}):
             with patch("agent_network.urllib.request.urlopen", side_effect=failure):
                 with self.assertRaises(agent_network.EscalationError) as error:
                     agent_network.fable_role("task", "context", "review blocker")
@@ -83,6 +117,7 @@ class AgentNetworkTests(unittest.TestCase):
 
     def test_fable_uses_anthropic_messages_contract(self):
         class Response:
+            headers = {"request-id": "req_test"}
             def __enter__(self): return self
             def __exit__(self, *args): return False
             def read(self):
@@ -93,7 +128,7 @@ class AgentNetworkTests(unittest.TestCase):
             captured["headers"] = request.headers
             captured["body"] = json.loads(request.data)
             return Response()
-        with patch.dict(os.environ, {"STARIMG_API_KEY":"test-only", "STARIMG_MODEL":"claude-fable-5-2"}):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"STARIMG_API_KEY":"test-only", "STARIMG_MODEL":"claude-fable-5-2", "RUNNER_TEMP":temp}):
             with patch("agent_network.urllib.request.urlopen", side_effect=fake_urlopen):
                 result = agent_network.fable_role("task", "context", "reason")
         self.assertEqual(result["decision"], "stop")
