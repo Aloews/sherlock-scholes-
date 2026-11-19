@@ -1,0 +1,36 @@
+name: rust-engine
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/rust-engine.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/rust-engine.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: services/football-dynasty
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Compile and test engine and API
+        run: cargo test --all-targets
+      - name: Compile release binary
+        run: cargo build --release
