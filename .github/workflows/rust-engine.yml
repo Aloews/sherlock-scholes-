@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "services/football-dynasty/**"
+      - "supabase/migrations/**"
       - ".github/workflows/rust-engine.yml"
   push:
     branches: [main]
@@ -42,6 +43,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Verify service and Supabase migration parity
+        run: cmp migrations/0011_match_rosters_events.sql ../../supabase/migrations/20261119160000_football_dynasty_match_engine.sql
       - name: Compile and test engine and API
         run: cargo test --all-targets
       - name: Compile release binary
