@@ -1,4 +1,4 @@
--- Run against the disposable PostgreSQL service after the three FD migrations.
+-- Run against the disposable PostgreSQL service after all FD migrations.
 DO $$
 DECLARE
   v_tables integer;
@@ -7,8 +7,8 @@ DECLARE
   v_bypass boolean;
 BEGIN
   SELECT count(*) INTO v_tables FROM pg_tables WHERE schemaname = 'fd';
-  IF v_tables <> 12 THEN
-    RAISE EXCEPTION 'expected 12 Football Dynasty tables, found %', v_tables;
+  IF v_tables <> 13 THEN
+    RAISE EXCEPTION 'expected 13 Football Dynasty tables, found %', v_tables;
   END IF;
 
   SELECT count(*) INTO v_unprotected
@@ -56,6 +56,13 @@ VALUES
   ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000101',
    'RLS House', '00000000-0000-0000-0000-000000000102', 0);
 
+INSERT INTO fd.game_events
+  (campaign_id, event_key, event_type, title, body, game_date, priority, choices)
+VALUES
+  ('00000000-0000-0000-0000-000000000101', 'rls-week-2026-01', 'club_weekly_review',
+   'Weekly review', 'Owner-scoped event test', DATE '2026-01-05', 60,
+   '[{"id":"reputation","label":"Build reputation","effect":"club_reputation"}]'::jsonb);
+
 SET LOCAL fd.telegram_id = '1002';
 
 DO $$
@@ -75,6 +82,24 @@ BEGIN
   IF v_visible <> 0 THEN
     RAISE EXCEPTION 'cross-owner character read was not isolated';
   END IF;
+
+  SELECT count(*) INTO v_visible
+    FROM fd.game_events
+   WHERE campaign_id = '00000000-0000-0000-0000-000000000101';
+  IF v_visible <> 0 THEN
+    RAISE EXCEPTION 'cross-owner event read was not isolated';
+  END IF;
+
+  BEGIN
+    INSERT INTO fd.game_events
+      (campaign_id, event_key, event_type, title, body, game_date, priority, choices)
+    VALUES
+      ('00000000-0000-0000-0000-000000000101', 'unauthorized-event', 'club_weekly_review',
+       'Unauthorized', 'Should be blocked', DATE '2026-01-12', 50, '[]'::jsonb);
+    RAISE EXCEPTION 'cross-owner event write unexpectedly succeeded';
+  EXCEPTION
+    WHEN insufficient_privilege THEN NULL;
+  END;
 
   BEGIN
     INSERT INTO fd.characters
