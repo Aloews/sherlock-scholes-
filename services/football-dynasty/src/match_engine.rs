@@ -100,7 +100,7 @@ fn draw(seed: u64, match_id: Uuid, minute: u8, team_id: Uuid, salt: u8) -> u32 {
     u32::from_be_bytes([digest[0], digest[1], digest[2], digest[3]]) % SCALE
 }
 
-fn scoring_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16) -> u32 {
+fn scoring_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16, tactics: TacticalPlan) -> u32 {
     (8_000_i32
         + i32::from(attack.attack) * 200
         + i32::from(attack.midfield) * 100
@@ -108,7 +108,9 @@ fn scoring_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16) -
         - i32::from(defence.goalkeeper) * 80
         + i32::from(attack.morale) * 30
         - i32::from(attack.fatigue) * 80
-        + i32::from(home))
+        + i32::from(home)
+        + (i32::from(tactics.tempo)-50)*45
+        + (i32::from(tactics.width)-50)*20)
         .clamp(2_000, 90_000) as u32
 }
 
@@ -258,8 +260,8 @@ pub fn simulate_player_match(
 
         let home_profile = profile(home.team_id, &home_active, home.starting.formation, home.starting.tactics)?;
         let away_profile = profile(away.team_id, &away_active, away.starting.formation, away.starting.tactics)?;
-        let home_probability = scoring_probability(&home_profile, &away_profile, rules.home_advantage_milli);
-        let away_probability = scoring_probability(&away_profile, &home_profile, 0);
+        let home_probability = scoring_probability(&home_profile, &away_profile, rules.home_advantage_milli, home.starting.tactics);
+        let away_probability = scoring_probability(&away_profile, &home_profile, 0, away.starting.tactics);
         home_xg += home_probability / 1_000;
         away_xg += away_probability / 1_000;
 
