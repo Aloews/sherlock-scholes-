@@ -178,7 +178,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick_status, StatusCode::OK);
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
-    assert_eq!(tick["generated_events"], 3);
+    assert_eq!(tick["generated_events"], 4);
 
     let (events_status, events) = call(
         app.clone(),
@@ -189,7 +189,29 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(events_status, StatusCode::OK);
-    assert_eq!(events.as_array().expect("event inbox").len(), 6);
+    assert_eq!(events.as_array().expect("event inbox").len(), 7);
+    let match_review = events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "match_board_review")
+        .expect("player match must create a contextual board decision");
+    assert!(match_review["body"].as_str().unwrap_or_default().contains("2026"));
+    let match_review_id = match_review["id"].as_str().expect("match review id");
+    let match_review_choice = match_review["choices"][0]["id"]
+        .as_str()
+        .expect("first match review choice");
+    let (match_review_status, match_review_result) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    )
+    .await;
+    assert_eq!(match_review_status, StatusCode::OK);
+    assert_eq!(match_review_result["status"], "resolved");
+
     let event_id = events
         .as_array()
         .expect("event inbox")
@@ -259,7 +281,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
-    assert_eq!(sponsor_tick["generated_events"], 3);
+    assert_eq!(sponsor_tick["generated_events"], 4);
     assert_eq!(sponsor_tick["expired_events"], 1);
 
     let (sponsor_events_status, sponsor_events) = call(
@@ -317,7 +339,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
-    assert_eq!(month["generated_events"], 11);
+    assert_eq!(month["generated_events"], 15);
     assert_eq!(month["expired_events"], 5);
 
     let (final_season_status, final_season) = call(
