@@ -444,9 +444,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let ticket_revenue: i64 = sqlx::query_scalar(
         "SELECT COALESCE(SUM(line.amount_minor),0)
          FROM fd.journal_lines line
-         JOIN fd.journal_entries entry ON entry.id=line.journal_entry_id
+         JOIN fd.journal_entries journal ON journal.id=line.journal_entry_id
          WHERE line.campaign_id=$1 AND line.side='debit'
-           AND entry.idempotency_key LIKE 'matchday-ticket-%'",
+           AND journal.idempotency_key LIKE 'matchday-ticket-%'",
     )
     .bind(campaign_id)
     .fetch_one(&pool)
