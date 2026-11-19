@@ -23,6 +23,10 @@ pub fn routes() -> Router<AppState> {
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
         .route(
+            "/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/tactic",
+            post(set_fixture_tactic),
+        )
+        .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
             post(resolve_event),
         )
@@ -69,6 +73,7 @@ pub struct SeasonFixture {
     pub status: String,
     pub home_goals: Option<i16>,
     pub away_goals: Option<i16>,
+    pub player_tactic: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -81,6 +86,18 @@ pub struct LeagueStanding {
     pub goals_for: i32,
     pub goals_against: i32,
     pub points: i32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SetFixtureTacticRequest {
+    pub tactic: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SetFixtureTacticResult {
+    pub fixture_id: Uuid,
+    pub tactic: String,
+    pub status: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -249,7 +266,7 @@ pub async fn get_season(
         .await?
         .ok_or_else(ApiError::not_found)?;
     let fixtures = crate::fd_query_as!(SeasonFixture,
-        "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
+        "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals,player_tactic
          FROM fd.season_fixtures WHERE campaign_id=$1 AND season_year=$2
          ORDER BY matchday,match_date,home_team,away_team",
     )
@@ -476,8 +493,14 @@ pub async fn advance_time(
         // Resolve every scheduled fixture on its match date. The score is
         // deterministic for the campaign seed and fixture, so retries/reloads
         // cannot produce a different result.
-        let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String),
-            "SELECT id,season_year,matchday,home_team,away_team FROM fd.season_fixtures
+        let player_team: String = crate::fd_query_scalar!(
+            "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1"
+        )
+        .bind(campaign_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String, String),
+            "SELECT id,season_year,matchday,home_team,away_team,player_tactic FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
              ORDER BY matchday,id FOR UPDATE",
         )
@@ -485,12 +508,26 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
-        for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
+        for (fixture_id, season_year, matchday, home_team, away_team, player_tactic) in due_fixtures {
             let score_seed =
                 format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
             let digest = Sha256::digest(score_seed.as_bytes());
-            let home_goals = (digest[0] % 4) as i16;
-            let away_goals = (digest[1] % 4) as i16;
+            let mut home_goals = (digest[0] % 4) as i16;
+            let mut away_goals = (digest[1] % 4) as i16;
+            let player_is_home = home_team == player_team;
+            match (player_is_home, player_tactic.as_str()) {
+                (true, "attacking") => {
+                    home_goals = (home_goals + 1).min(6);
+                    away_goals = (away_goals + 1).min(6);
+                }
+                (false, "attacking") if away_team == player_team => {
+                    away_goals = (away_goals + 1).min(6);
+                    home_goals = (home_goals + 1).min(6);
+                }
+                (true, "defensive") => away_goals = away_goals.saturating_sub(1),
+                (false, "defensive") if away_team == player_team => home_goals = home_goals.saturating_sub(1),
+                _ => {}
+            }
             crate::fd_query!(
                 "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
                  WHERE id=$1 AND campaign_id=$2 AND status='scheduled'",
@@ -509,7 +546,8 @@ pub async fn advance_time(
                 "home_team":home_team,
                 "away_team":away_team,
                 "home_goals":home_goals,
-                "away_goals":away_goals
+                "away_goals":away_goals,
+                "player_tactic":player_tactic
             });
             crate::fd_query!(
                 "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
@@ -560,6 +598,76 @@ pub async fn advance_time(
         status,
         generated_events,
         expired_events,
+    };
+    complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
+    tx.commit().await?;
+    Ok(Json(result))
+}
+
+pub async fn set_fixture_tactic(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((campaign_id, fixture_id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Json(request): Json<SetFixtureTacticRequest>,
+) -> Result<Json<SetFixtureTacticResult>, ApiError> {
+    if !matches!(request.tactic.as_str(), "balanced" | "attacking" | "defensive") {
+        return Err(ApiError::bad_request("invalid_match_tactic"));
+    }
+    let key = command_key(&headers)?;
+    let hash = request_hash(&(campaign_id, fixture_id, &request))?;
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    if let Some(value) = reserve(
+        &mut tx,
+        identity.telegram_id,
+        &key,
+        "set_fixture_tactic",
+        &hash,
+    ).await? {
+        tx.rollback().await?;
+        return replay(value);
+    }
+
+    let player_team: String = crate::fd_query_scalar!(
+        "SELECT cl.name FROM fd.clubs cl JOIN fd.campaigns c ON c.id=cl.campaign_id WHERE c.id=$1 AND c.owner_telegram_id=$2 ORDER BY cl.created_at,cl.id LIMIT 1"
+    )
+    .bind(campaign_id)
+    .bind(identity.telegram_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    let fixture: (String, String, String) = crate::fd_query_as!(
+        (String, String, String),
+        "SELECT status,home_team,away_team FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2 FOR UPDATE"
+    )
+    .bind(fixture_id)
+    .bind(campaign_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+
+    if fixture.0 != "scheduled" {
+        return Err(ApiError::conflict("fixture_already_played"));
+    }
+    if fixture.1 != player_team && fixture.2 != player_team {
+        return Err(ApiError::bad_request("fixture_not_owned_by_player_club"));
+    }
+
+    crate::fd_query!(
+        "UPDATE fd.season_fixtures SET player_tactic=$3 WHERE id=$1 AND campaign_id=$2 AND status='scheduled'"
+    )
+    .bind(fixture_id)
+    .bind(campaign_id)
+    .bind(&request.tactic)
+    .execute(&mut *tx)
+    .await?;
+
+    let result = SetFixtureTacticResult {
+        fixture_id,
+        tactic: request.tactic,
+        status: "saved".to_owned(),
     };
     complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
     tx.commit().await?;
