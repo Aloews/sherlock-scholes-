@@ -126,6 +126,7 @@ def task_context(task):
     files = base.run(["git", "ls-files"]).stdout.splitlines()
     tracked = set(files)
     tokens = set(re.findall(r"[a-zA-Z0-9_/-]{3,}", task.lower()))
+    required_paths = set(required_paths_from_issue(task))
     ranked = []
     for path in files:
         if not base.allowed(path, tracked):
@@ -138,11 +139,13 @@ def task_context(task):
             continue
         score = sum(3 for token in tokens if token in path.lower())
         score += sum(1 for token in tokens if token in body[:12000].lower())
+        if path in required_paths:
+            score += 1000
         if path in ("AGENTS.md", "docs/MAP.md"):
             score += 100
-        ranked.append((score, path, body[:2400]))
+        ranked.append((score, path, body[:1600]))
     ranked.sort(reverse=True)
-    source_context = "\n".join("\n--- FILE: " + p + " ---\n" + b for _, p, b in ranked[:5])
+    source_context = "\n".join("\n--- FILE: " + p + " ---\n" + b for _, p, b in ranked[:8])
     graph = codebase_graph_context(tokens)
     if graph:
         source_context += "\n\nCodebase Memory MCP graph context (verify against source):\n" + graph
@@ -232,6 +235,21 @@ def build_issue_task(issue, task):
         + "\n\nRequirements from issue body:\n" + body[:8000]
         + "\n\nOwner request:\n" + task
     )
+
+
+def required_paths_from_issue(issue_body):
+    marker = re.search(
+        r"(?m)^(?:#{1,6}\s*)?Required files[^\n]*\n(.*?)(?=\n\n|\Z)",
+        issue_body,
+        re.S,
+    )
+    if not marker:
+        return []
+    return list(dict.fromkeys(re.findall(r"\`([^\`]+)\`", marker.group(1))))
+
+
+def missing_required_paths(required, changed):
+    return sorted(set(required) - set(changed))
 
 
 def main():
@@ -395,6 +413,10 @@ def main():
         changed_status = [line[3:] for line in status if len(line) > 3]
         if not changed_status or any(not base.allowed(p) for p in changed_status):
             raise ValueError("No valid changes or restricted path detected after role network.")
+        required_paths = required_paths_from_issue(str(issue.get("body") or ""))
+        missing = missing_required_paths(required_paths, changed_status)
+        if missing:
+            raise ValueError("Required issue files were not changed: " + ", ".join(missing))
         print("Agent roles: triage → architect → test engineer → implementer → reviewer.")
         print("Qwen model: " + MODEL)
         print("Validated files: " + ", ".join(changed_status))
