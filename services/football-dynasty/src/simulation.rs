@@ -562,6 +562,15 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
+        crate::fd_query!(
+            "UPDATE fd.players SET
+               fatigue=GREATEST(0,fatigue-8),
+               injured_until=CASE WHEN injured_until<$2 THEN NULL ELSE injured_until END,
+               suspended_until=CASE WHEN suspended_until<$2 THEN NULL ELSE suspended_until END,
+               updated_at=now()
+             WHERE campaign_id=$1"
+        )
+        .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         let expired = crate::fd_query!("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
             .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         expired_events += expired.rows_affected() as i64;
