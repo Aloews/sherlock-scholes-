@@ -485,12 +485,18 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
-        let player_club: String = crate::fd_query_scalar!(
-            "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
-        )
-        .bind(campaign_id)
-        .fetch_one(&mut *tx)
-        .await?;
+        let player_club = if due_fixtures.is_empty() {
+            None
+        } else {
+            Some(
+                crate::fd_query_scalar!(
+                    "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+                )
+                .bind(campaign_id)
+                .fetch_one::<String>(&mut *tx)
+                .await?,
+            )
+        };
 
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
             let score_seed =
@@ -546,8 +552,8 @@ pub async fn advance_time(
             // A match involving the player's club creates a contextual board
             // decision. The event is persisted with the fixture result and is
             // idempotent because the fixture transitions from scheduled to played.
-            if home_team == player_club || away_team == player_club {
-                let (result_label, body, choices) = if home_team == player_club {
+            if player_club.as_deref() == Some(home_team.as_str()) || player_club.as_deref() == Some(away_team.as_str()) {
+                let (result_label, body, choices) = if player_club.as_deref() == Some(home_team.as_str()) {
                     if home_goals > away_goals {
                         (
                             "победа",
