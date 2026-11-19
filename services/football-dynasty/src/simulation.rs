@@ -727,12 +727,12 @@ pub async fn advance_time(
                        AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.player_id=p.player_id) AS goals,
                      (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
                        AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.related_player_id=p.player_id) AS assists,
-                     ((p.team_id=$3 AND $5=0) OR (p.team_id=$4 AND $6=0)) AS clean_sheet
+                     (p.minutes_played>0 AND ((p.team_id=$3 AND $5=0) OR (p.team_id=$4 AND $6=0))) AS clean_sheet
                    FROM played p
                  )
                  INSERT INTO fd.player_match_stats(campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,rating)
                  SELECT campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,
-                   LEAST(10.0,6.0+(goals*1.5)+(assists*1.0)+CASE WHEN clean_sheet THEN 0.5 ELSE 0.0 END)::numeric(3,1)
+                   CASE WHEN minutes_played=0 THEN 0.0 ELSE LEAST(10.0,6.0+(goals*1.5)+(assists*1.0)+CASE WHEN clean_sheet THEN 0.5 ELSE 0.0 END) END::numeric(3,1)
                  FROM stats
                  ON CONFLICT(campaign_id,fixture_id,player_id) DO NOTHING"
             )
