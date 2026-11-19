@@ -192,7 +192,7 @@ async fn reserve_command(
     command: &str,
     request_hash: &str,
 ) -> Result<Option<Value>, ApiError> {
-    let inserted = sqlx::query(
+    let inserted = crate::fd_query!(
         "INSERT INTO fd.command_receipts (owner_telegram_id, idempotency_key, command_type, request_hash) VALUES ($1, $2, $3, $4) ON CONFLICT (owner_telegram_id, idempotency_key) DO NOTHING"
     )
     .bind(owner_id)
@@ -206,7 +206,7 @@ async fn reserve_command(
         return Ok(None);
     }
 
-    let existing = sqlx::query_as::<_, ReceiptRow>(
+    let existing = crate::fd_query_as!(ReceiptRow,
         "SELECT command_type, request_hash, response FROM fd.command_receipts WHERE owner_telegram_id = $1 AND idempotency_key = $2"
     )
     .bind(owner_id)
@@ -232,7 +232,7 @@ async fn complete_command(
     response: &impl Serialize,
 ) -> Result<(), ApiError> {
     let value = serde_json::to_value(response)?;
-    sqlx::query(
+    crate::fd_query!(
         "UPDATE fd.command_receipts SET campaign_id = $3, response = $4 WHERE owner_telegram_id = $1 AND idempotency_key = $2"
     )
     .bind(owner_id)
@@ -252,10 +252,10 @@ async fn set_owner_scope(
     tx: &mut Transaction<'_, Postgres>,
     owner_id: i64,
 ) -> Result<(), ApiError> {
-    sqlx::query("SET LOCAL ROLE fd_runtime")
+    crate::fd_query!("SET LOCAL ROLE fd_runtime")
         .execute(&mut **tx)
         .await?;
-    sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
+    crate::fd_query!("SELECT set_config('fd.telegram_id', $1, true)")
         .bind(owner_id.to_string())
         .execute(&mut **tx)
         .await?;
@@ -268,7 +268,7 @@ pub async fn list_campaigns(
 ) -> Result<Json<Vec<CampaignSummary>>, ApiError> {
     let mut tx = state.db.begin().await?;
     set_owner_scope(&mut tx, identity.telegram_id).await?;
-    let campaigns = sqlx::query_as::<_, CampaignSummary>(
+    let campaigns = crate::fd_query_as!(CampaignSummary,
         "SELECT id, name, mode, status, current_year, game_date, created_at FROM fd.campaigns WHERE owner_telegram_id = $1 ORDER BY created_at DESC"
     )
     .bind(identity.telegram_id)
@@ -326,32 +326,32 @@ pub async fn create_campaign(
     let club_id = Uuid::new_v4();
     let seed = (Uuid::new_v4().as_u128() & i64::MAX as u128) as i64;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.campaigns (id, owner_telegram_id, name, mode, seed, current_year, status, dynasty_id, founder_character_id, player_character_id) VALUES ($1,$2,$3,$4,$5,2026,'active',$6,$7,$7)"
     )
     .bind(campaign_id).bind(identity.telegram_id).bind(request.name.trim())
     .bind(&request.mode).bind(seed).bind(dynasty_id).bind(founder_id)
     .execute(&mut *tx).await?;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.dynasties (id, campaign_id, name, head_character_id, prestige) VALUES ($1,$2,$3,$4,0)"
     )
     .bind(dynasty_id).bind(campaign_id).bind(request.dynasty_name.trim()).bind(founder_id)
     .execute(&mut *tx).await?;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.characters (id,campaign_id,full_name,age,life_status,is_heir,origin) VALUES ($1,$2,$3,40,'alive',false,$4)"
     )
     .bind(founder_id).bind(campaign_id).bind(request.founder_name.trim()).bind(&request.origin)
     .execute(&mut *tx).await?;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.clubs (id,campaign_id,name,city,reputation) VALUES ($1,$2,$3,'Northbridge',35)"
     )
     .bind(club_id).bind(campaign_id).bind(request.club_name.trim())
     .execute(&mut *tx).await?;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.club_ownership (campaign_id,club_id,owner_type,owner_id,equity_bps,voting_bps) VALUES ($1,$2,'dynasty',$3,10000,10000)"
     )
     .bind(campaign_id).bind(club_id).bind(dynasty_id)
@@ -360,7 +360,7 @@ pub async fn create_campaign(
     let founder_cash = Uuid::new_v4();
     let club_cash = Uuid::new_v4();
     let opening_capital = Uuid::new_v4();
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.accounts (id,campaign_id,name,account_type,owner_type,owner_id,currency,normal_balance) VALUES ($1,$2,'Founder cash','cash','character',$3,'EUR','debit'),($4,$2,'Club treasury','cash','club',$5,'EUR','debit'),($6,$2,'Opening capital','equity','system',$2,'EUR','credit')"
     )
     .bind(founder_cash).bind(campaign_id).bind(founder_id)
@@ -368,17 +368,17 @@ pub async fn create_campaign(
     .execute(&mut *tx).await?;
 
     let journal_id = Uuid::new_v4();
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.journal_entries (id,campaign_id,idempotency_key,memo,game_year) VALUES ($1,$2,'campaign-opening','Initial campaign capital',2026)"
     )
     .bind(journal_id).bind(campaign_id).execute(&mut *tx).await?;
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.journal_lines (campaign_id,journal_entry_id,account_id,side,amount_minor) VALUES ($1,$2,$3,'debit',2500000000),($1,$2,$4,'debit',1000000000),($1,$2,$5,'credit',3500000000)"
     )
     .bind(campaign_id).bind(journal_id).bind(founder_cash).bind(club_cash).bind(opening_capital)
     .execute(&mut *tx).await?;
 
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'campaign_founded','The dynasty begins',2026,$2)"
     )
     .bind(campaign_id)
@@ -388,7 +388,7 @@ pub async fn create_campaign(
     // A new campaign starts with a real, actionable inbox rather than waiting
     // until the next Monday tick. Every event is persisted in the same
     // transaction as campaign creation.
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.game_events (campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES
          ($1,'launch-club-plan','club_launch_plan','План развития клуба','Совет директоров ждёт от нового владельца первого решения. На что направить внимание в начале проекта?','2026-01-01','2026-01-14',95,$2),
          ($1,'launch-public-debut','dynasty_public_debut','Публичный дебют династии','Местная пресса готовит материал о новой футбольной династии. Выберите, какой образ закрепить за семьёй.','2026-01-01','2026-01-14',85,$3),
@@ -428,7 +428,7 @@ pub async fn create_campaign(
         (6, "Redbridge FC", "Harbor Athletic"),
     ];
     for (matchday, home_team, away_team) in schedule {
-        sqlx::query(
+        crate::fd_query!(
             "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team)
              SELECT $1,c.current_year,$2,c.game_date + ((6 - EXTRACT(ISODOW FROM c.game_date)::integer + 7) % 7) + (($2::integer - 1) * 7),$3,$4 FROM fd.campaigns c WHERE c.id=$1"
         )
@@ -472,39 +472,39 @@ async fn load_campaign(
     owner_id: i64,
     campaign_id: Uuid,
 ) -> Result<CampaignView, ApiError> {
-    let campaign = sqlx::query_as::<_, CampaignRow>(
+    let campaign = crate::fd_query_as!(CampaignRow,
         "SELECT id,name,mode,status,current_year,game_date,created_at,founder_character_id,player_character_id,dynasty_id FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2"
     )
     .bind(campaign_id).bind(owner_id).fetch_optional(&mut **tx).await?.ok_or_else(ApiError::not_found)?;
 
-    let dynasty = sqlx::query_as::<_, DynastyView>(
+    let dynasty = crate::fd_query_as!(DynastyView,
         "SELECT id,name,head_character_id,prestige FROM fd.dynasties WHERE id=$1 AND campaign_id=$2"
     )
     .bind(campaign.dynasty_id).bind(campaign_id).fetch_one(&mut **tx).await?;
 
-    let founder = sqlx::query_as::<_, CharacterView>(
+    let founder = crate::fd_query_as!(CharacterView,
         "SELECT id,full_name,age,life_status,is_heir FROM fd.characters WHERE id=$1 AND campaign_id=$2"
     )
     .bind(campaign.founder_character_id).bind(campaign_id).fetch_one(&mut **tx).await?;
 
-    let characters = sqlx::query_as::<_, CharacterView>(
+    let characters = crate::fd_query_as!(CharacterView,
         "SELECT id,full_name,age,life_status,is_heir FROM fd.characters WHERE campaign_id=$1 ORDER BY is_heir DESC, age DESC, full_name"
     )
     .bind(campaign_id).fetch_all(&mut **tx).await?;
 
-    let clubs = sqlx::query_as::<_, ClubView>(
+    let clubs = crate::fd_query_as!(ClubView,
         "SELECT id,name,city,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY name",
     )
     .bind(campaign_id)
     .fetch_all(&mut **tx)
     .await?;
 
-    let cash_accounts = sqlx::query_as::<_, CashAccountView>(
+    let cash_accounts = crate::fd_query_as!(CashAccountView,
         "SELECT a.id,a.name,a.account_type,a.currency,COALESCE(SUM(CASE WHEN l.side=a.normal_balance THEN l.amount_minor ELSE -l.amount_minor END),0)::bigint AS balance_minor FROM fd.accounts a LEFT JOIN fd.journal_lines l ON l.campaign_id=a.campaign_id AND l.account_id=a.id WHERE a.campaign_id=$1 AND a.account_type='cash' GROUP BY a.id ORDER BY a.name"
     )
     .bind(campaign_id).fetch_all(&mut **tx).await?;
 
-    let chronicle = sqlx::query_as::<_, ChronicleView>(
+    let chronicle = crate::fd_query_as!(ChronicleView,
         "SELECT id,event_type,title,game_year,payload FROM fd.chronicle WHERE campaign_id=$1 ORDER BY created_at DESC LIMIT 50"
     )
     .bind(campaign_id).fetch_all(&mut **tx).await?;
@@ -551,7 +551,7 @@ pub async fn create_heir(
         return Ok((StatusCode::OK, cached));
     }
 
-    let campaign = sqlx::query_as::<_, (Uuid, String)>(
+    let campaign = crate::fd_query_as!((Uuid, String),
         "SELECT player_character_id,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
     )
     .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
@@ -560,7 +560,7 @@ pub async fn create_heir(
         return Err(ApiError::conflict("campaign_not_active"));
     }
 
-    let parent_age: i32 = sqlx::query_scalar(
+    let parent_age: i32 = crate::fd_query_scalar!(
         "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
     )
     .bind(campaign.0)
@@ -573,20 +573,20 @@ pub async fn create_heir(
     }
 
     let heir_id = Uuid::new_v4();
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.characters (id,campaign_id,full_name,age,life_status,is_heir,origin) VALUES ($1,$2,$3,$4,'alive',true,'family')"
     )
     .bind(heir_id).bind(campaign_id).bind(request.name.trim()).bind(request.age)
     .execute(&mut *tx).await?;
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.family_relations (campaign_id,parent_character_id,child_character_id,relation_type) VALUES ($1,$2,$3,'parent_child')"
     )
     .bind(campaign_id).bind(campaign.0).bind(heir_id).execute(&mut *tx).await?;
-    let current_year: i32 = sqlx::query_scalar("SELECT current_year FROM fd.campaigns WHERE id=$1")
+    let current_year: i32 = crate::fd_query_scalar!("SELECT current_year FROM fd.campaigns WHERE id=$1")
         .bind(campaign_id)
         .fetch_one(&mut *tx)
         .await?;
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'heir_born','A new heir joins the family', $2, $3)"
     )
     .bind(campaign_id).bind(current_year).bind(json!({"heir_id":heir_id,"name":request.name}))
@@ -616,7 +616,7 @@ pub async fn preview_succession(
     let mut tx = state.db.begin().await?;
     set_owner_scope(&mut tx, identity.telegram_id).await?;
     let status: String =
-        sqlx::query_scalar("SELECT status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2")
+        crate::fd_query_scalar!("SELECT status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2")
             .bind(campaign_id)
             .bind(identity.telegram_id)
             .fetch_optional(&mut *tx)
@@ -625,7 +625,7 @@ pub async fn preview_succession(
     if status != "succession_pending" {
         return Err(ApiError::conflict("succession_not_pending"));
     }
-    let heirs = sqlx::query_as::<_, CharacterView>(
+    let heirs = crate::fd_query_as!(CharacterView,
         "SELECT c.id,c.full_name,c.age,c.life_status,c.is_heir FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=(SELECT id FROM fd.campaigns WHERE id=$1) AND r.parent_character_id=(SELECT player_character_id FROM fd.campaigns WHERE id=$1) AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18 ORDER BY c.age DESC,c.created_at ASC"
     )
     .bind(campaign_id).fetch_all(&mut *tx).await?;
@@ -657,7 +657,7 @@ pub async fn execute_succession(
         return replay(value);
     }
 
-    let campaign = sqlx::query_as::<_, (Uuid, Uuid, String, i32)>(
+    let campaign = crate::fd_query_as!((Uuid, Uuid, String, i32),
         "SELECT player_character_id,dynasty_id,status,current_year FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
     )
     .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
@@ -667,36 +667,36 @@ pub async fn execute_succession(
     }
 
     let heir = if let Some(heir_id) = request.heir_id {
-        sqlx::query_as::<_, CharacterView>(
+        crate::fd_query_as!(CharacterView,
             "SELECT c.id,c.full_name,c.age,c.life_status,c.is_heir FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.child_character_id=$3 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18"
         )
         .bind(campaign_id).bind(campaign.0).bind(heir_id).fetch_optional(&mut *tx).await?
     } else {
-        sqlx::query_as::<_, CharacterView>(
+        crate::fd_query_as!(CharacterView,
             "SELECT c.id,c.full_name,c.age,c.life_status,c.is_heir FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18 ORDER BY c.age DESC,c.created_at ASC LIMIT 1"
         )
         .bind(campaign_id).bind(campaign.0).fetch_optional(&mut *tx).await?
     }.ok_or_else(|| ApiError::conflict("no_eligible_heir"))?;
 
-    sqlx::query("UPDATE fd.characters SET is_heir=false WHERE campaign_id=$1 AND is_heir=true")
+    crate::fd_query!("UPDATE fd.characters SET is_heir=false WHERE campaign_id=$1 AND is_heir=true")
         .bind(campaign_id)
         .execute(&mut *tx)
         .await?;
 
-    sqlx::query("UPDATE fd.dynasties SET head_character_id=$2,prestige=prestige+10 WHERE id=$1 AND campaign_id=$3")
+    crate::fd_query!("UPDATE fd.dynasties SET head_character_id=$2,prestige=prestige+10 WHERE id=$1 AND campaign_id=$3")
         .bind(campaign.1).bind(heir.id).bind(campaign_id).execute(&mut *tx).await?;
-    sqlx::query("UPDATE fd.campaigns SET player_character_id=$2,status='active',version=version+1,updated_at=now() WHERE id=$1")
+    crate::fd_query!("UPDATE fd.campaigns SET player_character_id=$2,status='active',version=version+1,updated_at=now() WHERE id=$1")
         .bind(campaign_id).bind(heir.id).execute(&mut *tx).await?;
-    sqlx::query("UPDATE fd.accounts SET owner_id=$3 WHERE campaign_id=$1 AND owner_type='character' AND owner_id=$2")
+    crate::fd_query!("UPDATE fd.accounts SET owner_id=$3 WHERE campaign_id=$1 AND owner_type='character' AND owner_id=$2")
         .bind(campaign_id).bind(campaign.0).bind(heir.id).execute(&mut *tx).await?;
 
     let succession_id = Uuid::new_v4();
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.succession_events (id,campaign_id,deceased_character_id,heir_character_id,game_year) VALUES ($1,$2,$3,$4,$5)"
     )
     .bind(succession_id).bind(campaign_id).bind(campaign.0).bind(heir.id).bind(campaign.3)
     .execute(&mut *tx).await?;
-    sqlx::query(
+    crate::fd_query!(
         "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'succession_completed','The heir takes the seat', $2, $3)"
     )
     .bind(campaign_id).bind(campaign.3).bind(json!({"deceased_id":campaign.0,"heir_id":heir.id,"dynasty_id":campaign.1}))
