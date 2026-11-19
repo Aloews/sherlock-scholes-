@@ -118,6 +118,15 @@ jobs:
           STARIMG_BASE_URL: https://ai.starimg.ru
         run: python .github/scripts/fable_ci_repair.py
 
+      - name: Upload Starimg usage ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: starimg-usage-${{ github.run_id }}
+          path: ${{ runner.temp }}/starimg-usage.jsonl
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
