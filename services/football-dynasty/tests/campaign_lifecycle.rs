@@ -236,18 +236,63 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         2
     );
 
+    let (sponsor_tick_status, sponsor_tick) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("calendar-sponsor-tick"),
+        Some(json!({"days":4})),
+    ).await;
+    assert_eq!(sponsor_tick_status, StatusCode::OK);
+    assert_eq!(sponsor_tick["current_date"], "2026-01-12");
+    assert_eq!(sponsor_tick["generated_events"], 3);
+    assert_eq!(sponsor_tick["expired_events"], 1);
+
+    let (sponsor_events_status, sponsor_events) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/events"),
+        None,
+        None,
+    ).await;
+    assert_eq!(sponsor_events_status, StatusCode::OK);
+    let sponsor_event_id = sponsor_events.as_array().expect("event inbox")
+        .iter().find(|event| event["event_type"] == "sponsor_approach")
+        .expect("sponsor event")["id"].as_str().expect("sponsor event id");
+    let (sponsor_choice_status, sponsor_choice) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{sponsor_event_id}/resolve"),
+        Some("sponsor-cash-choice-01"),
+        Some(json!({"choice_id":"sponsor_cash"})),
+    ).await;
+    assert_eq!(sponsor_choice_status, StatusCode::OK);
+    assert_eq!(sponsor_choice["status"], "resolved");
+
+    let (cash_status, cash_view) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}"),
+        None,
+        None,
+    ).await;
+    assert_eq!(cash_status, StatusCode::OK);
+    let cash_total: i64 = cash_view["cash_accounts"].as_array().expect("cash accounts")
+        .iter().map(|account| account["balance_minor"].as_i64().expect("cash balance")).sum();
+    assert_eq!(cash_total, 3_525_000_000);
+
     let (month_status, month) = call(
         app.clone(),
         "POST",
         &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
         Some("calendar-month-0001"),
-        Some(json!({"days":30})),
+        Some(json!({"days":26})),
     )
     .await;
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
-    assert_eq!(month["generated_events"], 14);
-    assert_eq!(month["expired_events"], 7);
+    assert_eq!(month["generated_events"], 11);
+    assert_eq!(month["expired_events"], 5);
 
     let (final_season_status, final_season) = call(
         app.clone(),
