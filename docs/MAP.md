@@ -467,3 +467,9 @@ Required information architecture:
 - These database changes are confirmed. The Vercel frontend/API deployment and a real Telegram play-through are still separate release gates.
 
 **Not claimed:** Rust/TypeScript builds, integration tests, RLS SQL tests, Vercel production deployment or in-game browser smoke tests have not been run/confirmed in this session. The match engine is a bounded deterministic score generator, not a tactical football simulation. The current season is a six-matchday foundation; season rollover, squad/player progression, injuries, contracts, transfers, staff and rival autonomy remain future work.
+
+
+**Event variety and financial consequences — 2026-11-19:**
+- Weekly event cadence now rotates among board review, sponsor approach, supporter meeting and rival scouting report, with one idempotent event per ISO week.
+- Sponsor acceptance posts a balanced €250,000 double-entry transaction to the club cash and sponsorship revenue accounts. Other event choices change club reputation or dynasty prestige by explicit amounts.
+- Lifecycle coverage now includes a sponsor choice and asserts the cash-account total after the ledger posting. The test source is updated but the CI run remains queued; no pass is claimed.
