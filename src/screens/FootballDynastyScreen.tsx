@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
-  advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView,
+  advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent, setFixtureTactic,
+  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView, type SeasonFixture,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -172,6 +172,14 @@ export function FootballDynastyScreen() {
       await resolveGameEvent(campaign.campaign.id, event.id, choiceId);
       await refreshSelected(campaign.campaign.id);
       await refreshCampaigns();
+    });
+  };
+
+  const chooseTactic = (fixtureId: string, tactic: SeasonFixture['player_tactic']) => {
+    if (!campaign) return;
+    void run('tactic-' + fixtureId, async () => {
+      await setFixtureTactic(campaign.campaign.id, fixtureId, tactic);
+      await refreshSelected(campaign.campaign.id);
     });
   };
 
@@ -360,6 +368,24 @@ export function FootballDynastyScreen() {
                         <div className="min-w-0 flex-1">
                           <div className="text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Тур' : 'Matchday'} {fixture.matchday} · {new Date(fixture.match_date + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' })}</div>
                           <div className="mt-1 text-sm font-medium">{fixture.home_team} <span className="mx-1 text-brand-muted">{fixture.status === 'played' ? `${fixture.home_goals} : ${fixture.away_goals}` : '—'}</span> {fixture.away_team}</div>
+                          {fixture.status === 'scheduled' && (fixture.home_team === campaign.clubs[0]?.name || fixture.away_team === campaign.clubs[0]?.name) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span className="mr-1 text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Тактика' : 'Tactic'}</span>
+                              {(['balanced', 'attacking', 'defensive'] as const).map((tactic) => (
+                                <button
+                                  key={tactic}
+                                  type="button"
+                                  className={fixture.player_tactic === tactic ? buttonClass : quietButtonClass}
+                                  disabled={busy !== ''}
+                                  onClick={() => chooseTactic(fixture.id, tactic)}
+                                >
+                                  {i18n.language.startsWith('ru')
+                                    ? (tactic === 'balanced' ? 'Баланс' : tactic === 'attacking' ? 'Атака' : 'Оборона')
+                                    : (tactic === 'balanced' ? 'Balanced' : tactic === 'attacking' ? 'Attack' : 'Defend')}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <span className={`rounded-full px-2 py-1 text-[10px] ${fixture.status === 'played' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-brand-muted'}`}>
                           {fixture.status === 'played' ? (i18n.language.startsWith('ru') ? 'Завершён' : 'Played') : (i18n.language.startsWith('ru') ? 'Ожидается' : 'Upcoming')}
