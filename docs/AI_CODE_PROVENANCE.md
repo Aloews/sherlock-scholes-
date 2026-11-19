@@ -29,12 +29,10 @@
 
 ### ChatGPT assistant
 
-- Directly authored in this session: the initial matchday backend implementation (95 Rust additions); the initial lifecycle regression (26 test additions / 4 deletions); the outcome-branch refactor (24 Rust additions / 41 deletions); and follow-up lifecycle assertions/effect checks (64 test additions / 2 deletions across the recorded commits).
-- Concurrent branch automation also formatted/refactored parts of the same files and added CI wiring. Those changes are not attributed to Starimg or local Qwen, but their individual author/model cannot be established from the available logs.
-- Current exact PR diff against `main` (30 commits, 9 files): `simulation.rs` 106 additions / 1 deletion; lifecycle tests 126 additions / 4 deletions; CI workflows 38 additions / 1 deletion; documentation 51 additions. Total: **321 additions and 6 deletions**. These are repository diff statistics, not a complete ChatGPT-only attribution.
-- The initial 95 Rust additions and 26 lifecycle-test additions were authored directly in this ChatGPT session. Later refactors, test expansions, and CI changes include concurrent branch automation; their exact model attribution is not established.
+- Directly traceable initial work in this session: the first matchday-decision backend patch added 95 Rust source lines; the initial lifecycle regression added 27 test lines and removed 4. I also made subsequent targeted fixes and formatting edits, some of which were later changed by concurrent commits; they are not added to this minimum to avoid double-counting overlapping diffs.
+- Concurrent branch commits added a home/away outcome refactor, stronger effect/idempotency/standings tests, ranked standings fields, and backend CI wiring. These commits have no model or workflow-run provenance. Their author/model cannot be established and they must not be labelled Qwen or Starimg.
+- Current exact PR diff against `main` (9 files): `simulation.rs` 106 additions / 1 deletion; lifecycle tests 126 additions / 4 deletions; CI workflows 38 additions / 1 deletion; documentation 52 additions. Total: **322 additions and 6 deletions**. These are total repository diff statistics, not a ChatGPT-only count.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
-
 ## Current measurement gap
 
 There is no complete mapping from provider request IDs to generated patch files and merged commits. Therefore a trustworthy lifetime percentage split among Starimg, local models, and ChatGPT cannot yet be calculated. Future agent workflows must emit per-task diff statistics and link them to the provider usage record.
