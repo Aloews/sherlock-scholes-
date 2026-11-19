@@ -142,6 +142,27 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
 - The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
 
+## 8. Football Dynasty — Rust engine workstream
+
+**Architecture decision:** Football Dynasty simulation and authoritative domain rules are implemented in Rust. Frontend code is a client only; TypeScript must not independently calculate match outcomes, finances, contracts, player progression, ownership or succession.
+
+**Current verified repository change:** draft PR [#447](https://github.com/Aloews/sherlock-scholes-/pull/447) adds the first pure deterministic Rust match simulation and standings reducer, with unit tests and an engine architecture plan. This is a foundation only. It does not yet replace the existing SQL-backed matchday path. No production deployment is part of this change.
+
+| Sequence | Engine milestone | Acceptance evidence |
+|---|---|---|
+| E0 | Pure deterministic match core | Same inputs replay identically; seed changes stream; validated ratings; table reconciliation |
+| E1 | Player/squad/tactics | Position-specific attributes, lineup eligibility, formations, tactical instructions, substitutions, player-level events |
+| E2 | Competition/calendar | Round-robin and cup draws, dates, tie-breakers, registration and eligibility invariants |
+| E3 | Matchday integration | Rust engine is the only match-result authority; atomic fixture/event/chronicle persistence; restart replay |
+| E4 | Player lifecycle | Training, development, morale, fatigue, injuries, suspensions and contracts |
+| E5 | Club finance and transfers | Double-entry ledger, wage budget, transfer negotiation, agent fees, FFP and insolvency |
+| E6 | Staff, rivals and dynasty world | AI agents obey the same domain constraints; explainable decisions and append-only history |
+| E7 | Scale and release | Benchmarks, load tests, bounded concurrency, migration/replay tests, release candidate smoke tests |
+
+**Release policy:** do not deploy on every PR or commit. Run code quality checks and tests on branches; combine reviewed milestones into release candidates. Vercel build-rate limits are a reason to batch deployments, not to skip validation. Redis and separate worker infrastructure remain deferred until measured bottlenecks justify them.
+
+**Performance acceptance:** record cold and warm API latency, SQL query count per screen/command, simulation CPU time per fixture and per season, memory, and concurrent campaign throughput. Simulation must run in memory from a bounded domain snapshot; persist a completed command in one atomic transaction. Do not claim faster loading until measurements demonstrate it.
+
 ## 8. Execution priorities
 
 Work in this order. Reorder only when fresh production evidence shows a higher-impact blocker.
