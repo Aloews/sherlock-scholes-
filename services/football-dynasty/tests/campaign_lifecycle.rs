@@ -155,6 +155,79 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
 
+    let (initial_season_status, initial_season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(initial_season_status, StatusCode::OK);
+    let player_fixture = initial_season["fixtures"]
+        .as_array()
+        .expect("season fixtures")
+        .iter()
+        .find(|fixture| {
+            fixture["status"] == "scheduled"
+                && (fixture["home_team"] == "Northbridge United"
+                    || fixture["away_team"] == "Northbridge United")
+        })
+        .expect("scheduled player fixture");
+    let fixture_id = player_fixture["id"].as_str().expect("fixture id");
+
+    let (tactic_status, tactic) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/tactic"),
+        Some("match-tactic-0001"),
+        Some(json!({"tactic":"attacking"})),
+    )
+    .await;
+    assert_eq!(tactic_status, StatusCode::OK);
+    assert_eq!(tactic["tactic"], "attacking");
+    assert_eq!(tactic["status"], "saved");
+
+    let (tactic_replay_status, tactic_replay) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/tactic"),
+        Some("match-tactic-0001"),
+        Some(json!({"tactic":"attacking"})),
+    )
+    .await;
+    assert_eq!(tactic_replay_status, StatusCode::OK);
+    assert_eq!(tactic_replay, tactic);
+
+    let (invalid_tactic_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/tactic"),
+        Some("match-tactic-invalid"),
+        Some(json!({"tactic":"cheat"})),
+    )
+    .await;
+    assert_eq!(invalid_tactic_status, StatusCode::BAD_REQUEST);
+
+    let (tactic_season_status, tactic_season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(tactic_season_status, StatusCode::OK);
+    assert_eq!(
+        tactic_season["fixtures"]
+            .as_array()
+            .expect("fixtures")
+            .iter()
+            .find(|fixture| fixture["id"] == fixture_id)
+            .expect("tactic fixture")["player_tactic"],
+        "attacking"
+    );
+
     let (one_day_status, one_day) = call(
         app.clone(),
         "POST",
