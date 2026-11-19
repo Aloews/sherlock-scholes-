@@ -146,12 +146,12 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 
 **Architecture decision:** Football Dynasty simulation and authoritative domain rules are implemented in Rust. Frontend code is a client only; TypeScript must not independently calculate match outcomes, finances, contracts, player progression, ownership or succession.
 
-**Current verified repository change:** draft PR [#447](https://github.com/Aloews/sherlock-scholes-/pull/447) adds the first pure deterministic Rust match simulation and standings reducer, with unit tests and an engine architecture plan. This is a foundation only. It does not yet replace the existing SQL-backed matchday path. No production deployment is part of this change.
+**Current verified repository change:** draft PR [#447](https://github.com/Aloews/sherlock-scholes-/pull/447) now contains the deterministic Rust match core, standings reducer, squad/lineup validation and team-rating aggregation, plus a dedicated Rust compile/test workflow. E0 and the first E1 domain layer are in implementation; acceptance is not yet complete. The existing SQL-backed matchday path still generates scores independently and has not been switched to Rust. No production deployment is part of this change.
 
 | Sequence | Engine milestone | Acceptance evidence |
 |---|---|---|
 | E0 | Pure deterministic match core | Same inputs replay identically; seed changes stream; validated ratings; table reconciliation |
-| E1 | Player/squad/tactics | Position-specific attributes, lineup eligibility, formations, tactical instructions, substitutions, player-level events |
+| E1 | Player/squad/tactics | Position-specific attributes, XI validation, formations and tactical rating aggregation are started; substitutions and player-level match events remain outstanding |
 | E2 | Competition/calendar | Round-robin and cup draws, dates, tie-breakers, registration and eligibility invariants |
 | E3 | Matchday integration | Rust engine is the only match-result authority; atomic fixture/event/chronicle persistence; restart replay |
 | E4 | Player lifecycle | Training, development, morale, fatigue, injuries, suspensions and contracts |
