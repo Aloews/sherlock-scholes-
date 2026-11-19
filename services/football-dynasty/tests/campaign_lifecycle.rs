@@ -155,16 +155,28 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
 
+    let (one_day_status, one_day) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("calendar-one-day-01"),
+        Some(json!({"days":1})),
+    )
+    .await;
+    assert_eq!(one_day_status, StatusCode::OK);
+    assert_eq!(one_day["current_date"], "2026-01-02");
+    assert_eq!(one_day["generated_events"], 0);
+
     let (tick_status, tick) = call(
         app.clone(),
         "POST",
         &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
         Some("calendar-tick-0001"),
-        Some(json!({"days":7})),
+        Some(json!({"days":6})),
     )
     .await;
     assert_eq!(tick_status, StatusCode::OK);
-    assert_eq!(tick["from_date"], "2026-01-01");
+    assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 1);
 
@@ -201,6 +213,18 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(resolved_events_status, StatusCode::OK);
     assert_eq!(resolved_events[0]["status"], "resolved");
+
+    let (month_status, month) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("calendar-month-0001"),
+        Some(json!({"days":30})),
+    )
+    .await;
+    assert_eq!(month_status, StatusCode::OK);
+    assert_eq!(month["current_date"], "2026-02-07");
+    assert_eq!(month["generated_events"], 4);
 
     for index in 0..4 {
         let (advance_status, _) = call(
