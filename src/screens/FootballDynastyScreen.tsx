@@ -361,7 +361,7 @@ export function FootballDynastyScreen() {
                           {event.choices.map((choice) => (
                             <button key={choice.id} type="button" className={quietButtonClass}
                               disabled={busy !== ''} onClick={() => chooseEvent(event, choice.id)}>
-                              {i18n.language.startsWith('ru')
+                              {i18n.language.startsWith('ru') && event.event_type === 'club_weekly_review'
                                 ? (choice.id === 'reputation' ? 'Укрепить репутацию клуба' : 'Укрепить влияние династии')
                                 : choice.label}
                             </button>
