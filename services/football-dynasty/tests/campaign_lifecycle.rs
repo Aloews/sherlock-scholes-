@@ -196,7 +196,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .iter()
         .find(|event| event["event_type"] == "match_board_review")
         .expect("player match must create a contextual board decision");
-    assert!(match_review["body"].as_str().unwrap_or_default().contains("Матч") || match_review["body"].as_str().unwrap_or_default().contains("Команда"));
+    let match_review_body = match_review["body"].as_str().unwrap_or_default();
+    assert!(match_review_body.contains("Матч") || match_review_body.contains("Команда"));
     let match_review_id = match_review["id"].as_str().expect("match review id");
     let match_review_choice = match_review["choices"][0]["id"]
         .as_str()
