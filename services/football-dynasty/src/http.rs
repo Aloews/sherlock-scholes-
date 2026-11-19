@@ -42,7 +42,7 @@ async fn liveness() -> Json<serde_json::Value> {
 async fn readiness(
     axum::extract::State(state): axum::extract::State<AppState>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    sqlx::query("SELECT 1")
+    crate::fd_query!("SELECT 1")
         .execute(&state.db)
         .await
         .map(|_| Json(json!({"status":"ready","database":"ok"})))
