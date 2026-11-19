@@ -1443,5 +1443,31 @@ async fn another_test() {}
             validate_reviewer_output({"summary": "Reviewed"})
 
 
+class UsageAccountingTests(unittest.TestCase):
+    def test_summarize_usage_aggregates_anthropic_and_openai_counters(self):
+        from worker import summarize_usage
+
+        summary = summarize_usage([
+            {
+                "input_tokens": 1200,
+                "output_tokens": 350,
+                "cache_read_input_tokens": 400,
+                "cache_creation_input_tokens": 80,
+            },
+            {"prompt_tokens": 700, "completion_tokens": 200, "total_tokens": 900},
+        ])
+        self.assertEqual(summary["calls"], 2)
+        self.assertEqual(summary["input_tokens"], 1900)
+        self.assertEqual(summary["output_tokens"], 550)
+        self.assertEqual(summary["cache_read_input_tokens"], 400)
+        self.assertEqual(summary["cache_creation_input_tokens"], 80)
+        self.assertEqual(summary["total_tokens"], 2450)
+
+    def test_summarize_usage_handles_missing_usage_without_inventing_tokens(self):
+        from worker import summarize_usage
+
+        self.assertEqual(summarize_usage([{}, {}]), {"calls": 2})
+
+
 if __name__ == "__main__":
     unittest.main()
