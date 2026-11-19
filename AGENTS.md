@@ -15,6 +15,8 @@ disagree about the app itself, `CLAUDE.md` is current.
 
 ## TL;DR for any agent
 
+The mandatory autonomous execution, delegation, escalation, and evidence rules are in [`docs/AI_EXECUTION_PROTOCOL.md`](./docs/AI_EXECUTION_PROTOCOL.md). Do not send routine intermediate results or technical-choice questions to the maintainer; report at completion or for a genuine owner-only blocker.
+
 1. Read `CLAUDE.md` and the relevant `docs/*_STANDARD.md` before editing.
 2. Never trust existing code; fix bugs **regression-first** (failing test → fix →
    green).
