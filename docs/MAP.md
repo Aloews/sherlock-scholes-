@@ -310,3 +310,10 @@ GitHub Actions is the supported fallback execution host when Railway agent execu
 - **Delivery boundary:** agent opens a PR only after review and checks; no auto-merge, production migration, or deployment.
 
 The Railway `stream-service` agent previously failed with Starimg HTTP 402. Railway inspection is currently unavailable to this connection because its role lacks access; GitHub Actions is therefore the active implementation path in this PR. Do not dispatch additional tasks through the old default-branch workflow until this PR is reviewed and merged.
+
+
+### Autonomous agent context coverage review — 2026-11-19
+
+- Verified current `main` and PR #422 branch `.github/scripts/local_model_agent.py` resolve to the same blob SHA `c1726a80892e9e8aa1efe780301c55f7a458a5a7`; the previously asserted API mismatch is not substantiated and is withdrawn.
+- Confirmed `agent_network.py::task_context()` reads only `git ls-files`, searches content only in the first 12,000 characters, and truncates each selected file to 2,400 characters. This can omit untracked candidates and relevant code later in files. Next fix: safe bounded relevant line windows with line numbers and review inclusion for untracked files, preserving path/size/symlink protections.
+- PR #422 remains draft. Local unit/validator tests (14 total) are not live multi-role execution/provider or end-to-end evidence. Live Fable/Starimg evidence, current-head full CI, idempotency, cost controls, and one non-production task remain activation gates.
