@@ -225,6 +225,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
     assert_eq!(month["generated_events"], 4);
+    assert_eq!(month["expired_events"], 3);
 
     for index in 0..4 {
         let (advance_status, _) = call(
