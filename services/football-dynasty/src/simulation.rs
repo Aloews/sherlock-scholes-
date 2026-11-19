@@ -28,6 +28,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
+        .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}", get(get_fixture))
         .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
             post(resolve_event),
@@ -236,6 +237,25 @@ fn automatic_substitutions(squad: &MatchSquad, minutes: u8) -> Vec<SubstitutionP
         }
     }
     plans
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct MatchEventView {
+    pub sequence: i16,
+    pub minute: i16,
+    pub event_type: String,
+    pub team_id: Option<Uuid>,
+    pub team_name: Option<String>,
+    pub player_id: Option<Uuid>,
+    pub player_name: Option<String>,
+    pub related_player_id: Option<Uuid>,
+    pub related_player_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FixtureMatchView {
+    pub fixture: SeasonFixture,
+    pub events: Vec<MatchEventView>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -474,6 +494,32 @@ pub async fn get_season(
         fixtures,
         standings,
     }))
+}
+
+pub async fn get_fixture(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((campaign_id, fixture_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<FixtureMatchView>, ApiError> {
+    let mut tx=state.db.begin().await?;
+    set_owner(&mut tx,identity.telegram_id).await?;
+    let fixture=crate::fd_query_as!(SeasonFixture,
+        "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
+         FROM fd.season_fixtures WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_id).bind(fixture_id).fetch_optional(&mut *tx).await?
+        .ok_or_else(ApiError::not_found)?;
+    let events=crate::fd_query_as!(MatchEventView,
+        "SELECT me.sequence,me.minute,me.event_type,me.team_id,t.name AS team_name,
+                me.player_id,p.full_name AS player_name,
+                me.related_player_id,r.full_name AS related_player_name
+         FROM fd.match_events me
+         LEFT JOIN fd.teams t ON t.campaign_id=me.campaign_id AND t.id=me.team_id
+         LEFT JOIN fd.players p ON p.campaign_id=me.campaign_id AND p.id=me.player_id
+         LEFT JOIN fd.players r ON r.campaign_id=me.campaign_id AND r.id=me.related_player_id
+         WHERE me.campaign_id=$1 AND me.fixture_id=$2 ORDER BY me.sequence")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(Json(FixtureMatchView { fixture, events }))
 }
 
 pub async fn advance_time(
