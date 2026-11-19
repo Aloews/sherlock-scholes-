@@ -36,6 +36,7 @@ pub struct AdvanceTimeResult {
     pub player_age: i32,
     pub status: String,
     pub generated_events: i64,
+    pub expired_events: i64,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -45,6 +46,7 @@ pub struct GameEvent {
     pub title: String,
     pub body: String,
     pub game_date: NaiveDate,
+    pub expires_on: NaiveDate,
     pub priority: i16,
     pub choices: Value,
     pub status: String,
@@ -133,7 +135,7 @@ pub async fn list_events(
         .bind(campaign_id).fetch_one(&mut *tx).await?;
     if !exists { return Err(ApiError::not_found()); }
     let rows = sqlx::query_as::<_, GameEvent>(
-        "SELECT id,event_type,title,body,game_date,priority,choices,status,resolution FROM fd.game_events WHERE campaign_id=$1 ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, game_date DESC, priority DESC LIMIT 100",
+        "SELECT id,event_type,title,body,game_date,expires_on,priority,choices,status,resolution FROM fd.game_events WHERE campaign_id=$1 ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, game_date DESC, priority DESC LIMIT 100",
     )
     .bind(campaign_id).fetch_all(&mut *tx).await?;
     tx.commit().await?;
@@ -170,6 +172,7 @@ pub async fn advance_time(
 
     let mut current_date = from_date;
     let mut generated_events = 0_i64;
+    let mut expired_events = 0_i64;
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
@@ -192,13 +195,17 @@ pub async fn advance_time(
             }
         }
 
+        let expired = sqlx::query("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
+            .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
+        expired_events += expired.rows_affected() as i64;
+
         // One weekly board review is created at most once per campaign/week.
         if current_date.weekday().number_from_monday() == 1 {
             let event_key = format!("weekly-review-{}", current_date.format("%G-W%V"));
             let inserted = sqlx::query(
-                "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,priority,choices) VALUES($1,$2,'club_weekly_review','Weekly club review','The board has reviewed the club position. Choose the emphasis for the coming week.',$3,60,$4) ON CONFLICT(campaign_id,event_key) DO NOTHING",
+                "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES($1,$2,'club_weekly_review','Weekly club review','The board has reviewed the club position. Choose the emphasis for the coming week.',$3,$4,60,$5) ON CONFLICT(campaign_id,event_key) DO NOTHING",
             )
-            .bind(campaign_id).bind(event_key).bind(current_date)
+            .bind(campaign_id).bind(event_key).bind(current_date).bind(current_date + Duration::days(6))
             .bind(json!([
                 {"id":"reputation","label":"Build the club reputation","effect":"club_reputation"},
                 {"id":"prestige","label":"Strengthen the dynasty standing","effect":"dynasty_prestige"}
@@ -225,6 +232,7 @@ pub async fn advance_time(
         player_age,
         status,
         generated_events,
+        expired_events,
     };
     complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
     tx.commit().await?;
