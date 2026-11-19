@@ -4,7 +4,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     routing::{get, post},
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -80,6 +80,7 @@ pub struct CampaignSummary {
     pub mode: String,
     pub status: String,
     pub current_year: i32,
+    pub game_date: NaiveDate,
     pub created_at: DateTime<Utc>,
 }
 
@@ -162,6 +163,7 @@ struct CampaignRow {
     mode: String,
     status: String,
     current_year: i32,
+    game_date: NaiveDate,
     created_at: DateTime<Utc>,
     founder_character_id: Uuid,
     player_character_id: Uuid,
@@ -280,7 +282,7 @@ pub async fn list_campaigns(
     let mut tx = state.db.begin().await?;
     set_owner_scope(&mut tx, identity.telegram_id).await?;
     let campaigns = sqlx::query_as::<_, CampaignSummary>(
-        "SELECT id, name, mode, status, current_year, created_at FROM fd.campaigns WHERE owner_telegram_id = $1 ORDER BY created_at DESC"
+        "SELECT id, name, mode, status, current_year, game_date, created_at FROM fd.campaigns WHERE owner_telegram_id = $1 ORDER BY created_at DESC"
     )
     .bind(identity.telegram_id)
     .fetch_all(&mut *tx)
@@ -429,7 +431,7 @@ async fn load_campaign(
     campaign_id: Uuid,
 ) -> Result<CampaignView, ApiError> {
     let campaign = sqlx::query_as::<_, CampaignRow>(
-        "SELECT id,name,mode,status,current_year,created_at,founder_character_id,player_character_id,dynasty_id FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2"
+        "SELECT id,name,mode,status,current_year,game_date,created_at,founder_character_id,player_character_id,dynasty_id FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2"
     )
     .bind(campaign_id).bind(owner_id).fetch_optional(&mut **tx).await?.ok_or_else(ApiError::not_found)?;
 
@@ -472,6 +474,7 @@ async fn load_campaign(
             mode: campaign.mode,
             status: campaign.status,
             current_year: campaign.current_year,
+            game_date: campaign.game_date,
             created_at: campaign.created_at,
         },
         player_character_id: campaign.player_character_id,
