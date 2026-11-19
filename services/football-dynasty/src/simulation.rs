@@ -551,8 +551,11 @@ pub async fn advance_time(
             // A match involving the player's club creates a contextual board
             // decision. The event is persisted with the fixture result and is
             // idempotent because the fixture transitions from scheduled to played.
-            if player_club.as_deref() == Some(home_team.as_str()) || player_club.as_deref() == Some(away_team.as_str()) {
-                let (result_label, body, choices) = if player_club.as_deref() == Some(home_team.as_str()) {
+            if player_club.as_deref() == Some(home_team.as_str())
+                || player_club.as_deref() == Some(away_team.as_str())
+            {
+                let (result_label, body, choices) =
+                    if player_club.as_deref() == Some(home_team.as_str()) {
                     if home_goals > away_goals {
                         (
                             "победа",
