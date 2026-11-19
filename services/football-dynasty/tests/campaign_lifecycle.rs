@@ -189,8 +189,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(events_status, StatusCode::OK);
-    assert_eq!(events.as_array().expect("event inbox").len(), 1);
-    let event_id = events[0]["id"].as_str().expect("event id");
+    assert_eq!(events.as_array().expect("event inbox").len(), 4);
+    let event_id = events.as_array().expect("event inbox")
+        .iter().find(|event| event["event_type"] == "club_weekly_review")
+        .expect("weekly review event")["id"].as_str().expect("event id");
 
     let (resolve_status, resolved) = call(
         app.clone(),
@@ -212,7 +214,12 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(resolved_events_status, StatusCode::OK);
-    assert_eq!(resolved_events[0]["status"], "resolved");
+    assert_eq!(
+        resolved_events.as_array().expect("event inbox")
+            .iter().find(|event| event["id"] == event_id)
+            .expect("resolved event")["status"],
+        "resolved"
+    );
 
     let (month_status, month) = call(
         app.clone(),
@@ -225,7 +232,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
     assert_eq!(month["generated_events"], 4);
-    assert_eq!(month["expired_events"], 3);
+    assert_eq!(month["expired_events"], 5);
 
     let (expired_list_status, expired_list) = call(
         app.clone(),
