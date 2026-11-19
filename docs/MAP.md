@@ -425,3 +425,13 @@ Required information architecture:
 
 
 **Calendar interaction refinement — 2026-11-19:** the Telegram screen now offers explicit 1-day, 7-day and 30-day steps; no automatic offline progression. The PostgreSQL integration scenario was extended to assert a one-day tick creates no weekly event, the following six days cross the Monday trigger exactly once, and a 30-day tick creates four weekly reviews. These assertions are authored, not yet executed in CI.
+
+
+## Football Dynasty — event deadlines and migration verification — 2026-11-19
+
+- Added `expires_on` to persisted events, backfilled existing rows, constrained deadlines to be on/after event date, and indexed pending event expiry.
+- Weekly club-review events remain actionable through Sunday; crossing into the next week changes unresolved events to `expired`. Expired events are retained in the inbox and cannot be resolved. The API returns expiry dates and the Telegram UI shows deadlines and an explicit expired state.
+- The day-advance response now reports the number of events expired during the step. The lifecycle test asserts three pending weekly events expire during the 30-day advance.
+- Hardened CI: the Rust workflow now applies the Supabase calendar/events migration and deadline migration before the RLS checks; the owner-isolation test checks that another Telegram owner cannot read or insert events; expected FD table count is 13. The workflow path filters include both Supabase migrations.
+- Service and Supabase deadline migrations were read back and their contents match exactly. No production database migration or production deployment is claimed.
+- **Verification remains pending:** GitHub Actions run results are not yet visible through the connected workflow-run lookup; the latest Vercel deployment remains subject to its own queue. Do not call Rust build, PostgreSQL tests, RLS tests or production event flow passed until actual run output is available.
