@@ -72,6 +72,7 @@ The executor has a separate, fail-closed USH adapter mode. It is deliberately no
 Common:
 - AGENT_ENABLED=true (only after the applicable execution acceptance gate)
 - AGENT_ROLE=implementer or reviewer
+- REVIEW_SINCE — optional ISO-8601 cutoff; reviewer ignores older open PRs when set
 - GITHUB_REPOSITORIES — explicit repository allowlist; ignored only while `USH_EXECUTION_SCOPE=true`
 - USH_EXECUTION_SCOPE=false by default; set true only for the isolated USH execution phase
 - SHERLOCK_EXECUTION_SCOPE=false by default; set true only after the Sherlock worker scope is reviewed
