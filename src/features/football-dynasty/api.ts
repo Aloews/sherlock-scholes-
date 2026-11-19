@@ -5,11 +5,18 @@ const pendingMutationKeys = new Map<string, string>();
 
 export interface CampaignSummary {
   id: string; name: string; mode: 'sandbox' | 'scenario'; status: string;
-  current_year: number; created_at: string;
+  current_year: number; game_date: string; created_at: string;
 }
 export interface Character {
   id: string; full_name: string; age: number; life_status: 'alive' | 'deceased'; is_heir: boolean;
 }
+
+export interface GameEvent {
+  id: string; event_type: string; title: string; body: string; game_date: string;
+  priority: number; choices: { id: string; label: string; effect: string }[];
+  status: 'pending' | 'resolved' | 'expired'; resolution: Record<string, unknown> | null;
+}
+
 export interface CampaignCreated {
   id: string; name: string; mode: string; status: string; current_year: number;
   dynasty_id: string; founder_id: string; club_id: string;
@@ -70,4 +77,17 @@ export const previewSuccession = (campaignId: string) =>
 export const executeSuccession = (campaignId: string, heirId: string) =>
   request<{ campaign_id: string; deceased_character_id: string; heir_id: string; dynasty_head_id: string; status: string }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/succession`, { method: 'POST', body: JSON.stringify({ heir_id: heirId }) }, true,
+  );
+
+export const advanceGameTime = (campaignId: string, days: number) =>
+  request<{ from_date: string; current_date: string; current_year: number; player_age: number; status: string; generated_events: number }>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/time/advance`,
+    { method: 'POST', body: JSON.stringify({ days }) }, true,
+  );
+export const listGameEvents = (campaignId: string) =>
+  request<GameEvent[]>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/events`);
+export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
+  request<{ event_id: string; status: string; resolution: Record<string, unknown> }>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
+    { method: 'POST', body: JSON.stringify({ choice_id: choiceId }) }, true,
   );
