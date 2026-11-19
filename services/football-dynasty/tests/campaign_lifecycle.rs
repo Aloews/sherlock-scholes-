@@ -249,6 +249,27 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         2
     );
 
+    let played_fixture = season["fixtures"].as_array().expect("fixtures").iter()
+        .find(|fixture| fixture["status"] == "played").expect("played fixture");
+    let fixture_id = played_fixture["id"].as_str().expect("fixture id");
+    let (report_status, report) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}"),
+        None,
+        None,
+    ).await;
+    assert_eq!(report_status, StatusCode::OK);
+    let match_events = report["events"].as_array().expect("persisted match events");
+    let goal_events: Vec<_> = match_events.iter().filter(|event| event["event_type"] == "goal").collect();
+    let expected_goals = played_fixture["home_goals"].as_i64().unwrap()
+        + played_fixture["away_goals"].as_i64().unwrap();
+    assert_eq!(goal_events.len() as i64, expected_goals);
+    assert!(goal_events.iter().all(|event| event["player_name"].is_string()));
+    assert_eq!(match_events.iter().filter(|event| event["event_type"] == "substitution").count(), 6);
+    assert!(match_events.iter().filter(|event| event["event_type"] == "substitution")
+        .all(|event| event["player_name"].is_string() && event["related_player_name"].is_string()));
+
     let (sponsor_tick_status, sponsor_tick) = call(
         app.clone(),
         "POST",
