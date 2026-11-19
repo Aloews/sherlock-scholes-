@@ -174,7 +174,7 @@ pub fn estimate_market_value_minor(player:&PlayerCareer,today:NaiveDate)->u64{
     let age_factor=match player.age {
         15..=20=>150_u64,21..=24=>130,25..=28=>100,29..=31=>70,_=>35
     };
-    let potential_factor=100_u64+u64::from(player.potential.saturating_sub(overall))*2;
+    let potential_factor=100_u64+u64::from(u32::from(player.potential).saturating_sub(overall))*2;
     let days=(player.contract_until-today).num_days().max(0) as u64;
     let contract_factor=50+days.min(1_095)*50/1_095;
     u64::from(overall).saturating_mul(u64::from(overall))
