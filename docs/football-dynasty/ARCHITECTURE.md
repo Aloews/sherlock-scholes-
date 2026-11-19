@@ -83,17 +83,18 @@ The Rust engine is the sole authority for fictional campaign rules and simulatio
 
 Every persisted campaign snapshot and simulation event must carry an engine/ruleset version. Randomness is derived from a persisted campaign seed plus stable command, fixture, and entity identifiers. Never use process-global randomness or current time as a simulation input. Replaying a command with the same version and inputs must reproduce the same state transition.
 
-### Engine implementation sequence
+### Engine implementation sequence and current boundary
 
-1. **Pure match core:** validated team attributes, deterministic match result/events, reproducible seed stream, fixture standings reducer. Unit tests run without PostgreSQL.
-2. **Football domain:** player attributes and positions, squads, formations, tactical instructions, substitutions, injuries, suspensions, training and player development.
-3. **Competition domain:** league/cup rules, fixture generation, calendar constraints, tie-breakers, registration and eligibility.
-4. **Club operations:** contracts, wages, transfer negotiation, budgets, sponsorship, matchday revenue, financial fair play and insolvency rules.
-5. **World simulation:** staff roles, board objectives, rival clubs/dynasties, agents, media and politics using the same validated command/rule boundary.
-6. **Persistence and replay:** versioned snapshots, append-only domain events, deterministic command processing, idempotent commits, recovery and migration tests.
-7. **Performance:** benchmark CPU simulation separately from database/API latency; batch reads and writes, bound concurrency, and add caches only when measured.
+1. **Pure match core — implemented foundation:** validated team ratings, deterministic match result/events and a standings reducer.
+2. **Player match domain — implemented in the current feature branch, integration gate pending:** campaign-persisted fictional squads, player attributes/positions, formations and tactical ratings; scorer and optional assist attribution; up to five legal substitutions; ordered match events; per-player appearances, goals, assists, minutes, match ratings and fatigue persistence. The calendar now invokes this Rust path for due fixtures instead of deriving scores from SHA-256 bytes.
+3. **Competition domain — partial:** a persisted six-matchday double round-robin exists. Full season generation/rollover, cups, registration, tie-breakers, postponements and competition rules remain.
+4. **Player lifecycle — partial foundation only:** fatigue and injury/suspension eligibility are represented; match injuries, cards, recovery, training, development, ageing and contracts lifecycle remain.
+5. **Club operations — partial existing finance foundation:** ledger and a sponsorship event exist. Transfer negotiation, squad registration, wages, budgets, matchday revenue, FFP and insolvency rules remain.
+6. **World simulation — not complete:** staff roles, board objectives, rival club/dynasty decision agents, agents, media and politics remain.
+7. **Persistence and replay — partial:** calendar commands are idempotent and match writes are in the calendar transaction; versioned snapshots, event replay, recovery and migration compatibility tests remain.
+8. **Performance — not measured:** benchmark CPU simulation separately from database/API latency; batch reads and writes, bound concurrency, and add caches only when measured.
 
-The first pure match-core module is a foundation, not a claim that the full game engine is complete. The current SQL-backed matchday path must not be described as replaced until it is routed through the pure engine and passes parity, replay, persistence and integration tests.
+The current player simulator is a first playable football vertical slice, not a complete football-management engine. Its campaign roster seed creates fictional campaign players; it does not claim to import verified real-world club squads. The matchday switch is implemented in the feature branch, but it is not accepted until current-head PostgreSQL integration tests prove roster loading, score/event/stat reconciliation, replay/idempotency and the full migration chain.
 
 ### Performance policy
 
