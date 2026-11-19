@@ -485,6 +485,13 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
+        let player_club: String = crate::fd_query_scalar!(
+            "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+        )
+        .bind(campaign_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
             let score_seed =
                 format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
@@ -535,6 +542,85 @@ pub async fn advance_time(
             .execute(&mut *tx)
             .await?;
             generated_events += event_insert.rows_affected() as i64;
+
+            // A match involving the player's club creates a contextual board
+            // decision. The event is persisted with the fixture result and is
+            // idempotent because the fixture transitions from scheduled to played.
+            if home_team == player_club || away_team == player_club {
+                let (result_label, body, choices) = if home_team == player_club {
+                    if home_goals > away_goals {
+                        (
+                            "победа",
+                            format!("Команда добилась победы: {report}. Совет предлагает решить, как закрепить результат."),
+                            json!([
+                                {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
+                                {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
+                            ]),
+                        )
+                    } else if home_goals == away_goals {
+                        (
+                            "ничья",
+                            format!("Матч завершился вничью: {report}. Совет ждёт решения о следующем шаге."),
+                            json!([
+                                {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
+                                {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
+                            ]),
+                        )
+                    } else {
+                        (
+                            "поражение",
+                            format!("Команда потерпела поражение: {report}. Совет требует реакции руководства."),
+                            json!([
+                                {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
+                                {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
+                            ]),
+                        )
+                    }
+                } else if away_goals > home_goals {
+                    (
+                        "победа",
+                        format!("Команда добилась выездной победы: {report}. Совет предлагает решить, как закрепить результат."),
+                        json!([
+                            {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
+                            {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
+                        ]),
+                    )
+                } else if away_goals == home_goals {
+                    (
+                        "ничья",
+                        format!("Выездной матч завершился вничью: {report}. Совет ждёт решения о следующем шаге."),
+                        json!([
+                            {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
+                            {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
+                        ]),
+                    )
+                } else {
+                    (
+                        "поражение",
+                        format!("Команда проиграла на выезде: {report}. Совет требует реакции руководства."),
+                        json!([
+                            {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
+                            {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
+                        ]),
+                    )
+                };
+                let reaction_key = format!("match-board-review-{fixture_id}");
+                let reaction = crate::fd_query!(
+                    "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices)
+                     VALUES($1,$2,'match_board_review',$3,$4,$5,$6,80,$7)
+                     ON CONFLICT(campaign_id,event_key) DO NOTHING",
+                )
+                .bind(campaign_id)
+                .bind(reaction_key)
+                .bind(format!("Решение после матча: {result_label}"))
+                .bind(body)
+                .bind(current_date)
+                .bind(current_date + Duration::days(7))
+                .bind(choices)
+                .execute(&mut *tx)
+                .await?;
+                generated_events += reaction.rows_affected() as i64;
+            }
         }
     }
 
@@ -623,6 +709,15 @@ pub async fn resolve_event(
             .execute(&mut *tx)
             .await?;
             "club_reputation_increased_by_two"
+        }
+        Some("club_reputation_minus_1") => {
+            crate::fd_query!(
+                "UPDATE fd.clubs SET reputation=GREATEST(0,reputation-1) WHERE campaign_id=$1",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
+            "club_reputation_decreased_by_one"
         }
         Some("dynasty_prestige") => {
             crate::fd_query!("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
