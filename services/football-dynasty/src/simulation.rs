@@ -6,17 +6,20 @@ use axum::{
 };
 use chrono::{Datelike, Duration, NaiveDate};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{Postgres, Transaction};
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use crate::{auth::Identity, errors::ApiError, state::AppState};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/api/v1/campaigns/{campaign_id}/time/advance", post(advance_time))
+        .route(
+            "/api/v1/campaigns/{campaign_id}/time/advance",
+            post(advance_time),
+        )
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
         .route(
@@ -119,7 +122,9 @@ fn request_hash<T: Serialize>(value: &T) -> Result<String, ApiError> {
 }
 
 async fn set_owner(tx: &mut Transaction<'_, Postgres>, owner_id: i64) -> Result<(), ApiError> {
-    sqlx::query("SET LOCAL ROLE fd_runtime").execute(&mut **tx).await?;
+    sqlx::query("SET LOCAL ROLE fd_runtime")
+        .execute(&mut **tx)
+        .await?;
     sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
         .bind(owner_id.to_string())
         .execute(&mut **tx)
@@ -149,7 +154,9 @@ async fn reserve(
     if row.0 != command || row.1 != hash {
         return Err(ApiError::conflict("idempotency_key_reused"));
     }
-    row.2.map(Some).ok_or_else(|| ApiError::conflict("idempotency_request_in_progress"))
+    row.2
+        .map(Some)
+        .ok_or_else(|| ApiError::conflict("idempotency_request_in_progress"))
 }
 
 async fn complete(
@@ -177,15 +184,25 @@ pub async fn list_events(
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
     let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.campaigns WHERE id=$1)")
-        .bind(campaign_id).fetch_one(&mut *tx).await?;
-    if !exists { return Err(ApiError::not_found()); }
+        .bind(campaign_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    if !exists {
+        return Err(ApiError::not_found());
+    }
 
     // Backfill the inbox for campaigns created before launch events existed.
     // This makes the first game visit useful without requiring a calendar skip.
-    let campaign_date: NaiveDate = sqlx::query_scalar("SELECT game_date FROM fd.campaigns WHERE id=$1")
-        .bind(campaign_id).fetch_one(&mut *tx).await?;
-    let has_events: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.game_events WHERE campaign_id=$1)")
-        .bind(campaign_id).fetch_one(&mut *tx).await?;
+    let campaign_date: NaiveDate =
+        sqlx::query_scalar("SELECT game_date FROM fd.campaigns WHERE id=$1")
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
+    let has_events: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.game_events WHERE campaign_id=$1)")
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
     if !has_events {
         sqlx::query(
             "INSERT INTO fd.game_events (campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES
@@ -226,17 +243,15 @@ pub async fn get_season(
 ) -> Result<Json<SeasonView>, ApiError> {
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
-    let season_year: i32 = sqlx::query_scalar(
-        "SELECT current_year FROM fd.campaigns WHERE id=$1"
-    )
-    .bind(campaign_id)
-    .fetch_optional(&mut *tx)
-    .await?
-    .ok_or_else(ApiError::not_found)?;
+    let season_year: i32 = sqlx::query_scalar("SELECT current_year FROM fd.campaigns WHERE id=$1")
+        .bind(campaign_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
     let fixtures = sqlx::query_as::<_, SeasonFixture>(
         "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
          FROM fd.season_fixtures WHERE campaign_id=$1 AND season_year=$2
-         ORDER BY matchday,match_date,home_team,away_team"
+         ORDER BY matchday,match_date,home_team,away_team",
     )
     .bind(campaign_id)
     .bind(season_year)
@@ -254,46 +269,74 @@ pub async fn get_season(
         let away_goals = fixture.away_goals.unwrap_or(0) as i32;
         let outcome = home_goals.cmp(&away_goals);
         {
-            let home = totals.get_mut(&fixture.home_team).expect("home team inserted");
+            let home = totals
+                .get_mut(&fixture.home_team)
+                .expect("home team inserted");
             home.played += 1;
             home.goals_for += home_goals;
             home.goals_against += away_goals;
             match outcome {
-                std::cmp::Ordering::Greater => { home.wins += 1; home.points += 3; }
-                std::cmp::Ordering::Equal => { home.draws += 1; home.points += 1; }
-                std::cmp::Ordering::Less => { home.losses += 1; }
+                std::cmp::Ordering::Greater => {
+                    home.wins += 1;
+                    home.points += 3;
+                }
+                std::cmp::Ordering::Equal => {
+                    home.draws += 1;
+                    home.points += 1;
+                }
+                std::cmp::Ordering::Less => {
+                    home.losses += 1;
+                }
             }
         }
         {
-            let away = totals.get_mut(&fixture.away_team).expect("away team inserted");
+            let away = totals
+                .get_mut(&fixture.away_team)
+                .expect("away team inserted");
             away.played += 1;
             away.goals_for += away_goals;
             away.goals_against += home_goals;
             match outcome {
-                std::cmp::Ordering::Greater => { away.losses += 1; }
-                std::cmp::Ordering::Equal => { away.draws += 1; away.points += 1; }
-                std::cmp::Ordering::Less => { away.wins += 1; away.points += 3; }
+                std::cmp::Ordering::Greater => {
+                    away.losses += 1;
+                }
+                std::cmp::Ordering::Equal => {
+                    away.draws += 1;
+                    away.points += 1;
+                }
+                std::cmp::Ordering::Less => {
+                    away.wins += 1;
+                    away.points += 3;
+                }
             }
         }
     }
-    let mut standings: Vec<LeagueStanding> = totals.into_iter().map(|(team, value)| LeagueStanding {
-        team,
-        played: value.played,
-        wins: value.wins,
-        draws: value.draws,
-        losses: value.losses,
-        goals_for: value.goals_for,
-        goals_against: value.goals_against,
-        points: value.points,
-    }).collect();
+    let mut standings: Vec<LeagueStanding> = totals
+        .into_iter()
+        .map(|(team, value)| LeagueStanding {
+            team,
+            played: value.played,
+            wins: value.wins,
+            draws: value.draws,
+            losses: value.losses,
+            goals_for: value.goals_for,
+            goals_against: value.goals_against,
+            points: value.points,
+        })
+        .collect();
     standings.sort_by(|a, b| {
-        b.points.cmp(&a.points)
+        b.points
+            .cmp(&a.points)
             .then_with(|| (b.goals_for - b.goals_against).cmp(&(a.goals_for - a.goals_against)))
             .then_with(|| b.goals_for.cmp(&a.goals_for))
             .then_with(|| a.team.cmp(&b.team))
     });
     tx.commit().await?;
-    Ok(Json(SeasonView { season_year, fixtures, standings }))
+    Ok(Json(SeasonView {
+        season_year,
+        fixtures,
+        standings,
+    }))
 }
 
 pub async fn advance_time(
@@ -304,13 +347,16 @@ pub async fn advance_time(
     Json(request): Json<AdvanceTimeRequest>,
 ) -> Result<Json<AdvanceTimeResult>, ApiError> {
     if !(1..=31).contains(&request.days) {
-        return Err(ApiError::bad_request("advance_days_must_be_between_1_and_31"));
+        return Err(ApiError::bad_request(
+            "advance_days_must_be_between_1_and_31",
+        ));
     }
     let key = command_key(&headers)?;
     let hash = request_hash(&(campaign_id, &request))?;
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
-    if let Some(value) = reserve(&mut tx, identity.telegram_id, &key, "advance_time", &hash).await? {
+    if let Some(value) = reserve(&mut tx, identity.telegram_id, &key, "advance_time", &hash).await?
+    {
         tx.rollback().await?;
         return replay(value);
     }
@@ -318,7 +364,10 @@ pub async fn advance_time(
     let row: (NaiveDate, Uuid, String, i64) = sqlx::query_as(
         "SELECT game_date,player_character_id,status,seed FROM fd.campaigns WHERE id=$1 FOR UPDATE",
     )
-    .bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
+    .bind(campaign_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
     let (from_date, player_id, initial_status, campaign_seed) = row;
     if initial_status != "active" {
         return Err(ApiError::conflict("campaign_not_active"));
@@ -335,17 +384,30 @@ pub async fn advance_time(
         expired_events += expired.rows_affected() as i64;
 
         if current_date.month() == 1 && current_date.day() == 1 {
-            sqlx::query("UPDATE fd.characters SET age=age+1 WHERE campaign_id=$1 AND life_status='alive'")
-                .bind(campaign_id).execute(&mut *tx).await?;
-            let age: i32 = sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
-                .bind(player_id).bind(campaign_id).fetch_one(&mut *tx).await?;
+            sqlx::query(
+                "UPDATE fd.characters SET age=age+1 WHERE campaign_id=$1 AND life_status='alive'",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
+            let age: i32 =
+                sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
+                    .bind(player_id)
+                    .bind(campaign_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             if age >= 90 {
                 sqlx::query("UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2")
                     .bind(player_id).bind(campaign_id).execute(&mut *tx).await?;
                 let eligible: i64 = sqlx::query_scalar(
                     "SELECT COUNT(*) FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18",
                 ).bind(campaign_id).bind(player_id).fetch_one(&mut *tx).await?;
-                status = if eligible > 0 { "succession_pending" } else { "ended_no_heir" }.to_owned();
+                status = if eligible > 0 {
+                    "succession_pending"
+                } else {
+                    "ended_no_heir"
+                }
+                .to_owned();
                 sqlx::query("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'character_death','The head of the dynasty has died',$2,$3)")
                     .bind(campaign_id).bind(current_date.year()).bind(json!({"deceased_character_id":player_id,"player_age":age,"succession_available":eligible > 0,"game_date":current_date}))
                     .execute(&mut *tx).await?;
@@ -417,20 +479,21 @@ pub async fn advance_time(
         let due_fixtures = sqlx::query_as::<_, (Uuid, i32, i16, String, String)>(
             "SELECT id,season_year,matchday,home_team,away_team FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
-             ORDER BY matchday,id FOR UPDATE"
+             ORDER BY matchday,id FOR UPDATE",
         )
         .bind(campaign_id)
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
-            let score_seed = format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
+            let score_seed =
+                format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
             let digest = Sha256::digest(score_seed.as_bytes());
             let home_goals = (digest[0] % 4) as i16;
             let away_goals = (digest[1] % 4) as i16;
             sqlx::query(
                 "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
-                 WHERE id=$1 AND campaign_id=$2 AND status='scheduled'"
+                 WHERE id=$1 AND campaign_id=$2 AND status='scheduled'",
             )
             .bind(fixture_id)
             .bind(campaign_id)
@@ -450,7 +513,7 @@ pub async fn advance_time(
             });
             sqlx::query(
                 "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
-                 VALUES($1,'match_result',$2,$3,$4)"
+                 VALUES($1,'match_result',$2,$3,$4)",
             )
             .bind(campaign_id)
             .bind(&report)
@@ -475,8 +538,12 @@ pub async fn advance_time(
         }
     }
 
-    let player_age: i32 = sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
-        .bind(player_id).bind(campaign_id).fetch_one(&mut *tx).await?;
+    let player_age: i32 =
+        sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
+            .bind(player_id)
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
     sqlx::query("UPDATE fd.campaigns SET game_date=$2,current_year=$3,status=$4,version=version+1,updated_at=now() WHERE id=$1")
         .bind(campaign_id).bind(current_date).bind(current_date.year()).bind(&status)
         .execute(&mut *tx).await?;
@@ -513,7 +580,9 @@ pub async fn resolve_event(
     let hash = request_hash(&(campaign_id, event_id, &request))?;
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
-    if let Some(value) = reserve(&mut tx, identity.telegram_id, &key, "resolve_event", &hash).await? {
+    if let Some(value) =
+        reserve(&mut tx, identity.telegram_id, &key, "resolve_event", &hash).await?
+    {
         tx.rollback().await?;
         return Ok(Json(value));
     }
@@ -525,34 +594,57 @@ pub async fn resolve_event(
     if event.2 != "pending" {
         return Err(ApiError::conflict("event_already_resolved"));
     }
-    let selected = event.1.as_array()
-        .and_then(|choices| choices.iter().find(|choice| choice["id"].as_str() == Some(request.choice_id.as_str())))
-        .cloned().ok_or_else(|| ApiError::bad_request("unknown_event_choice"))?;
+    let selected = event
+        .1
+        .as_array()
+        .and_then(|choices| {
+            choices
+                .iter()
+                .find(|choice| choice["id"].as_str() == Some(request.choice_id.as_str()))
+        })
+        .cloned()
+        .ok_or_else(|| ApiError::bad_request("unknown_event_choice"))?;
 
     let outcome = match selected["effect"].as_str() {
         Some("club_reputation") => {
-            sqlx::query("UPDATE fd.clubs SET reputation=LEAST(100,reputation+1) WHERE campaign_id=$1")
-                .bind(campaign_id).execute(&mut *tx).await?;
+            sqlx::query(
+                "UPDATE fd.clubs SET reputation=LEAST(100,reputation+1) WHERE campaign_id=$1",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
             "club_reputation_increased"
         }
         Some("club_reputation_2") => {
-            sqlx::query("UPDATE fd.clubs SET reputation=LEAST(100,reputation+2) WHERE campaign_id=$1")
-                .bind(campaign_id).execute(&mut *tx).await?;
+            sqlx::query(
+                "UPDATE fd.clubs SET reputation=LEAST(100,reputation+2) WHERE campaign_id=$1",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
             "club_reputation_increased_by_two"
         }
         Some("dynasty_prestige") => {
             sqlx::query("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
-                .bind(campaign_id).execute(&mut *tx).await?;
+                .bind(campaign_id)
+                .execute(&mut *tx)
+                .await?;
             "dynasty_prestige_increased"
         }
         Some("dynasty_prestige_2") => {
             sqlx::query("UPDATE fd.dynasties SET prestige=prestige+2 WHERE campaign_id=$1")
-                .bind(campaign_id).execute(&mut *tx).await?;
+                .bind(campaign_id)
+                .execute(&mut *tx)
+                .await?;
             "dynasty_prestige_increased_by_two"
         }
         Some("sponsor_cash") => {
-            let club_id: Uuid = sqlx::query_scalar("SELECT id FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at LIMIT 1")
-                .bind(campaign_id).fetch_one(&mut *tx).await?;
+            let club_id: Uuid = sqlx::query_scalar(
+                "SELECT id FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at LIMIT 1",
+            )
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
             let cash_account_id: Uuid = sqlx::query_scalar(
                 "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND account_type='cash' AND owner_type='club' ORDER BY created_at LIMIT 1"
             )
@@ -576,10 +668,14 @@ pub async fn resolve_event(
             let journal_key = format!("sponsor-event-{event_id}");
             sqlx::query(
                 "INSERT INTO fd.journal_entries(id,campaign_id,idempotency_key,memo,game_year)
-                 VALUES($1,$2,$3,'Sponsorship payment', $4)"
+                 VALUES($1,$2,$3,'Sponsorship payment', $4)",
             )
-            .bind(journal_id).bind(campaign_id).bind(journal_key).bind(event.3.year())
-            .execute(&mut *tx).await?;
+            .bind(journal_id)
+            .bind(campaign_id)
+            .bind(journal_key)
+            .bind(event.3.year())
+            .execute(&mut *tx)
+            .await?;
             sqlx::query(
                 "INSERT INTO fd.journal_lines(campaign_id,journal_entry_id,account_id,side,amount_minor)
                  VALUES($1,$2,$3,'debit',25000000),($1,$2,$4,'credit',25000000)"

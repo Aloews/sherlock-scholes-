@@ -190,9 +190,14 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(events_status, StatusCode::OK);
     assert_eq!(events.as_array().expect("event inbox").len(), 6);
-    let event_id = events.as_array().expect("event inbox")
-        .iter().find(|event| event["event_type"] == "club_weekly_review")
-        .expect("weekly review event")["id"].as_str().expect("event id");
+    let event_id = events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "club_weekly_review")
+        .expect("weekly review event")["id"]
+        .as_str()
+        .expect("event id");
 
     let (resolve_status, resolved) = call(
         app.clone(),
@@ -215,8 +220,11 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(resolved_events_status, StatusCode::OK);
     assert_eq!(
-        resolved_events.as_array().expect("event inbox")
-            .iter().find(|event| event["id"] == event_id)
+        resolved_events
+            .as_array()
+            .expect("event inbox")
+            .iter()
+            .find(|event| event["id"] == event_id)
             .expect("resolved event")["status"],
         "resolved"
     );
@@ -227,12 +235,17 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         &format!("/api/v1/campaigns/{campaign_id}/season"),
         None,
         None,
-    ).await;
+    )
+    .await;
     assert_eq!(season_status, StatusCode::OK);
     assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
     assert_eq!(
-        season["fixtures"].as_array().expect("fixtures").iter()
-            .filter(|fixture| fixture["status"] == "played").count(),
+        season["fixtures"]
+            .as_array()
+            .expect("fixtures")
+            .iter()
+            .filter(|fixture| fixture["status"] == "played")
+            .count(),
         2
     );
 
@@ -242,7 +255,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
         Some("calendar-sponsor-tick"),
         Some(json!({"days":4})),
-    ).await;
+    )
+    .await;
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
     assert_eq!(sponsor_tick["generated_events"], 3);
@@ -254,18 +268,25 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         &format!("/api/v1/campaigns/{campaign_id}/events"),
         None,
         None,
-    ).await;
+    )
+    .await;
     assert_eq!(sponsor_events_status, StatusCode::OK);
-    let sponsor_event_id = sponsor_events.as_array().expect("event inbox")
-        .iter().find(|event| event["event_type"] == "sponsor_approach")
-        .expect("sponsor event")["id"].as_str().expect("sponsor event id");
+    let sponsor_event_id = sponsor_events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "sponsor_approach")
+        .expect("sponsor event")["id"]
+        .as_str()
+        .expect("sponsor event id");
     let (sponsor_choice_status, sponsor_choice) = call(
         app.clone(),
         "POST",
         &format!("/api/v1/campaigns/{campaign_id}/events/{sponsor_event_id}/resolve"),
         Some("sponsor-cash-choice-01"),
         Some(json!({"choice_id":"sponsor_cash"})),
-    ).await;
+    )
+    .await;
     assert_eq!(sponsor_choice_status, StatusCode::OK);
     assert_eq!(sponsor_choice["status"], "resolved");
 
@@ -275,10 +296,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         &format!("/api/v1/campaigns/{campaign_id}"),
         None,
         None,
-    ).await;
+    )
+    .await;
     assert_eq!(cash_status, StatusCode::OK);
-    let cash_total: i64 = cash_view["cash_accounts"].as_array().expect("cash accounts")
-        .iter().map(|account| account["balance_minor"].as_i64().expect("cash balance")).sum();
+    let cash_total: i64 = cash_view["cash_accounts"]
+        .as_array()
+        .expect("cash accounts")
+        .iter()
+        .map(|account| account["balance_minor"].as_i64().expect("cash balance"))
+        .sum();
     assert_eq!(cash_total, 3_525_000_000);
 
     let (month_status, month) = call(
@@ -300,11 +326,16 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         &format!("/api/v1/campaigns/{campaign_id}/season"),
         None,
         None,
-    ).await;
+    )
+    .await;
     assert_eq!(final_season_status, StatusCode::OK);
     assert_eq!(
-        final_season["fixtures"].as_array().expect("final fixtures").iter()
-            .filter(|fixture| fixture["status"] == "played").count(),
+        final_season["fixtures"]
+            .as_array()
+            .expect("final fixtures")
+            .iter()
+            .filter(|fixture| fixture["status"] == "played")
+            .count(),
         12
     );
 
@@ -317,9 +348,14 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(expired_list_status, StatusCode::OK);
-    let expired_event_id = expired_list.as_array().expect("event inbox")
-        .iter().find(|event| event["status"] == "expired")
-        .expect("expired weekly event")["id"].as_str().expect("expired event id");
+    let expired_event_id = expired_list
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["status"] == "expired")
+        .expect("expired weekly event")["id"]
+        .as_str()
+        .expect("expired event id");
     let (expired_resolve_status, _) = call(
         app.clone(),
         "POST",
@@ -365,11 +401,13 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .execute(&mut *boundary_tx)
         .await
         .expect("prepare eligible heir");
-    sqlx::query("UPDATE fd.campaigns SET game_date=DATE '2026-12-31',current_year=2026 WHERE id=$1")
-        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
-        .execute(&mut *boundary_tx)
-        .await
-        .expect("set calendar before birthday");
+    sqlx::query(
+        "UPDATE fd.campaigns SET game_date=DATE '2026-12-31',current_year=2026 WHERE id=$1",
+    )
+    .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+    .execute(&mut *boundary_tx)
+    .await
+    .expect("set calendar before birthday");
     boundary_tx.commit().await.expect("commit boundary fixture");
     let (last_advance_status, last_advance) = call(
         app.clone(),
@@ -495,12 +533,17 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .execute(&mut *second_boundary_tx)
         .await
         .expect("prepare second founder age boundary");
-    sqlx::query("UPDATE fd.campaigns SET game_date=DATE '2027-12-31',current_year=2027 WHERE id=$1")
-        .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
-        .execute(&mut *second_boundary_tx)
+    sqlx::query(
+        "UPDATE fd.campaigns SET game_date=DATE '2027-12-31',current_year=2027 WHERE id=$1",
+    )
+    .bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID"))
+    .execute(&mut *second_boundary_tx)
+    .await
+    .expect("set second calendar boundary");
+    second_boundary_tx
+        .commit()
         .await
-        .expect("set second calendar boundary");
-    second_boundary_tx.commit().await.expect("commit second boundary fixture");
+        .expect("commit second boundary fixture");
     let (second_advance_status, second_advance) = call(
         app.clone(),
         "POST",
