@@ -78,7 +78,7 @@ CREATE TABLE fd.match_events (
   fixture_id uuid NOT NULL,
   sequence smallint NOT NULL CHECK (sequence >= 0),
   minute smallint NOT NULL CHECK (minute BETWEEN 0 AND 130),
-  event_type text NOT NULL CHECK (event_type IN ('goal','substitution','half_time','full_time','yellow_card','red_card','injury')),
+  event_type text NOT NULL CHECK (event_type IN ('shot','goal','save','miss','substitution','half_time','full_time','yellow_card','red_card','injury')),
   team_id uuid,
   player_id uuid,
   related_player_id uuid,
