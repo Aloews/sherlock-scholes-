@@ -367,4 +367,81 @@ A GitHub secret name is not proof that a runtime has received the value. The syn
 - The queued Football Dynasty issue #394 was stopped after the configured two corrective retries: the generated patch for `services/football-dynasty/src/roster.rs` did not apply (line-context mismatch). No PR, production migration, or production data write was made; the failure marker prevents an automatic third retry.
 - The worker now falls back to exact full-file replacement when a bounded patch fails, formats changed Rust files, compiles/clippies locally where possible, and creates only a draft PR for exact-head GitHub Actions validation. The external reviewer waits for all GitHub Actions checks to pass before reviewing; failed or timed-out validation closes the draft PR.
 - Implementer cadence is 30 minutes to allow long generation and CI gates without overlapping task runs; external reviewer cadence remains five minutes.
-- The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR preview deployments are blocked by the free-plan daily deployment cap.
+- The secret-sync workflow has not succeeded: GitHub Actions exposed only `SUPABASE_ACCESS_TOKEN`; `RAILWAY`, `CLOUDFLARE_API_TOKEN`, `FLY_API_TOKEN`, `NEON_API_KEY`, and `RENDER_API_KEY` were absent. The existing Supabase token is rejected by the Management API with HTTP 401. Vercel preflight is connected and reports production READY; PR previews are intentionally skipped by the repository's Ignored Build Step unless the commit message contains `[vercel-preview]`.
+
+
+## Agent runtime single-repository safety gate — 2026-11-18
+
+- Read-only Railway inspection of production environment `distinguished-transformation` found two live cron services: `stream-service` (implementer) and `sherlock-ai-bot` (reviewer). Both have a successful latest deployment and report zero recent failures/warnings.
+- Both services are configured with a seven-repository allowlist. Their 2026-11-18 runtime logs repeatedly report `Worker disabled; GitHub preflight succeeded for 7 repositories`. Therefore the services are scheduled/preflighting, but agent task execution is not active. No Starimg completion was requested by those runs.
+- The old PR #406 description stated that both services were scoped to Sherlock; current live logs contradict that statement. Do not enable either worker until the scope is corrected.
+- PR #440 adds `SHERLOCK_EXECUTION_SCOPE`: it ignores the legacy multi-repository list, forces `Aloews/sherlock-scholes-`, rejects simultaneous USH scope, and requires an explicit immutable `SHERLOCK_BASE_BRANCH`. It does not turn on `AGENT_ENABLED` or mutate Railway configuration.
+- Exact-head CI for PR #440 passed all 12 workflows on `649e91c723def54f2b7d7248fde330fee51cb7d1`; worker policy suite #44361319311, main CI #44361319284 and Football Dynasty Rust #44361319016 succeeded. Both implementer and reviewer Railway services remain disabled; spend, branch and Mini App release gates remain separate.
+
+- Vercel preview attempts for PR #439 were canceled by the repository's Ignored Build Step because the commit message did not contain `[vercel-preview]`. This is an intentional preview opt-in gate; no plan-quota failure was established, and the gate was not bypassed.
+
+
+### Explicit worker repository override guard — 2026-11-18
+
+- A second-pass review found that `Worker(repo=...)` could override the forced repository scope even though the normal `Worker()` path was pinned. This was a real constructor-level escape hatch.
+- The constructor now applies Sherlock/USH scope before considering an explicit repo argument and rejects any conflicting explicit repository. Added a regression test that passes `Aloews/Novel-forge` to a Sherlock-scoped constructor and expects a fail-closed error.
+- Exact-head CI for PR #440 passed all 12 workflows on `e72dae4c4cc38b301c8864dfc0264fb00a5332bd`: main CI #44371414848, autonomous-agent worker CI #44371414678, Football Dynasty Rust #44371415003, and nine regression workflows all succeeded. Railway services remain disabled; no environment configuration changed.
+
+
+- The first regression run for the explicit-override guard failed because the test's environment patch did not reliably isolate the scope helper in the nested constructor test. The test now stubs the scope predicates directly, so it asserts the actual guard deterministically without requiring any external credentials. The resulting exact-head CI passed all 12 workflows on `e72dae4c4cc38b301c8864dfc0264fb00a5332bd`.
+
+
+### Explicit worker repository override — final exact-head CI — 2026-11-18
+
+- PR #440 latest implementation head: `c0ab2fef363bc780b445edcc4f9dcabcc62c0bbe`.
+- All 12 exact-head workflows completed successfully: autonomous-agent worker CI #44382409327, main CI #44382409449, Football Dynasty Rust #44382409373, plus nine regression workflows (#44382409318, #44382409339, #44382409444, #44382409501, #44382409506, #44382409621, #44382409756, #44382409324, #44382409347).
+- This validates the PR code and regression suite. It does not validate a live Telegram Mini App session or authorize enabling the Railway workers. Both Railway services remain disabled pending owner-approved spend limits, branch settings and live smoke acceptance.
+
+
+### Worker scope regression test isolation — 2026-11-18
+
+- The first exact-head worker CI run exposed a test-fixture issue: the explicit-repository override assertion patched the helper function while not isolating the worker's preflight dependencies. The assertion reached token preflight instead of the repository-scope guard.
+- Reworked the regression to use an explicit isolated environment and mock only network preflight. The test now exercises the real scope environment parser and constructor rejection path without requiring external credentials or network access.
+- The latest revision is awaiting exact-head CI. This change does not alter production credentials or enable the Railway workers.
+
+
+### Sherlock worker scope regression — latest exact-head result — 2026-11-18
+
+- PR #440 exact current head `5b0eac018d737dfae4f62e1f970c1360ad8682d8` completed all 12 associated GitHub Actions workflows successfully on 2026-11-18: main CI #44389403089, Football Dynasty Rust #44389403353, autonomous-agent worker CI #44389403256, and nine regression workflows (#44389403021, #44389403347, #44389403415, #44389403057, #44389403125, #44389403051, #44389403160, #44389403056, #44389403208).
+- The regression covers single-repository selection, rejection of explicit cross-repository constructor overrides, mutual exclusion with USH scope, and mandatory immutable base-branch resolution.
+- This remains code-level validation only. Railway's two scheduled services remain disabled; no production environment variables, model spending, or deployment state were changed. Live Telegram Mini App acceptance is still outstanding.
+
+
+### Worker scope override regression test correction — 2026-11-19
+
+- Exact-head run #44370659777 caught a test-isolation issue: the explicit-repository override test reached the required GitHub credential lookup instead of the intended fail-closed scope guard. The production scope guard itself is before credential access; the regression test now stubs the required-env lookup so it isolates that invariant and cannot fail due to unrelated test environment state.
+- Correction commit: `8024a198dbbb26daecc8dbbf131deda332a78ec3`. Exact-head CI is pending.
+
+
+### Worker scope override hardening verification — 2026-11-19
+
+- Exact code revision `8024a198dbbb26daecc8dbbf131deda332a78ec3` passed all 12 workflows: main CI #44408253253, autonomous-agent-worker-ci #44408253048, Football Dynasty Rust #44408252957 (rerun after cancellation), and nine regression workflows.
+- The docs-only map refresh is commit `c18fdab293137ad7710fe610cbdf20c300939454`; no code changed after the verified implementation SHA.
+- Railway workers remain disabled; this verifies the code and tests, not live worker activation or Starimg execution.
+
+
+### Worker explicit-repository scope regression test repair — 2026-11-19
+
+- Exact-head worker CI #44370659777 failed one new test because its second constructor call omitted required `GITHUB_TOKEN` and `STARIMG_API_KEY`; the constructor stopped at credential validation before reaching the intended repository-scope guard.
+- Updated the test fixture to provide dummy credentials and retained the preflight mock. No production credentials or runtime configuration were changed.
+- Test fixture commit: `9146d999597aebc02aeecca6cae7500b2666a063`. New exact-head CI is required.
+
+
+### Live Railway worker state — read-only evidence 2026-11-19
+
+- Railway production project `distinguished-transformation` has two cron services: `stream-service` and `sherlock-ai-bot`, both scheduled every five minutes. Latest executions at 2026-11-18 22:10 UTC succeeded; no failed deployments or active Railway warnings were reported in the preceding 24 hours.
+- Runtime logs for both services explicitly say `Worker disabled; GitHub preflight succeeded for 7 repositories`. Thus the containers start and validate credentials/repository access, but they do not intake or execute tasks.
+- Both live deployments still run commit `c5e6a45080e897ae3bccbb424963bcc9247d096c` from branch `feat/sherlock-multi-agent-runtime-20261113`; PR #440's scope-hardening code has not been deployed.
+- No Railway variables, deployment settings, cron schedules, secrets or live services were changed. Activation remains gated on merge/deployment, explicit single-repository scope configuration, base-branch pinning, and an owner-approved model/CI spend ceiling.
+
+
+### Worker single-repository scope — latest exact-head verification — 2026-11-19
+
+- PR #440 exact head `516d3b9247cef5732f23155817789fe169d3a082` passed all 12 GitHub Actions workflows: main CI #44409702695, autonomous-agent worker CI #44409702660, Football Dynasty Rust #44409702517 and nine regression workflows (#44409702457, #44409702564, #44409702602, #44409702625, #44409702631, #44409702652, #44409702734, #44409702741, #44409704348).
+- The tests cover fail-closed repository scope, explicit constructor override rejection, scope exclusivity, path policy and immutable base-branch validation.
+- Railway logs still show both scheduled workers disabled and preflighting seven repositories. This PR does not change Railway configuration or activate workers. Activation and spend ceiling remain explicit release gates.

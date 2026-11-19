@@ -38,7 +38,18 @@ Provider credentials are synced from GitHub Actions repository secrets by `.gith
 
 The live worker currently implements only the GitHub issue/PR path. Architect, builder, tester and recovery are not yet separate Railway consumers of the USH durable queues. Do not infer those roles from the API's role-token schema.
 
-Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The live repository list is configured separately through `GITHUB_REPOSITORIES`; a configured repository is not proof that task execution is enabled. Live logs previously reported `Worker disabled`, and execution must remain disabled until the relevant acceptance gates pass. No public domain is required.
+Both services use the same pinned source branch and Dockerfile root /services/autonomous-agent. The live Railway configuration currently contains a seven-repository allowlist; runtime logs confirm both workers report `Worker disabled`. The previous PR description's claim that the live services are restricted to Sherlock is not supported by current environment evidence. The new `SHERLOCK_EXECUTION_SCOPE` fail-closed mode forces the worker to `Aloews/sherlock-scholes-` regardless of the broader list. Do not enable a worker until that scope is configured, exact-head tests pass, and the owner has approved model/CI spend. No public domain is required.
+
+### Sherlock Scholes adapter
+
+The default worker mode supports a legacy repository allowlist. It must not be used for live Sherlock task execution because the Railway configuration currently contains seven repositories.
+
+- `SHERLOCK_EXECUTION_SCOPE=false` by default. When true, the worker ignores `GITHUB_REPOSITORIES` and `GITHUB_REPOSITORY` and instantiates only `Aloews/sherlock-scholes-`.
+- The Sherlock scope and USH scope are mutually exclusive; setting both fails before repository preflight.
+- The scope uses only the existing Sherlock path allowlist. Agent runtime source, GitHub workflows, secrets, environment files, lockfiles and deployment configuration remain excluded.
+- `SHERLOCK_BASE_BRANCH` is mandatory when the scope is enabled. Preflight verifies the branch name and resolves it to a 40-character immutable SHA before the worker accepts any task.
+- The scope does not enable execution. `AGENT_ENABLED` remains a separate, default-off gate; no Railway variable or service configuration is changed by this code.
+- The implementer and reviewer must each be configured for this same repository scope before either is activated. Model generation and CI usage remain subject to an explicit spend ceiling.
 
 ### Universal Service Hub adapter
 
@@ -63,6 +74,8 @@ Common:
 - AGENT_ROLE=implementer or reviewer
 - GITHUB_REPOSITORIES — explicit repository allowlist; ignored only while `USH_EXECUTION_SCOPE=true`
 - USH_EXECUTION_SCOPE=false by default; set true only for the isolated USH execution phase
+- SHERLOCK_EXECUTION_SCOPE=false by default; set true only after the Sherlock worker scope is reviewed
+- SHERLOCK_BASE_BRANCH=main (required only when SHERLOCK_EXECUTION_SCOPE=true)
 - USH_BASE_BRANCH — required when USH execution scope is enabled
 - GITHUB_TOKEN
 - STARIMG_API_KEY
@@ -84,7 +97,7 @@ Reviewer-only existing secrets:
 - SUPABASE_ACCESS_TOKEN
 - VERCEL_TOKEN
 
-The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers product deployments, or writes product data. Vercel's latest production deployment is READY, but preview deployments are currently blocked by the account's free-plan 100-deployments-per-day limit. Missing provider credentials are reported as not_configured rather than treated as connected.
+The reviewer uses only read-only GET requests and Railway GraphQL queries. It never changes infrastructure, reads or prints secret values, applies migrations, triggers product deployments, or writes product data. Vercel's latest production deployment is READY. PR preview deployments are intentionally skipped by the repository's Ignored Build Step unless the commit message contains `[vercel-preview]`. Missing provider credentials are reported as not_configured rather than treated as connected.
 
 ## Safety and limits
 

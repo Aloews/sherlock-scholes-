@@ -122,6 +122,87 @@ class WorkerPolicyTests(unittest.TestCase):
             self.assertFalse(safe_path("docs/MAP.md", prefixes))
             self.assertFalse(safe_path("universal-service-hub/.env", prefixes))
 
+    def test_sherlock_execution_scope_forces_one_repository_and_only_sherlock_paths(self):
+        from worker import (
+            SHERLOCK_ALLOWED_PREFIXES,
+            SHERLOCK_REPOSITORY,
+            allowed_prefixes_for_repo,
+            configured_repositories,
+        )
+
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "false",
+            "SHERLOCK_EXECUTION_SCOPE": "true",
+        }):
+            repositories = configured_repositories(
+                "Aloews/full,Aloews/Novel-forge,Aloews/russian-dev-projects",
+                "Aloews/full",
+            )
+            self.assertEqual(repositories, [SHERLOCK_REPOSITORY])
+            self.assertEqual(SHERLOCK_REPOSITORY, "Aloews/sherlock-scholes-")
+            self.assertEqual(allowed_prefixes_for_repo(SHERLOCK_REPOSITORY), SHERLOCK_ALLOWED_PREFIXES)
+            with self.assertRaisesRegex(RuntimeError, "only Aloews/sherlock-scholes-"):
+                allowed_prefixes_for_repo("Aloews/Novel-forge")
+
+            prefixes = allowed_prefixes_for_repo(SHERLOCK_REPOSITORY)
+            self.assertTrue(safe_path("src/screens/HomeScreen.tsx", prefixes))
+            self.assertTrue(safe_path("services/football-dynasty/src/main.rs", prefixes))
+            self.assertFalse(safe_path("services/autonomous-agent/worker.py", prefixes))
+            self.assertFalse(safe_path(".github/workflows/deploy.yml", prefixes))
+            self.assertFalse(safe_path(".env.production", prefixes))
+
+    def test_worker_constructor_uses_forced_scope_not_first_legacy_repository(self):
+        from worker import SHERLOCK_REPOSITORY, Worker
+
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "false",
+            "SHERLOCK_EXECUTION_SCOPE": "true",
+            "GITHUB_REPOSITORIES": "Aloews/full,Aloews/Novel-forge,Aloews/russian-dev-projects",
+            "GITHUB_TOKEN": "test-token",
+            "STARIMG_API_KEY": "test-key",
+        }):
+            with patch.object(Worker, "_preflight"):
+                worker = Worker()
+            self.assertEqual(worker.repo, SHERLOCK_REPOSITORY)
+            self.assertEqual(worker.repo, "Aloews/sherlock-scholes-")
+            with patch.dict(os.environ, {
+                "USH_EXECUTION_SCOPE": "false",
+                "SHERLOCK_EXECUTION_SCOPE": "true",
+                "GITHUB_TOKEN": "test-token",
+                "STARIMG_API_KEY": "test-key",
+            }), patch.object(Worker, "_preflight"):
+                with self.assertRaisesRegex(RuntimeError, "Only Aloews/sherlock-scholes-"):
+                    Worker(repo="Aloews/Novel-forge")
+
+    def test_execution_scopes_are_mutually_exclusive(self):
+        from worker import configured_repositories
+
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "true",
+            "SHERLOCK_EXECUTION_SCOPE": "true",
+        }):
+            with self.assertRaisesRegex(RuntimeError, "mutually exclusive"):
+                configured_repositories("Aloews/sherlock-scholes-", "Aloews/sherlock-scholes-")
+
+    def test_sherlock_preflight_requires_and_verifies_explicit_base_branch(self):
+        from worker import Worker
+
+        worker = Worker.__new__(Worker)
+        worker.repo = "Aloews/sherlock-scholes-"
+        worker.token = "test-token"
+        with patch.dict(os.environ, {
+            "USH_EXECUTION_SCOPE": "false",
+            "SHERLOCK_EXECUTION_SCOPE": "true",
+            "SHERLOCK_BASE_BRANCH": "main",
+        }):
+            with patch("worker.request_json", side_effect=[
+                {"default_branch": "main", "permissions": {"push": True, "pull": True}},
+                {"commit": {"sha": "a" * 40}},
+            ]) as request:
+                worker._preflight()
+        self.assertEqual(worker.default_branch, "main")
+        self.assertEqual(request.call_count, 2)
+
     def test_ush_issue_classifier_rejects_unrelated_repo_tasks(self):
         from worker import is_ush_issue
 
