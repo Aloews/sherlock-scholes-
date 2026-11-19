@@ -54,6 +54,7 @@ CREATE TABLE fd.team_tactics (
 );
 
 ALTER TABLE fd.season_fixtures
+  ADD CONSTRAINT fd_season_fixtures_campaign_id_unique UNIQUE (campaign_id,id),
   ADD COLUMN home_team_id uuid,
   ADD COLUMN away_team_id uuid;
 
@@ -158,24 +159,29 @@ BEGIN
     CASE WHEN n=1 THEN 'goalkeeper' WHEN n BETWEEN 2 AND 7 THEN 'defender'
          WHEN n BETWEEN 8 AND 13 THEN 'midfielder' ELSE 'forward' END,
     n,
-    19 + mod(abs(hashtext(t.name || n::text))::bigint,14)::smallint,
-    48 + mod(abs(hashtext(t.name || n::text || 'pace'))::bigint,43)::smallint,
-    45 + mod(abs(hashtext(t.name || n::text || 'shot'))::bigint,46)::smallint,
-    45 + mod(abs(hashtext(t.name || n::text || 'pass'))::bigint,46)::smallint,
-    45 + mod(abs(hashtext(t.name || n::text || 'def'))::bigint,46)::smallint,
-    48 + mod(abs(hashtext(t.name || n::text || 'phys'))::bigint,43)::smallint,
-    CASE WHEN n=1 THEN 60 + mod(abs(hashtext(t.name || n::text || 'gk'))::bigint,41)::smallint
+    19 + mod(abs(hashtext(t.name || n::text)::bigint),14)::smallint,
+    48 + mod(abs(hashtext(t.name || n::text || 'pace')::bigint),43)::smallint,
+    45 + mod(abs(hashtext(t.name || n::text || 'shot')::bigint),46)::smallint,
+    45 + mod(abs(hashtext(t.name || n::text || 'pass')::bigint),46)::smallint,
+    45 + mod(abs(hashtext(t.name || n::text || 'def')::bigint),46)::smallint,
+    48 + mod(abs(hashtext(t.name || n::text || 'phys')::bigint),43)::smallint,
+    CASE WHEN n=1 THEN 60 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),41)::smallint
          ELSE 5 + mod(abs(hashtext(t.name || n::text || 'gk'))::bigint,35)::smallint END,
-    55 + mod(abs(hashtext(t.name || n::text || 'sta'))::bigint,41)::smallint,
-    60,0,65 + mod(abs(hashtext(t.name || n::text || 'pot'))::bigint,31)::smallint,
-    1000000 + mod(abs(hashtext(t.name || n::text || 'mv'))::bigint,9000000)::bigint,
-    10000 + mod(abs(hashtext(t.name || n::text || 'wage'))::bigint,30000)::bigint,
+    55 + mod(abs(hashtext(t.name || n::text || 'sta')::bigint),41)::smallint,
+    60,0,65 + mod(abs(hashtext(t.name || n::text || 'pot')::bigint),31)::smallint,
+    1000000 + mod(abs(hashtext(t.name || n::text || 'mv')::bigint),9000000)::bigint,
+    10000 + mod(abs(hashtext(t.name || n::text || 'wage')::bigint),30000)::bigint,
     make_date((SELECT current_year FROM fd.campaigns WHERE id=p_campaign_id)+3,6,30)
   FROM (
     SELECT id,name,row_number() OVER(ORDER BY name)::integer AS team_rank
     FROM fd.teams WHERE campaign_id=p_campaign_id
-  ) t CROSS JOIN generate_series(1,18) AS n
+  ) t CROSS JOIN generate_series(1,18) AS gs(n)
   ON CONFLICT(campaign_id,team_id,shirt_number) DO NOTHING;
+
+  UPDATE fd.season_fixtures f SET home_team_id=ht.id,away_team_id=at.id
+  FROM fd.teams ht,fd.teams at
+  WHERE f.campaign_id=p_campaign_id AND ht.campaign_id=f.campaign_id AND ht.name=f.home_team
+    AND at.campaign_id=f.campaign_id AND at.name=f.away_team;
 
   INSERT INTO fd.match_lineups(campaign_id,fixture_id,team_id,player_id,role,position,shirt_number)
   SELECT f.campaign_id,f.id,p.team_id,p.id,
