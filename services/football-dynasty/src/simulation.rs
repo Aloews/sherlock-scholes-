@@ -176,6 +176,10 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
+        let expired = sqlx::query("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
+            .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
+        expired_events += expired.rows_affected() as i64;
+
         if current_date.month() == 1 && current_date.day() == 1 {
             sqlx::query("UPDATE fd.characters SET age=age+1 WHERE campaign_id=$1 AND life_status='alive'")
                 .bind(campaign_id).execute(&mut *tx).await?;
@@ -194,10 +198,6 @@ pub async fn advance_time(
                 break;
             }
         }
-
-        let expired = sqlx::query("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
-            .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
-        expired_events += expired.rows_affected() as i64;
 
         // One weekly board review is created at most once per campaign/week.
         if current_date.weekday().number_from_monday() == 1 {
