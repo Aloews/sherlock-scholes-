@@ -495,3 +495,11 @@ Required information architecture:
 - Initial agent-cost record includes the failed issue #441 retry: observed worker window 10:36:36Z–10:41:07Z (~4m31s elapsed), architect handoff, two implementation attempts and review start. Provider token usage was not present in the persisted failure comment, so usage and monetary cost remain unknown. No accepted PR or production change resulted.
 - This baseline explicitly excludes unmeasured human/assistant time and unverified infrastructure charges. Future task records must append actual metrics and link evidence.
 - Do not produce a project-completion percentage from token budget. Forecast delivery from accepted backlog items, measured throughput, actual token burn and infrastructure spend, with confidence ranges.
+
+
+**Accounting automation backlog:**
+- Instrument both implementer and reviewer worker roles to persist one task ledger record per invocation, including queue/start/end timestamps, phase durations, selected model, request IDs, provider-reported input/output/cache tokens, retries, failure category, and PR/commit/CI outcome.
+- Persist usage even when the task fails before opening a PR; do not rely only on a success log or in-memory list. The task record must survive worker restart and be queryable by project/task/date.
+- Add infrastructure cost imports or explicit manual invoice entries for Railway, Supabase, Vercel and external services. Never estimate provider charges without a verified rate card or billing export.
+- Add reconciliation checks for missing usage, duplicate task records, negative durations, missing model IDs and task runs with no terminal outcome. Report missing measurements as unknown, not zero.
+- Acceptance: a deliberately failed test task still produces a durable record with all provider usage received before failure; a successful task records architect, implementation, retry, reviewer and CI phases separately; aggregate reports reconcile to provider usage exports for the same period.
