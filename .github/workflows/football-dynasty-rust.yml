@@ -14,13 +14,10 @@ on:
       - "supabase/migrations/20261119150000_football_dynasty_season_year_alignment.sql"
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
-  workflow_dispatch: {}
   push:
-    branches: [main, "feat/dynasty-matchday-decisions-20261119"]
+    branches: [main]
     paths:
       - "services/football-dynasty/**"
-      - "docs/football-dynasty/**"
-      - "docs/MAP.md"
       - "supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql"
       - "supabase/migrations/20261119123000_football_dynasty_event_deadlines.sql"
       - "supabase/migrations/20261119140000_football_dynasty_season_fixtures.sql"
