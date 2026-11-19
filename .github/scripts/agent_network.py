@@ -79,7 +79,14 @@ def record_fable_usage(purpose, max_tokens, status, usage=None, request_id=None,
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "")
     if summary_path:
         try:
-            with Path(summary_path).open("a", encoding="utf-8") as summary:
+            summary_file = Path(summary_path)
+            with summary_file.open("a", encoding="utf-8") as summary:
+                if summary_file.stat().st_size == 0:
+                    summary.write(
+                        "### Starimg usage (no prompts or completions)\\n\\n"
+                        "| Provider | Purpose | Status | Input | Output | Cache read | Cache write | Max output | Request ID |\\n"
+                        "|---|---|---|---:|---:|---:|---:|---:|---|\\n"
+                    )
                 summary.write(
                     "| Starimg | " + str(purpose) + " | " + str(status) + " | "
                     + str(record["input_tokens"]) + " | " + str(record["output_tokens"]) + " | "
