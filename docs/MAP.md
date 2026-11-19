@@ -152,9 +152,9 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 |---|---|---|
 | E0 | Pure deterministic match core | Same inputs replay identically; seed changes stream; validated ratings; table reconciliation |
 | E1 | Player/squad/tactics | Campaign roster persistence, XI selection, formations, scorer/assist attribution, legal substitutions and player match-stat persistence; manager-controlled lineups/tactics UI and discipline/injury event logic remain |
-| E2 | Competition/calendar | Round-robin and cup draws, dates, tie-breakers, registration and eligibility invariants |
+| E2 | Competition/calendar | Deterministic circle-method double round-robin scheduler is implemented and used for new campaign calendars; cups, season rollover, tie-breakers, registration and postponement rules remain |
 | E3 | Matchday integration | Due fixtures now route through Rust and persist score, match events, lineups and player stats in the calendar transaction; verify integration/replay/idempotency and production migration before acceptance |
-| E4 | Player lifecycle | Training, development, morale, fatigue, injuries, suspensions and contracts |
+| E4 | Player lifecycle | Pure deterministic training/development, fatigue recovery, match-load, contract-expiry and market-value rules are started; database-backed training commands, injuries, discipline and contract lifecycle remain |
 | E5 | Club finance and transfers | Double-entry ledger, wage budget, transfer negotiation, agent fees, FFP and insolvency |
 | E6 | Staff, rivals and dynasty world | AI agents obey the same domain constraints; explainable decisions and append-only history |
 | E7 | Scale and release | Benchmarks, load tests, bounded concurrency, migration/replay tests, release candidate smoke tests |
@@ -506,6 +506,13 @@ Required information architecture:
 **Rust formatting repair — 2026-11-19:** Exact-head Rust CI exposed formatting-only diffs in the Football Dynasty HTTP, module, simulation and lifecycle-test files. A guarded main-branch CI step is being used to apply rustfmt to `services/football-dynasty/` only, then re-run the normal formatting, Clippy, test and RLS checks. No behavior change is intended.
 
 
+
+
+
+**Competition and player lifecycle domain — 2026-11-19 (PR #447, validation pending):**
+- Added a pure circle-method round-robin scheduler with home/away balancing, return legs, odd-team byes, duplicate-team validation and matchday bounds. New campaigns use it to generate their fixture calendar from persisted team IDs rather than a hard-coded twelve-row schedule.
+- Added pure player-career rules for potential-capped training gains, intensity/fatigue trade-offs, recovery, match appearances and statistics, suspension counters, contract expiry and transparent heuristic market-value estimates.
+- The lifecycle module is not yet wired to player-facing training commands or a full calendar-driven career processor. Its rules are unit-tested in source; current-head CI is the acceptance gate.
 
 
 **Rust player-match integration — 2026-11-19 (PR #447, validation pending):**
