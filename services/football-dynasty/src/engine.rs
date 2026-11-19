@@ -28,11 +28,11 @@ pub struct MatchResult {
     pub events: Vec<MatchEvent>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EngineError { SameTeam, InvalidMinutes(u8), RatingOutOfRange(&'static str, u8) }
+pub enum EngineError { SameTeam, InvalidMinutes(u8), RatingOutOfRange(&'static str, u8), SelfFixture }
 impl std::fmt::Display for EngineError {
     fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result {
         match self { Self::SameTeam=>write!(f,"same team"), Self::InvalidMinutes(v)=>write!(f,"invalid minutes: {v}"),
-            Self::RatingOutOfRange(k,v)=>write!(f,"{k} out of range: {v}") }
+            Self::RatingOutOfRange(k,v)=>write!(f,"{k} out of range: {v}"), Self::SelfFixture=>write!(f,"fixture cannot contain the same team twice") }
     }
 }
 impl std::error::Error for EngineError {}
@@ -63,7 +63,8 @@ pub fn simulate_match(seed:u64,match_id:Uuid,home:&TeamProfile,away:&TeamProfile
     for minute in 1..=rules.minutes {
         if minute==rules.minutes/2 { events.push(MatchEvent{sequence:events.len() as u16,minute,kind:MatchEventKind::HalfTime,team_id:None}); }
         let hp=probability(home,away,rules.home_advantage_milli);
-        let ap=probability(away,home,0); hx+=hp; ax+=ap;
+        let ap=probability(away,home,0); // Convert per-minute probability (millionths) to expected goals (thousandths).
+        hx+=hp/1_000; ax+=ap/1_000;
         if hg<12 && roll(seed,match_id,minute,home.id,0)<hp {
             hg+=1; events.push(MatchEvent{sequence:events.len() as u16,minute,kind:MatchEventKind::Goal,team_id:Some(home.id)});
         }
@@ -84,7 +85,8 @@ pub struct TeamStanding { pub team_id:Uuid,pub played:u32,pub wins:u32,pub draws
     pub goals_for:u32,pub goals_against:u32,pub points:u32 }
 impl TeamStanding { pub fn goal_difference(&self)->i64{self.goals_for as i64-self.goals_against as i64} }
 /// Rebuilds the table exclusively from completed fixture results.
-pub fn calculate_standings(fixtures:&[PlayedFixture])->Vec<TeamStanding>{
+pub fn calculate_standings(fixtures:&[PlayedFixture])->Result<Vec<TeamStanding>,EngineError>{
+    if fixtures.iter().any(|f| f.home_team_id == f.away_team_id) { return Err(EngineError::SelfFixture); }
     let mut map:BTreeMap<Uuid,TeamStanding>=BTreeMap::new();
     for f in fixtures {
         let h=map.entry(f.home_team_id).or_insert_with(||TeamStanding{team_id:f.home_team_id,..Default::default()});
@@ -99,7 +101,7 @@ pub fn calculate_standings(fixtures:&[PlayedFixture])->Vec<TeamStanding>{
     }
     let mut rows:Vec<_>=map.into_values().collect();
     rows.sort_by(|a,b|b.points.cmp(&a.points).then_with(||b.goal_difference().cmp(&a.goal_difference()))
-        .then_with(||b.goals_for.cmp(&a.goals_for)).then_with(||a.team_id.cmp(&b.team_id)));rows
+        .then_with(||b.goals_for.cmp(&a.goals_for)).then_with(||a.team_id.cmp(&b.team_id)));Ok(rows)
 }
 
 #[cfg(test)]
@@ -109,5 +111,7 @@ mod tests{
  #[test]fn simulation_replays_identically(){let(h,a,id)=(team(1),team(2),Uuid::from_u128(3));assert_eq!(simulate_match(9,id,&h,&a,MatchRules::default()).unwrap(),simulate_match(9,id,&h,&a,MatchRules::default()).unwrap());}
  #[test]fn seed_changes_event_stream(){let(h,a,id)=(team(1),team(2),Uuid::from_u128(3));assert_ne!(simulate_match(9,id,&h,&a,MatchRules::default()).unwrap().events,simulate_match(10,id,&h,&a,MatchRules::default()).unwrap().events);}
  #[test]fn invalid_inputs_are_rejected(){let mut h=team(1);h.attack=101;assert!(matches!(simulate_match(1,Uuid::from_u128(3),&h,&team(2),MatchRules::default()),Err(EngineError::RatingOutOfRange(..))));}
- #[test]fn table_points_and_goal_difference_reconcile(){let(a,b,c)=(Uuid::from_u128(1),Uuid::from_u128(2),Uuid::from_u128(3));let rows=calculate_standings(&[PlayedFixture{home_team_id:a,away_team_id:b,home_goals:2,away_goals:0},PlayedFixture{home_team_id:c,away_team_id:a,home_goals:1,away_goals:1},PlayedFixture{home_team_id:b,away_team_id:c,home_goals:3,away_goals:1}]);assert_eq!(rows[0].team_id,a);assert_eq!((rows[0].played,rows[0].points,rows[0].goal_difference()),(2,4,2));assert_eq!(rows.iter().map(|r|r.points).sum::<u32>(),7);}
+ #[test]fn table_points_and_goal_difference_reconcile(){let(a,b,c)=(Uuid::from_u128(1),Uuid::from_u128(2),Uuid::from_u128(3));let rows=calculate_standings(&[PlayedFixture{home_team_id:a,away_team_id:b,home_goals:2,away_goals:0},PlayedFixture{home_team_id:c,away_team_id:a,home_goals:1,away_goals:1},PlayedFixture{home_team_id:b,away_team_id:c,home_goals:3,away_goals:1}]).unwrap();assert_eq!(rows[0].team_id,a);assert_eq!((rows[0].played,rows[0].points,rows[0].goal_difference()),(2,4,2));assert_eq!(rows.iter().map(|r|r.points).sum::<u32>(),7);}
+ #[test]fn standings_reject_self_fixtures(){let a=Uuid::from_u128(1);assert_eq!(calculate_standings(&[PlayedFixture{home_team_id:a,away_team_id:a,home_goals:1,away_goals:0}]),Err(EngineError::SelfFixture));}
+ #[test]fn expected_goals_are_in_milli_xg_units(){let(h,a,id)=(team(1),team(2),Uuid::from_u128(3));let r=simulate_match(9,id,&h,&a,MatchRules::default()).unwrap();assert!(r.home_xg_milli<10_000);assert!(r.away_xg_milli<10_000);}
 }
