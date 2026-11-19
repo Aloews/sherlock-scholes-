@@ -41,7 +41,7 @@ impl Formation {
 
     fn is_valid(self) -> bool {
         self.defenders >= 3 && self.midfielders >= 2 && self.forwards >= 1
-            && self.defenders + self.midfielders + self.forwards == 10
+            && u16::from(self.defenders) + u16::from(self.midfielders) + u16::from(self.forwards) == 10
     }
 }
 
@@ -70,6 +70,7 @@ pub struct Lineup {
 pub enum SquadError {
     WrongPlayerCount(usize),
     InvalidFormation,
+    InvalidTactics,
     PositionCountMismatch,
     DuplicatePlayer(Uuid),
     PlayerUnavailable(Uuid),
@@ -81,6 +82,7 @@ impl std::fmt::Display for SquadError {
         match self {
             Self::WrongPlayerCount(n) => write!(f, "lineup must contain 11 players, got {n}"),
             Self::InvalidFormation => write!(f, "invalid formation"),
+            Self::InvalidTactics => write!(f, "tactical values must be between 0 and 100"),
             Self::PositionCountMismatch => write!(f, "lineup does not match formation"),
             Self::DuplicatePlayer(id) => write!(f, "duplicate player: {id}"),
             Self::PlayerUnavailable(id) => write!(f, "player unavailable: {id}"),
@@ -112,6 +114,10 @@ pub fn build_team_profile(team_id: Uuid, lineup: &Lineup) -> Result<TeamProfile,
     }
     if !lineup.formation.is_valid() {
         return Err(SquadError::InvalidFormation);
+    }
+    if [lineup.tactics.pressing, lineup.tactics.tempo, lineup.tactics.width,
+        lineup.tactics.attacking_intent].iter().any(|value| *value > 100) {
+        return Err(SquadError::InvalidTactics);
     }
 
     let mut ids = BTreeSet::new();
@@ -217,6 +223,13 @@ mod tests {
         team.starters[3].injured = true;
         assert!(matches!(build_team_profile(Uuid::from_u128(99), &team),
             Err(SquadError::PlayerUnavailable(_))));
+    }
+
+    #[test]
+    fn invalid_tactics_are_rejected() {
+        let mut team = lineup();
+        team.tactics.pressing = 101;
+        assert_eq!(build_team_profile(Uuid::from_u128(99), &team), Err(SquadError::InvalidTactics));
     }
 
     #[test]
