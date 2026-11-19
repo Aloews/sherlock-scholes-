@@ -155,6 +155,53 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
 
+    let (tick_status, tick) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/time/advance"),
+        Some("calendar-tick-0001"),
+        Some(json!({"days":7})),
+    )
+    .await;
+    assert_eq!(tick_status, StatusCode::OK);
+    assert_eq!(tick["from_date"], "2026-01-01");
+    assert_eq!(tick["current_date"], "2026-01-08");
+    assert_eq!(tick["generated_events"], 1);
+
+    let (events_status, events) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/events"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(events_status, StatusCode::OK);
+    assert_eq!(events.as_array().expect("event inbox").len(), 1);
+    let event_id = events[0]["id"].as_str().expect("event id");
+
+    let (resolve_status, resolved) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve"),
+        Some("event-choice-0001"),
+        Some(json!({"choice_id":"reputation"})),
+    )
+    .await;
+    assert_eq!(resolve_status, StatusCode::OK);
+    assert_eq!(resolved["status"], "resolved");
+
+    let (resolved_events_status, resolved_events) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/events"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(resolved_events_status, StatusCode::OK);
+    assert_eq!(resolved_events[0]["status"], "resolved");
+
     for index in 0..4 {
         let (advance_status, _) = call(
             app.clone(),
