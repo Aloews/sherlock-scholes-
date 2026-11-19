@@ -93,8 +93,11 @@ export const advanceGameTime = (campaignId: string, days: number) =>
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/time/advance`,
     { method: 'POST', body: JSON.stringify({ days }) }, true,
   );
-export const listGameEvents = (campaignId: string) =>
-  request<GameEvent[]>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/events`);
+export const listGameEvents = async (campaignId: string): Promise<GameEvent[]> => {
+  const events = await request<unknown>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/events`);
+  if (!Array.isArray(events)) throw new Error('invalid_events_response');
+  return events as GameEvent[];
+};
 export const getSeason = (campaignId: string) =>
   request<SeasonView>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/season`);
 export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
