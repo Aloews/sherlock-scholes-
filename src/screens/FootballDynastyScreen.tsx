@@ -19,7 +19,7 @@ export function FootballDynastyScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
   const [events, setEvents] = useState<GameEvent[]>([]);
-  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('club');
+  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('events');
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
