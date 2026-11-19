@@ -554,8 +554,8 @@ pub async fn advance_time(
             if player_club.as_deref() == Some(home_team.as_str())
                 || player_club.as_deref() == Some(away_team.as_str())
             {
-                let (result_label, body, choices) =
-                    if player_club.as_deref() == Some(home_team.as_str()) {
+                let is_home = player_club.as_deref() == Some(home_team.as_str());
+                let (result_label, body, choices) = if is_home {
                     if home_goals > away_goals {
                         (
                             "победа",
