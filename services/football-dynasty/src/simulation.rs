@@ -48,6 +48,27 @@ fn sample_poisson(expected: f64, random: u64) -> i16 {
     goals
 }
 
+fn player_club_reputation_delta(
+    home_team: &str,
+    away_team: &str,
+    player_club: &str,
+    home_goals: i16,
+    away_goals: i16,
+) -> i32 {
+    let (for_goals, against_goals) = if home_team == player_club {
+        (home_goals, away_goals)
+    } else if away_team == player_club {
+        (away_goals, home_goals)
+    } else {
+        return 0;
+    };
+    match for_goals.cmp(&against_goals) {
+        std::cmp::Ordering::Greater => 1,
+        std::cmp::Ordering::Less => -1,
+        std::cmp::Ordering::Equal => 0,
+    }
+}
+
 fn simulate_match_score(
     campaign_seed: i64,
     season_year: i32,
@@ -430,7 +451,7 @@ pub async fn advance_time(
     .await?
     .ok_or_else(ApiError::not_found)?;
     let (from_date, player_id, initial_status, campaign_seed) = row;
-    let (player_club_name, player_club_reputation): (String, i32) = crate::fd_query_as!(
+    let (player_club_name, mut player_club_reputation): (String, i32) = crate::fd_query_as!(
         (String, i32),
         "SELECT name,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
     )
@@ -574,6 +595,25 @@ pub async fn advance_time(
             .bind(away_goals)
             .execute(&mut *tx)
             .await?;
+            let reputation_delta = player_club_reputation_delta(
+                &home_team,
+                &away_team,
+                &player_club_name,
+                home_goals,
+                away_goals,
+            );
+            if reputation_delta != 0 {
+                player_club_reputation =
+                    (player_club_reputation + reputation_delta).clamp(0, 100);
+                crate::fd_query!(
+                    "UPDATE fd.clubs SET reputation=$2 WHERE campaign_id=$1 AND name=$3",
+                )
+                .bind(campaign_id)
+                .bind(player_club_reputation)
+                .bind(&player_club_name)
+                .execute(&mut *tx)
+                .await?;
+            }
             let report = format!("{home_team} {home_goals}–{away_goals} {away_team}");
             let result_payload = json!({
                 "fixture_id":fixture_id,
@@ -582,7 +622,9 @@ pub async fn advance_time(
                 "home_team":home_team,
                 "away_team":away_team,
                 "home_goals":home_goals,
-                "away_goals":away_goals
+                "away_goals":away_goals,
+                "player_club_reputation_delta":reputation_delta,
+                "player_club_reputation_after":player_club_reputation
             });
             crate::fd_query!(
                 "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
@@ -804,6 +846,26 @@ mod tests {
     fn home_advantage_increases_expected_goals() {
         assert!(
             expected_goals(55, 50, true) > expected_goals(55, 50, false)
+        );
+    }
+
+    #[test]
+    fn match_result_changes_only_the_player_clubs_reputation() {
+        assert_eq!(
+            player_club_reputation_delta("Northbridge FC", "Harbor Athletic", "Northbridge FC", 2, 1),
+            1
+        );
+        assert_eq!(
+            player_club_reputation_delta("Harbor Athletic", "Northbridge FC", "Northbridge FC", 0, 2),
+            1
+        );
+        assert_eq!(
+            player_club_reputation_delta("Northbridge FC", "Harbor Athletic", "Northbridge FC", 1, 1),
+            0
+        );
+        assert_eq!(
+            player_club_reputation_delta("Redbridge FC", "Kingsport United", "Northbridge FC", 3, 0),
+            0
         );
     }
 
