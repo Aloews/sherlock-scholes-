@@ -239,6 +239,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(season_status, StatusCode::OK);
     assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
+    assert_eq!(season["fixtures"][0]["match_date"], "2026-01-03");
     assert_eq!(
         season["fixtures"]
             .as_array()
