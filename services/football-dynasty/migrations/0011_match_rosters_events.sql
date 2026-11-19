@@ -166,7 +166,7 @@ BEGIN
     45 + mod(abs(hashtext(t.name || n::text || 'def')::bigint),46)::smallint,
     48 + mod(abs(hashtext(t.name || n::text || 'phys')::bigint),43)::smallint,
     CASE WHEN n=1 THEN 60 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),41)::smallint
-         ELSE 5 + mod(abs(hashtext(t.name || n::text || 'gk'))::bigint,35)::smallint END,
+         ELSE 5 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),35)::smallint END,
     55 + mod(abs(hashtext(t.name || n::text || 'sta')::bigint),41)::smallint,
     60,0,65 + mod(abs(hashtext(t.name || n::text || 'pot')::bigint),31)::smallint,
     1000000 + mod(abs(hashtext(t.name || n::text || 'mv')::bigint),9000000)::bigint,
