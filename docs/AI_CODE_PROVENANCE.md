@@ -31,7 +31,8 @@
 
 - Directly authored in this session: the initial matchday backend implementation (95 Rust additions); the initial lifecycle regression (26 test additions / 4 deletions); the outcome-branch refactor (24 Rust additions / 41 deletions); and follow-up lifecycle assertions/effect checks (64 test additions / 2 deletions across the recorded commits).
 - Concurrent branch automation also formatted/refactored parts of the same files and added CI wiring. Those changes are not attributed to Starimg or local Qwen, but their individual author/model cannot be established from the available logs.
-- Current exact PR diff against `main`: 98 Rust source additions; 115 lifecycle-test additions / 4 deletions; 38 workflow additions / 1 deletion; 50 documentation additions. Total: **275 additions and 5 deletions**. These are repository diff statistics, not a complete ChatGPT-only attribution.
+- Current exact PR diff against `main` (30 commits, 9 files): `simulation.rs` 106 additions / 1 deletion; lifecycle tests 126 additions / 4 deletions; CI workflows 38 additions / 1 deletion; documentation 51 additions. Total: **321 additions and 6 deletions**. These are repository diff statistics, not a complete ChatGPT-only attribution.
+- The initial 95 Rust additions and 26 lifecycle-test additions were authored directly in this ChatGPT session. Later refactors, test expansions, and CI changes include concurrent branch automation; their exact model attribution is not established.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
 
 ## Current measurement gap
