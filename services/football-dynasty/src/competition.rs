@@ -90,7 +90,7 @@ pub fn generate_round_robin(
             let matchday=offset+usize::from(fixture.matchday);
             fixtures.push(ScheduledFixture {
                 matchday:matchday as u16,
-                match_date:first_match_date+Duration::days(i64::from(rules.days_between_rounds)*matchday as i64),
+                match_date:first_match_date+Duration::days(i64::from(rules.days_between_rounds)*(matchday-1) as i64),
                 home_team_id:fixture.away_team_id,
                 away_team_id:fixture.home_team_id,
                 leg:2,
@@ -111,6 +111,8 @@ mod tests {
         let fixtures=generate_round_robin(&teams,start,CompetitionRules::default()).unwrap();
         assert_eq!(fixtures.len(),12);
         assert_eq!(fixtures.iter().map(|f|f.matchday).max(),Some(6));
+        assert_eq!(fixtures.iter().filter(|f|f.matchday==4).map(|f|f.match_date).next(),
+            Some(start+Duration::days(21)));
         for team in &teams {
             assert_eq!(fixtures.iter().filter(|f|f.home_team_id==*team).count(),3);
             assert_eq!(fixtures.iter().filter(|f|f.away_team_id==*team).count(),3);
