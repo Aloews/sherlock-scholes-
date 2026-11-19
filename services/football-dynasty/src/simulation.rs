@@ -134,6 +134,38 @@ pub async fn list_events(
     let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.campaigns WHERE id=$1)")
         .bind(campaign_id).fetch_one(&mut *tx).await?;
     if !exists { return Err(ApiError::not_found()); }
+
+    // Backfill the inbox for campaigns created before launch events existed.
+    // This makes the first game visit useful without requiring a calendar skip.
+    let campaign_date: NaiveDate = sqlx::query_scalar("SELECT game_date FROM fd.campaigns WHERE id=$1")
+        .bind(campaign_id).fetch_one(&mut *tx).await?;
+    let has_events: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.game_events WHERE campaign_id=$1)")
+        .bind(campaign_id).fetch_one(&mut *tx).await?;
+    if !has_events {
+        sqlx::query(
+            "INSERT INTO fd.game_events (campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES
+             ($1,'launch-club-plan','club_launch_plan','План развития клуба','Совет директоров ждёт от нового владельца первого решения. На что направить внимание в начале проекта?',$2,$2 + 14,95,$3),
+             ($1,'launch-public-debut','dynasty_public_debut','Публичный дебют династии','Местная пресса готовит материал о новой футбольной династии. Выберите, какой образ закрепить за семьёй.',$2,$2 + 14,85,$4),
+             ($1,'launch-board-priorities','board_priorities','Приоритеты совета','Руководители клуба предлагают определить главный ориентир на ближайший месяц.',$2,$2 + 14,80,$5)
+             ON CONFLICT (campaign_id,event_key) DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(campaign_date)
+        .bind(json!([
+            {"id":"reputation","label":"Развивать клуб и укреплять его репутацию","effect":"club_reputation"},
+            {"id":"prestige","label":"Укреплять влияние и престиж династии","effect":"dynasty_prestige"}
+        ]))
+        .bind(json!([
+            {"id":"reputation","label":"Показать амбиции и открыть клуб болельщикам","effect":"club_reputation"},
+            {"id":"prestige","label":"Подчеркнуть традиции и статус семьи","effect":"dynasty_prestige"}
+        ]))
+        .bind(json!([
+            {"id":"reputation","label":"Сосредоточиться на спортивном развитии","effect":"club_reputation"},
+            {"id":"prestige","label":"Сосредоточиться на влиянии семьи","effect":"dynasty_prestige"}
+        ]))
+        .execute(&mut *tx).await?;
+    }
+
     let rows = sqlx::query_as::<_, GameEvent>(
         "SELECT id,event_type,title,body,game_date,expires_on,priority,choices,status,resolution FROM fd.game_events WHERE campaign_id=$1 ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, game_date DESC, priority DESC LIMIT 100",
     )
