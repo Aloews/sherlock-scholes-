@@ -42,15 +42,22 @@ export function FootballDynastyScreen() {
   const refreshSelected = useCallback(async (id: string) => {
     const data = await getCampaign(id);
     setCampaign(data);
-    const [heirs, inbox, seasonData] = await Promise.all([
+    const [heirsResult, inboxResult, seasonResult] = await Promise.allSettled([
       data.campaign.status === 'succession_pending' ? previewSuccession(id) : Promise.resolve([]),
       listGameEvents(id),
       getSeason(id),
     ]);
-    setCandidates(heirs);
+    const inbox = inboxResult.status === 'fulfilled' ? inboxResult.value : [];
+    setCandidates(heirsResult.status === 'fulfilled' ? heirsResult.value : []);
     setEvents(inbox);
-    setSeason(seasonData);
-  }, []);
+    setSeason(seasonResult.status === 'fulfilled' ? seasonResult.value : null);
+    if (inboxResult.status === 'fulfilled') {
+      setActiveTab(inbox.some((event) => event.status === 'pending') ? 'events' : 'club');
+    }
+    if (heirsResult.status === 'rejected' || inboxResult.status === 'rejected' || seasonResult.status === 'rejected') {
+      setError(t('dynasty.error'));
+    }
+  }, [t]);
 
   useEffect(() => {
     let active = true;
@@ -67,22 +74,42 @@ export function FootballDynastyScreen() {
   }, [t]);
 
   useEffect(() => {
-    if (!selectedId) { setCampaign(null); setSeason(null); return; }
+    if (!selectedId) {
+      setCampaign(null);
+      setSeason(null);
+      setEvents([]);
+      return;
+    }
     let active = true;
     setBusy('loading');
-    getCampaign(selectedId)
-      .then(async (data) => {
+    setError('');
+    (async () => {
+      try {
+        const data = await getCampaign(selectedId);
         if (!active) return;
         setCampaign(data);
-        const [heirs, inbox, seasonData] = await Promise.all([
+        const [heirsResult, inboxResult, seasonResult] = await Promise.allSettled([
           data.campaign.status === 'succession_pending' ? previewSuccession(selectedId) : Promise.resolve([]),
           listGameEvents(selectedId),
           getSeason(selectedId),
         ]);
-        if (active) { setCandidates(heirs); setEvents(inbox); setSeason(seasonData); }
-      })
-      .catch(() => { if (active) setError(t('dynasty.error')); })
-      .finally(() => { if (active) setBusy(''); });
+        if (!active) return;
+        const inbox = inboxResult.status === 'fulfilled' ? inboxResult.value : [];
+        setCandidates(heirsResult.status === 'fulfilled' ? heirsResult.value : []);
+        setEvents(inbox);
+        setSeason(seasonResult.status === 'fulfilled' ? seasonResult.value : null);
+        if (inboxResult.status === 'fulfilled') {
+          setActiveTab(inbox.some((event) => event.status === 'pending') ? 'events' : 'club');
+        }
+        if (heirsResult.status === 'rejected' || inboxResult.status === 'rejected' || seasonResult.status === 'rejected') {
+          setError(t('dynasty.error'));
+        }
+      } catch {
+        if (active) setError(t('dynasty.error'));
+      } finally {
+        if (active) setBusy('');
+      }
+    })();
     return () => { active = false; };
   }, [selectedId, t]);
 
@@ -159,15 +186,11 @@ export function FootballDynastyScreen() {
           <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-white">
             <IconArrowLeft size={18} /> {t('dynasty.back')}
           </button>
-          <div className="flex items-center gap-2 rounded-full border border-brand-border bg-brand-surface px-3 py-2 text-xs text-brand-muted">
-            <IconCrown size={16} className="text-brand-accent" /> Football Dynasty
-          </div>
         </header>
 
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{t('dynasty.my_campaigns')}</h2>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
           <button type="button" className={quietButtonClass} onClick={() => setShowCreate((value) => !value)}>
             <IconPlus size={16} /> {t('dynasty.new_campaign')}
           </button>
