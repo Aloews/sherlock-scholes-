@@ -84,7 +84,7 @@ AI memory stores structured event references and relationship changes. Narrative
 
 Life simulation is strategic, not room-by-room. It covers partnership, marriage, divorce, children, education, friendships, residences, travel, and social events through choices and event chains. Full 3D property exploration is out of scope.
 
-Campaign time is paused or advanced in bounded ticks. The server is authoritative. Events pass through eligibility checks, persistence, choice resolution, atomic state changes, and chronicle recording. Use event-driven and tiered updates rather than recalculating every character daily.
+Campaign time is paused between player commands and advances in bounded day-level ticks. The persisted calendar is the source of truth; closing the app does not advance time. Actions declare their time cost (hours, days, weeks or a matchday), and normal play never jumps years or decades. Annual birthdays age living characters; the age-90 boundary is processed on the exact in-game date. The first event cadence is a persisted weekly club review, generated once per ISO week and resolved through server-validated choices with a real club-reputation or dynasty-prestige consequence. Subsequent event types must be triggered by domain state transitions (fixtures, injuries, contracts, transfers, finances, family milestones and rival actions), with per-type cooldowns and deduplication. Long simulations are bounded and resumable. Events pass through eligibility, persistence, choice resolution, atomic state changes and chronicle recording.
 
 ## Interface
 
