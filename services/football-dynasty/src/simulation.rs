@@ -111,7 +111,6 @@ struct StandingTotals {
 struct MatchPlayerRow {
     id: Uuid,
     position: String,
-    shirt_number: i16,
     pace: i16,
     shooting: i16,
     passing: i16,
@@ -159,7 +158,7 @@ async fn load_match_squad(
         _ => return Err(ApiError::conflict("invalid_team_formation")),
     };
     let rows = crate::fd_query_as!(MatchPlayerRow,
-        "SELECT p.id,p.position,p.shirt_number,p.pace,p.shooting,p.passing,p.defending,p.physical,
+        "SELECT p.id,p.position,p.pace,p.shooting,p.passing,p.defending,p.physical,
                 p.goalkeeping,p.stamina,p.morale,p.fatigue,p.injured_until,p.suspended_until
          FROM fd.match_lineups ml JOIN fd.players p ON p.campaign_id=ml.campaign_id AND p.id=ml.player_id
          WHERE ml.campaign_id=$1 AND ml.fixture_id=$2 AND ml.team_id=$3
@@ -175,6 +174,9 @@ async fn load_match_squad(
             _ => return Err(ApiError::conflict("invalid_player_position")),
         };
         let to_rating = |value: i16| u8::try_from(value).map_err(|_| ApiError::conflict("invalid_player_rating"));
+        let unavailable = row.injured_until.is_some_and(|until| until >= match_date)
+            || row.suspended_until.is_some_and(|until| until >= match_date);
+        if unavailable { continue; }
         players.push(Player {
             id: row.id,
             position,
