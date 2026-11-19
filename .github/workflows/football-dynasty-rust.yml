@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20261110100000_football_dynasty_owner_rls.sql"
       - "supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql"
       - "supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql"
+      - "supabase/migrations/20261119123000_football_dynasty_event_deadlines.sql"
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
@@ -72,6 +73,7 @@ jobs:
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261110100000_football_dynasty_owner_rls.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119123000_football_dynasty_event_deadlines.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_rls.test.sql
           psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_owner_rls.test.sql
       - name: Export resolved dependency lockfile
