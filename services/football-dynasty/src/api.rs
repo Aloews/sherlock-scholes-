@@ -430,7 +430,7 @@ pub async fn create_campaign(
     for (matchday, home_team, away_team) in schedule {
         sqlx::query(
             "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team)
-             VALUES ($1,2026,$2,DATE '2026-01-03' + (($2::integer - 1) * 7),$3,$4)"
+             SELECT $1,c.current_year,$2,c.game_date + ((6 - EXTRACT(ISODOW FROM c.game_date)::integer + 7) % 7) + (($2::integer - 1) * 7),$3,$4 FROM fd.campaigns c WHERE c.id=$1"
         )
         .bind(campaign_id)
         .bind(matchday)
