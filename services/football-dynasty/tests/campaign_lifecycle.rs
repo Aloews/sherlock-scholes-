@@ -440,7 +440,28 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .iter()
         .map(|account| account["balance_minor"].as_i64().expect("cash balance"))
         .sum();
-    assert_eq!(cash_total, 3_525_000_000);
+    assert_eq!(cash_total, 3_550_625_000);
+    let ticket_revenue: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(line.amount_minor),0)
+         FROM fd.journal_lines line
+         JOIN fd.journal_entries entry ON entry.id=line.journal_entry_id
+         WHERE line.campaign_id=$1 AND line.side='debit'
+           AND entry.idempotency_key LIKE 'matchday-ticket-%'",
+    )
+    .bind(campaign_id)
+    .fetch_one(&pool)
+    .await
+    .expect("ticket revenue ledger total");
+    assert_eq!(ticket_revenue, 25_625_000);
+    let ticket_journals: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM fd.journal_entries
+         WHERE campaign_id=$1 AND idempotency_key LIKE 'matchday-ticket-%'",
+    )
+    .bind(campaign_id)
+    .fetch_one(&pool)
+    .await
+    .expect("ticket revenue journal count");
+    assert_eq!(ticket_journals, 1);
 
     let (month_status, month) = call(
         app.clone(),
