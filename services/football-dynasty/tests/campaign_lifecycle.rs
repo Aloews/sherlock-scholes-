@@ -190,6 +190,22 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(events_status, StatusCode::OK);
     assert_eq!(events.as_array().expect("event inbox").len(), 6);
+    let match_result = events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "match_result")
+        .expect("persisted match result");
+    let match_resolution = &match_result["resolution"];
+    let reputation_delta = match_resolution["player_club_reputation_delta"]
+        .as_i64()
+        .expect("player club reputation delta");
+    let reputation_after = match_resolution["player_club_reputation_after"]
+        .as_i64()
+        .expect("player club reputation after match");
+    assert!((-1..=1).contains(&reputation_delta));
+    assert!((0..=100).contains(&reputation_after));
+
     let event_id = events
         .as_array()
         .expect("event inbox")
