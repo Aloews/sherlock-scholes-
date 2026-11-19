@@ -480,3 +480,13 @@ Required information architecture:
 - Corrected campaign creation and service migration 0007 to derive season year and match dates from `fd.campaigns.current_year` and `game_date`; the score seed now uses each fixture's `season_year`.
 - Applied Supabase migration 20261119150000 to realign the existing 12 fixtures to the campaign's current year and next Saturday. Production read-back confirms 12 fixtures in 2046, dates 2046-01-06 through 2046-02-10, and 3 pending launch events.
 - New campaign calendars now use the next Saturday relative to their own game date; this avoids assumptions about a fixed start year or weekday.
+
+
+## Agent network — local Qwen fallback — 2026-11-19
+
+- The Railway implementer/reviewer services are scoped to `Aloews/sherlock-scholes-`, pinned to `main`, and have independent implementer/reviewer roles. The Railway implementer task and reviewer preflight both returned Starimg HTTP 402; Fable escalation is therefore unavailable until provider billing/quota is restored.
+- A local Qwen2.5-Coder 3B multi-role workflow is prepared in branch `feat/qwen-agent-network-mainline-20261119`: triage, architect, QA planner, implementer and independent reviewer run on an ephemeral GitHub Actions runner. Normal Qwen inference does not require Starimg.
+- The workflow accepts only repository-owner `/ai` issue comments, includes the issue body as task requirements, edits at most eight allowlisted files, protects existing migrations/manifests/workflows/secrets, and opens draft PRs only. It never merges or deploys.
+- Backend source `services/football-dynasty/` is included in the allowlist; existing service migrations are immutable and a new migration may be created. Rust CI remains the backend acceptance gate.
+- Fable 5.2 remains a bounded high-risk escalation. HTTP 402 is surfaced and not retried; high-risk tasks stop rather than bypass review.
+- Activation is pending exact-head workflow checks and merge of the network PR. The Railway implementer and reviewer are paused to avoid repeated 402 calls.
