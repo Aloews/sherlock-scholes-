@@ -688,7 +688,11 @@ def summarize_usage(records: list[dict[str, Any]]) -> dict[str, int]:
             int(record[name]) for name in ("output_tokens", "completion_tokens")
             if isinstance(record.get(name), (int, float)) and not isinstance(record.get(name), bool)
         ), 0)
-        total_tokens += input_count + output_count
+        cache_read = record.get("cache_read_input_tokens", 0)
+        cache_creation = record.get("cache_creation_input_tokens", 0)
+        cache_read_count = int(cache_read) if isinstance(cache_read, (int, float)) and not isinstance(cache_read, bool) else 0
+        cache_creation_count = int(cache_creation) if isinstance(cache_creation, (int, float)) and not isinstance(cache_creation, bool) else 0
+        total_tokens += input_count + output_count + cache_read_count + cache_creation_count
     if total_tokens:
         result["total_tokens"] = total_tokens
     return result
