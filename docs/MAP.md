@@ -517,5 +517,5 @@ Required information architecture:
 - Added Rust unit tests for deterministic results, reputation influence, home advantage, reputation consequences and score bounds, plus a PostgreSQL lifecycle assertion that persisted match-result events include the reputation change.
 - This remains a bounded club-rating result model. It is not yet a player/squad-based or tactical match engine.
 - PR: https://github.com/Aloews/sherlock-scholes-/pull/445
-- **Verification:** exact-head Rust formatting, Clippy and PostgreSQL lifecycle tests remain unconfirmed. Generic repository checks are running; the dedicated Rust workflow currently creates a failed run with zero jobs, so no Rust pass is claimed. No production deployment or data change.
+- **Verification:** a targeted `football-dynasty-rust` job was added to the main CI workflow and is queued on the exact PR head for formatting, Clippy and PostgreSQL lifecycle tests. The older dedicated workflow still creates a failed zero-job run; no Rust pass is claimed until the new job completes. No production deployment or data change.
 
