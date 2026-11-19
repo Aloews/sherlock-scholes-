@@ -49,7 +49,7 @@ All campaign routes require:
 - `POST /api/v1/campaigns`
 - `GET /api/v1/campaigns/{campaign_id}`
 - `POST /api/v1/campaigns/{campaign_id}/heirs`
-- `POST /api/v1/campaigns/{campaign_id}/advance` (legacy year-step endpoint; not used by the game UI)
+- `POST /api/v1/campaigns/{campaign_id}/advance` returns `409 use_day_based_calendar`; decade-step advancement is disabled
 - `POST /api/v1/campaigns/{campaign_id}/time/advance` (1–31 in-game days)
 - `GET /api/v1/campaigns/{campaign_id}/events`
 - `POST /api/v1/campaigns/{campaign_id}/events/{event_id}/resolve`
@@ -58,7 +58,7 @@ All campaign routes require:
 
 ## First playable lifecycle
 
-Create a campaign (founder age 40, one fictional club, family holding and balanced opening ledger), add an heir, advance the persisted calendar in bounded day steps, receive a weekly club-review event, resolve a choice with a persisted club/dynasty consequence, reach the founder's age-90 boundary through annual birthdays, preview eligible adult heirs, execute succession atomically, and continue as the heir. The legacy year-step endpoint remains for compatibility and is not called by the game UI. The chronicle and ledger survive service restarts because they are stored in PostgreSQL.
+Create a campaign (founder age 40, one fictional club, family holding and balanced opening ledger), add an heir, advance the persisted calendar in bounded day steps, receive a weekly club-review event, resolve a choice with a persisted club/dynasty consequence, reach the founder's age-90 boundary through annual birthdays, preview eligible adult heirs, execute succession atomically, and continue as the heir. The legacy year-step route is retained only as an explicit `409` migration response; it cannot change campaign state. The chronicle and ledger survive service restarts because they are stored in PostgreSQL.
 
 ## Verification
 
