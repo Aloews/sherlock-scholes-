@@ -105,3 +105,8 @@ Automated tests prove reproducible world generation; campaign isolation; no dire
 ## Open decisions
 
 Exact Telegram identity adapter; public/private schema placement; RPC versus Edge orchestration boundary; tick budget; ownership/legal depth; match simulation model; future multiplayer; world size after load testing.
+
+
+## Implemented season/event slice — 2026-11-19
+
+The first campaign now opens with three persisted launch decisions. The event inbox is populated for legacy campaigns as well as new campaigns. The first fictional competition is a four-team double round-robin with six matchdays and twelve persisted fixtures. Matchdays resolve on their exact in-game dates using a deterministic campaign-seeded score generator; results are stored in the fixture table, event inbox and chronicle. The match centre displays the schedule, scores and standings derived from played fixtures. This slice does not yet include player squads, tactics, injuries, contracts, transfer windows, promotion/relegation or season rollover.
