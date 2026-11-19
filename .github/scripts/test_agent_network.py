@@ -18,6 +18,23 @@ class AgentNetworkTests(unittest.TestCase):
         self.assertIn("Required paths: roster.rs and screen.tsx", task)
         self.assertIn("Owner request:\nImplement the issue exactly", task)
 
+    def test_required_issue_files_are_parsed_and_enforced(self):
+        body = """## Required files — all eight must be present in the same PR
+- `services/football-dynasty/migrations/0008_squad_contracts.sql`
+- `services/football-dynasty/src/roster.rs`
+- `services/football-dynasty/src/lib.rs`
+- `services/football-dynasty/src/http.rs`
+- `services/football-dynasty/tests/campaign_lifecycle.rs`
+- `src/features/football-dynasty/api.ts`
+- `src/screens/FootballDynastyScreen.tsx`
+- `docs/MAP.md`"""
+        required = agent_network.required_paths_from_issue(body)
+        self.assertEqual(len(required), 8)
+        self.assertEqual(
+            agent_network.missing_required_paths(required, required[:7]),
+            sorted(required[7:]),
+        )
+
     def test_parse_role_json(self):
         self.assertEqual(agent_network.parse_object('{"decision":"approve"}'), {"decision": "approve"})
         fence = chr(96) * 3
