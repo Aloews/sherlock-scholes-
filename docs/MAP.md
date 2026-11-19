@@ -141,6 +141,7 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 - Persistence: private Supabase `fd` schema, owner-scoped through verified Telegram identity.
 - Never write fictional players, clubs, competitions, or match results into the real football catalogue.
 - The current implemented slice is campaign creation and a bounded founder/heir succession lifecycle. It is not the full management simulation described in the GDD.
+- The bounded season/event slice now also creates a result-specific pending board decision after each player-club fixture. The backend implementation and lifecycle regression are proposed in [PR #446](https://github.com/Aloews/sherlock-scholes-/pull/446); it remains unmerged pending exact Rust validation. [PR #444](https://github.com/Aloews/sherlock-scholes-/pull/444) is merged and contains the Supavisor/event-inbox reliability fix.
 
 ## 8. Execution priorities
 
