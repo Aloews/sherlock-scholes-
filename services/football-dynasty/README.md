@@ -72,3 +72,6 @@ The CI workflow starts a disposable PostgreSQL 17 service, applies migrations, a
 - Every simulated day resolves fixtures due on that date. Scores are deterministic from the campaign seed and fixture identity, then stored with a chronicle entry and a resolved match-report event.
 - GET /api/v1/campaigns/{campaign_id}/season returns the fixture calendar and standings derived from played results.
 - This is a bounded first season loop, not a tactical match engine or full season rollover system.
+
+
+Weekly decisions rotate between board review, sponsor approach, supporter meeting and rival scouting report. Accepting the sponsor offer posts a balanced €250,000 EUR double-entry transaction to club cash and sponsorship revenue. The other choices update club reputation or dynasty prestige.
