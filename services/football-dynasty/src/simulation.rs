@@ -630,6 +630,91 @@ pub async fn advance_time(
                 .execute(&mut *tx)
                 .await?;
                 generated_events += reaction.rows_affected() as i64;
+
+                // Home fixtures generate ticket revenue through the double-entry
+                // ledger. The estimate is deterministic and bounded by attendance.
+                if is_home {
+                    let (club_id, reputation): (Uuid, i32) = crate::fd_query_as!(
+                        (Uuid, i32),
+                        "SELECT id,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    let attendance = (5_000_i64 + i64::from(reputation.clamp(0, 100)) * 150)
+                        .min(20_000);
+                    let ticket_revenue_minor = attendance * 2_500;
+                    let cash_account_id: Uuid = crate::fd_query_scalar!(
+                        "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND owner_type='club' AND owner_id=$2 AND account_type='cash' ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .bind(club_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    let revenue_account_id = if let Some(id) = crate::fd_query_scalar!(
+                        "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND owner_type='club' AND owner_id=$2 AND account_type='revenue' AND name='Matchday ticket revenue' ORDER BY created_at,id LIMIT 1",
+                    )
+                    .bind(campaign_id)
+                    .bind(club_id)
+                    .fetch_optional(&mut *tx)
+                    .await?
+                    {
+                        id
+                    } else {
+                        let id = Uuid::new_v4();
+                        crate::fd_query!(
+                            "INSERT INTO fd.accounts(id,campaign_id,name,account_type,owner_type,owner_id,currency,normal_balance)
+                             VALUES($1,$2,'Matchday ticket revenue','revenue','club',$3,'EUR','credit')",
+                        )
+                        .bind(id)
+                        .bind(campaign_id)
+                        .bind(club_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        id
+                    };
+                    let journal_id = Uuid::new_v4();
+                    let journal_key = format!("matchday-ticket-{fixture_id}");
+                    let journal = crate::fd_query!(
+                        "INSERT INTO fd.journal_entries(id,campaign_id,idempotency_key,memo,game_year)
+                         VALUES($1,$2,$3,'Home match ticket revenue',$4)
+                         ON CONFLICT(campaign_id,idempotency_key) DO NOTHING",
+                    )
+                    .bind(journal_id)
+                    .bind(campaign_id)
+                    .bind(journal_key)
+                    .bind(current_date.year())
+                    .execute(&mut *tx)
+                    .await?;
+                    if journal.rows_affected() > 0 {
+                        crate::fd_query!(
+                            "INSERT INTO fd.journal_lines(campaign_id,journal_entry_id,account_id,side,amount_minor)
+                             VALUES($1,$2,$3,'debit',$4),($1,$2,$5,'credit',$4)",
+                        )
+                        .bind(campaign_id)
+                        .bind(journal_id)
+                        .bind(cash_account_id)
+                        .bind(ticket_revenue_minor)
+                        .bind(revenue_account_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        crate::fd_query!(
+                            "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
+                             VALUES($1,'matchday_revenue',$2,$3,$4)",
+                        )
+                        .bind(campaign_id)
+                        .bind(format!("Домашний матч: доход от билетов €{:.2}", ticket_revenue_minor as f64 / 100.0))
+                        .bind(current_date.year())
+                        .bind(json!({
+                            "fixture_id":fixture_id,
+                            "attendance":attendance,
+                            "ticket_price_minor":2500,
+                            "ticket_revenue_minor":ticket_revenue_minor
+                        }))
+                        .execute(&mut *tx)
+                        .await?;
+                    }
+                }
             }
         }
     }
