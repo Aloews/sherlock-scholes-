@@ -147,7 +147,7 @@ async fn reserve(
     if inserted.rows_affected() == 1 {
         return Ok(None);
     }
-    let row: (String, String, Option<Value>) = sqlx::query_as(
+    let row: (String, String, Option<Value>) = crate::fd_query_as!((String, String, Option<Value>),
         "SELECT command_type,request_hash,response FROM fd.command_receipts WHERE owner_telegram_id=$1 AND idempotency_key=$2",
     )
     .bind(owner_id).bind(key).fetch_one(&mut **tx).await?;
@@ -361,7 +361,7 @@ pub async fn advance_time(
         return replay(value);
     }
 
-    let row: (NaiveDate, Uuid, String, i64) = sqlx::query_as(
+    let row: (NaiveDate, Uuid, String, i64) = crate::fd_query_as!((NaiveDate, Uuid, String, i64),
         "SELECT game_date,player_character_id,status,seed FROM fd.campaigns WHERE id=$1 FOR UPDATE",
     )
     .bind(campaign_id)
@@ -587,7 +587,7 @@ pub async fn resolve_event(
         return Ok(Json(value));
     }
 
-    let event: (String, Value, String, NaiveDate) = sqlx::query_as(
+    let event: (String, Value, String, NaiveDate) = crate::fd_query_as!((String, Value, String, NaiveDate),
         "SELECT event_type,choices,status,game_date FROM fd.game_events WHERE id=$1 AND campaign_id=$2 FOR UPDATE",
     )
     .bind(event_id).bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
