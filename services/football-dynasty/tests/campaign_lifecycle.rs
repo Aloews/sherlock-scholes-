@@ -260,7 +260,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
     assert_eq!(sponsor_tick["generated_events"], 3);
-    assert_eq!(sponsor_tick["expired_events"], 1);
+    // The only event whose deadline could have elapsed was explicitly resolved above.
+    assert_eq!(sponsor_tick["expired_events"], 0);
 
     let (sponsor_events_status, sponsor_events) = call(
         app.clone(),
