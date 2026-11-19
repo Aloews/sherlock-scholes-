@@ -488,14 +488,13 @@ pub async fn advance_time(
         let player_club = if due_fixtures.is_empty() {
             None
         } else {
-            Some(
-                crate::fd_query_scalar!(
-                    "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
-                )
-                .bind(campaign_id)
-                .fetch_one::<String>(&mut *tx)
-                .await?,
+            let name: String = crate::fd_query_scalar!(
+                "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
             )
+            .bind(campaign_id)
+            .fetch_one(&mut *tx)
+            .await?;
+            Some(name)
         };
 
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
