@@ -17,6 +17,8 @@
 - Win, draw and loss produce different narrative and decision choices. The player can strengthen club reputation or publicly support dynasty leadership; a loss also offers an explicit board review with a small reputation cost.
 - The event is keyed by fixture ID, carries a seven-day inclusive deadline, and is resolved through the existing idempotent event command. No LLM is authoritative for simulation state.
 - CI acceptance: the campaign lifecycle test advances through a player fixture, sees the contextual event, resolves a valid choice, and verifies the normal event and season flows remain intact.
+- Home fixtures post ticket income through the double-entry ledger using reputation-based attendance (capped at 20,000); the journal key is tied to the fixture so retries cannot duplicate revenue.
+- CI acceptance also checks the exact ticket-revenue amount, one journal per home fixture, and the resulting club cash balance.
 
 ## Release sequence
 
