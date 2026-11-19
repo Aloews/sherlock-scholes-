@@ -8,6 +8,7 @@
 - Telegram identity is verified directly by `public.tg_validate_init_data(text)` through SQLx. The production function's HMAC, freshness, SECURITY DEFINER, fixed search path, and bigint return contract were inspected. The migration grants EXECUTE only to `fd_runtime`; no service-role key or browser-supplied Telegram ID is used.
 - NOLOGIN `fd_runtime` role; every API transaction uses `SET LOCAL ROLE fd_runtime` and a transaction-local verified Telegram owner GUC. Vercel uses the existing `POSTGRES_URL` Supavisor pooler; `FD_DATABASE_URL` can override with a dedicated `fd_app` login.
 - Campaign creation, six origins, sandbox/scenario modes, founder, dynasty, fictional club, dynastic club ownership, opening double-entry capital ledger, family heir creation, bounded time advancement, deterministic founder death at age 90, succession preview and atomic succession, personal cash-account inheritance, player-character switch, and chronicle.
+- Six-matchday fictional league with persisted fixtures, deterministic campaign-stable goal sampling, home advantage, and player-club reputation affecting expected goals; standings are derived from persisted results.
 - Owner-scoped reads/writes, idempotency keys for mutations, deferred database journal-balance constraint.
 - CI uses disposable PostgreSQL 17 and tests campaign creation/replay, heir creation, death, succession, persistence reload, and verifier privilege path. CI never connects to production.
 
