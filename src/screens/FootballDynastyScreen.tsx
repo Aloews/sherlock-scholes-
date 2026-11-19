@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
-  advanceCampaign, createCampaign, createHeir, executeSuccession, getCampaign,
-  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character,
+  advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, listGameEvents, resolveGameEvent,
+  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -18,6 +18,7 @@ export function FootballDynastyScreen() {
   const [campaign, setCampaign] = useState<CampaignView | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
+  const [events, setEvents] = useState<GameEvent[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -40,6 +41,7 @@ export function FootballDynastyScreen() {
     const data = await getCampaign(id);
     setCampaign(data);
     setCandidates(data.campaign.status === 'succession_pending' ? await previewSuccession(id) : []);
+    setEvents(await listGameEvents(id));
   }, []);
 
   useEffect(() => {
@@ -64,8 +66,11 @@ export function FootballDynastyScreen() {
       .then(async (data) => {
         if (!active) return;
         setCampaign(data);
-        const heirs = data.campaign.status === 'succession_pending' ? await previewSuccession(selectedId) : [];
-        if (active) setCandidates(heirs);
+        const [heirs, inbox] = await Promise.all([
+          data.campaign.status === 'succession_pending' ? previewSuccession(selectedId) : Promise.resolve([]),
+          listGameEvents(selectedId),
+        ]);
+        if (active) { setCandidates(heirs); setEvents(inbox); }
       })
       .catch(() => { if (active) setError(t('dynasty.error')); })
       .finally(() => { if (active) setBusy(''); });
@@ -102,7 +107,16 @@ export function FootballDynastyScreen() {
   const advance = () => {
     if (!campaign) return;
     void run('advance', async () => {
-      await advanceCampaign(campaign.campaign.id, 10);
+      await advanceGameTime(campaign.campaign.id, 7);
+      await refreshSelected(campaign.campaign.id);
+      await refreshCampaigns();
+    });
+  };
+
+  const chooseEvent = (event: GameEvent, choiceId: string) => {
+    if (!campaign) return;
+    void run('event-' + event.id, async () => {
+      await resolveGameEvent(campaign.campaign.id, event.id, choiceId);
       await refreshSelected(campaign.campaign.id);
       await refreshCampaigns();
     });
@@ -222,7 +236,7 @@ export function FootballDynastyScreen() {
               <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-semibold">{campaign.dynasty.name}</h2>
-                  <p className="mt-1 text-sm text-brand-muted">{campaign.campaign.name} · {campaign.campaign.current_year}</p>
+                  <p className="mt-1 text-sm text-brand-muted">{campaign.campaign.name} · {new Date(campaign.campaign.game_date + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>
                 </div>
                 <span className="rounded-full border border-brand-accent/30 bg-brand-accent/10 px-3 py-1 text-xs text-brand-accent">{statusLabel(campaign.campaign.status)}</span>
               </div>
@@ -243,6 +257,50 @@ export function FootballDynastyScreen() {
                   <div className="mt-1 text-xs text-brand-muted">{campaign.cash_accounts.length} {t('dynasty.accounts')}</div>
                 </div>
               </div>
+            </section>
+
+
+            <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold">{i18n.language.startsWith('ru') ? 'События клуба' : 'Club events'}</h3>
+                <span className="rounded-full bg-brand-bg px-3 py-1 text-xs text-brand-muted">
+                  {events.filter((event) => event.status === 'pending').length} {i18n.language.startsWith('ru') ? 'ожидают решения' : 'awaiting decision'}
+                </span>
+              </div>
+              {events.length === 0 ? (
+                <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">
+                  {i18n.language.startsWith('ru') ? 'Пока нет новых событий. Продвиньте календарь на неделю.' : 'No new events yet. Advance the calendar by one week.'}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {events.map((event) => (
+                    <article key={event.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs text-brand-accent">{new Date(event.game_date + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
+                        <span className={`rounded-full px-2 py-1 text-[11px] ${event.status === 'pending' ? 'bg-brand-accent/10 text-brand-accent' : 'bg-white/5 text-brand-muted'}`}>
+                          {event.status === 'pending' ? (i18n.language.startsWith('ru') ? 'Требуется решение' : 'Decision required') : (i18n.language.startsWith('ru') ? 'Решено' : 'Resolved')}
+                        </span>
+                      </div>
+                      <h4 className="font-semibold">{i18n.language.startsWith('ru') ? 'Еженедельный совет клуба' : event.title}</h4>
+                      <p className="mt-1 text-sm leading-6 text-brand-muted">
+                        {i18n.language.startsWith('ru') ? 'Совет клуба подвёл итоги недели. Выберите приоритет на следующую неделю.' : event.body}
+                      </p>
+                      {event.status === 'pending' && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {event.choices.map((choice) => (
+                            <button key={choice.id} type="button" className={quietButtonClass}
+                              disabled={busy !== ''} onClick={() => chooseEvent(event, choice.id)}>
+                              {i18n.language.startsWith('ru')
+                                ? (choice.id === 'reputation' ? 'Укрепить репутацию клуба' : 'Укрепить влияние династии')
+                                : choice.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
 
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -269,7 +327,7 @@ export function FootballDynastyScreen() {
                       <button type="button" className={buttonClass} disabled={busy !== '' || !heirName.trim()} onClick={submitHeir}>{busy === 'heir' ? t('dynasty.loading') : t('dynasty.save_heir')}</button>
                     </div>
                     <button type="button" className={`${quietButtonClass} mt-4`} disabled={busy !== ''} onClick={advance}>
-                      <IconHourglass size={16} /> {busy === 'advance' ? t('dynasty.loading') : t('dynasty.advance')}
+                      <IconHourglass size={16} /> {busy === 'advance' ? t('dynasty.loading') : (i18n.language.startsWith('ru') ? 'Прожить 7 дней' : 'Advance 7 days')}
                     </button>
                   </div>
                 )}
