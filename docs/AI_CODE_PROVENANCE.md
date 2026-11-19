@@ -29,7 +29,7 @@
 
 ### ChatGPT assistant
 
-- Current PR #446 contains 101 added Rust source lines in `services/football-dynasty/src/simulation.rs` and 26 added test lines with 4 test-line deletions in `campaign_lifecycle.rs`. These edits were authored directly in this ChatGPT session. Documentation contributes 48 added lines across the GDD, implementation plan, service README, project map, and this provenance record. Total PR diff: 175 additions and 4 deletions.
+- Current PR #446 contains 100 added Rust source lines in `services/football-dynasty/src/simulation.rs` and 26 added test lines with 4 test-line deletions in `campaign_lifecycle.rs`. These edits were authored directly in this ChatGPT session. Documentation contributes 48 added lines across the GDD, implementation plan, service README, project map, and this provenance record. Total PR diff: 174 additions and 4 deletions.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
 
 ## Current measurement gap
