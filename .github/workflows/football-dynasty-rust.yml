@@ -1,6 +1,7 @@
 name: Football Dynasty Rust
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "services/football-dynasty/**"
