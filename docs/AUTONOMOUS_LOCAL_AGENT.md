@@ -33,3 +33,12 @@ The workflow downloads Ollama and `qwen2.5-coder:3b`, passes both the issue body
 - Qwen edits are limited to eight files, must use exact unique source snippets, and pass `git diff --check`.
 - Fable 5.2 is a bounded escalation path, not a silent fallback. HTTP 402 is surfaced as a blocker and is never retried automatically.
 - Every result is a draft PR. Exact-head GitHub Actions checks and human review remain required before merge.
+
+## Paid-model budget and usage evidence
+
+- Qwen handles normal triage, architecture, implementation and review locally.
+- A workflow run may make at most **one** Starimg/Fable request across both agent escalation and CI repair. The budget is reserved before the provider request; provider errors consume the allowance and are not retried automatically.
+- Fable output is capped at 2,200 tokens for escalation and 2,600 tokens for CI repair. Local Qwen roles have individual output limits and an 8,192-token context window.
+- Every Fable attempt records the model, purpose, run/issue identifiers, provider request ID, input/output tokens, cache-read/cache-creation counters, output cap and status. The workflow uploads `starimg-usage.jsonl` for 30 days and writes a redacted summary table.
+- Prompts and completions are never written to the usage artifact. Provider billing units are not converted to currency without a verified rate card.
+
