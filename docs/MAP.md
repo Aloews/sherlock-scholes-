@@ -435,3 +435,9 @@ Required information architecture:
 - Hardened CI: the Rust workflow now applies the Supabase calendar/events migration and deadline migration before the RLS checks; the owner-isolation test checks that another Telegram owner cannot read or insert events; expected FD table count is 13. The workflow path filters include both Supabase migrations.
 - Service and Supabase deadline migrations were read back and their contents match exactly. No production database migration or production deployment is claimed.
 - **Verification remains pending:** GitHub Actions run results are not yet visible through the connected workflow-run lookup; the latest Vercel deployment remains subject to its own queue. Do not call Rust build, PostgreSQL tests, RLS tests or production event flow passed until actual run output is available.
+
+
+**Legacy time-jump removal — 2026-11-19:**
+- The old year-based advance handler no longer mutates campaign state; the route returns `409 use_day_based_calendar`. The obsolete years-based request/result types and frontend client method were removed.
+- Lifecycle tests no longer simulate decades through the old route. They set controlled fixture dates and verify founder and successor deaths by advancing exactly one calendar day across 1 January; the legacy route is asserted to reject.
+- The test also verifies weekly event expiry after missed deadlines. This is source-level test coverage; no passing CI run is claimed yet.
