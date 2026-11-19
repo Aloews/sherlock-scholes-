@@ -16,7 +16,7 @@ on:
       - ".github/workflows/football-dynasty-rust.yml"
   workflow_dispatch: {}
   push:
-    branches: [main, "feat/dynasty-*"]
+    branches: [main, "feat/dynasty-matchday-decisions-20261119"]
     paths:
       - "services/football-dynasty/**"
       - "docs/football-dynasty/**"
