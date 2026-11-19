@@ -156,7 +156,7 @@ BEGIN
   SELECT p_campaign_id, t.id,
     first_names[((n + team_rank - 2) % array_length(first_names,1))+1] || ' ' ||
     last_names[((n * 3 + team_rank - 2) % array_length(last_names,1))+1],
-    CASE WHEN n=1 THEN 'goalkeeper' WHEN n BETWEEN 2 AND 7 THEN 'defender'
+    CASE WHEN n IN (1,19) THEN 'goalkeeper' WHEN n BETWEEN 2 AND 7 THEN 'defender'
          WHEN n BETWEEN 8 AND 13 THEN 'midfielder' ELSE 'forward' END,
     n,
     19 + mod(abs(hashtext(t.name || n::text)::bigint),14)::smallint,
@@ -165,7 +165,7 @@ BEGIN
     45 + mod(abs(hashtext(t.name || n::text || 'pass')::bigint),46)::smallint,
     45 + mod(abs(hashtext(t.name || n::text || 'def')::bigint),46)::smallint,
     48 + mod(abs(hashtext(t.name || n::text || 'phys')::bigint),43)::smallint,
-    CASE WHEN n=1 THEN 60 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),41)::smallint
+    CASE WHEN n IN (1,19) THEN 60 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),41)::smallint
          ELSE 5 + mod(abs(hashtext(t.name || n::text || 'gk')::bigint),35)::smallint END,
     55 + mod(abs(hashtext(t.name || n::text || 'sta')::bigint),41)::smallint,
     60,0,65 + mod(abs(hashtext(t.name || n::text || 'pot')::bigint),31)::smallint,
@@ -175,7 +175,7 @@ BEGIN
   FROM (
     SELECT id,name,row_number() OVER(ORDER BY name)::integer AS team_rank
     FROM fd.teams WHERE campaign_id=p_campaign_id
-  ) t CROSS JOIN generate_series(1,18) AS gs(n)
+  ) t CROSS JOIN generate_series(1,19) AS gs(n)
   ON CONFLICT(campaign_id,team_id,shirt_number) DO NOTHING;
 
   UPDATE fd.season_fixtures f SET home_team_id=ht.id,away_team_id=at.id
@@ -185,7 +185,7 @@ BEGIN
 
   INSERT INTO fd.match_lineups(campaign_id,fixture_id,team_id,player_id,role,position,shirt_number)
   SELECT f.campaign_id,f.id,p.team_id,p.id,
-    CASE WHEN p.position='goalkeeper'
+    CASE WHEN p.position='goalkeeper' AND p.shirt_number=1
       OR (p.position='defender' AND p.shirt_number BETWEEN 2 AND 5)
       OR (p.position='midfielder' AND p.shirt_number BETWEEN 8 AND 10)
       OR (p.position='forward' AND p.shirt_number BETWEEN 14 AND 16)
