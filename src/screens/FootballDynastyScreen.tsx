@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
-  advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, listGameEvents, resolveGameEvent,
-  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent,
+  advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
+  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -19,7 +19,8 @@ export function FootballDynastyScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
   const [events, setEvents] = useState<GameEvent[]>([]);
-  const [activeTab, setActiveTab] = useState<'club' | 'events' | 'dynasty'>('club');
+  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('club');
+  const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -41,8 +42,14 @@ export function FootballDynastyScreen() {
   const refreshSelected = useCallback(async (id: string) => {
     const data = await getCampaign(id);
     setCampaign(data);
-    setCandidates(data.campaign.status === 'succession_pending' ? await previewSuccession(id) : []);
-    setEvents(await listGameEvents(id));
+    const [heirs, inbox, seasonData] = await Promise.all([
+      data.campaign.status === 'succession_pending' ? previewSuccession(id) : Promise.resolve([]),
+      listGameEvents(id),
+      getSeason(id),
+    ]);
+    setCandidates(heirs);
+    setEvents(inbox);
+    setSeason(seasonData);
   }, []);
 
   useEffect(() => {
@@ -60,18 +67,19 @@ export function FootballDynastyScreen() {
   }, [t]);
 
   useEffect(() => {
-    if (!selectedId) { setCampaign(null); return; }
+    if (!selectedId) { setCampaign(null); setSeason(null); return; }
     let active = true;
     setBusy('loading');
     getCampaign(selectedId)
       .then(async (data) => {
         if (!active) return;
         setCampaign(data);
-        const [heirs, inbox] = await Promise.all([
+        const [heirs, inbox, seasonData] = await Promise.all([
           data.campaign.status === 'succession_pending' ? previewSuccession(selectedId) : Promise.resolve([]),
           listGameEvents(selectedId),
+          getSeason(selectedId),
         ]);
-        if (active) { setCandidates(heirs); setEvents(inbox); }
+        if (active) { setCandidates(heirs); setEvents(inbox); setSeason(seasonData); }
       })
       .catch(() => { if (active) setError(t('dynasty.error')); })
       .finally(() => { if (active) setBusy(''); });
@@ -255,9 +263,10 @@ export function FootballDynastyScreen() {
             </section>
 
 
-            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-3 gap-2">
+            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-4 gap-2">
               {([
                 ['club', i18n.language.startsWith('ru') ? 'Клуб' : 'Club'],
+                ['matches', i18n.language.startsWith('ru') ? 'Матчи' : 'Matches'],
                 ['events', i18n.language.startsWith('ru') ? 'События' : 'Events'],
                 ['dynasty', i18n.language.startsWith('ru') ? 'Династия' : 'Dynasty'],
               ] as const).map(([tab, label]) => (
@@ -273,6 +282,54 @@ export function FootballDynastyScreen() {
                 </button>
               ))}
             </nav>
+
+            {activeTab === 'matches' && season && (
+              <section className="space-y-5">
+                <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Турнирная таблица' : 'League table'}</span>
+                    <span className="text-xs text-brand-muted">{season.season_year}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[420px] text-left text-sm">
+                      <thead className="text-xs text-brand-muted">
+                        <tr><th className="pb-3 pr-2">#</th><th className="pb-3">{i18n.language.startsWith('ru') ? 'Клуб' : 'Club'}</th><th className="pb-3 text-center">И</th><th className="pb-3 text-center">В</th><th className="pb-3 text-center">Н</th><th className="pb-3 text-center">П</th><th className="pb-3 text-center">М</th><th className="pb-3 text-right">О</th></tr>
+                      </thead>
+                      <tbody>
+                        {season.standings.map((row, index) => (
+                          <tr key={row.team} className="border-t border-brand-border/70">
+                            <td className="py-3 pr-2 text-brand-muted">{index + 1}</td>
+                            <td className="py-3 font-medium">{row.team}</td>
+                            <td className="py-3 text-center tabular-nums">{row.played}</td>
+                            <td className="py-3 text-center tabular-nums">{row.wins}</td>
+                            <td className="py-3 text-center tabular-nums">{row.draws}</td>
+                            <td className="py-3 text-center tabular-nums">{row.losses}</td>
+                            <td className="py-3 text-center tabular-nums">{row.goals_for}:{row.goals_against}</td>
+                            <td className="py-3 text-right font-semibold tabular-nums">{row.points}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                  <div className="mb-4 text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Календарь матчей' : 'Fixture calendar'}</div>
+                  <div className="space-y-2">
+                    {season.fixtures.map((fixture) => (
+                      <div key={fixture.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-bg px-3 py-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Тур' : 'Matchday'} {fixture.matchday} · {new Date(fixture.match_date + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' })}</div>
+                          <div className="mt-1 text-sm font-medium">{fixture.home_team} <span className="mx-1 text-brand-muted">{fixture.status === 'played' ? `${fixture.home_goals} : ${fixture.away_goals}` : '—'}</span> {fixture.away_team}</div>
+                        </div>
+                        <span className={`rounded-full px-2 py-1 text-[10px] ${fixture.status === 'played' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-brand-muted'}`}>
+                          {fixture.status === 'played' ? (i18n.language.startsWith('ru') ? 'Завершён' : 'Played') : (i18n.language.startsWith('ru') ? 'Ожидается' : 'Upcoming')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
 
             {activeTab === 'events' && (
             <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
