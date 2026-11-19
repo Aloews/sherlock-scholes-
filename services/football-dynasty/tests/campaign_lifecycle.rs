@@ -361,6 +361,19 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(season_status, StatusCode::OK);
     assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
+    let player_standing = season["standings"]
+        .as_array()
+        .expect("league standings")
+        .iter()
+        .find(|standing| standing["team"] == "Northbridge United")
+        .expect("player club standing");
+    assert_eq!(player_standing["played"], 1);
+    assert_eq!(
+        player_standing["wins"].as_i64().unwrap_or_default()
+            + player_standing["draws"].as_i64().unwrap_or_default()
+            + player_standing["losses"].as_i64().unwrap_or_default(),
+        1
+    );
     assert_eq!(
         season["fixtures"]
             .as_array()
