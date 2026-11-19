@@ -75,3 +75,6 @@ The CI workflow starts a disposable PostgreSQL 17 service, applies migrations, a
 
 
 Weekly decisions rotate between board review, sponsor approach, supporter meeting and rival scouting report. Accepting the sponsor offer posts a balanced €250,000 EUR double-entry transaction to club cash and sponsorship revenue. The other choices update club reputation or dynasty prestige.
+
+
+Fixture dates and season year are derived from each campaign's current game clock, not a hard-coded calendar year. The first match is scheduled for the next Saturday on or after the campaign start date. Migration 20261119150000 aligns existing production fixtures to the campaign year.
