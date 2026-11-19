@@ -19,9 +19,11 @@ CREATE TABLE fd.season_fixtures (
 );
 
 WITH player_clubs AS (
-  SELECT DISTINCT ON (campaign_id) campaign_id, name AS player_team
-  FROM fd.clubs
-  ORDER BY campaign_id, created_at, id
+  SELECT DISTINCT ON (cl.campaign_id)
+    cl.campaign_id, cl.name AS player_team, c.current_year, c.game_date
+  FROM fd.clubs cl
+  JOIN fd.campaigns c ON c.id=cl.campaign_id
+  ORDER BY cl.campaign_id, cl.created_at, cl.id
 ), schedule(matchday, home_slot, away_slot) AS (
   VALUES
     (1, 'player', 'Harbor Athletic'),
@@ -41,9 +43,9 @@ INSERT INTO fd.season_fixtures
   (campaign_id, season_year, matchday, match_date, home_team, away_team)
 SELECT
   pc.campaign_id,
-  2026,
+  pc.current_year,
   schedule.matchday,
-  DATE '2026-01-03' + ((schedule.matchday::integer - 1) * 7),
+  pc.game_date + ((6 - EXTRACT(ISODOW FROM pc.game_date)::integer + 7) % 7) + ((schedule.matchday::integer - 1) * 7),
   CASE WHEN schedule.home_slot = 'player' THEN pc.player_team ELSE schedule.home_slot END,
   CASE WHEN schedule.away_slot = 'player' THEN pc.player_team ELSE schedule.away_slot END
 FROM player_clubs pc
