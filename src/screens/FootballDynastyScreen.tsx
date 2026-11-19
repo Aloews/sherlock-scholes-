@@ -353,8 +353,8 @@ export function FootballDynastyScreen() {
                           {event.status === 'pending' ? (i18n.language.startsWith('ru') ? 'Требуется решение' : 'Decision required') : event.status === 'expired' ? (i18n.language.startsWith('ru') ? 'Срок истёк' : 'Expired') : (i18n.language.startsWith('ru') ? 'Решено' : 'Resolved')}
                         </span>
                       </div>
-                      <h4 className="font-semibold">{event.title}</h4>
-                      <p className="mt-1 text-sm leading-6 text-brand-muted">{event.body}</p>
+                      <h4 className="font-semibold">{i18n.language.startsWith('ru') && event.event_type === 'club_weekly_review' ? 'Совет директоров' : event.title}</h4>
+                      <p className="mt-1 text-sm leading-6 text-brand-muted">{i18n.language.startsWith('ru') && event.event_type === 'club_weekly_review' ? 'Совет клуба подвёл итоги недели. Выберите главный приоритет развития.' : event.body}</p>
                       {event.status === 'pending' && <p className="mt-2 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Решить до: ' : 'Deadline: '}{new Date(event.expires_on + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>}
                       {event.status === 'pending' && (
                         <div className="mt-4 flex flex-wrap gap-2">
