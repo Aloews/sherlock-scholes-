@@ -269,6 +269,17 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(match_events.iter().filter(|event| event["event_type"] == "substitution").count(), 6);
     assert!(match_events.iter().filter(|event| event["event_type"] == "substitution")
         .all(|event| event["player_name"].is_string() && event["related_player_name"].is_string()));
+    let fixture_uuid=uuid::Uuid::parse_str(fixture_id).expect("fixture UUID");
+    let persisted_goals:i64=sqlx::query_scalar(
+        "SELECT COALESCE(SUM(goals),0)::bigint FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2"
+    ).bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID")).bind(fixture_uuid)
+        .fetch_one(&pool).await.expect("player match goal stats");
+    assert_eq!(persisted_goals,expected_goals);
+    let appearance_count:i64=sqlx::query_scalar(
+        "SELECT COUNT(*)::bigint FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND minutes_played>0"
+    ).bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID")).bind(fixture_uuid)
+        .fetch_one(&pool).await.expect("player match appearances");
+    assert!(appearance_count>=11);
 
     let (sponsor_tick_status, sponsor_tick) = call(
         app.clone(),
