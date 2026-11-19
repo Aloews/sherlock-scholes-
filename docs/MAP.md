@@ -448,3 +448,22 @@ Required information architecture:
 - Added an integration assertion that resolving an expired event returns `409`.
 - Removed the years-based mutating handler, request/result types and frontend client method. The old URL remains as a migration response returning `409 use_day_based_calendar`; it cannot skip weekly events or desynchronize `game_date`.
 - Lifecycle coverage now crosses both founder and successor age-90 boundaries by advancing exactly one day from 31 December to 1 January. Fixture-only age/date setup is not part of player-facing gameplay.
+
+
+## Football Dynasty — launch events, match simulation and game interface — 2026-11-19
+
+**Implemented on main:**
+- New campaigns now receive three persisted launch decisions in the same transaction as campaign creation. Existing campaigns with an empty inbox are backfilled when the event inbox is first opened; the production campaign was also seeded directly so the inbox is populated immediately after the updated frontend/API deploys.
+- Replaced the introductory title/subtitle block with a compact game navigation. The interface now separates Club, Matches, Events and Dynasty; the explanatory headers requested for later authoring are not included. The event cards show the persisted event title/body rather than repeating a generic weekly-review description.
+- Added a six-matchday, four-team fictional league season (12 persisted fixtures, double round-robin). New campaigns seed the schedule; migration 0006 backfills it for existing campaigns.
+- The day processor resolves due fixtures deterministically from campaign seed + fixture identity, persists scores, and records match reports in both the chronicle and event inbox. Match reports are informational resolved events; no fabricated player choices are attached.
+- Added GET /api/v1/campaigns/{campaign_id}/season, returning persisted fixtures and a standings table calculated from played results. Added the match centre UI with fixtures, scores, W/D/L and points.
+- Extended the lifecycle integration test for campaign launch events, matchday processing and final fixture completion. Extended RLS checks to the season-fixture table and updated CI to apply migration 0006.
+
+**Production database evidence (2026-11-19):**
+- Supabase project konoavrduynecxblqfvq was ACTIVE_HEALTHY.
+- Previously missing calendar/events migrations 0004 and 0005 were applied successfully, followed by 0006_season_fixtures.
+- Existing production campaign was backfilled with three launch events and 12 season fixtures. Read-only verification returned: 1 campaign, 3 persisted events, 12 persisted fixtures, 0 fd tables with RLS disabled.
+- These database changes are confirmed. The Vercel frontend/API deployment and a real Telegram play-through are still separate release gates.
+
+**Not claimed:** Rust/TypeScript builds, integration tests, RLS SQL tests, Vercel production deployment or in-game browser smoke tests have not been run/confirmed in this session. The match engine is a bounded deterministic score generator, not a tactical football simulation. The current season is a six-matchday foundation; season rollover, squad/player progression, injuries, contracts, transfers, staff and rival autonomy remain future work.
