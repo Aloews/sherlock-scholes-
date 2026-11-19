@@ -17,7 +17,7 @@ macro_rules! fd_query_scalar {
     ($sql:expr $(,)?) => {
         sqlx::query_scalar($sql).persistent(false)
     };
-    ($row:ty, $sql:expr) => {
+    ($row:ty, $sql:expr $(,)?) => {
         sqlx::query_scalar::<_, $row>($sql).persistent(false)
     };
 }
