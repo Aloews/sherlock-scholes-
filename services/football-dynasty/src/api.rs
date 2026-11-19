@@ -410,6 +410,13 @@ pub async fn create_campaign(
     ]))
     .execute(&mut *tx).await?;
 
+    // Seed team identities and player rosters before inserting fixtures whose
+    // home/away team foreign keys are mandatory.
+    crate::fd_query!("SELECT fd.seed_campaign_squads($1)")
+        .bind(campaign_id)
+        .execute(&mut *tx)
+        .await?;
+
     // Six matchdays, double round-robin, four fictional clubs. Fixtures are
     // persisted at campaign creation so the season centre is populated on day one.
     let player_club = request.club_name.trim();
@@ -429,8 +436,12 @@ pub async fn create_campaign(
     ];
     for (matchday, home_team, away_team) in schedule {
         crate::fd_query!(
-            "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team)
-             SELECT $1,c.current_year,$2,c.game_date + ((6 - EXTRACT(ISODOW FROM c.game_date)::integer + 7) % 7) + (($2::integer - 1) * 7),$3,$4 FROM fd.campaigns c WHERE c.id=$1"
+            "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team,home_team_id,away_team_id)
+             SELECT $1,c.current_year,$2,c.game_date + ((6 - EXTRACT(ISODOW FROM c.game_date)::integer + 7) % 7) + (($2::integer - 1) * 7),$3,$4,ht.id,at.id
+             FROM fd.campaigns c
+             JOIN fd.teams ht ON ht.campaign_id=c.id AND ht.name=$3
+             JOIN fd.teams at ON at.campaign_id=c.id AND at.name=$4
+             WHERE c.id=$1"
         )
         .bind(campaign_id)
         .bind(matchday)
