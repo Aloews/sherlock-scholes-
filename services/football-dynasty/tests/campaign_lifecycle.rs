@@ -197,7 +197,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .find(|event| event["event_type"] == "match_board_review")
         .expect("player match must create a contextual board decision");
     let match_review_body = match_review["body"].as_str().unwrap_or_default();
-    assert!(match_review_body.contains("Матч") || match_review_body.contains("Команда"));
+    assert!(match_review_body.contains("Northbridge United"));
+    assert_eq!(match_review["choices"].as_array().expect("match decision choices").len(), 2);
+    assert!(match_review["title"].as_str().unwrap_or_default().contains("Решение после матча"));
     let match_review_id = match_review["id"].as_str().expect("match review id");
     let match_review_choice = match_review["choices"][0]["id"]
         .as_str()
@@ -212,6 +214,16 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(match_review_status, StatusCode::OK);
     assert_eq!(match_review_result["status"], "resolved");
+    let (match_review_replay_status, match_review_replay) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    )
+    .await;
+    assert_eq!(match_review_replay_status, StatusCode::OK);
+    assert_eq!(match_review_replay, match_review_result);
 
     let event_id = events
         .as_array()
