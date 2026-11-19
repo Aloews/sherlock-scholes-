@@ -146,14 +146,14 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 
 **Architecture decision:** Football Dynasty simulation and authoritative domain rules are implemented in Rust. Frontend code is a client only; TypeScript must not independently calculate match outcomes, finances, contracts, player progression, ownership or succession.
 
-**Current verified repository change:** draft PR [#447](https://github.com/Aloews/sherlock-scholes-/pull/447) now contains the deterministic Rust match core, standings reducer, squad/lineup validation and team-rating aggregation, plus a dedicated Rust compile/test workflow. E0 and the first E1 domain layer are in implementation; acceptance is not yet complete. The existing SQL-backed matchday path still generates scores independently and has not been switched to Rust. No production deployment is part of this change.
+**Current verified repository change:** draft PR [#447](https://github.com/Aloews/sherlock-scholes-/pull/447) now contains the deterministic Rust core, player-aware goal/assist attribution, validated substitutions, persisted campaign rosters, fixture lineups, match events and player match statistics. Due fixtures in the day-based calendar now call the Rust player match simulator instead of deriving scores from SHA-256 bytes. The branch adds a dedicated PostgreSQL-backed Rust CI workflow and mirrors migration 0011 into Supabase migrations. E0 is implemented; E1 and E3 are in integration/testing, not accepted yet. No production migration or deployment is part of this PR.
 
 | Sequence | Engine milestone | Acceptance evidence |
 |---|---|---|
 | E0 | Pure deterministic match core | Same inputs replay identically; seed changes stream; validated ratings; table reconciliation |
-| E1 | Player/squad/tactics | Position-specific attributes, XI validation, formations and tactical rating aggregation are started; substitutions and player-level match events remain outstanding |
+| E1 | Player/squad/tactics | Campaign roster persistence, XI selection, formations, scorer/assist attribution, legal substitutions and player match-stat persistence; manager-controlled lineups/tactics UI and discipline/injury event logic remain |
 | E2 | Competition/calendar | Round-robin and cup draws, dates, tie-breakers, registration and eligibility invariants |
-| E3 | Matchday integration | Rust engine is the only match-result authority; atomic fixture/event/chronicle persistence; restart replay |
+| E3 | Matchday integration | Due fixtures now route through Rust and persist score, match events, lineups and player stats in the calendar transaction; verify integration/replay/idempotency and production migration before acceptance |
 | E4 | Player lifecycle | Training, development, morale, fatigue, injuries, suspensions and contracts |
 | E5 | Club finance and transfers | Double-entry ledger, wage budget, transfer negotiation, agent fees, FFP and insolvency |
 | E6 | Staff, rivals and dynasty world | AI agents obey the same domain constraints; explainable decisions and append-only history |
@@ -505,6 +505,17 @@ Required information architecture:
 
 **Rust formatting repair — 2026-11-19:** Exact-head Rust CI exposed formatting-only diffs in the Football Dynasty HTTP, module, simulation and lifecycle-test files. A guarded main-branch CI step is being used to apply rustfmt to `services/football-dynasty/` only, then re-run the normal formatting, Clippy, test and RLS checks. No behavior change is intended.
 
+
+
+
+**Rust player-match integration — 2026-11-19 (PR #447, validation pending):**
+- Added campaign-scoped team and player tables with player attributes, potential, wage, market value, contracts, fatigue, morale, injury and suspension dates; added team tactics, fixture lineup snapshots, match event records and player match-stat records.
+- Existing fixture names are migrated to stable team IDs. A campaign seeding function creates persisted 19-player fictional squads for the player club and three fictional rivals, with two goalkeepers and position-balanced rosters. These are campaign-generated fictional players, not verified real-world club rosters.
+- The Rust player match simulator attributes goals to scorers and optional assists, supports up to five position-compatible substitutions, updates fatigue during play, and emits an ordered event stream.
+- Calendar fixture resolution now loads the campaign's persisted player roster, selects an eligible XI using the team's tactical formation, performs bounded manager substitutions, runs Rust simulation and writes score, events, appearances, goals, assists, ratings and fatigue inside the same transaction.
+- Added a fixture match-report API with player/team names, plus lifecycle assertions for scorer attribution, six substitutions across both sides, and reconciled player goal totals.
+- Added PostgreSQL service container to Rust CI because the lifecycle test runs the complete migration chain; added service/Supabase migration parity check.
+- **Not yet accepted:** latest CI for the current branch is queued/running. The preceding run compiled the Rust crate and passed 18 unit tests, but the lifecycle test exposed an outdated expiry assertion (the event was explicitly resolved before the tick); that assertion was corrected. No successful current-head run, production migration, production deployment, real Telegram play-through or performance benchmark is claimed.
 
 ## Project accounting — time, tokens and operating costs — 2026-11-19
 
