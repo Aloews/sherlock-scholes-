@@ -1,13 +1,13 @@
 #[macro_export]
 macro_rules! fd_query {
-    ($sql:expr) => {
+    ($sql:expr $(,)?) => {
         sqlx::query($sql).persistent(false)
     };
 }
 
 #[macro_export]
 macro_rules! fd_query_as {
-    ($row:ty, $sql:expr) => {
+    ($row:ty, $sql:expr $(,)?) => {
         sqlx::query_as::<_, $row>($sql).persistent(false)
     };
 }
