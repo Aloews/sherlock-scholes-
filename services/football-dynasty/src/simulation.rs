@@ -555,62 +555,45 @@ pub async fn advance_time(
                 || player_club.as_deref() == Some(away_team.as_str())
             {
                 let is_home = player_club.as_deref() == Some(home_team.as_str());
-                let (result_label, body, choices) = if is_home {
-                    if home_goals > away_goals {
-                        (
-                            "победа",
-                            format!("Команда добилась победы: {report}. Совет предлагает решить, как закрепить результат."),
-                            json!([
-                                {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
-                                {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
-                            ]),
-                        )
-                    } else if home_goals == away_goals {
-                        (
-                            "ничья",
-                            format!("Матч завершился вничью: {report}. Совет ждёт решения о следующем шаге."),
-                            json!([
-                                {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
-                                {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
-                            ]),
-                        )
-                    } else {
-                        (
-                            "поражение",
-                            format!("Команда потерпела поражение: {report}. Совет требует реакции руководства."),
-                            json!([
-                                {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
-                                {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
-                            ]),
-                        )
-                    }
-                } else if away_goals > home_goals {
-                    (
+                let (team_goals, opponent_goals) = if is_home {
+                    (home_goals, away_goals)
+                } else {
+                    (away_goals, home_goals)
+                };
+                let (result_label, body, choices) = match team_goals.cmp(&opponent_goals) {
+                    std::cmp::Ordering::Greater => (
                         "победа",
-                        format!("Команда добилась выездной победы: {report}. Совет предлагает решить, как закрепить результат."),
+                        format!(
+                            "{}: {report}. Совет предлагает решить, как закрепить результат.",
+                            if is_home { "Команда добилась победы" } else { "Команда добилась выездной победы" }
+                        ),
                         json!([
                             {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
                             {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
                         ]),
-                    )
-                } else if away_goals == home_goals {
-                    (
+                    ),
+                    std::cmp::Ordering::Equal => (
                         "ничья",
-                        format!("Выездной матч завершился вничью: {report}. Совет ждёт решения о следующем шаге."),
+                        format!(
+                            "{}: {report}. Совет ждёт решения о следующем шаге.",
+                            if is_home { "Матч завершился вничью" } else { "Выездной матч завершился вничью" }
+                        ),
                         json!([
                             {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
                             {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
                         ]),
-                    )
-                } else {
-                    (
+                    ),
+                    std::cmp::Ordering::Less => (
                         "поражение",
-                        format!("Команда проиграла на выезде: {report}. Совет требует реакции руководства."),
+                        format!(
+                            "{}: {report}. Совет требует реакции руководства.",
+                            if is_home { "Команда потерпела поражение" } else { "Команда проиграла на выезде" }
+                        ),
                         json!([
                             {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
                             {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
                         ]),
-                    )
+                    ),
                 };
                 let reaction_key = format!("match-board-review-{fixture_id}");
                 let reaction = crate::fd_query!(
