@@ -414,8 +414,8 @@ pub async fn advance_time(
         // Resolve every scheduled fixture on its match date. The score is
         // deterministic for the campaign seed and fixture, so retries/reloads
         // cannot produce a different result.
-        let due_fixtures = sqlx::query_as::<_, (Uuid, i16, String, String)>(
-            "SELECT id,matchday,home_team,away_team FROM fd.season_fixtures
+        let due_fixtures = sqlx::query_as::<_, (Uuid, i32, i16, String, String)>(
+            "SELECT id,season_year,matchday,home_team,away_team FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
              ORDER BY matchday,id FOR UPDATE"
         )
@@ -423,8 +423,8 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
-        for (fixture_id, matchday, home_team, away_team) in due_fixtures {
-            let score_seed = format!("{campaign_seed}:2026:{matchday}:{home_team}:{away_team}");
+        for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
+            let score_seed = format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
             let digest = Sha256::digest(score_seed.as_bytes());
             let home_goals = (digest[0] % 4) as i16;
             let away_goals = (digest[1] % 4) as i16;
