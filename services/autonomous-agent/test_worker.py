@@ -287,6 +287,11 @@ class WorkerPolicyTests(unittest.TestCase):
                     "STARIMG_API_KEY", "GITHUB_TOKEN", "M3U_SOURCE_URL",
                 ):
                     self.assertNotIn(secret_name, child_env)
+                self.assertEqual(child_env["CARGO_BUILD_JOBS"], "1")
+                self.assertEqual(child_env["CARGO_INCREMENTAL"], "0")
+                self.assertEqual(child_env["CARGO_PROFILE_DEV_DEBUG"], "0")
+                self.assertEqual(child_env["CARGO_PROFILE_TEST_DEBUG"], "0")
+                self.assertEqual(child_env["RUSTFLAGS"], "-C debuginfo=0")
 
     def test_required_file_gate_extracts_variable_number_of_paths(self):
         task = """## Required files — all eight must be present in the same PR
