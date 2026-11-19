@@ -472,6 +472,19 @@ class WorkerPolicyTests(unittest.TestCase):
         task = compose_issue_task({"body": "x" * 20000}, "Fix")
         self.assertLess(len(task), 8100)
 
+    def test_reviewer_since_cutoff_ignores_older_pull_requests(self):
+        from worker import is_after_review_since
+
+        cutoff = "2026-11-19T10:09:30Z"
+        self.assertFalse(is_after_review_since(
+            {"created_at": "2026-11-18T22:00:00Z"}, cutoff
+        ))
+        self.assertTrue(is_after_review_since(
+            {"created_at": "2026-11-19T10:09:31Z"}, cutoff
+        ))
+        self.assertFalse(is_after_review_since({}, cutoff))
+        self.assertTrue(is_after_review_since({}, ""))
+
     def test_worker_uses_repository_default_branch(self):
         from worker import Worker
 
