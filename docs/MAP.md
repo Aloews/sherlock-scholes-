@@ -473,3 +473,10 @@ Required information architecture:
 - Weekly event cadence now rotates among board review, sponsor approach, supporter meeting and rival scouting report, with one idempotent event per ISO week.
 - Sponsor acceptance posts a balanced €250,000 double-entry transaction to the club cash and sponsorship revenue accounts. Other event choices change club reputation or dynasty prestige by explicit amounts.
 - Lifecycle coverage now includes a sponsor choice and asserts the cash-account total after the ledger posting. The test source is updated but the CI run remains queued; no pass is claimed.
+
+
+**Existing campaign calendar alignment — 2026-11-19:**
+- The production campaign was already at `current_year=2046`, `game_date=2046-01-01`; the first fixture backfill had incorrectly hard-coded 2026. This would have left the match centre empty because the season endpoint reads the campaign year.
+- Corrected campaign creation and service migration 0007 to derive season year and match dates from `fd.campaigns.current_year` and `game_date`; the score seed now uses each fixture's `season_year`.
+- Applied Supabase migration 20261119150000 to realign the existing 12 fixtures to the campaign's current year and next Saturday. Production read-back confirms 12 fixtures in 2046, dates 2046-01-06 through 2046-02-10, and 3 pending launch events.
+- New campaign calendars now use the next Saturday relative to their own game date; this avoids assumptions about a fixed start year or weekday.
