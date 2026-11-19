@@ -6,6 +6,7 @@ use axum::{
 };
 use chrono::{Datelike, Duration, NaiveDate};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{Postgres, Transaction};
@@ -17,6 +18,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/campaigns/{campaign_id}/time/advance", post(advance_time))
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
+        .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
         .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
             post(resolve_event),
@@ -51,6 +53,49 @@ pub struct GameEvent {
     pub choices: Value,
     pub status: String,
     pub resolution: Option<Value>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow, Clone)]
+pub struct SeasonFixture {
+    pub id: Uuid,
+    pub season_year: i32,
+    pub matchday: i16,
+    pub match_date: NaiveDate,
+    pub home_team: String,
+    pub away_team: String,
+    pub status: String,
+    pub home_goals: Option<i16>,
+    pub away_goals: Option<i16>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LeagueStanding {
+    pub team: String,
+    pub played: i32,
+    pub wins: i32,
+    pub draws: i32,
+    pub losses: i32,
+    pub goals_for: i32,
+    pub goals_against: i32,
+    pub points: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SeasonView {
+    pub season_year: i32,
+    pub fixtures: Vec<SeasonFixture>,
+    pub standings: Vec<LeagueStanding>,
+}
+
+#[derive(Default)]
+struct StandingTotals {
+    played: i32,
+    wins: i32,
+    draws: i32,
+    losses: i32,
+    goals_for: i32,
+    goals_against: i32,
+    points: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -174,6 +219,73 @@ pub async fn list_events(
     Ok(Json(rows))
 }
 
+pub async fn get_season(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(campaign_id): Path<Uuid>,
+) -> Result<Json<SeasonView>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    let season_year: i32 = sqlx::query_scalar(
+        "SELECT current_year FROM fd.campaigns WHERE id=$1"
+    )
+    .bind(campaign_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(ApiError::not_found)?;
+    let fixtures = sqlx::query_as::<_, SeasonFixture>(
+        "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
+         FROM fd.season_fixtures WHERE campaign_id=$1 AND season_year=$2
+         ORDER BY matchday,match_date,home_team,away_team"
+    )
+    .bind(campaign_id)
+    .bind(season_year)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let mut totals: BTreeMap<String, StandingTotals> = BTreeMap::new();
+    for fixture in &fixtures {
+        totals.entry(fixture.home_team.clone()).or_default();
+        totals.entry(fixture.away_team.clone()).or_default();
+        if fixture.status != "played" {
+            continue;
+        }
+        let home_goals = fixture.home_goals.unwrap_or(0) as i32;
+        let away_goals = fixture.away_goals.unwrap_or(0) as i32;
+        let home = totals.get_mut(&fixture.home_team).expect("home team inserted");
+        let away = totals.get_mut(&fixture.away_team).expect("away team inserted");
+        home.played += 1;
+        away.played += 1;
+        home.goals_for += home_goals;
+        home.goals_against += away_goals;
+        away.goals_for += away_goals;
+        away.goals_against += home_goals;
+        match home_goals.cmp(&away_goals) {
+            std::cmp::Ordering::Greater => { home.wins += 1; home.points += 3; away.losses += 1; }
+            std::cmp::Ordering::Less => { away.wins += 1; away.points += 3; home.losses += 1; }
+            std::cmp::Ordering::Equal => { home.draws += 1; away.draws += 1; home.points += 1; away.points += 1; }
+        }
+    }
+    let mut standings: Vec<LeagueStanding> = totals.into_iter().map(|(team, value)| LeagueStanding {
+        team,
+        played: value.played,
+        wins: value.wins,
+        draws: value.draws,
+        losses: value.losses,
+        goals_for: value.goals_for,
+        goals_against: value.goals_against,
+        points: value.points,
+    }).collect();
+    standings.sort_by(|a, b| {
+        b.points.cmp(&a.points)
+            .then_with(|| (b.goals_for - b.goals_against).cmp(&(a.goals_for - a.goals_against)))
+            .then_with(|| b.goals_for.cmp(&a.goals_for))
+            .then_with(|| a.team.cmp(&b.team))
+    });
+    tx.commit().await?;
+    Ok(Json(SeasonView { season_year, fixtures, standings }))
+}
+
 pub async fn advance_time(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -193,11 +305,11 @@ pub async fn advance_time(
         return replay(value);
     }
 
-    let row: (NaiveDate, Uuid, String) = sqlx::query_as(
-        "SELECT game_date,player_character_id,status FROM fd.campaigns WHERE id=$1 FOR UPDATE",
+    let row: (NaiveDate, Uuid, String, i64) = sqlx::query_as(
+        "SELECT game_date,player_character_id,status,seed FROM fd.campaigns WHERE id=$1 FOR UPDATE",
     )
     .bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
-    let (from_date, player_id, initial_status) = row;
+    let (from_date, player_id, initial_status, campaign_seed) = row;
     if initial_status != "active" {
         return Err(ApiError::conflict("campaign_not_active"));
     }
@@ -244,6 +356,69 @@ pub async fn advance_time(
             ]))
             .execute(&mut *tx).await?;
             generated_events += inserted.rows_affected() as i64;
+        }
+
+        // Resolve every scheduled fixture on its match date. The score is
+        // deterministic for the campaign seed and fixture, so retries/reloads
+        // cannot produce a different result.
+        let due_fixtures = sqlx::query_as::<_, (Uuid, i16, String, String)>(
+            "SELECT id,matchday,home_team,away_team FROM fd.season_fixtures
+             WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
+             ORDER BY matchday,id FOR UPDATE"
+        )
+        .bind(campaign_id)
+        .bind(current_date)
+        .fetch_all(&mut *tx)
+        .await?;
+        for (fixture_id, matchday, home_team, away_team) in due_fixtures {
+            let score_seed = format!("{campaign_seed}:2026:{matchday}:{home_team}:{away_team}");
+            let digest = Sha256::digest(score_seed.as_bytes());
+            let home_goals = (digest[0] % 4) as i16;
+            let away_goals = (digest[1] % 4) as i16;
+            sqlx::query(
+                "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
+                 WHERE id=$1 AND campaign_id=$2 AND status='scheduled'"
+            )
+            .bind(fixture_id)
+            .bind(campaign_id)
+            .bind(home_goals)
+            .bind(away_goals)
+            .execute(&mut *tx)
+            .await?;
+            let report = format!("{home_team} {home_goals}–{away_goals} {away_team}");
+            let result_payload = json!({
+                "fixture_id":fixture_id,
+                "matchday":matchday,
+                "match_date":current_date,
+                "home_team":home_team,
+                "away_team":away_team,
+                "home_goals":home_goals,
+                "away_goals":away_goals
+            });
+            sqlx::query(
+                "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
+                 VALUES($1,'match_result',$2,$3,$4)"
+            )
+            .bind(campaign_id)
+            .bind(&report)
+            .bind(current_date.year())
+            .bind(&result_payload)
+            .execute(&mut *tx)
+            .await?;
+            let event_key = format!("match-result-{fixture_id}");
+            let event_insert = sqlx::query(
+                "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices,status,resolution,resolved_at)
+                 VALUES($1,$2,'match_result','Результат матча',$3,$4,$4,70,'[]'::jsonb,'resolved',$5,now())
+                 ON CONFLICT(campaign_id,event_key) DO NOTHING"
+            )
+            .bind(campaign_id)
+            .bind(event_key)
+            .bind(&report)
+            .bind(current_date)
+            .bind(&result_payload)
+            .execute(&mut *tx)
+            .await?;
+            generated_events += event_insert.rows_affected() as i64;
         }
     }
 
