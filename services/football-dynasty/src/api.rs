@@ -4,7 +4,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     routing::{get, post},
 };
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -417,38 +417,32 @@ pub async fn create_campaign(
         .execute(&mut *tx)
         .await?;
 
-    // Six matchdays, double round-robin, four fictional clubs. Fixtures are
-    // persisted at campaign creation so the season centre is populated on day one.
-    let player_club = request.club_name.trim();
-    let schedule: [(i16, &str, &str); 12] = [
-        (1, player_club, "Harbor Athletic"),
-        (1, "Redbridge FC", "Kingsport United"),
-        (2, "Kingsport United", player_club),
-        (2, "Harbor Athletic", "Redbridge FC"),
-        (3, player_club, "Redbridge FC"),
-        (3, "Kingsport United", "Harbor Athletic"),
-        (4, "Harbor Athletic", player_club),
-        (4, "Kingsport United", "Redbridge FC"),
-        (5, "Redbridge FC", player_club),
-        (5, "Harbor Athletic", "Kingsport United"),
-        (6, player_club, "Kingsport United"),
-        (6, "Redbridge FC", "Harbor Athletic"),
-    ];
-    for (matchday, home_team, away_team) in schedule {
+    // Build a balanced double round-robin from the campaign's persisted team IDs.
+    let teams=crate::fd_query_as!((Uuid,String),
+        "SELECT id,name FROM fd.teams WHERE campaign_id=$1 ORDER BY is_player_controlled DESC,name")
+        .bind(campaign_id).fetch_all(&mut *tx).await?;
+    let team_ids:Vec<Uuid>=teams.iter().map(|(id,_)|*id).collect();
+    let game_date:NaiveDate=crate::fd_query_scalar!(
+        "SELECT game_date FROM fd.campaigns WHERE id=$1"
+    ).bind(campaign_id).fetch_one(&mut *tx).await?;
+    let days_to_saturday=(6_i64-i64::from(game_date.weekday().num_days_from_monday())).rem_euclid(7);
+    let first_match_date=game_date+chrono::Duration::days(days_to_saturday);
+    let fixtures=crate::competition::generate_round_robin(
+        &team_ids,first_match_date,crate::competition::CompetitionRules::default()
+    ).map_err(|_|ApiError::conflict("competition_schedule_invalid"))?;
+    for fixture in fixtures {
+        let home_team=teams.iter().find(|(id,_)|*id==fixture.home_team_id)
+            .map(|(_,name)|name.as_str()).ok_or_else(||ApiError::conflict("fixture_home_team_missing"))?;
+        let away_team=teams.iter().find(|(id,_)|*id==fixture.away_team_id)
+            .map(|(_,name)|name.as_str()).ok_or_else(||ApiError::conflict("fixture_away_team_missing"))?;
         crate::fd_query!(
-            "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team,home_team_id,away_team_id)
-             SELECT $1,c.current_year,$2,c.game_date + ((6 - EXTRACT(ISODOW FROM c.game_date)::integer + 7) % 7) + (($2::integer - 1) * 7),$3,$4,ht.id,at.id
-             FROM fd.campaigns c
-             JOIN fd.teams ht ON ht.campaign_id=c.id AND ht.name=$3
-             JOIN fd.teams at ON at.campaign_id=c.id AND at.name=$4
-             WHERE c.id=$1"
+            "INSERT INTO fd.season_fixtures
+             (campaign_id,season_year,matchday,match_date,home_team,away_team,home_team_id,away_team_id)
+             SELECT $1,c.current_year,$2,$3,$4,$5,$6,$7 FROM fd.campaigns c WHERE c.id=$1"
         )
-        .bind(campaign_id)
-        .bind(matchday)
-        .bind(home_team)
-        .bind(away_team)
-        .execute(&mut *tx)
-        .await?;
+        .bind(campaign_id).bind(fixture.matchday as i16).bind(fixture.match_date)
+        .bind(home_team).bind(away_team).bind(fixture.home_team_id).bind(fixture.away_team_id)
+        .execute(&mut *tx).await?;
     }
 
     crate::fd_query!("SELECT fd.seed_campaign_squads($1)")
