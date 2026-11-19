@@ -440,6 +440,11 @@ pub async fn create_campaign(
         .await?;
     }
 
+    crate::fd_query!("SELECT fd.seed_campaign_squads($1)")
+        .bind(campaign_id)
+        .execute(&mut *tx)
+        .await?;
+
     let response = CampaignCreated {
         id: campaign_id,
         name: request.name.trim().to_owned(),
