@@ -703,7 +703,7 @@ pub async fn advance_time(
                              VALUES($1,'matchday_revenue',$2,$3,$4)",
                         )
                         .bind(campaign_id)
-                        .bind(format!("Домашний матч: доход от билетов €{:.2}", ticket_revenue_minor as f64 / 100.0))
+                        .bind(format!("Домашний матч: доход от билетов €{}", ticket_revenue_minor / 100))
                         .bind(current_date.year())
                         .bind(json!({
                             "fixture_id":fixture_id,
