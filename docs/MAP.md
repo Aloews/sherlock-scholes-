@@ -396,3 +396,29 @@ Required information architecture:
 - Use a persisted simulation clock and ordered tick processor with idempotent jobs/checkpoints. Advancing time must process all due transitions in chronological order, avoid duplicate events on retries, and write the resulting events/chronicle entries in the same transaction or through an outbox-safe workflow. Long simulation batches run asynchronously with visible progress; the UI remains responsive.
 - Do not equate a user action with a ten-year skip. Normal play should feel like managing a living club and family through days, weeks, matchdays and seasons; decades pass only through many deliberate actions or an explicitly selected fast-forward.
 - Acceptance tests: one-day, one-week and one-month advances process all due systems; a match action advances to the correct matchday and creates its result/event chain; an action with zero time cost does not move the clock; deadlines and injuries trigger at the right date; retrying a tick creates no duplicate events or financial entries; closing/reopening the app does not lose or unexpectedly advance game time; a long fast-forward reports every skipped match/deadline and resulting major event.
+
+
+## Football Dynasty — first calendar/event vertical slice — 2026-11-19
+
+**Implemented on `main` (source changes committed):**
+- Added `game_date` to the campaign record and a private, owner-scoped `fd.game_events` inbox with pending/resolved/expired lifecycle, typed event metadata, choices, resolution payload and unique campaign event key.
+- Added Rust simulation routes: day-based calendar advancement (1–31 days per command), event inbox retrieval and server-side event resolution. Mutations use the existing idempotency receipt table; campaign rows are locked during time advancement; duplicate weekly event generation is blocked by a unique campaign/event key.
+- The day processor increments living characters on 1 January, stops at the founder's age-90 boundary, records the death and succession state, and creates at most one club-review event per ISO week. Event choices apply a persisted club reputation or dynasty prestige change and append a chronicle record.
+- Added the campaign date to the API response and connected the Telegram UI to show the date, advance seven days, display pending/resolved event cards and submit choices.
+- Added an integration-test path to the existing PostgreSQL lifecycle test for a seven-day tick, weekly event generation, inbox retrieval and choice resolution.
+- Added service migration `0004_game_clock_events.sql` and mirrored the migration into `supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql`; documented the new API and time model in the service README and GDD.
+
+**Relevant commits:** `3122b7d` (service migration), `2f0d586` (simulation engine), `5f36c92` (routes), `456346b` (campaign date), `7e0f1f7` (client API), `db77e0d` (UI), `ac255d5` (integration-test extension), `850059b` (Supabase migration), `2e54d59` (API docs), `5fe12f2` (GDD).
+
+**Verification status / limitations (do not overstate):**
+- GitHub source read-back confirmed the new files and route wiring. The integration test has been authored but no GitHub Actions run or passing test result is currently available for these direct-to-main commits. The combined GitHub status returned no checks for the test commit; Vercel production deployments created by the successive commits were still queued at the last inspection.
+- The Supabase migration file is committed but has **not** been applied to the production database. The new event/calendar API therefore must not be represented as production-ready until the migration is applied through the controlled database migration path and the deployed API is verified against it.
+- This is a first playable vertical slice, not the full AnyWorld-like simulation. The only generated recurring event is the weekly club review. Fixtures, matchday outcomes, training, fatigue/injuries, contracts/transfers, financial schedules, autonomous rivals, family milestones and contextual event chains are still unimplemented. The weekly choice consequences are intentionally limited to persisted club reputation or dynasty prestige.
+- The legacy year-based `/advance` endpoint remains for compatibility with the existing lifecycle test; the player-facing UI no longer calls it. Remove or formally deprecate that endpoint only after migrating the remaining callers/tests.
+- No measured latency, successful production migration, successful Rust build, passing integration test, or production deployment is claimed.
+
+**Next required gates:**
+1. Run Rust formatting, compile and the PostgreSQL integration suite against the exact main SHA; repair all failures.
+2. Apply the Supabase migration through the approved production migration process, then verify schema, grants and RLS as the restricted runtime role.
+3. Verify the exact production deployment SHA and health; exercise calendar advance, event list, event choice, reload and idempotent replay using a real Telegram session.
+4. Replace the weekly placeholder cadence with domain-triggered event families and a real football season/matchday loop. Add acceptance tests for zero-time actions, one-day/week/month progression, deadline ordering, birthday/death boundary, retry safety and no offline time drift.
