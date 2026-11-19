@@ -348,6 +348,17 @@ mod tests {
             && e.player_id==Some(plan.outgoing_player_id) && e.related_player_id==Some(plan.incoming_player_id)));
     }
     #[test]
+    fn tactical_tempo_changes_expected_chances() {
+        let (mut fast,away)=(squad(0),squad(1000));
+        let mut slow=fast.clone();
+        fast.starting.tactics.tempo=100;
+        slow.starting.tactics.tempo=0;
+        let fast_result=simulate_player_match(77,Uuid::from_u128(9001),&fast,&away,MatchRules::default(),&[],&[]).unwrap();
+        let slow_result=simulate_player_match(77,Uuid::from_u128(9001),&slow,&away,MatchRules::default(),&[],&[]).unwrap();
+        assert!(fast_result.home_xg_milli>slow_result.home_xg_milli);
+    }
+
+    #[test]
     fn illegal_position_substitution_is_rejected() {
         let (home,away)=(squad(0),squad(1000));
         let plan=SubstitutionPlan { minute:60, outgoing_player_id:Uuid::from_u128(9), incoming_player_id:Uuid::from_u128(13) };
