@@ -503,3 +503,6 @@ Required information architecture:
 - Add infrastructure cost imports or explicit manual invoice entries for Railway, Supabase, Vercel and external services. Never estimate provider charges without a verified rate card or billing export.
 - Add reconciliation checks for missing usage, duplicate task records, negative durations, missing model IDs and task runs with no terminal outcome. Report missing measurements as unknown, not zero.
 - Acceptance: a deliberately failed test task still produces a durable record with all provider usage received before failure; a successful task records architect, implementation, retry, reviewer and CI phases separately; aggregate reports reconcile to provider usage exports for the same period.
+
+
+**Football Dynasty retry accounting — 2026-11-19:** Issue #441 comment 7006805718 completed with failure at 10:50:25Z. Observed worker window 10:43:53–10:50:25Z (~6m32s elapsed). Starimg reported 7 calls, 14,757 input tokens, 56,778 output tokens, 71,535 total tokens and 282,176 cache-creation input tokens. Monetary cost remains unknown because the exact rate card was not verified. Work reached the existing screen, API client and lifecycle test, but the docs/MAP.md edit failed after three attempts (one HTTP 503 and subsequent patch-context failures); no PR or production change resulted. Full record: docs/PROJECT_ACCOUNTING.md.
