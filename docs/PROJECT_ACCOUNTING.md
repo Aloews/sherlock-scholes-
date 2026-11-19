@@ -71,3 +71,6 @@ At each meaningful milestone report:
 6. confidence and missing metering data.
 
 The current baseline is incomplete. Monetary totals, token consumption and project-completion percentage remain unmeasured until provider usage and billing records are available.
+
+
+| GitHub issue #441, comment 7006805718 | claude-fable-5-2 via Starimg | Architect; screen implementation; API client; lifecycle regression test; MAP update attempted; terminal failure | Worker start 10:43:53Z; architect 10:44:28–10:44:56Z; screen request 10:44:56Z; API request 10:45:46Z; test appended 10:46:22Z; MAP retries through 10:50:24Z; terminal failure 10:50:25Z. Approx. 6m32s observed elapsed worker window; not active labour time. | Provider-reported: 7 calls; input 14,757; output 56,778; total 71,535; cache-creation input 282,176. Monetary cost unknown: exact Starimg rate card unavailable. | Failed before PR. Three MAP edit attempts failed (Starimg HTTP 503 on full-file fallback, then patch context mismatch); no production changes. Treat all reported usage as failed/rework cost. |
