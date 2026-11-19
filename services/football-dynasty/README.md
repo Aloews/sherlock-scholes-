@@ -71,6 +71,7 @@ The CI workflow starts a disposable PostgreSQL 17 service, applies migrations, a
 - A six-matchday, four-team fictional league schedule is persisted per campaign (12 fixtures). Existing campaigns are backfilled by migration 0007_season_fixtures.sql.
 - Every simulated day resolves fixtures due on that date. Scores are deterministic from the campaign seed and fixture identity, then stored with a chronicle entry and a resolved match-report event.
 - Every match involving the player's club also creates a pending, result-specific board decision (win/draw/loss, home/away). The player chooses a club-reputation or dynasty-leadership response; the choice is validated and persisted with the event and chronicle in one transaction.
+- Home fixtures also post deterministic ticket revenue to the club cash account using a balanced, idempotent double-entry journal; attendance is reputation-based and capped at 20,000.
 - GET /api/v1/campaigns/{campaign_id}/season returns the fixture calendar and standings derived from played results.
 - Each standings row includes a one-based position and explicit goal difference; ordering is points, goal difference, goals scored, then team name.
 - This is a bounded first season loop, not a tactical match engine or full season rollover system.
