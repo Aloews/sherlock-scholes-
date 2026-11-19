@@ -406,7 +406,7 @@ Required information architecture:
 - The day processor increments living characters on 1 January, stops at the founder's age-90 boundary, records the death and succession state, and creates at most one club-review event per ISO week. Event choices apply a persisted club reputation or dynasty prestige change and append a chronicle record.
 - Added the campaign date to the API response and connected the Telegram UI to show the date, advance seven days, display pending/resolved event cards and submit choices.
 - Added an integration-test path to the existing PostgreSQL lifecycle test for a seven-day tick, weekly event generation, inbox retrieval and choice resolution.
-- Added service migration `0004_game_clock_events.sql` and mirrored the migration into `supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql`; documented the new API and time model in the service README and GDD.
+- Added service migration `0005_game_clock_events.sql` and mirrored the migration into `supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql`; documented the new API and time model in the service README and GDD.
 
 **Relevant commits:** `3122b7d` (service migration), `2f0d586` (simulation engine), `5f36c92` (routes), `456346b` (campaign date), `7e0f1f7` (client API), `db77e0d` (UI), `ac255d5` (integration-test extension), `850059b` (Supabase migration), `2e54d59` (API docs), `5fe12f2` (GDD).
 
@@ -455,7 +455,7 @@ Required information architecture:
 **Implemented on main:**
 - New campaigns now receive three persisted launch decisions in the same transaction as campaign creation. Existing campaigns with an empty inbox are backfilled when the event inbox is first opened; the production campaign was also seeded directly so the inbox is populated immediately after the updated frontend/API deploys.
 - Replaced the introductory title/subtitle block with a compact game navigation. The interface now separates Club, Matches, Events and Dynasty; the explanatory headers requested for later authoring are not included. The event cards show the persisted event title/body rather than repeating a generic weekly-review description.
-- Added a six-matchday, four-team fictional league season (12 persisted fixtures, double round-robin). New campaigns seed the schedule; migration 0006 backfills it for existing campaigns.
+- Added a six-matchday, four-team fictional league season (12 persisted fixtures, double round-robin). New campaigns seed the schedule; migration 0007 backfills it for existing campaigns.
 - The day processor resolves due fixtures deterministically from campaign seed + fixture identity, persists scores, and records match reports in both the chronicle and event inbox. Match reports are informational resolved events; no fabricated player choices are attached.
 - Added GET /api/v1/campaigns/{campaign_id}/season, returning persisted fixtures and a standings table calculated from played results. Added the match centre UI with fixtures, scores, W/D/L and points.
 - Extended the lifecycle integration test for campaign launch events, matchday processing and final fixture completion. Extended RLS checks to the season-fixture table and updated CI to apply migration 0006.
