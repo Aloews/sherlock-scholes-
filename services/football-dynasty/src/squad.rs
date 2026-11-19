@@ -2,7 +2,7 @@
 use std::collections::BTreeSet;
 use uuid::Uuid;
 
-use crate::engine::{EngineError, TeamProfile};
+use crate::engine::TeamProfile;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Position { Goalkeeper, Defender, Midfielder, Forward }
