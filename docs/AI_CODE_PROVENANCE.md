@@ -29,9 +29,9 @@
 
 ### ChatGPT assistant
 
-- ChatGPT directly authored the initial backend patch in this session: 103 Rust source additions and 27 test additions, with 4 test-line deletions.
-- Subsequent branch commits with no model/run provenance refactored and formatted the match outcome logic (39 additions / 44 deletions in Rust), strengthened the integration test (13 additions / 1 deletion), and added backend CI wiring (34 additions in `.github/workflows/ci.yml`, plus 4 additions / 1 deletion in the Rust workflow). These commits are not attributable to Starimg or local Qwen from the available evidence.
-- The current exact PR diff is 98 added Rust source lines, 39 added test lines / 4 deleted test lines, 38 workflow additions / 1 deletion, and 50 documentation additions: **225 additions and 5 deletions** total. The assistant's original code contribution is recorded separately from these unclassified follow-on edits.
+- Directly authored in this session: the initial matchday backend implementation (95 Rust additions); the initial lifecycle regression (26 test additions / 4 deletions); the outcome-branch refactor (24 Rust additions / 41 deletions); and follow-up lifecycle assertions/effect checks (64 test additions / 2 deletions across the recorded commits).
+- Concurrent branch automation also formatted/refactored parts of the same files and added CI wiring. Those changes are not attributed to Starimg or local Qwen, but their individual author/model cannot be established from the available logs.
+- Current exact PR diff against `main`: 98 Rust source additions; 115 lifecycle-test additions / 4 deletions; 38 workflow additions / 1 deletion; 50 documentation additions. Total: **275 additions and 5 deletions**. These are repository diff statistics, not a complete ChatGPT-only attribution.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
 
 ## Current measurement gap
