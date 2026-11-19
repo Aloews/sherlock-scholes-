@@ -670,14 +670,27 @@ def summarize_usage(records: list[dict[str, Any]]) -> dict[str, int]:
                     break
         if total:
             result[target] = total
-    reported_total = sum(
-        int(record.get("total_tokens", 0))
-        for record in records
-        if isinstance(record, dict) and isinstance(record.get("total_tokens"), (int, float))
-    )
-    calculated_total = result.get("input_tokens", 0) + result.get("output_tokens", 0)
-    if reported_total or calculated_total:
-        result["total_tokens"] = reported_total or calculated_total
+    total_tokens = 0
+    has_total = False
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        reported = record.get("total_tokens")
+        if isinstance(reported, (int, float)) and not isinstance(reported, bool):
+            total_tokens += int(reported)
+            has_total = True
+            continue
+        input_count = next((
+            int(record[name]) for name in ("input_tokens", "prompt_tokens")
+            if isinstance(record.get(name), (int, float)) and not isinstance(record.get(name), bool)
+        ), 0)
+        output_count = next((
+            int(record[name]) for name in ("output_tokens", "completion_tokens")
+            if isinstance(record.get(name), (int, float)) and not isinstance(record.get(name), bool)
+        ), 0)
+        total_tokens += input_count + output_count
+    if total_tokens:
+        result["total_tokens"] = total_tokens
     return result
 
 
