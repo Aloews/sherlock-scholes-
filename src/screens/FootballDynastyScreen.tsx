@@ -19,6 +19,7 @@ export function FootballDynastyScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
   const [events, setEvents] = useState<GameEvent[]>([]);
+  const [activeTab, setActiveTab] = useState<'club' | 'events' | 'dynasty'>('club');
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -155,12 +156,6 @@ export function FootballDynastyScreen() {
           </div>
         </header>
 
-        <section className="mb-7">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-brand-accent">Sherlock Scholes</p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t('dynasty.title')}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-muted">{t('dynasty.subtitle')}</p>
-        </section>
-
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -260,9 +255,29 @@ export function FootballDynastyScreen() {
             </section>
 
 
+            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-3 gap-2">
+              {([
+                ['club', i18n.language.startsWith('ru') ? 'Клуб' : 'Club'],
+                ['events', i18n.language.startsWith('ru') ? 'События' : 'Events'],
+                ['dynasty', i18n.language.startsWith('ru') ? 'Династия' : 'Dynasty'],
+              ] as const).map(([tab, label]) => (
+                <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+                  aria-current={activeTab === tab ? 'page' : undefined}
+                  className={`rounded-xl border px-3 py-3 text-sm font-semibold transition ${activeTab === tab ? 'border-brand-accent bg-brand-accent/10 text-white' : 'border-brand-border bg-brand-surface text-brand-muted'}`}>
+                  {label}
+                  {tab === 'events' && events.some((event) => event.status === 'pending') && (
+                    <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-brand-accent px-1.5 py-0.5 text-[10px] text-white">
+                      {events.filter((event) => event.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            {activeTab === 'events' && (
             <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold">{i18n.language.startsWith('ru') ? 'События клуба' : 'Club events'}</h3>
+                <span className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Входящие события' : 'Event inbox'}</span>
                 <span className="rounded-full bg-brand-bg px-3 py-1 text-xs text-brand-muted">
                   {events.filter((event) => event.status === 'pending').length} {i18n.language.startsWith('ru') ? 'ожидают решения' : 'awaiting decision'}
                 </span>
@@ -281,10 +296,8 @@ export function FootballDynastyScreen() {
                           {event.status === 'pending' ? (i18n.language.startsWith('ru') ? 'Требуется решение' : 'Decision required') : event.status === 'expired' ? (i18n.language.startsWith('ru') ? 'Срок истёк' : 'Expired') : (i18n.language.startsWith('ru') ? 'Решено' : 'Resolved')}
                         </span>
                       </div>
-                      <h4 className="font-semibold">{i18n.language.startsWith('ru') ? 'Еженедельный совет клуба' : event.title}</h4>
-                      <p className="mt-1 text-sm leading-6 text-brand-muted">
-                        {i18n.language.startsWith('ru') ? 'Совет клуба подвёл итоги недели. Выберите приоритет на следующую неделю.' : event.body}
-                      </p>
+                      <h4 className="font-semibold">{event.title}</h4>
+                      <p className="mt-1 text-sm leading-6 text-brand-muted">{event.body}</p>
                       {event.status === 'pending' && <p className="mt-2 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Решить до: ' : 'Deadline: '}{new Date(event.expires_on + 'T00:00:00Z').toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>}
                       {event.status === 'pending' && (
                         <div className="mt-4 flex flex-wrap gap-2">
@@ -303,7 +316,34 @@ export function FootballDynastyScreen() {
                 </div>
               )}
             </section>
+            )}
 
+            {activeTab === 'club' && (
+              <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Репутация клуба' : 'Club reputation'}</div>
+                    <div className="mt-1 text-3xl font-semibold tabular-nums">{campaign.clubs[0]?.reputation ?? 0}<span className="ml-1 text-sm text-brand-muted">/100</span></div>
+                  </div>
+                  <div className="h-2 w-1/2 overflow-hidden rounded-full bg-brand-bg">
+                    <div className="h-full rounded-full bg-brand-accent" style={{ width: `${Math.max(0, Math.min(100, campaign.clubs[0]?.reputation ?? 0))}%` }} />
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'Игровой календарь' : 'Game calendar'} · {campaign.campaign.game_date}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 7, 30].map((days) => (
+                      <button key={days} type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => advance(days)}>
+                        <IconHourglass size={16} />
+                        {busy === 'advance' ? t('dynasty.loading') : (i18n.language.startsWith('ru') ? '+' + days + ' дн.' : '+' + days + ' days')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'dynasty' && (
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <section className="rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
                 <h3 className="mb-4 text-lg font-semibold">{t('dynasty.family')}</h3>
@@ -366,6 +406,7 @@ export function FootballDynastyScreen() {
                 </div>
               </section>
             </div>
+            )}
           </>
         )}
       </div>
