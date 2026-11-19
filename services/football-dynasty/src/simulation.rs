@@ -93,7 +93,7 @@ pub struct SetFixtureTacticRequest {
     pub tactic: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SetFixtureTacticResult {
     pub fixture_id: Uuid,
     pub tactic: String,
@@ -394,6 +394,12 @@ pub async fn advance_time(
     let mut generated_events = 0_i64;
     let mut expired_events = 0_i64;
     let mut status = initial_status;
+    let player_team: String = crate::fd_query_scalar!(
+        "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1"
+    )
+    .bind(campaign_id)
+    .fetch_one(&mut *tx)
+    .await?;
     for _ in 0..request.days {
         current_date += Duration::days(1);
         let expired = crate::fd_query!("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
@@ -493,12 +499,6 @@ pub async fn advance_time(
         // Resolve every scheduled fixture on its match date. The score is
         // deterministic for the campaign seed and fixture, so retries/reloads
         // cannot produce a different result.
-        let player_team: String = crate::fd_query_scalar!(
-            "SELECT name FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1"
-        )
-        .bind(campaign_id)
-        .fetch_one(&mut *tx)
-        .await?;
         let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String, String),
             "SELECT id,season_year,matchday,home_team,away_team,player_tactic FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
