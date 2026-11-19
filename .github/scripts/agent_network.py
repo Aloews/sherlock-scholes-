@@ -229,8 +229,8 @@ def build_issue_task(issue, task):
     body = str(issue.get("body") or "").strip()
     return (
         "Issue #" + str(number) + ": " + title
-        + "\\n\\nRequirements from issue body:\\n" + body[:8000]
-        + "\\n\\nOwner request:\\n" + task
+        + "\n\nRequirements from issue body:\n" + body[:8000]
+        + "\n\nOwner request:\n" + task
     )
 
 
@@ -254,8 +254,8 @@ def main():
     if base.run(["git", "status", "--porcelain"]).stdout.strip():
         print("::error::Working tree is not clean.")
         return 1
-    context = task_context(task)
-    compact_task = "Issue #" + str(issue.get("number")) + "\n" + task
+    compact_task = build_issue_task(issue, task)
+    context = task_context(compact_task)
     fable_used = False
     try:
         planning_error = ""
