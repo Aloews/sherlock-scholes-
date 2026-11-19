@@ -91,6 +91,31 @@ CREATE TABLE fd.match_events (
   FOREIGN KEY (campaign_id,related_player_id) REFERENCES fd.players(campaign_id,id)
 );
 
+ALTER TABLE fd.players
+  ADD COLUMN appearances integer NOT NULL DEFAULT 0 CHECK (appearances >= 0),
+  ADD COLUMN career_goals integer NOT NULL DEFAULT 0 CHECK (career_goals >= 0),
+  ADD COLUMN career_assists integer NOT NULL DEFAULT 0 CHECK (career_assists >= 0),
+  ADD COLUMN career_minutes integer NOT NULL DEFAULT 0 CHECK (career_minutes >= 0),
+  ADD COLUMN clean_sheets integer NOT NULL DEFAULT 0 CHECK (clean_sheets >= 0),
+  ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE TABLE fd.player_match_stats (
+  campaign_id uuid NOT NULL REFERENCES fd.campaigns(id) ON DELETE CASCADE,
+  fixture_id uuid NOT NULL,
+  team_id uuid NOT NULL,
+  player_id uuid NOT NULL,
+  started boolean NOT NULL,
+  minutes_played smallint NOT NULL CHECK (minutes_played BETWEEN 0 AND 130),
+  goals smallint NOT NULL DEFAULT 0 CHECK (goals BETWEEN 0 AND 20),
+  assists smallint NOT NULL DEFAULT 0 CHECK (assists BETWEEN 0 AND 20),
+  clean_sheet boolean NOT NULL DEFAULT false,
+  rating numeric(3,1) NOT NULL CHECK (rating BETWEEN 0 AND 10),
+  PRIMARY KEY (campaign_id,fixture_id,player_id),
+  FOREIGN KEY (campaign_id,fixture_id) REFERENCES fd.season_fixtures(campaign_id,id) ON DELETE CASCADE,
+  FOREIGN KEY (campaign_id,team_id) REFERENCES fd.teams(campaign_id,id),
+  FOREIGN KEY (campaign_id,player_id) REFERENCES fd.players(campaign_id,id)
+);
+
 CREATE INDEX fd_players_team_position_idx ON fd.players(campaign_id,team_id,position,shirt_number);
 CREATE INDEX fd_match_events_fixture_idx ON fd.match_events(campaign_id,fixture_id,minute,sequence);
 
@@ -215,6 +240,7 @@ ALTER TABLE fd.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fd.team_tactics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fd.match_lineups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fd.match_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fd.player_match_stats ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY fd_runtime_access ON fd.teams FOR ALL TO fd_runtime
 USING (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint))
@@ -232,5 +258,9 @@ CREATE POLICY fd_runtime_access ON fd.match_events FOR ALL TO fd_runtime
 USING (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint))
 WITH CHECK (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint));
 
-GRANT SELECT,INSERT,UPDATE ON fd.teams,fd.players,fd.team_tactics,fd.match_lineups,fd.match_events TO fd_runtime;
+CREATE POLICY fd_runtime_access ON fd.player_match_stats FOR ALL TO fd_runtime
+USING (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint))
+WITH CHECK (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint));
+
+GRANT SELECT,INSERT,UPDATE ON fd.teams,fd.players,fd.team_tactics,fd.match_lineups,fd.match_events,fd.player_match_stats TO fd_runtime;
 GRANT EXECUTE ON FUNCTION fd.seed_campaign_squads(uuid) TO fd_runtime;
