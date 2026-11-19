@@ -80,8 +80,9 @@ def record_fable_usage(purpose, max_tokens, status, usage=None, request_id=None,
     if summary_path:
         try:
             summary_file = Path(summary_path)
+            has_usage_section = summary_file.exists() and "### Starimg usage" in summary_file.read_text(encoding="utf-8")
             with summary_file.open("a", encoding="utf-8") as summary:
-                if summary_file.stat().st_size == 0:
+                if not has_usage_section:
                     summary.write(
                         "### Starimg usage (no prompts or completions)\n\n"
                         "| Provider | Purpose | Status | Input | Output | Cache read | Cache write | Max output | Request ID |\n"
