@@ -73,6 +73,7 @@ pub struct SeasonFixture {
 
 #[derive(Debug, Serialize)]
 pub struct LeagueStanding {
+    pub position: i32,
     pub team: String,
     pub played: i32,
     pub wins: i32,
@@ -80,6 +81,7 @@ pub struct LeagueStanding {
     pub losses: i32,
     pub goals_for: i32,
     pub goals_against: i32,
+    pub goal_difference: i32,
     pub points: i32,
 }
 
@@ -314,6 +316,7 @@ pub async fn get_season(
     let mut standings: Vec<LeagueStanding> = totals
         .into_iter()
         .map(|(team, value)| LeagueStanding {
+            position: 0,
             team,
             played: value.played,
             wins: value.wins,
@@ -321,16 +324,20 @@ pub async fn get_season(
             losses: value.losses,
             goals_for: value.goals_for,
             goals_against: value.goals_against,
+            goal_difference: value.goals_for - value.goals_against,
             points: value.points,
         })
         .collect();
     standings.sort_by(|a, b| {
         b.points
             .cmp(&a.points)
-            .then_with(|| (b.goals_for - b.goals_against).cmp(&(a.goals_for - a.goals_against)))
+            .then_with(|| b.goal_difference.cmp(&a.goal_difference))
             .then_with(|| b.goals_for.cmp(&a.goals_for))
             .then_with(|| a.team.cmp(&b.team))
     });
+    for (index, standing) in standings.iter_mut().enumerate() {
+        standing.position = index as i32 + 1;
+    }
     tx.commit().await?;
     Ok(Json(SeasonView {
         season_year,
