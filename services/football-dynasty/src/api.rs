@@ -23,7 +23,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/v1/campaigns/{campaign_id}/heirs", post(create_heir))
         .route(
             "/api/v1/campaigns/{campaign_id}/advance",
-            post(advance_campaign),
+            post(legacy_advance_removed),
         )
         .route(
             "/api/v1/campaigns/{campaign_id}/succession/preview",
@@ -49,11 +49,6 @@ pub struct CreateCampaignRequest {
 pub struct CreateHeirRequest {
     pub name: String,
     pub age: i32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AdvanceRequest {
-    pub years: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -137,14 +132,6 @@ pub struct CampaignView {
     pub clubs: Vec<ClubView>,
     pub cash_accounts: Vec<CashAccountView>,
     pub chronicle: Vec<ChronicleView>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AdvanceResult {
-    pub current_year: i32,
-    pub player_age: i32,
-    pub status: String,
-    pub succession_available: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -562,122 +549,8 @@ pub async fn create_heir(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-pub async fn advance_campaign(
-    State(state): State<AppState>,
-    Extension(identity): Extension<Identity>,
-    Path(campaign_id): Path<Uuid>,
-    headers: HeaderMap,
-    Json(request): Json<AdvanceRequest>,
-) -> Result<Json<AdvanceResult>, ApiError> {
-    if !(1..=10).contains(&request.years) {
-        return Err(ApiError::bad_request(
-            "advance_must_be_between_1_and_10_years",
-        ));
-    }
-    let key = idempotency_key(&headers)?;
-    let hash = payload_hash(&(campaign_id, &request))?;
-    let mut tx = state.db.begin().await?;
-    set_owner_scope(&mut tx, identity.telegram_id).await?;
-    if let Some(value) = reserve_command(
-        &mut tx,
-        identity.telegram_id,
-        &key,
-        "advance_campaign",
-        &hash,
-    )
-    .await?
-    {
-        tx.rollback().await?;
-        return replay(value);
-    }
-
-    let campaign = sqlx::query_as::<_, (Uuid, i32, String)>(
-        "SELECT player_character_id,current_year,status FROM fd.campaigns WHERE id=$1 AND owner_telegram_id=$2 FOR UPDATE"
-    )
-    .bind(campaign_id).bind(identity.telegram_id).fetch_optional(&mut *tx).await?
-    .ok_or_else(ApiError::not_found)?;
-    if campaign.2 != "active" {
-        return Err(ApiError::conflict("campaign_not_active"));
-    }
-
-    let current_player_age: i32 = sqlx::query_scalar(
-        "SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2 AND life_status='alive'",
-    )
-    .bind(campaign.0)
-    .bind(campaign_id)
-    .fetch_one(&mut *tx)
-    .await?;
-    // The player can request a decade, but a character's death is resolved at
-    // the exact simulation year of the age-90 boundary, never after overshooting it.
-    let elapsed_years = if current_player_age >= 90 {
-        0
-    } else {
-        request.years.min(90 - current_player_age)
-    };
-    let next_year = campaign.1 + elapsed_years;
-    if elapsed_years > 0 {
-        sqlx::query(
-            "UPDATE fd.characters SET age=age+$2 WHERE campaign_id=$1 AND life_status='alive'",
-        )
-        .bind(campaign_id)
-        .bind(elapsed_years)
-        .execute(&mut *tx)
-        .await?;
-    }
-    let player_age: i32 =
-        sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
-            .bind(campaign.0)
-            .bind(campaign_id)
-            .fetch_one(&mut *tx)
-            .await?;
-
-    let mut status = "active".to_owned();
-    let mut succession_available = false;
-    if player_age >= 90 {
-        sqlx::query(
-            "UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2",
-        )
-        .bind(campaign.0)
-        .bind(campaign_id)
-        .execute(&mut *tx)
-        .await?;
-        let eligible_count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18"
-        )
-        .bind(campaign_id).bind(campaign.0).fetch_one(&mut *tx).await?;
-        succession_available = eligible_count > 0;
-        status = if succession_available {
-            "succession_pending"
-        } else {
-            "ended_no_heir"
-        }
-        .to_owned();
-        sqlx::query("UPDATE fd.campaigns SET current_year=$2,status=$3,version=version+1,updated_at=now() WHERE id=$1")
-            .bind(campaign_id).bind(next_year).bind(&status).execute(&mut *tx).await?;
-        sqlx::query(
-            "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'character_death','The head of the dynasty has died', $2, $3)"
-        )
-        .bind(campaign_id).bind(next_year).bind(json!({"deceased_character_id":campaign.0,"player_age":player_age,"succession_available":succession_available}))
-        .execute(&mut *tx).await?;
-    } else {
-        sqlx::query("UPDATE fd.campaigns SET current_year=$2,version=version+1,updated_at=now() WHERE id=$1")
-            .bind(campaign_id).bind(next_year).execute(&mut *tx).await?;
-        sqlx::query(
-            "INSERT INTO fd.chronicle (campaign_id,event_type,title,game_year,payload) VALUES ($1,'time_advanced','The years pass', $2, $3)"
-        )
-        .bind(campaign_id).bind(next_year).bind(json!({"years":request.years,"player_age":player_age}))
-        .execute(&mut *tx).await?;
-    }
-
-    let response = AdvanceResult {
-        current_year: next_year,
-        player_age,
-        status,
-        succession_available,
-    };
-    complete_command(&mut tx, identity.telegram_id, &key, campaign_id, &response).await?;
-    tx.commit().await?;
-    Ok(Json(response))
+pub async fn legacy_advance_removed() -> Result<StatusCode, ApiError> {
+    Err(ApiError::conflict("use_day_based_calendar"))
 }
 
 pub async fn preview_succession(
