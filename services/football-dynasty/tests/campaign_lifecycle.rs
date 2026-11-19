@@ -227,6 +227,28 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(month["generated_events"], 4);
     assert_eq!(month["expired_events"], 3);
 
+    let (expired_list_status, expired_list) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/events"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(expired_list_status, StatusCode::OK);
+    let expired_event_id = expired_list.as_array().expect("event inbox")
+        .iter().find(|event| event["status"] == "expired")
+        .expect("expired weekly event")["id"].as_str().expect("expired event id");
+    let (expired_resolve_status, _) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{expired_event_id}/resolve"),
+        Some("expired-event-choice-01"),
+        Some(json!({"choice_id":"reputation"})),
+    )
+    .await;
+    assert_eq!(expired_resolve_status, StatusCode::CONFLICT);
+
     let (legacy_status, _) = call(
         app.clone(),
         "POST",
