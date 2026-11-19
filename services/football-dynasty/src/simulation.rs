@@ -252,18 +252,28 @@ pub async fn get_season(
         }
         let home_goals = fixture.home_goals.unwrap_or(0) as i32;
         let away_goals = fixture.away_goals.unwrap_or(0) as i32;
-        let home = totals.get_mut(&fixture.home_team).expect("home team inserted");
-        let away = totals.get_mut(&fixture.away_team).expect("away team inserted");
-        home.played += 1;
-        away.played += 1;
-        home.goals_for += home_goals;
-        home.goals_against += away_goals;
-        away.goals_for += away_goals;
-        away.goals_against += home_goals;
-        match home_goals.cmp(&away_goals) {
-            std::cmp::Ordering::Greater => { home.wins += 1; home.points += 3; away.losses += 1; }
-            std::cmp::Ordering::Less => { away.wins += 1; away.points += 3; home.losses += 1; }
-            std::cmp::Ordering::Equal => { home.draws += 1; away.draws += 1; home.points += 1; away.points += 1; }
+        let outcome = home_goals.cmp(&away_goals);
+        {
+            let home = totals.get_mut(&fixture.home_team).expect("home team inserted");
+            home.played += 1;
+            home.goals_for += home_goals;
+            home.goals_against += away_goals;
+            match outcome {
+                std::cmp::Ordering::Greater => { home.wins += 1; home.points += 3; }
+                std::cmp::Ordering::Equal => { home.draws += 1; home.points += 1; }
+                std::cmp::Ordering::Less => { home.losses += 1; }
+            }
+        }
+        {
+            let away = totals.get_mut(&fixture.away_team).expect("away team inserted");
+            away.played += 1;
+            away.goals_for += away_goals;
+            away.goals_against += home_goals;
+            match outcome {
+                std::cmp::Ordering::Greater => { away.losses += 1; }
+                std::cmp::Ordering::Equal => { away.draws += 1; away.points += 1; }
+                std::cmp::Ordering::Less => { away.wins += 1; away.points += 3; }
+            }
         }
     }
     let mut standings: Vec<LeagueStanding> = totals.into_iter().map(|(team, value)| LeagueStanding {
