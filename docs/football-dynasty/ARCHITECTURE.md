@@ -75,3 +75,26 @@ Implemented route: `/dynasty`, registered in `src/app/Router.tsx` and linked fro
 ## Release gates
 
 Production release gates: green Rust fmt/Clippy/tests and Sherlock CI; successful migration on the isolated private schema; runtime transaction-local role restricted to `fd_runtime`; Supavisor connectivity and health check; real Telegram Mini App smoke test; same-origin frontend routing; rollback/backup review. The route is not protected by hiding it: every API request is verified server-side and owner-scoped.
+
+
+## Rust simulation engine boundary
+
+The Rust engine is the sole authority for fictional campaign rules and simulation. Keep deterministic domain logic in pure modules under `services/football-dynasty/src/engine/` (or `engine.rs` while the module is small). These modules must not depend on Axum, SQLx, network clients, wall-clock time, Redis, or LLM output. The API layer validates identity and commands; an application layer loads the minimum required snapshot, invokes the engine, and commits the resulting state atomically.
+
+Every persisted campaign snapshot and simulation event must carry an engine/ruleset version. Randomness is derived from a persisted campaign seed plus stable command, fixture, and entity identifiers. Never use process-global randomness or current time as a simulation input. Replaying a command with the same version and inputs must reproduce the same state transition.
+
+### Engine implementation sequence
+
+1. **Pure match core:** validated team attributes, deterministic match result/events, reproducible seed stream, fixture standings reducer. Unit tests run without PostgreSQL.
+2. **Football domain:** player attributes and positions, squads, formations, tactical instructions, substitutions, injuries, suspensions, training and player development.
+3. **Competition domain:** league/cup rules, fixture generation, calendar constraints, tie-breakers, registration and eligibility.
+4. **Club operations:** contracts, wages, transfer negotiation, budgets, sponsorship, matchday revenue, financial fair play and insolvency rules.
+5. **World simulation:** staff roles, board objectives, rival clubs/dynasties, agents, media and politics using the same validated command/rule boundary.
+6. **Persistence and replay:** versioned snapshots, append-only domain events, deterministic command processing, idempotent commits, recovery and migration tests.
+7. **Performance:** benchmark CPU simulation separately from database/API latency; batch reads and writes, bound concurrency, and add caches only when measured.
+
+The first pure match-core module is a foundation, not a claim that the full game engine is complete. The current SQL-backed matchday path must not be described as replaced until it is routed through the pure engine and passes parity, replay, persistence and integration tests.
+
+### Performance policy
+
+Do not deploy on every commit. Run formatting, unit tests, Clippy, integration tests and benchmarks in CI on the feature branch. Group reviewed engine milestones into release candidates. Do not introduce Redis or a separate worker fleet before load tests show a specific bottleneck; the first optimization target is eliminating repeated database round trips and keeping deterministic simulation CPU-bound in memory.
