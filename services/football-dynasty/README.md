@@ -51,7 +51,7 @@ All campaign routes require:
 - `POST /api/v1/campaigns/{campaign_id}/heirs`
 - `POST /api/v1/campaigns/{campaign_id}/advance` returns `409 use_day_based_calendar`; decade-step advancement is disabled
 - `POST /api/v1/campaigns/{campaign_id}/time/advance` (1–31 in-game days)
-- `GET /api/v1/campaigns/{campaign_id}/events`
+- `GET /api/v1/campaigns/{campaign_id}/events` (includes the inclusive `expires_on` deadline and `pending` / `resolved` / `expired` state)
 - `POST /api/v1/campaigns/{campaign_id}/events/{event_id}/resolve`
 - `GET /api/v1/campaigns/{campaign_id}/succession/preview`
 - `POST /api/v1/campaigns/{campaign_id}/succession`
