@@ -99,6 +99,7 @@ Source: user-uploaded `request-logs(2).csv`, 30 rows. The export does not identi
 - Mean request latency: 29.8 seconds; median: 23.6 seconds.
 - Cache values are reported only for `claude-opus-5` in this export. Do not infer cache creation, cache-read pricing, or caching configuration from this field alone.
 - The 30-row export is a bounded sample, not a complete account-period usage statement. It does not establish the remaining balance of the user-reported 25,000,000-token top-up.
+- Input plus output counters in this sample total **1,259,374 tokens**. Numerically this is about **5.0%** of the user-reported 25,000,000-token top-up *if* these 30 rows belong to that top-up period; it is not a verified balance or total-consumption percentage.
 - Monetary cost and the conversion of `Списано` units to billable tokens remain **unknown** until the exact Starimg rate card/invoice and metric definition are verified.
 
 ### Cost-control actions derived from the export
