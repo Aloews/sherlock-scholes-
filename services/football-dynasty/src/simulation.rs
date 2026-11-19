@@ -353,18 +353,61 @@ pub async fn advance_time(
             }
         }
 
-        // One weekly board review is created at most once per campaign/week.
+        // One domain-specific event is created at most once per campaign/week.
+        // Event families rotate so the world is not a repeated board-review loop.
         if current_date.weekday().number_from_monday() == 1 {
-            let event_key = format!("weekly-review-{}", current_date.format("%G-W%V"));
+            let event_key = format!("weekly-event-{}", current_date.format("%G-W%V"));
+            let (event_type, title, body, choices) = match (current_date.ordinal() / 7) % 4 {
+                0 => (
+                    "club_weekly_review",
+                    "Совет директоров",
+                    "Совет клуба подвёл итоги недели. Выберите главный приоритет развития.",
+                    json!([
+                        {"id":"reputation","label":"Укрепить репутацию клуба","effect":"club_reputation"},
+                        {"id":"prestige","label":"Укрепить влияние династии","effect":"dynasty_prestige"}
+                    ]),
+                ),
+                1 => (
+                    "sponsor_approach",
+                    "Предложение титульного партнёра",
+                    "Потенциальный партнёр предлагает €250 000 на развитие клуба. Выберите условия сотрудничества.",
+                    json!([
+                        {"id":"sponsor_cash","label":"Принять €250 000 и пополнить бюджет клуба","effect":"sponsor_cash"},
+                        {"id":"club_reputation_2","label":"Отказаться от сделки и укрепить независимость клуба","effect":"club_reputation_2"}
+                    ]),
+                ),
+                2 => (
+                    "supporter_meeting",
+                    "Встреча с болельщиками",
+                    "Представители болельщиков хотят влиять на развитие клуба и ждут решения руководства.",
+                    json!([
+                        {"id":"club_reputation_2","label":"Инвестировать время в отношения с болельщиками","effect":"club_reputation_2"},
+                        {"id":"dynasty_prestige_2","label":"Провести встречу от имени династии","effect":"dynasty_prestige_2"}
+                    ]),
+                ),
+                _ => (
+                    "rival_scouting_report",
+                    "Доклад о соперниках",
+                    "Скаутский отдел подготовил обзор конкурентов. Определите, как использовать полученную информацию.",
+                    json!([
+                        {"id":"reputation","label":"Направить ресурсы на развитие команды","effect":"club_reputation"},
+                        {"id":"prestige","label":"Использовать связи династии","effect":"dynasty_prestige"}
+                    ]),
+                ),
+            };
             let inserted = sqlx::query(
-                "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES($1,$2,'club_weekly_review','Weekly club review','The board has reviewed the club position. Choose the emphasis for the coming week.',$3,$4,60,$5) ON CONFLICT(campaign_id,event_key) DO NOTHING",
+                "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES($1,$2,$3,$4,$5,$6,$7,60,$8) ON CONFLICT(campaign_id,event_key) DO NOTHING",
             )
-            .bind(campaign_id).bind(event_key).bind(current_date).bind(current_date + Duration::days(6))
-            .bind(json!([
-                {"id":"reputation","label":"Build the club reputation","effect":"club_reputation"},
-                {"id":"prestige","label":"Strengthen the dynasty standing","effect":"dynasty_prestige"}
-            ]))
-            .execute(&mut *tx).await?;
+            .bind(campaign_id)
+            .bind(event_key)
+            .bind(event_type)
+            .bind(title)
+            .bind(body)
+            .bind(current_date)
+            .bind(current_date + Duration::days(6))
+            .bind(choices)
+            .execute(&mut *tx)
+            .await?;
             generated_events += inserted.rows_affected() as i64;
         }
 
@@ -492,10 +535,58 @@ pub async fn resolve_event(
                 .bind(campaign_id).execute(&mut *tx).await?;
             "club_reputation_increased"
         }
+        Some("club_reputation_2") => {
+            sqlx::query("UPDATE fd.clubs SET reputation=LEAST(100,reputation+2) WHERE campaign_id=$1")
+                .bind(campaign_id).execute(&mut *tx).await?;
+            "club_reputation_increased_by_two"
+        }
         Some("dynasty_prestige") => {
             sqlx::query("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
                 .bind(campaign_id).execute(&mut *tx).await?;
             "dynasty_prestige_increased"
+        }
+        Some("dynasty_prestige_2") => {
+            sqlx::query("UPDATE fd.dynasties SET prestige=prestige+2 WHERE campaign_id=$1")
+                .bind(campaign_id).execute(&mut *tx).await?;
+            "dynasty_prestige_increased_by_two"
+        }
+        Some("sponsor_cash") => {
+            let club_id: Uuid = sqlx::query_scalar("SELECT id FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at LIMIT 1")
+                .bind(campaign_id).fetch_one(&mut *tx).await?;
+            let cash_account_id: Uuid = sqlx::query_scalar(
+                "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND account_type='cash' AND owner_type='club' ORDER BY created_at LIMIT 1"
+            )
+            .bind(campaign_id).fetch_one(&mut *tx).await?;
+            let existing_revenue: Option<Uuid> = sqlx::query_scalar(
+                "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND account_type='revenue' AND owner_type='club' ORDER BY created_at LIMIT 1"
+            )
+            .bind(campaign_id).fetch_optional(&mut *tx).await?;
+            let revenue_account_id = if let Some(id) = existing_revenue {
+                id
+            } else {
+                let id = Uuid::new_v4();
+                sqlx::query(
+                    "INSERT INTO fd.accounts(id,campaign_id,name,account_type,owner_type,owner_id,currency,normal_balance)
+                     VALUES($1,$2,'Sponsorship revenue','revenue','club',$3,'EUR','credit')"
+                )
+                .bind(id).bind(campaign_id).bind(club_id).execute(&mut *tx).await?;
+                id
+            };
+            let journal_id = Uuid::new_v4();
+            let journal_key = format!("sponsor-event-{event_id}");
+            sqlx::query(
+                "INSERT INTO fd.journal_entries(id,campaign_id,idempotency_key,memo,game_year)
+                 VALUES($1,$2,$3,'Sponsorship payment', $4)"
+            )
+            .bind(journal_id).bind(campaign_id).bind(journal_key).bind(event.3.year())
+            .execute(&mut *tx).await?;
+            sqlx::query(
+                "INSERT INTO fd.journal_lines(campaign_id,journal_entry_id,account_id,side,amount_minor)
+                 VALUES($1,$2,$3,'debit',25000000),($1,$2,$4,'credit',25000000)"
+            )
+            .bind(campaign_id).bind(journal_id).bind(cash_account_id).bind(revenue_account_id)
+            .execute(&mut *tx).await?;
+            "sponsorship_income_received"
         }
         _ => return Err(ApiError::bad_request("unsupported_event_effect")),
     };
