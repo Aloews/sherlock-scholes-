@@ -51,7 +51,7 @@ Update this section only from measured evidence. Every metric must include an ob
 | Profile enrichment | Queue depth, success, no-data, retryable failures by source | 23,408 jobs on 2026-11-07 13:07 UTC | Transfermarkt had persistent zero-byte HTTP 202 responses; remeasure |
 | Forecast quality | Brier score, log loss, calibration, coverage, baseline comparison | No current unified scorecard recorded here | Missing evidence |
 | Player awards | Candidate coverage, feature freshness, calibrated probabilities, outcome evaluation | Snapshot tables and pipeline exist; current calibration not verified here | Needs measured evaluation |
-| Team competitions | Tournament candidate coverage, calibrated probabilities, outcome evaluation | Snapshot tables and pipeline exist; current calibration not verified here | Needs measured evaluation |
+| Team competitions | Tournament candidate coverage, calibrated probabilities, outcome evaluation | Snapshot tables and pipeline exist; current calibration not verified here | Needs measured evaluation; Grok/Kimi forecasters blocked by missing baseline infrastructure |
 | Reliability | Production release health, failed scheduled jobs, API readiness | Historical snapshots are dated 2026-11-07 | Remeasure before changing priorities |
 | Product usage | Active users, game starts/completions, invitations, retention | No current baseline recorded here | Instrument and measure |
 
@@ -112,6 +112,14 @@ For each source, track:
 5. **Cost and failure:** requests, runtime, rate limits, retries, blocked responses, and manual intervention.
 
 A collector is healthy only when it produces net new, identity-verified data at an acceptable cost and freshness. A queue that repeatedly retries an upstream block is not progress.
+
+### 5.4 Forecasting infrastructure blockers (issue #413)
+
+**Status:** Cannot implement Grok and Kimi independent forecasters.
+
+**Blocker:** No existing forecast pipeline, model registry, `llm_paper_bankroll` tables, virtual settlement logic, scheduled forecast creation, result grading, odds snapshots, calibration tracking, or provider configuration exists in the repository. Issue #413 assumes "existing Sherlock Scholes forecasting system" and "existing `llm_paper_bankroll` implementation" that are not present.
+
+**Required foundation:** Complete forecasting system implementation including baseline LLM agent, virtual bankroll tables/logic, pre-kickoff snapshot capture, settlement RPC, calibration metrics, and provider gateway before Grok/Kimi can be added as comparable agents.
 
 ## 6. Forecasting and analytics standard
 
