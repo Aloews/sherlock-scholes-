@@ -410,6 +410,36 @@ pub async fn create_campaign(
     ]))
     .execute(&mut *tx).await?;
 
+    // Six matchdays, double round-robin, four fictional clubs. Fixtures are
+    // persisted at campaign creation so the season centre is populated on day one.
+    let player_club = request.club_name.trim();
+    let schedule: [(i16, &str, &str); 12] = [
+        (1, player_club, "Harbor Athletic"),
+        (1, "Redbridge FC", "Kingsport United"),
+        (2, "Kingsport United", player_club),
+        (2, "Harbor Athletic", "Redbridge FC"),
+        (3, player_club, "Redbridge FC"),
+        (3, "Kingsport United", "Harbor Athletic"),
+        (4, "Harbor Athletic", player_club),
+        (4, "Kingsport United", "Redbridge FC"),
+        (5, "Redbridge FC", player_club),
+        (5, "Harbor Athletic", "Kingsport United"),
+        (6, player_club, "Kingsport United"),
+        (6, "Redbridge FC", "Harbor Athletic"),
+    ];
+    for (matchday, home_team, away_team) in schedule {
+        sqlx::query(
+            "INSERT INTO fd.season_fixtures (campaign_id,season_year,matchday,match_date,home_team,away_team)
+             VALUES ($1,2026,$2,DATE '2026-01-03' + (($2::integer - 1) * 7),$3,$4)"
+        )
+        .bind(campaign_id)
+        .bind(matchday)
+        .bind(home_team)
+        .bind(away_team)
+        .execute(&mut *tx)
+        .await?;
+    }
+
     let response = CampaignCreated {
         id: campaign_id,
         name: request.name.trim().to_owned(),
