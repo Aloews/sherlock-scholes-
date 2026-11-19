@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Sequential Qwen role network with bounded Fable 5.2 escalation."""
 import json, os, re, subprocess, sys, urllib.error, urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 import local_model_agent as base
 
@@ -10,8 +11,86 @@ FABLE_MODEL = os.environ.get("STARIMG_MODEL", "claude-fable-5-2")
 STARIMG_BASE_URL = os.environ.get("STARIMG_BASE_URL", "https://ai.starimg.ru").rstrip("/")
 MAX_CONTEXT_CHARS = 14000
 
+MAX_FABLE_CALLS_PER_RUN = 1
+
 class EscalationError(RuntimeError):
     pass
+
+
+def runner_temp_path(name):
+    root = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
+    root.mkdir(parents=True, exist_ok=True)
+    return root / name
+
+
+def reserve_fable_call(purpose):
+    budget_path = runner_temp_path("starimg-fable-call-count.txt")
+    try:
+        count = int(budget_path.read_text(encoding="utf-8")) if budget_path.exists() else 0
+    except (OSError, ValueError) as exc:
+        raise EscalationError("Could not read the per-run Fable budget; refusing an unmetered call.") from exc
+    if count >= MAX_FABLE_CALLS_PER_RUN:
+        raise EscalationError(
+            "Per-run Fable budget exhausted; refusing a second paid-model call (" + purpose + ")."
+        )
+    count += 1
+    try:
+        budget_path.write_text(str(count), encoding="utf-8")
+    except OSError as exc:
+        raise EscalationError("Could not reserve the per-run Fable budget; refusing an unmetered call.") from exc
+    return count
+
+
+def _current_issue_number():
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "")
+    if not event_path:
+        return None
+    try:
+        event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+        return event.get("issue", {}).get("number")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def record_fable_usage(purpose, max_tokens, status, usage=None, request_id=None, error=None):
+    usage = usage if isinstance(usage, dict) else {}
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "provider": "Starimg",
+        "model": FABLE_MODEL,
+        "purpose": purpose,
+        "repository": os.environ.get("GITHUB_REPOSITORY"),
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+        "issue_number": _current_issue_number(),
+        "provider_request_id": request_id,
+        "status": status,
+        "max_output_tokens": max_tokens,
+        "input_tokens": usage.get("input_tokens"),
+        "output_tokens": usage.get("output_tokens"),
+        "cache_read_input_tokens": usage.get("cache_read_input_tokens"),
+        "cache_creation_input_tokens": usage.get("cache_creation_input_tokens"),
+        "error": error[:300] if isinstance(error, str) else None,
+    }
+    try:
+        with runner_temp_path("starimg-usage.jsonl").open("a", encoding="utf-8") as output:
+            output.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print("::warning::Could not persist Starimg usage record: " + str(exc))
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if summary_path:
+        try:
+            with Path(summary_path).open("a", encoding="utf-8") as summary:
+                summary.write(
+                    "| Starimg | " + str(purpose) + " | " + str(status) + " | "
+                    + str(record["input_tokens"]) + " | " + str(record["output_tokens"]) + " | "
+                    + str(record["cache_read_input_tokens"]) + " | "
+                    + str(record["cache_creation_input_tokens"]) + " | "
+                    + str(max_tokens) + " | " + str(request_id or "unknown") + " |\n"
+                )
+        except OSError as exc:
+            print("::warning::Could not append Starimg usage to step summary: " + str(exc))
+    return record
+
 
 def parse_object(raw):
     value = raw.strip()
@@ -59,10 +138,11 @@ def ollama_role(role, system, user, max_tokens=900):
         raise ValueError(role + " returned an empty response")
     return parse_object(answer)
 
-def fable_role(task, context, reason, max_tokens=2200):
+def fable_role(task, context, reason, max_tokens=2200, purpose="escalation"):
     api_key = os.environ.get("STARIMG_API_KEY", "").strip()
     if not api_key:
         raise EscalationError("Fable escalation required, but STARIMG_API_KEY is not configured in GitHub Actions secrets.")
+    reserve_fable_call(purpose)
     payload = {
         "model": FABLE_MODEL, "max_tokens": max_tokens,
         "system": (
@@ -85,16 +165,35 @@ def fable_role(task, context, reason, max_tokens=2200):
         STARIMG_BASE_URL + "/v1/messages", data=json.dumps(payload).encode("utf-8"),
         headers={"content-type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"},
     )
+    request_id = None
     try:
         with urllib.request.urlopen(request, timeout=180) as response:
+            request_id = (
+                response.headers.get("request-id")
+                or response.headers.get("x-request-id")
+                or response.headers.get("anthropic-request-id")
+            )
             data = json.loads(response.read())
+        if not isinstance(data, dict):
+            raise ValueError("provider response is not a JSON object")
+        record_fable_usage(purpose, max_tokens, "success", data.get("usage"), request_id)
     except urllib.error.HTTPError as exc:
+        request_id = (
+            exc.headers.get("request-id")
+            or exc.headers.get("x-request-id")
+            or exc.headers.get("anthropic-request-id")
+        ) if exc.headers else None
+        record_fable_usage(purpose, max_tokens, "provider_error", request_id=request_id, error="HTTP " + str(exc.code))
         detail = exc.read(1000).decode("utf-8", "replace")
         if exc.code == 402:
             raise EscalationError("Starimg returned HTTP 402; Fable 5.2 escalation is unavailable (billing/quota). No automatic retry. " + detail)
         raise EscalationError("Starimg/Fable request failed with HTTP " + str(exc.code) + ": " + detail)
-    except (urllib.error.URLError, TimeoutError) as exc:
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        record_fable_usage(purpose, max_tokens, "provider_error", request_id=request_id, error="network_failure")
         raise EscalationError("Starimg/Fable network failure: " + str(exc))
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        record_fable_usage(purpose, max_tokens, "invalid_response", request_id=request_id, error="invalid_json_response")
+        raise EscalationError("Starimg/Fable returned an invalid response: " + str(exc))
     blocks = data.get("content", [])
     text = "\n".join(b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text")
     if not text.strip():
@@ -347,6 +446,7 @@ def main():
                 "\nArchitecture:\n" + json.dumps(architecture, ensure_ascii=False) +
                 "\nQA plan:\n" + json.dumps(test_strategy, ensure_ascii=False),
                 "Qwen triage, architecture, or QA marked this task as high-risk or requiring senior review.",
+                purpose="high-risk",
             )
             if fable.get("decision") != "fix":
                 raise EscalationError("Fable decided to stop: " + str(fable.get("diagnosis", "insufficient evidence")))
@@ -369,7 +469,7 @@ def main():
                     last_error = str(exc)
                     prompt += "\nRejected response: " + last_error + ". Return corrected JSON only."
             else:
-                fable = fable_role(compact_task, context, "Qwen implementer failed twice: " + last_error)
+                fable = fable_role(compact_task, context, "Qwen implementer failed twice: " + last_error, purpose="qwen-implementation-failure")
                 if fable.get("decision") != "fix":
                     raise EscalationError("Fable declined failed Qwen implementation: " + str(fable.get("diagnosis", "")))
                 changed = apply_role_changes(fable)
@@ -394,7 +494,8 @@ def main():
             if fable_used:
                 raise EscalationError("Qwen reviewer still found blockers after the single Fable escalation: " + json.dumps(review, ensure_ascii=False))
             fable = fable_role(compact_task, context + "\nCurrent diff:\n" + diff,
-                               "Qwen reviewer did not approve: " + json.dumps(review, ensure_ascii=False))
+                               "Qwen reviewer did not approve: " + json.dumps(review, ensure_ascii=False),
+                               purpose="reviewer-escalation")
             if fable.get("decision") != "fix":
                 raise EscalationError("Fable could not resolve reviewer findings: " + str(fable.get("diagnosis", "")))
             changed = apply_role_changes(fable)
