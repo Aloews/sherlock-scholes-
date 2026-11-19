@@ -314,3 +314,13 @@ These are the next outcomes to prove—not a promise that work is already comple
 - **Merge gate:** require zero unexplained merge conflicts, an explicit reviewed diff against current `main`, passing required CI on the exact candidate SHA, and independent confirmation that only intended files/commits are included. A green CI run on a stale or unrelated branch does not authorize merge.
 - **Ownership:** the orchestrator must enforce these checks automatically before dispatch, PR creation and merge. A missing comparison or failed check is a hard stop, not a warning.
 - **Current status:** policy recorded; automated enforcement is not yet implemented or verified. PR #440 remains unmerged. Do not report the guard as active until code and regression tests exist.
+
+
+## Football Dynasty visibility defect — 2026-11-19
+
+- **Verified root cause:** src/screens/HomeScreen.tsx gated the Football Dynasty home entry on import.meta.env.VITE_FD_API_URL. When the variable was unset, the game entry was not rendered.
+- **Contradictory existing contract:** src/features/football-dynasty/api.ts already falls back to window.location.origin, and vercel.json already routes /api/v1/* and /health/* to the football_dynasty service. The menu gate therefore incorrectly hid a same-origin deployment.
+- **Correction committed directly to main:** removed the environment-variable gate; the Football Dynasty entry now renders alongside the Alias entry. Commit: 6354f545d7be80887aa58856c40bfdfbb20f81e8.
+- **Verification still required:** exact-commit CI, production deployment of this commit, browser-visible home entry, /health/live, /health/ready, and authenticated campaign lifecycle. A READY frontend deployment alone does not prove the Rust container is running.
+- **Known production evidence at investigation time:** Vercel reported three Application exited with code 1 runtime errors for the container, last seen 2026-11-18 20:00:58 UTC. Runtime log retrieval was unavailable because the Hobby plan retention window rejected the query. Root cause of the container exits remains unverified; do not describe the API as connected/healthy until readiness and an authenticated campaign request succeed.
+- **Release gate:** do not mark Football Dynasty production-ready based on source presence, a frontend build, or a READY deployment alone. Record the exact deployed SHA and direct endpoint/smoke-test evidence.
