@@ -68,10 +68,6 @@ export const createCampaign = (payload: {
 }) => request<CampaignCreated>('/api/v1/campaigns', { method: 'POST', body: JSON.stringify(payload) }, true);
 export const createHeir = (campaignId: string, payload: { name: string; age: number }) =>
   request<Character>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/heirs`, { method: 'POST', body: JSON.stringify(payload) }, true);
-export const advanceCampaign = (campaignId: string, years: number) =>
-  request<{ current_year: number; player_age: number; status: string; succession_available: boolean }>(
-    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/advance`, { method: 'POST', body: JSON.stringify({ years }) }, true,
-  );
 export const previewSuccession = (campaignId: string) =>
   request<Character[]>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/succession/preview`);
 export const executeSuccession = (campaignId: string, heirId: string) =>
