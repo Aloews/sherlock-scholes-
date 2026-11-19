@@ -178,7 +178,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick_status, StatusCode::OK);
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
-    assert_eq!(tick["generated_events"], 1);
+    assert_eq!(tick["generated_events"], 3);
 
     let (events_status, events) = call(
         app.clone(),
@@ -189,7 +189,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(events_status, StatusCode::OK);
-    assert_eq!(events.as_array().expect("event inbox").len(), 4);
+    assert_eq!(events.as_array().expect("event inbox").len(), 6);
     let event_id = events.as_array().expect("event inbox")
         .iter().find(|event| event["event_type"] == "club_weekly_review")
         .expect("weekly review event")["id"].as_str().expect("event id");
@@ -221,6 +221,21 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         "resolved"
     );
 
+    let (season_status, season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    ).await;
+    assert_eq!(season_status, StatusCode::OK);
+    assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
+    assert_eq!(
+        season["fixtures"].as_array().expect("fixtures").iter()
+            .filter(|fixture| fixture["status"] == "played").count(),
+        2
+    );
+
     let (month_status, month) = call(
         app.clone(),
         "POST",
@@ -231,8 +246,22 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
-    assert_eq!(month["generated_events"], 4);
-    assert_eq!(month["expired_events"], 5);
+    assert_eq!(month["generated_events"], 14);
+    assert_eq!(month["expired_events"], 7);
+
+    let (final_season_status, final_season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    ).await;
+    assert_eq!(final_season_status, StatusCode::OK);
+    assert_eq!(
+        final_season["fixtures"].as_array().expect("final fixtures").iter()
+            .filter(|fixture| fixture["status"] == "played").count(),
+        12
+    );
 
     let (expired_list_status, expired_list) = call(
         app.clone(),
