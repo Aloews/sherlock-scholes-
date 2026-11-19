@@ -145,7 +145,7 @@ pub fn record_match(
     suspension_matches:u8,
 )->Result<(),CareerError>{
     validate(player)?;
-    if minutes>130 || goals>20 || assists>20 || assists>goals.saturating_mul(2) {
+    if minutes>130 || goals>20 || assists>20 || assists>goals {
         return Err(CareerError::InvalidMatchLoad);
     }
     if minutes>0 {
