@@ -16,7 +16,7 @@ class AgentNetworkTests(unittest.TestCase):
             "Implement the issue exactly",
         )
         self.assertIn("Required paths: roster.rs and screen.tsx", task)
-        self.assertIn("Owner request:\\nImplement the issue exactly", task)
+        self.assertIn("Owner request:\nImplement the issue exactly", task)
 
     def test_parse_role_json(self):
         self.assertEqual(agent_network.parse_object('{"decision":"approve"}'), {"decision": "approve"})
