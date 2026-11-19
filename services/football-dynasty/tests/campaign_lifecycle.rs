@@ -180,6 +180,32 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 4);
 
+    let (season_status, season) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/season"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(season_status, StatusCode::OK);
+    let fixtures = season["fixtures"].as_array().expect("season fixtures");
+    assert_eq!(fixtures.len(), 12);
+    assert_eq!(
+        fixtures
+            .iter()
+            .filter(|fixture| fixture["status"] == "played")
+            .count(),
+        2,
+        "the first matchday must resolve both scheduled fixtures",
+    );
+    let standings = season["standings"].as_array().expect("league standings");
+    assert_eq!(standings.len(), 4);
+    assert!(
+        standings.iter().all(|standing| standing["played"] == 1),
+        "each club must have one played match after matchday one",
+    );
+
     let (events_status, events) = call(
         app.clone(),
         "GET",
