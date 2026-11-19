@@ -122,10 +122,10 @@ fn request_hash<T: Serialize>(value: &T) -> Result<String, ApiError> {
 }
 
 async fn set_owner(tx: &mut Transaction<'_, Postgres>, owner_id: i64) -> Result<(), ApiError> {
-    sqlx::query("SET LOCAL ROLE fd_runtime")
+    crate::fd_query!("SET LOCAL ROLE fd_runtime")
         .execute(&mut **tx)
         .await?;
-    sqlx::query("SELECT set_config('fd.telegram_id', $1, true)")
+    crate::fd_query!("SELECT set_config('fd.telegram_id', $1, true)")
         .bind(owner_id.to_string())
         .execute(&mut **tx)
         .await?;
@@ -139,7 +139,7 @@ async fn reserve(
     command: &str,
     hash: &str,
 ) -> Result<Option<Value>, ApiError> {
-    let inserted = sqlx::query(
+    let inserted = crate::fd_query!(
         "INSERT INTO fd.command_receipts(owner_telegram_id,idempotency_key,command_type,request_hash) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING",
     )
     .bind(owner_id).bind(key).bind(command).bind(hash)
@@ -166,7 +166,7 @@ async fn complete(
     campaign_id: Uuid,
     response: &impl Serialize,
 ) -> Result<(), ApiError> {
-    sqlx::query("UPDATE fd.command_receipts SET campaign_id=$3,response=$4 WHERE owner_telegram_id=$1 AND idempotency_key=$2")
+    crate::fd_query!("UPDATE fd.command_receipts SET campaign_id=$3,response=$4 WHERE owner_telegram_id=$1 AND idempotency_key=$2")
         .bind(owner_id).bind(key).bind(campaign_id).bind(serde_json::to_value(response)?)
         .execute(&mut **tx).await?;
     Ok(())
@@ -183,7 +183,7 @@ pub async fn list_events(
 ) -> Result<Json<Vec<GameEvent>>, ApiError> {
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.campaigns WHERE id=$1)")
+    let exists: bool = crate::fd_query_scalar!("SELECT EXISTS(SELECT 1 FROM fd.campaigns WHERE id=$1)")
         .bind(campaign_id)
         .fetch_one(&mut *tx)
         .await?;
@@ -194,17 +194,17 @@ pub async fn list_events(
     // Backfill the inbox for campaigns created before launch events existed.
     // This makes the first game visit useful without requiring a calendar skip.
     let campaign_date: NaiveDate =
-        sqlx::query_scalar("SELECT game_date FROM fd.campaigns WHERE id=$1")
+        crate::fd_query_scalar!("SELECT game_date FROM fd.campaigns WHERE id=$1")
             .bind(campaign_id)
             .fetch_one(&mut *tx)
             .await?;
     let has_events: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM fd.game_events WHERE campaign_id=$1)")
+        crate::fd_query_scalar!("SELECT EXISTS(SELECT 1 FROM fd.game_events WHERE campaign_id=$1)")
             .bind(campaign_id)
             .fetch_one(&mut *tx)
             .await?;
     if !has_events {
-        sqlx::query(
+        crate::fd_query!(
             "INSERT INTO fd.game_events (campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES
              ($1,'launch-club-plan','club_launch_plan','План развития клуба','Совет директоров ждёт от нового владельца первого решения. На что направить внимание в начале проекта?',$2,$2 + 14,95,$3),
              ($1,'launch-public-debut','dynasty_public_debut','Публичный дебют династии','Местная пресса готовит материал о новой футбольной династии. Выберите, какой образ закрепить за семьёй.',$2,$2 + 14,85,$4),
@@ -228,7 +228,7 @@ pub async fn list_events(
         .execute(&mut *tx).await?;
     }
 
-    let rows = sqlx::query_as::<_, GameEvent>(
+    let rows = crate::fd_query_as!(GameEvent,
         "SELECT id,event_type,title,body,game_date,expires_on,priority,choices,status,resolution FROM fd.game_events WHERE campaign_id=$1 ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, game_date DESC, priority DESC LIMIT 100",
     )
     .bind(campaign_id).fetch_all(&mut *tx).await?;
@@ -243,12 +243,12 @@ pub async fn get_season(
 ) -> Result<Json<SeasonView>, ApiError> {
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
-    let season_year: i32 = sqlx::query_scalar("SELECT current_year FROM fd.campaigns WHERE id=$1")
+    let season_year: i32 = crate::fd_query_scalar!("SELECT current_year FROM fd.campaigns WHERE id=$1")
         .bind(campaign_id)
         .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(ApiError::not_found)?;
-    let fixtures = sqlx::query_as::<_, SeasonFixture>(
+    let fixtures = crate::fd_query_as!(SeasonFixture,
         "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
          FROM fd.season_fixtures WHERE campaign_id=$1 AND season_year=$2
          ORDER BY matchday,match_date,home_team,away_team",
@@ -379,27 +379,27 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
-        let expired = sqlx::query("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
+        let expired = crate::fd_query!("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
             .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         expired_events += expired.rows_affected() as i64;
 
         if current_date.month() == 1 && current_date.day() == 1 {
-            sqlx::query(
+            crate::fd_query!(
                 "UPDATE fd.characters SET age=age+1 WHERE campaign_id=$1 AND life_status='alive'",
             )
             .bind(campaign_id)
             .execute(&mut *tx)
             .await?;
             let age: i32 =
-                sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
+                crate::fd_query_scalar!("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
                     .bind(player_id)
                     .bind(campaign_id)
                     .fetch_one(&mut *tx)
                     .await?;
             if age >= 90 {
-                sqlx::query("UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2")
+                crate::fd_query!("UPDATE fd.characters SET life_status='deceased' WHERE id=$1 AND campaign_id=$2")
                     .bind(player_id).bind(campaign_id).execute(&mut *tx).await?;
-                let eligible: i64 = sqlx::query_scalar(
+                let eligible: i64 = crate::fd_query_scalar!(
                     "SELECT COUNT(*) FROM fd.family_relations r JOIN fd.characters c ON c.id=r.child_character_id AND c.campaign_id=r.campaign_id WHERE r.campaign_id=$1 AND r.parent_character_id=$2 AND r.relation_type='parent_child' AND c.is_heir=true AND c.life_status='alive' AND c.age>=18",
                 ).bind(campaign_id).bind(player_id).fetch_one(&mut *tx).await?;
                 status = if eligible > 0 {
@@ -408,7 +408,7 @@ pub async fn advance_time(
                     "ended_no_heir"
                 }
                 .to_owned();
-                sqlx::query("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'character_death','The head of the dynasty has died',$2,$3)")
+                crate::fd_query!("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'character_death','The head of the dynasty has died',$2,$3)")
                     .bind(campaign_id).bind(current_date.year()).bind(json!({"deceased_character_id":player_id,"player_age":age,"succession_available":eligible > 0,"game_date":current_date}))
                     .execute(&mut *tx).await?;
                 break;
@@ -457,7 +457,7 @@ pub async fn advance_time(
                     ]),
                 ),
             };
-            let inserted = sqlx::query(
+            let inserted = crate::fd_query!(
                 "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES($1,$2,$3,$4,$5,$6,$7,60,$8) ON CONFLICT(campaign_id,event_key) DO NOTHING",
             )
             .bind(campaign_id)
@@ -476,7 +476,7 @@ pub async fn advance_time(
         // Resolve every scheduled fixture on its match date. The score is
         // deterministic for the campaign seed and fixture, so retries/reloads
         // cannot produce a different result.
-        let due_fixtures = sqlx::query_as::<_, (Uuid, i32, i16, String, String)>(
+        let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String),
             "SELECT id,season_year,matchday,home_team,away_team FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
              ORDER BY matchday,id FOR UPDATE",
@@ -491,7 +491,7 @@ pub async fn advance_time(
             let digest = Sha256::digest(score_seed.as_bytes());
             let home_goals = (digest[0] % 4) as i16;
             let away_goals = (digest[1] % 4) as i16;
-            sqlx::query(
+            crate::fd_query!(
                 "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
                  WHERE id=$1 AND campaign_id=$2 AND status='scheduled'",
             )
@@ -511,7 +511,7 @@ pub async fn advance_time(
                 "home_goals":home_goals,
                 "away_goals":away_goals
             });
-            sqlx::query(
+            crate::fd_query!(
                 "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)
                  VALUES($1,'match_result',$2,$3,$4)",
             )
@@ -522,7 +522,7 @@ pub async fn advance_time(
             .execute(&mut *tx)
             .await?;
             let event_key = format!("match-result-{fixture_id}");
-            let event_insert = sqlx::query(
+            let event_insert = crate::fd_query!(
                 "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices,status,resolution,resolved_at)
                  VALUES($1,$2,'match_result','Результат матча',$3,$4,$4,70,'[]'::jsonb,'resolved',$5,now())
                  ON CONFLICT(campaign_id,event_key) DO NOTHING"
@@ -539,15 +539,15 @@ pub async fn advance_time(
     }
 
     let player_age: i32 =
-        sqlx::query_scalar("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
+        crate::fd_query_scalar!("SELECT age FROM fd.characters WHERE id=$1 AND campaign_id=$2")
             .bind(player_id)
             .bind(campaign_id)
             .fetch_one(&mut *tx)
             .await?;
-    sqlx::query("UPDATE fd.campaigns SET game_date=$2,current_year=$3,status=$4,version=version+1,updated_at=now() WHERE id=$1")
+    crate::fd_query!("UPDATE fd.campaigns SET game_date=$2,current_year=$3,status=$4,version=version+1,updated_at=now() WHERE id=$1")
         .bind(campaign_id).bind(current_date).bind(current_date.year()).bind(&status)
         .execute(&mut *tx).await?;
-    sqlx::query("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'time_advanced','The calendar moves forward',$2,$3)")
+    crate::fd_query!("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'time_advanced','The calendar moves forward',$2,$3)")
         .bind(campaign_id).bind(current_date.year())
         .bind(json!({"from_date":from_date,"to_date":current_date,"days":(current_date-from_date).num_days(),"events_generated":generated_events}))
         .execute(&mut *tx).await?;
@@ -607,7 +607,7 @@ pub async fn resolve_event(
 
     let outcome = match selected["effect"].as_str() {
         Some("club_reputation") => {
-            sqlx::query(
+            crate::fd_query!(
                 "UPDATE fd.clubs SET reputation=LEAST(100,reputation+1) WHERE campaign_id=$1",
             )
             .bind(campaign_id)
@@ -616,7 +616,7 @@ pub async fn resolve_event(
             "club_reputation_increased"
         }
         Some("club_reputation_2") => {
-            sqlx::query(
+            crate::fd_query!(
                 "UPDATE fd.clubs SET reputation=LEAST(100,reputation+2) WHERE campaign_id=$1",
             )
             .bind(campaign_id)
@@ -625,31 +625,31 @@ pub async fn resolve_event(
             "club_reputation_increased_by_two"
         }
         Some("dynasty_prestige") => {
-            sqlx::query("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
+            crate::fd_query!("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
                 .bind(campaign_id)
                 .execute(&mut *tx)
                 .await?;
             "dynasty_prestige_increased"
         }
         Some("dynasty_prestige_2") => {
-            sqlx::query("UPDATE fd.dynasties SET prestige=prestige+2 WHERE campaign_id=$1")
+            crate::fd_query!("UPDATE fd.dynasties SET prestige=prestige+2 WHERE campaign_id=$1")
                 .bind(campaign_id)
                 .execute(&mut *tx)
                 .await?;
             "dynasty_prestige_increased_by_two"
         }
         Some("sponsor_cash") => {
-            let club_id: Uuid = sqlx::query_scalar(
+            let club_id: Uuid = crate::fd_query_scalar!(
                 "SELECT id FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at LIMIT 1",
             )
             .bind(campaign_id)
             .fetch_one(&mut *tx)
             .await?;
-            let cash_account_id: Uuid = sqlx::query_scalar(
+            let cash_account_id: Uuid = crate::fd_query_scalar!(
                 "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND account_type='cash' AND owner_type='club' ORDER BY created_at LIMIT 1"
             )
             .bind(campaign_id).fetch_one(&mut *tx).await?;
-            let existing_revenue: Option<Uuid> = sqlx::query_scalar(
+            let existing_revenue: Option<Uuid> = crate::fd_query_scalar!(
                 "SELECT id FROM fd.accounts WHERE campaign_id=$1 AND account_type='revenue' AND owner_type='club' ORDER BY created_at LIMIT 1"
             )
             .bind(campaign_id).fetch_optional(&mut *tx).await?;
@@ -657,7 +657,7 @@ pub async fn resolve_event(
                 id
             } else {
                 let id = Uuid::new_v4();
-                sqlx::query(
+                crate::fd_query!(
                     "INSERT INTO fd.accounts(id,campaign_id,name,account_type,owner_type,owner_id,currency,normal_balance)
                      VALUES($1,$2,'Sponsorship revenue','revenue','club',$3,'EUR','credit')"
                 )
@@ -666,7 +666,7 @@ pub async fn resolve_event(
             };
             let journal_id = Uuid::new_v4();
             let journal_key = format!("sponsor-event-{event_id}");
-            sqlx::query(
+            crate::fd_query!(
                 "INSERT INTO fd.journal_entries(id,campaign_id,idempotency_key,memo,game_year)
                  VALUES($1,$2,$3,'Sponsorship payment', $4)",
             )
@@ -676,7 +676,7 @@ pub async fn resolve_event(
             .bind(event.3.year())
             .execute(&mut *tx)
             .await?;
-            sqlx::query(
+            crate::fd_query!(
                 "INSERT INTO fd.journal_lines(campaign_id,journal_entry_id,account_id,side,amount_minor)
                  VALUES($1,$2,$3,'debit',25000000),($1,$2,$4,'credit',25000000)"
             )
@@ -687,10 +687,10 @@ pub async fn resolve_event(
         _ => return Err(ApiError::bad_request("unsupported_event_effect")),
     };
     let resolution = json!({"choice_id":request.choice_id,"outcome":outcome});
-    sqlx::query("UPDATE fd.game_events SET status='resolved',resolution=$3,resolved_at=now() WHERE id=$1 AND campaign_id=$2")
+    crate::fd_query!("UPDATE fd.game_events SET status='resolved',resolution=$3,resolved_at=now() WHERE id=$1 AND campaign_id=$2")
         .bind(event_id).bind(campaign_id).bind(&resolution).execute(&mut *tx).await?;
     let year = event.3.year();
-    sqlx::query("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'event_resolved',$2,$3,$4)")
+    crate::fd_query!("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) VALUES($1,'event_resolved',$2,$3,$4)")
         .bind(campaign_id)
         .bind(selected["label"].as_str().unwrap_or("Club decision"))
         .bind(year)
