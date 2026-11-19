@@ -422,3 +422,6 @@ Required information architecture:
 2. Apply the Supabase migration through the approved production migration process, then verify schema, grants and RLS as the restricted runtime role.
 3. Verify the exact production deployment SHA and health; exercise calendar advance, event list, event choice, reload and idempotent replay using a real Telegram session.
 4. Replace the weekly placeholder cadence with domain-triggered event families and a real football season/matchday loop. Add acceptance tests for zero-time actions, one-day/week/month progression, deadline ordering, birthday/death boundary, retry safety and no offline time drift.
+
+
+**Calendar interaction refinement — 2026-11-19:** the Telegram screen now offers explicit 1-day, 7-day and 30-day steps; no automatic offline progression. The PostgreSQL integration scenario was extended to assert a one-day tick creates no weekly event, the following six days cross the Monday trigger exactly once, and a 30-day tick creates four weekly reviews. These assertions are authored, not yet executed in CI.
