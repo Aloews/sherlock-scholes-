@@ -113,3 +113,6 @@ The first campaign now opens with three persisted launch decisions. The event in
 
 
 Weekly events rotate across board decisions, sponsor offers, supporter meetings and rival scouting reports. Event outcomes are server-validated: reputation/prestige changes are applied to campaign state, while accepting the sponsor offer posts a balanced €250,000 EUR ledger transaction. Each event is persisted once per ISO week and carries a deadline.
+
+
+The season calendar is anchored to the campaign's persisted game date and current year. Matchdays begin on the next Saturday, and existing campaigns are aligned by the 20261119150000 season-year migration; no fixed real-world year is assumed.
