@@ -303,3 +303,14 @@ These are the next outcomes to prove—not a promise that work is already comple
 - Fix in the current branch: one shared helper filters the union of selected canonical leagues, sorts by the fixed `DECK_LEAGUES` order and stable squad-name/key tie-breaks, and preserves only selected club keys still available. Both the lobby and deck picker use it.
 - Regression coverage: union and single-league filtering, stable ordering, stale persisted club cleanup, and preserving a valid selected club. Awaiting CI on PR #423.
 
+
+
+## Branch divergence incident and prevention — 2026-11-19
+
+- **Incident:** the agent-work branch associated with PR #440 was measured as diverging from `main` by 151 commits. The branch was not safe to merge wholesale: its history could contain unrelated work and obscure the actual agent changes.
+- **Decision:** do not merge PR #440 as-is and do not create a merge commit that imports its unrelated history. Extract only reviewed, necessary commits/files onto a branch created from the current `main`, or recreate the bounded change from scratch.
+- **Mandatory preflight for every agent/feature branch:** record base SHA, branch HEAD, merge-base, ahead/behind counts and changed-file summary before work starts and again before PR creation/merge. Compare against the latest protected `main`, not a stale local base.
+- **Divergence policy:** if a branch is behind `main` by more than 20 commits, stop implementation and synchronize/rebase from the latest `main` before continuing. If it is more than 50 commits divergent, or contains unexplained unrelated history, quarantine it: no direct merge; perform a reviewed selective transplant onto a fresh branch from `main`.
+- **Merge gate:** require zero unexplained merge conflicts, an explicit reviewed diff against current `main`, passing required CI on the exact candidate SHA, and independent confirmation that only intended files/commits are included. A green CI run on a stale or unrelated branch does not authorize merge.
+- **Ownership:** the orchestrator must enforce these checks automatically before dispatch, PR creation and merge. A missing comparison or failed check is a hard stop, not a warning.
+- **Current status:** policy recorded; automated enforcement is not yet implemented or verified. PR #440 remains unmerged. Do not report the guard as active until code and regression tests exist.
