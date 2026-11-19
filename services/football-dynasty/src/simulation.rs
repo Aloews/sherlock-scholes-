@@ -14,6 +14,67 @@ use uuid::Uuid;
 
 use crate::{auth::Identity, errors::ApiError, state::AppState};
 
+fn team_strength(campaign_seed: i64, team: &str, player_club: &str, player_reputation: i32) -> i32 {
+    if team == player_club {
+        return player_reputation.clamp(1, 100);
+    }
+    let key = format!("{campaign_seed}:team:{team}");
+    let digest = Sha256::digest(key.as_bytes());
+    35 + i32::from(digest[0] % 31)
+}
+
+fn expected_goals(attack_rating: i32, defense_rating: i32, is_home: bool) -> f64 {
+    let home_advantage = if is_home { 0.18 } else { 0.0 };
+    (1.35 + f64::from(attack_rating - defense_rating) / 35.0 + home_advantage)
+        .clamp(0.25, 3.0)
+}
+
+fn digest_u64(bytes: &[u8]) -> u64 {
+    let mut value = [0_u8; 8];
+    value.copy_from_slice(&bytes[..8]);
+    u64::from_be_bytes(value)
+}
+
+fn sample_poisson(expected: f64, random: u64) -> i16 {
+    let uniform = random as f64 / u64::MAX as f64;
+    let mut probability = (-expected).exp();
+    let mut cumulative = probability;
+    let mut goals = 0_i16;
+    while uniform > cumulative && goals < 8 {
+        goals += 1;
+        probability *= expected / f64::from(goals);
+        cumulative += probability;
+    }
+    goals
+}
+
+fn simulate_match_score(
+    campaign_seed: i64,
+    season_year: i32,
+    matchday: i16,
+    fixture_id: Uuid,
+    home_team: &str,
+    away_team: &str,
+    player_club: &str,
+    player_reputation: i32,
+) -> (i16, i16) {
+    let home_rating = team_strength(campaign_seed, home_team, player_club, player_reputation);
+    let away_rating = team_strength(campaign_seed, away_team, player_club, player_reputation);
+    let key = format!(
+        "{campaign_seed}:{season_year}:{matchday}:{fixture_id}:{home_team}:{away_team}"
+    );
+    let digest = Sha256::digest(key.as_bytes());
+    let home_goals = sample_poisson(
+        expected_goals(home_rating, away_rating, true),
+        digest_u64(&digest[..8]),
+    );
+    let away_goals = sample_poisson(
+        expected_goals(away_rating, home_rating, false),
+        digest_u64(&digest[8..16]),
+    );
+    (home_goals, away_goals)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -369,6 +430,13 @@ pub async fn advance_time(
     .await?
     .ok_or_else(ApiError::not_found)?;
     let (from_date, player_id, initial_status, campaign_seed) = row;
+    let (player_club_name, player_club_reputation): (String, i32) = crate::fd_query_as!(
+        (String, i32),
+        "SELECT name,reputation FROM fd.clubs WHERE campaign_id=$1 ORDER BY created_at,id LIMIT 1",
+    )
+    .bind(campaign_id)
+    .fetch_one(&mut *tx)
+    .await?;
     if initial_status != "active" {
         return Err(ApiError::conflict("campaign_not_active"));
     }
@@ -486,11 +554,16 @@ pub async fn advance_time(
         .fetch_all(&mut *tx)
         .await?;
         for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
-            let score_seed =
-                format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
-            let digest = Sha256::digest(score_seed.as_bytes());
-            let home_goals = (digest[0] % 4) as i16;
-            let away_goals = (digest[1] % 4) as i16;
+            let (home_goals, away_goals) = simulate_match_score(
+                campaign_seed,
+                season_year,
+                matchday,
+                fixture_id,
+                &home_team,
+                &away_team,
+                &player_club_name,
+                player_club_reputation,
+            );
             crate::fd_query!(
                 "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
                  WHERE id=$1 AND campaign_id=$2 AND status='scheduled'",
@@ -701,4 +774,44 @@ pub async fn resolve_event(
     complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
     tx.commit().await?;
     Ok(Json(result))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn match_result_is_deterministic_for_a_campaign_fixture() {
+        let fixture = Uuid::parse_str("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa").unwrap();
+        let first = simulate_match_score(
+            42, 2046, 1, fixture, "Northbridge FC", "Harbor Athletic", "Northbridge FC", 55,
+        );
+        let second = simulate_match_score(
+            42, 2046, 1, fixture, "Northbridge FC", "Harbor Athletic", "Northbridge FC", 55,
+        );
+        assert_eq!(first, second);
+        assert!(first.0 <= 8 && first.1 <= 8);
+    }
+
+    #[test]
+    fn club_reputation_changes_the_expected_goal_rate() {
+        let weak = expected_goals(team_strength(7, "Northbridge FC", "Northbridge FC", 25), 50, true);
+        let strong = expected_goals(team_strength(7, "Northbridge FC", "Northbridge FC", 75), 50, true);
+        assert!(strong > weak);
+    }
+
+    #[test]
+    fn home_advantage_increases_expected_goals() {
+        assert!(
+            expected_goals(55, 50, true) > expected_goals(55, 50, false)
+        );
+    }
+
+    #[test]
+    fn poisson_sampler_respects_expected_rate() {
+        let low = sample_poisson(0.25, 9_223_372_036_854_775_808);
+        let high = sample_poisson(2.8, 9_223_372_036_854_775_808);
+        assert!(high >= low);
+        assert!(sample_poisson(3.0, u64::MAX) <= 8);
+    }
 }
