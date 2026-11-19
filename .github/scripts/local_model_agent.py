@@ -97,7 +97,7 @@ def main():
     task = comment[4:].strip()
     issue_body = str(issue.get("body") or "").strip()
     issue_title = str(issue.get("title") or "").strip()
-    full_task = "Issue #" + str(issue.get("number")) + ": " + issue_title + "\\n" + issue_body[:8000] + "\\n\\nOwner request:\\n" + task
+    full_task = "Issue #" + str(issue.get("number")) + ": " + issue_title + "\n" + issue_body[:8000] + "\n\nOwner request:\n" + task
     files = run(["git", "ls-files"]).stdout.splitlines()
     tracked = set(files)
     tokens = set(re.findall(r"[a-zA-Z0-9_/-]{3,}", full_task.lower()))
@@ -124,7 +124,7 @@ def main():
         "For existing files, old must be an exact unique snippet copied from the provided file. "
         "For a new file, old must be empty and new must contain the complete file. "
         "Never return a unified diff, markdown fence or explanation. "
-        "Modify only src/, test/, tests/, scripts/, docs/, supabase/functions/, supabase/migrations/, football_scraper/, ml/. "
+        "Modify only src/, test/, tests/, scripts/, docs/, supabase/functions/, supabase/migrations/, football_scraper/, ml/, services/football-dynasty/. "
         "Do not modify workflows, manifests, lockfiles, credentials, deployment settings or secrets. "
         "Add regression tests where appropriate. Never weaken or delete tests."
     )
@@ -137,7 +137,7 @@ def main():
             print("::error::Pinned Caveman skill could not be loaded.")
             return 1
     prompt = (
-        "Task for issue #" + str(issue.get("number")) + ":\n" + task
+        "Task and issue requirements:\n" + full_task
         + "\n\nRepository files:\n" + context
         + "\n\nReturn minimal structured edits only, following the JSON schema."
     )
