@@ -83,9 +83,9 @@ def record_fable_usage(purpose, max_tokens, status, usage=None, request_id=None,
             with summary_file.open("a", encoding="utf-8") as summary:
                 if summary_file.stat().st_size == 0:
                     summary.write(
-                        "### Starimg usage (no prompts or completions)\\n\\n"
-                        "| Provider | Purpose | Status | Input | Output | Cache read | Cache write | Max output | Request ID |\\n"
-                        "|---|---|---|---:|---:|---:|---:|---:|---|\\n"
+                        "### Starimg usage (no prompts or completions)\n\n"
+                        "| Provider | Purpose | Status | Input | Output | Cache read | Cache write | Max output | Request ID |\n"
+                        "|---|---|---|---:|---:|---:|---:|---:|---|\n"
                     )
                 summary.write(
                     "| Starimg | " + str(purpose) + " | " + str(status) + " | "
