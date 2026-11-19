@@ -385,6 +385,31 @@ pub async fn create_campaign(
     .bind(json!({"founder_id":founder_id,"dynasty_id":dynasty_id,"club_id":club_id,"origin":request.origin}))
     .execute(&mut *tx).await?;
 
+    // A new campaign starts with a real, actionable inbox rather than waiting
+    // until the next Monday tick. Every event is persisted in the same
+    // transaction as campaign creation.
+    sqlx::query(
+        "INSERT INTO fd.game_events (campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices) VALUES
+         ($1,'launch-club-plan','club_launch_plan','План развития клуба','Совет директоров ждёт от нового владельца первого решения. На что направить внимание в начале проекта?','2026-01-01','2026-01-14',95,$2),
+         ($1,'launch-public-debut','dynasty_public_debut','Публичный дебют династии','Местная пресса готовит материал о новой футбольной династии. Выберите, какой образ закрепить за семьёй.','2026-01-01','2026-01-14',85,$3),
+         ($1,'launch-board-priorities','board_priorities','Приоритеты совета','Руководители клуба предлагают определить главный ориентир на ближайший месяц.','2026-01-01','2026-01-14',80,$4)
+         ON CONFLICT (campaign_id,event_key) DO NOTHING"
+    )
+    .bind(campaign_id)
+    .bind(json!([
+        {"id":"reputation","label":"Развивать клуб и укреплять его репутацию","effect":"club_reputation"},
+        {"id":"prestige","label":"Укреплять влияние и престиж династии","effect":"dynasty_prestige"}
+    ]))
+    .bind(json!([
+        {"id":"reputation","label":"Показать амбиции и открыть клуб болельщикам","effect":"club_reputation"},
+        {"id":"prestige","label":"Подчеркнуть традиции и статус семьи","effect":"dynasty_prestige"}
+    ]))
+    .bind(json!([
+        {"id":"reputation","label":"Сосредоточиться на спортивном развитии","effect":"club_reputation"},
+        {"id":"prestige","label":"Сосредоточиться на влиянии семьи","effect":"dynasty_prestige"}
+    ]))
+    .execute(&mut *tx).await?;
+
     let response = CampaignCreated {
         id: campaign_id,
         name: request.name.trim().to_owned(),
