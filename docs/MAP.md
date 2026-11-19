@@ -506,3 +506,6 @@ Required information architecture:
 
 
 **Football Dynasty retry accounting — 2026-11-19:** Issue #441 comment 7006805718 completed with failure at 10:50:25Z. Observed worker window 10:43:53–10:50:25Z (~6m32s elapsed). Starimg reported 7 calls, 14,757 input tokens, 56,778 output tokens, 71,535 total tokens and 282,176 cache-creation input tokens. Monetary cost remains unknown because the exact rate card was not verified. Work reached the existing screen, API client and lifecycle test, but the docs/MAP.md edit failed after three attempts (one HTTP 503 and subsequent patch-context failures); no PR or production change resulted. Full record: docs/PROJECT_ACCOUNTING.md.
+
+
+**Agent execution interruption — 2026-11-19:** After narrowing issue #441 to the existing screen, API client and lifecycle test, the Railway worker picked up comment 7006979375, completed Architect handoff and began the screen implementation unit. The last available log is 10:52:53Z; no terminal task report, PR or accepted code change was observed. Token usage is unknown. The worker briefly selected an obsolete `/ai` comment on issue #392 before the service was redeployed; that unrelated attempt was interrupted and its usage is also unknown. Full accounting entry: docs/PROJECT_ACCOUNTING.md. Do not count either attempt as delivered work.
