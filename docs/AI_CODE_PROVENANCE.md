@@ -29,10 +29,12 @@
 
 ### ChatGPT assistant
 
-- Directly traceable initial work in this session: the first matchday-decision backend patch added 95 Rust source lines; the initial lifecycle regression added 27 test lines and removed 4. I also made subsequent targeted fixes and formatting edits, some of which were later changed by concurrent commits; they are not added to this minimum to avoid double-counting overlapping diffs.
-- Concurrent branch commits added a home/away outcome refactor, stronger effect/idempotency/standings tests, ranked standings fields, and backend CI wiring. These commits have no model or workflow-run provenance. Their author/model cannot be established and they must not be labelled Qwen or Starimg.
-- Current exact PR diff against `main` (35 commits, 8 files): `simulation.rs` 106 additions / 1 deletion; lifecycle tests 139 additions / 4 deletions; CI workflow 34 additions; documentation 50 additions. Total: **329 additions and 5 deletions**. These are total repository diff statistics, not a ChatGPT-only count.
+- This ChatGPT session directly authored the matchday board-decision backend, the result/choice idempotency tests, the standings integration assertions, and the home-match ticket-revenue ledger implementation and tests.
+- Concurrent branch automation also modified the Rust/test files, added ranked standings coverage, and added backend CI wiring. Those changes are not attributable to Starimg or local Qwen from available records; their individual model attribution is not fully established.
+- Current exact PR diff against `main`: 191 Rust source additions / 1 deletion; 161 lifecycle-test additions / 5 deletions; 34 CI workflow additions; 38 provenance-document additions; 17 other documentation additions. Total: **441 additions and 6 deletions**.
+- These are exact repository diff statistics, not a complete ChatGPT-only line count. Model-specific attribution remains incomplete until every agent patch is linked to a provider/run ID and commit.
 - PR #444 contains 252 additions and 118 deletions across 10 files, but the historical patch does not contain reliable per-model provenance. Do not assign those lines to ChatGPT or Starimg without evidence.
+
 ## Current measurement gap
 
 There is no complete mapping from provider request IDs to generated patch files and merged commits. Therefore a trustworthy lifetime percentage split among Starimg, local models, and ChatGPT cannot yet be calculated. Future agent workflows must emit per-task diff statistics and link them to the provider usage record.
