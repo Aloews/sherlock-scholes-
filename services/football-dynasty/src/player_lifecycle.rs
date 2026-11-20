@@ -162,6 +162,25 @@ pub fn record_match(
     Ok(())
 }
 
+
+/// Match availability is derived from persisted injury dates and match suspensions.
+pub fn available_for_match(player:&PlayerCareer,match_date:NaiveDate)->bool{
+    player.injury_until.is_none_or(|until|until<match_date) && player.suspension_matches==0
+}
+
+/// Clears an injury marker once the campaign date has passed its recovery date.
+pub fn clear_expired_injury(player:&mut PlayerCareer,today:NaiveDate){
+    if player.injury_until.is_some_and(|until|until<today){player.injury_until=None;}
+}
+
+/// A player's suspension is served when their club completes a match, even if they
+/// were not selected in the matchday squad. Call once per completed club fixture.
+pub fn consume_team_match_suspensions(players:&mut [PlayerCareer]){
+    for player in players {
+        player.suspension_matches=player.suspension_matches.saturating_sub(1);
+    }
+}
+
 pub fn contract_expired(player:&PlayerCareer,today:NaiveDate)->bool{
     today>player.contract_until
 }
@@ -215,5 +234,28 @@ mod tests{
     #[test]fn contract_expiry_uses_game_date(){
         let p=player();assert!(!contract_expired(&p,NaiveDate::from_ymd_opt(2029,6,30).unwrap()));
         assert!(contract_expired(&p,NaiveDate::from_ymd_opt(2029,7,1).unwrap()));
+    } 
+    #[test]fn match_availability_respects_injury_date_and_suspensions(){
+        let date=NaiveDate::from_ymd_opt(2026,5,10).unwrap();
+        let mut p=player();
+        assert!(available_for_match(&p,date));
+        p.injury_until=Some(date);
+        assert!(!available_for_match(&p,date));
+        clear_expired_injury(&mut p,date);
+        assert_eq!(p.injury_until,Some(date));
+        clear_expired_injury(&mut p,date+chrono::Duration::days(1));
+        assert!(available_for_match(&p,date+chrono::Duration::days(1)));
+        p.suspension_matches=2;
+        assert!(!available_for_match(&p,date+chrono::Duration::days(1)));
     }
+    #[test]fn suspension_is_consumed_once_per_completed_team_match(){
+        let mut a=player();let mut b=player();b.id=Uuid::from_u128(8);
+        a.suspension_matches=1;b.suspension_matches=3;
+        consume_team_match_suspensions(&mut [a.clone(),b.clone()]);
+        a.suspension_matches-=1;b.suspension_matches-=1;
+        assert_eq!((a.suspension_matches,b.suspension_matches),(0,2));
+        consume_team_match_suspensions(&mut [a.clone(),b.clone()]);
+        assert_eq!((a.suspension_matches,b.suspension_matches),(0,2));
+    }
+
 }
