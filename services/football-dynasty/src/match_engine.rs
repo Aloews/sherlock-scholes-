@@ -262,9 +262,18 @@ pub fn simulate_player_match(
         }
 
         if minute % 10 == 0 {
-            for player in home_active.iter_mut().chain(away_active.iter_mut()) {
-                let fatigue_gain = ((100_u16 - u16::from(player.attributes.stamina)) / 25).max(1) as u8;
-                player.fatigue = player.fatigue.saturating_add(fatigue_gain).min(100);
+            for (active, tactics) in [
+                (&mut home_active, home.starting.tactics),
+                (&mut away_active, away.starting.tactics),
+            ] {
+                for player in active.iter_mut() {
+                    let base_cost = ((100_u16 - u16::from(player.attributes.stamina)) / 25).max(1) as u8;
+                    let pressing_cost = crate::match_intelligence::pressing_fatigue_cost(
+                        tactics.pressing, player.attributes.stamina,
+                    );
+                    let fatigue_gain = base_cost.saturating_add(pressing_cost.saturating_sub(1));
+                    player.fatigue = player.fatigue.saturating_add(fatigue_gain).min(100);
+                }
             }
         }
 
