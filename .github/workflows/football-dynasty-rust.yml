@@ -15,7 +15,7 @@ on:
       - "supabase/tests/football_dynasty_owner_rls.test.sql"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
-    branches: [main]
+    branches: [main, feat/dynasty-rust-engine-core-20261119]
     paths:
       - "services/football-dynasty/**"
       - "supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql"
