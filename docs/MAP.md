@@ -163,6 +163,13 @@ Football Dynasty is a fictional management simulation inside Sherlock Scholes, n
 
 **Performance acceptance:** record cold and warm API latency, SQL query count per screen/command, simulation CPU time per fixture and per season, memory, and concurrent campaign throughput. Simulation must run in memory from a bounded domain snapshot; persist a completed command in one atomic transaction. Do not claim faster loading until measurements demonstrate it.
 
+### Spatial simulation foundation — implemented in PR #447
+
+- Added deterministic normalized pitch coordinates, bounded player movement, squared-distance geometry, nine pitch zones and a 10×10 event heatmap accumulator in `services/football-dynasty/src/spatial.rs`.
+- Added unit coverage for coordinate bounds, zone mapping, movement limits, heatmap aggregation and geometric symmetry.
+- Not yet connected to player positions or persisted match events. Next: add spatial coordinates to action events, then implement passing lanes, pressure radius, off-ball movement and tactical phase transitions.
+- Validation gate: current-head `rust-engine` CI must pass; spatial analytics are not yet a user-visible feature.
+
 ## 8. Execution priorities
 
 Work in this order. Reorder only when fresh production evidence shows a higher-impact blocker.
