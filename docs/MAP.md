@@ -571,3 +571,12 @@ Required information architecture:
 - Unit tests cover coordinate bounds/zones, movement bounds, heatmap counts/peak, pressure and passing-lane geometry, and distance symmetry.
 - CI on commit `a6c37c3` exposed a pre-existing formatting debt across 12 Rust source/test files (including legacy API, auth, squad and lifecycle files); formatting failed before Clippy, tests or release build could run. The global formatting gate is temporarily removed so compile/lint/test gates can provide signal; restore formatting enforcement after a dedicated formatter-only cleanup. This is not a claim that the Rust test suite passed.
 - Next: attach spatial samples to match simulation output and persist/query them without breaking existing match-event consumers; then run Clippy, tests and release build on the exact resulting commit.
+
+
+**Spatial events wired into match simulation — 2026-11-20 (PR #447):**
+- Each simulated minute deterministically repositions active players using role lanes, player pace and team direction; each movement is emitted as a spatial event with normalized start/end coordinates.
+- Every third minute, the engine resolves a possession pass to the nearest teammate. Opponent positions are checked against the pass corridor; an intersecting defender produces a tackle/interception spatial event instead.
+- The engine aggregates per-player 10×10 heatmaps from the same movement samples. The existing match result event stream remains backward-compatible; spatial events and heatmaps are separate result fields.
+- Calendar fixture processing persists the spatial timeline and heatmaps in owner-scoped fd.match_spatial_events and fd.match_player_heatmaps. The fixture API now returns both collections alongside conventional match events.
+- Added service/Supabase migration 0012 and exact parity CI check. No production migration has been applied.
+- **Validation pending:** latest code has not yet passed Clippy, Rust tests, PostgreSQL migration/RLS tests or release build. Spatial possession is currently a deterministic first-pass model (nearest receiver + corridor interception), not a calibrated ball-physics or full 22-player tactical solver. Do not claim match realism or production readiness.
