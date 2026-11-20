@@ -41,6 +41,36 @@ impl PitchPoint {
                   next_y.clamp(0, i64::from(PITCH_MAX)) as u16)
     }
 
+    /// True when this point is within a defender's pressure radius.
+    pub fn under_pressure(self, defender: Self, radius: u16) -> bool {
+        self.distance_squared(defender) <= u64::from(radius) * u64::from(radius)
+    }
+
+    /// Tests whether a defender intersects a pass corridor of the given half-width.
+    /// The comparison is integer-only and includes both corridor endpoints.
+    pub fn blocks_passing_lane(self, target: Self, defender: Self, half_width: u16) -> bool {
+        let ax = i64::from(self.x);
+        let ay = i64::from(self.y);
+        let dx = i64::from(target.x) - ax;
+        let dy = i64::from(target.y) - ay;
+        let px = i64::from(defender.x) - ax;
+        let py = i64::from(defender.y) - ay;
+        let length_sq = dx * dx + dy * dy;
+        let radius_sq = i64::from(half_width) * i64::from(half_width);
+        if length_sq == 0 {
+            return self.distance_squared(defender) <= radius_sq as u64;
+        }
+        let projection = px * dx + py * dy;
+        if projection <= 0 {
+            return self.distance_squared(defender) <= radius_sq as u64;
+        }
+        if projection >= length_sq {
+            return target.distance_squared(defender) <= radius_sq as u64;
+        }
+        let cross = px * dy - py * dx;
+        cross * cross <= radius_sq * length_sq
+    }
+
     pub fn zone(self) -> PitchZone {
         let x = usize::from(self.x) * 3 / (usize::from(PITCH_MAX) + 1);
         let y = usize::from(self.y) * 3 / (usize::from(PITCH_MAX) + 1);
@@ -134,6 +164,17 @@ mod tests {
         map.record(PitchPoint::new(9_000, 9_000));
         assert_eq!(map.samples, 3);
         assert_eq!(map.peak(), Some((1, 1, 2)));
+    }
+
+    #[test]
+    fn pressure_and_passing_lane_geometry_are_spatially_consistent() {
+        let passer = PitchPoint::new(1_000, 5_000);
+        let receiver = PitchPoint::new(9_000, 5_000);
+        let central_defender = PitchPoint::new(5_000, 5_100);
+        let wide_defender = PitchPoint::new(5_000, 6_000);
+        assert!(central_defender.under_pressure(PitchPoint::new(5_000, 5_000), 100));
+        assert!(passer.blocks_passing_lane(receiver, central_defender, 150));
+        assert!(!passer.blocks_passing_lane(receiver, wide_defender, 150));
     }
 
     #[test]
