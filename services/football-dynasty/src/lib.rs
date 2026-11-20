@@ -31,6 +31,7 @@ pub mod engine;
 pub mod squad;
 pub mod match_engine;
 pub mod match_intelligence;
+pub mod spatial;
 pub mod competition;
 pub mod player_lifecycle;
 pub mod http;
