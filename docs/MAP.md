@@ -548,3 +548,12 @@ Required information architecture:
 
 
 **Agent execution interruption — 2026-11-19:** After narrowing issue #441 to the existing screen, API client and lifecycle test, the Railway worker picked up comment 7006979375, completed Architect handoff and began the screen implementation unit. The last available log is 10:52:53Z; no terminal task report, PR or accepted code change was observed. Token usage is unknown. The worker briefly selected an obsolete `/ai` comment on issue #392 before the service was redeployed; that unrelated attempt was interrupted and its usage is also unknown. Full accounting entry: docs/PROJECT_ACCOUNTING.md. Do not count either attempt as delivered work.
+
+
+## Football Dynasty — systemic simulation roadmap — 2026-11-20
+
+- Added a deterministic player-execution layer: fatigue reduces effective attributes; morale applies a smaller bounded modifier; pressing has a stamina-cost function. These are pure rules and have unit tests in source.
+- Research basis: official FM27 feature material describes Hawk-Eye-informed movement, attribute-linked skill expression, tactical tweaks, speed/acceleration improvements, heat maps and action zones. Official S.T.A.L.K.E.R. 2 material describes A-Life 2.0 as a persistent ecosystem of factions that migrate, fight and capture/lose locations; its Update 2.1 adds configurable simulation visibility distance. GTA VI reporting describes runtime animation retargeting, localized weather and police knowledge systems; only transferable systemic principles are considered here.
+- Planned next: tactical phases/opponent adaptation; event-backed pitch zones and heat maps; autonomous rival-club agents; full-vs-aggregate simulation LOD; persistent consequences and calibration benchmarks.
+- No GTA/RAGE, Unreal Engine, Hawk-Eye or Football Manager proprietary code/assets are copied. This project remains a server-side Rust simulation, not a graphics engine.
+- Validation for this increment is pending CI on the exact commit; no performance or realism benchmark is claimed.
