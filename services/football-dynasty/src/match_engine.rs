@@ -4,6 +4,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
+    match_intelligence::effective_attribute,
     engine::{MatchRules, TeamProfile},
     squad::{build_team_profile, Formation, Lineup, Player, Position, SquadError, TacticalPlan},
 };
@@ -116,7 +117,7 @@ fn chance_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16, ta
 
 fn shot_probability(shooter: &Player, attack: &TeamProfile, defence: &TeamProfile) -> u32 {
     (70_000_i32
-        + i32::from(shooter.attributes.shooting) * 900
+        + i32::from(effective_attribute(shooter.attributes.shooting, shooter.fatigue, shooter.morale)) * 900
         + i32::from(attack.attack) * 250
         - i32::from(defence.goalkeeper) * 700
         - i32::from(defence.defence) * 150)
@@ -126,9 +127,9 @@ fn shot_probability(shooter: &Player, attack: &TeamProfile, defence: &TeamProfil
 fn select_player(players: &[Player], value: u32, scorer: bool) -> Option<Uuid> {
     let weight = |p: &Player| -> u32 {
         let base = if scorer {
-            u32::from(p.attributes.shooting) + 1
+            u32::from(effective_attribute(p.attributes.shooting, p.fatigue, p.morale)) + 1
         } else {
-            u32::from(p.attributes.passing) + 1
+            u32::from(effective_attribute(p.attributes.passing, p.fatigue, p.morale)) + 1
         };
         let positional = if scorer {
             match p.position { Position::Forward => 5, Position::Midfielder => 3, _ => 1 }
