@@ -49,6 +49,20 @@ pub struct PlayerMatchEvent {
     pub related_player_id: Option<Uuid>,
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SpatialEventKind { Movement, Pass, Tackle }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpatialMatchEvent {
+    pub sequence: u16, pub minute: u8, pub kind: SpatialEventKind, pub team_id: Uuid,
+    pub player_id: Uuid, pub related_player_id: Option<Uuid>,
+    pub from: crate::spatial::PitchPoint, pub to: crate::spatial::PitchPoint,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerHeatmap {
+    pub team_id: Uuid, pub player_id: Uuid, pub heatmap: crate::spatial::Heatmap,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerMatchResult {
     pub engine_version: u32,
@@ -60,6 +74,8 @@ pub struct PlayerMatchResult {
     pub home_xg_milli: u16,
     pub away_xg_milli: u16,
     pub events: Vec<PlayerMatchEvent>,
+    pub spatial_events: Vec<SpatialMatchEvent>,
+    pub heatmaps: Vec<PlayerHeatmap>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +245,21 @@ pub fn simulate_player_match(
     let mut away_goals = 0_u8;
     let (mut home_xg, mut away_xg) = (0_u32, 0_u32);
     let mut events = Vec::new();
+    let mut spatial_events = Vec::new();
+    let mut positions = std::collections::BTreeMap::new();
+    let mut heatmaps = std::collections::BTreeMap::<(Uuid, Uuid), crate::spatial::Heatmap>::new();
+    for (squad, attacking_down) in [(home, false), (away, true)] {
+        for (index, player) in squad.starting.starters.iter().enumerate() {
+            let (x, y) = match player.position {
+                Position::Goalkeeper => (5_000, if attacking_down { 9_300 } else { 700 }),
+                Position::Defender => (2_000 + (index as u16 % 4) * 2_000, if attacking_down { 7_800 } else { 2_200 }),
+                Position::Midfielder => (1_000 + (index as u16 % 5) * 2_000, if attacking_down { 5_800 } else { 4_200 }),
+                Position::Forward => (2_000 + (index as u16 % 3) * 3_000, if attacking_down { 2_800 } else { 7_200 }),
+            };
+            positions.insert(player.id, crate::spatial::PitchPoint::new(x, y));
+        }
+        for player in &squad.bench { positions.insert(player.id, crate::spatial::PitchPoint::new(5_000, 5_000)); }
+    }
 
     for minute in 1..=rules.minutes {
         for (team, active, bench, plans) in [
@@ -273,6 +304,44 @@ pub fn simulate_player_match(
                     );
                     let fatigue_gain = base_cost.saturating_add(pressing_cost.saturating_sub(1));
                     player.fatigue = player.fatigue.saturating_add(fatigue_gain).min(100);
+                }
+            }
+        }
+
+        // Deterministic event-backed movement and possession actions.
+        for (squad, active, opposition, direction) in [
+            (home, &home_active, &away_active, 1_i32),
+            (away, &away_active, &home_active, -1_i32),
+        ] {
+            for (index, player) in active.iter().enumerate() {
+                let current = *positions.get(&player.id).unwrap_or(&crate::spatial::PitchPoint::new(5_000, 5_000));
+                let lane = (index as u16 % 5) * 1_700 + 800;
+                let advance = ((minute as u16 * 73 + player.attributes.pace as u16 * 11) % 1_200) as i32;
+                let target_y = (i32::from(current.y) + direction * advance).clamp(500, 9_500) as u16;
+                let target = crate::spatial::PitchPoint::new((i32::from(lane) + (i32::from(current.x) - i32::from(lane)) / 3).clamp(300, 9_700) as u16, target_y);
+                let next = current.move_towards(target, 260);
+                if next != current {
+                    positions.insert(player.id, next);
+                    heatmaps.entry((squad.team_id, player.id)).or_default().record(next);
+                    spatial_events.push(SpatialMatchEvent { sequence: spatial_events.len() as u16, minute, kind: SpatialEventKind::Movement, team_id: squad.team_id, player_id: player.id, related_player_id: None, from: current, to: next });
+                }
+            }
+            let carrier = active.iter().max_by_key(|p| (p.attributes.passing, p.attributes.pace, p.id));
+            if let Some(carrier) = carrier {
+                let from = *positions.get(&carrier.id).unwrap_or(&crate::spatial::PitchPoint::new(5_000, 5_000));
+                let receiver = active.iter().filter(|p| p.id != carrier.id)
+                    .min_by_key(|p| from.distance_squared(*positions.get(&p.id).unwrap_or(&from)));
+                if let Some(receiver) = receiver {
+                    let to = *positions.get(&receiver.id).unwrap_or(&from);
+                    let blocker = opposition.iter().filter_map(|p| positions.get(&p.id).map(|point| (p, *point)))
+                        .find(|(_, point)| from.blocks_passing_lane(to, *point, 180));
+                    if minute % 3 == 0 {
+                        if let Some((defender, point)) = blocker {
+                            spatial_events.push(SpatialMatchEvent { sequence: spatial_events.len() as u16, minute, kind: SpatialEventKind::Tackle, team_id: squad.team_id, player_id: defender.id, related_player_id: Some(carrier.id), from: point, to: from });
+                        } else {
+                            spatial_events.push(SpatialMatchEvent { sequence: spatial_events.len() as u16, minute, kind: SpatialEventKind::Pass, team_id: squad.team_id, player_id: carrier.id, related_player_id: Some(receiver.id), from, to });
+                        }
+                    }
                 }
             }
         }
@@ -363,6 +432,8 @@ pub fn simulate_player_match(
         home_xg_milli: home_xg.min(u16::MAX as u32) as u16,
         away_xg_milli: away_xg.min(u16::MAX as u32) as u16,
         events,
+        spatial_events,
+        heatmaps: heatmaps.into_iter().map(|((team_id, player_id), heatmap)| PlayerHeatmap { team_id, player_id, heatmap }).collect(),
     })
 }
 
