@@ -112,11 +112,12 @@ The Rust engine should borrow design principles, not proprietary code, assets or
 ### Delivery layers
 
 1. **Player execution model (active):** effective attributes depend on fatigue and morale; pressing has a measurable physical cost. Keep integer arithmetic and deterministic seeds.
-2. **Tactical state machine:** in-possession, transition, pressing, settled defence and counter-attack phases; manager changes at half-time or from match events; opponent adaptation with bounded decision intervals.
-3. **Spatial match model:** pitch zones, player occupancy, passing lanes, pressure, carries and shot locations. Persist compact event coordinates; derive heatmaps/action zones from event streams.
-4. **Persistent world simulation:** autonomous rival clubs, squad rotation, training, contracts, scouting, transfers, injuries, finances and reputation. Use deterministic daily ticks and idempotent outbox events.
-5. **Simulation LOD:** full event simulation for user club and watched fixtures; aggregate probability/standings simulation for distant fixtures; deterministic escalation to full detail when selected.
-6. **Calibration and validation:** replay fixed seeds, compare score/xG distributions and player contribution rates against target ranges; benchmark CPU per 1,000 fixtures and memory. No speed or realism claim without measured results.
+2. **Spatial primitives (implemented foundation):** normalized 0–10,000 pitch coordinates, bounded deterministic movement, nine tactical zones, distance calculations and event-count heatmaps. These are pure domain primitives; player coordinates and match-event persistence are the next integration step.
+3. **Tactical state machine:** in-possession, transition, pressing, settled defence and counter-attack phases; manager changes at half-time or from match events; opponent adaptation with bounded decision intervals.
+4. **Spatial match model:** pitch zones, player occupancy, passing lanes, pressure, carries and shot locations. Persist compact event coordinates; derive heatmaps/action zones from event streams.
+5. **Persistent world simulation:** autonomous rival clubs, squad rotation, training, contracts, scouting, transfers, injuries, finances and reputation. Use deterministic daily ticks and idempotent outbox events.
+6. **Simulation LOD:** full event simulation for user club and watched fixtures; aggregate probability/standings simulation for distant fixtures; deterministic escalation to full detail when selected.
+7. **Calibration and validation:** replay fixed seeds, compare score/xG distributions and player contribution rates against target ranges; benchmark CPU per 1,000 fixtures and memory. No speed or realism claim without measured results.
 
 ### Acceptance gates
 
