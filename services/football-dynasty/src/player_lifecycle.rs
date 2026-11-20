@@ -249,13 +249,12 @@ mod tests{
         assert!(!available_for_match(&p,date+chrono::Duration::days(1)));
     }
     #[test]fn suspension_is_consumed_once_per_completed_team_match(){
-        let mut a=player();let mut b=player();b.id=Uuid::from_u128(8);
-        a.suspension_matches=1;b.suspension_matches=3;
-        consume_team_match_suspensions(&mut [a.clone(),b.clone()]);
-        a.suspension_matches-=1;b.suspension_matches-=1;
-        assert_eq!((a.suspension_matches,b.suspension_matches),(0,2));
-        consume_team_match_suspensions(&mut [a.clone(),b.clone()]);
-        assert_eq!((a.suspension_matches,b.suspension_matches),(0,2));
+        let mut players=vec![player(),player()];players[1].id=Uuid::from_u128(8);
+        players[0].suspension_matches=1;players[1].suspension_matches=3;
+        consume_team_match_suspensions(&mut players);
+        assert_eq!((players[0].suspension_matches,players[1].suspension_matches),(0,2));
+        consume_team_match_suspensions(&mut players);
+        assert_eq!((players[0].suspension_matches,players[1].suspension_matches),(0,1));
     }
 
 }
