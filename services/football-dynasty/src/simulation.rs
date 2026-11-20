@@ -253,9 +253,21 @@ pub struct MatchEventView {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SpatialEventView {
+    pub sequence: i16, pub minute: i16, pub event_type: String,
+    pub team_id: Uuid, pub player_id: Uuid, pub related_player_id: Option<Uuid>,
+    pub from_x: i16, pub from_y: i16, pub to_x: i16, pub to_y: i16,
+}
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct PlayerHeatmapView {
+    pub team_id: Uuid, pub player_id: Uuid, pub bins: Value, pub samples: i32,
+}
+#[derive(Debug, Serialize)]
 pub struct FixtureMatchView {
     pub fixture: SeasonFixture,
     pub events: Vec<MatchEventView>,
+    pub spatial_events: Vec<SpatialEventView>,
+    pub heatmaps: Vec<PlayerHeatmapView>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -518,8 +530,16 @@ pub async fn get_fixture(
          LEFT JOIN fd.players r ON r.campaign_id=me.campaign_id AND r.id=me.related_player_id
          WHERE me.campaign_id=$1 AND me.fixture_id=$2 ORDER BY me.sequence")
         .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    let spatial_events = crate::fd_query_as!(SpatialEventView,
+        "SELECT sequence,minute,event_type,team_id,player_id,related_player_id,from_x,from_y,to_x,to_y
+         FROM fd.match_spatial_events WHERE campaign_id=$1 AND fixture_id=$2 ORDER BY sequence")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    let heatmaps = crate::fd_query_as!(PlayerHeatmapView,
+        "SELECT team_id,player_id,bins,samples FROM fd.match_player_heatmaps
+         WHERE campaign_id=$1 AND fixture_id=$2 ORDER BY team_id,player_id")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
     tx.commit().await?;
-    Ok(Json(FixtureMatchView { fixture, events }))
+    Ok(Json(FixtureMatchView { fixture, events, spatial_events, heatmaps }))
 }
 
 pub async fn advance_time(
