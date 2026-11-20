@@ -702,6 +702,31 @@ pub async fn advance_time(
             .bind(away_goals)
             .execute(&mut *tx)
             .await?;
+            for spatial in &result.spatial_events {
+                let event_type = match spatial.kind {
+                    crate::match_engine::SpatialEventKind::Movement => "movement",
+                    crate::match_engine::SpatialEventKind::Pass => "pass",
+                    crate::match_engine::SpatialEventKind::Tackle => "tackle",
+                };
+                crate::fd_query!(
+                    "INSERT INTO fd.match_spatial_events(campaign_id,fixture_id,sequence,minute,event_type,team_id,player_id,related_player_id,from_x,from_y,to_x,to_y) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)"
+                )
+                .bind(campaign_id).bind(fixture_id).bind(spatial.sequence as i16)
+                .bind(spatial.minute as i16).bind(event_type).bind(spatial.team_id)
+                .bind(spatial.player_id).bind(spatial.related_player_id)
+                .bind(spatial.from.x as i16).bind(spatial.from.y as i16)
+                .bind(spatial.to.x as i16).bind(spatial.to.y as i16)
+                .execute(&mut *tx).await?;
+            }
+            for (team_id, player_id, heatmap) in &result.heatmaps {
+                crate::fd_query!(
+                    "INSERT INTO fd.match_player_heatmaps(campaign_id,fixture_id,team_id,player_id,bins,samples) VALUES($1,$2,$3,$4,$5,$6)"
+                )
+                .bind(campaign_id).bind(fixture_id).bind(team_id).bind(player_id)
+                .bind(json!(heatmap.bins)).bind(heatmap.samples as i32)
+                .execute(&mut *tx).await?;
+            }
+
             for event in &result.events {
                 let event_type=match event.kind {
                     PlayerMatchEventKind::Shot=>"shot",
