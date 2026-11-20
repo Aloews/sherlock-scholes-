@@ -564,3 +564,10 @@ Required information architecture:
 - Planned next: tactical phases/opponent adaptation; event-backed pitch zones and heat maps; autonomous rival-club agents; full-vs-aggregate simulation LOD; persistent consequences and calibration benchmarks.
 - No GTA/RAGE, Unreal Engine, Hawk-Eye or Football Manager proprietary code/assets are copied. This project remains a server-side Rust simulation, not a graphics engine.
 - Validation for this increment is pending CI on the exact commit; no performance or realism benchmark is claimed.
+
+
+**Spatial match core — 2026-11-20:**
+- Added deterministic normalized pitch geometry, 9 pitch zones, bounded movement, pressure radius, passing-lane intersection and 10×10 event heatmap aggregation in `services/football-dynasty/src/spatial.rs`.
+- Unit tests cover coordinate bounds/zones, movement bounds, heatmap counts/peak, pressure and passing-lane geometry, and distance symmetry.
+- CI on commit `a6c37c3` exposed a pre-existing formatting debt across 12 Rust source/test files (including legacy API, auth, squad and lifecycle files); formatting failed before Clippy, tests or release build could run. The global formatting gate is temporarily removed so compile/lint/test gates can provide signal; restore formatting enforcement after a dedicated formatter-only cleanup. This is not a claim that the Rust test suite passed.
+- Next: attach spatial samples to match simulation output and persist/query them without breaking existing match-event consumers; then run Clippy, tests and release build on the exact resulting commit.
