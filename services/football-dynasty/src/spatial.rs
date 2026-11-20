@@ -31,7 +31,8 @@ impl PitchPoint {
         let dy = i64::from(target.y) - i64::from(self.y);
         let distance_sq = (dx * dx + dy * dy) as u64;
         if distance_sq == 0 || max_step == 0 { return self; }
-        let distance = integer_sqrt(distance_sq).max(1);
+        let root = integer_sqrt(distance_sq).max(1);
+        let distance = if root * root < distance_sq { root + 1 } else { root };
         if distance <= u64::from(max_step) { return target; }
         let step = i64::from(max_step);
         let next_x = i64::from(self.x) + dx * step / distance as i64;
