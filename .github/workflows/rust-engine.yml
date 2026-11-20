@@ -45,6 +45,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify service and Supabase migration parity
         run: cmp migrations/0011_match_rosters_events.sql ../../supabase/migrations/20261119160000_football_dynasty_match_engine.sql
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy with warnings denied
+        run: cargo clippy --all-targets -- -D warnings
       - name: Compile and test engine and API
         run: cargo test --all-targets
       - name: Compile release binary
