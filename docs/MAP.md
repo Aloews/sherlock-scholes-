@@ -598,3 +598,13 @@ Required information architecture:
 - Added CI migration-parity check for 0013.
 - **Not yet runtime-integrated:** these are core contracts, migration, and pure tests; there is no API to create/respond/inspect world incidents, no persisted reaction execution, and no UI. LW0 database schema and pure logic exist, but vertical slice is not complete until API transactions, ticking, persistence tests and UI are wired.
 - Current validation: new rust-engine CI was triggered on commit `29725db` and is queued. The older football-dynasty-rust workflow at commit `29725db` failed with an empty jobs response; that failure is not actionable yet and must be re-run/checked. No green result is claimed.
+
+
+### Living world runtime integration — 2026-11-21
+
+- Integrated `tick_living_world` into every in-game day advanced by `advance_time`. A deterministic date-keyed club-district incident is created once per campaign/date; due reactions are consumed in the same campaign transaction.
+- Added authenticated campaign endpoints: `GET /api/v1/campaigns/{campaign_id}/world/events` and `POST /api/v1/campaigns/{campaign_id}/world/events/{event_id}/respond`.
+- Player responses `help`, `report`, and `ignore` now write causal facts, resolve the incident, persist knowledge for witnesses or local authorities, and schedule idempotent delayed reactions. On a later time tick, those reactions create child world events linked to the source event and record a processed fact.
+- Added `fd.world_actor_knowledge` to both migration copies; actor knowledge is campaign-scoped, unique per actor/event, RLS-protected, and used to gate the reaction chain.
+- CI now applies every SQL migration in order to a fresh PostgreSQL 16 database before parity checks, Clippy, tests and release build. The full migration chain completed successfully on run `44906142770`; Clippy/tests/release build were still running at the time of this update.
+- **Scope/remaining:** first deterministic incident vertical slice is wired into time advancement and API; actor motives, schedules, richer NPC action selection, frontend presentation, and end-to-end HTTP tests against campaign fixtures remain to be implemented. No production database migration or deploy has been performed.
