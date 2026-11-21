@@ -534,6 +534,17 @@ async fn respond_world_event(
         .execute(&mut *tx)
         .await?;
     }
+    if request.response == "help" && !witnesses.is_empty() {
+        crate::fd_query!(
+            "INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id)
+             VALUES($1,'local_news',$2)
+             ON CONFLICT DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(event_id)
+        .execute(&mut *tx)
+        .await?;
+    }
 
     for fact in &resolution.facts {
         crate::fd_query!(
@@ -644,6 +655,52 @@ async fn tick_living_world(
          ORDER BY due_game_day,id FOR UPDATE")
         .bind(campaign_id).bind(game_day).fetch_all(&mut **tx).await?;
     for (reaction_id,parent_id,reaction_key,reaction_type,_due,payload) in due {
+        let informed: bool = match reaction_type.as_str() {
+            "local_news_follow_up" => crate::fd_query_scalar!(
+                "SELECT EXISTS(
+                   SELECT 1 FROM fd.world_actor_knowledge
+                   WHERE campaign_id=$1 AND source_event_id=$2 AND actor_key='local_news'
+                 )"
+            )
+            .bind(campaign_id)
+            .bind(parent_id)
+            .fetch_one(&mut **tx)
+            .await?,
+            "witness_report" => crate::fd_query_scalar!(
+                "SELECT EXISTS(
+                   SELECT 1 FROM fd.world_actor_knowledge
+                   WHERE campaign_id=$1 AND source_event_id=$2
+                     AND actor_key IN (SELECT jsonb_array_elements_text($3->'witnesses'))
+                 )"
+            )
+            .bind(campaign_id)
+            .bind(parent_id)
+            .bind(&payload)
+            .fetch_one(&mut **tx)
+            .await?,
+            "police_investigation_update" => crate::fd_query_scalar!(
+                "SELECT EXISTS(
+                   SELECT 1 FROM fd.world_actor_knowledge
+                   WHERE campaign_id=$1 AND source_event_id=$2 AND actor_key='local_authorities'
+                 )"
+            )
+            .bind(campaign_id)
+            .bind(parent_id)
+            .fetch_one(&mut **tx)
+            .await?,
+            _ => false,
+        };
+        if !informed {
+            crate::fd_query!(
+                "UPDATE fd.world_reactions SET state='cancelled',processed_at=now()
+                 WHERE id=$1 AND campaign_id=$2 AND state='queued'"
+            )
+            .bind(reaction_id)
+            .bind(campaign_id)
+            .execute(&mut **tx)
+            .await?;
+            continue;
+        }
         let child_type=match reaction_type.as_str() {
             "local_news_follow_up"=>"news_follow_up",
             "witness_report"=>"witness_report",
