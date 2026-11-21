@@ -167,6 +167,37 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(one_day["current_date"], "2026-01-02");
     assert_eq!(one_day["generated_events"], 0);
 
+    // A world incident is separate from the legacy calendar inbox. Exercise
+    // the authenticated API, persist the player's choice, then verify that
+    // the delayed NPC/news reaction is materialized by a later time tick.
+    let (world_status, world_events) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/world/events"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(world_status, StatusCode::OK);
+    let incident = world_events
+        .as_array()
+        .expect("world event feed")
+        .iter()
+        .find(|event| event["event_type"] == "theft_near_club")
+        .expect("scheduled world incident");
+    let world_event_id = incident["id"].as_str().expect("world event id");
+    let (response_status, response) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/world/events/{world_event_id}/respond"),
+        Some("world-response-0001"),
+        Some(json!({"response":"help"})),
+    )
+    .await;
+    assert_eq!(response_status, StatusCode::OK);
+    assert_eq!(response["status"], "resolved");
+    assert_eq!(response["scheduled_reaction"], "local_news_follow_up");
+
     let (tick_status, tick) = call(
         app.clone(),
         "POST",
@@ -179,6 +210,23 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 3);
+
+    let (follow_up_status, follow_up_events) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/world/events"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(follow_up_status, StatusCode::OK);
+    let follow_up = follow_up_events
+        .as_array()
+        .expect("world event feed")
+        .iter()
+        .find(|event| event["event_type"] == "news_follow_up")
+        .expect("delayed NPC reaction");
+    assert_eq!(follow_up["parent_event_id"], world_event_id);
 
     let (events_status, events) = call(
         app.clone(),
