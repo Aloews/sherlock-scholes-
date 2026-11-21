@@ -467,10 +467,17 @@ async fn respond_world_event(
         return Err(ApiError::conflict("world_event_not_respondable"));
     }
     let witnesses=row.3["witnesses"].as_array().map_or(0,Vec::len);
+    if request.response=="report" {
+        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) VALUES($1,'local_authorities',$2) ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(event_id).execute(&mut *tx).await?;
+    } else if witnesses>0 {
+        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) SELECT $1,value,$2 FROM jsonb_array_elements_text($3->'witnesses') ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(event_id).bind(&row.3).execute(&mut *tx).await?;
+    }
     let (fact_key,fact_value,reaction_type,delay)=match request.response.as_str() {
-        "help" => ("player_helped_victim",json!({"trust":2}),if witnesses>0 {Some("local_news_follow_up")} else {None},2),
+        "help" => ("player_helped_victim",json!({"trust":2,"witnesses_observed":witnesses}),if witnesses>0 {Some("local_news_follow_up")} else {None},2),
         "report" => ("player_reported_incident",json!({"investigation":true}),Some("police_investigation_update"),1),
-        _ => ("player_ignored_incident",json!({"ignored":true}),if witnesses>0 {Some("witness_report")} else {None},3),
+        _ => ("player_ignored_incident",json!({"ignored":true,"witnesses_observed":witnesses}),if witnesses>0 {Some("witness_report")} else {None},3),
     };
     crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
         .bind(campaign_id).bind(fact_key).bind(&fact_value).bind(event_id).execute(&mut *tx).await?;
@@ -507,6 +514,13 @@ async fn tick_living_world(
              ON CONFLICT(campaign_id,event_key) DO NOTHING")
             .bind(campaign_id).bind(event_key).bind(game_day).execute(&mut **tx).await?;
         generated+=inserted.rows_affected() as i64;
+        if inserted.rows_affected()>0 {
+            let incident_id:Uuid=crate::fd_query_scalar!("SELECT id FROM fd.world_events WHERE campaign_id=$1 AND event_key=$2")
+                .bind(campaign_id).bind(format!("street-incident-{}",current_date.format("%Y%m%d")))
+                .fetch_one(&mut **tx).await?;
+            crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) VALUES($1,'supporter_01',$2),($1,'staff_02',$2) ON CONFLICT DO NOTHING")
+                .bind(campaign_id).bind(incident_id).execute(&mut **tx).await?;
+        }
     }
     let due=crate::fd_query_as!((Uuid,Uuid,String,String,i32,Value),
         "SELECT id,source_event_id,reaction_key,reaction_type,due_game_day,payload
