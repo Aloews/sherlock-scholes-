@@ -431,6 +431,15 @@ async fn list_world_events(
 ) -> Result<Json<Vec<WorldEventView>>, ApiError> {
     let mut tx = state.db.begin().await?;
     set_owner(&mut tx, identity.telegram_id).await?;
+    let exists: bool = crate::fd_query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM fd.campaigns WHERE id=$1)"
+    )
+    .bind(campaign_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if !exists {
+        return Err(ApiError::not_found());
+    }
     let rows = crate::fd_query_as!(WorldEventView,
         "SELECT id,event_type,game_day,location_key,state,payload,parent_event_id
          FROM fd.world_events WHERE campaign_id=$1 AND state IN ('known','active','resolved')
