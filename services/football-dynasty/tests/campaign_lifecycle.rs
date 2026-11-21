@@ -197,6 +197,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(response_status, StatusCode::OK);
     assert_eq!(response["status"], "resolved");
     assert_eq!(response["scheduled_reaction"], "local_news_follow_up");
+    assert_eq!(response["witness_count"], 2);
+    assert_eq!(
+        response["immediate_reactions"],
+        json!(["VictimTrustsPlayer", "WitnessSharesIntervention"])
+    );
+    assert_eq!(
+        response["scheduled_reactions"],
+        json!(["local_news_follow_up"])
+    );
 
     let (tick_status, tick) = call(
         app.clone(),
