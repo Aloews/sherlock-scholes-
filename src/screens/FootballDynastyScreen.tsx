@@ -428,6 +428,19 @@ export function FootballDynastyScreen() {
                             : event.event_type === 'investigation_update'
                               ? (i18n.language.startsWith('ru') ? 'Обновление расследования' : 'Investigation update')
                               : event.event_type;
+                      const description = event.event_type === 'news_follow_up'
+                        ? (i18n.language.startsWith('ru')
+                          ? 'Местное издание опубликовало материал о вашем поступке. История стала известна благодаря очевидцам.'
+                          : 'A local outlet published a story about your actions after witnesses shared what they saw.')
+                        : event.event_type === 'witness_report'
+                          ? (i18n.language.startsWith('ru')
+                            ? 'Очевидец передал властям сведения о происшествии и его последствиях.'
+                            : 'A witness gave authorities an account of the incident and its aftermath.')
+                          : event.event_type === 'investigation_update'
+                            ? (i18n.language.startsWith('ru')
+                              ? 'Полиция получила сообщение и начала проверку обстоятельств происшествия.'
+                              : 'Police received the report and began investigating the incident.')
+                            : '';
                       return (
                         <article key={event.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
                           <div className="mb-2 flex items-center justify-between gap-2">
@@ -441,8 +454,11 @@ export function FootballDynastyScreen() {
                                 : 'A theft took place near the club. Several people witnessed the incident and shared what happened.'}
                             </p>
                           )}
+                          {!isIncident && description && (
+                            <p className="text-sm leading-6 text-brand-muted">{description}</p>
+                          )}
                           {!isPending && (
-                            <p className="text-xs text-brand-muted">
+                            <p className="mt-2 text-xs text-brand-muted">
                               {event.state === 'resolved'
                                 ? (i18n.language.startsWith('ru') ? 'Завершено' : 'Resolved')
                                 : event.state}
