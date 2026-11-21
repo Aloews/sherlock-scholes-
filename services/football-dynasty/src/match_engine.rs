@@ -492,7 +492,7 @@ mod tests {
     }
     #[test]
     fn defensive_pressing_and_width_reduce_opponent_chance_frequency() {
-        let profile = TeamProfile { team_id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70 };
+        let profile = TeamProfile { id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70, morale: 70, fatigue: 0 };
         let neutral = TacticalPlan::default();
         let defensive = TacticalPlan { pressing: 100, width: 100, ..neutral };
         let neutral_chance = chance_probability(&profile, &profile, 0, neutral, neutral);
@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn attacking_intent_increases_expected_chance_frequency() {
-        let profile = TeamProfile { team_id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70 };
+        let profile = TeamProfile { id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70, morale: 70, fatigue: 0 };
         let neutral = TacticalPlan::default();
         let aggressive = TacticalPlan { attacking_intent: 100, ..neutral };
         assert!(chance_probability(&profile, &profile, 0, aggressive, neutral)
