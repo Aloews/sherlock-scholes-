@@ -170,6 +170,13 @@ mod tests {
     }
 
     #[test]
+    fn delayed_consequence_does_not_fire_before_due_day() {
+        let result = resolve_incident(incident(2, vec!["npc-d"]), PlayerResponse::Ignore);
+        assert!(resolve_delayed(&result.delayed[0], 4).is_none());
+        assert!(resolve_delayed(&result.delayed[0], 5).is_some());
+    }
+
+    #[test]
     fn same_input_is_replayable() {
         let first = resolve_incident(incident(9, vec!["npc-c"]), PlayerResponse::HelpVictim);
         let second = resolve_incident(incident(9, vec!["npc-c"]), PlayerResponse::HelpVictim);
