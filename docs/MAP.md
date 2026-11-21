@@ -580,3 +580,12 @@ Required information architecture:
 - Calendar fixture processing persists the spatial timeline and heatmaps in owner-scoped fd.match_spatial_events and fd.match_player_heatmaps. The fixture API now returns both collections alongside conventional match events.
 - Added service/Supabase migration 0012 and exact parity CI check. No production migration has been applied.
 - **Validation pending:** latest code has not yet passed Clippy, Rust tests, PostgreSQL migration/RLS tests or release build. Spatial possession is currently a deterministic first-pass model (nearest receiver + corridor interception), not a calibrated ball-physics or full 22-player tactical solver. Do not claim match realism or production readiness.
+
+
+## Living World / реакция мира на действия игрока — 2026-11-21
+
+- Added `docs/football-dynasty/LIVING_WORLD.md` as the implementation contract for a persistent event → player awareness → response/action → knowledge-gated NPC/world reaction → delayed consequence loop.
+- Defines deterministic tick/event generation, channels for player awareness, action validation and outcomes, actor knowledge/motives, causal fact records, bounded reaction queues and cascade safeguards.
+- Acceptance vertical slice: location-based incident reaches the player via a plausible channel; player may act or ignore; witnesses/media/authorities respond only when informed; a second-order reaction changes future world state; state survives reload and commands are idempotent.
+- Phased LW0–LW7 tasks are recorded (contracts/data model, tick, awareness, player action, NPC response, causal graph, UI integration, validation).
+- **Status: specification committed only.** No living-world runtime, database migration, event UI, or second-order NPC reaction is implemented yet. The existing calendar/event system is not yet evidence of this behavior. Next development increment should implement LW0 and a narrow LW1–LW5 vertical slice, then test persistence and causal chain before widening content.
