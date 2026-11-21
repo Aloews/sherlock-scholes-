@@ -25,7 +25,7 @@ CREATE TABLE fd.world_facts (
   FOREIGN KEY (campaign_id,source_event_id) REFERENCES fd.world_events(campaign_id,id)
 );
 CREATE TABLE fd.world_reactions (
-  id uuid PRIMARY PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_id uuid NOT NULL REFERENCES fd.campaigns(id) ON DELETE CASCADE,
   source_event_id uuid NOT NULL,
   reaction_key text NOT NULL CHECK (length(reaction_key) BETWEEN 1 AND 120),
