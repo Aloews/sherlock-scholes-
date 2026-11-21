@@ -71,6 +71,7 @@ export function FootballDynastyScreen() {
 
   const refreshSelected = useCallback(async (id: string) => {
     setEventsLoadFailed(false);
+    setWorldEventsLoadFailed(false);
     try {
       const data = await getCampaign(id);
       setCampaign(data);
@@ -117,6 +118,7 @@ export function FootballDynastyScreen() {
     setBusy('loading');
     setError('');
     setEventsLoadFailed(false);
+    setWorldEventsLoadFailed(false);
     (async () => {
       try {
         const data = await getCampaign(selectedId);
@@ -203,6 +205,7 @@ export function FootballDynastyScreen() {
     void run('world-' + event.id, async () => {
       await respondToWorldEvent(campaign.campaign.id, event.id, response);
       await refreshSelected(campaign.campaign.id);
+      setActiveTab('events');
     });
   };
 
