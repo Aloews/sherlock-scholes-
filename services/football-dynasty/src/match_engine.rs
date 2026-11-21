@@ -120,13 +120,24 @@ fn draw(seed: u64, match_id: Uuid, minute: u8, team_id: Uuid, salt: u8) -> u32 {
     u32::from_be_bytes([digest[0], digest[1], digest[2], digest[3]]) % SCALE
 }
 
-fn chance_probability(attack: &TeamProfile, defence: &TeamProfile, home: u16, tactics: TacticalPlan) -> u32 {
+fn chance_probability(
+    attack: &TeamProfile,
+    defence: &TeamProfile,
+    home: u16,
+    attacking: TacticalPlan,
+    defending: TacticalPlan,
+) -> u32 {
+    // High pressing constrains build-up chances but leaves more space when bypassed;
+    // attacking intent increases chance frequency while defensive width reduces it.
     (100_000_i32
         + i32::from(attack.midfield) * 600
         + i32::from(attack.attack) * 250
         - i32::from(defence.midfield) * 300
-        + (i32::from(tactics.tempo)-50)*500
-        + (i32::from(tactics.width)-50)*100
+        + (i32::from(attacking.tempo)-50)*500
+        + (i32::from(attacking.width)-50)*100
+        + (i32::from(attacking.attacking_intent)-50)*350
+        - (i32::from(defending.pressing)-50)*250
+        - (i32::from(defending.width)-50)*150
         + i32::from(home))
         .clamp(50_000,350_000) as u32
 }
@@ -349,8 +360,8 @@ pub fn simulate_player_match(
 
         let home_profile = profile(home.team_id, &home_active, home.starting.formation, home.starting.tactics)?;
         let away_profile = profile(away.team_id, &away_active, away.starting.formation, away.starting.tactics)?;
-        let home_chance = chance_probability(&home_profile,&away_profile,rules.home_advantage_milli,home.starting.tactics);
-        let away_chance = chance_probability(&away_profile,&home_profile,0,away.starting.tactics);
+        let home_chance = chance_probability(&home_profile,&away_profile,rules.home_advantage_milli,home.starting.tactics,away.starting.tactics);
+        let away_chance = chance_probability(&away_profile,&home_profile,0,away.starting.tactics,home.starting.tactics);
 
         if home_goals < 12 && draw(seed,match_id,minute,home.team_id,1)<home_chance {
             if let Some(shooter_id)=select_player(&home_active,draw(seed,match_id,minute,home.team_id,2),true) {
