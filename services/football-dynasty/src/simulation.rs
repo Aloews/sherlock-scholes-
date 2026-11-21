@@ -252,7 +252,7 @@ pub struct MatchEventView {
     pub related_player_name: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct SpatialEventView {
     pub sequence: i16, pub minute: i16, pub event_type: String,
     pub team_id: Uuid, pub player_id: Uuid, pub related_player_id: Option<Uuid>,
@@ -738,12 +738,12 @@ pub async fn advance_time(
                 .bind(spatial.to.x as i16).bind(spatial.to.y as i16)
                 .execute(&mut *tx).await?;
             }
-            for (team_id, player_id, heatmap) in &result.heatmaps {
+            for item in &result.heatmaps {
                 crate::fd_query!(
                     "INSERT INTO fd.match_player_heatmaps(campaign_id,fixture_id,team_id,player_id,bins,samples) VALUES($1,$2,$3,$4,$5,$6)"
                 )
-                .bind(campaign_id).bind(fixture_id).bind(team_id).bind(player_id)
-                .bind(json!(heatmap.bins)).bind(heatmap.samples as i32)
+                .bind(campaign_id).bind(fixture_id).bind(item.team_id).bind(item.player_id)
+                .bind(json!(item.heatmap.bins)).bind(item.heatmap.samples as i32)
                 .execute(&mut *tx).await?;
             }
 
