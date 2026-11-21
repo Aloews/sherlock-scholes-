@@ -542,7 +542,7 @@ async fn respond_world_event(
 
     let mut scheduled_reactions = Vec::new();
     for consequence in &resolution.delayed {
-        let reaction_type = match consequence.kind {
+        let reaction_type = match &consequence.kind {
             crate::living_world::DelayedKind::NewsFollowUp => "local_news_follow_up",
             crate::living_world::DelayedKind::WitnessReport => "witness_report",
             crate::living_world::DelayedKind::InvestigationUpdate => {
@@ -564,10 +564,10 @@ async fn respond_world_event(
         .bind(reaction_type)
         .bind(i32::try_from(consequence.due_day).unwrap_or(i32::MAX))
         .bind(json!({
-            "response": request.response,
-            "location": row.2,
-            "witnesses": witnesses,
-            "immediate_reactions": resolution.immediate_reactions,
+            "response": request.response.as_str(),
+            "location": row.2.as_str(),
+            "witnesses": witnesses.clone(),
+            "immediate_reactions": resolution.immediate_reactions.clone(),
         }))
         .execute(&mut *tx)
         .await?;
@@ -583,15 +583,15 @@ async fn respond_world_event(
     .bind(campaign_id)
     .bind(event_id)
     .bind(json!({
-        "player_response": request.response,
-        "immediate_reactions": resolution.immediate_reactions,
+        "player_response": request.response.as_str(),
+        "immediate_reactions": resolution.immediate_reactions.clone(),
     }))
     .execute(&mut *tx)
     .await?;
 
     let result = json!({
         "event_id": event_id,
-        "response": request.response,
+        "response": request.response.as_str(),
         "status": "resolved",
         "witness_count": witness_count,
         "immediate_reactions": resolution.immediate_reactions,
