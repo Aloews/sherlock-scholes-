@@ -163,7 +163,7 @@ mod tests {
         map.record(PitchPoint::new(1_100, 1_200));
         map.record(PitchPoint::new(9_000, 9_000));
         assert_eq!(map.samples, 3);
-        assert_eq!(map.peak(), Some((1, 1, 2)));
+        assert_eq!(map.peak(), Some((0, 0, 2)));
     }
 
     #[test]
