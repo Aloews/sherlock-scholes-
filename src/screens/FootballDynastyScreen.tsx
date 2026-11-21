@@ -81,7 +81,7 @@ export function FootballDynastyScreen() {
       setWorldEventsLoadFailed(panels.worldEventsFailed);
       setEventsLoadFailed(panels.eventsFailed);
       setSeason(panels.season);
-      setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
+      setActiveTab(panels.eventsFailed || panels.worldEventsFailed || panels.events.some((event) => event.status === 'pending') || panels.worldEvents.some((event) => event.state === 'known' && event.event_type === 'theft_near_club') ? 'events' : 'club');
       if (panels.failed) setError(t('dynasty.error'));
     } catch (error) {
       setEventsLoadFailed(true);
@@ -130,7 +130,7 @@ export function FootballDynastyScreen() {
         setWorldEventsLoadFailed(panels.worldEventsFailed);
         setEventsLoadFailed(panels.eventsFailed);
         setSeason(panels.season);
-        setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
+        setActiveTab(panels.eventsFailed || panels.worldEventsFailed || panels.events.some((event) => event.status === 'pending') || panels.worldEvents.some((event) => event.state === 'known' && event.event_type === 'theft_near_club') ? 'events' : 'club');
         if (panels.failed) setError(t('dynasty.error'));
       } catch {
         if (active) {
