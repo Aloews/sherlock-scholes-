@@ -221,6 +221,7 @@ fn validate_plan(
 
 /// Simulates a match with persisted player identities, scorer/assist attribution and
 /// caller-specified legal substitutions. Inputs are immutable; replay is exact.
+#[allow(clippy::collapsible_if)]
 pub fn simulate_player_match(
     seed: u64,
     match_id: Uuid,
