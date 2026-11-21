@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listCampaigns, previewSuccession, type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView,
+  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession,
+  type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView, type WorldEvent,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -13,6 +14,8 @@ const quietButtonClass = 'inline-flex items-center justify-center gap-2 rounded-
 
 async function loadCampaignPanels(campaignId: string, status: string) {
   let events: GameEvent[] = [];
+  let worldEvents: WorldEvent[] = [];
+  let worldEventsFailed = false;
   let season: SeasonView | null = null;
   let candidates: Character[] = [];
   let eventsFailed = false;
@@ -20,6 +23,9 @@ async function loadCampaignPanels(campaignId: string, status: string) {
 
   try { events = await listGameEvents(campaignId); }
   catch { eventsFailed = true; failed = true; }
+
+  try { worldEvents = await listWorldEvents(campaignId); }
+  catch { worldEventsFailed = true; failed = true; }
 
   try { season = await getSeason(campaignId); }
   catch { failed = true; }
@@ -29,7 +35,7 @@ async function loadCampaignPanels(campaignId: string, status: string) {
     catch { failed = true; }
   }
 
-  return { events, season, candidates, eventsFailed, failed };
+  return { events, worldEvents, worldEventsFailed, season, candidates, eventsFailed, failed };
 }
 
 export function FootballDynastyScreen() {
@@ -40,6 +46,8 @@ export function FootballDynastyScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [candidates, setCandidates] = useState<Character[]>([]);
   const [events, setEvents] = useState<GameEvent[]>([]);
+  const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([]);
+  const [worldEventsLoadFailed, setWorldEventsLoadFailed] = useState(false);
   const [eventsLoadFailed, setEventsLoadFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('events');
   const [season, setSeason] = useState<SeasonView | null>(null);
@@ -69,6 +77,8 @@ export function FootballDynastyScreen() {
       const panels = await loadCampaignPanels(id, data.campaign.status);
       setCandidates(panels.candidates);
       setEvents(panels.events);
+      setWorldEvents(panels.worldEvents);
+      setWorldEventsLoadFailed(panels.worldEventsFailed);
       setEventsLoadFailed(panels.eventsFailed);
       setSeason(panels.season);
       setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
@@ -98,6 +108,8 @@ export function FootballDynastyScreen() {
       setCampaign(null);
       setSeason(null);
       setEvents([]);
+      setWorldEvents([]);
+      setWorldEventsLoadFailed(false);
       setEventsLoadFailed(false);
       return;
     }
@@ -114,6 +126,8 @@ export function FootballDynastyScreen() {
         if (!active) return;
         setCandidates(panels.candidates);
         setEvents(panels.events);
+        setWorldEvents(panels.worldEvents);
+        setWorldEventsLoadFailed(panels.worldEventsFailed);
         setEventsLoadFailed(panels.eventsFailed);
         setSeason(panels.season);
         setActiveTab(panels.eventsFailed || panels.events.some((event) => event.status === 'pending') ? 'events' : 'club');
@@ -181,6 +195,14 @@ export function FootballDynastyScreen() {
       await executeSuccession(campaign.campaign.id, heirId);
       await refreshSelected(campaign.campaign.id);
       await refreshCampaigns();
+    });
+  };
+
+  const respondToWorld = (event: WorldEvent, response: 'help' | 'report' | 'ignore') => {
+    if (!campaign) return;
+    void run('world-' + event.id, async () => {
+      await respondToWorldEvent(campaign.campaign.id, event.id, response);
+      await refreshSelected(campaign.campaign.id);
     });
   };
 
@@ -316,7 +338,7 @@ export function FootballDynastyScreen() {
                   {label}
                   {tab === 'events' && events.some((event) => event.status === 'pending') && (
                     <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-brand-accent px-1.5 py-0.5 text-[10px] text-white">
-                      {events.filter((event) => event.status === 'pending').length}
+                      {events.filter((event) => event.status === 'pending').length + worldEvents.filter((event) => event.state === 'known' && event.event_type === 'theft_near_club').length}
                     </span>
                   )}
                 </button>
@@ -371,6 +393,79 @@ export function FootballDynastyScreen() {
               </section>
             )}
 
+
+            {activeTab === 'events' && (
+              <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'События мира' : 'World events'}</span>
+                  <span className="text-xs text-brand-muted">{worldEvents.length}</span>
+                </div>
+                {worldEventsLoadFailed ? (
+                  <div className="rounded-xl bg-brand-bg p-4 text-sm">
+                    <p className="mb-2 text-brand-muted">{i18n.language.startsWith('ru') ? 'Не удалось загрузить события мира.' : 'World events could not be loaded.'}</p>
+                    <button type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => void run('refresh-world', () => refreshSelected(campaign.campaign.id))}>
+                      {i18n.language.startsWith('ru') ? 'Повторить' : 'Retry'}
+                    </button>
+                  </div>
+                ) : worldEvents.length === 0 ? (
+                  <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">
+                    {i18n.language.startsWith('ru') ? 'Пока нет событий.' : 'No world events yet.'}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {worldEvents.map((event) => {
+                      const isIncident = event.event_type === 'theft_near_club';
+                      const isPending = event.state === 'known' && isIncident;
+                      const title = event.event_type === 'theft_near_club'
+                        ? (i18n.language.startsWith('ru') ? 'Инцидент рядом с клубом' : 'Incident near the club')
+                        : event.event_type === 'news_follow_up'
+                          ? (i18n.language.startsWith('ru') ? 'Новость о вашем поступке' : 'News about your actions')
+                          : event.event_type === 'witness_report'
+                            ? (i18n.language.startsWith('ru') ? 'Свидетель дал показания' : 'A witness has spoken')
+                            : event.event_type === 'investigation_update'
+                              ? (i18n.language.startsWith('ru') ? 'Обновление расследования' : 'Investigation update')
+                              : event.event_type;
+                      return (
+                        <article key={event.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <h4 className="font-semibold">{title}</h4>
+                            <span className="text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'День' : 'Day'} {event.game_day}</span>
+                          </div>
+                          {isIncident && (
+                            <p className="text-sm leading-6 text-brand-muted">
+                              {i18n.language.startsWith('ru')
+                                ? 'В районе клуба произошло ограбление. Несколько человек стали свидетелями и сообщили о случившемся.'
+                                : 'A theft took place near the club. Several people witnessed the incident and shared what happened.'}
+                            </p>
+                          )}
+                          {!isPending && (
+                            <p className="text-xs text-brand-muted">
+                              {event.state === 'resolved'
+                                ? (i18n.language.startsWith('ru') ? 'Завершено' : 'Resolved')
+                                : event.state}
+                              {event.parent_event_id ? ' · ' + (i18n.language.startsWith('ru') ? 'Связано с предыдущим событием' : 'Linked to an earlier event') : ''}
+                            </p>
+                          )}
+                          {isPending && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <button type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => respondToWorld(event, 'help')}>
+                                {i18n.language.startsWith('ru') ? 'Помочь пострадавшему' : 'Help the victim'}
+                              </button>
+                              <button type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => respondToWorld(event, 'report')}>
+                                {i18n.language.startsWith('ru') ? 'Сообщить властям' : 'Report to authorities'}
+                              </button>
+                              <button type="button" className={quietButtonClass} disabled={busy !== ''} onClick={() => respondToWorld(event, 'ignore')}>
+                                {i18n.language.startsWith('ru') ? 'Не вмешиваться' : 'Ignore'}
+                              </button>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
             {activeTab === 'events' && (
             <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
