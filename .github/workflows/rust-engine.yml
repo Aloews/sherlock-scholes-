@@ -56,6 +56,11 @@ jobs:
         run: cmp migrations/0012_match_spatial_events.sql ../../supabase/migrations/20261120170000_football_dynasty_spatial_events.sql
       - name: Verify living world migration parity
         run: cmp migrations/0013_living_world_core.sql ../../supabase/migrations/20261121160000_football_dynasty_living_world.sql
+      - name: Reset PostgreSQL after migration smoke tests
+        run: |
+          psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='football_dynasty_test' AND pid <> pg_backend_pid();"
+          psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE football_dynasty_test;"
+          psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE football_dynasty_test;"
       - name: Run Clippy with warnings denied
         run: cargo clippy --all-targets -- -D warnings
       - name: Compile and test engine and API
