@@ -75,3 +75,56 @@ Implemented route: `/dynasty`, registered in `src/app/Router.tsx` and linked fro
 ## Release gates
 
 Production release gates: green Rust fmt/Clippy/tests and Sherlock CI; successful migration on the isolated private schema; runtime transaction-local role restricted to `fd_runtime`; Supavisor connectivity and health check; real Telegram Mini App smoke test; same-origin frontend routing; rollback/backup review. The route is not protected by hiding it: every API request is verified server-side and owner-scoped.
+
+
+## Rust simulation engine boundary
+
+The Rust engine is the sole authority for fictional campaign rules and simulation. Keep deterministic domain logic in pure modules under `services/football-dynasty/src/engine/` (or `engine.rs` while the module is small). These modules must not depend on Axum, SQLx, network clients, wall-clock time, Redis, or LLM output. The API layer validates identity and commands; an application layer loads the minimum required snapshot, invokes the engine, and commits the resulting state atomically.
+
+Every persisted campaign snapshot and simulation event must carry an engine/ruleset version. Randomness is derived from a persisted campaign seed plus stable command, fixture, and entity identifiers. Never use process-global randomness or current time as a simulation input. Replaying a command with the same version and inputs must reproduce the same state transition.
+
+### Engine implementation sequence and current boundary
+
+1. **Pure match core — implemented foundation:** validated team ratings, deterministic match result/events and a standings reducer.
+2. **Player match domain — implemented in the current feature branch, integration gate pending:** campaign-persisted fictional squads, player attributes/positions, formations and tactical ratings; scorer and optional assist attribution; up to five legal substitutions; ordered match events; per-player appearances, goals, assists, minutes, match ratings and fatigue persistence. The calendar now invokes this Rust path for due fixtures instead of deriving scores from SHA-256 bytes.
+3. **Competition domain — partial:** a persisted six-matchday double round-robin exists. Full season generation/rollover, cups, registration, tie-breakers, postponements and competition rules remain.
+4. **Player lifecycle — partial foundation only:** fatigue and injury/suspension eligibility are represented; match injuries, cards, recovery, training, development, ageing and contracts lifecycle remain.
+5. **Club operations — partial existing finance foundation:** ledger and a sponsorship event exist. Transfer negotiation, squad registration, wages, budgets, matchday revenue, FFP and insolvency rules remain.
+6. **World simulation — not complete:** staff roles, board objectives, rival club/dynasty decision agents, agents, media and politics remain.
+7. **Persistence and replay — partial:** calendar commands are idempotent and match writes are in the calendar transaction; versioned snapshots, event replay, recovery and migration compatibility tests remain.
+8. **Performance — not measured:** benchmark CPU simulation separately from database/API latency; batch reads and writes, bound concurrency, and add caches only when measured.
+
+The current player simulator is a first playable football vertical slice, not a complete football-management engine. Its campaign roster seed creates fictional campaign players; it does not claim to import verified real-world club squads. The matchday switch is implemented in the feature branch, but it is not accepted until current-head PostgreSQL integration tests prove roster loading, score/event/stat reconciliation, replay/idempotency and the full migration chain.
+
+### Performance policy
+
+Do not deploy on every commit. Run formatting, unit tests, Clippy, integration tests and benchmarks in CI on the feature branch. Group reviewed engine milestones into release candidates. Do not introduce Redis or a separate worker fleet before load tests show a specific bottleneck; the first optimization target is eliminating repeated database round trips and keeping deterministic simulation CPU-bound in memory.
+
+
+## Simulation architecture — systemic match and world model
+
+The Rust engine should borrow design principles, not proprietary code, assets or implementation details:
+
+- **GTA VI / RAGE — coupled world systems:** persistent state, local context, delayed consequences and evidence-driven AI. Football analogue: match events affect fatigue, injuries, morale, media attention, board confidence and future selection; consequences must be explainable and replayable.
+- **S.T.A.L.K.E.R. 2 / A-Life 2.0 — background agents and simulation LOD:** clubs, players and staff continue bounded autonomous routines when not in focus. Nearby/current matchdays receive detailed simulation; distant leagues use aggregate ticks, with deterministic promotion to full simulation when they become relevant. Never silently discard state transitions.
+- **Football Manager 27 — tactical interaction and match intelligence:** individual movement/skill depends on attributes; tactical tweaks create opponent responses; pace/acceleration, off-ball behavior, action zones and heatmaps should be derived from match events rather than decorative overlays.
+
+### Delivery layers
+
+1. **Player execution model (active):** effective attributes depend on fatigue and morale; pressing has a measurable physical cost. Keep integer arithmetic and deterministic seeds.
+2. **Spatial primitives (implemented foundation):** normalized 0–10,000 pitch coordinates, bounded deterministic movement, nine tactical zones, distance calculations and event-count heatmaps. These are pure domain primitives; player coordinates and match-event persistence are the next integration step.
+3. **Tactical state machine:** in-possession, transition, pressing, settled defence and counter-attack phases; manager changes at half-time or from match events; opponent adaptation with bounded decision intervals.
+4. **Spatial match model:** pitch zones, player occupancy, passing lanes, pressure, carries and shot locations. Persist compact event coordinates; derive heatmaps/action zones from event streams.
+5. **Persistent world simulation:** autonomous rival clubs, squad rotation, training, contracts, scouting, transfers, injuries, finances and reputation. Use deterministic daily ticks and idempotent outbox events.
+6. **Simulation LOD:** full event simulation for user club and watched fixtures; aggregate probability/standings simulation for distant fixtures; deterministic escalation to full detail when selected.
+7. **Calibration and validation:** replay fixed seeds, compare score/xG distributions and player contribution rates against target ranges; benchmark CPU per 1,000 fixtures and memory. No speed or realism claim without measured results.
+
+### Acceptance gates
+
+- Fatigue and morale alter effective player execution monotonically within bounded limits.
+- Pressing intensity changes stamina cost and has tactical upside/downside.
+- Tactical changes alter event distributions and opponent response, not just labels.
+- Spatial data reconciles with shots, passes, carries and player minutes.
+- Background club decisions are deterministic, idempotent and survive restart.
+- LOD and full simulation produce consistent final league tables under the same rules.
+- Replay of the same seed and match identity produces byte-equivalent event sequences.

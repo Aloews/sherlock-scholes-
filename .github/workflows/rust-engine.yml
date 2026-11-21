@@ -1,0 +1,64 @@
+name: rust-engine
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "services/football-dynasty/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/rust-engine.yml"
+  push:
+    branches: [main, feat/dynasty-rust-engine-core-20261119]
+    paths:
+      - "services/football-dynasty/**"
+      - ".github/workflows/rust-engine.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: football_dynasty_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d football_dynasty_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/football_dynasty_test
+    defaults:
+      run:
+        working-directory: services/football-dynasty
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Apply complete PostgreSQL migration chain
+        run: |
+          for migration in migrations/*.sql; do
+            echo "Applying $migration"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/living_world_postgres.sql
+      - name: Verify service and Supabase migration parity
+        run: cmp migrations/0011_match_rosters_events.sql ../../supabase/migrations/20261119160000_football_dynasty_match_engine.sql
+      - name: Verify spatial migration parity
+        run: cmp migrations/0012_match_spatial_events.sql ../../supabase/migrations/20261120170000_football_dynasty_spatial_events.sql
+      - name: Verify living world migration parity
+        run: cmp migrations/0013_living_world_core.sql ../../supabase/migrations/20261121160000_football_dynasty_living_world.sql
+      - name: Run Clippy with warnings denied
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Compile and test engine and API
+        run: cargo test --all-targets
+      - name: Compile release binary
+        run: cargo build --release

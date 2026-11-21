@@ -1,7 +1,7 @@
 use axum::{
     Extension, Json, Router,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::HeaderMap,
     routing::{get, post},
 };
 use chrono::{Datelike, Duration, NaiveDate};
@@ -12,7 +12,13 @@ use sqlx::{Postgres, Transaction};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-use crate::{auth::Identity, errors::ApiError, state::AppState};
+use crate::{
+    auth::Identity,
+    errors::ApiError,
+    match_engine::{MatchSquad, PlayerMatchEventKind, SubstitutionPlan, simulate_player_match},
+    squad::{Formation, Lineup, Player, PlayerAttributes, Position, TacticalPlan},
+    state::AppState,
+};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -21,7 +27,10 @@ pub fn routes() -> Router<AppState> {
             post(advance_time),
         )
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
+        .route("/api/v1/campaigns/{campaign_id}/world/events", get(list_world_events))
+        .route("/api/v1/campaigns/{campaign_id}/world/events/{event_id}/respond", post(respond_world_event))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
+        .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}", get(get_fixture))
         .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
             post(resolve_event),
@@ -99,6 +108,168 @@ struct StandingTotals {
     goals_for: i32,
     goals_against: i32,
     points: i32,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct MatchPlayerRow {
+    id: Uuid,
+    position: String,
+    pace: i16,
+    shooting: i16,
+    passing: i16,
+    defending: i16,
+    physical: i16,
+    goalkeeping: i16,
+    stamina: i16,
+    morale: i16,
+    fatigue: i16,
+    injured_until: Option<NaiveDate>,
+    suspended_until: Option<NaiveDate>,
+}
+
+fn take_position(players: &mut Vec<Player>, position: Position, count: usize) -> Vec<Player> {
+    let mut selected = Vec::with_capacity(count);
+    let mut remaining = Vec::with_capacity(players.len());
+    for player in players.drain(..) {
+        if player.position == position && selected.len() < count {
+            selected.push(player);
+        } else {
+            remaining.push(player);
+        }
+    }
+    *players = remaining;
+    selected
+}
+
+async fn load_match_squad(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+    fixture_id: Uuid,
+    team_id: Uuid,
+    match_date: NaiveDate,
+) -> Result<MatchSquad, ApiError> {
+    let tactics = crate::fd_query_as!((String, i16, i16, i16, i16),
+        "SELECT formation,pressing,tempo,width,attacking_intent FROM fd.team_tactics WHERE campaign_id=$1 AND team_id=$2")
+        .bind(campaign_id).bind(team_id).fetch_optional(&mut **tx).await?
+        .unwrap_or(("4-3-3".to_owned(),50,50,50,50));
+    let (formation, midfielders, forwards) = match tactics.0.as_str() {
+        "4-3-3" => (Formation { defenders:4, midfielders:3, forwards:3 },3,3),
+        "4-4-2" => (Formation { defenders:4, midfielders:4, forwards:2 },4,2),
+        "3-5-2" => (Formation { defenders:3, midfielders:5, forwards:2 },5,2),
+        "4-2-3-1" => (Formation { defenders:4, midfielders:5, forwards:1 },5,1),
+        "3-4-3" => (Formation { defenders:3, midfielders:4, forwards:3 },4,3),
+        _ => return Err(ApiError::conflict("invalid_team_formation")),
+    };
+    let rows = crate::fd_query_as!(MatchPlayerRow,
+        "SELECT p.id,p.position,p.pace,p.shooting,p.passing,p.defending,p.physical,
+                p.goalkeeping,p.stamina,p.morale,p.fatigue,p.injured_until,p.suspended_until
+         FROM fd.match_lineups ml JOIN fd.players p ON p.campaign_id=ml.campaign_id AND p.id=ml.player_id
+         WHERE ml.campaign_id=$1 AND ml.fixture_id=$2 AND ml.team_id=$3
+         ORDER BY p.shirt_number")
+        .bind(campaign_id).bind(fixture_id).bind(team_id).fetch_all(&mut **tx).await?;
+    let mut players = Vec::with_capacity(rows.len());
+    for row in rows {
+        let position = match row.position.as_str() {
+            "goalkeeper" => Position::Goalkeeper,
+            "defender" => Position::Defender,
+            "midfielder" => Position::Midfielder,
+            "forward" => Position::Forward,
+            _ => return Err(ApiError::conflict("invalid_player_position")),
+        };
+        let to_rating = |value: i16| u8::try_from(value).map_err(|_| ApiError::conflict("invalid_player_rating"));
+        let unavailable = row.injured_until.is_some_and(|until| until >= match_date)
+            || row.suspended_until.is_some_and(|until| until >= match_date);
+        if unavailable { continue; }
+        players.push(Player {
+            id: row.id,
+            position,
+            attributes: PlayerAttributes {
+                pace:to_rating(row.pace)?, shooting:to_rating(row.shooting)?,
+                passing:to_rating(row.passing)?, defending:to_rating(row.defending)?,
+                physical:to_rating(row.physical)?, goalkeeping:to_rating(row.goalkeeping)?,
+                stamina:to_rating(row.stamina)?,
+            },
+            morale:to_rating(row.morale)?,
+            fatigue:to_rating(row.fatigue)?,
+            injured:row.injured_until.is_some_and(|until| until >= match_date),
+            suspended:row.suspended_until.is_some_and(|until| until >= match_date),
+        });
+    }
+    let mut starters = take_position(&mut players,Position::Goalkeeper,1);
+    starters.extend(take_position(&mut players,Position::Defender,usize::from(formation.defenders)));
+    starters.extend(take_position(&mut players,Position::Midfielder,midfielders));
+    starters.extend(take_position(&mut players,Position::Forward,forwards));
+    let squad = MatchSquad {
+        team_id,
+        starting:Lineup {
+            starters, formation,
+            tactics:TacticalPlan {
+                pressing:u8::try_from(tactics.1).unwrap_or(50),
+                tempo:u8::try_from(tactics.2).unwrap_or(50),
+                width:u8::try_from(tactics.3).unwrap_or(50),
+                attacking_intent:u8::try_from(tactics.4).unwrap_or(50),
+            },
+        },
+        bench:players,
+    };
+    if squad.starting.starters.len()!=11 {
+        return Err(ApiError::conflict("insufficient_eligible_players_for_lineup"));
+    }
+    Ok(squad)
+}
+
+fn automatic_substitutions(squad: &MatchSquad, minutes: u8) -> Vec<SubstitutionPlan> {
+    let mut plans=Vec::new();
+    let mut used=std::collections::BTreeSet::new();
+    for (minute,position) in [(60,Position::Forward),(70,Position::Midfielder),(80,Position::Defender)] {
+        if minute>minutes { continue; }
+        let incoming=squad.bench.iter()
+            .filter(|p|p.position==position && !used.contains(&p.id))
+            .max_by_key(|p|(p.attributes.stamina,100_u8.saturating_sub(p.fatigue),p.id));
+        let outgoing=squad.starting.starters.iter()
+            .filter(|p|p.position==position && !used.contains(&p.id))
+            .min_by_key(|p|(p.attributes.stamina,100_u8.saturating_sub(p.fatigue),p.id));
+        if let (Some(incoming),Some(outgoing))=(incoming,outgoing) {
+            used.insert(incoming.id); used.insert(outgoing.id);
+            plans.push(SubstitutionPlan {
+                minute,
+                outgoing_player_id:outgoing.id,
+                incoming_player_id:incoming.id,
+            });
+        }
+    }
+    plans
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct MatchEventView {
+    pub sequence: i16,
+    pub minute: i16,
+    pub event_type: String,
+    pub team_id: Option<Uuid>,
+    pub team_name: Option<String>,
+    pub player_id: Option<Uuid>,
+    pub player_name: Option<String>,
+    pub related_player_id: Option<Uuid>,
+    pub related_player_name: Option<String>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SpatialEventView {
+    pub sequence: i16, pub minute: i16, pub event_type: String,
+    pub team_id: Uuid, pub player_id: Uuid, pub related_player_id: Option<Uuid>,
+    pub from_x: i16, pub from_y: i16, pub to_x: i16, pub to_y: i16,
+}
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct PlayerHeatmapView {
+    pub team_id: Uuid, pub player_id: Uuid, pub bins: Value, pub samples: i32,
+}
+#[derive(Debug, Serialize)]
+pub struct FixtureMatchView {
+    pub fixture: SeasonFixture,
+    pub events: Vec<MatchEventView>,
+    pub spatial_events: Vec<SpatialEventView>,
+    pub heatmaps: Vec<PlayerHeatmapView>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -236,6 +407,151 @@ pub async fn list_events(
     Ok(Json(rows))
 }
 
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct WorldEventView {
+    pub id: Uuid,
+    pub event_type: String,
+    pub game_day: i32,
+    pub location_key: String,
+    pub state: String,
+    pub payload: Value,
+    pub parent_event_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WorldResponseRequest {
+    pub response: String,
+}
+
+async fn list_world_events(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(campaign_id): Path<Uuid>,
+) -> Result<Json<Vec<WorldEventView>>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    let rows = crate::fd_query_as!(WorldEventView,
+        "SELECT id,event_type,game_day,location_key,state,payload,parent_event_id
+         FROM fd.world_events WHERE campaign_id=$1 AND state IN ('known','active','resolved')
+         ORDER BY game_day DESC,created_at DESC LIMIT 100")
+        .bind(campaign_id).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(Json(rows))
+}
+
+async fn respond_world_event(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((campaign_id,event_id)): Path<(Uuid,Uuid)>,
+    headers: HeaderMap,
+    Json(request): Json<WorldResponseRequest>,
+) -> Result<Json<Value>, ApiError> {
+    if !matches!(request.response.as_str(),"help"|"report"|"ignore") {
+        return Err(ApiError::bad_request("invalid_world_response"));
+    }
+    let key=command_key(&headers)?;
+    let hash=request_hash(&(campaign_id,event_id,&request))?;
+    let mut tx=state.db.begin().await?;
+    set_owner(&mut tx,identity.telegram_id).await?;
+    if let Some(value)=reserve(&mut tx,identity.telegram_id,&key,"respond_world_event",&hash).await? {
+        tx.rollback().await?;
+        return Ok(Json(value));
+    }
+    let row=crate::fd_query_as!((String,i32,String,Value,String),
+        "SELECT event_type,game_day,location_key,payload,state FROM fd.world_events
+         WHERE campaign_id=$1 AND id=$2 FOR UPDATE")
+        .bind(campaign_id).bind(event_id).fetch_optional(&mut *tx).await?
+        .ok_or_else(ApiError::not_found)?;
+    if row.0!="theft_near_club" || row.4!="known" {
+        return Err(ApiError::conflict("world_event_not_respondable"));
+    }
+    let witnesses=row.3["witnesses"].as_array().map_or(0,Vec::len);
+    if request.response=="report" {
+        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) VALUES($1,'local_authorities',$2) ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(event_id).execute(&mut *tx).await?;
+    } else if witnesses>0 {
+        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) SELECT $1,value,$2 FROM jsonb_array_elements_text($3->'witnesses') ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(event_id).bind(&row.3).execute(&mut *tx).await?;
+    }
+    let (fact_key,fact_value,reaction_type,delay)=match request.response.as_str() {
+        "help" => ("player_helped_victim",json!({"trust":2,"witnesses_observed":witnesses}),if witnesses>0 {Some("local_news_follow_up")} else {None},2),
+        "report" => ("player_reported_incident",json!({"investigation":true}),Some("police_investigation_update"),1),
+        _ => ("player_ignored_incident",json!({"ignored":true,"witnesses_observed":witnesses}),if witnesses>0 {Some("witness_report")} else {None},3),
+    };
+    crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+        .bind(campaign_id).bind(fact_key).bind(&fact_value).bind(event_id).execute(&mut *tx).await?;
+    if let Some(kind)=reaction_type {
+        let reaction_key=format!("{}:{}",event_id,kind);
+        crate::fd_query!("INSERT INTO fd.world_reactions(campaign_id,source_event_id,reaction_key,reaction_type,due_game_day,state,payload) VALUES($1,$2,$3,$4,$5,'queued',$6) ON CONFLICT(campaign_id,reaction_key) DO NOTHING")
+            .bind(campaign_id).bind(event_id).bind(reaction_key).bind(kind)
+            .bind(row.1.saturating_add(delay))
+            .bind(json!({"response":request.response,"location":row.2,"witnesses":row.3["witnesses"]}))
+            .execute(&mut *tx).await?;
+    }
+    crate::fd_query!("UPDATE fd.world_events SET state='resolved',resolved_at=now(),payload=payload || jsonb_build_object('player_response',$3::text) WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_id).bind(event_id).bind(&request.response).execute(&mut *tx).await?;
+    let result=json!({"event_id":event_id,"response":request.response,"status":"resolved","scheduled_reaction":reaction_type});
+    complete(&mut tx,identity.telegram_id,&key,campaign_id,&result).await?;
+    tx.commit().await?;
+    Ok(Json(result))
+}
+
+async fn tick_living_world(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+    current_date: NaiveDate,
+) -> Result<i64, ApiError> {
+    let game_day=current_date.num_days_from_ce();
+    let mut generated=0_i64;
+    if game_day % 11 == 0 {
+        let event_key=format!("street-incident-{}",current_date.format("%Y%m%d"));
+        let inserted=crate::fd_query!(
+            "INSERT INTO fd.world_events(campaign_id,event_key,event_type,game_day,location_key,state,payload)
+             VALUES($1,$2,'theft_near_club',$3,'club_district','known',
+               jsonb_build_object('witnesses',jsonb_build_array('supporter_01','staff_02'),
+                 'awareness_channel','local_news','choices',jsonb_build_array('help','report','ignore')))
+             ON CONFLICT(campaign_id,event_key) DO NOTHING")
+            .bind(campaign_id).bind(event_key).bind(game_day).execute(&mut **tx).await?;
+        generated+=inserted.rows_affected() as i64;
+        if inserted.rows_affected()>0 {
+            let incident_id:Uuid=crate::fd_query_scalar!("SELECT id FROM fd.world_events WHERE campaign_id=$1 AND event_key=$2")
+                .bind(campaign_id).bind(format!("street-incident-{}",current_date.format("%Y%m%d")))
+                .fetch_one(&mut **tx).await?;
+            crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) VALUES($1,'supporter_01',$2),($1,'staff_02',$2) ON CONFLICT DO NOTHING")
+                .bind(campaign_id).bind(incident_id).execute(&mut **tx).await?;
+        }
+    }
+    let due=crate::fd_query_as!((Uuid,Uuid,String,String,i32,Value),
+        "SELECT id,source_event_id,reaction_key,reaction_type,due_game_day,payload
+         FROM fd.world_reactions WHERE campaign_id=$1 AND state='queued' AND due_game_day <= $2
+         ORDER BY due_game_day,id FOR UPDATE")
+        .bind(campaign_id).bind(game_day).fetch_all(&mut **tx).await?;
+    for (reaction_id,parent_id,reaction_key,reaction_type,_due,payload) in due {
+        let child_type=match reaction_type.as_str() {
+            "local_news_follow_up"=>"news_follow_up",
+            "witness_report"=>"witness_report",
+            "police_investigation_update"=>"investigation_update",
+            _=>continue,
+        };
+        crate::fd_query!(
+            "INSERT INTO fd.world_events(campaign_id,event_key,event_type,game_day,location_key,state,payload,parent_event_id)
+             VALUES($1,$2,$3,$4,$5,'known',$6,$7) ON CONFLICT(campaign_id,event_key) DO NOTHING")
+            .bind(campaign_id).bind(format!("follow-up-{reaction_key}")).bind(child_type)
+            .bind(game_day).bind(payload["location"].as_str().unwrap_or("club_district"))
+            .bind(json!({"source_reaction":reaction_type,"source_payload":payload,"awareness_channel":"news_or_witness"}))
+            .bind(parent_id).execute(&mut **tx).await?;
+        crate::fd_query!("UPDATE fd.world_reactions SET state='processed',processed_at=now() WHERE id=$1 AND campaign_id=$2 AND state='queued'")
+            .bind(reaction_id).bind(campaign_id).execute(&mut **tx).await?;
+        crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(format!("reaction_processed:{reaction_key}"))
+            .bind(json!({"type":reaction_type,"processed_on":current_date})).bind(parent_id)
+            .execute(&mut **tx).await?;
+        generated+=1;
+    }
+    Ok(generated)
+}
+
 pub async fn get_season(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -339,6 +655,40 @@ pub async fn get_season(
     }))
 }
 
+pub async fn get_fixture(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((campaign_id, fixture_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<FixtureMatchView>, ApiError> {
+    let mut tx=state.db.begin().await?;
+    set_owner(&mut tx,identity.telegram_id).await?;
+    let fixture=crate::fd_query_as!(SeasonFixture,
+        "SELECT id,season_year,matchday,match_date,home_team,away_team,status,home_goals,away_goals
+         FROM fd.season_fixtures WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_id).bind(fixture_id).fetch_optional(&mut *tx).await?
+        .ok_or_else(ApiError::not_found)?;
+    let events=crate::fd_query_as!(MatchEventView,
+        "SELECT me.sequence,me.minute,me.event_type,me.team_id,t.name AS team_name,
+                me.player_id,p.full_name AS player_name,
+                me.related_player_id,r.full_name AS related_player_name
+         FROM fd.match_events me
+         LEFT JOIN fd.teams t ON t.campaign_id=me.campaign_id AND t.id=me.team_id
+         LEFT JOIN fd.players p ON p.campaign_id=me.campaign_id AND p.id=me.player_id
+         LEFT JOIN fd.players r ON r.campaign_id=me.campaign_id AND r.id=me.related_player_id
+         WHERE me.campaign_id=$1 AND me.fixture_id=$2 ORDER BY me.sequence")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    let spatial_events = crate::fd_query_as!(SpatialEventView,
+        "SELECT sequence,minute,event_type,team_id,player_id,related_player_id,from_x,from_y,to_x,to_y
+         FROM fd.match_spatial_events WHERE campaign_id=$1 AND fixture_id=$2 ORDER BY sequence")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    let heatmaps = crate::fd_query_as!(PlayerHeatmapView,
+        "SELECT team_id,player_id,bins,samples FROM fd.match_player_heatmaps
+         WHERE campaign_id=$1 AND fixture_id=$2 ORDER BY team_id,player_id")
+        .bind(campaign_id).bind(fixture_id).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(Json(FixtureMatchView { fixture, events, spatial_events, heatmaps }))
+}
+
 pub async fn advance_time(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -379,6 +729,16 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
+        generated_events += tick_living_world(&mut tx, campaign_id, current_date).await?;
+        crate::fd_query!(
+            "UPDATE fd.players SET
+               fatigue=GREATEST(0,fatigue-8),
+               injured_until=CASE WHEN injured_until<$2 THEN NULL ELSE injured_until END,
+               suspended_until=CASE WHEN suspended_until<$2 THEN NULL ELSE suspended_until END,
+               updated_at=now()
+             WHERE campaign_id=$1"
+        )
+        .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         let expired = crate::fd_query!("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
             .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         expired_events += expired.rows_affected() as i64;
@@ -476,8 +836,9 @@ pub async fn advance_time(
         // Resolve every scheduled fixture on its match date. The score is
         // deterministic for the campaign seed and fixture, so retries/reloads
         // cannot produce a different result.
-        let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String),
-            "SELECT id,season_year,matchday,home_team,away_team FROM fd.season_fixtures
+        let due_fixtures = crate::fd_query_as!((Uuid, i32, i16, String, String, Uuid, Uuid),
+            "SELECT id,season_year,matchday,home_team,away_team,home_team_id,away_team_id
+             FROM fd.season_fixtures
              WHERE campaign_id=$1 AND match_date=$2 AND status='scheduled'
              ORDER BY matchday,id FOR UPDATE",
         )
@@ -485,12 +846,20 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
-        for (fixture_id, season_year, matchday, home_team, away_team) in due_fixtures {
-            let score_seed =
-                format!("{campaign_seed}:{season_year}:{matchday}:{home_team}:{away_team}");
-            let digest = Sha256::digest(score_seed.as_bytes());
-            let home_goals = (digest[0] % 4) as i16;
-            let away_goals = (digest[1] % 4) as i16;
+        for (fixture_id, season_year, matchday, home_team, away_team, home_team_id, away_team_id) in due_fixtures {
+            let home_squad=load_match_squad(&mut tx,campaign_id,fixture_id,home_team_id,current_date).await?;
+            let away_squad=load_match_squad(&mut tx,campaign_id,fixture_id,away_team_id,current_date).await?;
+            let home_subs=automatic_substitutions(&home_squad,90);
+            let away_subs=automatic_substitutions(&away_squad,90);
+            let match_seed=(campaign_seed as u64)
+                ^ (season_year as u64).rotate_left(17)
+                ^ (matchday as u64).rotate_left(31);
+            let result=simulate_player_match(
+                match_seed,fixture_id,&home_squad,&away_squad,crate::engine::MatchRules::default(),
+                &home_subs,&away_subs,
+            ).map_err(|_|ApiError::conflict("match_engine_rejected_fixture"))?;
+            let home_goals=result.home_goals as i16;
+            let away_goals=result.away_goals as i16;
             crate::fd_query!(
                 "UPDATE fd.season_fixtures SET status='played',home_goals=$3,away_goals=$4
                  WHERE id=$1 AND campaign_id=$2 AND status='scheduled'",
@@ -501,7 +870,101 @@ pub async fn advance_time(
             .bind(away_goals)
             .execute(&mut *tx)
             .await?;
+            for spatial in &result.spatial_events {
+                let event_type = match spatial.kind {
+                    crate::match_engine::SpatialEventKind::Movement => "movement",
+                    crate::match_engine::SpatialEventKind::Pass => "pass",
+                    crate::match_engine::SpatialEventKind::Tackle => "tackle",
+                };
+                crate::fd_query!(
+                    "INSERT INTO fd.match_spatial_events(campaign_id,fixture_id,sequence,minute,event_type,team_id,player_id,related_player_id,from_x,from_y,to_x,to_y) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)"
+                )
+                .bind(campaign_id).bind(fixture_id).bind(spatial.sequence as i16)
+                .bind(spatial.minute as i16).bind(event_type).bind(spatial.team_id)
+                .bind(spatial.player_id).bind(spatial.related_player_id)
+                .bind(spatial.from.x as i16).bind(spatial.from.y as i16)
+                .bind(spatial.to.x as i16).bind(spatial.to.y as i16)
+                .execute(&mut *tx).await?;
+            }
+            for item in &result.heatmaps {
+                crate::fd_query!(
+                    "INSERT INTO fd.match_player_heatmaps(campaign_id,fixture_id,team_id,player_id,bins,samples) VALUES($1,$2,$3,$4,$5,$6)"
+                )
+                .bind(campaign_id).bind(fixture_id).bind(item.team_id).bind(item.player_id)
+                .bind(json!(item.heatmap.bins)).bind(item.heatmap.samples as i32)
+                .execute(&mut *tx).await?;
+            }
+
+            for event in &result.events {
+                let event_type=match event.kind {
+                    PlayerMatchEventKind::Shot=>"shot",
+                    PlayerMatchEventKind::Goal=>"goal",
+                    PlayerMatchEventKind::Save=>"save",
+                    PlayerMatchEventKind::Miss=>"miss",
+                    PlayerMatchEventKind::Substitution=>"substitution",
+                    PlayerMatchEventKind::HalfTime=>"half_time",
+                    PlayerMatchEventKind::FullTime=>"full_time",
+                };
+                crate::fd_query!(
+                    "INSERT INTO fd.match_events(campaign_id,fixture_id,sequence,minute,event_type,team_id,player_id,related_player_id,payload)
+                     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+                )
+                .bind(campaign_id).bind(fixture_id).bind(event.sequence as i16)
+                .bind(event.minute as i16).bind(event_type).bind(event.team_id)
+                .bind(event.player_id).bind(event.related_player_id)
+                .bind(json!({"player_id":event.player_id,"related_player_id":event.related_player_id}))
+                .execute(&mut *tx).await?;
+            }
+            crate::fd_query!(
+                "WITH played AS (
+                   SELECT ml.campaign_id,ml.fixture_id,ml.team_id,ml.player_id,ml.role='starter' AS started,
+                     CASE WHEN ml.role='starter' THEN COALESCE(
+                       (SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
+                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.player_id=ml.player_id),90)
+                     ELSE COALESCE(90-(SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
+                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.related_player_id=ml.player_id),0)
+                     END::smallint AS minutes_played
+                   FROM fd.match_lineups ml
+                   WHERE ml.campaign_id=$1 AND ml.fixture_id=$2
+                 ), stats AS (
+                   SELECT p.*,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
+                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.player_id=p.player_id) AS goals,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
+                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.related_player_id=p.player_id) AS assists,
+                     (p.minutes_played>0 AND ((p.team_id=$3 AND $5=0) OR (p.team_id=$4 AND $6=0))) AS clean_sheet
+                   FROM played p
+                 )
+                 INSERT INTO fd.player_match_stats(campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,rating)
+                 SELECT campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,
+                   CASE WHEN minutes_played=0 THEN 0.0 ELSE LEAST(10.0,6.0+(goals*1.5)+(assists*1.0)+CASE WHEN clean_sheet THEN 0.5 ELSE 0.0 END) END::numeric(3,1)
+                 FROM stats
+                 ON CONFLICT(campaign_id,fixture_id,player_id) DO NOTHING"
+            )
+            .bind(campaign_id).bind(fixture_id).bind(home_team_id).bind(away_team_id)
+            .bind(away_goals).bind(home_goals)
+            .execute(&mut *tx).await?;
+            crate::fd_query!(
+                "UPDATE fd.players p SET
+                   appearances=p.appearances+CASE WHEN s.minutes_played>0 THEN 1 ELSE 0 END,
+                   career_goals=p.career_goals+s.goals,
+                   career_assists=p.career_assists+s.assists,
+                   career_minutes=p.career_minutes+s.minutes_played,
+                   clean_sheets=p.clean_sheets+CASE WHEN s.clean_sheet AND s.minutes_played>0 THEN 1 ELSE 0 END,
+                   fatigue=LEAST(100,p.fatigue+CASE WHEN s.minutes_played>0
+                     THEN CEIL(s.minutes_played/10.0)::integer*GREATEST(1,(100-p.stamina)/25) ELSE 0 END),
+                   updated_at=now()
+                 FROM fd.player_match_stats s
+                 WHERE s.campaign_id=$1 AND s.fixture_id=$2 AND p.campaign_id=s.campaign_id AND p.id=s.player_id"
+            )
+            .bind(campaign_id).bind(fixture_id).execute(&mut *tx).await?;
             let report = format!("{home_team} {home_goals}–{away_goals} {away_team}");
+            let scorers:Vec<_>=result.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Goal)
+                .map(|e|json!({"team_id":e.team_id,"scorer_id":e.player_id,"assist_id":e.related_player_id,"minute":e.minute}))
+                .collect();
+            let substitutions:Vec<_>=result.events.iter().filter(|e|e.kind==PlayerMatchEventKind::Substitution)
+                .map(|e|json!({"team_id":e.team_id,"outgoing_id":e.player_id,"incoming_id":e.related_player_id,"minute":e.minute}))
+                .collect();
             let result_payload = json!({
                 "fixture_id":fixture_id,
                 "matchday":matchday,
@@ -509,7 +972,12 @@ pub async fn advance_time(
                 "home_team":home_team,
                 "away_team":away_team,
                 "home_goals":home_goals,
-                "away_goals":away_goals
+                "away_goals":away_goals,
+                "home_xg_milli":result.home_xg_milli,
+                "away_xg_milli":result.away_xg_milli,
+                "engine_version":result.engine_version,
+                "scorers":scorers,
+                "substitutions":substitutions
             });
             crate::fd_query!(
                 "INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload)

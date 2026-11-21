@@ -239,6 +239,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(season_status, StatusCode::OK);
     assert_eq!(season["fixtures"].as_array().expect("fixtures").len(), 12);
+    assert_eq!(season["fixtures"][0]["match_date"], "2026-01-03");
     assert_eq!(
         season["fixtures"]
             .as_array()
@@ -248,6 +249,38 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
             .count(),
         2
     );
+
+    let played_fixture = season["fixtures"].as_array().expect("fixtures").iter()
+        .find(|fixture| fixture["status"] == "played").expect("played fixture");
+    let fixture_id = played_fixture["id"].as_str().expect("fixture id");
+    let (report_status, report) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}"),
+        None,
+        None,
+    ).await;
+    assert_eq!(report_status, StatusCode::OK);
+    let match_events = report["events"].as_array().expect("persisted match events");
+    let goal_events: Vec<_> = match_events.iter().filter(|event| event["event_type"] == "goal").collect();
+    let expected_goals = played_fixture["home_goals"].as_i64().unwrap()
+        + played_fixture["away_goals"].as_i64().unwrap();
+    assert_eq!(goal_events.len() as i64, expected_goals);
+    assert!(goal_events.iter().all(|event| event["player_name"].is_string()));
+    assert_eq!(match_events.iter().filter(|event| event["event_type"] == "substitution").count(), 6);
+    assert!(match_events.iter().filter(|event| event["event_type"] == "substitution")
+        .all(|event| event["player_name"].is_string() && event["related_player_name"].is_string()));
+    let fixture_uuid=uuid::Uuid::parse_str(fixture_id).expect("fixture UUID");
+    let persisted_goals:i64=sqlx::query_scalar(
+        "SELECT COALESCE(SUM(goals),0)::bigint FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2"
+    ).bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID")).bind(fixture_uuid)
+        .fetch_one(&pool).await.expect("player match goal stats");
+    assert_eq!(persisted_goals,expected_goals);
+    let appearance_count:i64=sqlx::query_scalar(
+        "SELECT COUNT(*)::bigint FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND minutes_played>0"
+    ).bind(uuid::Uuid::parse_str(campaign_id).expect("campaign UUID")).bind(fixture_uuid)
+        .fetch_one(&pool).await.expect("player match appearances");
+    assert!(appearance_count>=11);
 
     let (sponsor_tick_status, sponsor_tick) = call(
         app.clone(),
@@ -260,7 +293,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
     assert_eq!(sponsor_tick["generated_events"], 3);
-    assert_eq!(sponsor_tick["expired_events"], 1);
+    // The only event whose deadline could have elapsed was explicitly resolved above.
+    assert_eq!(sponsor_tick["expired_events"], 0);
 
     let (sponsor_events_status, sponsor_events) = call(
         app.clone(),
