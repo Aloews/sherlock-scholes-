@@ -84,6 +84,7 @@ pub enum PlayerMatchError {
     InvalidMinutes(u8),
     InvalidBenchSize(usize),
     TooManySubstitutions(usize),
+    TooManySubstitutionWindows(usize),
     InvalidSubstitutionMinute(u8),
     DuplicateSubstitutionPlayer(Uuid),
     UnknownSubstitutionPlayer(Uuid),
@@ -97,6 +98,7 @@ impl std::fmt::Display for PlayerMatchError {
             Self::InvalidMinutes(v) => write!(f, "invalid match duration: {v}"),
             Self::InvalidBenchSize(v) => write!(f, "bench must contain at most 9 players, got {v}"),
             Self::TooManySubstitutions(v) => write!(f, "at most 5 substitutions are allowed, got {v}"),
+            Self::TooManySubstitutionWindows(v) => write!(f, "at most 3 substitution opportunities are allowed, got {v}"),
             Self::InvalidSubstitutionMinute(v) => write!(f, "invalid substitution minute: {v}"),
             Self::DuplicateSubstitutionPlayer(id) => write!(f, "player used more than once in substitution plan: {id}"),
             Self::UnknownSubstitutionPlayer(id) => write!(f, "substitution player is not in the XI/bench: {id}"),
@@ -210,6 +212,17 @@ fn validate_plan(
 ) -> Result<(), PlayerMatchError> {
     if plans.len() > MAX_SUBSTITUTIONS {
         return Err(PlayerMatchError::TooManySubstitutions(plans.len()));
+    }
+    // IFAB allows five substitutes through at most three in-match opportunities;
+    // half-time changes do not consume an opportunity. Multiple changes at the
+    // same minute are one opportunity.
+    let half_time = minutes / 2;
+    let opportunities: std::collections::BTreeSet<_> = plans.iter()
+        .filter(|plan| plan.minute != half_time)
+        .map(|plan| plan.minute)
+        .collect();
+    if opportunities.len() > 3 {
+        return Err(PlayerMatchError::TooManySubstitutionWindows(opportunities.len()));
     }
     let starters: std::collections::BTreeMap<_,_> = squad.starting.starters.iter().map(|p|(p.id,p)).collect();
     let bench: std::collections::BTreeMap<_,_> = squad.bench.iter().map(|p|(p.id,p)).collect();
@@ -490,6 +503,27 @@ mod tests {
         assert!(result.events.iter().any(|e|e.kind==PlayerMatchEventKind::Substitution
             && e.player_id==Some(plan.outgoing_player_id) && e.related_player_id==Some(plan.incoming_player_id)));
     }
+    #[test]
+    fn substitution_opportunities_are_limited_to_three_excluding_half_time() {
+        let home = squad(0);
+        let plans = [
+            SubstitutionPlan { minute: 20, outgoing_player_id: Uuid::from_u128(9), incoming_player_id: Uuid::from_u128(12) },
+            SubstitutionPlan { minute: 35, outgoing_player_id: Uuid::from_u128(10), incoming_player_id: Uuid::from_u128(13) },
+            SubstitutionPlan { minute: 55, outgoing_player_id: Uuid::from_u128(11), incoming_player_id: Uuid::from_u128(14) },
+            SubstitutionPlan { minute: 70, outgoing_player_id: Uuid::from_u128(8), incoming_player_id: Uuid::from_u128(15) },
+        ];
+        assert_eq!(validate_plan(&home, &plans, 90),
+            Err(PlayerMatchError::TooManySubstitutionWindows(4)));
+        let half_time_only = [
+            SubstitutionPlan { minute: 45, outgoing_player_id: Uuid::from_u128(9), incoming_player_id: Uuid::from_u128(12) },
+            SubstitutionPlan { minute: 20, outgoing_player_id: Uuid::from_u128(10), incoming_player_id: Uuid::from_u128(13) },
+            SubstitutionPlan { minute: 35, outgoing_player_id: Uuid::from_u128(11), incoming_player_id: Uuid::from_u128(14) },
+            SubstitutionPlan { minute: 70, outgoing_player_id: Uuid::from_u128(8), incoming_player_id: Uuid::from_u128(15) },
+        ];
+        assert_ne!(validate_plan(&home, &half_time_only, 90),
+            Err(PlayerMatchError::TooManySubstitutionWindows(4)));
+    }
+
     #[test]
     fn defensive_pressing_and_width_reduce_opponent_chance_frequency() {
         let profile = TeamProfile { id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70, morale: 70, fatigue: 0 };
