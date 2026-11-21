@@ -36,4 +36,5 @@ pub mod competition;
 pub mod player_lifecycle;
 pub mod http;
 pub mod simulation;
+pub mod living_world;
 pub mod state;
