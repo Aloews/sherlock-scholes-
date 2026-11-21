@@ -628,3 +628,48 @@ Required information architecture:
 - General `ci` run 44926396845 completed successfully: frontend unit/property/data-integrity tests and coverage gate, nine-locale translation check, TypeScript typecheck and production build, Edge Function checks/tests, Python tests and Qwen agent policy tests.
 - The separate legacy workflow `.github/workflows/football-dynasty-rust.yml` still emits a push-triggered failed run with zero jobs and no job logs. The PR's dedicated Rust workflow and general CI both pass on the exact head; do not treat the empty legacy run as evidence that Rust tests failed.
 - PR #447 remains open and draft. No merge, production database migration or deployment has been performed.
+
+## 9. Football Dynasty — user-visible completion contract (2026-11-21)
+
+**This section supersedes any earlier wording that could imply the full management game is already implemented.** The currently visible screen is still a limited vertical slice (club, matches, events, dynasty). Rust domain modules, SQL tables, migrations, API handlers, CI and a successful deployment are not proof that a feature is playable.
+
+### Required playable systems
+
+| ID | Player-facing system | Required working journey | Evidence required before VERIFIED |
+|---|---|---|---|
+| FD-UI-01 | Squad management | Open club squad, inspect persisted players/positions/attributes, choose formation and starting XI/bench, save and reload | UI browser test + owner-scoped API integration + PostgreSQL persistence/reload |
+| FD-UI-02 | Training and development | Assign team/individual training, advance game time, see attribute progression, fatigue/recovery and potential limits | Command/API/UI E2E + deterministic domain tests + persisted before/after values |
+| FD-UI-03 | Matchday and tactics | Select lineup/tactics; advance to fixture; see player-driven match events, scorers/assists/substitutions and updated stats/table | Real campaign integration test + persisted event/stat reconciliation + UI E2E |
+| FD-UI-04 | Player availability and career | Injuries, dated recovery, suspensions, appearances, contracts and expiry affect selection and match completion | Calendar integration tests + persisted lifecycle transitions + UI journey |
+| FD-UI-05 | Transfers and contracts | Browse targets, negotiate/confirm transfer, update both squads, budget and contract history atomically | Transaction tests, ledger/squad reconciliation, authorization and UI E2E |
+| FD-UI-06 | Club operations | View cash flow, wages, budgets and facilities; make a decision with a persistent effect | Double-entry reconciliation + command/API/UI E2E |
+| FD-UI-07 | Living football world | Rival clubs use squads and play fixtures; league tables, player development and season transitions progress consistently | Multi-club season simulation + deterministic/replay tests + UI-visible results |
+
+### Integration order
+
+1. Complete squad read/write and lineup selection end-to-end.
+2. Connect the career lifecycle processor to the persisted calendar/advance_time transaction: training, recovery, availability, match appearances, suspensions and contract dates.
+3. Connect real squad/tactics inputs to the match engine and persist/reconcile match output.
+4. Add transfer and club-finance commands with atomic ledger and roster changes.
+5. Add rival-club decision loops, full season progression and rollover.
+6. Expose each completed capability in the game UI; add browser journeys and reload checks.
+
+### Hard acceptance rules
+
+- A module with unit tests but no production call path is **NOT IMPLEMENTED** for the player.
+- An API route without a reachable screen and successful user journey is **NOT PLAYABLE**.
+- A screen backed by mock/static data is **NOT IMPLEMENTED**.
+- A successful commit, CI run, migration, build or deployment proves only that specific layer; it never proves gameplay.
+- Each row above remains **NOT VERIFIED** until the evidence listed in its last column exists on the same immutable candidate SHA and the deployed build is confirmed to contain that SHA.
+- Do not mark the overall Football Dynasty milestone complete while any required system above is absent from the actual game.
+- Record exact commit, CI run, deployment ID/URL, browser test and persistence evidence beside each state change. If evidence is absent, write **NOT VERIFIED** and continue implementation.
+
+### Current baseline (verified by source inspection, 2026-11-21)
+
+- src/screens/FootballDynastyScreen.tsx exposes only the Club, Matches, Events and Dynasty tabs.
+- The screen's client workflow does not yet expose player squad management, training commands, transfer negotiation or club finance operations.
+- services/football-dynasty/src/player_lifecycle.rs contains pure lifecycle rules, but these are not yet wired into persisted campaign match completion / a player-facing training workflow.
+- services/football-dynasty/src/api.rs exposes campaign creation/read, heir/succession and the removed legacy advance route; the separate simulation API handles events/calendar simulation. There is no complete player-facing management API surface for the systems in FD-UI-01..07.
+- The production deployment for bb4887be2a37e556dc4bd91a042d838c5fc95bcd reached Vercel state READY. This confirms deployment state only; no complete management-game journey was verified by that fact.
+
+**Overall status: IN PROGRESS — limited vertical slice, not the requested full football management game.**
