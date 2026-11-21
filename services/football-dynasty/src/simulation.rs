@@ -27,6 +27,8 @@ pub fn routes() -> Router<AppState> {
             post(advance_time),
         )
         .route("/api/v1/campaigns/{campaign_id}/events", get(list_events))
+        .route("/api/v1/campaigns/{campaign_id}/world/events", get(list_world_events))
+        .route("/api/v1/campaigns/{campaign_id}/world/events/{event_id}/respond", post(respond_world_event))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
         .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}", get(get_fixture))
         .route(
@@ -405,6 +407,137 @@ pub async fn list_events(
     Ok(Json(rows))
 }
 
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct WorldEventView {
+    pub id: Uuid,
+    pub event_type: String,
+    pub game_day: i32,
+    pub location_key: String,
+    pub state: String,
+    pub payload: Value,
+    pub parent_event_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WorldResponseRequest {
+    pub response: String,
+}
+
+async fn list_world_events(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(campaign_id): Path<Uuid>,
+) -> Result<Json<Vec<WorldEventView>>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    let rows = crate::fd_query_as!(WorldEventView,
+        "SELECT id,event_type,game_day,location_key,state,payload,parent_event_id
+         FROM fd.world_events WHERE campaign_id=$1 AND state IN ('known','active','resolved')
+         ORDER BY game_day DESC,created_at DESC LIMIT 100")
+        .bind(campaign_id).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(Json(rows))
+}
+
+async fn respond_world_event(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((campaign_id,event_id)): Path<(Uuid,Uuid)>,
+    headers: HeaderMap,
+    Json(request): Json<WorldResponseRequest>,
+) -> Result<Json<Value>, ApiError> {
+    if !matches!(request.response.as_str(),"help"|"report"|"ignore") {
+        return Err(ApiError::bad_request("invalid_world_response"));
+    }
+    let key=command_key(&headers)?;
+    let hash=request_hash(&(campaign_id,event_id,&request))?;
+    let mut tx=state.db.begin().await?;
+    set_owner(&mut tx,identity.telegram_id).await?;
+    if let Some(value)=reserve(&mut tx,identity.telegram_id,&key,"respond_world_event",&hash).await? {
+        tx.rollback().await?;
+        return Ok(Json(value));
+    }
+    let row=crate::fd_query_as!((String,i32,String,Value,String),
+        "SELECT event_type,game_day,location_key,payload,state FROM fd.world_events
+         WHERE campaign_id=$1 AND id=$2 FOR UPDATE")
+        .bind(campaign_id).bind(event_id).fetch_optional(&mut *tx).await?
+        .ok_or_else(ApiError::not_found)?;
+    if row.0!="theft_near_club" || row.4!="known" {
+        return Err(ApiError::conflict("world_event_not_respondable"));
+    }
+    let witnesses=row.3["witnesses"].as_array().map_or(0,Vec::len);
+    let (fact_key,fact_value,reaction_type,delay)=match request.response.as_str() {
+        "help" => ("player_helped_victim",json!({"trust":2}),if witnesses>0 {Some("local_news_follow_up")} else {None},2),
+        "report" => ("player_reported_incident",json!({"investigation":true}),Some("police_investigation_update"),1),
+        _ => ("player_ignored_incident",json!({"ignored":true}),if witnesses>0 {Some("witness_report")} else {None},3),
+    };
+    crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+        .bind(campaign_id).bind(fact_key).bind(&fact_value).bind(event_id).execute(&mut *tx).await?;
+    if let Some(kind)=reaction_type {
+        let reaction_key=format!("{}:{}",event_id,kind);
+        crate::fd_query!("INSERT INTO fd.world_reactions(campaign_id,source_event_id,reaction_key,reaction_type,due_game_day,state,payload) VALUES($1,$2,$3,$4,$5,'queued',$6) ON CONFLICT(campaign_id,reaction_key) DO NOTHING")
+            .bind(campaign_id).bind(event_id).bind(reaction_key).bind(kind)
+            .bind(row.1.saturating_add(delay))
+            .bind(json!({"response":request.response,"location":row.2,"witnesses":row.3["witnesses"]}))
+            .execute(&mut *tx).await?;
+    }
+    crate::fd_query!("UPDATE fd.world_events SET state='resolved',resolved_at=now(),payload=payload || jsonb_build_object('player_response',$3::text) WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_id).bind(event_id).bind(&request.response).execute(&mut *tx).await?;
+    let result=json!({"event_id":event_id,"response":request.response,"status":"resolved","scheduled_reaction":reaction_type});
+    complete(&mut tx,identity.telegram_id,&key,campaign_id,&result).await?;
+    tx.commit().await?;
+    Ok(Json(result))
+}
+
+async fn tick_living_world(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+    current_date: NaiveDate,
+) -> Result<i64, ApiError> {
+    let game_day=current_date.num_days_from_ce();
+    let mut generated=0_i64;
+    if game_day % 11 == 0 {
+        let event_key=format!("street-incident-{}",current_date.format("%Y%m%d"));
+        let inserted=crate::fd_query!(
+            "INSERT INTO fd.world_events(campaign_id,event_key,event_type,game_day,location_key,state,payload)
+             VALUES($1,$2,'theft_near_club',$3,'club_district','known',
+               jsonb_build_object('witnesses',jsonb_build_array('supporter_01','staff_02'),
+                 'awareness_channel','local_news','choices',jsonb_build_array('help','report','ignore')))
+             ON CONFLICT(campaign_id,event_key) DO NOTHING")
+            .bind(campaign_id).bind(event_key).bind(game_day).execute(&mut **tx).await?;
+        generated+=inserted.rows_affected() as i64;
+    }
+    let due=crate::fd_query_as!((Uuid,Uuid,String,String,i32,Value),
+        "SELECT id,source_event_id,reaction_key,reaction_type,due_game_day,payload
+         FROM fd.world_reactions WHERE campaign_id=$1 AND state='queued' AND due_game_day <= $2
+         ORDER BY due_game_day,id FOR UPDATE")
+        .bind(campaign_id).bind(game_day).fetch_all(&mut **tx).await?;
+    for (reaction_id,parent_id,reaction_key,reaction_type,_due,payload) in due {
+        let child_type=match reaction_type.as_str() {
+            "local_news_follow_up"=>"news_follow_up",
+            "witness_report"=>"witness_report",
+            "police_investigation_update"=>"investigation_update",
+            _=>continue,
+        };
+        crate::fd_query!(
+            "INSERT INTO fd.world_events(campaign_id,event_key,event_type,game_day,location_key,state,payload,parent_event_id)
+             VALUES($1,$2,$3,$4,$5,'known',$6,$7) ON CONFLICT(campaign_id,event_key) DO NOTHING")
+            .bind(campaign_id).bind(format!("follow-up-{reaction_key}")).bind(child_type)
+            .bind(game_day).bind(payload["location"].as_str().unwrap_or("club_district"))
+            .bind(json!({"source_reaction":reaction_type,"source_payload":payload,"awareness_channel":"news_or_witness"}))
+            .bind(parent_id).execute(&mut **tx).await?;
+        crate::fd_query!("UPDATE fd.world_reactions SET state='processed',processed_at=now() WHERE id=$1 AND campaign_id=$2 AND state='queued'")
+            .bind(reaction_id).bind(campaign_id).execute(&mut **tx).await?;
+        crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+            .bind(campaign_id).bind(format!("reaction_processed:{reaction_key}"))
+            .bind(json!({"type":reaction_type,"processed_on":current_date})).bind(parent_id)
+            .execute(&mut **tx).await?;
+        generated+=1;
+    }
+    Ok(generated)
+}
+
 pub async fn get_season(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -582,6 +715,7 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
+        generated_events += tick_living_world(&mut tx, campaign_id, current_date).await?;
         crate::fd_query!(
             "UPDATE fd.players SET
                fatigue=GREATEST(0,fatigue-8),
