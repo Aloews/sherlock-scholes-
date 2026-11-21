@@ -351,8 +351,8 @@ pub fn simulate_player_match(
         let home_chance = chance_probability(&home_profile,&away_profile,rules.home_advantage_milli,home.starting.tactics);
         let away_chance = chance_probability(&away_profile,&home_profile,0,away.starting.tactics);
 
-        if home_goals < 12 && draw(seed,match_id,minute,home.team_id,1)<home_chance {
-            if let Some(shooter_id)=select_player(&home_active,draw(seed,match_id,minute,home.team_id,2),true) {
+        if home_goals < 12 && draw(seed,match_id,minute,home.team_id,1)<home_chance
+            && let Some(shooter_id)=select_player(&home_active,draw(seed,match_id,minute,home.team_id,2),true) {
                 let shooter=home_active.iter().find(|p|p.id==shooter_id).expect("selected home shooter");
                 let goal_probability=shot_probability(shooter,&home_profile,&away_profile);
                 home_xg+=goal_probability/1_000;
@@ -382,10 +382,9 @@ pub fn simulate_player_match(
                         team_id:Some(home.team_id),player_id:Some(shooter_id),related_player_id:None,
                     });
                 }
-            }
         }
-        if away_goals < 12 && draw(seed,match_id,minute,away.team_id,11)<away_chance {
-            if let Some(shooter_id)=select_player(&away_active,draw(seed,match_id,minute,away.team_id,12),true) {
+        if away_goals < 12 && draw(seed,match_id,minute,away.team_id,11)<away_chance
+            && let Some(shooter_id)=select_player(&away_active,draw(seed,match_id,minute,away.team_id,12),true) {
                 let shooter=away_active.iter().find(|p|p.id==shooter_id).expect("selected away shooter");
                 let goal_probability=shot_probability(shooter,&away_profile,&home_profile);
                 away_xg+=goal_probability/1_000;
