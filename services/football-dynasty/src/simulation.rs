@@ -443,56 +443,162 @@ async fn list_world_events(
 async fn respond_world_event(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
-    Path((campaign_id,event_id)): Path<(Uuid,Uuid)>,
+    Path((campaign_id, event_id)): Path<(Uuid, Uuid)>,
     headers: HeaderMap,
     Json(request): Json<WorldResponseRequest>,
 ) -> Result<Json<Value>, ApiError> {
-    if !matches!(request.response.as_str(),"help"|"report"|"ignore") {
-        return Err(ApiError::bad_request("invalid_world_response"));
-    }
-    let key=command_key(&headers)?;
-    let hash=request_hash(&(campaign_id,event_id,&request))?;
-    let mut tx=state.db.begin().await?;
-    set_owner(&mut tx,identity.telegram_id).await?;
-    if let Some(value)=reserve(&mut tx,identity.telegram_id,&key,"respond_world_event",&hash).await? {
+    let response = match request.response.as_str() {
+        "help" => crate::living_world::PlayerResponse::HelpVictim,
+        "report" => crate::living_world::PlayerResponse::ReportIncident,
+        "ignore" => crate::living_world::PlayerResponse::Ignore,
+        _ => return Err(ApiError::bad_request("invalid_world_response")),
+    };
+    let key = command_key(&headers)?;
+    let hash = request_hash(&(campaign_id, event_id, &request))?;
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    if let Some(value) = reserve(
+        &mut tx,
+        identity.telegram_id,
+        &key,
+        "respond_world_event",
+        &hash,
+    )
+    .await?
+    {
         tx.rollback().await?;
         return Ok(Json(value));
     }
-    let row=crate::fd_query_as!((String,i32,String,Value,String),
-        "SELECT event_type,game_day,location_key,payload,state FROM fd.world_events
-         WHERE campaign_id=$1 AND id=$2 FOR UPDATE")
-        .bind(campaign_id).bind(event_id).fetch_optional(&mut *tx).await?
+
+    let row = crate::fd_query_as!((String, i32, String, Value, String),
+        "SELECT event_type,game_day,location_key,payload,state
+         FROM fd.world_events
+         WHERE campaign_id=$1 AND id=$2
+         FOR UPDATE")
+        .bind(campaign_id)
+        .bind(event_id)
+        .fetch_optional(&mut *tx)
+        .await?
         .ok_or_else(ApiError::not_found)?;
-    if row.0!="theft_near_club" || row.4!="known" {
+    if row.0 != "theft_near_club" || row.4 != "known" {
         return Err(ApiError::conflict("world_event_not_respondable"));
     }
-    let witnesses=row.3["witnesses"].as_array().map_or(0,Vec::len);
-    if request.response=="report" {
-        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) VALUES($1,'local_authorities',$2) ON CONFLICT DO NOTHING")
-            .bind(campaign_id).bind(event_id).execute(&mut *tx).await?;
-    } else if witnesses>0 {
-        crate::fd_query!("INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id) SELECT $1,value,$2 FROM jsonb_array_elements_text($3->'witnesses') ON CONFLICT DO NOTHING")
-            .bind(campaign_id).bind(event_id).bind(&row.3).execute(&mut *tx).await?;
-    }
-    let (fact_key,fact_value,reaction_type,delay)=match request.response.as_str() {
-        "help" => ("player_helped_victim",json!({"trust":2,"witnesses_observed":witnesses}),if witnesses>0 {Some("local_news_follow_up")} else {None},2),
-        "report" => ("player_reported_incident",json!({"investigation":true}),Some("police_investigation_update"),1),
-        _ => ("player_ignored_incident",json!({"ignored":true,"witnesses_observed":witnesses}),if witnesses>0 {Some("witness_report")} else {None},3),
+
+    let witnesses = row.3["witnesses"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let incident = crate::living_world::WorldIncident {
+        id: event_id.to_string(),
+        kind: crate::living_world::IncidentKind::TheftNearClub,
+        day: u32::try_from(row.1).unwrap_or_default(),
+        location: row.2.clone(),
+        witnesses: witnesses.clone(),
+        status: crate::living_world::IncidentStatus::PlayerAware,
     };
-    crate::fd_query!("INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
-        .bind(campaign_id).bind(fact_key).bind(&fact_value).bind(event_id).execute(&mut *tx).await?;
-    if let Some(kind)=reaction_type {
-        let reaction_key=format!("{}:{}",event_id,kind);
-        crate::fd_query!("INSERT INTO fd.world_reactions(campaign_id,source_event_id,reaction_key,reaction_type,due_game_day,state,payload) VALUES($1,$2,$3,$4,$5,'queued',$6) ON CONFLICT(campaign_id,reaction_key) DO NOTHING")
-            .bind(campaign_id).bind(event_id).bind(reaction_key).bind(kind)
-            .bind(row.1.saturating_add(delay))
-            .bind(json!({"response":request.response,"location":row.2,"witnesses":row.3["witnesses"]}))
-            .execute(&mut *tx).await?;
+    let resolution = crate::living_world::resolve_incident(incident, response);
+    let witness_count = witnesses.len();
+
+    if request.response == "report" {
+        crate::fd_query!(
+            "INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id)
+             VALUES($1,'local_authorities',$2)
+             ON CONFLICT DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(event_id)
+        .execute(&mut *tx)
+        .await?;
+    } else if !witnesses.is_empty() {
+        crate::fd_query!(
+            "INSERT INTO fd.world_actor_knowledge(campaign_id,actor_key,source_event_id)
+             SELECT $1,value,$2
+             FROM jsonb_array_elements_text($3->'witnesses')
+             ON CONFLICT DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(event_id)
+        .bind(&row.3)
+        .execute(&mut *tx)
+        .await?;
     }
-    crate::fd_query!("UPDATE fd.world_events SET state='resolved',resolved_at=now(),payload=payload || jsonb_build_object('player_response',$3::text) WHERE campaign_id=$1 AND id=$2")
-        .bind(campaign_id).bind(event_id).bind(&request.response).execute(&mut *tx).await?;
-    let result=json!({"event_id":event_id,"response":request.response,"status":"resolved","scheduled_reaction":reaction_type});
-    complete(&mut tx,identity.telegram_id,&key,campaign_id,&result).await?;
+
+    for fact in &resolution.facts {
+        crate::fd_query!(
+            "INSERT INTO fd.world_facts(campaign_id,fact_key,fact_value,source_event_id)
+             VALUES($1,$2,$3,$4)
+             ON CONFLICT DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(&fact.key)
+        .bind(json!({"value":fact.value}))
+        .bind(event_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    let mut scheduled_reactions = Vec::new();
+    for consequence in &resolution.delayed {
+        let reaction_type = match consequence.kind {
+            crate::living_world::DelayedKind::NewsFollowUp => "local_news_follow_up",
+            crate::living_world::DelayedKind::WitnessReport => "witness_report",
+            crate::living_world::DelayedKind::InvestigationUpdate => {
+                "police_investigation_update"
+            }
+        };
+        let reaction_key = format!("{}:{}", event_id, reaction_type);
+        crate::fd_query!(
+            "INSERT INTO fd.world_reactions(
+                campaign_id,source_event_id,reaction_key,reaction_type,
+                due_game_day,state,payload
+             )
+             VALUES($1,$2,$3,$4,$5,'queued',$6)
+             ON CONFLICT(campaign_id,reaction_key) DO NOTHING"
+        )
+        .bind(campaign_id)
+        .bind(event_id)
+        .bind(reaction_key)
+        .bind(reaction_type)
+        .bind(i32::try_from(consequence.due_day).unwrap_or(i32::MAX))
+        .bind(json!({
+            "response": request.response,
+            "location": row.2,
+            "witnesses": witnesses,
+            "immediate_reactions": resolution.immediate_reactions,
+        }))
+        .execute(&mut *tx)
+        .await?;
+        scheduled_reactions.push(reaction_type);
+    }
+
+    crate::fd_query!(
+        "UPDATE fd.world_events
+         SET state='resolved',resolved_at=now(),
+             payload=payload || $3
+         WHERE campaign_id=$1 AND id=$2"
+    )
+    .bind(campaign_id)
+    .bind(event_id)
+    .bind(json!({
+        "player_response": request.response,
+        "immediate_reactions": resolution.immediate_reactions,
+    }))
+    .execute(&mut *tx)
+    .await?;
+
+    let result = json!({
+        "event_id": event_id,
+        "response": request.response,
+        "status": "resolved",
+        "witness_count": witness_count,
+        "immediate_reactions": resolution.immediate_reactions,
+        "scheduled_reaction": scheduled_reactions.first(),
+        "scheduled_reactions": scheduled_reactions,
+    });
+    complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
     tx.commit().await?;
     Ok(Json(result))
 }
