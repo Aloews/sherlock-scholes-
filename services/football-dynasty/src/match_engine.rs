@@ -491,6 +491,25 @@ mod tests {
             && e.player_id==Some(plan.outgoing_player_id) && e.related_player_id==Some(plan.incoming_player_id)));
     }
     #[test]
+    fn defensive_pressing_and_width_reduce_opponent_chance_frequency() {
+        let profile = TeamProfile { team_id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70 };
+        let neutral = TacticalPlan::default();
+        let defensive = TacticalPlan { pressing: 100, width: 100, ..neutral };
+        let neutral_chance = chance_probability(&profile, &profile, 0, neutral, neutral);
+        let defensive_chance = chance_probability(&profile, &profile, 0, neutral, defensive);
+        assert!(defensive_chance < neutral_chance);
+    }
+
+    #[test]
+    fn attacking_intent_increases_expected_chance_frequency() {
+        let profile = TeamProfile { team_id: Uuid::from_u128(1), attack: 70, midfield: 70, defence: 70, goalkeeper: 70 };
+        let neutral = TacticalPlan::default();
+        let aggressive = TacticalPlan { attacking_intent: 100, ..neutral };
+        assert!(chance_probability(&profile, &profile, 0, aggressive, neutral)
+            > chance_probability(&profile, &profile, 0, neutral, neutral));
+    }
+
+    #[test]
     fn tactical_tempo_changes_expected_chances() {
         let (mut fast,away)=(squad(0),squad(1000));
         let mut slow=fast.clone();
