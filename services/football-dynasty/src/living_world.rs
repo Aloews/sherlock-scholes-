@@ -77,7 +77,7 @@ pub fn resolve_incident(incident: WorldIncident, response: PlayerResponse) -> Wo
     let mut facts = Vec::new();
     let mut delayed = Vec::new();
 
-    match response {
+    match &response {
         PlayerResponse::HelpVictim => {
             facts.push(WorldFact { key: "player_public_help".into(), value: 1, source_event_id: source_id.clone() });
             facts.push(WorldFact { key: "victim_trust".into(), value: 2, source_event_id: source_id.clone() });
@@ -115,7 +115,7 @@ pub fn resolve_incident(incident: WorldIncident, response: PlayerResponse) -> Wo
 /// Resolve a delayed consequence only after its scheduled in-game day.
 pub fn resolve_delayed(consequence: &DelayedConsequence, current_day: u32) -> Option<WorldReaction> {
     if current_day < consequence.due_day { return None; }
-    Some(match consequence.kind {
+    Some(match &consequence.kind {
         DelayedKind::NewsFollowUp => WorldReaction::LocalNewsFollowUp,
         DelayedKind::WitnessReport => WorldReaction::WitnessSharesIntervention,
         DelayedKind::InvestigationUpdate => WorldReaction::PoliceInvestigationOpened,
