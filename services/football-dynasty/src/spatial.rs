@@ -160,7 +160,7 @@ mod tests {
     fn heatmap_counts_events_and_returns_peak() {
         let mut map = Heatmap::default();
         map.record(PitchPoint::new(1_000, 1_000));
-        map.record(PitchPoint::new(1_100, 1_200));
+        map.record(PitchPoint::new(900, 900));
         map.record(PitchPoint::new(9_000, 9_000));
         assert_eq!(map.samples, 3);
         assert_eq!(map.peak(), Some((0, 0, 2)));
