@@ -1035,22 +1035,46 @@ pub async fn advance_time(
             }
             crate::fd_query!(
                 "WITH played AS (
-                   SELECT ml.campaign_id,ml.fixture_id,ml.team_id,ml.player_id,ml.role='starter' AS started,
+                   SELECT ml.campaign_id,ml.fixture_id,ml.team_id,ml.player_id,
+                     ml.role='starter' AS started,
+                     CASE WHEN ml.role='starter' THEN 0::smallint ELSE COALESCE(
+                       (SELECT MIN(me.minute) FROM fd.match_events me
+                        WHERE me.campaign_id=ml.campaign_id AND me.fixture_id=ml.fixture_id
+                          AND me.event_type='substitution' AND me.related_player_id=ml.player_id),90)
+                     END::smallint AS start_minute,
                      CASE WHEN ml.role='starter' THEN COALESCE(
-                       (SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
-                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.player_id=ml.player_id),90)
-                     ELSE COALESCE(90-(SELECT MIN(me.minute) FROM fd.match_events me WHERE me.campaign_id=ml.campaign_id
-                        AND me.fixture_id=ml.fixture_id AND me.event_type='substitution' AND me.related_player_id=ml.player_id),0)
-                     END::smallint AS minutes_played
+                       (SELECT MIN(me.minute) FROM fd.match_events me
+                        WHERE me.campaign_id=ml.campaign_id AND me.fixture_id=ml.fixture_id
+                          AND me.event_type='substitution' AND me.player_id=ml.player_id),90)
+                     ELSE 90 END::smallint AS end_minute,
+                     CASE WHEN ml.role='starter' THEN 0::smallint ELSE COALESCE(
+                       (SELECT MIN(me.sequence) FROM fd.match_events me
+                        WHERE me.campaign_id=ml.campaign_id AND me.fixture_id=ml.fixture_id
+                          AND me.event_type='substitution' AND me.related_player_id=ml.player_id),32767)
+                     END::smallint AS start_sequence,
+                     CASE WHEN ml.role='starter' THEN COALESCE(
+                       (SELECT MIN(me.sequence) FROM fd.match_events me
+                        WHERE me.campaign_id=ml.campaign_id AND me.fixture_id=ml.fixture_id
+                          AND me.event_type='substitution' AND me.player_id=ml.player_id),32767)
+                     ELSE 32767 END::smallint AS end_sequence
                    FROM fd.match_lineups ml
                    WHERE ml.campaign_id=$1 AND ml.fixture_id=$2
                  ), stats AS (
                    SELECT p.*,
-                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
-                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.player_id=p.player_id) AS goals,
-                     (SELECT COUNT(*)::smallint FROM fd.match_events me WHERE me.campaign_id=p.campaign_id
-                       AND me.fixture_id=p.fixture_id AND me.event_type='goal' AND me.related_player_id=p.player_id) AS assists,
-                     (p.minutes_played>0 AND ((p.team_id=$3 AND $5=0) OR (p.team_id=$4 AND $6=0))) AS clean_sheet
+                     GREATEST(0,p.end_minute-p.start_minute)::smallint AS minutes_played,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me
+                      WHERE me.campaign_id=p.campaign_id AND me.fixture_id=p.fixture_id
+                        AND me.event_type='goal' AND me.player_id=p.player_id) AS goals,
+                     (SELECT COUNT(*)::smallint FROM fd.match_events me
+                      WHERE me.campaign_id=p.campaign_id AND me.fixture_id=p.fixture_id
+                        AND me.event_type='goal' AND me.related_player_id=p.player_id) AS assists,
+                     (GREATEST(0,p.end_minute-p.start_minute)>=60 AND NOT EXISTS (
+                       SELECT 1 FROM fd.match_events me
+                       WHERE me.campaign_id=p.campaign_id AND me.fixture_id=p.fixture_id
+                         AND me.event_type='goal' AND me.team_id<>p.team_id
+                         AND (me.minute,me.sequence)>(p.start_minute,p.start_sequence)
+                         AND (me.minute,me.sequence)<=(p.end_minute,p.end_sequence)
+                     )) AS clean_sheet
                    FROM played p
                  )
                  INSERT INTO fd.player_match_stats(campaign_id,fixture_id,team_id,player_id,started,minutes_played,goals,assists,clean_sheet,rating)
@@ -1059,8 +1083,7 @@ pub async fn advance_time(
                  FROM stats
                  ON CONFLICT(campaign_id,fixture_id,player_id) DO NOTHING"
             )
-            .bind(campaign_id).bind(fixture_id).bind(home_team_id).bind(away_team_id)
-            .bind(away_goals).bind(home_goals)
+            .bind(campaign_id).bind(fixture_id)
             .execute(&mut *tx).await?;
             crate::fd_query!(
                 "UPDATE fd.players p SET
