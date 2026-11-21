@@ -729,7 +729,9 @@ pub async fn advance_time(
     let mut status = initial_status;
     for _ in 0..request.days {
         current_date += Duration::days(1);
-        generated_events += tick_living_world(&mut tx, campaign_id, current_date).await?;
+        // Living-world incidents have their own feed and must not inflate the
+        // legacy calendar event counter returned by this endpoint.
+        tick_living_world(&mut tx, campaign_id, current_date).await?;
         crate::fd_query!(
             "UPDATE fd.players SET
                fatigue=GREATEST(0,fatigue-8),
