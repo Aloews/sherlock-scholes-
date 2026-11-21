@@ -47,6 +47,8 @@ jobs:
         run: cmp migrations/0011_match_rosters_events.sql ../../supabase/migrations/20261119160000_football_dynasty_match_engine.sql
       - name: Verify spatial migration parity
         run: cmp migrations/0012_match_spatial_events.sql ../../supabase/migrations/20261120170000_football_dynasty_spatial_events.sql
+      - name: Verify living world migration parity
+        run: cmp migrations/0013_living_world_core.sql ../../supabase/migrations/20261121160000_football_dynasty_living_world.sql
       - name: Run Clippy with warnings denied
         run: cargo clippy --all-targets -- -D warnings
       - name: Compile and test engine and API
