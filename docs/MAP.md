@@ -589,3 +589,12 @@ Required information architecture:
 - Acceptance vertical slice: location-based incident reaches the player via a plausible channel; player may act or ignore; witnesses/media/authorities respond only when informed; a second-order reaction changes future world state; state survives reload and commands are idempotent.
 - Phased LW0–LW7 tasks are recorded (contracts/data model, tick, awareness, player action, NPC response, causal graph, UI integration, validation).
 - **Status: specification committed only.** No living-world runtime, database migration, event UI, or second-order NPC reaction is implemented yet. The existing calendar/event system is not yet evidence of this behavior. Next development increment should implement LW0 and a narrow LW1–LW5 vertical slice, then test persistence and causal chain before widening content.
+
+
+### LW0 / living-world engine first slice — 2026-11-21 (implementation in progress)
+
+- Added Rust pure-core types for incidents, player responses, immediate reactions, world facts, and delayed consequence records in `living_world.rs`; deterministically resolves help/report/ignore, knowledge-gated witness reaction, and delayed follow-up. Unit tests cover witnesses, no-witness suppression, reporting, ignoring, delayed due-day behavior and deterministic replay.
+- Added mirrored PostgreSQL migration 0013 for persistent world events, causal facts, and delayed reaction queue, with campaign-scoped constraints, uniqueness/idempotency keys, due indexes and RLS owner policies.
+- Added CI migration-parity check for 0013.
+- **Not yet runtime-integrated:** these are core contracts, migration, and pure tests; there is no API to create/respond/inspect world incidents, no persisted reaction execution, and no UI. LW0 database schema and pure logic exist, but vertical slice is not complete until API transactions, ticking, persistence tests and UI are wired.
+- Current validation: new rust-engine CI was triggered on commit `29725db` and is queued. The older football-dynasty-rust workflow at commit `29725db` failed with an empty jobs response; that failure is not actionable yet and must be re-run/checked. No green result is claimed.
