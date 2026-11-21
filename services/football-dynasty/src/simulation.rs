@@ -598,13 +598,14 @@ async fn respond_world_event(
     .execute(&mut *tx)
     .await?;
 
+    let primary_reaction = scheduled_reactions.first().copied();
     let result = json!({
         "event_id": event_id,
         "response": request.response.as_str(),
         "status": "resolved",
         "witness_count": witness_count,
         "immediate_reactions": resolution.immediate_reactions,
-        "scheduled_reaction": scheduled_reactions.first(),
+        "scheduled_reaction": primary_reaction,
         "scheduled_reactions": scheduled_reactions,
     });
     complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
