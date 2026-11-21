@@ -206,6 +206,16 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         response["scheduled_reactions"],
         json!(["local_news_follow_up"])
     );
+    let (replay_status, replayed_response) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/world/events/{world_event_id}/respond"),
+        Some("world-response-0001"),
+        Some(json!({"response":"help"})),
+    )
+    .await;
+    assert_eq!(replay_status, StatusCode::OK);
+    assert_eq!(replayed_response, response);
 
     let (tick_status, tick) = call(
         app.clone(),
