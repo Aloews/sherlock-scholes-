@@ -622,3 +622,9 @@ Required information architecture:
 - Delayed living-world reactions now verify the source event has persisted knowledge for the relevant actor before materializing a child event. Local-news follow-up requires the media knowledge record, witness reports require an informed witness, and investigation updates require local-authority knowledge; uninformed queued reactions are cancelled.
 - Player clean-sheet credit is now calculated from each player's actual on-pitch interval, including substitution minute and event sequence ordering. A player must complete at least 60 minutes without conceding while on the pitch; final team score alone is no longer used as a proxy.
 - These changes are covered by the existing PostgreSQL-backed help → news follow-up integration path and the match lifecycle/statistics tests. Exact-head CI is pending.
+
+**Exact-head acceptance results — 2026-11-21, PR #447, commit b104b375037e9c86f5569c92bd644319a9c44d3c:**
+- `rust-engine` run 44926396810 completed successfully: complete PostgreSQL migration chain, service/Supabase migration parity for match engine, spatial events and living world, Clippy with warnings denied, all Rust targets/API integration tests, and release build.
+- General `ci` run 44926396845 completed successfully: frontend unit/property/data-integrity tests and coverage gate, nine-locale translation check, TypeScript typecheck and production build, Edge Function checks/tests, Python tests and Qwen agent policy tests.
+- The separate legacy workflow `.github/workflows/football-dynasty-rust.yml` still emits a push-triggered failed run with zero jobs and no job logs. The PR's dedicated Rust workflow and general CI both pass on the exact head; do not treat the empty legacy run as evidence that Rust tests failed.
+- PR #447 remains open and draft. No merge, production database migration or deployment has been performed.
