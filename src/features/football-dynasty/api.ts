@@ -105,3 +105,32 @@ export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: 
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
     { method: 'POST', body: JSON.stringify({ choice_id: choiceId }) }, true,
   );
+
+export interface WorldEvent {
+  id: string;
+  event_type: string;
+  game_day: number;
+  location_key: string;
+  state: 'generated' | 'known' | 'active' | 'resolved' | 'expired';
+  payload: Record<string, unknown>;
+  parent_event_id: string | null;
+}
+export interface WorldEventResponse {
+  event_id: string;
+  response: 'help' | 'report' | 'ignore';
+  status: string;
+  witness_count: number;
+  immediate_reactions: string[];
+  scheduled_reaction: string | null;
+  scheduled_reactions: string[];
+}
+export const listWorldEvents = async (campaignId: string): Promise<WorldEvent[]> => {
+  const events = await request<unknown>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/world/events`);
+  if (!Array.isArray(events)) throw new Error('invalid_world_events_response');
+  return events as WorldEvent[];
+};
+export const respondToWorldEvent = (campaignId: string, eventId: string, response: 'help' | 'report' | 'ignore') =>
+  request<WorldEventResponse>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/world/events/${encodeURIComponent(eventId)}/respond`,
+    { method: 'POST', body: JSON.stringify({ response }) }, true,
+  );
