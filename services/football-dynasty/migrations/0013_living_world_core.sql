@@ -53,3 +53,18 @@ CREATE POLICY fd_runtime_access ON fd.world_reactions FOR ALL TO fd_runtime
 USING (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint))
 WITH CHECK (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint));
 GRANT SELECT,INSERT,UPDATE ON fd.world_events,fd.world_facts,fd.world_reactions TO fd_runtime;
+
+CREATE TABLE fd.world_actor_knowledge (
+  campaign_id uuid NOT NULL REFERENCES fd.campaigns(id) ON DELETE CASCADE,
+  actor_key text NOT NULL CHECK (length(actor_key) BETWEEN 1 AND 120),
+  source_event_id uuid NOT NULL,
+  learned_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (campaign_id,actor_key,source_event_id),
+  FOREIGN KEY (campaign_id,source_event_id) REFERENCES fd.world_events(campaign_id,id)
+);
+CREATE INDEX fd_world_actor_knowledge_event_idx ON fd.world_actor_knowledge(campaign_id,source_event_id);
+ALTER TABLE fd.world_actor_knowledge ENABLE ROW LEVEL SECURITY;
+CREATE POLICY fd_runtime_access ON fd.world_actor_knowledge FOR ALL TO fd_runtime
+USING (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint))
+WITH CHECK (EXISTS(SELECT 1 FROM fd.campaigns c WHERE c.id=campaign_id AND c.owner_telegram_id=NULLIF(current_setting('fd.telegram_id',true),'')::bigint));
+GRANT SELECT,INSERT,UPDATE ON fd.world_actor_knowledge TO fd_runtime;
