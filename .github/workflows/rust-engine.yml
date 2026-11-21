@@ -43,6 +43,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Apply complete PostgreSQL migration chain
+        run: |
+          for migration in migrations/*.sql; do
+            echo "Applying $migration"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT to_regclass('fd.world_events'), to_regclass('fd.world_facts'), to_regclass('fd.world_reactions'), to_regclass('fd.world_actor_knowledge')"
       - name: Verify service and Supabase migration parity
         run: cmp migrations/0011_match_rosters_events.sql ../../supabase/migrations/20261119160000_football_dynasty_match_engine.sql
       - name: Verify spatial migration parity
