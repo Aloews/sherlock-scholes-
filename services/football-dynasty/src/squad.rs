@@ -97,7 +97,7 @@ fn average(values: impl Iterator<Item = u8>) -> u8 {
     let (sum, count) = values.fold((0_u32, 0_u32), |(sum, count), value| {
         (sum + u32::from(value), count + 1)
     });
-    if count == 0 { 0 } else { (sum / count) as u8 }
+    sum.checked_div(count).unwrap_or_default() as u8
 }
 
 fn weighted(a: u8, b: u8, c: u8, d: u8, weights: [u16; 4]) -> u8 {
