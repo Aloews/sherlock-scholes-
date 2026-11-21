@@ -617,3 +617,8 @@ Required information architecture:
 - The PostgreSQL-backed campaign lifecycle test asserts witness count, immediate reactions, queued follow-up type, delayed child-event parentage and exact idempotent replay of a repeated response.
 - The Rust engine workflow applies the full PostgreSQL migration chain, checks migration parity, runs Clippy with warnings denied, all Rust targets and the release build. The TypeScript/React changes are covered by the repository CI workflow.
 - Validation for this latest increment is pending on the exact final commit; do not mark the UI/domain slice accepted until both the Rust engine workflow and general CI finish successfully.
+
+**Additional simulation correctness fixes — 2026-11-21:**
+- Delayed living-world reactions now verify the source event has persisted knowledge for the relevant actor before materializing a child event. Local-news follow-up requires the media knowledge record, witness reports require an informed witness, and investigation updates require local-authority knowledge; uninformed queued reactions are cancelled.
+- Player clean-sheet credit is now calculated from each player's actual on-pitch interval, including substitution minute and event sequence ordering. A player must complete at least 60 minutes without conceding while on the pitch; final team score alone is no longer used as a proxy.
+- These changes are covered by the existing PostgreSQL-backed help → news follow-up integration path and the match lifecycle/statistics tests. Exact-head CI is pending.
