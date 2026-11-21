@@ -609,3 +609,11 @@ Required information architecture:
 - CI now applies every SQL migration in order to a fresh PostgreSQL 16 database before parity checks, Clippy, tests and release build. The full migration chain completed successfully on run `44906142770`; Clippy/tests/release build were still running at the time of this update.
 - The legacy `generated_events` counter remains scoped to the calendar inbox; living-world incidents and delayed reactions are exposed through the separate world-events feed and do not change that existing API contract.
 - **Scope/remaining:** first deterministic incident vertical slice is wired into time advancement and API; actor motives, schedules, richer NPC action selection, and frontend presentation remain to be implemented. An authenticated API integration test now exercises the player response and delayed causal follow-up; its CI result is pending. No production database migration or deploy has been performed.
+
+**Living-world domain/runtime/UI integration — 2026-11-21 (PR #447):**
+- The authenticated response handler now delegates action resolution to the pure living_world::resolve_incident domain rules instead of maintaining a second set of response rules in SQL-facing code.
+- Persisted world facts, immediate reactions, delayed reaction queue entries and actor knowledge are derived from the same domain result. The three response paths (help/report/ignore), witness-gated consequences and due-day rules remain deterministic.
+- The Football Dynasty screen now loads the campaign-scoped world-event feed and exposes help/report/ignore actions for incidents; delayed news, witness and investigation events appear in the same feed with causal parent links.
+- The PostgreSQL-backed campaign lifecycle test asserts witness count, immediate reactions, queued follow-up type, delayed child-event parentage and exact idempotent replay of a repeated response.
+- The Rust engine workflow applies the full PostgreSQL migration chain, checks migration parity, runs Clippy with warnings denied, all Rust targets and the release build. The TypeScript/React changes are covered by the repository CI workflow.
+- Validation for this latest increment is pending on the exact final commit; do not mark the UI/domain slice accepted until both the Rust engine workflow and general CI finish successfully.
