@@ -18,6 +18,7 @@ The repository-local Claude Code configuration in `.claude/` is an additive spec
 
 Skills: `reality-first`, `release-gate`, `agent-handoff`.
 Commands: `/verify`, `/finish-task`, `/security-gate`.
+Dispatch: `/dispatch` (launches named specialist subagents when the Claude Code runtime exposes the Task tool; otherwise requires sequential work).
 
 ## Mandatory project invariants
 
