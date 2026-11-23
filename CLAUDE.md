@@ -284,3 +284,7 @@ decision records in `docs/ADR/` and checklists in `docs/CHECKLISTS/`.
 The rules above are the ones this project keeps getting wrong, so they stay
 here in full. Where the constitution and this file disagree about the app
 itself, this file is current — it is edited as the code changes.
+
+## Shared specialist agents
+
+The reusable Claude Code agents, skills and commands are documented in [docs/UNIFIED_AGENT_SYSTEM.md](./docs/UNIFIED_AGENT_SYSTEM.md). They supplement this file and the Engineering Constitution; they never override the project's existing quality, data, security or localization rules.

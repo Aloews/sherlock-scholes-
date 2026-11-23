@@ -1,0 +1,30 @@
+name: Validate agent system
+
+on:
+  pull_request:
+    paths:
+      - ".claude/**"
+      - "docs/UNIFIED_AGENT_SYSTEM.md"
+      - "scripts/validate_agent_system.py"
+      - ".github/workflows/validate-agent-system.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".claude/**"
+      - "docs/UNIFIED_AGENT_SYSTEM.md"
+      - "scripts/validate_agent_system.py"
+      - ".github/workflows/validate-agent-system.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Claude Code agent configuration
+        run: python3 scripts/validate_agent_system.py
