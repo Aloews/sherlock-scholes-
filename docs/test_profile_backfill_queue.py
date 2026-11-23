@@ -2,7 +2,7 @@ import sys
 import urllib.error
 import subprocess
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, call
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,6 +26,57 @@ class SupabaseRequestDiagnosticsTests(unittest.TestCase):
         self.assertIn("statement timeout", str(caught.exception))
         self.assertNotIn("test-secret-key", str(caught.exception))
         self.assertNotIn("Authorization", str(caught.exception))
+
+
+class ProfileBackfillQueueMaintenanceTests(unittest.TestCase):
+    def test_repair_only_increases_retry_budget_for_pending_zero_attempt_jobs(self):
+        jobs=[{"id":12001},{"id":12002}]
+        with patch.object(worker,"request",side_effect=[jobs,jobs]) as request_mock:
+            self.assertEqual(worker.repair_zero_attempt_pending_jobs(),2)
+        request_mock.assert_has_calls([
+            call("profile_backfill_jobs",{
+                "select":"id",
+                "status":"eq.pending",
+                "attempts":"eq.0",
+                "max_attempts":"eq.0",
+                "task_type":"in.(photo_qid,photo_tm,photo_sw,season_stats)",
+                "limit":"500",
+            }),
+            call("profile_backfill_jobs",{
+                "id":"in.(12001,12002)",
+                "select":"id",
+            },method="PATCH",body={"max_attempts":3}),
+        ])
+
+    def test_repair_is_noop_when_no_unclaimable_jobs(self):
+        with patch.object(worker,"request",return_value=[]) as request_mock:
+            self.assertEqual(worker.repair_zero_attempt_pending_jobs(),0)
+        request_mock.assert_called_once()
+
+    def test_repair_fails_closed_on_partial_patch(self):
+        with patch.object(worker,"request",side_effect=[[{"id":1},{"id":2}],[{"id":1}]]):
+            with self.assertRaisesRegex(RuntimeError,"expected 2 rows, updated 1"):
+                worker.repair_zero_attempt_pending_jobs()
+
+    def test_enqueue_rpc_is_skipped_when_any_work_is_queued(self):
+        with patch.object(worker,"request",return_value=[{"id":99}]) as request_mock, patch.object(
+            worker,"rpc"
+        ) as rpc_mock:
+            self.assertEqual(worker.enqueue_if_queue_empty(100),0)
+        request_mock.assert_called_once_with("profile_backfill_jobs",{
+            "select":"id",
+            "status":"in.(pending,running)",
+            "limit":"1",
+        })
+        rpc_mock.assert_not_called()
+
+    def test_enqueue_rpc_runs_only_when_queue_is_empty(self):
+        with patch.object(worker,"request",return_value=[]) as request_mock, patch.object(
+            worker,"rpc",return_value=7
+        ) as rpc_mock:
+            self.assertEqual(worker.enqueue_if_queue_empty(100),7)
+        request_mock.assert_called_once()
+        rpc_mock.assert_called_once_with("enqueue_profile_backfill_jobs",{"p_limit":100})
 
 
 class SoccerWikiPhotoTests(unittest.TestCase):
