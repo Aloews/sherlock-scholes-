@@ -42,20 +42,24 @@ flowchart TD
 
 ## 3. Delivery scoreboard
 
-Update this section only from measured evidence. Every metric must include an observation timestamp and a source query, workflow, or dashboard.
+Snapshot measured **2026-11-23 UTC** using read-only Supabase aggregates, GitHub Actions, Vercel deployment metadata, and `cron.job_run_details`. Refresh before the next delivery decision.
 
-| Outcome | Metric | Latest evidence in repository history | Status |
-|---|---|---|---|
-| Player discovery | Active cards with portraits / total active cards | 17,867 / 27,231 on 2026-11-07 12:50 UTC | Baseline is stale; remeasure |
-| Player statistics | `player_season_stat` row count and latest `fetched_at` | 866,057 rows; latest fetch 2026-11-07 13:07 UTC | Collection is active in that snapshot; remeasure |
-| Profile enrichment | Queue depth, success, no-data, retryable failures by source | 23,408 jobs on 2026-11-07 13:07 UTC | Transfermarkt had persistent zero-byte HTTP 202 responses; remeasure |
-| Forecast quality | Brier score, log loss, calibration, coverage, baseline comparison | No current unified scorecard recorded here | Missing evidence |
-| Player awards | Candidate coverage, feature freshness, calibrated probabilities, outcome evaluation | Snapshot tables and pipeline exist; current calibration not verified here | Needs measured evaluation |
-| Team competitions | Tournament candidate coverage, calibrated probabilities, outcome evaluation | Snapshot tables and pipeline exist; current calibration not verified here | Needs measured evaluation |
-| Reliability | Production release health, failed scheduled jobs, API readiness | Historical snapshots are dated 2026-11-07 | Remeasure before changing priorities |
-| Product usage | Active users, game starts/completions, invitations, retention | No current baseline recorded here | Instrument and measure |
+| Outcome | Metric | Latest evidence | Source query / workflow | Status |
+|---|---|---|---|---|
+| Player portraits | Active player + women cards with photo URL: **19,217 / 25,810 (74.45%)**; 6,593 missing. All active cards: 20,549 / 27,370 (75.1%). | URLs present only; image reachability not revalidated | `cards`: active/category/photo_url/photo_source | Coverage still incomplete |
+| Season stats | **885,205** rows; 24,802 cards; 98 seasons; latest fetch Nov 22. **346,795** rows refreshed since Nov 16. | Refresh count is not net-new | `player_season_stat`: count, distinct card_id/season_id, max/count `fetched_at` | High coverage; provenance needed for net-new |
+| Match stats | **309,189** rows; 14,800 players; 3,382 match dates; 6,822 refreshed since Nov 16. ESPN 100,684 (latest Nov 22); sports.ru 208,505 (latest Nov 20); 3 disputed rows. | Refreshed rows, not insert count | `player_match_stats`: source/count/card_id/match_date/fetched_at/disputed | Freshness split by source |
+| Club facts | `club_match` 59,184 (26,157 refreshed since Nov 16; latest Nov 22); `club_squad` 32,831 across 1,900 clubs (24,374 refreshed; latest Nov 20); `club_roster` 24,623 across 869 clubs (4,224 refreshed; latest Nov 16). | No insert-vs-update audit | `club_match`, `club_squad`, `club_roster` aggregates | Roster freshness slipping |
+| Profile queue | **26,207** jobs: 13,108 succeeded, 2,461 no-data, 500 failed, 10,138 pending, 0 running. 450 pending jobs have zero retry budget. Queue last updated Nov 17. | 6/6 queue runs failed this week; enqueue RPC hits Postgres statement timeout (57014). | `profile_backfill_jobs` grouped by status/task_type/attempts/max_attempts; Actions logs | **P1: queue cannot drain/refill** |
+| Forecasts | 4,242 predictions; 3,828 graded (1,914/model). Own: 932/1,914 correct (48.7%); LLM: 953/1,914 (49.8%). Calibration test n=575/model: Brier 0.2497 / 0.2460 vs constant 0.2502 / 0.2501. | Calibrated models barely beat constant baseline; raw Brier 0.3841 / 0.3355 | `forecast_pick`, `forecast_calibration` | Small, near-baseline improvement |
+| Awards | 4,584 candidate rows across 6 award types, latest snapshot Nov 21. **11** outcome evaluations; 0 top-1 and 0 top-5 hits; last outcome Oct 26. | Outcomes stale relative to candidates | `award_candidate_snapshot`, `award_candidate_evaluation` | Evaluation pipeline needs current outcomes |
+| Team competitions | 4,471 candidates across 182 tournaments; latest snapshot Nov 19; **0** outcome evaluations. | No measurable predictive quality yet | `team_tournament_candidate_snapshot`, `team_tournament_candidate_evaluation` | No calibration evidence |
+| Database | **1.304 GB**; 15/60 connections. Health advisor: 0 findings; performance advisor: 97 findings; security advisor: 468 lint findings (includes INFO). | Supabase storage-plan cap not exposed in inspected metadata | `pg_database_size`, `pg_stat_activity`, Supabase advisors | Avoid broad unreviewed index/security changes |
+| Production | Vercel production `READY` on main `2317ab23606fde9b4c6d44388a00f36955f12faa`; main CI 7/7 runs passed. No runtime errors in last 24h. Browser/Telegram journeys not smoke-tested this run. | Runtime request logs empty in queried 30m window; direct HTTP smoke unavailable | GitHub Actions, Vercel deployment/runtime metadata | Release exists; user path unverified |
+| Reliability | Supabase `rebuild_clubs_all`: **6/8** cron runs failed at the 120s statement timeout. Profile queue 6/6 failed; player-profile-data 5/6 failed; odds, market-watch, ESPN and daily-enrich freshness gates also failed. Production backup workflow failed before archive. | Backup step reports missing `SUPABASE_DB_URL`; other backup secrets are also blank in run env. | `cron.job_run_details`, Actions run/job logs | Multiple collection/reliability blockers |
+| Product usage | No current active-user/game-start/retention baseline verified. | Do not infer adoption | Analytics tables/dashboard not verified | Instrument before demand-based prioritization |
 
-**Important:** the numbers above are historical evidence, not claims about today's production state. Never copy them forward as current values. Refresh the scoreboard before planning a data or reliability sprint.
+**Net-new-data rule:** `fetched_at` refresh counts above cannot distinguish new rows from updates. No net-new verified row count is claimed. The main data priorities are draining/recovering the profile queue, restoring club rebuild freshness, and obtaining a working backup destination configuration.
 
 ## 4. Product areas and ownership map
 
