@@ -183,6 +183,46 @@ def rpc(name,payload):
     return request("rpc/"+name,method="POST",body=payload)
 
 
+def repair_zero_attempt_pending_jobs(limit=500):
+    """Make legacy pending jobs claimable without resetting their attempts or status."""
+    rows=request("profile_backfill_jobs",{
+        "select":"id",
+        "status":"eq.pending",
+        "attempts":"eq.0",
+        "max_attempts":"eq.0",
+        "task_type":"in.(photo_qid,photo_tm,photo_sw,season_stats)",
+        "limit":str(limit),
+    })
+    if not rows:
+        return 0
+    ids=[]
+    for row in rows:
+        job_id=row.get("id")
+        if not str(job_id).isdigit():
+            raise RuntimeError("profile backfill repair returned a non-numeric job id")
+        ids.append(str(job_id))
+    updated=request("profile_backfill_jobs",{
+        "id":"in.("+",".join(ids)+")",
+        "select":"id",
+    },method="PATCH",body={"max_attempts":3})
+    if len(updated)!=len(ids):
+        raise RuntimeError(f"profile backfill repair expected {len(ids)} rows, updated {len(updated)}")
+    return len(updated)
+
+
+def enqueue_if_queue_empty(limit):
+    """Do not run the expensive enqueue RPC while work is already queued."""
+    backlog=request("profile_backfill_jobs",{
+        "select":"id",
+        "status":"in.(pending,running)",
+        "limit":"1",
+    })
+    if backlog:
+        print("Skip queue refill: pending/running work already exists; drain it first.")
+        return 0
+    return rpc("enqueue_profile_backfill_jobs",{"p_limit":limit})
+
+
 def verify(job):
     if job["task_type"] in ("photo_tm","photo_qid","photo_sw"):
         rows=request("cards",{"select":"id,photo_url","id":"eq."+job["card_id"],"limit":"1"})
@@ -322,7 +362,10 @@ def main():
         parser.error("--enqueue-limit must be between 1 and 100000")
     if not 1 <= args.batch_size <= 20 or not 1 <= args.max_jobs <= 500:
         parser.error("--batch-size must be 1..20 and --max-jobs must be 1..500")
-    enqueued=rpc("enqueue_profile_backfill_jobs",{"p_limit":args.enqueue_limit})
+    repaired=repair_zero_attempt_pending_jobs()
+    if repaired:
+        print("Re-enabled pending jobs with zero retry budget:",repaired)
+    enqueued=enqueue_if_queue_empty(args.enqueue_limit)
     print("New jobs enqueued:",enqueued)
     if args.enqueue_only: return 0
     results=[]; processed=0
