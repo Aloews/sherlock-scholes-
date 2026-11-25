@@ -258,7 +258,6 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(events_status, StatusCode::OK);
     assert_eq!(events.as_array().expect("event inbox").len(), 7);
 
-
     let match_review = events
         .as_array()
         .expect("event inbox")
