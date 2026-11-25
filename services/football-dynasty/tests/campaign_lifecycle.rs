@@ -228,7 +228,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick_status, StatusCode::OK);
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
-    assert_eq!(tick["generated_events"], 3);
+    assert_eq!(tick["generated_events"], 4);
 
     let (follow_up_status, follow_up_events) = call(
         app.clone(),
@@ -256,7 +256,105 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     )
     .await;
     assert_eq!(events_status, StatusCode::OK);
-    assert_eq!(events.as_array().expect("event inbox").len(), 6);
+    assert_eq!(events.as_array().expect("event inbox").len(), 7);
+
+    let match_review = events
+        .as_array()
+        .expect("event inbox")
+        .iter()
+        .find(|event| event["event_type"] == "match_board_review")
+        .expect("player match must create a contextual board decision");
+    assert!(match_review["body"].as_str().unwrap_or_default().contains("Northbridge United"));
+    assert_eq!(match_review["choices"].as_array().expect("match review choices").len(), 2);
+    assert!(match_review["title"].as_str().unwrap_or_default().contains("Решение после матча"));
+    let match_review_id = match_review["id"].as_str().expect("match review id");
+    let match_review_choice = match_review["choices"][0]["id"].as_str().expect("match review choice");
+    let match_review_effect = match_review["choices"][0]["effect"].as_str().expect("match review effect");
+
+    let campaign_uuid = uuid::Uuid::parse_str(campaign_id).expect("campaign UUID");
+    let club_reputation_before: i32 = sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("club reputation before match decision");
+    let dynasty_prestige_before: i32 = sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("dynasty prestige before match decision");
+    let (match_review_status, match_review_result) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    ).await;
+    assert_eq!(match_review_status, StatusCode::OK);
+    assert_eq!(match_review_result["status"], "resolved");
+    let (match_review_replay_status, match_review_replay) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{match_review_id}/resolve"),
+        Some("match-review-choice-01"),
+        Some(json!({"choice_id":match_review_choice})),
+    ).await;
+    assert_eq!(match_review_replay_status, StatusCode::OK);
+    assert_eq!(match_review_replay, match_review_result);
+    let club_reputation_after: i32 = sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("club reputation after match decision");
+    let dynasty_prestige_after: i32 = sqlx::query_scalar("SELECT prestige FROM fd.dynasties WHERE campaign_id=$1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("dynasty prestige after match decision");
+    match match_review_effect {
+        "club_reputation" => {
+            assert_eq!(club_reputation_after, (club_reputation_before + 1).min(100));
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before);
+        }
+        "club_reputation_2" => {
+            assert_eq!(club_reputation_after, (club_reputation_before + 2).min(100));
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before);
+        }
+        "club_reputation_minus_1" => {
+            assert_eq!(club_reputation_after, (club_reputation_before - 1).max(0));
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before);
+        }
+        "dynasty_prestige" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 1);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        "dynasty_prestige_2" => {
+            assert_eq!(dynasty_prestige_after, dynasty_prestige_before + 2);
+            assert_eq!(club_reputation_after, club_reputation_before);
+        }
+        other => panic!("unexpected match decision effect: {other}"),
+    }
+
+    sqlx::query("UPDATE fd.clubs SET reputation=0 WHERE campaign_id=$1")
+        .bind(campaign_uuid).execute(&pool).await.expect("set reputation floor fixture");
+    sqlx::query(
+        "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices)
+         VALUES($1,'test-match-board-minus-one','match_board_review','Test board decision','Test floor behavior','2026-01-08','2026-01-15',80,$2)"
+    ).bind(campaign_uuid).bind(json!([
+        {"id":"decrease","label":"Decrease reputation","effect":"club_reputation_minus_1"}
+    ])).execute(&pool).await.expect("insert minus-one effect fixture");
+    let minus_one_event_id: uuid::Uuid = sqlx::query_scalar(
+        "SELECT id FROM fd.game_events WHERE campaign_id=$1 AND event_key='test-match-board-minus-one'"
+    ).bind(campaign_uuid).fetch_one(&pool).await.expect("minus-one event id");
+    let (minus_one_status, minus_one_result) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{minus_one_event_id}/resolve"),
+        Some("match-review-minus-1-01"),
+        Some(json!({"choice_id":"decrease"})),
+    ).await;
+    assert_eq!(minus_one_status, StatusCode::OK);
+    assert_eq!(minus_one_result["resolution"]["outcome"], "club_reputation_decreased_by_one");
+    let (minus_one_replay_status, minus_one_replay) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/events/{minus_one_event_id}/resolve"),
+        Some("match-review-minus-1-01"),
+        Some(json!({"choice_id":"decrease"})),
+    ).await;
+    assert_eq!(minus_one_replay_status, StatusCode::OK);
+    assert_eq!(minus_one_replay, minus_one_result);
+    let reputation_floor: i32 = sqlx::query_scalar("SELECT reputation FROM fd.clubs WHERE campaign_id=$1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("reputation floor");
+    assert_eq!(reputation_floor, 0);
+
     let event_id = events
         .as_array()
         .expect("event inbox")
@@ -359,7 +457,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(sponsor_tick_status, StatusCode::OK);
     assert_eq!(sponsor_tick["current_date"], "2026-01-12");
-    assert_eq!(sponsor_tick["generated_events"], 3);
+    assert_eq!(sponsor_tick["generated_events"], 4);
     // The only event whose deadline could have elapsed was explicitly resolved above.
     assert_eq!(sponsor_tick["expired_events"], 0);
 
@@ -418,7 +516,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
-    assert_eq!(month["generated_events"], 11);
+    assert_eq!(month["generated_events"], 15);
     assert_eq!(month["expired_events"], 5);
 
     let (final_season_status, final_season) = call(
