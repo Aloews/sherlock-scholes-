@@ -673,3 +673,13 @@ Required information architecture:
 - The production deployment for bb4887be2a37e556dc4bd91a042d838c5fc95bcd reached Vercel state READY. This confirms deployment state only; no complete management-game journey was verified by that fact.
 
 **Overall status: IN PROGRESS — limited vertical slice, not the requested full football management game.**
+
+
+## Football Dynasty — matchday board decisions (2026-11-25)
+
+- Implemented on a dedicated mainline Draft PR branch: every fixture involving the campaign's `is_player_controlled` team creates one pending, fixture-keyed `match_board_review` event in the same calendar transaction.
+- Outcome-specific decisions are win/draw/loss and venue-aware; choices persist club reputation or dynasty prestige changes. Loss choices include a bounded `GREATEST(0, reputation-1)` effect.
+- The existing Events inbox renders the persisted title/body/choice labels and submits through the existing idempotent event-resolution API; no UI fork or schema migration is needed.
+- Regression coverage: pure tests cover all three result paths and home/away wording; PostgreSQL lifecycle test verifies event generation, actual effect, replay idempotency, and the reputation floor. Calendar generated-event expectations account for reviews.
+- This is a smaller verified-gameplay slice ported from the stale #446 work onto current main; matchday ticket-revenue accounting and standings position/goal-difference changes from #446 were intentionally not included.
+- CI is required on the exact PR head before marking VERIFIED. Next priority remains FD-UI-01 squad inspection and editable lineup persistence; the board-decision slice does not complete that contract.
