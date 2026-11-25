@@ -863,44 +863,85 @@ pub async fn get_fixture(
 }
 
 
+
 fn match_board_review_choices(
     team_goals: i16,
     opponent_goals: i16,
     is_home: bool,
     report: &str,
 ) -> (&'static str, String, Value) {
-    let (result_label, narrative, suffix, choices) = match team_goals.cmp(&opponent_goals) {
-        std::cmp::Ordering::Greater => (
-            "победа",
-            if is_home { "Команда добилась победы" } else { "Команда добилась выездной победы" },
-            "Совет предлагает решить, как закрепить результат.",
-            json!([
-                {"id":"build_momentum","label":"Использовать победу для укрепления репутации клуба","effect":"club_reputation_2"},
-                {"id":"reward_leadership","label":"Публично поддержать руководство династии","effect":"dynasty_prestige"}
-            ]),
-        ),
-        std::cmp::Ordering::Equal => (
-            "ничья",
-            if is_home { "Матч завершился вничью" } else { "Выездной матч завершился вничью" },
-            "Совет ждёт решения о следующем шаге.",
-            json!([
-                {"id":"steady_course","label":"Сохранить стабильность и доверие болельщиков","effect":"club_reputation"},
-                {"id":"back_leadership","label":"Подтвердить доверие руководству династии","effect":"dynasty_prestige"}
-            ]),
-        ),
-        std::cmp::Ordering::Less => (
-            "поражение",
-            if is_home { "Команда потерпела поражение" } else { "Команда проиграла на выезде" },
-            "Совет требует реакции руководства.",
-            json!([
-                {"id":"manager_review","label":"Провести открытый разбор и восстановить доверие","effect":"club_reputation_minus_1"},
-                {"id":"protect_manager","label":"Публично поддержать тренерский штаб","effect":"dynasty_prestige_2"}
-            ]),
-        ),
-    };
-    (result_label, format!("{narrative}: {report}. {suffix}"), choices)
+    let (result_label, narrative, suffix, choices) =
+        match team_goals.cmp(&opponent_goals) {
+            std::cmp::Ordering::Greater => (
+                "победа",
+                if is_home {
+                    "Команда добилась победы"
+                } else {
+                    "Команда добилась выездной победы"
+                },
+                "Совет предлагает решить, как закрепить результат.",
+                json!([
+                    {
+                        "id": "build_momentum",
+                        "label": "Использовать победу для укрепления репутации клуба",
+                        "effect": "club_reputation_2"
+                    },
+                    {
+                        "id": "reward_leadership",
+                        "label": "Публично поддержать руководство династии",
+                        "effect": "dynasty_prestige"
+                    }
+                ]),
+            ),
+            std::cmp::Ordering::Equal => (
+                "ничья",
+                if is_home {
+                    "Матч завершился вничью"
+                } else {
+                    "Выездной матч завершился вничью"
+                },
+                "Совет ждёт решения о следующем шаге.",
+                json!([
+                    {
+                        "id": "steady_course",
+                        "label": "Сохранить стабильность и доверие болельщиков",
+                        "effect": "club_reputation"
+                    },
+                    {
+                        "id": "back_leadership",
+                        "label": "Подтвердить доверие руководству династии",
+                        "effect": "dynasty_prestige"
+                    }
+                ]),
+            ),
+            std::cmp::Ordering::Less => (
+                "поражение",
+                if is_home {
+                    "Команда потерпела поражение"
+                } else {
+                    "Команда проиграла на выезде"
+                },
+                "Совет требует реакции руководства.",
+                json!([
+                    {
+                        "id": "manager_review",
+                        "label": "Провести открытый разбор и восстановить доверие",
+                        "effect": "club_reputation_minus_1"
+                    },
+                    {
+                        "id": "protect_manager",
+                        "label": "Публично поддержать тренерский штаб",
+                        "effect": "dynasty_prestige_2"
+                    }
+                ]),
+            ),
+        };
+    (
+        result_label,
+        format!("{narrative}: {report}. {suffix}"),
+        choices,
+    )
 }
-
 pub async fn advance_time(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -1458,6 +1499,7 @@ pub async fn resolve_event(
     Ok(Json(result))
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1482,10 +1524,9 @@ mod tests {
         let (loss, loss_body, loss_choices) =
             match_board_review_choices(0, 2, false, "Northbridge United 0–2 Harbor Athletic");
         assert_eq!(loss, "поражение");
-        assert!(loss_body.contains("выезда"));
+        assert!(loss_body.contains("выезде"));
         assert_eq!(loss_choices.as_array().expect("loss choices").len(), 2);
         assert_eq!(loss_choices[0]["effect"], "club_reputation_minus_1");
         assert_eq!(loss_choices[1]["effect"], "dynasty_prestige_2");
     }
 }
-
