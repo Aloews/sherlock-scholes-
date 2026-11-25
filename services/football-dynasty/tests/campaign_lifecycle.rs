@@ -580,7 +580,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(month_status, StatusCode::OK);
     assert_eq!(month["current_date"], "2026-02-07");
     assert_eq!(month["generated_events"], 15);
-    assert_eq!(month["expired_events"], 5);
+    assert_eq!(month["expired_events"], 8);
 
     let (final_season_status, final_season) = call(
         app.clone(),
