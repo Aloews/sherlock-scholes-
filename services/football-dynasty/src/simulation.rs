@@ -862,6 +862,87 @@ pub async fn get_fixture(
     Ok(Json(FixtureMatchView { fixture, events, spatial_events, heatmaps }))
 }
 
+
+
+fn match_board_review_choices(
+    team_goals: i16,
+    opponent_goals: i16,
+    is_home: bool,
+    report: &str,
+) -> (&'static str, String, Value) {
+    let (result_label, narrative, suffix, choices) =
+        match team_goals.cmp(&opponent_goals) {
+            std::cmp::Ordering::Greater => (
+                "победа",
+                if is_home {
+                    "Команда добилась победы"
+                } else {
+                    "Команда добилась выездной победы"
+                },
+                "Совет предлагает решить, как закрепить результат.",
+                json!([
+                    {
+                        "id": "build_momentum",
+                        "label": "Использовать победу для укрепления репутации клуба",
+                        "effect": "club_reputation_2"
+                    },
+                    {
+                        "id": "reward_leadership",
+                        "label": "Публично поддержать руководство династии",
+                        "effect": "dynasty_prestige"
+                    }
+                ]),
+            ),
+            std::cmp::Ordering::Equal => (
+                "ничья",
+                if is_home {
+                    "Матч завершился вничью"
+                } else {
+                    "Выездной матч завершился вничью"
+                },
+                "Совет ждёт решения о следующем шаге.",
+                json!([
+                    {
+                        "id": "steady_course",
+                        "label": "Сохранить стабильность и доверие болельщиков",
+                        "effect": "club_reputation"
+                    },
+                    {
+                        "id": "back_leadership",
+                        "label": "Подтвердить доверие руководству династии",
+                        "effect": "dynasty_prestige"
+                    }
+                ]),
+            ),
+            std::cmp::Ordering::Less => (
+                "поражение",
+                if is_home {
+                    "Команда потерпела поражение"
+                } else {
+                    "Команда проиграла на выезде"
+                },
+                "Совет требует реакции руководства.",
+                json!([
+                    {
+                        "id": "manager_review",
+                        "label": "Провести открытый разбор и восстановить доверие",
+                        "effect": "club_reputation_minus_1"
+                    },
+                    {
+                        "id": "protect_manager",
+                        "label": "Публично поддержать тренерский штаб",
+                        "effect": "dynasty_prestige_2"
+                    }
+                ]),
+            ),
+        };
+    (
+        result_label,
+        format!("{narrative}: {report}. {suffix}"),
+        choices,
+    )
+}
+
 pub async fn advance_time(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -1021,6 +1102,17 @@ pub async fn advance_time(
         .bind(current_date)
         .fetch_all(&mut *tx)
         .await?;
+
+        let player_team_id: Option<Uuid> = if due_fixtures.is_empty() {
+            None
+        } else {
+            crate::fd_query_scalar!(
+                "SELECT id FROM fd.teams WHERE campaign_id=$1 AND is_player_controlled=true ORDER BY created_at,id LIMIT 1"
+            )
+            .bind(campaign_id)
+            .fetch_optional(&mut *tx)
+            .await?
+        };
         for (fixture_id, season_year, matchday, home_team, away_team, home_team_id, away_team_id) in due_fixtures {
             let home_squad=load_match_squad(&mut tx,campaign_id,fixture_id,home_team_id,current_date).await?;
             let away_squad=load_match_squad(&mut tx,campaign_id,fixture_id,away_team_id,current_date).await?;
@@ -1201,6 +1293,35 @@ pub async fn advance_time(
             .execute(&mut *tx)
             .await?;
             generated_events += event_insert.rows_affected() as i64;
+
+            let player_is_home = player_team_id == Some(home_team_id);
+            let player_is_away = player_team_id == Some(away_team_id);
+            if player_is_home || player_is_away {
+                let is_home = player_is_home;
+                let (team_goals, opponent_goals) = if is_home {
+                    (home_goals, away_goals)
+                } else {
+                    (away_goals, home_goals)
+                };
+                let (result_label, body, choices) =
+                    match_board_review_choices(team_goals, opponent_goals, is_home, &report);
+                let review_key = format!("match-board-review-{fixture_id}");
+                let review_insert = crate::fd_query!(
+                    "INSERT INTO fd.game_events(campaign_id,event_key,event_type,title,body,game_date,expires_on,priority,choices)
+                     VALUES($1,$2,'match_board_review',$3,$4,$5,$6,80,$7)
+                     ON CONFLICT(campaign_id,event_key) DO NOTHING"
+                )
+                .bind(campaign_id)
+                .bind(review_key)
+                .bind(format!("Решение после матча: {result_label}"))
+                .bind(body)
+                .bind(current_date)
+                .bind(current_date + Duration::days(7))
+                .bind(choices)
+                .execute(&mut *tx)
+                .await?;
+                generated_events += review_insert.rows_affected() as i64;
+            }
         }
     }
 
@@ -1290,6 +1411,15 @@ pub async fn resolve_event(
             .await?;
             "club_reputation_increased_by_two"
         }
+        Some("club_reputation_minus_1") => {
+            crate::fd_query!(
+                "UPDATE fd.clubs SET reputation=GREATEST(0,reputation-1) WHERE campaign_id=$1",
+            )
+            .bind(campaign_id)
+            .execute(&mut *tx)
+            .await?;
+            "club_reputation_decreased_by_one"
+        }
         Some("dynasty_prestige") => {
             crate::fd_query!("UPDATE fd.dynasties SET prestige=prestige+1 WHERE campaign_id=$1")
                 .bind(campaign_id)
@@ -1367,4 +1497,36 @@ pub async fn resolve_event(
     complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
     tx.commit().await?;
     Ok(Json(result))
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn match_board_decision_choices_follow_result_and_venue() {
+        let (win, win_body, win_choices) =
+            match_board_review_choices(2, 1, false, "Northbridge United 1–2 Harbor Athletic");
+        assert_eq!(win, "победа");
+        assert!(win_body.contains("выездной"));
+        assert_eq!(win_choices.as_array().expect("win choices").len(), 2);
+        assert_eq!(win_choices[0]["effect"], "club_reputation_2");
+        assert_eq!(win_choices[1]["effect"], "dynasty_prestige");
+
+        let (draw, draw_body, draw_choices) =
+            match_board_review_choices(1, 1, true, "Northbridge United 1–1 Harbor Athletic");
+        assert_eq!(draw, "ничья");
+        assert!(draw_body.contains("Матч завершился вничью"));
+        assert_eq!(draw_choices[0]["effect"], "club_reputation");
+        assert_eq!(draw_choices[1]["effect"], "dynasty_prestige");
+
+        let (loss, loss_body, loss_choices) =
+            match_board_review_choices(0, 2, false, "Northbridge United 0–2 Harbor Athletic");
+        assert_eq!(loss, "поражение");
+        assert!(loss_body.contains("выезде"));
+        assert_eq!(loss_choices.as_array().expect("loss choices").len(), 2);
+        assert_eq!(loss_choices[0]["effect"], "club_reputation_minus_1");
+        assert_eq!(loss_choices[1]["effect"], "dynasty_prestige_2");
+    }
 }
