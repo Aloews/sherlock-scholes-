@@ -942,6 +942,7 @@ fn match_board_review_choices(
         choices,
     )
 }
+
 pub async fn advance_time(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -1410,7 +1411,6 @@ pub async fn resolve_event(
             .await?;
             "club_reputation_increased_by_two"
         }
-
         Some("club_reputation_minus_1") => {
             crate::fd_query!(
                 "UPDATE fd.clubs SET reputation=GREATEST(0,reputation-1) WHERE campaign_id=$1",
