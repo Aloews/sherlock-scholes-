@@ -680,6 +680,14 @@ Required information architecture:
 - Implemented on a dedicated mainline Draft PR branch: every fixture involving the campaign's `is_player_controlled` team creates one pending, fixture-keyed `match_board_review` event in the same calendar transaction.
 - Outcome-specific decisions are win/draw/loss and venue-aware; choices persist club reputation or dynasty prestige changes. Loss choices include a bounded `GREATEST(0, reputation-1)` effect.
 - The existing Events inbox renders the persisted title/body/choice labels and submits through the existing idempotent event-resolution API; no UI fork or schema migration is needed.
+- Regression coverage: pure tests cover all three result paths and home/away wording; PostgreSQL lifecycle test verifies event generation, actual effect, replay idempotency, and the reputation floor. Calendar generated-event and expiry expectations account for reviews.
+- This is a smaller verified-gameplay slice ported from the stale #446 work onto current main; matchday ticket-revenue accounting and standings position/goal-difference changes from #446 were intentionally not included.
+- Initial exact-head CI run [#1788 / 45606031925](https://github.com/Aloews/sherlock-scholes-/actions/runs/45606031925) compiled the feature, passed Clippy and 46 unit tests, but failed the PostgreSQL lifecycle assertion: month expiry count was 8, while the old expectation remained 5. Corrected the expected count to 8; rerun is required.
+- Next priority remains FD-UI-01 squad inspection and editable lineup persistence; this slice does not complete that contract.
+
+- Implemented on a dedicated mainline Draft PR branch: every fixture involving the campaign's `is_player_controlled` team creates one pending, fixture-keyed `match_board_review` event in the same calendar transaction.
+- Outcome-specific decisions are win/draw/loss and venue-aware; choices persist club reputation or dynasty prestige changes. Loss choices include a bounded `GREATEST(0, reputation-1)` effect.
+- The existing Events inbox renders the persisted title/body/choice labels and submits through the existing idempotent event-resolution API; no UI fork or schema migration is needed.
 - Regression coverage: pure tests cover all three result paths and home/away wording; PostgreSQL lifecycle test verifies event generation, actual effect, replay idempotency, and the reputation floor. Calendar generated-event expectations account for reviews.
 - This is a smaller verified-gameplay slice ported from the stale #446 work onto current main; matchday ticket-revenue accounting and standings position/goal-difference changes from #446 were intentionally not included.
 - CI is required on the exact PR head before marking VERIFIED. Next priority remains FD-UI-01 squad inspection and editable lineup persistence; the board-decision slice does not complete that contract.
