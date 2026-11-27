@@ -702,3 +702,11 @@ Required information architecture:
 - Tests added: frontend API response shape/route test and PostgreSQL lifecycle test for 19 seeded players, default formation, sorted shirt number, goalkeeper/attributes and cross-owner 404 isolation.
 - Status: IMPLEMENTED IN DRAFT BRANCH; exact-head CI and Preview pending. FD-UI-01 remains incomplete: lineup/bench selection, save/reload persistence and browser end-to-end acceptance are not implemented or verified.
 - Next: persist the selected starting XI/bench and formation in an owner-scoped API transaction, then test save/reload and matchday consumption of that lineup.
+
+### Verification update — PR #451 prior exact head 71d8e4d59e96d91552d609f3a288df4779a14ae5
+
+- Rust engine run #161 / 45991958238 SUCCESS; Rust format, Clippy, migration smoke, API/engine tests and release compile all completed.
+- Main CI #2997 / 45991958521 SUCCESS; Python, frontend unit/property/data-integrity and coverage, translations, edge functions, typecheck and build completed. Mutation and voice checks were skipped by their workflow conditions.
+- The regression workflows for the exact prior head also completed successfully.
+- Vercel check is SUCCESS, but the corresponding deployment is CANCELED with an ignored-build-step reason. This is not a ready Preview and no preview URL is confirmed. Project ignore-build configuration was not changed.
+- Code is verified on the prior head; this MAP-only commit requires exact-head checks again. Squad UI has no browser E2E yet.
