@@ -180,3 +180,32 @@ describe('saveLineup', () => {
     expect(fetchMock).toHaveBeenCalledWith('https://test.local/api/v1/campaigns/campaign-1/fixtures/fixture-1/lineup', expect.objectContaining({ method: 'POST', body: JSON.stringify(payload), headers: expect.any(Headers) }));
   });
 });
+
+
+describe('setPlayerTraining', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    fetchMock = vi.fn();
+    vi.stubGlobal('window', { location: { origin: 'https://test.local' } });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sends an authenticated idempotent training command for selected players', async () => {
+    const result = { campaign_id: 'campaign-1', team_id: 'team-1', assigned_players: 1, focus: 'balanced', intensity: 80 };
+    fetchMock.mockResolvedValue({ ok: true, json: async () => result });
+    const { setPlayerTraining } = await import('./api');
+    await expect(setPlayerTraining('campaign-1', { player_ids: ['player-1'], focus: 'balanced', intensity: 80 })).resolves.toEqual(result);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://test.local/api/v1/campaigns/campaign-1/training');
+    expect(init.method).toBe('POST');
+    expect(init.headers.get('x-tg-init-data')).toBe('signed-test-init-data');
+    expect(init.headers.get('idempotency-key')).toBeTruthy();
+    expect(JSON.parse(init.body)).toEqual({ player_ids: ['player-1'], focus: 'balanced', intensity: 80 });
+  });
+});
