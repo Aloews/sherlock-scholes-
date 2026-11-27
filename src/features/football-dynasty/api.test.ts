@@ -111,6 +111,12 @@ describe('getSquad', () => {
     const { getSquad } = await import('./api');
     await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
   });
+
+  it('rejects missing or out-of-range persisted training state', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', next_fixture_id: null, starter_ids: [], substitute_ids: [], players: [{ training_focus: 'balanced', training_intensity: 140 }] }) });
+    const { getSquad } = await import('./api');
+    await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
+  });
 });
 
 
