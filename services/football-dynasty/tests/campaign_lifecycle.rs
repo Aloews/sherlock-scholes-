@@ -280,7 +280,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted trained player");
     assert!(training_after>training_before,"daily training must improve a real PostgreSQL attribute without exceeding potential {training_potential}");
     assert!(training_after<=training_potential);
-    assert!(fatigue_after>=0 && fatigue_after<=100);
+    assert!((0..=100).contains(&fatigue_after));
     let training_log_count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training audit log");
     assert_eq!(training_log_count,1,"one daily training outcome must be persisted exactly once");
