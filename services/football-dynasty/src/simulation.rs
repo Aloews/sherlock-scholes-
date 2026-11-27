@@ -996,7 +996,7 @@ async fn apply_daily_training(
             .bind(i16::from(career.fatigue)).execute(&mut **tx).await?;
         crate::fd_query!("INSERT INTO fd.player_training_log(campaign_id,player_id,game_date,focus,intensity,attribute_gain,improved_attribute,fatigue_delta,morale_delta,attributes_before,attributes_after) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(campaign_id,player_id,game_date) DO NOTHING")
             .bind(campaign_id).bind(row.id).bind(game_date).bind(&focus_label).bind(row.intensity)
-            .bind(i16::from(gain)).bind(improved)
+            .bind(i16::from(gain)).bind(improved_attribute)
             .bind(i16::from(career.fatigue)-i16::from(fatigue_before)).bind(i16::from(morale_delta))
             .bind(attributes_before).bind(attributes_after).execute(&mut **tx).await?;
     }
