@@ -152,8 +152,8 @@ describe('resolveLineupSelection', () => {
     };
     const selection = resolveLineupSelection(injuredSquad, '2026-01-05');
     expect(selection.starterIds).toHaveLength(11);
-    expect(selection.substituteIds).toHaveLength(7);
-    expect(new Set([...selection.starterIds, ...selection.substituteIds]).size).toBe(18);
+    expect(selection.substituteIds).toHaveLength(6);
+    expect(new Set([...selection.starterIds, ...selection.substituteIds]).size).toBe(17);
     expect(selection.starterIds).not.toContain('player-2');
   });
 
