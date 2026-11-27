@@ -6,6 +6,7 @@ on:
     paths:
       - "services/football-dynasty/**"
       - "supabase/migrations/**"
+      - "supabase/tests/**"
       - ".github/workflows/rust-engine.yml"
       - ".github/workflows/football-dynasty-rust.yml"
   push:
@@ -13,6 +14,7 @@ on:
     paths:
       - "services/football-dynasty/**"
       - "docs/MAP.md"
+      - "supabase/tests/**"
       - ".github/workflows/rust-engine.yml"
       - ".github/workflows/football-dynasty-rust.yml"
   workflow_dispatch: {}
