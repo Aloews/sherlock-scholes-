@@ -697,7 +697,8 @@ export function FootballDynastyScreen() {
                       const suspended = player.suspended_until && player.suspended_until >= availabilityDate;
                       const attributes = [
                         ['PAC', player.pace], ['SHO', player.shooting], ['PAS', player.passing],
-                        ['DEF', player.defending], ['PHY', player.physical], ['GK', player.goalkeeping],
+                        ['DEF', player.defending], ['PHY', player.physical], ['STA', player.stamina],
+                        ['GK', player.goalkeeping], ['FAT', player.fatigue], ['MOR', player.morale],
                       ];
                       return (
                         <article key={player.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
@@ -709,7 +710,7 @@ export function FootballDynastyScreen() {
                             <span className="shrink-0 rounded-lg bg-brand-surface px-2.5 py-1 text-xs font-semibold">#{player.shirt_number}</span>
                           </div>
                           <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs text-brand-muted">{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Старт' : 'Starter') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Запасной' : 'Substitute') : (i18n.language.startsWith('ru') ? 'Не выбран' : 'Not selected')}</span><button type="button" className={quietButtonClass + ' px-2 py-1 text-xs'} disabled={busy !== '' || Boolean(injured || suspended) || (starterIds.includes(player.id) && substituteIds.length >= 7) || (substituteIds.includes(player.id) && starterIds.length >= 11) || (!starterIds.includes(player.id) && !substituteIds.includes(player.id) && starterIds.length >= 11 && substituteIds.length >= 7)} onClick={() => toggleLineupRole(player.id)}>{injured || suspended ? (i18n.language.startsWith('ru') ? 'Недоступен' : 'Unavailable') : starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'На скамейку' : 'Move to bench') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'В старт' : 'Move to XI') : starterIds.length < 11 ? (i18n.language.startsWith('ru') ? 'В старт' : 'Add to XI') : (i18n.language.startsWith('ru') ? 'В запас' : 'Add to bench')}</button></div>
-                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                             {attributes.map(([label, value]) => (
                               <div key={label} className="rounded-lg border border-brand-border/60 px-2 py-1.5 text-center">
                                 <div className="text-[10px] text-brand-muted">{label}</div>
