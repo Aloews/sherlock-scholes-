@@ -122,7 +122,9 @@ pub fn apply_training(
     let gain=if plan.intensity<20 || potential_gap==0 {0}
         else {(age_factor+intensity_factor+noise).min(3).min(potential_gap)};
     if gain>0 {set_focus_value(player,plan.focus,current.saturating_add(gain));}
-    let fatigue_added=plan.intensity/20;
+    // The calendar supplies 8 points of passive recovery per day; training
+    // adds up to 10 points so high-intensity work can create a net fatigue load.
+    let fatigue_added=plan.intensity/10;
     player.fatigue=player.fatigue.saturating_add(fatigue_added).min(100);
     let morale_change=if gain>0 {1} else if plan.intensity>=80 {-2} else {0};
     player.morale=(i16::from(player.morale)+i16::from(morale_change)).clamp(0,100) as u8;
@@ -230,6 +232,13 @@ mod tests{
         let before=p.attributes;
         let out=apply_training(&mut p,TrainingPlan{focus:TrainingFocus::Finishing,intensity:100},1).unwrap();
         assert_eq!(out.attribute_gain,0);assert_eq!(p.attributes,before);
+    }
+    #[test]fn high_intensity_training_can_outpace_daily_recovery(){
+        let mut p=player();
+        let before=p.fatigue;
+        let outcome=apply_training(&mut p,TrainingPlan{focus:TrainingFocus::Finishing,intensity:100},3).unwrap();
+        assert_eq!(outcome.fatigue_added,10);
+        assert_eq!(p.fatigue,before+10);
     }
     #[test]fn recovery_is_bounded(){
         let mut p=player();recover(&mut p,3);assert_eq!(p.fatigue,0);
