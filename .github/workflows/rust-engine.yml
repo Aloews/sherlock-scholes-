@@ -7,12 +7,14 @@ on:
       - "services/football-dynasty/**"
       - "supabase/migrations/**"
       - ".github/workflows/rust-engine.yml"
+      - ".github/workflows/football-dynasty-rust.yml"
   push:
     branches: [main, feat/dynasty-rust-engine-core-20261119, feat/dynasty-squad-inspection-20261127]
     paths:
       - "services/football-dynasty/**"
       - "docs/MAP.md"
       - ".github/workflows/rust-engine.yml"
+      - ".github/workflows/football-dynasty-rust.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -44,6 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - name: Apply complete PostgreSQL migration chain
         run: |
           for migration in migrations/*.sql; do
@@ -66,9 +70,26 @@ jobs:
           psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='football_dynasty_test' AND pid <> pg_backend_pid();"
           psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE football_dynasty_test;"
           psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE football_dynasty_test;"
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
       - name: Run Clippy with warnings denied
         run: cargo clippy --all-targets -- -D warnings
       - name: Compile and test engine and API
         run: cargo test --all-targets
+      - name: Verify owner-scoped PostgreSQL RLS policies
+        run: |
+          RLS_DATABASE_URL="postgres://postgres:postgres@localhost:5432/football_dynasty_rls_test"
+          psql "postgres://postgres:postgres@localhost:5432/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE football_dynasty_rls_test"
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN"
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261105203942_football_dynasty_foundation.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261105204011_football_dynasty_rls_hardening.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261110100000_football_dynasty_owner_rls.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261110103000_football_dynasty_rls_initplan.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119120000_football_dynasty_game_clock_events.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119123000_football_dynasty_event_deadlines.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119140000_football_dynasty_season_fixtures.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/migrations/20261119150000_football_dynasty_season_year_alignment.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_rls.test.sql
+          psql "$RLS_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../supabase/tests/football_dynasty_owner_rls.test.sql
       - name: Compile release binary
         run: cargo build --release

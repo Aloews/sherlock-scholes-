@@ -752,3 +752,10 @@ Required information architecture:
 - The Squad screen now includes an in-place one-day calendar advance so the user can apply a plan and immediately inspect the refreshed PostgreSQL-backed player state.
 - These are CI checks against an ephemeral PostgreSQL 16 instance, not writes to the production Supabase database. Migration `0015` is mirrored but has not been applied to production. No Vercel deployment or Preview is used for these checks.
 - FD-UI-02 remains **NOT VERIFIED as a complete player journey** until browser E2E is run. PR #451 remains Draft; no merge or production action.
+
+
+### Workflow consolidation — 2026-11-27
+
+- Consolidated the previous duplicate/empty-job `.github/workflows/football-dynasty-rust.yml` into `.github/workflows/rust-engine.yml`. The active Rust workflow now includes rustfmt, Clippy, complete migration-chain smoke tests, byte-for-byte service/Supabase parity, PostgreSQL lifecycle tests, release build, and the separate owner-scoped RLS SQL suite (anon/authenticated roles included).
+- The duplicate legacy workflow is removed from this PR branch to avoid a failed zero-job check; its owner-RLS coverage is preserved in the active workflow.
+- Current branch head `c4a0aacef30b66ce4760d81481ab2cf6c1d07a65` is being rechecked after the final training-log and controlled-squad scoping changes. Earlier exact-head evidence above remains tied to its stated SHA and is not substituted for this run.
