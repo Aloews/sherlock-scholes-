@@ -250,7 +250,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     // Assign a real individual development plan, replay the command, then
     // advance the persisted game clock and verify PostgreSQL attributes/logs.
     let (training_player, training_before, training_potential, fatigue_before): (uuid::Uuid, i16, i16, i16) = sqlx::query_as(
-        "SELECT id,LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina),potential,fatigue FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina)<potential AND injured_until IS NULL AND suspended_until IS NULL ORDER BY shirt_number LIMIT 1")
+        "SELECT id,LEAST(pace,shooting,passing,defending,physical,stamina),potential,fatigue FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND LEAST(pace,shooting,passing,defending,physical,stamina)<potential AND injured_until IS NULL AND suspended_until IS NULL ORDER BY shirt_number LIMIT 1")
         .bind(campaign_uuid).bind(team_id).fetch_one(&pool).await.expect("player eligible for development");
     let training_payload=json!({"player_ids":[training_player],"focus":"balanced","intensity":80});
     let (training_status, training_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload.clone())).await;
@@ -272,7 +272,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(one_day["current_date"], "2026-01-02");
     assert_eq!(one_day["generated_events"], 0);
     let (training_after, fatigue_after): (i16,i16)=sqlx::query_as(
-        "SELECT LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina),fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
+        "SELECT LEAST(pace,shooting,passing,defending,physical,stamina),fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted trained player");
     assert!(training_after>training_before,"daily training must improve a real PostgreSQL attribute without exceeding potential {training_potential}");
     assert!(training_after<=training_potential);
