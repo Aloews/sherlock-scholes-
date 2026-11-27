@@ -287,6 +287,11 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let (training_focus,training_intensity):(Option<String>,Option<i16>)=sqlx::query_as("SELECT focus,intensity FROM fd.player_training_plans WHERE campaign_id=$1 AND player_id=$2")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted training plan");
     assert_eq!((training_focus,training_intensity),(Some("balanced".to_owned()),Some(80)));
+    let (squad_after_training_status,squad_after_training)=call(app.clone(),"GET",&format!("/api/v1/campaigns/{campaign_id}/squad"),None,None).await;
+    assert_eq!(squad_after_training_status,StatusCode::OK);
+    let trained_player_view=squad_after_training["players"].as_array().unwrap().iter().find(|player|player["id"]==training_player.to_string()).expect("training state visible in squad API");
+    assert_eq!(trained_player_view["training_focus"],"balanced");
+    assert_eq!(trained_player_view["training_intensity"],80);
     let _ = fatigue_before;
 
     // A world incident is separate from the legacy calendar inbox. Exercise
@@ -339,6 +344,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(replay_status, StatusCode::OK);
     assert_eq!(replayed_response, response);
 
+    let (recovery_status,recovery_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-recovery-0001"),Some(json!({"player_ids":[training_player],"focus":"recovery","intensity":0}))).await;
+    assert_eq!(recovery_status,StatusCode::OK,"recovery assignment: {recovery_result}");
+    assert_eq!(recovery_result["focus"],"recovery");
+
     let (tick_status, tick) = call(
         app.clone(),
         "POST",
@@ -351,6 +360,12 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 4);
+    let recovery_days:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date BETWEEN DATE '2026-01-03' AND DATE '2026-01-08' AND focus='recovery'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("daily recovery log");
+    assert_eq!(recovery_days,6,"recovery plan must execute once per in-game day");
+    let recovered_fatigue:i16=sqlx::query_scalar("SELECT fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("recovered player fatigue");
+    assert_eq!(recovered_fatigue,0,"daily recovery must persist fatigue reduction");
     let played_status: String = sqlx::query_scalar("SELECT status FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
         .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("played fixture status");
     assert_eq!(played_status, "played", "the match engine must consume the fixture-specific 4-4-2");
