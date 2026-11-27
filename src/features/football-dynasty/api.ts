@@ -116,6 +116,14 @@ export const getSquad = async (campaignId: string): Promise<CampaignSquadView> =
   const squad = await request<unknown>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/squad');
   if (!squad || typeof squad !== 'object'
     || !Array.isArray((squad as { players?: unknown }).players)
+    || (squad as { players: unknown[] }).players.some((player) => !player || typeof player !== 'object'
+      || !('training_focus' in player)
+      || !((player as { training_focus?: unknown }).training_focus === null || typeof (player as { training_focus?: unknown }).training_focus === 'string')
+      || !('training_intensity' in player)
+      || !((player as { training_intensity?: unknown }).training_intensity === null
+        || (typeof (player as { training_intensity?: unknown }).training_intensity === 'number'
+          && (player as { training_intensity: number }).training_intensity >= 0
+          && (player as { training_intensity: number }).training_intensity <= 100)))
     || !Array.isArray((squad as { starter_ids?: unknown }).starter_ids)
     || !Array.isArray((squad as { substitute_ids?: unknown }).substitute_ids)
     || !('next_fixture_id' in squad)
