@@ -247,6 +247,19 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
 
+    // Assign a real individual development plan, replay the command, then
+    // advance the persisted game clock and verify PostgreSQL attributes/logs.
+    let (training_player, training_before, training_potential, fatigue_before): (uuid::Uuid, i16, i16, i16) = sqlx::query_as(
+        "SELECT id,LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina),potential,fatigue FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina)<potential ORDER BY shirt_number LIMIT 1")
+        .bind(campaign_uuid).bind(team_id).fetch_one(&pool).await.expect("player eligible for development");
+    let training_payload=json!({"player_ids":[training_player],"focus":"balanced","intensity":80});
+    let (training_status, training_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload.clone())).await;
+    assert_eq!(training_status,StatusCode::OK,"training assignment: {training_result}");
+    assert_eq!(training_result["assigned_players"],1);
+    let (training_replay_status,training_replay)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload)).await;
+    assert_eq!(training_replay_status,StatusCode::OK);
+    assert_eq!(training_replay,training_result,"training assignment replay must not duplicate state");
+
     let (one_day_status, one_day) = call(
         app.clone(),
         "POST",
@@ -258,6 +271,19 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(one_day_status, StatusCode::OK);
     assert_eq!(one_day["current_date"], "2026-01-02");
     assert_eq!(one_day["generated_events"], 0);
+    let (training_after, fatigue_after): (i16,i16)=sqlx::query_as(
+        "SELECT LEAST(pace,shooting,passing,defending,physical,goalkeeping,stamina),fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted trained player");
+    assert!(training_after>training_before,"daily training must improve a real PostgreSQL attribute without exceeding potential {training_potential}");
+    assert!(training_after<=training_potential);
+    assert!(fatigue_after>=0 && fatigue_after<=100);
+    let training_log_count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training audit log");
+    assert_eq!(training_log_count,1,"one daily training outcome must be persisted exactly once");
+    let (training_focus,training_intensity):(Option<String>,Option<i16>)=sqlx::query_as("SELECT focus,intensity FROM fd.player_training_plans WHERE campaign_id=$1 AND player_id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted training plan");
+    assert_eq!((training_focus,training_intensity),(Some("balanced".to_owned()),Some(80)));
+    let _ = fatigue_before;
 
     // A world incident is separate from the legacy calendar inbox. Exercise
     // the authenticated API, persist the player's choice, then verify that
