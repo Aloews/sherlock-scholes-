@@ -259,6 +259,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let (training_replay_status,training_replay)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload)).await;
     assert_eq!(training_replay_status,StatusCode::OK);
     assert_eq!(training_replay,training_result,"training assignment replay must not duplicate state");
+    let (foreign_training_status,_) = call(other_owner_app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("foreign-training-0001"),Some(json!({"player_ids":[training_player],"focus":"balanced","intensity":80}))).await;
+    assert_eq!(foreign_training_status,StatusCode::NOT_FOUND,"another owner cannot assign training to this campaign's players");
+    let (invalid_training_status,_) = call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("invalid-training-0001"),Some(json!({"player_ids":[training_player],"focus":"telepathy","intensity":80}))).await;
+    assert_eq!(invalid_training_status,StatusCode::BAD_REQUEST);
 
     let (one_day_status, one_day) = call(
         app.clone(),
