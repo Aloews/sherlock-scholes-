@@ -144,6 +144,37 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(replay_status, StatusCode::OK);
     assert_eq!(replayed["id"], created["id"]);
 
+    let (squad_status, squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    ).await;
+    assert_eq!(squad_status, StatusCode::OK);
+    assert_eq!(squad["formation"], "4-3-3");
+    assert_eq!(squad["players"].as_array().expect("squad players").len(), 19);
+    assert_eq!(squad["players"][0]["shirt_number"], 1);
+    assert!(squad["players"].as_array().expect("players").iter().any(|player| player["position"] == "goalkeeper"));
+    assert!(squad["players"][0]["potential"].as_i64().is_some());
+    assert!(squad["team_name"].as_str().is_some_and(|name| !name.is_empty()));
+
+    let other_owner_app = http::router(
+        AppState {
+            db: pool.clone(),
+            verifier: Arc::new(FixedVerifier(owner_id + 1)),
+        },
+        "http://localhost:5173".parse().expect("origin"),
+    );
+    let (foreign_status, _) = call(
+        other_owner_app,
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    ).await;
+    assert_eq!(foreign_status, StatusCode::NOT_FOUND);
+
     let (heir_status, heir) = call(
         app.clone(),
         "POST",
