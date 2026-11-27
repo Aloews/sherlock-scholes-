@@ -201,6 +201,8 @@ async fn load_match_squad(
         .bind(campaign_id).bind(fixture_id).bind(team_id).fetch_all(&mut **tx).await?;
     let mut starters = Vec::with_capacity(11);
     let mut bench = Vec::with_capacity(rows.len().saturating_sub(11));
+    let mut unavailable_starters = Vec::new();
+    let mut promoted_starters = Vec::new();
     for row in rows {
         let position = match row.position.as_str() {
             "goalkeeper" => Position::Goalkeeper,
@@ -212,7 +214,10 @@ async fn load_match_squad(
         let to_rating = |value: i16| u8::try_from(value).map_err(|_| ApiError::conflict("invalid_player_rating"));
         let unavailable = row.injured_until.is_some_and(|until| until >= match_date)
             || row.suspended_until.is_some_and(|until| until >= match_date);
-        if unavailable { continue; }
+        if unavailable {
+            if row.role == "starter" { unavailable_starters.push(row.id); }
+            continue;
+        }
         let player = Player {
             id: row.id,
             position,
@@ -244,8 +249,23 @@ async fn load_match_squad(
     ] {
         while starters.iter().filter(|player| player.position == position).count() < required {
             let Some(index) = bench.iter().position(|player| player.position == position) else { break; };
-            starters.push(bench.remove(index));
+            let promoted = bench.remove(index);
+            promoted_starters.push(promoted.id);
+            starters.push(promoted);
         }
+    }
+    // Persist the adjusted roles before player_match_stats derives minutes from
+    // the lineup snapshot. Otherwise a promoted substitute would be simulated
+    // as a starter in memory but recorded as a 0-minute substitute in PostgreSQL.
+    for player_id in &unavailable_starters {
+        crate::fd_query!("UPDATE fd.match_lineups SET role='substitute' WHERE campaign_id=$1 AND fixture_id=$2 AND team_id=$3 AND player_id=$4")
+            .bind(campaign_id).bind(fixture_id).bind(team_id).bind(player_id)
+            .execute(&mut **tx).await?;
+    }
+    for player_id in &promoted_starters {
+        crate::fd_query!("UPDATE fd.match_lineups SET role='starter' WHERE campaign_id=$1 AND fixture_id=$2 AND team_id=$3 AND player_id=$4")
+            .bind(campaign_id).bind(fixture_id).bind(team_id).bind(player_id)
+            .execute(&mut **tx).await?;
     }
     let goalkeeper_count = starters.iter().filter(|player| player.position == Position::Goalkeeper).count();
     let defender_count = starters.iter().filter(|player| player.position == Position::Defender).count();
