@@ -73,3 +73,36 @@ describe('listWorldEvents', () => {
     await expect(listWorldEvents('campaign-1')).rejects.toThrow('invalid_world_events_response');
   });
 });
+
+
+describe('getSquad', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    fetchMock = vi.fn();
+    vi.stubGlobal('window', { location: { origin: 'https://test.local' } });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('loads the owner-scoped campaign squad with the authenticated request helper', async () => {
+    const squad = { team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', players: [] };
+    fetchMock.mockResolvedValue({ ok: true, json: async () => squad });
+    const { getSquad } = await import('./api');
+    await expect(getSquad('campaign-1')).resolves.toEqual(squad);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://test.local/api/v1/campaigns/campaign-1/squad',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    );
+  });
+
+  it('rejects a malformed squad payload instead of treating it as an empty squad', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ team_id: 'team-1', players: {} }) });
+    const { getSquad } = await import('./api');
+    await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
+  });
+});
