@@ -10,7 +10,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/dynasty-squad-inspection-20261127]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   # Manual re-run. GitHub occasionally drops a `synchronize` event and the

@@ -8,7 +8,7 @@ on:
       - "supabase/migrations/**"
       - ".github/workflows/rust-engine.yml"
   push:
-    branches: [main, feat/dynasty-rust-engine-core-20261119]
+    branches: [main, feat/dynasty-rust-engine-core-20261119, feat/dynasty-squad-inspection-20261127]
     paths:
       - "services/football-dynasty/**"
       - ".github/workflows/rust-engine.yml"
