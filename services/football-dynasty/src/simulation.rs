@@ -931,6 +931,7 @@ async fn apply_daily_training(
                 p.wage_minor,p.market_value_minor,plan.focus,plan.intensity
          FROM fd.player_training_plans plan
          JOIN fd.players p ON p.campaign_id=plan.campaign_id AND p.id=plan.player_id
+         JOIN fd.teams t ON t.campaign_id=p.campaign_id AND t.id=p.team_id AND t.is_player_controlled=true
          WHERE plan.campaign_id=$1 ORDER BY p.id")
         .bind(campaign_id).fetch_all(&mut **tx).await?;
 
