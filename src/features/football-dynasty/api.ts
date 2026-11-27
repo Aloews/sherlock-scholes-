@@ -29,6 +29,16 @@ export interface LeagueStanding {
 export interface SeasonView {
   season_year: number; fixtures: SeasonFixture[]; standings: LeagueStanding[];
 }
+export interface CampaignSquadPlayer {
+  id: string; full_name: string; position: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
+  shirt_number: number; age: number; pace: number; shooting: number; passing: number;
+  defending: number; physical: number; goalkeeping: number; stamina: number; morale: number;
+  fatigue: number; potential: number; market_value_minor: number; wage_minor: number;
+  contract_until: string | null; injured_until: string | null; suspended_until: string | null;
+}
+export interface CampaignSquadView {
+  team_id: string; team_name: string; formation: string; players: CampaignSquadPlayer[];
+}
 
 export interface CampaignCreated {
   id: string; name: string; mode: string; status: string; current_year: number;
@@ -99,7 +109,14 @@ export const listGameEvents = async (campaignId: string): Promise<GameEvent[]> =
   return events as GameEvent[];
 };
 export const getSeason = (campaignId: string) =>
-  request<SeasonView>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/season`);
+  request<SeasonView>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/season');
+export const getSquad = async (campaignId: string): Promise<CampaignSquadView> => {
+  const squad = await request<unknown>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/squad');
+  if (!squad || typeof squad !== 'object' || !Array.isArray((squad as { players?: unknown }).players)) {
+    throw new Error('invalid_squad_response');
+  }
+  return squad as CampaignSquadView;
+};
 export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
   request<{ event_id: string; status: string; resolution: Record<string, unknown> }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
