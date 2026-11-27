@@ -175,9 +175,13 @@ export function FootballDynastyScreen() {
     finally { setBusy(''); }
   };
 
+  const squadFixtureDate = squad?.next_fixture_id
+    ? season?.fixtures.find((fixture) => fixture.id === squad.next_fixture_id)?.match_date
+    : undefined;
+
   useEffect(() => {
     if (!squad) return;
-    const selection = resolveLineupSelection(squad, campaign?.campaign.game_date);
+    const selection = resolveLineupSelection(squad, squadFixtureDate ?? campaign?.campaign.game_date);
     setLineupFormation(selection.formation);
     setStarterIds(selection.starterIds);
     setSubstituteIds(selection.substituteIds);
@@ -632,8 +636,9 @@ export function FootballDynastyScreen() {
                           : player.position === 'midfielder'
                             ? (i18n.language.startsWith('ru') ? 'Полузащитник' : 'Midfielder')
                             : (i18n.language.startsWith('ru') ? 'Нападающий' : 'Forward');
-                      const injured = player.injured_until && player.injured_until >= campaign.campaign.game_date;
-                      const suspended = player.suspended_until && player.suspended_until >= campaign.campaign.game_date;
+                      const availabilityDate = nextFixture?.match_date ?? campaign.campaign.game_date;
+                      const injured = player.injured_until && player.injured_until >= availabilityDate;
+                      const suspended = player.suspended_until && player.suspended_until >= availabilityDate;
                       const attributes = [
                         ['PAC', player.pace], ['SHO', player.shooting], ['PAS', player.passing],
                         ['DEF', player.defending], ['PHY', player.physical], ['GK', player.goalkeeping],
