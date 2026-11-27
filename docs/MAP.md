@@ -726,3 +726,19 @@ Required information architecture:
 - Saved lineup restoration now revalidates every persisted starter and substitute against current injury/suspension eligibility, duplicate IDs, and formation-position counts. Invalid/stale selections are rebuilt from currently eligible squad members rather than restored into an unsavable state.
 - Match simulation now promotes an eligible same-position substitute when a previously saved starter becomes injured or suspended before kickoff. If the bench cannot restore the required formation, the engine still fails explicitly rather than silently simulating an invalid XI.
 - Added frontend regression cases for exact saved-lineup restoration, late unavailability and malformed/duplicate persisted IDs. Added PostgreSQL lifecycle coverage for a late injury and same-position bench promotion; exact-head CI is running and this increment is not VERIFIED until it passes.
+
+
+## FD-UI-02 — Training, development and recovery (implementation in progress, 2026-11-27)
+
+- Added service migration `0015_player_training_development.sql` and an identical Supabase mirror `20261127140000_football_dynasty_player_training_development.sql`. The Rust workflow compares the two files and applies the complete migration chain to an ephemeral PostgreSQL 16 service.
+- Added owner-scoped, idempotent `POST /api/v1/campaigns/{campaign_id}/training`. It accepts a player subset for individual plans or the complete controlled squad for team plans; duplicate, foreign-campaign, invalid-focus and invalid-intensity requests are rejected. Goalkeeping focus is restricted to goalkeepers.
+- Persisted plans in `fd.player_training_plans`; daily results are written to `fd.player_training_log` with before/after attributes, gain, fatigue and morale deltas. Both tables use campaign-owner RLS and composite campaign/player foreign keys.
+- The existing calendar transaction now applies the pure Rust lifecycle rules each in-game day: deterministic training growth capped by potential, intensity-dependent fatigue, morale effects, and explicit recovery. The daily log and player updates share the calendar transaction.
+- The Squad UI exposes team/individual target, training focus, intensity and recovery; player cards display the persisted plan plus stamina, fatigue and morale. The existing Dynasty calendar controls advance the game clock; returning to Squad reloads persisted player state.
+- Balanced development excludes the goalkeeper-only attribute; specialist goalkeeper sessions cannot be assigned to outfield players. Recovery uses a separate zero-intensity plan and provides additional daily fatigue reduction.
+- PostgreSQL lifecycle coverage assigns and replays a training plan, checks owner isolation and invalid focus, advances the calendar, verifies real attribute changes and potential caps, reads the saved plan through the squad API, then applies recovery and verifies daily recovery logs and persisted fatigue.
+- FD-UI-02 remains **NOT VERIFIED** until exact-head Rust/PostgreSQL and frontend CI pass, and a browser journey is run. Vercel is not required for migration, API, database or local-build validation; deployed Preview acceptance is a separate later gate.
+
+### FD-UI-01 matchday recovery hardening
+
+- Late-injury promotion now updates the persisted `fd.match_lineups.role` values before player match statistics are derived. This keeps the in-memory XI, match simulation and PostgreSQL minutes/started flags consistent. The previous exact-head Rust integration run exposed the mismatch; this fix is included in the current branch and must pass fresh CI.
