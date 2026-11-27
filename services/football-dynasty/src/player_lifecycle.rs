@@ -78,7 +78,9 @@ fn focus_value(player:&PlayerCareer,focus:TrainingFocus)->u8{
         TrainingFocus::Defending=>a.defending,
         TrainingFocus::Physical=>a.physical,
         TrainingFocus::Goalkeeping=>a.goalkeeping,
-        TrainingFocus::Balanced=>[a.pace,a.shooting,a.passing,a.defending,a.physical,a.goalkeeping,a.stamina]
+        // Balanced outfield development excludes the goalkeeper-only attribute;
+        // goalkeeper training remains an explicit specialist focus.
+        TrainingFocus::Balanced=>[a.pace,a.shooting,a.passing,a.defending,a.physical,a.stamina]
             .into_iter().min().unwrap_or(0),
     }
 }
@@ -92,14 +94,12 @@ fn set_focus_value(player:&mut PlayerCareer,focus:TrainingFocus,value:u8){
         TrainingFocus::Goalkeeping=>player.attributes.goalkeeping=value,
         TrainingFocus::Balanced=>{
             let mut values=[player.attributes.pace,player.attributes.shooting,player.attributes.passing,
-                player.attributes.defending,player.attributes.physical,player.attributes.goalkeeping,
-                player.attributes.stamina];
+                player.attributes.defending,player.attributes.physical,player.attributes.stamina];
             let index=values.iter().enumerate().min_by_key(|(_,v)|**v).map(|(i,_)|i).unwrap_or(0);
             values[index]=value;
             player.attributes.pace=values[0];player.attributes.shooting=values[1];
             player.attributes.passing=values[2];player.attributes.defending=values[3];
-            player.attributes.physical=values[4];player.attributes.goalkeeping=values[5];
-            player.attributes.stamina=values[6];
+            player.attributes.physical=values[4];player.attributes.stamina=values[5];
         }
     }
 }
@@ -217,6 +217,13 @@ mod tests{
         assert_eq!(apply_training(&mut a,plan,42).unwrap(),apply_training(&mut b,plan,42).unwrap());
         assert_eq!(a.attributes.shooting,b.attributes.shooting);
         assert!(a.attributes.shooting<=a.potential);
+    }
+    #[test]fn balanced_training_does_not_raise_outfield_goalkeeping(){
+        let mut p=player();
+        let goalkeeping_before=p.attributes.goalkeeping;
+        apply_training(&mut p,TrainingPlan{focus:TrainingFocus::Balanced,intensity:80},7).unwrap();
+        assert_eq!(p.attributes.goalkeeping,goalkeeping_before);
+        assert!(p.attributes.pace>60 || p.attributes.shooting>55 || p.attributes.passing>60 || p.attributes.defending>50 || p.attributes.physical>65 || p.attributes.stamina>70);
     }
     #[test]fn injured_player_cannot_gain_training(){
         let mut p=player();p.injury_until=Some(NaiveDate::from_ymd_opt(2026,1,10).unwrap());
