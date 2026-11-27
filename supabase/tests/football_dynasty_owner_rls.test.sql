@@ -57,10 +57,10 @@ VALUES
    'RLS House', '00000000-0000-0000-0000-000000000102', 0);
 
 INSERT INTO fd.game_events
-  (campaign_id, event_key, event_type, title, body, game_date, priority, choices)
+  (campaign_id, event_key, event_type, title, body, game_date, expires_on, priority, choices)
 VALUES
   ('00000000-0000-0000-0000-000000000101', 'rls-week-2026-01', 'club_weekly_review',
-   'Weekly review', 'Owner-scoped event test', DATE '2026-01-05', 60,
+   'Weekly review', 'Owner-scoped event test', DATE '2026-01-05', DATE '2026-01-12', 60,
    '[{"id":"reputation","label":"Build reputation","effect":"club_reputation"}]'::jsonb);
 
 INSERT INTO fd.season_fixtures
