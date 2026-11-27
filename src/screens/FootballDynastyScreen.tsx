@@ -188,7 +188,7 @@ export function FootballDynastyScreen() {
       '4-2-3-1': [4, 5, 1], '3-4-3': [3, 4, 3],
     };
     const [defenders, midfielders, forwards] = shape[squad.formation] ?? [4, 3, 3];
-    const take = (position: CampaignSquadPlayer['position'], count: number) =>
+    const take = (position: string, count: number) =>
       available.filter((player) => player.position === position).slice(0, count);
     const starters = [
       ...take('goalkeeper', 1), ...take('defender', defenders),
