@@ -345,7 +345,7 @@ export function FootballDynastyScreen() {
             </section>
 
 
-            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-5 gap-2">
+            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
               {([
                 ['club', i18n.language.startsWith('ru') ? 'Клуб' : 'Club'],
                 ['matches', i18n.language.startsWith('ru') ? 'Матчи' : 'Matches'],
