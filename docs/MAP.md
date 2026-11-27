@@ -692,3 +692,13 @@ Required information architecture:
 - Regression coverage: pure tests cover all three result paths and home/away wording; PostgreSQL lifecycle test verifies event generation, actual effect, replay idempotency, and the reputation floor. Calendar generated-event expectations account for reviews.
 - This is a smaller verified-gameplay slice ported from the stale #446 work onto current main; matchday ticket-revenue accounting and standings position/goal-difference changes from #446 were intentionally not included.
 - CI is required on the exact PR head before marking VERIFIED. Next priority remains FD-UI-01 squad inspection and editable lineup persistence; the board-decision slice does not complete that contract.
+
+
+## FD-UI-01 squad inspection — Draft PR #451 (2026-11-27)
+
+- Verified prior slice PR #450 exact head 11ce9f8ad523856795a9efaa874f53e21c182ffe: Rust engine run #160 / 45606581898 SUCCESS; full CI run #2996 / 45606581624 SUCCESS; ten regression workflows SUCCESS. Vercel check SUCCESS for that exact SHA (deployment check target: https://vercel.com/aloews-projects/sherlock-scholes/2cwARtVrVmvDDYmp3vm4C1gW7xFq). PR #450 is still Draft and mergeable; no merge performed.
+- PR #451 branch feat/dynasty-squad-inspection-20261127 adds an owner-scoped GET /api/v1/campaigns/{campaign_id}/squad read API using existing fd.teams/fd.players/fd.team_tactics tables, no migration.
+- Frontend adds a fifth Squad tab, lazy loading, retry/error/empty states, and a compact 19-player view with shirt number, position, age, potential, six attributes, availability dates, wage, market value and contract end.
+- Tests added: frontend API response shape/route test and PostgreSQL lifecycle test for 19 seeded players, default formation, sorted shirt number, goalkeeper/attributes and cross-owner 404 isolation.
+- Status: IMPLEMENTED IN DRAFT BRANCH; exact-head CI and Preview pending. FD-UI-01 remains incomplete: lineup/bench selection, save/reload persistence and browser end-to-end acceptance are not implemented or verified.
+- Next: persist the selected starting XI/bench and formation in an owner-scoped API transaction, then test save/reload and matchday consumption of that lineup.
