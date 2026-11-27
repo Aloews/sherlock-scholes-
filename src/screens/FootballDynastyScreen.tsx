@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad, saveLineup,
+  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad, saveLineup, setPlayerTraining,
   type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent, resolveLineupSelection,
 } from '@/features/football-dynasty/api';
 
