@@ -786,7 +786,6 @@ pub async fn save_lineup(
         "SELECT t.id FROM fd.teams t JOIN fd.season_fixtures f
          ON f.campaign_id=t.campaign_id AND f.id=$2 AND t.id IN (f.home_team_id,f.away_team_id)
          WHERE t.campaign_id=$1 AND t.is_player_controlled=true AND f.status='scheduled'
-         AND f.match_date >= (SELECT current_date FROM fd.campaigns WHERE id=$1)
          FOR UPDATE OF f,t")
         .bind(campaign_id).bind(fixture_id).fetch_optional(&mut *tx).await?
         .ok_or_else(ApiError::not_found)?;
