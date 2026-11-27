@@ -200,6 +200,17 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         Some(json!({"formation":"5-5-0","starter_ids":[],"substitute_ids":[]}))).await;
     assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
 
+    // Simulate a late injury after the manager saved the lineup. The engine
+    // must promote a same-position substitute rather than abort the fixture.
+    let injured_starter = expected_starters[1];
+    let promoted_substitute: uuid::Uuid = sqlx::query_scalar(
+        "SELECT id FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND id=ANY($3) AND position='defender' ORDER BY shirt_number LIMIT 1")
+        .bind(campaign_uuid).bind(team_id).bind(&expected_substitutes).fetch_one(&pool).await
+        .expect("eligible defender on the bench");
+    sqlx::query("UPDATE fd.players SET injured_until=$1 WHERE campaign_id=$2 AND id=$3")
+        .bind(fixture_date).bind(campaign_uuid).bind(injured_starter).execute(&pool).await
+        .expect("mark saved starter unavailable before kickoff");
+
     let other_owner_app = http::router(
         AppState {
             db: pool.clone(),
@@ -313,9 +324,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let played_status: String = sqlx::query_scalar("SELECT status FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
         .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("played fixture status");
     assert_eq!(played_status, "played", "the match engine must consume the fixture-specific 4-4-2");
-    let started_players: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=ANY($3) AND started=true")
-        .bind(campaign_uuid).bind(fixture_id).bind(&expected_starters).fetch_one(&pool).await.expect("persisted starting XI stats");
-    assert_eq!(started_players, 11, "all selected starters must be used by the match engine");
+    let selected_starters_used: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=ANY($3) AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).bind(&expected_starters).fetch_one(&pool).await.expect("persisted selected starter stats");
+    assert_eq!(selected_starters_used, 10, "the unavailable saved starter must not start");
+    let total_starters: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).fetch_one(&pool).await.expect("persisted matchday starting XI");
+    assert_eq!(total_starters, 11, "the engine must promote an eligible substitute to preserve an XI");
+    let promoted_started: bool = sqlx::query_scalar("SELECT started FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=$3")
+        .bind(campaign_uuid).bind(fixture_id).bind(promoted_substitute).fetch_one(&pool).await.expect("promoted substitute match stats");
+    assert!(promoted_started, "same-position substitute must be promoted before kickoff");
 
     let (follow_up_status, follow_up_events) = call(
         app.clone(),
