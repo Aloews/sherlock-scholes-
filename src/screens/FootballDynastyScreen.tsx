@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad,
+  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad, saveLineup,
   type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent,
 } from '@/features/football-dynasty/api';
 
@@ -54,6 +54,10 @@ export function FootballDynastyScreen() {
   const [squadLoading, setSquadLoading] = useState(false);
   const [squadLoadFailed, setSquadLoadFailed] = useState(false);
   const [squadRetry, setSquadRetry] = useState(0);
+  const [starterIds, setStarterIds] = useState<string[]>([]);
+  const [substituteIds, setSubstituteIds] = useState<string[]>([]);
+  const [lineupFormation, setLineupFormation] = useState('4-3-3');
+  const [lineupSaved, setLineupSaved] = useState(false);
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
@@ -169,6 +173,43 @@ export function FootballDynastyScreen() {
     try { await action(); }
     catch { setError(t('dynasty.error')); }
     finally { setBusy(''); }
+  };
+
+  useEffect(() => {
+    if (!squad) return;
+    setLineupFormation(squad.formation);
+    const starters = squad.players.filter((player) =>
+      (player.position === 'goalkeeper' && player.shirt_number === 1)
+      || (player.position === 'defender' && player.shirt_number >= 2 && player.shirt_number <= 5)
+      || (player.position === 'midfielder' && player.shirt_number >= 8 && player.shirt_number <= 10)
+      || (player.position === 'forward' && player.shirt_number >= 14 && player.shirt_number <= 16),
+    ).map((player) => player.id);
+    setStarterIds(starters);
+    setSubstituteIds(squad.players.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
+    setLineupSaved(false);
+  }, [squad]);
+
+  const nextFixture = squad ? season?.fixtures.find((fixture) => fixture.status === 'scheduled'
+    && (fixture.home_team === squad.team_name || fixture.away_team === squad.team_name)) : undefined;
+  const toggleLineupRole = (playerId: string) => {
+    setLineupSaved(false);
+    if (starterIds.includes(playerId)) {
+      if (substituteIds.length >= 7) return;
+      setStarterIds((ids) => ids.filter((id) => id !== playerId));
+      setSubstituteIds((ids) => [...ids, playerId]);
+    } else if (substituteIds.includes(playerId)) {
+      if (starterIds.length >= 11) return;
+      setSubstituteIds((ids) => ids.filter((id) => id !== playerId));
+      setStarterIds((ids) => [...ids, playerId]);
+    } else if (starterIds.length < 11) setStarterIds((ids) => [...ids, playerId]);
+    else if (substituteIds.length < 7) setSubstituteIds((ids) => [...ids, playerId]);
+  };
+  const persistLineup = () => {
+    if (!campaign || !nextFixture || starterIds.length !== 11 || substituteIds.length !== 7) return;
+    void run('save-lineup', async () => {
+      await saveLineup(campaign.campaign.id, nextFixture.id, { formation: lineupFormation, starter_ids: starterIds, substitute_ids: substituteIds });
+      setLineupSaved(true);
+    });
   };
 
   const submitCampaign = () => run('create', async () => {
@@ -579,7 +620,16 @@ export function FootballDynastyScreen() {
                 ) : squad && squad.players.length === 0 ? (
                   <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'В составе пока нет игроков.' : 'No players in this squad yet.'}</p>
                 ) : squad && (
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <>
+                    <div className="mb-4 rounded-xl border border-brand-border bg-brand-bg p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div><div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Заявка на следующий матч' : 'Next match lineup'}</div><p className="mt-1 text-xs text-brand-muted">{nextFixture ? `${nextFixture.home_team} — ${nextFixture.away_team} · ${nextFixture.match_date}` : (i18n.language.startsWith('ru') ? 'Нет предстоящего матча' : 'No upcoming fixture')}</p></div>
+                        <select aria-label="Formation" className={inputClass + ' w-auto'} value={lineupFormation} onChange={(event) => { setLineupFormation(event.target.value); setLineupSaved(false); }}>{['4-3-3','4-4-2','3-5-2','4-2-3-1','3-4-3'].map((value) => <option key={value} value={value}>{value}</option>)}</select>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-brand-muted"><span>{i18n.language.startsWith('ru') ? 'Старт' : 'Starters'}: {starterIds.length}/11</span><span>{i18n.language.startsWith('ru') ? 'Запас' : 'Bench'}: {substituteIds.length}/7</span><button type="button" className={buttonClass} disabled={!nextFixture || busy !== '' || starterIds.length !== 11 || substituteIds.length !== 7} onClick={persistLineup}>{busy === 'save-lineup' ? '…' : (i18n.language.startsWith('ru') ? 'Сохранить состав' : 'Save lineup')}</button>{lineupSaved && <span className="text-emerald-300">{i18n.language.startsWith('ru') ? 'Сохранено' : 'Saved'}</span>}</div>
+                      <p className="mt-2 text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Переключайте игроков между стартом и скамейкой. Сервер проверит позиции и доступность.' : 'Switch players between the starting XI and bench. The server validates positions and availability.'}</p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
                     {squad.players.map((player) => {
                       const position = player.position === 'goalkeeper'
                         ? (i18n.language.startsWith('ru') ? 'Вратарь' : 'Goalkeeper')
@@ -603,6 +653,7 @@ export function FootballDynastyScreen() {
                             </div>
                             <span className="shrink-0 rounded-lg bg-brand-surface px-2.5 py-1 text-xs font-semibold">#{player.shirt_number}</span>
                           </div>
+                          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs text-brand-muted">{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Старт' : 'Starter') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Запасной' : 'Substitute') : (i18n.language.startsWith('ru') ? 'Не выбран' : 'Not selected')}</span><button type="button" className={quietButtonClass + ' px-2 py-1 text-xs'} disabled={busy !== '' || (starterIds.includes(player.id) && substituteIds.length >= 7) || (substituteIds.includes(player.id) && starterIds.length >= 11) || (!starterIds.includes(player.id) && !substituteIds.includes(player.id) && starterIds.length >= 11 && substituteIds.length >= 7)} onClick={() => toggleLineupRole(player.id)}>{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'На скамейку' : 'Move to bench') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'В старт' : 'Move to XI') : starterIds.length < 11 ? (i18n.language.startsWith('ru') ? 'В старт' : 'Add to XI') : (i18n.language.startsWith('ru') ? 'В запас' : 'Add to bench')}</button></div>
                           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                             {attributes.map(([label, value]) => (
                               <div key={label} className="rounded-lg border border-brand-border/60 px-2 py-1.5 text-center">
@@ -624,7 +675,8 @@ export function FootballDynastyScreen() {
                         </article>
                       );
                     })}
-                  </div>
+                    </div>
+                  </>
                 )}
               </section>
             )}

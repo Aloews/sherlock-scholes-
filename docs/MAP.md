@@ -710,3 +710,12 @@ Required information architecture:
 - The regression workflows for the exact prior head also completed successfully.
 - Vercel check is SUCCESS, but the corresponding deployment is CANCELED with an ignored-build-step reason. This is not a ready Preview and no preview URL is confirmed. Project ignore-build configuration was not changed.
 - Code is verified on the prior head; this MAP-only commit requires exact-head checks again. Squad UI has no browser E2E yet.
+
+## Football Dynasty — persisted matchday lineup (FD-UI-01 follow-up)
+
+- The squad screen exposes starter and substitute selection for the next scheduled fixture.
+- The owner-scoped lineup mutation validates the controlled club, fixture state, roster membership, duplicate IDs, player availability, 11 starters and formation-position counts.
+- The save is transactional and serializes concurrent edits by locking the target fixture and controlled team rows.
+- Fixture-specific formation is persisted on `fd.match_lineups`; the match loader reads that formation for the exact fixture, so changing one fixture does not invalidate later fixtures.
+- Service migration `0014_fixture_lineup_formation.sql` is mirrored by the Supabase migration and checked by the Rust CI workflow.
+- Integration coverage verifies persistence, invalid formation rejection and cross-owner 404 isolation. Browser E2E and deployed Preview verification remain separate acceptance gates.

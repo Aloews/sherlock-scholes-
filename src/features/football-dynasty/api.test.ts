@@ -106,3 +106,18 @@ describe('getSquad', () => {
     await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
   });
 });
+
+
+describe('saveLineup', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { vi.resetModules(); fetchMock = vi.fn(); vi.stubGlobal('window', { location: { origin: 'https://test.local' } }); vi.stubGlobal('fetch', fetchMock); });
+  afterEach(() => { vi.unstubAllGlobals(); });
+  it('sends an authenticated lineup mutation to the fixture endpoint', async () => {
+    const result = { fixture_id: 'fixture-1', team_id: 'team-1', formation: '4-3-3', starters_saved: 11, substitutes_saved: 7 };
+    fetchMock.mockResolvedValue({ ok: true, json: async () => result });
+    const { saveLineup } = await import('./api');
+    const payload = { formation: '4-3-3', starter_ids: Array.from({ length: 11 }, (_, i) => `starter-${i}`), substitute_ids: Array.from({ length: 7 }, (_, i) => `sub-${i}`) };
+    await expect(saveLineup('campaign-1', 'fixture-1', payload)).resolves.toEqual(result);
+    expect(fetchMock).toHaveBeenCalledWith('https://test.local/api/v1/campaigns/campaign-1/fixtures/fixture-1/lineup', expect.objectContaining({ method: 'POST', body: JSON.stringify(payload), headers: expect.any(Headers) }));
+  });
+});

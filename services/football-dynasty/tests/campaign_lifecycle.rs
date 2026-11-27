@@ -159,6 +159,32 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert!(squad["players"][0]["potential"].as_i64().is_some());
     assert!(squad["team_name"].as_str().is_some_and(|name| !name.is_empty()));
 
+    let campaign_uuid = uuid::Uuid::parse_str(campaign_id).expect("campaign UUID");
+    let (fixture_id, team_id) = sqlx::query_as::<_, (uuid::Uuid, uuid::Uuid)>(
+        "SELECT f.id,t.id FROM fd.season_fixtures f JOIN fd.teams t ON t.campaign_id=f.campaign_id AND t.id IN (f.home_team_id,f.away_team_id) WHERE f.campaign_id=$1 AND t.is_player_controlled=true AND f.status='scheduled' ORDER BY f.matchday LIMIT 1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("upcoming controlled fixture");
+    let roster = sqlx::query_as::<_, (uuid::Uuid, String, i16)>(
+        "SELECT id,position,shirt_number FROM fd.players WHERE campaign_id=$1 AND team_id=$2 ORDER BY shirt_number")
+        .bind(campaign_uuid).bind(team_id).fetch_all(&pool).await.expect("controlled roster");
+    let mut starters = Vec::new(); let mut substitutes = Vec::new();
+    for (id, position, shirt) in roster {
+        let starter = (position == "goalkeeper" && shirt == 1) || (position == "defender" && (2..=5).contains(&shirt))
+            || (position == "midfielder" && (8..=10).contains(&shirt)) || (position == "forward" && (14..=16).contains(&shirt));
+        if starter { starters.push(id); } else if substitutes.len() < 7 { substitutes.push(id); }
+    }
+    assert_eq!(starters.len(), 11, "test roster has a valid 4-3-3");
+    let (save_status, saved) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"4-3-3","starter_ids":starters,"substitute_ids":substitutes}))).await;
+    assert_eq!(save_status, StatusCode::OK, "save lineup: {saved}");
+    assert_eq!(saved["starters_saved"], 11); assert_eq!(saved["substitutes_saved"], 7);
+    let persisted = sqlx::query_as::<_, (String, String, i64)>(
+        "SELECT tt.formation,min(ml.formation),count(ml.player_id) FROM fd.team_tactics tt JOIN fd.match_lineups ml ON ml.campaign_id=tt.campaign_id AND ml.team_id=tt.team_id WHERE tt.campaign_id=$1 AND tt.team_id=$2 AND ml.fixture_id=$3 GROUP BY tt.formation")
+        .bind(campaign_uuid).bind(team_id).bind(fixture_id).fetch_one(&pool).await.expect("persisted lineup");
+    assert_eq!(persisted, ("4-3-3".to_owned(), "4-3-3".to_owned(), 18));
+    let (invalid_status, _) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"5-5-0","starter_ids":[],"substitute_ids":[]}))).await;
+    assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
+
     let other_owner_app = http::router(
         AppState {
             db: pool.clone(),
@@ -166,6 +192,15 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         },
         "http://localhost:5173".parse().expect("origin"),
     );
+    let (foreign_save_status, _) = call(
+        other_owner_app.clone(), "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"4-3-3",
+            "starter_ids":(0..11).map(|_| uuid::Uuid::new_v4()).collect::<Vec<_>>(),
+            "substitute_ids":(0..7).map(|_| uuid::Uuid::new_v4()).collect::<Vec<_>>()})),
+    ).await;
+    assert_eq!(foreign_save_status, StatusCode::NOT_FOUND);
+
     let (foreign_status, _) = call(
         other_owner_app,
         "GET",

@@ -117,6 +117,12 @@ export const getSquad = async (campaignId: string): Promise<CampaignSquadView> =
   }
   return squad as CampaignSquadView;
 };
+export interface SaveLineupPayload { formation: string; starter_ids: string[]; substitute_ids: string[] }
+export interface SaveLineupResult { fixture_id: string; team_id: string; formation: string; starters_saved: number; substitutes_saved: number }
+export const saveLineup = (campaignId: string, fixtureId: string, payload: SaveLineupPayload) =>
+  request<SaveLineupResult>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/fixtures/${encodeURIComponent(fixtureId)}/lineup`,
+    { method: 'POST', body: JSON.stringify(payload) }, true);
+
 export const resolveGameEvent = (campaignId: string, eventId: string, choiceId: string) =>
   request<{ event_id: string; status: string; resolution: Record<string, unknown> }>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/events/${encodeURIComponent(eventId)}/resolve`,
