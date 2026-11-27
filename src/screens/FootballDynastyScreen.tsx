@@ -671,7 +671,7 @@ export function FootballDynastyScreen() {
                           </div>
                         </label>
                         <div className="flex items-end">
-                          <button type="button" className={buttonClass + ' w-full'} disabled={busy !== '' || !squad.players.length} onClick={persistTraining}>
+                          <button type="button" className={buttonClass + ' w-full'} disabled={busy !== '' || !squad.players.length || (trainingFocus === 'goalkeeping' && trainingTarget !== 'team' && squad.players.find((player) => player.id === trainingTarget)?.position !== 'goalkeeper')} onClick={persistTraining}>
                             {busy === 'save-training' ? '…' : (i18n.language.startsWith('ru') ? 'Назначить план' : 'Assign plan')}
                           </button>
                         </div>
