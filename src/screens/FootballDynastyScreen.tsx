@@ -178,16 +178,26 @@ export function FootballDynastyScreen() {
   useEffect(() => {
     if (!squad) return;
     setLineupFormation(squad.formation);
-    const starters = squad.players.filter((player) =>
-      (player.position === 'goalkeeper' && player.shirt_number === 1)
-      || (player.position === 'defender' && player.shirt_number >= 2 && player.shirt_number <= 5)
-      || (player.position === 'midfielder' && player.shirt_number >= 8 && player.shirt_number <= 10)
-      || (player.position === 'forward' && player.shirt_number >= 14 && player.shirt_number <= 16),
-    ).map((player) => player.id);
+    const gameDate = campaign?.campaign.game_date;
+    const available = squad.players.filter((player) =>
+      !(gameDate && player.injured_until && player.injured_until >= gameDate)
+      && !(gameDate && player.suspended_until && player.suspended_until >= gameDate),
+    );
+    const shape: Record<string, [number, number, number]> = {
+      '4-3-3': [4, 3, 3], '4-4-2': [4, 4, 2], '3-5-2': [3, 5, 2],
+      '4-2-3-1': [4, 5, 1], '3-4-3': [3, 4, 3],
+    };
+    const [defenders, midfielders, forwards] = shape[squad.formation] ?? [4, 3, 3];
+    const take = (position: CampaignSquadPlayer['position'], count: number) =>
+      available.filter((player) => player.position === position).slice(0, count);
+    const starters = [
+      ...take('goalkeeper', 1), ...take('defender', defenders),
+      ...take('midfielder', midfielders), ...take('forward', forwards),
+    ].map((player) => player.id);
     setStarterIds(starters);
-    setSubstituteIds(squad.players.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
+    setSubstituteIds(available.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
     setLineupSaved(false);
-  }, [squad]);
+  }, [squad, campaign?.campaign.game_date]);
 
   const nextFixture = squad ? season?.fixtures.find((fixture) => fixture.status === 'scheduled'
     && (fixture.home_team === squad.team_name || fixture.away_team === squad.team_name)) : undefined;
@@ -205,7 +215,7 @@ export function FootballDynastyScreen() {
     else if (substituteIds.length < 7) setSubstituteIds((ids) => [...ids, playerId]);
   };
   const persistLineup = () => {
-    if (!campaign || !nextFixture || starterIds.length !== 11 || substituteIds.length !== 7) return;
+    if (!campaign || !nextFixture || starterIds.length !== 11 || substituteIds.length > 7) return;
     void run('save-lineup', async () => {
       await saveLineup(campaign.campaign.id, nextFixture.id, { formation: lineupFormation, starter_ids: starterIds, substitute_ids: substituteIds });
       setLineupSaved(true);
@@ -626,7 +636,7 @@ export function FootballDynastyScreen() {
                         <div><div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Заявка на следующий матч' : 'Next match lineup'}</div><p className="mt-1 text-xs text-brand-muted">{nextFixture ? `${nextFixture.home_team} — ${nextFixture.away_team} · ${nextFixture.match_date}` : (i18n.language.startsWith('ru') ? 'Нет предстоящего матча' : 'No upcoming fixture')}</p></div>
                         <select aria-label="Formation" className={inputClass + ' w-auto'} value={lineupFormation} onChange={(event) => { setLineupFormation(event.target.value); setLineupSaved(false); }}>{['4-3-3','4-4-2','3-5-2','4-2-3-1','3-4-3'].map((value) => <option key={value} value={value}>{value}</option>)}</select>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-brand-muted"><span>{i18n.language.startsWith('ru') ? 'Старт' : 'Starters'}: {starterIds.length}/11</span><span>{i18n.language.startsWith('ru') ? 'Запас' : 'Bench'}: {substituteIds.length}/7</span><button type="button" className={buttonClass} disabled={!nextFixture || busy !== '' || starterIds.length !== 11 || substituteIds.length !== 7} onClick={persistLineup}>{busy === 'save-lineup' ? '…' : (i18n.language.startsWith('ru') ? 'Сохранить состав' : 'Save lineup')}</button>{lineupSaved && <span className="text-emerald-300">{i18n.language.startsWith('ru') ? 'Сохранено' : 'Saved'}</span>}</div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-brand-muted"><span>{i18n.language.startsWith('ru') ? 'Старт' : 'Starters'}: {starterIds.length}/11</span><span>{i18n.language.startsWith('ru') ? 'Запас' : 'Bench'}: {substituteIds.length}/7</span><button type="button" className={buttonClass} disabled={!nextFixture || busy !== '' || starterIds.length !== 11} onClick={persistLineup}>{busy === 'save-lineup' ? '…' : (i18n.language.startsWith('ru') ? 'Сохранить состав' : 'Save lineup')}</button>{lineupSaved && <span className="text-emerald-300">{i18n.language.startsWith('ru') ? 'Сохранено' : 'Saved'}</span>}</div>
                       <p className="mt-2 text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Переключайте игроков между стартом и скамейкой. Сервер проверит позиции и доступность.' : 'Switch players between the starting XI and bench. The server validates positions and availability.'}</p>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
