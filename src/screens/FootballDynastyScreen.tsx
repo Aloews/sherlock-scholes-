@@ -58,6 +58,9 @@ export function FootballDynastyScreen() {
   const [substituteIds, setSubstituteIds] = useState<string[]>([]);
   const [lineupFormation, setLineupFormation] = useState('4-3-3');
   const [lineupSaved, setLineupSaved] = useState(false);
+  const [trainingTarget, setTrainingTarget] = useState('team');
+  const [trainingFocus, setTrainingFocus] = useState<'finishing' | 'passing' | 'defending' | 'physical' | 'goalkeeping' | 'balanced' | 'recovery'>('balanced');
+  const [trainingIntensity, setTrainingIntensity] = useState(60);
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
@@ -202,6 +205,20 @@ export function FootballDynastyScreen() {
     } else if (starterIds.length < 11) setStarterIds((ids) => [...ids, playerId]);
     else if (substituteIds.length < 7) setSubstituteIds((ids) => [...ids, playerId]);
   };
+  const persistTraining = () => {
+    if (!campaign || !squad) return;
+    const playerIds = trainingTarget === 'team' ? squad.players.map((player) => player.id) : [trainingTarget];
+    if (!playerIds.length) return;
+    void run('save-training', async () => {
+      await setPlayerTraining(campaign.campaign.id, {
+        player_ids: playerIds,
+        focus: trainingFocus,
+        intensity: trainingFocus === 'recovery' ? 0 : trainingIntensity,
+      });
+      setSquad(await getSquad(campaign.campaign.id));
+    });
+  };
+
   const persistLineup = () => {
     if (!campaign || !nextFixture || starterIds.length !== 11 || substituteIds.length > 7) return;
     void run('save-lineup', async () => {
@@ -620,6 +637,45 @@ export function FootballDynastyScreen() {
                 ) : squad && (
                   <>
                     <div className="mb-4 rounded-xl border border-brand-border bg-brand-bg p-4">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Тренировки и восстановление' : 'Training & recovery'}</div>
+                          <p className="mt-1 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'План применяется каждый игровой день при продвижении календаря. Рост характеристик ограничен потенциалом.' : 'The plan runs each in-game day when the calendar advances. Attribute growth is capped by potential.'}</p>
+                        </div>
+                        <span className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Дата кампании' : 'Campaign date'}: {campaign.campaign.game_date}</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-4">
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Кому' : 'Target'}
+                          <select className={inputClass + ' mt-1'} value={trainingTarget} onChange={(event) => setTrainingTarget(event.target.value)}>
+                            <option value="team">{i18n.language.startsWith('ru') ? 'Вся команда' : 'Whole team'}</option>
+                            {squad.players.map((player) => <option key={player.id} value={player.id}>{player.full_name}</option>)}
+                          </select>
+                        </label>
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Направление' : 'Focus'}
+                          <select className={inputClass + ' mt-1'} value={trainingFocus} onChange={(event) => setTrainingFocus(event.target.value as typeof trainingFocus)}>
+                            <option value="balanced">{i18n.language.startsWith('ru') ? 'Сбалансированная' : 'Balanced'}</option>
+                            <option value="finishing">{i18n.language.startsWith('ru') ? 'Завершение атак' : 'Finishing'}</option>
+                            <option value="passing">{i18n.language.startsWith('ru') ? 'Пасы' : 'Passing'}</option>
+                            <option value="defending">{i18n.language.startsWith('ru') ? 'Защита' : 'Defending'}</option>
+                            <option value="physical">{i18n.language.startsWith('ru') ? 'Физическая подготовка' : 'Physical'}</option>
+                            <option value="goalkeeping">{i18n.language.startsWith('ru') ? 'Вратарская' : 'Goalkeeping'}</option>
+                            <option value="recovery">{i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery'}</option>
+                          </select>
+                        </label>
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Интенсивность' : 'Intensity'}
+                          <div className="mt-2 flex items-center gap-2">
+                            <input aria-label="Training intensity" type="range" min="20" max="100" step="10" value={trainingIntensity} disabled={trainingFocus === 'recovery'} onChange={(event) => setTrainingIntensity(Number(event.target.value))} className="w-full accent-brand-accent" />
+                            <span className="w-8 text-right tabular-nums">{trainingFocus === 'recovery' ? '—' : trainingIntensity}</span>
+                          </div>
+                        </label>
+                        <div className="flex items-end">
+                          <button type="button" className={buttonClass + ' w-full'} disabled={busy !== '' || !squad.players.length} onClick={persistTraining}>
+                            {busy === 'save-training' ? '…' : (i18n.language.startsWith('ru') ? 'Назначить план' : 'Assign plan')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-4 rounded-xl border border-brand-border bg-brand-bg p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div><div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Заявка на следующий матч' : 'Next match lineup'}</div><p className="mt-1 text-xs text-brand-muted">{nextFixture ? `${nextFixture.home_team} — ${nextFixture.away_team} · ${nextFixture.match_date}` : (i18n.language.startsWith('ru') ? 'Нет предстоящего матча' : 'No upcoming fixture')}</p></div>
                         <select aria-label="Formation" className={inputClass + ' w-auto'} value={lineupFormation} onChange={(event) => { setLineupFormation(event.target.value); setLineupSaved(false); }}>{['4-3-3','4-4-2','3-5-2','4-2-3-1','3-4-3'].map((value) => <option key={value} value={value}>{value}</option>)}</select>
@@ -662,6 +718,7 @@ export function FootballDynastyScreen() {
                             ))}
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                            {player.training_focus && <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">{i18n.language.startsWith('ru') ? 'План' : 'Training'}: {player.training_focus === 'recovery' ? (i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery') : player.training_focus} {player.training_intensity ? `· ${player.training_intensity}` : ''}</span>}
                             {injured && <span className="rounded-full bg-rose-500/10 px-2 py-1 text-rose-300">{i18n.language.startsWith('ru') ? 'Травма до' : 'Injured until'} {player.injured_until}</span>}
                             {suspended && <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{i18n.language.startsWith('ru') ? 'Дисквалификация до' : 'Suspended until'} {player.suspended_until}</span>}
                             {!injured && !suspended && <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">{i18n.language.startsWith('ru') ? 'Доступен' : 'Available'}</span>}
