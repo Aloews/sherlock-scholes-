@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession,
-  type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView, type WorldEvent,
+  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad,
+  type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -49,7 +49,11 @@ export function FootballDynastyScreen() {
   const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([]);
   const [worldEventsLoadFailed, setWorldEventsLoadFailed] = useState(false);
   const [eventsLoadFailed, setEventsLoadFailed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('events');
+  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty' | 'squad'>('events');
+  const [squad, setSquad] = useState<CampaignSquadView | null>(null);
+  const [squadLoading, setSquadLoading] = useState(false);
+  const [squadLoadFailed, setSquadLoadFailed] = useState(false);
+  const [squadRetry, setSquadRetry] = useState(0);
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
@@ -145,6 +149,19 @@ export function FootballDynastyScreen() {
     })();
     return () => { active = false; };
   }, [selectedId, t]);
+
+  useEffect(() => {
+    if (activeTab !== 'squad' || !selectedId) return;
+    let active = true;
+    setSquad(null);
+    setSquadLoadFailed(false);
+    setSquadLoading(true);
+    getSquad(selectedId)
+      .then((data) => { if (active) setSquad(data); })
+      .catch(() => { if (active) setSquadLoadFailed(true); })
+      .finally(() => { if (active) setSquadLoading(false); });
+    return () => { active = false; };
+  }, [activeTab, selectedId, squadRetry]);
 
   const run = async (key: string, action: () => Promise<void>) => {
     setBusy(key);
@@ -328,12 +345,13 @@ export function FootballDynastyScreen() {
             </section>
 
 
-            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-4 gap-2">
+            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-5 gap-2">
               {([
                 ['club', i18n.language.startsWith('ru') ? 'Клуб' : 'Club'],
                 ['matches', i18n.language.startsWith('ru') ? 'Матчи' : 'Matches'],
                 ['events', i18n.language.startsWith('ru') ? 'События' : 'Events'],
                 ['dynasty', i18n.language.startsWith('ru') ? 'Династия' : 'Dynasty'],
+                ['squad', i18n.language.startsWith('ru') ? 'Состав' : 'Squad'],
               ] as const).map(([tab, label]) => (
                 <button key={tab} type="button" onClick={() => setActiveTab(tab)}
                   aria-current={activeTab === tab ? 'page' : undefined}
@@ -534,6 +552,81 @@ export function FootballDynastyScreen() {
                 </div>
               )}
             </section>
+            )}
+
+            {activeTab === 'squad' && (
+              <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Состав команды' : 'Team squad'}</div>
+                    <h3 className="mt-1 text-lg font-semibold">{squad?.team_name ?? campaign.clubs[0]?.name ?? '—'}</h3>
+                  </div>
+                  {squad && (
+                    <div className="rounded-xl bg-brand-bg px-3 py-2 text-xs text-brand-muted">
+                      {i18n.language.startsWith('ru') ? 'Схема' : 'Formation'}: {squad.formation} · {squad.players.length} {i18n.language.startsWith('ru') ? 'игроков' : 'players'}
+                    </div>
+                  )}
+                </div>
+                {squadLoadFailed ? (
+                  <div className="rounded-xl bg-brand-bg p-4 text-sm">
+                    <p className="mb-2 text-brand-muted">{i18n.language.startsWith('ru') ? 'Не удалось загрузить состав.' : 'Squad could not be loaded.'}</p>
+                    <button type="button" className={quietButtonClass} disabled={busy !== '' || squadLoading} onClick={() => setSquadRetry((value) => value + 1)}>
+                      {i18n.language.startsWith('ru') ? 'Повторить' : 'Retry'}
+                    </button>
+                  </div>
+                ) : squadLoading && !squad ? (
+                  <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'Загрузка состава…' : 'Loading squad…'}</p>
+                ) : squad && squad.players.length === 0 ? (
+                  <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'В составе пока нет игроков.' : 'No players in this squad yet.'}</p>
+                ) : squad && (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {squad.players.map((player) => {
+                      const position = player.position === 'goalkeeper'
+                        ? (i18n.language.startsWith('ru') ? 'Вратарь' : 'Goalkeeper')
+                        : player.position === 'defender'
+                          ? (i18n.language.startsWith('ru') ? 'Защитник' : 'Defender')
+                          : player.position === 'midfielder'
+                            ? (i18n.language.startsWith('ru') ? 'Полузащитник' : 'Midfielder')
+                            : (i18n.language.startsWith('ru') ? 'Нападающий' : 'Forward');
+                      const injured = player.injured_until && player.injured_until >= campaign.campaign.game_date;
+                      const suspended = player.suspended_until && player.suspended_until >= campaign.campaign.game_date;
+                      const attributes = [
+                        ['PAC', player.pace], ['SHO', player.shooting], ['PAS', player.passing],
+                        ['DEF', player.defending], ['PHY', player.physical], ['GK', player.goalkeeping],
+                      ];
+                      return (
+                        <article key={player.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="truncate font-semibold">{player.full_name}</h4>
+                              <p className="mt-1 text-xs text-brand-muted">{position} · {i18n.language.startsWith('ru') ? 'Возраст' : 'Age'} {player.age} · {i18n.language.startsWith('ru') ? 'Потенциал' : 'Potential'} {player.potential}</p>
+                            </div>
+                            <span className="shrink-0 rounded-lg bg-brand-surface px-2.5 py-1 text-xs font-semibold">#{player.shirt_number}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                            {attributes.map(([label, value]) => (
+                              <div key={label} className="rounded-lg border border-brand-border/60 px-2 py-1.5 text-center">
+                                <div className="text-[10px] text-brand-muted">{label}</div>
+                                <div className="text-sm font-semibold tabular-nums">{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                            {injured && <span className="rounded-full bg-rose-500/10 px-2 py-1 text-rose-300">{i18n.language.startsWith('ru') ? 'Травма до' : 'Injured until'} {player.injured_until}</span>}
+                            {suspended && <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{i18n.language.startsWith('ru') ? 'Дисквалификация до' : 'Suspended until'} {player.suspended_until}</span>}
+                            {!injured && !suspended && <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">{i18n.language.startsWith('ru') ? 'Доступен' : 'Available'}</span>}
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-muted">
+                            <span>{i18n.language.startsWith('ru') ? 'Зарплата' : 'Wage'}: {formatMoney.format(player.wage_minor / 100)}</span>
+                            <span>{i18n.language.startsWith('ru') ? 'Стоимость' : 'Value'}: {formatMoney.format(player.market_value_minor / 100)}</span>
+                            {player.contract_until && <span>{i18n.language.startsWith('ru') ? 'Контракт до' : 'Contract until'}: {player.contract_until}</span>}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             )}
 
             {activeTab === 'club' && (
