@@ -114,6 +114,59 @@ describe('getSquad', () => {
 });
 
 
+describe('resolveLineupSelection', () => {
+  const positions = [
+    ...Array.from({ length: 1 }, () => 'goalkeeper' as const),
+    ...Array.from({ length: 4 }, () => 'defender' as const),
+    ...Array.from({ length: 3 }, () => 'midfielder' as const),
+    ...Array.from({ length: 3 }, () => 'forward' as const),
+  ];
+  const players = [
+    ...positions,
+    ...Array.from({ length: 7 }, (_, index) => index % 2 === 0 ? 'defender' as const : 'midfielder' as const),
+  ].map((position, index) => ({
+    id: `player-${index + 1}`, full_name: `Player ${index + 1}`, position,
+    shirt_number: index + 1, age: 24, pace: 70, shooting: 70, passing: 70,
+    defending: 70, physical: 70, goalkeeping: 10, stamina: 70, morale: 70,
+    fatigue: 0, potential: 80, market_value_minor: 100000, wage_minor: 1000,
+    contract_until: null, injured_until: null, suspended_until: null,
+  }));
+  const squad = {
+    team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', next_fixture_id: 'fixture-1',
+    starter_ids: players.slice(0, 11).map((player) => player.id),
+    substitute_ids: players.slice(11).map((player) => player.id), players,
+  };
+
+  it('restores a persisted lineup exactly while every selected player remains eligible', async () => {
+    const { resolveLineupSelection } = await import('./api');
+    expect(resolveLineupSelection(squad, '2026-01-01')).toEqual({
+      formation: '4-3-3', starterIds: squad.starter_ids, substituteIds: squad.substitute_ids,
+    });
+  });
+
+  it('rebuilds a valid XI and bench when a saved starter becomes injured', async () => {
+    const { resolveLineupSelection } = await import('./api');
+    const injuredSquad = {
+      ...squad,
+      players: squad.players.map((player, index) => index === 1 ? { ...player, injured_until: '2026-01-05' } : player),
+    };
+    const selection = resolveLineupSelection(injuredSquad, '2026-01-05');
+    expect(selection.starterIds).toHaveLength(11);
+    expect(selection.substituteIds).toHaveLength(7);
+    expect(new Set([...selection.starterIds, ...selection.substituteIds]).size).toBe(18);
+    expect(selection.starterIds).not.toContain('player-2');
+  });
+
+  it('rejects duplicate or malformed saved IDs and falls back to eligible players', async () => {
+    const { resolveLineupSelection } = await import('./api');
+    const malformed = { ...squad, starter_ids: [...squad.starter_ids.slice(0, 10), squad.starter_ids[0]] };
+    const selection = resolveLineupSelection(malformed, '2026-01-01');
+    expect(selection.starterIds).toHaveLength(11);
+    expect(new Set(selection.starterIds).size).toBe(11);
+    expect(selection.substituteIds).toHaveLength(7);
+  });
+});
+
 describe('saveLineup', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   beforeEach(() => { vi.resetModules(); fetchMock = vi.fn(); vi.stubGlobal('window', { location: { origin: 'https://test.local' } }); vi.stubGlobal('fetch', fetchMock); });
