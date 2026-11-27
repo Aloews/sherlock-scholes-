@@ -161,20 +161,6 @@ struct MatchPlayerRow {
     suspended_until: Option<NaiveDate>,
 }
 
-fn take_position(players: &mut Vec<Player>, position: Position, count: usize) -> Vec<Player> {
-    let mut selected = Vec::with_capacity(count);
-    let mut remaining = Vec::with_capacity(players.len());
-    for player in players.drain(..) {
-        if player.position == position && selected.len() < count {
-            selected.push(player);
-        } else {
-            remaining.push(player);
-        }
-    }
-    *players = remaining;
-    selected
-}
-
 async fn load_match_squad(
     tx: &mut Transaction<'_, Postgres>,
     campaign_id: Uuid,
