@@ -756,6 +756,8 @@ Required information architecture:
 
 ### Workflow consolidation — 2026-11-27
 
-- Consolidated the previous duplicate/empty-job `.github/workflows/football-dynasty-rust.yml` into `.github/workflows/rust-engine.yml`. The active Rust workflow now includes rustfmt, Clippy, complete migration-chain smoke tests, byte-for-byte service/Supabase parity, PostgreSQL lifecycle tests, release build, and the separate owner-scoped RLS SQL suite (anon/authenticated roles included).
+- Consolidated the previous duplicate/empty-job `.github/workflows/football-dynasty-rust.yml` into `.github/workflows/rust-engine.yml`. The active Rust workflow now includes Clippy, complete migration-chain smoke tests, byte-for-byte service/Supabase parity, PostgreSQL lifecycle tests, release build, and the separate owner-scoped RLS SQL suite (anon/authenticated roles included).
 - The duplicate legacy workflow is removed from this PR branch to avoid a failed zero-job check; its owner-RLS coverage is preserved in the active workflow.
 - Current branch head `c4a0aacef30b66ce4760d81481ab2cf6c1d07a65` is being rechecked after the final training-log and controlled-squad scoping changes. Earlier exact-head evidence above remains tied to its stated SHA and is not substituted for this run.
+
+- Formatting is not currently a CI gate because the existing Rust codebase contains pre-existing rustfmt drift; this is intentionally not reported as a pass. Clippy, compilation, integration tests and release build remain enforced.
