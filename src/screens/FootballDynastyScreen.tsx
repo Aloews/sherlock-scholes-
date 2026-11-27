@@ -5,7 +5,7 @@ import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarE
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
   listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad, saveLineup,
-  type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent,
+  type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent, resolveLineupSelection,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -177,26 +177,10 @@ export function FootballDynastyScreen() {
 
   useEffect(() => {
     if (!squad) return;
-    setLineupFormation(squad.formation);
-    const gameDate = campaign?.campaign.game_date;
-    const available = squad.players.filter((player) =>
-      !(gameDate && player.injured_until && player.injured_until >= gameDate)
-      && !(gameDate && player.suspended_until && player.suspended_until >= gameDate),
-    );
-    const shape: Record<string, [number, number, number]> = {
-      '4-3-3': [4, 3, 3], '4-4-2': [4, 4, 2], '3-5-2': [3, 5, 2],
-      '4-2-3-1': [4, 5, 1], '3-4-3': [3, 4, 3],
-    };
-    const [defenders, midfielders, forwards] = shape[squad.formation] ?? [4, 3, 3];
-    const take = (position: string, count: number) =>
-      available.filter((player) => player.position === position).slice(0, count);
-    const hasSavedLineup = squad.starter_ids.length === 11 && squad.substitute_ids.length <= 7;
-    const starters = hasSavedLineup ? squad.starter_ids : [
-      ...take('goalkeeper', 1), ...take('defender', defenders),
-      ...take('midfielder', midfielders), ...take('forward', forwards),
-    ].map((player) => player.id);
-    setStarterIds(starters);
-    setSubstituteIds(hasSavedLineup ? squad.substitute_ids : available.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
+    const selection = resolveLineupSelection(squad, campaign?.campaign.game_date);
+    setLineupFormation(selection.formation);
+    setStarterIds(selection.starterIds);
+    setSubstituteIds(selection.substituteIds);
     setLineupSaved(false);
   }, [squad, campaign?.campaign.game_date]);
 
