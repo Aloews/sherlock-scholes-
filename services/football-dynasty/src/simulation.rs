@@ -233,6 +233,20 @@ async fn load_match_squad(
             _ => return Err(ApiError::conflict("invalid_match_lineup_role")),
         }
     }
+    // A player can become unavailable after the lineup was saved. Promote an
+    // eligible substitute in the same position before kickoff so a stale saved
+    // XI cannot prevent the fixture from being simulated.
+    for (position, required) in [
+        (Position::Goalkeeper, 1usize),
+        (Position::Defender, usize::from(formation.defenders)),
+        (Position::Midfielder, midfielders),
+        (Position::Forward, forwards),
+    ] {
+        while starters.iter().filter(|player| player.position == position).count() < required {
+            let Some(index) = bench.iter().position(|player| player.position == position) else { break; };
+            starters.push(bench.remove(index));
+        }
+    }
     let goalkeeper_count = starters.iter().filter(|player| player.position == Position::Goalkeeper).count();
     let defender_count = starters.iter().filter(|player| player.position == Position::Defender).count();
     let midfielder_count = starters.iter().filter(|player| player.position == Position::Midfielder).count();
