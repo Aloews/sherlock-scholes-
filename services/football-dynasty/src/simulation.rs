@@ -30,6 +30,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/v1/campaigns/{campaign_id}/world/events", get(list_world_events))
         .route("/api/v1/campaigns/{campaign_id}/world/events/{event_id}/respond", post(respond_world_event))
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
+        .route("/api/v1/campaigns/{campaign_id}/squad", get(get_squad))
         .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}", get(get_fixture))
         .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
@@ -108,6 +109,38 @@ struct StandingTotals {
     goals_for: i32,
     goals_against: i32,
     points: i32,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct CampaignSquadPlayerView {
+    pub id: Uuid,
+    pub full_name: String,
+    pub position: String,
+    pub shirt_number: i16,
+    pub age: i16,
+    pub pace: i16,
+    pub shooting: i16,
+    pub passing: i16,
+    pub defending: i16,
+    pub physical: i16,
+    pub goalkeeping: i16,
+    pub stamina: i16,
+    pub morale: i16,
+    pub fatigue: i16,
+    pub potential: i16,
+    pub market_value_minor: i64,
+    pub wage_minor: i64,
+    pub contract_until: Option<NaiveDate>,
+    pub injured_until: Option<NaiveDate>,
+    pub suspended_until: Option<NaiveDate>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CampaignSquadView {
+    pub team_id: Uuid,
+    pub team_name: String,
+    pub formation: String,
+    pub players: Vec<CampaignSquadPlayerView>,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -723,6 +756,48 @@ async fn tick_living_world(
         generated+=1;
     }
     Ok(generated)
+}
+
+pub async fn get_squad(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(campaign_id): Path<Uuid>,
+) -> Result<Json<CampaignSquadView>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    let team = crate::fd_query_as!((Uuid, String),
+        "SELECT id,name FROM fd.teams WHERE campaign_id=$1 AND is_player_controlled=true ORDER BY created_at,id LIMIT 1")
+        .bind(campaign_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    let formation = crate::fd_query_scalar!(
+        "SELECT formation FROM fd.team_tactics WHERE campaign_id=$1 AND team_id=$2"
+    )
+        .bind(campaign_id)
+        .bind(team.0)
+        .fetch_optional(&mut *tx)
+        .await?
+        .unwrap_or_else(|| "4-3-3".to_owned());
+    let players = crate::fd_query_as!(CampaignSquadPlayerView,
+        "SELECT id,full_name,position,shirt_number,age,pace,shooting,passing,defending,physical,
+                goalkeeping,stamina,morale,fatigue,potential,market_value_minor,wage_minor,
+                contract_until,injured_until,suspended_until
+         FROM fd.players WHERE campaign_id=$1 AND team_id=$2 ORDER BY shirt_number")
+        .bind(campaign_id)
+        .bind(team.0)
+        .fetch_all(&mut *tx)
+        .await?;
+    if players.is_empty() {
+        return Err(ApiError::not_found());
+    }
+    tx.commit().await?;
+    Ok(Json(CampaignSquadView {
+        team_id: team.0,
+        team_name: team.1,
+        formation,
+        players,
+    }))
 }
 
 pub async fn get_season(
