@@ -146,6 +146,7 @@ pub struct CampaignSquadView {
 #[derive(Debug, sqlx::FromRow)]
 struct MatchPlayerRow {
     id: Uuid,
+    role: String,
     position: String,
     pace: i16,
     shooting: i16,
@@ -194,13 +195,14 @@ async fn load_match_squad(
         _ => return Err(ApiError::conflict("invalid_team_formation")),
     };
     let rows = crate::fd_query_as!(MatchPlayerRow,
-        "SELECT p.id,p.position,p.pace,p.shooting,p.passing,p.defending,p.physical,
+        "SELECT p.id,ml.role,p.position,p.pace,p.shooting,p.passing,p.defending,p.physical,
                 p.goalkeeping,p.stamina,p.morale,p.fatigue,p.injured_until,p.suspended_until
          FROM fd.match_lineups ml JOIN fd.players p ON p.campaign_id=ml.campaign_id AND p.id=ml.player_id
          WHERE ml.campaign_id=$1 AND ml.fixture_id=$2 AND ml.team_id=$3
          ORDER BY p.shirt_number")
         .bind(campaign_id).bind(fixture_id).bind(team_id).fetch_all(&mut **tx).await?;
-    let mut players = Vec::with_capacity(rows.len());
+    let mut starters = Vec::with_capacity(11);
+    let mut bench = Vec::with_capacity(rows.len().saturating_sub(11));
     for row in rows {
         let position = match row.position.as_str() {
             "goalkeeper" => Position::Goalkeeper,
@@ -213,7 +215,7 @@ async fn load_match_squad(
         let unavailable = row.injured_until.is_some_and(|until| until >= match_date)
             || row.suspended_until.is_some_and(|until| until >= match_date);
         if unavailable { continue; }
-        players.push(Player {
+        let player = Player {
             id: row.id,
             position,
             attributes: PlayerAttributes {
@@ -226,13 +228,26 @@ async fn load_match_squad(
             fatigue:to_rating(row.fatigue)?,
             injured:row.injured_until.is_some_and(|until| until >= match_date),
             suspended:row.suspended_until.is_some_and(|until| until >= match_date),
-        });
+        };
+        match row.role.as_str() {
+            "starter" => starters.push(player),
+            "substitute" => bench.push(player),
+            _ => return Err(ApiError::conflict("invalid_match_lineup_role")),
+        }
     }
-    let mut starters = take_position(&mut players,Position::Goalkeeper,1);
-    starters.extend(take_position(&mut players,Position::Defender,usize::from(formation.defenders)));
-    starters.extend(take_position(&mut players,Position::Midfielder,midfielders));
-    starters.extend(take_position(&mut players,Position::Forward,forwards));
-    let squad = MatchSquad {
+    let goalkeeper_count = starters.iter().filter(|player| player.position == Position::Goalkeeper).count();
+    let defender_count = starters.iter().filter(|player| player.position == Position::Defender).count();
+    let midfielder_count = starters.iter().filter(|player| player.position == Position::Midfielder).count();
+    let forward_count = starters.iter().filter(|player| player.position == Position::Forward).count();
+    if starters.len() != 11
+        || goalkeeper_count != 1
+        || defender_count != usize::from(formation.defenders)
+        || midfielder_count != midfielders
+        || forward_count != forwards
+    {
+        return Err(ApiError::conflict("invalid_persisted_match_lineup"));
+    }
+    Ok(MatchSquad {
         team_id,
         starting:Lineup {
             starters, formation,
@@ -243,12 +258,8 @@ async fn load_match_squad(
                 attacking_intent:u8::try_from(tactics.4).unwrap_or(50),
             },
         },
-        bench:players,
-    };
-    if squad.starting.starters.len()!=11 {
-        return Err(ApiError::conflict("insufficient_eligible_players_for_lineup"));
-    }
-    Ok(squad)
+        bench,
+    })
 }
 
 fn automatic_substitutions(squad: &MatchSquad, minutes: u8) -> Vec<SubstitutionPlan> {
