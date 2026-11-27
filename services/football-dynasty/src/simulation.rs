@@ -889,7 +889,7 @@ pub struct SetTrainingRequest {
     pub focus: String,
     pub intensity: i16,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SetTrainingResponse {
     pub campaign_id: Uuid,
     pub team_id: Uuid,
