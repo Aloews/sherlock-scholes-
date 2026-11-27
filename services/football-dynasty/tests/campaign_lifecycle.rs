@@ -228,7 +228,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(foreign_save_status, StatusCode::NOT_FOUND);
 
     let (foreign_status, _) = call(
-        other_owner_app,
+        other_owner_app.clone(),
         "GET",
         &format!("/api/v1/campaigns/{campaign_id}/squad"),
         None,
