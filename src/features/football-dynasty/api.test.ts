@@ -90,7 +90,7 @@ describe('getSquad', () => {
   });
 
   it('loads the owner-scoped campaign squad with the authenticated request helper', async () => {
-    const squad = { team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', players: [] };
+    const squad = { team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', next_fixture_id: null, starter_ids: [], substitute_ids: [], players: [] };
     fetchMock.mockResolvedValue({ ok: true, json: async () => squad });
     const { getSquad } = await import('./api');
     await expect(getSquad('campaign-1')).resolves.toEqual(squad);
@@ -102,6 +102,12 @@ describe('getSquad', () => {
 
   it('rejects a malformed squad payload instead of treating it as an empty squad', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ team_id: 'team-1', players: {} }) });
+    const { getSquad } = await import('./api');
+    await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
+  });
+
+  it('rejects a squad payload without persisted lineup fields', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', players: [] }) });
     const { getSquad } = await import('./api');
     await expect(getSquad('campaign-1')).rejects.toThrow('invalid_squad_response');
   });

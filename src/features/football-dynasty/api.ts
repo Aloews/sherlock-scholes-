@@ -113,7 +113,13 @@ export const getSeason = (campaignId: string) =>
   request<SeasonView>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/season');
 export const getSquad = async (campaignId: string): Promise<CampaignSquadView> => {
   const squad = await request<unknown>('/api/v1/campaigns/' + encodeURIComponent(campaignId) + '/squad');
-  if (!squad || typeof squad !== 'object' || !Array.isArray((squad as { players?: unknown }).players)) {
+  if (!squad || typeof squad !== 'object'
+    || !Array.isArray((squad as { players?: unknown }).players)
+    || !Array.isArray((squad as { starter_ids?: unknown }).starter_ids)
+    || !Array.isArray((squad as { substitute_ids?: unknown }).substitute_ids)
+    || !('next_fixture_id' in squad)
+    || !((squad as { next_fixture_id?: unknown }).next_fixture_id === null
+      || typeof (squad as { next_fixture_id?: unknown }).next_fixture_id === 'string')) {
     throw new Error('invalid_squad_response');
   }
   return squad as CampaignSquadView;
