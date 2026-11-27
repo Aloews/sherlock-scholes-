@@ -719,3 +719,10 @@ Required information architecture:
 - Fixture-specific formation is persisted on `fd.match_lineups`; the match loader reads that formation for the exact fixture, so changing one fixture does not invalidate later fixtures.
 - Service migration `0014_fixture_lineup_formation.sql` is mirrored by the Supabase migration and checked by the Rust CI workflow.
 - Integration coverage verifies persistence, reload of the exact selected XI and bench, fixture-specific formation precedence in match simulation, invalid formation rejection and cross-owner 404 isolation. Browser E2E and deployed Preview verification remain separate acceptance gates.
+
+
+### FD-UI-01 resilience follow-up — 2026-11-27
+
+- Saved lineup restoration now revalidates every persisted starter and substitute against current injury/suspension eligibility, duplicate IDs, and formation-position counts. Invalid/stale selections are rebuilt from currently eligible squad members rather than restored into an unsavable state.
+- Match simulation now promotes an eligible same-position substitute when a previously saved starter becomes injured or suspended before kickoff. If the bench cannot restore the required formation, the engine still fails explicitly rather than silently simulating an invalid XI.
+- Added frontend regression cases for exact saved-lineup restoration, late unavailability and malformed/duplicate persisted IDs. Added PostgreSQL lifecycle coverage for a late injury and same-position bench promotion; exact-head CI is running and this increment is not VERIFIED until it passes.
