@@ -380,8 +380,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let selected_starters_used: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=ANY($3) AND started=true")
         .bind(campaign_uuid).bind(fixture_id).bind(&expected_starters).fetch_one(&pool).await.expect("persisted selected starter stats");
     assert_eq!(selected_starters_used, 10, "the unavailable saved starter must not start");
-    let total_starters: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND started=true")
-        .bind(campaign_uuid).bind(fixture_id).fetch_one(&pool).await.expect("persisted matchday starting XI");
+    let total_starters: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND team_id=$3 AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).bind(team_id).fetch_one(&pool).await.expect("persisted controlled-team starting XI");
     assert_eq!(total_starters, 11, "the engine must promote an eligible substitute to preserve an XI");
     let promoted_started: bool = sqlx::query_scalar("SELECT started FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=$3")
         .bind(campaign_uuid).bind(fixture_id).bind(promoted_substitute).fetch_one(&pool).await.expect("promoted substitute match stats");
