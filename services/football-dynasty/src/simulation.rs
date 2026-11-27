@@ -959,17 +959,28 @@ async fn apply_daily_training(
         };
         let fatigue_before = career.fatigue;
         let focus_label = row.focus.clone();
-        let (gain, improved, morale_delta) = if row.focus == "recovery" {
+        let (gain, morale_delta) = if row.focus == "recovery" {
             recover(&mut career, 1);
-            (0_u8, None, 0_i8)
+            (0_u8, 0_i8)
         } else {
             let focus = training_focus(&row.focus)?;
             let intensity = u8::try_from(row.intensity).map_err(|_| ApiError::conflict("invalid_training_intensity"))?;
             let outcome = apply_training(&mut career, TrainingPlan { focus, intensity },
                 (campaign_seed as u64) ^ (game_date.num_days_from_ce() as u64).rotate_left(13))
                 .map_err(|_| ApiError::conflict("invalid_player_training_state"))?;
-            (outcome.attribute_gain, outcome.improved.map(|_| focus_label.clone()), outcome.morale_change)
+            (outcome.attribute_gain, outcome.morale_change)
         };
+        let improved_attribute = if gain > 0 {
+            [
+                ("pace", row.pace, i16::from(career.attributes.pace)),
+                ("shooting", row.shooting, i16::from(career.attributes.shooting)),
+                ("passing", row.passing, i16::from(career.attributes.passing)),
+                ("defending", row.defending, i16::from(career.attributes.defending)),
+                ("physical", row.physical, i16::from(career.attributes.physical)),
+                ("goalkeeping", row.goalkeeping, i16::from(career.attributes.goalkeeping)),
+                ("stamina", row.stamina, i16::from(career.attributes.stamina)),
+            ].into_iter().find(|(_, before, after)| after > before).map(|(name, _, _)| name.to_owned())
+        } else { None };
         let attributes_after = json!({
             "pace":career.attributes.pace,"shooting":career.attributes.shooting,
             "passing":career.attributes.passing,"defending":career.attributes.defending,
