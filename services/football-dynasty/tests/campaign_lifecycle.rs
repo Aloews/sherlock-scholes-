@@ -252,6 +252,8 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let (training_player, training_before, training_potential, fatigue_before): (uuid::Uuid, i16, i16, i16) = sqlx::query_as(
         "SELECT id,LEAST(pace,shooting,passing,defending,physical,stamina),potential,fatigue FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND LEAST(pace,shooting,passing,defending,physical,stamina)<potential AND injured_until IS NULL AND suspended_until IS NULL ORDER BY shirt_number LIMIT 1")
         .bind(campaign_uuid).bind(team_id).fetch_one(&pool).await.expect("player eligible for development");
+    sqlx::query("UPDATE fd.players SET fatigue=30 WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).execute(&pool).await.expect("seed fatigue for lifecycle assertion");
     let training_payload=json!({"player_ids":[training_player],"focus":"balanced","intensity":80});
     let (training_status, training_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload.clone())).await;
     assert_eq!(training_status,StatusCode::OK,"training assignment: {training_result}");
@@ -284,6 +286,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let training_log_count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training audit log");
     assert_eq!(training_log_count,1,"one daily training outcome must be persisted exactly once");
+    let training_fatigue_delta:i16=sqlx::query_scalar("SELECT fatigue_delta FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training fatigue delta");
+    assert_eq!(training_fatigue_delta,8,"intensity 80 must persist its eight-point fatigue load");
     let (training_focus,training_intensity):(Option<String>,Option<i16>)=sqlx::query_as("SELECT focus,intensity FROM fd.player_training_plans WHERE campaign_id=$1 AND player_id=$2")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted training plan");
     assert_eq!((training_focus,training_intensity),(Some("balanced".to_owned()),Some(80)));
@@ -363,6 +368,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let recovery_days:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date BETWEEN DATE '2026-01-03' AND DATE '2026-01-08' AND focus='recovery'")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("daily recovery log");
     assert_eq!(recovery_days,6,"recovery plan must execute once per in-game day");
+    let recovery_delta:i16=sqlx::query_scalar("SELECT fatigue_delta FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-03'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("first recovery delta");
+    assert_eq!(recovery_delta,-8,"recovery plan must apply eight additional fatigue points after passive recovery");
     let recovered_fatigue:i16=sqlx::query_scalar("SELECT fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("recovered player fatigue");
     assert_eq!(recovered_fatigue,0,"daily recovery must persist fatigue reduction");
