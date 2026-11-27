@@ -35,6 +35,7 @@ export interface CampaignSquadPlayer {
   defending: number; physical: number; goalkeeping: number; stamina: number; morale: number;
   fatigue: number; potential: number; market_value_minor: number; wage_minor: number;
   contract_until: string | null; injured_until: string | null; suspended_until: string | null;
+  training_focus: string | null; training_intensity: number | null;
 }
 export interface CampaignSquadView {
   team_id: string; team_name: string; formation: string; next_fixture_id: string | null;
@@ -176,6 +177,12 @@ export const resolveLineupSelection = (
 
 export interface SaveLineupPayload { formation: string; starter_ids: string[]; substitute_ids: string[] }
 export interface SaveLineupResult { fixture_id: string; team_id: string; formation: string; starters_saved: number; substitutes_saved: number }
+export interface SetTrainingPayload { player_ids: string[]; focus: 'finishing' | 'passing' | 'defending' | 'physical' | 'goalkeeping' | 'balanced' | 'recovery'; intensity: number }
+export interface SetTrainingResult { campaign_id: string; team_id: string; assigned_players: number; focus: string; intensity: number }
+export const setPlayerTraining = (campaignId: string, payload: SetTrainingPayload) =>
+  request<SetTrainingResult>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/training`,
+    { method: 'POST', body: JSON.stringify(payload) }, true);
+
 export const saveLineup = (campaignId: string, fixtureId: string, payload: SaveLineupPayload) =>
   request<SaveLineupResult>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/fixtures/${encodeURIComponent(fixtureId)}/lineup`,
     { method: 'POST', body: JSON.stringify(payload) }, true);
