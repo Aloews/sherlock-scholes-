@@ -11,6 +11,7 @@ on:
     branches: [main, feat/dynasty-rust-engine-core-20261119, feat/dynasty-squad-inspection-20261127]
     paths:
       - "services/football-dynasty/**"
+      - "docs/MAP.md"
       - ".github/workflows/rust-engine.yml"
   workflow_dispatch: {}
 

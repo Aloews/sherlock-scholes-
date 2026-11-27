@@ -742,3 +742,13 @@ Required information architecture:
 ### FD-UI-01 matchday recovery hardening
 
 - Late-injury promotion now updates the persisted `fd.match_lineups.role` values before player match statistics are derived. This keeps the in-memory XI, match simulation and PostgreSQL minutes/started flags consistent. The previous exact-head Rust integration run exposed the mismatch; this fix is included in the current branch and must pass fresh CI.
+
+
+### Exact CI evidence — 2026-11-27
+
+- Rust engine run `46023396150` passed on code SHA `9dc39fc4cfbd5539ff25756b6aa80a8cddbefdec`: PostgreSQL 16 applied the complete service migration chain; migration parity through `0015_player_training_development.sql` passed; Clippy with warnings denied passed; all Rust unit/API/PostgreSQL lifecycle tests passed; release binary compiled.
+- General CI run `46024083299` passed on UI SHA `d9d8cc047b8fe99543de0dbc1f06902b4ea9165e`: TypeScript typecheck and production build, frontend unit/property/data-integrity tests and coverage gate, nine-locale translation check, Edge Function checks, Python tests, Qwen agent-policy tests and mutation testing passed. Voice check was skipped because no live voice endpoint was configured.
+- The PostgreSQL lifecycle test verified a real persisted training attribute increase, the potential ceiling, an eight-point intensity-80 fatigue load, idempotent assignment replay, cross-owner rejection, daily recovery log entries and an additional eight-point recovery reduction. The matchday test also verifies persisted substitute promotion and the controlled team's XI statistics.
+- The Squad screen now includes an in-place one-day calendar advance so the user can apply a plan and immediately inspect the refreshed PostgreSQL-backed player state.
+- These are CI checks against an ephemeral PostgreSQL 16 instance, not writes to the production Supabase database. Migration `0015` is mirrored but has not been applied to production. No Vercel deployment or Preview is used for these checks.
+- FD-UI-02 remains **NOT VERIFIED as a complete player journey** until browser E2E is run. PR #451 remains Draft; no merge or production action.
