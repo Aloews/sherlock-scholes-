@@ -1019,8 +1019,8 @@ pub async fn set_training(
     if status != "active" { return Err(ApiError::conflict("campaign_not_active")); }
     let team_id: Uuid = crate::fd_query_scalar!("SELECT id FROM fd.teams WHERE campaign_id=$1 AND is_player_controlled=true ORDER BY created_at,id LIMIT 1")
         .bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
-    let owned_count: i64 = crate::fd_query_scalar!("SELECT COUNT(*) FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND id=ANY($3)")
-        .bind(campaign_id).bind(team_id).bind(&request.player_ids).fetch_one(&mut *tx).await?;
+    let owned_count: i64 = crate::fd_query_scalar!("SELECT COUNT(*) FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND id=ANY($3) AND ($4::text<>'goalkeeping' OR position='goalkeeper')")
+        .bind(campaign_id).bind(team_id).bind(&request.player_ids).bind(&request.focus).fetch_one(&mut *tx).await?;
     if owned_count != request.player_ids.len() as i64 { return Err(ApiError::not_found()); }
     crate::fd_query!("INSERT INTO fd.player_training_plans(campaign_id,player_id,focus,intensity) SELECT $1,p.id,$4,$5 FROM fd.players p WHERE p.campaign_id=$1 AND p.team_id=$2 AND p.id=ANY($3) ON CONFLICT(campaign_id,player_id) DO UPDATE SET focus=EXCLUDED.focus,intensity=EXCLUDED.intensity,updated_at=now()")
         .bind(campaign_id).bind(team_id).bind(&request.player_ids).bind(&request.focus).bind(request.intensity)
