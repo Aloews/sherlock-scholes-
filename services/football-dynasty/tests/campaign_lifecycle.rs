@@ -163,24 +163,31 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let (fixture_id, team_id) = sqlx::query_as::<_, (uuid::Uuid, uuid::Uuid)>(
         "SELECT f.id,t.id FROM fd.season_fixtures f JOIN fd.teams t ON t.campaign_id=f.campaign_id AND t.id IN (f.home_team_id,f.away_team_id) WHERE f.campaign_id=$1 AND t.is_player_controlled=true AND f.status='scheduled' ORDER BY f.matchday LIMIT 1")
         .bind(campaign_uuid).fetch_one(&pool).await.expect("upcoming controlled fixture");
+    let fixture_date: chrono::NaiveDate = sqlx::query_scalar("SELECT match_date FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
+        .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("fixture date");
+    assert_eq!(fixture_date, chrono::NaiveDate::from_ymd_opt(2026, 1, 3).expect("first matchday"));
     let roster = sqlx::query_as::<_, (uuid::Uuid, String, i16)>(
         "SELECT id,position,shirt_number FROM fd.players WHERE campaign_id=$1 AND team_id=$2 ORDER BY shirt_number")
         .bind(campaign_uuid).bind(team_id).fetch_all(&pool).await.expect("controlled roster");
     let mut starters = Vec::new(); let mut substitutes = Vec::new();
     for (id, position, shirt) in roster {
         let starter = (position == "goalkeeper" && shirt == 1) || (position == "defender" && (2..=5).contains(&shirt))
-            || (position == "midfielder" && (8..=10).contains(&shirt)) || (position == "forward" && (14..=16).contains(&shirt));
+            || (position == "midfielder" && (8..=11).contains(&shirt)) || (position == "forward" && (14..=15).contains(&shirt));
         if starter { starters.push(id); } else if substitutes.len() < 7 { substitutes.push(id); }
     }
-    assert_eq!(starters.len(), 11, "test roster has a valid 4-3-3");
+    assert_eq!(starters.len(), 11, "test roster has a valid 4-4-2");
+    let expected_starters = starters.clone();
     let (save_status, saved) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
-        Some(json!({"formation":"4-3-3","starter_ids":starters,"substitute_ids":substitutes}))).await;
+        Some(json!({"formation":"4-4-2","starter_ids":starters,"substitute_ids":substitutes}))).await;
     assert_eq!(save_status, StatusCode::OK, "save lineup: {saved}");
     assert_eq!(saved["starters_saved"], 11); assert_eq!(saved["substitutes_saved"], 7);
     let persisted = sqlx::query_as::<_, (String, String, i64)>(
         "SELECT tt.formation,min(ml.formation),count(ml.player_id) FROM fd.team_tactics tt JOIN fd.match_lineups ml ON ml.campaign_id=tt.campaign_id AND ml.team_id=tt.team_id WHERE tt.campaign_id=$1 AND tt.team_id=$2 AND ml.fixture_id=$3 GROUP BY tt.formation")
         .bind(campaign_uuid).bind(team_id).bind(fixture_id).fetch_one(&pool).await.expect("persisted lineup");
-    assert_eq!(persisted, ("4-3-3".to_owned(), "4-3-3".to_owned(), 18));
+    assert_eq!(persisted, ("4-4-2".to_owned(), "4-4-2".to_owned(), 18));
+    // A later team-level tactic change must not override this fixture's saved formation.
+    sqlx::query("UPDATE fd.team_tactics SET formation='4-3-3' WHERE campaign_id=$1 AND team_id=$2")
+        .bind(campaign_uuid).bind(team_id).execute(&pool).await.expect("set a different global formation");
     let (invalid_status, _) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
         Some(json!({"formation":"5-5-0","starter_ids":[],"substitute_ids":[]}))).await;
     assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
@@ -295,6 +302,12 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 4);
+    let played_status: String = sqlx::query_scalar("SELECT status FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
+        .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("played fixture status");
+    assert_eq!(played_status, "played", "the match engine must consume the fixture-specific 4-4-2");
+    let started_players: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=ANY($3) AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).bind(&expected_starters).fetch_one(&pool).await.expect("persisted starting XI stats");
+    assert_eq!(started_players, 11, "all selected starters must be used by the match engine");
 
     let (follow_up_status, follow_up_events) = call(
         app.clone(),
