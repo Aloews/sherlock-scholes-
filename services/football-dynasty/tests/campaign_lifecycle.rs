@@ -289,6 +289,9 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     let training_fatigue_delta:i16=sqlx::query_scalar("SELECT fatigue_delta FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training fatigue delta");
     assert_eq!(training_fatigue_delta,8,"intensity 80 must persist its eight-point fatigue load");
+    let improved_attribute:String=sqlx::query_scalar("SELECT improved_attribute FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("exact improved attribute");
+    assert!(["pace","shooting","passing","defending","physical","stamina"].contains(&improved_attribute.as_str()),"the log must name the actual improved attribute, not the training focus");
     let (training_focus,training_intensity):(Option<String>,Option<i16>)=sqlx::query_as("SELECT focus,intensity FROM fd.player_training_plans WHERE campaign_id=$1 AND player_id=$2")
         .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted training plan");
     assert_eq!((training_focus,training_intensity),(Some("balanced".to_owned()),Some(80)));
