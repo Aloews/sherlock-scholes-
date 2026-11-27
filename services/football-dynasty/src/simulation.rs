@@ -17,6 +17,7 @@ use crate::{
     errors::ApiError,
     match_engine::{MatchSquad, PlayerMatchEventKind, SubstitutionPlan, simulate_player_match},
     squad::{Formation, Lineup, Player, PlayerAttributes, Position, TacticalPlan},
+    player_lifecycle::{apply_training, recover, PlayerCareer, TrainingFocus, TrainingPlan},
     state::AppState,
 };
 
@@ -32,6 +33,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/v1/campaigns/{campaign_id}/season", get(get_season))
         .route("/api/v1/campaigns/{campaign_id}/squad", get(get_squad))
         .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup", post(save_lineup))
+        .route("/api/v1/campaigns/{campaign_id}/training", post(set_training))
         .route("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}", get(get_fixture))
         .route(
             "/api/v1/campaigns/{campaign_id}/events/{event_id}/resolve",
@@ -134,6 +136,8 @@ pub struct CampaignSquadPlayerView {
     pub contract_until: Option<NaiveDate>,
     pub injured_until: Option<NaiveDate>,
     pub suspended_until: Option<NaiveDate>,
+    pub training_focus: Option<String>,
+    pub training_intensity: Option<i16>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -878,6 +882,158 @@ pub async fn save_lineup(
         starters_saved: request.starter_ids.len(), substitutes_saved: request.substitute_ids.len() }))
 }
 
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SetTrainingRequest {
+    pub player_ids: Vec<Uuid>,
+    pub focus: String,
+    pub intensity: i16,
+}
+#[derive(Debug, Serialize)]
+pub struct SetTrainingResponse {
+    pub campaign_id: Uuid,
+    pub team_id: Uuid,
+    pub assigned_players: usize,
+    pub focus: String,
+    pub intensity: i16,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct TrainingPlayerRow {
+    id: Uuid, age: i16, potential: i16,
+    pace: i16, shooting: i16, passing: i16, defending: i16, physical: i16,
+    goalkeeping: i16, stamina: i16, morale: i16, fatigue: i16,
+    injured_until: Option<NaiveDate>, contract_until: Option<NaiveDate>,
+    wage_minor: i64, market_value_minor: i64, focus: String, intensity: i16,
+}
+
+fn training_focus(value: &str) -> Result<TrainingFocus, ApiError> {
+    match value {
+        "finishing" => Ok(TrainingFocus::Finishing),
+        "passing" => Ok(TrainingFocus::Passing),
+        "defending" => Ok(TrainingFocus::Defending),
+        "physical" => Ok(TrainingFocus::Physical),
+        "goalkeeping" => Ok(TrainingFocus::Goalkeeping),
+        "balanced" => Ok(TrainingFocus::Balanced),
+        _ => Err(ApiError::bad_request("invalid_training_focus")),
+    }
+}
+
+async fn apply_daily_training(
+    tx: &mut Transaction<'_, Postgres>,
+    campaign_id: Uuid,
+    game_date: NaiveDate,
+    campaign_seed: i64,
+) -> Result<(), ApiError> {
+    let rows = crate::fd_query_as!(TrainingPlayerRow,
+        "SELECT p.id,p.age,p.potential,p.pace,p.shooting,p.passing,p.defending,p.physical,
+                p.goalkeeping,p.stamina,p.morale,p.fatigue,p.injured_until,p.contract_until,
+                p.wage_minor,p.market_value_minor,plan.focus,plan.intensity
+         FROM fd.player_training_plans plan
+         JOIN fd.players p ON p.campaign_id=plan.campaign_id AND p.id=plan.player_id
+         WHERE plan.campaign_id=$1 ORDER BY p.id")
+        .bind(campaign_id).fetch_all(&mut **tx).await?;
+
+    for row in rows {
+        let attributes_before = json!({
+            "pace":row.pace,"shooting":row.shooting,"passing":row.passing,
+            "defending":row.defending,"physical":row.physical,
+            "goalkeeping":row.goalkeeping,"stamina":row.stamina,
+        });
+        let to_u8 = |value: i16| u8::try_from(value).map_err(|_| ApiError::conflict("invalid_player_training_state"));
+        let mut career = PlayerCareer {
+            id: row.id,
+            age: to_u8(row.age)?, potential: to_u8(row.potential)?,
+            attributes: PlayerAttributes {
+                pace:to_u8(row.pace)?, shooting:to_u8(row.shooting)?,
+                passing:to_u8(row.passing)?, defending:to_u8(row.defending)?,
+                physical:to_u8(row.physical)?, goalkeeping:to_u8(row.goalkeeping)?,
+                stamina:to_u8(row.stamina)?,
+            },
+            morale:to_u8(row.morale)?, fatigue:to_u8(row.fatigue)?,
+            appearances:0, goals:0, assists:0, minutes_played:0,
+            injury_until:row.injured_until, suspension_matches:0,
+            contract_until:row.contract_until.unwrap_or_else(|| NaiveDate::from_ymd_opt(9999,12,31).expect("valid sentinel date")),
+            wage_minor:u64::try_from(row.wage_minor).unwrap_or_default(),
+            market_value_minor:u64::try_from(row.market_value_minor).unwrap_or_default(),
+        };
+        let fatigue_before = career.fatigue;
+        let focus_label = row.focus.clone();
+        let (gain, improved, morale_delta) = if row.focus == "recovery" {
+            recover(&mut career, 1);
+            (0_u8, None, 0_i8)
+        } else {
+            let focus = training_focus(&row.focus)?;
+            let intensity = u8::try_from(row.intensity).map_err(|_| ApiError::conflict("invalid_training_intensity"))?;
+            let outcome = apply_training(&mut career, TrainingPlan { focus, intensity },
+                (campaign_seed as u64) ^ (game_date.num_days_from_ce() as u64).rotate_left(13))
+                .map_err(|_| ApiError::conflict("invalid_player_training_state"))?;
+            (outcome.attribute_gain, outcome.improved.map(|_| focus_label.clone()), outcome.morale_change)
+        };
+        let attributes_after = json!({
+            "pace":career.attributes.pace,"shooting":career.attributes.shooting,
+            "passing":career.attributes.passing,"defending":career.attributes.defending,
+            "physical":career.attributes.physical,"goalkeeping":career.attributes.goalkeeping,
+            "stamina":career.attributes.stamina,
+        });
+        crate::fd_query!("UPDATE fd.players SET pace=$3,shooting=$4,passing=$5,defending=$6,physical=$7,goalkeeping=$8,stamina=$9,morale=$10,fatigue=$11,updated_at=now() WHERE campaign_id=$1 AND id=$2")
+            .bind(campaign_id).bind(row.id)
+            .bind(i16::from(career.attributes.pace)).bind(i16::from(career.attributes.shooting))
+            .bind(i16::from(career.attributes.passing)).bind(i16::from(career.attributes.defending))
+            .bind(i16::from(career.attributes.physical)).bind(i16::from(career.attributes.goalkeeping))
+            .bind(i16::from(career.attributes.stamina)).bind(i16::from(career.morale))
+            .bind(i16::from(career.fatigue)).execute(&mut **tx).await?;
+        crate::fd_query!("INSERT INTO fd.player_training_log(campaign_id,player_id,game_date,focus,intensity,attribute_gain,improved_attribute,fatigue_delta,morale_delta,attributes_before,attributes_after) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(campaign_id,player_id,game_date) DO NOTHING")
+            .bind(campaign_id).bind(row.id).bind(game_date).bind(&focus_label).bind(row.intensity)
+            .bind(i16::from(gain)).bind(improved)
+            .bind(i16::from(career.fatigue)-i16::from(fatigue_before)).bind(i16::from(morale_delta))
+            .bind(attributes_before).bind(attributes_after).execute(&mut **tx).await?;
+    }
+    Ok(())
+}
+
+pub async fn set_training(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path(campaign_id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(request): Json<SetTrainingRequest>,
+) -> Result<Json<SetTrainingResponse>, ApiError> {
+    let unique: HashSet<Uuid> = request.player_ids.iter().copied().collect();
+    let valid_focus = matches!(request.focus.as_str(), "finishing"|"passing"|"defending"|"physical"|"goalkeeping"|"balanced"|"recovery");
+    let valid_intensity = if request.focus == "recovery" { request.intensity == 0 } else { (20..=100).contains(&request.intensity) };
+    if request.player_ids.is_empty() || request.player_ids.len() > 19
+        || unique.len() != request.player_ids.len() || !valid_focus || !valid_intensity {
+        return Err(ApiError::bad_request("invalid_training_assignment"));
+    }
+    let key = command_key(&headers)?;
+    let hash = request_hash(&(campaign_id, &request))?;
+    let mut tx = state.db.begin().await?;
+    set_owner(&mut tx, identity.telegram_id).await?;
+    if let Some(value) = reserve(&mut tx, identity.telegram_id, &key, "set_training", &hash).await? {
+        tx.rollback().await?;
+        return replay(value);
+    }
+    let status: String = crate::fd_query_scalar!("SELECT status FROM fd.campaigns WHERE id=$1 FOR UPDATE")
+        .bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
+    if status != "active" { return Err(ApiError::conflict("campaign_not_active")); }
+    let team_id: Uuid = crate::fd_query_scalar!("SELECT id FROM fd.teams WHERE campaign_id=$1 AND is_player_controlled=true ORDER BY created_at,id LIMIT 1")
+        .bind(campaign_id).fetch_optional(&mut *tx).await?.ok_or_else(ApiError::not_found)?;
+    let owned_count: i64 = crate::fd_query_scalar!("SELECT COUNT(*) FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND id=ANY($3)")
+        .bind(campaign_id).bind(team_id).bind(&request.player_ids).fetch_one(&mut *tx).await?;
+    if owned_count != request.player_ids.len() as i64 { return Err(ApiError::not_found()); }
+    crate::fd_query!("INSERT INTO fd.player_training_plans(campaign_id,player_id,focus,intensity) SELECT $1,p.id,$4,$5 FROM fd.players p WHERE p.campaign_id=$1 AND p.team_id=$2 AND p.id=ANY($3) ON CONFLICT(campaign_id,player_id) DO UPDATE SET focus=EXCLUDED.focus,intensity=EXCLUDED.intensity,updated_at=now()")
+        .bind(campaign_id).bind(team_id).bind(&request.player_ids).bind(&request.focus).bind(request.intensity)
+        .execute(&mut *tx).await?;
+    let result = SetTrainingResponse { campaign_id, team_id, assigned_players:request.player_ids.len(), focus:request.focus.clone(), intensity:request.intensity };
+    crate::fd_query!("INSERT INTO fd.chronicle(campaign_id,event_type,title,game_year,payload) SELECT $1,'training_plan_updated','Training plan updated',current_year,$2 FROM fd.campaigns WHERE id=$1")
+        .bind(campaign_id).bind(json!({"player_ids":request.player_ids,"focus":request.focus,"intensity":request.intensity}))
+        .execute(&mut *tx).await?;
+    complete(&mut tx, identity.telegram_id, &key, campaign_id, &result).await?;
+    tx.commit().await?;
+    Ok(Json(result))
+}
+
 pub async fn get_squad(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
@@ -900,10 +1056,11 @@ pub async fn get_squad(
         .await?
         .unwrap_or_else(|| "4-3-3".to_owned());
     let players = crate::fd_query_as!(CampaignSquadPlayerView,
-        "SELECT id,full_name,position,shirt_number,age,pace,shooting,passing,defending,physical,
-                goalkeeping,stamina,morale,fatigue,potential,market_value_minor,wage_minor,
-                contract_until,injured_until,suspended_until
-         FROM fd.players WHERE campaign_id=$1 AND team_id=$2 ORDER BY shirt_number")
+        "SELECT p.id,p.full_name,p.position,p.shirt_number,p.age,p.pace,p.shooting,p.passing,p.defending,p.physical,
+                p.goalkeeping,p.stamina,p.morale,p.fatigue,p.potential,p.market_value_minor,p.wage_minor,
+                p.contract_until,p.injured_until,p.suspended_until,plan.focus AS training_focus,plan.intensity AS training_intensity
+         FROM fd.players p LEFT JOIN fd.player_training_plans plan ON plan.campaign_id=p.campaign_id AND plan.player_id=p.id
+         WHERE p.campaign_id=$1 AND p.team_id=$2 ORDER BY p.shirt_number")
         .bind(campaign_id)
         .bind(team.0)
         .fetch_all(&mut *tx)
@@ -1209,6 +1366,7 @@ pub async fn advance_time(
              WHERE campaign_id=$1"
         )
         .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
+        apply_daily_training(&mut tx, campaign_id, current_date, campaign_seed).await?;
         let expired = crate::fd_query!("UPDATE fd.game_events SET status='expired' WHERE campaign_id=$1 AND status='pending' AND expires_on < $2")
             .bind(campaign_id).bind(current_date).execute(&mut *tx).await?;
         expired_events += expired.rows_affected() as i64;
