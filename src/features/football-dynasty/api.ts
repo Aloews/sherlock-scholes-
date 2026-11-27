@@ -37,7 +37,8 @@ export interface CampaignSquadPlayer {
   contract_until: string | null; injured_until: string | null; suspended_until: string | null;
 }
 export interface CampaignSquadView {
-  team_id: string; team_name: string; formation: string; players: CampaignSquadPlayer[];
+  team_id: string; team_name: string; formation: string; next_fixture_id: string | null;
+  starter_ids: string[]; substitute_ids: string[]; players: CampaignSquadPlayer[];
 }
 
 export interface CampaignCreated {

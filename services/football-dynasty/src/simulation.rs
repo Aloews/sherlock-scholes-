@@ -146,6 +146,9 @@ pub struct CampaignSquadView {
     pub team_id: Uuid,
     pub team_name: String,
     pub formation: String,
+    pub next_fixture_id: Option<Uuid>,
+    pub starter_ids: Vec<Uuid>,
+    pub substitute_ids: Vec<Uuid>,
     pub players: Vec<CampaignSquadPlayerView>,
 }
 
@@ -874,11 +877,30 @@ pub async fn get_squad(
     if players.is_empty() {
         return Err(ApiError::not_found());
     }
+    let next_fixture_id = crate::fd_query_scalar!(
+        "SELECT id FROM fd.season_fixtures
+         WHERE campaign_id=$1 AND status='scheduled' AND (home_team_id=$2 OR away_team_id=$2)
+         ORDER BY match_date,matchday,id LIMIT 1"
+    )
+        .bind(campaign_id).bind(team.0).fetch_optional(&mut *tx).await?;
+    let lineup_rows = if let Some(fixture_id) = next_fixture_id {
+        crate::fd_query_as!((Uuid, String),
+            "SELECT player_id,role FROM fd.match_lineups
+             WHERE campaign_id=$1 AND fixture_id=$2 AND team_id=$3 ORDER BY shirt_number")
+            .bind(campaign_id).bind(fixture_id).bind(team.0).fetch_all(&mut *tx).await?
+    } else {
+        Vec::new()
+    };
+    let starter_ids = lineup_rows.iter().filter(|(_, role)| role == "starter").map(|(id, _)| *id).collect();
+    let substitute_ids = lineup_rows.iter().filter(|(_, role)| role == "substitute").map(|(id, _)| *id).collect();
     tx.commit().await?;
     Ok(Json(CampaignSquadView {
         team_id: team.0,
         team_name: team.1,
         formation,
+        next_fixture_id,
+        starter_ids,
+        substitute_ids,
         players,
     }))
 }

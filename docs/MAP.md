@@ -718,4 +718,4 @@ Required information architecture:
 - The save is transactional and serializes concurrent edits by locking the target fixture and controlled team rows.
 - Fixture-specific formation is persisted on `fd.match_lineups`; the match loader reads that formation for the exact fixture, so changing one fixture does not invalidate later fixtures.
 - Service migration `0014_fixture_lineup_formation.sql` is mirrored by the Supabase migration and checked by the Rust CI workflow.
-- Integration coverage verifies persistence, invalid formation rejection and cross-owner 404 isolation. Browser E2E and deployed Preview verification remain separate acceptance gates.
+- Integration coverage verifies persistence, reload of the exact selected XI and bench, fixture-specific formation precedence in match simulation, invalid formation rejection and cross-owner 404 isolation. Browser E2E and deployed Preview verification remain separate acceptance gates.

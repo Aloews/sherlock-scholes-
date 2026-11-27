@@ -190,17 +190,17 @@ export function FootballDynastyScreen() {
     const [defenders, midfielders, forwards] = shape[squad.formation] ?? [4, 3, 3];
     const take = (position: string, count: number) =>
       available.filter((player) => player.position === position).slice(0, count);
-    const starters = [
+    const hasSavedLineup = squad.starter_ids.length === 11 && squad.substitute_ids.length <= 7;
+    const starters = hasSavedLineup ? squad.starter_ids : [
       ...take('goalkeeper', 1), ...take('defender', defenders),
       ...take('midfielder', midfielders), ...take('forward', forwards),
     ].map((player) => player.id);
     setStarterIds(starters);
-    setSubstituteIds(available.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
+    setSubstituteIds(hasSavedLineup ? squad.substitute_ids : available.filter((player) => !starters.includes(player.id)).slice(0, 7).map((player) => player.id));
     setLineupSaved(false);
   }, [squad, campaign?.campaign.game_date]);
 
-  const nextFixture = squad ? season?.fixtures.find((fixture) => fixture.status === 'scheduled'
-    && (fixture.home_team === squad.team_name || fixture.away_team === squad.team_name)) : undefined;
+  const nextFixture = squad?.next_fixture_id ? season?.fixtures.find((fixture) => fixture.id === squad.next_fixture_id) : undefined;
   const toggleLineupRole = (playerId: string) => {
     setLineupSaved(false);
     if (starterIds.includes(playerId)) {

@@ -177,6 +177,7 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     }
     assert_eq!(starters.len(), 11, "test roster has a valid 4-4-2");
     let expected_starters = starters.clone();
+    let expected_substitutes = substitutes.clone();
     let (save_status, saved) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
         Some(json!({"formation":"4-4-2","starter_ids":starters,"substitute_ids":substitutes}))).await;
     assert_eq!(save_status, StatusCode::OK, "save lineup: {saved}");
@@ -185,6 +186,13 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
         "SELECT tt.formation,min(ml.formation),count(ml.player_id) FROM fd.team_tactics tt JOIN fd.match_lineups ml ON ml.campaign_id=tt.campaign_id AND ml.team_id=tt.team_id WHERE tt.campaign_id=$1 AND tt.team_id=$2 AND ml.fixture_id=$3 GROUP BY tt.formation")
         .bind(campaign_uuid).bind(team_id).bind(fixture_id).fetch_one(&pool).await.expect("persisted lineup");
     assert_eq!(persisted, ("4-4-2".to_owned(), "4-4-2".to_owned(), 18));
+    let (reload_status, reloaded) = call(app.clone(), "GET", &format!("/api/v1/campaigns/{campaign_id}/squad"), None, None).await;
+    assert_eq!(reload_status, StatusCode::OK);
+    assert_eq!(reloaded["next_fixture_id"], fixture_id.to_string());
+    let reloaded_starters: Vec<uuid::Uuid> = serde_json::from_value(reloaded["starter_ids"].clone()).expect("restored starters");
+    let reloaded_substitutes: Vec<uuid::Uuid> = serde_json::from_value(reloaded["substitute_ids"].clone()).expect("restored substitutes");
+    assert_eq!(reloaded_starters, expected_starters);
+    assert_eq!(reloaded_substitutes, expected_substitutes);
     // A later team-level tactic change must not override this fixture's saved formation.
     sqlx::query("UPDATE fd.team_tactics SET formation='4-3-3' WHERE campaign_id=$1 AND team_id=$2")
         .bind(campaign_uuid).bind(team_id).execute(&pool).await.expect("set a different global formation");
