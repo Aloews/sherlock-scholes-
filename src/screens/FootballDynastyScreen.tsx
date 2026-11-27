@@ -164,7 +164,7 @@ export function FootballDynastyScreen() {
     setSquadLoadFailed(false);
     setSquadLoading(true);
     getSquad(selectedId)
-      .then((data) => { if (active) setSquad(data); })
+      .then((data) => { if (active) { setSquad(data); setTrainingTarget('team'); } })
       .catch(() => { if (active) setSquadLoadFailed(true); })
       .finally(() => { if (active) setSquadLoading(false); });
     return () => { active = false; };
@@ -207,7 +207,9 @@ export function FootballDynastyScreen() {
   };
   const persistTraining = () => {
     if (!campaign || !squad) return;
-    const playerIds = trainingTarget === 'team' ? squad.players.map((player) => player.id) : [trainingTarget];
+    const playerIds = trainingTarget === 'team'
+      ? squad.players.filter((player) => trainingFocus !== 'goalkeeping' || player.position === 'goalkeeper').map((player) => player.id)
+      : [trainingTarget];
     if (!playerIds.length) return;
     void run('save-training', async () => {
       await setPlayerTraining(campaign.campaign.id, {
@@ -640,7 +642,7 @@ export function FootballDynastyScreen() {
                       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Тренировки и восстановление' : 'Training & recovery'}</div>
-                          <p className="mt-1 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'План применяется каждый игровой день при продвижении календаря. Рост характеристик ограничен потенциалом.' : 'The plan runs each in-game day when the calendar advances. Attribute growth is capped by potential.'}</p>
+                          <p className="mt-1 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'План применяется каждый игровой день при продвижении календаря. Рост ограничен потенциалом; вратарская подготовка назначается только вратарям.' : 'The plan runs each in-game day when the calendar advances. Growth is capped by potential; goalkeeping focus is assigned only to goalkeepers.'}</p>
                         </div>
                         <span className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Дата кампании' : 'Campaign date'}: {campaign.campaign.game_date}</span>
                       </div>
@@ -719,7 +721,7 @@ export function FootballDynastyScreen() {
                             ))}
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                            {player.training_focus && <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">{i18n.language.startsWith('ru') ? 'План' : 'Training'}: {player.training_focus === 'recovery' ? (i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery') : player.training_focus} {player.training_intensity ? `· ${player.training_intensity}` : ''}</span>}
+                            {player.training_focus && <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">{i18n.language.startsWith('ru') ? 'План' : 'Training'}: {player.training_focus === 'recovery' ? (i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery') : player.training_focus === 'balanced' ? (i18n.language.startsWith('ru') ? 'Баланс' : 'Balanced') : player.training_focus === 'finishing' ? (i18n.language.startsWith('ru') ? 'Завершение' : 'Finishing') : player.training_focus === 'passing' ? (i18n.language.startsWith('ru') ? 'Пасы' : 'Passing') : player.training_focus === 'defending' ? (i18n.language.startsWith('ru') ? 'Защита' : 'Defending') : player.training_focus === 'physical' ? (i18n.language.startsWith('ru') ? 'Физика' : 'Physical') : (i18n.language.startsWith('ru') ? 'Вратарская' : 'Goalkeeping')} {player.training_intensity ? `· ${player.training_intensity}` : ''}</span>}
                             {injured && <span className="rounded-full bg-rose-500/10 px-2 py-1 text-rose-300">{i18n.language.startsWith('ru') ? 'Травма до' : 'Injured until'} {player.injured_until}</span>}
                             {suspended && <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{i18n.language.startsWith('ru') ? 'Дисквалификация до' : 'Suspended until'} {player.suspended_until}</span>}
                             {!injured && !suspended && <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">{i18n.language.startsWith('ru') ? 'Доступен' : 'Available'}</span>}
