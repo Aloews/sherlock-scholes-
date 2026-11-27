@@ -692,3 +692,72 @@ Required information architecture:
 - Regression coverage: pure tests cover all three result paths and home/away wording; PostgreSQL lifecycle test verifies event generation, actual effect, replay idempotency, and the reputation floor. Calendar generated-event expectations account for reviews.
 - This is a smaller verified-gameplay slice ported from the stale #446 work onto current main; matchday ticket-revenue accounting and standings position/goal-difference changes from #446 were intentionally not included.
 - CI is required on the exact PR head before marking VERIFIED. Next priority remains FD-UI-01 squad inspection and editable lineup persistence; the board-decision slice does not complete that contract.
+
+
+## FD-UI-01 squad inspection — Draft PR #451 (2026-11-27)
+
+- Verified prior slice PR #450 exact head 11ce9f8ad523856795a9efaa874f53e21c182ffe: Rust engine run #160 / 45606581898 SUCCESS; full CI run #2996 / 45606581624 SUCCESS; ten regression workflows SUCCESS. Vercel check SUCCESS for that exact SHA (deployment check target: https://vercel.com/aloews-projects/sherlock-scholes/2cwARtVrVmvDDYmp3vm4C1gW7xFq). PR #450 is still Draft and mergeable; no merge performed.
+- PR #451 branch feat/dynasty-squad-inspection-20261127 adds an owner-scoped GET /api/v1/campaigns/{campaign_id}/squad read API using existing fd.teams/fd.players/fd.team_tactics tables, no migration.
+- Frontend adds a fifth Squad tab, lazy loading, retry/error/empty states, and a compact 19-player view with shirt number, position, age, potential, six attributes, availability dates, wage, market value and contract end.
+- Tests added: frontend API response shape/route test and PostgreSQL lifecycle test for 19 seeded players, default formation, sorted shirt number, goalkeeper/attributes and cross-owner 404 isolation.
+- Status: IMPLEMENTED IN DRAFT BRANCH; exact-head CI and Preview pending. FD-UI-01 remains incomplete: lineup/bench selection, save/reload persistence and browser end-to-end acceptance are not implemented or verified.
+- Next: persist the selected starting XI/bench and formation in an owner-scoped API transaction, then test save/reload and matchday consumption of that lineup.
+
+### Verification update — PR #451 prior exact head 71d8e4d59e96d91552d609f3a288df4779a14ae5
+
+- Rust engine run #161 / 45991958238 SUCCESS; Rust format, Clippy, migration smoke, API/engine tests and release compile all completed.
+- Main CI #2997 / 45991958521 SUCCESS; Python, frontend unit/property/data-integrity and coverage, translations, edge functions, typecheck and build completed. Mutation and voice checks were skipped by their workflow conditions.
+- The regression workflows for the exact prior head also completed successfully.
+- Vercel check is SUCCESS, but the corresponding deployment is CANCELED with an ignored-build-step reason. This is not a ready Preview and no preview URL is confirmed. Project ignore-build configuration was not changed.
+- Code is verified on the prior head; this MAP-only commit requires exact-head checks again. Squad UI has no browser E2E yet.
+
+## Football Dynasty — persisted matchday lineup (FD-UI-01 follow-up)
+
+- The squad screen exposes starter and substitute selection for the next scheduled fixture.
+- The owner-scoped lineup mutation validates the controlled club, fixture state, roster membership, duplicate IDs, player availability, 11 starters and formation-position counts.
+- The save is transactional and serializes concurrent edits by locking the target fixture and controlled team rows.
+- Fixture-specific formation is persisted on `fd.match_lineups`; the match loader reads that formation for the exact fixture, so changing one fixture does not invalidate later fixtures.
+- Service migration `0014_fixture_lineup_formation.sql` is mirrored by the Supabase migration and checked by the Rust CI workflow.
+- Integration coverage verifies persistence, reload of the exact selected XI and bench, fixture-specific formation precedence in match simulation, invalid formation rejection and cross-owner 404 isolation. Browser E2E and deployed Preview verification remain separate acceptance gates.
+
+
+### FD-UI-01 resilience follow-up — 2026-11-27
+
+- Saved lineup restoration now revalidates every persisted starter and substitute against current injury/suspension eligibility, duplicate IDs, and formation-position counts. Invalid/stale selections are rebuilt from currently eligible squad members rather than restored into an unsavable state.
+- Match simulation now promotes an eligible same-position substitute when a previously saved starter becomes injured or suspended before kickoff. If the bench cannot restore the required formation, the engine still fails explicitly rather than silently simulating an invalid XI.
+- Added frontend regression cases for exact saved-lineup restoration, late unavailability and malformed/duplicate persisted IDs. Added PostgreSQL lifecycle coverage for a late injury and same-position bench promotion; exact-head CI is running and this increment is not VERIFIED until it passes.
+
+
+## FD-UI-02 — Training, development and recovery (implementation in progress, 2026-11-27)
+
+- Added service migration `0015_player_training_development.sql` and an identical Supabase mirror `20261127140000_football_dynasty_player_training_development.sql`. The Rust workflow compares the two files and applies the complete migration chain to an ephemeral PostgreSQL 16 service.
+- Added owner-scoped, idempotent `POST /api/v1/campaigns/{campaign_id}/training`. It accepts a player subset for individual plans or the complete controlled squad for team plans; duplicate, foreign-campaign, invalid-focus and invalid-intensity requests are rejected. Goalkeeping focus is restricted to goalkeepers.
+- Persisted plans in `fd.player_training_plans`; daily results are written to `fd.player_training_log` with before/after attributes, gain, fatigue and morale deltas. Both tables use campaign-owner RLS and composite campaign/player foreign keys.
+- The existing calendar transaction now applies the pure Rust lifecycle rules each in-game day: deterministic training growth capped by potential, intensity-dependent fatigue, morale effects, and explicit recovery. The daily log and player updates share the calendar transaction.
+- The Squad UI exposes team/individual target, training focus, intensity and recovery; player cards display the persisted plan plus stamina, fatigue and morale. The existing Dynasty calendar controls advance the game clock; returning to Squad reloads persisted player state.
+- Balanced development excludes the goalkeeper-only attribute; specialist goalkeeper sessions cannot be assigned to outfield players. Recovery uses a separate zero-intensity plan and provides additional daily fatigue reduction.
+- PostgreSQL lifecycle coverage assigns and replays a training plan, checks owner isolation and invalid focus, advances the calendar, verifies real attribute changes and potential caps, reads the saved plan through the squad API, then applies recovery and verifies daily recovery logs and persisted fatigue.
+- FD-UI-02 remains **NOT VERIFIED** until exact-head Rust/PostgreSQL and frontend CI pass, and a browser journey is run. Vercel is not required for migration, API, database or local-build validation; deployed Preview acceptance is a separate later gate.
+
+### FD-UI-01 matchday recovery hardening
+
+- Late-injury promotion now updates the persisted `fd.match_lineups.role` values before player match statistics are derived. This keeps the in-memory XI, match simulation and PostgreSQL minutes/started flags consistent. The previous exact-head Rust integration run exposed the mismatch; this fix is included in the current branch and must pass fresh CI.
+
+
+### Exact CI evidence — 2026-11-27
+
+- Rust engine run `46023396150` passed on code SHA `9dc39fc4cfbd5539ff25756b6aa80a8cddbefdec`: PostgreSQL 16 applied the complete service migration chain; migration parity through `0015_player_training_development.sql` passed; Clippy with warnings denied passed; all Rust unit/API/PostgreSQL lifecycle tests passed; release binary compiled.
+- General CI run `46024083299` passed on UI SHA `d9d8cc047b8fe99543de0dbc1f06902b4ea9165e`: TypeScript typecheck and production build, frontend unit/property/data-integrity tests and coverage gate, nine-locale translation check, Edge Function checks, Python tests, Qwen agent-policy tests and mutation testing passed. Voice check was skipped because no live voice endpoint was configured.
+- The PostgreSQL lifecycle test verified a real persisted training attribute increase, the potential ceiling, an eight-point intensity-80 fatigue load, idempotent assignment replay, cross-owner rejection, daily recovery log entries and an additional eight-point recovery reduction. The matchday test also verifies persisted substitute promotion and the controlled team's XI statistics.
+- The Squad screen now includes an in-place one-day calendar advance so the user can apply a plan and immediately inspect the refreshed PostgreSQL-backed player state.
+- These are CI checks against an ephemeral PostgreSQL 16 instance, not writes to the production Supabase database. Migration `0015` is mirrored but has not been applied to production. No Vercel deployment or Preview is used for these checks.
+- FD-UI-02 remains **NOT VERIFIED as a complete player journey** until browser E2E is run. PR #451 remains Draft; no merge or production action.
+
+
+### Workflow consolidation — 2026-11-27
+
+- Consolidated the previous duplicate/empty-job `.github/workflows/football-dynasty-rust.yml` into `.github/workflows/rust-engine.yml`. The active Rust workflow now includes Clippy, complete migration-chain smoke tests, byte-for-byte service/Supabase parity, PostgreSQL lifecycle tests, release build, and the separate owner-scoped RLS SQL suite (anon/authenticated roles included).
+- The duplicate legacy workflow is removed from this PR branch to avoid a failed zero-job check; its owner-RLS coverage is preserved in the active workflow.
+- Current branch head `c4a0aacef30b66ce4760d81481ab2cf6c1d07a65` is being rechecked after the final training-log and controlled-squad scoping changes. Earlier exact-head evidence above remains tied to its stated SHA and is not substituted for this run.
+
+- Formatting is not currently a CI gate because the existing Rust codebase contains pre-existing rustfmt drift; this is intentionally not reported as a pass. Clippy, compilation, integration tests and release build remain enforced.

@@ -144,6 +144,98 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(replay_status, StatusCode::OK);
     assert_eq!(replayed["id"], created["id"]);
 
+    let (squad_status, squad) = call(
+        app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    ).await;
+    assert_eq!(squad_status, StatusCode::OK);
+    assert_eq!(squad["formation"], "4-3-3");
+    assert_eq!(squad["players"].as_array().expect("squad players").len(), 19);
+    assert_eq!(squad["players"][0]["shirt_number"], 1);
+    assert!(squad["players"].as_array().expect("players").iter().any(|player| player["position"] == "goalkeeper"));
+    assert!(squad["players"][0]["potential"].as_i64().is_some());
+    assert!(squad["team_name"].as_str().is_some_and(|name| !name.is_empty()));
+
+    let campaign_uuid = uuid::Uuid::parse_str(campaign_id).expect("campaign UUID");
+    let (fixture_id, team_id) = sqlx::query_as::<_, (uuid::Uuid, uuid::Uuid)>(
+        "SELECT f.id,t.id FROM fd.season_fixtures f JOIN fd.teams t ON t.campaign_id=f.campaign_id AND t.id IN (f.home_team_id,f.away_team_id) WHERE f.campaign_id=$1 AND t.is_player_controlled=true AND f.status='scheduled' ORDER BY f.matchday LIMIT 1")
+        .bind(campaign_uuid).fetch_one(&pool).await.expect("upcoming controlled fixture");
+    let fixture_date: chrono::NaiveDate = sqlx::query_scalar("SELECT match_date FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
+        .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("fixture date");
+    assert_eq!(fixture_date, chrono::NaiveDate::from_ymd_opt(2026, 1, 3).expect("first matchday"));
+    let roster = sqlx::query_as::<_, (uuid::Uuid, String, i16)>(
+        "SELECT id,position,shirt_number FROM fd.players WHERE campaign_id=$1 AND team_id=$2 ORDER BY shirt_number")
+        .bind(campaign_uuid).bind(team_id).fetch_all(&pool).await.expect("controlled roster");
+    let mut starters = Vec::new(); let mut substitutes = Vec::new();
+    for (id, position, shirt) in roster {
+        let starter = (position == "goalkeeper" && shirt == 1) || (position == "defender" && (2..=5).contains(&shirt))
+            || (position == "midfielder" && (8..=11).contains(&shirt)) || (position == "forward" && (14..=15).contains(&shirt));
+        if starter { starters.push(id); } else if substitutes.len() < 7 { substitutes.push(id); }
+    }
+    assert_eq!(starters.len(), 11, "test roster has a valid 4-4-2");
+    let expected_starters = starters.clone();
+    let expected_substitutes = substitutes.clone();
+    let (save_status, saved) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"4-4-2","starter_ids":starters,"substitute_ids":substitutes}))).await;
+    assert_eq!(save_status, StatusCode::OK, "save lineup: {saved}");
+    assert_eq!(saved["starters_saved"], 11); assert_eq!(saved["substitutes_saved"], 7);
+    let persisted = sqlx::query_as::<_, (String, String, i64)>(
+        "SELECT tt.formation,min(ml.formation),count(ml.player_id) FROM fd.team_tactics tt JOIN fd.match_lineups ml ON ml.campaign_id=tt.campaign_id AND ml.team_id=tt.team_id WHERE tt.campaign_id=$1 AND tt.team_id=$2 AND ml.fixture_id=$3 GROUP BY tt.formation")
+        .bind(campaign_uuid).bind(team_id).bind(fixture_id).fetch_one(&pool).await.expect("persisted lineup");
+    assert_eq!(persisted, ("4-4-2".to_owned(), "4-4-2".to_owned(), 18));
+    let (reload_status, reloaded) = call(app.clone(), "GET", &format!("/api/v1/campaigns/{campaign_id}/squad"), None, None).await;
+    assert_eq!(reload_status, StatusCode::OK);
+    assert_eq!(reloaded["next_fixture_id"], fixture_id.to_string());
+    let reloaded_starters: Vec<uuid::Uuid> = serde_json::from_value(reloaded["starter_ids"].clone()).expect("restored starters");
+    let reloaded_substitutes: Vec<uuid::Uuid> = serde_json::from_value(reloaded["substitute_ids"].clone()).expect("restored substitutes");
+    assert_eq!(reloaded_starters, expected_starters);
+    assert_eq!(reloaded_substitutes, expected_substitutes);
+    // A later team-level tactic change must not override this fixture's saved formation.
+    sqlx::query("UPDATE fd.team_tactics SET formation='4-3-3' WHERE campaign_id=$1 AND team_id=$2")
+        .bind(campaign_uuid).bind(team_id).execute(&pool).await.expect("set a different global formation");
+    let (invalid_status, _) = call(app.clone(), "POST", &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"5-5-0","starter_ids":[],"substitute_ids":[]}))).await;
+    assert_eq!(invalid_status, StatusCode::BAD_REQUEST);
+
+    // Simulate a late injury after the manager saved the lineup. The engine
+    // must promote a same-position substitute rather than abort the fixture.
+    let injured_starter = expected_starters[1];
+    let promoted_substitute: uuid::Uuid = sqlx::query_scalar(
+        "SELECT id FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND id=ANY($3) AND position='defender' ORDER BY shirt_number LIMIT 1")
+        .bind(campaign_uuid).bind(team_id).bind(&expected_substitutes).fetch_one(&pool).await
+        .expect("eligible defender on the bench");
+    sqlx::query("UPDATE fd.players SET injured_until=$1 WHERE campaign_id=$2 AND id=$3")
+        .bind(fixture_date).bind(campaign_uuid).bind(injured_starter).execute(&pool).await
+        .expect("mark saved starter unavailable before kickoff");
+
+    let other_owner_app = http::router(
+        AppState {
+            db: pool.clone(),
+            verifier: Arc::new(FixedVerifier(owner_id + 1)),
+        },
+        "http://localhost:5173".parse().expect("origin"),
+    );
+    let (foreign_save_status, _) = call(
+        other_owner_app.clone(), "POST",
+        &format!("/api/v1/campaigns/{campaign_id}/fixtures/{fixture_id}/lineup"), None,
+        Some(json!({"formation":"4-3-3",
+            "starter_ids":(0..11).map(|_| uuid::Uuid::new_v4()).collect::<Vec<_>>(),
+            "substitute_ids":(0..7).map(|_| uuid::Uuid::new_v4()).collect::<Vec<_>>()})),
+    ).await;
+    assert_eq!(foreign_save_status, StatusCode::NOT_FOUND);
+
+    let (foreign_status, _) = call(
+        other_owner_app.clone(),
+        "GET",
+        &format!("/api/v1/campaigns/{campaign_id}/squad"),
+        None,
+        None,
+    ).await;
+    assert_eq!(foreign_status, StatusCode::NOT_FOUND);
+
     let (heir_status, heir) = call(
         app.clone(),
         "POST",
@@ -154,6 +246,25 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     .await;
     assert_eq!(heir_status, StatusCode::CREATED);
     let heir_id = heir["id"].as_str().expect("heir id");
+
+    // Assign a real individual development plan, replay the command, then
+    // advance the persisted game clock and verify PostgreSQL attributes/logs.
+    let (training_player, training_before, training_potential, fatigue_before): (uuid::Uuid, i16, i16, i16) = sqlx::query_as(
+        "SELECT id,LEAST(pace,shooting,passing,defending,physical,stamina),potential,fatigue FROM fd.players WHERE campaign_id=$1 AND team_id=$2 AND LEAST(pace,shooting,passing,defending,physical,stamina)<potential AND ((CASE WHEN pace=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END)+(CASE WHEN shooting=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END)+(CASE WHEN passing=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END)+(CASE WHEN defending=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END)+(CASE WHEN physical=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END)+(CASE WHEN stamina=LEAST(pace,shooting,passing,defending,physical,stamina) THEN 1 ELSE 0 END))=1 AND injured_until IS NULL AND suspended_until IS NULL ORDER BY shirt_number LIMIT 1")
+        .bind(campaign_uuid).bind(team_id).fetch_one(&pool).await.expect("player eligible for development");
+    sqlx::query("UPDATE fd.players SET fatigue=30 WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).execute(&pool).await.expect("seed fatigue for lifecycle assertion");
+    let training_payload=json!({"player_ids":[training_player],"focus":"balanced","intensity":80});
+    let (training_status, training_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload.clone())).await;
+    assert_eq!(training_status,StatusCode::OK,"training assignment: {training_result}");
+    assert_eq!(training_result["assigned_players"],1);
+    let (training_replay_status,training_replay)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-plan-0001"),Some(training_payload)).await;
+    assert_eq!(training_replay_status,StatusCode::OK);
+    assert_eq!(training_replay,training_result,"training assignment replay must not duplicate state");
+    let (foreign_training_status,_) = call(other_owner_app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("foreign-training-0001"),Some(json!({"player_ids":[training_player],"focus":"balanced","intensity":80}))).await;
+    assert_eq!(foreign_training_status,StatusCode::NOT_FOUND,"another owner cannot assign training to this campaign's players");
+    let (invalid_training_status,_) = call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("invalid-training-0001"),Some(json!({"player_ids":[training_player],"focus":"telepathy","intensity":80}))).await;
+    assert_eq!(invalid_training_status,StatusCode::BAD_REQUEST);
 
     let (one_day_status, one_day) = call(
         app.clone(),
@@ -166,6 +277,30 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(one_day_status, StatusCode::OK);
     assert_eq!(one_day["current_date"], "2026-01-02");
     assert_eq!(one_day["generated_events"], 0);
+    let (training_after, fatigue_after): (i16,i16)=sqlx::query_as(
+        "SELECT LEAST(pace,shooting,passing,defending,physical,stamina),fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted trained player");
+    assert!(training_after>training_before,"daily training must improve a real PostgreSQL attribute without exceeding potential {training_potential}");
+    assert!(training_after<=training_potential);
+    assert!((0..=100).contains(&fatigue_after));
+    let training_log_count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training audit log");
+    assert_eq!(training_log_count,1,"one daily training outcome must be persisted exactly once");
+    let training_fatigue_delta:i16=sqlx::query_scalar("SELECT fatigue_delta FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("training fatigue delta");
+    assert_eq!(training_fatigue_delta,8,"intensity 80 must persist its eight-point fatigue load");
+    let improved_attribute:String=sqlx::query_scalar("SELECT improved_attribute FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-02'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("exact improved attribute");
+    assert!(["pace","shooting","passing","defending","physical","stamina"].contains(&improved_attribute.as_str()),"the log must name the actual improved attribute, not the training focus");
+    let (training_focus,training_intensity):(Option<String>,Option<i16>)=sqlx::query_as("SELECT focus,intensity FROM fd.player_training_plans WHERE campaign_id=$1 AND player_id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("persisted training plan");
+    assert_eq!((training_focus,training_intensity),(Some("balanced".to_owned()),Some(80)));
+    let (squad_after_training_status,squad_after_training)=call(app.clone(),"GET",&format!("/api/v1/campaigns/{campaign_id}/squad"),None,None).await;
+    assert_eq!(squad_after_training_status,StatusCode::OK);
+    let trained_player_view=squad_after_training["players"].as_array().unwrap().iter().find(|player|player["id"]==training_player.to_string()).expect("training state visible in squad API");
+    assert_eq!(trained_player_view["training_focus"],"balanced");
+    assert_eq!(trained_player_view["training_intensity"],80);
+    let _ = fatigue_before;
 
     // A world incident is separate from the legacy calendar inbox. Exercise
     // the authenticated API, persist the player's choice, then verify that
@@ -217,6 +352,10 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(replay_status, StatusCode::OK);
     assert_eq!(replayed_response, response);
 
+    let (recovery_status,recovery_result)=call(app.clone(),"POST",&format!("/api/v1/campaigns/{campaign_id}/training"),Some("training-recovery-0001"),Some(json!({"player_ids":[training_player],"focus":"recovery","intensity":0}))).await;
+    assert_eq!(recovery_status,StatusCode::OK,"recovery assignment: {recovery_result}");
+    assert_eq!(recovery_result["focus"],"recovery");
+
     let (tick_status, tick) = call(
         app.clone(),
         "POST",
@@ -229,6 +368,27 @@ async fn founder_heir_death_and_succession_are_persistent_and_idempotent() {
     assert_eq!(tick["from_date"], "2026-01-02");
     assert_eq!(tick["current_date"], "2026-01-08");
     assert_eq!(tick["generated_events"], 4);
+    let recovery_days:i64=sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date BETWEEN DATE '2026-01-03' AND DATE '2026-01-08' AND focus='recovery'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("daily recovery log");
+    assert_eq!(recovery_days,6,"recovery plan must execute once per in-game day");
+    let recovery_delta:i16=sqlx::query_scalar("SELECT fatigue_delta FROM fd.player_training_log WHERE campaign_id=$1 AND player_id=$2 AND game_date=DATE '2026-01-03'")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("first recovery delta");
+    assert_eq!(recovery_delta,-8,"recovery plan must apply eight additional fatigue points after passive recovery");
+    let recovered_fatigue:i16=sqlx::query_scalar("SELECT fatigue FROM fd.players WHERE campaign_id=$1 AND id=$2")
+        .bind(campaign_uuid).bind(training_player).fetch_one(&pool).await.expect("recovered player fatigue");
+    assert_eq!(recovered_fatigue,0,"daily recovery must persist fatigue reduction");
+    let played_status: String = sqlx::query_scalar("SELECT status FROM fd.season_fixtures WHERE id=$1 AND campaign_id=$2")
+        .bind(fixture_id).bind(campaign_uuid).fetch_one(&pool).await.expect("played fixture status");
+    assert_eq!(played_status, "played", "the match engine must consume the fixture-specific 4-4-2");
+    let selected_starters_used: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=ANY($3) AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).bind(&expected_starters).fetch_one(&pool).await.expect("persisted selected starter stats");
+    assert_eq!(selected_starters_used, 10, "the unavailable saved starter must not start");
+    let total_starters: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND team_id=$3 AND started=true")
+        .bind(campaign_uuid).bind(fixture_id).bind(team_id).fetch_one(&pool).await.expect("persisted controlled-team starting XI");
+    assert_eq!(total_starters, 11, "the engine must promote an eligible substitute to preserve an XI");
+    let promoted_started: bool = sqlx::query_scalar("SELECT started FROM fd.player_match_stats WHERE campaign_id=$1 AND fixture_id=$2 AND player_id=$3")
+        .bind(campaign_uuid).bind(fixture_id).bind(promoted_substitute).fetch_one(&pool).await.expect("promoted substitute match stats");
+    assert!(promoted_started, "same-position substitute must be promoted before kickoff");
 
     let (follow_up_status, follow_up_events) = call(
         app.clone(),

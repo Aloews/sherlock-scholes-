@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconArrowLeft, IconCrown, IconBuildingStadium, IconUsers, IconCalendarEvent, IconCoins, IconPlus, IconHourglass } from '@tabler/icons-react';
 import {
   advanceGameTime, createCampaign, createHeir, executeSuccession, getCampaign, getSeason, listGameEvents, resolveGameEvent,
-  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession,
-  type CampaignSummary, type CampaignView, type Character, type GameEvent, type SeasonView, type WorldEvent,
+  listWorldEvents, respondToWorldEvent, listCampaigns, previewSuccession, getSquad, saveLineup, setPlayerTraining,
+  type CampaignSummary, type CampaignView, type CampaignSquadView, type Character, type GameEvent, type SeasonView, type WorldEvent, resolveLineupSelection,
 } from '@/features/football-dynasty/api';
 
 const inputClass = 'w-full rounded-xl border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-white outline-none focus:border-brand-accent';
@@ -49,7 +49,18 @@ export function FootballDynastyScreen() {
   const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([]);
   const [worldEventsLoadFailed, setWorldEventsLoadFailed] = useState(false);
   const [eventsLoadFailed, setEventsLoadFailed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty'>('events');
+  const [activeTab, setActiveTab] = useState<'club' | 'matches' | 'events' | 'dynasty' | 'squad'>('events');
+  const [squad, setSquad] = useState<CampaignSquadView | null>(null);
+  const [squadLoading, setSquadLoading] = useState(false);
+  const [squadLoadFailed, setSquadLoadFailed] = useState(false);
+  const [squadRetry, setSquadRetry] = useState(0);
+  const [starterIds, setStarterIds] = useState<string[]>([]);
+  const [substituteIds, setSubstituteIds] = useState<string[]>([]);
+  const [lineupFormation, setLineupFormation] = useState('4-3-3');
+  const [lineupSaved, setLineupSaved] = useState(false);
+  const [trainingTarget, setTrainingTarget] = useState('team');
+  const [trainingFocus, setTrainingFocus] = useState<'finishing' | 'passing' | 'defending' | 'physical' | 'goalkeeping' | 'balanced' | 'recovery'>('balanced');
+  const [trainingIntensity, setTrainingIntensity] = useState(60);
   const [season, setSeason] = useState<SeasonView | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState('');
@@ -146,12 +157,76 @@ export function FootballDynastyScreen() {
     return () => { active = false; };
   }, [selectedId, t]);
 
+  useEffect(() => {
+    if (activeTab !== 'squad' || !selectedId) return;
+    let active = true;
+    setSquad(null);
+    setSquadLoadFailed(false);
+    setSquadLoading(true);
+    getSquad(selectedId)
+      .then((data) => { if (active) { setSquad(data); setTrainingTarget('team'); } })
+      .catch(() => { if (active) setSquadLoadFailed(true); })
+      .finally(() => { if (active) setSquadLoading(false); });
+    return () => { active = false; };
+  }, [activeTab, selectedId, squadRetry]);
+
   const run = async (key: string, action: () => Promise<void>) => {
     setBusy(key);
     setError('');
     try { await action(); }
     catch { setError(t('dynasty.error')); }
     finally { setBusy(''); }
+  };
+
+  const squadFixtureDate = squad?.next_fixture_id
+    ? season?.fixtures.find((fixture) => fixture.id === squad.next_fixture_id)?.match_date
+    : undefined;
+
+  useEffect(() => {
+    if (!squad) return;
+    const selection = resolveLineupSelection(squad, squadFixtureDate ?? campaign?.campaign.game_date);
+    setLineupFormation(selection.formation);
+    setStarterIds(selection.starterIds);
+    setSubstituteIds(selection.substituteIds);
+    setLineupSaved(false);
+  }, [squad, squadFixtureDate, campaign?.campaign.game_date]);
+
+  const nextFixture = squad?.next_fixture_id ? season?.fixtures.find((fixture) => fixture.id === squad.next_fixture_id) : undefined;
+  const toggleLineupRole = (playerId: string) => {
+    setLineupSaved(false);
+    if (starterIds.includes(playerId)) {
+      if (substituteIds.length >= 7) return;
+      setStarterIds((ids) => ids.filter((id) => id !== playerId));
+      setSubstituteIds((ids) => [...ids, playerId]);
+    } else if (substituteIds.includes(playerId)) {
+      if (starterIds.length >= 11) return;
+      setSubstituteIds((ids) => ids.filter((id) => id !== playerId));
+      setStarterIds((ids) => [...ids, playerId]);
+    } else if (starterIds.length < 11) setStarterIds((ids) => [...ids, playerId]);
+    else if (substituteIds.length < 7) setSubstituteIds((ids) => [...ids, playerId]);
+  };
+  const persistTraining = () => {
+    if (!campaign || !squad) return;
+    const playerIds = trainingTarget === 'team'
+      ? squad.players.filter((player) => trainingFocus !== 'goalkeeping' || player.position === 'goalkeeper').map((player) => player.id)
+      : [trainingTarget];
+    if (!playerIds.length) return;
+    void run('save-training', async () => {
+      await setPlayerTraining(campaign.campaign.id, {
+        player_ids: playerIds,
+        focus: trainingFocus,
+        intensity: trainingFocus === 'recovery' ? 0 : trainingIntensity,
+      });
+      setSquad(await getSquad(campaign.campaign.id));
+    });
+  };
+
+  const persistLineup = () => {
+    if (!campaign || !nextFixture || starterIds.length !== 11 || substituteIds.length > 7) return;
+    void run('save-lineup', async () => {
+      await saveLineup(campaign.campaign.id, nextFixture.id, { formation: lineupFormation, starter_ids: starterIds, substitute_ids: substituteIds });
+      setLineupSaved(true);
+    });
   };
 
   const submitCampaign = () => run('create', async () => {
@@ -178,6 +253,7 @@ export function FootballDynastyScreen() {
     void run('advance', async () => {
       await advanceGameTime(campaign.campaign.id, days);
       await refreshSelected(campaign.campaign.id);
+      if (activeTab === 'squad') setSquad(await getSquad(campaign.campaign.id));
       await refreshCampaigns();
     });
   };
@@ -328,12 +404,13 @@ export function FootballDynastyScreen() {
             </section>
 
 
-            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-4 gap-2">
+            <nav aria-label={i18n.language.startsWith('ru') ? 'Разделы игры' : 'Game sections'} className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
               {([
                 ['club', i18n.language.startsWith('ru') ? 'Клуб' : 'Club'],
                 ['matches', i18n.language.startsWith('ru') ? 'Матчи' : 'Matches'],
                 ['events', i18n.language.startsWith('ru') ? 'События' : 'Events'],
                 ['dynasty', i18n.language.startsWith('ru') ? 'Династия' : 'Dynasty'],
+                ['squad', i18n.language.startsWith('ru') ? 'Состав' : 'Squad'],
               ] as const).map(([tab, label]) => (
                 <button key={tab} type="button" onClick={() => setActiveTab(tab)}
                   aria-current={activeTab === tab ? 'page' : undefined}
@@ -534,6 +611,137 @@ export function FootballDynastyScreen() {
                 </div>
               )}
             </section>
+            )}
+
+            {activeTab === 'squad' && (
+              <section className="mb-6 rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-6">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Состав команды' : 'Team squad'}</div>
+                    <h3 className="mt-1 text-lg font-semibold">{squad?.team_name ?? campaign.clubs[0]?.name ?? '—'}</h3>
+                  </div>
+                  {squad && (
+                    <div className="rounded-xl bg-brand-bg px-3 py-2 text-xs text-brand-muted">
+                      {i18n.language.startsWith('ru') ? 'Схема' : 'Formation'}: {squad.formation} · {squad.players.length} {i18n.language.startsWith('ru') ? 'игроков' : 'players'}
+                    </div>
+                  )}
+                </div>
+                {squadLoadFailed ? (
+                  <div className="rounded-xl bg-brand-bg p-4 text-sm">
+                    <p className="mb-2 text-brand-muted">{i18n.language.startsWith('ru') ? 'Не удалось загрузить состав.' : 'Squad could not be loaded.'}</p>
+                    <button type="button" className={quietButtonClass} disabled={busy !== '' || squadLoading} onClick={() => setSquadRetry((value) => value + 1)}>
+                      {i18n.language.startsWith('ru') ? 'Повторить' : 'Retry'}
+                    </button>
+                  </div>
+                ) : squadLoading && !squad ? (
+                  <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'Загрузка состава…' : 'Loading squad…'}</p>
+                ) : squad && squad.players.length === 0 ? (
+                  <p className="rounded-xl bg-brand-bg p-4 text-sm text-brand-muted">{i18n.language.startsWith('ru') ? 'В составе пока нет игроков.' : 'No players in this squad yet.'}</p>
+                ) : squad && (
+                  <>
+                    <div className="mb-4 rounded-xl border border-brand-border bg-brand-bg p-4">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Тренировки и восстановление' : 'Training & recovery'}</div>
+                          <p className="mt-1 text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'План применяется каждый игровой день при продвижении календаря. Рост ограничен потенциалом; вратарская подготовка назначается только вратарям.' : 'The plan runs each in-game day when the calendar advances. Growth is capped by potential; goalkeeping focus is assigned only to goalkeepers.'}</p>
+                        </div>
+                        <span className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Дата кампании' : 'Campaign date'}: {campaign.campaign.game_date}</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-4">
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Кому' : 'Target'}
+                          <select className={inputClass + ' mt-1'} value={trainingTarget} onChange={(event) => setTrainingTarget(event.target.value)}>
+                            <option value="team">{i18n.language.startsWith('ru') ? 'Вся команда' : 'Whole team'}</option>
+                            {squad.players.map((player) => <option key={player.id} value={player.id}>{player.full_name}</option>)}
+                          </select>
+                        </label>
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Направление' : 'Focus'}
+                          <select className={inputClass + ' mt-1'} value={trainingFocus} onChange={(event) => setTrainingFocus(event.target.value as typeof trainingFocus)}>
+                            <option value="balanced">{i18n.language.startsWith('ru') ? 'Сбалансированная' : 'Balanced'}</option>
+                            <option value="finishing">{i18n.language.startsWith('ru') ? 'Завершение атак' : 'Finishing'}</option>
+                            <option value="passing">{i18n.language.startsWith('ru') ? 'Пасы' : 'Passing'}</option>
+                            <option value="defending">{i18n.language.startsWith('ru') ? 'Защита' : 'Defending'}</option>
+                            <option value="physical">{i18n.language.startsWith('ru') ? 'Физическая подготовка' : 'Physical'}</option>
+                            <option value="goalkeeping">{i18n.language.startsWith('ru') ? 'Вратарская' : 'Goalkeeping'}</option>
+                            <option value="recovery">{i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery'}</option>
+                          </select>
+                        </label>
+                        <label className="text-xs text-brand-muted">{i18n.language.startsWith('ru') ? 'Интенсивность' : 'Intensity'}
+                          <div className="mt-2 flex items-center gap-2">
+                            <input aria-label="Training intensity" type="range" min="20" max="100" step="10" value={trainingIntensity} disabled={trainingFocus === 'recovery'} onChange={(event) => setTrainingIntensity(Number(event.target.value))} className="w-full accent-brand-accent" />
+                            <span className="w-8 text-right tabular-nums">{trainingFocus === 'recovery' ? '—' : trainingIntensity}</span>
+                          </div>
+                        </label>
+                        <div className="flex flex-col justify-end gap-2">
+                          <button type="button" className={buttonClass + ' w-full'} disabled={busy !== '' || !squad.players.length || (trainingFocus === 'goalkeeping' && trainingTarget !== 'team' && squad.players.find((player) => player.id === trainingTarget)?.position !== 'goalkeeper')} onClick={persistTraining}>
+                            {busy === 'save-training' ? '…' : (i18n.language.startsWith('ru') ? 'Назначить план' : 'Assign plan')}
+                          </button>
+                          <button type="button" className={quietButtonClass + ' w-full'} disabled={busy !== ''} onClick={() => advance(1)}>
+                            {busy === 'advance' ? '…' : (i18n.language.startsWith('ru') ? 'Прожить 1 день' : 'Advance 1 day')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-4 rounded-xl border border-brand-border bg-brand-bg p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div><div className="text-sm font-semibold">{i18n.language.startsWith('ru') ? 'Заявка на следующий матч' : 'Next match lineup'}</div><p className="mt-1 text-xs text-brand-muted">{nextFixture ? `${nextFixture.home_team} — ${nextFixture.away_team} · ${nextFixture.match_date}` : (i18n.language.startsWith('ru') ? 'Нет предстоящего матча' : 'No upcoming fixture')}</p></div>
+                        <select aria-label="Formation" className={inputClass + ' w-auto'} value={lineupFormation} onChange={(event) => { setLineupFormation(event.target.value); setLineupSaved(false); }}>{['4-3-3','4-4-2','3-5-2','4-2-3-1','3-4-3'].map((value) => <option key={value} value={value}>{value}</option>)}</select>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-brand-muted"><span>{i18n.language.startsWith('ru') ? 'Старт' : 'Starters'}: {starterIds.length}/11</span><span>{i18n.language.startsWith('ru') ? 'Запас' : 'Bench'}: {substituteIds.length}/7</span><button type="button" className={buttonClass} disabled={!nextFixture || busy !== '' || starterIds.length !== 11} onClick={persistLineup}>{busy === 'save-lineup' ? '…' : (i18n.language.startsWith('ru') ? 'Сохранить состав' : 'Save lineup')}</button>{lineupSaved && <span className="text-emerald-300">{i18n.language.startsWith('ru') ? 'Сохранено' : 'Saved'}</span>}</div>
+                      <p className="mt-2 text-[11px] text-brand-muted">{i18n.language.startsWith('ru') ? 'Переключайте игроков между стартом и скамейкой. Сервер проверит позиции и доступность.' : 'Switch players between the starting XI and bench. The server validates positions and availability.'}</p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                    {squad.players.map((player) => {
+                      const position = player.position === 'goalkeeper'
+                        ? (i18n.language.startsWith('ru') ? 'Вратарь' : 'Goalkeeper')
+                        : player.position === 'defender'
+                          ? (i18n.language.startsWith('ru') ? 'Защитник' : 'Defender')
+                          : player.position === 'midfielder'
+                            ? (i18n.language.startsWith('ru') ? 'Полузащитник' : 'Midfielder')
+                            : (i18n.language.startsWith('ru') ? 'Нападающий' : 'Forward');
+                      const availabilityDate = nextFixture?.match_date ?? campaign.campaign.game_date;
+                      const injured = player.injured_until && player.injured_until >= availabilityDate;
+                      const suspended = player.suspended_until && player.suspended_until >= availabilityDate;
+                      const attributes = [
+                        ['PAC', player.pace], ['SHO', player.shooting], ['PAS', player.passing],
+                        ['DEF', player.defending], ['PHY', player.physical], ['STA', player.stamina],
+                        ['GK', player.goalkeeping], ['FAT', player.fatigue], ['MOR', player.morale],
+                      ];
+                      return (
+                        <article key={player.id} className="rounded-xl border border-brand-border bg-brand-bg p-4">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="truncate font-semibold">{player.full_name}</h4>
+                              <p className="mt-1 text-xs text-brand-muted">{position} · {i18n.language.startsWith('ru') ? 'Возраст' : 'Age'} {player.age} · {i18n.language.startsWith('ru') ? 'Потенциал' : 'Potential'} {player.potential}</p>
+                            </div>
+                            <span className="shrink-0 rounded-lg bg-brand-surface px-2.5 py-1 text-xs font-semibold">#{player.shirt_number}</span>
+                          </div>
+                          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs text-brand-muted">{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Старт' : 'Starter') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Запасной' : 'Substitute') : (i18n.language.startsWith('ru') ? 'Не выбран' : 'Not selected')}</span><button type="button" className={quietButtonClass + ' px-2 py-1 text-xs'} disabled={busy !== '' || Boolean(injured || suspended) || (starterIds.includes(player.id) && substituteIds.length >= 7) || (substituteIds.includes(player.id) && starterIds.length >= 11) || (!starterIds.includes(player.id) && !substituteIds.includes(player.id) && starterIds.length >= 11 && substituteIds.length >= 7)} onClick={() => toggleLineupRole(player.id)}>{injured || suspended ? (i18n.language.startsWith('ru') ? 'Недоступен' : 'Unavailable') : starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'На скамейку' : 'Move to bench') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'В старт' : 'Move to XI') : starterIds.length < 11 ? (i18n.language.startsWith('ru') ? 'В старт' : 'Add to XI') : (i18n.language.startsWith('ru') ? 'В запас' : 'Add to bench')}</button></div>
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                            {attributes.map(([label, value]) => (
+                              <div key={label} className="rounded-lg border border-brand-border/60 px-2 py-1.5 text-center">
+                                <div className="text-[10px] text-brand-muted">{label}</div>
+                                <div className="text-sm font-semibold tabular-nums">{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                            {player.training_focus && <span className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">{i18n.language.startsWith('ru') ? 'План' : 'Training'}: {player.training_focus === 'recovery' ? (i18n.language.startsWith('ru') ? 'Восстановление' : 'Recovery') : player.training_focus === 'balanced' ? (i18n.language.startsWith('ru') ? 'Баланс' : 'Balanced') : player.training_focus === 'finishing' ? (i18n.language.startsWith('ru') ? 'Завершение' : 'Finishing') : player.training_focus === 'passing' ? (i18n.language.startsWith('ru') ? 'Пасы' : 'Passing') : player.training_focus === 'defending' ? (i18n.language.startsWith('ru') ? 'Защита' : 'Defending') : player.training_focus === 'physical' ? (i18n.language.startsWith('ru') ? 'Физика' : 'Physical') : (i18n.language.startsWith('ru') ? 'Вратарская' : 'Goalkeeping')} {player.training_intensity ? `· ${player.training_intensity}` : ''}</span>}
+                            {injured && <span className="rounded-full bg-rose-500/10 px-2 py-1 text-rose-300">{i18n.language.startsWith('ru') ? 'Травма до' : 'Injured until'} {player.injured_until}</span>}
+                            {suspended && <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{i18n.language.startsWith('ru') ? 'Дисквалификация до' : 'Suspended until'} {player.suspended_until}</span>}
+                            {!injured && !suspended && <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">{i18n.language.startsWith('ru') ? 'Доступен' : 'Available'}</span>}
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-muted">
+                            <span>{i18n.language.startsWith('ru') ? 'Зарплата' : 'Wage'}: {formatMoney.format(player.wage_minor / 100)}</span>
+                            <span>{i18n.language.startsWith('ru') ? 'Стоимость' : 'Value'}: {formatMoney.format(player.market_value_minor / 100)}</span>
+                            {player.contract_until && <span>{i18n.language.startsWith('ru') ? 'Контракт до' : 'Contract until'}: {player.contract_until}</span>}
+                          </div>
+                        </article>
+                      );
+                    })}
+                    </div>
+                  </>
+                )}
+              </section>
             )}
 
             {activeTab === 'club' && (

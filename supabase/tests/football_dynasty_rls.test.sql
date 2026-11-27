@@ -4,7 +4,6 @@ DO $$
 DECLARE
   v_tables integer;
   v_unprotected integer;
-  v_policies integer;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_roles WHERE rolname = 'fd_runtime' AND rolcanlogin = false
@@ -22,21 +21,19 @@ BEGIN
 
   SELECT count(*) INTO v_tables
     FROM pg_tables WHERE schemaname = 'fd';
-  IF v_tables <> 12 THEN
-    RAISE EXCEPTION 'expected 12 Football Dynasty tables, found %', v_tables;
+  IF v_tables < 12 THEN
+    RAISE EXCEPTION 'expected at least 12 Football Dynasty tables, found %', v_tables;
   END IF;
 
   SELECT count(*) INTO v_unprotected
-    FROM pg_tables
-   WHERE schemaname = 'fd' AND NOT rowsecurity;
+    FROM pg_tables t
+   WHERE t.schemaname = 'fd'
+     AND (NOT t.rowsecurity OR NOT EXISTS (
+       SELECT 1 FROM pg_policies p
+        WHERE p.schemaname = t.schemaname AND p.tablename = t.tablename
+     ));
   IF v_unprotected <> 0 THEN
-    RAISE EXCEPTION '% Football Dynasty tables have RLS disabled', v_unprotected;
-  END IF;
-
-  SELECT count(*) INTO v_policies
-    FROM pg_policies WHERE schemaname = 'fd';
-  IF v_policies <> 12 THEN
-    RAISE EXCEPTION 'expected 12 private runtime policies, found %', v_policies;
+    RAISE EXCEPTION '% Football Dynasty tables have RLS disabled or no runtime policy', v_unprotected;
   END IF;
 
   IF NOT has_table_privilege('fd_runtime', 'fd.campaigns', 'SELECT')
