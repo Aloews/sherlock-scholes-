@@ -130,6 +130,7 @@ describe('resolveLineupSelection', () => {
     defending: 70, physical: 70, goalkeeping: 10, stamina: 70, morale: 70,
     fatigue: 0, potential: 80, market_value_minor: 100000, wage_minor: 1000,
     contract_until: null, injured_until: null, suspended_until: null,
+    training_focus: null, training_intensity: null,
   }));
   const squad = {
     team_id: 'team-1', team_name: 'Northbridge United', formation: '4-3-3', next_fixture_id: 'fixture-1',
