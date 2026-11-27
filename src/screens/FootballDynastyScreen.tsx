@@ -253,6 +253,7 @@ export function FootballDynastyScreen() {
     void run('advance', async () => {
       await advanceGameTime(campaign.campaign.id, days);
       await refreshSelected(campaign.campaign.id);
+      if (activeTab === 'squad') setSquad(await getSquad(campaign.campaign.id));
       await refreshCampaigns();
     });
   };
@@ -670,9 +671,12 @@ export function FootballDynastyScreen() {
                             <span className="w-8 text-right tabular-nums">{trainingFocus === 'recovery' ? '—' : trainingIntensity}</span>
                           </div>
                         </label>
-                        <div className="flex items-end">
+                        <div className="flex flex-col justify-end gap-2">
                           <button type="button" className={buttonClass + ' w-full'} disabled={busy !== '' || !squad.players.length || (trainingFocus === 'goalkeeping' && trainingTarget !== 'team' && squad.players.find((player) => player.id === trainingTarget)?.position !== 'goalkeeper')} onClick={persistTraining}>
                             {busy === 'save-training' ? '…' : (i18n.language.startsWith('ru') ? 'Назначить план' : 'Assign plan')}
+                          </button>
+                          <button type="button" className={quietButtonClass + ' w-full'} disabled={busy !== ''} onClick={() => advance(1)}>
+                            {busy === 'advance' ? '…' : (i18n.language.startsWith('ru') ? 'Прожить 1 день' : 'Advance 1 day')}
                           </button>
                         </div>
                       </div>
