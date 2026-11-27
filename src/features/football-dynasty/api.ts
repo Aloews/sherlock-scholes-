@@ -124,6 +124,56 @@ export const getSquad = async (campaignId: string): Promise<CampaignSquadView> =
   }
   return squad as CampaignSquadView;
 };
+export interface LineupSelection { formation: string; starterIds: string[]; substituteIds: string[] }
+
+const FORMATION_COUNTS: Record<string, [number, number, number]> = {
+  '4-3-3': [4, 3, 3], '4-4-2': [4, 4, 2], '3-5-2': [3, 5, 2],
+  '4-2-3-1': [4, 5, 1], '3-4-3': [3, 4, 3],
+};
+
+/** Restore a saved lineup only when every selected player is still eligible. */
+export const resolveLineupSelection = (
+  squad: CampaignSquadView,
+  gameDate?: string,
+): LineupSelection => {
+  const available = squad.players.filter((player) =>
+    !(gameDate && player.injured_until && player.injured_until >= gameDate)
+    && !(gameDate && player.suspended_until && player.suspended_until >= gameDate),
+  );
+  const byId = new Map(available.map((player) => [player.id, player]));
+  const savedIds = [...squad.starter_ids, ...squad.substitute_ids];
+  const counts = FORMATION_COUNTS[squad.formation];
+  const savedStarters = squad.starter_ids.map((id) => byId.get(id));
+  const savedIsEligible = Boolean(counts)
+    && squad.starter_ids.length === 11
+    && squad.substitute_ids.length <= 7
+    && new Set(savedIds).size === savedIds.length
+    && savedStarters.every(Boolean)
+    && squad.substitute_ids.every((id) => byId.has(id))
+    && savedStarters.filter((player) => player?.position === 'goalkeeper').length === 1
+    && savedStarters.filter((player) => player?.position === 'defender').length === counts?.[0]
+    && savedStarters.filter((player) => player?.position === 'midfielder').length === counts?.[1]
+    && savedStarters.filter((player) => player?.position === 'forward').length === counts?.[2];
+
+  if (savedIsEligible) {
+    return { formation: squad.formation, starterIds: [...squad.starter_ids], substituteIds: [...squad.substitute_ids] };
+  }
+
+  const formation = counts ? squad.formation : '4-3-3';
+  const [defenders, midfielders, forwards] = FORMATION_COUNTS[formation];
+  const take = (position: CampaignSquadPlayer['position'], count: number) =>
+    available.filter((player) => player.position === position).slice(0, count).map((player) => player.id);
+  const starterIds = [
+    ...take('goalkeeper', 1), ...take('defender', defenders),
+    ...take('midfielder', midfielders), ...take('forward', forwards),
+  ];
+  return {
+    formation,
+    starterIds,
+    substituteIds: available.filter((player) => !starterIds.includes(player.id)).slice(0, 7).map((player) => player.id),
+  };
+};
+
 export interface SaveLineupPayload { formation: string; starter_ids: string[]; substitute_ids: string[] }
 export interface SaveLineupResult { fixture_id: string; team_id: string; formation: string; starters_saved: number; substitutes_saved: number }
 export const saveLineup = (campaignId: string, fixtureId: string, payload: SaveLineupPayload) =>
