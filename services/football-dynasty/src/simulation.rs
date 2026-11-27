@@ -976,7 +976,7 @@ async fn apply_daily_training(
             "physical":career.attributes.physical,"goalkeeping":career.attributes.goalkeeping,
             "stamina":career.attributes.stamina,
         });
-        crate::fd_query!("UPDATE fd.players SET pace=$3,shooting=$4,passing=$5,defending=$6,physical=$7,goalkeeping=$8,stamina=$9,morale=$10,fatigue=$11,updated_at=now() WHERE campaign_id=$1 AND id=$2")
+        crate::fd_query!("UPDATE fd.players SET pace=$3,shooting=$4,passing=$5,defending=$6,physical=$7,goalkeeping=$8,stamina=$9,morale=$10,fatigue=$11 WHERE campaign_id=$1 AND id=$2")
             .bind(campaign_id).bind(row.id)
             .bind(i16::from(career.attributes.pace)).bind(i16::from(career.attributes.shooting))
             .bind(i16::from(career.attributes.passing)).bind(i16::from(career.attributes.defending))
