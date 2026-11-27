@@ -182,7 +182,7 @@ export function FootballDynastyScreen() {
     setStarterIds(selection.starterIds);
     setSubstituteIds(selection.substituteIds);
     setLineupSaved(false);
-  }, [squad, campaign?.campaign.game_date]);
+  }, [squad, squadFixtureDate, campaign?.campaign.game_date]);
 
   const nextFixture = squad?.next_fixture_id ? season?.fixtures.find((fixture) => fixture.id === squad.next_fixture_id) : undefined;
   const toggleLineupRole = (playerId: string) => {
@@ -647,7 +647,7 @@ export function FootballDynastyScreen() {
                             </div>
                             <span className="shrink-0 rounded-lg bg-brand-surface px-2.5 py-1 text-xs font-semibold">#{player.shirt_number}</span>
                           </div>
-                          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs text-brand-muted">{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Старт' : 'Starter') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Запасной' : 'Substitute') : (i18n.language.startsWith('ru') ? 'Не выбран' : 'Not selected')}</span><button type="button" className={quietButtonClass + ' px-2 py-1 text-xs'} disabled={busy !== '' || (starterIds.includes(player.id) && substituteIds.length >= 7) || (substituteIds.includes(player.id) && starterIds.length >= 11) || (!starterIds.includes(player.id) && !substituteIds.includes(player.id) && starterIds.length >= 11 && substituteIds.length >= 7)} onClick={() => toggleLineupRole(player.id)}>{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'На скамейку' : 'Move to bench') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'В старт' : 'Move to XI') : starterIds.length < 11 ? (i18n.language.startsWith('ru') ? 'В старт' : 'Add to XI') : (i18n.language.startsWith('ru') ? 'В запас' : 'Add to bench')}</button></div>
+                          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs text-brand-muted">{starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Старт' : 'Starter') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'Запасной' : 'Substitute') : (i18n.language.startsWith('ru') ? 'Не выбран' : 'Not selected')}</span><button type="button" className={quietButtonClass + ' px-2 py-1 text-xs'} disabled={busy !== '' || Boolean(injured || suspended) || (starterIds.includes(player.id) && substituteIds.length >= 7) || (substituteIds.includes(player.id) && starterIds.length >= 11) || (!starterIds.includes(player.id) && !substituteIds.includes(player.id) && starterIds.length >= 11 && substituteIds.length >= 7)} onClick={() => toggleLineupRole(player.id)}>{injured || suspended ? (i18n.language.startsWith('ru') ? 'Недоступен' : 'Unavailable') : starterIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'На скамейку' : 'Move to bench') : substituteIds.includes(player.id) ? (i18n.language.startsWith('ru') ? 'В старт' : 'Move to XI') : starterIds.length < 11 ? (i18n.language.startsWith('ru') ? 'В старт' : 'Add to XI') : (i18n.language.startsWith('ru') ? 'В запас' : 'Add to bench')}</button></div>
                           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                             {attributes.map(([label, value]) => (
                               <div key={label} className="rounded-lg border border-brand-border/60 px-2 py-1.5 text-center">
